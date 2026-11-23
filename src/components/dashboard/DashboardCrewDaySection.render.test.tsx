@@ -83,8 +83,8 @@ describe('DashboardCrewDaySection', () => {
     rpcMock.mockResolvedValue({ data: PAYLOAD, error: null })
     render(<DashboardCrewDaySection authUserId="u-1" role="superintendent" />)
     await waitFor(() => expect(screen.getByText('Marcus V.')).toBeTruthy())
-    expect(screen.getByText('Crew Day')).toBeTruthy()
-    expect(screen.queryByLabelText('Email Crew Day')).toBeNull() // office-only since v2.2615
+    expect(screen.getByText('Who worked')).toBeTruthy()
+    expect(screen.queryByLabelText('Email Who worked')).toBeNull() // office-only since v2.2615
     expect(screen.getAllByText('4821 · Maple Ridge Ph 2').length).toBe(2) // Marcus worked it, DeShawn was scheduled on it
     expect(screen.getByText(/Rough complete on 3–5/)).toBeTruthy()
     expect(screen.getByText('Scheduled — never clocked in')).toBeTruthy() // DeShawn
@@ -121,7 +121,7 @@ describe('DashboardCrewDaySection', () => {
     render(<DashboardCrewDaySection authUserId="u-1" role="dev" />)
     await waitFor(() => expect(screen.getByText(/No crew activity on this day\./)).toBeTruthy())
     expect(screen.queryByText('Scoped to your assigned projects.')).toBeNull()
-    expect(screen.getByLabelText('Email Crew Day')).toBeTruthy() // office roles keep the ✉
+    expect(screen.getByLabelText('Email Who worked')).toBeTruthy() // office roles keep the ✉
     const empty = document.querySelector('[data-empty-state]') as HTMLElement
     expect(empty.textContent).toBe('No crew activity on this day. Previous day shows the day before.')
     fireEvent.click(within(empty).getByRole('button', { name: 'Previous day' }))
@@ -158,7 +158,7 @@ describe('DashboardCrewDaySection', () => {
   it('the payload’s own refusal reads that the role has no access, with no Retry (v2.5962)', async () => {
     rpcMock.mockResolvedValue({ data: { error: 'forbidden' }, error: null })
     render(<DashboardCrewDaySection authUserId="u9" role="superintendent" />)
-    await waitFor(() => expect(screen.getByText("You don't have access to this crew day.")).toBeTruthy())
+    await waitFor(() => expect(screen.getByText("You don't have access to this day.")).toBeTruthy())
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   })
 })

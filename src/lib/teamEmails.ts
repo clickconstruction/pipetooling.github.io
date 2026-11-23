@@ -149,14 +149,14 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
   // ---- Every morning ----
   {
     id: 'crew_day',
-    label: 'Crew day',
+    label: 'Who worked',
     when: { kind: 'morning', label: 'Every weekday morning', order: 1 },
     recipients: { roles: OFFICE, decidedBy: 'role', rule: 'Every dev, leader, assistant and controller — the function picks them by role.' },
-    sampleSubject: (c) => `Crew Day — ${c.dateLabel} · 6 people · 40.4 h · 3 reports · 3 flags`,
+    sampleSubject: (c) => `Who worked — ${c.dateLabel} · 6 people · 40.4 h · 3 reports · 3 flags`,
     render: { kind: 'sample', sample: 'crew_day' },
     real: 'crew_day',
-    manage: emails('Emails & reports → Crew day'),
-    reflects: ['Crew day wording (Email templates)', 'today’s dispatch'],
+    manage: emails('Emails & reports → Who worked'),
+    reflects: ['Who worked wording (Email templates)', 'today’s dispatch'],
   },
   {
     id: 'money_waiting',
@@ -382,10 +382,10 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
   },
   {
     id: 'people_week',
-    label: 'Your people’s week',
+    label: 'The team’s week',
     when: { kind: 'weekly', label: 'On the day its reader picks, Monday as it ships', order: 35 },
-    recipients: { roles: ['dev', 'master_technician', 'assistant', 'controller', 'primary'], decidedBy: 'role', rule: 'Whoever asks for it, about the people they picked on Review or the Your people card.' },
-    sampleSubject: () => 'Your people’s week · Nov 2 to 8',
+    recipients: { roles: ['dev', 'master_technician', 'assistant', 'controller', 'primary'], decidedBy: 'role', rule: 'Whoever asks for it, about the people they picked on Review or the Team’s open tasks card.' },
+    sampleSubject: () => 'The team’s week · Nov 2 to 8',
     render: { kind: 'sample', sample: 'people_week' },
     manage: stream('people_week', 'Checklist → Review → ✉ Email me their week'),
     reflects: ['the task cards’ moves, lines and photos', 'the Roadmap', 'the jobs each person clocked on'],

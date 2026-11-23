@@ -1,4 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useIsMobile } from '../hooks/useIsMobile'
+import { footClearanceCss } from '../lib/bottomChrome'
+import { JOB_MODE_PRESS_BAR_VAR } from '../lib/jobMode/pressBar'
 
 type ToastType = 'info' | 'warning' | 'error' | 'success'
 
@@ -23,6 +26,15 @@ interface ToastProps {
 
 const MARGIN = 8
 const MAX_WIDTH_PX = 400
+/**
+ * The phone's toast sits at the foot of the screen (punch list #414, v2.8359): a corner toast at the top of a phone
+ * covered the heading of the card under it for as long as it showed. At the foot no heading is. It stands this far
+ * above the bottom chrome: the tab bar while one is up (`--app-bottom-chrome`, which holds the home indicator's
+ * inset), the Job Mode press bar pinned on it (`--job-mode-press-bar`, 0px when none is mounted), and the inset
+ * alone with neither. The outbox bar is the app-health strip at the top of the page, in flow, so the foot is clear
+ * of it. The section dock draws nothing at phone width.
+ */
+const FOOT_GAP_PX = 12
 /** Fallback corner-toast top when there is no app header (login / public pages): 1rem. */
 const CORNER_TOP_FALLBACK_PX = 16
 const Z_CORNER = 9999
@@ -100,9 +112,12 @@ export function Toast({
   // to 1rem on pages without a header. When scrolled (header not at top), the
   // clamp keeps the toast near the top edge, which the header no longer occupies.
   const isCorner = !anchor && placement === 'corner'
+  // On a phone the corner toast moves to the foot (punch list #414): the top of a phone is where every card's heading is.
+  const phone = useIsMobile()
+  const atFoot = isCorner && phone
   const [cornerTopPx, setCornerTopPx] = useState<number>(CORNER_TOP_FALLBACK_PX)
   useLayoutEffect(() => {
-    if (!isCorner || typeof document === 'undefined') return
+    if (!isCorner || atFoot || typeof document === 'undefined') return
     const measure = () => {
       const navEl = document.querySelector('.appNavChrome')
       const bottom = navEl ? navEl.getBoundingClientRect().bottom : 0
@@ -111,7 +126,7 @@ export function Toast({
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [isCorner])
+  }, [isCorner, atFoot])
 
   useLayoutEffect(() => {
     if (!anchor) {
@@ -228,6 +243,16 @@ export function Toast({
             transform: translate(-50%, -50%) scale(1);
           }
         }
+        @keyframes toastFootIn {
+          from {
+            opacity: 0;
+            transform: translate(-50%, 12px);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, 0);
+          }
+        }
       `
 
   if (anchor) {
@@ -278,6 +303,25 @@ export function Toast({
           <style>{keyframes}</style>
         </div>
       </>
+    )
+  }
+
+  if (atFoot) {
+    const footStyle = {
+      position: 'fixed' as const,
+      left: '50%',
+      bottom: `calc(${footClearanceCss()} + var(${JOB_MODE_PRESS_BAR_VAR}, 0px) + ${FOOT_GAP_PX}px)`,
+      transform: 'translateX(-50%)',
+      width: `min(${MAX_WIDTH_PX}px, calc(100vw - 2rem))`,
+      boxSizing: 'border-box' as const,
+      zIndex: Z_CORNER,
+      animation: 'toastFootIn 0.25s ease-out',
+    }
+    return (
+      <div ref={rootRef} data-toast-foot="" style={{ ...cardStyleBase, ...footStyle }}>
+        {body}
+        <style>{keyframes}</style>
+      </div>
     )
   }
 

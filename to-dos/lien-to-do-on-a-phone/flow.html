@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lien Flow on a Phone</title>
+<style>
+/* The page: a reading column, with the app drawn inside phone frames. Each frame carries its own theme
+   (data-theme on .app), so dark and light sit side by side whatever the reader's own theme is. */
+:root{--pg:#f0f2f5;--pg-surface:#ffffff;--pg-text:#111827;--pg-muted:#4b5563;--pg-border:#cfd4db;--pg-frame:#1f2937;--pg-accent:#f97316}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pg:#0b1220;--pg-surface:#151e2e;--pg-text:#f3f4f6;--pg-muted:#b6beca;--pg-border:#334155;--pg-frame:#475569;color-scheme:dark}}
+:root[data-theme="dark"]{--pg:#0b1220;--pg-surface:#151e2e;--pg-text:#f3f4f6;--pg-muted:#b6beca;--pg-border:#334155;--pg-frame:#475569;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg);color:var(--pg-text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.55;
+  padding:28px max(16px,env(safe-area-inset-right,0px)) 72px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:1320px;margin:0 auto}
+h1{font-size:1.6rem;line-height:1.2;margin:0 0 6px;text-wrap:balance}
+h2{font-size:1.15rem;margin:44px 0 6px;padding-top:18px;border-top:1px solid var(--pg-border)}
+p{margin:6px 0;max-width:70ch}
+.lede,.note{color:var(--pg-muted)} .note{font-size:13.5px}
+.three{margin:16px 0 0;padding:14px 18px;border:1px solid var(--pg-border);border-left:4px solid var(--pg-accent);border-radius:8px;background:var(--pg-surface);max-width:76ch}
+.three p{margin:4px 0}
+.pair{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start;margin-top:14px}
+.col{min-width:0;max-width:100%} .scroll{overflow-x:auto;max-width:100%}
+.cap{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--pg-muted);margin:0 0 8px;display:flex;gap:8px;align-items:center}
+.cap .tag{border-radius:999px;padding:1px 9px;border:1px solid var(--pg-border);color:var(--pg-text)}
+.cap .tag.pick{background:#15803d;border-color:#15803d;color:#fff}
+.faults{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:8px;max-width:78ch}
+.faults li{display:grid;grid-template-columns:26px 1fr;gap:10px;align-items:start}
+.faults .n,.pin{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#dc2626;color:#fff;font:700 12px/1 system-ui,sans-serif}
+.faults .n.ok{background:#15803d}
+table{border-collapse:collapse;margin-top:12px;font-size:14px;max-width:100%}
+th,td{text-align:left;padding:7px 14px 7px 0;border-bottom:1px solid var(--pg-border);vertical-align:top}
+th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--pg-muted)}
+td:first-child{font-weight:700}
+
+/* ---- the app's own tokens, from src/index.css ---- */
+.app[data-theme="light"]{
+  --bg-page:#f0f2f5;--surface:#ffffff;--bg-subtle:#f9fafb;--bg-muted:#f3f4f6;
+  --text-base:#1a1a1a;--text-strong:#111827;--text-700:#374151;--text-muted:#6b7280;
+  --border:#cfd4db;--border-strong:#aab2bd;--border-400:#9ca3af;
+  --text-link:#2563eb;--text-red-700:#b91c1c;--text-amber-800:#92400e;--text-violet-700:#6d28d9;--text-blue-700:#1d4ed8;--text-green-700:#15803d;
+  --bg-red-tint:#fef2f2;--bg-amber-tint:#fffbeb;--bg-blue-tint:#eff6ff;
+}
+.app[data-theme="dark"]{
+  --bg-page:#111827;--surface:#1f2937;--bg-subtle:#18212f;--bg-muted:#374151;
+  --text-base:#f3f4f6;--text-strong:#f9fafb;--text-700:#d1d5db;--text-muted:#9ca3af;
+  --border:#374151;--border-strong:#4b5563;--border-400:#6b7280;
+  --text-link:#60a5fa;--text-red-700:#f87171;--text-amber-800:#fcd34d;--text-violet-700:#c4b5fd;--text-blue-700:#93c5fd;--text-green-700:#4ade80;
+  --bg-red-tint:#3b1a1a;--bg-amber-tint:#3a2f11;--bg-blue-tint:#1e3358;
+}
+.app{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.45;color:var(--text-base);background:var(--bg-page);text-align:left}
+.app button{font-family:inherit;cursor:pointer}
+
+.phone{border:9px solid var(--pg-frame);border-radius:30px;overflow:hidden;position:relative;flex:none}
+.phone.clip{height:880px}
+.nav{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--bg-page);border-bottom:1px solid var(--border)}
+.nav i{width:18px;height:16px;border-radius:4px;background:var(--text-700);opacity:.8}
+.nav i.sq{width:30px;height:30px;border-radius:6px;opacity:1} .nav .sp{flex:1}
+.desk{margin:8px 8px 0;background:var(--surface);border:1px solid var(--border);border-bottom:0}
+.dhead{display:flex;align-items:center;gap:14px;padding:8px 9px 4px}
+.back{min-height:44px;padding:0 12px;border:1px solid var(--border-strong);border-radius:9px;background:none;color:var(--text-700);font-size:13.5px;font-weight:600}
+.dhead b{font-size:18px;color:var(--text-strong);flex:1}
+.more{position:relative;font-weight:800;letter-spacing:2px;color:var(--text-700);padding:0 12px}
+.more u{position:absolute;top:-12px;right:0;min-width:20px;height:20px;border-radius:10px;background:#2563eb;color:#fff;font:700 11px/20px system-ui;text-align:center;text-decoration:none;letter-spacing:0}
+.tabs4{display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;margin:4px 9px 12px;border:1px solid var(--border-strong);border-radius:9px;overflow:hidden}
+.tabs4 span{min-height:44px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--text-700)}
+.tabs4 span.on{background:#2563eb;color:#fff;border-radius:8px}
+.board{display:grid;gap:10px;padding:10px 12px 6px;border-top:1px solid var(--border)}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tile{position:relative;display:flex;flex-direction:column;gap:2px;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:9px 10px 10px;min-width:0}
+.tile .fig{font-size:20px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--c,var(--text-strong))}
+.tile .lab{font-size:11.8px;font-weight:600;color:var(--text-700);line-height:1.25}
+.tile .ln{font-size:11.5px;line-height:1.3;color:var(--text-muted)} .tile .ln.red{color:var(--text-red-700)}
+.tile .door{font-size:11.8px;font-weight:600;color:var(--text-link);white-space:nowrap}
+.tile .door.corner{position:absolute;top:9px;right:10px}
+.tile.red{--c:var(--text-red-700)} .tile.violet{--c:var(--text-violet-700)} .tile.amber{--c:var(--text-amber-800)}
+.wide{min-height:44px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-size:13px;font-weight:600}
+.fold{display:flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:14px;font-weight:600;color:var(--text-700)}
+.fold span{flex:1}
+.find{display:flex;align-items:center;min-height:52px;padding:0 16px;color:var(--text-muted);font-size:15px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-top:4px}
+.ghead{display:flex;align-items:baseline;gap:12px;padding:7px 12px;font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;background:var(--bg-subtle);color:var(--text-strong);border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:relative}
+.ghead .sp{flex:1} .ghead.red{background:var(--bg-red-tint);color:var(--text-red-700)}
+.chip{display:inline-flex;align-items:center;gap:5px;border:0;border-radius:5px;padding:0 8px;font-size:12px;font-weight:700;white-space:nowrap}
+.chip.notice{background:var(--bg-blue-tint);color:var(--text-blue-700)} .chip.affidavit{background:var(--bg-red-tint);color:var(--text-red-700)} .chip.retainage,.chip.run{background:var(--bg-amber-tint);color:var(--text-amber-800)}
+.chip em{font-style:normal;color:var(--text-green-700)} .chip u{min-width:15px;height:15px;border-radius:8px;background:#dc2626;color:#fff;font:700 10px/15px system-ui;text-align:center;text-decoration:none}
+.dots{display:inline-flex;align-items:center;gap:4px;color:var(--k);font-weight:800}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--border-400)} .dots i.on{background:var(--k)}
+.k-notice{--k:var(--text-blue-700)} .k-affidavit{--k:var(--text-red-700)} .k-retainage,.k-run{--k:var(--text-amber-800)}
+.act{border:0;border-radius:8px;background:#2563eb;color:#fff;font-weight:600}
+.sec{border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--text-700);font-weight:600}
+.jobs{color:var(--text-link);font-size:14px;font-weight:600;padding:6px 0}
+.pin{position:absolute;z-index:3;box-shadow:0 0 0 2px var(--surface)}
+
+/* BEFORE: a row as it is. The press is as wide as its words and sits on a line of its own under them. */
+.b-row{padding:11px 12px 10px;border-bottom:1px solid var(--border);position:relative}
+.b-row .top{display:flex;align-items:flex-end;gap:10px}
+.b-row .title{flex:1;min-width:0;font-size:15.5px;font-weight:700;color:var(--text-strong);line-height:1.3}
+.b-row .amt{font-size:15.5px;font-weight:700;color:var(--text-strong);font-variant-numeric:tabular-nums}
+.b-row .sub{font-size:13px;color:var(--text-muted);margin-top:3px}
+.b-row .foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:8px}
+.b-row .foot .chip{min-height:40px} .b-row .foot .sp{flex:1}
+.b-row .foot .act,.b-row .foot .sec{flex:none;min-height:40px;padding:0 12px;font-size:14px;white-space:nowrap}
+
+/* AFTER: words at the left, one press at the right, every press one size. The second way out is a quiet line under the words. */
+.a-row{display:grid;grid-template-columns:minmax(0,1fr) var(--press,116px);column-gap:12px;align-items:center;padding:11px 12px;border-bottom:1px solid var(--border)}
+.a-row .title{font-size:15.5px;font-weight:700;color:var(--text-strong);line-height:1.3}
+.a-row .sub{font-size:13px;color:var(--text-muted);margin-top:2px}
+.a-row .meta{display:flex;align-items:center;gap:8px;margin-top:6px}
+.a-row .meta .chip{min-height:26px} .a-row .meta .sp{flex:1}
+.a-row .amt{font-size:14px;font-weight:700;color:var(--text-strong);font-variant-numeric:tabular-nums}
+.a-row .act{width:100%;min-height:44px;padding:4px 6px;font-size:13.5px;line-height:1.2;text-align:center}
+.a-row .quiet{display:inline-flex;align-items:center;min-height:32px;border:0;background:none;padding:0;color:var(--text-link);font-size:13px;font-weight:600;margin-top:2px}
+.app[data-w="320"] .a-row{--press:100px}
+
+/* ---- the flow on a phone ---- */
+.switch{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border-strong);border-radius:9px;overflow:hidden}
+.switch span{min-height:44px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:var(--text-700)}
+.switch span.on{background:var(--bg-blue-tint);color:var(--text-blue-700)}
+.flow{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:18px;row-gap:0;padding-bottom:4px}
+.flow svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.fcol{display:flex;flex-direction:column}
+.fcol h4{margin:0 0 6px;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)}
+.stage{display:flex;align-items:center;gap:8px;min-height:44px;padding:5px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text-strong);text-align:left;width:100%}
+.stage .nm{flex:1;min-width:0;font-size:12.3px;font-weight:600;line-height:1.2}
+.stage .ct{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+.stage.zero{border-style:dashed;color:var(--text-muted)} .stage.zero .ct{font-weight:600}
+.stage.closed{border-style:dashed}
+.stage.red .ct{color:var(--text-red-700)} .stage.violet .ct{color:var(--text-violet-700)} .stage.amber .ct{color:var(--text-amber-800)}
+.stage.lit{border-color:#2563eb;box-shadow:0 0 0 2px #2563eb inset}
+.down{height:10px;display:flex;justify-content:center;color:var(--border-400);font-size:9px;line-height:10px}
+.dayline{font-size:13px;color:var(--text-700);line-height:1.35}
+.dayline b{font-size:15px;font-weight:800;color:var(--text-red-700);font-variant-numeric:tabular-nums}
+.dayline .red{color:var(--text-red-700)} .dayline .door{color:var(--text-link);font-weight:600;white-space:nowrap}
+.flowfoot{font-size:12px;color:var(--text-muted);padding:2px 0 4px}
+.flowfoot b{color:var(--text-link);font-weight:600}
+/* the flow shrunk to one line: where you are, and the way back */
+.rail{padding:8px 12px 9px;background:var(--bg-subtle);border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:relative}
+.rail .top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.rail .backin{min-height:44px;padding:0 10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--text-link);font-size:13px;font-weight:600}
+.rail .where{flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--text-strong)}
+.rail .where small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)}
+.rail .cells{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+.rail .cells span{min-height:44px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-size:13px;font-weight:700;color:var(--text-700)}
+.rail .cells span.zero{border-style:dashed;color:var(--text-muted);font-weight:500}
+.rail .cells span.lit{background:#2563eb;border-color:#2563eb;color:#fff}
+.rail.slim .cells{display:none} .rail.slim .top{margin-bottom:0}
+.showing{padding:8px 12px;font-size:13px;color:var(--text-700);border-bottom:1px solid var(--border)}
+/* a job's own screen, as it is today, under the rail */
+.job{padding:14px 12px 18px}
+.job h5{margin:0;font-size:18px;color:var(--text-strong)} .job .amt2{font-size:15px;font-weight:700;margin-top:2px}
+.job .steps{margin:14px 0;display:grid;gap:8px;font-size:14px;color:var(--text-700)}
+.job .steps span::before{content:"○  ";color:var(--text-muted)} .job .steps span.done::before{content:"●  ";color:var(--text-blue-700)}
+.job .paper{border:1px solid var(--border);border-radius:8px;background:var(--bg-subtle);height:210px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px}
+.job .big{width:100%;min-height:48px;margin-top:14px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-size:15px;font-weight:600}
+/* TODAY: the bins in one column, with their chips */
+.bcol h4{margin:6px 0 8px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)}
+.bin{border:1px solid var(--border);border-radius:8px;padding:10px 10px 8px;background:var(--surface)}
+.bin.zero{border-style:dashed;color:var(--text-muted)}
+.bin .hd{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;min-height:24px}
+.bin .hd span{flex:1}
+.bin .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.bin .chips i{font-style:normal;font-size:11.5px;font-weight:700;line-height:18px;padding:1px 7px;border:1px solid var(--border-strong);border-radius:6px;color:var(--text-700)}
+.bin .chips i.v{border-color:var(--text-violet-700);color:var(--text-violet-700)} .bin .chips i.r{border-color:var(--text-red-700);color:var(--text-red-700);background:var(--bg-red-tint)}
+.more16{margin:4px 0;padding:10px;border:2px dashed var(--border-strong);border-radius:8px;text-align:center;font-size:12.5px;font-weight:600;color:var(--text-muted)}
+/* the other idea: the flow as a strip over the list */
+.pills{display:flex;gap:6px;overflow:hidden;padding:8px 12px;background:var(--bg-subtle);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.pills span{flex:none;min-height:40px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);font-size:12.5px;font-weight:600;color:var(--text-700);white-space:nowrap}
+.pills span b{font-weight:800;color:var(--text-strong)} .pills span.lit{background:#2563eb;border-color:#2563eb;color:#fff} .pills span.lit b{color:#fff}
+.steps3{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0 0;font-weight:700}
+.steps3 span{padding:6px 12px;border:1px solid var(--pg-border);border-radius:8px;background:var(--pg-surface)}
+.steps3 em{font-style:normal;color:var(--pg-muted);font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The flow of a lien paper, on a phone: out of it and back in</h1>
+  <p class="lede">Every job, name, count, date and amount here is made up. Nothing is copied from the live app.</p>
+  <div class="three">
+    <p><b>Why it is hard.</b> The flow is a wide picture, two columns of eight bins with an arrow across. A phone is one narrow column. Today the bins stack into about 2,050 px, and the work a bin leads to is far below it.</p>
+    <p><b>What I recommend.</b> Draw the flow as counts, not chips, so both columns fit on one screen. Give it a switch of its own beside the list by day. When you press a stage, the flow shrinks to one line pinned at the top. That line says where you are and takes you back in one press.</p>
+    <p><b>What you pick.</b> This, or the strip drawn at the end, and whether To do opens on the flow or on the list by day.</p>
+  </div>
+  <div class="steps3"><span>The flow</span><em>press a stage →</em><span>That stage's papers</span><em>press a row →</em><span>The job</span><em>← Back, or the pinned line, one step at a time</em></div>
+
+  <h2>Today, with the bins open</h2>
+  <p class="note">430 px wide. The frame is cut where a phone's screen ends. On the left, eleven more bins and then the list are below the cut. On the right, the whole flow is above it.</p>
+  <p>In the flow's own view the four tiles stand down. Three of them are stages of the flow already: <i>waiting on Sam</i> is <b>Approved · to sign</b>, and <i>to print and mail</i> is the two stages under it. The day and its red line stay, as one line over the flow. The tiles are still on <b>By day</b>.</p>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">Before</span> the bins in one column</p><div class="scroll"><div data-frame="today" data-clip="1" data-theme="dark" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">After</span> 1 · the flow on one screen</p><div class="scroll"><div data-frame="flow" data-clip="1" data-theme="dark" data-w="430"></div></div></div>
+  </div>
+
+  <h2>Out of the flow, and back in</h2>
+  <p>Three screens in the order a person meets them. The pinned line is the flow in small: eight squares for the eight stages of that column, with their counts, and the one you are in lit.</p>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag pick">1</span> the flow · press a stage</p><div class="scroll"><div data-frame="flow" data-lit="1" data-clip="1" data-theme="dark" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">2</span> out · that stage's papers</p><div class="scroll"><div data-frame="stage" data-clip="1" data-theme="dark" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">3</span> further out · one job</p><div class="scroll"><div data-frame="job" data-clip="1" data-theme="dark" data-w="430"></div></div></div>
+  </div>
+  <ul class="faults">
+    <li><span class="n ok">1</span><span><b>The flow is counts.</b> Each stage is one press, 44 px tall, with its name and its count. A job's number is no use as a 22 px chip on a phone, since the card that names the job needs a pointer. The numbers come back as rows, one press later.</span></li>
+    <li><span class="n ok">2</span><span><b>Out.</b> Press a stage and its papers are the screen. The flow becomes the pinned line. Press another square on that line to move to the stage before or after without going back.</span></li>
+    <li><span class="n ok">3</span><span><b>Further out.</b> Press a row and the job has the screen, as it does today. The pinned line stays, in its short form, and names the stage you came from.</span></li>
+    <li><span class="n ok">↩</span><span><b>Back in.</b> <b>‹ The flow</b> on the pinned line, or the phone's own Back, returns one step at a time. The flow opens where you left it, with your stage still lit.</span></li>
+  </ul>
+
+  <h2>The same, light, and at 375 px</h2>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag pick">1</span> light</p><div class="scroll"><div data-frame="flow" data-lit="1" data-clip="1" data-theme="light" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">2</span> light</p><div class="scroll"><div data-frame="stage" data-clip="1" data-theme="light" data-w="430"></div></div></div>
+    <div class="col"><p class="cap"><span class="tag pick">1</span> 375 px, dark</p><div class="scroll"><div data-frame="flow" data-clip="1" data-theme="dark" data-w="375"></div></div></div>
+  </div>
+
+  <h2>The other idea: the flow as a strip over the list</h2>
+  <p>The list by day stays the screen. The flow is a row of stages pinned above it that slides sideways. Press a stage and the list shows only its papers. Press it again and the whole list is back. You never leave, so there is nothing to come back to. It gives up the picture: about three stages show at a time, and the two columns and the arrow between them are gone.</p>
+  <div class="pair">
+    <div class="col"><p class="cap"><span class="tag">2</span> the strip · dark</p><div class="scroll"><div data-frame="strip" data-clip="1" data-theme="dark" data-w="430"></div></div></div>
+  </div>
+  <p class="note">A third idea, the flow as a tab of its own beside To do, was not drawn. Five tabs do not fit a phone's width at a size a thumb can press.</p>
+
+  <h2>What each idea costs</h2>
+  <div class="scroll"><table>
+    <tr><th></th><th>You see</th><th>Out and back</th><th>Gives up</th></tr>
+    <tr><td>1, the flow on one screen</td><td>Both columns, all sixteen stages, the arrow across, each stage's count</td><td>One press out, one press back, the place kept. The flow rides along as one line</td><td>The job numbers on the flow itself, and the tiles while the flow is showing. One more switch at the top of To do</td></tr>
+    <tr><td>2, the strip</td><td>The list by day, with about three stages over it</td><td>Nothing to leave</td><td>The picture of the flow</td></tr>
+    <tr><td>Today</td><td>Sixteen bins in one column with every job's number</td><td>A long scroll down to the list and back up</td><td>Two screens of height, and presses 22 px tall</td></tr>
+  </table></div>
+</div>
+
+<script>
+// Made-up counts, the same in every frame.
+const NOTICES = [['Needs the owner', 0], ['To send for Master approval', 1], ['Awaiting Master approval', 0], ['Approved · to sign', 6, 'violet'], ['Approved · to print', 1, 'amber'], ['Approved · to mail', 4, 'amber'], ['Sent', 2], ['Window closed · no notice', 1, 'closed']]
+const LIENS = [['Needs the property facts', 3], ['Waiting on its notice', 1], ['To send for Master approval', 4], ['Awaiting Master approval', 0], ['Ready to file', 0], ['Filed · copies to mail', 8, 'red'], ['Served', 0], ['Lien day passed · not filed', 6, 'closed']]
+const LIT = 3
+
+const nav = `<div class="nav"><i></i><i></i><i></i><span class="sp"></span><i></i><i class="sq" style="background:#3b6ea5"></i><i class="sq" style="background:#7c3aed"></i><i class="sq" style="background:#2563eb"></i><i></i><i></i></div>`
+const head = `<div class="dhead"><button class="back">← Pipeline</button><b>Lien desk</b><span class="more">···<u>9</u></span></div><div class="tabs4"><span class="on">To do · 13</span><span>By date</span><span>By paper</span><span>By job</span></div>`
+const tiles = `<div class="tiles">
+  <div class="tile red"><span class="fig">14</span><span class="lab">by Dec 15</span><span class="ln">8 to file · 6 to send</span><span class="ln red">3 are past their day. <span class="door">Show them ›</span></span></div>
+  <div class="tile violet"><span class="fig">6</span><span class="lab">waiting on Sam</span><span class="ln">6 to sign · <span class="door">Show them ›</span></span></div>
+  <div class="tile amber"><span class="fig">5</span><span class="lab">to print and mail</span><span class="ln">1 to print · 4 to mail</span></div>
+  <div class="tile"><span class="fig">$86,400</span><span class="lab">unpaid on the desk</span></div></div>`
+const wide = `<button class="wide">Print and mail 1 notice</button>`
+
+const stage = (s, i, lit, col) => `<button class="stage ${s[1] === 0 ? 'zero' : ''} ${s[2] || ''} ${lit ? 'lit' : ''}" data-at="${col}${i}"><span class="nm">${s[0]}</span><span class="ct">${s[1]}</span></button>`
+const column = (name, list, col, litAt) => `<div class="fcol"><h4>${name}</h4>${list.map((s, i) => stage(s, i, litAt === i, col) + (i < list.length - 2 ? '<div class="down">▼</div>' : i === list.length - 2 ? '<div class="down"></div>' : '')).join('')}</div>`
+const dayline = `<div class="dayline"><b>14</b> by Dec 15. <span class="red">3 are past their day.</span> <span class="door">Show them ›</span></div>`
+const flow = (lit) => `<div class="switch"><span>By day</span><span class="on">The flow</span></div>${dayline}
+  <div class="flow"><svg></svg>${column('Monthly notices', NOTICES, 'n', lit ? LIT : -1)}${column('Lien affidavits', LIENS, 'a', -1)}</div>
+  <div class="flowfoot">Retainage: 3 to send, 2 to record. <b>Show them ›</b></div>`
+
+const cells = (list, at) => `<div class="cells">${list.map((s, i) => `<span class="${i === at ? 'lit' : s[1] === 0 ? 'zero' : ''}">${s[1]}</span>`).join('')}</div>`
+const rail = (slim) => `<div class="rail ${slim ? 'slim' : ''}"><div class="top"><button class="backin">‹ The flow</button><span class="where"><small>Monthly notices · stage 4 of 8</small>Approved · to sign · 6</span></div>${cells(NOTICES, LIT)}</div>`
+
+const chip = (r) => `<button class="chip ${r.kind}">${r.chip}${r.ok ? '<em>✓</em>' : ''}</button>`
+const dots = (r) => `<span class="dots k-${r.kind}">${[0, 1, 2, 3].map((i) => `<i class="${i < r.dots ? 'on' : ''}"></i>`).join('')}</span>`
+const row = (r) => `<div class="a-row"><div><div class="title">${r.title}</div><div class="sub">${r.sub}</div><div class="meta">${chip(r)}${dots(r)}<span class="sp"></span><span class="amt">${r.amt}</span></div></div><button class="act">${r.act}</button></div>`
+const SIGN = [['2041 · Ridgeway Builders – Elm St', '$7,820'], ['2012 · Harbor Point GC', '$4,900'], ['2018 · Harbor Point GC – Unit 5', '$3,180'], ['2044 · Cedar Row Homes', '$3,500'], ['2051 · Lakeside Remodel', '$450'], ['2006 · Northgate GC', '$650']]
+  .map(([title, amt]) => ({ title, amt, sub: 'Notice approved · waits on a signature', kind: 'notice', chip: 'Notice', ok: 1, dots: 2, act: 'Open the notice' }))
+const ghead = (h, left, amt, tone) => `<div class="ghead ${tone || ''}"><span>${h}</span><span class="sp"></span>${left ? `<span>${left}</span>` : ''}${amt ? `<span>${amt}</span>` : ''}</div>`
+const DAYROWS = [
+  { title: '2041 · Ridgeway Builders – Elm St', amt: '$2,400', sub: 'Retainage notice to send', kind: 'retainage', chip: 'Retainage', dots: 2, act: 'Open the notice' },
+  { title: '2012 · Harbor Point GC', amt: '$4,900', sub: 'Lien filed · mail its copies today', kind: 'affidavit', chip: 'Affidavit', dots: 0, act: 'Enter mail numbers' },
+  { title: '2018 · Harbor Point GC – Unit 5', amt: '$3,180', sub: 'Lien filed · mail its copies today', kind: 'affidavit', chip: 'Affidavit', dots: 0, act: 'Enter mail numbers' },
+]
+
+const bin = (name, n, chips) => `<div class="bin ${n === 0 ? 'zero' : ''}"><div class="hd"><span>${name}</span>${n}</div>${chips ? `<div class="chips">${chips}</div>` : ''}</div><div class="down">▼</div>`
+const SCREENS = {
+  today: () => `<div class="board">${tiles}${wide}<div class="fold"><span>Hide the bins</span>▴</div>
+    <div class="bcol"><h4>Monthly notices</h4>${bin('Needs the owner', 0)}${bin('To send for Master approval', 1, '<i>2033</i>')}${bin('Awaiting Master approval', 0)}${bin('Approved · to sign', 6, '<i class="r">2041</i><i class="r">2012</i><i class="v">2018</i><i class="v">2044</i><i class="v">2051</i><i class="v">2006</i>')}${bin('Approved · to print', 1, '<i>2057</i>')}
+    <div class="more16">Eleven more bins below, then the list.<br>About two screens of scroll.</div></div></div>`,
+  flow: (o) => `<div class="board">${flow(o.lit)}${wide}</div>`,
+  stage: () => `${rail(false)}<div class="showing">Showing 6 rows in <b>Approved · to sign</b>.</div>${SIGN.map(row).join('')}`,
+  job: () => `${rail(true)}<div class="job"><h5>2041 · Ridgeway Builders – Elm St</h5><div class="amt2">$7,820</div>
+    <div class="steps"><span class="done">Drafted</span><span class="done">Approved by Sam</span><span>Signed</span><span>Printed and mailed</span></div>
+    <div class="paper">the notice, as the page prints it</div><button class="big">Sign it</button></div>`,
+  strip: () => `<div class="board">${tiles}${wide}</div>
+    <div class="pills"><span>To send <b>1</b></span><span class="lit">To sign <b>6</b></span><span>To print <b>1</b></span><span>To mail <b>4</b></span><span>Sent <b>2</b></span></div>
+    <div class="showing">Showing 6 rows in <b>Approved · to sign</b>. <span style="color:var(--text-link);font-weight:600">Show every row</span></div>${SIGN.slice(0, 4).map(row).join('')}`,
+}
+
+for (const el of document.querySelectorAll('[data-frame]')) {
+  el.className = `app phone ${el.dataset.clip === '1' ? 'clip' : ''}`
+  el.dataset.w = el.dataset.w
+  el.style.width = `${Number(el.dataset.w) + 18}px`
+  el.innerHTML = `${nav}<div class="desk">${head}${SCREENS[el.dataset.frame]({ lit: el.dataset.lit === '1' })}</div>`
+  // The one arrow across: from Sent, on the left, to Waiting on its notice, on the right.
+  const f = el.querySelector('.flow')
+  if (!f) continue
+  const box = f.getBoundingClientRect()
+  const a = f.querySelector('[data-at="n6"]').getBoundingClientRect()
+  const b = f.querySelector('[data-at="a1"]').getBoundingClientRect()
+  const x1 = a.right - box.left, y1 = a.top + a.height / 2 - box.top, x2 = b.left - box.left, y2 = b.top + b.height / 2 - box.top
+  const mid = (x1 + x2) / 2
+  f.querySelector('svg').innerHTML = `<path d="M ${x1} ${y1} H ${mid} V ${y2} H ${x2 - 2}" fill="none" stroke="var(--border-400)" stroke-width="1.4" stroke-dasharray="4 3"/><path d="M ${x2 - 7} ${y2 - 4} L ${x2 - 1} ${y2} L ${x2 - 7} ${y2 + 4}" fill="none" stroke="var(--border-400)" stroke-width="1.4"/>`
+}
+</script>
+</body>
+</html>

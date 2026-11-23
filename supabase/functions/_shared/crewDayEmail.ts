@@ -236,11 +236,11 @@ function dayLabel(ymd: string): string {
 
 export function crewDayEmailSubject(view: CrewDayEmailView): string {
   const s = view.summary
-  return `Crew Day — ${dayLabel(view.day)} · ${s.people} people · ${hoursLabel(s.hoursMs)} · ${s.reports} report${s.reports === 1 ? '' : 's'}${s.flags > 0 ? ` · ${s.flags} flag${s.flags === 1 ? '' : 's'}` : ''}`
+  return `Who worked — ${dayLabel(view.day)} · ${s.people} people · ${hoursLabel(s.hoursMs)} · ${s.reports} report${s.reports === 1 ? '' : 's'}${s.flags > 0 ? ` · ${s.flags} flag${s.flags === 1 ? '' : 's'}` : ''}`
 }
 
 export function crewDayEmailText(view: CrewDayEmailView): string {
-  const lines: string[] = [`Crew Day — ${dayLabel(view.day)}`, '']
+  const lines: string[] = [`Who worked — ${dayLabel(view.day)}`, '']
   if (view.groups.length === 0) lines.push('No crew activity recorded for this day.')
   for (const g of view.groups) {
     lines.push(g.label + (g.pct ? ` (${g.pct.from}% -> ${g.pct.to}%)` : ''))

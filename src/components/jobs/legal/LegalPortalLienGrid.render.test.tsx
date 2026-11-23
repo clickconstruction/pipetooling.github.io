@@ -91,7 +91,9 @@ describe('LegalPortalLienGrid', () => {
     expect(missing.className).toBe('legalCardOnly')
     expect(missing.textContent).toMatch(/^Not entered yet: .*payment bond.*\.$/)
     for (const c of cells.slice(1, 12)) {
-      const unknown = Boolean(c.querySelector('[title="A fact the office has not entered yet"]')) && c.textContent === '?'
+      // v2.8315: the two columns the owner's call fills say so on their own `?`.
+      const ownersColumn = ['Paid out to GC', '10 % reserved'].includes(c.getAttribute('data-label')!)
+      const unknown = Boolean(c.querySelector(`[title="${ownersColumn ? 'The owner’s answer is not on record yet' : 'A fact the office has not entered yet'}"]`)) && c.textContent === '?'
       if (['Owner of record', 'Last on site', 'Affidavit by', 'Bond', 'Paid out to GC', '10 % reserved', 'Contract completed'].includes(c.getAttribute('data-label')!)) expect(c.hasAttribute('data-card-drop')).toBe(unknown)
     }
     // The court cell keeps its own mark for the tests and the print.

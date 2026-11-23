@@ -15,6 +15,8 @@ const io = vi.hoisted(() => ({
   rows: [] as unknown[],
   asks: [] as Array<{ kind: string; reader: string | undefined }>,
   counts: [] as string[],
+  /** How many papers were made and never sent, as the count answers. */
+  notSent: 0 as number | null,
   mounted: [] as string[],
 }))
 vi.mock('../../hooks/useAuth', () => {
@@ -30,6 +32,7 @@ vi.mock('../../lib/documents/agreementsLedgerIo', () => ({
     io.counts.push(`${kind}:${reader}`)
     return 1
   },
+  countAgreementsNotSent: async () => io.notSent,
 }))
 // The windows and the senders are their own files' to test: here each says it was drawn at all.
 vi.mock('./AgreementsSendPaper', () => ({
@@ -101,6 +104,7 @@ beforeEach(() => {
   io.rows = ROWS
   io.asks = []
   io.counts = []
+  io.notSent = 0
   io.mounted = []
 })
 afterEach(() => cleanup())
@@ -147,6 +151,19 @@ describe('DocumentsAgreementsTab · an estimator', () => {
     expect(screen.queryByRole('button', { name: 'Send again' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Copy the signing link' })).toBeNull()
     expect(screen.queryByTestId('signed-record-window')).toBeNull()
+  })
+
+  it('reads a paper that was never sent and a W-9 as lines, with no Send and no Take back', async () => {
+    io.notSent = 1
+    io.rows = [
+      row({ id: 'supply_house_agreement:p7', kind: 'supply_house_agreement', source_id: 'p7', state: 'not_sent', paper_name: 'Request for taxpayer number', with_name: 'Tallgrass Supply Co', at_day: '2026-11-21', facts: { status: 'unsent', party_kind: 'supply_house', doc_type: 'w9' } }),
+    ]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    const lines = await screen.findAllByTestId('documents-agreements-row')
+    expect(lines[0]?.textContent).toBe('Supply houseW-9Request for taxpayer numberWith Tallgrass Supply Conot sentMade Nov 21')
+    expect(lines[0]?.querySelector('button, a')).toBeNull()
+    // The chip is theirs to read by too.
+    expect(await screen.findByRole('button', { name: 'Not sent · 1' })).toBeTruthy()
   })
 
   it('says the list is for reading and where a signed paper opens, in place of the office’s doors', async () => {

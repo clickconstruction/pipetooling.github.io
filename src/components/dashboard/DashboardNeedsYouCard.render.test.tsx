@@ -207,23 +207,12 @@ describe('DashboardNeedsYouCard: While you were off (v2.6060, punch list #141 PR
     fireEvent.click(screen.getByText('See them'))
     expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ key: 'while-off' }))
   })
-  it('the Lien desk’s Board as four dots on one line (v2.7334): drawn for the office when the desk hands them, one press that opens the Board; absent without them', () => {
-    const onOpenBoard = vi.fn()
-    const dots = [
-      { key: 'by_day' as const, figure: '21', words: 'by tomorrow', tone: 'red' as const },
-      { key: 'waiting' as const, figure: '3', words: 'waiting on Malachi', tone: 'violet' as const },
-      { key: 'in_mail' as const, figure: '7', words: 'to print and mail', tone: 'amber' as const },
-      { key: 'unpaid' as const, figure: '$202,575', words: 'unpaid on the desk', tone: 'quiet' as const },
-    ]
-    render(<DashboardNeedsYouCard userId="u1" role="assistant" items={ITEMS} onAction={() => {}} lienBoardStrip={dots} onOpenBoard={onOpenBoard} />)
-    const strip = screen.getByRole('button', { name: /Lien desk.*The Board/ })
-    expect(strip.getAttribute('data-needs-you-lien-board')).not.toBeNull()
-    expect(Array.from(strip.querySelectorAll('[data-needs-you-lien-dot]')).map((el) => `${el.getAttribute('data-needs-you-lien-dot')}:${el.getAttribute('data-tone')}:${el.textContent}`)).toEqual(['by_day:red:21by tomorrow', 'waiting:violet:3waiting on Malachi', 'in_mail:amber:7to print and mail', 'unpaid:quiet:$202,575unpaid on the desk'])
-    fireEvent.click(strip)
-    expect(onOpenBoard).toHaveBeenCalledTimes(1)
-    cleanup()
-    render(<DashboardNeedsYouCard userId="u1" role="assistant" items={ITEMS} onAction={() => {}} lienBoardStrip={null} />)
-    expect(document.querySelector('[data-needs-you-lien-board]')).toBeNull()
+  it('starts with its title: the Lien desk’s counts are a card of their own beside it (punch list #423), and no prop hands them in', () => {
+    render(<DashboardNeedsYouCard userId="u1" role="assistant" items={ITEMS} onAction={() => {}} />)
+    const section = document.querySelector('section[aria-label^="Needs you"]')!
+    expect(section.firstElementChild!.hasAttribute('data-dashboard-card-head')).toBe(true)
+    expect(section.querySelector('[data-lien-desk-card]')).toBeNull()
+    expect(section.textContent).not.toContain('The Board')
   })
 })
 
@@ -319,5 +308,137 @@ describe('DashboardNeedsYouCard: the leader’s lien notices as a card of their 
     expect(screen.getByText('Sign 1 lien notice today')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Open 891 to sign' }))
     expect(onAction.mock.calls[0]![0]).toMatchObject({ key: 'lien-notice-approve', openHref: '/lien-desk?tab=notices&job=j891&pile=awaiting' })
+  })
+})
+
+describe('DashboardNeedsYouCard: a phone row is the words across its width and a small press at the bottom right (v2.8329)', () => {
+  // Invented rows: a short label, the longest label on the list, a figure the title does not say, and a second control.
+  const ROWS: NeedsYouItem[] = [
+    { key: 'tally-self', severity: 'amber', kicker: 'Your card purchases', title: '14 purchases need a job', detail: "Purchases over 2 days old aren't on a job yet.", figure: '14', actionLabel: 'Open tally' },
+    { key: 'todays-sends', severity: 'amber', kicker: 'Messages', title: 'Today’s sends', detail: '3 texts ready to send, 1 held', figure: '4', actionLabel: 'Open' },
+    { key: 'team-reviews', severity: 'gray', kicker: 'People', title: 'Team reviews due', detail: 'Two people are due a review this month.', figure: '2', actionLabel: 'Open Hiring → Review' },
+    {
+      key: 'ar-deposits',
+      severity: 'blue',
+      kicker: 'Money received',
+      title: 'Allocate 2 bank deposits',
+      detail: '2 transactions still have balance to apply.',
+      figure: '2',
+      actionLabel: 'Match deposits',
+      secondary: [{ key: 'why', label: 'Why these two?' }],
+    },
+  ]
+  const rowOf = (key: string) => document.querySelector(`[data-needs-you-row="${key}"]`) as HTMLElement
+  beforeEach(() => cleanup())
+  // The reviews line is the owner's, so the assistant opens its fold: a fold's lines are the same row.
+  const drawPhoneCards = () => {
+    phone.on = true
+    localStorage.setItem('pipetooling_needs_you_mode_u-1', 'cards')
+    const utils = renderCard(ROWS)
+    for (const show of screen.queryAllByText('Show')) fireEvent.click(show)
+    return utils
+  }
+
+  it('every source draws the same row: the words across the full width, then one last line that ends on the press', () => {
+    drawPhoneCards()
+    for (const it of ROWS) {
+      const row = rowOf(it.key)
+      expect(row.getAttribute('data-needs-you-layout'), it.key).toBe('phone')
+      // A column, so the words take the row's whole width: no press beside them to squeeze a long sentence.
+      expect(row.style.display, it.key).toBe('flex')
+      expect(row.style.flexDirection, it.key).toBe('column')
+      expect(row.style.gridTemplateColumns, it.key).toBe('')
+      const [words, foot] = Array.from(row.children) as [HTMLElement, HTMLElement]
+      expect(row.children.length, it.key).toBe(2)
+      expect(words.hasAttribute('data-needs-you-words'), it.key).toBe(true)
+      expect(words.textContent, it.key).toBe(it.title + it.detail)
+      expect(words.querySelector('button'), it.key).toBeNull()
+      // The last line: the press is the last thing on it, pushed to the right.
+      expect(foot.hasAttribute('data-needs-you-foot'), it.key).toBe(true)
+      const end = foot.lastElementChild as HTMLElement
+      expect(end.hasAttribute('data-needs-you-press-end'), it.key).toBe(true)
+      expect(end.style.marginLeft, it.key).toBe('auto')
+      expect(end.style.justifyContent, it.key).toBe('flex-end')
+      const press = end.lastElementChild as HTMLElement
+      expect(press.tagName, it.key).toBe('BUTTON')
+      expect(press.textContent, it.key).toBe(it.actionLabel)
+    }
+  })
+
+  it('the press is small and as wide as its own words, with a thumb-tall touch area that makes the row no taller', () => {
+    drawPhoneCards()
+    const buttons = ROWS.map((it) => rowOf(it.key).querySelector('[data-needs-you-press-end] button') as HTMLElement)
+    for (const button of buttons) {
+      // The touch area: clear, 44 px, and its margins take back what it adds.
+      expect(button.style.minHeight).toBe('44px')
+      expect(button.style.margin).toBe('-6px 0px')
+      expect(button.style.width).toBe('')
+      // The pill the eye sees: the size the press had before, in one type size.
+      const pill = button.querySelector('[data-needs-you-press]') as HTMLElement
+      expect(pill.style.fontSize).toBe('0.8125rem')
+      expect(pill.style.padding).toBe('0.4rem 0.8rem')
+      expect(pill.style.minHeight).toBe('')
+    }
+    // Each press keeps its own words and its tone.
+    expect(buttons.map((b) => b.textContent)).toEqual(['Open tally', 'Open', 'Open Hiring → Review', 'Match deposits'])
+    expect(new Set(buttons.map((b) => (b.querySelector('[data-needs-you-press]') as HTMLElement).style.background)).size).toBe(3)
+  })
+
+  it('the figure sits beside the press, and a number the title already says is not drawn twice', () => {
+    drawPhoneCards()
+    // The title leads with 14, so the row draws no second 14.
+    expect(rowOf('tally-self').querySelector('[data-needs-you-figure]')).toBeNull()
+    expect(rowOf('ar-deposits').querySelector('[data-needs-you-figure]')).toBeNull()
+    // Today's sends and the reviews say no number in their titles: the figure is just left of the press.
+    for (const [key, figure] of [['todays-sends', '4'], ['team-reviews', '2']] as const) {
+      const end = rowOf(key).querySelector('[data-needs-you-press-end]') as HTMLElement
+      const [first, second] = Array.from(end.children) as [HTMLElement, HTMLElement]
+      expect(first.hasAttribute('data-needs-you-figure'), key).toBe(true)
+      expect(first.textContent, key).toBe(figure)
+      expect(second.tagName, key).toBe('BUTTON')
+    }
+  })
+
+  it('a second control shares the last line, on the left, and each press still does its own thing', () => {
+    phone.on = true
+    localStorage.setItem('pipetooling_needs_you_mode_u-1', 'cards')
+    const onAction = vi.fn()
+    const onSecondary = vi.fn()
+    render(<DashboardNeedsYouCard userId="u-1" role="assistant" items={ROWS} onAction={onAction} onSecondary={onSecondary} />)
+    const row = rowOf('ar-deposits')
+    const foot = row.querySelector('[data-needs-you-foot]') as HTMLElement
+    const link = foot.querySelector('[data-needs-you-links] button') as HTMLElement
+    expect(link.textContent).toBe('Why these two?')
+    // The link comes before the press on the line, so the press stays at the right.
+    expect(foot.firstElementChild!.hasAttribute('data-needs-you-links')).toBe(true)
+    fireEvent.click(link)
+    expect(onSecondary).toHaveBeenCalledWith(expect.objectContaining({ key: 'ar-deposits' }), 'why')
+    expect(onAction).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Match deposits'))
+    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ key: 'ar-deposits' }))
+  })
+
+  it('a line opened from a fold draws the same phone row', () => {
+    phone.on = true
+    localStorage.setItem('pipetooling_needs_you_mode_u-1', 'cards')
+    renderCard(ROWS, 'dev')
+    for (const show of screen.queryAllByText('Show')) fireEvent.click(show)
+    const rows = Array.from(document.querySelectorAll('[data-needs-you-fold] [data-needs-you-row]'))
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) expect(row.getAttribute('data-needs-you-layout')).toBe('phone')
+  })
+
+  it('at a desk the row is as it was: one line, the figure drawn, the press last', () => {
+    renderCard(ROWS)
+    const row = rowOf('tally-self')
+    expect(row.getAttribute('data-needs-you-layout')).toBe('desk')
+    expect(row.style.display).toBe('flex')
+    expect(row.style.flexDirection).toBe('')
+    expect(row.querySelector('[data-needs-you-foot]')).toBeNull()
+    const [, figure, press] = Array.from(row.children) as [HTMLElement, HTMLElement, HTMLElement]
+    expect(figure.textContent).toBe('14')
+    expect(press.tagName).toBe('BUTTON')
+    expect(press.style.minHeight).toBe('')
+    expect(press.style.padding).toBe('0.45rem 0.9rem')
   })
 })

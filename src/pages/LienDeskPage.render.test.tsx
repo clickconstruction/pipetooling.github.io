@@ -235,6 +235,42 @@ describe('LienDeskPage (/lien-desk)', () => {
     await waitFor(() => expect(container.querySelector('[data-lien-job-screen]')).toBeNull())
   })
 
+  it('on a phone a stage of the flow is a history entry of its own at the same address (punch list #428): a job opened from it returns to it, a cell takes its place, and ‹ The flow goes back to the flow', async () => {
+    screenSize.phone = true
+    window.localStorage.setItem('pipetooling_lien_desk_phone_view', 'flow')
+    try {
+      const { container } = renderWithProviders(<Harness start="/lien-desk" />)
+      await settle()
+      const full = () => container.querySelector<HTMLElement>('[data-lien-board-phone-flow] [data-lien-board-stage]:not([data-empty])')
+      await waitFor(() => expect(full()).not.toBeNull())
+      const key = full()!.getAttribute('data-lien-board-stage')!
+      fireEvent.click(full()!)
+      const line = () => container.querySelector<HTMLElement>('[data-lien-board-line]')
+      await waitFor(() => expect(line()?.getAttribute('data-lien-board-line')).toBe(key))
+      // The address did not move: the stage rides in the entry's state, as the open row does.
+      expect(screen.getByTestId('where').textContent).toBe('/lien-desk')
+      expect(container.querySelector('[data-lien-board-phone-flow]')).toBeNull()
+      // A job opened from the stage is the next entry. Its way back returns to the stage's papers, the line still pinned.
+      fireEvent.click(container.querySelector('[data-lien-next-up-open]')!)
+      await waitFor(() => expect(container.querySelector('[data-lien-job-screen]')).not.toBeNull())
+      fireEvent.click(screen.getByRole('button', { name: 'Back to the list' }))
+      await waitFor(() => expect(container.querySelector('[data-lien-job-screen]')).toBeNull())
+      expect(line()?.getAttribute('data-lien-board-line')).toBe(key)
+      // A cell moves along the flow in the same entry, so the way back is still one step to the flow.
+      const other = Array.from(line()!.querySelectorAll<HTMLElement>('[data-lien-board-line-cell]')).find((c) => c.getAttribute('data-lit') !== 'yes')!
+      const otherKey = other.getAttribute('data-lien-board-line-cell')!
+      fireEvent.click(other)
+      await waitFor(() => expect(line()?.getAttribute('data-lien-board-line')).toBe(otherKey))
+      fireEvent.click(line()!.querySelector<HTMLElement>('[data-lien-board-line-back]')!)
+      await waitFor(() => expect(line()).toBeNull())
+      expect(container.querySelector('[data-lien-board-phone-flow]')).not.toBeNull()
+      expect(container.querySelector(`[data-lien-board-stage="${otherKey}"]`)!.getAttribute('data-lit')).toBe('yes')
+      expect(screen.getByTestId('where').textContent).toBe('/lien-desk')
+    } finally {
+      window.localStorage.clear()
+    }
+  })
+
   it('on a phone, a notice reached by a link goes to the list in its own place', async () => {
     screenSize.phone = true
     const { container } = renderWithProviders(<Harness start="/lien-desk?tab=notices&job=j650&pile=to_draft" />)
