@@ -238,6 +238,12 @@ describe('LienDeskNextUp · the job as a door (v2.4628)', () => {
     expect(onOpenJob).toHaveBeenCalledWith('j1')
   })
 
+  it('a phone’s day heading sticks under the flow’s pinned line (punch list #428): its top is the height the desk sets on the scroller, and the top itself with nothing pinned', () => {
+    render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile onAct={() => {}} onOpenJob={() => {}} />)
+    const head = document.querySelector('[data-lien-phone-group] h3') as HTMLElement
+    expect([head.style.position, head.style.top, head.style.zIndex]).toEqual(['sticky', 'var(--lien-pinned-top, 0px)', '1'])
+  })
+
   it('on a phone with a job screen to open (punch list #352, PR 4): the row, its name and its dots open the job’s own screen; the press and the chip keep their own doors', () => {
     const on = { row: vi.fn(), job: vi.fn(), act: vi.fn(), paper: vi.fn() }
     const r = row({})

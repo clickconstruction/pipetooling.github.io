@@ -8,6 +8,8 @@ import { lienBoardDayLineDoorWords, lienBoardDayLinePicked } from '../../lib/job
 import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 import { lienBoardTileDoorWords, lienBoardTilePicked } from '../../lib/jobs/lienBoardTileDoor'
 import { lienBoardDayLabelParts, lienBoardTileLabelSplits } from '../../lib/jobs/lienBoardPhoneTile'
+import { lienFlowDayLine, lienFlowPickedStage, lienFlowRail, readLienFlowView, writeLienFlowView, type LienFlowView } from '../../lib/jobs/lienBoardFlow'
+import { LienBoardFlowDayLine, LienBoardFlowGrid, LienBoardFlowRail, LienBoardFlowSwitch } from './LienBoardPhoneFlow'
 
 /**
  * The Lien desk's Board (the owner's ask of 2026-11-15): the month as one picture at the top of To do, where The
@@ -49,6 +51,15 @@ import { lienBoardDayLabelParts, lienBoardTileLabelSplits } from '../../lib/jobs
  * `lienBoardChipCard.ts`): the job's name, its address and its customer, then where its paper stands and where the
  * press goes. The card stands under the chip, never takes the pointer, and goes when the pointer leaves or the page
  * moves. A phone has no hover and draws none.
+ *
+ * A phone draws the flow as counts (punch list #428, the owner's pick of 2026-11-23, `lienBoardFlow.ts`,
+ * `LienBoardPhoneFlow.tsx`). Its bins stood one over the other behind **Show the bins** until then, about 2,050 px of
+ * them, every job a chip 22 px tall. Now a switch of two stands at the Board's top, **By day** and **The flow**. By
+ * day is the four tiles over the list. The flow is the two columns side by side, each stage one press with its name
+ * and count, under the day's one line. A pressed stage narrows the list as a bin's head does, and while the list is
+ * narrowed to one stage the Board draws only the pinned line: the way back, where the stage stands, its column's
+ * cells and the bin's own press. The line sticks to the top of the desk's scroller, and the desk is told its height
+ * (`onPinned`) so the list's day headings stick under it. A computer draws none of this.
  */
 
 const TONE: Record<LienBoardUrgency, { fg: string; bg: string; border: string }> = {
@@ -338,6 +349,15 @@ function Tile({ tile, isMobile, onTile, picked, linePicked }: { tile: LienBoardT
   )
 }
 
+/** Where a phone keeps the view its To do was last on; null where there is no store to ask (a test, a private window that refuses). */
+function flowViewStore(): Storage | null {
+  try {
+    return typeof window !== 'undefined' ? window.localStorage : null
+  } catch {
+    return null
+  }
+}
+
 /** The overflow values that cut what leaves a box. */
 const CUTS = new Set(['hidden', 'clip', 'auto', 'scroll'])
 
@@ -431,6 +451,7 @@ export default function LienBoard({
   cardFor,
   prints,
   onRetainage,
+  onPinned,
 }: {
   board: LienBoardModel
   isMobile: boolean
@@ -477,6 +498,8 @@ export default function LienBoard({
   } | null
   /** The Retainage line's door (the owner's pick of 2026-11-18): the desk opens By paper on the Retainage list. Absent, the line is words alone. */
   onRetainage?: () => void
+  /** A phone's pinned line (punch list #428): its height in px while a stage's papers are the screen, 0 otherwise, so the desk can stick the list's headings under it. */
+  onPinned?: (px: number) => void
 }) {
   const gridRef = useRef<HTMLDivElement | null>(null)
   const [stacked, setStacked] = useState<boolean>(isMobile)
@@ -520,13 +543,45 @@ export default function LienBoard({
     return () => window.removeEventListener('scroll', gone, true)
   }, [cardShown])
   useEffect(() => cancelHide, [])
-  // On a phone the bins stand behind one press (2026-11-15): stacked they run a screen and a half, and the tiles
-  // already say the day; a pressed bin keeps them open. Session-only.
-  const [binsShown, setBinsShown] = useState(false)
   const notices = lienBoardBinsShown(board.notices)
   const affidavits = lienBoardBinsShown(board.affidavits)
-  const chipCount = [...board.notices, ...board.affidavits].reduce((n, b) => n + b.chips.length, 0)
-  const binsOpen = !isMobile || binsShown || Boolean(pick)
+  // A phone draws no bins (punch list #428): the flow stands in their place, as counts. They stood behind one press,
+  // **Show the bins**, from 2026-11-15 until then.
+  const binsOpen = !isMobile
+  // What a phone's To do shows under its tabs: the tiles over the list by day, or the flow. Kept on the device.
+  const [view, setView] = useState<LienFlowView>(() => (isMobile ? readLienFlowView(flowViewStore()) : 'day'))
+  const pickView = (next: LienFlowView) => {
+    setView(next)
+    writeLienFlowView(flowViewStore(), next)
+  }
+  // The one stage of the flow the list is narrowed to, on a phone: the Board then draws the pinned line alone.
+  const stageKey = isMobile ? lienFlowPickedStage(pick) : null
+  const rail = stageKey ? lienFlowRail({ notice: notices, affidavit: affidavits }, stageKey) : null
+  const railOn = rail != null
+  // The stage a person last had open stays lit, so the flow opens where it was left.
+  const [litStage, setLitStage] = useState<LienBoardBinKey | null>(null)
+  useEffect(() => {
+    if (!stageKey) return
+    setLitStage(stageKey)
+    // A stage is only ever picked from the flow. An entry reached again by the phone's Back or Forward keeps it.
+    setView('flow')
+  }, [stageKey])
+  // The pinned line's height, for the desk: the list's day headings stick under it.
+  useLayoutEffect(() => {
+    if (!onPinned) return
+    const el = boardRef.current
+    if (!railOn || !el) {
+      onPinned(0)
+      return
+    }
+    const measure = () => onPinned(Math.round(el.getBoundingClientRect().height))
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => measure())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [onPinned, railOn, stageKey])
+  useEffect(() => () => onPinned?.(0), [onPinned])
   const layout = columnsOnly ? false : stacked
   useEffect(() => {
     onLayout?.(layout)
@@ -621,15 +676,15 @@ export default function LienBoard({
   ) : null
   const pickWords = pick ? lienBoardPickWords(pick, shown ?? 0) : null
 
-  return (
-    <section ref={boardRef} aria-label="The Board" data-lien-board data-lien-board-layout={layout ? 'stacked' : 'columns'} style={{ position: 'relative', display: 'grid', gap: isMobile ? 10 : 12, padding: isMobile ? '0.6rem 0.75rem 0.4rem' : '0.75rem 1.25rem 0.5rem' }}>
+  const tilesNode = (
       <div data-lien-board-tiles style={{ display: 'grid', gridTemplateColumns: isMobile || layout ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
         {/* The third tile's press opens the run. On a phone the notices' print stands right under the tiles, the same door twice, so there the tile only reads. */}
         {board.tiles.map((t) => <Tile key={t.key} tile={t.key === 'in_mail' && phonePrints && prints?.notice ? { ...t, destination: null } : t} isMobile={isMobile} onTile={onTile} picked={lienBoardTilePicked(t, pick)} linePicked={lienBoardDayLinePicked(t, pick)} />)}
       </div>
-      {/* A phone keeps its bins folded, so its two prints stand here in one row (v2.7708; stacked, with their lines, since v2.7483). */}
-      {/* The row is a grid of equal columns, one a press, so the two share it on every phone: as a wrapping flex row they needed 337 px of a 375 px phone's 335 and the second fell under the first. A press too narrow for its words wraps them inside itself. */}
-      {phonePrints ? (
+  )
+  // A phone keeps its bins folded, so its two prints stand here in one row (v2.7708; stacked, with their lines, since v2.7483).
+  // The row is a grid of equal columns, one a press, so the two share it on every phone: as a wrapping flex row they needed 337 px of a 375 px phone's 335 and the second fell under the first. A press too narrow for its words wraps them inside itself.
+  const printsRow = phonePrints ? (
         <div data-lien-board-prints data-layout="row" style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, printSides.length)}, minmax(0, 1fr))`, gap: 8, alignItems: 'stretch' }}>
           {printSides.map((side) => {
             const off = side.dead || Boolean(prints?.busy)
@@ -640,19 +695,69 @@ export default function LienBoard({
             )
           })}
         </div>
-      ) : null}
-      {over}
-      {board.empty ? (
+  ) : null
+  const emptyWords = board.empty ? (
         <div data-lien-board-empty-board style={{ fontSize: '0.875rem', color: 'var(--text-muted)', padding: '0.4rem 0' }}>
           Nothing is on the desk. Every lien paper is sent, filed or waiting on its day.
         </div>
-      ) : null}
-      {isMobile && !board.empty ? (
-        <button type="button" data-lien-board-fold aria-expanded={binsOpen} onClick={() => setBinsShown((v) => !v)} disabled={Boolean(pick)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 44, padding: '0 0.75rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', font: 'inherit', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)', cursor: pick ? 'default' : 'pointer', textAlign: 'left' }}>
-          <span style={{ flex: 1 }}>{binsOpen ? 'Hide the bins' : `Show the bins · ${chipCount}`}</span>
-          <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>{binsOpen ? '▴' : '▾'}</span>
-        </button>
-      ) : null}
+  ) : null
+  const pickLine = pickWords && onPick ? (
+        <div data-lien-board-pick style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.8125rem', color: 'var(--text-700)', padding: '2px 0' }}>
+          <span data-lien-board-pick-words style={{ fontWeight: 600 }}>{pickWords.head}</span>
+          <button type="button" onClick={() => onPick(null)} data-lien-board-pick-clear style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '2px 10px', borderRadius: 999, border: `1px solid ${LIT}`, background: 'var(--surface)', color: LIT, cursor: 'pointer', minHeight: isMobile ? 32 : undefined }}>
+            {pickWords.clear}
+          </button>
+        </div>
+  ) : null
+
+  // A phone (punch list #428): the switch, then the tiles over the list by day or the flow as counts. While the list
+  // is narrowed to one stage of the flow the Board is the pinned line alone, stuck to the top of the desk's scroller.
+  if (isMobile) {
+    const dayLine = lienFlowDayLine(board.tiles)
+    const dayTile = board.tiles.find((t) => t.key === 'by_day')
+    const flowOn = view === 'flow' && !board.empty
+    const stageBin = stageKey ? [...notices, ...affidavits].find((b) => b.key === stageKey) : undefined
+    const stagePress = stageKey ? presses[stageKey] : undefined
+    // The bin's own press, by the bin's own rule: live while a paper in it can move, or in an empty bin that says so.
+    const railPress = stageBin && stagePress && (lienBoardBinCount(stageBin) > 0 || (stagePress.whenEmpty && !stagePress.dead)) ? stagePress : null
+    const box: CSSProperties = { display: 'grid', gap: 10 }
+    return (
+      <section
+        ref={boardRef}
+        aria-label="The Board"
+        data-lien-board
+        data-lien-board-layout="stacked"
+        data-lien-board-phone={rail ? 'line' : flowOn ? 'flow' : 'day'}
+        style={rail ? { ...box, padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 3, background: 'var(--surface)', borderBottom: '1px solid var(--border)' } : { ...box, padding: '0.6rem 0.75rem 0.4rem', position: 'relative' }}
+      >
+        {rail ? (
+          <LienBoardFlowRail rail={rail} press={railPress} onBack={() => onPick?.(null)} onCell={(key) => (key === stageKey ? undefined : onPick?.(key))} />
+        ) : (
+          <>
+            {board.empty ? null : <LienBoardFlowSwitch view={view} onView={pickView} />}
+            {flowOn ? null : tilesNode}
+            {flowOn ? null : printsRow}
+            {flowOn && dayLine ? <LienBoardFlowDayLine line={dayLine} picked={dayTile ? lienBoardDayLinePicked(dayTile, pick) : false} onLine={dayLine.lineDestination && onTile ? () => onTile(dayLine.lineDestination!) : null} /> : null}
+            {flowOn ? <LienBoardFlowGrid notices={notices} affidavits={affidavits} arrows={board.arrows} lit={litStage} onStage={onPick ? (key) => onPick(key) : undefined} /> : null}
+            {flowOn ? retainage : null}
+            {over}
+            {flowOn ? (underAffidavits ?? null) : null}
+            {emptyWords}
+            {flowOn ? printsRow : null}
+            {pickLine}
+            {foot}
+          </>
+        )}
+      </section>
+    )
+  }
+
+  return (
+    <section ref={boardRef} aria-label="The Board" data-lien-board data-lien-board-layout={layout ? 'stacked' : 'columns'} style={{ position: 'relative', display: 'grid', gap: isMobile ? 10 : 12, padding: isMobile ? '0.6rem 0.75rem 0.4rem' : '0.75rem 1.25rem 0.5rem' }}>
+      {tilesNode}
+      {printsRow}
+      {over}
+      {emptyWords}
       <div ref={gridRef} data-lien-board-grid style={{ position: 'relative', display: binsOpen ? 'grid' : 'none', gridTemplateColumns: layout ? '1fr' : 'minmax(0, 1fr) minmax(0, 1fr)', columnGap: 56, rowGap: 22, alignItems: 'start' }}>
         <svg aria-hidden="true" data-lien-board-arrows style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}>
           <defs>
@@ -665,14 +770,7 @@ export default function LienBoard({
         {column('notice', 'Monthly notices', notices, retainage)}
         {column('affidavit', 'Lien affidavits', affidavits, underAffidavits ?? null)}
       </div>
-      {pickWords && onPick ? (
-        <div data-lien-board-pick style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.8125rem', color: 'var(--text-700)', padding: '2px 0' }}>
-          <span data-lien-board-pick-words style={{ fontWeight: 600 }}>{pickWords.head}</span>
-          <button type="button" onClick={() => onPick(null)} data-lien-board-pick-clear style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '2px 10px', borderRadius: 999, border: `1px solid ${LIT}`, background: 'var(--surface)', color: LIT, cursor: 'pointer', minHeight: isMobile ? 32 : undefined }}>
-            {pickWords.clear}
-          </button>
-        </div>
-      ) : null}
+      {pickLine}
       {foot}
       {cardShown ? <ChipCard key={cardShown.key} card={cardShown.card} at={cardShown.at} chipKey={cardShown.key} /> : null}
     </section>

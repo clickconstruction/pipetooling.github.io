@@ -116,11 +116,27 @@ export function lienDeskStateWithRow(state: unknown, key: string): Record<string
 }
 
 /**
- * The state an entry keeps when the desk changes view in place. The job's screen belongs to the first view alone:
- * on any other view the row is dropped, so coming back to the first view does not open a screen nobody asked for.
+ * The picked stage of the flow in a history entry's state (punch list #428); null when the entry names none. A
+ * phone's flow shrinks to one pinned line while a stage's papers are the screen, and the stage is an entry of its
+ * own so the phone's Back returns to the flow (`lienBoardFlow.ts`).
+ */
+export function lienDeskStageFromState(state: unknown): string | null {
+  const stage = asRecord(state).stage
+  return typeof stage === 'string' && stage ? stage : null
+}
+
+/** The entry's state with a stage picked on it; whatever else the state held stays, an open row too. */
+export function lienDeskStateWithStage(state: unknown, key: string): Record<string, unknown> {
+  return { ...asRecord(state), stage: key }
+}
+
+/**
+ * The state an entry keeps when the desk changes view in place. The job's screen and the flow's picked stage belong
+ * to the first view alone: on any other view both are dropped, so coming back to the first view does not open a
+ * screen, or narrow the list, when nobody asked for it.
  */
 export function lienDeskStateForView(state: unknown, kind: string): unknown {
-  if (kind === 'next' || lienDeskRowFromState(state) == null) return state
-  const { row: _row, ...rest } = asRecord(state)
+  if (kind === 'next' || (lienDeskRowFromState(state) == null && lienDeskStageFromState(state) == null)) return state
+  const { row: _row, stage: _stage, ...rest } = asRecord(state)
   return Object.keys(rest).length ? rest : null
 }

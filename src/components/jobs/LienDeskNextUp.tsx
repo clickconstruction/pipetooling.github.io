@@ -455,7 +455,8 @@ export default function LienDeskNextUp({
     const bg = g.group === 'day' ? PHONE_TONE[g.tone].bg : 'var(--bg-subtle)'
     return (
       <section key={g.key} aria-label={g.label} data-lien-next-up-group={g.group} data-lien-phone-group={g.key} style={{ margin: '0 -0.75rem' }}>
-        <h3 style={{ position: 'sticky', top: 0, zIndex: 1, margin: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0.75rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: fg, background: bg, borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+        {/* The heading sticks under the flow's pinned line while a stage's papers are the screen (punch list #428): the desk sets its height on the scroller, and with nothing pinned it is the top as before. */}
+        <h3 style={{ position: 'sticky', top: 'var(--lien-pinned-top, 0px)', zIndex: 1, margin: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0.75rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: fg, background: bg, borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
           <span style={{ flex: 1, minWidth: 0 }}>
             {g.label} · {g.rows.length}
           </span>

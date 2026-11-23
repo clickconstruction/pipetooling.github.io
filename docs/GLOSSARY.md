@@ -6638,7 +6638,8 @@ Since v2.7372 a computer's row is two lines: the job, what it owes and its press
 a held affidavit's press names the missing fact and opens the property record on it, and *On track* carries **Print N for notarization ›**, a door to the Ready to file list named as the button it opens (v2.7398).
 Since v2.7381 a chip pointed at or focused on a computer shows a card before any press: the job's name, address, customer and GC, its paper and bin, the day, what is unpaid, the job's other paper and where the press goes (`lienBoardChipCard.ts`);
 since v2.7419 a chip that will not make its day lists the stages it still has to pass by name.
-On a phone the tiles always show and the bins stand behind **Show the bins · N**.
+On a phone since v2.8346 (punch list #428) a switch of two stands at the Board's top, **By day** (the tiles) and **The flow** (the two columns side by side as counts, a stage a press, no chip, `lienBoardFlow.ts`, `LienBoardPhoneFlow.tsx`), where the bins stood behind **Show the bins · N** until then.
+A pressed stage narrows the list and the Board draws one pinned line, **‹ The flow**, where the stage stands, its column's cells and the bin's own press, kept in the history entry so the phone's Back returns to the flow.
 Kernel [`lienBoard.ts`](../src/lib/jobs/lienBoard.ts), component `LienBoard.tsx`;
 guide *read the Board on the Lien desk*.
 

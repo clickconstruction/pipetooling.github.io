@@ -302,6 +302,10 @@ export type LienDeskProps = {
   openRowKey?: string | null
   onOpenRow?: (rowKey: string) => void
   onCloseRow?: () => void
+  /** A phone: the stage of the flow the list is narrowed to (punch list #428). The page keeps it in the history entry, so the phone's Back returns to the flow and a job opened from a stage returns to that stage; without the two handlers the desk keeps the pick itself. */
+  flowStageKey?: string | null
+  onOpenFlowStage?: (stageKey: string) => void
+  onCloseFlowStage?: () => void
 }
 
 const PILE_ORDER: LienDeskPile[] = ['needs_owner', 'to_draft', 'awaiting', 'ready', 'printed', 'held', 'sent', 'missed']
@@ -364,6 +368,9 @@ export default function LienDesk({
   openRowKey,
   onOpenRow,
   onCloseRow,
+  flowStageKey,
+  onOpenFlowStage,
+  onCloseFlowStage,
 }: LienDeskProps) {
   const stacked = layout === 'stacked'
   const isMobile = useIsMobile()
@@ -868,6 +875,7 @@ export default function LienDesk({
     doNowBarPins,
     doNowBarParts,
     pickBoardBins,
+    setBoardStage,
     openBoardTile,
     bringBoard,
     nextUpWaitingOn,
@@ -895,6 +903,29 @@ export default function LienDesk({
       setRunOpen(true)
     },
   })
+  // A phone's flow (punch list #428). A pressed stage narrows the list as a bin's head does. Where the page keeps the
+  // stage in the history entry, the entry is what says which stage is picked: a press asks the page for it, and Back
+  // puts the flow back. A stage the Board no longer holds reads as none.
+  const pageKeepsStage = isMobile && Boolean(onOpenFlowStage)
+  const flowStage = pageKeepsStage && flowStageKey && board && [...board.notices, ...board.affidavits].some((b) => b.key === flowStageKey) ? (flowStageKey as LienBoardBinKey) : null
+  useEffect(() => {
+    if (pageKeepsStage) setBoardStage(flowStage)
+  }, [pageKeepsStage, flowStage, setBoardStage])
+  const pickBoardBin = (key: LienBoardBinKey | null) => {
+    // Where the desk keeps the pick itself, a phone still sets a stage and never toggles it: its press is a cell of the pinned line.
+    if (!pageKeepsStage) {
+      if (isMobile && key) setBoardStage(key)
+      else pickBoardBins(key ? [key] : null)
+    }
+    else if (key) onOpenFlowStage?.(key)
+    else if (flowStage && onCloseFlowStage) onCloseFlowStage()
+    else {
+      setBoardStage(null)
+      pickBoardBins(null)
+    }
+  }
+  // The pinned line's height on a phone, so the list's day headings stick under it (`--lien-pinned-top`).
+  const [pinnedTop, setPinnedTop] = useState(0)
   // The windows the Board raises (v2.7588): serve, scans, the public review and its put-back, and a job's lien path.
   const windows = useLienDeskWindows(openScansDoor)
   const { setJobPath, setPublicReview, setServeOpen, setPublicPutBack } = windows
@@ -3081,8 +3112,8 @@ export default function LienDesk({
             return <LienPaperPropertyWindow job={fixJob} address={fixAddress} ownerOnJob={resolveLienProperty(fixAddress, data.ownerByJob[fixJob.id] ?? null).owner.source === 'job_override'} focus={paperFix.gap.key} onClose={done} />
           })() : null}
           {kind === 'next' ? (
-            <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
-            {board ? <LienBoard board={board} isMobile={isMobile} binPress={boardBinPress} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} onRetainage={openRetainageList} prints={boardPrints ? { ...boardPrints, onPress: onBoardPrint, onLeft: onBoardPrintLeft, onNote: onBoardPrintNote } : null} over={publicLine ? <LienPublicBoardLineView line={publicLine} isMobile={isMobile} onReview={office && publicLine.addressIds.length ? () => setPublicReview(publicLine.addressIds) : null} /> : null} underAffidavits={publicBin || offPathBin ? <div style={{ display: 'grid', gap: 10 }}>{publicBin ? <LienPublicBinView bin={publicBin} isMobile={isMobile} onPutBack={office ? setPublicPutBack : null} /> : null}{offPathBin ? <LienOffPathBinView bin={offPathBin} isMobile={isMobile} onOpenJob={onOpenJob} onPutBack={office ? setJobPath : null} /> : null}</div> : null} /> : <div />}
+            <div ref={doNowRef} data-lien-do-now={doNow.mode} style={pinnedTop > 0 ? { ...doNow.frame, ['--lien-pinned-top' as string]: `${pinnedTop}px` } : doNow.frame}>
+            {board ? <LienBoard board={board} isMobile={isMobile} binPress={boardBinPress} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} pick={boardPick} shown={nextUpRowsShown.length} onPick={pickBoardBin} onPinned={setPinnedTop} onTile={openBoardTile} onRetainage={openRetainageList} prints={boardPrints ? { ...boardPrints, onPress: onBoardPrint, onLeft: onBoardPrintLeft, onNote: onBoardPrintNote } : null} over={publicLine ? <LienPublicBoardLineView line={publicLine} isMobile={isMobile} onReview={office && publicLine.addressIds.length ? () => setPublicReview(publicLine.addressIds) : null} /> : null} underAffidavits={publicBin || offPathBin ? <div style={{ display: 'grid', gap: 10 }}>{publicBin ? <LienPublicBinView bin={publicBin} isMobile={isMobile} onPutBack={office ? setPublicPutBack : null} /> : null}{offPathBin ? <LienOffPathBinView bin={offPathBin} isMobile={isMobile} onOpenJob={onOpenJob} onPutBack={office ? setJobPath : null} /> : null}</div> : null} /> : <div />}
             <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)} prints={boardPrints ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.short.label, left: side.short.left, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>

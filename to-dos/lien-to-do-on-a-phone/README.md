@@ -2,7 +2,7 @@
 name: "The Lien desk's To do on a phone: the flow on one screen with a way back, and one press at the right of every row"
 number: 428
 group: ready
-status: asked by the owner 2026-11-23, first *show me that on mobile and let me know if we should improve it*, then the flow as a new priority · looked at live by hand at 430 px the same day, read in the code and drawn twice · the owner picked the flow's shape, *One screen, pinned line*, and gave the go for all of it the same day, *Awesome, I like it, let's do it. Please build everything we talked about today* · the rows and the tiles built in v2.8341, proved by render tests and not yet seen on a phone · the flow is not built yet
+status: asked by the owner 2026-11-23, first *show me that on mobile and let me know if we should improve it*, then the flow as a new priority · looked at live by hand at 430 px the same day, read in the code and drawn twice · the owner picked the flow's shape, *One screen, pinned line*, and gave the go for all of it the same day, *Awesome, I like it, let's do it. Please build everything we talked about today* · the rows and the tiles built in v2.8341 and looked at by hand at 430 px · the flow built in v2.8346, the switch, the counts, the pinned line and the phone's Back, proved by render tests and not yet seen on a phone
 summary: >
   The Board ›, the Dashboard's door to the Lien desk, lands on To do. On a phone that screen opens
   cleanly: four tiles, the bins folded, one list by the day each paper is due. The rows are where it
@@ -11,11 +11,11 @@ summary: >
   left. A computer's rows already keep one press column. The mock-up gives a phone the same: words
   at the left, one press at the right, every press one size, the second way out as a quiet line, and
   No day set said once.
-next: The flow's first PR: the counts drawing and the switch between **By day** and **The flow**. Before it, one look by hand at the rows on a phone.
-size: M as a train of three for the flow (M · M · S), not built; the rows and the tiles, built (S); left: the flow
+next: One look by hand at the flow on a phone: the switch, a stage's papers under the pinned line, a cell, the way back, and Back from a job. Then the owner's look on his own phone.
+size: M, built: the rows and the tiles (S) and the flow (M, one PR in place of the three planned); left: a look on a phone (XS)
 blocker: none
-ver: v2.8341
-opinion: build the flow — the owner named it a priority, picked its shape and gave the go, it changes no act and no data, and two of its pieces exist already
+ver: v2.8341, v2.8346
+opinion: your call — both parts are built, and what is left is seeing the flow under a thumb
 ---
 
 # The Lien desk's To do on a phone (#428)
@@ -144,28 +144,29 @@ stages show at a time, and the two columns and the arrow are gone.
 | Whether a computer changes | No. A computer keeps the Board with its bins and chips |
 | Whether the tiles stand down in the flow's view | Yes, as drawn. They are on **By day** |
 
-**The flow's train, three PRs.** Each claims its version when it starts.
+**Built in one PR, v2.8346, in place of the three planned.** The three steps did not stand apart: a flow
+with no way out of it is no use, and the way back is the history entry. What is built:
 
-1. **The counts drawing and the switch (M).** A phone's Board draws its two columns as stages with
-   counts, side by side, with the arrow across, in the place of the folded bins. **By day** and **The
-   flow** switch between it and the list. `LienBoard.tsx` and the desk's phone branch, with a kernel
-   for a stage's count and tone and its tests. The guide `read-the-board-on-the-lien-desk` gets its
-   section on a phone.
-2. **The pinned line (M).** A press on a stage narrows the list to it through the pick that exists,
-   scrolls the list to its top and pins the line: the way back, the stage's name and the column's eight
-   squares. A press on a square moves the pick.
-3. **The place kept (S).** The line stays, short, on a job's own screen. Back walks job, stage, flow,
-   and the flow opens with the stage lit.
+1. **The counts drawing and the switch.** A phone's Board draws its two columns as stages with counts,
+   side by side, with the arrow across, in the place of the folded bins. **By day** and **The flow**
+   switch between it and the tiles (`lienBoardFlow.ts`, `LienBoardPhoneFlow.tsx`, `LienBoard.tsx`).
+2. **The pinned line.** A press on a stage narrows the list through the pick that existed, brings the
+   page to its top and pins the line: the way back, where the stage stands, the column's cells and the
+   bin's own press. A press on a cell moves the pick. The list's day headings stick under the line.
+3. **The place kept.** The page keeps the stage in the history entry beside the open row. Back walks
+   job, stage, flow, and the flow opens with the stage lit.
 
-The rows' redraw above is built (v2.8341), so the flow's second screen has the rows the mock-up draws.
+Four things differ from the mock-up. The switch stands at the top of the Board in both views, so it does
+not move when pressed. The line's small words use a comma, *Monthly notices, stage 4 of 8*. The pinned
+line is not drawn on a job's own screen: Back from the job returns to the stage with the line pinned.
+And a tile's pick keeps the line under the tiles it always had.
 
 ## What it does not touch
 
 - What any press does, and anything on a computer.
 - The repeated rows of row 7. They are the run of punch list #362.
-- The open bins: about 2,050 px in one column, with chips 22 px tall. Named in punch list #423's card.
-  A card of its own if the owner wants it.
-- The header, the tabs, the fold, the find box and the day headings.
+- A job's own screen. The pinned line is not drawn on it.
+- The header, the tabs and the find box.
 
 ## Where it stands
 
@@ -182,13 +183,19 @@ with its fill, where the mock-up draws it smaller.
 
 **Proved by** the kernels' tests and the render tests. **Not yet seen on a phone.**
 
-**Not built:** the flow, three PRs, under *The flow on a phone* above.
+**Built, v2.8346 (one PR): the flow.** Under *The flow on a phone* above. **Proved by** the kernel's
+tests and the render tests, the page's history among them. **Not yet seen on a phone:** jsdom measures
+no height, so the line's stick and the headings' offset are held by their styles.
 
 ## How to verify
 
 - The render tests, then one look by hand at 430, 375 and 320 px, dark and light: every row's press is
   one width and 44 px tall, no row has a press at the left, and `innerWidth` equals `scrollWidth`.
 - At a desk, the same rows read as they did before v2.8341.
+- The flow, by hand at 430 and 375 px: **The flow** shows both columns with no sideways scroll, a pressed
+  stage pins the line with its rows right under it, the day headings stop under the line, a cell moves
+  the stage, **‹ The flow** and the phone's Back return to the flow with the stage lit, and Back from a
+  job opened from a stage returns to that stage.
 
 ## Not looked at
 

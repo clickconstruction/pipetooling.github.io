@@ -25,7 +25,7 @@ The right column is the lien affidavits. Its first two bins are **Needs the prop
 
 **Needs the property facts** holds an affidavit that still needs a fact. The fact is on the property record or on the GC's customer record. **Waiting on its notice** holds an affidavit that needs nothing but its notice. A job with a GC needs a notice mailed and on record before its affidavit can go. An affidavit that needs both a fact and a notice stays in **Needs the property facts**.
 
-One arrow crosses from Sent on the left to Waiting on its notice on the right. The notice on record is the affidavit's gate. When the notice is mailed and recorded, the affidavit moves down to **To send for Master approval**. On a phone the columns stand one over the other and that arrow is not drawn.
+One arrow crosses from Sent on the left to Waiting on its notice on the right. The notice on record is the affidavit's gate. When the notice is mailed and recorded, the affidavit moves down to **To send for Master approval**. On a phone the flow is drawn as counts and keeps that arrow. Read [The flow on a phone](#the-flow-on-a-phone).
 
 A bin with a blue left edge has something to do now. Its press is beside its name. Each bin's count sits at its right. A bin with no paper is one quiet line with a zero. An empty bin's name and zero are grey. The two column headings are grey too. Red on the Board always means a late day.
 
@@ -96,13 +96,44 @@ On *Filed · copies to mail* the press reads like {{button:outline|Print 10 lien
 
 A press with nothing ready is grey. The line under it still says what waits. A bin with no paper and nothing ready has no press. On a narrow window the press drops to its own line, under the bin's name.
 
-Scroll down and the two prints stand beside the find box, in fewer words. The notices' press is on the left, as its column is. On a phone the bins are folded, so the two prints stand side by side above them.
+Scroll down and the two prints stand beside the find box, in fewer words. The notices' press is on the left, as its column is. On a phone the two prints stand side by side under the tiles. They stand under the flow too.
 
 ## Press a bin
 
 Press a bin's name and the list under the Board shows only that bin's rows. A line under the bins says how many it is showing. Press {{button:outline|Show every row}} to see every row again. Pressing the same bin a second time does the same. A pressed bin also brings the list up to you, on a phone and on a computer.
 
 The Board never sends, files or moves anything. Every press on a row below still does what it did.
+
+## The flow on a phone
+
+A phone has a switch at the top of the Board. Its two presses are {{button:outline|By day}} and {{button:outline|The flow}}.
+
+**By day** shows the four tiles over the list. **The flow** shows the two columns side by side. The phone opens on the one you used last.
+
+In the flow each stage is one press. It shows the stage's name and how many papers are in it. A phone draws no chips, so the whole flow fits one screen.
+
+:::example the flow on a phone
+*14 by Dec 15. 3 are past their day.* **Show them ›**
+Monthly notices: *Approved · to sign* **6**, *Approved · to print* **1**, *Sent* **2**
+Lien affidavits: *Waiting on its notice* **1**, *Filed · copies to mail* **8**
+:::
+
+A count is red when a paper in that stage is late, at risk or due within a day. It is amber when one is due this week. It is purple when one waits on the leader.
+
+Tap a stage and its papers are the screen. The flow shrinks to one line that stays at the top while you scroll.
+
+:::example the pinned line
+**‹ The flow** *Monthly notices, stage 4 of 8* **Approved · to sign · 6**
+0 · 1 · 0 · **6** · 1 · 4 · 2 · 1
+:::
+
+The squares on the line are the stages of that column, in order. The lit square is the stage you are in. Tap another square to move to that stage.
+
+A stage's own press sits on the line too. It is the press that stood beside the bin's name, like **Enter mail numbers**.
+
+Tap **‹ The flow** to go back to the flow. Your stage is still lit there. The phone's own Back does the same.
+
+Open a job from a stage and then go back. You return to that stage's papers, with the line still at the top.
 
 ## Scroll down to the list
 
