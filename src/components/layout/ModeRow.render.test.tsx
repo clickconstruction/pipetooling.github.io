@@ -61,6 +61,8 @@ describe('ModeRow', () => {
     sessionStorage.clear()
     vi.mocked(recordNavClick).mockClear()
     window.scrollTo = vi.fn() as unknown as typeof window.scrollTo
+    // The row is a phone's: a desk has the gear menu's list in its place.
+    onAPhone()
   })
   afterEach(() => {
     cleanup()
@@ -102,12 +104,17 @@ describe('ModeRow', () => {
     expect(thirds().map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false'])
   })
 
-  it('on a desk it always shows, and counts no opens', () => {
-    writeModeRowMemory('u1', { pressed: true, opens: 6 })
-    draw()
-    stay()
-    expect(thirds().length).toBe(3)
-    expect(localStorage.getItem(modeRowOpensKey('u1'))).toBe('6')
+  it('on a desk it is not drawn for any role, in Task Mode too, and counts no opens', () => {
+    window.matchMedia = realMatchMedia
+    writeModeRowMemory('u1', { pressed: false, opens: 2 })
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent', 'subcontractor', 'helpers', 'estimator']) {
+      const { view } = draw({ role })
+      stay()
+      expect(view.container.innerHTML, role).toBe('')
+      view.unmount()
+    }
+    expect(draw({ pathname: '/checklist', mode: 'task' }).view.container.innerHTML).toBe('')
+    expect(localStorage.getItem(modeRowOpensKey('u1'))).toBe('2')
   })
 
   it('on a phone it shows on the first visits with Job Mode marked new, and counts the open once the page has stayed', () => {
