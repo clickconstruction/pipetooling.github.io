@@ -29,7 +29,7 @@ import {
   movedDays,
   openBullets,
   openOnThem,
-  saidNo,
+  noOn,
   startClash,
   theirDay,
   waitsOnPhoto,
@@ -453,7 +453,7 @@ function TheirsRow({ b, stage, line, rows, site, today, me, kind, canCompany, bu
   const yes = bulletIsYes(b)
   const mark = liveMarkOf(rows, b.id)
   const needsPhoto = waitsOnPhoto(b)
-  const no = saidNo(stage, b)
+  const no = noOn(stage, b)
   const asked = lastAsk(b)
   const onCompanyList = (templates ?? []).some((t) => !t.retired_at && t.stage_kind === kind && t.words.trim().toLowerCase() === b.words.trim().toLowerCase())
 
@@ -498,7 +498,7 @@ function TheirsRow({ b, stage, line, rows, site, today, me, kind, canCompany, bu
         <div style={{ color: 'var(--text-strong)' }}>{b.words}</div>
         {no ? (
           <div style={{ ...rowLine, color: 'var(--text-red-700)', fontWeight: 600 }}>
-            <WorkedOutValue tone="red">{stage.arrival?.by}</WorkedOutValue> said No on site, <WorkedOutValue tone="red">{stage.arrival ? monthDay(stage.arrival.day) : ''}</WorkedOutValue>. It was not as told.
+            <WorkedOutValue tone="red">{no.by}</WorkedOutValue> said No on site, <WorkedOutValue tone="red">{monthDay(no.day)}</WorkedOutValue>. It was not as told.
             {/* A thing that was not as told on one site is worth asking on every job of this kind: the office is offered it here (PR 10). */}
             {canCompany && kind && !onCompanyList ? (
               <>
