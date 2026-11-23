@@ -29,6 +29,10 @@ const report = {
 }
 /** What list_reports_with_job_info answers; the empty-state case empties it. */
 const listed: { rows: unknown[] } = { rows: [report] }
+/** True for a test that runs on a device held in the hand, where a report is marked opened with a swipe. */
+const device = { handHeld: false }
+
+vi.mock('../../lib/paintedMap/handHeld', () => ({ handHeld: () => device.handHeld }))
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -246,5 +250,28 @@ describe('DashboardRecentReportsSection — one heading row, a foot, and Opened 
       restore()
     }
   })
-})
 
+  it('on a device held in the hand, a swipe to the left marks a report opened and the foot says how', async () => {
+    device.handHeld = true
+    const pointer = (el: Element, type: string, x: number) => fireEvent(el, new window.MouseEvent(type, { bubbles: true, clientX: x, clientY: 10, button: 0 }))
+    try {
+      await open(filed(2))
+      expect(document.querySelector('[data-reports-foot="mark"]')?.textContent).toBe('Swipe a report left to mark it opened.Mark 2 opened')
+      // No word press on the row: the strip's press carries its name for Tab and a screen reader.
+      expect(document.querySelectorAll('[data-swipe-away-press]').length).toBe(0)
+      const slide = document.querySelector('[data-report-row="n0"] [data-swipe-away-slide]') as HTMLElement
+      pointer(slide, 'pointerdown', 300)
+      pointer(slide, 'pointermove', 280)
+      pointer(slide, 'pointermove', 150)
+      pointer(slide, 'pointerup', 150)
+      expect(await screen.findByText('Marked opened: Maple Court Lot 1.')).toBeTruthy()
+      expect(screen.getByLabelText('1 new report')).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Opened, 1 report' })).toBeTruthy()
+      // The swipe did not also open the report.
+      expect(screen.queryByText(/How complete is the job/)).toBeNull()
+    } finally {
+      device.handHeld = false
+      restore()
+    }
+  })
+})

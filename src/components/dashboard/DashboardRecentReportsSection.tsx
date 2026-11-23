@@ -37,6 +37,9 @@ import { ReportPhotoCount } from '../reports/ReportPhotoCount'
 import { useReportPhotoCounts } from '../../hooks/useReportPhotoCounts'
 import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { SwipeAwayRow } from '../shared/SwipeAwayRow'
+import { handHeld } from '../../lib/paintedMap/handHeld'
+import { swipeAwayHint } from '../../lib/swipeAway'
 
 /**
  * Inbox redesign (v2.1469): the viewer's mark on a report lives in report_reads
@@ -122,6 +125,8 @@ export function DashboardRecentReportsSection({
 }) {
   const jobDetailModal = useJobDetailModal()
   const { showToast, showActionToast } = useToastContext()
+  /** On a device held in the hand a report is marked opened with a swipe; at a desk, with a word press (punch list #426). */
+  const swipes = useMemo(() => handHeld(), [])
   /** The reports of the window (`RECENT_REPORTS_WINDOW_DAYS`), newest first. */
   const [recentReports, setRecentReports] = useState<RecentReportRow[]>([])
   /** True once the database answered any report at all, in the window or older: an empty list then means nothing is new. */
@@ -337,65 +342,82 @@ export function DashboardRecentReportsSection({
         prefillRowLabel: `${(r.job_hcp_number ?? '').trim() || '—'} · ${r.job_display_name || 'Job'}`,
         prefillAddress: (r.job_address ?? '').trim() || null,
       })
+    const mark = isRead ? (
+      <span aria-label="Opened" title="Opened" style={{ flexShrink: 0, width: 12, textAlign: 'center', color: 'var(--text-green-700)', fontSize: '0.8rem', lineHeight: 1 }}>
+        ✓
+      </span>
+    ) : (
+      <span aria-label="New report" style={{ flexShrink: 0, width: 8, height: 8, margin: '0 2px', borderRadius: 999, background: '#3b82f6' }} />
+    )
+    // A press anywhere on the report opens it in place (the owner's pick of 2026-11-23): the name used to
+    // open the job and the rest of the row the report. Job detail is inside the opened report.
+    const words = (
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        data-report-open
+        onClick={() => openInPlace(r.id)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            openInPlace(r.id)
+          }
+        }}
+        style={{ flex: 1, minWidth: 0, minHeight: 44, display: 'grid', alignContent: 'center', gap: '0.15rem', cursor: 'pointer', opacity: isRead && !isExpanded ? 0.78 : 1 }}
+      >
+        <span style={{ fontWeight: isRead ? 400 : 600, overflowWrap: 'anywhere', lineHeight: 1.3 }}>{name}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem 0.45rem', flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          <span>{r.created_by_name}</span>
+          <WorkedOutValue>{formatReportRowWhen(r.created_at, nowMs)}</WorkedOutValue>
+          <ReportPhotoCount count={photoCounts.get(r.id)} tone={isRead ? 'quiet' : 'new'} />
+          {r.job_ledger_id && submitLinkJobPicturesDispatchRequest ? (
+            <span style={{ display: 'inline-flex' }} onClick={(e) => e.stopPropagation()}>
+              <DashboardJobPicturesLinkRow
+                layout="inline"
+                jobPicturesLink={r.job_pictures_link}
+                onMissingClick={() =>
+                  void submitLinkJobPicturesDispatchRequest({
+                    jobId: r.job_ledger_id!,
+                    hcpNumber: r.job_hcp_number,
+                    jobName: r.job_display_name,
+                    jobAddress: r.job_address,
+                  })
+                }
+              />
+            </span>
+          ) : null}
+        </span>
+      </div>
+    )
+    // The row is opaque so it covers the strip it slides over.
+    const rowBox: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.35rem 0', background: 'var(--surface)' }
     return (
       <li key={r.id} data-report-row={r.id} style={{ borderTop: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.35rem 0' }}>
-          {isRead ? (
-            <span aria-label="Opened" title="Opened" style={{ flexShrink: 0, width: 12, textAlign: 'center', color: 'var(--text-green-700)', fontSize: '0.8rem', lineHeight: 1 }}>
-              ✓
-            </span>
-          ) : (
-            <span aria-label="New report" style={{ flexShrink: 0, width: 8, height: 8, margin: '0 2px', borderRadius: 999, background: '#3b82f6' }} />
-          )}
-          {/* A press anywhere on the report opens it in place (the owner's pick of 2026-11-23): the name used to
-              open the job and the rest of the row the report. Job detail is inside the opened report. */}
-          <div
-            role="button"
-            tabIndex={0}
-            aria-expanded={isExpanded}
-            data-report-open
-            onClick={() => openInPlace(r.id)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                openInPlace(r.id)
-              }
-            }}
-            style={{ flex: 1, minWidth: 0, minHeight: 44, display: 'grid', alignContent: 'center', gap: '0.15rem', cursor: 'pointer', opacity: isRead && !isExpanded ? 0.78 : 1 }}
-          >
-            <span style={{ fontWeight: isRead ? 400 : 600, overflowWrap: 'anywhere', lineHeight: 1.3 }}>{name}</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem 0.45rem', flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              <span>{r.created_by_name}</span>
-              <WorkedOutValue>{formatReportRowWhen(r.created_at, nowMs)}</WorkedOutValue>
-              <ReportPhotoCount count={photoCounts.get(r.id)} tone={isRead ? 'quiet' : 'new'} />
-              {r.job_ledger_id && submitLinkJobPicturesDispatchRequest ? (
-                <span style={{ display: 'inline-flex' }} onClick={(e) => e.stopPropagation()}>
-                  <DashboardJobPicturesLinkRow
-                    layout="inline"
-                    jobPicturesLink={r.job_pictures_link}
-                    onMissingClick={() =>
-                      void submitLinkJobPicturesDispatchRequest({
-                        jobId: r.job_ledger_id!,
-                        hcpNumber: r.job_hcp_number,
-                        jobName: r.job_display_name,
-                        jobAddress: r.job_address,
-                      })
-                    }
-                  />
-                </span>
-              ) : null}
-            </span>
-          </div>
-          {mode === 'listed' ? (
-            <button type="button" onClick={() => putAway([r])} aria-label={`Mark opened, ${name}`} style={wordPress}>
-              Mark opened
-            </button>
-          ) : (
+        {mode === 'listed' ? (
+          // A swipe to the left marks the report opened on a device held in the hand; at a desk the same act is the word press.
+          <SwipeAwayRow label="Mark opened" name={name} swipe={swipes} onAway={() => putAway([r])}>
+            {(press) => (
+              <div style={rowBox}>
+                {mark}
+                {words}
+                {press ?? (
+                  <span aria-hidden style={{ flexShrink: 0, color: 'var(--text-muted)', fontSize: '1.2rem', lineHeight: 1 }}>
+                    {isExpanded ? '▾' : '›'}
+                  </span>
+                )}
+              </div>
+            )}
+          </SwipeAwayRow>
+        ) : (
+          <div style={rowBox}>
+            {mark}
+            {words}
             <button type="button" onClick={() => markUnread(r.id)} aria-label={`Mark unread, ${name}`} style={wordPress}>
               Mark unread
             </button>
-          )}
-        </div>
+          </div>
+        )}
         {isExpanded && (
           <div style={{ padding: '0 0 0.85rem 1.3rem', fontSize: '0.875rem' }}>
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0.25rem 0 0.75rem' }}>
@@ -538,7 +560,9 @@ export function DashboardRecentReportsSection({
                   {/* The foot: what acts on the whole list, then the two doors. Each row reads what it is on the left and has its press on the right. */}
                   {card.listed.length > 0 ? (
                     <div data-reports-foot="mark" style={footRow}>
-                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{recentReportsNewWords(card.fresh)}</span>
+                      <span data-reports-hint={swipes ? 'swipe' : 'count'} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '0.35rem 0' }}>
+                        {swipes ? swipeAwayHint('report', 'mark it opened') : recentReportsNewWords(card.fresh)}
+                      </span>
                       {newListed.length > 0 ? (
                         <button type="button" onClick={() => putAway(newListed)} style={wordPress}>
                           {countedLabel('Mark', newListed.length, ['opened', 'opened'])}
