@@ -123,11 +123,14 @@ export function workingWeekFromPaidWeek(paidWeek: readonly number[], startMinute
 // ---------- the set week in force ----------
 
 const isSet = (a: AvailableHoursAnswer): boolean => a.kind === 'set'
-const newer = (a: AvailableHoursAnswer, b: AvailableHoursAnswer): boolean => a.effective_from > b.effective_from || (a.effective_from === b.effective_from && a.set_at > b.set_at)
+/** The newer save. The Sunday a row starts on only says when it begins to hold, never which of two rows wins. */
+const newer = (a: AvailableHoursAnswer, b: AvailableHoursAnswer): boolean => a.set_at > b.set_at
 
 /**
- * The set row that holds on a day: the newest one on or before it. Unlike an answer, the first set row does not
- * reach back before its Sunday. A row with no week means the hours were taken off, and it is still the row in force.
+ * The set row that holds on a day: the newest save among the rows that have started, as `working_hours_on` reads
+ * it. Hours saved for next week and then changed for this week hold as changed, next week too, so a salaried
+ * person's hours never part from the pay numbers the newer save wrote. Unlike an answer, the first set row does
+ * not reach back before its Sunday. A row with no week means the hours were taken off, and it is still the row in force.
  */
 export function setRowInForce(rows: readonly AvailableHoursAnswer[], ymd: string): AvailableHoursAnswer | null {
   let best: AvailableHoursAnswer | null = null
@@ -143,12 +146,17 @@ export function workingHoursInForce(rows: readonly AvailableHoursAnswer[], ymd: 
   return setRowInForce(rows, ymd)?.days ?? null
 }
 
-/** The set row that starts after today, when the hours are about to change: the newest of the earliest Sunday ahead. */
+/**
+ * The set row that will take over on a Sunday ahead, when the hours are about to change: the newest save that
+ * has not started yet, and only when it was saved after the row in force today. An older one will never hold.
+ */
 export function workingHoursComing(rows: readonly AvailableHoursAnswer[], todayYmd: string): AvailableHoursAnswer | null {
+  const now = setRowInForce(rows, todayYmd)
   let best: AvailableHoursAnswer | null = null
   for (const a of rows) {
     if (!isSet(a) || a.effective_from <= todayYmd) continue
-    if (!best || a.effective_from < best.effective_from || (a.effective_from === best.effective_from && a.set_at > best.set_at)) best = a
+    if (now && !newer(a, now)) continue
+    if (!best || newer(a, best)) best = a
   }
   return best
 }

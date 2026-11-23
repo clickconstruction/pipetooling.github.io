@@ -141,6 +141,21 @@ describe('the set week in force', () => {
     expect(workingHoursHistory([...rows, row({ kind: 'answer' })]).map((r) => r.effective_from)).toEqual(['2026-11-29', '2026-11-22'])
   })
 
+  it('lets the newest save in force hold, over an older save for a later Sunday', () => {
+    // Next week was saved first. Then this week was changed: that newer save holds next week too.
+    const nextWeek = row({ days: weekdays([420, 780]), effective_from: '2026-11-29', set_at: '2026-11-23T11:00:00Z' })
+    const thisWeek = row({ days: weekdays([360, 615]), set_at: '2026-11-24T09:00:00Z' })
+    const rows = [row({}), nextWeek, thisWeek]
+    expect(workingHoursInForce(rows, '2026-11-25')).toEqual(weekdays([360, 615]))
+    expect(workingHoursInForce(rows, '2026-12-02')).toEqual(weekdays([360, 615]))
+    expect(workingHoursComing(rows, '2026-11-25')).toBeNull()
+    // Saved the other way round, next week does take over.
+    const later = row({ days: weekdays([420, 780]), effective_from: '2026-11-29', set_at: '2026-11-25T09:00:00Z' })
+    expect(workingHoursInForce([...rows, later], '2026-11-28')).toEqual(weekdays([360, 615]))
+    expect(workingHoursInForce([...rows, later], '2026-11-29')).toEqual(weekdays([420, 780]))
+    expect(workingHoursComing([...rows, later], '2026-11-25')).toBe(later)
+  })
+
   it('names the two Sundays hours may start on', () => {
     expect(workingHoursStarts('2026-11-25')).toEqual({ thisWeek: '2026-11-22', nextWeek: '2026-11-29' })
     expect(workingHoursStarts('2026-11-22')).toEqual({ thisWeek: '2026-11-22', nextWeek: '2026-11-29' })
