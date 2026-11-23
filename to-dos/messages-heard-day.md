@@ -2,7 +2,7 @@
 name: "Messages: a day was heard, say what it is"
 number: 421
 group: ready
-status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 armed · PR 2 #9514 the migration open, unarmed · PR 3 #9526 the choice open, unarmed · PR 4 #9533 the write-throughs open, unarmed · PR 5 the mark's job open, unarmed
+status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 armed · PR 2 #9514 the migration open, unarmed · PR 3 #9526 the choice open, unarmed · PR 4 #9533 the write-throughs open, unarmed · PR 5 #9536 the mark's job open, unarmed
 summary: >
   When a person names a day in a text or a voicemail, Messages was planned to lift the day out,
   ask the office what it is a promise of, and write it where that kind of date lives. The table, the
@@ -10,9 +10,9 @@ summary: >
   voicemail's Keep the day, the row that offers a heard day, and the choice under the line. Card
   #129 built the one kind the office uses, a customer's promise to pay, by another road. This card
   keeps the rest so it is not lost, with what exists, what is missing and what it would take.
-next: The migration (PR 2, `write_down_heard`), then the choice under a line (PR 3), the write-throughs' hands (PR 4) and the payment mark's job (PR 5).
+next: Push #9514's migration, then its types PR and the dev seat's deploy; arm #9526, #9533 and #9536; walk it on a ZZ Test thread as the card's verify recipe says.
 size: M as a train of five (S · XS · M · M · XS)
-blocker: Nothing. PR 3 to 5 wait on PR 2's push.
+blocker: The push of #9514. PRs 3 to 5 wait on it.
 opinion: build — the owner's call of 2026-11-23
 ---
 
@@ -39,7 +39,7 @@ customer's payment opens #129's sheet. The screens he approved are the *after* o
 5. **PR 5, v2.8386**: a payment mark carries its job, the small extra below. The sheet's job goes with the mark, the
    job's *They promised* reads its own marks, and *Never said that* leaves another job's. The press also finds the
    line's own job from its key (`tiedJobId`), a fault found on the way: the whole key was compared with a job's id, so
-   a line's own job never matched. Open, unarmed until PR 2's push.
+   a line's own job never matched. PR #9536, unarmed until PR 2's push.
 
 ## Where this comes from
 
