@@ -6,6 +6,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { ReviewLaborBreakdownModal, type ReviewLaborBreakdownContext } from './ReviewLaborBreakdownModal'
+import { moneyText } from '../../../test/moneyText'
 
 afterEach(cleanup)
 
@@ -49,7 +50,7 @@ describe('ReviewLaborBreakdownModal', () => {
 
   it('says when the rows do not add up to the job header', () => {
     render(<ReviewLaborBreakdownModal ctx={{ ...ctx, totalLaborOnJob: 1200 }} rows={rows} onClose={vi.fn()} />)
-    expect(screen.getByText(/the job header showed \$1,200\.00/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/the job header showed \$1,200\.00/))).toBeTruthy()
   })
 
   it('no rows: says so', () => {

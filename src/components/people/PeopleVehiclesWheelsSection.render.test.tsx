@@ -33,6 +33,7 @@ vi.mock('../../lib/people/wheelsData', () => ({ loadWheelsSnapshot: () => loadWh
 
 import { PeopleVehiclesWheelsSection } from './PeopleVehiclesWheelsSection'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 afterEach(cleanup)
 
@@ -42,11 +43,11 @@ describe('PeopleVehiclesWheelsSection · wear and the fleet rate (v2.5039)', () 
     await settle()
     expect(screen.getByRole('columnheader', { name: 'Wear' })).toBeTruthy()
     const f1 = screen.getByText('2021 Ford F-250').closest('tr')!
-    expect(within(f1).getByText('$1,800.00')).toBeTruthy()
+    expect(within(f1).getByText(moneyText('$1,800.00'))).toBeTruthy()
     const f2 = screen.getByText('2019 Ram 1500').closest('tr')!
     expect(within(f2).getByTitle('No replacement value on file: add one on the vehicle and its wear counts').textContent).toBe('—')
     // a parked truck still carries its wear
-    expect(screen.getByText('1 parked or unassigned: 2024 Ford Transit ($493.15 carried in the window)')).toBeTruthy()
+    expect(screen.getByText(moneyText('1 parked or unassigned: 2024 Ford Transit ($493.15 carried in the window)'))).toBeTruthy()
     const fleet = screen.getByTestId('wheels-fleet-rate')
     expect(fleet.textContent).toBe('All 3 vehicles: $3,245.45 insurance, registration, service and wear ÷ 18 crew field h = $180.30/field h. Bids shows this beside the crew rate and never adds it.')
   })

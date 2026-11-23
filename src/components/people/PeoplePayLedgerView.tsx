@@ -42,6 +42,7 @@ import { EmptyState } from '../EmptyState'
 import { payLedgerRosterEmptyWords, payStatementEmptyWords } from '../../lib/people/peopleEmptyWords'
 import { ledgerPayPeriodShortLabel, type PayStubRow } from './PeoplePayStubsTab'
 import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { MoneyText } from '../Money'
 
 /**
  * People → Payroll → Balances (v2.2168 ledger; v2.3689 open reports first).
@@ -147,7 +148,7 @@ function Meter({ r }: { r: OpenReportRow }) {
 
 function StatePill({ r }: { r: OpenReportRow }) {
   const s = STATE_PILL[r.state]
-  return <span style={{ display: 'inline-block', fontSize: '0.66rem', fontWeight: 700, padding: '1px 7px', borderRadius: 999, whiteSpace: 'nowrap', background: s.bg, color: s.fg, border: s.border }}>{stateLabel(r)}</span>
+  return <span style={{ display: 'inline-block', fontSize: '0.66rem', fontWeight: 700, padding: '1px 7px', borderRadius: 999, whiteSpace: 'nowrap', background: s.bg, color: s.fg, border: s.border }}><MoneyText text={stateLabel(r)} /></span>
 }
 
 export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId, payStubDeductionsByStubId, payStubAdditionalByStubId, onViewStub, onRecordPayment, onError, loadPayStubs, loadUnreportedWeeks, onGenerateReport, authUserId = null, showToast }: PeoplePayLedgerViewProps) {
@@ -396,7 +397,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>out of the week of</span>
         {pickableWeeks.map((r) => (
           <button key={r.stubId} type="button" onClick={(e) => { e.stopPropagation(); openLessFor(r.stubId) }} style={CHIP(false)}>
-            {ledgerPayPeriodShortLabel(r.periodStart, r.periodEnd, false)} · {money(r.balance)} left
+            {ledgerPayPeriodShortLabel(r.periodStart, r.periodEnd, false)} · <MoneyText text={money(r.balance)} /> left
           </button>
         ))}
         <button type="button" onClick={(e) => { e.stopPropagation(); setWeekPickerFor(null) }} style={BTN_LINK}>cancel</button>
@@ -595,10 +596,10 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
         ))}
         {r.state === 'overpaid' ? (
           <li style={{ color: 'var(--text-link)', padding: '0.2rem 0' }}>
-            Paid {money(-r.balance)} past net. {pickableWeeks.some((x) => x.stubId !== r.stubId) ? `Move extra puts it on the week of ${shortDate(pickableWeeks.find((x) => x.stubId !== r.stubId)!.periodStart, nowYear)}.` : 'Nothing is open to move it to — Move extra files it as a credit.'}
+            Paid <MoneyText text={money(-r.balance)} /> past net. {pickableWeeks.some((x) => x.stubId !== r.stubId) ? `Move extra puts it on the week of ${shortDate(pickableWeeks.find((x) => x.stubId !== r.stubId)!.periodStart, nowYear)}.` : 'Nothing is open to move it to — Move extra files it as a credit.'}
           </li>
         ) : null}
-        {r.state === 'residue' ? <li style={{ color: 'var(--text-muted)', padding: '0.2rem 0' }}>{money(r.balance)} short of net, under the residue line — fees or rounding, not debt. Mark settled closes it with a Less line of that amount.</li> : null}
+        {r.state === 'residue' ? <li style={{ color: 'var(--text-muted)', padding: '0.2rem 0' }}><MoneyText text={money(r.balance)} /> short of net, under the residue line — fees or rounding, not debt. Mark settled closes it with a Less line of that amount.</li> : null}
       </ul>
     )
     if (isMobile) {
@@ -787,7 +788,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
           {settleUpSentence(settle, selected.name, money)}
           {settle.mode === 'send' && settle.owed > 0.005 && (counts.unpaid + counts.partial + counts.residue) > 1 ? (
             <span style={{ display: 'block', fontSize: '0.72rem' }}>
-              Oldest first, {money(settle.toSend)} lands as {allocateOldestFirst(settle.toSend, open.rows).splits.length} payments — a shorter send fills the oldest weeks first; read the amount for any week off the Pay to here column.
+              Oldest first, <MoneyText text={money(settle.toSend)} /> lands as {allocateOldestFirst(settle.toSend, open.rows).splits.length} payments — a shorter send fills the oldest weeks first; read the amount for any week off the Pay to here column.
             </span>
           ) : null}
         </span>
