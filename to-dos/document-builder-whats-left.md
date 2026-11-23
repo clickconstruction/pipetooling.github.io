@@ -128,6 +128,26 @@ puts its rows back after, and its line on #404 names what it could not delete.
 - **Should show:** the copy under *Contracts and estimates*, naming that job.
 - **Why not yet:** neither test project bills through a job, so their copies name none.
 
+**1a to 1f, on clicktooling.com on 2026-11-23.** As a dev, on the test rows.
+
+- **1d holds, with one gap.** **Turn it off** on the test trade company's portal (GC desk → Trade partners → the company → **Their portal**) asked *The link stops working* first.
+  The sheet's row then read *Their page is off*, and **Send it again** was dead.
+  There was no **Turn their page on** on the row: it shows only inside the send box, which a dead press cannot open, so a page is turned back on from the GC desk alone.
+  **Make the link** there turned it on with a new link, so the trade's old link is dead.
+- **1e holds.** **We lost this** on *GC test bidding project, delete me*, with *Project died or on hold*, took the job out of the sheet's **Job** box.
+  **Bring it back** put it back under Bidding, and the box lists it again.
+- **1b, in part.** A ZZ person at a sink address was added from the trade's own page, ticked for **Pay and papers**, since the company's two addresses are `example.com`.
+  The sheet went to that person, and the row reads *Sent Nov 23 to* that person, *Not opened yet*.
+  The trade's open was not counted: the trade's page was opened in a browser signed in as a dev, and the function counts only someone outside.
+  The rest of 1b waits for a signed-out browser.
+- **1a held.** An award cannot be undone by a dev, since the award guard refuses any change outside the award itself. So *undo both awards* is SQL, or the awards and their draft statements of work stay on the test rows. That is the owner's call.
+- **1c held.** The test project has one trade, so 1c means a new trade company asked on a new package, and the card does not say how either comes off again.
+- **1f not started.** It needs a dev's presses, and the browser pane stopped taking presses partway through this sitting.
+- **Left on production.** The ZZ person on the test trade company. One live send of the sheet to that person, with its email, its log row and its Sent copy. The test trade's portal link of 2026-10-08, turned off, and a new one made the same day.
+- **Seen, not fixed.**
+  - A sent row whose trade's page is off offers no **Turn their page on**.
+  - The trade's page, opened by a signed-in dev, is not counted as the trade's open. That is as designed, but it means a dev cannot walk an open from the same browser.
+
 **1g. The Sub NDA's Publish and its attorney's mark** (v2.8024)
 
 - **Where:** `/documents?tab=builder&builder=sub-nda`. As a dev.
