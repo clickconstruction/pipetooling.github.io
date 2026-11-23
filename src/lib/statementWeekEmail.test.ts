@@ -5,6 +5,7 @@ import {
   groupOfficeWeek,
   groupTitle,
   isOfficeWeekPayload,
+  officeWeekInKindLine,
   officeWeekStep,
   officeWeekSubject,
   officeWeekText,
@@ -134,5 +135,38 @@ describe('statementWeekNudgeFromPayload', () => {
   it('is quiet when nothing is ready to send', () => {
     expect(statementWeekNudgeFromPayload(week([item('Lowbeck', 22000, 'needs_certify')]))).toBeNull()
     expect(statementWeekNudgeFromPayload(null)).toBeNull()
+  })
+})
+
+describe('the week says how much an in kind deal pays (v2.8320, punch list #301)', () => {
+  const LINE = '$1,200 on 2 bills is scheduled in kind, not money owed.'
+  const withDeal: OfficeWeekPayload = { ...sample, in_kind: { count: 2, dollars: 1200 } }
+
+  it('one line, under the summary, in text and in HTML', () => {
+    expect(officeWeekInKindLine(withDeal)).toBe(LINE)
+    const text = officeWeekText(withDeal, opts)
+    const lines = text.split('\n')
+    expect(lines[3]).toBe(LINE)
+    expect(text.split(LINE).length - 1).toBe(1)
+    const html = renderOfficeWeekHtml(withDeal, opts)
+    expect(html.split(LINE).length - 1).toBe(1)
+    expect(html.indexOf(LINE)).toBeGreaterThan(html.indexOf('over $10,000'))
+    expect(html.indexOf(LINE)).toBeLessThan(html.indexOf('The standard'))
+  })
+
+  it('the amounts and counts above it are the money alone, unchanged by the line', () => {
+    expect(officeWeekText(withDeal, opts).split('\n').filter((l) => l !== LINE)).toEqual(officeWeekText(sample, opts).split('\n'))
+  })
+
+  it('no line when no GC has a bill on a deal, or the payload is from before the key', () => {
+    for (const p of [sample, { ...sample, in_kind: { count: 0, dollars: 0 } }, { ...sample, in_kind: null }]) {
+      expect(officeWeekInKindLine(p)).toBe('')
+      expect(officeWeekText(p, opts)).not.toContain('in kind')
+      expect(renderOfficeWeekHtml(p, opts)).not.toContain('in kind')
+    }
+  })
+
+  it('reads numbers that came as text', () => {
+    expect(officeWeekInKindLine({ in_kind: { count: '1', dollars: '450.40' } as never })).toBe('$450 on 1 bill is scheduled in kind, not money owed.')
   })
 })

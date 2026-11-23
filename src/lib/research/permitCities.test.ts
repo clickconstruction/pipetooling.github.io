@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest'
 import {
   AUSTIN_MAIN_MARK,
   AUSTIN_READER,
+  ISSUED_AGAIN_LOOKBACK_DAYS,
   NEW_BRAUNFELS_READER,
   PERMIT_CITIES,
   PERMIT_CITY_NAMES,
+  PULL_LOOKBACK_DAYS,
   SAN_MARCOS_READER,
   SEGUIN_READER,
   austinName,
@@ -19,6 +21,8 @@ import {
   feedPasses,
   feedsToPull,
   layerDayWindow,
+  passDayColumns,
+  passStarts,
   permitCity,
   permitRowFromAustin,
   permitRowFromNewBraunfels,
@@ -403,6 +407,109 @@ describe('New Braunfels', () => {
 })
 
 
+describe('the day each reading starts from (punch list #405, v2.8328)', () => {
+  const [issued, applied] = feedsToPull('San Antonio')
+  const passes = feedPasses(applied!, false)
+  const TODAY = '2026-11-22'
+
+  it('looks back ten days on a feed’s own reading and thirty on the second', () => {
+    expect([PULL_LOOKBACK_DAYS, ISSUED_AGAIN_LOOKBACK_DAYS]).toEqual([10, 30])
+    expect(passes.map((p) => p.lookbackDays)).toEqual([10, 30])
+    expect(feedPasses(applied!, true).map((p) => p.lookbackDays)).toEqual([10])
+    for (const city of PERMIT_CITY_NAMES) {
+      for (const feed of feedsToPull(city)) expect(feedPasses(feed, false)[0]!.lookbackDays).toBe(10)
+    }
+  })
+
+  it('names each day column a run reads before it writes, once', () => {
+    expect(passDayColumns(passes)).toEqual(['submitted_on', 'issued_on'])
+    expect(passDayColumns(feedPasses(issued!, false))).toEqual(['issued_on'])
+    expect(passDayColumns([...feedPasses(issued!, false), passes[1]!])).toEqual(['issued_on'])
+    expect(passDayColumns([])).toEqual([])
+  })
+
+  it('starts each reading from the days held before the run wrote a row', () => {
+    // A night like the one the gap opened on: the newest issued day held is the 13th, and a permit dated the 9th is still to read.
+    const held = { submitted_on: '2026-11-20', issued_on: '2026-11-13' }
+    const starts = passStarts(passes, held, TODAY)
+    expect(starts).toEqual(['2026-11-10', '2026-10-14'])
+    expect('2026-11-09' >= starts[1]!).toBe(true)
+    // The first reading then writes a fresher issued day. Ten days back from that one starts past the 9th: the old fault.
+    const afterTheFirstReading = { ...held, issued_on: '2026-11-20' }
+    const tenDaysBack = passes.map((p) => ({ ...p, lookbackDays: 10 }))
+    expect(passStarts(tenDaysBack, afterTheFirstReading, TODAY)[1]).toBe('2026-11-10')
+    expect('2026-11-09' >= passStarts(tenDaysBack, afterTheFirstReading, TODAY)[1]!).toBe(false)
+  })
+
+  it('needs the days held before the run, thirty days or not: a pull that was down for weeks', () => {
+    // Nothing ran from early October. The first reading catches up and writes an issued day of the 20th of November.
+    const before = { submitted_on: '2026-10-02', issued_on: '2026-10-01' }
+    const after = { submitted_on: '2026-11-21', issued_on: '2026-11-20' }
+    const issuedWhileDown = '2026-10-05'
+    expect(passStarts(passes, before, TODAY)).toEqual(['2026-09-22', '2026-09-01'])
+    expect(issuedWhileDown >= passStarts(passes, before, TODAY)[1]!).toBe(true)
+    // Counted from what the first reading had just written, the second would start past that permit.
+    expect(passStarts(passes, after, TODAY)[1]).toBe('2026-10-21')
+    expect(issuedWhileDown >= passStarts(passes, after, TODAY)[1]!).toBe(false)
+  })
+
+  it('reads a column with no day held as a first run, seventy-five days back from today', () => {
+    expect(passStarts(passes, {}, TODAY)).toEqual(['2026-09-08', '2026-09-08'])
+    expect(passStarts(passes, { submitted_on: null, issued_on: null }, TODAY)).toEqual(['2026-09-08', '2026-09-08'])
+    // Applications held and none with a permit yet: the first reading goes on as usual, the second is a first run.
+    expect(passStarts(passes, { submitted_on: '2026-11-20' }, TODAY)).toEqual(['2026-11-10', '2026-09-08'])
+    expect(passStarts(passes, { submitted_on: '2026-11-20', issued_on: null }, TODAY)).toEqual(['2026-11-10', '2026-09-08'])
+  })
+
+  it('counts a newest day after today as today, so a day typed a year ahead stops no reading', () => {
+    expect(passStarts(passes, { submitted_on: '2027-11-20', issued_on: '2027-11-09' }, TODAY)).toEqual(['2026-11-12', '2026-10-23'])
+    // Today itself is a day like any other.
+    expect(passStarts(passes, { submitted_on: TODAY, issued_on: TODAY }, TODAY)).toEqual(['2026-11-12', '2026-10-23'])
+  })
+
+  it('counts back across a month and a year', () => {
+    expect(passStarts(passes, { submitted_on: '2027-01-05', issued_on: '2027-01-05' }, '2027-01-06')).toEqual(['2026-12-26', '2026-12-06'])
+    expect(passStarts(passes, { submitted_on: '2028-03-05', issued_on: '2028-03-05' }, '2028-03-06')).toEqual(['2028-02-24', '2028-02-04'])
+  })
+
+  it('starts every reading on the day the body names, whatever is held', () => {
+    expect(passStarts(passes, { submitted_on: '2026-11-20', issued_on: '2026-11-13' }, TODAY, '2026-06-01')).toEqual(['2026-06-01', '2026-06-01'])
+    expect(passStarts(feedPasses(applied!, true), {}, TODAY, '2025-01-01')).toEqual(['2025-01-01'])
+    expect(passStarts([], {}, TODAY)).toEqual([])
+  })
+
+  it('gives a feed read once the start it always had', () => {
+    for (const city of PERMIT_CITY_NAMES) {
+      for (const feed of feedsToPull(city)) {
+        const one = feedPasses(feed, false)[0]!
+        expect(passStarts([one], { [one.dayColumn]: '2026-11-06' }, '2026-11-09')).toEqual(['2026-10-27'])
+        expect(passStarts([one], {}, '2026-11-09')).toEqual(['2026-08-26'])
+      }
+    }
+  })
+
+  it('has permit-pull work every start out before its first page, and nowhere else', () => {
+    const src = readFileSync('supabase/functions/permit-pull/index.ts', 'utf8')
+    const starts = src.indexOf('const starts = passStarts(passes, newestHeld, today, sinceOverride)')
+    const reads = src.indexOf('for (const col of passDayColumns(passes)) newestHeld[col] = await newestHeldDay(admin, feed.source, col)')
+    const loop = src.indexOf('for (const [i, pass] of passes.entries()) {')
+    const firstPage = src.indexOf('await readPage(feed, pass, since, size, offset, until)')
+    const firstWrite = src.indexOf(".upsert(")
+    expect(reads).toBeGreaterThan(-1)
+    expect(starts).toBeGreaterThan(reads)
+    expect(loop).toBeGreaterThan(starts)
+    expect(firstPage).toBeGreaterThan(loop)
+    expect(firstWrite).toBeGreaterThan(firstPage)
+    // Inside the readings' loop nothing reads a newest day or counts a start again.
+    const inLoop = src.slice(loop)
+    expect(inLoop).toContain('const since = starts[i]!')
+    expect(inLoop).not.toMatch(/newestHeldDay\(|passStarts\(|pullSinceDay\(|ascending: false/)
+    expect(src).not.toContain('pullSinceDay')
+    // One read of the newest day in the whole function.
+    expect(src.split('newestHeldDay(').length - 1).toBe(2)
+  })
+})
+
 describe('a read back as history (punch list #307)', () => {
   it('reads San Antonio’s applications a second time by the day their permit was issued, and no other feed twice', () => {
     const [issued, applied] = feedsToPull('San Antonio')
@@ -417,7 +524,7 @@ describe('a read back as history (punch list #307)', () => {
     // The same rows are kept either way: the kinds of permit do not change with the day they are read by.
     expect(second.slice(second.indexOf(' AND ('), second.indexOf(' ORDER BY'))).toBe(first.slice(first.indexOf(' AND ('), first.indexOf(' ORDER BY')))
     // The issued feed is already read by its issued day, and a read back as history touches nothing held.
-    expect(feedPasses(issued!, false)).toEqual([{ pageUrl: issued!.pageUrl, dayColumn: 'issued_on', issuedAgain: false }])
+    expect(feedPasses(issued!, false)).toEqual([{ pageUrl: issued!.pageUrl, dayColumn: 'issued_on', issuedAgain: false, lookbackDays: 10 }])
     expect(feedPasses(applied!, true).map((p) => p.issuedAgain)).toEqual([false])
     for (const city of ['Austin', 'New Braunfels', 'San Marcos', 'Seguin']) {
       for (const feed of feedsToPull(city)) expect(feedPasses(feed, false)).toHaveLength(1)

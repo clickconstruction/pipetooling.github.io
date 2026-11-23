@@ -108,12 +108,6 @@ export function financeDrillEmptyWords(s: { query: string; clearSearch: Press; c
   return s.query.trim() ? searchEmptyWords('items', s.query, s.clearSearch) : filtersEmptyWords('items', s.clearFilters)
 }
 
-/** My time with nothing clocked this week: Last week opens the week before, unless it is already open. */
-export function myTimeWeekEmptyWords(showLastWeek: Press | null): EmptyStateWords {
-  const main = 'Nothing clocked this week.'
-  return showLastWeek ? { main, next: { label: 'Last week', onPress: showLastWeek }, tail: 'shows the week before.' } : { main }
-}
-
 /**
  * The stale purchases window: Stale hiding every purchase that is still to sort (To sort shows
  * them), or nothing at all waiting on the people the viewer follows up with.
