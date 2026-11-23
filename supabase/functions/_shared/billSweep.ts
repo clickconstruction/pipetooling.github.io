@@ -489,6 +489,35 @@ export interface PaperText {
   text: string | null
   /** true a text layer read whole; false a scan; null not known. */
   layer: boolean | null
+  /** The same text a page at a time (punch list #431), so a paper keeps the words of its own pages; null when not read. */
+  pages?: readonly string[] | null
+}
+
+/** How much of a paper's own words is kept: a bill is a page or two, and a statement is not worth a megabyte a row. */
+export const PAGE_TEXT_MAX_CHARS = 20_000
+
+/**
+ * The words of a paper's own pages (punch list #431), for `supply_papers.page_text`, which the all-bills search reads.
+ * One PDF often holds several bills, so a paper takes the pages the reader found for it, counted from one. With no
+ * pages on record, or pages the file does not have, the paper is the whole file. Null when the file's text was not
+ * read; an empty string when it was read and these pages hold no words.
+ */
+export function paperPageText(pages: readonly string[] | null | undefined, pageFrom: number | null | undefined, pageTo: number | null | undefined): string | null {
+  if (!pages) return null
+  const from = Number.isInteger(pageFrom) && pageFrom! >= 1 && pageFrom! <= pages.length ? pageFrom! : null
+  const own = from == null ? pages : pages.slice(from - 1, Number.isInteger(pageTo) && pageTo! >= from ? pageTo! : from)
+  // A NUL cannot be stored in a text column, and a PDF's text layer now and then holds one.
+  return own.join('\n').replace(/\u0000/g, '').trim().slice(0, PAGE_TEXT_MAX_CHARS)
+}
+
+/** How many files one run opens to fill the words of papers read before the words were kept, and how many papers it lists. */
+export const PAGE_TEXT_FILES = 6
+export const PAGE_TEXT_PAPERS = 80
+
+/** The run's line for the words it filled: empty when there was nothing to fill. */
+export function pageTextWords(papers: number, files: number): string {
+  if (papers === 0) return ''
+  return `The words of ${papers} ${papers === 1 ? 'paper' : 'papers'} were kept from ${files} ${files === 1 ? 'file' : 'files'}.`
 }
 
 /**
