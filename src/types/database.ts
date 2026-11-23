@@ -7931,19 +7931,25 @@ export type Database = {
           id: string
           opened_at: string
           opened_by: string | null
-          person_contract_document_id: string
+          paper_name: string | null
+          paper_with: string | null
+          person_contract_document_id: string | null
         }
         Insert: {
           id?: string
           opened_at?: string
           opened_by?: string | null
-          person_contract_document_id: string
+          paper_name?: string | null
+          paper_with?: string | null
+          person_contract_document_id?: string | null
         }
         Update: {
           id?: string
           opened_at?: string
           opened_by?: string | null
-          person_contract_document_id?: string
+          paper_name?: string | null
+          paper_with?: string | null
+          person_contract_document_id?: string | null
         }
         Relationships: [
           {
@@ -33266,6 +33272,7 @@ export type Database = {
           effective_from: string
           hours_per_week: number
           id: string
+          kind: string
           note: string | null
           set_by: string | null
           user_id: string
@@ -33276,6 +33283,7 @@ export type Database = {
           effective_from: string
           hours_per_week: number
           id?: string
+          kind?: string
           note?: string | null
           set_by?: string | null
           user_id: string
@@ -33286,6 +33294,7 @@ export type Database = {
           effective_from?: string
           hours_per_week?: number
           id?: string
+          kind?: string
           note?: string | null
           set_by?: string | null
           user_id?: string
@@ -43565,6 +43574,7 @@ export type Database = {
       user_bid_notes_read_state: {
         Row: {
           bid_id: string
+          hidden_at: string | null
           last_seen_bid_submission_at: string | null
           last_seen_customer_contact_at: string | null
           updated_at: string
@@ -43572,6 +43582,7 @@ export type Database = {
         }
         Insert: {
           bid_id: string
+          hidden_at?: string | null
           last_seen_bid_submission_at?: string | null
           last_seen_customer_contact_at?: string | null
           updated_at?: string
@@ -43579,6 +43590,7 @@ export type Database = {
         }
         Update: {
           bid_id?: string
+          hidden_at?: string | null
           last_seen_bid_submission_at?: string | null
           last_seen_customer_contact_at?: string | null
           updated_at?: string
@@ -46978,6 +46990,10 @@ export type Database = {
         Args: { p_def: Json }
         Returns: string
       }
+      contract_paper_with_words: {
+        Args: { p_paper_id: string }
+        Returns: string
+      }
       contract_text_setting_keys: { Args: never; Returns: string[] }
       contract_trade_key: { Args: { p_trade: string }; Returns: string }
       convert_sub_overpayment_to_credit: {
@@ -49003,6 +49019,7 @@ export type Database = {
         Returns: undefined
       }
       has_payroll_access: { Args: never; Returns: boolean }
+      has_working_hours: { Args: { p_user_id: string }; Returns: boolean }
       helper_on_job: { Args: { p_job_id: string }; Returns: boolean }
       highlight: {
         Args: { p_message_id: string; p_text: string }
@@ -53077,6 +53094,7 @@ export type Database = {
         }
         Returns: Json
       }
+      session_opened_by_imitation: { Args: never; Returns: boolean }
       set_aside_robot_fixtures: {
         Args: { p_reason?: string; p_row_ids: string[] }
         Returns: Json
@@ -53328,6 +53346,16 @@ export type Database = {
       }
       set_week_signal: {
         Args: { p_signal: string; p_user_id: string }
+        Returns: Json
+      }
+      set_working_hours: {
+        Args: {
+          p_days: Json
+          p_dry_run?: boolean
+          p_effective_from: string
+          p_reason?: string
+          p_user_id: string
+        }
         Returns: Json
       }
       settle_step_commitment: {
@@ -54126,6 +54154,11 @@ export type Database = {
         Args: { p_reason: string; p_report_id: string }
         Returns: Json
       }
+      working_hours_on: {
+        Args: { p_day: string; p_user_id: string }
+        Returns: Json
+      }
+      working_week_ok: { Args: { p_days: Json }; Returns: boolean }
       write_down: {
         Args: { p_kind: string; p_message_id: string; p_writes?: string }
         Returns: undefined
