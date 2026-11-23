@@ -20,6 +20,7 @@ import {
   type PortalJobRow,
   type PortalPaymentRow,
 } from '../_shared/portalMergedBills.ts'
+import { buildPortalScheduledBills, moneyJobsOf, type PortalDealJobRow } from '../_shared/portalScheduledBills.ts'
 import { buildPortalProperties } from '../_shared/portalProperties.ts'
 import { buildPortalChecks, type PortalChecksEventRow, type PortalChecksInvoiceRow, type PortalChecksPaymentRow } from '../_shared/portalChecks.ts'
 import { buildPortalWaivers, type PortalWaiverInvoiceRow, type PortalWaiverReleaseRow, type PortalWaiverRow } from '../_shared/portalWaivers.ts'
@@ -220,15 +221,15 @@ serve(async (req) => {
     }
 
     const jobSelect =
-      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, bill_to_party, show_bills_to_other_party, lien_retainage_held, billing_only, service_types:service_type_id(name)'
-    let jobs: PortalJobRow[]
+      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, bill_to_party, show_bills_to_other_party, lien_retainage_held, billing_only, in_kind_arrangement_id, service_types:service_type_id(name)'
+    let jobs: PortalDealJobRow[]
     if (link.audience === 'all') {
       const { data: jobsRaw } = await admin
         .from('jobs_ledger')
         .select(jobSelect)
         .or(`customer_id.eq.${link.customer_id},gc_customer_id.eq.${link.customer_id}`)
         .limit(500)
-      jobs = dedupeJobsById((jobsRaw ?? []) as unknown as PortalJobRow[])
+      jobs = dedupeJobsById((jobsRaw ?? []) as unknown as PortalDealJobRow[])
     } else {
       const jobFilterColumn = link.audience === 'gc' ? 'gc_customer_id' : 'customer_id'
       const { data: jobsRaw } = await admin
@@ -236,7 +237,7 @@ serve(async (req) => {
         .select(jobSelect)
         .eq(jobFilterColumn, link.customer_id)
         .limit(500)
-      jobs = (jobsRaw ?? []) as unknown as PortalJobRow[]
+      jobs = (jobsRaw ?? []) as unknown as PortalDealJobRow[]
     }
 
     // Billed invoices on jobs of ANY non-paid status (working, waiting,
@@ -413,8 +414,11 @@ serve(async (req) => {
     // else; `sharedBills` is what someone else pays and the office chose to
     // show them. Every other bill on their jobs is filtered out HERE — it never
     // reaches the payload, so nothing the page hides could be read from it.
+    // A job an in kind deal pays is not money owed (v2.8314, punch list #301): its bill is off the statement, the
+    // balance and every pay link. The ledger and the pay-by promise read the money jobs alone.
+    const moneyJobs = moneyJobsOf(jobs)
     const bills = buildPortalBills({
-      jobs,
+      jobs: moneyJobs,
       invoices,
       payments,
       viewerCustomerId: link.customer_id,
@@ -425,8 +429,10 @@ serve(async (req) => {
     })
     const owedBills = bills
     const sharedBills = buildPortalSharedBills({ jobs, invoices, payments, viewerCustomerId: link.customer_id, partyNames, sentBills: portalInv })
+    // Scheduled in kind (v2.8314): the viewer's bills on the jobs a deal pays, for their own card. No pay link rides along.
+    const scheduledBills = buildPortalScheduledBills({ jobs, invoices, payments, viewerCustomerId: link.customer_id, sentBills: portalInv })
     // The jobs this viewer owes on — the promise's scope (v2.3346).
-    const owedJobIds = owedJobIdsForViewer(jobs, invoices, link.customer_id)
+    const owedJobIds = owedJobIdsForViewer(moneyJobs, invoices, link.customer_id)
 
     // The notice on your property (v2.3825): recorded § 53.056 notices on the jobs where this
     // viewer is the owner and a GC is on the job — sent only, never a draft; on its own, no
@@ -690,6 +696,7 @@ serve(async (req) => {
         statement_total_cents: Math.round(totalDue * 100),
         bill_count: owedBills.length,
         shared_bill_count: sharedBills.length,
+        scheduled_bill_count: scheduledBills.length,
       }),
     )
 
@@ -829,6 +836,7 @@ serve(async (req) => {
       audience: link.audience,
       bills,
       sharedBills,
+      scheduledBills,
       propertyNotices,
       totalDue,
       requestableJobs,

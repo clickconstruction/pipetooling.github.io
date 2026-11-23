@@ -30,6 +30,8 @@ How did we do? Rate us with one tap →
 
 The statement lists **every bill they owe, including bills on jobs still in progress**. A progress bill bills part of the work as it goes. A progress bill or change order billed while the crew is still on site appears the moment it is billed. Each such bill has its own **PAY ONLINE** button. The statement uses the same "what's owed" rule as the GC statement email. So the portal's balance matches the office's **Who owes what** figure. A job in progress with nothing billed yet shows nothing. A job in Billed with no bill line is different. That job shows what is left of its price as one row.
 
+A bill an in kind arrangement pays is not on the statement. It sits in its own card named **Scheduled in kind**. The card has no pay button, and the bill is not in the balance. See [work paid in kind](/help/keep-track-of-work-paid-in-kind).
+
 A payment can be recorded on the job without a bill attached. Such a payment first covers any work that no sent bill covers. What is left pays the oldest sent bill first. The office's Bill tab and the bill's own paper count it the same way. So a customer's balance here never disagrees with what they were sent.
 
 The statement groups everything **by job**. Each job opens with its own header band, showing the trade, job number and address. All of that job's bills and **payments already received** sit together underneath. So a job with several progress bills stays in one place, instead of scattering down the page.

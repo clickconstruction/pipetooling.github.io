@@ -1,13 +1,18 @@
 /**
  * The sample painted map (punch list #345, PR 4): what `/way/sample` draws on Settings → What
  * customers see, so the office can look at the shared page as a customer or a driver gets it.
- * Every name and every point is made up. It sits in the middle of the country, on nobody's land,
- * and no link, table or function is read to draw it.
+ * Every name and every point is made up, and no link, table or function is read to draw it.
+ *
+ * It sits on dry public ground near the middle of the country: scrub beside a gravel road inside
+ * Glen Elder Wildlife Area in Kansas, which the state keeps, with no building near. Until v2.8311
+ * it sat two kilometres off at 39.5, -98.35, which is the water of Waconda Lake, so the page's
+ * road map drew the way in across a lake. `paintedWaySample.test.ts` holds it to the ground that
+ * was checked: move the point, and check the new ground on the road map and the photograph first.
  */
 import type { SharedPaintedMap } from './paintedMapLink'
 
-/** Nobody's place: the middle of the lower 48. */
-const AT = { lat: 39.5, lng: -98.35 }
+/** Nobody's home or business: the truck gate, on the gravel road through the wildlife area. */
+const AT = { lat: 39.4822, lng: -98.3632 }
 /** A point so many metres east and north of there. */
 const p = (eastM: number, northM: number): [number, number] => [
   Math.round((AT.lat + northM / 111_195) * 1e6) / 1e6,
