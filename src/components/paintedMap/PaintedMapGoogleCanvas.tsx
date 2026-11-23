@@ -26,8 +26,9 @@
  *   one. The corners are Google's own markers too, and the line in hand is one pair of lines that is
  *   moved and never remade.
  * - **The glass** rides above a finger that is placing. Its picture is a second small Google map,
- *   made once for the page and kept, showing the big map's own view drawn larger, so it never asks
- *   for a zoom Google has no photograph for. The lines and places in it are drawn here, sharp.
+ *   made once for the page and kept. It is asked for the glass's own view, two zoom steps in. Google
+ *   gives a zoom no deeper than its photograph goes at the spot, and the glass draws the picture
+ *   larger only by the steps Google held back. The lines and places in it are drawn here, sharp.
  * - **A reader and the line together** (`frameMe`, step 4): on the public page a reader who asked to
  *   be shown is framed with the whole map, by the Leaflet canvas's own rule (`frameMe.ts`).
  * - **A light page.** The public page is light whatever the app's theme, so `light` holds Google's
@@ -51,7 +52,7 @@ import { googleMapTypeIsImagery, type GoogleMapTypeId } from '../../lib/map/goog
 import { followStep, pointInBox } from '../../lib/paintedMap/followMe'
 import { legMiddles } from '../../lib/paintedMap/draftLine'
 import { frameMeStep } from '../../lib/paintedMap/frameMe'
-import { GLASS_SIZE, GLASS_ZOOM_IN, HOLD_MS, HOLD_SLOP_PX, glassSpot, glassView, settlePoint, spotAtBox, withLive, type PaintedLive } from '../../lib/paintedMap/handPlacing'
+import { GLASS_ASK_AGAIN_MS, GLASS_SIZE, HOLD_MS, HOLD_SLOP_PX, glassPictureScale, glassSpot, glassView, settlePoint, spotAtBox, withLive, type PaintedLive } from '../../lib/paintedMap/handPlacing'
 import { MARGIN_FRAME_PADDING_PX, marginFrameStep, type MarginFramed, type PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
 import { areaEdgeStroke, circleRing, poorRunStroke, sureRunStrokes, type GoogleLineStroke } from '../../lib/paintedMap/paintedGoogleShapes'
 import { lineRuns, type PaintedPoint, type SnapTarget } from '../../lib/paintedMap/paintedLine'
@@ -586,14 +587,13 @@ function DotLayer({ dot, setLive, coarse }: { dot: PaintedCanvasDot; setLive: (l
   return null
 }
 
-/** The photograph in the glass is the big map's own, at its zoom, drawn this much larger: never a zoom Google has no picture for. */
-const GLASS_SCALE = 2 ** GLASS_ZOOM_IN
-
 /**
  * The magnifying glass over Google's map. A fingertip hides the spot it is placing, so the glass shows it two zoom
- * steps in and rides above the finger (`handPlacing.ts`). The picture in it is a second, small Google map: the big
- * map's own view, drawn larger. The lines, the places and the cross are drawn over that picture here, sharp, by the
- * same rule the big map places them.
+ * steps in and rides above the finger (`handPlacing.ts`). The picture in it is a second, small Google map, asked for
+ * that same view. Google gives a zoom no deeper than its photograph goes at the spot, so the glass reads back the
+ * zoom its map took and draws the picture larger only by the steps Google held back: sharp where the photograph goes
+ * that deep, and never a zoom Google has no picture for. The lines, the places and the cross are drawn over that
+ * picture here, sharp, by the same rule the big map places them.
  */
 function Glass({ live, lines, places, draftPoints, mapTypeId, scheme, frame }: { live: PaintedLive; lines: ReadonlyArray<PaintedCanvasLine>; places: ReadonlyArray<PaintedCanvasPlace>; draftPoints: ReadonlyArray<PaintedPoint> | null; mapTypeId: GoogleMapTypeId; scheme: 'DARK' | 'LIGHT'; frame: HTMLElement }) {
   const map = useMap()
@@ -601,37 +601,65 @@ function Glass({ live, lines, places, draftPoints, mapTypeId, scheme, frame }: {
   const seen = map ? readView(map) : null
   const zoom = seen ? Math.round(seen.view.zoom) : PAINTED_POINT_ZOOM
   const { lat, lng } = live.point
+  // The view the glass looks through, which its own map is asked for.
+  const asked = glassView(live.point, zoom).zoom
+  // The zoom the glass's map took, read back each time it is asked and each time Google says it changed.
+  const [gave, setGave] = useState<number | null>(null)
   // The kept map comes into the glass while a finger is down, and waits off the page between drags.
   useEffect(() => {
     const into = hole.current
     if (!into) return
-    const glass = paintedGlassMap(scheme, { center: { lat, lng }, zoom, mapTypeId })
+    const glass = paintedGlassMap(scheme, { center: { lat, lng }, zoom: asked, mapTypeId })
     into.appendChild(glass.host)
-    return () => glass.host.remove()
+    const heard = glass.map.addListener('zoom_changed', () => setGave(glass.map.getZoom() ?? null))
+    return () => {
+      google.maps.event.removeListener(heard)
+      glass.host.remove()
+    }
     // Once for a drag: the effect below keeps it on the spot.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scheme])
   useEffect(() => {
     const glass = keptPaintedGlassMap(scheme)
     if (!glass) return
-    glass.map.setOptions({ mapTypeId, ...(googleMapTypeIsImagery(mapTypeId) ? { tilt: 0 } : {}) })
-    glass.map.moveCamera({ center: { lat, lng }, zoom })
-  }, [lat, lng, zoom, mapTypeId, scheme])
+    const ask = () => {
+      glass.map.setOptions({ mapTypeId, ...(googleMapTypeIsImagery(mapTypeId) ? { tilt: 0 } : {}) })
+      glass.map.moveCamera({ center: { lat, lng }, zoom: asked })
+      setGave(glass.map.getZoom() ?? null)
+    }
+    ask()
+    // On ground it has not drawn before, Google learns how deep its photograph goes a moment after it is asked. It then
+    // draws at that depth, and goes on saying the zoom it was asked for until it is asked again. So while the finger
+    // rests the glass asks again: a few times by the clock, and when the map's pictures have come in. An ask Google has
+    // already answered moves nothing and fetches nothing.
+    const again = GLASS_ASK_AGAIN_MS.map((ms) => window.setTimeout(ask, ms))
+    let drawn = 0
+    const tiles = glass.map.addListener('tilesloaded', () => {
+      // Twice at the most for one spot, so a map that says its pictures came in after every ask cannot go round.
+      if (drawn++ < 2) ask()
+    })
+    return () => {
+      again.forEach((t) => window.clearTimeout(t))
+      google.maps.event.removeListener(tiles)
+    }
+  }, [lat, lng, asked, mapTypeId, scheme])
   if (!seen) return null
   const at = glassSpot(pointInBox(live.point, seen.view, seen.box), seen.box)
   const half = GLASS_SIZE / 2
   const through = glassView(live.point, zoom)
   const size = { width: GLASS_SIZE, height: GLASS_SIZE }
   const path = (points: ReadonlyArray<PaintedPoint>) => points.map((p) => pointInBox(p, through, size)).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-  const hostOffset = (GLASS_SIZE / GLASS_SCALE - GLASS_MAP_PX) / 2
+  // The picture is drawn larger only by the zoom steps Google held back: by one, which is sharp, where it gave the view.
+  const scale = glassPictureScale(asked, gave)
+  const hostOffset = (GLASS_SIZE / scale - GLASS_MAP_PX) / 2
   return createPortal(
     <div
       data-painted-glass={live.caught ? 'caught' : 'open'}
       aria-hidden
       style={{ position: 'absolute', left: at.x - half, top: at.y - half, width: GLASS_SIZE, height: GLASS_SIZE, borderRadius: '50%', overflow: 'hidden', zIndex: 900, pointerEvents: 'none', borderWidth: 4, borderStyle: 'solid', borderColor: live.caught ? GLASS_CAUGHT : PAINT_PAPER, boxShadow: '0 6px 18px rgba(0,0,0,.5), 0 0 0 1.5px rgba(17,24,39,.7)', boxSizing: 'border-box', background: 'var(--bg-muted)' }}
     >
-      {/* The photograph: the kept map, its middle on the spot, drawn larger. Its own edges, with Google's marks, are outside the glass. */}
-      <div data-painted-glass-map style={{ position: 'absolute', left: -4, top: -4, width: GLASS_SIZE / GLASS_SCALE, height: GLASS_SIZE / GLASS_SCALE, transform: `scale(${GLASS_SCALE})`, transformOrigin: '0 0' }}>
+      {/* The photograph: the kept map, its middle on the spot, drawn larger by what Google held back. Its own edges, with Google's marks, are outside the glass. */}
+      <div data-painted-glass-map data-glass-scale={scale} style={{ position: 'absolute', left: -4, top: -4, width: GLASS_SIZE / scale, height: GLASS_SIZE / scale, transform: `scale(${scale})`, transformOrigin: '0 0' }}>
         <div ref={hole} style={{ position: 'absolute', left: hostOffset, top: hostOffset, width: GLASS_MAP_PX, height: GLASS_MAP_PX }} />
       </div>
       <svg width={GLASS_SIZE} height={GLASS_SIZE} style={{ position: 'absolute', left: -4, top: -4, overflow: 'visible' }}>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { pointInBox } from './followMe'
-import { GLASS_SIZE, GLASS_ZOOM_IN, SNAP_MAX_METERS, SNAP_PX, glassSpot, glassView, settlePoint, snapReachMeters, spotAtBox, withLive, type PaintedLive } from './handPlacing'
+import { GLASS_ASK_AGAIN_MS, GLASS_SIZE, GLASS_ZOOM_IN, SNAP_MAX_METERS, SNAP_PX, glassPictureScale, glassSpot, glassView, settlePoint, snapReachMeters, spotAtBox, withLive, type PaintedLive } from './handPlacing'
 import { metersPerPixel, type SnapTarget } from './paintedLine'
 import { PAINTED_SNAP_METERS } from './paintedMap'
 import type { PaintedMapView } from './paintedMapView'
@@ -122,5 +122,33 @@ describe('spotAtBox and glassView', () => {
     const inGlass = pointInBox(neighbour, through, size)
     expect(inGlass.x - GLASS_SIZE / 2).toBeCloseTo(40, 3)
     expect(inGlass.y - GLASS_SIZE / 2).toBeCloseTo(0, 3)
+  })
+})
+
+describe('glassPictureScale', () => {
+  it('draws the picture as it is when the glass’s map gave the view asked for', () => {
+    expect(glassPictureScale(21, 21)).toBe(1)
+  })
+
+  it('draws it larger only by the zoom steps the map held back', () => {
+    // The photograph ends one step short of the view: twice the size, where it was four times.
+    expect(glassPictureScale(21, 20)).toBe(2)
+    // It ends at the big map's own zoom: four times the size, as before the glass asked for more.
+    expect(glassPictureScale(21, 21 - GLASS_ZOOM_IN)).toBe(2 ** GLASS_ZOOM_IN)
+    // A spot the map has not seen yet may be held back further than that for a moment.
+    expect(glassPictureScale(23, 19)).toBe(16)
+  })
+
+  it('never draws it smaller, and takes a map that cannot say its zoom at its word', () => {
+    expect(glassPictureScale(19, 21)).toBe(1)
+    expect(glassPictureScale(19, null)).toBe(1)
+    expect(glassPictureScale(19, undefined)).toBe(1)
+    expect(glassPictureScale(19, Number.NaN)).toBe(1)
+  })
+
+  it('asks again a few times while the finger rests, sooner first, and then stops', () => {
+    expect(GLASS_ASK_AGAIN_MS.length).toBeGreaterThan(0)
+    expect(GLASS_ASK_AGAIN_MS.length).toBeLessThanOrEqual(4)
+    expect([...GLASS_ASK_AGAIN_MS].sort((a, b) => a - b)).toEqual([...GLASS_ASK_AGAIN_MS])
   })
 })

@@ -168,16 +168,51 @@ class MarkerStub {
     this.on = map
   }
 }
-/** The glass's own map, stood in: the page makes one and a case counts them. */
+/**
+ * The glass's own map, stood in: the page makes one and a case counts them. Like Google's, it gives a zoom no deeper
+ * than its photograph goes at the spot, and says the zoom it took.
+ */
 class GlassMapStub {
   static made: GlassMapStub[] = []
+  /** How deep the photograph goes where the finger is. A case makes it shallow. */
+  static depth = 22
+  /**
+   * Google on ground it has not drawn before: it takes the zoom it is asked for, draws at its photograph's depth, and
+   * says the zoom it truly took only when it is asked again.
+   */
+  static late = false
   readonly moves: Array<{ center?: { lat: number; lng: number }; zoom?: number }> = []
+  readonly heard: Record<string, () => void> = {}
+  zoom: number
+  private told = false
   constructor(readonly host: HTMLElement, readonly opts: Record<string, unknown>) {
+    this.zoom = GlassMapStub.late ? Number(opts.zoom) : Math.min(Number(opts.zoom), GlassMapStub.depth)
     GlassMapStub.made.push(this)
   }
   setOptions() {}
   moveCamera(to: { center?: { lat: number; lng: number }; zoom?: number }) {
     this.moves.push(to)
+    if (to.zoom == null) return
+    const was = this.zoom
+    this.zoom = GlassMapStub.late && !this.told ? to.zoom : Math.min(to.zoom, GlassMapStub.depth)
+    this.told = true
+    if (this.zoom !== was) this.heard.zoom_changed?.()
+  }
+  getZoom() {
+    return this.zoom
+  }
+  addListener(name: string, fn: () => void) {
+    this.heard[name] = fn
+    return `glass-${name}`
+  }
+  /** Google thinks better of the zoom it gave, a moment after it was asked. */
+  settle(zoom: number) {
+    this.zoom = zoom
+    this.heard.zoom_changed?.()
+  }
+  /** The map's pictures have come in. */
+  drawn() {
+    this.heard.tilesloaded?.()
   }
 }
 class SizeStub {
@@ -223,6 +258,8 @@ beforeEach(() => {
   Object.defineProperty(lib.div, 'clientHeight', { get: () => lib.box.height })
   MarkerStub.made = []
   GlassMapStub.made = []
+  GlassMapStub.depth = 22
+  GlassMapStub.late = false
   forgetPaintedGlassForTests()
   PolylineStub.made = []
   CircleStub.made = []
@@ -884,14 +921,145 @@ describe('a place’s dot, put down by hand (step 3)', () => {
     act(() => marker().fire('drag', event(29.55001, -98.29999)))
     expect(glass()?.getAttribute('data-painted-glass')).toBe('open')
     expect(GlassMapStub.made).toHaveLength(1)
-    // The picture is the big map's own view: its zoom, on the spot under the finger.
-    expect(GlassMapStub.made[0]?.moves[GlassMapStub.made[0].moves.length - 1]).toEqual({ center: { lat: 29.55001, lng: -98.29999 }, zoom: 17 })
+    // The picture is the glass's own view: the spot under the finger, two zoom steps in from the big map's 17.
+    expect(GlassMapStub.made[0]?.moves[GlassMapStub.made[0].moves.length - 1]).toEqual({ center: { lat: 29.55001, lng: -98.29999 }, zoom: 19 })
     expect(glass()?.querySelector('[data-painted-glass-map]')?.contains(GlassMapStub.made[0]?.host ?? null)).toBe(true)
     // The drawn line: its dark edge and its dashes.
     expect(glass()?.querySelectorAll('polyline')).toHaveLength(2)
     expect(glass()?.querySelectorAll('[data-painted-glass-place]')).toHaveLength(1)
     act(() => marker().fire('dragend', event(29.55001, -98.29999)))
     expect(glass()).toBeNull()
+  })
+
+  /** The box that holds the glass's map: its size, and how much larger it is drawn. */
+  const picture = () => {
+    const box = glass()?.querySelector<HTMLElement>('[data-painted-glass-map]')
+    return { scale: box?.getAttribute('data-glass-scale'), width: box?.style.width, transform: box?.style.transform }
+  }
+
+  it('draws the glass’s photograph as it is where Google’s goes two steps deeper: sharp, and no larger', () => {
+    mount({ dot: dotAt(AT) })
+    down('touch')
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    expect(GlassMapStub.made[0]?.zoom).toBe(19)
+    // The whole glass, 132 px, is the map's own pixels.
+    expect(picture()).toEqual({ scale: '1', width: '132px', transform: 'scale(1)' })
+  })
+
+  it('draws it larger only by the steps Google held back, where the photograph ends sooner', () => {
+    // One step past the big map's 17, where the glass asks for 19.
+    GlassMapStub.depth = 18
+    mount({ dot: dotAt(AT) })
+    down('touch')
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    expect(GlassMapStub.made[0]?.zoom).toBe(18)
+    expect(picture()).toEqual({ scale: '2', width: '66px', transform: 'scale(2)' })
+    // No deeper than the big map's own zoom: four times the size, as it was before the glass asked for more.
+    GlassMapStub.depth = 17
+    act(() => marker().fire('drag', event(29.5507, -98.2993)))
+    expect(picture()).toEqual({ scale: '4', width: '33px', transform: 'scale(4)' })
+  })
+
+  it('follows Google when it changes the zoom it gave a moment after', () => {
+    mount({ dot: dotAt(AT) })
+    down('touch')
+    act(() => marker().fire('drag', event(29.5506, -98.2994)))
+    expect(picture().scale).toBe('1')
+    act(() => GlassMapStub.made[0]?.settle(17))
+    expect(picture()).toEqual({ scale: '4', width: '33px', transform: 'scale(4)' })
+  })
+
+  it('asks again while the finger rests on a spot Google held back, and sharpens when Google gives it', () => {
+    vi.useFakeTimers()
+    try {
+      // A spot Google has not seen: it holds the glass's map back until it knows how deep its photograph goes there.
+      GlassMapStub.depth = 17
+      mount({ dot: dotAt(AT) })
+      down('touch')
+      act(() => marker().fire('drag', event(29.5506, -98.2994)))
+      const map = GlassMapStub.made[0]!
+      expect(picture().scale).toBe('4')
+      const asks = map.moves.length
+      // Now it knows. The finger has not moved.
+      GlassMapStub.depth = 22
+      act(() => vi.advanceTimersByTime(150))
+      expect(map.moves).toHaveLength(asks + 1)
+      expect(map.moves[map.moves.length - 1]).toEqual({ center: { lat: 29.5506, lng: -98.2994 }, zoom: 19 })
+      expect(picture()).toEqual({ scale: '1', width: '132px', transform: 'scale(1)' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not trust the zoom Google says on new ground: it asks again, and draws by what Google then says', () => {
+    vi.useFakeTimers()
+    try {
+      // The photograph ends at the big map's own 17, and Google has not drawn this ground before.
+      GlassMapStub.depth = 17
+      GlassMapStub.late = true
+      mount({ dot: dotAt(AT) })
+      down('touch')
+      act(() => marker().fire('drag', event(29.5506, -98.2994)))
+      const map = GlassMapStub.made[0]!
+      // It says the zoom it was asked for, though it draws two steps short of it.
+      expect(map.zoom).toBe(19)
+      expect(picture().scale).toBe('1')
+      // The finger rests. The glass asks again by the clock, Google says what it took, and the picture is drawn by that.
+      act(() => vi.advanceTimersByTime(150))
+      expect(map.zoom).toBe(17)
+      expect(picture()).toEqual({ scale: '4', width: '33px', transform: 'scale(4)' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('asks again when the map’s pictures have come in, however slow the signal', () => {
+    vi.useFakeTimers()
+    try {
+      mount({ dot: dotAt(AT) })
+      down('touch')
+      act(() => marker().fire('drag', event(29.5506, -98.2994)))
+      const map = GlassMapStub.made[0]!
+      // Every ask by the clock has gone by, and Google still says the zoom it was asked for.
+      act(() => vi.advanceTimersByTime(10_000))
+      expect(picture().scale).toBe('1')
+      const asks = map.moves.length
+      // It has drawn one step short of that all along. Its pictures come in, the glass asks, and Google says so.
+      GlassMapStub.depth = 18
+      act(() => map.drawn())
+      expect(map.moves).toHaveLength(asks + 1)
+      expect(picture()).toEqual({ scale: '2', width: '66px', transform: 'scale(2)' })
+      // A map that says its pictures came in after every ask is asked twice for a spot, and no more.
+      act(() => map.drawn())
+      act(() => map.drawn())
+      act(() => map.drawn())
+      expect(map.moves).toHaveLength(asks + 2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('stops asking: a few times for a rest of the finger, and not at all once the glass is down', () => {
+    vi.useFakeTimers()
+    try {
+      mount({ dot: dotAt(AT) })
+      down('touch')
+      act(() => marker().fire('drag', event(29.5506, -98.2994)))
+      const map = GlassMapStub.made[0]!
+      const asks = map.moves.length
+      act(() => vi.advanceTimersByTime(60_000))
+      expect(map.moves).toHaveLength(asks + 3)
+      // A new spot under the finger, then the finger lifts before the first ask again is due.
+      act(() => marker().fire('drag', event(29.5507, -98.2993)))
+      const moved = map.moves.length
+      act(() => marker().fire('dragend', event(29.5507, -98.2993)))
+      act(() => vi.advanceTimersByTime(60_000))
+      expect(map.moves).toHaveLength(moved)
+      // The glass no longer listens to its map: not for its zoom, and not for its pictures coming in.
+      expect(lib.removed).toEqual(expect.arrayContaining(['glass-zoom_changed', 'glass-tilesloaded']))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('makes the glass’s map once for the page, however many drags and painted maps follow', () => {

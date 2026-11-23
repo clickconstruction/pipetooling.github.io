@@ -86,3 +86,22 @@ export function spotAtBox(at: { x: number; y: number }, view: PaintedMapView, bo
 export function glassView(point: PaintedPoint, mapZoom: number): PaintedMapView {
   return { center: { lat: point.lat, lng: point.lng }, zoom: mapZoom + GLASS_ZOOM_IN }
 }
+
+/**
+ * A glass whose picture is a map of its own asks that map for the view it looks through. A map of
+ * photographs gives a zoom no deeper than its photograph goes at the spot. On ground it has not
+ * drawn before it learns that depth a moment after it is asked, and says the zoom it truly took
+ * only when it is asked again. While the finger rests the glass asks again this long after. An ask
+ * the map has already answered moves nothing and fetches nothing.
+ */
+export const GLASS_ASK_AGAIN_MS: ReadonlyArray<number> = [150, 600, 1500]
+
+/**
+ * How much larger the glass draws its own map's picture: only the zoom steps that map could not
+ * give. One when the map gave the view asked for, which is a sharp picture. A map that cannot say
+ * its zoom is taken at its word.
+ */
+export function glassPictureScale(askedZoom: number, gaveZoom: number | null | undefined): number {
+  if (gaveZoom == null || !Number.isFinite(gaveZoom)) return 1
+  return 2 ** Math.max(0, askedZoom - gaveZoom)
+}
