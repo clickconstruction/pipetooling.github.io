@@ -52,6 +52,16 @@ describe('DashboardLienDeskCard', () => {
     expect(worked.map((el) => `${el.textContent}:${el.getAttribute('data-tone') ?? ''}`)).toEqual(['14:red', '6:', '5:'])
   })
 
+  it('for the office the middle count names the leader, and only the day’s count keeps its width on a phone (v2.8372)', () => {
+    const named: LienDeskCard = { values: CARD.values.map((v) => (v.key === 'waiting' ? { ...v, words: 'waiting on Sam' } : v)), line: null }
+    render(<DashboardLienDeskCard card={named} userId="u1" role="assistant" />)
+    const card = screen.getByRole('button', { name: /Lien desk.*The Board/ })
+    expect(values(card)).toEqual(['by_day:red:14by Dec 15', 'waiting::6waiting on Sam', 'in_mail::5to print and mail'])
+    // A long name wraps inside its column rather than push the card past the screen's edge.
+    const shrink = Array.from(card.querySelectorAll<HTMLElement>('[data-lien-desk-card-value]')).map((el) => el.style.flexShrink)
+    expect(shrink).toEqual(['0', '1', '1'])
+  })
+
   it('with nothing late or at risk there is no red line and no red count', () => {
     render(<DashboardLienDeskCard card={CALM} userId="u1" role="assistant" />)
     expect(document.querySelector('[data-lien-desk-card-line]')).toBeNull()
