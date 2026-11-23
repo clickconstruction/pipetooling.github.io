@@ -16,6 +16,7 @@ import type { TallyTeamQueueReads } from '../../lib/tally/fetchTallyTeamQueue'
 import type { StaleStaffRow } from '../../lib/tally/teamPurchaseRows'
 import type { CardChargeWindowRow } from '../../lib/banking/cardChargesWindow'
 import type { SortedTeamPurchaseRow } from '../../lib/teamPurchasesSorted'
+import { moneyText } from '../../test/moneyText'
 
 const rpc = vi.fn()
 
@@ -220,11 +221,11 @@ describe('TallyTeamQueue', () => {
     expect(presses[0]!.textContent).toBe('Copy the receipt link')
     fireEvent.click(presses[0]!)
     await waitFor(() => expect(copyReceiptLinkFor).toHaveBeenCalledWith('t-fuel'))
-    expect(await screen.findByText('Receipt link copied for $31.47 at Corner Fuel. It opens until Oct 14.')).toBeTruthy()
+    expect(await screen.findByText(moneyText('Receipt link copied for $31.47 at Corner Fuel. It opens until Oct 14.'))).toBeTruthy()
     // A browser that would not copy shows the link, and a refusal shows its reason.
     copyReceiptLinkFor.mockResolvedValueOnce({ url: 'https://clicktooling.com/r/k7m2p9xq4d', closesOn: null, copied: false })
     fireEvent.click(within(card).getAllByTestId('tally-team-receipt-link')[1]!)
-    expect(await screen.findByText(/The receipt link for \$88\.20 at Ridge Supply is https:\/\/clicktooling\.com\/r\/k7m2p9xq4d/)).toBeTruthy()
+    expect(await screen.findByText(moneyText(/The receipt link for \$88\.20 at Ridge Supply is https:\/\/clicktooling\.com\/r\/k7m2p9xq4d/))).toBeTruthy()
     copyReceiptLinkFor.mockRejectedValueOnce(new Error('Only the office can copy a receipt link.'))
     fireEvent.click(within(card).getAllByTestId('tally-team-receipt-link')[0]!)
     expect(await screen.findByText('Only the office can copy a receipt link.')).toBeTruthy()

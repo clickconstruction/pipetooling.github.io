@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { JobWindowCostMovePanel } from './JobWindowCostMovePanel'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 const SOURCE = '11111111-1111-4111-8111-111111111111'
 const TARGET = '22222222-2222-4222-8222-222222222222'
@@ -98,7 +99,7 @@ describe('JobWindowCostMovePanel', () => {
     expect(screen.getByText('rejected · stays')).toBeTruthy()
     expect(screen.getByText('Permit')).toBeTruthy()
     expect(screen.getByText(/Other job charges cannot be moved by a cost batch/)).toBeTruthy()
-    expect(screen.getByText(/On the job: 1 bank row \(-\$84\.10\) · 1 invoice \(\$507\.80\) · 2 sessions \(9\.5 h\)/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/On the job: 1 bank row \(-\$84\.10\) · 1 invoice \(\$507\.80\) · 2 sessions \(9\.5 h\)/))).toBeTruthy()
 
     // Move is dead with nothing ticked. A click on the bank row's counterparty ticks it; the invoice by its box;
     // the stream's press ticks the one movable session (the rejected one is held by the kernel).
@@ -108,7 +109,7 @@ describe('JobWindowCostMovePanel', () => {
     fireEvent.click(screen.getByLabelText(/Tick invoice 4471/))
     // The stream's press, the heading's and Malachi's group press read the same; any ticks his one movable session.
     fireEvent.click(screen.getAllByRole('button', { name: 'Tick 1 session' })[0]!)
-    expect(screen.getByText(/Ticked: 1 bank row \(-\$84\.10\) · 1 invoice \(\$507\.80\) · 1 session \(9\.5 h\)/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/Ticked: 1 bank row \(-\$84\.10\) · 1 invoice \(\$507\.80\) · 1 session \(9\.5 h\)/))).toBeTruthy()
 
     // Move N rows… opens the window on those rows and holds the job window's Escape; its × lets go.
     fireEvent.click(screen.getByRole('button', { name: 'Move 3 ticked rows…' }))

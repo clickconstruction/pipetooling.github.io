@@ -9,6 +9,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 import SendRecordInvoiceModal from './SendRecordInvoiceModal'
+import { moneyText } from '../../test/moneyText'
 
 const ENSURE_RPC = 'ensure_single_ready_to_bill_invoice_for_job'
 
@@ -106,11 +107,11 @@ async function open() {
     />,
   )
   await waitFor(() => {
-    expect(screen.getByText(/RTB \$2,630\.00/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/RTB \$2,630\.00/))).toBeTruthy()
   })
   // The amount reaches the bill a tick after the header: wait for the bill's own total before pressing.
   await waitFor(() => {
-    expect(screen.getAllByText('$2,630.00').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(moneyText('$2,630.00')).length).toBeGreaterThan(0)
   })
 }
 
