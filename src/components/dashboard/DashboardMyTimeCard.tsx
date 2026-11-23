@@ -1,7 +1,8 @@
 /**
  * My Time as a card of its own, for Job Mode, which shows no My Time section: the same picture of the time added
- * up, by day and by week, and for an hourly person the quiet line that asks the hours they can work. It feeds Job
- * Mode's This week square, so the week is read once, and reads again when the clock changes.
+ * up, by day and by week, and the same quiet line at its foot as the Dashboard's. A person with working hours reads
+ * them (punch list #429), and an hourly person with none is asked the hours they can work. It feeds Job Mode's
+ * This week square, so the week is read once, and reads again when the clock changes.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { useSessionChanges } from '../../contexts/UpdateFocusOpenerBridgeContext'
@@ -24,7 +25,7 @@ export function DashboardMyTimeCard({
 }: {
   userId: string
   displayName: string
-  /** A salaried person's week is on pay, so nothing is asked of them here. */
+  /** A salaried person's week is on pay, so they are told their working hours and never asked for a week. */
   isSalary: boolean
   /** Job Mode's top row reads this week's hours from this card's own read. `null` when the read failed. */
   onWeek?: (workedHours: number | null) => void
@@ -60,7 +61,7 @@ export function DashboardMyTimeCard({
         <DashboardCardTitle nowrap>My Time</DashboardCardTitle>
       </DashboardCardHead>
       <DashboardMyTimePicture weeks={weeks} selected={selected} onSelect={setChosen}>
-        {isSalary ? null : <MyTimeCanWorkLine userId={userId} displayName={displayName} io={io} />}
+        <MyTimeCanWorkLine userId={userId} displayName={displayName} asks={!isSalary} io={io} />
       </DashboardMyTimePicture>
     </div>
   )

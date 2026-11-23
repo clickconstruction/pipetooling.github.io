@@ -18,6 +18,7 @@ import {
 } from '../../lib/jobs/jobFormatting'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { supplyHouseWebsitePortalHref } from '../../lib/supplyHouseWebsite'
+import { JobSummarySupplyInvoiceList } from './JobSummarySupplyInvoiceList'
 import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHhMm'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
@@ -66,6 +67,7 @@ import JobSummaryLedgerToolbar, { JobSummarySortHeader } from './JobSummaryLedge
 import JobSummaryCutByPanel, { JobSummaryGroupRow } from './JobSummaryCutByPanel'
 import { JobSummaryJobCell } from './JobSummaryJobCell'
 import { AmountSmallCents, SignedAmountSmallCents } from '../AmountSmallCents'
+import { Money, MoneyText } from '../Money'
 import { shareOfTotalLabel } from '../../lib/jobs/jobSummaryShareOfTotal'
 import JobSummaryDaysView, { type JobSummaryDaysJobLabel } from './JobSummaryDaysView'
 import JobSummaryMonthsView from './JobSummaryMonthsView'
@@ -357,13 +359,23 @@ function renderJobSummarySupplyHouseInvoiceTableContent(
                 )}
               </td>
               <td style={{ padding: '0.25rem 0.4rem' }}>{formatJobSummaryInvoiceDate(row.invoice_date)}</td>
-              <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>${formatCurrency(row.allocated_amount)}</td>
+              <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}><Money amount={row.allocated_amount} /></td>
             </tr>
           )
         })}
       </tbody>
     </table>
   )
+}
+
+/**
+ * A job's supply house invoices as the Job Summary draws them since punch list #431: the list a person can search,
+ * with a share press on each invoice (`JobSummarySupplyInvoiceList`). While the rows load, and for a job with none,
+ * the words of the function above stand, so its table is no longer reached.
+ */
+function renderJobSummarySupplyInvoices(invoiceLoaded: boolean, invoiceRows: JobSummaryInvoiceAllocationLine[], invoicesFromSupplyHouses: number): ReactNode {
+  if (invoiceLoaded && invoiceRows.length > 0) return <JobSummarySupplyInvoiceList rows={invoiceRows} />
+  return renderJobSummarySupplyHouseInvoiceTableContent(invoiceLoaded, invoiceRows, invoicesFromSupplyHouses)
 }
 
 const jobSummaryPartsCostDetailsBoxStyle: CSSProperties = {
@@ -1109,11 +1121,15 @@ export default function JobsJobSummaryTab({
                                         )
                                       ) : (
                                         <p style={{ margin: '0.35rem 0', color: 'var(--text-700)' }}>
-                                          {view.prefs.method === 'A'
-                                            ? `${enriched.hoursInWindow.toFixed(1)} field h × $${(view.ledger?.rates.methodA ?? 0).toFixed(2)}/h (pool ÷ field hours over the window)`
-                                            : view.prefs.method === 'B'
-                                              ? `$${formatCurrency(enriched.revenueUsd)} revenue × ${((view.ledger?.rates.methodB ?? 0) * 100).toFixed(1)}% (pool ÷ invoiced revenue over the window)`
-                                              : `field labor $ × $${(view.ledger?.rates.methodC ?? 0).toFixed(2)} per $1 (pool ÷ field labor $ over the window)`}
+                                          <MoneyText
+                                            text={
+                                              view.prefs.method === 'A'
+                                                ? `${enriched.hoursInWindow.toFixed(1)} field h × $${(view.ledger?.rates.methodA ?? 0).toFixed(2)}/h (pool ÷ field hours over the window)`
+                                                : view.prefs.method === 'B'
+                                                  ? `$${formatCurrency(enriched.revenueUsd)} revenue × ${((view.ledger?.rates.methodB ?? 0) * 100).toFixed(1)}% (pool ÷ invoiced revenue over the window)`
+                                                  : `field labor $ × $${(view.ledger?.rates.methodC ?? 0).toFixed(2)} per $1 (pool ÷ field labor $ over the window)`
+                                            }
+                                          />
                                         </p>
                                       )}
                                       <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -1626,7 +1642,7 @@ export default function JobsJobSummaryTab({
                                                     void loadJobSummaryInvoiceLinesForJob(job.id)
                                                     setJobSummaryCostDrilldown({
                                                       title: 'Unassigned — supply house invoices',
-                                                      body: renderJobSummarySupplyHouseInvoiceTableContent(
+                                                      body: renderJobSummarySupplyInvoices(
                                                         jobSummaryInvoiceLinesByJobId.has(job.id),
                                                         jobSummaryInvoiceLinesByJobId.get(job.id) ?? [],
                                                         invoicesFromSupplyHouses,
@@ -1660,7 +1676,7 @@ export default function JobsJobSummaryTab({
                                                           </div>
                                                           <div>
                                                             <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>Supply houses</p>
-                                                            {renderJobSummarySupplyHouseInvoiceTableContent(
+                                                            {renderJobSummarySupplyInvoices(
                                                               jobSummaryInvoiceLinesByJobId.has(job.id),
                                                               jobSummaryInvoiceLinesByJobId.get(job.id) ?? [],
                                                               invoicesFromSupplyHouses,
@@ -2033,7 +2049,7 @@ export default function JobsJobSummaryTab({
                                                           Supply is allocated to the job, not to individual people. The Total row uses
                                                           the same figure whether or not a person name filter is active.
                                                         </p>
-                                                        {renderJobSummarySupplyHouseInvoiceTableContent(
+                                                        {renderJobSummarySupplyInvoices(
                                                           jobSummaryInvoiceLinesByJobId.has(job.id),
                                                           jobSummaryInvoiceLinesByJobId.get(job.id) ?? [],
                                                           invoicesFromSupplyHouses,
@@ -2104,7 +2120,7 @@ export default function JobsJobSummaryTab({
                                                         </div>
                                                         <div>
                                                           <p style={{ margin: '0 0 0.35rem', fontSize: '0.8rem', fontWeight: 600 }}>Supply</p>
-                                                          {renderJobSummarySupplyHouseInvoiceTableContent(
+                                                          {renderJobSummarySupplyInvoices(
                                                             jobSummaryInvoiceLinesByJobId.has(job.id),
                                                             jobSummaryInvoiceLinesByJobId.get(job.id) ?? [],
                                                             invoicesFromSupplyHouses,
@@ -2929,7 +2945,7 @@ export default function JobsJobSummaryTab({
                                           <span style={{ fontWeight: 400 }}><AmountSmallCents value={invoicesFromSupplyHouses} /></span>
                                         </summary>
                                         <div style={{ marginTop: '0.5rem' }}>
-                                          {renderJobSummarySupplyHouseInvoiceTableContent(
+                                          {renderJobSummarySupplyInvoices(
                                             jobSummaryInvoiceLinesByJobId.has(job.id),
                                             jobSummaryInvoiceLinesByJobId.get(job.id) ?? [],
                                             invoicesFromSupplyHouses,
@@ -3015,7 +3031,7 @@ export default function JobsJobSummaryTab({
                                                         </td>
                                                         <td style={{ padding: '0.25rem 0.4rem' }}>{debitCardLabel}</td>
                                                         <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                          <AmountSmallCents value={Math.abs(allocCost)} prefix={allocCost < 0 ? '−$' : '$'} />
+                                                          <Money amount={allocCost} />
                                                           {allocCost < 0 ? (
                                                             <span style={{ marginLeft: '0.3rem', fontSize: '0.72em', color: 'var(--text-muted)' }}>refund</span>
                                                           ) : null}

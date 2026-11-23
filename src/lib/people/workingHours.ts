@@ -12,8 +12,7 @@ import { startOfYmdInAppTzMs } from '../../utils/dateUtils'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
 import { payWeekContaining } from '../payWeekAnchor'
 import { val } from '../valuesInPlace'
-import type { AvailableHoursAnswer } from './utilization'
-import type { Segment, WeekDays } from './weekAvailability'
+import type { AvailableHoursAnswer, Segment, WeekDays } from './weekTypes'
 
 export const WORKING_HOURS_STEP_MINUTES = 15
 /** A day holds one range, or two with a break between. */

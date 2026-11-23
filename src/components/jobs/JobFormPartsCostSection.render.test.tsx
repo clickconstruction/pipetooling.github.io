@@ -119,7 +119,7 @@ describe('Where the money went — fuel as its own row (punch list #52)', () => 
 })
 
 describe('Other job charges read as money (punch list #215)', () => {
-  const centsIn = (el: HTMLElement) => el.parentElement?.querySelector('[data-testid="money-cents"]')?.textContent ?? null
+  const centsIn = (el: HTMLElement) => el.parentElement?.querySelector('[data-cents]')?.textContent ?? null
 
   it('blurred, the amount has commas and the cents drawn smaller; focused, it is the plain digits', () => {
     renderSection([filledRow('a', 'Permit fee', 39796.7)])
@@ -163,7 +163,7 @@ describe('Other job charges read as money (punch list #215)', () => {
   it('a plain description wears no chip, and the accordion total draws its cents smaller too', () => {
     renderSection([filledRow('a', 'Dump fee', 85)])
     expect(screen.queryByTestId('estimate-chip')).toBeNull()
-    const cents = screen.getAllByTestId('money-cents').map((el) => el.textContent)
+    const cents = [...document.querySelectorAll('[data-cents]')].map((el) => el.textContent)
     expect(cents).toContain('.00')
     expect(cents).toContain('.00')
   })

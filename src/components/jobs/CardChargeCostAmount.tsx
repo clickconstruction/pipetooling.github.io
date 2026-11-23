@@ -1,4 +1,4 @@
-import { formatCurrency } from '../../lib/format'
+import { Money } from '../Money'
 import { cardChargeCostUsd } from '../../lib/jobs/cardChargeAllocationFilter'
 
 /**
@@ -18,9 +18,7 @@ export function CardChargeCostAmount({
   const refund = cost < 0
   return (
     <>
-      {refund ? '−' : ''}
-      {dollarSign ? '$' : ''}
-      {formatCurrency(Math.abs(cost))}
+      <Money amount={cost} symbol={dollarSign ? '$' : ''} />
       {refund ? (
         <span data-testid="card-refund-mark" style={{ marginLeft: '0.35rem', fontSize: '0.72em', color: 'var(--text-muted)' }}>
           refund
