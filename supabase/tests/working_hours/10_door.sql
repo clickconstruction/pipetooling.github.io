@@ -130,6 +130,8 @@ SELECT whd.same('one line on the pay log, with the reason and who',
   (SELECT action || ' | ' || reason || ' | ' || actor::text || ' | ' || (payload ->> 'by') || ' | ' || (payload -> 'changes' ->> 'salaried_week_hours') FROM public.pay_admin_events WHERE person_name = 'ZZ Hours Hal Roster'),
   'set_pay_config | A class on Fridays | 00000000-0000-0000-0000-00000000d001 | set_working_hours | [0.00, 6.00, 6.00, 6.00, 6.00, 4.25, 0.00]');
 SELECT whd.same('the newest save of a Sunday wins', public.working_hours_on('00000000-0000-0000-0000-00000000d005', whd.sunday() + 5)::text, '[[360, 615]]');
+-- The newest save in force holds: next week no longer reads the seven to one saved before it.
+SELECT whd.same('a save for this week holds next week too, over an older save for next week', public.working_hours_on('00000000-0000-0000-0000-00000000d005', whd.sunday() + 8)::text || ' ' || public.working_hours_on('00000000-0000-0000-0000-00000000d005', whd.sunday() + 12)::text, '[[360, 720]] [[360, 615]]');
 
 -- 8 · A lunch is not paid: two ranges add up without the break.
 SELECT whd.same('a day with a lunch pays its two ranges',

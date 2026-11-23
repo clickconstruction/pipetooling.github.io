@@ -122,8 +122,10 @@ CREATE POLICY person_available_hours_write ON public.person_available_hours
   );
 
 -- A person's working hours on a day: that weekday's ranges from the set week in force, an empty list for a day
--- off, and null when nobody has set hours or they were taken off. Runs as the caller, so it answers what the
--- caller may read.
+-- off, and null when nobody has set hours or they were taken off. The week in force is the newest save among the
+-- rows that have started, not the one with the latest Sunday: hours saved for next week and then changed for this
+-- week hold as changed, next week too, so a salaried person's pay numbers and hours never part. Runs as the
+-- caller, so it answers what the caller may read.
 CREATE OR REPLACE FUNCTION public.working_hours_on(p_user_id uuid, p_day date)
 RETURNS jsonb
 LANGUAGE sql
@@ -134,7 +136,7 @@ AS $$
     SELECT h.days -> extract(dow FROM p_day)::int
     FROM public.person_available_hours h
     WHERE h.user_id = p_user_id AND h.kind = 'set' AND h.effective_from <= p_day
-    ORDER BY h.effective_from DESC, h.created_at DESC
+    ORDER BY h.created_at DESC
     LIMIT 1
   );
 $$;
@@ -143,7 +145,7 @@ REVOKE ALL ON FUNCTION public.working_hours_on(uuid, date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.working_hours_on(uuid, date) TO authenticated, service_role;
 
 COMMENT ON FUNCTION public.working_hours_on(uuid, date) IS
-  'A person''s working hours on a day: the weekday''s [start, end] minute ranges from the set week in force (person_available_hours.kind = set, the newest on or before the day), [] for a day off, null with no working hours. Security invoker.';
+  'A person''s working hours on a day: the weekday''s [start, end] minute ranges from the set week in force (person_available_hours.kind = set, the newest save among the rows that started on or before the day), [] for a day off, null with no working hours. Security invoker.';
 
 -- The one door. A dev or the controller sets a person's working hours from this week's Sunday or next week's.
 CREATE OR REPLACE FUNCTION public.set_working_hours(
@@ -227,7 +229,7 @@ BEGIN
   SELECT h.days INTO v_before
   FROM public.person_available_hours h
   WHERE h.user_id = p_user_id AND h.kind = 'set' AND h.effective_from <= p_effective_from
-  ORDER BY h.effective_from DESC, h.created_at DESC
+  ORDER BY h.created_at DESC
   LIMIT 1;
 
   IF NOT p_dry_run THEN

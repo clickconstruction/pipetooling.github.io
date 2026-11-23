@@ -13,7 +13,7 @@ A person's week was described in three places that nothing held together: the se
 - **`person_available_hours_set_week_check`**: `kind <> 'set' OR days IS NULL OR working_week_ok(days)`. An answer keeps its loose shape.
 - **`hours_per_week`** goes from `numeric(4,1)` to `numeric(5,2)`, so a week can add up in quarter hours. This rewrites the table, which holds a handful of rows.
 - **The insert policy** `person_available_hours_write` is made again with `kind = 'answer'` in front of what it had.
-- **`working_hours_on(uuid, date) → jsonb`**, security invoker: the weekday's ranges from the newest set row on or before the day, `[]` for a day off, null with no working hours.
+- **`working_hours_on(uuid, date) → jsonb`**, security invoker: the weekday's ranges from the set week in force, `[]` for a day off, null with no working hours. The week in force is the newest save among the rows that have started, so hours saved for next week and then changed for this week hold as changed, next week too.
 - **`set_working_hours(uuid, jsonb, date, text, boolean) → jsonb`**, security definer.
 
 ## What the door refuses
