@@ -2,7 +2,7 @@
 name: "Bills sent: who paid, when, and what came in each day"
 number: 422
 group: close
-status: asked 2026-11-23 by the owner · the card and the mock-up the same day · he asked for two changes, the delivery word at the right edge and every amount's cents smaller, then said build it all · the list with payment made plain in v2.8333 · By day paid in v2.8343 · the Stripe paid day at its source in v2.8335, merged and its migration pushed on the owner's yes the same day · left: the leader's look, and the owner's call on the Stripe rows filed before the fix
+status: asked 2026-11-23 by the owner · the card and the mock-up the same day · the owner asked for two changes, the delivery word at the right edge and every amount's cents smaller, then said build it all · the list with payment made plain in v2.8333 · By day paid in v2.8343 · the Stripe paid day at its source in v2.8335, merged and its migration pushed on the owner's yes the same day · the six Stripe rows filed a day late before the fix moved back in v2.8371, pushed on the owner's yes the same day · left: the leader's look
 summary: >
   The owner asked that Bills sent show more clearly who has paid and when, in a way that fits what
   the leader already reads there, and that he can see how much money comes in from Stripe on any
@@ -11,11 +11,11 @@ summary: >
   suggests a stamp under each amount, a paid count on each day band, and a second view on the same
   page, By day paid: a month of days, each with what came in, and the bills behind a picked day.
   It reads the payment rows the app keeps and makes no new table.
-next: The leader opens the day he wanted to check. The owner says whether the Stripe rows filed a day late before the fix are corrected, after their list is read. Then the card is retired.
-size: M as a train of three (M · S · M), all three landed; left: the older rows, if the owner wants them (S)
-blocker: The leader's look. The older Stripe rows wait on the owner's call, and nothing else waits on them.
-opinion: say yes to the migration — until then an evening Stripe payment sits on the next day in both views
-ver: v2.8333 · v2.8335 · v2.8343
+next: The leader opens the day he wanted to check. Then the card is retired.
+size: M as a train of three (M · S · M) and the older rows (S), all landed
+blocker: The leader's look.
+opinion: retire the card after the leader's look; the views and the Stripe day need nothing more
+ver: v2.8333 · v2.8335 · v2.8343 · v2.8371
 ---
 
 # Bills sent: who paid, when, and what came in each day (#422)
@@ -26,7 +26,7 @@ This card follows [#327, Bills sent](../bills-sent-ledger/README.md), which buil
 
 ## The ask
 
-The owner, 2026-11-23, in his words: on Bills sent he wants to "show more clearly who has paid and when, so that [the leader] can see that in an intuitive way that complements what he's looking at. He would like to know how much money is coming in on any given day from Stripe, and maybe that's a new view he can look between."
+The owner asked on 2026-11-23 for Bills sent to "show more clearly who has paid and when, so that [the leader] can see that in an intuitive way that complements what he's looking at. He would like to know how much money is coming in on any given day from Stripe, and maybe that's a new view he can look between."
 
 The reader is the leader, the role `master_technician`. He opens `/bills-sent` now. A plan and a mock-up come before any build.
 
@@ -161,7 +161,7 @@ Every screen above that reads `paid_on` shares the flaw today: Money in, the Bri
 The fix belongs at the source, so every reader agrees:
 
 - One migration replaces the function with the company's day in place of the UTC day.
-- Older Stripe rows can be corrected once: the rows whose note is *Stripe* and whose `paid_on` is one day after the Central day of `created_at`. Read the list first. The update will fire the table's history trigger, and a payment that moves from a Monday to a Sunday can move between weeks on Weekly money and the Bridge. That is the owner's call.
+- Older Stripe rows can be corrected once: the rows whose note is *Stripe* and whose `paid_on` is one day after the Central day of `created_at`. Read the list first. No trigger writes a line when a row's day changes, so the job's trail stays as it is. A payment that moves from a Monday to a Sunday moves between weeks on Weekly money. That is the owner's call.
 
 The other way is to leave the function alone and have the new view place a Stripe payment by `created_at`. I advise against it. The page and the Dashboard would then disagree about the same payment.
 
@@ -285,14 +285,14 @@ One thing only the leader has: the day he wanted to check when he asked.
 
 ## Where it stands
 
-The owner saw the mock-up on 2026-11-23. In his words: "I like your suggestion for the changes." He asked for two changes, and both are drawn: the opened and delivered word moves to the right side, aligned right, and the cents of a number are always smaller than the rest of it. He has not yet said go, and the seven calls are still his.
+The owner saw the mock-up on 2026-11-23 and wrote: "I like your suggestion for the changes." The owner asked for two changes, and both are drawn: the opened and delivered word moves to the right side, aligned right, and the cents of a number are always smaller than the rest of it. Go had not been said yet, and the seven calls were still open.
 
-He said go on 2026-11-23: *Let's build it all testing along the way, making sure it looks great with screenshots, and always asking ourselves, is this the best we can do?* The seven calls were taken as suggested, since he said build it all.
+The owner said go on 2026-11-23: *Let's build it all testing along the way, making sure it looks great with screenshots, and always asking ourselves, is this the best we can do?* The seven calls were taken as suggested, since the owner said build it all.
 
 | Step | What | State |
 |---|---|---|
 | 1 | The list, payment made plain: the kernel `billsPaid.ts`, the payments read, the stamp, the band's line, the tile, the chips, the phone's bar, the record's payments, print and CSV. The plan's PR 1 and PR 2 as one | v2.8333 |
-| 2 | The Stripe paid day at its source: `mark_invoice_paid_from_stripe` files the company's day. Migration `20261123074206`, with a SQL bed that ran green on the whole schema | v2.8335, merged and pushed on the owner's yes on 2026-11-23. The live function was read afterwards: it files the company's day, and the service role alone may call it. The older rows are a second step, after their list is read |
+| 2 | The Stripe paid day at its source: `mark_invoice_paid_from_stripe` files the company's day. Migration `20261123074206`, with a SQL bed that ran green on the whole schema | v2.8335, merged and pushed on the owner's yes on 2026-11-23. The live function was read afterwards: it files the company's day, and the service role alone may call it. The older rows were a second step: v2.8371 moved the six back a day on the owner's yes, after their list was read, and was pushed the same day. Read afterwards, no Stripe row sat a day late and every job's paid total still matched its payments |
 | 3 | By day paid: the switch, the month, the picked day, the chips, the payout tile, the Paid this week tile, print and CSV | v2.8343 |
 
 What step 1 found while it was built:
@@ -304,7 +304,7 @@ What step 1 found while it was built:
 
 What step 3 found while it was built:
 
-- Step 3 was built before step 2 merged. A Stripe payment made in the evening before the migration was pushed on 2026-11-23 still sits on the next day in both views, as it does on the Dashboard's Money in bar. A payment made after the push sits on its own day.
+- Step 3 was built before step 2 merged. The Stripe payments made in the evening before the migration was pushed on 2026-11-23 sat on the next day in both views, as on the Dashboard's Money in bar, until v2.8371 moved the six back. A payment made after the push sits on its own day.
 - A matched deposit that is no check reads **Bank transfer**. The view reads the payment rows and not the bank's own rows, so it does not tell a wire from an ACH.
 - A month's cell is too narrow for a five-figure day. From ten thousand dollars a cell writes thousands with one decimal, and the picked day says the figure whole.
 - Money on a job with no bill named is listed as *Payment*, so a day's total agrees with the Money in bar.
