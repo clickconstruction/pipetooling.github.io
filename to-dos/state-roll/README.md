@@ -2,7 +2,7 @@
 name: "State roll: who holds a license near us"
 number: 411
 group: ready
-status: Go 2026-11-21 · Taunya said build it as drawn · step one built and live, v2.8159, v2.8164 and v2.8198 (the tab with its Pulls view) · step two built and live, v2.8202 (the read keeps our own licenses, redeployed and pulled) and v2.8233 (the Our own view), but for `check_license` · the Our own view not yet walked on the live site
+status: Go 2026-11-21 · Taunya said build it as drawn · step one built and live, v2.8159, v2.8164 and v2.8198 (the tab with its Pulls view) · step two built and live, v2.8202 (the read keeps our own licenses, redeployed and pulled), v2.8233 (the Our own view) and v2.8317 (`check_license` reads a plumbing number) · the Our own view not yet walked on the live site
 summary: >
   Taunya cannot find experienced plumbers, and they must be licensed. The state publishes the roll
   of every licensed plumber as free files, and of every electrician and A/C license on its open
@@ -12,9 +12,9 @@ summary: >
   is no score. The state gives no phone, address or email, so how to reach a person is added by
   the office by hand.
 next: >
-  Walk the Our own view on the live site, and read the first scheduled pull on Monday 2026-11-23. Then step three: Everyone and the person's sheet. On the way, `check_license` reads a plumbing number, which closes step two.
+  Walk the Our own view on the live site. The first scheduled pull of 2026-11-23 is read and holds. Then step three: Everyone and the person's sheet.
 size: L as a train of five (M · M · M · M · S)
-ver: v2.8159 · 8164 · 8198 · 8202 · 8233
+ver: v2.8159 · 8164 · 8198 · 8202 · 8233 · 8317
 blocker: None. A lawyer's answer is wanted before the first call from the list, which is step four.
 opinion: build — start with the pull and Our own, which are worth having with no outreach at all
 ---
@@ -53,7 +53,7 @@ Read from the sources on 2026-11-20. Nothing was written anywhere, and the sampl
 - **A/C endorsements are visible.** A contractor's subtype gives class A or B with E (environmental air conditioning) or R (commercial refrigeration). A technician reads `REG` or `CER`. A plumbing license carries no A/C endorsement.
 - **Why there is no phone.** Texas Government Code § 552.11765, in force since 2023-09-01, keeps a license holder's home address, home phone and email confidential. Name, number and status stay public. A records request would not get them.
 - **Robots files.** `tsbpe.texas.gov` disallows only its admin folder. `tdlr.texas.gov` disallows its own CSV files, so a job reads the open-data copy, which asks for a second between requests.
-- **The app's note was wrong.** `check_license` and the logbook's check refuse a plumbing number, saying the board keeps no open list. It does.
+- **The app's note was wrong.** `check_license` refused a plumbing number, saying the board keeps no open list. It does, and since [v2.8317](../../docs/recent-features/v2.8317.md) the verb reads it.
 
 ## The tab
 
@@ -130,11 +130,13 @@ After they run, check by counts:
 - `license_roll_pulls` has five new rows, each with `finished_at` set and `error` empty.
 - The four weekly files keep about what they kept on 2026-11-21: 1,228 responsible masters, 597 masters, 4,010 journeymen and 672 tradesmen. A refusal that says a file *looks cut short* means the board sent a partial file, and nothing was changed.
 - The apprentice file keeps our own apprentices' rows and no other.
+
+**Read on 2026-11-23 at 12:53 UTC, counts only, off `license_roll_pulls` through the dev seat.** All five jobs ran at their minute and each wrote one row with `finished_at` set, `error` empty and no `pulled_by`: responsible masters 9,416 seen and 1,228 kept with 5 changed, masters 4,365 and 597 with 1 changed, journeymen 26,474 and 4,010 with none, tradesmen 3,580 and 672 with 1 changed, apprentices 43,076 seen and 3 kept with none. Nothing was added and nothing went. The four weekly files kept what they kept on 2026-11-21, and the apprentice file kept our own three rows and no other. `cron.job_run_details` was not read: the seat does not open the cron schema, and the five rows stand for the five jobs.
 - The journeyman and apprentice zips can run up to a week behind the other files, so a quiet week for them is normal.
 
 ### Loose ends
 
-- **`check_license` on the dev seat, and the logbook's check, refuse a plumbing number.** Both say the board keeps no open list, which is wrong. They live in `supabase/functions/dev-mcp/index.ts` and `src/lib/logbook/licenseText.ts`, whose copy under `supabase/functions/_shared/gcKernels/` changes with it. This closes step two. A `dev-mcp` change deploys through its own job from main after the merge.
+- **`check_license` on the dev seat reads a plumbing number** ([v2.8317](../../docs/recent-features/v2.8317.md)). It fetches the board's file of the level and answers by number, with no ZIP, county, address or phone, and keeps nothing. This closes step two. The edit window on People → Licenses still offers the board's search: a page cannot read a file that is the whole state at one level, and Our own already shows each license beside the state's row.
 - **No sub shows on Our own.** No person record holds a license today. The view reads one and tags a sub's when it does. The drawing's Teammates and Subs chips wait for the first.
 - **The apprentice file is not on Pull 4 files.** It is read on its Monday job only, so a new apprentice's license reads *Not on the roll* until then.
 - **Our date on a card is 28 px tall on a phone.** It is the app's shared in-place field (`ChangeableValue`), so it was left as it is. Every other press on the view is 44 px.
@@ -155,7 +157,7 @@ After they run, check by counts:
 One change a PR. A migration merges alone and is pushed before the code that calls it.
 
 1. **The tables and the pull.** `license_roll` (one row a license), `license_roll_changes` (what a pull saw change, growing only), `license_roll_pulls` (the ledger), `license_roll_counties` and `license_roll_left_off`. Then `license-roll-pull`, a function on a Monday cron that reads the plumbing files, keeps our counties, honours Leave off and writes what changed. **Built, v2.8159 and v2.8164**, and the first pull is in. The Pulls view shipped with the tab, v2.8198.
-2. **Our own.** The match of our people's and subs' numbers against the state. `check_license` reads a plumbing number. **Built, v2.8202 and v2.8233**: the pull keeps a row whose number is ours whatever the county, and reads the apprentice file for our own apprentices alone. The Our own view lays each license beside its state row. What is left is under [Left to do and to walk](#left-to-do-and-to-walk-2026-11-22).
+2. **Our own.** The match of our people's and subs' numbers against the state. `check_license` reads a plumbing number. **Built, v2.8202, v2.8233 and v2.8317**: the pull keeps a row whose number is ours whatever the county, and reads the apprentice file for our own apprentices alone. The Our own view lays each license beside its state row. The dev seat's `check_license` reads a plumbing number off the board's files. What is left is under [Left to do and to walk](#left-to-do-and-to-walk-2026-11-22).
 3. **Everyone and the person's sheet.** Search, the line of history, notes, Leave off.
 4. **Call this week.** The tags, the order, Pursue to Hiring, Not for us, the Reach block.
 5. **Electrical and A/C.** The same four views over TDLR's open list.

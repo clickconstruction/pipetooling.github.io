@@ -269,15 +269,15 @@ export function DashboardCrewDaySection({
     >
       <DashboardCardHead below="0.5rem" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <DashboardCardTitle nowrap>Crew Day</DashboardCardTitle>
+          <DashboardCardTitle nowrap>Who worked</DashboardCardTitle>
           {/* Office roles only (v2.2615): superintendents don't get the email —
               the dashboard is their window (owner decision; server enforces too). */}
           {isCrewDayEmailRole(role) ? (
             <button
               type="button"
               onClick={() => setEmailModalOpen(true)}
-              title="Email Crew Day — now or on a schedule"
-              aria-label="Email Crew Day"
+              title="Email Who worked — now or on a schedule"
+              aria-label="Email Who worked"
               style={{ ...navBtnStyle, lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}
             >
               {/* Icon: Font Awesome Free 7.x — envelope (OFL/CC-BY), owner-picked. */}

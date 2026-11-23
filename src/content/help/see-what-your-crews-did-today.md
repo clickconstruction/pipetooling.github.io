@@ -4,7 +4,7 @@ category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent
 keywords: crew day, daily report, who worked, hours, field reports, schedule, superintendent, flags, clocked in
 ---
-The **Crew Day** card on your Dashboard shows one day of crew activity in one place. The card shows who was on which jobs, and their scheduled versus actual clock times.
+The **Who worked** card on your Dashboard shows one day of crew activity in one place. The card shows who was on which jobs, and their scheduled versus actual clock times.
 
 The card also shows the hours that added up and the field reports the crew left. The card shows how far each job moved too.
 

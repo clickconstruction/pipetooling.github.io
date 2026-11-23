@@ -10,6 +10,7 @@ import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { PaperPartyKind } from '../contracts/paperParty'
 import type { PartyBusiness, PartyCustomer, PartyCustomerPerson, PartyRecordTable, PartyRep, PartySupplyHouse } from './paperPartyPick'
+import { PARTY_CONTACT_COLUMN, partyContactIsOwn, type PartyCopyOut } from './partyPaperOut'
 
 // `paper_party_contact` joins the generated types with the types PR after its push; until then the client is cast once.
 const db = supabase as unknown as SupabaseClient
@@ -67,6 +68,35 @@ export async function readPartyContact(record: { table: PartyRecordTable; id: st
 }
 
 /** Whose an address already is, when the app knows it. */
+/**
+ * The contact a record's paper is filed under, when the record has one already. A read alone: nothing is made here,
+ * where `readPartyContact` makes one. A business's own contact carries no name, as `paper_party_contact` finds it.
+ */
+export async function findPartyContact(record: { table: PartyRecordTable; id: string }): Promise<string | null> {
+  const column = PARTY_CONTACT_COLUMN[record.table]
+  const rows = await withSupabaseRetry(async () => db.from('contacts').select('id, name').eq(column, record.id).limit(50), 'look for who the paper is with')
+  const list = (rows ?? []) as Array<{ id: string; name: string | null }>
+  const found = partyContactIsOwn(record.table) ? list.find((c) => c.name == null) : list[0]
+  return found?.id ?? null
+}
+
+/** Who each copy that is out went to, in the order asked. A copy that went away since is left out. */
+export async function readCopiesOut(docIds: readonly string[]): Promise<PartyCopyOut[]> {
+  if (docIds.length === 0) return []
+  const rows = await withSupabaseRetry(
+    async () => db.from('person_contract_documents').select('id, signer_name, signer_title, signer_email, sent_at, status').in('id', [...docIds]),
+    'read who has the paper out',
+  )
+  const byId = new Map(((rows ?? []) as Array<{ id: string; signer_name: string | null; signer_title: string | null; signer_email: string | null; sent_at: string | null; status: string }>).map((r) => [r.id, r]))
+  const out: PartyCopyOut[] = []
+  for (const id of docIds) {
+    const r = byId.get(id)
+    if (!r || r.status !== 'sent') continue
+    out.push({ docId: r.id, signerName: (r.signer_name ?? '').trim(), signerTitle: (r.signer_title ?? '').trim(), signerEmail: (r.signer_email ?? '').trim(), sentAt: r.sent_at })
+  }
+  return out
+}
+
 export type KnownAddress = {
   contactId: string
   /** The name Messages shows for them. */

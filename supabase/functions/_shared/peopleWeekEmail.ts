@@ -62,7 +62,7 @@ export function weekWords(weekStart: string, weekEnd: string): string {
 }
 
 export function peopleWeekSubject(p: PeopleWeekPayload): string {
-  return `Your people’s week · ${weekWords(p.week_start, p.week_end)}`
+  return `The team’s week · ${weekWords(p.week_start, p.week_end)}`
 }
 
 function plural(n: number, one: string, many: string): string {

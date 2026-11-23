@@ -7,10 +7,17 @@
  * sent, so a select widened later cannot leak by itself. The client's grid
  * (`assembleLienBookInput`) reads only what is kept.
  *
+ * One thing an owner said does travel, as two of the grid's own columns
+ * (v2.8315): whether it has paid the GC out and what became of the 10 %
+ * (`ownerFacts`, four values a job, `lienOwnerFacts.ts`). The function reads
+ * the notice items' `fields` for that and nothing else, and the items
+ * themselves still travel without `fields`.
+ *
  * Lives in `_shared` so the edge function and the client tests read one list;
  * `src/lib/legal/legalLienBookShape.ts` is the client's door.
  */
 import { jobOffLienDesk, withLienOffDeskColumns } from './gcKernels/lib/jobs/lienInKind.ts'
+import { LIEN_OWNER_FACT_KEYS, lienOwnerFactsByJob, parseLienOwnerFacts, type LienOwnerFacts } from './lienOwnerFacts.ts'
 
 type Row = Record<string, unknown>
 
@@ -31,6 +38,12 @@ export const LIEN_BOOK_GC_COLUMNS = ['id', 'name', 'lien_notice_policy'] as cons
 export const LIEN_BOOK_JOB_COLUMNS_SENT = ['id', 'hcp_number', 'click_number', 'job_name', 'job_address', 'gc_customer_id', 'customer_address_id', 'revenue', 'payments_made', 'last_work_date', 'lien_payment_bond', 'lien_contract_ended_on'] as const
 /** Read for a rule and cut before the book is sent: `customer_name` for the ZZ test-job rule, the in-kind deal's link for the paid-in-kind rule, the job's own answer for the off-the-lien-path rule. */
 const LIEN_BOOK_JOB_RULE_COLUMNS = ['customer_name', 'in_kind_arrangement_id', 'lien_path_answer'] as const
+
+/**
+ * The one read that takes `fields`: the § 53.056 notice items, for the owner's call. The rows never leave the
+ * function. `shapeLienBookForCounsel` folds them to `ownerFacts` and sends that.
+ */
+export const LIEN_BOOK_OWNER_CALL_SELECT = 'job_id, kind, voided_at, fields'
 
 export const LIEN_BOOK_COUNSEL_SELECT = {
   /** The sent columns, then `customer_name`, then the deal's link and the job's own answer through the Lien desk's own `withLienOffDeskColumns`. */
@@ -70,6 +83,8 @@ export type LienBookForCounsel = {
   gcs: Row[]
   addresses: Row[]
   owners: Row[]
+  /** By job id, the owner's answers behind *Paid out to GC* and *10 % reserved*; a job with no call recorded has no key. */
+  ownerFacts: Record<string, LienOwnerFacts>
 }
 
 /**
@@ -88,7 +103,7 @@ export type LienBookForCounsel = {
  * A job a person took off the lien path leaves the same way (v2.7521, `lienJobPath.ts`): the office said no lien
  * stands behind it, so it is on the firm's lien grid no more than on the office's. Put back, it is on the next read.
  */
-export function shapeLienBookForCounsel(raw: { rows?: unknown[]; affidavitRows?: unknown[]; items?: unknown[]; filings?: unknown[]; jobs?: unknown[]; gcs?: unknown[]; addresses?: unknown[]; owners?: unknown[] }): LienBookForCounsel {
+export function shapeLienBookForCounsel(raw: { rows?: unknown[]; affidavitRows?: unknown[]; items?: unknown[]; filings?: unknown[]; jobs?: unknown[]; gcs?: unknown[]; addresses?: unknown[]; owners?: unknown[]; ownerCallItems?: unknown[] }): LienBookForCounsel {
   const gcsRead = (raw.gcs ?? []) as Row[]
   const jobsRead = (raw.jobs ?? []) as Row[]
   const zzGcIds = new Set(gcsRead.filter((g) => isZzName(g.name)).map((g) => g.id))
@@ -109,5 +124,9 @@ export function shapeLienBookForCounsel(raw: { rows?: unknown[]; affidavitRows?:
     gcs: gcsRead.filter((g) => !zzGcIds.has(g.id) && !droppedGcIds.has(g.id)).map((r) => pick(r, LIEN_BOOK_GC_COLUMNS)),
     addresses: ((raw.addresses ?? []) as Row[]).filter((a) => !droppedAddressIds.has(a.id)).map((r) => pick(r, LIEN_BOOK_ADDRESS_COLUMNS)),
     owners: kept(raw.owners).map((r) => pick(r, LIEN_BOOK_OWNER_COLUMNS)),
+    // The calls of the jobs that stay, folded to facts and cut to their keys: no note, no name, no time, no `fields`.
+    ownerFacts: Object.fromEntries(
+      Object.entries(lienOwnerFactsByJob(kept(raw.ownerCallItems) as Row[])).map(([jobId, facts]) => [jobId, pick(parseLienOwnerFacts(facts), LIEN_OWNER_FACT_KEYS) as LienOwnerFacts]),
+    ),
   }
 }

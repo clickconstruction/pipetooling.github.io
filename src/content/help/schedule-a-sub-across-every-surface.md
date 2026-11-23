@@ -96,7 +96,7 @@ Nothing here is typed by dispatch. It all comes from the picks.
 - A crew cell on a day a sub is also on that job carries a small **sub badge**. So you do not send two crews to one rough-in.
 - **Day** view has **Subs on site** for the chosen day, with *Add a site visit ›* when the crew should meet them.
 - **Projects → Forecast → Subs** is the full board. It shows every dated order: offered in outline, accepted solid, off days striped, and a red outline on an overlap.
-- The **crew day email** lists the subs on each stop.
+- The **Who worked** email lists the subs on each stop.
 
 ## 7 · The GC
 

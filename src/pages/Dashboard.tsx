@@ -19,7 +19,7 @@ import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLi
 import { usePageMode } from '../hooks/usePageMode'
 import { jobModeActiveSource, readJobModeStoredValue } from '../lib/jobModeToggle'
 import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
-import DashboardJobModeFirstRunCard from '../components/dashboard/DashboardJobModeFirstRunCard'
+import { modeRowOfferedToRole } from '../lib/modeRow'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import { JobModeShortPage } from '../components/jobMode/JobModeShortPage'
 import { JobModeTopRow } from '../components/jobMode/JobModeTopRow'
@@ -109,7 +109,7 @@ import { useDashboardBoot } from '../hooks/useDashboardBoot'
 import { formatDatetime } from '../lib/dashboardProjectsCard'
 import { isDashboardRecentReportsRole } from '../lib/dashboardRecentReports'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
-import { DashboardMyHoursBlock } from '../components/dashboard/DashboardMyHoursBlock'
+import { DashboardMyTimeCard } from '../components/dashboard/DashboardMyTimeCard'
 import { fetchSelfSalaryClockState } from '../lib/selfSalaryClockState'
 import type { SalariedWeek } from '../lib/salariedEffectiveHours'
 import { fetchHoursDaysCorrectWorkDates } from '../lib/fetchHoursDaysCorrectWorkDates'
@@ -494,7 +494,6 @@ export default function Dashboard() {
   // Read through the page mode (`pageMode.ts`), so this page is Job Mode only when the menu ticks it.
   const pageMode = usePageMode(authUser?.id ?? null, role)
   const jobModeEnabled = pageMode.mode === 'job'
-  const setPageMode = pageMode.set
   // `job_mode_enabled{source}` — once per session, on the first render with Job Mode active.
   useEffect(() => {
     if (!jobModeEnabled || !authUser?.id) return
@@ -504,6 +503,11 @@ export default function Dashboard() {
   // the field-first paint is consistent. The Job Mode toggle in the gear menu
   // remains the persistent setting.
   const [jobModeShowFullDashboard, setJobModeShowFullDashboard] = useState(false)
+  // Job Mode switched off, by the mode row or the gear menu, ends that visit's look at the full page:
+  // switched on again, the page opens on the Job Mode card.
+  useEffect(() => {
+    if (!jobModeEnabled) setJobModeShowFullDashboard(false)
+  }, [jobModeEnabled])
   /** This week's hours so far, reported by Job Mode's hours card for the top row's This week square. `null` until read. */
   const [jobModeWeekHours, setJobModeWeekHours] = useState<number | null>(null)
   // The short Dashboard: a leader whose view is Short (`users.dashboard_view`, his own choice or the office's) gets
@@ -1239,7 +1243,7 @@ export default function Dashboard() {
 
   /** Crew Day (v2.2602): mounted directly above each myInboxCard position; self-gates on isCrewDayRole. */
   const crewDaySection = (
-    <PhoneFold spaced fold={phoneOffice && Boolean(authUser?.id) && isCrewDayRole(role)} section="dash-crew-day" userId={authUser?.id} title="Crew Day" headline={crewDayFoldHeadline(crewDaySummary)}>
+    <PhoneFold spaced fold={phoneOffice && Boolean(authUser?.id) && isCrewDayRole(role)} section="dash-crew-day" userId={authUser?.id} title="Who worked" headline={crewDayFoldHeadline(crewDaySummary)}>
       <DashboardCrewDaySection authUserId={authUser?.id} role={role} onSummary={setCrewDaySummary} />
     </PhoneFold>
   )
@@ -1397,8 +1401,8 @@ export default function Dashboard() {
         <DashboardYourWeekCard userId={authUser.id} />
         {/* Your record (v2.3368): the three things only this person can put right, no money on it. */}
         <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} />
-        {/* Your hours (design spike): Job Mode shows no My Time, so the ask and the eight weeks sit here as a card. */}
-        <DashboardMyHoursBlock userId={authUser.id} displayName={clockDisplayName ?? ''} role={role ?? ''} isSalary={dashboardSelfIsSalary} salariedWeek={dashboardSelfSalariedWeek} framed onWeek={setJobModeWeekHours} />
+        {/* My Time: Job Mode shows no My Time section, so the picture of the time added up sits here as a card. */}
+        <DashboardMyTimeCard userId={authUser.id} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} onWeek={setJobModeWeekHours} />
         {/* A day the clock missed (v2.4257): Job Mode shows no My Time, so the door sits under the card. */}
         {dashboardSelfIsSalary ? null : <MissedClockInDoor userId={authUser.id} variant="link" />}
         <div style={{ marginTop: '0.75rem' }}>{myScheduleSection}</div>
@@ -1407,6 +1411,9 @@ export default function Dashboard() {
         <div style={{ marginTop: '0.75rem' }} data-job-mode-training>
           <DashboardTrainingSection userId={authUser.id} role={role} />
         </div>
+        {/* The mode row above the header (punch list #425) is the way to the full Dashboard for the roles it is
+            drawn for, so this press is left for the estimator, who turns Job Mode on in the gear menu. */}
+        {modeRowOfferedToRole(role) ? null : (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button
             type="button"
@@ -1425,6 +1432,7 @@ export default function Dashboard() {
             Show full dashboard
           </button>
         </div>
+        )}
         {jobModeWindows}
       </div>
     )
@@ -1486,9 +1494,9 @@ export default function Dashboard() {
     { id: 'dash-my-schedule', label: 'My Schedule', visible: Boolean(authUser?.id) },
     { id: 'dash-notifications', label: 'Notifications', visible: showFinancials },
     { id: 'dash-clocked-in', label: 'ClockedIn', visible: Boolean(authUser?.id && showClockActivityStrip) },
-    { id: 'dash-crew-day', label: 'Crew Day', visible: Boolean(authUser?.id) && isCrewDayRole(role) },
+    { id: 'dash-crew-day', label: 'Who worked', visible: Boolean(authUser?.id) && isCrewDayRole(role) },
     { id: 'dash-my-inbox', label: 'My Inbox', visible: myInboxDockVisible },
-    { id: 'dash-your-people', label: 'Your people', visible: yourPeopleDockVisible },
+    { id: 'dash-your-people', label: 'Team’s open tasks', visible: yourPeopleDockVisible },
     {
       id: 'dash-teams-inbox',
       label: 'Teams Inbox',
@@ -1635,16 +1643,6 @@ export default function Dashboard() {
       <Suspense fallback={null}>
         <DashboardTrialVerdictSection authUserId={authUser?.id} role={role} />
       </Suspense>
-      {/* First-run nudge for masters / superintendents who work in the field (v2.2877);
-          self-gated — never renders for sub-like (already on) or office roles. */}
-      <DashboardJobModeFirstRunCard
-        userId={authUser?.id}
-        role={role}
-        onEnable={() => {
-          setPageMode('job', true, 'card')
-          setJobModeShowFullDashboard(false)
-        }}
-      />
       <DashboardPinnedQuickRow
         {...pinnedQuickRowSharedProps}
         renderModals

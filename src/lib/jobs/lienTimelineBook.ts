@@ -8,6 +8,7 @@ import { buildLienTimelineFromDesk, lienTimelineMonthsFromDesk } from './lienTim
 import { lienDateWords, lienThirtyDayClock, type LienTimeline, type LienTimelineMonth } from './lienTimeline'
 import { workMonthShort } from './forecastWorkMonths'
 import { formatUsdNoCents } from './jobFormatting'
+import { lienOwnerFactsByJob, lienOwnerFactsWords, type LienOwnerFacts } from '../../../supabase/functions/_shared/lienOwnerFacts'
 
 /**
  * The book (v2.3768, punch list #37 PR 2): every billed job with money open
@@ -60,6 +61,12 @@ export interface LienTimelineBookInput {
   demandLettersByJob?: Readonly<Record<string, ReadonlyArray<JobDemandLetterRow>>>
   jobs: Readonly<Record<string, LienBookJob>>
   policyByCustomer: Readonly<Record<string, LienNoticePolicy>>
+  /**
+   * The owner's answers as facts, by job (`lienOwnerFacts.ts`). The firm's portal hands them: its items travel
+   * without `fields`, so the function reads the calls and sends the facts. Absent, the book reads them off
+   * `items`, as the office's desk does.
+   */
+  ownerFactsByJob?: Readonly<Record<string, LienOwnerFacts>>
   todayYmd: string
 }
 
@@ -80,6 +87,8 @@ export interface LienTimelineBookRow {
   affidavit?: LienAffidavitEntry | null
   /** The days a recorded § 53.056 notice went to the owner (v2.7485), oldest first, from the job's filings: a run's record and one made by hand both write it. Empty when the reader hands no notice filings. */
   noticeSentOn?: string[]
+  /** What the owner answered on its call, as the grid's two columns read it; null with no call recorded. */
+  ownerFacts?: LienOwnerFacts | null
 }
 
 export interface LienTimelineBook {
@@ -102,6 +111,7 @@ export function buildLienTimelineBook(input: LienTimelineBookInput): LienTimelin
   const { todayYmd } = input
   const queue = buildLienDeskQueue(input.rows, input.items, input.policyByCustomer, todayYmd)
   const affidavits = buildLienAffidavitQueue(input.affidavitRows, input.items, todayYmd)
+  const ownerFacts = input.ownerFactsByJob ?? lienOwnerFactsByJob(input.items)
   const ids = new Set<string>()
   for (const r of input.rows) ids.add(r.job_id)
   for (const r of input.affidavitRows) ids.add(r.job_id)
@@ -126,7 +136,7 @@ export function buildLienTimelineBook(input: LienTimelineBookInput): LienTimelin
       demandLetters: input.demandLettersByJob?.[jobId] ?? null,
     })
     const noticeSentOn = lienAffidavitOwnerSends(input.filingsByJob[jobId]).map((s) => s.sentOn)
-    rows.push({ jobId, job, timeline, months: lienTimelineMonthsFromDesk(jobId, input.rows, input.items, todayYmd), lens: lensFor(timeline), sortDate: timeline.next.date, notice: entry, affidavit, noticeSentOn })
+    rows.push({ jobId, job, timeline, months: lienTimelineMonthsFromDesk(jobId, input.rows, input.items, todayYmd), lens: lensFor(timeline), sortDate: timeline.next.date, notice: entry, affidavit, noticeSentOn, ownerFacts: ownerFacts[jobId] ?? null })
   }
   rows.sort((a, b) => {
     const da = a.sortDate || '9999-99-99'
@@ -187,6 +197,8 @@ export function lienGridRows(rows: ReadonlyArray<LienTimelineBookRow>, todayYmd:
     const aff = t.steps.find((s) => s.kind === 'affidavit')
     const affWords = aff ? `${aff.dateWords}${aff.state === 'blocked' ? ' — no notice, lien gone' : aff.state === 'missed' ? ' — MISSED' : ''}` : ''
     const openMonths = r.months.filter((m) => m.outcome !== 'sent').map((m) => workMonthShort(m.key))
+    // The owner's call fills the two columns once it is recorded; with no call, or no answer, they stay blank.
+    const answers = lienOwnerFactsWords(r.ownerFacts, { day: (ymd) => lienDateWords(ymd, todayYmd), money: formatUsdNoCents })
     return {
       job: r.job.label,
       address: r.job.address,
@@ -197,8 +209,8 @@ export function lienGridRows(rows: ReadonlyArray<LienTimelineBookRow>, todayYmd:
       notices: r.job.isSub ? notices : 'none needed (with the owner)',
       affidavit: affWords,
       bond: r.job.paymentBond === 'yes' ? 'Y' : r.job.paymentBond === 'no' ? 'N' : '',
-      paidOut: '',
-      reserved: '',
+      paidOut: answers.paidOut,
+      reserved: answers.reserved,
       contractCompleted: r.job.contractEndedOn ? lienDateWords(r.job.contractEndedOn, todayYmd) : '',
     }
   })
@@ -253,6 +265,6 @@ export function lienGridHtml(rows: ReadonlyArray<LienTimelineBookRow>, opts: { t
 <table><thead><tr>${head}</tr></thead><tbody>
 ${body}
 </tbody></table>
-<p class="foot">Blank columns are facts the app does not hold for that job yet — payment bond, paid-out-to-GC, the 10 % reserved, the original contract’s completion (punch list #33); the office fills them by hand from the owner calls until then.</p>
+<p class="foot">Blank columns are facts the app does not hold for that job yet — payment bond, paid-out-to-GC, the 10 % reserved, the original contract’s completion. Paid-out-to-GC and the 10 % reserved fill from the owner’s call once the office records it.</p>
 </body></html>`
 }

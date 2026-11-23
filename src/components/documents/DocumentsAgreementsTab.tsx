@@ -8,7 +8,6 @@ import {
   AGREEMENTS_PAGE,
   AGREEMENTS_READER_DOORS,
   AGREEMENT_GROUP_COLORS,
-  AGREEMENT_STATE_CHIPS,
   AGREEMENT_STATE_COLORS,
   agreementCountWords,
   agreementDayWords,
@@ -20,9 +19,11 @@ import {
   agreementMonthGroups,
   agreementName,
   agreementNeedsAList,
+  agreementPaperKindWords,
   agreementSignerWords,
   agreementSigningForWords,
   agreementStateChip,
+  agreementStateChips,
   agreementTag,
   agreementsEmptyWords,
   agreementsNarrowed,
@@ -34,10 +35,12 @@ import {
   type StateAsk,
   type StatePick,
 } from '../../lib/documents/agreementsLedger'
-import { countAgreementsWaiting, readAgreements } from '../../lib/documents/agreementsLedgerIo'
+import { countAgreementsNotSent, countAgreementsWaiting, readAgreements } from '../../lib/documents/agreementsLedgerIo'
 import {
   COPY_SIGNING_LINK_LABEL,
   SEND_AGAIN_LABEL,
+  SEND_LABEL,
+  agreementCanBeSent,
   agreementCanBeSentAgain,
   agreementMayHaveReminders,
   agreementOpensContractWindow,
@@ -45,6 +48,8 @@ import {
   signingLinkByHandPrompt,
   signingLinkCopiedWords,
 } from '../../lib/documents/agreementsActs'
+import { TAKE_BACK_LABEL, canTakeBackPapers, takeBackConfirm, takeBackOutcomeWords, takeBackVerdict } from '../../lib/documents/paperTakeBack'
+import { takeBackPartyPaper } from '../../lib/documents/paperTakeBackIo'
 import { readPersonPaperSendFacts, sendPersonPaperForSignature, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
 import { ADD_TO_A_LIST_LABEL } from '../../lib/documents/paperPartyList'
 import { NO_PAPER_REMINDERS, readPaperReminders, writePaperReminderSwitch, type PaperReminders } from '../../lib/contracts/personPaperReminderIo'
@@ -74,8 +79,14 @@ import { documentsLinkButton, documentsQuietButton } from '../jobs/jobDocumentsS
  * state, the box finds by customer, job number, person or paper, and a press opens the window that kind already has.
  * A staff, sub or partner paper that waits on a signature acts where it sits: Send again and Copy the signing link, both
  * through the sender People → Contracts uses (`lib/documents/agreementsActs.ts`), and the list reads again after.
+ * An outside party's paper that is not signed also carries **Take back** (punch list #403): the paper is deleted and its
+ * signing link ends, after a confirm that says so (`lib/documents/paperTakeBack.ts`). A signed paper is kept. The
+ * press is the leader's and a dev's, the two roles that delete a paper anywhere in the app.
  * **Send a paper**, beside the box, sends a Contract Book paper to a person (`AgreementsSendPaper.tsx`), and
  * **Contract library** opens the library People → Contracts opens, in place (`AgreementsContractLibrary.tsx`).
+ * An outside party's paper is listed whatever its kind and state (punch list #403, the owner's first decision): a W-9 or
+ * a certificate carries a second tag that says so, and one that was made and never sent reads *not sent*, under a
+ * **Not sent** chip that shows while one exists, with **Send** and **Take back** on its line.
  * The read is the `agreements_on_file` view, where each table's own row security decides what the reader sees; a read
  * that fails says so with Retry and never reads as an empty ledger. The rules are `lib/documents/agreementsLedger.ts`.
  *
@@ -127,11 +138,15 @@ const day: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', 
 const quiet: CSSProperties = { margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }
 const doorLink: CSSProperties = { color: 'var(--text-link)', fontWeight: 600 }
 const nameText: CSSProperties = { fontWeight: 600, color: 'var(--text-strong)' }
+/** The second tag on a party's paper that is not an agreement: an outline, since it names the paper and not a group. */
+const kindTag: CSSProperties = { background: 'transparent', color: 'var(--text-700)', boxShadow: 'inset 0 0 0 1px var(--border-strong)' }
 /** What a line opens for someone who reads the tab and acts on nothing. */
 const NO_DOOR = { kind: 'none' } as const
 const actBusy: CSSProperties = { ...documentsQuietButton, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'wait' }
 /** Add to a list: the one press on a line that makes a record, so it reads as the main press. */
 const addPress: CSSProperties = { ...documentsQuietButton, background: '#2563eb', border: '1px solid #2563eb', color: 'white', fontWeight: 600 }
+/** Take back deletes a paper, so its words are red: the one press on a line that removes something. */
+const takeBackPress: CSSProperties = { ...documentsQuietButton, color: 'var(--text-red-700)' }
 
 function pickChipStyle(pressed: boolean): CSSProperties {
   const base: CSSProperties = { ...documentsQuietButton, borderRadius: 999, fontWeight: pressed ? 700 : 500 }
@@ -144,6 +159,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   /** Whose tab this is: the office acts on it, and an estimator reads it (punch list #403, call 8). */
   const reader = agreementsReader(role)
   const canAct = canActOnAgreements(role)
+  /** Take back deletes a paper, so it is the leader's and a dev's, as deleting one is on People (punch list #403). */
+  const mayTakeBack = canAct && canTakeBackPapers(role)
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const promptDialog = usePromptDialog()
@@ -155,14 +172,19 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   const [rows, setRows] = useState<AgreementRow[] | null>(null)
   const [more, setMore] = useState(false)
   const [waiting, setWaiting] = useState<number | null>(null)
+  /** How many papers were made and never sent under the kind picked; the Not sent chip shows while it is above none. */
+  const [notSent, setNotSent] = useState<number | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [reading, setReading] = useState(false)
   const [tries, setTries] = useState(0)
   const [contractWindow, setContractWindow] = useState<{ job: JobWithDetails; recordId: string } | null>(null)
   const [signedDocId, setSignedDocId] = useState<string | null>(null)
   const [workOrder, setWorkOrder] = useState<{ job: JobWithDetails; commitmentId: string } | null>(null)
-  /** Send again: the waiting paper whose Send window is open, with what the window needs to know about it. */
-  const [sendAgain, setSendAgain] = useState<{ documentId: string; facts: PersonPaperSendFacts } | null>(null)
+  /**
+   * The paper whose Send window is open, with what the window needs to know about it: a waiting paper sent `again`, or
+   * one that was made and never sent, on its first send.
+   */
+  const [sendAgain, setSendAgain] = useState<{ documentId: string; facts: PersonPaperSendFacts; again: boolean } | null>(null)
   /** The paper whose party is being added to a list (punch list #403). */
   const [addToList, setAddToList] = useState<string | null>(null)
   const [signedNeedsAList, setSignedNeedsAList] = useState(false)
@@ -222,6 +244,9 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     let cancelled = false
     void countAgreementsWaiting(kind, reader).then((n) => {
       if (!cancelled) setWaiting(n)
+    })
+    void countAgreementsNotSent(kind, reader).then((n) => {
+      if (!cancelled) setNotSent(n)
     })
     return () => {
       cancelled = true
@@ -301,13 +326,14 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     }
   }
 
-  // Send again: read who the paper is with and their address, then open the Send window on it.
-  const openSendAgain = async (row: AgreementRow) => {
+  // Send again, or Send for a paper that was never sent: read who the paper is with and their address, then open the
+  // Send window on it.
+  const openSend = async (row: AgreementRow, again: boolean) => {
     if (busyAct) return
     setBusyAct(`send:${row.id}`)
     try {
       const facts = await readPersonPaperSendFacts(row.source_id, user?.id)
-      setSendAgain({ documentId: row.source_id, facts })
+      setSendAgain({ documentId: row.source_id, facts, again })
     } catch (e) {
       showToast(formatErrorMessage(e, 'The paper did not open to send.'), 'error')
     } finally {
@@ -351,6 +377,25 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
       retry()
     } catch (e) {
       showToast(formatErrorMessage(e, 'The signing link was not made.'), 'error')
+    } finally {
+      setBusyAct(null)
+    }
+  }
+
+  // Take back: the paper is deleted and its signing link ends with it. The confirm says so first. The delete itself
+  // asks for an unsigned paper, so one signed a moment ago is kept, and the office is told which it was.
+  const takeBack = async (row: AgreementRow) => {
+    if (busyAct || !mayTakeBack) return
+    const verdict = takeBackVerdict(row)
+    if (!verdict.ok) return
+    if (!(await confirmDialog(takeBackConfirm(row, verdict.sent)))) return
+    setBusyAct(`back:${row.id}`)
+    try {
+      const told = takeBackOutcomeWords(await takeBackPartyPaper(row.source_id), row, verdict.sent)
+      showToast(told.words, told.tone)
+      retry()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The paper was not taken back.'), 'error')
     } finally {
       setBusyAct(null)
     }
@@ -408,7 +453,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                 ))}
               </div>
               <div role="group" aria-label="State" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                {AGREEMENT_STATE_CHIPS.map((c) => (
+                {agreementStateChips(notSent, state).map((c) => (
                   <button
                     key={c.key}
                     type="button"
@@ -419,7 +464,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                     }}
                     style={pickChipStyle(state === c.key)}
                   >
-                    {c.key === 'waiting' ? waitingChipLabel(c.label, waiting) : c.label}
+                    {c.key === 'waiting' ? waitingChipLabel(c.label, waiting) : c.key === 'not_sent' ? waitingChipLabel(c.label, notSent) : c.label}
                   </button>
                 ))}
               </div>
@@ -460,8 +505,14 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                       const tail = agreementJobTail(row)
                       const dayWords = agreementDayWords(row, today)
                       const acts = canAct && agreementCanBeSentAgain(row)
+                      // A paper that was made and never sent: its first send starts on its line.
+                      const firstSend = canAct && agreementCanBeSent(row)
+                      // A party's paper that is not an agreement says what it is: a W-9, a certificate.
+                      const paperKind = agreementPaperKindWords(row)
                       const sending = busyAct === `send:${row.id}`
                       const linking = busyAct === `link:${row.id}`
+                      const canTakeBack = mayTakeBack && takeBackVerdict(row).ok
+                      const takingBack = busyAct === `back:${row.id}`
                       const kept = agreementMayHaveReminders(row) ? reminders.byId.get(row.source_id) : undefined
                       const reminder = kept ? paperReminderLine(kept, reminders.switchOn) : ({ kind: 'none' } as const)
                       const reminderWords = paperReminderWords(reminder, (iso) => formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(iso)))
@@ -471,6 +522,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                         <div key={row.id} style={line} data-testid="documents-agreements-row">
                           <div style={lineLeft}>
                             <span style={{ ...tag, ...colors }}>{t.words}</span>
+                            {paperKind ? <span style={{ ...tag, ...kindTag }}>{paperKind}</span> : null}
                             {door.kind === 'people-contracts' || door.kind === 'gc' ? (
                               <Link to={door.to} style={{ ...documentsLinkButton, display: 'inline' }}>
                                 {name}
@@ -519,15 +571,25 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                                 {reminding ? 'Saving…' : reminderTurnsOn ? TURN_REMINDERS_ON_LABEL : TURN_REMINDERS_OFF_LABEL}
                               </button>
                             ) : null}
+                            {firstSend ? (
+                              <button type="button" style={sending ? actBusy : documentsQuietButton} disabled={busyAct != null} onClick={() => void openSend(row, false)}>
+                                {sending ? 'Opening…' : SEND_LABEL}
+                              </button>
+                            ) : null}
                             {acts ? (
                               <>
-                                <button type="button" style={sending ? actBusy : documentsQuietButton} disabled={busyAct != null} onClick={() => void openSendAgain(row)}>
+                                <button type="button" style={sending ? actBusy : documentsQuietButton} disabled={busyAct != null} onClick={() => void openSend(row, true)}>
                                   {sending ? 'Opening…' : SEND_AGAIN_LABEL}
                                 </button>
                                 <button type="button" style={linking ? actBusy : documentsQuietButton} disabled={busyAct != null} onClick={() => void copySigningLink(row)}>
                                   {linking ? 'Making the link…' : COPY_SIGNING_LINK_LABEL}
                                 </button>
                               </>
+                            ) : null}
+                            {canTakeBack ? (
+                              <button type="button" style={takingBack ? actBusy : takeBackPress} disabled={busyAct != null} onClick={() => void takeBack(row)}>
+                                {takingBack ? 'Taking it back…' : TAKE_BACK_LABEL}
+                              </button>
                             ) : null}
                           </div>
                         </div>
@@ -606,7 +668,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
       {sendAgain != null ? (
         <Suspense fallback={null}>
           <ContractSendWindow
-            again
+            again={sendAgain.again}
             target={sendAgain.facts.target}
             docId={sendAgain.documentId}
             initialEmail={sendAgain.facts.initialEmail}

@@ -2,7 +2,7 @@
 title: review my team's completed tasks
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: checklist review, stuck, who is stuck, sorted, sign off, dismiss, reopen, teams inbox, completed tasks, subordinates, map, where the open tasks are, place, who is where, time, older photos, earlier day, satellite, history, google earth
+keywords: checklist review, team's open tasks, your people, stuck, who is stuck, sorted, sign off, dismiss, reopen, teams inbox, completed tasks, subordinates, map, where the open tasks are, place, who is where, time, older photos, earlier day, satellite, history, google earth
 order: 41
 ---
 When someone finishes a checklist task you assigned, it lands in Checklist review. You sign it off there, or send it back with a comment.
@@ -68,9 +68,9 @@ Tap a dot, then tap **Time** on the map. The map moves in close on that place.
 
 Time goes away when you leave the screen. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) has the rest.
 
-## Your people on the Dashboard
+## Team's open tasks on the Dashboard
 
-The office sees **Your people** under My Inbox on the Dashboard. It is one row per person with an open one-off task. The row shows the card that moved last with its ring. A chip reads {{chip:green|moved today}}, {{chip:gray|moved Wed}} or {{chip:red|stuck 32 days}}. Stuck follows the same age rule as this tab. The line above the rows counts the cards done this week, who moved and who is stuck. Tap a row to open this tab. Tap **🔔 Remind** to nudge that person the same way the board does.
+The office sees the **Team's open tasks** card under My Inbox on the Dashboard. It is one row per person with an open one-off task. The row shows the task that moved last with its ring. A chip reads {{chip:green|moved today}}, {{chip:gray|moved Wed}} or {{chip:red|stuck 32 days}}. Stuck follows the same age rule as this tab. The line above the rows counts the tasks done this week, who moved and who is stuck. Tap a row to open this tab. Tap **🔔 Remind** to nudge that person the same way the board does.
 
 ## Good to know
 

@@ -346,7 +346,7 @@ export function buildCrewDayView(payload: CrewDayPayload, nowMs: number): CrewDa
  * section offers no Retry for it.
  */
 export function crewDayRefusalSentence(code: string | null | undefined): string {
-  return code === 'forbidden' || code === 'not_authenticated' ? "You don't have access to this crew day." : "Couldn't load this day."
+  return code === 'forbidden' || code === 'not_authenticated' ? "You don't have access to this day." : "Couldn't load this day."
 }
 
 /** Roles the Crew Day section renders for (RPC enforces the same set server-side). */

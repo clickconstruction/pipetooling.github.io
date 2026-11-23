@@ -69,8 +69,11 @@ export const LIEN_RELEASE_QUEUE_EMPTY: EmptyStateWords = {
 /** Waivers to sign, none left. */
 export const LIEN_WAIVERS_TO_SIGN_EMPTY: EmptyStateWords = { main: 'Nothing waits for your signature.' }
 
-/** My bids with every bid sent: the sent ones sit below. */
+/** My bids with every bid sent: the sent ones sit in the groups below. */
 export const MY_BIDS_UNSENT_EMPTY: EmptyStateWords = { main: 'Nothing unsent.', tail: 'Every bid went out.' }
+
+/** My bids with every bid the person holds hidden: the Hidden group below is the way back (punch list #426). */
+export const MY_BIDS_ONLY_HIDDEN_EMPTY: EmptyStateWords = { main: MY_BIDS_UNSENT_EMPTY.main, tail: 'The bids you hid are below.' }
 
 /** My crew → Reports owed with nothing owed: the filed count when there are job-days, else the plain good state. */
 export function supervisorReportsOwedEmptyWords(filed: number): EmptyStateWords {
@@ -133,6 +136,9 @@ export function crewDayOfficeOnlyEmptyWords(showOfficeStaff: Press): EmptyStateW
 export function myScheduleDayEmptyWords(day: 'today' | 'tomorrow', addJob: Press): EmptyStateWords {
   return { main: `Nothing scheduled ${day}.`, next: { label: '+ Add job', onPress: addJob }, tail: 'puts a job on your day.' }
 }
+
+/** Recent Reports with reports on file and none new: the good state (punch list #426). The list was a blank before. */
+export const RECENT_REPORTS_CLEAR_EMPTY: EmptyStateWords = { main: 'Nothing new to read.', tail: 'A report lands here when the crew files one.' }
 
 /**
  * Recent Reports with no report yet. A person who only files reports writes them from the card
