@@ -40,7 +40,7 @@ const rowsOf = (o: Partial<StartCheckRows>): StartCheckRows => ({ ...NO_START_RO
 describe('a stage line and its rows as one stage', () => {
   it('reads a line with no rows as a stage with no list', () => {
     const s = stageFromRows(LINE, NO_START_ROWS, ctx)
-    expect(s).toEqual({ id: 'f1', part: 'Lodge', job: 'J2101', name: 'Top Out', window: ['2026-12-08', '2026-12-12'], trip: null, finished: false, theirDays: [], bullets: [], decision: null, arrival: null })
+    expect(s).toEqual({ id: 'f1', part: 'Lodge', job: 'J2101', name: 'Top Out', window: ['2026-12-08', '2026-12-12'], trip: null, finished: false, theirDays: [], bullets: [], decision: null, arrivals: [] })
     expect(stageStanding(s, { noticeDays: 10, contact: 'Ray' }, '2026-11-17').next).toBe('write')
   })
 
@@ -98,7 +98,7 @@ describe('a stage line and its rows as one stage', () => {
     expect(s.theirDays.map((d) => d.day)).toEqual(['2026-11-24', '2026-11-28'])
   })
 
-  it('reads the newest decision that stands, and the newest arrival', () => {
+  it('reads the newest decision that stands, and every arrival, oldest first', () => {
     const d = (id: string, kind: 'go' | 'hold', o = {}) => ({ id, job_id: 'j1', fixture_id: 'f1', kind, decided_on: '2026-11-12', open_then: ['Water is on site.'], start_then: '2026-12-08', hold_until: null, by_name: 'Dana', taken_back_at: null, created_at: at(), ...o })
     const rows = rowsOf({
       decisions: [d('1', 'hold'), d('2', 'go', { by_name: 'Sam' }), d('3', 'go', { taken_back_at: at() })],
@@ -109,7 +109,10 @@ describe('a stage line and its rows as one stage', () => {
     })
     const s = stageFromRows(LINE, rows, ctx)
     expect(s.decision).toEqual({ kind: 'go', by: 'Sam', day: '2026-11-12', openThen: ['Water is on site.'] })
-    expect(s.arrival).toEqual({ day: '2026-12-09', by: 'Luis', notAsTold: [] })
+    expect(s.arrivals).toEqual([
+      { day: '2026-12-08', by: 'Luis', notAsTold: ['x'] },
+      { day: '2026-12-09', by: 'Luis', notAsTold: [] },
+    ])
     expect(standingDecisionOf(rows, 'f1')?.id).toBe('2')
     expect(standingDecisionOf(rows, 'f2')).toBeNull()
   })

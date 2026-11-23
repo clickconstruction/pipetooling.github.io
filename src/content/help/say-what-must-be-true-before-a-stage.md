@@ -274,7 +274,7 @@ A **Yes, all as told** turns each of those bullets into a yes we saw, in that pe
 
 A **No** on a bullet opens the bullet again. The customer's word on that bullet is taken back. The stage turns red, and its sentence names who got there and the day.
 
-The bullet's line reads *said No on site* in red. Ask them again, and tick the bullet once it is true.
+The bullet's line reads *said No on site* in red. The line names who said it and the day. Two of ours can arrive and say No on different bullets. Each bullet then names its own No. Ask them again, and tick the bullet once it is true.
 
 Dispatch gets one line for the arrival, at the top of its inbox. The line names who told us the thing was ready. Press {{button:outline-blue|Open the list}} on that line to open the job on this list.
 
