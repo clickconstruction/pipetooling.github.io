@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { GEAR_PAGE_ORDER, GEAR_SECTION_LABELS, gearModesRows, gearPagesInOrder, type GearPageKey } from './gearMenuSections'
+import { GEAR_MODE_LIST_ORDER, GEAR_PAGE_ORDER, GEAR_SECTION_LABELS, gearModeRowTip, gearModesRows, gearPagesInOrder, type GearPageKey } from './gearMenuSections'
 import { canLeaveJobFieldReport } from './canLeaveJobFieldReport'
-import { modeRowOfferedToRole } from './modeRow'
+import { modeRowDrawnHere } from './modeRow'
 import { dispatchModeEligibleForRole } from './pageMode'
 
 const none = Object.fromEntries(GEAR_PAGE_ORDER.map((p) => [p, false])) as Record<GearPageKey, boolean>
@@ -32,27 +32,55 @@ describe('the gear menu’s sections', () => {
   })
 
   describe('the Modes rows (punch list #425)', () => {
-    const rowsFor = (role: string) =>
-      gearModesRows({ modeRow: modeRowOfferedToRole(role), jobEligible: canLeaveJobFieldReport(role), dispatchEligible: dispatchModeEligibleForRole(role) })
+    const rowsFor = (role: string, phone: boolean) =>
+      gearModesRows({ modeRow: modeRowDrawnHere(role, phone), jobEligible: canLeaveJobFieldReport(role), dispatchEligible: dispatchModeEligibleForRole(role) })
+    const WITH_THE_ROW = ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent', 'subcontractor', 'helpers']
 
-    it('a role with the mode row lists neither Job Mode nor Task Mode', () => {
-      for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent', 'subcontractor', 'helpers']) {
-        expect(rowsFor(role).job, role).toBe(false)
-        expect(rowsFor(role).task, role).toBe(false)
+    it('on a phone a role with the mode row lists neither Job Mode nor Task Mode', () => {
+      for (const role of WITH_THE_ROW) {
+        expect(rowsFor(role, true).list, role).toEqual([])
+        expect(rowsFor(role, true).job, role).toBe(false)
+        expect(rowsFor(role, true).task, role).toBe(false)
       }
     })
 
-    it('whoever can hold Dispatch Mode keeps it under the label, and the rest have no Modes group at all', () => {
+    it('on a phone whoever can hold Dispatch Mode keeps it under the label, and the rest have no Modes group at all', () => {
       for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
-        expect(rowsFor(role), role).toEqual({ job: false, dispatch: true, task: false, label: true })
+        expect(rowsFor(role, true), role).toEqual({ list: [], job: false, dispatch: true, task: false, label: true })
       }
       for (const role of ['primary', 'superintendent', 'subcontractor', 'helpers']) {
-        expect(rowsFor(role), role).toEqual({ job: false, dispatch: false, task: false, label: false })
+        expect(rowsFor(role, true), role).toEqual({ list: [], job: false, dispatch: false, task: false, label: false })
       }
     })
 
-    it('the estimator, whose first page is Bids, has no row and keeps the rows it had', () => {
-      expect(rowsFor('estimator')).toEqual({ job: true, dispatch: false, task: true, label: true })
+    it('on a desk every role has the list of three under the label: Dashboard, Job Mode, Task Mode', () => {
+      for (const role of [...WITH_THE_ROW, 'estimator']) {
+        const rows = rowsFor(role, false)
+        expect(rows.list, role).toEqual(['full', 'job', 'task'])
+        expect(rows.job && rows.task && rows.label, role).toBe(true)
+        expect(rows.dispatch, role).toBe(dispatchModeEligibleForRole(role))
+      }
+    })
+
+    it('the estimator, who has no row, has the list at a phone’s width too', () => {
+      expect(rowsFor('estimator', true)).toEqual({ list: ['full', 'job', 'task'], job: true, dispatch: false, task: true, label: true })
+    })
+
+    it('leaves Job Mode out of the list for whoever cannot hold it', () => {
+      expect(gearModesRows({ modeRow: false, jobEligible: false, dispatchEligible: false })).toEqual({ list: ['full', 'task'], job: false, dispatch: false, task: true, label: true })
+    })
+
+    it('puts the Dashboard first and Task Mode, pressed least, last', () => {
+      expect(GEAR_MODE_LIST_ORDER).toEqual(['full', 'job', 'task'])
+    })
+
+    it('a row’s tip says what a press does, or that the mode is on', () => {
+      expect(gearModeRowTip('full', true)).toBe('You are on the Dashboard, with no mode on top')
+      expect(gearModeRowTip('full', false)).toBe('Switch to the Dashboard')
+      expect(gearModeRowTip('job', true)).toBe('Job Mode is on')
+      expect(gearModeRowTip('job', false)).toBe('Switch to Job Mode')
+      expect(gearModeRowTip('task', true)).toBe('Task Mode is on')
+      expect(gearModeRowTip('task', false)).toBe('Turn Task Mode on. This device shows only your checklist.')
     })
   })
 })

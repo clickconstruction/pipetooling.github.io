@@ -99,6 +99,9 @@ const SKIP_FILES = new Map([
   ['src/components/estimates/EstimateCustomerDocument.tsx', 'the estimate as the customer reads it, and its print'],
   ['src/components/estimates/EstimateOfferedOptions.tsx', 'the options as the customer reads them'],
   ['src/components/estimates/EstimateOptionsPicker.tsx', 'the option cards a customer picks from'],
+  ['src/components/jobs/AiaG702G703Paper.tsx', 'the AIA pay application drawn as the paper a contractor gets'],
+  ['src/components/jobs/JobDocumentsLienPaper.tsx', 'a lien paper'],
+  ['src/components/jobs/legal/LegalFirmMatterView.tsx', 'a matter as the law firm reads it on its portal'],
 ])
 
 const isTest = (f) => /\.test\.tsx?$/.test(f) || f.startsWith('src/test/')

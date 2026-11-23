@@ -79,11 +79,13 @@ export interface StartChecksIo {
   /** What the crew is asked on arrival at this job: the one stage whose days have come, with what nobody of ours has seen. Null: nothing to ask. */
   readArrival: (jobId: string) => Promise<ArrivalAsk | null>
   /**
-   * The crew's answer. A No opens its bullet again and sends Dispatch one stage check; the id of that line comes back,
+   * The crew's answer, with the bullets the card showed: the door marks those alone, so a card left open while the
+   * office added a bullet or a new yes never marks one it did not show (v2.8368). A No opens its bullet again and
+   * sends Dispatch one stage check; the id of that line comes back,
    * and whether the push to Dispatch's phones went. The line is kept either way: `pushed` false means the inbox has it
    * and no phone rang, so the card can say so.
    */
-  arrive: (fixtureId: string, notAsTold: readonly string[]) => Promise<{ dispatchRequestId: string | null; pushed: boolean }>
+  arrive: (fixtureId: string, notAsTold: readonly string[], shown: readonly string[]) => Promise<{ dispatchRequestId: string | null; pushed: boolean }>
   /** The job's second switch: show what we need before each stage on the GC's page. The job's row alone. */
   setShowsOnGcPage: (jobId: string, on: boolean, who: StartWho) => Promise<void>
   /** Our window on a stage line, written as Jobs → Subs writes one. */
@@ -321,8 +323,8 @@ export const supabaseStartChecksIo: StartChecksIo = {
     return { fixtureId: stage.fixture_id, name: stage.name ?? 'Stage', bullets: (stage.bullets ?? []).filter((b) => b.id && b.words).map((b) => ({ id: b.id as string, words: b.words as string })) }
   },
 
-  arrive: async (fixtureId, notAsTold) => {
-    const result = await db.rpc('start_check_arrive', { p_fixture_id: fixtureId, p_not_as_told: [...notAsTold] })
+  arrive: async (fixtureId, notAsTold, shown) => {
+    const result = await db.rpc('start_check_arrive', { p_fixture_id: fixtureId, p_not_as_told: [...notAsTold], p_shown: [...shown] })
     checkSupabaseError(result, 'keep what you found')
     const id = (result.data as { dispatch_request_id?: string | null } | null)?.dispatch_request_id ?? null
     if (!id) return { dispatchRequestId: null, pushed: true }
