@@ -67,6 +67,22 @@ describe('lienPhoneGroups', () => {
     expect(out[1]).toMatchObject({ label: 'No day set', left: null, tone: 'quiet' })
   })
 
+  it('the rows with no day are one group, the list’s last, whichever pool they came from', () => {
+    const out = lienPhoneGroups(
+      [
+        g('now', 'Needs you now', [row('n1', { dueOn: null, daysLeft: null }), row('a')]),
+        g('waiting', 'Waiting on Sam', [row('w', { group: 'waiting' })]),
+        g('coming', 'Coming up', [row('c', { dueOn: '2026-12-15', daysLeft: 32, group: 'coming' }), row('n2', { dueOn: null, daysLeft: null, group: 'coming' })]),
+      ],
+      amounts({ n1: 100, n2: 250 }),
+    )
+    // Before, *No day set* stood twice, after each pool's days, under one key.
+    expect(out.map((x) => x.key)).toEqual(['day:2026-11-16', 'waiting', 'day:2026-12-15', 'day:none'])
+    expect(out[3]).toMatchObject({ label: 'No day set', left: null, tone: 'quiet', amount: 350 })
+    expect(out[3]!.rows.map((r) => r.key)).toEqual(['n1', 'n2'])
+    expect(new Set(out.map((x) => x.key)).size).toBe(out.length)
+  })
+
   it('a job with two papers on one day is counted once in the day’s money', () => {
     const out = lienPhoneGroups([g('now', 'Needs you now', [row('n1', { jobId: 'j', kind: 'notice' }), row('a1', { jobId: 'j' }), row('b')])], amounts({ j: 3000, b: 1000 }))
     expect(out[0]!.amount).toBe(4000)

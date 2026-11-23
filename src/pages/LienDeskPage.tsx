@@ -55,7 +55,7 @@ import LienOwnerRecordsModal from '../components/jobs/LienOwnerRecordsModal'
 import GcOnNoticeModal from '../components/jobs/GcOnNoticeModal'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import type { LienDeskPile } from '../lib/jobs/lienDesk'
-import { lienDeskRowFromState, lienDeskStateForView, lienDeskStateWithRow } from '../lib/jobs/lienPhoneJobScreen'
+import { lienDeskRowFromState, lienDeskStageFromState, lienDeskStateForView, lienDeskStateWithRow, lienDeskStateWithStage } from '../lib/jobs/lienPhoneJobScreen'
 
 /** The same people the Jobs page hands the desk: the office and the field, and a dev's fellow devs. */
 const DESK_USER_ROLES = ['assistant', 'controller', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']
@@ -198,6 +198,12 @@ export default function LienDeskPage() {
   const openRowKey = lienDeskRowFromState(location.state)
   const onOpenRow = useCallback((rowKey: string) => navigate(here, { state: lienDeskStateWithRow(location.state, rowKey) }), [here, navigate, location.state])
   const onCloseRow = useCallback(() => navigate(-1), [navigate])
+  // A phone's flow (punch list #428): a pressed stage is an entry of its own at the same address, so the phone's Back
+  // returns to the flow. A move along the pinned line's cells takes the entry's place, so Back is still one step to
+  // the flow. A job opened from a stage keeps the stage in its entry, and Back from the job returns to that stage.
+  const flowStageKey = lienDeskStageFromState(location.state)
+  const onOpenFlowStage = useCallback((stageKey: string) => navigate(here, { replace: flowStageKey != null, state: lienDeskStateWithStage(location.state, stageKey) }), [here, navigate, location.state, flowStageKey])
+  const onCloseFlowStage = useCallback(() => navigate(-1), [navigate])
 
   // A phone (punch list #182, PR 3): the Notices list, then one notice at a time. Opening a notice is a new entry, so Back
   // and ← Notices return to the list; a notice reached by a link goes to the list in its own place.
@@ -333,6 +339,9 @@ export default function LienDeskPage() {
         openRowKey={openRowKey}
         onOpenRow={onOpenRow}
         onCloseRow={onCloseRow}
+        flowStageKey={flowStageKey}
+        onOpenFlowStage={onOpenFlowStage}
+        onCloseFlowStage={onCloseFlowStage}
         data={data}
         loading={loading}
         todayYmd={todayYmd}
