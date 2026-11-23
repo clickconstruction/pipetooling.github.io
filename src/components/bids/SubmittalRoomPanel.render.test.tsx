@@ -174,6 +174,6 @@ describe('SubmittalRoomPanel · v2.5051 the deciding / watching switch reads in 
       }
     }
     const deciding = segment('Dana Whitfield', 'deciding')
-    expect([deciding.getAttribute('aria-pressed'), deciding.style.background, deciding.style.color]).toEqual(['true', 'rgb(22, 163, 74)', 'white'])
+    expect([deciding.getAttribute('aria-pressed'), deciding.style.background, deciding.style.color]).toEqual(['true', 'rgb(21, 128, 61)', 'white'])
   })
 })

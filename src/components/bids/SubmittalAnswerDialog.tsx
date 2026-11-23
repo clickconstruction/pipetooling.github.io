@@ -161,7 +161,7 @@ export function SubmittalAnswerDialog({ item, parts = [], people = [], sources =
               disabled={bad || busy}
               data-testid="answer-save"
               onClick={() => onSave({ person: needsWho ? reviewerChoiceFrom(pick, sources) : null, ...(needsWho && on && on !== today ? { on } : {}), writes })}
-              style={{ padding: '0.45rem 0.9rem', background: bad || busy ? 'var(--bg-200)' : '#16a34a', color: bad || busy ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: bad || busy ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
+              style={{ padding: '0.45rem 0.9rem', background: bad || busy ? 'var(--bg-200)' : '#15803d', color: bad || busy ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: bad || busy ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
             >
               {busy ? 'Saving…' : answerSaveLabel(writes)}
             </button>

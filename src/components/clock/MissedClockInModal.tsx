@@ -364,7 +364,7 @@ export function MissedClockInModal({ userId, onClose, onSaved }: Props) {
             type="button"
             onClick={() => void send()}
             disabled={saving}
-            style={{ flex: 1.6, minHeight: 46, border: 'none', borderRadius: 8, background: '#16a34a', color: '#fff', fontSize: '0.9375rem', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}
+            style={{ flex: 1.6, minHeight: 46, border: 'none', borderRadius: 8, background: '#15803d', color: '#fff', fontSize: '0.9375rem', fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}
           >
             {saving ? 'Sending…' : 'Send to the office'}
           </button>
