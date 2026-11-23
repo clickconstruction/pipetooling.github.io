@@ -11,9 +11,11 @@
 # the Stripe writer, called as the service role, does the same to a Stripe bill; after each the bill's kept amount is
 # the amount before the first. A fee that takes a written-down bill above its kept amount moves the kept amount up, on
 # each writer. It ends with "write_down_first_amount PASSED". The second scenario commits, since each write-down must
-# be a transaction of its own for its stamp to move: three write-downs on each writer leave three lines on the job's
-# activity, each with its own before and after and its person, and a replayed stamp or a fee leaves none. It ends with
-# "write_down_each_step PASSED". Each raises on its first failed assertion. PGTEST_KEEP=1 leaves the container up.
+# be a transaction of its own for its stamp to move: every write-down on each writer leaves a line on the job's
+# activity, with its own before and after and its person, and a replayed stamp or a fee leaves none. The write-down
+# after a fee starts from the amount the fee left, one at the amount the bill stands at reads that amount twice, and a
+# bill that arrives written down has one line. It ends with "write_down_each_step PASSED". Each raises on its first
+# failed assertion. PGTEST_KEEP=1 leaves the container up.
 # Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never
 # touches prod.
 set -euo pipefail

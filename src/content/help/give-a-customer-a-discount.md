@@ -55,6 +55,7 @@ When the job has more than one work line, the words *all 3 work lines* are a lin
 - The Job tab, the Pipeline's money views, and Job Summary all read the Job Total after the discount. Job Summary also marks the job with a green {{chip:green|− discount}} chip. Its toolbar totals what was discounted across the jobs in view.
 - **Every change leaves a trail.** Adding, changing or removing a discount writes a **Discount** line in the job's activity feed. It says who, how much, and on which lines. It writes once per real change.
 - In the **② Invoices** list, **Add discount** sits in each row's {{button:outline|⋯}} menu. On a draft it adds a discount line here. On a sent bill it is the agreed write-down, a credit note on Stripe.
+- **Every write-down leaves a line too.** Each agreed write-down of a sent bill writes a **Write-down** line in the job's activity feed. It shows the amount before, the amount after, the note and who made it. A bill written down three times has three lines.
 
 ## Related
 

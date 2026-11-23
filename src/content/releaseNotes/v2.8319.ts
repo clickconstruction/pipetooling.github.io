@@ -2,7 +2,7 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
   version: 'v2.8319',
-  date: '2026-11-22',
+  date: '2026-11-23',
   title: 'Every write-down of a bill shows on the job’s activity',
   kind: 'fix',
   roles: ['dev', 'master_technician', 'assistant', 'controller', 'primary'],

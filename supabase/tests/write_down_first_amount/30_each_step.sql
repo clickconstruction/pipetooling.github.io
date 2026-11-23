@@ -4,8 +4,10 @@
 -- bed's container being thrown away. Rosa, the assistant, writes an in-app bill of 500 down to 450, to 400 and to 380:
 -- three lines, each with its own before and after, and the bill keeps 500. The Stripe writer, as the service role
 -- with Rosa named, takes a bill of 900 down three times: three lines, each Rosa's. A stamp written again as it is
--- adds no line, and neither does a fee. A person with no users row can still be named on a Stripe write-down, and
--- that line is nobody's. Raises on the first failed assertion; ends with "write_down_each_step PASSED".
+-- adds no line, and neither does a fee; the write-down after the fee starts from the amount the fee left, and one at
+-- the amount the bill already stands at is a line with the same amount on both sides. A person with no users row can
+-- still be named on a Stripe write-down, and that line is nobody's. A bill that arrives already written down has one
+-- line, from its kept amount. Raises on the first failed assertion; ends with "write_down_each_step PASSED".
 -- See scripts/pgtest-write-down-first-amount.sh. Never against prod.
 \set ON_ERROR_STOP 1
 
@@ -115,6 +117,23 @@ SELECT wde.same('e1 keeps its first amount', wde.kept('00000000-0000-0000-0000-0
 SELECT wde.stamp_again('00000000-0000-0000-0000-0000000fce01');
 SELECT wde.add_fee('00000000-0000-0000-0000-0000000fce01', 35);
 SELECT wde.same('a replayed stamp and a fee add no line', wde.lines('00000000-0000-0000-0000-0000000fce01'), '$500.00 → $450.00 — first agreed · by 03 | $450.00 → $400.00 — second agreed · by 03 | $400.00 → $380.00 — third agreed · by 03');
+SELECT wde.same('the fee left e1 at 415 and its first amount alone', wde.kept('00000000-0000-0000-0000-0000000fce01'), 'was 500.00 · is 415.00');
+-- The write-down after the fee is its own step: its before is the amount the fee left, not the last write-down's after.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SELECT wde.as_user('00000000-0000-0000-0000-0000000fca03');
+SELECT wde.same('Rosa writes e1 down after the fee', wde.ask($$public.apply_agreed_write_down_to_billed_invoice('00000000-0000-0000-0000-0000000fce01', 410, 'after the fee')$$), 'ok');
+COMMIT;
+SELECT wde.same('the line after a fee starts from the amount the fee left', wde.newest('00000000-0000-0000-0000-0000000fce01'), '415.00 to 410.00, first 500.00');
+-- A write-down at the amount the bill already stands at: the writer takes it, the bill's note becomes the new one, and
+-- the line says the amount did not move. It must not read as a step from the first amount.
+BEGIN;
+SET LOCAL ROLE authenticated;
+SELECT wde.as_user('00000000-0000-0000-0000-0000000fca03');
+SELECT wde.same('Rosa writes e1 down at the amount it stands at', wde.ask($$public.apply_agreed_write_down_to_billed_invoice('00000000-0000-0000-0000-0000000fce01', 410, 'same amount, new words')$$), 'ok');
+COMMIT;
+SELECT wde.same('five write-downs of e1 are five lines, the last with one amount on both sides', wde.lines('00000000-0000-0000-0000-0000000fce01'), '$500.00 → $450.00 — first agreed · by 03 | $450.00 → $400.00 — second agreed · by 03 | $400.00 → $380.00 — third agreed · by 03 | $415.00 → $410.00 — after the fee · by 03 | $410.00 → $410.00 — same amount, new words · by 03');
+SELECT wde.same('e1 still keeps its first amount', wde.kept('00000000-0000-0000-0000-0000000fce01'), 'was 500.00 · is 410.00');
 
 -- 3 · The Stripe writer, as the service role with Rosa named: three lines, each hers.
 BEGIN;
@@ -142,5 +161,14 @@ SELECT wde.as_service();
 SELECT wde.same('Stripe writes e5 down for the ghost', wde.ask($$public.service_apply_agreed_write_down_from_stripe('00000000-0000-0000-0000-0000000fce05', 150, 'first agreed', 'cn_step_4', '00000000-0000-0000-0000-0000000fca09')$$), 'ok');
 COMMIT;
 SELECT wde.same('the ghost''s write-down is a line with nobody on it', wde.lines('00000000-0000-0000-0000-0000000fce05'), '$200.00 → $150.00 — first agreed · by nobody');
+
+-- 5 · A bill that arrives already written down, the way a copied row would: one line, its before the kept amount,
+-- since the row held nothing before it. Nobody is signed in and nobody is named, so the line is nobody's.
+INSERT INTO public.jobs_ledger_invoices (id, job_id, sequence_order, status, amount, stripe_invoice_id, agreed_write_down_previous_amount, agreed_write_down_note, agreed_write_down_at) VALUES
+  ('00000000-0000-0000-0000-0000000fce07', '00000000-0000-0000-0000-0000000fcf01', 3, 'billed', 300, NULL, 350, 'carried over', now());
+SELECT wde.same('a bill that arrives written down has one line, from its kept amount', wde.lines('00000000-0000-0000-0000-0000000fce07'), '$350.00 → $300.00 — carried over · by nobody');
+
+-- 6 · The lines read whole: every write-down above is one line and no more.
+SELECT wde.same('nine write-downs and one arrival are ten lines', (SELECT count(*)::text FROM public.job_activity_events e WHERE e.event_type = 'invoice_write_down' AND e.job_id = '00000000-0000-0000-0000-0000000fcf01'), '10');
 
 DO $$ BEGIN RAISE NOTICE 'write_down_each_step PASSED'; END $$;
