@@ -6,6 +6,7 @@ import {
   CHUNK_RELOAD_WAIT_MAX_MS,
   chunkBoundaryView,
   chunkRecoveryReloadStarted,
+  errorIsForChunkBoundary,
   decideChunkReloadWait,
   forgetChunkRecoveryReload,
   isChunkLoadError,
@@ -272,5 +273,22 @@ describe('chunkBoundaryView', () => {
   it('names a lost chunk apart from any other error when no reload is on its way', () => {
     expect(chunkBoundaryView(lostChunk, false)).toBe('lost-chunk')
     expect(chunkBoundaryView(emptyLazy, false)).toBe('broken')
+  })
+})
+
+describe('errorIsForChunkBoundary: what a page’s own boundary hands up', () => {
+  const lostChunk = new TypeError('Failed to fetch dynamically imported module: https://x/assets/Messages-abc123.js')
+  const crash = new Error('boom')
+
+  it('a lost chunk goes up, a reload on its way or not', () => {
+    expect(errorIsForChunkBoundary(lostChunk, false)).toBe(true)
+    expect(errorIsForChunkBoundary(lostChunk, true)).toBe(true)
+  })
+  it('anything goes up while a recovery reload is on its way: the page is leaving', () => {
+    expect(errorIsForChunkBoundary(crash, true)).toBe(true)
+  })
+  it('an ordinary crash stays with the page’s own boundary', () => {
+    expect(errorIsForChunkBoundary(crash, false)).toBe(false)
+    expect(errorIsForChunkBoundary(null, false)).toBe(false)
   })
 })

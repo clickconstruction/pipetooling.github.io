@@ -51,7 +51,7 @@ export function StagesJobCellActivityFooter({
     fontWeight: 600,
     border: '1px solid rgba(255,255,255,0.5)',
     borderRadius: 4,
-    background: '#16a34a',
+    background: '#15803d',
     color: 'white',
     cursor: 'pointer',
     lineHeight: 1.2,

@@ -14,6 +14,7 @@ vi.mock('../../lib/supabase', async () => {
 import { TallySortModeCardList } from './TallySortModeCardList'
 import type { TallyLinkedMercuryRow } from '../../lib/mercuryTxRowFromTally'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 function row(over: Partial<TallyLinkedMercuryRow> = {}): TallyLinkedMercuryRow {
   return {
@@ -56,7 +57,7 @@ describe('TallySortModeCardList', () => {
     await settle()
     expect(screen.getByText('Sort 1 purchase →')).toBeTruthy()
     expect(screen.getByText('Reece Plumbing')).toBeTruthy()
-    expect(screen.getByText('$45.56')).toBeTruthy()
+    expect(screen.getByText(moneyText('$45.56'))).toBeTruthy()
     screen.getByText('Sort to job').click()
     expect(onStartSort).toHaveBeenCalledWith('tx-1')
   })

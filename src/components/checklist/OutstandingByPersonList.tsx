@@ -229,7 +229,7 @@ function OutstandingByPersonSortableRow({
                 padding: '0.25rem',
                 // Instant answer to the press (mockup 55d69b29): fill + pop
                 // the moment the finger lands; the save runs behind it.
-                background: completingInstanceId === inst.id ? '#16a34a' : 'none',
+                background: completingInstanceId === inst.id ? '#15803d' : 'none',
                 border: 'none',
                 cursor: completingInstanceId === inst.id ? 'not-allowed' : 'pointer',
                 color: completingInstanceId === inst.id ? 'white' : '#16a34a',

@@ -72,7 +72,7 @@ function Switch({ on, label, busy, onFlip }: { on: boolean; label: string; busy:
         fontSize: '0.85rem',
         fontWeight: 600,
         cursor: busy ? 'default' : 'pointer',
-        background: on ? '#16a34a' : 'var(--surface)',
+        background: on ? '#15803d' : 'var(--surface)',
         color: on ? 'white' : 'var(--text-base)',
         opacity: busy ? 0.6 : 1,
       }}

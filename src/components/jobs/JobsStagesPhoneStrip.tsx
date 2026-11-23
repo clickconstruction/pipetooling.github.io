@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import type { PhoneRowFilter } from '../../lib/jobs/jobNextLine'
+import { STAGES_PHONE_CHIP_ROW_STYLE, STAGES_PHONE_FILTER_ROW_STYLE, stagesPhoneBandStyle } from '../../lib/jobs/stagesPhoneStrip'
 
 export type PhoneStageKey = 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections'
 
@@ -47,7 +48,8 @@ function useStickyTop(): number {
 
 /**
  * The phone Pipeline's head (punch list #30, PR 2a): the jump strip as sticky stage chips —
- * one stage shows at a time — and the All / Needs me / Today row under it.
+ * one stage shows at a time — and the All / Needs me / Today row under it. The band is exactly its
+ * column wide and the chips slide inside it (`lib/jobs/stagesPhoneStrip`).
  */
 export function JobsStagesPhoneStrip({
   counts,
@@ -71,9 +73,9 @@ export function JobsStagesPhoneStrip({
   return (
     <div
       data-stages-phone-strip
-      style={{ position: 'sticky', top, zIndex: 19, background: 'var(--surface)', margin: '0 -0.25rem', padding: '0.35rem 0.25rem 0.4rem', borderBottom: '1px solid var(--border)' }}
+      style={stagesPhoneBandStyle(top)}
     >
-      <div role="tablist" aria-label="Pipeline stages" style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+      <div role="tablist" aria-label="Pipeline stages" style={STAGES_PHONE_CHIP_ROW_STYLE}>
         {PHONE_STAGE_ORDER.map((key) => {
           const on = key === active
           const isColl = key === 'collections'
@@ -95,7 +97,7 @@ export function JobsStagesPhoneStrip({
           )
         })}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.4rem' }}>
+      <div style={STAGES_PHONE_FILTER_ROW_STYLE}>
         {(
           [
             ['all', `All ${filterCounts.all}`],

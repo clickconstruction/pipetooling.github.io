@@ -106,6 +106,7 @@ import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { scenarioPricingRows } from '../../lib/bids/scenarioPricingRows'
 import { getPricingTapeSink, setPricingTapeOpen } from '../../lib/bids/pricingTapeBridge'
 import { TAPE_DRAG_TYPE, parseTapeLine } from '../../lib/bids/tapeDrag'
+import { moneyText } from '../../test/moneyText'
 
 type Props = Parameters<typeof BidsPricingTab>[0]
 type Bid = NonNullable<Props['selectedBidForPricing']>
@@ -626,7 +627,7 @@ describe('BidsPricingTab render smoke', () => {
     const loadBidPricingAssignments = vi.fn(async () => {})
     renderWithProviders(<BidsPricingTab {...pricedProps({ pricingCountRows: RULE_ROWS, loadBidPricingAssignments })} />)
     await settle()
-    expect(within(grid()).getByText('10% of Fixtures revenue · $6,800.00')).toBeTruthy()
+    expect(within(grid()).getByText(moneyText('10% of Fixtures revenue · $6,800.00'))).toBeTruthy()
     // 10% of $6,800.00 is $680.00, over three floor drains.
     await waitFor(() => expect(priceWrites()).toEqual([{ table: 'bid_count_row_custom_prices', op: 'insert', payload: { bid_id: 'bid-1', count_row_id: 'cr-fd', price_book_version_id: PRICING_ID, unit_price: 226.67 } }]))
     await waitFor(() => expect(loadBidPricingAssignments).toHaveBeenCalledWith('bid-1', PRICING_ID))
@@ -665,7 +666,7 @@ describe('BidsPricingTab render smoke', () => {
     expect((within(win).getByRole('button', { name: 'Add Connections' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.change(within(win).getByLabelText('Percent'), { target: { value: '10' } })
     fireEvent.change(within(win).getByLabelText('Rows'), { target: { value: 'kind:fixture' } })
-    expect(within(win).getByText('10% of Fixtures revenue · $6,800.00')).toBeTruthy()
+    expect(within(win).getByText(moneyText('10% of Fixtures revenue · $6,800.00'))).toBeTruthy()
     fireEvent.click(within(win).getByRole('button', { name: 'Add Connections at $680.00' }))
     await waitFor(() =>
       expect(db.writes.find((w) => w.table === 'bids_count_rows')).toEqual({
@@ -703,7 +704,7 @@ describe('BidsPricingTab render smoke', () => {
     act(() => sink!.send({ value: 680, words: 'Fixtures revenue × 0.1 = 680', rule: { pct: 10, basis: 'revenue', sourceKey: 'kind:fixture' } }, 'new-row'))
     let win = screen.getByRole('dialog', { name: 'Percent row' })
     expect(within(win).getByTestId('percent-row-from-tape').textContent).toBe('From the tape: Fixtures revenue × 0.1 = 680')
-    expect(within(win).getByText('10% of Fixtures revenue · $6,800.00')).toBeTruthy()
+    expect(within(win).getByText(moneyText('10% of Fixtures revenue · $6,800.00'))).toBeTruthy()
     expect(within(win).getByRole('button', { name: 'Add Connections at $680.00' })).toBeTruthy()
     fireEvent.click(within(win).getByRole('button', { name: 'Cancel' }))
     act(() => sink!.send({ value: 900, words: '900', rule: null }, 'row'))

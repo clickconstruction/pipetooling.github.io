@@ -28,6 +28,7 @@ vi.mock('../../hooks/useJobBilledExpectedPay', () => ({
 
 import { JobFormInvoiceList } from './JobFormInvoiceList'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 type Payment = { id: string; amount: number; paid_on: string | null; sent_on: string | null; note: string | null; payment_type: string | null; reference_number: string | null; invoice_id: string | null; mercury_transaction_id: string | null }
 
@@ -80,7 +81,7 @@ describe('JobFormInvoiceList row grammar (v2.3478)', () => {
     const row = screen.getByTestId('invoice-row')
     expect(row.getAttribute('data-state')).toBe('open')
     expect(within(row).getByText('Billed')).toBeTruthy()
-    expect(within(row).getByText('$9,800.00')).toBeTruthy()
+    expect(within(row).getByText(moneyText('$9,800.00'))).toBeTruthy()
     expect(within(row).getByText('sent Sep 4 to Maria Delgado')).toBeTruthy()
     expect(within(row).getByText('$9,800 open')).toBeTruthy()
     expect(within(row).getByText('21 d past expected')).toBeTruthy()
@@ -155,7 +156,7 @@ describe('JobFormInvoiceList row grammar (v2.3478)', () => {
     )
     await settle()
     const rows = screen.getAllByTestId('invoice-row')
-    const bundle = rows.find((r) => within(r).queryByText('$900.00'))!
+    const bundle = rows.find((r) => within(r).queryByText(moneyText('$900.00')))!
     expect(within(bundle).getByText('not sent · bills Maria Delgado')).toBeTruthy()
     expect(within(bundle).getByText(/auto remainder/)).toBeTruthy()
     expect(within(bundle).getByText('$900 to bill')).toBeTruthy()
@@ -163,11 +164,11 @@ describe('JobFormInvoiceList row grammar (v2.3478)', () => {
     let menu = openMenu(bundle)
     expect(within(menu).queryByText('Delete draft')).toBeNull()
     fireEvent.mouseDown(document.body)
-    const draft = rows.find((r) => within(r).queryByText('$400.00'))!
+    const draft = rows.find((r) => within(r).queryByText(moneyText('$400.00')))!
     menu = openMenu(draft)
     fireEvent.click(within(menu).getByText('Delete draft'))
     const dialog = screen.getByRole('dialog', { name: 'Delete draft invoice' })
-    expect(within(dialog).getByText(/\$400\.00/)).toBeTruthy()
+    expect(within(dialog).getByText(moneyText(/\$400\.00/))).toBeTruthy()
     fireEvent.click(within(dialog).getByText('Cancel'))
     expect(screen.queryByText('Delete draft invoice?')).toBeNull()
   })
@@ -195,7 +196,7 @@ describe('JobFormInvoiceList marked paid · no payment on record (v2.4839, under
     expect((btn as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(btn)
     const dialog = screen.getByRole('dialog', { name: 'Remove bill' })
-    expect(within(dialog).getByText(/\$8,900\.00/)).toBeTruthy()
+    expect(within(dialog).getByText(moneyText(/\$8,900\.00/))).toBeTruthy()
     expect(within(dialog).getByText(/changes no payment and no balance owed/)).toBeTruthy()
     fireEvent.click(within(dialog).getByText('Cancel'))
     expect(screen.queryByRole('dialog', { name: 'Remove bill' })).toBeNull()
@@ -228,7 +229,7 @@ describe('JobFormInvoiceList billed send-back (v2.1653, under ⋯)', () => {
     expect((btn as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(btn)
     const dialog = screen.getByRole('dialog', { name: 'Send bill back' })
-    expect(within(dialog).getByText(/\$8,900\.00/)).toBeTruthy()
+    expect(within(dialog).getByText(moneyText(/\$8,900\.00/))).toBeTruthy()
     // Confirm stays dead until the acknowledgment is checked.
     const confirm = within(dialog).getByRole('button', { name: 'Send back' })
     expect((confirm as HTMLButtonElement).disabled).toBe(true)
@@ -281,7 +282,7 @@ describe('JobFormInvoiceList billed send-back (v2.1653, under ⋯)', () => {
     await settle()
     const chips = screen.getAllByTestId('invoice-shown-to-chip')
     expect(chips.map((c) => c.textContent)).toEqual([' · 👁 shown to Dead Level Foundation'])
-    const shared = screen.getAllByTestId('invoice-row').find((r) => within(r).queryByText('$6,420.00'))!
+    const shared = screen.getAllByTestId('invoice-row').find((r) => within(r).queryByText(moneyText('$6,420.00')))!
     const menu = openMenu(shared)
     await settle()
     expect(within(menu).getByText('✓ Shown on Dead Level Foundation’s statement')).toBeTruthy()
@@ -380,7 +381,7 @@ describe('JobFormInvoiceList — the money that paid each bill (v2.4293)', () =>
     )
     await settle()
     const row = screen.getByTestId('invoice-row')
-    expect(within(row).getByText('$9,022.49 open')).toBeTruthy()
+    expect(within(row).getByText(moneyText('$9,022.49 open'))).toBeTruthy()
     const bar = within(row).getByTestId('invoice-paid-bar')
     expect(bar.children).toHaveLength(2)
     expect((bar.children[0] as HTMLElement).style.width).toBe('43.66%')

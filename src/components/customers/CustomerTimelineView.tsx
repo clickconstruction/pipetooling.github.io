@@ -28,6 +28,7 @@ import JobHoursStoryModal from '../jobs/JobHoursStoryModal'
 import { useToastContext } from '../../contexts/ToastContext'
 import { appUrl } from '../../lib/appOrigin'
 import { customerTimelineHref } from '../../lib/customers/customerTimelineSearch'
+import { MoneyText } from '../Money'
 
 /**
  * The Customer timeline (punch list #97): one customer's whole story on one spine of time,
@@ -224,7 +225,7 @@ function CardView({
         <span style={{ fontWeight: 600, color: TITLE_COLOR[card.kind] ?? 'var(--text-strong)' }}>{card.title}</span>
         {card.amount != null ? (
           <span style={{ fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: AMOUNT_COLOR[card.kind] ?? 'var(--text-strong)' }}>
-            {timelineMoney(card.amount)}
+            <MoneyText text={timelineMoney(card.amount)} />
           </span>
         ) : null}
       </div>
@@ -556,7 +557,7 @@ export default function CustomerTimelineView({ customerId, onClose, onShowProfil
                   >
                     <span aria-hidden style={{ width: 9, height: 9, borderRadius: 9999, background: timelineJobColor(j.colorIndex), flexShrink: 0 }} />
                     {customerTimelineJobWords(j)}
-                    {j.owedNow > 0.005 ? <span style={{ fontWeight: 700, color: 'var(--text-amber-800)' }}>{timelineMoney(j.owedNow)}</span> : null}
+                    {j.owedNow > 0.005 ? <span style={{ fontWeight: 700, color: 'var(--text-amber-800)' }}><MoneyText text={timelineMoney(j.owedNow)} /></span> : null}
                   </button>
                 ))}
               </div>

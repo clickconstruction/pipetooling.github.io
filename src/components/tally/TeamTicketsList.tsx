@@ -5,6 +5,7 @@ import type { TicketJobFacts } from '../../lib/tickets/ticketJobs'
 import { officeTicketWhyWords, type OfficeTicketRow } from '../../lib/tickets/ticketOffice'
 import { ticketJobLine, ticketWhenLine } from '../../lib/tickets/ticketRowWords'
 import type { TicketWithPages } from '../../lib/tickets/ticketsIo'
+import { MoneyText } from '../Money'
 
 /**
  * The office's Tickets list (punch list #295, PR 3; the mock-up's frame L): every ticket the Team queue cannot show
@@ -63,7 +64,7 @@ export function TeamTicketsList(p: TeamTicketsListProps) {
                 <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>{ticketWhenLine(t, t.counter_ticket_pages.length)}</span>
                 <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{ticketJobLine(t, p.jobs)}</div>
                 <div style={{ color: 'var(--text-700)', fontSize: '0.75rem' }}>{officeTicketWhyWords(r, { ticketJob: t.job_id ? labelOf(t.job_id) : null, sortedJobs: r.sortedJobIds.map(labelOf) })}</div>
-                {t.total !== null ? <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Total typed: ${t.total.toFixed(2)}</div> : null}
+                {t.total !== null ? <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Total typed: <MoneyText text={`$${t.total.toFixed(2)}`} /></div> : null}
                 {t.note ? <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', wordBreak: 'break-word' }}>{t.note}</div> : null}
               </div>
               <button type="button" style={press} onClick={() => p.onOpen(t)}>
@@ -138,7 +139,7 @@ export function TeamTicketsList(p: TeamTicketsListProps) {
               ) : null}
               {busy ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Saving…</span> : null}
             </div>
-            <div style={{ marginTop: '0.3rem', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{ticketStateWords(t)}</div>
+            <div style={{ marginTop: '0.3rem', fontSize: '0.6875rem', color: 'var(--text-muted)' }}><MoneyText text={ticketStateWords(t)} /></div>
           </div>
         )
       })}

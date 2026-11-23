@@ -99,7 +99,7 @@ export function SubmittalApproveAllDialog({ revLabel, rows, alreadyDecided, miss
             disabled={bad || busy}
             data-testid="approve-all-save"
             onClick={() => onSave({ person: reviewerChoiceFrom(pick, sources), note, ...(on && on !== today ? { on } : {}) })}
-            style={{ padding: '0.45rem 0.9rem', background: bad || busy ? 'var(--bg-200)' : '#16a34a', color: bad || busy ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: bad || busy ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
+            style={{ padding: '0.45rem 0.9rem', background: bad || busy ? 'var(--bg-200)' : '#15803d', color: bad || busy ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: bad || busy ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
           >
             Approve {rows} {rows === 1 ? 'row' : 'rows'}
           </button>

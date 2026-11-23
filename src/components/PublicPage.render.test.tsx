@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { CHUNK_RECOVERY_KEY, forgetChunkRecoveryReload, startChunkRecoveryReload } from '../lib/chunkLoadRecovery'
 import { lazyWindow } from '../lib/lazyWindow'
-import { PUBLIC_PAGE_LOST_WORDS, PUBLIC_PAGE_OFFLINE_WORDS, PUBLIC_PAGE_SLOW_AFTER_MS, PUBLIC_PAGE_SLOW_WORDS, PUBLIC_PAGE_STILL_OFFLINE_WORDS } from '../lib/publicPageLoad'
+import { PUBLIC_PAGE_CHECKING_WORDS, PUBLIC_PAGE_LOST_WORDS, PUBLIC_PAGE_OFFLINE_WORDS, PUBLIC_PAGE_SLOW_AFTER_MS, PUBLIC_PAGE_SLOW_WORDS, PUBLIC_PAGE_STILL_OFFLINE_WORDS } from '../lib/publicPageLoad'
 import { __resetUnsavedWorkForTests } from '../lib/unsavedWork'
 import { RouteChunkBoundary } from './RouteChunkBoundary'
 import { PublicPage, PublicPageLoading } from './PublicPage'
@@ -45,6 +45,7 @@ describe('PublicPage', () => {
   afterEach(() => {
     cleanup()
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     setOnline(true)
   })
 
@@ -162,6 +163,95 @@ describe('PublicPage', () => {
     })
     expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
     expect(container.querySelector('[data-public-page="loading"]')).not.toBeNull()
+  })
+
+  describe('a second Try again on a phone that says it is offline', () => {
+    const icon = () => ({ ok: true, headers: { get: () => 'image/svg+xml' } })
+
+    it('the phone was wrong: the second press asks the network once, hears back and reloads', async () => {
+      setOnline(false)
+      let answer: (r: unknown) => void = () => undefined
+      const fetcher = vi.fn(() => new Promise((r) => (answer = r)))
+      vi.stubGlobal('fetch', fetcher)
+      const { container } = render(page(<Throws error={lostChunk()} />))
+
+      // The first press answers in words, as it always has, and asks nothing.
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      expect(screen.getByText(PUBLIC_PAGE_STILL_OFFLINE_WORDS)).toBeTruthy()
+      expect(fetcher).not.toHaveBeenCalled()
+
+      // The second press asks. Until the answer the page says so and the press is dead.
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      expect(screen.getByText(PUBLIC_PAGE_CHECKING_WORDS)).toBeTruthy()
+      expect((screen.getByRole('button', { name: 'Try again' }) as HTMLButtonElement).disabled).toBe(true)
+      expect(fetcher).toHaveBeenCalledTimes(1)
+      const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit]
+      expect(url).toMatch(/^\/favicon\.svg\?signal=\d+$/)
+      expect(init.cache).toBe('no-store')
+      expect(hardReloadFromRoot).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      expect(fetcher).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        answer(icon())
+      })
+      expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
+      expect(container.querySelector('[data-public-page="loading"]')).not.toBeNull()
+    })
+
+    it('the phone was right: the ask fails, nothing reloads, and the page keeps its words and its press', async () => {
+      setOnline(false)
+      const fetcher = vi.fn(async () => {
+        throw new TypeError('Failed to fetch')
+      })
+      vi.stubGlobal('fetch', fetcher)
+      const { container } = render(page(<Throws error={lostChunk()} />))
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await waitFor(() => expect(screen.getByText(PUBLIC_PAGE_STILL_OFFLINE_WORDS)).toBeTruthy())
+      expect(fetcher).toHaveBeenCalledTimes(1)
+      expect(hardReloadFromRoot).not.toHaveBeenCalled()
+      expect(container.querySelector('[data-public-page="offline"]')).not.toBeNull()
+      expect((screen.getByRole('button', { name: 'Try again' }) as HTMLButtonElement).disabled).toBe(false)
+
+      // Every later press asks again, once each. Ten presses with no network reload nothing.
+      for (let press = 0; press < 3; press++) {
+        fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(screen.getByText(PUBLIC_PAGE_STILL_OFFLINE_WORDS)).toBeTruthy())
+      }
+      expect(fetcher).toHaveBeenCalledTimes(4)
+      expect(hardReloadFromRoot).not.toHaveBeenCalled()
+    })
+
+    it('a sign-in wall that answers every address is not the network: nothing reloads', async () => {
+      setOnline(false)
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => ({ ok: true, headers: { get: () => 'text/html; charset=utf-8' } })),
+      )
+      render(page(<Throws error={lostChunk()} />))
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await waitFor(() => expect(screen.getByText(PUBLIC_PAGE_STILL_OFFLINE_WORDS)).toBeTruthy())
+      expect(hardReloadFromRoot).not.toHaveBeenCalled()
+    })
+
+    it('an answer that comes after the page has gone does nothing', async () => {
+      setOnline(false)
+      let answer: (r: unknown) => void = () => undefined
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => new Promise((r) => (answer = r))),
+      )
+      const view = render(page(<Throws error={lostChunk()} />))
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      view.unmount()
+      await act(async () => {
+        answer(icon())
+      })
+      expect(hardReloadFromRoot).not.toHaveBeenCalled()
+    })
   })
 
   it('a browser that blocks storage still gets the reload and the loading look, not an empty page', () => {

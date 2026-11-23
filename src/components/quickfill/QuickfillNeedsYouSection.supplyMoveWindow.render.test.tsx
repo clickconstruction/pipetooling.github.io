@@ -11,6 +11,7 @@ import { installDomShims, renderWithProviders, settle } from '../../test/renderS
 import type { NeedsYouInputs } from '../../lib/dashboardNeedsYou'
 import { JobsListCacheProvider } from '../../contexts/JobsListCacheContext'
 import { QuickfillNeedsYouSection } from './QuickfillNeedsYouSection'
+import { moneyText } from '../../test/moneyText'
 
 /** The section sits under the app's jobs-list cache (one of its stations reads it). */
 const section = () => (
@@ -64,7 +65,7 @@ describe('QuickfillNeedsYouSection · the move window', () => {
     const last = seen[seen.length - 1]!
     expect(last.supplyMoveWindowEnabled).toBe(true)
     expect(last.supplyMoveWindow).toEqual(WINDOW)
-    expect(screen.getByText('$213.50 on one current invoice is not on a job account yet')).toBeTruthy()
+    expect(screen.getByText(moneyText('$213.50 on one current invoice is not on a job account yet'))).toBeTruthy()
   })
 
   it.each(['estimator', 'primary'])('%s does not', async (role) => {

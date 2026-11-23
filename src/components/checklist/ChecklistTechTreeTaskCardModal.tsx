@@ -320,7 +320,7 @@ export function ChecklistTechTreeTaskCardModal({
 
   const chipStyles: Record<string, React.CSSProperties> = {
     in_review: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' },
-    signed_off: { background: '#16a34a', color: 'white' },
+    signed_off: { background: '#15803d', color: 'white' },
     on_list: { background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)' },
   }
   const chipLabel = chip === 'in_review' ? 'in review' : chip === 'signed_off' ? 'signed off' : 'on list'
@@ -469,7 +469,7 @@ export function ChecklistTechTreeTaskCardModal({
           {chip || done || waitingAfterLabel ? (
             <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               {done ? (
-                <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap', background: '#16a34a', color: 'white' }}>✓ done</span>
+                <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap', background: '#15803d', color: 'white' }}>✓ done</span>
               ) : null}
               {chip ? (
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap', ...chipStyles[chip] }}>
@@ -960,14 +960,14 @@ export function ChecklistTechTreeTaskCardModal({
                     ...(doneFailed
                       ? { border: '1.5px solid #dc2626', background: 'transparent', color: 'var(--text-red-700)' }
                       : effectiveDone
-                        ? { border: '1.5px solid #16a34a', background: '#16a34a', color: 'white' }
+                        ? { border: '1.5px solid #15803d', background: '#15803d', color: 'white' }
                         : { border: '1.5px solid #16a34a', background: 'transparent', color: 'var(--text-green-700)' }),
                   }}
                 >
                   {doneFailed ? 'Tap to retry — not saved' : effectiveDone ? '✓ Done · reopen' : '○ Mark done'}
                 </button>
               ) : done ? (
-                <span style={{ flex: 1, height: 48, borderRadius: 12, background: '#16a34a', color: 'white', fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ flex: 1, height: 48, borderRadius: 12, background: '#15803d', color: 'white', fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   ✓ done
                 </span>
               ) : (

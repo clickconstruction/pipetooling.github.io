@@ -15,6 +15,7 @@ Before a sub works a job, their file should hold three documents. Those are a si
 - Assign the **Subs packet** on their row with {{button:blue|Assign packets}}. It flags every missing document as {{chip:red|unsent}} until handled.
 - {{button:blue|Send}} a document to collect a signature by text or email. They can type or draw it. Or use the **Upload Signed** tab when you are holding paper. Give COIs their **expiration date**. Expiry warnings flow everywhere from that one field.
 - The {{chip:gray|Dashboard}} checkbox on a document nags a signed-in sub at clock-in until it is signed.
+- A sub who works for a business sits under the business on this tab. See [put a sub under their company](/help/put-a-sub-under-their-company).
 
 :::example The one-minute onboard
 Assign the Subs packet → Send the agreement → upload their W-9 and COI with the expiry date. Their compliance pills go green on People → Subs.

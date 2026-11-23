@@ -11,6 +11,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 import SendRecordInvoiceModal from './SendRecordInvoiceModal'
+import { moneyText } from '../../test/moneyText'
 
 const ENSURE_RPC = 'ensure_single_ready_to_bill_invoice_for_job'
 
@@ -141,7 +142,7 @@ describe('SendRecordInvoiceModal — write after confirm (kind:job)', () => {
 
     // The header carries the client-side plan: revenue 3,630 − the $1,000 partial.
     await waitFor(() => {
-      expect(screen.getByText(/RTB \$2,630\.00/)).toBeTruthy()
+      expect(screen.getByText(moneyText(/RTB \$2,630\.00/))).toBeTruthy()
     })
     expect(ensureCalls()).toBe(0)
     expect(calls.writes.filter((w) => w.startsWith('jobs_ledger_invoices.'))).toEqual([])
@@ -202,7 +203,7 @@ describe('SendRecordInvoiceModal — write after confirm (kind:job)', () => {
       />,
     )
     await waitFor(() => {
-      expect(screen.getByText(/RTB \$2,630\.00/)).toBeTruthy()
+      expect(screen.getByText(moneyText(/RTB \$2,630\.00/))).toBeTruthy()
     })
     const banner = screen.getByRole('group', { name: 'Customer email missing' })
     fireEvent.change(within(banner).getByRole('textbox', { name: 'Customer email' }), { target: { value: 'ap@kestrin.test' } })

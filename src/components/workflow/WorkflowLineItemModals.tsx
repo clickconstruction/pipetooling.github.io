@@ -24,6 +24,7 @@ import { formatAmount, formatDateShort } from '../../lib/workflow/workflowFormat
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
 
@@ -85,7 +86,7 @@ function DeleteLineItemConfirm({
         <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           {pending.item.memo}
           {pending.item.amount != null && (
-            <span> — {formatAmount(pending.item.amount)}</span>
+            <span> — <MoneyText text={formatAmount(pending.item.amount)} /></span>
           )}
           {pending.item.item_date && (
             <span style={{ display: 'block', marginTop: 4 }}>
@@ -281,7 +282,7 @@ function AddPurchaseOrderPicker({
                   onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
                 >
                   <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{po.name}</div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>${po.total.toFixed(2)}</div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}><MoneyText text={`$${po.total.toFixed(2)}`} /></div>
                 </div>
               ))}
             </div>
@@ -351,7 +352,7 @@ function AddInvoicePicker({
                     {/* Primary: supply house, date, amount, PO */}
                     <div style={{ fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.875rem' }}>
                       {inv.supply_house_name}
-                      <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {formatDateShort(inv.invoice_date)} · ${inv.amount.toFixed(2)}</span>
+                      <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {formatDateShort(inv.invoice_date)} · <MoneyText text={`$${inv.amount.toFixed(2)}`} /></span>
                       {inv.purchase_order_number && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {inv.purchase_order_number}</span>}
                     </div>
                     {/* Secondary: invoice #, due, paid */}
@@ -402,8 +403,8 @@ function PurchaseOrderDetailWindow({ po, onClose }: { po: PODetail; onClose: () 
                   <td style={{ padding: '0.75rem' }}>{item.part.name}</td>
                   <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
                   <td style={{ padding: '0.75rem' }}>{item.supply_house?.name || '-'}</td>
-                  <td style={{ padding: '0.75rem' }}>${item.price_at_time.toFixed(2)}</td>
-                  <td style={{ padding: '0.75rem', fontWeight: 600 }}>${(item.price_at_time * item.quantity).toFixed(2)}</td>
+                  <td style={{ padding: '0.75rem' }}><MoneyText text={`$${item.price_at_time.toFixed(2)}`} /></td>
+                  <td style={{ padding: '0.75rem', fontWeight: 600 }}><MoneyText text={`$${(item.price_at_time * item.quantity).toFixed(2)}`} /></td>
                 </tr>
               ))}
             </tbody>
@@ -411,7 +412,7 @@ function PurchaseOrderDetailWindow({ po, onClose }: { po: PODetail; onClose: () 
               <tr>
                 <td colSpan={4} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
                 <td style={{ padding: '0.75rem', fontWeight: 600 }}>
-                  ${po.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0).toFixed(2)}
+                  <MoneyText text={`$${po.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0).toFixed(2)}`} />
                 </td>
               </tr>
             </tfoot>
@@ -438,7 +439,7 @@ function InvoiceDetailWindow({ invoice, onClose }: { invoice: InvoiceDetail; onC
         <h2 style={{ marginBottom: '1rem' }}>Invoice #{invoice.invoice_number}</h2>
         <div style={{ marginBottom: '1rem', fontSize: '0.9375rem' }}>
           <div style={{ marginBottom: '0.5rem' }}><strong>Supply House:</strong> {invoice.supply_house_name}</div>
-          <div style={{ marginBottom: '0.5rem' }}><strong>Amount:</strong> {formatAmount(invoice.amount)}</div>
+          <div style={{ marginBottom: '0.5rem' }}><strong>Amount:</strong> <MoneyText text={formatAmount(invoice.amount)} /></div>
           {invoice.link && (
             <div>
               <a href={normalizeUrl(invoice.link)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-blue-500)' }}>

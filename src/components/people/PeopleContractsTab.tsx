@@ -60,6 +60,17 @@ import { NO_ARCHIVED_ROSTER, splitNamesByArchived, type ArchivedRoster } from '.
 import { isCompanyPaperName } from '../../../supabase/functions/_shared/companyPaper'
 import { isPartyPaperName } from '../../lib/contracts/paperParty'
 import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
+import { isOfficeRole } from '../../lib/doorRoles'
+import {
+  companyByPersonName,
+  companyNameHolds,
+  companySuggestions,
+  rosterByCompany,
+  type PersonCompanyLink,
+  type SubCompany,
+} from '../../lib/people/subCompanies'
+import { loadSubCompanies } from '../../lib/people/subCompaniesIo'
+import { SubCompanyHeadRow, SubCompanyLines } from './SubCompanyLines'
 
 /** Small tinted pill for a document signing state; anything unknown renders as unsent. */
 function ContractStatusChip({ status, label }: { status: string; label: string }) {
@@ -198,6 +209,11 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
   const [contractsLoading, setContractsLoading] = useState(false)
   const [contractsError, setContractsError] = useState<string | null>(null)
   const [contractsSearchQuery, setContractsSearchQuery] = useState('')
+  /** A sub's company (punch list #403, step 6): who works for which trade company, read by the office's four roles alone. */
+  const officeKeepsCompanies = isOfficeRole(authRole)
+  const [subCompanyLinks, setSubCompanyLinks] = useState<PersonCompanyLink[]>([])
+  const [subCompanies, setSubCompanies] = useState<SubCompany[]>([])
+  const [subCompaniesError, setSubCompaniesError] = useState<string | null>(null)
   const [selectedContractsPersonName, setSelectedContractsPersonName] = useState<string | null>(null)
   /** Contract library (v2.1411): merged Documents/Packets modal replacing Contract Book + Manage templates. */
   const [contractLibraryModalOpen, setContractLibraryModalOpen] = useState(false)
@@ -1078,6 +1094,13 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
   )
   const contractsPersonNamesSorted = contractsNames.active
 
+  /** Where each roster name works (punch list #403, step 6). Empty for anyone who reads no links. */
+  const companyPlaces = useMemo(
+    () => companyByPersonName(people.map((p) => ({ id: p.id, name: p.name })), subCompanyLinks, subCompanies),
+    [people, subCompanyLinks, subCompanies],
+  )
+  const subCompanyNames = useMemo(() => companySuggestions(subCompanies), [subCompanies])
+
   const contractsSearchNormalized = useMemo(() => contractsSearchQuery.trim().toLowerCase(), [contractsSearchQuery])
 
   /** Archived roster names not carried by a living row — the bottom Archived section. */
@@ -1153,6 +1176,8 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
     }
     return contractsPersonNamesSorted.filter((personName) => {
       if (personName.toLowerCase().includes(contractsSearchNormalized)) return true
+      // A worker is found by their company's name too (punch list #403, step 6).
+      if (companyNameHolds(companyPlaces.get(personName)?.company.name, contractsSearchNormalized)) return true
       return getDocumentsForPerson(personName).some(({ document_name }) =>
         document_name.toLowerCase().includes(contractsSearchNormalized),
       )
@@ -1160,6 +1185,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
   }, [
     contractsPersonNamesSorted,
     contractsSearchNormalized,
+    companyPlaces,
     contractsRosterBuckets,
     contractsRosterFilterActive,
     contractTemplates,
@@ -1676,6 +1702,22 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
     return () => clearTimeout(t)
   }, [])
 
+  const reloadSubCompanies = useCallback(async () => {
+    try {
+      const read = await loadSubCompanies()
+      setSubCompanyLinks(read.links)
+      setSubCompanies(read.companies)
+      setSubCompaniesError(null)
+    } catch (e) {
+      setSubCompaniesError(formatErrorMessage(e))
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!officeKeepsCompanies) return
+    void reloadSubCompanies()
+  }, [officeKeepsCompanies, reloadSubCompanies])
+
   return (
     <>
         <div>
@@ -1732,6 +1774,14 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
             </div>
           </div>
           {contractsError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{contractsError}</p>}
+          {subCompaniesError ? (
+            <p role="alert" style={{ color: 'var(--text-red-700)', marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span>The subs’ companies did not load. {subCompaniesError}</span>
+              <button type="button" onClick={() => void reloadSubCompanies()} style={{ padding: '0.2rem 0.6rem', fontSize: '0.8125rem' }}>
+                Read the companies again
+              </button>
+            </p>
+          ) : null}
           {contractsLoading ? (
             <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : (
@@ -1892,10 +1942,14 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                           </tr>
                         )
                       }
-                      const renderRosterRow = (personName: string, archived: boolean) => {
+                      const renderRosterRow = (personName: string, archived: boolean, underCompany = false) => {
                         const docs = getDocumentsForPerson(personName)
                         const statusCounts = countPersonContractStatuses(docs)
                         const isExpanded = selectedContractsPersonName === personName
+                        // A sub's company (punch list #403, step 6): the office keeps it on a sub's opened row.
+                        const sameName = people.filter((p) => p.name.trim() === personName.trim())
+                        const isSub = officeKeepsCompanies && !archived && sameName.some((p) => p.kind === 'sub')
+                        const subPersonId = sameName.length === 1 && sameName[0]!.kind === 'sub' ? sameName[0]!.id : null
                         return (
                           <Fragment key={personName}>
                             <tr
@@ -1907,7 +1961,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                               }}
                               onClick={() => setSelectedContractsPersonName((prev) => (prev === personName ? null : personName))}
                             >
-                              <td style={{ padding: '0.75rem' }}>
+                              <td style={{ padding: underCompany ? '0.75rem 0.75rem 0.75rem 1.75rem' : '0.75rem', ...(underCompany ? { borderLeft: '3px solid var(--border-strong)' } : {}) }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                                   <PersonNameDoor name={personName} payName={personName} />
                                   {statusCounts.unsent > 0 ? <ContractStatusChip status="unsent" label={`${statusCounts.unsent} unsent`} /> : null}
@@ -1951,6 +2005,16 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                               <tr>
                                 <td colSpan={2} style={{ padding: '1rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    {isSub ? (
+                                      <SubCompanyLines
+                                        personId={subPersonId}
+                                        personName={personName}
+                                        place={companyPlaces.get(personName.trim())}
+                                        companies={subCompanies}
+                                        suggestions={subCompanyNames}
+                                        onKept={reloadSubCompanies}
+                                      />
+                                    ) : null}
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                       <button
                                         type="button"
@@ -2183,7 +2247,16 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                       }
                       return (
                         <>
-                          {contractsPersonNamesFiltered.map((personName) => renderRosterRow(personName, false))}
+                          {rosterByCompany(contractsPersonNamesFiltered, companyPlaces).map((piece) =>
+                            piece.kind === 'person' ? (
+                              renderRosterRow(piece.name, false)
+                            ) : (
+                              <Fragment key={`company:${piece.group.company.id}`}>
+                                <SubCompanyHeadRow group={piece.group} />
+                                {piece.group.workers.map((w) => renderRosterRow(w.name, false, true))}
+                              </Fragment>
+                            ),
+                          )}
                           {contractsArchivedVisible.length > 0 ? (
                             <>
                               <tr

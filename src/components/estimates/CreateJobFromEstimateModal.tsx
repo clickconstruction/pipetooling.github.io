@@ -25,10 +25,7 @@ import type { JobSearchResult } from '../../utils/unifiedJobBidSearch'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { UnifiedSearchResultRow, UnifiedSearchSelectionLabel } from '../search/UnifiedSearchResultRow'
 import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
-
-function formatCurrency(n: number): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+import { Money, MoneyText } from '../Money'
 
 const labelStyle: CSSProperties = {
   display: 'block',
@@ -577,12 +574,12 @@ export default function CreateJobFromEstimateModal({
           <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
             {selectedJobRevenue != null ? (
               <>
-                ${formatCurrency(selectedJobRevenue)} →{' '}
-                <strong>${formatCurrency(selectedJobRevenue + applyNetCents / 100)}</strong>{' '}
+                <Money amount={selectedJobRevenue} /> →{' '}
+                <strong><Money amount={selectedJobRevenue + applyNetCents / 100} /></strong>{' '}
               </>
             ) : null}
             <strong style={{ color: applyNetCents < 0 ? 'var(--text-red-700)' : 'var(--text-green-600)' }}>
-              ({formatSignedCentsUsd(applyNetCents)})
+              (<MoneyText text={formatSignedCentsUsd(applyNetCents)} />)
             </strong>
           </span>
         </div>
@@ -720,7 +717,7 @@ export default function CreateJobFromEstimateModal({
             <div style={{ ...labelStyle, marginBottom: '0.35rem' }}>Impact on cost</div>
             <EstimateLineItemsTable lines={normalizedLines} />
             <p style={{ margin: '0.4rem 0 0', fontWeight: 600, textAlign: 'right', fontSize: '0.9rem' }}>
-              Net change to contract: {formatSignedCentsUsd(applyNetCents)}
+              Net change to contract: <MoneyText text={formatSignedCentsUsd(applyNetCents)} />
             </p>
           </div>
         ) : null}
@@ -816,7 +813,7 @@ export default function CreateJobFromEstimateModal({
               fontWeight: 600,
             }}
           >
-            {formatCurrency(bidDisplayDollars)}
+            <Money amount={bidDisplayDollars} symbol="" />
           </div>
           <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
             {fixtureRowsForSubmit.length > 0

@@ -21,6 +21,7 @@ import {
   type CostBatchRow,
 } from '../../lib/costBatches/costBatchList'
 import { COST_BATCH_LIST_LIMIT, fetchCostBatchLists, fetchCostBatchOps, fetchJobWordsByIds, revertCostBatch, type CostMoveJobRow } from '../../lib/costBatches/costMoveReads'
+import { MoneyText } from '../Money'
 
 const heading: CSSProperties = { margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-strong)' }
 const quiet: CSSProperties = { margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }
@@ -199,7 +200,7 @@ function BatchCard({
       </div>
       <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-base)' }}>{batch.reason}</p>
       {batch.sourceRef ? <p style={quiet}>Plan: {batch.sourceRef}</p> : null}
-      <p style={quiet}>{costBatchSummaryWords(batch.byJob, byOpCounts)}</p>
+      <p style={quiet}><MoneyText text={costBatchSummaryWords(batch.byJob, byOpCounts)} /></p>
       <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem', color: 'var(--text-base)' }}>
         {costBatchJobLines(batch.byJob, jobLabel).map((line) => (
           <li key={line.jobId}>
@@ -231,7 +232,7 @@ function BatchCard({
           <ol style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', maxHeight: 320, overflowY: 'auto' }}>
             {(ops ?? []).map((op) => (
               <li key={op.seq} value={op.seq}>
-                <span style={{ fontWeight: 600, color: 'var(--text-700)' }}>{op.opType}</span> {costBatchOpWords(op, jobLabel)}
+                <span style={{ fontWeight: 600, color: 'var(--text-700)' }}>{op.opType}</span> <MoneyText text={costBatchOpWords(op, jobLabel)} />
               </li>
             ))}
           </ol>
