@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The two greens</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f3f4f6; color: #111827; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.25rem; margin: 0 0 4px; }
+  .lede { margin: 0 0 20px; color: #4b5563; font-size: 0.95rem; max-width: 60ch; }
+  .lede strong { color: #111827; }
+  section { margin-top: 20px; }
+  h2 { font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; color: #6b7280; margin: 0 0 8px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+  .panel { border-radius: 12px; padding: 16px; border: 1px solid #e5e7eb; background: #ffffff; }
+  .panel.dark { background: #1f2937; border-color: #374151; color: #f9fafb; }
+  .panel h3 { margin: 0 0 12px; font-size: 0.95rem; font-weight: 700; }
+  .panel h3 code { font-weight: 600; font-size: 0.85rem; padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,0.06); }
+  .panel.dark h3 code { background: rgba(255,255,255,0.1); }
+  .press { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 1.1rem; border: none; border-radius: 8px; color: #ffffff; font-family: inherit; font-size: 1rem; font-weight: 800; cursor: default; width: 100%; }
+  .press.small { min-height: 36px; width: auto; font-size: 0.875rem; font-weight: 600; border-radius: 6px; padding: 0 0.9rem; margin-right: 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .ratio { margin: 10px 0 0; font-size: 0.875rem; line-height: 1.45; }
+  .ratio b { font-variant-numeric: tabular-nums; }
+  .pass { color: #15803d; font-weight: 700; }
+  .panel.dark .pass { color: #4ade80; }
+  .fail { color: #b91c1c; font-weight: 700; }
+  .panel.dark .fail { color: #fca5a5; }
+  .note { font-size: 0.8125rem; color: #6b7280; margin-top: 6px; }
+  .panel.dark .note { color: #9ca3af; }
+  .toggle { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .pill { width: 36px; height: 20px; border-radius: 999px; position: relative; display: inline-block; }
+  .pill::after { content: ""; position: absolute; top: 2px; left: 18px; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; }
+  .summary { margin-top: 24px; padding: 14px 16px; border-radius: 12px; background: #ffffff; border: 1px solid #e5e7eb; font-size: 0.9rem; line-height: 1.5; }
+  .summary table { border-collapse: collapse; margin-top: 8px; width: 100%; font-size: 0.875rem; }
+  .summary th, .summary td { text-align: left; padding: 4px 8px 4px 0; border-bottom: 1px solid #e5e7eb; }
+  .summary th { color: #6b7280; font-weight: 600; }
+  .summary td b { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<main>
+  <h1>The two greens, side by side</h1>
+  <p class="lede">Punch list #414, item 1. The app's most used green fill is <strong>#16a34a</strong>. White words on it read about <strong>3.3 to 1</strong>; small words need 4.5 to 1. The deeper <strong>#15803d</strong> reads about <strong>5.0 to 1</strong> under white. Every press below is the same press drawn twice, left today's green and right the deeper one, in light and in dark. The ratios are worked out on this page from the two colours, by the WCAG formula.</p>
+
+  <section>
+    <h2>In light</h2>
+    <div class="grid">
+      <div class="panel" data-bg="#ffffff">
+        <h3>Today · <code>#16a34a</code></h3>
+        <button class="press" style="background:#16a34a" type="button">Send · as told</button>
+        <div class="row">
+          <button class="press small" style="background:#16a34a" type="button">Approve</button>
+          <button class="press small" style="background:#16a34a" type="button">Hire</button>
+          <span class="toggle"><span class="pill" style="background:#16a34a"></span><span style="font-size:0.875rem">On</span></span>
+        </div>
+        <p class="ratio" data-fill="#16a34a"></p>
+      </div>
+      <div class="panel" data-bg="#ffffff">
+        <h3>Deeper · <code>#15803d</code></h3>
+        <button class="press" style="background:#15803d" type="button">Send · as told</button>
+        <div class="row">
+          <button class="press small" style="background:#15803d" type="button">Approve</button>
+          <button class="press small" style="background:#15803d" type="button">Hire</button>
+          <span class="toggle"><span class="pill" style="background:#15803d"></span><span style="font-size:0.875rem">On</span></span>
+        </div>
+        <p class="ratio" data-fill="#15803d"></p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>In dark</h2>
+    <div class="grid">
+      <div class="panel dark" data-bg="#1f2937">
+        <h3>Today · <code>#16a34a</code></h3>
+        <button class="press" style="background:#16a34a" type="button">Send · as told</button>
+        <div class="row">
+          <button class="press small" style="background:#16a34a" type="button">Approve</button>
+          <button class="press small" style="background:#16a34a" type="button">Hire</button>
+          <span class="toggle"><span class="pill" style="background:#16a34a"></span><span style="font-size:0.875rem">On</span></span>
+        </div>
+        <p class="ratio" data-fill="#16a34a"></p>
+      </div>
+      <div class="panel dark" data-bg="#1f2937">
+        <h3>Deeper · <code>#15803d</code></h3>
+        <button class="press" style="background:#15803d" type="button">Send · as told</button>
+        <div class="row">
+          <button class="press small" style="background:#15803d" type="button">Approve</button>
+          <button class="press small" style="background:#15803d" type="button">Hire</button>
+          <span class="toggle"><span class="pill" style="background:#15803d"></span><span style="font-size:0.875rem">On</span></span>
+        </div>
+        <p class="ratio" data-fill="#15803d"></p>
+      </div>
+    </div>
+  </section>
+
+  <div class="summary">
+    <strong>What the numbers say.</strong> The words on a press are what must read, so the ratio that counts is white on the fill. The second ratio is the fill's edge against the card it sits on, which is a shape, not words, and needs only 3 to 1.
+    <table>
+      <thead><tr><th>Fill</th><th>White words on it</th><th>Edge on a light card</th><th>Edge on a dark card</th></tr></thead>
+      <tbody id="table"></tbody>
+    </table>
+    <p class="note">The orange and the blue were deepened the same way: Clock In's orange in v2.6186 and the press blue to #2563eb in v2.6218, white 5.17 to 1. The deeper green is the token the app already names <code>--text-green-700</code> in light, and the hover shade the Bill it press already turns.</p>
+  </div>
+</main>
+<script>
+  (function () {
+    function channel(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+    function lum(hex) { var n = parseInt(hex.slice(1), 16); return 0.2126 * channel(n >> 16 & 255) + 0.7152 * channel(n >> 8 & 255) + 0.0722 * channel(n & 255); }
+    function ratio(a, b) { var x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+    function fmt(r) { return r.toFixed(2) + ' to 1'; }
+    var panels = document.querySelectorAll('.panel');
+    for (var i = 0; i < panels.length; i++) {
+      var p = panels[i], bg = p.getAttribute('data-bg'), out = p.querySelector('.ratio'), fill = out.getAttribute('data-fill');
+      var words = ratio(fill, '#ffffff'), edge = ratio(fill, bg);
+      out.innerHTML = 'White words on it: <b>' + fmt(words) + '</b> <span class="' + (words >= 4.5 ? 'pass' : 'fail') + '">' + (words >= 4.5 ? 'reads at 16 px' : 'under 4.5, too pale for small words') + '</span><br>' +
+        'Its edge on this card: <b>' + fmt(edge) + '</b> <span class="' + (edge >= 3 ? 'pass' : 'fail') + '">' + (edge >= 3 ? 'a clear shape' : 'under 3, a soft edge') + '</span>';
+    }
+    var rows = ['#16a34a', '#15803d'], t = document.getElementById('table');
+    for (var j = 0; j < rows.length; j++) {
+      var f = rows[j], tr = document.createElement('tr');
+      tr.innerHTML = '<td><code>' + f + '</code></td><td><b>' + fmt(ratio(f, '#ffffff')) + '</b></td><td><b>' + fmt(ratio(f, '#ffffff')) + '</b></td><td><b>' + fmt(ratio(f, '#1f2937')) + '</b></td>';
+      t.appendChild(tr);
+    }
+  })();
+</script>
+</body>
+</html>

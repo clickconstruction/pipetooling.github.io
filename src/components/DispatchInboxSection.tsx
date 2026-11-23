@@ -178,6 +178,9 @@ export function DispatchInboxSection({
   // A stage check (punch list #245) opens the job window itself, on the Job tab or on the check's sheet.
   const jobDetailModal = useJobDetailModal()
   const narrow = useNarrowViewport640()
+  // A row's doors on a phone (punch list #414, v2.8362): 44 px tall, each taking a share of the row, so two sit side by side
+  // when they fit and stack when they do not. On a desk the doors keep their size in their right-hand column.
+  const doorPress = narrow ? ({ minHeight: 44, flex: '1 1 10rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' } as const) : {}
   const { user: authUser, role } = useAuth()
   // Customer Waiting (v2.3247): which row the lower/raise sheet is open for.
   const [prioritySheet, setPrioritySheet] = useState<{ requestId: string; direction: 'lower' | 'raise'; label: string } | null>(null)
@@ -418,6 +421,7 @@ export function DispatchInboxSection({
                     aria-label="Open the job from this bid"
                     style={{
                       padding: '0.35rem 0.75rem',
+                      ...doorPress,
                       background: 'var(--surface)',
                       border: '1px solid var(--border-green)',
                       borderRadius: 4,
@@ -442,6 +446,7 @@ export function DispatchInboxSection({
                 const stageCheckJobId = (stageCheck || notAsTold) && !isClosed && jobDetailModal ? req.job_ledger_id : null
                 const stageCheckBtnStyle = {
                   padding: '0.35rem 0.75rem',
+                  ...doorPress,
                   background: 'var(--surface)',
                   border: '1px solid #93c5fd',
                   borderRadius: 4,
@@ -516,6 +521,7 @@ export function DispatchInboxSection({
                     aria-label="Add Customer Pictures URL"
                     style={{
                       padding: '0.35rem 0.75rem',
+                      ...doorPress,
                       background: 'var(--surface)',
                       border: '1px solid #93c5fd',
                       borderRadius: 4,
@@ -547,6 +553,7 @@ export function DispatchInboxSection({
                     aria-label="Open Add job account"
                     style={{
                       padding: '0.35rem 0.75rem',
+                      ...doorPress,
                       background: 'var(--surface)',
                       border: '1px solid #93c5fd',
                       borderRadius: 4,
@@ -649,6 +656,7 @@ export function DispatchInboxSection({
                     title="Open the draft the field sent — finish pricing and send it to the customer"
                     style={{
                       padding: '0.35rem 0.75rem',
+                      ...doorPress,
                       background: 'var(--surface)',
                       border: '1px solid var(--border-amber)',
                       borderRadius: 4,
@@ -684,6 +692,7 @@ export function DispatchInboxSection({
                     aria-label="Create trip charge"
                     style={{
                       padding: '0.35rem 0.75rem',
+                      ...doorPress,
                       background: 'var(--surface)',
                       border: '1px solid var(--border-amber)',
                       borderRadius: 4,
@@ -894,10 +903,10 @@ export function DispatchInboxSection({
                                 flexShrink: 0,
                                 width: '100%',
                                 display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'flex-start',
-                                gap: 6,
-                                textAlign: 'left',
+                                flexWrap: 'wrap',
+                                alignItems: 'stretch',
+                                gap: 8,
+                                textAlign: 'center',
                               }
                             : {
                                 flexShrink: 0,

@@ -12,7 +12,7 @@ My Time asks one thing: how many hours a week can you work for the company, and 
 
 Open your dashboard and find **My Time**. At the foot of the picture there is a line that reads *How many hours a week can you work?* with {{button:outline|Set hours}}. Once you have answered, the line reads *The office has your week as 38 h*, with your own hours and {{button:outline|Change}} beside it.
 
-If you live in Job Mode, a card under Your record asks the same thing.
+If you live in Job Mode, the **My Time** card under Your record has the same line.
 
 ## Draw your week
 

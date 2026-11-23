@@ -78,6 +78,7 @@ import { forwardTakers } from '../lib/tasks/taskDoerActs'
 import { TaskForwardWindow } from '../components/checklist/TaskForwardWindow'
 import { TaskLookGate } from '../components/checklist/TaskLookGate'
 import { TaskModeLookWindow } from '../components/checklist/TaskModeLookWindow'
+import { modeRowOfferedToRole } from '../lib/modeRow'
 import { TaskLookViewAs } from '../components/checklist/TaskLookViewAs'
 import { TaskLookComingUp } from '../components/checklist/TaskLookComingUp'
 import { lookOffersViewAs, lookPressLabel, lookPressTitle } from '../lib/tasks/taskLook'
@@ -2113,6 +2114,7 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canViewAs, canSe
           readAt={lookPerson.readAt}
           onReadAgain={() => setLookPerson((cur) => (cur ? { ...cur, readAt: new Date(), n: cur.n + 1 } : cur))}
           onClose={() => setLookPerson(null)}
+          top={lookPerson.role === undefined ? undefined : modeRowOfferedToRole(lookPerson.role) ? 'row' : 'strip'}
           side={<TaskLookComingUp key={`${lookPerson.userId}-${lookPerson.n}`} personId={lookPerson.userId} personName={lookPerson.name} onAddTask={() => checklistAddModal?.openAddModal(lookPerson.userId)} />}
           door={
             lookPerson.email && lookOffersViewAs({ viewerIsDev: canViewAs, viewerId: authUserId, personId: lookPerson.userId, personRole: lookPerson.role, personEmail: lookPerson.email, loginAttached: lookPerson.loginAttached === true }) ? (

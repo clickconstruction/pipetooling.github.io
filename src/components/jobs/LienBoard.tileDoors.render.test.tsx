@@ -89,4 +89,36 @@ describe('LienBoard · a tile that is a press says where it goes (the owner’s 
     expect(tileEl('in_mail').getAttribute('data-static')).toBe('yes')
     expect(door('in_mail')).toBeNull()
   })
+
+  it('on a phone a tile’s door ends the line it acts on, and the day’s label is the day and then its parts (the owner’s go of 2026-11-23)', () => {
+    const onTile = vi.fn()
+    const b = board()
+    render(<LienBoard board={b} isMobile onTile={onTile} />)
+    // The second tile: *2 to approve · Show them ›* on one line, no door at the top corner.
+    const waiting = door('waiting')!
+    expect(waiting.getAttribute('data-place')).toBe('line')
+    expect(waiting.style.position).toBe('')
+    expect(waiting.closest('[data-lien-board-tile-line]')).toBeTruthy()
+    expect(tileEl('waiting').querySelector('[data-lien-board-tile-line]')!.textContent).toBe(`${b.tiles.find((t) => t.key === 'waiting')!.line} · Show them ›`)
+    expect(tileEl('waiting').style.position).toBe('')
+    // The third tile has no print under it here, so it is a press, and its door ends its line too.
+    expect(door('in_mail')!.getAttribute('data-place')).toBe('line')
+    // The press is the whole tile still.
+    fireEvent.click(waiting)
+    expect(onTile).toHaveBeenCalledWith({ kind: 'leader' })
+    // The first tile: the day, then its parts, each on a line of its own.
+    const day = tileEl('by_day')
+    const whole = b.tiles.find((t) => t.key === 'by_day')!.label
+    expect(whole).toContain(' · ')
+    expect(day.querySelector('[data-lien-board-tile-label]')!.textContent).toBe(whole.slice(0, whole.indexOf(' · ')))
+    expect(day.querySelector('[data-lien-board-tile-parts]')!.textContent).toBe(whole.slice(whole.indexOf(' · ') + 3))
+    cleanup()
+    // A computer's tile is as it was: one label, and the door at the top right.
+    render(<LienBoard board={b} isMobile={false} columnsOnly onTile={() => {}} />)
+    expect(tileEl('by_day').querySelector('[data-lien-board-tile-label]')!.textContent).toBe(whole)
+    expect(document.querySelector('[data-lien-board-tile-parts]')).toBeNull()
+    expect(door('waiting')!.style.position).toBe('absolute')
+    expect(door('waiting')!.hasAttribute('data-place')).toBe(false)
+    expect(tileEl('waiting').querySelector('[data-lien-board-tile-line]')!.textContent).toBe(b.tiles.find((t) => t.key === 'waiting')!.line)
+  })
 })

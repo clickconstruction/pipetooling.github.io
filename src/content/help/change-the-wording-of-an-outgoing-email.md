@@ -21,7 +21,7 @@ There is no deploy. The change takes effect on the next send.
 3. Press {{button:blue|Save template}}. No template saved means the built-in wording sends. **Reset** brings the built-in wording back any time.
 
 :::example Digest emails edit less, on purpose
-For digest emails (money waiting, crew day, weekly movement, and friends) you edit the **subject and the intro paragraph above the data** — the data tables themselves are built from live jobs at send time and never change here. `{{default_subject}}` inserts the built-in subject line, dates and job labels included.
+For digest emails (money waiting, who worked, weekly movement, and friends) you edit the **subject and the intro paragraph above the data** — the data tables themselves are built from live jobs at send time and never change here. `{{default_subject}}` inserts the built-in subject line, dates and job labels included.
 :::
 
 ## Check it before it sends

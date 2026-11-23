@@ -117,7 +117,7 @@ export default function CrewDayEmailModal({ onClose }: { onClose: () => void }) 
     try {
       if (when === 'now') {
         await sendCrewDayNow(selected.id)
-        showToast(`Crew Day emailed to ${selected.name}.`, 'success')
+        showToast(`Who worked emailed to ${selected.name}.`, 'success')
       } else {
         const iso = scheduledInstantIso()
         if (!iso) {
@@ -207,7 +207,7 @@ export default function CrewDayEmailModal({ onClose }: { onClose: () => void }) 
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Email Crew Day"
+      aria-label="Email Who worked"
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={onClose}
     >
@@ -216,7 +216,7 @@ export default function CrewDayEmailModal({ onClose }: { onClose: () => void }) 
         style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(560px, calc(100vw - 2rem))', maxHeight: 'min(85vh, 100%)', overflow: 'auto' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.5rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Email Crew Day</h2>
+          <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Email Who worked</h2>
           <button
             type="button"
             onClick={onClose}
@@ -237,7 +237,7 @@ export default function CrewDayEmailModal({ onClose }: { onClose: () => void }) 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search people…"
-          aria-label="Search people to send Crew Day to"
+          aria-label="Search people to send Who worked to"
           style={{ width: '100%', boxSizing: 'border-box', height: 36, padding: '0 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit', fontSize: '0.875rem', marginBottom: '0.5rem' }}
         />
         {loading ? (

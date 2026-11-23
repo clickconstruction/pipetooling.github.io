@@ -24,7 +24,9 @@ IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # The newest definition of the view: re-applying an older one would put the older view back. Since punch list #403 that
 # is the ground of where an outside signer lives, which restates the view with a party's paper.
 # That migration also puts the estimator's first read policy back, so the one that widens it runs after it, as on prod.
-WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql)"
+# Last, the view's newest definition (punch list #403, the owner's first decision): the ground restates the view as
+# it stood, so the migration that widens it to every paper of an outside party runs after it, as on prod.
+WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql) $(ls supabase/migrations/*_agreements_every_party_paper.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
