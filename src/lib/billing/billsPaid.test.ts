@@ -51,6 +51,12 @@ describe('billPaymentWayWords', () => {
     // The bank comes first: a deposit matched to a Stripe bill is the bank's.
     expect(billPaymentWayWords(payment({ paymentType: 'checkDeposit', bankTransactionId: 'm1' }), stripeBill())).toBe('Check · bank deposit')
   })
+  it('never reads a bank match\'s own id out as the check\'s number', () => {
+    // A matched deposit can leave its id in the reference: 36 characters, made up here.
+    expect(billPaymentWayWords(payment({ paymentType: 'checkDeposit', referenceNumber: '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d', bankTransactionId: 'm1' }), bill())).toBe('Check · bank deposit')
+    // A number typed with its word says the number once.
+    expect(billPaymentWayWords(payment({ paymentType: 'checkDeposit', referenceNumber: 'ck# 3045', bankTransactionId: 'm1' }), bill())).toBe('Check 3045 · bank deposit')
+  })
   it('names a payment typed by hand, and says a number for a check alone', () => {
     expect(billPaymentWayWords(payment({ paymentType: 'Cash', referenceNumber: 'drawer' }), bill())).toBe('Cash · typed by hand')
     expect(billPaymentWayWords(payment({ paymentType: 'Check', referenceNumber: '118' }), bill())).toBe('Check 118 · typed by hand')

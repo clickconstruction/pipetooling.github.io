@@ -18,7 +18,7 @@
  */
 import { isInKindPaymentType } from '../../../supabase/functions/_shared/inKindPayment'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { isStripePayment, paymentSourceFromFacts } from '../jobs/billsAndPayments'
+import { checkNumberOf, isStripePayment, paymentSourceFromFacts } from '../jobs/billsAndPayments'
 import { invoiceRecordsThroughStripe } from '../jobs/paymentInvoiceLinking'
 
 /** One payment row on a bill, as the page reads it. */
@@ -106,11 +106,13 @@ export function billPaymentStripeOwned(p: Pick<BillPayment, 'note' | 'stripeCred
 
 /**
  * How a payment was made, in the job window's words, with the check's number after the word when the row holds
- * one: *Check 4417 · bank deposit*. A number is said for a check alone, since no other way has one a person reads.
+ * one: *Check 4417 · bank deposit*. A number is said for a check alone, since no other way has one a person reads,
+ * and only when the reference reads as a check's number (`checkNumberOf`): a bank match leaves the deposit's own
+ * id there, and the page once read all 36 characters of it out as the check.
  */
 export function billPaymentWayWords(p: Pick<BillPayment, 'bankTransactionId' | 'note' | 'stripeCreditNoteId' | 'paymentType' | 'referenceNumber'>, bill: BillPaidBill | undefined): string {
   const source = paymentSourceFromFacts({ bankLinked: !!(p.bankTransactionId ?? '').trim(), stripeOwned: billPaymentStripeOwned(p, bill), paymentType: p.paymentType })
-  const ref = (p.referenceNumber ?? '').trim().replace(/^#/, '')
+  const ref = checkNumberOf(p.referenceNumber)
   if (!ref || source.instrument !== 'check') return source.chip
   const at = source.chip.indexOf(' · ')
   return at === -1 ? source.chip : `${source.chip.slice(0, at)} ${ref}${source.chip.slice(at)}`

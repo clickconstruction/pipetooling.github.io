@@ -93,6 +93,8 @@ Small words under the stamp say how the bill was paid.
 - *Check 4417 · bank deposit* is a check the office matched to a deposit at the bank.
 - *Cash · typed by hand* is a payment someone typed in.
 
+A check shows its number when the payment holds one. A check with no number reads *Check · bank deposit*.
+
 The small words also say how long the money took. Those words read like *in 6 days*.
 
 A bill paid today through the pay link shows the time the customer paid.

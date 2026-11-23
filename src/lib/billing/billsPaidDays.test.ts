@@ -268,6 +268,17 @@ describe('billsPaid — a day', () => {
       ),
     )
     expect(billsPaidGroupWords(transfer[0]!)).toBe('One deposit · 2 bills')
+    // A check deposit whose reference is the bank match's own id names no number, on the heading or on a line.
+    const matched = billsPaidDayGroups(
+      billsPaidLines(
+        input([
+          payment({ id: 'a', billId: B(2), jobId: J(2), paymentType: 'checkDeposit', referenceNumber: '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d', bankTransactionId: 'dep-c' }),
+          payment({ id: 'b', billId: B(3), jobId: J(3), paymentType: 'checkDeposit', referenceNumber: '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d', bankTransactionId: 'dep-c' }),
+        ]),
+      ),
+    )
+    expect(billsPaidGroupWords(matched[0]!)).toBe('One deposit · 2 bills')
+    expect(matched[0]!.lines.map((l) => l.wayWords)).toEqual(['Check · bank deposit', 'Check · bank deposit'])
   })
   it('heads a day, and says an empty one with the press that leads out of it', () => {
     expect(billsPaidDayHeading('2026-11-23', '2026-11-23')).toBe('Today · Mon, Nov 23')
