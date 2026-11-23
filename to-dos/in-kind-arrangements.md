@@ -2,7 +2,7 @@
 name: "One place for work paid in kind: each arrangement, what it has paid and what is left"
 number: 301
 group: close
-status: built 2026-11-10 in eight PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left · the sweep's screens were traced on 2026-11-21 and the ones the card settles are built (v2.8218): the Dashboard's receivables, the Bridge, the Pipeline's chips, Who owes what, Quickfill and Pay speeds By customer · the senders followed in v2.8219: the Billed awaiting payment email and the residential pay reminder · the customer's profile window, the Invoices tab and dev-mcp's two reads followed in v2.8266 · the Pipeline's map, a development's Money look, the aging chart and the printed report followed in v2.8272, which closes every screen traced · left of the sweep: the statement week, which waits with the owner's call on a GC's statement
+status: built 2026-11-10 in eight PRs and walked on prod with ZZ Test rows; the landlord's arrangement set up and November 2026 entered the same day · left: the readers that still read these bills as late, and the owner's four small calls; the chip beside a customer's name is built on the Customers list, the customer's page, a job and Bill Customer (v2.6845, v2.6848), with the receivables readers left · the sweep's screens were traced on 2026-11-21 and the ones the card settles are built (v2.8218): the Dashboard's receivables, the Bridge, the Pipeline's chips, Who owes what, Quickfill and Pay speeds By customer · the senders followed in v2.8219: the Billed awaiting payment email and the residential pay reminder · the customer's profile window, the Invoices tab and dev-mcp's two reads followed in v2.8266 · the Pipeline's map, a development's Money look, the aging chart and the printed report followed in v2.8272, which closes every screen traced · left of the sweep: the statement week, which waits with the owner's call on a GC's statement · the owner's call came on 2026-11-22 and its GC half is built (v2.8309): a GC's statement and GC Review leave the bill out and say one line · left of the call: the portal and the statement week's line
 summary: >
   In kind became a kind of payment in v2.6816: a credit given instead of money pays a bill down without
   ever counting as cash. The first arrangement is a customer who is also our landlord: $22,643.46 of
@@ -11,9 +11,9 @@ summary: >
   kind, this much is left, this month's credit is due", and the open remainder reads as an ordinary
   receivable. Since v2.6827 to v2.6836 a customer's page holds the deal, its ledger of lines and the month
   that is due, and the In kind page lists every one. This card holds what is left.
-next: The owner's call on what a GC's statement, GC Review and the customer's portal say about a bill a deal pays. It settles the statement week with it. Then the loose ends under Left: the cost readers, a combine of two jobs. December 2026's credit comes from its Needs you line.
+next: The portal, by the owner's call of 2026-11-22: keep the bill, read it as scheduled in kind, with no pay link and not in the amount owed. Then the statement week's one line. Then the loose ends under Left: the cost readers, a combine of two jobs. December 2026's credit comes from its Needs you line.
 size: L as a train of five (S · M · S · S · M); left: the sweep of the other readers (M)
-ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841 · 6845 · 6848 · 8218 · 8219 · 8266 · 8272 · 8277
+ver: v2.6827 · 6829 · 6831 · 6834 · 6836 · 6841 · 6845 · 6848 · 8218 · 8219 · 8266 · 8272 · 8277 · 8309
 blocker: none
 opinion: build the arrangement as a thing the app knows (a row with its terms and its lines), shown on the customer page with a Needs you line when a month is due; the list comes second; nothing is entered by itself
 ---
@@ -117,13 +117,20 @@ A session started the sweep and was closed before it built anything. It read pro
 | `customer-portal` | the function's own job select | owed, with a pay link, no late words | the customer's page |
 | dev-mcp `get_customer`, `get_job` | `devMcpComposites.ts`: both selects carry the column since v2.8266 | scheduled in kind, with no age | devs |
 
-**Where the senders stand (2026-11-21).** Built: `bridge-weekly-sheet` (v2.8218), `billed-report-email` and `messages-nudge-dispatch` (v2.8219). The statement week is not: `get_statement_week_for_office` hands back one line per GC, already summed, with no job to stamp. So it is a change to that RPC, and what it says follows the call below. The two dev-mcp reads carry the column since v2.8266. The GC's statement and the portal wait for the call.
+**Where the senders stand (2026-11-21).** Built: `bridge-weekly-sheet` (v2.8218), `billed-report-email` and `messages-nudge-dispatch` (v2.8219). The statement week is not: `get_statement_week_for_office` hands back one line per GC, already summed, with no job to stamp. So it is a change to that RPC, and what it says follows the call below. The two dev-mcp reads carry the column since v2.8266. The GC's statement is built in v2.8309, by the owner's call below, and the statement week's amounts follow it. The portal waits for its own PR.
 
 The lien months and deadlines stay as they are, on the desk and in counsel's lien book. v2.6834 decided that: a credit does not move a deadline.
 
 **Found on the senders' walk (2026-11-21), built in v2.8277.** Both senders ran clean in their no-send modes against prod: the report's preview matched the tables bill for bill, and the reminder's dry run planned nothing for the deal's jobs. What v2.8219 left behind was the pay reminders the run had already prepared: two were still open on Today's sends, and nothing held one once its job went on a deal. The window now holds the app's own Paid reminder on such a job with its reason and its door (`withInKindHolds` in `src/lib/offers/offers.ts`), so **Send all** skips it. A real send and the first morning run after the deploy were not seen.
 
-**A call the sweep cannot make.** What a GC's statement and the customer's portal page should say about a bill a deal pays. Both show it as owed today, with no late words. No job is in that state. The office's statement week and GC Review's statements read the same rows, so they follow the same answer.
+**The owner's call, 2026-11-22.** The sweep could not decide what a GC's statement and the customer's portal page say about a bill a deal pays. Both showed it as owed, with no late words. The owner answered four questions:
+
+1. **A GC's statement** takes the bill off its list and its total, and says one line: how much is scheduled in kind.
+2. **The portal** keeps the bill on the page, reads it as scheduled, with no pay link and not in the amount owed.
+3. **The staff screens** (the statement week, GC Review's statements, print and call sheet) take the rule the other staff screens got: out of late counts and the call sheet, with one line.
+4. **The words** an outside reader sees are *scheduled in kind*, the same words the office reads.
+
+**Built in v2.8309: answers 1, 3 and 4 for the GC.** `get_gc_statement_email_payload` keeps such a bill off `rows` and every sum, in `in_kind_rows` (migration `20261123010000`), and `buildGcReviewRollup` leaves it out of its group and counts it in `inKind`. The statement says the line once under **Total owed** in every lane, and GC Review says it at the foot of the window. The check of the week, the worklist, the call sheet and the prints read a group's rows, so they follow. The statement week calls the same payload, so its amounts and its *over 90 days* leave the bill out. **Left of the call:** the statement week's own line, and the portal (answer 2).
 
 **The screens, traced 2026-11-21.** Three loaders feed them. The Dashboard's own read (`loadDashboardFinancials`) did not select the column. The Pipeline's full board read selects `*`, so its rows had the column and no kernel read it. The Pipeline's lean read (`LEAN_STATS_JOB_COLUMNS`) did not select it, so even the chase queue's own skip could never fire on lean rows.
 
@@ -142,7 +149,7 @@ The lien months and deadlines stay as they are, on the desk and in counsel's lie
 | The customer page's Invoices tab: *Billed · 215d* | `fetchCustomerInvoices`, no column | `buildCustomerInvoiceRows` | built, v2.8266: *Billed · in kind*, no days |
 | A development's Money look: *Nd past* in red | `fetchDevelopmentPage`, no column | `datesFor`, `moneyPastDays` (`siteMoney.ts`) | built, v2.8272: *Scheduled in kind* in place of Expected, never past due, the lien runway kept; the band says one line |
 | The aging chart and the printed Billed awaiting payment report | the board read | `printBilledRowReferenceDate`, a second clock beside the board's | built, v2.8272: left off the chart and out of the print's lists and totals, each with its line |
-| GC Review's statements, its print and its call sheet | the board read, or the lean read | `buildGcReviewRollup` | waits for the owner's call below |
+| GC Review's statements, its print and its call sheet | the board read, or the lean read | `buildGcReviewRollup` | built, v2.8309: left out of a group's rows, totals and age, counted in `inKind`, with one line at the foot, on the statement and on the prints |
 
 **Traced, not built: none left.** The profile window and the Invoices tab were built in v2.8266, with dev-mcp's two reads, since the window's kernel is the one dev-mcp reads. The map, a development's Money look, the aging chart and the printed report were built in v2.8272. The rewound map reads a job as in kind from the day its deal was recorded, since the ledger does not keep the day a job went on a deal.
 
