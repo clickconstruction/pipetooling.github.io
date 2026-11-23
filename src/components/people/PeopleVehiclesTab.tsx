@@ -2402,7 +2402,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={resolveSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: resolveSaving ? DEAD_PRESS_FILL : '#16a34a',
+                  background: resolveSaving ? DEAD_PRESS_FILL : '#15803d',
                   color: resolveSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,

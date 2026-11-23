@@ -13,12 +13,14 @@ import { PartyPapersCard, PartyPapersSection } from './PartyPapers'
 
 const io = vi.hoisted(() => ({
   role: 'assistant' as string,
+  /** Training mode (`users.read_only`). */
+  readOnly: false,
   rows: [] as unknown[],
   fail: null as unknown,
   asked: [] as string[],
 }))
 vi.mock('../../hooks/useAuth', () => {
-  const auth = () => ({ role: io.role, user: { id: 'u1' } })
+  const auth = () => ({ role: io.role, readOnly: io.readOnly, user: { id: 'u1' } })
   return { useAuth: auth, useOptionalAuth: auth }
 })
 vi.mock('../../lib/contracts/partyPapersIo', () => ({
@@ -62,6 +64,7 @@ const CUSTOMER = { kind: 'customer' as const, id: 'c1' }
 
 beforeEach(() => {
   io.role = 'assistant'
+  io.readOnly = false
   io.rows = []
   io.fail = null
   io.asked = []
@@ -114,6 +117,29 @@ describe('a supply house’s papers', () => {
     expect((await screen.findByTestId('signed-record')).textContent).toContain('p-signed')
     fireEvent.click(screen.getByText('fake close'))
     await waitFor(() => expect(screen.queryByTestId('signed-record')).toBeNull())
+  })
+
+  it('opens it for an estimator too, and gives a training estimator the line with no press (punch list #403, decision 2)', async () => {
+    io.role = 'estimator'
+    io.rows = [paper('p-signed', { status: 'signed', signed_at: '2026-11-20' })]
+    const first = renderWithProviders(<PartyPapersSection party={HOUSE} />)
+    await screen.findAllByTestId('party-paper-row')
+    expect(screen.getByRole('button', { name: 'Mutual secrecy agreement' })).toBeTruthy()
+    first.unmount()
+    io.readOnly = true
+    renderWithProviders(<PartyPapersSection party={HOUSE} />)
+    const lines = await screen.findAllByTestId('party-paper-row')
+    expect(lines[0]?.textContent).toContain('Mutual secrecy agreement')
+    expect(lines[0]?.querySelector('button, a')).toBeNull()
+    expect(screen.queryByTestId('signed-record')).toBeNull()
+  })
+
+  it('opens it for a training assistant as before: the rule is the estimator’s', async () => {
+    io.readOnly = true
+    io.rows = [paper('p-signed', { status: 'signed', signed_at: '2026-11-20' })]
+    renderWithProviders(<PartyPapersSection party={HOUSE} />)
+    await screen.findAllByTestId('party-paper-row')
+    expect(screen.getByRole('button', { name: 'Mutual secrecy agreement' })).toBeTruthy()
   })
 
   it('names where a paper is sent from when the office reads an empty list', async () => {

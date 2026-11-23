@@ -1144,7 +1144,7 @@ async function tagPerson(ctx: Ctx, ask: MyMailPersonTagRequest, dev: Tagger): Pr
   const { admin, me } = ctx
   const { data: person, error: personError } = await admin.from('people').select('id, name').eq('id', ask.person.personId).maybeSingle()
   if (personError) throw stopped('Reading the person failed.', personError.message)
-  if (!person) return refuse(myMailRefusal('notFound', 'No person has that id (find_person).'), MY_MAIL_REFUSAL_STATUS.notFound, 'tag')
+  if (!person) return refuse(myMailRefusal('notFound', "No person has that id. It is the roster row's people.id, as get_case_brief and get_person_file answer it in person.id; find_person answers a login's users.id, which this door refuses."), MY_MAIL_REFUSAL_STATUS.notFound, 'tag')
   const who = { id: String(person.id), name: String(person.name ?? '').trim() }
   const { data: before, error: beforeError } = await admin.from('email_tag_threads').select(TAG_ROW_COLUMNS).eq('user_id', me.id).eq('gmail_thread_id', ask.threadId).maybeSingle()
   if (beforeError) throw stopped('Reading the tag failed.', beforeError.message)

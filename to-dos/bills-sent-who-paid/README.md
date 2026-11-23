@@ -2,7 +2,7 @@
 name: "Bills sent: who paid, when, and what came in each day"
 number: 422
 group: close
-status: asked 2026-11-23 by the owner · the card and the mock-up the same day · the owner asked for two changes, the delivery word at the right edge and every amount's cents smaller, then said build it all · the list with payment made plain in v2.8333 · By day paid in v2.8343 · the Stripe paid day at its source in v2.8335, merged and its migration pushed on the owner's yes the same day · the six Stripe rows filed a day late before the fix moved back in v2.8371, pushed on the owner's yes the same day · left: the leader's look
+status: asked 2026-11-23 by the owner · the card and the mock-up the same day · the owner asked for two changes, the delivery word at the right edge and every amount's cents smaller, then said build it all · the list with payment made plain in v2.8333 · By day paid in v2.8343 · the Stripe paid day at its source in v2.8335, merged and its migration pushed on the owner's yes the same day · the six Stripe rows filed a day late before the fix moved back in v2.8371, pushed on the owner's yes the same day · the printed month with its calendar and the month buttons that name where they go in v2.8416, the owner's two asks after his own look · left: the leader's look
 summary: >
   The owner asked that Bills sent show more clearly who has paid and when, in a way that fits what
   the leader already reads there, and that he can see how much money comes in from Stripe on any

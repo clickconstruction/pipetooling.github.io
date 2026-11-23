@@ -352,7 +352,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
             <button type="button" disabled={busy} onClick={guard.requestClose} style={{ padding: '0.45rem 0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', font: 'inherit' }}>
               Cancel
             </button>
-            <button type="button" disabled={saveBad || busy} onClick={() => save(false)} style={{ padding: '0.45rem 0.9rem', background: saveBad || busy ? 'var(--bg-200)' : '#16a34a', color: saveBad || busy ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: saveBad || busy ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }} data-testid="edit-row-save">
+            <button type="button" disabled={saveBad || busy} onClick={() => save(false)} style={{ padding: '0.45rem 0.9rem', background: saveBad || busy ? 'var(--bg-200)' : '#15803d', color: saveBad || busy ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: saveBad || busy ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }} data-testid="edit-row-save">
               {busy ? 'Saving…' : 'Save'}
             </button>
           </div>

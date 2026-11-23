@@ -2007,7 +2007,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "stamp_line_budgets_reviewed": [{"args":{"p_fixture_ids":"string[]"},"returns":"number"}],
   "start_bid_from_message": [{"args":{"p_customer_id":"string","p_due_date?":"string","p_due_time?":"string","p_links?":"Json","p_message_id":"string","p_project_name":"string"},"returns":"Json"}],
   "start_check_arrival_state": [{"args":{"p_job_id":"string"},"returns":"Json"}],
-  "start_check_arrive": [{"args":{"p_fixture_id":"string","p_not_as_told?":"string[]"},"returns":"Json"}],
+  "start_check_arrive": [{"args":{"p_fixture_id":"string","p_not_as_told?":"string[]","p_shown?":"string[]"},"returns":"Json"}],
   "start_check_decide": [{"args":{"p_fixture_id":"string","p_hold_until?":"string","p_kind":"string","p_open_then?":"Json"},"returns":"{ by_name: string by_user: string | null created_at: string decided_on: string fixture_id: string hold_until: string | null id: string job_id: string kind: stri…"}],
   "start_check_take_back": [{"args":{"p_decision_id":"string"},"returns":"{ by_name: string by_user: string | null created_at: string decided_on: string fixture_id: string hold_until: string | null id: string job_id: string kind: stri…"}],
   "start_check_to_look": [{"args":{"p_fixture_id":"string"},"returns":"string[]"}],

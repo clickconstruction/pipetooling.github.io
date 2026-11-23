@@ -52,7 +52,7 @@ const smallButton: CSSProperties = {
   font: 'inherit',
   fontSize: '0.75rem',
 }
-const saveButton: CSSProperties = { ...smallButton, background: '#16a34a', color: 'white', border: 'none', fontWeight: 600 }
+const saveButton: CSSProperties = { ...smallButton, background: '#15803d', color: 'white', border: 'none', fontWeight: 600 }
 
 export function SpecSectionSectionsTab({ tallies, rules, onAddSection, onRenameSection, onDeleteSection }: Props) {
   const [adding, setAdding] = useState(false)

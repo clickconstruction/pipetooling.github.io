@@ -512,7 +512,7 @@ function cardInvoiceChips(ctx: StagesRowRenderContext, job: JobWithDetails) {
               fontWeight: 600,
               border: 'none',
               borderRadius: 4,
-              background: '#16a34a',
+              background: '#15803d',
               color: 'white',
               cursor: 'pointer',
               lineHeight: 1.2,
