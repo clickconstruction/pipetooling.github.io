@@ -63,6 +63,11 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { AmountSmallCents } from '../AmountSmallCents'
+import { THUMB, billLink, chipStyle, jobLink, money, phoneButton, strong, tile, tileSmall } from './billsSentLook'
+import { BillsPaidByDay } from './BillsPaidByDay'
+import { billsPaidLines, billsPaidSum, type BillsPaidSum } from '../../lib/billing/billsPaidDays'
+import { readBillsPaid } from '../../lib/billing/billsPaidIo'
+import { companyWeekStartSundayContaining } from '../../utils/dateUtils'
 import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 
 /**
@@ -99,8 +104,6 @@ import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 const STEP = 300
 
 const input: CSSProperties = { font: 'inherit', fontSize: '0.9375rem', width: '100%', padding: '0.5rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box' }
-const tile: CSSProperties = { border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 8, padding: '0.4rem 0.6rem', minWidth: 0 }
-const tileSmall: CSSProperties = { display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)' }
 const dayHead: CSSProperties = {
   position: 'sticky',
   top: 0,
@@ -120,12 +123,7 @@ const dayHead: CSSProperties = {
 }
 const small: CSSProperties = { color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.8125rem' }
 const lineBox: CSSProperties = { display: 'grid', gap: '0.05rem 0.6rem', padding: '0.5rem 0.6rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: '0.8125rem', minWidth: 0, marginTop: '0.25rem' }
-const strong: CSSProperties = { color: 'var(--text-strong)', fontWeight: 700 }
-const money: CSSProperties = { ...strong, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }
 const press: CSSProperties = { font: 'inherit', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', color: 'var(--text-700)', textDecoration: 'underline', textUnderlineOffset: 2 }
-const jobLink: CSSProperties = { color: 'var(--text-green-700)', fontWeight: 600, textDecoration: 'none' }
-/** A bill's name as a press: the underline alone marks it, in the words' own colour. */
-const billLink: CSSProperties = { ...strong, textDecoration: 'underline', textUnderlineOffset: 2 }
 
 const ROUTE_COLORS: Readonly<Record<BillsSentRoute, { background: string; color: string }>> = {
   email: { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' },
@@ -137,23 +135,7 @@ const ROUTE_COLORS: Readonly<Record<BillsSentRoute, { background: string; color:
   other: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
 }
 
-/** A press a thumb can hit: the least height a phone's own controls take. */
-const THUMB = 44
 
-function chipStyle(pressed: boolean, phone = false): CSSProperties {
-  return {
-    ...(phone ? { minHeight: 38, flex: '0 0 auto', whiteSpace: 'nowrap' as const } : {}),
-    font: 'inherit',
-    padding: '0.2rem 0.7rem',
-    fontSize: '0.8125rem',
-    borderRadius: 999,
-    cursor: 'pointer',
-    fontWeight: pressed ? 700 : 500,
-    border: `1px solid ${pressed ? 'var(--text-strong)' : 'var(--border-strong)'}`,
-    background: pressed ? 'var(--text-strong)' : 'var(--surface)',
-    color: pressed ? 'var(--surface)' : 'var(--text-700)',
-  }
-}
 
 function Tile({ label, sum, testId, stacked = false }: { label: string; sum: BillsSentSum; testId: string; stacked?: boolean }) {
   return (
@@ -296,7 +278,6 @@ function Line({ line, phone, today, onOpen }: { line: BillsSentLine; phone: bool
 }
 
 const phoneCard: CSSProperties = { display: 'block', padding: '0.6rem 0.7rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, fontSize: '0.875rem', minWidth: 0, marginTop: '0.3rem', color: 'var(--text-base)', textDecoration: 'none' }
-const phoneButton: CSSProperties = { font: 'inherit', fontSize: '0.875rem', fontWeight: 700, minHeight: THUMB, padding: '0 0.9rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }
 
 /**
  * A line on a phone: the time, how it went and the amount, then the work, then where it went and whether it
@@ -735,8 +716,24 @@ function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onO
 export function BillsSentLedger() {
   const { showToast } = useToastContext()
   const phone = useIsMobile()
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const billParam = params.get('bill')
+  // The page's two views behind one switch (punch list #422): bills by the day they went, money by the day it came.
+  const view: 'sent' | 'paid' = params.get('view') === 'paid' ? 'paid' : 'sent'
+  const setView = useCallback(
+    (next: 'sent' | 'paid') => {
+      setParams((prev) => {
+        const to = new URLSearchParams(prev)
+        // The second view's own state (its day, its month, its chip) leaves the address with it.
+        for (const key of ['view', 'day', 'month', 'how']) to.delete(key)
+        if (next === 'paid') to.set('view', 'paid')
+        return to
+      })
+    },
+    [setParams],
+  )
+  // The list is read for the first view and for one bill's record. The second view reads its own month.
+  const listWanted = view === 'sent' || !!billParam
   const [route, setRoute] = useState<BillsSentChip>('all')
   const [typed, setTyped] = useState('')
   const [limit, setLimit] = useState(STEP)
@@ -746,6 +743,7 @@ export function BillsSentLedger() {
   const [tries, setTries] = useState(0)
 
   useEffect(() => {
+    if (!listWanted) return
     let cancelled = false
     setReading(true)
     void readBillsSent({ limit })
@@ -763,7 +761,7 @@ export function BillsSentLedger() {
     return () => {
       cancelled = true
     }
-  }, [limit, tries])
+  }, [limit, tries, listWanted])
   const retry = useCallback(() => setTries((n) => n + 1), [])
 
   // The list under How the bill went, read with the page and again after each change to it. Until it answers, and
@@ -780,6 +778,23 @@ export function BillsSentLedger() {
   const waysCtl = useMemo<BillHandWaysCtl>(() => ({ ways: waysRead.ways, canEdit: waysRead.fromTable, reload: reloadWays }), [waysRead, reloadWays])
 
   const today = todayYmdInAppTz()
+  // What came in since the Sunday that began this week, for the tile that opens the second view. Its own small
+  // read by day, so a payment on a bill older than the list is counted. Best effort: no answer, no tile.
+  const [paidWeek, setPaidWeek] = useState<BillsPaidSum | null>(null)
+  useEffect(() => {
+    if (view !== 'sent' || billParam) return
+    let cancelled = false
+    void readBillsPaid({ from: companyWeekStartSundayContaining(today) ?? today, to: today })
+      .then((read) => {
+        if (!cancelled) setPaidWeek(billsPaidSum(billsPaidLines(read)))
+      })
+      .catch(() => {
+        if (!cancelled) setPaidWeek(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [view, billParam, today, tries])
   const lines = useMemo(() => (data ? billsSentLines(data) : []), [data])
   const tiles = useMemo(() => billsSentTiles(lines, today), [lines, today])
   const shown = useMemo(() => billsSentFilter(lines, route, typed), [lines, route, typed])
@@ -830,6 +845,35 @@ export function BillsSentLedger() {
     )
   }
 
+  const switchPress = (pressed: boolean): CSSProperties => ({
+    fontFamily: 'inherit',
+    fontSize: '0.8125rem',
+    fontWeight: pressed ? 700 : 600,
+    minHeight: phone ? THUMB : 34,
+    border: 'none',
+    cursor: 'pointer',
+    background: pressed ? 'var(--text-strong)' : 'transparent',
+    color: pressed ? 'var(--surface)' : 'var(--text-700)',
+  })
+  const viewSwitch = (
+    <div role="group" aria-label="View" data-testid="bills-sent-view" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
+      <button type="button" aria-pressed={view === 'sent'} onClick={() => setView('sent')} style={switchPress(view === 'sent')}>
+        By day sent
+      </button>
+      <button type="button" aria-pressed={view === 'paid'} onClick={() => setView('paid')} style={switchPress(view === 'paid')}>
+        By day paid
+      </button>
+    </div>
+  )
+  if (view === 'paid') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        {viewSwitch}
+        <BillsPaidByDay />
+      </div>
+    )
+  }
+
   // What goes out of the app is what the list shows: the lines the chip and the search leave, and the open gaps with them.
   const outGaps = stripVisible ? gapsShown.open : []
   const shownWords = [BILLS_SENT_ROUTE_CHIPS.find((c) => c.key === route)?.label ?? 'All', typed.trim() ? `“${typed.trim()}”` : ''].filter(Boolean).join(' · ') + '.'
@@ -857,12 +901,13 @@ export function BillsSentLedger() {
   // A tile that counts something to look at is the press that shows it.
   const tilePress: CSSProperties = { ...tile, font: 'inherit', textAlign: 'left', cursor: 'pointer' }
   // On a phone an even count of tiles sits two to a row, so no tile is left alone on a row of its own.
-  const tileCount = 2 + (tiles.unpaid.bills > 0 ? 1 : 0) + (missed > 0 ? 1 : 0) + (gaps.open.length > 0 ? 1 : 0)
+  const tileCount = 2 + (tiles.unpaid.bills > 0 ? 1 : 0) + (paidWeek && paidWeek.payments > 0 ? 1 : 0) + (missed > 0 ? 1 : 0) + (gaps.open.length > 0 ? 1 : 0)
   // On a phone the strip is one line until it is asked for, so the list is on the first screen.
   const stripFolded = phone && route === 'all'
 
   return (
     <section aria-label="Bills sent" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+      {viewSwitch}
       {phone ? null : outRow}
       <div style={{ display: 'grid', gridTemplateColumns: phone ? (tileCount % 2 === 0 ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(5.2rem, 1fr))') : 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' }}>
         <Tile label="Today" sum={tiles.today} testId="bills-sent-tile-today" stacked={phone} />
@@ -875,6 +920,17 @@ export function BillsSentLedger() {
             </b>{' '}
             <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', ...(phone ? { display: 'block' } : {}) }}>
               <AmountSmallCents value={tiles.unpaid.total} />
+            </span>
+          </button>
+        ) : null}
+        {paidWeek && paidWeek.payments > 0 ? (
+          <button type="button" onClick={() => setView('paid')} style={{ ...tilePress, background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)' }} data-testid="bills-sent-tile-paid-week" title="See what came in, a day at a time">
+            <span style={{ ...tileSmall, color: 'var(--text-green-800)' }}>Paid this week</span>
+            <b style={{ color: 'var(--text-strong)', fontSize: '0.9375rem' }}>
+              {paidWeek.payments} {paidWeek.payments === 1 ? 'payment' : 'payments'}
+            </b>{' '}
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', ...(phone ? { display: 'block' } : {}) }}>
+              <AmountSmallCents value={paidWeek.total} />
             </span>
           </button>
         ) : null}

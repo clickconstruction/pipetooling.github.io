@@ -2,7 +2,7 @@
 title: see which bills went out and who got them
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: bills sent, ledger, who paid, who has paid, when was the bill paid, paid today, part paid, not paid, still out, days out, check number, card, stripe, how was the bill paid, handed over, mailed, by hand, say how it went, several bills at once, record how bills went, record it as sent, add a way, edit list, rename a way, take off, bring back, how the bill went, print, csv, spreadsheet, export, accountant, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
+keywords: bills sent, ledger, by day paid, money in, what came in, how much came in today, stripe payments, stripe by day, payout, deposit, month, who paid, who has paid, when was the bill paid, paid today, part paid, not paid, still out, days out, check number, card, stripe, how was the bill paid, handed over, mailed, by hand, say how it went, several bills at once, record how bills went, record it as sent, add a way, edit list, rename a way, take off, bring back, how the bill went, print, csv, spreadsheet, export, accountant, record, print the record, every send of one bill, proof, delivered, bounced, opened, did not arrive, paid, no send on record, never sent, housecall pro, text, pay link, sent, when was the bill sent, who got the bill, which address, resend, sent again, statement, proof, went out, emailed, invoice sent, did the bill go out
 where: /bills-sent
 ---
 Bills sent is one list of every bill that left the company. Each line says who got the bill and the minute it went.
@@ -254,6 +254,67 @@ Some lines have no **Copy as sent**. Each one says what the app does not have.
 - An email sent before Oct 5, 2026 shows its time. The line reads *The address was not kept.*
 - A bill entered from Housecall Pro shows *Day only*. The app has the day, with no address, no sender and no copy.
 - A text with the pay link shows the phone number and who sent the text. The line says *Delivered* when the text arrived.
+
+## See what came in on a day
+
+Bills sent has a second view. The second view lists money by the day it came.
+
+1. Open [Bills sent](/bills-sent).
+2. Press {{button:outline|By day paid}} at the top.
+
+A month of days shows. A green day has a figure. The figure is what came in that day.
+
+Press a day. A box shows that day's total and its payments.
+
+Each payment names the bill, the job and who paid. A pill says how the money came.
+
+The words after the pill say when the bill went and how long the money took.
+
+One deposit can pay several bills. Those bills sit under one line that reads like *One deposit · Check 4417 · 2 bills*.
+
+Press a bill's name to open that bill's record. Press {{button:outline|By day sent}} to go back to the list.
+
+A green tile on the list reads **Paid this week**. Press the tile to open the second view.
+
+## See only the money from Stripe
+
+Press {{chip:gray|Stripe}} above the month. The month, the tiles and the day now count Stripe payments alone.
+
+A Stripe payment shows the time the customer paid.
+
+A day may have no Stripe money. The box says so and offers **Show every way that day**.
+
+Press {{chip:gray|All}} to see every way again.
+
+The other chips are {{chip:gray|Check}}, {{chip:gray|Bank transfer}}, {{chip:gray|Cash}} and {{chip:gray|Other}}. A chip shows only when some payment in the month came that way.
+
+## What a day's figure means
+
+Each payment sits on one day.
+
+- A Stripe payment sits on the day the customer paid.
+- A check or a transfer matched to a deposit sits on the day the deposit posted at the bank.
+- A payment someone typed in sits on the day that person named.
+
+The figure is what each payment took off its bill.
+
+Stripe keeps a fee before the bank gets the money. The fee is not taken off on this page.
+
+A tile reads **Next Stripe payout to the bank**. The tile shows what Stripe sends next and the day the money arrives.
+
+The payout is after Stripe's fee. The payout is less than the Stripe payments it carries.
+
+A refund made in Stripe does not show on this page. A credit in kind is listed and not added.
+
+## Move between months
+
+Press ‹ beside the month's name to go back a month. Press › to come forward again.
+
+The newest month is this one. A day that has not come cannot be pressed.
+
+The address keeps the day, the month and the chip. Save the address to come back to the same day.
+
+Press {{button:outline|Print}} to print the month, a day at a time. Press {{button:outline|Download CSV}} to save one row for each payment.
 
 ## What the list cannot know
 

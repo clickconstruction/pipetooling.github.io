@@ -108,7 +108,7 @@ export function billPaymentStripeOwned(p: Pick<BillPayment, 'note' | 'stripeCred
  * How a payment was made, in the job window's words, with the check's number after the word when the row holds
  * one: *Check 4417 · bank deposit*. A number is said for a check alone, since no other way has one a person reads.
  */
-export function billPaymentWayWords(p: BillPayment, bill: BillPaidBill | undefined): string {
+export function billPaymentWayWords(p: Pick<BillPayment, 'bankTransactionId' | 'note' | 'stripeCreditNoteId' | 'paymentType' | 'referenceNumber'>, bill: BillPaidBill | undefined): string {
   const source = paymentSourceFromFacts({ bankLinked: !!(p.bankTransactionId ?? '').trim(), stripeOwned: billPaymentStripeOwned(p, bill), paymentType: p.paymentType })
   const ref = (p.referenceNumber ?? '').trim().replace(/^#/, '')
   if (!ref || source.instrument !== 'check') return source.chip

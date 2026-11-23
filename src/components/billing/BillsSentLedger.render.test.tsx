@@ -13,7 +13,7 @@ import type { BillPaidState } from '../../lib/billing/billsPaid'
 import { BillsSentLedger } from './BillsSentLedger'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
-const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], ways: null as unknown, wayCalls: [] as unknown[][], wayRefuse: null as null | Error, refuse: null as null | Error, refuseBill: null as null | string, fail: null as null | Error, phone: false }))
+const io = vi.hoisted(() => ({ paidWeek: null as unknown, paidAsks: [] as Array<{ from: string; to: string }>, data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], ways: null as unknown, wayCalls: [] as unknown[][], wayRefuse: null as null | Error, refuse: null as null | Error, refuseBill: null as null | string, fail: null as null | Error, phone: false }))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => io.phone }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'master_technician', user: { id: 'u1' }, profileName: 'Priya' })
@@ -51,6 +51,15 @@ vi.mock('../../lib/billing/billsSentIo', () => ({
     if (io.refuseBill && filing.source?.id === io.refuseBill) throw Object.assign(new Error('new row violates row-level security policy for table "sent_documents"'), { code: '42501' })
     io.filed.push(filing)
   },
+}))
+// The second view's reads, and the small read behind the Paid this week tile. Null answers nothing, as a refusal does.
+vi.mock('../../lib/billing/billsPaidIo', () => ({
+  readBillsPaid: async (span: { from: string; to: string }) => {
+    io.paidAsks.push(span)
+    if (io.paidWeek == null) throw new Error('not read')
+    return io.paidWeek
+  },
+  readStripePayout: async () => null,
 }))
 vi.mock('../../lib/storageSave', () => ({
   saveBlobAs: (blob: Blob, name: string) => void io.saved.push({ name, type: blob.type }),
@@ -93,6 +102,8 @@ const data = (copies: BillsSentCopy[]): BillsSentInput => ({
 
 beforeEach(() => {
   io.data = data([])
+  io.paidWeek = null
+  io.paidAsks = []
   io.asks = []
   io.opened = []
   io.saved = []
@@ -235,6 +246,54 @@ describe('BillsSentLedger', () => {
     expect(record.textContent).toContain('Sable Ridge Builders · Paid Tue, Nov 10')
     expect(within(record).getByTestId('bills-sent-record-payments').textContent).toContain('The payments on this bill, oldest first')
     expect(within(record).getAllByTestId('bills-sent-record-payment').map((p) => p.textContent)).toEqual(['Fri, Nov 6Cash · typed by hand$1,000.00', 'Tue, Nov 10Check 4417 · bank deposit$3,860.00'])
+  })
+
+  it('switches between the bills by day sent and the money by day paid, and counts what came in this week', async () => {
+    const today = todayYmdInAppTz()
+    const paid = (id: string, amount: number, over: Record<string, unknown> = {}) => ({ id, billId: BILL, jobId: JOB, amount, paidOn: today, createdAtIso: `${today}T18:21:00.000Z`, paymentType: null, note: 'Stripe', referenceNumber: null, bankTransactionId: null, stripeCreditNoteId: null, ...over })
+    io.data = data([copy({ id: 'c1' })])
+    io.paidWeek = {
+      // A credit in kind is listed in the second view and is in no count.
+      payments: [paid('p1', 1750), paid('p2', 1500.5, { note: null, paymentType: 'Check' }), paid('p3', 900, { note: 'Rent credit', paymentType: 'In kind' })],
+      bills: new Map([[BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'billed' }]]),
+      jobs: new Map([[JOB, { id: JOB, hcp_number: '1412', click_number: null, job_name: 'Sable Ridge Lot 14', customer_name: 'Sable Ridge Builders' }]]),
+      numbers: new Map(),
+      firstSent: new Map(),
+      more: false,
+    }
+    renderWithProviders(<BillsSentLedger />)
+    await screen.findAllByTestId('bills-sent-line')
+    const group = screen.getByTestId('bills-sent-view')
+    expect(within(group).getAllByRole('button').map((b) => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([
+      ['By day sent', 'true'],
+      ['By day paid', 'false'],
+    ])
+    // The tile counts the week's money, read by day, and is the press that opens the second view.
+    const tile = await screen.findByTestId('bills-sent-tile-paid-week')
+    expect(tile.textContent).toBe('Paid this week2 payments $3,250.50')
+    expect(io.paidAsks[0]!.to).toBe(today)
+    fireEvent.click(tile)
+    expect(await screen.findByTestId('bills-paid-view')).toBeTruthy()
+    expect(screen.queryAllByTestId('bills-sent-line')).toHaveLength(0)
+    expect(within(screen.getByTestId('bills-sent-view')).getByRole('button', { name: 'By day paid' }).getAttribute('aria-pressed')).toBe('true')
+    // Back to the list: the second view's own state leaves with it.
+    fireEvent.click(within(screen.getByTestId('bills-sent-view')).getByRole('button', { name: 'By day sent' }))
+    expect(await screen.findAllByTestId('bills-sent-line')).toHaveLength(1)
+    expect(screen.queryByTestId('bills-paid-view')).toBeNull()
+  })
+
+  it('opens on the second view from its address, and draws no Paid this week tile when that read is refused', async () => {
+    io.data = data([copy({ id: 'c1' })])
+    const { unmount } = renderWithProviders(<BillsSentLedger />)
+    await screen.findAllByTestId('bills-sent-line')
+    expect(screen.queryByTestId('bills-sent-tile-paid-week')).toBeNull()
+    unmount()
+    io.asks = []
+    io.paidWeek = { payments: [], bills: new Map(), jobs: new Map(), numbers: new Map(), firstSent: new Map(), more: false }
+    renderWithProviders(<BillsSentLedger />, { route: '/bills-sent?view=paid' })
+    expect(await screen.findByTestId('bills-paid-view')).toBeTruthy()
+    // The list is not read for a view that does not draw it.
+    expect(io.asks).toEqual([])
   })
 
   it('narrows by what is typed and by how it went, and says so when nothing matches', async () => {

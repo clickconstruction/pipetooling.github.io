@@ -2,7 +2,7 @@
 name: "Bills sent: who paid, when, and what came in each day"
 number: 422
 group: close
-status: asked 2026-11-23 by the owner · the card and the mock-up the same day · he asked for two changes, the delivery word at the right edge and every amount's cents smaller, then said build it all · the list with payment made plain in v2.8333 · left: the Stripe paid day at its source (one function migration), then By day paid
+status: asked 2026-11-23 by the owner · the card and the mock-up the same day · he asked for two changes, the delivery word at the right edge and every amount's cents smaller, then said build it all · the list with payment made plain in v2.8333 · By day paid in v2.8343 · left: the Stripe paid day at its source, one function migration in its own PR, which waits for the owner's yes by name before it merges and is pushed
 summary: >
   The owner asked that Bills sent show more clearly who has paid and when, in a way that fits what
   the leader already reads there, and that he can see how much money comes in from Stripe on any
@@ -11,11 +11,11 @@ summary: >
   suggests a stamp under each amount, a paid count on each day band, and a second view on the same
   page, By day paid: a month of days, each with what came in, and the bills behind a picked day.
   It reads the payment rows the app keeps and makes no new table.
-next: Merge the Stripe paid day at its source and push its migration on the owner's yes by name. Then build By day paid on the same kernel.
-size: M as a train of three (M · S · M); left: the Stripe day (S) and By day paid (M)
-blocker: None for the list, which is built. The migration's push to the database waits for the owner's yes by name.
-opinion: keep going — the list answers who paid and when, and By day paid answers what came in on a day
-ver: v2.8333
+next: The owner's yes by name for the Stripe paid day at its source. Then that PR merges and its migration is pushed. Then the leader opens the day he wanted to check, and the card is retired.
+size: M as a train of three (M · S · M); left: the Stripe day (S)
+blocker: The owner's yes by name for the migration. Both views are built and need nothing from it to work.
+opinion: say yes to the migration — until then an evening Stripe payment sits on the next day in both views
+ver: v2.8333 · v2.8343
 ---
 
 # Bills sent: who paid, when, and what came in each day (#422)
@@ -292,12 +292,20 @@ He said go on 2026-11-23: *Let's build it all testing along the way, making sure
 | Step | What | State |
 |---|---|---|
 | 1 | The list, payment made plain: the kernel `billsPaid.ts`, the payments read, the stamp, the band's line, the tile, the chips, the phone's bar, the record's payments, print and CSV. The plan's PR 1 and PR 2 as one | v2.8333 |
-| 2 | The Stripe paid day at its source: `mark_invoice_paid_from_stripe` files the company's day | next. Its push to the database waits for the owner's yes by name. The older rows are a second step, after their list is read |
-| 3 | By day paid: the switch, the month, the picked day, the chips, the payout tile, print and CSV | after step 2 |
+| 2 | The Stripe paid day at its source: `mark_invoice_paid_from_stripe` files the company's day. Migration `20261123074206`, with a SQL bed that ran green on the whole schema | its own PR, open and held. It merges and is pushed on the owner's yes by name. The older rows are a second step, after their list is read |
+| 3 | By day paid: the switch, the month, the picked day, the chips, the payout tile, the Paid this week tile, print and CSV | v2.8343 |
 
 What step 1 found while it was built:
 
 - A bill sent back to Ready to Bill owes nothing yet, so its line carries no stamp.
 - The **Not paid** tile counts the bills on the list, not every open bill the company has. The page reads the newest 300 sends at a time, and the foot of the page says so. **Show older sends** reads more.
-- **Paid this week** is left for step 3. It needs the payments read by day, or it would miss a payment on an older bill.
+- **Paid this week** came with step 3. It reads the payments by day, so a payment on a bill older than the list is counted.
 - The screen was checked over made-up rows in a local harness that answers every database call itself. Nobody opened the live app.
+
+What step 3 found while it was built:
+
+- Step 3 was built before step 2 merged. Until the migration is pushed, a Stripe payment made in the evening sits on the next day in both views, as it does on the Dashboard's Money in bar.
+- A matched deposit that is no check reads **Bank transfer**. The view reads the payment rows and not the bank's own rows, so it does not tell a wire from an ACH.
+- A month's cell is too narrow for a five-figure day. From ten thousand dollars a cell writes thousands with one decimal, and the picked day says the figure whole.
+- Money on a job with no bill named is listed as *Payment*, so a day's total agrees with the Money in bar.
+- Not built: a red word on a disputed card payment, and a week's total at the end of each row of the month.
