@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supply house invoices: flip through, share, search (the mock-up)</title>
+<style>
+/* Punch list #431. Everything here is made up: the supply houses, the job, every invoice number, date, part, code and amount.
+   The same page is on the design canvas: https://claude.ai/artifact/SpDZXshE7KqtBUwnn5Aau6 */
+html { color-scheme: light dark; } body { margin: 0; } [hidden] { display: none !important; } img { max-width: 100%; }
+/* Layout: a choices bar over one framed app screen (desk or phone width). The viewer opens inside the frame. */
+:root {
+  --page: #f2f4f7; --surface: #ffffff; --ink: #1c2430; --muted: #5d6878; --border: #d9dee6;
+  --bg-muted: #eef1f5; --link: #1d4ed8; --accent: #2563eb; --on-accent: #ffffff; --ok: #166534;
+  --warn-bg: #fff4d6; --warn-ink: #7a4b00; --toast-bg: #1c2430; --toast-ink: #ffffff;
+  --hl: #fff1a8; --paper: #fcfcfa; --paper-ink: #20242a; --paper-rule: #c9cdd3; --scrim: rgba(15, 20, 27, .5);
+  --device: #10151c; --tag-bg: #dbeafe; --tag-ink: #1e3a8a;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #0f141b; --surface: #171d26; --ink: #e6eaf0; --muted: #9aa5b5; --border: #2a3340;
+  --bg-muted: #1f2733; --link: #8ab4ff; --accent: #2563eb; --on-accent: #ffffff; --ok: #4ade80;
+  --warn-bg: #3a2f12; --warn-ink: #f5d58a; --toast-bg: #e6eaf0; --toast-ink: #10151c;
+  --hl: #fff1a8; --scrim: rgba(0, 0, 0, .6); --device: #05080c; --tag-bg: #1e3a5f; --tag-ink: #cfe3ff; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --page: #0f141b; --surface: #171d26; --ink: #e6eaf0; --muted: #9aa5b5; --border: #2a3340;
+  --bg-muted: #1f2733; --link: #8ab4ff; --accent: #2563eb; --on-accent: #ffffff; --ok: #4ade80;
+  --warn-bg: #3a2f12; --warn-ink: #f5d58a; --toast-bg: #e6eaf0; --toast-ink: #10151c;
+  --hl: #fff1a8; --scrim: rgba(0, 0, 0, .6); --device: #05080c; --tag-bg: #1e3a5f; --tag-ink: #cfe3ff; color-scheme: dark }
+
+body { background: var(--page); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45;
+  padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1 { font-size: 1.35rem; margin: 0; text-wrap: balance; }
+h2 { font-size: 1rem; margin: 0; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 70ch; }
+button { font-family: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* choices */
+.choices { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 12px 22px; }
+.choice { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.choice > span { font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 6px 11px; font-size: .82rem; cursor: pointer; border-right: 1px solid var(--border); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.rec { font-size: .68rem; background: var(--tag-bg); color: var(--tag-ink); border-radius: 4px; padding: 0 5px; margin-left: 5px; }
+.seg button[aria-pressed="true"] .rec { background: rgba(255, 255, 255, .22); color: var(--on-accent); }
+@media (max-width: 700px) { .choice.width { display: none; } }
+
+/* the frame */
+.stage { display: flex; justify-content: center; }
+.frame { position: relative; container-type: inline-size; container-name: app; width: 100%; height: 800px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.frame.phone { width: 390px; max-width: 100%; height: 780px; border: 10px solid var(--device); border-radius: 34px; }
+.screen { height: 100%; overflow: auto; }
+.appbar { display: flex; gap: 14px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--border); background: var(--bg-muted); font-size: .8rem; color: var(--muted); }
+.appbar b { color: var(--ink); }
+.appbar .mock { margin-left: auto; font-size: .72rem; }
+.job { padding: 12px 14px 4px; }
+.job h3 { margin: 0; font-size: .95rem; }
+.job div { color: var(--muted); font-size: .8rem; }
+.parts { padding: 8px 14px 20px; display: flex; flex-direction: column; gap: 6px; }
+.sum { font-weight: 600; font-size: .9rem; }
+.sum small, .c { font-size: .7em; }
+.sum .light { font-weight: 400; }
+.indent { border-left: 3px solid var(--border); padding-left: 12px; display: flex; flex-direction: column; gap: 7px; margin-left: 4px; }
+.box { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+
+/* search */
+.tools { display: flex; flex-direction: column; gap: 7px; margin: 8px 0 6px; }
+.searchrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.search { flex: 1 1 220px; max-width: 340px; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 6px; padding: 0 8px; background: var(--surface); }
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: .82rem; padding: 6px 0; outline: none; }
+.search:focus-within { border-color: var(--accent); }
+.search svg { color: var(--muted); flex: none; }
+.clear { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 2px 4px; font-size: .9rem; }
+.count { color: var(--muted); font-size: .78rem; font-variant-numeric: tabular-nums; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-size: .76rem; cursor: pointer; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.chip i { font-style: normal; opacity: .7; margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+/* table */
+.inv-table { width: 100%; max-width: 640px; border-collapse: collapse; font-size: .8rem; }
+.inv-table th { text-align: left; padding: 5px 7px; background: var(--bg-muted); font-weight: 600; }
+.inv-table th:last-child, .c-amt { text-align: right; }
+.inv-table td { padding: 3px 7px; border-top: 1px solid var(--border); vertical-align: middle; }
+.c-amt, .c-date { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.invcell { display: inline-flex; align-items: center; gap: 2px; }
+.share { border: 0; background: none; color: var(--muted); width: 28px; height: 28px; border-radius: 6px; display: inline-grid; place-items: center; cursor: pointer; flex: none; }
+.share:hover { background: var(--bg-muted); color: var(--ink); }
+.invlink { border: 0; background: none; padding: 0; color: var(--link); text-decoration: underline; cursor: pointer; font-size: inherit; text-align: left; }
+.onpaper { color: var(--muted); font-size: .72rem; padding-left: 30px; }
+.onpaper mark, .sheet mark { background: var(--hl); color: #20242a; border-radius: 2px; padding: 0 1px; }
+.nofile { font-size: .68rem; color: var(--warn-ink); background: var(--warn-bg); border-radius: 4px; padding: 0 5px; margin-left: 6px; white-space: nowrap; }
+.empty { padding: 14px 4px; color: var(--muted); font-size: .82rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.btn { border: 1px solid var(--border); background: var(--surface); border-radius: 6px; padding: 5px 10px; font-size: .8rem; cursor: pointer; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn[disabled] { opacity: .45; cursor: default; }
+
+/* viewer */
+.viewer { position: absolute; inset: 0; background: var(--scrim); display: flex; padding: 16px; z-index: 5; }
+.v-card { background: var(--surface); border-radius: 10px; flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 18px 50px rgba(0, 0, 0, .35); outline: none; }
+.v-top { display: flex; gap: 8px 14px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.v-title { min-width: 0; flex: 1 1 200px; }
+.v-title b { font-size: .98rem; }
+.v-title span { color: var(--muted); font-size: .8rem; display: block; }
+.v-nav { display: flex; gap: 8px; align-items: center; }
+.v-nav .pos, .v-foot .pos { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.v-acts { display: flex; gap: 6px; align-items: center; }
+.iconbtn { border: 1px solid var(--border); background: var(--surface); border-radius: 6px; width: 32px; height: 30px; display: inline-grid; place-items: center; cursor: pointer; }
+.v-body { flex: 1; min-height: 0; display: flex; }
+.v-rail { flex: 0 0 236px; border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+.v-rail .search { margin: 8px; max-width: none; flex: none; }
+.v-list { overflow: auto; flex: 1; }
+.v-item { width: 100%; border: 0; border-top: 1px solid var(--border); background: none; text-align: left; padding: 6px 10px; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 0 8px; font-size: .78rem; }
+.v-item b { font-weight: 600; }
+.v-item span { color: var(--muted); }
+.v-item .a { font-variant-numeric: tabular-nums; color: var(--ink); }
+.v-item.cur { background: var(--tag-bg); color: var(--tag-ink); }
+.v-item.cur span, .v-item.cur .a { color: var(--tag-ink); }
+.v-main { flex: 1; min-width: 0; min-height: 0; display: flex; }
+.v-paper { flex: 1; min-width: 0; overflow: auto; background: var(--bg-muted); padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.v-facts { flex: 0 0 248px; border-left: 1px solid var(--border); padding: 12px 14px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: .8rem; margin: 0; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.facts dd small { display: block; font-weight: 400; color: var(--muted); font-size: .74rem; }
+.okline { color: var(--ok); }
+.note { font-size: .76rem; color: var(--muted); }
+.v-foot { border-top: 1px solid var(--border); padding: 6px 12px; font-size: .76rem; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+.v-foot .phone-nav { display: none; }
+kbd { font-family: var(--mono); font-size: .72rem; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--bg-muted); color: var(--ink); }
+
+/* the paper: a PDF page is white in both themes */
+.sheet { background: var(--paper); color: var(--paper-ink); width: min(100%, 540px); min-height: 620px; padding: 26px 26px 22px; box-shadow: 0 1px 6px rgba(0, 0, 0, .22); font-size: 11px; display: flex; flex-direction: column; gap: 14px; }
+.sh-head { display: flex; justify-content: space-between; gap: 12px; }
+.sh-house { font-size: 16px; font-weight: 700; letter-spacing: .01em; }
+.sh-sub { color: #5b6068; }
+.sh-right { text-align: right; }
+.sh-word { font-size: 15px; letter-spacing: .18em; font-weight: 700; }
+.sh-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-top: 1px solid var(--paper-rule); border-bottom: 1px solid var(--paper-rule); padding: 8px 0; }
+.sh-meta span { display: block; color: #5b6068; font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; }
+.sh-lines { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.sh-lines th { text-align: left; font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: #5b6068; border-bottom: 1px solid var(--paper-rule); padding: 3px 4px; }
+.sh-lines td { padding: 4px; border-bottom: 1px solid #e6e8ec; vertical-align: top; }
+.sh-lines .n { text-align: right; white-space: nowrap; }
+.sh-lines .code { font-family: var(--mono); font-size: 10px; white-space: nowrap; }
+.sh-lines tr.hl td { background: var(--hl); }
+.sh-tot { margin-top: auto; align-self: flex-end; display: grid; grid-template-columns: auto auto; gap: 3px 22px; font-variant-numeric: tabular-nums; }
+.sh-tot div:nth-child(even) { text-align: right; }
+.sh-tot .t { font-weight: 700; border-top: 1px solid var(--paper-ink); padding-top: 3px; }
+.sh-cont { margin-top: auto; color: #5b6068; text-align: right; }
+.pager { display: flex; gap: 8px; align-items: center; font-size: .78rem; color: var(--muted); }
+.hole { width: min(100%, 540px); border: 1px dashed var(--border); border-radius: 8px; background: var(--surface); padding: 28px 20px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.hole b { font-size: .95rem; }
+
+/* toast */
+.toast { position: absolute; left: 50%; bottom: 22px; transform: translate(-50%, 12px); background: var(--toast-bg); color: var(--toast-ink); border-radius: 8px; padding: 9px 14px; font-size: .84rem; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; z-index: 9; max-width: calc(100% - 32px); text-align: center; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+/* medium width: facts go under the paper */
+@container app (max-width: 940px) {
+  .v-main { flex-direction: column; overflow: auto; }
+  .v-paper { overflow: visible; flex: none; }
+  .v-facts { flex: none; border-left: 0; border-top: 1px solid var(--border); overflow: visible; }
+}
+/* phone width */
+@container app (max-width: 620px) {
+  .appbar .mock { display: none; }
+  .search { max-width: none; flex-basis: 100%; }
+  .search input { font-size: 16px; padding: 10px 0; }
+  .chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+  .chip { padding: 8px 12px; font-size: .8rem; }
+  .inv-table thead { display: none; }
+  .inv-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "inv amt" "house date"; border-top: 1px solid var(--border); padding-bottom: 8px; }
+  .inv-table td { display: block; border: 0; padding: 0 4px; }
+  .c-inv { grid-area: inv; } .c-amt { grid-area: amt; align-self: center; font-weight: 600; font-size: .9rem; }
+  .c-house { grid-area: house; padding-left: 50px !important; color: var(--muted); }
+  .c-date { grid-area: date; color: var(--muted); }
+  .share { width: 44px; height: 44px; }
+  .invlink { min-height: 44px; font-size: .95rem; }
+  .onpaper { padding-left: 46px; }
+  .viewer { padding: 0; }
+  .v-card { border-radius: 0; }
+  .v-rail, .v-nav, .v-foot .hint { display: none; }
+  .v-top { padding: 4px 6px 4px 12px; flex-wrap: nowrap; }
+  .iconbtn { width: 44px; height: 44px; border: 0; }
+  .v-acts .drive { display: none; }
+  .v-paper { padding: 10px; }
+  .sheet { padding: 16px 14px; min-height: 0; font-size: 10px; }
+  .sh-meta { grid-template-columns: 1fr 1fr; }
+  .v-foot { padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .v-foot .phone-nav { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 8px; }
+  .v-foot .phone-nav .btn { min-height: 44px; min-width: 104px; font-size: .9rem; }
+}
+
+/* under the frame */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.card h3 { margin: 0; font-size: .86rem; }
+.card p { color: var(--muted); font-size: .82rem; }
+.card .says { font-family: var(--mono); font-size: .78rem; color: var(--ink); background: var(--bg-muted); border-radius: 6px; padding: 6px 8px; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Supply house invoices: flip through, share, search</h1>
+    <p class="lede">A mock-up of the Job Summary's invoice list. Press an invoice number to open it in place, press the icon to its left to copy a link, and type in the box to narrow the list. Every house, number, date and amount here is made up.</p>
+  </header>
+
+  <section class="choices" aria-label="Choices">
+    <div class="choice"><span>The viewer</span>
+      <div class="seg" data-key="viewer">
+        <button type="button" data-val="rail">List beside the paper<span class="rec">recommended</span></button>
+        <button type="button" data-val="arrows">Arrows only</button>
+      </div></div>
+    <div class="choice"><span>Search on the list</span>
+      <div class="seg" data-key="search">
+        <button type="button" data-val="chips">Box and house chips<span class="rec">recommended</span></button>
+        <button type="button" data-val="box">Box only</button>
+      </div></div>
+    <div class="choice"><span>Search reaches</span>
+      <div class="seg" data-key="reach">
+        <button type="button" data-val="cols">The four columns (first)</button>
+        <button type="button" data-val="lines">Also the lines on the paper (next)</button>
+      </div></div>
+    <div class="choice"><span>Share icon</span>
+      <div class="seg" data-key="icon">
+        <button type="button" data-val="link">Link</button>
+        <button type="button" data-val="share">Share</button>
+      </div></div>
+    <div class="choice width"><span>Width</span>
+      <div class="seg" data-key="width">
+        <button type="button" data-val="desk">Desk</button>
+        <button type="button" data-val="phone">Phone</button>
+      </div></div>
+  </section>
+
+  <div class="stage">
+    <div class="frame" id="frame">
+      <div class="screen" id="screen">
+        <div class="appbar"><b>Jobs</b><span>Job Summary</span><span class="mock">Mock-up, made-up data</span></div>
+        <div class="job"><h3>Larkspur Commons, Bldg C</h3><div>Ridgeway Builders</div></div>
+        <div class="parts">
+          <div class="sum">&#9660; Parts Cost <span class="light" id="partsTotal"></span> <span class="light" style="color:var(--muted)">· fuel &amp; gas $1,204<small>.33</small></span></div>
+          <div class="indent">
+            <div class="sum">Parts from Tally <span class="light">$0<small>.00</small></span></div>
+            <div class="sum">Other job charges <span class="light">$0<small>.00</small></span></div>
+            <div class="box">
+              <div class="sum">&#9660; Invoices from Supply Houses <span class="light" id="invTotal"></span></div>
+              <div class="tools">
+                <div class="searchrow">
+                  <label class="search" for="q">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                    <input id="q" type="search" autocomplete="off" placeholder="Search house, invoice, date or amount" aria-label="Search this job's invoices">
+                  </label>
+                  <span class="count" id="count"></span>
+                </div>
+                <div class="chips" id="chips"></div>
+              </div>
+              <div id="list"></div>
+            </div>
+            <div class="sum">Card charges <span class="light">$4,812<small>.40</small></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="viewer" id="viewer" hidden></div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <section>
+    <h2 style="margin-bottom:8px">What the copied link opens</h2>
+    <div class="cards">
+      <div class="card"><h3>A teammate in the office</h3><p>Dev, leader, assistant or controller, signed in. The viewer opens on that invoice, with Previous and Next through the same job's list.</p><div class="says" id="linkText"></div></div>
+      <div class="card"><h3>Someone signed out</h3><p>The page asks for a sign-in, then comes back to the invoice.</p><div class="says">Sign in to open this file.</div></div>
+      <div class="card"><h3>Anyone else who is signed in</h3><p>No paper and no amounts. The link is not a public file link, so forwarding it outside the office shows nothing.</p><div class="says">This file is not one you can open.</div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var TAX = 0.0825;
+  var nf = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var MONL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var HOUSES = { bright: 'Brightwater Pipe & Valve', harlow: 'Harlow Supply', cedar: 'Cedar Fork Wholesale', tri: 'Tri-County Rentals' };
+  var HOUSE_SHORT = { bright: 'Brightwater', harlow: 'Harlow', cedar: 'Cedar Fork', tri: 'Tri-County' };
+  var CAT = [
+    ['CU-L-075-20', '3/4 in. copper pipe, type L, 20 ft', 61.40], ['CU-L-100-20', '1 in. copper pipe, type L, 20 ft', 88.15],
+    ['PVC-DWV-2-10', '2 in. PVC DWV pipe, 10 ft', 14.20], ['PVC-DWV-3-10', '3 in. PVC DWV pipe, 10 ft', 27.85],
+    ['PVC-90-2', '2 in. PVC DWV 90 elbow', 2.18], ['PVC-SANT-3', '3 in. PVC sanitary tee', 6.42],
+    ['PEX-A-050-300', '1/2 in. PEX-A tubing, 300 ft coil', 142.00], ['PEX-A-075-100', '3/4 in. PEX-A tubing, 100 ft coil', 96.50],
+    ['BV-FP-200', '2 in. ball valve, full port, brass', 84.30], ['BV-FP-075', '3/4 in. ball valve, full port, brass', 18.75],
+    ['NH-CPL-4', '4 in. no-hub coupling', 11.90], ['CI-NH-4-10', '4 in. cast iron no-hub pipe, 10 ft', 118.60],
+    ['WH-50-GAS', '50 gal gas water heater', 742.00], ['WAX-RING-X', 'Wax ring with flange, extra thick', 4.35],
+    ['CLOSET-FL-3', '3 in. closet flange, PVC', 7.10], ['HANG-CLV-2', '2 in. clevis hanger', 3.95],
+    ['PRIMER-PT', 'Purple primer, pint', 9.80], ['CEMENT-QT', 'PVC cement, medium body, quart', 13.25],
+    ['SHORE-WK', 'Trench shoring, 8 ft, one week', 395.00], ['PUMP-TR-2', '2 in. trash pump, one day', 78.00],
+    ['PRV-075', '3/4 in. pressure reducing valve', 96.40], ['EXP-TANK-2', '2 gal thermal expansion tank', 48.90],
+    ['FLEX-GAS-24', 'Gas flex connector, 3/4 in. by 24 in.', 21.60], ['DELIV', 'Delivery charge', 45.00]
+  ];
+  // house, number, date, PO, percent on this job, lines [catalog row, quantity], file, pages [from, to, of], paid
+  var RAW = [
+    ['harlow', 'HS-204418', '2026-11-16', 'LC-C 114', 100, [[12, 1], [22, 1], [21, 1], [20, 1]], 'ok', null, ''],
+    ['bright', 'BW 7731-02', '2026-11-13', 'LC-C 113', 100, [[9, 2]], 'ok', null, ''],
+    ['bright', 'BW 7729-01', '2026-11-10', 'LC-C 112', 100, [[8, 3], [15, 10]], 'ok', null, ''],
+    ['bright', 'BW 7716-04', '2026-11-09', 'LC-C 111', 100, [[13, 4], [14, 2]], 'ok', [1, 1, 3], ''],
+    ['bright', 'BW 7720-01', '2026-11-09', 'LC-C 111', 100, [[6, 3], [7, 2], [9, 4]], 'ok', [2, 2, 3], ''],
+    ['tri', 'TR-55120-1', '2026-11-06', 'LC-C 109', 100, [[18, 2], [19, 3], [23, 1]], 'ok', null, ''],
+    ['bright', 'BW 7655-03', '2026-10-29', 'LC-C 107', 100, [[4, 30], [5, 10]], 'ok', [1, 1, 12], 'Paid Nov 12'],
+    ['bright', 'BW 7661-01', '2026-10-29', 'LC-C 107', 100, [[16, 1], [17, 1]], 'ok', [2, 2, 12], 'Paid Nov 12'],
+    ['bright', 'BW 7670-02', '2026-10-29', 'LC-C 108', 100, [[2, 20], [4, 24], [15, 30]], 'ok', [3, 3, 12], 'Paid Nov 12'],
+    ['bright', 'BW 7648-01', '2026-10-28', 'LC-C 106', 100, [[3, 10], [5, 8]], 'none', null, 'Paid Nov 12'],
+    ['bright', 'BW 7640-05', '2026-10-27', 'LC-C 105', 100, [[0, 5], [9, 3]], 'ok', null, 'Paid Nov 12'],
+    ['bright', 'BW 7602-01B', '2026-10-23', 'LC-C 102', 50, [[11, 12], [10, 40], [3, 6]], 'ok', null, 'Paid Nov 5'],
+    ['bright', 'BW 7598-02', '2026-10-22', 'LC-C 104', 100, [[7, 3], [9, 4]], 'ok', null, 'Paid Nov 5'],
+    ['cedar', 'CF118203', '2026-10-19', 'LC-C 103', 100, [[1, 12], [8, 4]], 'ok', null, 'Paid Nov 2'],
+    ['cedar', 'CF118117', '2026-10-16', 'LC-C 103', 100, [[0, 14], [20, 1]], 'cannot', null, 'Paid Nov 2'],
+    ['bright', 'BW 7602-01', '2026-10-15', 'LC-C 102', 100, [[11, 30], [10, 80], [3, 40], [2, 60], [5, 40], [4, 120], [15, 90], [6, 6], [7, 8], [8, 6], [9, 20], [16, 4], [17, 4], [23, 1]], 'ok', null, 'Paid Nov 5'],
+    ['harlow', 'HS-203377', '2026-10-15', 'LC-C 101', 100, [[13, 12], [14, 12], [17, 2]], 'ok', null, 'Paid Oct 30'],
+    ['harlow', 'HS-203120', '2026-10-13', 'LC-C 100', 100, [[6, 4], [7, 2], [21, 2]], 'ok', null, 'Paid Oct 30'],
+    ['cedar', 'CF117406', '2025-12-18', 'LC-C 098', 100, [[2, 30], [4, 40], [16, 2]], 'ok', null, 'Paid Jan 9'],
+    ['harlow', 'HS-198052', '2025-12-04', 'LC-C 097', 100, [[18, 1], [23, 1]], 'ok', null, 'Paid Dec 30, 2025']
+  ];
+  function r2(n) { return Math.round(n * 100) / 100; }
+  function money(n) { return '$' + nf.format(n); }
+  function moneySmall(n) { var s = nf.format(n).split('.'); return '$' + s[0] + '<span class="c">.' + s[1] + '</span>'; }
+  function parts(iso) { return iso.split('-').map(Number); }
+  // The mock-up's today is in 2026: a date in the current year drops its year, a past year keeps it.
+  var THIS_YEAR = 2026;
+  function fmtDateFull(iso) { var p = parts(iso); return MON[p[1] - 1] + ' ' + p[2] + ', ' + p[0]; }
+  function fmtDate(iso) { var p = parts(iso); return MON[p[1] - 1] + ' ' + p[2] + (p[0] === THIS_YEAR ? '' : ', ' + p[0]); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  var INV = RAW.map(function (r, i) {
+    var lines = r[5].map(function (l, k) {
+      var c = CAT[l[0]];
+      return { no: k + 1, code: c[0], desc: c[1], qty: l[1], price: c[2], ext: r2(l[1] * c[2]), hay: (c[0] + ' ' + c[1]).toLowerCase() };
+    });
+    var subtotal = r2(lines.reduce(function (a, l) { return a + l.ext; }, 0));
+    var tax = r2(subtotal * TAX), total = r2(subtotal + tax), allocated = r2(total * r[4] / 100);
+    var p = parts(r[2]);
+    var amts = [allocated, total].reduce(function (a, v) { return a.concat([v.toFixed(2), nf.format(v)]); }, []);
+    var hay = [HOUSES[r[0]], r[1], r[1].replace(/[^a-z0-9]/gi, ''), r[3], MON[p[1] - 1] + ' ' + p[2] + ', ' + p[0], MONL[p[1] - 1] + ' ' + p[2] + ' ' + p[0],
+      p[1] + '/' + p[2] + '/' + p[0], p[1] + '/' + p[2], r[2]].concat(amts).join(' | ').toLowerCase();
+    return { id: 'b' + (i + 1), houseKey: r[0], house: HOUSES[r[0]], number: r[1], date: r[2], po: r[3], pct: r[4], lines: lines, subtotal: subtotal,
+      tax: tax, total: total, allocated: allocated, file: r[6], stack: r[7], paid: r[8], read: r[6] === 'ok', hay: hay };
+  });
+  var byId = {}; INV.forEach(function (v) { byId[v.id] = v; });
+  var INV_SUM = r2(INV.reduce(function (a, v) { return a + v.allocated; }, 0));
+
+  var state = { viewer: 'rail', search: 'chips', reach: 'cols', icon: 'link', width: 'desk', q: '', house: null, open: null, page: 1 };
+  var $ = function (id) { return document.getElementById(id); };
+  var frame = $('frame'), viewer = $('viewer'), q = $('q');
+
+  var ICONS = {
+    link: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg>',
+    share: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>'
+  };
+  function icon() { return ICONS[state.icon]; }
+  function tokens() { return state.q.toLowerCase().split(/\s+/).map(function (t) { return t.replace(/^\$/, ''); }).filter(Boolean); }
+  function linkOf(inv) { return 'https://app.example/files/bills/' + inv.id + '?job=larkspur-c'; }
+
+  function visible() {
+    var toks = tokens(), out = [];
+    INV.forEach(function (inv) {
+      if (state.house && inv.houseKey !== state.house) return;
+      var hit = null;
+      for (var i = 0; i < toks.length; i++) {
+        var t = toks[i];
+        if (inv.hay.indexOf(t) >= 0) continue;
+        var l = state.reach === 'lines' && inv.read ? inv.lines.filter(function (x) { return x.hay.indexOf(t) >= 0; })[0] : null;
+        if (!l) return;
+        hit = hit || l;
+      }
+      out.push({ inv: inv, hit: hit });
+    });
+    return out;
+  }
+  function markWords(text) {
+    var out = esc(text);
+    tokens().forEach(function (t) {
+      if (t.length < 2) return;
+      var i = out.toLowerCase().indexOf(t);
+      if (i >= 0 && out.slice(0, i).lastIndexOf('<') <= out.slice(0, i).lastIndexOf('>')) out = out.slice(0, i) + '<mark>' + out.slice(i, i + t.length) + '</mark>' + out.slice(i + t.length);
+    });
+    return out;
+  }
+
+  function renderList() {
+    var rows = visible(), sum = r2(rows.reduce(function (a, r) { return a + r.inv.allocated; }, 0));
+    $('partsTotal').innerHTML = moneySmall(r2(INV_SUM + 4812.40));
+    $('invTotal').innerHTML = moneySmall(INV_SUM);
+    $('count').innerHTML = (state.q.trim() || state.house) ? rows.length + ' of ' + INV.length + ' invoices · ' + moneySmall(sum) : INV.length + ' invoices';
+    q.placeholder = state.reach === 'lines' ? 'Search house, invoice, date, amount or a part' : 'Search house, invoice, date or amount';
+    var chips = $('chips');
+    chips.hidden = state.search !== 'chips';
+    if (state.search !== 'chips') state.house = state.house && null;
+    chips.innerHTML = '<button type="button" class="chip" data-house="" aria-pressed="' + (!state.house) + '">All<i>' + INV.length + '</i></button>' +
+      Object.keys(HOUSES).map(function (k) {
+        var n = INV.filter(function (v) { return v.houseKey === k; }).length;
+        return '<button type="button" class="chip" data-house="' + k + '" aria-pressed="' + (state.house === k) + '">' + HOUSE_SHORT[k] + '<i>' + n + '</i></button>';
+      }).join('');
+    if (!rows.length) {
+      $('list').innerHTML = '<div class="empty"><span>Nothing on this job matches “' + esc(state.q.trim() || HOUSE_SHORT[state.house]) + '”.</span><button type="button" class="btn" data-clear>Clear the search</button></div>';
+      return;
+    }
+    $('list').innerHTML = '<table class="inv-table"><thead><tr><th>Supply house</th><th>Invoice</th><th>Date</th><th>Allocated</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        var v = r.inv;
+        return '<tr><td class="c-house">' + esc(v.house) + '</td><td class="c-inv"><span class="invcell">' +
+          '<button type="button" class="share" data-share="' + v.id + '" title="Copy a link to this invoice" aria-label="Copy a link to invoice ' + esc(v.number) + '">' + icon() + '</button>' +
+          '<button type="button" class="invlink" data-open="' + v.id + '">' + esc(v.number) + '</button>' +
+          (v.file === 'none' ? '<span class="nofile">no PDF</span>' : '') + '</span>' +
+          (r.hit ? '<div class="onpaper">On the paper: ' + markWords(r.hit.desc) + '</div>' : '') +
+          '</td><td class="c-date">' + fmtDate(v.date) + '</td><td class="c-amt">' + moneySmall(v.allocated) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  function sheet(inv) {
+    var per = 9, pages = Math.max(1, Math.ceil(inv.lines.length / per));
+    if (state.page > pages) state.page = pages;
+    var slice = inv.lines.slice((state.page - 1) * per, state.page * per), last = state.page === pages, toks = tokens();
+    var html = '<div class="sheet"><div class="sh-head"><div><div class="sh-house">' + esc(inv.house) + '</div><div class="sh-sub">A made-up paper for this mock-up</div></div>' +
+      '<div class="sh-right"><div class="sh-word">INVOICE</div><div>' + esc(inv.number) + '</div><div>' + fmtDateFull(inv.date) + '</div></div></div>' +
+      '<div class="sh-meta"><div><span>Sold to</span>Alder Creek Plumbing</div><div><span>Ship to</span>Larkspur Commons, Bldg C</div><div><span>PO</span>' + esc(inv.po) + '</div></div>' +
+      '<table class="sh-lines"><thead><tr><th>Code</th><th>Description</th><th class="n">Qty</th><th class="n">Price</th><th class="n">Amount</th></tr></thead><tbody>' +
+      slice.map(function (l) {
+        var hl = state.reach === 'lines' && toks.some(function (t) { return t.length > 1 && l.hay.indexOf(t) >= 0; });
+        return '<tr' + (hl ? ' class="hl"' : '') + '><td class="code">' + l.code + '</td><td>' + esc(l.desc) + '</td><td class="n">' + l.qty + '</td><td class="n">' + nf.format(l.price) + '</td><td class="n">' + nf.format(l.ext) + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      (last ? '<div class="sh-tot"><div>Subtotal</div><div>' + nf.format(inv.subtotal) + '</div><div>Sales tax</div><div>' + nf.format(inv.tax) + '</div><div class="t">Total</div><div class="t">' + money(inv.total) + '</div></div>'
+        : '<div class="sh-cont">Continued on page ' + (state.page + 1) + '</div>') + '</div>';
+    if (pages > 1) html += '<div class="pager"><button type="button" class="btn" data-page="-1"' + (state.page <= 1 ? ' disabled' : '') + '>‹ Page</button><span>page ' + state.page + ' of ' + pages + '</span><button type="button" class="btn" data-page="1"' + (last ? ' disabled' : '') + '>Page ›</button></div>';
+    if (inv.stack) html += '<div class="note">This bill is page ' + inv.stack[0] + ' of a ' + inv.stack[2] + ' page file. The viewer opens on its own page.</div>';
+    return html;
+  }
+  function paper(inv) {
+    if (inv.file === 'none') return '<div class="hole"><b>This bill has no PDF yet.</b><span class="note">Add one on the bill to see the paper here. The facts beside it still read from the bill.</span><button type="button" class="btn" data-say="In the app this opens the bill’s Edit invoice window.">Open the bill</button></div>';
+    if (inv.file === 'cannot') return '<div class="hole"><b>The app cannot open this file.</b><span class="note">It sits outside the bills folder. Drive may still open it for you.</span><button type="button" class="btn" data-say="In the app this opens the PDF in Drive, in a new tab.">Open in Drive ↗</button></div>';
+    return sheet(inv);
+  }
+  function facts(inv) {
+    var onJob = inv.pct + '% · ' + moneySmall(inv.allocated) + (inv.pct < 100 ? '<small>The rest is on another job.</small>' : '');
+    var lines = inv.read ? '<span class="okline">' + inv.lines.length + (inv.lines.length === 1 ? ' line' : ' lines') + ' · adds up</span>' : (inv.file === 'none' ? 'Not read<small>No PDF to read.</small>' : 'Not read<small>The file would not open.</small>');
+    return '<dl class="facts"><dt>Supply house</dt><dd>' + esc(inv.house) + '</dd><dt>Invoice</dt><dd>' + esc(inv.number) + '</dd><dt>Date</dt><dd>' + fmtDate(inv.date) + '</dd>' +
+      '<dt>PO</dt><dd>' + esc(inv.po) + '</dd><dt>Bill total</dt><dd>' + moneySmall(inv.total) + '</dd><dt>On this job</dt><dd>' + onJob + '</dd>' +
+      '<dt>Lines read</dt><dd>' + lines + '</dd><dt>Paid</dt><dd>' + (inv.paid ? inv.paid.replace('Paid ', '') : 'Not yet') + '</dd></dl>' +
+      '<div class="note">These facts come from the bill on file. The paper is the supplier’s own PDF.</div>';
+  }
+  function renderViewer() {
+    if (!state.open) { viewer.hidden = true; viewer.innerHTML = ''; return; }
+    var rows = visible(), list = rows.map(function (r) { return r.inv; });
+    var inv = byId[state.open], at = list.indexOf(inv), n = list.length;
+    var pos = at >= 0 ? (at + 1) + ' of ' + n : 'not in the search';
+    var railOn = state.viewer === 'rail';
+    var keep = viewer.querySelector('.v-list'), keepTop = keep ? keep.scrollTop : 0, hadFocus = document.activeElement && document.activeElement.id === 'vq';
+    viewer.hidden = false;
+    viewer.innerHTML = '<div class="v-card" role="dialog" aria-modal="true" aria-label="Invoice ' + esc(inv.number) + '" tabindex="-1">' +
+      '<div class="v-top"><div class="v-title"><b>' + esc(inv.number) + '</b><span>' + esc(inv.house) + ' · ' + fmtDate(inv.date) + ' · ' + moneySmall(inv.allocated) + '</span></div>' +
+      '<div class="v-nav"><button type="button" class="btn" data-flip="-1"' + (at <= 0 ? ' disabled' : '') + '>‹ Previous</button><span class="pos">' + pos + '</span><button type="button" class="btn" data-flip="1"' + (at < 0 || at >= n - 1 ? ' disabled' : '') + '>Next ›</button></div>' +
+      '<div class="v-acts"><button type="button" class="iconbtn" data-share="' + inv.id + '" title="Copy a link to this invoice" aria-label="Copy a link to this invoice">' + icon() + '</button>' +
+      (inv.file === 'none' ? '' : '<button type="button" class="btn drive" data-say="In the app this opens the PDF in Drive, in a new tab.">Open in Drive ↗</button>') +
+      '<button type="button" class="iconbtn" data-close aria-label="Close">✕</button></div></div>' +
+      '<div class="v-body">' + (railOn ? '<aside class="v-rail"><label class="search" for="vq"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="vq" type="search" autocomplete="off" placeholder="Search this job" aria-label="Search this job\'s invoices" value="' + esc(state.q) + '"></label><div class="v-list">' +
+        (n ? rows.map(function (r) { var v = r.inv; return '<button type="button" class="v-item' + (v === inv ? ' cur' : '') + '" data-open="' + v.id + '"><b>' + esc(v.number) + '</b><span class="a">' + moneySmall(v.allocated) + '</span><span>' + HOUSE_SHORT[v.houseKey] + '</span><span>' + fmtDate(v.date) + '</span></button>'; }).join('')
+          : '<div class="empty">Nothing matches.<button type="button" class="btn" data-clear>Clear the search</button></div>') + '</div></aside>' : '') +
+      '<div class="v-main"><div class="v-paper">' + paper(inv) + '</div><aside class="v-facts">' + facts(inv) + '</aside></div></div>' +
+      '<div class="v-foot"><span class="hint"><kbd>←</kbd> <kbd>→</kbd> flip through the list as it is searched · <kbd>Esc</kbd> closes</span>' +
+      '<div class="phone-nav"><button type="button" class="btn" data-flip="-1"' + (at <= 0 ? ' disabled' : '') + '>‹ Previous</button><span class="pos">' + pos + '</span><button type="button" class="btn primary" data-flip="1"' + (at < 0 || at >= n - 1 ? ' disabled' : '') + '>Next ›</button></div></div></div>';
+    var vl = viewer.querySelector('.v-list');
+    if (vl) {
+      vl.scrollTop = keepTop;
+      var cur = vl.querySelector('.cur');
+      if (cur) { if (cur.offsetTop < vl.scrollTop) vl.scrollTop = cur.offsetTop; else if (cur.offsetTop + cur.offsetHeight > vl.scrollTop + vl.clientHeight) vl.scrollTop = cur.offsetTop + cur.offsetHeight - vl.clientHeight; }
+    }
+    var vq = $('vq');
+    if (hadFocus && vq) { vq.focus(); vq.setSelectionRange(vq.value.length, vq.value.length); }
+  }
+  function open(id) { state.open = id; state.page = 1; renderViewer(); var c = viewer.querySelector('.v-card'); if (c && document.activeElement.id !== 'vq') c.focus({ preventScroll: true }); }
+  function close() { state.open = null; renderViewer(); }
+  function flip(d) {
+    var list = visible().map(function (r) { return r.inv; }), at = list.indexOf(byId[state.open]);
+    var to = at < 0 ? list[0] : list[at + d];
+    if (to) open(to.id);
+  }
+  var toastTimer = null;
+  function say(words) {
+    var t = $('toast'); t.textContent = words; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+  function share(id) {
+    var link = linkOf(byId[id]);
+    $('linkText').textContent = link;
+    try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).catch(function () {}); } catch (e) {}
+    say('Link copied to clipboard');
+  }
+  function setQuery(v) { state.q = v; if (q.value !== v) q.value = v; renderList(); }
+
+  function renderChoices() {
+    document.querySelectorAll('.seg').forEach(function (seg) {
+      seg.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(state[seg.dataset.key] === b.dataset.val)); });
+    });
+    frame.classList.toggle('phone', state.width === 'phone');
+  }
+  function renderAll() { renderChoices(); renderList(); renderViewer(); }
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('button'); if (!el) return;
+    var seg = el.closest('.seg');
+    if (seg) { state[seg.dataset.key] = el.dataset.val; if (seg.dataset.key === 'search' && el.dataset.val === 'box') state.house = null; renderAll(); return; }
+    if (el.dataset.share) { share(el.dataset.share); return; }
+    if (el.dataset.open) { open(el.dataset.open); return; }
+    if (el.dataset.flip) { flip(Number(el.dataset.flip)); return; }
+    if (el.dataset.page) { state.page += Number(el.dataset.page); renderViewer(); return; }
+    if (el.dataset.say) { say(el.dataset.say); return; }
+    if ('close' in el.dataset) { close(); return; }
+    if ('clear' in el.dataset) { state.house = null; setQuery(''); renderViewer(); return; }
+    if ('house' in el.dataset) { state.house = el.dataset.house || null; renderList(); return; }
+  });
+  viewer.addEventListener('mousedown', function (e) { if (e.target === viewer) close(); });
+  q.addEventListener('input', function () { state.q = q.value; renderList(); });
+  viewer.addEventListener('input', function (e) {
+    if (e.target.id !== 'vq') return;
+    state.q = e.target.value; q.value = state.q; renderList();
+    var list = visible().map(function (r) { return r.inv; });
+    if (list.length && list.indexOf(byId[state.open]) < 0) { state.open = list[0].id; state.page = 1; }
+    renderViewer();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!state.open) return;
+    var typing = e.target && e.target.tagName === 'INPUT';
+    if (e.key === 'Escape') { close(); return; }
+    if (e.key === 'ArrowDown' || (!typing && e.key === 'ArrowRight')) { e.preventDefault(); flip(1); }
+    else if (e.key === 'ArrowUp' || (!typing && e.key === 'ArrowLeft')) { e.preventDefault(); flip(-1); }
+  });
+
+  $('linkText').textContent = linkOf(INV[0]);
+  renderAll();
+})();
+</script>
+</body>
+</html>

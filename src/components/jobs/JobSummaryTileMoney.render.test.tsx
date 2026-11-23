@@ -11,7 +11,7 @@ describe('JobSummaryTileMoney', () => {
   it('keeps the whole amount in the text and shrinks only the cents', () => {
     const { container } = render(<JobSummaryTileMoney value={96420.18} />)
     expect(container.textContent).toBe('$96,420.18')
-    const small = container.querySelector('span')
+    const small = container.querySelector<HTMLElement>('[data-cents]')
     expect(small?.textContent).toBe('.18')
     expect(small?.style.fontSize).toBe('0.7em')
   })
