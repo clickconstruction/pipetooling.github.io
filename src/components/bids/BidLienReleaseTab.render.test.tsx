@@ -10,6 +10,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { BidLienReleaseTab } from './BidLienReleaseTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import { moneyText } from '../../test/moneyText'
 
 const authState = vi.hoisted(() => ({ role: 'estimator' as string }))
 // v2.5958: the tab reads the bid's recorded waivers and the leaders; here there are none of either.
@@ -62,7 +63,7 @@ describe('BidLienReleaseTab', () => {
     renderTab()
     expect(screen.getByText(/§ 53\.284\(b\)/)).toBeTruthy()
     expect(screen.getByText(/conditional upon actual receipt and clearance/)).toBeTruthy()
-    expect(screen.getByText(/check from Southern Pine Construction in the sum of \$38,625\.00/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/check from Southern Pine Construction in the sum of \$38,625\.00/))).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Copy for email' })).toBeTruthy()
     expect(screen.queryByTestId('bid-lien-waiver-hold')).toBeNull()
   })
