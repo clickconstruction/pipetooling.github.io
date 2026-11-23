@@ -12,15 +12,17 @@
  * answers that pull. On a desk there is room, and the row always shows.
  *
  * The middle third is no mode on top: it switches Task Mode and Job Mode off and leaves Dispatch Mode
- * alone, so a leader keeps the Dispatch Mode bar (`pageMode.ts`). Dispatch Mode stays a row of the
- * gear menu, and so does every mode for the roles this row is not drawn for.
+ * alone, so a leader or the office keeps the Dispatch Mode bar (`pageMode.ts`). Dispatch Mode stays a
+ * row of the gear menu, and so does every mode for the estimator, the one role this row is not drawn for.
  *
  * This file is the rule and every word on the row. The rule is pure. The phone's memory of the row
  * (was a third ever pressed, how many times the page opened) is read and written at the foot.
  */
 
 import type { UserRole } from '../hooks/useAuth'
+import { canLeaveJobFieldReport } from './canLeaveJobFieldReport'
 import type { PageMode, PageModeWrite } from './pageMode'
+import { roleHomePath } from './roleGate'
 import { isSubcontractorLikeRole } from './subcontractorLikeRole'
 
 type Role = UserRole | string | null | undefined
@@ -48,6 +50,13 @@ export const MODE_ROW_HANDLE = true
 /** The row shows on this many opens of the page before it starts to tuck, unless a third is pressed first. */
 export const MODE_ROW_FIRST_VISITS = 5
 
+/**
+ * How long the row stays on the page before the open is counted. The office's phone opens on the
+ * Dashboard and is sent on to the schedule within a moment (`assistantDispatchLanding`), and that is
+ * not a look at the row: counted, five such landings would tuck a row nobody had seen.
+ */
+export const MODE_ROW_OPEN_DWELL_MS = 1500
+
 /** How far a finger travels down, at the top of the page, before the row comes down. */
 export const MODE_ROW_PULL_PX = 36
 
@@ -55,9 +64,14 @@ export const MODE_ROW_PULL_PX = 36
 export const MODE_ROW_PRESS_CONTROL = 'mode_row'
 export const MODE_ROW_SHOWN_CONTROL = 'mode_row_shown'
 
-/** The four field roles. The office keeps the gear menu's Modes rows. */
+/**
+ * Every role whose first page is the Dashboard, the page the row sits on (the owner, 2026-11-23: *give
+ * it to everyone*). That is eight of the nine. The estimator's first page is Bids (`roleHomePath`) and
+ * its header has no Home press, so the row would be on a page the estimator does not open: the
+ * estimator keeps the gear menu's Modes rows. A role nobody knows gets nothing.
+ */
 export function modeRowOfferedToRole(role: Role): boolean {
-  return role === 'master_technician' || role === 'superintendent' || isSubcontractorLikeRole(role as UserRole | null | undefined)
+  return canLeaveJobFieldReport(role) && roleHomePath(role) === '/dashboard'
 }
 
 /**

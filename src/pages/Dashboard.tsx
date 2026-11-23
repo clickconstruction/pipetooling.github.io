@@ -1414,7 +1414,7 @@ export default function Dashboard() {
           <DashboardTrainingSection userId={authUser.id} role={role} />
         </div>
         {/* The mode row above the header (punch list #425) is the way to the full Dashboard for the roles it is
-            drawn for, so this press is left for the roles who turn Job Mode on in the gear menu. */}
+            drawn for, so this press is left for the estimator, who turns Job Mode on in the gear menu. */}
         {modeRowOfferedToRole(role) ? null : (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button

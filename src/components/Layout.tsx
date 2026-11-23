@@ -2332,7 +2332,7 @@ export default function Layout() {
           paddingBottom: dispatchModeActive || jobModeFooterActive ? pageBottomPaddingCss() : undefined,
         }}
       >
-        {/* The mode row is the way out of Task Mode for the roles it is drawn for; everyone else keeps the strip. */}
+        {/* The mode row is the way out of Task Mode for the roles it is drawn for; the estimator, who has no row, keeps the strip. */}
         {taskModeActive && !modeRowOfferedToRole(role) ? <TaskModeChip onExit={exitTaskMode} /> : null}
         <AssistantReadyToBillBanner />
         {/* The new phone layout: the Add Task offer left the top of every page for one quiet row of the Dashboard.

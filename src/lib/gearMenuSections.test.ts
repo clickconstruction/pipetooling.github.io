@@ -36,26 +36,23 @@ describe('the gear menu’s sections', () => {
       gearModesRows({ modeRow: modeRowOfferedToRole(role), jobEligible: canLeaveJobFieldReport(role), dispatchEligible: dispatchModeEligibleForRole(role) })
 
     it('a role with the mode row lists neither Job Mode nor Task Mode', () => {
-      for (const role of ['master_technician', 'superintendent', 'subcontractor', 'helpers']) {
+      for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent', 'subcontractor', 'helpers']) {
         expect(rowsFor(role).job, role).toBe(false)
         expect(rowsFor(role).task, role).toBe(false)
       }
     })
 
-    it('a leader keeps Dispatch Mode under the label, and the other three field roles have no Modes group at all', () => {
-      expect(rowsFor('master_technician')).toEqual({ job: false, dispatch: true, task: false, label: true })
-      for (const role of ['superintendent', 'subcontractor', 'helpers']) {
+    it('whoever can hold Dispatch Mode keeps it under the label, and the rest have no Modes group at all', () => {
+      for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
+        expect(rowsFor(role), role).toEqual({ job: false, dispatch: true, task: false, label: true })
+      }
+      for (const role of ['primary', 'superintendent', 'subcontractor', 'helpers']) {
         expect(rowsFor(role), role).toEqual({ job: false, dispatch: false, task: false, label: false })
       }
     })
 
-    it('every other role keeps the rows it had', () => {
-      for (const role of ['dev', 'assistant', 'controller']) {
-        expect(rowsFor(role), role).toEqual({ job: true, dispatch: true, task: true, label: true })
-      }
-      for (const role of ['estimator', 'primary']) {
-        expect(rowsFor(role), role).toEqual({ job: true, dispatch: false, task: true, label: true })
-      }
+    it('the estimator, whose first page is Bids, has no row and keeps the rows it had', () => {
+      expect(rowsFor('estimator')).toEqual({ job: true, dispatch: false, task: true, label: true })
     })
   })
 })

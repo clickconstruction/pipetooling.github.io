@@ -27,7 +27,8 @@ import {
 import { applyPageModeWrites, pageModeWrites, resolvePageMode, type PageMode, type PageModeWants } from './pageMode'
 
 const ALL_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']
-const FIELD_ROLES = ['master_technician', 'superintendent', 'subcontractor', 'helpers']
+/** The estimator's first page is Bids, so the row has no page of the estimator's to sit on. */
+const ROW_ROLES = ALL_ROLES.filter((role) => role !== 'estimator')
 const USED: ModeRowMemory = { pressed: true, opens: 2 }
 
 /** What the page mode's door does with a press of a third: each write goes through `pageModeWrites`, as `usePageMode.set` does. */
@@ -38,8 +39,10 @@ function press(role: string, wants: PageModeWants, third: ModeRowThird): PageMod
 }
 
 describe('who gets the row, and where', () => {
-  it('is offered to the four field roles and to nobody else', () => {
-    for (const role of ALL_ROLES) expect(modeRowOfferedToRole(role), role).toBe(FIELD_ROLES.includes(role))
+  it('is offered to every role whose first page is the Dashboard: all nine but the estimator', () => {
+    expect(ROW_ROLES).toHaveLength(8)
+    for (const role of ALL_ROLES) expect(modeRowOfferedToRole(role), role).toBe(ROW_ROLES.includes(role))
+    expect(modeRowOfferedToRole('estimator')).toBe(false)
     expect(modeRowOfferedToRole(null)).toBe(false)
     expect(modeRowOfferedToRole(undefined)).toBe(false)
     expect(modeRowOfferedToRole('nobody')).toBe(false)
@@ -69,7 +72,7 @@ describe('the thirds', () => {
   })
 
   it('lands a press on the mode it names, from every state the three toggles can be in', () => {
-    for (const role of FIELD_ROLES) {
+    for (const role of ROW_ROLES) {
       for (const task of [false, true]) for (const job of [false, true]) for (const dispatch of [false, true]) {
         const wants: PageModeWants = { task, job, dispatch }
         const label = `${role} ${JSON.stringify(wants)}`
@@ -98,8 +101,8 @@ describe('the thirds', () => {
 describe('when the row shows', () => {
   const leader = { role: 'master_technician', pathname: '/dashboard', mode: 'dispatch' as PageMode, phone: true, shownNow: false }
 
-  it('is not drawn for another role or on another page', () => {
-    expect(modeRowDraw({ ...leader, role: 'assistant', memory: MODE_ROW_NO_MEMORY })).toBe('none')
+  it('is not drawn for the estimator or on another page', () => {
+    expect(modeRowDraw({ ...leader, role: 'estimator', memory: MODE_ROW_NO_MEMORY })).toBe('none')
     expect(modeRowDraw({ ...leader, pathname: '/jobs', memory: MODE_ROW_NO_MEMORY })).toBe('none')
   })
 
@@ -124,7 +127,7 @@ describe('when the row shows', () => {
   })
 
   it('holds open in Task Mode, where it is the way out', () => {
-    for (const role of FIELD_ROLES) {
+    for (const role of ROW_ROLES) {
       expect(modeRowHeldOpen(role, 'task'), role).toBe(true)
       expect(modeRowDraw({ role, pathname: '/checklist', mode: 'task', phone: true, shownNow: false, memory: USED }), role).toBe('row')
     }

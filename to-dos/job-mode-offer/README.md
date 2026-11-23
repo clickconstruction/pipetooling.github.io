@@ -14,7 +14,7 @@ next: Try the pull on a real phone, as a leader and as a sub, and on a Home Scre
 size: M, built as one client-only PR; left: a look on a real phone (XS)
 blocker: A real phone in a hand.
 ver: v2.8332
-opinion: close — built as picked; the three open calls are one line each in modeRow.ts
+opinion: close — built as picked, for everyone but the estimator; the two open calls are one line each in modeRow.ts
 ---
 
 # The Job Mode offer becomes a mode row tucked above the page (#425)
@@ -119,18 +119,21 @@ He played with the second drawing and picked **Tucked**, 2026-11-23: *Yes, build
 
 - `src/lib/modeRow.ts` is the rule and every word. `src/components/layout/ModeRow.tsx` draws the row
   as the first line above the header, mounted by `Layout.tsx`.
-- Leaders, superintendents, subs and helpers get it, on the Dashboard and on the Task Mode checklist.
+- Every role whose first page is the Dashboard gets it, on the Dashboard and on the Task Mode checklist.
+  That is all nine but the estimator, whose first page is Bids. It was first built for the four field
+  roles. Asked about the office, the owner said *give it to everyone*.
 - A press goes through `usePageMode`'s `set`. The middle third switches Task Mode and Job Mode off and
   never touches Dispatch Mode.
 - On a phone it shows for the first five opens or until a third is pressed, and after every switch.
-  Then it tucks behind a 24 px handle. On a desk it always shows.
+  Then it tucks behind a 24 px handle. On a desk it always shows. An open counts once the row has
+  stayed for a second and a half, since the office's phone is sent on to the schedule as it opens.
 - Two guards hold it open: Task Mode, where it is the way out, and a sub or a helper who is off Job Mode.
 - The offer card and its rule are deleted. The green Task Mode strip and **Show full dashboard** are
-  drawn only for the roles the row is not drawn for.
+  drawn only for the estimator. The window that shows another person's Task Mode draws the row too.
 - **Job Mode** and **Task Mode** left the gear menu for the roles with the row, on the owner's word the
   same day: *since we're adding this, we can remove the job mode and task mode from the gear wheel
-  dropdown*. A leader keeps **Dispatch Mode** there. The office keeps all three rows, since the row is
-  not drawn for it and the menu is its only way in.
+  dropdown*. Whoever can hold **Dispatch Mode** keeps it there. The estimator keeps all the rows the
+  estimator had, since the row is not drawn for the estimator and the menu is the only way in.
 
 ## Where the build left the drawing
 
@@ -153,10 +156,14 @@ header, since the header measures its own links to decide when to fold them away
 1. **How it hides:** answered, Tucked.
 2. **When it starts to tuck:** built as drawn, after the first press or five opens (`MODE_ROW_FIRST_VISITS`).
 3. **The handle:** built as drawn, on (`MODE_ROW_HANDLE`). It is 24 px, the smallest press the app allows.
-4. **Who gets it:** built as drawn, the four field roles (`modeRowOfferedToRole`). Giving the row to
-   everyone would also take Job Mode and Task Mode out of the office's gear menu, by the same rule.
+4. **Who gets it:** answered, everyone (`modeRowOfferedToRole`). Built for the eight roles whose first
+   page is the Dashboard.
+5. **The estimator:** open. The estimator's first page is Bids, and the estimator's header has no Home
+   press, so the row has no page of the estimator's to sit on. Left as it was: the gear menu's two rows
+   and the green strip. Putting the row on top of Bids is the other way, and it needs a word for the
+   middle third there.
 
-Each of the last three is one line in `src/lib/modeRow.ts`.
+Calls 2 and 3 are one line each in `src/lib/modeRow.ts`.
 
 ## How to verify
 
@@ -170,12 +177,14 @@ Each of the last three is one line in `src/lib/modeRow.ts`.
    is still showing. Press **Dashboard**.
 5. As a sub, press **Dashboard**, then reload. The row is still showing. Press **Job Mode** and reload.
    Only the handle shows.
-6. The gear menu of each of the four roles lists neither **Job Mode** nor **Task Mode**. A leader's
-   still lists **Dispatch Mode**.
+6. The gear menu of each role with the row lists neither **Job Mode** nor **Task Mode**. A dev's, a
+   leader's, an assistant's and the controller's still list **Dispatch Mode**.
 7. On a desk the row always shows, above the header.
-8. An assistant, a dev and an estimator see no row. Their gear menu still lists Job Mode and Task Mode,
-   and Task Mode still shows the green strip.
-9. On a Home Screen iPhone the row, or its handle, starts under the status bar and the header under it
+8. An assistant, the controller, a dev and a primary see the row and no green strip in Task Mode. An
+   assistant's phone that opens on the schedule has not used up one of the five opens.
+9. An estimator sees no row. The estimator's gear menu still lists Job Mode and Task Mode, and Task Mode
+   still shows the green strip.
+10. On a Home Screen iPhone the row, or its handle, starts under the status bar and the header under it
    does not pad twice.
 
 ## Where it stands

@@ -146,7 +146,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 
 ## Role-gating matrix (nav, as rendered)
 
-`isAssistantLike` = assistant | controller; sub-like = subcontractor | helpers. "gear·m" = in the gear only on a phone. Under Task Mode the nav shows only Checklist and the gear keeps its mode toggles (for a role with the mode row above the header, Dispatch Mode alone since v2.8332, `gearModesRows`), Sign out, Hard Reload and dev Global Reload. **Not gated by Task Mode** (each link then bounces to `/checklist`): the Task button (`showHeaderTaskChecklistButton`, 1104/1158) and the phone hamburger's Quickfill/Moneyfill/Bridge/Review/Customers rows (932–1029).
+`isAssistantLike` = assistant | controller; sub-like = subcontractor | helpers. "gear·m" = in the gear only on a phone. Under Task Mode the nav shows only Checklist and the gear keeps its mode toggles (for every role but the estimator, which has no mode row above the header, Dispatch Mode alone since v2.8332, `gearModesRows`), Sign out, Hard Reload and dev Global Reload. **Not gated by Task Mode** (each link then bounces to `/checklist`): the Task button (`showHeaderTaskChecklistButton`, 1104/1158) and the phone hamburger's Quickfill/Moneyfill/Bridge/Review/Customers rows (932–1029).
 
 | Entry | dev | master | assistant | controller | estimator | primary | super | sub / helpers | Anchor |
 |---|---|---|---|---|---|---|---|---|---|

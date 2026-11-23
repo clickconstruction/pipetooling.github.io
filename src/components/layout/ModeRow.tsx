@@ -7,6 +7,7 @@ import type { JobModeSource } from '../../lib/jobModeToggle'
 import {
   MODE_ROW_HANDLE,
   MODE_ROW_NO_MEMORY,
+  MODE_ROW_OPEN_DWELL_MS,
   MODE_ROW_PRESS_CONTROL,
   MODE_ROW_PULL_PX,
   MODE_ROW_SHOWN_CONTROL,
@@ -40,6 +41,24 @@ function touchBelongsElsewhere(target: EventTarget | null): boolean {
 
 function pageScrollTop(): number {
   return window.scrollY || document.documentElement.scrollTop || 0
+}
+
+/**
+ * The three thirds, the one of the mode drawn filled. `ModeRow` draws them above the header. The window
+ * that shows another person's Task Mode draws them too, with no press, so that window looks like the
+ * person's own screen.
+ */
+export function ModeRowThirds({ on, isNew, onPress }: { on: ModeRowThird; isNew?: (third: ModeRowThird) => boolean; onPress?: (third: ModeRowThird) => void }) {
+  return (
+    <div className="modeRow" role="group" aria-label={MODE_ROW_WORDS.group}>
+      {MODE_ROW_THIRDS.map((third) => (
+        <button key={third} type="button" className="modeRowThird" data-mode-third={third} aria-pressed={third === on} onClick={() => onPress?.(third)}>
+          {MODE_ROW_WORDS.thirds[third]}
+          {isNew?.(third) ? <span className="modeRowNew">{MODE_ROW_WORDS.newMark}</span> : null}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 /**
@@ -81,15 +100,20 @@ export function ModeRow({
   const draw = modeRowDraw({ role, pathname, mode, phone, memory, shownNow })
   const counts = !!userId && phone && draw !== 'none' && held?.userId !== userId
 
-  // Count this open once per page load, the first time the row is on the page on a phone. The ref
-  // holds whose open was counted, so an effect that runs twice (React's strict mode) counts once.
+  // Count this open once per page load, once the row has stayed on the page on a phone for a moment:
+  // a page that is sent on at once (the office's phone lands on the schedule) was not a look at the row.
+  // The ref holds whose open was counted, so an effect that runs twice (React's strict mode) counts once.
   const countedFor = useRef<string | null>(null)
   useEffect(() => {
     if (!counts || !userId || countedFor.current === userId) return
-    countedFor.current = userId
-    const next = modeRowCountOpen(readModeRowMemory(userId))
-    writeModeRowMemory(userId, next)
-    setHeld({ userId, memory: next })
+    const timer = window.setTimeout(() => {
+      if (countedFor.current === userId) return
+      countedFor.current = userId
+      const next = modeRowCountOpen(readModeRowMemory(userId))
+      writeModeRowMemory(userId, next)
+      setHeld({ userId, memory: next })
+    }, MODE_ROW_OPEN_DWELL_MS)
+    return () => window.clearTimeout(timer)
   }, [counts, userId])
 
   // Leaving the row's pages tucks it again. The checklist counts as one of them in any mode, so the
@@ -215,14 +239,7 @@ export function ModeRow({
       {...(slideIn ? { 'data-mode-row-in': '' } : null)}
       style={{ background: 'var(--chrome-bg)' }}
     >
-      <div className="modeRow" role="group" aria-label={MODE_ROW_WORDS.group}>
-        {MODE_ROW_THIRDS.map((third) => (
-          <button key={third} type="button" className="modeRowThird" data-mode-third={third} aria-pressed={third === on} onClick={() => press(third)}>
-            {MODE_ROW_WORDS.thirds[third]}
-            {modeRowNewMark(third, mode, memory) ? <span className="modeRowNew">{MODE_ROW_WORDS.newMark}</span> : null}
-          </button>
-        ))}
-      </div>
+      <ModeRowThirds on={on} isNew={(third) => modeRowNewMark(third, mode, memory)} onPress={press} />
     </AppTopBanner>
   )
 }

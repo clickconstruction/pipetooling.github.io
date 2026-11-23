@@ -52,7 +52,7 @@ The header stays on one line. On a small phone, **Tell the dev**, **People** and
 {{icon:gear}} **Gear menu** — Dark Mode toggle, Calendar, Help (this page), Settings, Sign out
 :::
 
-The office also finds **Job Mode** and **Task Mode** in the gear menu. Leaders, superintendents, subs and helpers switch those two on [the row at the top](/help/job-mode-clocking#the-row-at-the-top) of the Dashboard.
+**Job Mode** and **Task Mode** are not in the gear menu. You switch those two on [the row at the top](/help/job-mode-clocking#the-row-at-the-top) of the Dashboard. An estimator has no row and finds both in the gear menu.
 
 The gear menu reads in groups. Each group has a small label.
 

@@ -6,7 +6,7 @@
  *
  *   the wrench's press     only where the header had no room for it, first and unlabelled
  *   Modes                  Job Mode, Dispatch Mode with its PO tab, Task Mode: each changes the page
- *                          (a role with the mode row above the header keeps Dispatch Mode alone, `gearModesRows`)
+ *                          (every role but the estimator has the mode row above the header and keeps Dispatch Mode alone, `gearModesRows`)
  *   Show                   Pin bar, Tell the dev, Dark Mode: each shows or hides one thing
  *   Pages                  the pages this menu is the door to, in `GEAR_PAGE_ORDER`
  *   Help and settings      My logbook, Help, Settings
@@ -54,8 +54,9 @@ export function gearPagesInOrder(shown: Readonly<Record<GearPageKey, boolean>>):
  *
  * The mode row above the header (`modeRow.ts`) is the door to Job Mode and Task Mode for the roles it is
  * drawn for, so their menu lists neither: one door, and the tick can never disagree with the row.
- * Dispatch Mode is not on the row, so its menu row stays for whoever can hold it. Every other role keeps
- * the rows it had. The label is drawn only when a row stands under it.
+ * Dispatch Mode is not on the row, so its menu row stays for whoever can hold it. The row is drawn for
+ * every role whose first page is the Dashboard, so the estimator alone keeps the rows it had. The label
+ * is drawn only when a row stands under it.
  */
 export function gearModesRows(input: { modeRow: boolean; jobEligible: boolean; dispatchEligible: boolean }): {
   job: boolean

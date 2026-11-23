@@ -8,9 +8,9 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
 
-import { ModeRow } from './ModeRow'
+import { ModeRow, ModeRowThirds } from './ModeRow'
 import { recordNavClick } from '../../lib/navClickTelemetry'
-import { MODE_ROW_PULL_PX, MODE_ROW_WORDS, modeRowOpensKey, modeRowPressedKey, writeModeRowMemory } from '../../lib/modeRow'
+import { MODE_ROW_OPEN_DWELL_MS, MODE_ROW_PULL_PX, MODE_ROW_WORDS, modeRowOpensKey, modeRowPressedKey, writeModeRowMemory } from '../../lib/modeRow'
 import type { PageMode } from '../../lib/pageMode'
 
 /** A phone: the 640 px query matches. Without it jsdom has no `matchMedia` and the hook reads a desk. */
@@ -43,12 +43,20 @@ function draw(over: Partial<{ userId: string; role: string; pathname: string; mo
   return { setMode, onLand, view }
 }
 
+/** Let the page stay long enough for the open to count. */
+function stay() {
+  act(() => {
+    vi.advanceTimersByTime(MODE_ROW_OPEN_DWELL_MS)
+  })
+}
+
 const thirds = () => screen.queryAllByRole('button').filter((b) => b.hasAttribute('data-mode-third'))
 const words = () => thirds().map((b) => b.textContent)
 
 describe('ModeRow', () => {
   const realMatchMedia = window.matchMedia
   beforeEach(() => {
+    vi.useFakeTimers()
     localStorage.clear()
     sessionStorage.clear()
     vi.mocked(recordNavClick).mockClear()
@@ -56,22 +64,21 @@ describe('ModeRow', () => {
   })
   afterEach(() => {
     cleanup()
+    vi.useRealTimers()
     window.matchMedia = realMatchMedia
     localStorage.clear()
     sessionStorage.clear()
   })
 
-  it('is drawn for the four field roles on the Dashboard, and for nobody else', () => {
-    for (const role of ['master_technician', 'superintendent', 'subcontractor', 'helpers']) {
+  it('is drawn on the Dashboard for every role but the estimator, whose first page is Bids', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent', 'subcontractor', 'helpers']) {
       const { view } = draw({ role })
       expect(thirds().length, role).toBe(3)
       view.unmount()
     }
-    for (const role of ['dev', 'assistant', 'controller', 'estimator', 'primary']) {
-      const { view } = draw({ role })
-      expect(view.container.innerHTML, role).toBe('')
-      view.unmount()
-    }
+    const { view } = draw({ role: 'estimator' })
+    expect(view.container.innerHTML).toBe('')
+    view.unmount()
   })
 
   it('is not drawn on another page, and is on the checklist only in Task Mode', () => {
@@ -98,17 +105,31 @@ describe('ModeRow', () => {
   it('on a desk it always shows, and counts no opens', () => {
     writeModeRowMemory('u1', { pressed: true, opens: 6 })
     draw()
+    stay()
     expect(thirds().length).toBe(3)
     expect(localStorage.getItem(modeRowOpensKey('u1'))).toBe('6')
   })
 
-  it('on a phone it shows on the first visits with Job Mode marked new, and counts the open once', () => {
+  it('on a phone it shows on the first visits with Job Mode marked new, and counts the open once the page has stayed', () => {
     onAPhone()
     const { view } = draw()
     expect(words()).toEqual(['Task Mode', 'Dashboard', `Job Mode${MODE_ROW_WORDS.newMark}`])
+    expect(localStorage.getItem(modeRowOpensKey('u1'))).toBeNull()
+    stay()
     expect(localStorage.getItem(modeRowOpensKey('u1'))).toBe('1')
+    stay()
     view.rerender(<ModeRow userId="u1" role="master_technician" pathname="/dashboard" mode="dispatch" setMode={() => {}} onLand={() => {}} />)
     expect(localStorage.getItem(modeRowOpensKey('u1'))).toBe('1')
+  })
+
+  it('does not count an open the app sent on at once, as the office’s phone is sent to the schedule', () => {
+    onAPhone()
+    const { view } = draw({ role: 'assistant' })
+    expect(thirds().length).toBe(3)
+    view.rerender(<ModeRow userId="u1" role="assistant" pathname="/dispatch-mode/schedule" mode="dispatch" setMode={() => {}} onLand={() => {}} />)
+    stay()
+    expect(thirds().length).toBe(0)
+    expect(localStorage.getItem(modeRowOpensKey('u1'))).toBeNull()
   })
 
   it('tucks on the sixth open with no press, and leaves only the handle', () => {
@@ -190,7 +211,16 @@ describe('ModeRow', () => {
     onAPhone()
     writeModeRowMemory('u1', { pressed: true, opens: 2 })
     draw({ userId: 'u2' })
+    stay()
     expect(thirds().length).toBe(3)
     expect(localStorage.getItem(modeRowOpensKey('u2'))).toBe('1')
+  })
+
+  it('the thirds alone, as the look at another person’s Task Mode draws them: Task Mode filled, and a press does nothing', () => {
+    render(<ModeRowThirds on="task" />)
+    expect(words()).toEqual(['Task Mode', 'Dashboard', 'Job Mode'])
+    expect(thirds().map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false'])
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }))
+    expect(thirds().map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false'])
   })
 })
