@@ -14,6 +14,7 @@ import {
   buildLienBoard,
   lienBoardForLeader,
   lienBoardLeaderPick,
+  lienBoardLeaderUserId,
   lienBoardPick,
   lienBoardRiskPapers,
   lienBoardRiskPhrase,
@@ -109,12 +110,7 @@ export function useLienDeskBoard({ data, todayYmd, authRole, authUserId, leaderN
   // desk's jobs wait on; a pressed bin narrows the list under the Board to its jobs, as a pressed rung did.
   const boardLeaderName = useMemo(() => {
     if (!data || !leaderNameFor) return null
-    const tally = new Map<string, number>()
-    for (const e of [...data.queue.entries, ...data.affidavits.entries]) {
-      const id = data.jobsById[e.jobId]?.master_user_id
-      if (id) tally.set(id, (tally.get(id) ?? 0) + 1)
-    }
-    const top = [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+    const top = lienBoardLeaderUserId([...data.queue.entries, ...data.affidavits.entries], (jobId) => data.jobsById[jobId]?.master_user_id)
     return top ? leaderNameFor(top)?.trim() || null : null
   }, [data, leaderNameFor])
   const board = useMemo(

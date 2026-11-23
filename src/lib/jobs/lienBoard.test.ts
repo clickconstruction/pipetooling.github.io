@@ -27,6 +27,7 @@ import {
   lienBoardHeldBin,
   lienBoardHoldWords,
   lienBoardLeaderPick,
+  lienBoardLeaderUserId,
   lienBoardLeaderWaits,
   lienBoardPick,
   lienBoardSignSplit,
@@ -926,5 +927,36 @@ describe('signing has its own bin, Approved · to sign (v2.7712, punch list #383
     // A row that names no job, and the printed run's row, stand where they stood.
     expect(row('run:gc1', [])).toBe('notice:to_print')
     expect(row('run:printed', ['4'])).toBe('notice:in_mail')
+  })
+})
+
+describe('the leader the Board names (lienBoardLeaderUserId, v2.8372)', () => {
+  // Made-up jobs and people.
+  const master: Record<string, string | null> = { j1: 'u-sam', j2: 'u-sam', j3: 'u-ana', j4: null, j5: 'u-ana' }
+  const of = (jobId: string) => master[jobId]
+
+  it('is the master most of the desk’s papers wait on', () => {
+    expect(lienBoardLeaderUserId([{ jobId: 'j1' }, { jobId: 'j3' }, { jobId: 'j2' }], of)).toBe('u-sam')
+  })
+
+  it('counts each paper, so a job with a notice and an affidavit counts twice, as the desk counts it', () => {
+    expect(lienBoardLeaderUserId([{ jobId: 'j1' }, { jobId: 'j3' }, { jobId: 'j3' }], of)).toBe('u-ana')
+  })
+
+  it('gives a tie to the master met first, as the desk’s stable sort did', () => {
+    expect(lienBoardLeaderUserId([{ jobId: 'j3' }, { jobId: 'j1' }, { jobId: 'j5' }, { jobId: 'j2' }], of)).toBe('u-ana')
+    expect(lienBoardLeaderUserId([{ jobId: 'j1' }, { jobId: 'j3' }, { jobId: 'j2' }, { jobId: 'j5' }], of)).toBe('u-sam')
+  })
+
+  it('skips a job with no master, and is null when no paper has one', () => {
+    expect(lienBoardLeaderUserId([{ jobId: 'j4' }, { jobId: 'j3' }], of)).toBe('u-ana')
+    expect(lienBoardLeaderUserId([{ jobId: 'j4' }, { jobId: 'missing' }], of)).toBeNull()
+    expect(lienBoardLeaderUserId([], of)).toBeNull()
+  })
+
+  it('names that person on the Board’s second tile when the reader hands in his name', () => {
+    const notices = [notice('1', 'awaiting')]
+    expect(build({ notices, leaderName: 'Sam' }).tiles.find((t) => t.key === 'waiting')!.label).toBe('waiting on Sam')
+    expect(build({ notices, leaderName: null }).tiles.find((t) => t.key === 'waiting')!.label).toBe('waiting on the leader')
   })
 })

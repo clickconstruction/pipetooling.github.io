@@ -80,13 +80,14 @@ export default function DashboardLienDeskCard({
             key={v.key}
             data-lien-desk-card-value={v.key}
             data-tone={v.tone ?? undefined}
-            // The short words keep one line where they can: the first two values hold their width and the last one wraps.
-            style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: `1 ${i < 2 ? 0 : 1} auto`, minWidth: 0, padding: i === 0 ? '0 10px 0 0' : '0 10px', borderLeft: i === 0 ? 'none' : '1px solid var(--border)' }}
+            // The day's count keeps its width. The other two wrap their words on a narrow phone, since the office's middle
+            // count carries the leader's name (v2.8372) and a long one must never push the card sideways.
+            style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: `1 ${i === 0 ? 0 : 1} auto`, minWidth: 0, padding: i === 0 ? '0 10px 0 0' : '0 10px', borderLeft: i === 0 ? 'none' : '1px solid var(--border)' }}
           >
             <span style={{ fontSize: '1.3rem', lineHeight: 1.15, fontVariantNumeric: 'tabular-nums' }}>
               <WorkedOutValue tone={v.tone ?? undefined}>{v.figure}</WorkedOutValue>
             </span>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.25, color: 'var(--text-700)' }}>{v.words}</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, lineHeight: 1.25, color: 'var(--text-700)', overflowWrap: 'anywhere' }}>{v.words}</span>
           </span>
         ))}
       </span>

@@ -1,8 +1,9 @@
 import { useJobsNeedingMe } from './useJobsClosedToMe'
 import { jobPapersNeedsYou } from '../lib/jobs/jobPapers'
 import { useMemo } from 'react'
-import { buildLienBoard } from '../lib/jobs/lienBoard'
+import { buildLienBoard, lienBoardLeaderUserId } from '../lib/jobs/lienBoard'
 import { lienDeskCard, type LienDeskCard } from '../lib/dashboard/lienDeskCard'
+import { useLienDeskLeaderName } from './useLienDeskLeaderName'
 import { isLienOffice } from '../lib/jobs/lienDesk'
 import { buildLienLeaderSignCard } from '../lib/jobs/lienLeaderSignCard'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
@@ -175,6 +176,15 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { watch: lienWatch } = useLienWatchNudge(lienEnabled, hideZzTestJobs)
   const docsmit = useDocsmitSettings()
   const { data: lienDeskData, loading: lienDeskLoading } = useLienDeskData(lienEnabled, todayYmdInAppTz(), { light: true, hideZzTestJobs })
+  // The person the leader's count waits on reads *wait on you*: the leader, and a dev, who signs as one (v2.7435).
+  const lienDeskLeader = role === 'dev' || role === 'master_technician'
+  // Everyone else reads the leader by the name the desk's Board gives him (v2.8372): the master most of the desk's papers
+  // wait on, one small read of his row. Until then the office read *waiting on the leader* where the Board names him.
+  const lienLeaderUserId = useMemo(
+    () => (lienEnabled && lienDeskData && isLienOffice(role) && !lienDeskLeader ? lienBoardLeaderUserId([...lienDeskData.queue.entries, ...lienDeskData.affidavits.entries], (jobId) => lienDeskData.jobsById[jobId]?.master_user_id) : null),
+    [lienEnabled, lienDeskData, role, lienDeskLeader],
+  )
+  const lienLeaderName = useLienDeskLeaderName(lienLeaderUserId)
   // The Lien desk's card (punch list #423): three of the Board's tiles and its red line, for the office, a door to the desk at the Board.
   // It stands beside the Needs you list and is no line of it. Until this card the same counts were a strip of four dots inside the list's card (v2.7334).
   const lienDeskCardModel = useMemo<LienDeskCard | null>(() => {
@@ -187,11 +197,11 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
       jobNumber: (jobId) => { const j = lienDeskData.jobsById[jobId]; return j ? effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—' : jobId.slice(0, 8) },
       jobName: (jobId) => (lienDeskData.jobsById[jobId]?.job_name ?? '').trim(),
       gcName: (gcId) => lienDeskData.gcsById[gcId]?.name ?? '',
+      leaderName: lienLeaderName,
     })
-    return board.empty ? null : lienDeskCard(board, { viewerIsLeader: role === 'dev' || role === 'master_technician' })
-  }, [lienEnabled, lienDeskData, role])
+    return board.empty ? null : lienDeskCard(board, { viewerIsLeader: lienDeskLeader })
+  }, [lienEnabled, lienDeskData, role, lienDeskLeader, lienLeaderName])
   // The leader's card (v2.7435): the notices that wait on his signature, read off the same desk data as the row it replaces.
-  const lienDeskLeader = role === 'dev' || role === 'master_technician'
   const lienLeaderSign = useMemo(() => {
     if (!lienEnabled || !lienDeskData || !lienDeskLeader) return null
     return buildLienLeaderSignCard({
