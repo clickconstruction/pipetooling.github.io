@@ -15,6 +15,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 import {
   SET_OWN_LABEL,
   VALUES_LEGEND,
@@ -36,11 +37,15 @@ export function ValuesInPlaceOff({ off = true, children }: { off?: boolean; chil
 
 // ---------- A worked-out value ----------
 
-/** A value the app works out: plain bold, no press. `tone` is for a value that is itself the warning. */
+/**
+ * A value the app works out: plain bold, no press. `tone` is for a value that is itself the warning. An amount
+ * handed in as words (`$1,250.00`, or a marked sentence's value) draws its cents smaller through the app's one
+ * door, `MoneyText`; a screen that holds the number hands in `<Money amount={…} />` instead.
+ */
 export function WorkedOutValue({ children, tone, title }: { children: ReactNode; tone?: 'red' | 'green'; title?: string }) {
   return (
     <b className="vipWorked" data-value="worked-out" data-tone={tone} title={title}>
-      {children}
+      {typeof children === 'string' ? <MoneyText text={children} /> : children}
     </b>
   )
 }
@@ -160,7 +165,7 @@ export function ChangeableValue(props: ChangeableValueProps) {
     return (
       <span className="vipLockedWrap" title={locked.why}>
         <span className="vipLocked" data-value="locked">
-          {text}
+          <MoneyText text={text} />
         </span>{' '}
         <span className="vipTag">{locked.tag}</span>
       </span>
@@ -256,7 +261,7 @@ export function ChangeableValue(props: ChangeableValueProps) {
         }}
         onKeyDown={stopRowKeys}
       >
-        {text}
+        <MoneyText text={text} />
       </button>
     )
   }

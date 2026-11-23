@@ -500,6 +500,19 @@ and its findings 6 and 8.
    - What to see: **Show it on a line of time** and **Print the days they gave** on two lines, each tap opening its
      own. At 1280 px the line of time's rows have air between them.
    - Why not yet: it was measured on a page that loads the app's stylesheet, not in the app.
+   - **Walked on clicktooling.com on 2026-11-23, as a dev: holds, with two notes.** The Browser pane was hidden, so the two presses were sent by an in-page click and the layout was read, with no screenshot.
+     At 320 px and at 360 px the two presses sit on two lines, about 45 px apart, with no sideways scroll.
+     **Show it on a line of time** drew five rows, and the red *moved 2 days* words stayed inside their row at 320 and 360 px, in light and in dark.
+     At 1280 px the rows have 4 px of air between them, in light and in dark.
+     **Print the days they gave** opened its own window and left the line of time as it was.
+     - Note: once the line shows, the shorter **Hide the line of time** and **Print the days they gave** share one line at 360 px, 20 px apart. They do not share a tap.
+     - Note: each press is 20 px tall, under the 44 px the app gives most presses.
+     - Seen in passing, not looked into: on the line of time, the four rows of JP9309's stages read *JP9309 · ZZ Test Walk Project 2026-11-08*, which is JP1113's name, not JP9309's. The pane blocked the print window, since the click was not a person's tap, and the page said nothing about it.
+
+**Walks 1 and 2 held on 2026-11-23.** Both need a second account on the ZZ job's crew, and the job's crew is the dev alone.
+Nobody else is on its team or has clocked in on it in the last 14 days, which is what `start_checks_crew` reads.
+Putting the Sample helper and the Sample superintendent on its team, and taking them off after, is a write this card does not name, so it waits for a yes.
+Walk 1 also needs two sign-ins at once: the dev on clicktooling.com, and View as on a second origin, a dev server on `main`'s code.
 
 Not walkable on purpose: a first read the app refuses, and call C's 14 days. Their render tests and the SQL bed are
 the proof.

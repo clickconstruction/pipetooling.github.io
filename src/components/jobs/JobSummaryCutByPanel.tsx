@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { JobSummaryCompareBundle } from '../../hooks/useJobSummaryView'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { SignedAmountSmallCents } from '../AmountSmallCents'
+import { Money } from '../Money'
 import { premiumTotalWaitsWords } from '../../lib/charges/premium'
 import type { JobSummaryConcentration, JobSummaryGroup, JobSummaryLedgerRowInput } from '../../lib/jobs/jobSummaryLedgerView'
 
@@ -116,15 +116,15 @@ export function JobSummaryGroupRow({
       <td style={{ ...cell, textAlign: 'left', color: 'var(--text-strong)' }}>
         {group.label} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {t.jobs} {t.jobs === 1 ? 'job' : 'jobs'}</span>
       </td>
-      <td style={cell}><SignedAmountSmallCents value={t.revenueUsd} /></td>
-      <td style={cell}>{showMoney ? <SignedAmountSmallCents value={t.laborUsd} /> : '—'}</td>
-      <td style={cell}><SignedAmountSmallCents value={t.subsUsd} /></td>
-      <td style={cell}><SignedAmountSmallCents value={t.partsUsd} /></td>
-      <td style={{ ...cell, color: showMoney && t.grossUsd < 0 ? 'var(--text-red-700)' : undefined }}>{showMoney ? <SignedAmountSmallCents value={t.grossUsd} /> : '—'}</td>
+      <td style={cell}><Money amount={t.revenueUsd} /></td>
+      <td style={cell}>{showMoney ? <Money amount={t.laborUsd} /> : '—'}</td>
+      <td style={cell}><Money amount={t.subsUsd} /></td>
+      <td style={cell}><Money amount={t.partsUsd} /></td>
+      <td style={{ ...cell, color: showMoney && t.grossUsd < 0 ? 'var(--text-red-700)' : undefined }}>{showMoney ? <Money amount={t.grossUsd} /> : '—'}</td>
       <td style={cell}>{showMoney ? pct(t.marginPct) : '—'}</td>
       <td style={cell}>{ledgerLoaded ? `${t.hours.toFixed(1)} h` : '—'}</td>
-      <td style={cell}>{showMoney ? <SignedAmountSmallCents value={t.overheadUsd} /> : '—'}</td>
-      <td style={{ ...cell, color: showMoney && t.trueProfitUsd != null && t.trueProfitUsd < 0 ? 'var(--text-red-700)' : undefined }}>{showMoney ? <SignedAmountSmallCents value={t.trueProfitUsd} /> : '—'}</td>
+      <td style={cell}>{showMoney ? <Money amount={t.overheadUsd} /> : '—'}</td>
+      <td style={{ ...cell, color: showMoney && t.trueProfitUsd != null && t.trueProfitUsd < 0 ? 'var(--text-red-700)' : undefined }}>{showMoney ? <Money amount={t.trueProfitUsd} /> : '—'}</td>
       <td style={{ ...cell, color: under ? 'var(--text-red-700)' : undefined }} title={under ? `Under the ${targetTrueMarginPct}% target` : undefined}>
         {showMoney ? `${pct(t.trueMarginPct)}${under ? ' ▾' : ''}` : '—'}
         {compare && showMoney ? (
@@ -135,8 +135,8 @@ export function JobSummaryGroupRow({
       </td>
       <td style={cell}>{t.revenuePerHourUsd == null ? '—' : `$${Math.round(t.revenuePerHourUsd)}`}</td>
       <td style={cell} />
-      <td style={cell} title={t.chargedJobs ? `${t.chargedJobs} of ${t.jobs} jobs priced` : undefined}>{showMoney && t.chargesUsd != null ? <SignedAmountSmallCents value={t.chargesUsd} /> : '—'}</td>
-      <td style={{ ...cell, color: showMoney && t.premiumUsd != null && t.premiumUsd < 0 ? 'var(--text-red-700)' : undefined }} title={showMoney ? (premiumTotalWaitsWords(t.premiumWaitingJobs, t.premiumUsd != null) ?? undefined) : undefined}>{showMoney && t.premiumUsd != null ? <SignedAmountSmallCents value={t.premiumUsd} /> : '—'}</td>
+      <td style={cell} title={t.chargedJobs ? `${t.chargedJobs} of ${t.jobs} jobs priced` : undefined}>{showMoney && t.chargesUsd != null ? <Money amount={t.chargesUsd} /> : '—'}</td>
+      <td style={{ ...cell, color: showMoney && t.premiumUsd != null && t.premiumUsd < 0 ? 'var(--text-red-700)' : undefined }} title={showMoney ? (premiumTotalWaitsWords(t.premiumWaitingJobs, t.premiumUsd != null) ?? undefined) : undefined}>{showMoney && t.premiumUsd != null ? <Money amount={t.premiumUsd} /> : '—'}</td>
     </tr>
   )
 }
