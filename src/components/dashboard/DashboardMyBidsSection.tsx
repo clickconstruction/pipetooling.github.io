@@ -6,6 +6,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
+import { isImpersonationSessionActive } from '../../lib/impersonationSession'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import {
   MY_BID_OTHERS_VISIBLE_STEP,
@@ -26,7 +27,12 @@ import {
   formatRelativeCompactAgo,
   isMyBidOffTheBoard,
   myBidGroupLabel,
+  myBidHiddenHereOnlyWords,
   myBidHiddenWords,
+  myBidHiddenWrite,
+  myBidsHiddenInReadState,
+  myBidsHiddenStorageKey,
+  myBidsLocalIdsToMove,
   myBidHasUnread,
   myBidState,
   myBidWhen,
@@ -51,6 +57,39 @@ import { handHeld } from '../../lib/paintedMap/handHeld'
 import { swipeAwayHint } from '../../lib/swipeAway'
 import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
+/** The ids this device kept by itself (`myBidsHiddenStorageKey`). An unreadable or blocked store reads as none. */
+function readDeviceHidden(userId: string): string[] {
+  try {
+    const raw = localStorage.getItem(myBidsHiddenStorageKey(userId))
+    const ids: unknown = raw ? JSON.parse(raw) : []
+    return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function writeDeviceHidden(userId: string, ids: readonly string[]): void {
+  try {
+    if (ids.length === 0) localStorage.removeItem(myBidsHiddenStorageKey(userId))
+    else localStorage.setItem(myBidsHiddenStorageKey(userId), JSON.stringify([...new Set(ids)]))
+  } catch {
+    /* a full or blocked store: the bid stays as it is on the screen until the page loads again */
+  }
+}
+
+/** Hides (`hiddenAt` a time) or shows again (null) these bids in the person's own rows. Throws the database's refusal. */
+async function writeHiddenRows(userId: string, bidIds: readonly string[], hiddenAt: string | null): Promise<void> {
+  const nowIso = new Date().toISOString()
+  await withSupabaseRetry(
+    async () =>
+      supabase.from('user_bid_notes_read_state').upsert(
+        bidIds.map((id) => myBidHiddenWrite(userId, id, hiddenAt, nowIso)),
+        { onConflict: 'user_id,bid_id' },
+      ),
+    hiddenAt ? 'hide my bids' : 'show my bids again',
+  )
+}
+
 export function DashboardMyBidsSection({
   authUserId,
   role,
@@ -69,6 +108,10 @@ export function DashboardMyBidsSection({
   const [myBids, setMyBids] = useState<MyBidRow[]>([])
   const [myBidsLoading, setMyBidsLoading] = useState(false)
   const [hiddenBidIds, setHiddenBidIds] = useState<Set<string>>(new Set())
+  /** The bids hidden in the person's own rows, as last read or written: Show again writes only for these. */
+  const rowHiddenIds = useRef<Set<string>>(new Set())
+  /** Each bid's hides and shows run one after another, so an Undo never lands before the hide it undoes. */
+  const hiddenWrites = useRef(new Map<string, Promise<void>>())
   /** True when the read came back full, so older bids may be left out. */
   const [readCut, setReadCut] = useState(false)
   /** The groups drawn open. Unsent is the work, so it starts open; nothing remembers a press. */
@@ -198,15 +241,34 @@ export function DashboardMyBidsSection({
           }
         }
 
+        const readRows = (readStateRows ?? []) as MyBidReadStateRow[]
         const myBidsBuilt: MyBidRow[] = buildMyBidRows({
           baseRows,
-          readStateRows: (readStateRows ?? []) as MyBidReadStateRow[],
+          readStateRows: readRows,
           bidListsFromOthers,
           customerListsFromOthers,
           authorLabelById,
           userId: uid,
         })
-        if (!cancelled) setMyBids(myBidsBuilt)
+        // The hidden bids follow the person (punch list #426, step 6): their own rows, and whatever this device kept by itself.
+        const rowHidden = myBidsHiddenInReadState(readRows)
+        const deviceHidden = readDeviceHidden(uid)
+        if (cancelled) return
+        rowHiddenIds.current = rowHidden
+        setHiddenBidIds(new Set([...rowHidden, ...deviceHidden]))
+        setMyBids(myBidsBuilt)
+        // Once: the ids this device kept move into the person's rows. A refusal leaves them here, and the next load tries again.
+        const toMove = myBidsLocalIdsToMove(deviceHidden, bidIds, rowHidden)
+        if (toMove.length > 0 && !isImpersonationSessionActive()) {
+          void writeHiddenRows(uid, toMove, new Date().toISOString())
+            .then(() => {
+              for (const id of toMove) rowHiddenIds.current.add(id)
+              writeDeviceHidden(uid, readDeviceHidden(uid).filter((id) => !toMove.includes(id)))
+            })
+            .catch(() => {
+              /* kept on this device */
+            })
+        }
       } catch {
         if (!cancelled) setMyBids([])
       } finally {
@@ -218,38 +280,63 @@ export function DashboardMyBidsSection({
     }
   }, [authUserId, role])
 
-  useEffect(() => {
-    if (!authUserId || typeof window === 'undefined') return
-    try {
-      const raw = localStorage.getItem(`dashboard_my_bids_hidden_${authUserId}`)
-      if (raw) {
-        const arr = JSON.parse(raw) as string[]
-        if (Array.isArray(arr)) setHiddenBidIds(new Set(arr))
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [authUserId])
-
-  /** The hidden ids, changed from what they are now and kept on the device in the same step. */
-  const writeHidden = (change: (ids: Set<string>) => void) =>
+  /** Runs this bid's next hide or show after the one before it. The work catches its own refusals. */
+  const inTurn = (bidId: string, work: () => Promise<void>) => {
+    const next = (hiddenWrites.current.get(bidId) ?? Promise.resolve()).then(work).catch(() => {})
+    hiddenWrites.current.set(bidId, next)
+  }
+  const addHidden = (bidId: string) => setHiddenBidIds((prev) => new Set(prev).add(bidId))
+  const dropHidden = (bidId: string) =>
     setHiddenBidIds((prev) => {
       const next = new Set(prev)
-      change(next)
-      if (authUserId && typeof window !== 'undefined') {
-        try {
-          localStorage.setItem(`dashboard_my_bids_hidden_${authUserId}`, JSON.stringify([...next]))
-        } catch {
-          /* a full or blocked store: the bid is still hidden until the page loads again */
-        }
-      }
+      next.delete(bidId)
       return next
     })
-  const unhideBid = (bidId: string) => writeHidden((ids) => ids.delete(bidId))
-  /** Hide says what it did, with Undo for ten seconds. Show again in the Hidden group works at any time. */
+
+  /**
+   * Show again, and Undo after a hide. A bid hidden in the person's rows is shown again there; one this device
+   * kept by itself leaves the device. While View as is on, the person's rows are not written (as Mark read holds).
+   */
+  const unhideBid = (bidId: string) => {
+    dropHidden(bidId)
+    if (!authUserId) return
+    const uid = authUserId
+    inTurn(bidId, async () => {
+      writeDeviceHidden(uid, readDeviceHidden(uid).filter((id) => id !== bidId))
+      if (isImpersonationSessionActive() || !rowHiddenIds.current.has(bidId)) return
+      try {
+        await writeHiddenRows(uid, [bidId], null)
+        rowHiddenIds.current.delete(bidId)
+      } catch (e) {
+        addHidden(bidId)
+        showToast(formatErrorMessage(e, 'Could not show the bid again'), 'error')
+      }
+    })
+  }
+
+  /**
+   * Hide says what it did, with Undo for ten seconds, and keeps the hide in the person's own row so it follows
+   * them to every device. A refused write keeps the bid hidden on this device alone, and says why. While View
+   * as is on, the hide is this browser's alone.
+   */
   const hideBid = (b: MyBidRow) => {
-    writeHidden((ids) => ids.add(b.id))
+    addHidden(b.id)
     showActionToast(myBidHiddenWords(b.project_name || 'Untitled'), { label: 'Undo', onClick: () => unhideBid(b.id) }, { durationMs: 10000 })
+    if (!authUserId) return
+    const uid = authUserId
+    inTurn(b.id, async () => {
+      if (isImpersonationSessionActive()) {
+        writeDeviceHidden(uid, [...readDeviceHidden(uid), b.id])
+        return
+      }
+      try {
+        await writeHiddenRows(uid, [b.id], new Date().toISOString())
+        rowHiddenIds.current.add(b.id)
+      } catch (e) {
+        writeDeviceHidden(uid, [...readDeviceHidden(uid), b.id])
+        showToast(myBidHiddenHereOnlyWords(formatErrorMessage(e, 'The hide was not saved')), 'warning')
+      }
+    })
   }
 
   const markMyBidNotesReadAsViewed = useCallback(
