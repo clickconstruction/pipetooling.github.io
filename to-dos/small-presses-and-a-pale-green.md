@@ -63,10 +63,14 @@ It is drawn by `OfflineRetryPanel`, which every crew screen uses for a read that
 
 - **A pick:** 44 px tall on a phone, as the other presses of those screens are.
 
-### 4. The doors of a Dispatch inbox row are small
+### 4. ~~The doors of a Dispatch inbox row are small~~ Shipped v2.8362
 
-On a row of the Dispatch inbox at 390 px, **Open the list** is 112 by 31 px and **Open the job** beside
-it is the same. In the window a row opens, **Lower priority** is 103 by 23 px and **Open the job ›** is
+Built 2026-11-23 on the owner's word: on a phone every door on an inbox row is 44 px tall and takes a share of the
+row, so two sit side by side when they fit and stack when they do not. In the window a row opens, **Lower
+priority** and **Open the job ›** are 44 px tall on a phone. A desk keeps its sizes.
+
+On a row of the Dispatch inbox at 390 px, **Open the list** was 112 by 31 px and **Open the job** beside
+it was the same. In the window a row opens, **Lower priority** is 103 by 23 px and **Open the job ›** is
 90 by 20 px. Inside that window **Open the list** is 116 by 48 px, which is right.
 
 These are the row's doors from punch list #245, and every kind of request draws them.
