@@ -125,6 +125,7 @@ A session swap that Exit finds refused signs that browser out and lands on the s
 Every imitation is on record before its link exists (v2.6290, `20261101175329_user_imitations.sql`, punch list #230): `login-as-user` writes `user_imitations` (who imitated, whom, when) as the service role and opens no imitation it cannot record, since the session it opens carries the person's own JWT;
 a dev alone reads the table (`USING (public.is_dev())`), nobody signed in writes it, `anon` holds nothing, and the three fences cover it.
 `gmail-mine` reads it to refuse such a session (*Messages, My email* below).
+The app activity heartbeat reads it too (v2.8251, `20261122021600_imitated_session_holds_app_activity.sql`): `bump_user_app_activity()` writes nothing when `session_opened_by_imitation()` says the calling session's magic-link sign-in falls from 1 minute before an imitation of the same person to 2 minutes after it, a window of minutes where `gmail-mine` reads back a day, since a wrong hold here would cost a person their own activity.
 The door (v2.3608;
 the Settings rail's chip and `/settings#view-as` since v2.4041, not the gear menu): **View as…** (dev only, `ViewAsPanel`) — the Roles list backed by the samples with their switch chips, and a People search;
 guide *see the app as a role or as a person*.
