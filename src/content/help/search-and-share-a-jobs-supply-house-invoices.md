@@ -4,7 +4,7 @@ category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: supply house, invoice, bill, job summary, parts cost, search, find an invoice, share, copy link, link copied, PDF, no PDF, supplier, flip through, viewer, previous, next, open in drive, arrow keys
 ---
-A job's supply house invoices sit together on its Job Summary. You can flip through them without leaving the page, search a long list, and copy a link to an invoice for a teammate.
+A job's supply house invoices sit together on its Job Summary. You can flip through them without leaving the page. You can also search a long list and copy a link to an invoice for a teammate.
 
 ## Open the list
 
