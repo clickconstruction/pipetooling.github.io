@@ -2,14 +2,25 @@
 /**
  * Render smoke for `lazyWindow`: a window not yet loaded shows the boundary's fallback and then itself,
  * a warmed window is drawn in the same pass with no fallback, a mounted window keeps its state when its
- * code lands, and a failed load is asked for again on the next mount.
+ * code lands, a failed load is asked for again on the next mount, and a load that keeps failing reaches
+ * its boundary instead of being asked for without end.
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { Suspense, useState } from 'react'
+import { Component, Suspense, useState, type ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { lazyWindow } from './lazyWindow'
+import { FAILED_LOAD_HELD_MS, lazyWindow } from './lazyWindow'
 
 afterEach(cleanup)
+
+class Caught extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null }
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+  render() {
+    return this.state.error ? <p>caught: {this.state.error.message}</p> : this.props.children
+  }
+}
 
 function Counter({ label }: { label: string }) {
   const [n, setN] = useState(0)
@@ -79,5 +90,53 @@ describe('lazyWindow', () => {
     )
     expect(await screen.findByRole('button', { name: 'again 0' })).toBeTruthy()
     expect(load).toHaveBeenCalledTimes(2)
+  })
+
+  it('a load that fails reaches the boundary, and is not asked for again until someone opens the window later', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    let gone = true
+    const load = vi.fn(async () => {
+      if (gone) throw new Error('Failed to fetch dynamically imported module')
+      return { default: Counter }
+    })
+    const Window = lazyWindow(load)
+    const view = render(
+      <Caught>
+        <Suspense fallback={<p>Opening…</p>}>
+          <Window label="lost" />
+        </Suspense>
+      </Caught>,
+    )
+    expect(await screen.findByText('caught: Failed to fetch dynamically imported module')).toBeTruthy()
+    // Once. Before v2.8306 the waiting render asked again at once, without end, and nothing was ever caught.
+    expect(load).toHaveBeenCalledTimes(1)
+    view.unmount()
+
+    // A second open a moment later still finds the failure, and asks for nothing.
+    const soon = render(
+      <Caught>
+        <Suspense fallback={<p>Opening…</p>}>
+          <Window label="lost" />
+        </Suspense>
+      </Caught>,
+    )
+    expect(await screen.findByText('caught: Failed to fetch dynamically imported module')).toBeTruthy()
+    expect(load).toHaveBeenCalledTimes(1)
+    soon.unmount()
+
+    // Later the file is back: the next open asks again and draws the window.
+    gone = false
+    const now = Date.now()
+    vi.spyOn(Date, 'now').mockReturnValue(now + FAILED_LOAD_HELD_MS)
+    render(
+      <Caught>
+        <Suspense fallback={<p>Opening…</p>}>
+          <Window label="back" />
+        </Suspense>
+      </Caught>,
+    )
+    expect(await screen.findByRole('button', { name: 'back 0' })).toBeTruthy()
+    expect(load).toHaveBeenCalledTimes(2)
+    vi.restoreAllMocks()
   })
 })

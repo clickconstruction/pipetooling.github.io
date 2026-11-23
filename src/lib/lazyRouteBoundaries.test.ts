@@ -44,6 +44,10 @@ describe('lazyComponentNames', () => {
   it('reads React.lazy too, and skips a declaration inside a comment', () => {
     expect(lazyComponentNames("const A = React.lazy(() => import('./A'))\n// const B = lazy(() => import('./B'))\n")).toEqual(['A'])
   })
+
+  it('reads a page held through lazyWindow, which is lazy too', () => {
+    expect(lazyComponentNames("const PayLink = lazyWindow(() => import('./pages/PayLink'))\nconst plain = lazyish()\n")).toEqual(['PayLink'])
+  })
 })
 
 describe('routesOutsideLayout', () => {
@@ -74,6 +78,25 @@ describe('lazyRoutesWithoutSuspense', () => {
         }
       />`
     expect(lazyRoutesWithoutSuspense(app(wrapped))).toEqual([])
+  })
+
+  it('passes a lazy route wrapped in PublicPage, which holds the Suspense, with its props or without', () => {
+    const wrapped = `
+      <Route path="/b/:code" element={<PublicPage tone="landing" compact><BoxCode /></PublicPage>} />
+      <Route
+        path="/b"
+        element={
+          <PublicPage>
+            <BoxCode />
+          </PublicPage>
+        }
+      />`
+    expect(lazyRoutesWithoutSuspense(app(wrapped))).toEqual([])
+  })
+
+  it('is not fooled by a PublicPage that closed before the lazy page', () => {
+    const beside = '<Route path="/b" element={<><PublicPage><SignIn /></PublicPage><BoxCode /></>} />'
+    expect(lazyRoutesWithoutSuspense(app(beside))).toEqual(['/b'])
   })
 
   it('passes a lazy route wrapped in Suspense inside ProtectedRoute', () => {
@@ -143,6 +166,7 @@ describe('lazyRouteWithoutSuspenseWords', () => {
   it('names the route and the fix, with a wrapped route as the example', () => {
     const words = lazyRouteWithoutSuspenseWords('/b/:code')
     expect(words).toContain('"/b/:code"')
+    expect(words).toContain('<PublicPage>')
     expect(words).toContain('<Suspense fallback={null}>')
     expect(words).toContain('as /t/:token is')
     expect(lazyRouteWithoutSuspenseWords('/t/:token')).toContain('as /f/:link is')
@@ -154,9 +178,9 @@ describe('src/App.tsx', () => {
 
   it('is read as it is written: lazy pages, routes above the Layout, the Layout left out', () => {
     // A parser that found nothing would pass the check below without checking anything.
-    expect(lazyComponentNames(source)).toEqual(expect.arrayContaining(['GcTradePortal', 'Jobs']))
+    expect(lazyComponentNames(source)).toEqual(expect.arrayContaining(['GcTradePortal', 'PayLink', 'EstimateAcceptStaffPreview', 'Jobs']))
     const paths = routesOutsideLayout(source).map((r) => r.path)
-    expect(paths).toEqual(expect.arrayContaining(['/sign-in', '/t/:token']))
+    expect(paths).toEqual(expect.arrayContaining(['/sign-in', '/t/:token', '/pay/:id']))
     expect(paths).not.toContain('/')
     expect(paths).not.toContain('dashboard')
   })

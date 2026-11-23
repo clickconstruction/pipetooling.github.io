@@ -160,8 +160,41 @@ export const ON_DEMAND_WINDOWS: ReadonlyArray<string> = [
 ]
 
 /**
- * The most source the entry may reach eagerly. A megabyte of source is about 0.4 MB of chunk: on 2026-11-20,
- * 14.1 MB of source built a main chunk of 5,671,756 bytes, and 10.8 MB built one of 4,307,275. Lower this as
- * more windows move out; raise it only with the reason beside it, as the precache cap's comment asks.
+ * Pages someone opens from a link with no sign-in (v2.8306): the estimate, the account page, pay, the
+ * agreement, the rating, the portals, the rooms and the short links. `App.tsx` holds each through
+ * `lazyWindow` inside `PublicPage`, so a customer's link downloads its own page and not the others. None
+ * may be reachable from the entry by static imports.
  */
-export const ENTRY_SOURCE_BUDGET_BYTES = 12.5 * 1024 * 1024
+export const ON_DEMAND_PAGES: ReadonlyArray<string> = [
+  'src/pages/EstimateAccept.tsx',
+  'src/pages/EstimatePublicTerms.tsx',
+  'src/pages/HazmatNoticePublic.tsx',
+  'src/pages/CustomerPortal.tsx',
+  'src/pages/PayLink.tsx',
+  'src/pages/CustomerRating.tsx',
+  'src/pages/JobContractSign.tsx',
+  'src/pages/ContractAccept.tsx',
+  'src/pages/SubPortal.tsx',
+  'src/pages/BidRoom.tsx',
+  'src/pages/SubmittalRoom.tsx',
+  'src/pages/SupplyHouseQuotePage.tsx',
+  'src/pages/LegalPortal.tsx',
+  'src/pages/LegalConfirm.tsx',
+  'src/pages/GcWordAsk.tsx',
+  'src/pages/GcTradePortal.tsx',
+  'src/pages/BoxCode.tsx',
+  'src/pages/BoxScan.tsx',
+  'src/pages/ShowUsRoute.tsx',
+  'src/pages/PaintedWay.tsx',
+  'src/pages/BuilderLink.tsx',
+  'src/pages/ReceiptLink.tsx',
+  'src/pages/FileLinkPage.tsx',
+]
+
+/**
+ * The most source the entry may reach eagerly. A megabyte of source is about 0.4 MB of chunk: on 2026-11-20,
+ * 14.1 MB of source built a main chunk of 5,671,756 bytes, and 10.8 MB built one of 4,307,275. On 2026-11-22
+ * the public pages moved out (v2.8306) and the entry reaches 7.7 MB. Lower this as more moves out; raise
+ * it only with the reason beside it, as the precache cap's comment asks.
+ */
+export const ENTRY_SOURCE_BUDGET_BYTES = 9 * 1024 * 1024

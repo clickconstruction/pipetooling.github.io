@@ -9,8 +9,6 @@ import { IndexLanding } from './components/IndexLanding'
 import { indexLandingPath } from './lib/devBridgeLanding'
 import SignIn from './pages/SignIn'
 import Away from './pages/Away'
-import BidRoom from './pages/BidRoom'
-import SubmittalRoom from './pages/SubmittalRoom'
 import DevLogin from './pages/DevLogin'
 import BodyScrollLockSentinel from './components/BodyScrollLockSentinel'
 import ResetPassword from './pages/ResetPassword'
@@ -55,40 +53,46 @@ const Checklist = lazy(() => import('./pages/Checklist'))
 const Roadmap = lazy(() => import('./pages/Roadmap'))
 const PunchList = lazy(() => import('./pages/PunchList'))
 const JobTally = lazy(() => import('./pages/JobTally'))
-const BoxCode = lazy(() => import('./pages/BoxCode'))
-// #319 (v2.6981), the First look spike: the customer's page a look's link opens, and the desk that makes the link.
-const ShowUs = lazy(() => import('./pages/ShowUsRoute'))
-const ReceiptLink = lazy(() => import('./pages/ReceiptLink'))
-const PaintedWay = lazy(() => import('./pages/PaintedWay'))
-// A Document builder link (punch list #404): one published sheet for whoever holds the link, with no login.
-const BuilderLink = lazy(() => import('./pages/BuilderLink'))
+// #319 (v2.6981), the First look spike: the desk that makes a look's link. The customer's page is with the public pages below.
 const FirstLooks = lazy(() => import('./pages/FirstLooks'))
 const BillsSent = lazy(() => import('./pages/BillsSent'))
 const FirstLookRead = lazy(() => import('./pages/FirstLookRead'))
-const BoxScan = lazy(() => import('./pages/BoxScan'))
 const MachineCode = lazy(() => import('./pages/MachineCode'))
 const ScheduleDispatch = lazy(() => import('./pages/ScheduleDispatch'))
 const Estimates = lazy(() => import('./pages/Estimates'))
 const Documents = lazy(() => import('./pages/Documents'))
 const EstimateAcceptStaffPreview = lazy(() => import('./pages/EstimateAcceptStaffPreview'))
-// GC mode's trade partner portal (P1b-ii-b): public, and loaded only when a company opens its link.
-const GcTradePortal = lazy(() => import('./pages/GcTradePortal'))
-const FileLinkPage = lazy(() => import('./pages/FileLinkPage'))
-import EstimateAccept from './pages/EstimateAccept'
-import EstimatePublicTerms from './pages/EstimatePublicTerms'
-import HazmatNoticePublic from './pages/HazmatNoticePublic'
-import CustomerPortal from './pages/CustomerPortal'
-import SubPortal from './pages/SubPortal'
-import PayLink from './pages/PayLink'
-import LegalPortal from './pages/LegalPortal'
-import GcWordAsk from './pages/GcWordAsk'
-import LegalConfirm from './pages/LegalConfirm'
-import SupplyHouseQuotePage from './pages/SupplyHouseQuotePage'
+/**
+ * The pages someone opens from a link with no sign-in (v2.8306). Each is a chunk of its own, held through
+ * `lazyWindow` and drawn inside `PublicPage`, so a customer's pay link no longer downloads the estimate, the
+ * portals and the law firm's page with it. `ON_DEMAND_PAGES` in `src/lib/entryGraph.ts` lists them, and a
+ * plain `import X from './pages/X'` here fails `entryGraph.repo.test.ts` with the chain that did it.
+ */
+const EstimateAccept = lazyWindow(() => import('./pages/EstimateAccept'))
+const EstimatePublicTerms = lazyWindow(() => import('./pages/EstimatePublicTerms'))
+const HazmatNoticePublic = lazyWindow(() => import('./pages/HazmatNoticePublic'))
+const CustomerPortal = lazyWindow(() => import('./pages/CustomerPortal'))
+const PayLink = lazyWindow(() => import('./pages/PayLink'))
+const CustomerRating = lazyWindow(() => import('./pages/CustomerRating'))
+const JobContractSign = lazyWindow(() => import('./pages/JobContractSign'))
+const ContractAccept = lazyWindow(() => import('./pages/ContractAccept'))
+const SubPortal = lazyWindow(() => import('./pages/SubPortal'))
+const BidRoom = lazyWindow(() => import('./pages/BidRoom'))
+const SubmittalRoom = lazyWindow(() => import('./pages/SubmittalRoom'))
+const SupplyHouseQuotePage = lazyWindow(() => import('./pages/SupplyHouseQuotePage'))
+const LegalPortal = lazyWindow(() => import('./pages/LegalPortal'))
+const LegalConfirm = lazyWindow(() => import('./pages/LegalConfirm'))
+const GcWordAsk = lazyWindow(() => import('./pages/GcWordAsk'))
+const GcTradePortal = lazyWindow(() => import('./pages/GcTradePortal'))
+const BoxCode = lazyWindow(() => import('./pages/BoxCode'))
+const BoxScan = lazyWindow(() => import('./pages/BoxScan'))
+const ShowUs = lazyWindow(() => import('./pages/ShowUsRoute'))
+const PaintedWay = lazyWindow(() => import('./pages/PaintedWay'))
+const BuilderLink = lazyWindow(() => import('./pages/BuilderLink'))
+const ReceiptLink = lazyWindow(() => import('./pages/ReceiptLink'))
+const FileLinkPage = lazyWindow(() => import('./pages/FileLinkPage'))
 import PartnerStatement from './pages/PartnerStatement'
 import Logbook from './pages/Logbook'
-import ContractAccept from './pages/ContractAccept'
-import CustomerRating from './pages/CustomerRating'
-import JobContractSign from './pages/JobContractSign'
 import ContractBookPreview from './pages/ContractBookPreview'
 import FileOpen from './pages/FileOpen'
 import TaskShortcut from './pages/TaskShortcut'
@@ -116,6 +120,8 @@ import { JobFormModalProvider } from './contexts/JobFormModalContext'
 import { BidPreviewModalProvider } from './contexts/BidPreviewModalContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { RouteChunkBoundary } from './components/RouteChunkBoundary'
+import { PublicPage } from './components/PublicPage'
+import { lazyWindow } from './lib/lazyWindow'
 import { DailyGoalsGateProvider } from './contexts/DailyGoalsGateContext'
 import { JobsListCacheProvider } from './contexts/JobsListCacheContext'
 import { JobDetailModalProvider } from './contexts/JobDetailModalContext'
@@ -262,98 +268,98 @@ function AppContent() {
         <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
         <Route path="/task" element={<TaskShortcut />} />
-        <Route path="/estimate/accept" element={<EstimateAccept />} />
+        <Route path="/estimate/accept" element={<PublicPage tone="landing" compact><EstimateAccept /></PublicPage>} />
         {/* #281 (v2.6678): the estimate text's short link, my.clickplumbing.com/e/<code>, lands here with the code in the path. */}
-        <Route path="/e/:code" element={<EstimateAccept />} />
-        <Route path="/bid-room" element={<BidRoom />} />
-        <Route path="/submittal" element={<SubmittalRoom />} />
-        <Route path="/q/:token" element={<SupplyHouseQuotePage />} />
-        <Route path="/contract/accept" element={<ContractAccept />} />
-        <Route path="/contract/sign" element={<JobContractSign />} />
-        <Route path="/estimate/terms" element={<EstimatePublicTerms />} />
-        <Route path="/hazmat-notice" element={<HazmatNoticePublic />} />
-        <Route path="/portal" element={<CustomerPortal />} />
-        <Route path="/p/:slug" element={<CustomerPortal />} />
-        <Route path="/sub" element={<SubPortal />} />
-        <Route path="/pay/:id" element={<PayLink />} />
+        <Route path="/e/:code" element={<PublicPage tone="landing" compact><EstimateAccept /></PublicPage>} />
+        <Route path="/bid-room" element={<PublicPage tone="landing"><BidRoom /></PublicPage>} />
+        <Route path="/submittal" element={<PublicPage tone="plain"><SubmittalRoom /></PublicPage>} />
+        <Route path="/q/:token" element={<PublicPage tone="plain"><SupplyHouseQuotePage /></PublicPage>} />
+        <Route path="/contract/accept" element={<PublicPage tone="landing"><ContractAccept /></PublicPage>} />
+        <Route path="/contract/sign" element={<PublicPage tone="landing"><JobContractSign /></PublicPage>} />
+        <Route path="/estimate/terms" element={<PublicPage tone="plain"><EstimatePublicTerms /></PublicPage>} />
+        <Route path="/hazmat-notice" element={<PublicPage tone="plain"><HazmatNoticePublic /></PublicPage>} />
+        <Route path="/portal" element={<PublicPage><CustomerPortal /></PublicPage>} />
+        <Route path="/p/:slug" element={<PublicPage><CustomerPortal /></PublicPage>} />
+        <Route path="/sub" element={<PublicPage><SubPortal /></PublicPage>} />
+        <Route path="/pay/:id" element={<PublicPage><PayLink /></PublicPage>} />
         {/* #294 (v2.6797): a box label's code, prts.co/b/<code>. Signed out it is the public box page; signed in it opens the box on the On site tab. Outside the Layout so the sign-in gate never swallows a scan. */}
-        {/* v2.6868: each of the two box routes sits in its own Suspense. They are lazy, and a press on one opens the other
-            (Open the box, Scan another label, Type the code): with no boundary that press suspended in a click and
-            React blanked the page. */}
+        {/* v2.6868: each of the two box routes sits in its own Suspense (`PublicPage` holds one). They are lazy, and a press on
+            one opens the other (Open the box, Scan another label, Type the code): with no boundary that press suspended in a
+            click and React blanked the page. */}
         <Route
           path="/b/:code"
           element={
-            <Suspense fallback={null}>
+            <PublicPage>
               <BoxCode />
-            </Suspense>
+            </PublicPage>
           }
         />
         {/* #294 (v2.6799): bare prts.co lands here, Scan a label: type the code, or find a part on the site this phone last scanned. */}
         <Route
           path="/b"
           element={
-            <Suspense fallback={null}>
+            <PublicPage>
               <BoxScan />
-            </Suspense>
+            </PublicPage>
           }
         />
         {/* #319 (v2.6981), the First look spike: a look's link, /show/<ten letters>. No sign-in: the code is the key. Outside the Layout, in its own Suspense, as the box page is. */}
         <Route
           path="/show/:code"
           element={
-            <Suspense fallback={null}>
+            <PublicPage>
               <ShowUs />
-            </Suspense>
+            </PublicPage>
           }
         />
         {/* #345 (v2.7223): a painted map, shared, /way/<ten letters>. No sign-in: the code is the key. Outside the Layout, in its own Suspense, as the receipt link is. */}
         <Route
           path="/way/:code"
           element={
-            <Suspense fallback={null}>
+            <PublicPage>
               <PaintedWay />
-            </Suspense>
+            </PublicPage>
           }
         />
         {/* A Document builder link (punch list #404, step 4): a published sheet, read and printed with no login. Its own chunk and its own boundary, outside the app's frame. */}
         <Route
           path="/d/:code"
           element={
-            <Suspense fallback={null}>
+            <PublicPage tone="plain">
               <BuilderLink />
-            </Suspense>
+            </PublicPage>
           }
         />
         {/* #299 (v2.7101): a receipt link for a card charge, /r/<ten letters>. No sign-in: the code is the key. Outside the Layout, in its own Suspense, as the box page is. */}
         <Route
           path="/r/:code"
           element={
-            <Suspense fallback={null}>
+            <PublicPage>
               <ReceiptLink />
-            </Suspense>
+            </PublicPage>
           }
         />
-        <Route path="/rate" element={<CustomerRating />} />
-        <Route path="/s/:slug" element={<SubPortal />} />
-        <Route path="/legal" element={<LegalPortal />} />
-        <Route path="/ask" element={<GcWordAsk />} />
+        <Route path="/rate" element={<PublicPage tone="plain"><CustomerRating /></PublicPage>} />
+        <Route path="/s/:slug" element={<PublicPage><SubPortal /></PublicPage>} />
+        <Route path="/legal" element={<PublicPage><LegalPortal /></PublicPage>} />
+        <Route path="/ask" element={<PublicPage><GcWordAsk /></PublicPage>} />
         <Route
           path="/t/:token"
           element={
-            <Suspense fallback={null}>
+            <PublicPage>
               <GcTradePortal />
-            </Suspense>
+            </PublicPage>
           }
         />
         <Route
           path="/f/:link"
           element={
-            <Suspense fallback={null}>
+            <PublicPage>
               <FileLinkPage />
-            </Suspense>
+            </PublicPage>
           }
         />
-        <Route path="/legal/confirm" element={<LegalConfirm />} />
+        <Route path="/legal/confirm" element={<PublicPage><LegalConfirm /></PublicPage>} />
         {/* The staff preview is lazy and sits outside the Layout's Suspense, so it carries its own: Back onto it after a
             reload suspended in a popstate, which React treats as a press, and blanked the page. */}
         <Route
