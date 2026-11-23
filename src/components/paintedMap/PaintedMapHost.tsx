@@ -13,7 +13,7 @@
  * the signal is back and when a map's window closes, and says how many still wait, with a press to
  * try now.
  */
-import { Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import ConfirmDialog from '../ConfirmDialog'
 import { useAuth } from '../../hooks/useAuth'
@@ -28,6 +28,8 @@ import { readKeptWalk, walkHasLine, type KeptWalk } from '../../lib/paintedMap/p
 import { keptWalkWords } from '../../lib/paintedMap/paintedWalkWords'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { lazyWindow } from '../../lib/lazyWindow'
+import { WINDOW_NAMES } from '../../lib/windowLoad'
+import { WindowLoadBoundary } from '../WindowLoadBoundary'
 import { WindowOpening } from '../WindowOpening'
 import type { KeptPaintedWalk, PaintedMapToStart } from './PaintedMapWindow'
 
@@ -47,6 +49,19 @@ type Open =
   | { kind: 'kept'; kept: KeptWalk<KeptPaintedWalk> }
 
 const press: CSSProperties = { minHeight: 40, padding: '0 0.8rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer' }
+
+/**
+ * One of the host's windows, in a boundary of its own. While its code comes the note shows and the host keeps what
+ * it holds. When the code does not come only the window gives up (`WindowLoadBoundary`): `close` shuts it, and the
+ * kept walk's offer and the places that wait are back on the page.
+ */
+function heldMapWindow(window: ReactNode, close: () => void) {
+  return (
+    <WindowLoadBoundary what={WINDOW_NAMES.map} onGaveUp={close}>
+      <Suspense fallback={MAP_OPENING}>{window}</Suspense>
+    </WindowLoadBoundary>
+  )
+}
 
 /** The host, in a boundary of its own: its windows load on demand, and a load must never blank the page around it. */
 export function PaintedMapHost() {
@@ -133,27 +148,31 @@ function PaintedMapHostBody() {
     return () => window.removeEventListener('online', onBack)
   }, [sendWaiting])
 
-  if (open?.kind === 'sheet') return <PaintAMapStartSheet home={open.home} onStart={(start) => setOpen({ kind: 'new', start })} onClose={() => setOpen(null)} />
+  const shut = () => setOpen(null)
+  if (open?.kind === 'sheet') return heldMapWindow(<PaintAMapStartSheet home={open.home} onStart={(start) => setOpen({ kind: 'new', start })} onClose={shut} />, shut)
   if (open?.kind === 'new') {
     const { onClosed } = open
-    return (
+    // A caller that asked for this map by the door hears that its window closed, a window that never came included.
+    const shutAndTell = () => {
+      setOpen(null)
+      onClosed?.()
+    }
+    return heldMapWindow(
       <PaintedMapWindow
         key={open.start.id}
         ask={{ start: open.start }}
         address={open.start.home.address ?? null}
         center={open.start.home.center ?? null}
         spot={open.start.spot ?? null}
-        onClose={() => {
-          setOpen(null)
-          onClosed?.()
-        }}
-      />
+        onClose={shutAndTell}
+      />,
+      shutAndTell,
     )
   }
-  if (open?.kind === 'map') return <PaintedMapWindow key={open.mapId} ask={{ mapId: open.mapId }} address={open.address} openOn={open.add ?? null} spot={open.spot ?? null} pickPlace={open.place ?? null} onClose={() => setOpen(null)} />
+  if (open?.kind === 'map') return heldMapWindow(<PaintedMapWindow key={open.mapId} ask={{ mapId: open.mapId }} address={open.address} openOn={open.add ?? null} spot={open.spot ?? null} pickPlace={open.place ?? null} onClose={shut} />, shut)
   if (open?.kind === 'kept') {
     const { map, state } = open.kept
-    return <PaintedMapWindow key={`kept-${map.mapId}`} ask={map.start ? { start: map.start } : { mapId: map.mapId }} kept={{ state, pending: map.pending ?? [] }} address={map.address ?? null} onClose={() => setOpen(null)} />
+    return heldMapWindow(<PaintedMapWindow key={`kept-${map.mapId}`} ask={map.start ? { start: map.start } : { mapId: map.mapId }} kept={{ state, pending: map.pending ?? [] }} address={map.address ?? null} onClose={shut} />, shut)
   }
   // Places that wait for a signal: said above the dock, over a kept walk's offer when there is one.
   const waitingBand =

@@ -11,6 +11,7 @@ import { TICKET_USED_WORDS, ticketJobLine, ticketWhenLine } from '../../lib/tick
 import type { TicketScreensIo } from '../../lib/tickets/ticketScreensIo'
 import type { TicketWithPages } from '../../lib/tickets/ticketsIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 /**
  * A person's own ticket (punch list #295, PR 2; the mock-up's frame G): its pages, its job, where it stands, and the
@@ -120,8 +121,8 @@ export function TicketWindow({
       <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '0.5rem 1rem 1rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.5rem', alignContent: 'start' }}>
         <input {...capture.cameraInput} />
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{ticketWhenLine(ticket, ticket.counter_ticket_pages.length)}</div>
-        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>{ticketStateWords(ticket)}</div>
-        {ticket.total !== null ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Total you typed: ${ticket.total.toFixed(2)}</div> : null}
+        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}><MoneyText text={ticketStateWords(ticket)} /></div>
+        {ticket.total !== null ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Total you typed: <MoneyText text={`$${ticket.total.toFixed(2)}`} /></div> : null}
         {ticket.note ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', wordBreak: 'break-word' }}>{ticket.note}</div> : null}
         {ticket.counter_ticket_pages.map((p) =>
           p.mime === 'application/pdf' ? (

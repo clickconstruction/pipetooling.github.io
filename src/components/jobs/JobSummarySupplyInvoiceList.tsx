@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { EmptyState } from '../EmptyState'
+import { BillViewer } from '../materials/BillViewer'
 import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { useOptionalToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -19,6 +20,7 @@ import {
   supplyInvoiceShareUrl,
   type SupplyInvoiceRow,
 } from '../../lib/jobs/supplyInvoiceList'
+import type { BillViewerItem } from '../../lib/materials/bills/billViewer'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
@@ -46,11 +48,13 @@ const linkStyle: CSSProperties = {
 }
 
 /**
- * A job's supply house invoices on the Job Summary (punch list #431, PR 1): the list the Parts Cost section opens.
- * Each invoice number opens the bill's PDF. For the office, an icon to its left copies the app's own link to the bill
- * and says so in a toast. A list of eight or more grows a search box over the house, the number, the date and the
- * amount, with a chip per supply house and a count and a total of what is left. Cents are drawn small and a date
- * drops this year. The kernel is `lib/jobs/supplyInvoiceList.ts`; this file draws it.
+ * A job's supply house invoices on the Job Summary (punch list #431): the list the Parts Cost section opens. For the
+ * office an invoice number opens the bill in place, in the bill viewer, with this list beside the paper so Previous
+ * and Next follow it as it is searched (PR 2). An icon to its left copies the app's own link to the bill and says so
+ * in a toast. Anyone else who sees the list keeps the bill's Drive link, in a tab of its own. A list of eight or more
+ * grows a search box over the house, the number, the date and the amount, with a chip per supply house and a count and
+ * a total of what is left. Cents are drawn small and a date drops this year. The kernel is
+ * `lib/jobs/supplyInvoiceList.ts`; this file draws it.
  */
 export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[] }) {
   const { role } = useAuth()
@@ -58,6 +62,7 @@ export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[]
   const narrow = useIsNarrowScreen()
   const [query, setQuery] = useState('')
   const [house, setHouse] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
   const todayYmd = useMemo(() => todayYmdInAppTz(), [])
 
   const canShare = canShareSupplyInvoice(role)
@@ -67,6 +72,12 @@ export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[]
   const liveHouse = house != null && chips.some((c) => c.name === house) ? house : null
   const found = useMemo(() => searchSupplyInvoices(rows, searchable ? query : '', liveHouse), [rows, searchable, query, liveHouse])
   const narrowed = found.rows.length !== rows.length
+  const jobId = rows[0]?.job_id ?? null
+  // The viewer flips through the list as it is searched, so it is handed what the search left.
+  const viewerItems = useMemo<BillViewerItem[]>(
+    () => found.rows.map((row) => ({ invoiceId: row.invoice_id, number: row.invoice_number, house: row.supply_house_name ?? '', dateYmd: (row.invoice_date ?? '').slice(0, 10), amount: row.allocated_amount })),
+    [found.rows],
+  )
 
   const clear = () => {
     setQuery('')
@@ -84,10 +95,8 @@ export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[]
   }
 
   const press = narrow ? 44 : 24
-  const shareCell = (row: SupplyInvoiceRow, hasPdf: boolean) => {
+  const shareCell = (row: SupplyInvoiceRow) => {
     if (!canShare) return null
-    // A bill with no PDF has nothing for the link to open yet, so its row keeps the gap and no press.
-    if (!hasPdf) return <span aria-hidden="true" style={{ width: press, height: press, flex: 'none' }} />
     return (
       <button
         type="button"
@@ -104,20 +113,31 @@ export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[]
 
   const invoiceCell = (row: SupplyInvoiceRow) => {
     const pdf = supplyInvoicePdfHref(row)
-    const site = pdf ? null : supplierSiteHref(row)
+    // The office opens any bill in the viewer, which says what a bill with no PDF needs. Anyone else has the Drive link.
+    const site = pdf || canShare ? null : supplierSiteHref(row)
+    const noPdfChip = (
+      <span title={WORDS.noPdfTitle} style={{ marginLeft: '0.4rem', padding: '0 0.3rem', borderRadius: 4, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.92em', whiteSpace: 'nowrap' }}>
+        {WORDS.noPdf}
+      </span>
+    )
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: narrow ? 0 : '0.15rem', flexWrap: 'wrap', minWidth: 0 }}>
-        {shareCell(row, !!pdf)}
-        {pdf ? (
+        {shareCell(row)}
+        {canShare ? (
+          <>
+            <button type="button" onClick={() => setOpenId(row.invoice_id)} style={{ ...linkStyle, minHeight: narrow ? 44 : undefined }}>
+              {row.invoice_number}
+            </button>
+            {pdf ? null : noPdfChip}
+          </>
+        ) : pdf ? (
           <button type="button" onClick={() => openInExternalBrowser(pdf)} style={{ ...linkStyle, minHeight: narrow ? 44 : undefined }}>
             {row.invoice_number}
           </button>
         ) : (
           <>
             <span>{row.invoice_number}</span>
-            <span title={WORDS.noPdfTitle} style={{ marginLeft: '0.4rem', padding: '0 0.3rem', borderRadius: 4, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.92em', whiteSpace: 'nowrap' }}>
-              {WORDS.noPdf}
-            </span>
+            {noPdfChip}
             {site ? (
               <button type="button" onClick={() => openInExternalBrowser(site)} style={{ ...linkStyle, marginLeft: '0.4rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 {WORDS.supplierSite} ↗
@@ -246,6 +266,18 @@ export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[]
           </tbody>
         </table>
       )}
+
+      {openId ? (
+        <BillViewer
+          items={viewerItems}
+          openId={openId}
+          onOpen={setOpenId}
+          onClose={() => setOpenId(null)}
+          jobId={jobId}
+          search={searchable ? { query, onQuery: setQuery } : null}
+          shareUrlOf={(id) => supplyInvoiceShareUrl(id, jobId)}
+        />
+      ) : null}
     </div>
   )
 }

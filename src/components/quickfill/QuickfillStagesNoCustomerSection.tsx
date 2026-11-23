@@ -69,7 +69,7 @@ function InlineFixRow({
         disabled={busy || !valid}
         onClick={() => onSave(job, trimmed)}
         title={valid ? 'Save' : inputType === 'email' ? 'Enter an email address' : 'Enter a full link (https://…)'}
-        style={{ padding: '0.4rem 0.85rem', background: busy || !valid ? 'var(--border-strong)' : '#16a34a', color: 'white', border: 'none', borderRadius: 6, cursor: busy || !valid ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.8125rem' }}
+        style={{ padding: '0.4rem 0.85rem', background: busy || !valid ? 'var(--border-strong)' : '#15803d', color: 'white', border: 'none', borderRadius: 6, cursor: busy || !valid ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.8125rem' }}
       >
         {busy ? 'Saving…' : 'Save'}
       </button>

@@ -17,6 +17,7 @@ import { receiptGapTone, formatYmdSlash } from '../lib/jobs/paySpeedsBreakdown'
 import type { PaySpeedData } from '../lib/jobs/billedExpectedPay'
 import type { ArCustomerRow } from '../lib/arCustomerRollup'
 import type { ArLineItem } from '../lib/arModalLineItems'
+import { MoneyText } from './Money'
 
 const PILL_COLORS: Record<ArChasePillKind, { bg: string; fg: string }> = {
   ask: { bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)' },
@@ -195,7 +196,7 @@ export default function DashboardArCallCard({
     >
       <div style={{ color: 'var(--text-700)' }}>
         <span aria-hidden>📞 </span>
-        {arCallOpener(row)}
+        <MoneyText text={arCallOpener(row)} />
       </div>
       {receipts.length > 0 ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.45rem' }}>

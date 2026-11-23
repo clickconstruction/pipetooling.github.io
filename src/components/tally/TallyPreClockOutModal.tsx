@@ -11,6 +11,7 @@ import {
 import { parseTallyJobSplitsJson } from '../../lib/tallyJobSplits'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { RecentClockJobPick } from '../../lib/fetchRecentClockJobPicksForUser'
+import { MoneyText } from '../Money'
 
 type TallyLinkedDebitCardRow = Database['public']['Functions']['list_my_linked_mercury_debit_cards_for_tally']['Returns'][number]
 
@@ -235,7 +236,7 @@ export function TallyPreClockOutModal({
                             fontVariantNumeric: 'tabular-nums',
                           }}
                         >
-                          {formatTallyCurrency(Number(row.amount))}
+                          <MoneyText text={formatTallyCurrency(Number(row.amount))} />
                         </td>
                         <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'top', maxWidth: 200, wordBreak: 'break-word' }}>
                           <div style={{ fontWeight: 500 }}>{row.counterparty_name?.trim() || '—'}</div>

@@ -2,18 +2,22 @@
 -- *_merge_customers_gc_folds, v2.5310). Part B: every reference to the row that goes is carried, by the catalog, with
 -- the rules for what two rows may not both hold, the archive of what a rule drops, and the refusals (migration
 -- *_merge_customers_every_reference, v2.8324). The fixture is made as postgres; the merge runs as a dev, and in part B
--- as an assistant, through RLS, the way the Customer Hub calls it; everything rolls back. Raises on the first failed
+-- as an assistant, through RLS, the way the Customer Hub calls it; everything rolls back. Who may merge is held here
+-- too: nobody signed out, no role outside the four the screen shows the press to, and nobody in training mode
+-- (assert_caller_can_merge_customer_pair, which the merge and its preview both call). Raises on the first failed
 -- assertion; ends with "merge_customers PASSED". See scripts/pgtest-merge-customers.sh. Never against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
 
--- A dev, who merges, and an estimator, who logged the calls.
+-- A dev, who merges, an estimator, who logged the calls, and an assistant in training mode, who may not write.
 INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-000000000ed1', 'dev@merge.test'),
-  ('00000000-0000-0000-0000-000000000ed2', 'estimator@merge.test');
+  ('00000000-0000-0000-0000-000000000ed2', 'estimator@merge.test'),
+  ('00000000-0000-0000-0000-000000000ed4', 'trainee@merge.test');
 INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VALUES
   ('00000000-0000-0000-0000-000000000ed1', 'dev@merge.test', 'Merge Dev', 'dev', false, false),
-  ('00000000-0000-0000-0000-000000000ed2', 'estimator@merge.test', 'Merge Estimator', 'estimator', false, false)
+  ('00000000-0000-0000-0000-000000000ed2', 'estimator@merge.test', 'Merge Estimator', 'estimator', false, false),
+  ('00000000-0000-0000-0000-000000000ed4', 'trainee@merge.test', 'Merge Trainee', 'assistant', true, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 
 -- The same architect typed twice (the survivor and the victim), and the owner of a building.
@@ -79,6 +83,29 @@ SELECT mc.same('the clinic names the victim as architect and owner',
 SELECT mc.refused('no sign-in merges nothing',
   $q$SELECT public.merge_customers('00000000-0000-0000-0000-000000000ec1', '00000000-0000-0000-0000-000000000ec2', '{}'::jsonb)$q$,
   'Not authenticated');
+
+-- 1b · Nobody outside the four roles merges. The screen shows the press to a dev, a leader, an assistant and a
+-- controller, and the database holds the same list: the merge and its preview each ask
+-- assert_caller_can_merge_customer_pair. An estimator may edit a customer and is refused both, with the reason. An
+-- assistant in training mode passes the role test and is stopped at the merge's first write. Nothing moved.
+SELECT mc.as_user('00000000-0000-0000-0000-000000000ed2');
+SET LOCAL ROLE authenticated;
+SELECT mc.refused('an estimator does not merge',
+  $q$SELECT public.merge_customers('00000000-0000-0000-0000-000000000ec1', '00000000-0000-0000-0000-000000000ec2', '{}'::jsonb)$q$,
+  'Not allowed to merge customers');
+SELECT mc.refused('an estimator does not read the merge''s preview',
+  $q$SELECT public.preview_merge_customers('00000000-0000-0000-0000-000000000ec1', '00000000-0000-0000-0000-000000000ec2')$q$,
+  'Not allowed to merge customers');
+RESET ROLE;
+SELECT mc.as_user('00000000-0000-0000-0000-000000000ed4');
+SET LOCAL ROLE authenticated;
+SELECT mc.refused('an assistant in training mode does not merge',
+  $q$SELECT public.merge_customers('00000000-0000-0000-0000-000000000ec1', '00000000-0000-0000-0000-000000000ec2', '{}'::jsonb)$q$,
+  'Read-only (training) mode');
+RESET ROLE;
+SELECT mc.same('the refusals moved nothing',
+  (SELECT string_agg(right(id::text, 3) || ':' || address, ',' ORDER BY id) FROM public.customers WHERE id IN ('00000000-0000-0000-0000-000000000ec1', '00000000-0000-0000-0000-000000000ec2')),
+  'ec1:1 Kept St,ec2:2 Gone St');
 
 -- 2 · The dev merges the duplicate into the kept one, taking the duplicate's address.
 SELECT mc.as_user('00000000-0000-0000-0000-000000000ed1');

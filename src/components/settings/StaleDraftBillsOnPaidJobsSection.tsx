@@ -17,6 +17,7 @@ import {
   type StaleDraftBillJoinRow,
   type StaleDraftBillRow,
 } from '../../lib/staleDraftBillsOnPaidJobs'
+import { MoneyText } from '../Money'
 
 export default function StaleDraftBillsOnPaidJobsSection() {
   const { showToast } = useToastContext()
@@ -124,7 +125,7 @@ export default function StaleDraftBillsOnPaidJobsSection() {
               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 {summary.count === 0
                   ? 'None found — every draft bill sits on an unpaid job.'
-                  : `${summary.count} draft ${summary.count === 1 ? 'bill' : 'bills'} · ${formatStaleDraftBillAmount(summary.totalDollars)} that nobody owes`}
+                  : <MoneyText text={`${summary.count} draft ${summary.count === 1 ? 'bill' : 'bills'} · ${formatStaleDraftBillAmount(summary.totalDollars)} that nobody owes`} />}
               </span>
             ) : null}
           </div>
@@ -147,7 +148,7 @@ export default function StaleDraftBillsOnPaidJobsSection() {
                         <strong>{r.jobNumber}</strong> · {r.jobName}
                       </td>
                       <td style={{ padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
-                        {formatStaleDraftBillAmount(r.amount)}
+                        <MoneyText text={formatStaleDraftBillAmount(r.amount)} />
                         {r.isPrimaryRemainder ? (
                           <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: 'var(--text-faint)' }}>auto</span>
                         ) : null}

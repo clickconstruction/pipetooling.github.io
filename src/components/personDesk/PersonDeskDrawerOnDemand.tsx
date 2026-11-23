@@ -1,5 +1,6 @@
 import { usePersonDeskContext } from '../../contexts/PersonDeskContext'
 import { lazyWindow } from '../../lib/lazyWindow'
+import { WINDOW_NAMES } from '../../lib/windowLoad'
 import { OnDemandWindow } from '../OnDemandWindow'
 
 const PersonDeskDrawer = lazyWindow(() => import('./PersonDeskDrawer').then((m) => ({ default: m.PersonDeskDrawer })))
@@ -8,7 +9,7 @@ const PersonDeskDrawer = lazyWindow(() => import('./PersonDeskDrawer').then((m) 
 export function PersonDeskDrawerOnDemand() {
   const desk = usePersonDeskContext()
   return (
-    <OnDemandWindow open={desk.payload != null}>
+    <OnDemandWindow open={desk.payload != null} what={WINDOW_NAMES.personDesk} onGaveUp={() => desk.close()}>
       <PersonDeskDrawer />
     </OnDemandWindow>
   )

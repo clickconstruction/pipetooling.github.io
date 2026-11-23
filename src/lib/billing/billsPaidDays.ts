@@ -222,6 +222,17 @@ export function billsPaidShiftMonth(month: string, by: number): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
+/**
+ * The words on a month step: the month it opens, short, *Oct*. The year joins when the step leaves the year on
+ * the screen, *Dec 2025*, so a press across New Year says where it lands.
+ */
+export function billsPaidStepLabel(month: string, by: number): string {
+  const to = MONTH.exec(billsPaidShiftMonth(month, by))
+  if (!to || !MONTH.test(month)) return ''
+  const short = (MONTHS[Number(to[2]) - 1] ?? '').slice(0, 3)
+  return to[1] === month.slice(0, 4) ? short : `${short} ${to[1]}`
+}
+
 /** A month's first and last day. */
 export function billsPaidMonthSpan(month: string): { first: string; last: string } {
   const m = MONTH.exec(month)
@@ -411,9 +422,31 @@ export function billsPaidCsvFileName(month: string, how: BillsPaidChip): string 
 
 const esc = (v: string): string => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
+const PRINT_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+
 /**
- * The month as a page to print: each day money came, newest first, with its total and its payments. Our own
- * reading of the payment rows for the office's file, so it is not itself a send.
+ * The month's grid for the printed page: the screen's month of days, on paper. A day money came is boxed in a
+ * dark rule with its figure whole, to the cent, so the grid and the days under it say one number. The rule
+ * carries the mark because a browser leaves a fill off the paper unless the person asks for backgrounds.
+ */
+function billsPaidMonthGridHtml(inMonth: ReadonlyArray<BillsPaidLine>, month: string, todayYmd: string): string {
+  const { blanks, cells } = billsPaidMonthCells(inMonth, month, todayYmd)
+  if (cells.length === 0) return ''
+  const cell = (c: BillsPaidCell): string => {
+    const has = c.sum.payments > 0
+    const inside = has ? `<b>${esc(billsPaidMoney(c.sum.total))}</b><span>${esc(billsPaidCellCount(c.sum))}</span>` : ''
+    return `<td class="${has ? 'in' : c.later ? 'later' : 'none'}"><i>${c.day}</i>${inside}</td>`
+  }
+  const slots: string[] = [...Array.from({ length: blanks }, () => '<td class="blank"></td>'), ...cells.map(cell)]
+  while (slots.length % 7 !== 0) slots.push('<td class="blank"></td>')
+  const weeks: string[] = []
+  for (let i = 0; i < slots.length; i += 7) weeks.push(`<tr>${slots.slice(i, i + 7).join('')}</tr>`)
+  return `<table class="cal"><thead><tr>${PRINT_WEEKDAYS.map((w) => `<th>${w}</th>`).join('')}</tr></thead><tbody>${weeks.join('')}</tbody></table>`
+}
+
+/**
+ * The month as a page to print: the month's grid, then each day money came, newest first, with its total and its
+ * payments. Our own reading of the payment rows for the office's file, so it is not itself a send.
  */
 export function billsPaidMonthHtml(lines: ReadonlyArray<BillsPaidLine>, opts: { month: string; how: BillsPaidChip; printedAtIso: string }): string {
   const inMonth = lines.filter((l) => billsPaidMonthOf(l.ymd) === opts.month)
@@ -439,11 +472,19 @@ h1{font-size:18px;margin:0 0 2px}p{margin:3px 0;color:#444}
 table{border-collapse:collapse;width:100%;margin-top:10px}td{border-top:1px solid #ccc;padding:5px 8px 5px 0;vertical-align:top}
 td.amt{text-align:right;white-space:nowrap;font-weight:600;padding-right:0}
 tr.day td{border-top:2px solid #111;padding-top:9px}tr.day span{color:#444;margin-left:8px}
-tr{break-inside:avoid}
+tr{break-inside:avoid}tr.day{break-after:avoid}
+table.cal{table-layout:fixed;border-collapse:separate;border-spacing:3px;margin:10px -3px 4px;width:calc(100% + 6px);break-inside:avoid}
+table.cal th{font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:#444;font-weight:700;padding:0 0 1px}
+table.cal td{border:1px solid #ccc;border-radius:4px;height:46px;padding:3px 5px;overflow:hidden}
+table.cal td.in{border:1.5px solid #111;background:#f0fdf4;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+table.cal td.later{border-style:dashed;opacity:.55}table.cal td.blank{border:0}
+table.cal i{display:block;font-style:normal;font-size:10px;font-weight:600;color:#444}
+table.cal b{display:block;font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}
+table.cal span{display:block;font-size:9.5px;color:#444}
 </style></head><body>
 <h1>Bills paid · ${esc(billsPaidMonthLabel(opts.month))}</h1>
 <p>${esc(chip)}. ${esc(plural(sum.payments, 'payment'))}, ${esc(billsPaidMoney(sum.total))}. Newest day first. All times are Central.</p>
-${days.length ? `<table>${days.map(block).join('')}</table>` : `<p>Nothing came in${esc(HOW_TAIL[opts.how])} in ${esc(billsPaidMonthLabel(opts.month))}.</p>`}
+${days.length ? `${billsPaidMonthGridHtml(inMonth, opts.month, printedYmd || '9999-12-31')}<table>${days.map(block).join('')}</table>` : `<p>Nothing came in${esc(HOW_TAIL[opts.how])} in ${esc(billsPaidMonthLabel(opts.month))}.</p>`}
 <p style="margin-top:14px">A payment sits on the day the money came, at what it took off the bill. Stripe’s fee is not taken off. A refund made in Stripe is not shown. Printed ${esc(printed)}.</p>
 </body></html>`
 }

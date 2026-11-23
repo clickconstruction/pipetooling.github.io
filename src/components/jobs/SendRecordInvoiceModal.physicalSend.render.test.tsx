@@ -12,6 +12,7 @@ import { FunctionsHttpError } from '@supabase/functions-js'
 import { makeInvoice, makeJob, renderWithProviders, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 import type { PhysicalInvoiceDocument } from '../../lib/physicalInvoiceDocument'
 import SendRecordInvoiceModal from './SendRecordInvoiceModal'
+import { moneyText } from '../../test/moneyText'
 
 const ENSURE_RPC = 'ensure_single_ready_to_bill_invoice_for_job'
 const SEND_FN = 'send-physical-invoice-email'
@@ -178,7 +179,7 @@ const isWriteOrSend = (entry: string) => entry.startsWith('write ') || entry ===
 async function openJobOnPhysical() {
   const fns = renderWindow({ kind: 'job', job: JOB })
   await waitFor(() => {
-    expect(screen.getByText(/RTB \$2,630\.00/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/RTB \$2,630\.00/))).toBeTruthy()
   })
   const press = await physicalPress()
   await waitFor(() => {

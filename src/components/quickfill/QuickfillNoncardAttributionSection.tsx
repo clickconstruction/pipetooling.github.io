@@ -14,6 +14,7 @@ import {
   NONCARD_QUEUE_WINDOW_DAYS,
   type NoncardAttributionQueueRow,
 } from '../../lib/banking/noncardAttributionQueue'
+import { MoneyText } from '../Money'
 
 /** A queue row resolved in this session, still undoable (or linked to Banking when not). */
 type SessionResolution = {
@@ -176,7 +177,7 @@ export function QuickfillNoncardAttributionSection({
             {' '}
             <strong style={{ color: 'var(--text-700)' }}>
               {recent.length} transfer{recent.length === 1 ? '' : 's'} ·{' '}
-              {formatNoncardOutflowAmount(-total)}
+              <MoneyText text={formatNoncardOutflowAmount(-total)} />
             </strong>{' '}
             in the last {NONCARD_QUEUE_WINDOW_DAYS} days.
           </>
@@ -225,7 +226,7 @@ export function QuickfillNoncardAttributionSection({
                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{formatNoncardPostedDate(r.posted_at)}</td>
                     <td style={{ ...tdStyle, fontWeight: 500 }}>{r.counterparty_name ?? '—'}</td>
                     <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                      {formatNoncardOutflowAmount(r.amount)}
+                      <MoneyText text={formatNoncardOutflowAmount(r.amount)} />
                     </td>
                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{noncardKindLabel(r.kind)}</td>
                     <td style={{ ...tdStyle, color: 'var(--text-muted)', maxWidth: 260 }}>{r.external_memo ?? ''}</td>
@@ -356,7 +357,7 @@ export function QuickfillNoncardAttributionSection({
                 style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', padding: '0.2rem 0' }}
               >
                 <span>
-                  {entry.row.counterparty_name ?? 'Transfer'} · {formatNoncardOutflowAmount(entry.row.amount)} →{' '}
+                  {entry.row.counterparty_name ?? 'Transfer'} · <MoneyText text={formatNoncardOutflowAmount(entry.row.amount)} /> →{' '}
                   <strong>{ACTION_LABELS[entry.action]}</strong>
                 </span>
                 {undoable ? (

@@ -417,7 +417,7 @@ export function CustomerNotesTable({
       }
 
   const addRowButtonStyle: CSSProperties = useBidBoardCustomerChrome
-    ? { padding: '0.25rem 0.65rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }
+    ? { padding: '0.25rem 0.65rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }
     : { padding: '0.25rem 0.65rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }
 
   return (

@@ -23,6 +23,7 @@ import {
   type TunedLineSource,
 } from '../../lib/jobs/lineBudgets'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 /**
  * Settings → Jobs & billing → Line budgets (punch list #234 PR 1b): the split a typed line gets
@@ -161,7 +162,7 @@ export default function LineBudgetSettingsBlock() {
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-          <span>{rosterRate != null ? `The roster ran $${rosterRate.toFixed(2)} an hour over the last ${CREW_RATE_WINDOW_DAYS} days, burdened.` : 'The roster’s rate reads here once the ledger has field hours.'}</span>
+          <span>{rosterRate != null ? <MoneyText text={`The roster ran $${rosterRate.toFixed(2)} an hour over the last ${CREW_RATE_WINDOW_DAYS} days, burdened.`} /> : 'The roster’s rate reads here once the ledger has field hours.'}</span>
           {canSet && rosterRate != null && Math.abs(rosterRate - s.rateUsd) >= 0.5 ? <button type="button" style={link} onClick={() => setDraft(applySettingsRate(s, Math.round(rosterRate * 10) / 10))}>Use the roster’s rate</button> : null}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', fontSize: '0.76rem', color: 'var(--text-muted)', alignItems: 'center' }}>

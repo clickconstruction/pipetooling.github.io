@@ -343,9 +343,31 @@ An estimator has the tab to read.
 - A staff paper, a sub's own paper and a job's contract are not on it.
 - A paper sent to someone on no list is not on it until the office adds them to a list.
 
-An estimator has no **Send a paper** and no **Contract library**. A line has no press.
+An estimator has no **Send a paper** and no **Contract library**. Nothing is sent or taken back from an estimator's line.
 
-To open a signed paper, go to the company's own page. A W-9 and an insurance certificate are there too.
+### Open a signed paper
+
+Press the name of a signed paper. Its signed record opens right there.
+
+:::example An estimator's signed line
+{{chip:blue|Supply house}} **Subcontractor Agreement**. With Tallgrass Supply Co., signed by Lena Park, Owner. {{chip:green|signed ✓}}
+:::
+
+The signed record lists the **Form answers** and draws the **Signature**. A sensitive answer, like a tax number, reads *in the PDF only*. Press **Open signed PDF** to read the whole form. Each open is logged.
+
+A paper that is not signed yet has nothing to open. Its name is plain words.
+
+A supply house's page and a customer's page open the same record.
+
+### A training account
+
+A training account reads the lines and opens nothing. The form answers, the signature and the signed PDF stay closed to a training account.
+
+### Who says who someone is
+
+Someone on no list can hold a paper. Only the office says who they are. That is the leader, an assistant, the controller or a dev.
+
+An estimator who tries in Messages reads *They hold a paper, so only the office says who they are.* Ask the office to name them. An estimator can still name someone who holds no paper.
 
 ## Who can see the tab
 

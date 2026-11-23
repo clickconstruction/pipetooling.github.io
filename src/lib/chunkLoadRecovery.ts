@@ -220,3 +220,14 @@ export function chunkBoundaryView(error: unknown, reloadOnItsWay: boolean): Chun
   if (reloadOnItsWay) return 'updating'
   return isChunkLoadError(error) ? 'lost-chunk' : 'broken'
 }
+
+/**
+ * True when a page's own error boundary should hand what it caught to the chunk boundary above it:
+ * a lost chunk, or anything at all while a recovery reload is on its way. The chunk boundary has the
+ * one guarded reload, "Updating app…" and the **Reload** press. An ordinary crash stays with the
+ * page's own boundary.
+ */
+export function errorIsForChunkBoundary(error: unknown, reloadOnItsWay: boolean): boolean {
+  const view = chunkBoundaryView(error, reloadOnItsWay)
+  return view === 'updating' || view === 'lost-chunk'
+}

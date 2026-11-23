@@ -11,6 +11,8 @@ const auth = vi.hoisted(() => ({ user: { id: 'u-rosa' } as { id: string } | null
 const io = vi.hoisted(() => ({ fileTarget: vi.fn(), goToFile: vi.fn() }))
 vi.mock('../hooks/useAuth', () => ({ useAuth: () => auth }))
 vi.mock('../lib/files/fileOpenIo', () => io)
+// The bill viewer's page has its own smoke: here it is a stand-in that says which bill it was handed.
+vi.mock('./BillOpen', () => ({ default: ({ invoiceId }: { invoiceId: string }) => <div data-testid="bill-open">{invoiceId}</div> }))
 
 import FileOpen from './FileOpen'
 import { POST_LOGIN_REDIRECT_KEY } from '../lib/iosPwa'
@@ -66,6 +68,21 @@ describe('FileOpen', () => {
     open('/files/drive/project%3A7d3c2a10-4b5e-4f60-9a7b-1c2d3e4f5a6b%3A1AbC-dEf_GhIjKlMnOp')
     await waitFor(() => expect(io.goToFile).toHaveBeenCalledWith('https://drive.google.com/file/d/1AbC-dEf_GhIjKlMnOp/view'))
     expect(io.fileTarget).toHaveBeenCalledWith({ source: 'drive', id: 'project:7d3c2a10-4b5e-4f60-9a7b-1c2d3e4f5a6b:1AbC-dEf_GhIjKlMnOp' })
+  })
+
+  it('a supply house bill’s link is the bill viewer, and the page goes nowhere', async () => {
+    open('/files/bills/inv-1?job=job-9')
+    expect((await screen.findByTestId('bill-open')).textContent).toBe('inv-1')
+    expect(io.fileTarget).not.toHaveBeenCalled()
+    expect(io.goToFile).not.toHaveBeenCalled()
+  })
+
+  it('a signed-out reader of a bill’s link is asked to sign in, and comes back to the bill with its job', async () => {
+    auth.user = null
+    open('/files/bills/inv-1?job=job-9')
+    expect(await screen.findByText('Sign in to open this file.')).toBeTruthy()
+    expect(screen.queryByTestId('bill-open')).toBeNull()
+    expect(localStorage.getItem(POST_LOGIN_REDIRECT_KEY)).toBe('/files/bills/inv-1?job=job-9')
   })
 
   it('reads nothing for a source it does not know', async () => {

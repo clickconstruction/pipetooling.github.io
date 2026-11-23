@@ -2,7 +2,7 @@
 name: "Messages: a day was heard, say what it is"
 number: 421
 group: ready
-status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 of 5 open (v2.8382, the words and the guide's truth)
+status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 armed · PR 2 the migration open, unarmed
 summary: >
   When a person names a day in a text or a voicemail, Messages was planned to lift the day out,
   ask the office what it is a promise of, and write it where that kind of date lives. The table, the
@@ -24,8 +24,10 @@ The owner's calls of 2026-11-23: **build it**, and **straight to the choice** (o
 customer's payment opens #129's sheet. The screens he approved are the *after* of the ledger's `heard` section.
 
 1. **PR 1, v2.8382**: the words of the choice (`messages/heardChoice.ts`) and the move line's words; the Follow up guide
-   no longer describes the unseen button. Open.
-2. **PR 2, v2.8383**: the migration, `write_down_heard`. Not yet open.
+   no longer describes the unseen button. PR #9510, armed.
+2. **PR 2, v2.8383**: the migration (`20261123185942_heard_day_write.sql`): `write_down_heard` writes a line's day and
+   kind in one press or just talk, and `message_promises.job_id` with `write_down_payment`'s `p_job_id` gives a payment
+   mark its job. Open, unarmed: the parent pushes it, then a types PR and the dev seat's deploy.
 3. **PR 3, v2.8384**: the choice under a line. Not yet open.
 4. **PR 4, v2.8385**: the write-throughs' hands. Not yet open.
 5. **PR 5, v2.8386**: a payment mark carries its job. Not yet open.

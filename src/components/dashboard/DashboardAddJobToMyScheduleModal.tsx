@@ -340,7 +340,7 @@ export function DashboardAddJobToMyScheduleModal({
                 type="button"
                 onClick={() => void saveAdd()}
                 disabled={busy}
-                style={{ padding: '0.45rem 1rem', border: 'none', borderRadius: 6, background: '#16a34a', color: '#fff', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.45rem 1rem', border: 'none', borderRadius: 6, background: '#15803d', color: '#fff', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}
               >
                 {busy ? 'Adding…' : 'Add to my schedule'}
               </button>
@@ -405,7 +405,7 @@ export function DashboardAddJobToMyScheduleModal({
                 type="button"
                 onClick={() => void saveRequest()}
                 disabled={busy}
-                style={{ padding: '0.45rem 1rem', border: 'none', borderRadius: 6, background: '#16a34a', color: '#fff', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.45rem 1rem', border: 'none', borderRadius: 6, background: '#15803d', color: '#fff', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}
               >
                 {busy ? 'Requesting…' : 'Request & schedule'}
               </button>

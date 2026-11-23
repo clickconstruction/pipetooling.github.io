@@ -38,6 +38,7 @@ import type {
   MarkCustomerPortalSlugSharedResult,
   SetCustomerPortalSlugResult,
 } from '../../types/database-functions'
+import { MoneyText } from '../Money'
 
 /**
  * 🌐 next to a customer's name (portal train PR 4; custom-links rework
@@ -877,7 +878,7 @@ export default function CustomerPortalGlobeButton({
                           </span>
                         )}
                         <span style={{ fontWeight: 700 }}>{l.jobNumber}</span>
-                        <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(l.amount)}</span>
+                        <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={formatPortalUsd(l.amount)} /></span>
                         {l.shared ? (
                           <span title="Shown to this customer for their records — someone else pays it" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '0 0.3rem', borderRadius: 999, background: 'var(--bg-green-100)', color: 'var(--text-green-800)' }}>
                             shared

@@ -2,7 +2,9 @@
 /**
  * Documents → Agreements as an estimator reads it (punch list #403, call 8): the chips for the kinds their role reads
  * and no other, the lines the read answers, and nothing to act on. No **Send a paper**, no **Contract library**, and
- * no press on a line: a signed paper's name, a job and a waiting paper are plain words. Every name is made up.
+ * no act on a line. Since the owner's second decision a signed paper's name is a press that opens its signed record,
+ * while a job, a waiting paper and a work order are plain words, and a training account's lines open nothing. Every
+ * name is made up.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -12,6 +14,10 @@ import { DocumentsAgreementsTab } from './DocumentsAgreementsTab'
 
 const io = vi.hoisted(() => ({
   role: 'estimator' as string,
+  /** Training mode (`users.read_only`). */
+  readOnly: false,
+  /** What the signed record window was handed. */
+  signedRecord: [] as Array<{ documentId: string | null; addToList: boolean }>,
   rows: [] as unknown[],
   asks: [] as Array<{ kind: string; reader: string | undefined }>,
   counts: [] as string[],
@@ -20,7 +26,7 @@ const io = vi.hoisted(() => ({
   mounted: [] as string[],
 }))
 vi.mock('../../hooks/useAuth', () => {
-  const auth = () => ({ role: io.role, user: { id: 'u1' } })
+  const auth = () => ({ role: io.role, readOnly: io.readOnly, user: { id: 'u1' } })
   return { useAuth: auth, useOptionalAuth: auth }
 })
 vi.mock('../../lib/documents/agreementsLedgerIo', () => ({
@@ -50,7 +56,11 @@ vi.mock('./AgreementsContractLibrary', () => ({
 vi.mock('./PaperPartyAddToList', () => ({ PaperPartyAddToList: () => <div data-testid="add-to-list-window" /> }))
 vi.mock('../contracts/ContractSendWindow', () => ({ ContractSendWindow: () => <div data-testid="send-window" /> }))
 vi.mock('../contracts/PersonContractSignedRecordModal', () => ({
-  PersonContractSignedRecordModal: (p: { open: boolean }) => (p.open ? <div data-testid="signed-record-window" /> : null),
+  PersonContractSignedRecordModal: (p: { open: boolean; documentId: string | null; onAddToList?: () => void }) => {
+    if (!p.open) return null
+    io.signedRecord.push({ documentId: p.documentId, addToList: p.onAddToList != null })
+    return <div data-testid="signed-record-window" />
+  },
 }))
 vi.mock('../jobs/JobContractModal', () => ({ default: (p: { open: boolean }) => (p.open ? <div data-testid="contract-window" /> : null) }))
 vi.mock('../jobs/JobContractRecordModal', () => ({ buildJobContractRecordHtml: () => '<html></html>' }))
@@ -101,6 +111,8 @@ const ROWS = [
 
 beforeEach(() => {
   io.role = 'estimator'
+  io.readOnly = false
+  io.signedRecord = []
   io.rows = ROWS
   io.asks = []
   io.counts = []
@@ -144,12 +156,50 @@ describe('DocumentsAgreementsTab · an estimator', () => {
     expect(io.mounted).toEqual([])
   })
 
-  it('has no press on a line: a name and a job are plain words, and a waiting paper carries no act', async () => {
+  it('a signed line’s name is its one press: a waiting paper, a work order and a job are plain words, and no line carries an act', async () => {
     renderWithProviders(<DocumentsAgreementsTab />)
     const lines = await screen.findAllByTestId('documents-agreements-row')
-    for (const l of lines) expect(l.querySelector('button, a')).toBeNull()
+    // The waiting paper and the work order have nothing to press.
+    expect(lines[0]?.querySelector('button, a')).toBeNull()
+    expect(lines[2]?.querySelector('button, a')).toBeNull()
+    // The signed paper has its name, and nothing else: its job is still plain words.
+    const presses = Array.from(lines[1]?.querySelectorAll('button, a') ?? [])
+    expect(presses.map((b) => b.textContent)).toEqual(['Site secrecy agreement'])
     expect(screen.queryByRole('button', { name: 'Send again' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Copy the signing link' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Take back' })).toBeNull()
+    expect(screen.queryByTestId('signed-record-window')).toBeNull()
+  })
+
+  it('pressing a signed line’s name opens its signed record, right there (punch list #403, decision 2)', async () => {
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await screen.findAllByTestId('documents-agreements-row')
+    fireEvent.click(screen.getByRole('button', { name: 'Site secrecy agreement' }))
+    expect(await screen.findByTestId('signed-record-window')).toBeTruthy()
+    expect(io.signedRecord[0]).toEqual({ documentId: 'd2', addToList: false })
+  })
+
+  it('a signed W-9 and a trade company’s signed agreement open the same way', async () => {
+    io.rows = [
+      row({ id: 'supply_house_agreement:p8', kind: 'supply_house_agreement', source_id: 'p8', state: 'signed', paper_name: 'Request for taxpayer number', at_day: '2026-11-20', facts: { status: 'signed', party_kind: 'supply_house', doc_type: 'w9', signer_name: 'Lena Park' } }),
+      row({ id: 'company_agreement:p9', kind: 'company_agreement', source_id: 'p9', state: 'signed', paper_name: 'Master Services Agreement', with_name: 'Juniper Mechanical LLC', at_day: '2026-11-19', facts: { status: 'signed' } }),
+    ]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await screen.findAllByTestId('documents-agreements-row')
+    fireEvent.click(screen.getByRole('button', { name: 'Request for taxpayer number' }))
+    await screen.findByTestId('signed-record-window')
+    expect(io.signedRecord[0]?.documentId).toBe('p8')
+    expect(screen.getByRole('button', { name: 'Master Services Agreement' })).toBeTruthy()
+  })
+
+  it('a training account reads the lines and opens nothing, and its foot says so', async () => {
+    io.readOnly = true
+    renderWithProviders(<DocumentsAgreementsTab />)
+    const lines = await screen.findAllByTestId('documents-agreements-row')
+    expect(lines).toHaveLength(3)
+    for (const l of lines) expect(l.querySelector('button, a')).toBeNull()
+    expect(lines[1]?.textContent).toMatch(/^CustomerSite secrecy agreementWith Ridgeway Builders/)
+    expect(screen.getByTestId('documents-agreements-reader-doors').textContent).toBe('This list is for reading. A training account opens no signed paper.')
     expect(screen.queryByTestId('signed-record-window')).toBeNull()
   })
 
@@ -166,10 +216,10 @@ describe('DocumentsAgreementsTab · an estimator', () => {
     expect(await screen.findByRole('button', { name: 'Not sent · 1' })).toBeTruthy()
   })
 
-  it('says the list is for reading and where a signed paper opens, in place of the office’s doors', async () => {
+  it('says at its foot that a signed paper’s name opens its record, in place of the office’s doors', async () => {
     renderWithProviders(<DocumentsAgreementsTab />)
     await screen.findAllByTestId('documents-agreements-row')
-    expect(screen.getByTestId('documents-agreements-reader-doors').textContent).toBe('This list is for reading. A signed paper, a W-9 or a certificate opens from the company’s own page.')
+    expect(screen.getByTestId('documents-agreements-reader-doors').textContent).toBe('Press a signed paper’s name to open its record. A paper that is not signed yet has nothing to open.')
     expect(screen.queryByTestId('documents-agreements-doors')).toBeNull()
   })
 
