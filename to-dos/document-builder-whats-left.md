@@ -10,9 +10,9 @@ summary: >
   loose ends: PRs not merged, a migration not pushed, the test rows the walks left. Then the builds
   that are ready now, a way to see that the same person opened a link twice, and the builds that
   wait on one of Taunya's calls.
-next: Part 1, the walks, on test rows only. Walks 1g to 1i wait on Taunya's yes to publish the Sub NDA, 1j on step 6's screens merging (PR #9337). Part 3 can start beside the walks. Parts 4 and 5 wait on Taunya's calls.
+next: Part 1, the walks, on test rows only. Walks 1g to 1i were walked on 2026-11-23 and hold. 1j can go now that PR #9337 is merged; it needs a file uploaded from the trade's page. Part 3 can start beside the walks. Parts 4 and 5 wait on Taunya's calls.
 size: L as five parts (M · S · M · M · L), each alone
-blocker: None for walks 1a to 1f and 1k. Walks 1g to 1i wait on Taunya's yes to publish the Sub NDA on prod and 1j on step 6's screens merging (PR #9337). Parts 4 and 5 wait on Taunya's calls, each named on its line. An attorney's read of the Sub NDA and an insurance agent's read of the sheet come before anything goes to a real GC or a real trade.
+blocker: None for walks 1a to 1f, 1j and 1k. The Sub NDA was published as revision 1 on 2026-11-23, on the owner's go. Parts 4 and 5 wait on Taunya's calls, each named on its line. An attorney's read of the Sub NDA and an insurance agent's read of the sheet come before anything goes to a real GC or a real trade.
 opinion: build — the walks first, since each one proves code that is already live
 mockup: not required — #404's mockup.html draws every screen here but the visitor lines in part 4, which are drawn first as that part's own step
 ---
@@ -159,6 +159,30 @@ puts its rows back after, and its line on #404 names what it could not delete.
 - **After:** turn the page off again and delete the contact. A dev cannot delete the send's row, its
   thread line or its email log row, so name them on #404.
 - **Why not yet:** the send answers that the Sub NDA is not published.
+
+**1g to 1i, walked on clicktooling.com on 2026-11-23: hold.** On the owner's go of the same day, as a dev, with the signed-out pages opened in a second browser.
+
+- **1g.** **Publish revision 1** published at once. The bar reads *Published, revision 1* and *Everyone outside sees revision 1, as you do*.
+  **Not read by an attorney. Mark it read** asked *The attorney who read it*, with **Mark revision 1 as read** dead while the box is empty.
+  **Cancel** recorded no read, and the mark still reads *Not read by an attorney*.
+- **1h.** **Switch the link on** made `/d/<code>`, *Not opened by anyone outside yet*.
+  Signed out, it opened as *Secrecy on your jobs*, revision 1, and walked to step 11, the Review, whose only press is **Back**.
+  **Who opened it** then listed one open: *Someone with no account*, the browser and the time zone.
+  **Switch the link off** asked first, and after it the address reads *This link is no longer open. Ask for a new one.*
+- **1i.** The one press **Send to 4 GCs who are ready** is dead until **Send it anyway** is ticked.
+  Pressed, it asked *Send to 4 GCs? Each gets an email now, about all their jobs with you.*, and **Cancel** sent nothing.
+  On the ZZ TEST GC's own row, its box said the page was off since Nov 20, with **Turn their page on**, and the send press was dead until it was on.
+  Sent about the ZZ TEST sink job to a ZZ contact at a sink address, the row read *Sent Nov 23*, then *Opened Nov 23* once its page was opened signed out.
+  Their page showed *Secrecy on this job* under that job, and the builder walked to step 11 with only **Back**.
+  **Take it off their page** took it off with no question, and their page no longer shows it.
+- **Left on production.** The Sub NDA at revision 1, not read by an attorney. Its link, switched off. One `document_builder_sends` row, taken off. One `email_send_log` row to the sink. One portal link on the ZZ TEST GC, turned off again. The ZZ contact is deleted. JP9309 carried the ZZ TEST GC as its customer for a few minutes, to reach the page's off switch, and reads as before.
+- **Seen, not fixed.**
+  - **Publish revision 1** asks nothing first, though a publish cannot be taken back. Switching the link off asks.
+  - Revision 1's words name the company *Acme Plumbing*, the placeholder, wherever the paper names us.
+  - Once the ZZ TEST GC's page was on, the one press counted it among the GCs who are ready.
+  - A GC's page can be turned off only from the portal globe, which shows for a job's customer. A GC that is no job's customer has no off switch within reach.
+  - The send press names the contact by the first word of its name, *Send to ZZ*.
+  - Removing a customer's contact asks nothing first.
 
 **1j. Step 6, a certificate checked against the sheet** (v2.8253, PR #9337)
 
