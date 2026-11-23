@@ -14,7 +14,7 @@ Recipients can be someone in the app or any outside email address. That could be
 Two doors open the same **Email reports** window. Only dev, leader, assistant and controller roles see either:
 
 - **Jobs → Reports**: click {{button:outline|Email reports}}. On a phone it's the **Email reports** link.
-- **Dashboard → Recent Reports** card: the mail button {{icon:help}} in the top-right of the card's header.
+- **Dashboard → Recent Reports** card: **Email reports** at the bottom of the card.
 
 The window is **one list, by person**. There is one row for everyone who gets report email. A {{chip:blue|Digest}} chip shows each scheduled digest they are on. A digest is a bundle of reports sent on a schedule. The chip carries their own slice: which jobs, and costs or not. An {{chip:gray|Every report}} chip says whose reports they get the moment they are filed. An outside address shows a dash under Digest. Digests go to app users only. Click {{button:outline|Edit}} on a row to change either. Click {{button:outline|+ Add person}} to start one.
 

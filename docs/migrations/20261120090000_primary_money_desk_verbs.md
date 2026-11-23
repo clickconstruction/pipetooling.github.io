@@ -29,3 +29,5 @@ Two functions and nine policies, each its live definition with **one change**: t
 ## Verify
 
 Read-only on prod after the push, as the dev: `select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname in ('apply_mercury_bank_payment_allocations', 'record_job_tip_from_deposit') and pg_get_functiondef(p.oid) like '%primary%'` reads 0. So does `select count(*) from pg_policies where schemaname = 'public' and tablename like 'mercury_transaction_ar_%' and coalesce(qual, '') || coalesce(with_check, '') like '%primary%'`. Through the dev seat, `view_as` the sample primary and read `mercury_transaction_ar_returned`: no rows. The SQL bed `npm run test:pg:primary-money-desks` (`supabase/tests/primary_money_desks/20_scenario.sql`) asks both verbs and the three tables as two primaries, the assistant, the controller and the master. CI runs it from `scripts/sql-beds.txt`.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274).

@@ -78,6 +78,17 @@ export function DevelopmentScheduleCard({
   const [onLine, setOnLine] = useState(false)
   const onTheLine = useMemo(() => (onLine ? timeLine(stages, read.site, todayYmd) : null), [onLine, stages, read.site, todayYmd])
   const sheet = useMemo(() => movedSheet(stages), [stages])
+  // While the first read is out the look says so, where it drew nothing and the card appeared from nowhere: a desk
+  // reader on a slow signal could not tell a site with no stage lines from one still being read.
+  if (!read.shows && read.loading) {
+    return (
+      <Card id={anchorId} title="Schedule" fold={foldFor('reading…')} meta="what must be true before each stage, and where it stands">
+        <p data-development-schedule-reading style={{ ...muted, margin: 0, fontSize: '0.875rem' }}>
+          Reading the schedule…
+        </p>
+      </Card>
+    )
+  }
   if (!read.shows) return null
   const words = scheduleLookWords(stages, read.site, todayYmd)
   const banner = siteBanner(stages, read.site, todayYmd)

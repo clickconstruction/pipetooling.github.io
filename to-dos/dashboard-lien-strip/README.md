@@ -1,8 +1,8 @@
 ---
 name: "Lien information on the Dashboard: two sightings, one answer"
 number: 423
-group: ready
-status: asked by the owner 2026-11-23 with phone screenshots, first of the strip alone, then of the strip and the lien month card together · read in the code and drawn as a before and after the same day · the owner picked option 1 on 2026-11-23, *I like your new After option 1, recommended, one place, let's log that in to build* · nothing built yet
+group: close
+status: asked by the owner 2026-11-23 with phone screenshots, first of the strip alone, then of the strip and the lien month card together · read in the code and drawn as a before and after the same day · the owner picked option 1 on 2026-11-23, *I like your new After option 1, recommended, one place, let's log that in to build* · built and live the same day: the Lien desk card beside Needs you in v2.8339 and the lien month card dropped in v2.8342, both looked at by hand on a dev server · left: the office's word for the leader, and the owner's look on his own phone
 summary: >
   A leader's Dashboard shows Lien desk information twice: a strip at the top of the Needs you card and
   the lien month card far below, after the Billing pipeline. The owner does not like the strip's look
@@ -11,11 +11,11 @@ summary: >
   the Board on 2026-11-15. The recommendation is one place, at the top: a slim card of its own beside
   Needs you and not inside it, with three values in columns and one red line while a paper is past its
   day, and the lien month card dropped. Needs you then holds only things to press.
-next: Build PR 1, the words. The build asks the owner one thing on the way, whether the Inbox tab's Needs you card loses the strip too.
-size: S as a train of three (S · S · S)
-blocker: none. PR 2 lands after the rows' PR of the same day, or is rebased on it. PR 3 can wait for the owner's look at the lien month on December 1 to 5 if he wants it.
-ver: none yet
-opinion: build option 1 — one place where the work is, the three counts a leader reads every day, the Board's own words, and three fewer reads on every Dashboard visit
+next: The card's middle count names the leader for the office, as the Board on the desk does (a small PR, see *Where it stands*). Then Todd opens the Dashboard on his phone and says what still reads wrong, and this card is retired.
+size: S as a train of three, built as two (S · S); left: the leader's name for the office (XS) and a look
+blocker: none
+ver: v2.8339 · v2.8342
+opinion: close — built and live; one small word is left, then a look on a phone
 ---
 
 # Lien information on the Dashboard: two sightings, one answer (#423)
@@ -271,6 +271,34 @@ Each ships its release note, its fragment and its lines in the docs.
 Not planned: a press on each value that opens the Board narrowed to its papers. The Board's tiles have
 those doors. Whether the page can be opened on one from a link was not looked at.
 
+## Where it stands
+
+**Built and live, 2026-11-23.** Both PRs merged that day and went out with the 15:57 UTC deploy.
+
+- **v2.8339, the Lien desk card beside Needs you** (#9456, the plan's PR 1 and PR 2 as one).
+  `DashboardLienDeskCard` over `src/lib/dashboard/lienDeskCard.ts`: three values, a red line in the
+  Board's words while a paper is late or at risk, no unpaid amount, *wait on you* for a dev or a leader.
+  It stands right above the Needs you card, or under its door with the new phone layout. Both Inbox tabs
+  draw `DashboardPinnedQuickRow` with `bannersOnly`, so there it stands above their card too. The Needs
+  you card starts with its title. Looked at by hand on a dev server as the dev at 430 px in dark, 112 px
+  tall above the Needs you card, and at 1,400 px, one line 42 px tall.
+- **v2.8342, the lien month card dropped** (#9459), with `useLienMonth` and its three reads.
+  `lienMonthRhythm.ts` stays, since § Rules and the desk's rows read it.
+
+**What differs from the plan.**
+
+- **The office reads *waiting on the leader*.** The plan's PR 1 said *waiting on* and his name, as the
+  Board on the desk says it. v2.8339's fragment gave a reason that does not hold: the desk names the
+  master most of its jobs wait on (`boardLeaderName` in `useLienDeskBoard.ts`), and the Dashboard could do
+  the same. One small PR is left, in `useNeedsYouInputs.ts`.
+- **The Inbox tab's card lost the strip**, and the Lien desk card stands above it. The owner was not
+  asked. It follows from the card leaving Needs you.
+- **The lien month card went before the owner's December look.** He gave the go for everything the same day.
+
+**From *The Board on a phone* above.** Rows 1 and 2 are fixed by punch list #428 (v2.8341). Rows 5 and 6
+are gone on a phone, where the flow takes the bins' place (v2.8346). Row 3, the tiles' uneven heights on
+**By day**, and row 4, the amount as the Board's largest figure, are as they were.
+
 ## How to verify
 
 - The kernel's tests, the render smokes, and `npm run check:empty-words` and the theme check on the strip's file.
@@ -282,7 +310,7 @@ those doors. Whether the page can be opened on one from a link was not looked at
 
 - The short Dashboard of punch list #365, and whether it draws either piece.
 - How far apart the two sit in pixels on the live page. The mock-up marks the scroll, it does not measure it.
-- The Dashboard on the live app. The two lien pieces are drawn from the screenshots, the code and the mock-up's own measurements. Only the Lien desk's Board was looked at live.
+- The Dashboard on a real phone. The built card was looked at on a dev server at a phone's width.
 - The Board at 320 px, and the other three views of the desk.
 - An earlier drawing put the strip inside the Needs you card, under its title. The mock-up keeps one frame of it for comparison.
 - An earlier idea, the strip as one 44 px line, is no longer drawn. It gave up the run's count, which the 2026-11-22 call keeps.

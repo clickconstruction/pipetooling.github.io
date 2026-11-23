@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienDeskRowFromState, lienDeskStateForView, lienDeskStateWithRow, lienJobScreen, lienJobScreenClosesOnAct, lienRowHasPaper } from './lienPhoneJobScreen'
+import { lienDeskRowFromState, lienDeskStageFromState, lienDeskStateForView, lienDeskStateWithRow, lienDeskStateWithStage, lienJobScreen, lienJobScreenClosesOnAct, lienRowHasPaper } from './lienPhoneJobScreen'
 import type { LienNextUpRow } from './lienNextUp'
 
 const row = (over: Partial<LienNextUpRow> = {}): LienNextUpRow => ({
@@ -87,5 +87,28 @@ describe('the open row in a history entry', () => {
     const other = { fromList: true }
     expect(lienDeskStateForView(other, 'notice')).toBe(other)
     expect(lienDeskStateForView(null, 'notice')).toBeNull()
+  })
+
+  it('reads the flow’s picked stage from an entry, and none from anything else (punch list #428)', () => {
+    expect(lienDeskStageFromState({ stage: 'notice:to_sign' })).toBe('notice:to_sign')
+    expect([null, undefined, 'x', 3, [], {}, { stage: '' }, { stage: 4 }, { row: 'k' }].map(lienDeskStageFromState)).toEqual([null, null, null, null, null, null, null, null, null])
+  })
+
+  it('picks a stage beside what the entry held, and a row opened from a stage keeps the stage', () => {
+    expect(lienDeskStateWithStage(null, 'notice:to_sign')).toEqual({ stage: 'notice:to_sign' })
+    expect(lienDeskStateWithStage({ fromList: true, stage: 'notice:sent' }, 'notice:to_sign')).toEqual({ fromList: true, stage: 'notice:to_sign' })
+    const onStage = lienDeskStateWithStage(null, 'affidavit:filed')
+    const withRow = lienDeskStateWithRow(onStage, 'affidavit:j1')
+    expect(withRow).toEqual({ stage: 'affidavit:filed', row: 'affidavit:j1' })
+    // Back from the job is the entry before it: the stage alone.
+    expect(lienDeskRowFromState(onStage)).toBeNull()
+    expect(lienDeskStageFromState(withRow)).toBe('affidavit:filed')
+  })
+
+  it('keeps the stage on the first view and drops it, with the row, on any other', () => {
+    const state = { fromList: true, stage: 'notice:to_sign' }
+    expect(lienDeskStateForView(state, 'next')).toBe(state)
+    expect(lienDeskStateForView(state, 'calendar')).toEqual({ fromList: true })
+    expect(lienDeskStateForView({ stage: 'notice:to_sign', row: 'k' }, 'notice')).toBeNull()
   })
 })

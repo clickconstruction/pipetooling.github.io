@@ -136,7 +136,7 @@ export function memoryStartChecksIo(db: MemoryStart): StartChecksIo {
       write('arrive')
       db.arrived = { fixtureId, notAsTold: [...notAsTold] }
       db.arrival = null
-      return { dispatchRequestId: notAsTold.length ? 'dr-1' : null }
+      return { dispatchRequestId: notAsTold.length ? 'dr-1' : null, pushed: true }
     },
     setShowsOnGcPage: async (jobId, on) => {
       write('setShowsOnGcPage')

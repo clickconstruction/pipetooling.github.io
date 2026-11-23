@@ -551,6 +551,116 @@ button:focus-visible {
   --app-nav-safe-top: 0px;
 }
 
+/* The mode row (punch list #425): Task Mode, Dashboard and Job Mode as three thirds, the first line
+   above the header, drawn by `ModeRow` inside an `AppTopBanner`. The third of the mode drawn is
+   filled. A thumb's 44 px on a phone, 32 px on a desk, where the row always shows. While the row is
+   tucked on a phone the line is its handle instead: a 24 px band, the smallest press WCAG 2.2 allows,
+   the whole width of the screen, with a small bar in its middle. */
+.modeRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 26rem;
+  margin: 0 auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.modeRowThird {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 0.25rem;
+  border: 0;
+  border-left: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+  color: var(--text-gray-800);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.modeRowThird:first-child {
+  border-left: 0;
+}
+.modeRowThird[aria-pressed='true'] {
+  background: #2563eb;
+  border-left-color: #2563eb;
+  color: white;
+  font-weight: 700;
+  cursor: default;
+}
+/* The ring is drawn inside the third: outside it would be cut off by the row's rounded edge. */
+.modeRowThird:focus-visible,
+.modeRowHandle:focus-visible {
+  outline-offset: -2px;
+}
+.modeRowNew {
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: #16a34a;
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.modeRowHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.modeRowHandle:hover,
+.modeRowHandle:active {
+  background: none;
+}
+.modeRowHandle > span {
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
+}
+@media (min-width: 641px) {
+  .modeRowThird {
+    min-height: 32px;
+  }
+}
+/* Brought down by a pull or the handle: the row slides in. Drawn on the page's first paint it does not. */
+@keyframes modeRowIn {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 5rem;
+    opacity: 1;
+  }
+}
+[data-mode-row-in] {
+  overflow: hidden;
+  animation: modeRowIn 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-mode-row-in] {
+    animation: none;
+  }
+}
+
 /* The app-health strip (#183 PR 1, v2.6009): the first row of the nav chrome, in flow, so it
    pushes the nav down one line instead of covering it. While it shows it takes the status-bar
    padding on itself and the nav row keeps its plain padding, so on a Home Screen phone the strip
@@ -7760,6 +7870,9 @@ button.lienBoardBinHead:focus-visible { outline: 2px solid #2563eb; outline-offs
 button.lienBoardChip { cursor: pointer; }
 button.lienBoardChip:hover, button.lienBoardChip:focus-visible { filter: brightness(0.94); outline: none; box-shadow: 0 0 0 2px var(--border-blue); }
 .lienBoardChip[data-pair-lit='yes'] { box-shadow: 0 0 0 2px #2563eb; }
+/* A phone's To do row on the Lien desk: the width of its one press column (`lienPhonePress.ts` holds the same numbers). */
+.lienPhoneRow { --lien-phone-press: 116px; }
+@media (max-width: 360px) { .lienPhoneRow { --lien-phone-press: 100px; } }
 .lienBoardTile { display: grid; gap: 3px; align-content: start; padding: 8px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); text-align: left; font: inherit; color: inherit; min-width: 0; }
 button.lienBoardTile { cursor: pointer; }
 button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #2563eb; outline: none; }

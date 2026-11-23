@@ -61,6 +61,9 @@ function sumOnce(rows: ReadonlyArray<LienNextUpRow>, amountFor: (row: LienNextUp
   return total
 }
 
+/** The one group for the rows that have no day of their own. */
+const NO_DAY_KEY = 'day:none'
+
 function dayGroups(rows: ReadonlyArray<LienNextUpRow>, amountFor: (row: LienNextUpRow) => number | null): LienPhoneGroup[] {
   const byDay = new Map<string, LienNextUpRow[]>()
   for (const r of rows) {
@@ -73,7 +76,7 @@ function dayGroups(rows: ReadonlyArray<LienNextUpRow>, amountFor: (row: LienNext
   const days = [...byDay.keys()].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a < b ? -1 : a > b ? 1 : 0))
   return days.map((day) => {
     const list = byDay.get(day)!
-    if (day === '') return { key: 'day:none', group: 'day' as const, label: 'No day set', left: null, tone: 'quiet' as const, rows: list, amount: sumOnce(list, amountFor) }
+    if (day === '') return { key: NO_DAY_KEY, group: 'day' as const, label: 'No day set', left: null, tone: 'quiet' as const, rows: list, amount: sumOnce(list, amountFor) }
     const daysLeft = list.find((r) => r.daysLeft != null)?.daysLeft ?? null
     const words = lienMonthDayWords(day)
     const label = daysLeft == null ? `Due ${words}` : daysLeft < 0 ? `Was due ${words}` : `Due ${words}`
@@ -89,6 +92,10 @@ function dayGroups(rows: ReadonlyArray<LienNextUpRow>, amountFor: (row: LienNext
  * and on track, are one run of days with the rows at risk first inside each day; the approvals the office waits
  * on follow them; the days coming up stand after, where *Coming up* stood. Before, every day stood together and
  * the waiting rows closed the list.
+ *
+ * The rows with no day of their own are one group, the list's last (the owner's go of 2026-11-23). Each pool ended
+ * with its own, so a list with such a row in both pools said *No day set* twice, once in the middle of the days and
+ * once at the end, under one key.
  */
 export function lienPhoneGroups(groups: ReadonlyArray<Grouped>, amountFor: (row: LienNextUpRow) => number | null): LienPhoneGroup[] {
   const out: LienPhoneGroup[] = []
@@ -102,7 +109,10 @@ export function lienPhoneGroups(groups: ReadonlyArray<Grouped>, amountFor: (row:
     }
     out.push({ key: g.group, group: g.group, label: g.label, left: null, tone: 'quiet', rows: [...g.rows], amount: sumOnce(g.rows, amountFor) })
   }
-  return out
+  const noDay = out.filter((g) => g.key === NO_DAY_KEY)
+  if (noDay.length === 0) return out
+  const rows = noDay.flatMap((g) => g.rows)
+  return [...out.filter((g) => g.key !== NO_DAY_KEY), { ...noDay[0]!, rows, amount: sumOnce(rows, amountFor) }]
 }
 
 type Owed = { jobId: string; openBalance: number }

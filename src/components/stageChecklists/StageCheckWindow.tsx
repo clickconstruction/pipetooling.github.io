@@ -11,6 +11,7 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import type { DispatchInboxRow, DispatchThreadNoteRow } from '../DispatchInboxSection'
 import { getDispatchNoteDisplayMeta } from '../../utils/dispatchNoteDisplay'
 import { answerStampWords, checklistProgress, progressWords, stageChecklistKindOf, templateFor } from '../../lib/jobs/stageChecklist'
@@ -74,9 +75,13 @@ const who: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)', ma
 const box: CSSProperties = { width: '100%', minHeight: 64, boxSizing: 'border-box', padding: '0.5rem 0.65rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.95rem', resize: 'vertical' }
 const closedBlock: CSSProperties = { ...note, background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)', color: 'var(--text-green-800)' }
 const lowerBtn: CSSProperties = { padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }
+/** On a phone the window's two small doors are a thumb tall (punch list #414, v2.8362); the words keep their size. */
+const phoneLowerBtn: CSSProperties = { ...lowerBtn, minHeight: 44, padding: '0 0.9rem' }
+const phoneLink: CSSProperties = { ...link, minHeight: 44, display: 'inline-flex', alignItems: 'center', padding: '0 0.5rem' }
 
 export function StageCheckWindow({ row, notes, notesLoading, viewerId, canAct, draft, onDraftChange, saving, onReply, onReplyAndClose, onOpenJob, onOpenCheck, openCheckLabel, footWords, sentFromWords, onLower, onClose, io }: StageCheckWindowProps) {
   const payload = useMemo(() => stageCheckPayloadFrom(row.pending_payload), [row.pending_payload])
+  const phone = useIsMobile()
   const [live, setLive] = useState<StageCheckLiveContext | null>(null)
   const jobId = row.job_ledger_id
   const fixtureId = payload?.fixture_id ?? null
@@ -155,7 +160,7 @@ export function StageCheckWindow({ row, notes, notesLoading, viewerId, canAct, d
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <StageCheckWaitingLine requestId={row.id} reason={payload?.reason} createdAt={row.created_at} />
             {onLower ? (
-              <button type="button" style={lowerBtn} onClick={onLower} title="Take it off the top of the list without closing it. Asks why." data-dispatch-stage-check-lower={row.id}>
+              <button type="button" style={phone ? phoneLowerBtn : lowerBtn} onClick={onLower} title="Take it off the top of the list without closing it. Asks why." data-dispatch-stage-check-lower={row.id}>
                 {STAGE_CHECK_WORDS.lower}
               </button>
             ) : null}
@@ -165,7 +170,7 @@ export function StageCheckWindow({ row, notes, notesLoading, viewerId, canAct, d
           <p style={cardTitle}>
             <span>{ctx.jobLine}</span>
             {onOpenJob ? (
-              <button type="button" style={link} onClick={onOpenJob} data-stage-check-window-open-job>
+              <button type="button" style={phone ? phoneLink : link} onClick={onOpenJob} data-stage-check-window-open-job>
                 {STAGE_CHECK_WORDS.openJob} ›
               </button>
             ) : null}

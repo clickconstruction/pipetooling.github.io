@@ -32,3 +32,5 @@ Write someone up, the photos (punch list #410, PR 5; `to-dos/write-someone-up/`)
 ## After the push
 
 `src/types/database.ts` and the dev seat's catalog learn the table with the PR that first reads it.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274); types regenerated in #9234.

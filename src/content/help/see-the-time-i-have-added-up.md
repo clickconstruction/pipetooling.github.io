@@ -10,7 +10,7 @@ My Time on your dashboard is one picture of your time. The picture shows how muc
 
 ## Read this week
 
-Open your dashboard and find **My Time**.
+Open your dashboard and find **My Time**. In Job Mode the same picture is a card under Your record.
 
 - The big figure is your time this week. **Today** sits beside it.
 - Under the figure are seven columns, Sunday to Saturday. Each one shows that day's hours and minutes.

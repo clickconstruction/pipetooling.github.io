@@ -46,3 +46,5 @@ Write someone up: the ground under the phone sheet a leader or a superintendent 
 ## After the push
 
 `src/types/database.ts` and the dev seat's catalog learn the columns and the functions with the PR that first calls them.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274); types regenerated in #9220.

@@ -280,7 +280,7 @@ The Quickfill page embeds this schedule twice. **Schedule** asks *"Are there any
 
 Subs, the subcontractors, are not on the crew grid. They are people on work orders, not users with blocks. So the People tab shows them in a **Subs** section under the crew. There is one row per sub, one chip per day. It is solid green when they picked those days on their portal. It is striped when a window is set but they have not picked yet. It is dashed while an offer is still out. You tap a chip to open the job. There is nothing to drag. To move a sub, you change the window on **Jobs → Subs → Work** or let them re-pick.
 
-A sub may be definitely on a job. Then everyone assigned to that job sees a small {{chip:green|sub}} badge on those days. You hover for the names. The **Day** tab lists **Subs on site** above the crew. {{button:outline|Add a site visit ›}} arms place-a-job for that job. So you can drop a real block on a superintendent's lane. The Crew Day email ends with the same list.
+A sub may be definitely on a job. Then everyone assigned to that job sees a small {{chip:green|sub}} badge on those days. You hover for the names. The **Day** tab lists **Subs on site** above the crew. {{button:outline|Add a site visit ›}} arms place-a-job for that job. So you can drop a real block on a superintendent's lane. The **Who worked** email ends with the same list.
 
 ## Equipment on the job
 

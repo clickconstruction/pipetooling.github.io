@@ -4,8 +4,10 @@
  * this writes the text, so what is saved always reads back as the same trade, level and number.
  *
  * Also the state's own record for a TDLR license (electrical and HVAC): TDLR publishes every license
- * as open data, so a number can be checked from the page. TSBPE (plumbing) has no open list and its
- * search asks for a robot check, so plumbing gets a link instead.
+ * as open data, so a number can be checked from the page. TSBPE (plumbing) publishes its licenses as
+ * whole files a page cannot read, and its search asks for a robot check, so plumbing gets a link here.
+ * The files are read on the server: the weekly pull and the dev seat's `check_license` (punch list #411,
+ * `supabase/functions/_shared/licenseRoll.ts` and `licenseRollCheck.ts`).
  *
  * Pure.
  */
@@ -64,7 +66,7 @@ export function licenseTypeText(input: { trade: LicenseTrade; level?: LicenseLev
 
 /** TDLR's open list of every license it issues (data.texas.gov, Socrata). Answers any origin. */
 export const TDLR_LICENSES_URL = 'https://data.texas.gov/resource/7358-krk7.json'
-/** The TSBPE search, for a plumbing license (no open list; the search asks for a robot check). */
+/** The TSBPE search, for a person checking a plumbing license from the page (the search asks for a robot check). */
 export const TSBPE_SEARCH_URL = 'https://vo.licensing.hpc.texas.gov/datamart/searchByLicNumber.do'
 
 export type TdlrRow = {
