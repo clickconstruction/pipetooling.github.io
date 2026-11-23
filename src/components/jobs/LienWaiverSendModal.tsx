@@ -25,6 +25,7 @@ import {
   type LienWaiverKind,
   type LienWaiverPaymentLike,
 } from '../../lib/subWorkOrders/lienWaiverPick'
+import { MoneyText } from '../Money'
 
 export type LienWaiverSendTarget = {
   /** people_labor_jobs.id */
@@ -179,7 +180,7 @@ export function LienWaiverSendModal({ target, onClose, onSent }: { target: LienW
 
         <div style={{ ...section, display: 'grid', gap: 10 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', fontSize: '0.875rem' }}>
-            {amount != null ? <span style={chip('blue')}>Payment {lienWaiverMoney(amount)}{guess.payment?.payment_date ? ` · ${guess.payment.payment_date.slice(0, 10)}` : ''}</span> : <span style={chip('grey')}>Nothing paid yet</span>}
+            {amount != null ? <span style={chip('blue')}>Payment <MoneyText text={lienWaiverMoney(amount)} />{guess.payment?.payment_date ? ` · ${guess.payment.payment_date.slice(0, 10)}` : ''}</span> : <span style={chip('grey')}>Nothing paid yet</span>}
             <span style={chip(settled ? 'green' : 'grey')}>{settled ? 'Settled in the bank' : 'Not settled yet'}</span>
             <span style={chip('grey')}>{final ? 'Last payment on the sheet' : 'One of several payments'}</span>
           </div>
@@ -246,7 +247,7 @@ export function LienWaiverSendModal({ target, onClose, onSent }: { target: LienW
             <input type="email" style={inp} value={email} placeholder="name@example.com" onChange={(e) => setEmail(e.target.value)} disabled={!emailLoaded} />
           </label>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-            Filled in for the sub: {target.project ?? '—'} · {target.clickNumber ?? target.jobNumber ?? '—'}{amount != null && !(form.final && !form.conditional) ? ` · ${lienWaiverMoney(amount)}` : ''} · owner {target.owner ?? '—'} · {target.location ?? '—'}. They can change any of it before signing.
+            Filled in for the sub: {target.project ?? '—'} · {target.clickNumber ?? target.jobNumber ?? '—'}{amount != null && !(form.final && !form.conditional) ? <MoneyText text={` · ${lienWaiverMoney(amount)}`} /> : ''} · owner {target.owner ?? '—'} · {target.location ?? '—'}. They can change any of it before signing.
           </div>
           {prior.length ? (
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>

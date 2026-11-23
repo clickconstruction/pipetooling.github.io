@@ -83,6 +83,7 @@ import { type PlanActs, PacketTab } from './LegalDeskPacketTab'
 import MatterThemesView from './MatterThemesView'
 import { ErrorDoorButton, ErrorDoorCard } from '../../help/ErrorDoor'
 import { LEGAL_DESK_DEFAULT_TAB } from '../../../lib/legal/legalDeskRoute'
+import { MoneyText } from '../../Money'
 
 /**
  * The Legal desk (PR 1 v2.3293 read side; PR 2 v2.3313 the gate): the office's
@@ -1145,7 +1146,7 @@ export default function LegalDesk(props: LegalDeskProps) {
           {stacked && selected ? null : (
           <div data-legal-desk-rail style={{ borderRight: stacked ? 'none' : '1px solid var(--border)', overflowY: 'auto', padding: 10 }}>
             <div style={{ ...MUTED, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', padding: '4px 6px 2px' }}>
-              {accounts.length} account{accounts.length === 1 ? '' : 's'} · {formatLegalMoney(accounts.reduce((s, a) => s + a.balance, 0))} · by what Click would keep
+              {accounts.length} account{accounts.length === 1 ? '' : 's'} · <MoneyText text={formatLegalMoney(accounts.reduce((s, a) => s + a.balance, 0))} /> · by what Click would keep
             </div>
             {accounts.length === 0 && givenUpAccounts.length === 0 ? (
               // Empty words (punch list #184, sweep C): nothing in Collections is the good state, said as the Map says it.
@@ -1163,9 +1164,9 @@ export default function LegalDesk(props: LegalDeskProps) {
                       <button key={a.key} type="button" onClick={() => { if (stacked && onOpenAccount) onOpenAccount(a.key); else { setSelectedKey(a.key); showTab('account') } }} aria-pressed={on}
                         style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2px 10px', width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: 6, border: `1px solid ${on ? 'var(--border-strong)' : 'var(--border)'}`, borderRadius: 6, background: on ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }}>
                         <span style={{ fontWeight: 600, fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
-                        <span style={{ ...NUM, fontSize: '0.86rem', fontWeight: 600 }}>{formatLegalMoney(a.balance)}</span>
+                        <span style={{ ...NUM, fontSize: '0.86rem', fontWeight: 600 }}><MoneyText text={formatLegalMoney(a.balance)} /></span>
                         <span style={{ ...MUTED, fontSize: '0.74rem' }}>{a.jobs.length} job{a.jobs.length === 1 ? '' : 's'}{a.viaGc ? ' · GC pays' : ''}{a.signedJobs < a.jobs.length ? ` · ${a.jobs.length - a.signedJobs} no contract` : ' · signed'}</span>
-                        <span style={{ ...MUTED, ...NUM, fontSize: '0.74rem' }}>{m && matterIsWithFirm(m) ? legalStageLabel(m.stage).replace('With the firm · ', '') : `keeps ~${formatLegalMoney(Math.max(0, net))}`}</span>
+                        <span style={{ ...MUTED, ...NUM, fontSize: '0.74rem' }}>{m && matterIsWithFirm(m) ? legalStageLabel(m.stage).replace('With the firm · ', '') : <MoneyText text={`keeps ~${formatLegalMoney(Math.max(0, net))}`} />}</span>
                         <span style={{ ...MUTED, fontSize: '0.72rem', gridColumn: '1 / -1' }}>
                           {m?.review_requested_at && !matterIsWithFirm(m) && !matterIsClosed(m) ? <span style={{ color: 'var(--text-blue-700)' }}>asked for a dev · </span> : null}
                           {a.reviewDays == null ? '' : `${a.reviewDays}d in Collections`}{a.oldestDays != null ? ` · oldest bill ${a.oldestDays}d` : ''}
@@ -1388,12 +1389,12 @@ export default function LegalDesk(props: LegalDeskProps) {
             ) : (
               <>
                 <p style={{ ...MUTED, fontSize: '0.84rem', margin: '0 0 8px' }}>
-                  This is the release. The matter goes to <b>{firm.name}</b> the moment you confirm — {selected.jobs.length} job{selected.jobs.length === 1 ? '' : 's'}, {formatLegalMoney(selected.balance)}, theory <b>{packet.theory.label}</b>, exhibits A–{packet.exhibits[packet.exhibits.length - 1]?.letter ?? 'A'}.
+                  This is the release. The matter goes to <b>{firm.name}</b> the moment you confirm — {selected.jobs.length} job{selected.jobs.length === 1 ? '' : 's'}, <MoneyText text={formatLegalMoney(selected.balance)} />, theory <b>{packet.theory.label}</b>, exhibits A–{packet.exhibits[packet.exhibits.length - 1]?.letter ?? 'A'}.
                   {packet.theirWord.heldCount ? <> <b>{packet.theirWord.heldCount} entr{packet.theirWord.heldCount === 1 ? 'y is' : 'ies are'} held back</b> from the firm.</> : null}
                 </p>
                 {/* v2.6227 (punch list #222, PR 3): every firm that could take it, its role, its fee model and what Click keeps; the pick is the header's switch. */}
                 <LegalReleaseFirmChooser account={selectedFirm} pickedId={firm.id} balance={selected.balance} alsoByCounty={alsoByCounty} onPick={setFirmOverride} />
-                {packet.worth.verdict === 'not worth it' ? <p style={{ fontSize: '0.84rem', color: '#b42318', margin: '0 0 8px' }}><b>Click keeps {formatLegalMoney(packet.worth.net)}.</b> The firm’s cut and costs eat what is left. Write down / stop pursuing is the other exit.</p> : null}
+                {packet.worth.verdict === 'not worth it' ? <p style={{ fontSize: '0.84rem', color: '#b42318', margin: '0 0 8px' }}><b>Click keeps <MoneyText text={formatLegalMoney(packet.worth.net)} />.</b> The firm’s cut and costs eat what is left. Write down / stop pursuing is the other exit.</p> : null}
                 {packet.readiness.stops ? <p style={{ fontSize: '0.84rem', color: '#b42318', margin: '0 0 8px' }}><b>{packet.readiness.stops} red gap{packet.readiness.stops === 1 ? '' : 's'} still open</b> — {packet.gaps.filter((g) => g.severity === 'stop').map((g) => g.label).join('; ')}. You can mark anyway; the packet says so on its cover sheet.</p> : null}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 10px' }}>
                   <button type="button" onClick={() => { setPreviewTab('account'); setPreviewOpen(true) }} style={btn}>Preview what the firm sees ↗</button>

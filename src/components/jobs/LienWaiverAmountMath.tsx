@@ -6,6 +6,7 @@ import {
   type WaiverAmountMath,
   type WaiverCoverage,
 } from '../../lib/jobs/lienWaiverAmountMath'
+import { MoneyText } from '../Money'
 
 /**
  * The Release of Lien window's amount pieces (v2.4296; split per step in v2.4314): how the amount
@@ -53,10 +54,10 @@ export function WaiverMathBox({
       {typedOver && math ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }} data-testid="lien-waiver-typed-over">
           <span>
-            The bills say <strong>{usd(math.total)}</strong>. You typed {usd(typed)}.
+            The bills say <strong><MoneyText text={usd(math.total)} /></strong>. You typed <MoneyText text={usd(typed)} />.
           </span>
           <button type="button" onClick={() => onUseAmount(math.total)} style={{ ...btn, border: '1px solid var(--border-strong)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }}>
-            Use {usd(math.total)}
+            Use <MoneyText text={usd(math.total)} />
           </button>
         </div>
       ) : null}
@@ -68,7 +69,7 @@ export function WaiverMathBox({
           onMouseLeave={() => onHover(false)}
           style={{ border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-subtle)', padding: '0.65rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}
         >
-          <div style={{ fontWeight: 700 }}>How {usd(math.total)} is figured</div>
+          <div style={{ fontWeight: 700 }}>How <MoneyText text={usd(math.total)} /> is figured</div>
           {math.kind === 'paid'
             ? math.bills.flatMap((b) =>
                 b.payments.map((p, i) => (
@@ -77,7 +78,7 @@ export function WaiverMathBox({
                       {p.label} · {waiverShortDay(p.ymd)}
                       {many ? ` · bill #${b.n}` : ''}
                     </span>
-                    <span style={{ color: 'var(--text-muted)' }}>{i === 0 && b === math.bills[0] ? usd(p.amount) : `+ ${plain(p.amount)}`}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{i === 0 && b === math.bills[0] ? <MoneyText text={usd(p.amount)} /> : `+ ${plain(p.amount)}`}</span>
                   </div>
                 )),
               )
@@ -87,7 +88,7 @@ export function WaiverMathBox({
                     <span>
                       Bill #{b.n} · billed {waiverShortDay(b.billedYmd)}
                     </span>
-                    <span>{bi === 0 || math.kind === 'owed' ? usd(b.amount) : `+ ${plain(b.amount)}`}</span>
+                    <span>{bi === 0 || math.kind === 'owed' ? <MoneyText text={usd(b.amount)} /> : `+ ${plain(b.amount)}`}</span>
                   </div>
                   {math.kind === 'owed'
                     ? b.payments.map((p) => (
@@ -102,18 +103,18 @@ export function WaiverMathBox({
                   {math.kind === 'owed' && many ? (
                     <div style={row}>
                       <span style={{ paddingLeft: '0.6rem' }}>Owed on #{b.n}</span>
-                      <span>{usd(b.owed)}</span>
+                      <span><MoneyText text={usd(b.owed)} /></span>
                     </div>
                   ) : null}
                 </div>
               ))}
           <div style={{ ...row, borderTop: '1px solid var(--border-strong)', paddingTop: '0.3rem', fontSize: '0.875rem' }}>
             <strong>{math.totalLabel}</strong>
-            <strong>{usd(math.total)}</strong>
+            <strong><MoneyText text={usd(math.total)} /></strong>
           </div>
           {math.tooEarly != null ? (
             <div style={{ color: 'var(--text-amber-800)', fontWeight: 600, display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
-              <span>Not yet. {usd(math.tooEarly)} is still owed. Wait for it to settle.</span>
+              <span>Not yet. <MoneyText text={usd(math.tooEarly)} /> is still owed. Wait for it to settle.</span>
               {onGoOn ? (
                 <button type="button" onClick={onGoOn} style={{ ...linkBtn, color: 'var(--text-amber-800)' }}>
                   It has settled, go on
@@ -171,7 +172,7 @@ export function WaiverCoveredNote({
           aria-describedby="lien-waiver-covered-paid-why"
           style={{ border: 'none', background: '#2563eb', color: '#ffffff', borderRadius: 9, padding: '0.6rem 0.8rem', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}
         >
-          <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>Waive the {usd(paidUnwaived)} already paid instead ›</span>
+          <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>Waive the <MoneyText text={usd(paidUnwaived)} /> already paid instead ›</span>
           <span id="lien-waiver-covered-paid-why" style={{ fontSize: '0.75rem', opacity: 0.92 }}>
             That money has no unconditional waiver yet. The GC is owed one.
           </span>
@@ -199,12 +200,12 @@ export function WaiverPaidNote({ paidUnwaived, onWaivePaid }: { paidUnwaived: nu
   return (
     <div data-testid="lien-waiver-paid-unwaived" style={{ border: '1px solid var(--border-strong)', background: 'var(--bg-blue-tint)', borderRadius: 8, padding: '0.65rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', fontSize: '0.8125rem' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', lineHeight: 1.45, color: 'var(--text-blue-700)' }}>
-        <strong>{usd(paidUnwaived)} is paid and not waived yet.</strong>
+        <strong><MoneyText text={usd(paidUnwaived)} /> is paid and not waived yet.</strong>
         <span>It is recorded as paid. The GC is owed an unconditional progress waiver for it.</span>
       </div>
       <div>
         <button type="button" onClick={onWaivePaid} style={{ ...btn, border: '1px solid #2563eb', background: 'var(--surface)', color: 'var(--text-blue-700)' }}>
-          Waive the {usd(paidUnwaived)} paid ›
+          Waive the <MoneyText text={usd(paidUnwaived)} /> paid ›
         </button>
       </div>
     </div>

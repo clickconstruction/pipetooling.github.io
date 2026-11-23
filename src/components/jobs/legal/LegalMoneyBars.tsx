@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { MUTED } from './legalDeskShared'
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
 import type { MoneyBar, MoneyBarSegment, MoneyBars } from '../../../lib/legal/moneyBars'
+import { MoneyText } from '../../Money'
 
 /**
  * The Legal desk's money, drawn (v2.6105, punch list #214, PR 2): the bars `moneyBars` returns,
@@ -53,7 +54,7 @@ function Bar({ bar }: { bar: MoneyBar }) {
     <div data-legal-money-bar={bar.key} style={{ display: 'grid', gap: 2, minWidth: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', fontSize: '0.72rem' }}>
         <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{bar.caption}</span>
-        <span style={{ ...MUTED, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(bar.total)}</span>
+        <span style={{ ...MUTED, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={formatLegalMoney(bar.total)} /></span>
       </div>
       <div style={{ display: 'flex', height: thin ? 20 : 26, borderRadius: 5, overflow: 'hidden', border: '1px solid var(--border-strong)' }}>
         {bar.segments.map((s, i) => (
@@ -83,7 +84,7 @@ function Bar({ bar }: { bar: MoneyBar }) {
               <span aria-hidden style={{ display: 'block', width: 2, height: m.row === 1 ? 30 : 8, margin: m.fraction > 0.9 ? '0 0 2px auto' : m.fraction < 0.08 ? '0 auto 2px 0' : '0 auto 2px', marginTop: m.row === 1 ? -24 : 0, background: MARK_INK[m.kind] }} />
               <b>{m.label}</b>
               <br />
-              {formatLegalMoney(m.amount)}
+              <MoneyText text={formatLegalMoney(m.amount)} />
             </span>
           ))}
         </div>

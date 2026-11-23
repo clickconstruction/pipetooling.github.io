@@ -18,6 +18,7 @@ import {
   type LegalClaimLineKind,
 } from '../../../lib/legal/legalClaimLines'
 import { MUTED, NUM, TD, TH, btn, btnPrimary, pill, Door, SectionTitle } from './legalDeskShared'
+import { MoneyText } from '../../Money'
 
 /**
  * The claim on the Account tab (punch list #171, v2.6679): one table, the two rows that fill in on their own (the open
@@ -125,7 +126,7 @@ export default function LegalClaimTable({ table, panel }: { table: ClaimTable; p
                 </td>
                 <td style={{ ...TD, ...(r.source !== 'typed' ? MUTED : null) }}>{r.basis || <span style={MUTED}>—</span>}</td>
                 <td style={TD}>{evidenceCell(r)}</td>
-                <td style={{ ...TD, ...NUM }}>{formatLegalMoney(r.amount)}</td>
+                <td style={{ ...TD, ...NUM }}><MoneyText text={formatLegalMoney(r.amount)} /></td>
                 <td style={{ ...TD, ...NUM }}>
                   {r.line && acts ? <button type="button" onClick={() => { setError(null); setForm({ lineId: r.line!.id, draft: claimLineDraftOf(r.line!) }) }} style={{ ...btn, height: 22, fontSize: '0.72rem' }}>Edit</button> : null}
                 </td>
@@ -135,14 +136,14 @@ export default function LegalClaimTable({ table, panel }: { table: ClaimTable; p
           <tfoot>
             <tr data-legal-claim-total>
               <td colSpan={3} style={{ ...TD, borderTop: '2px solid var(--border-strong)', borderBottom: 'none', fontWeight: 700 }}>{claimTotalWords(table)}</td>
-              <td style={{ ...TD, ...NUM, borderTop: '2px solid var(--border-strong)', borderBottom: 'none', fontWeight: 700 }}>{formatLegalMoney(table.total)}</td>
+              <td style={{ ...TD, ...NUM, borderTop: '2px solid var(--border-strong)', borderBottom: 'none', fontWeight: 700 }}><MoneyText text={formatLegalMoney(table.total)} /></td>
               <td style={{ ...TD, borderTop: '2px solid var(--border-strong)', borderBottom: 'none' }} />
             </tr>
           </tfoot>
         </table>
       </div>
       {table.note ? <p style={{ ...MUTED, fontSize: '0.78rem', margin: '6px 0 0' }}>{table.note}</p> : null}
-      {table.settlementOnlyCount > 0 ? <p data-legal-claim-settlement-only style={{ ...MUTED, fontSize: '0.78rem', margin: '6px 0 0' }}>{claimSettlementOnlyWords(table)}</p> : null}
+      {table.settlementOnlyCount > 0 ? <p data-legal-claim-settlement-only style={{ ...MUTED, fontSize: '0.78rem', margin: '6px 0 0' }}><MoneyText text={claimSettlementOnlyWords(table)} /></p> : null}
       {typedRows.length === 0 && acts && !form ? <p style={{ ...MUTED, fontSize: '0.78rem', margin: '6px 0 0' }}>{CLAIM_TYPED_EMPTY_WORDS}</p> : null}
       {acts && !form ? (
         <div style={{ marginTop: 8 }}>

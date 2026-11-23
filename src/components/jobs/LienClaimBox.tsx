@@ -3,6 +3,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { workMonthLabel } from '../../lib/jobs/forecastWorkMonths'
 import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctionSetWords, type LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
+import { MoneyText } from '../Money'
 
 /**
  * The claim box on the Lien desk's Months card (v2.3682): the figure the notice claims,
@@ -149,7 +150,7 @@ export default function LienClaimBox({ balance, correction, months, office, busy
               <input aria-label={`Claim for ${workMonthLabel(m)}`} value={per[m] ?? ''} onChange={(e) => setPer((p) => ({ ...p, [m]: e.target.value }))} placeholder="part of the total" style={{ ...input, textAlign: 'right' }} />
             </label>
           ))}
-          <span style={{ color: 'var(--text-amber-800)' }}>{split ? `The paper prints: ${claimSplitWords(split)}` : months.length > 1 ? 'Give every month a figure but one — the paper prints the split only when it needs no formula.' : ''}</span>
+          <span style={{ color: 'var(--text-amber-800)' }}>{split ? <MoneyText text={`The paper prints: ${claimSplitWords(split)}`} /> : months.length > 1 ? 'Give every month a figure but one — the paper prints the split only when it needs no formula.' : ''}</span>
         </div>
       ) : null}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>

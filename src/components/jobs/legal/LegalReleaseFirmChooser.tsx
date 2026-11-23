@@ -3,6 +3,7 @@ import { countyWords } from '../../../lib/legal/firmCounties'
 import type { FirmForAccount } from '../../../lib/legal/firmForAccount'
 import { feeModelOf, type LegalFirmRow } from '../../../lib/legal/legalMatters'
 import { formatLegalMoney, quickNet } from '../../../lib/legal/legalPacket'
+import { MoneyText } from '../../Money'
 
 /**
  * Which firm takes the release, in the Mark attorney-ready sheet (punch list #222, PR 3, v2.6227). When more than one
@@ -35,7 +36,7 @@ export default function LegalReleaseFirmChooser({ account, pickedId, balance, al
             <span style={{ minWidth: 0 }}>
               <b>{o.firm.name}</b>
               <span data-legal-release-firm-words style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                {role} · {o.firm.contingency_pct}% · ${o.firm.filing_cost} filing · Click keeps ~{formatLegalMoney(keeps)}
+                {role} · {o.firm.contingency_pct}% · ${o.firm.filing_cost} filing · Click keeps ~<MoneyText text={formatLegalMoney(keeps)} />
               </span>
             </span>
           </label>
