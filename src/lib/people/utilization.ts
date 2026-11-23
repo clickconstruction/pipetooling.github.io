@@ -29,6 +29,7 @@ import { SALARIED_DEFAULT_WEEK, salariedWeekHours, type SalariedWeek } from '../
 import { sessionHours } from './approvalsQueue'
 import { dayHours, dowOfYmd, outsideMinutes, weekHours, type WeekDays } from './weekAvailability'
 import { setRowInForce, workingHoursInForce, workingWeekHours } from './workingHours'
+import type { AvailableHoursAnswer } from './weekTypes'
 
 export const UTILIZATION_WEEKS = 8
 /** The company day: a day past it is a long day. */
@@ -72,23 +73,7 @@ export type UtilizationPerson = {
   endYmd?: string | null
 }
 
-/** One answer: the hours a person can work in a week, from a day on. Append-only; the newest in force wins. */
-export type AvailableHoursAnswer = {
-  user_id: string
-  hours_per_week: number
-  /** The week as drawn, seven days Sunday first, each a list of [start, end] minutes; null when only a number was given. */
-  days?: WeekDays | null
-  /** YYYY-MM-DD; the answer holds from this Sunday's week on. */
-  effective_from: string
-  set_by: string | null
-  set_at: string
-  note?: string | null
-  /**
-   * `set` is the person's working hours, written by a dev or the controller through `set_working_hours`; it wins
-   * over any answer, and `days` null takes the hours off again. Missing or `answer` is the week a person can work.
-   */
-  kind?: 'answer' | 'set'
-}
+export type { AvailableHoursAnswer }
 
 export type UtilizationTimeOff = { user_id: string; startYmd: string; endYmd: string }
 
