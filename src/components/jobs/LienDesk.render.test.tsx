@@ -3755,8 +3755,11 @@ describe('LienDesk retainage (v2.3753)', () => {
     expect(paper).toContain('Total retainage unpaid:')
     expect(paper).toContain('$1,760.00')
     expect(paper).toContain('Tex. Prop. Code § 53.057')
-    fireEvent.click(screen.getAllByRole('button', { name: 'Change ›' })[0]!)
-    expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'lien-contract')
+    // The day and the figure are changed where they sit (punch list #399): no door to Edit Job for a value already on the screen.
+    expect(screen.queryByRole('button', { name: 'Change ›' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Sep 3, the day our contract ended, press to change' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '$1,760, retainage the GC holds, press to change' })).toBeTruthy()
+    expect(onOpenEditJob).not.toHaveBeenCalled()
     expect(((await screen.findByRole('button', { name: /to approve ▸/ })) as HTMLButtonElement).disabled).toBe(false)
   })
 
@@ -3775,7 +3778,7 @@ describe('LienDesk retainage (v2.3753)', () => {
     expect(screen.getByLabelText('Who said it and when')).toBeTruthy()
   })
 
-  it('a job whose contract is still open sits in Clock not started with the door to set the day', async () => {
+  it('a job whose contract is still open sits in Clock not started, and the footer’s press opens the fact’s own field (punch list #399)', async () => {
     const d = data([], [], true)
     d.retainageRows = [retRow({ contract_ended_on: null, contract_ended_how: null, deadline: null })]
     d.retainage = buildLienRetainageQueue(d.retainageRows, [], TODAY)
@@ -3783,9 +3786,12 @@ describe('LienDesk retainage (v2.3753)', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="retainage" />)
     await settle()
     expect(screen.getByRole('button', { name: 'Clock not started · 1' })).toBeTruthy()
-    expect(screen.getByText(/§ 53\.057 · clock not started/)).toBeTruthy()
+    expect(document.querySelector('[data-lien-retainage-deadline]')?.textContent).toBe('§ 53.057 · clock not started')
+    expect(screen.queryByLabelText('how our contract ended')).toBeNull()
     fireEvent.click(await screen.findByRole('button', { name: /Set the day our contract ended/ }))
-    expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'lien-contract')
+    await settle()
+    expect(screen.getByLabelText('how our contract ended')).toBeTruthy()
+    expect(onOpenEditJob).not.toHaveBeenCalled()
   })
 
   it('retainage nobody recorded is a To do row and a count on the Board, and its press opens the list at that job (fix A, PR 2)', async () => {

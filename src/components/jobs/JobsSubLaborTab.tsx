@@ -179,6 +179,11 @@ export default function JobsSubLaborTab({
   // this view, a superintendent, gets no paper press, and a sheet's ⋯ menu keeps Print.
   const { role } = useAuth()
   const makesPapers = isOfficeRole(role)
+  /** Punch list #350: whose paper a sheet makes. One person's sheet (a sub's, or a teammate's own) and nobody else's. */
+  const papersOfSheet = (r: { crew: boolean; parties: Pick<SheetParties, 'contractors'> }): { key: string; name: string } | null => {
+    const one = makesPapers && !r.crew && r.parties.contractors.length === 1 ? r.parties.contractors[0]! : null
+    return one && one.id ? { key: `id:${one.id}`, name: one.name } : null
+  }
   // Taunya's rule of 2026-11-15: a sheet that names one teammate and no sub is owed to that teammate.
   const teamRule = TEAM_SHEET_RULE
   /** Punch list #347's residue: a sheet paid past its total, about to become a credit. */
@@ -691,8 +696,7 @@ export default function JobsSubLaborTab({
                 )
                 const body = g.rows.flatMap((r) => {
                   const { job, totalCost, paid, backcharges, balance, rail, next, coverage, jobId, personId, parties, payWhen, stageView, paidLine, paidInFull, drawTie, subSees } = r
-                  // Punch list #350: whose paper this sheet makes. One person's sheet (a sub's, or a teammate's own) and nobody else's.
-                  const papersOf = makesPapers && !r.crew && parties.contractors.length === 1 && parties.contractors[0]!.id ? { key: `id:${parties.contractors[0]!.id}`, name: parties.contractors[0]!.name } : null
+                  const papersOf = papersOfSheet(r)
                   const jobRate = job.labor_rate ?? 0
                   const dateInputValue = job.job_date ?? (job.created_at ? calendarYmdInAppTzFromIso(job.created_at) : '')
                   const expanded = expandedSubLaborJobIds.has(job.id)
@@ -1010,6 +1014,8 @@ export default function JobsSubLaborTab({
         if (!r) return null
         const { job, totalCost, paid, balance, next, coverage, jobId, personId, payWhen, paidLine } = r
         const writingLabel = next.button && next.button !== 'nudge' && next.buttonLabel ? next.buttonLabel : ''
+        // Punch list #350: the papers' door on a phone, where the group's header is one press and a row has no ⋯ menu.
+        const papersOf = papersOfSheet(r)
         const close = () => {
           setPhoneSheetId(null)
           setPayableEdit(null)
@@ -1025,6 +1031,8 @@ export default function JobsSubLaborTab({
           else if (verb === 'backcharge') onOpenBackcharge({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost, paid })
           else if (verb === 'edit') onEditLaborJob(job)
           else if (verb === 'print') onPrintJobSubSheet(job)
+          else if (verb === 'work_statement' && papersOf) setPapers({ key: papersOf.key, name: papersOf.name, open: { kind: 'work', sheetId: job.id } })
+          else if (verb === 'statement' && papersOf) setPapers({ key: papersOf.key, name: papersOf.name, open: { kind: 'statement' } })
           else if (verb === 'story') setStorySheetId(job.id)
           else if (verb === 'lien_waiver') setLienWaiverFor(lienWaiverTarget(r))
         }
@@ -1049,7 +1057,7 @@ export default function JobsSubLaborTab({
                 </div>
               </div>
             ) : (
-              subPayPhoneVerbs({ totalCost, balance, payWhenKind: payWhen.kind, writingLabel, payableAfter: job.payable_after ?? null }).map((v) => <ScheduleSheetAction key={v.verb} label={v.label} hint={v.hint} primary={v.primary} danger={v.danger} onClick={() => run(v.verb)} />)
+              subPayPhoneVerbs({ totalCost, balance, payWhenKind: payWhen.kind, writingLabel, payableAfter: job.payable_after ?? null, papers: papersOf != null }).map((v) => <ScheduleSheetAction key={v.verb} label={v.label} hint={v.hint} primary={v.primary} danger={v.danger} onClick={() => run(v.verb)} />)
             )}
           </ScheduleSheet>
         )

@@ -25,6 +25,7 @@ import {
 import { addDaysYmd, formatMinutes, parseHhMm } from '../../lib/emailSchedule/emailScheduleWeek'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import { buildGcReviewRollup, type GcReviewGroup, type GcReviewGroupBy } from '../../lib/gcReviewRollup'
+import { inKindApartWords } from '../../lib/inKind/inKindApart'
 import { billSettled, lienWaiverCellForBill } from '../../lib/jobs/lienWaiverCell'
 import { gcReviewBillCardWords } from '../../lib/jobs/gcReviewBillCard'
 import type { JobLienReleaseRow } from '../../lib/jobs/lienReleaseTracking'
@@ -567,6 +568,8 @@ export function JobsGcReviewModal({
     () => buildGcReviewRollup(billedActiveRows, collectionsRows, { includeCollections, groupBy: effectiveGroupBy }),
     [billedActiveRows, collectionsRows, includeCollections, effectiveGroupBy],
   )
+  /** The foot's line on the bills an in kind deal pays: left out of every row and total (v2.8309). Null when there are none. */
+  const inKindFootWords = inKindApartWords(rollup.inKind, 'money owed')
   // Personal statement rounds (v2.2072) ride the GC grouping regardless of the
   // Group-by pill, and personal "Sent it" marks count like app sends.
   const roundRollup = useMemo(
@@ -2001,6 +2004,12 @@ export function JobsGcReviewModal({
           <span className="gcReviewFootTotal">
             Total outstanding <b>${formatCurrency(rollup.grandTotal)}</b>
           </span>
+          {/* The bills an in kind deal pays are on no row and no total above (v2.8309). One line says how much. */}
+          {inKindFootWords ? (
+            <span data-testid="gc-review-in-kind-line" style={{ flexBasis: '100%', textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {inKindFootWords}.
+            </span>
+          ) : null}
         </div>
       </div>
       {emailDialogGroup ? (

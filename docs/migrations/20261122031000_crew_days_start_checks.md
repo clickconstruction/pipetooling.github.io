@@ -23,7 +23,7 @@ The name ends in `_start_checks.sql` on purpose. `scripts/pgtest-start-checks.sh
 
 ## Deploy
 
-No client change needs it and no client is misread by it. A person it holds out is asked nothing, as anyone off the crew is. Pushed right after the merge, on a go that names it.
+No client change needs it and no client is misread by it. A person it holds out is asked nothing, as anyone off the crew is. Pushed on 2026-11-22, right after the merge, after a dry run that listed it alone.
 
 ## Tested
 

@@ -2,7 +2,7 @@
 name: "The Bridge as a pulse"
 number: 334
 group: close
-status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner said to build the whole train · all twelve PRs merged 2026-11-13 (in the train's order v2.7089, v2.7095, v2.7119, v2.7120, v2.7088, v2.7099, v2.7105, v2.7109, v2.7112, v2.7113, v2.7115 and v2.7117) · every PR is walked on clicktooling.com, read only, PRs 9 to 12 on the evening of 2026-11-13 with no fault found · all three migrations are pushed · the Monday email shows the page's two balances since v2.7214, on the owner's word, and `bridge-weekly-sheet` is redeployed with it · a final walk of the whole page found one fault of the train's own, fixed in v2.7137, which is merged too · the five faults found while building are fixed, v2.8278 to v2.8281, all merged 2026-11-22, and `bridge-weekly-sheet` and `team-scores` are redeployed with them · four of the five are walked on clicktooling.com that day, read only, and the fifth needs a dev who shows ZZ tests
+status: asked and walked 2026-11-12 in a spike on the Bridge, on live data · the owner said to build the whole train · all twelve PRs merged 2026-11-13 (in the train's order v2.7089, v2.7095, v2.7119, v2.7120, v2.7088, v2.7099, v2.7105, v2.7109, v2.7112, v2.7113, v2.7115 and v2.7117) · every PR is walked on clicktooling.com, read only, PRs 9 to 12 on the evening of 2026-11-13 with no fault found · all three migrations are pushed · the Monday email shows the page's two balances since v2.7214, on the owner's word, and `bridge-weekly-sheet` is redeployed with it · a final walk of the whole page found one fault of the train's own, fixed in v2.7137, which is merged too · the five faults found while building are fixed, v2.8278 to v2.8281, all merged 2026-11-22, and `bridge-weekly-sheet` and `team-scores` are redeployed with them · four of the five are walked on clicktooling.com that day, read only, and the fifth is looked at that evening on `localhost` on live data, read only, by a dev who shows ZZ tests
 summary: >
   The Bridge is the owner's one page for where the company stands. It asked him to make a call once a
   week, hand the moves to people, and answer on Friday whether the numbers moved. He said the page should
@@ -12,7 +12,7 @@ summary: >
   runway in days. The train also carries what the last Bridge train left out: the list of what the Bridge
   leaves out, the Build, Bill and Collect windows on the shared frame, the Market window's breakouts, a
   supply house card that leads with its bills, and the hours on a job with no percent.
-next: A read of Monday 2026-11-16's email, the first the app has ever sent. Then the owner's first presses, each of which records. Beside them, one look by a dev who shows ZZ tests while the left-out list names something: the ZZ jobs should stay in the pipe, the step windows and the people tables (v2.8281).
+next: A read of Monday 2026-11-16's email, the first the app has ever sent. Then the owner's first presses, each of which records.
 size: L as a train of twelve (M · M · S · M · M · S · M · L · M · S · S · S)
 blocker: None. The code is all on `main` and nothing is owed on the live database or the functions.
 opinion: build — the owner walked every part on live data and said to build it all. PR 7 is the one that changes what the page is.
@@ -297,7 +297,23 @@ All five were fixed by 2026-11-22, and four were walked on the live site that da
 - No ZZ test estimate is drawn in Market's list of estimates or in Sales' pile, for a viewer who hides
   tests. The one test estimate on file is a declined one, so this look shows none drawn. It does not prove
   one was dropped.
-- The v2.8281 fix was not walked. It needs a dev who shows ZZ tests, and the walk's account hides them.
+- The v2.8281 fix was not walked there. It needs a dev who shows ZZ tests, and the walk's account hides them.
+
+The fifth was looked at that evening on `localhost` against live data, on `main`, read only. The dev's switch
+is a line in the browser's own storage. It was set for the look and taken off after. The left-out list named
+two things. Each read was taken with the switch on and again with it off:
+
+- **The pipe.** Sales reads higher with the switch on, as v2.8281's own walk found. The other four steps and
+  both balances read the same.
+- **The step windows.** Sales has one more decided bid, a won one. Build has one more open job, a ZZ test job
+  by name. Bill has one more job marked ready to bill. Market has eight more sources. Collect reads the same.
+- **What to do now.** The cash move counts one more late invoice.
+- **The people tables.** They read the same with the switch on and off. So this look shows no ZZ job in them.
+  It does not prove one stayed, since a ZZ job needs hours in the window to be drawn there.
+  `zzTestsShownWithAList.test.ts` holds the rule for them.
+
+The same look read the other fixes again on `main`, at 375 px. The page stays 375 px wide with Money owed
+open. One Escape closes *Write down their word*, and one closes New task from a grey check. Nothing was saved.
 
 ## Where it stands
 

@@ -137,7 +137,7 @@ Press **Builders**. The list shows every name on a commercial permit we can see.
 
 Press **3 or more permits and never bid** to see who to get to know.
 
-Press **Looks like a customer** to see names that may be one of our customers. Each row says why. Press **Same company** or **Not them**. Nothing is tied until you press.
+Press **Looks like a customer** to see names that may be one of our customers. Each row says why. A name that shares a phone or a web domain with a customer is on the list too. Press **Same company** or **Not them**. Nothing is tied until you press.
 
 The Dashboard's **Needs you** card says how many names wait on that answer. The line adds up the number on the chip in every city. Press **Answer them** there to open this list. That line goes away once every name is answered.
 

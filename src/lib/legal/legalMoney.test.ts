@@ -47,6 +47,16 @@ describe('(a) an agreed write-down is listed once', () => {
     expect(p.account.totals).toMatchObject({ billed: 18_400, paid: 4_000, writtenDown: 2_500, balance: 11_900 })
     expectFoots(p)
   })
+  it('prints a bill written down twice at its first amount, with one write-down line for everything taken off (v2.8305)', () => {
+    // 18,400 written down to 17,000 and then to 15,900. The row keeps 18,400, and the note and the day of the newest.
+    const j = job({ id: 'j1', hcp_number: '1042', revenue: 18_400, invoices: [bill('i1', 15_900, '2026-06-03', { agreed_write_down_at: '2026-09-12T15:00:00Z', agreed_write_down_previous_amount: 18_400, agreed_write_down_note: 'Second agreed' })], payments: [pay('p1', 4_000, '2026-07-02', 'i1')] })
+    const p = packetFor([j])
+    expect(p.account.ledger.map((e) => [e.kind, e.amount])).toEqual([['invoice', 18_400], ['payment', -4_000], ['write_down', -2_500]])
+    expect(p.account.ledger.find((e) => e.kind === 'write_down')?.text).toBe('Agreed write-down · Second agreed')
+    expect(p.account.totals).toMatchObject({ billed: 18_400, paid: 4_000, writtenDown: 2_500, balance: 11_900 })
+    expect(legalJobMoney(j)).toMatchObject({ balance: 11_900, offBill: 0 })
+    expectFoots(p)
+  })
   it('does not let the written-down part read as work on no bill, which would swallow a payment with no bill', () => {
     const j = job({ id: 'j1', revenue: 18_400, invoices: [bill('i1', 15_900, '2026-06-03', { agreed_write_down_at: '2026-08-01T15:00:00Z', agreed_write_down_previous_amount: 18_400 })], payments: [pay('p1', 1_000, '2026-09-01', null)] })
     expect(legalJobMoney(j)).toMatchObject({ balance: 14_900, offBill: 0 })

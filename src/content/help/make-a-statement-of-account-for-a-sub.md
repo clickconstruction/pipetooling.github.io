@@ -19,8 +19,9 @@ The press sits where the sub's row already is.
 - On People → Subs, open a sheet in the block. Then press {{button:outline|Work statement…}} under it.
 - For one payment, open the sheet's row in the Pay view. Then press **Payment record…** beside the payment.
 - Right after you record a payment, press {{button:blue|Send the payment record…}} in the window that follows.
+- On a phone, press a sheet's row in the Pay view. Then press **Work statement…** or **Statement of account…**.
 
-The window opens on the paper you asked for. The chips at the top switch to another paper for the same person.
+The window opens on the paper you asked for. The chips at the top switch to another paper for the same person. On a phone, the chips are how you reach a payment record.
 
 **Work statement…** takes the place of **Print** on a sheet that is one person's. A sheet two people share keeps **Print**, and so does a crew sheet.
 

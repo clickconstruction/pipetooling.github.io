@@ -8,7 +8,7 @@
 import { ROBOT_BID_RE } from '../bids/bidPursuit'
 import { permitsOnSite, readBidAddress, type BidSitePermit } from './bidSite'
 import { foldNameAnswers, type NameAnswerRow } from './nameAnswers'
-import { lookAlikePairs, type LookAlike, type PermitName } from './nameLikeness'
+import { lookAlikePairs, type ContactMatch, type LookAlike, type PermitName } from './nameLikeness'
 import { builderName, type BuilderRow } from './permitBuilders'
 
 /** A bid as the worklist reads it: whose it is, where it is, and its name, to leave the robots' copies out. */
@@ -16,8 +16,15 @@ export type WorklistBid = { customer_id: string; address: string | null; project
 /** A permit as the site evidence reads it. */
 export type WorklistPermit = Pick<BidSitePermit, 'id' | 'address'> & Partial<Pick<BidSitePermit, 'permit_number' | 'permit_type' | 'stage'>> & { builder_key: string | null }
 
-/** What the worklist reads once for every city: our customers, the answers already given, and our bids. */
-export type LookAlikeShared = { customers: ReadonlyArray<{ id: string; name: string }>; answers: readonly NameAnswerRow[]; bids: readonly WorklistBid[] }
+/** The phones and web domains a customer shares with names on permits: customer id to name key to what the two share. */
+export type SharedContacts = ReadonlyMap<string, ReadonlyMap<string, readonly ContactMatch[]>>
+
+/**
+ * What the worklist reads once for every city: our customers, the answers already given, our
+ * bids, and the phones and web domains shared with names on permits (v2.8308, empty before
+ * that read is on the database).
+ */
+export type LookAlikeShared = { customers: ReadonlyArray<{ id: string; name: string }>; answers: readonly NameAnswerRow[]; bids: readonly WorklistBid[]; contacts: SharedContacts }
 
 /** The bids people priced: a robot's copy of a bid would count its site twice. */
 export function ourBids<B extends WorklistBid>(bids: readonly B[]): B[] {
@@ -64,10 +71,16 @@ export function permitNamesOf(builders: readonly BuilderRow[]): PermitName[] {
 /**
  * One city's worklist: every name on its Builders list that may be one of our customers, the
  * strongest reason first. Its length is the number on the chip, and the number the Dashboard
- * counts for the city.
+ * counts for the city. A name that shares a phone or a web domain with a customer is on it
+ * whatever the two names read.
  */
-export function cityLookAlikes(shared: Pick<LookAlikeShared, 'customers'>, builders: readonly BuilderRow[], siteCounts: ReadonlyMap<string, ReadonlyMap<string, number>>, settled: ReadonlyMap<string, ReadonlySet<string>>): LookAlike[] {
-  return lookAlikePairs(shared.customers, permitNamesOf(builders), siteCounts, settled)
+export function cityLookAlikes(
+  shared: Pick<LookAlikeShared, 'customers'> & Partial<Pick<LookAlikeShared, 'contacts'>>,
+  builders: readonly BuilderRow[],
+  siteCounts: ReadonlyMap<string, ReadonlyMap<string, number>>,
+  settled: ReadonlyMap<string, ReadonlySet<string>>,
+): LookAlike[] {
+  return lookAlikePairs(shared.customers, permitNamesOf(builders), siteCounts, settled, undefined, shared.contacts)
 }
 
 // --- The Dashboard's Needs you line ----------------------------------------------------------

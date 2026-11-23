@@ -80,6 +80,10 @@ The chart does not plot the bill. The printed **Billed awaiting payment** report
 The job reads **billed · scheduled in kind** in the customer's profile window. It shows no day count and no red. The **Invoices** tab on the customer's page reads **Billed · in kind** for that bill.
 :::
 
+:::card A GC's statement and GC Review
+**GC Review** leaves the bill out of the GC's bills and totals. A line at the foot says how much is scheduled in kind. The statement the GC gets says the same line under its total.
+:::
+
 :::
 
 A customer can have some jobs on the arrangement and some off it. The bills off it still read as money owed, and they still age.

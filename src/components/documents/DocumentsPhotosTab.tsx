@@ -7,13 +7,14 @@
  * Messages thread, or Checklist → Today for a task card's shot (punch list #273, v2.6635), whose second line reads
  * where the card stood instead of a job. The rules are `lib/photos/uploadedPhotos.ts`; the reads `uploadedPhotosIo.ts`.
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { supabase } from '../../lib/supabase'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import { newestAsk } from '../../lib/newestAsk'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { documentsQuietButton } from '../jobs/jobDocumentsStyles'
@@ -97,18 +98,24 @@ export function DocumentsPhotosTab({ io: givenIo, loadReport = loadReportForView
     return () => window.clearTimeout(t)
   }, [typed])
 
+  // Every chip and every typed word asks again, and the reads do not come back in the order they left. Only the
+  // newest ask is drawn: an older read's rows and its failure are both dropped (v2.8304).
+  const asks = useRef(newestAsk()).current
   const load = useCallback(async () => {
+    const stillNewest = asks.next()
     setReading(true)
     try {
       const next = await io.list({ source, where, typed: asked, limit })
+      if (!stillNewest()) return
       setRead(next)
       setFailure(null)
     } catch (e) {
+      if (!stillNewest()) return
       setFailure(recoveryFailureFromError(e, 'The photos did not read.'))
     } finally {
-      setReading(false)
+      if (stillNewest()) setReading(false)
     }
-  }, [io, source, where, asked, limit])
+  }, [asks, io, source, where, asked, limit])
 
   useEffect(() => {
     void load()

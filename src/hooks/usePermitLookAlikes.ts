@@ -4,15 +4,16 @@ import type { BuilderRow } from '../lib/research/permitBuilders'
 import { recordNameAnswer } from '../lib/research/bidSiteIo'
 import type { LookAlike } from '../lib/research/nameLikeness'
 import { loadCitySiteCounts, loadLookAlikeShared } from '../lib/research/lookAlikeIo'
-import { cityLookAlikes, settledNames } from '../lib/research/lookAlikeWorklist'
+import { cityLookAlikes, settledNames, type SharedContacts } from '../lib/research/lookAlikeWorklist'
 
-type Ground = { customers: ReadonlyArray<{ id: string; name: string }>; siteCounts: Map<string, Map<string, number>>; settled: Map<string, Set<string>> }
+type Ground = { customers: ReadonlyArray<{ id: string; name: string }>; contacts: SharedContacts; siteCounts: Map<string, Map<string, number>>; settled: Map<string, Set<string>> }
 
 /**
  * Looks like a customer (punch list #307, PR 10): every name on a city's permits that may be one
  * of our customers, for the worklist on Builders. `null` pairs mean the answers table is not on
  * the database yet, and the chip is not drawn. An answer drops its pair and reads the answers
- * again. Site evidence comes from the newest thousand bids with a customer on them.
+ * again. Site evidence comes from the newest thousand bids with a customer on them. A phone or a
+ * web domain a customer shares with a name is a reason of its own (v2.8308).
  */
 export function usePermitLookAlikes(city: string, builders: readonly BuilderRow[]): { pairs: LookAlike[] | null; error: string | null; busy: boolean; answer: (pair: LookAlike, tie: boolean) => Promise<void> } {
   const [ground, setGround] = useState<Ground | null>(null)
@@ -26,7 +27,7 @@ export function usePermitLookAlikes(city: string, builders: readonly BuilderRow[
       setAbsent(true)
       return
     }
-    setGround({ customers: shared.customers, siteCounts: await loadCitySiteCounts(city, shared.bids), settled: settledNames(shared.answers) })
+    setGround({ customers: shared.customers, contacts: shared.contacts, siteCounts: await loadCitySiteCounts(city, shared.bids), settled: settledNames(shared.answers) })
   }, [city])
 
   useEffect(() => {

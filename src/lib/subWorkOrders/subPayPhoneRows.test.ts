@@ -31,4 +31,14 @@ describe('subPayPhoneVerbs', () => {
     expect(verbs({ ...base, payWhenKind: 'gap', writingLabel: ' ' })).toEqual(['payment', 'backcharge', 'edit', 'print', 'story', 'lien_waiver'])
     expect(subPayPhoneVerbs(base).find((x) => x.verb === 'backcharge')?.danger).toBe(true)
   })
+  it("on a sheet that is one person's, Work statement… takes Print's place and their statement of account follows it", () => {
+    expect(verbs({ ...base, payWhenKind: 'ready', papers: true })).toEqual(['payment*', 'payable_after', 'backcharge', 'edit', 'work_statement', 'statement', 'story', 'lien_waiver'])
+    const v = subPayPhoneVerbs({ ...base, papers: true })
+    expect(v.find((x) => x.verb === 'work_statement')).toMatchObject({ label: 'Work statement…', primary: false, danger: false })
+    expect(v.find((x) => x.verb === 'statement')).toMatchObject({ label: 'Statement of account…', primary: false, danger: false })
+    // A shared sheet, a crew sheet, or a viewer who makes no papers: Print stays and no paper is offered.
+    expect(verbs({ ...base, papers: false })).toEqual(verbs(base))
+    expect(verbs(base)).toContain('print')
+    expect(verbs(base)).not.toContain('work_statement')
+  })
 })

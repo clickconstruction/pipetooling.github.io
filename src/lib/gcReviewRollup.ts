@@ -4,6 +4,8 @@ import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
 import { effectiveInvoiceParty } from './jobs/billToParty'
 import { billPaidByWords } from './jobs/gcChecksApplied'
 import { billPaymentSlices } from './jobs/paymentAttribution'
+import { jobIsScheduledInKind } from './inKind/inKindLedger'
+import { addInKindApart, noInKindApart, type InKindApart } from './inKind/inKindApart'
 
 /**
  * GC Review (v2.1181): group the Billed Awaiting Payment board rows by the
@@ -19,6 +21,14 @@ import { billPaymentSlices } from './jobs/paymentAttribution'
  * Dates use printBilledRowReferenceDate — the ACTUAL billed date with an
  * "(est.)" fallback — matching the existing Billed print report, NOT the
  * header aging chips (which run on est. bill date only).
+ *
+ * A bill an in kind deal pays is left out (v2.8309, punch list #301; the
+ * owner's call of 2026-11-22). It is scheduled, not owed, so it is on no
+ * group's rows, no subtotal and no age. Each group counts the ones it left
+ * out in `inKind`, and so does the rollup, so the window and the statement
+ * can say one line. Everything that reads a group's rows follows: the
+ * statement, the check of the week, the call sheet, the worklist and the
+ * prints. Mirrors `in_kind_rows` in get_gc_statement_email_payload.
  */
 
 export type GcReviewGroupBy = 'gc' | 'development'
@@ -82,6 +92,8 @@ export type GcReviewGroup = {
   /** Distinct jobs in the group (a job can contribute several invoice rows). */
   jobCount: number
   oldestAgeDays: number | null
+  /** This payer's bills an in kind deal pays, left out of `rows` (v2.8309). Absent on a hand-built group. */
+  inKind?: InKindApart
 }
 
 export type GcReviewRollup = {
@@ -91,6 +103,8 @@ export type GcReviewRollup = {
   /** Collections stats regardless of the toggle, for the checkbox label. */
   collectionsCount: number
   collectionsTotal: number
+  /** Every bill left out because an in kind deal pays it, a payer with nothing else open included (v2.8309). */
+  inKind: InKindApart
 }
 
 /** A review row's key for its board row — how a statement row finds its bill again (the unpaid-invoices print). */
@@ -159,6 +173,11 @@ function sortReviewRows(rows: GcReviewRow[]): GcReviewRow[] {
   })
 }
 
+/** The bills a set of groups left out because an in kind deal pays them, as one count: a whole report's line (v2.8309). */
+export function gcGroupsInKind(groups: readonly Pick<GcReviewGroup, 'inKind'>[]): InKindApart {
+  return groups.reduce((all, g) => addInKindApart(all, g.inKind ?? noInKindApart()), noInKindApart())
+}
+
 export const GC_REVIEW_NO_GC_KEY = 'no-gc'
 export const GC_REVIEW_NO_DEVELOPMENT_KEY = 'no-development'
 
@@ -177,6 +196,8 @@ export function buildGcReviewRollup(
   let collectionsCount = 0
   let collectionsTotal = 0
   for (const r of collectionsRows) {
+    // A deal's bill is not money the switch would add, so the label does not count it.
+    if (jobIsScheduledInKind(r.job)) continue
     collectionsCount++
     collectionsTotal += stageRowBilledRemainingAmount(r)
   }
@@ -187,10 +208,22 @@ export function buildGcReviewRollup(
   ]
 
   const byKey = new Map<string, GcReviewGroup>()
+  const inKindByKey = new Map<string, InKindApart>()
+  let inKind = noInKindApart()
   for (const { row, inCollections } of sourceRows) {
     const gc = (byDevelopment ? row.job.development : gcThatPaysRow(row)) ?? null
     const gcName = (gc?.name ?? '').trim()
     const key = gc?.id ?? noEntityKey
+    if (jobIsScheduledInKind(row.job)) {
+      // Counted while a credit still has money to pay on it. A cent or less open is settled.
+      const open = stageRowBilledRemainingAmount(row)
+      if (open > 0.005) {
+        const one = { count: 1, dollars: open }
+        inKindByKey.set(key, addInKindApart(inKindByKey.get(key) ?? noInKindApart(), one))
+        inKind = addInKindApart(inKind, one)
+      }
+      continue
+    }
     let group = byKey.get(key)
     if (!group) {
       group = {
@@ -217,6 +250,7 @@ export function buildGcReviewRollup(
   for (const g of groups) {
     g.rows = sortReviewRows(g.rows)
     g.jobCount = new Set(g.rows.map((r) => r.jobId)).size
+    g.inKind = inKindByKey.get(g.key) ?? noInKindApart()
   }
   groups.sort((a, b) => {
     if (a.isNoGc !== b.isNoGc) return a.isNoGc ? 1 : -1
@@ -225,7 +259,7 @@ export function buildGcReviewRollup(
   })
 
   const grandTotal = groups.reduce((s, g) => s + g.subtotal, 0)
-  return { groups, grandTotal, collectionsCount, collectionsTotal }
+  return { groups, grandTotal, collectionsCount, collectionsTotal, inKind }
 }
 
 /**
