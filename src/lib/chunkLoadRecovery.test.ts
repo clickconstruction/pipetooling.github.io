@@ -128,6 +128,18 @@ describe('startChunkRecoveryReload', () => {
     expect(reloads).toBe(0)
     expect(chunkRecoveryReloadStarted()).toBe(false)
   })
+
+  it('starts nothing while the browser says it is offline, and leaves the guard for when the signal is back', () => {
+    const storage = fakeStorage()
+    let reloads = 0
+    expect(startChunkRecoveryReload(1_000_000, storage, () => reloads++, undefined, true)).toBe(false)
+    expect(reloads).toBe(0)
+    expect(chunkRecoveryReloadStarted()).toBe(false)
+    expect(storage.dump()[CHUNK_RECOVERY_KEY]).toBeUndefined()
+    // Back online a moment later: the one reload is still there to take.
+    expect(startChunkRecoveryReload(1_000_000 + 2_000, storage, () => reloads++, undefined, false)).toBe(true)
+    expect(reloads).toBe(1)
+  })
 })
 
 describe('decideChunkReloadWait: the reload waits for a write', () => {

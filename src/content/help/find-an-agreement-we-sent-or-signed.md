@@ -166,6 +166,13 @@ Someone on your roster is not sent a paper this way. Close the window and pick t
 
 The new line sits under **Outside companies**. It can be sent again or copied as a link from its line.
 
+**A company may already have the paper out.** The app checks when you pick the company. A window then says who has the paper and the day it went. It offers two presses.
+
+- **Send it to Lena Park again** sends the same copy to the same person. They get a new signing link. The link sent before stops working.
+- **Send a second copy to someone else** makes a new copy for another person there. The first copy stays as it is, with its own link. Each person signs their own copy.
+
+Each copy is its own line under **Outside companies**.
+
 ## Add someone to a list
 
 A paper sent to someone you typed in reads **Not on a list**. Its line carries **Add to a list**, signed or not.
@@ -187,11 +194,11 @@ A job's contract is not sent here. Send it from its job.
 
 ## Take a paper back
 
-A paper sent to an outside company by mistake can be taken back. The paper's line carries **Take back** until the paper is signed.
+A paper sent to an outside company by mistake can be taken back. Its line carries **Take back** until the paper is signed.
 
 1. Find the paper under **Outside companies**.
 2. Press **Take back** on its line.
-3. Read the window. The window names the paper and who holds its signing link.
+3. Read the window. It names the paper and who holds its signing link.
 4. Press **Take back the paper**.
 
 The paper is deleted and its line leaves the list. The signing link stops working. Nobody is emailed.
@@ -202,13 +209,13 @@ Someone who opens the old link reads that it no longer works. The page tells the
 {{chip:yellow|never opened}} Sent Nov 18 {{button:outline|Send again}} {{button:outline|Copy the signing link}} {{button:outline|Take back}}
 :::
 
-A signed paper has no **Take back**. A signed paper is the record of what was agreed, so it is kept.
+A signed paper has no **Take back**. It is the record of what was agreed, so it is kept.
 
-The signer may sign while the window is open. The paper is then kept, and the app tells you so.
+They may sign while the window is open. The paper is then kept, and the app tells you so.
 
 Taking a paper back cannot be undone. To send the paper again, press **Send a paper** and start over.
 
-The leader and a dev have **Take back**. The same two can delete a paper anywhere in the app. Anyone else in the office asks one of them.
+The leader and a dev have **Take back**. They are the two who can delete a paper anywhere in the app. Anyone else in the office asks one of them.
 
 The email that went out stays under Sent copies. The record that they opened the paper goes with it.
 

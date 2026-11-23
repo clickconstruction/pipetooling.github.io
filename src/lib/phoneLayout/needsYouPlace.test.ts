@@ -4,7 +4,7 @@ import { isPhoneOfficeRole, needsYouInitialMode } from '../dashboard/phoneOffice
 import { pageModeEligibleForRole, type PageMode } from '../pageMode'
 import type { NeedsYouItem } from '../dashboardNeedsYou'
 import { groupNeedsYouItems, needsYouWalkItems } from '../needsYouActor'
-import { DISPATCH_MODE_INBOX_PATH, JOB_MODE_INBOX_PATH, needsYouDashboardDoor, needsYouDoorLine, needsYouInboxPath, needsYouJobModeDoor, needsYouLienStripUnderDoor } from './needsYouPlace'
+import { DISPATCH_MODE_INBOX_PATH, JOB_MODE_INBOX_PATH, needsYouDashboardDoor, needsYouDoorLine, needsYouInboxPath, needsYouJobModeDoor } from './needsYouPlace'
 
 const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers']
 const MODES: PageMode[] = ['task', 'job', 'dispatch', 'full']
@@ -178,36 +178,5 @@ describe('what the door says', () => {
     const others = LIST.filter((i) => i.key !== 'tally-self')
     expect(needsYouDoorLine(others, { newPhoneLayout: true, role: 'helpers', ownOnly: true })).toBeNull()
     for (const role of ROLES) expect(needsYouDoorLine(LIST, { newPhoneLayout: true, role, ownOnly: true }), role).toEqual(needsYouDoorLine(LIST, { newPhoneLayout: true, role }))
-  })
-})
-
-describe('the Lien desk’s strip under the door', () => {
-  it('stays on the Dashboard under a door that keeps the cards', () => {
-    expect(needsYouLienStripUnderDoor({ door: true, cardsStay: true, bannersHidden: false })).toBe(true)
-  })
-
-  it('goes with the list under the office person’s older door, as it has since v2.3883', () => {
-    expect(needsYouLienStripUnderDoor({ door: true, cardsStay: false, bannersHidden: false })).toBe(false)
-  })
-
-  it('is not drawn with no door: an empty list shows no strip, and the card draws its own', () => {
-    expect(needsYouLienStripUnderDoor({ door: false, cardsStay: true, bannersHidden: false })).toBe(false)
-  })
-
-  it('is not drawn on Job Mode’s own Dashboard, which draws no banners', () => {
-    expect(needsYouLienStripUnderDoor({ door: true, cardsStay: true, bannersHidden: true })).toBe(false)
-  })
-
-  it('every door the Dashboard plans: the strip follows the plan’s cardsStay', () => {
-    for (const newPhoneLayout of [false, true]) {
-      for (const phoneOffice of [false, true]) {
-        for (const mode of ['dispatch', 'job', 'task', 'full'] as PageMode[]) {
-          const plan = needsYouDashboardDoor({ newPhoneLayout, phoneOffice, mode })
-          const strip = needsYouLienStripUnderDoor({ door: plan != null, cardsStay: plan?.cardsStay ?? false, bannersHidden: false })
-          // The office person's Dispatch Mode door keeps nothing. Every other door is the new phone layout's and keeps it.
-          expect(strip, `${newPhoneLayout} ${phoneOffice} ${mode}`).toBe(plan != null && !(phoneOffice && mode === 'dispatch'))
-        }
-      }
-    }
   })
 })

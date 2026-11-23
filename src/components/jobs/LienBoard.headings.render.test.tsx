@@ -4,7 +4,7 @@
  * computer and on a phone, so that red on the Board only means a late day.
  */
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import LienBoard, { LIEN_BOARD_COLUMN_HEAD_COLOR } from './LienBoard'
 import { buildLienBoard } from '../../lib/jobs/lienBoard'
 import type { LienDeskEntry, LienDeskPile } from '../../lib/jobs/lienDesk'
@@ -50,8 +50,14 @@ describe('LienBoard · both column headings are grey (the owner’s pick of 2026
     expect(late.style.color).toBe('var(--text-red-700)')
   })
 
-  it('is the same on a phone with the bins opened', () => {
+  it('is the same over a phone’s flow (punch list #428)', () => {
     render(<LienBoard board={board()} isMobile />)
-    expect(headings().map(([, colour]) => colour)).toEqual(['var(--text-muted)', 'var(--text-muted)'])
+    fireEvent.click(document.querySelector('[data-lien-board-switch-press="flow"]') as HTMLButtonElement)
+    const flowHeads = Array.from(document.querySelectorAll<HTMLElement>('[data-lien-board-flow-column] h3')).map((h) => [h.textContent, h.style.color])
+    expect(flowHeads).toEqual([
+      ['Monthly notices', 'var(--text-muted)'],
+      ['Lien affidavits', 'var(--text-muted)'],
+    ])
+    window.localStorage.clear()
   })
 })

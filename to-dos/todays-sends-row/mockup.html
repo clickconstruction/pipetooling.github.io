@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sends and the round</title>
+<style>
+/* A review sheet. Few words on the sheet; the frames carry the answer. The app's own look lives inside the frames. */
+:root {
+  --ground: #eef1f5; --sheet: #ffffff; --ink: #131a26; --ink-soft: #566173; --rule: #cfd5de;
+  --pick: #0f766e; --pick-tint: #dff3f0;
+  --body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --ground: #0d1218; --sheet: #161d27; --ink: #eef2f7; --ink-soft: #9aa6b8; --rule: #2c3644; --pick: #5eead4; --pick-tint: #12332f; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --ground: #0d1218; --sheet: #161d27; --ink: #eef2f7; --ink-soft: #9aa6b8; --rule: #2c3644; --pick: #5eead4; --pick-tint: #12332f; color-scheme: dark; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 28px 16px 64px; display: grid; gap: 40px; }
+h1, h2, h3 { margin: 0; line-height: 1.2; text-wrap: balance; }
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 1rem; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+p { margin: 0; }
+section { display: grid; gap: 16px; }
+.prose { max-width: 62ch; display: grid; gap: 8px; }
+.soft { color: var(--ink-soft); }
+.eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.tag { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 999px; background: var(--pick-tint); color: var(--pick); white-space: nowrap; }
+.tag.plain { background: transparent; border: 1px solid var(--rule); color: var(--ink-soft); }
+.bar { position: sticky; top: 0; z-index: 5; background: var(--ground); border-bottom: 1px solid var(--rule); padding: 8px 0; display: flex; gap: 8px 18px; flex-wrap: wrap; align-items: center; font-size: 0.82rem; color: var(--ink-soft); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; font-weight: 600; min-height: 36px; padding: 0 14px; border: 0; background: var(--sheet); color: var(--ink-soft); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 26px 22px; align-items: start; }
+.col { display: grid; gap: 10px; min-width: 0; justify-items: start; }
+/* what changed, as short tags, never as paragraphs */
+.gains { display: flex; flex-wrap: wrap; gap: 6px; max-width: 430px; }
+.gains span { font-size: 0.78rem; padding: 3px 9px; border-radius: 6px; border: 1px solid var(--rule); color: var(--ink-soft); background: var(--sheet); }
+.gains.bad span { border-style: dashed; }
+.wide { overflow-x: auto; max-width: 100%; }
+table.plain { border-collapse: collapse; width: 100%; font-size: 0.86rem; min-width: 520px; }
+table.plain th, table.plain td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--rule); }
+table.plain th { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+table.plain td:first-child { color: var(--ink-soft); width: 26%; }
+.ask { background: var(--pick-tint); border-radius: 12px; padding: 14px 18px; display: grid; gap: 4px; max-width: 62ch; }
+.ask b { color: var(--pick); }
+
+/* ───────── the app's own look, inside a frame ───────── */
+.app {
+  --a-page: #111827; --a-surface: #1f2937; --a-subtle: #18212f; --a-border: #374151; --a-strong: #4b5563;
+  --a-text: #f9fafb; --a-700: #d1d5db; --a-muted: #9ca3af; --a-link: #60a5fa; --a-blue-tint: #1e2a44;
+  --a-amber-800: #fcd34d; --a-amber-100: #45390f; --a-amber-tint: #3a2f11; --a-amber-line: #7c5e10;
+  --a-red-100: #4c1d1d; --a-red-700: #fca5a5; --a-red-line: #7f1d1d; --a-green: #22c55e; --a-track: #334155;
+  --a-bubble: #26334a; --a-ring: #5eead4; --a-head: #2b3648;
+  background: var(--a-page); color: var(--a-text); font-family: var(--body); font-size: 16px; line-height: 1.35;
+}
+body[data-app="light"] .app {
+  --a-page: #f0f2f5; --a-surface: #ffffff; --a-subtle: #f9fafb; --a-border: #cfd4db; --a-strong: #aab2bd;
+  --a-text: #111827; --a-700: #374151; --a-muted: #6b7280; --a-link: #2563eb; --a-blue-tint: #eff6ff;
+  --a-amber-800: #92400e; --a-amber-100: #fef3c7; --a-amber-tint: #fffbeb; --a-amber-line: #f3d27a;
+  --a-red-100: #fee2e2; --a-red-700: #b91c1c; --a-red-line: #fca5a5; --a-green: #16a34a; --a-track: #e5e7eb;
+  --a-bubble: #e8eefb; --a-ring: #0f766e; --a-head: #f3f4f6;
+}
+.phone { width: 430px; max-width: 100%; border: 1px solid var(--rule); border-radius: 22px; overflow: hidden; }
+body[data-w="320"] .phone { width: 320px; }
+.desk { width: 100%; max-width: 940px; border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; }
+.page { padding: 10px 4px; }
+.desk .page { padding: 16px; }
+
+/* The app's two looks for a value (src/index.css, .vipWorked and .vipChange) */
+.v { font-weight: 700; color: var(--a-text); font-variant-numeric: tabular-nums; }
+.vc { font-weight: 700; color: var(--a-text); background: var(--a-blue-tint); border-bottom: 2px dotted var(--a-link); border-radius: 4px 4px 0 0; padding: 0 3px; white-space: nowrap; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px; font-size: 0.875rem; width: fit-content; max-width: 100%; }
+.legend .fx { color: var(--a-muted); }
+
+/* The Needs you card */
+.nycard { background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 10px; padding: 1rem 0.75rem 0.85rem; }
+.nyhead { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 0.7rem; }
+.nyhead .t { font-size: 1.0625rem; font-weight: 700; }
+.nyhead .pill { background: var(--a-amber-100); color: var(--a-amber-800); border-radius: 999px; padding: 1px 9px; font-size: 0.8125rem; font-weight: 700; }
+.nyrows { display: flex; flex-direction: column; gap: 0.5rem; }
+/* before: the row as DashboardNeedsYouCard.tsx draws it today */
+.ny { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 0.875rem; background: var(--a-subtle); border: 1px solid var(--a-border); border-left: 4px solid #f59e0b; border-radius: 8px; padding: 0.7rem 0.875rem; }
+.ny .w { flex: 1 1 240px; min-width: 0; }
+.ny .ti { font-weight: 600; font-size: 0.9375rem; }
+.ny .de { color: var(--a-muted); font-size: 0.8125rem; margin-top: 1px; }
+.ny .fig { font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.ny .go { background: #b45309; color: #fff; border-radius: 6px; padding: 0.45rem 0.9rem; font-size: 0.8125rem; font-weight: 600; flex-shrink: 0; }
+.subject { outline: 2px solid var(--a-ring); outline-offset: 3px; }
+.dim { opacity: 0.6; }
+/* after: words the full width, a small press at the bottom right */
+.nz { background: var(--a-subtle); border: 1px solid var(--a-border); border-left: 4px solid #f59e0b; border-radius: 8px; padding: 0.7rem 0.875rem 0.65rem; }
+.nz.gray { border-left-color: var(--a-strong); }
+.nz .ti { font-size: 0.9375rem; font-weight: 500; color: var(--a-700); }
+.nz .ti .v { font-size: 1.0625rem; }
+.nz .who { font-size: 0.8125rem; color: var(--a-muted); margin-top: 2px; }
+.nz .who b { color: var(--a-text); font-weight: 600; }
+.nz .de { color: var(--a-muted); font-size: 0.8125rem; margin-top: 1px; }
+.nz .foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5rem; margin-top: 0.3rem; }
+.nz .foot .de, .nz .foot .who { margin: 0; padding-bottom: 0.4rem; min-width: 0; }
+.nz .chips { display: flex; flex-wrap: wrap; gap: 0.3rem; min-width: 0; }
+.sp { flex: none; margin-left: auto; display: inline-flex; align-items: center; min-height: 32px; padding: 0 0.8rem; border-radius: 6px; font-size: 0.8125rem; font-weight: 600; background: #b45309; color: #fff; white-space: nowrap; }
+.sp.blue { background: #1d4ed8; }
+.sp.red { background: #dc2626; }
+.sp.quiet { background: var(--a-surface); color: var(--a-700); border: 1px solid var(--a-strong); }
+.c { display: inline-flex; align-items: center; gap: 0.3rem; border: 1px solid var(--a-border); background: var(--a-surface); color: var(--a-muted); border-radius: 999px; padding: 1px 0.55rem; font-size: 0.75rem; white-space: nowrap; }
+.c b { color: var(--a-text); font-weight: 700; }
+.c.h { background: var(--a-amber-tint); border-color: var(--a-amber-line); color: var(--a-amber-800); }
+.c.h b { color: var(--a-amber-800); }
+.c.on { border-color: var(--a-link); color: var(--a-link); }
+.c.on b { color: var(--a-link); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.clock { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid currentColor; flex: none; position: relative; }
+.clock::after { content: ''; position: absolute; left: 50%; top: 1px; width: 1.5px; height: 3.5px; background: currentColor; transform: translateX(-50%); }
+.peek { background: var(--a-bubble); border-radius: 12px 12px 12px 4px; padding: 0.35rem 0.65rem; font-size: 0.8125rem; color: var(--a-700); margin-top: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.statelabel { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--a-muted); margin: 0.55rem 0 0.1rem; }
+.statelabel:first-child { margin-top: 0; }
+
+/* The window (ResponsiveModalShell on a phone) */
+.sheet { background: var(--a-surface); border-top: 1px solid var(--a-border); }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; border-bottom: 1px solid var(--a-border); font-weight: 700; font-size: 1.0625rem; }
+.sheet-head .x { color: var(--a-muted); font-weight: 400; font-size: 1.25rem; line-height: 1; }
+.sheet-body { padding: 0.85rem 1rem 0.25rem; }
+.sheet-foot { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid var(--a-border); }
+.hint { font-size: 0.875rem; color: var(--a-muted); margin: 0 0 0.5rem; }
+.srow { display: grid; grid-template-columns: 1fr auto; gap: 0.3rem 0.75rem; align-items: start; padding: 0.65rem 0; border-top: 1px solid var(--a-border); }
+.srow .who { font-size: 0.9375rem; font-weight: 700; }
+.srow .who span { font-size: 0.8125rem; color: var(--a-muted); font-weight: 400; }
+.srow .words { font-size: 0.875rem; color: var(--a-700); margin: 0.2rem 0 0; }
+.srow .held { font-size: 0.8125rem; color: var(--a-amber-800); margin: 0.2rem 0 0; }
+.srow .goes { font-size: 0.875rem; color: var(--a-muted); margin: 0.2rem 0 0; }
+.srow .links { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.2rem; }
+.srow .links span { color: var(--a-link); font-weight: 600; font-size: 0.8125rem; padding: 0.25rem 0.3rem; }
+.srow .links span.q { color: var(--a-muted); }
+.b34 { display: inline-flex; align-items: center; min-height: 34px; padding: 0 0.7rem; border-radius: 8px; border: 1px solid var(--a-strong); background: var(--a-surface); color: var(--a-text); font-weight: 700; font-size: 0.8125rem; }
+.b34.send { background: #16a34a; border-color: #16a34a; color: #fff; }
+/* after */
+.steps { display: grid; grid-template-columns: auto 1fr auto 1fr auto; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--a-muted); margin-bottom: 0.75rem; }
+.steps .s { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+.steps .line { height: 2px; background: var(--a-track); min-width: 10px; }
+.steps .line.done { background: var(--a-green); }
+.steps .mk { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--a-track); flex: none; }
+.steps .done .mk { background: var(--a-green); border-color: var(--a-green); }
+.steps .now { color: var(--a-text); font-weight: 700; }
+.steps .now .mk { border-color: #f59e0b; box-shadow: inset 0 0 0 3px var(--a-surface); background: #f59e0b; }
+.jump { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.2rem; }
+.jump .c { font-size: 0.8125rem; padding: 3px 0.7rem; }
+.grp { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--a-muted); margin: 0.9rem 0 0.35rem; }
+.grp b { color: var(--a-text); }
+.tcard { background: var(--a-subtle); border: 1px solid var(--a-border); border-radius: 10px; padding: 0.7rem 0.8rem; margin-bottom: 0.5rem; }
+.tcard.heldc { border-color: var(--a-amber-line); }
+.tcard .top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.tcard .name { font-size: 0.9375rem; }
+.tcard .num { font-size: 0.8125rem; color: var(--a-700); font-variant-numeric: tabular-nums; }
+.tcard .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.45rem; font-size: 0.8125rem; color: var(--a-muted); margin-top: 0.3rem; }
+.bubble { background: var(--a-bubble); border-radius: 14px 14px 14px 4px; padding: 0.5rem 0.75rem; font-size: 0.875rem; margin: 0.5rem 0 0.55rem; }
+.tcard.heldc .bubble { opacity: 0.6; }
+.presses { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+.b44 { display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; min-height: 44px; padding: 0 0.95rem; border-radius: 8px; border: 1px solid var(--a-strong); background: var(--a-surface); color: var(--a-text); font-weight: 700; font-size: 0.875rem; }
+.b44.send { background: #16a34a; border-color: #16a34a; color: #fff; }
+.b44.open { border-color: var(--a-link); color: var(--a-link); }
+.b44.sm { font-weight: 600; font-size: 0.8125rem; padding: 0 0.7rem; }
+
+/* The office's round */
+.rc { background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 10px; overflow: hidden; margin-bottom: 0.75rem; }
+.rc:last-child { margin-bottom: 0; }
+.rc.redline { border-color: var(--a-red-line); }
+.rc-head { background: var(--a-head); border-left: 4px solid #f97316; padding: 0.7rem 1rem 0.65rem; display: flex; align-items: baseline; gap: 0.3rem 0.6rem; flex-wrap: wrap; }
+.rc-head .t { font-size: 1.0625rem; font-weight: 700; }
+.rc-head .pill { border-radius: 999px; padding: 1px 9px; font-size: 0.75rem; font-weight: 700; background: var(--a-red-100); color: var(--a-red-700); }
+.rc-head .last { margin-left: auto; color: var(--a-muted); font-size: 0.8125rem; }
+.rc-head .what { margin-left: auto; color: var(--a-muted); font-size: 0.75rem; white-space: nowrap; }
+.rc-body { padding: 0.55rem 1rem 0.7rem; font-size: 0.8125rem; color: var(--a-muted); }
+.rc-body .lnk { color: var(--a-link); font-weight: 700; }
+.rc2 { padding: 0.7rem 0.8rem 0.65rem; }
+.week { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
+.day { text-align: center; font-size: 0.6875rem; color: var(--a-muted); min-width: 0; }
+.day .d { display: block; white-space: nowrap; }
+.day .bar { height: 26px; border-radius: 5px; background: var(--a-track); margin: 3px 0; position: relative; overflow: hidden; }
+.day .bar i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--a-green); }
+.day .n { display: block; font-size: 0.8125rem; }
+.day .n small { font-size: 0.6875rem; color: var(--a-muted); font-weight: 400; }
+.day .w { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day.miss .bar { background: transparent; border: 2px dashed #f59e0b; }
+.day.miss .n { color: var(--a-amber-800); font-weight: 700; font-size: 0.6875rem; line-height: 1.65; white-space: nowrap; }
+.day.off .n { font-size: 0.6875rem; line-height: 1.3; }
+.day.miss.red .bar { border-color: #dc2626; }
+.day.miss.red .n { color: var(--a-red-700); }
+.day.today .d { color: var(--a-text); font-weight: 700; }
+.day.today .bar { box-shadow: 0 0 0 2px var(--a-link); }
+.day.off .bar { background: transparent; border: 1px solid var(--a-border); }
+.rfoot { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5rem; margin-top: 0.6rem; }
+.rfoot .chips { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; font-size: 0.75rem; color: var(--a-muted); min-width: 0; }
+/* other ideas */
+.kick { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--a-muted); }
+</style>
+</head>
+<body data-app="dark" data-w="430">
+<div class="wrap">
+
+<header class="prose">
+  <p class="eyebrow">Dashboard · two cards · before and after · nothing is built</p>
+  <h1>Show it, don't say it</h1>
+  <p class="soft">Second drawing. Fewer words on every After, the values set apart from the fixed words, and a small press at the bottom right. All names, dates and counts are made up.</p>
+  <div class="app legend" style="background:var(--a-surface)">
+    <span><span class="v">Bold</span> <span class="fx">is a value the app works out</span></span>
+    <span><span class="vc">Tinted</span> <span class="fx">is a value you can change</span></span>
+    <span class="fx">Grey is fixed words</span>
+  </div>
+</header>
+
+<div class="bar" role="group" aria-label="How the frames are drawn">
+  <span>The app in</span>
+  <span class="seg" data-set="app"><button type="button" data-v="dark" aria-pressed="true">Dark</button><button type="button" data-v="light" aria-pressed="false">Light</button></span>
+  <span>Phone width</span>
+  <span class="seg" data-set="w"><button type="button" data-v="430" aria-pressed="true">430</button><button type="button" data-v="320" aria-pressed="false">320</button></span>
+</div>
+
+<!-- ─────────────────────────────── 1 · the row ─────────────────────────────── -->
+<section>
+  <p class="eyebrow">First card</p>
+  <h2>1 · Today's sends</h2>
+  <div class="pair">
+    <div class="col">
+      <h3>Before</h3>
+      <div class="phone app"><div class="page"><div class="nycard">
+        <div class="nyhead"><span class="t">Needs you</span><span class="pill">9</span></div>
+        <div class="nyrows">
+          <div class="ny dim"><div class="w"><div class="ti">12 people are waiting on us</div><div class="de">Answer them, or say what we owe them.</div></div><div class="fig">12</div><span class="go">Follow up</span></div>
+          <div class="ny subject"><div class="w"><div class="ti">Today’s sends</div><div class="de">3 texts ready to send, 1 goes later, 1 held</div></div><div class="fig">5</div><span class="go">Open</span></div>
+          <div class="ny dim"><div class="w"><div class="ti">Customers</div><div class="de">3 need a reply, 2 to sort.</div></div><div class="fig">5</div><span class="go">Messages</span></div>
+        </div>
+      </div></div></div>
+      <div class="gains bad"><span>a place for a title</span><span>counts, no names</span><span>“held” with no cause</span><span>5 is ready + timed + held</span><span>Open</span></div>
+    </div>
+    <div class="col">
+      <h3>After <span class="tag">A · recommended</span></h3>
+      <div class="phone app"><div class="page"><div class="nycard">
+        <div class="nyhead"><span class="t">Needs you</span><span class="pill">9</span></div>
+        <div class="nyrows">
+          <div class="nz dim"><div class="ti"><span class="v">12</span> people are waiting on us</div><div class="foot"><div class="de">Answer them, or say what we owe them.</div><span class="sp">Follow up</span></div></div>
+          <div class="nz subject">
+            <div class="ti"><span class="v">3</span> texts to send</div>
+            <div class="who"><b>Dana Whitfield</b> · <b>Marcus Bell</b> · <b>Priya Raman</b></div>
+            <div class="foot"><div class="chips"><span class="c"><span class="clock"></span><b>1</b> · <b>Tue 9:00 AM</b></span><span class="c h"><span class="dot"></span><b>1</b> held · <b>no number</b></span></div><span class="sp">Read them</span></div>
+          </div>
+          <div class="nz dim"><div class="ti">Customers</div><div class="foot"><div class="de">3 need a reply, 2 to sort.</div><span class="sp">Messages</span></div></div>
+        </div>
+      </div></div></div>
+      <div class="gains"><span>the count is the texts you can send</span><span>names, not a number</span><span>the clock is a timed text, with its time</span><span>the held one shows its cause</span><span>no sentences</span></div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:8px">On the desk</h3>
+  <div class="col" style="justify-items:stretch">
+    <div class="desk app"><div class="page"><div class="nycard"><div class="statelabel">Before</div><div class="nyrows">
+      <div class="ny subject"><div class="w"><div class="ti">Today’s sends</div><div class="de">3 texts ready to send, 1 goes later, 1 held</div></div><div class="fig">5</div><span class="go">Open</span></div>
+    </div><div class="statelabel" style="margin-top:0.9rem">After</div><div class="nyrows">
+      <div class="nz subject" style="display:flex;align-items:center;gap:0.875rem;flex-wrap:wrap">
+        <div style="flex:1 1 320px;min-width:0"><div class="ti"><span class="v">3</span> texts to send</div><div class="who"><b>Dana Whitfield</b> · <b>Marcus Bell</b> · <b>Priya Raman</b></div></div>
+        <div class="chips" style="display:flex;gap:0.3rem;flex-wrap:wrap"><span class="c"><span class="clock"></span><b>1</b> · <b>Tue 9:00 AM</b></span><span class="c h"><span class="dot"></span><b>1</b> held · <b>no number</b></span></div>
+        <span class="sp">Read them</span>
+      </div>
+    </div></div></div></div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────── 2 · other days ─────────────────────────────── -->
+<section>
+  <h2>2 · The same row on other days</h2>
+  <div class="col">
+    <div class="phone app"><div class="page"><div class="nycard"><div class="nyrows">
+      <div class="statelabel">One text</div>
+      <div class="nz"><div class="ti"><span class="v">1</span> text to send</div><div class="peek">Dana, any word on the estimate? Happy to walk through it.</div><div class="foot"><div class="who"><b>Dana Whitfield</b> · Approved</div><span class="sp">Read it</span></div></div>
+      <div class="statelabel">Many, and the oldest is old</div>
+      <div class="nz"><div class="ti"><span class="v">9</span> texts to send</div><div class="who"><b>Dana Whitfield</b> · <b>Marcus Bell</b> · <b>Priya Raman</b> · <b>+6</b></div><div class="foot"><div class="chips"><span class="c h"><span class="dot"></span>oldest <b>4 days</b></span></div><span class="sp">Read them</span></div></div>
+      <div class="statelabel">None ready, two held</div>
+      <div class="nz"><div class="ti"><span class="v">2</span> texts cannot go</div><div class="foot"><div class="chips"><span class="c h"><span class="dot"></span><b>Luis Ortega</b> · <b>no number</b></span><span class="c h"><span class="dot"></span><b>Amy Tran</b> · <b>sent STOP</b></span></div><span class="sp">Fix them</span></div></div>
+      <div class="statelabel">Only a timed one</div>
+      <div class="nz gray"><div class="ti"><span class="v">1</span> text goes <span class="v">Tue 9:00 AM</span></div><div class="foot"><div class="who"><b>Tom Okafor</b> · Booked</div><span class="sp quiet">See it</span></div></div>
+    </div></div></div></div>
+    <div class="gains"><span>one text: the row shows the text</span><span>held only: each name with its cause</span><span>timed only: grey, it needs nobody</span></div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────── 3 · the window ─────────────────────────────── -->
+<section>
+  <h2>3 · The window behind the press</h2>
+  <div class="pair">
+    <div class="col">
+      <h3>Before</h3>
+      <div class="phone app"><div class="sheet">
+        <div class="sheet-head"><span>Today’s sends</span><span class="x">×</span></div>
+        <div class="sheet-body">
+          <p class="hint">Prepared this morning from the flows, or by you for a morning. Press one, or all that are ready. A held one says why.</p>
+          <div class="srow"><div><div class="who">Dana Whitfield <span>· Approved</span></div><p class="words">Dana, any word on the estimate? Happy to walk through it.</p><div class="links"><span>Edit</span><span>Hold until…</span><span>Stop reminding on this job</span><span class="q">Not this one</span></div></div><div><span class="b34 send">Send</span></div></div>
+          <div class="srow"><div><div class="who">Marcus Bell <span>· Paid</span></div><p class="words">Marcus, your bill of $380.00 is still open. You can pay it here: [link]</p><div class="links"><span>Edit</span><span>Hold until…</span><span>Stop reminding on this job</span><span class="q">Not this one</span></div></div><div><span class="b34 send">Send</span></div></div>
+          <div class="srow"><div><div class="who">Priya Raman <span>· Review asked</span></div><p class="words">Priya, thanks for having us out. Would you rate the visit? It takes one tap: [link]</p><div class="links"><span>Edit</span><span>Hold until…</span><span>Stop reminding on this job</span><span class="q">Not this one</span></div></div><div><span class="b34 send">Send</span></div></div>
+          <div class="srow"><div><div class="who">Tom Okafor <span>· Booked</span></div><p class="words">Tom, you are booked for Tuesday between 8 and 10. Reply here if that changes.</p><p class="goes">Goes Tue 9:00 AM</p><div class="links"><span>Edit</span><span>Change the time</span><span>Hold until…</span><span>Stop reminding on this job</span><span class="q">Not this one</span></div></div><div></div></div>
+          <div class="srow"><div><div class="who">Luis Ortega <span>· Approved</span></div><p class="words">Luis, any word on the estimate? Happy to walk through it.</p><p class="held">Held: No phone number on file. Add one on the customer, or call instead.</p><div class="links"><span>Hold until…</span><span>Stop reminding on this job</span><span class="q">Not this one</span></div></div><div></div></div>
+        </div>
+        <div class="sheet-foot"><span class="b34">Close</span><span class="b34 send">Send all 3 that are ready</span></div>
+      </div></div>
+      <div class="gains bad"><span>the help line is the only guide</span><span>ready, timed and held in one list</span><span>the time is words, changed by a link</span><span>4 or 5 blue links a row</span><span>34 px presses</span></div>
+    </div>
+    <div class="col">
+      <h3>After</h3>
+      <div class="phone app"><div class="sheet">
+        <div class="sheet-head"><span>Texts to send</span><span class="x">×</span></div>
+        <div class="sheet-body">
+          <div class="steps"><span class="s done"><span class="mk"></span>The app wrote it</span><span class="line done"></span><span class="s now"><span class="mk"></span>You press Send</span><span class="line"></span><span class="s"><span class="mk"></span>Their phone</span></div>
+          <div class="jump"><span class="c on">Ready <b>3</b></span><span class="c"><span class="clock"></span>Timed <b>1</b></span><span class="c h"><span class="dot"></span>Held <b>1</b></span></div>
+
+          <div class="grp">Ready <b>3</b></div>
+          <div class="tcard">
+            <div class="top"><span class="name v">Dana Whitfield</span><span class="num">(830) 555-0142</span></div>
+            <div class="meta"><span class="c"><b>Approved</b></span>written <span class="v">Fri, Nov 20</span></div>
+            <div class="bubble">Dana, any word on the estimate? Happy to walk through it.</div>
+            <div class="presses"><span class="b44 send">Send</span><span class="b44">Edit</span><span class="b44">Don’t send</span></div>
+          </div>
+          <div class="tcard">
+            <div class="top"><span class="name v">Marcus Bell</span><span class="num">(830) 555-0117</span></div>
+            <div class="meta"><span class="c"><b>Paid</b></span>written <span class="v">today</span></div>
+            <div class="bubble">Marcus, your bill of $380.00 is still open. You can pay it here: [link]</div>
+            <div class="presses"><span class="b44 send">Send</span><span class="b44">Edit</span><span class="b44 open">Don’t send</span></div>
+            <div class="presses" style="margin-top:0.45rem"><span class="b44 sm">Not this one</span><span class="b44 sm">Hold until&nbsp;<span class="vc">Mon, Nov 30</span></span><span class="b44 sm">Stop on this job</span></div>
+          </div>
+          <div class="tcard">
+            <div class="top"><span class="name v">Priya Raman</span><span class="num">(830) 555-0163</span></div>
+            <div class="meta"><span class="c"><b>Review asked</b></span>written <span class="v">today</span></div>
+            <div class="bubble">Priya, thanks for having us out. Would you rate the visit? It takes one tap: [link]</div>
+            <div class="presses"><span class="b44 send">Send</span><span class="b44">Edit</span><span class="b44">Don’t send</span></div>
+          </div>
+
+          <div class="grp">Timed <b>1</b></div>
+          <div class="tcard">
+            <div class="top"><span class="name v">Tom Okafor</span><span class="num">(830) 555-0188</span></div>
+            <div class="meta"><span class="c"><b>Booked</b></span>goes <span class="vc">Tue 9:00 AM</span></div>
+            <div class="bubble">Tom, you are booked for Tuesday between 8 and 10. Reply here if that changes.</div>
+            <div class="presses"><span class="b44">Edit</span><span class="b44">Take it back</span></div>
+          </div>
+
+          <div class="grp">Held <b>1</b></div>
+          <div class="tcard heldc">
+            <div class="top"><span class="name v">Luis Ortega</span><span class="c h"><span class="dot"></span><b>No phone number</b></span></div>
+            <div class="meta"><span class="c"><b>Approved</b></span>written <span class="v">Sat, Nov 21</span></div>
+            <div class="bubble">Luis, any word on the estimate? Happy to walk through it.</div>
+            <div class="presses"><span class="b44">Open their thread</span><span class="b44">Not this one</span></div>
+          </div>
+        </div>
+        <div class="sheet-foot"><span class="b44">Close</span><span class="b44 send">Send all 3 that are ready</span></div>
+      </div></div>
+      <div class="gains"><span>three steps drawn, stuck on yours</span><span>counts that jump to their group</span><span>each text looks like a text</span><span>the time is the thing you press</span><span>the cause is a chip</span><span>Don’t send, drawn open on the second</span><span>44 px presses</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────── 4 · two other ideas ─────────────────────────────── -->
+<section>
+  <h2>4 · Two other ideas for the row</h2>
+  <div class="pair">
+    <div class="col">
+      <h3>B · Send from the row <span class="tag plain">other idea</span></h3>
+      <div class="phone app"><div class="page"><div class="nycard"><div class="nyrows">
+        <div class="nz">
+          <div class="kick">Text to send · <span class="v">1</span> of <span class="v">3</span></div>
+          <div class="who" style="margin-top:3px"><b>Dana Whitfield</b> · Approved</div>
+          <div class="bubble" style="margin:0.4rem 0 0">Dana, any word on the estimate? Happy to walk through it.</div>
+          <div class="foot"><div class="chips"><span class="sp quiet">Next</span></div><span class="sp" style="background:#16a34a">Send to Dana</span></div>
+        </div>
+      </div></div></div></div>
+      <div class="gains"><span>for: no window</span><span>against: a customer's text is one press from a scroll</span><span>against: two presses on one row</span></div>
+    </div>
+    <div class="col">
+      <h3>C · One row for Messages <span class="tag plain">other idea</span></h3>
+      <div class="phone app"><div class="page"><div class="nycard"><div class="nyrows">
+        <div class="nz"><div class="ti"><span class="v">8</span> things wait in Messages</div><div class="foot"><div class="chips"><span class="c"><b>3</b> need a reply</span><span class="c"><b>2</b> new numbers</span><span class="c"><b>3</b> to send</span></div><span class="sp">Messages</span></div></div>
+      </div></div></div></div>
+      <div class="gains"><span>for: one row, and texts live in Messages</span><span>against: the biggest build</span><span>against: no names, the texts become a third count</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────── 5 · the name ─────────────────────────────── -->
+<section>
+  <h2>5 · The name</h2>
+  <p class="prose"><b>Recommended: <i>Texts to send</i>.</b> <span class="soft">The row then reads the name with its count in front. The texts are not today's, and the switch that fills the list calls the other way <b>Sends</b>.</span></p>
+  <div class="wide"><table class="plain">
+    <thead><tr><th>Where</th><th>Today</th><th>After</th></tr></thead>
+    <tbody>
+      <tr><td>The row</td><td>Today's sends</td><td><b>3</b> texts to send</td></tr>
+      <tr><td>The window</td><td>Today's sends</td><td>Texts to send</td></tr>
+      <tr><td>Under <b>Offers</b> in Flows</td><td>…prepares the text for Today's sends on the Dashboard.</td><td>…writes the text. It waits under Texts to send.</td></tr>
+      <tr><td>A line in a customer's thread</td><td>The app prepared the Approved reminder for Today's sends.</td><td>The app wrote the Approved reminder. It waits under Texts to send.</td></tr>
+      <tr><td>Quickfill</td><td>5 texts the app prepared wait on Today's sends. <b>Open ›</b></td><td><b>3</b> texts to send. <b>Read them ›</b></td></tr>
+    </tbody>
+  </table></div>
+  <p class="prose soft">The cost of the rename is on the card beside this page: 12 source files, 8 guides, 11 docs and one deploy.</p>
+</section>
+
+<!-- ─────────────────────────────── 6 · the row under it ─────────────────────────────── -->
+<section>
+  <h2>6 · The Customers row, if you want it too</h2>
+  <div class="pair">
+    <div class="col">
+      <h3>Before</h3>
+      <div class="phone app"><div class="page"><div class="nycard"><div class="nyrows">
+        <div class="ny"><div class="w"><div class="ti">Customers</div><div class="de">3 need a reply, 2 to sort.</div></div><div class="fig">5</div><span class="go">Messages</span></div>
+      </div></div></div></div>
+    </div>
+    <div class="col">
+      <h3>After <span class="tag plain">a step of its own</span></h3>
+      <div class="phone app"><div class="page"><div class="nycard"><div class="nyrows">
+        <div class="nz"><div class="ti"><span class="v">3</span> customers wait on a reply</div><div class="foot"><div class="chips"><span class="c"><b>2</b> new numbers to name</span></div><span class="sp">Answer them</span></div></div>
+      </div></div></div></div>
+    </div>
+  </div>
+  <div class="ask">
+    <p><b>Your picks for Today's sends</b></p>
+    <p>1. The row: A, B or C.</p>
+    <p>2. The window as drawn: yes or no.</p>
+    <p>3. The name: keep <i>Today's sends</i>, or <i>Texts to send</i>.</p>
+    <p>4. A timed text that needs nobody: a grey row, or no row.</p>
+    <p>5. The Customers row: fix it too, or leave it.</p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────── 7 · the round ─────────────────────────────── -->
+<section>
+  <p class="eyebrow">Second card</p>
+  <h2>7 · The office's round</h2>
+  <div class="pair">
+    <div class="col">
+      <h3>Before</h3>
+      <div class="phone app"><div class="page">
+        <div class="rc redline">
+          <div class="rc-head"><span class="t">The office's round</span><span class="pill">No round Tue, Nov 10</span><span class="last">Last round Mon, Nov 9 10:14 AM · 19 stations</span></div>
+          <div class="rc-body">The round did not run Tue, Nov 10. Today's starts on Today's lines, marked last Mon, Nov 9. <span class="lnk">Start today's round ›</span></div>
+        </div>
+      </div></div>
+      <div class="gains bad"><span>what is a round?</span><span>19 stations of how many?</span><span>the miss is said three times</span><span>“Today's starts on Today's lines”</span><span>red after one day or ten</span><span>the press is a link in a sentence</span></div>
+    </div>
+    <div class="col">
+      <h3>After <span class="tag">A · picked, built as v2.8331</span></h3>
+      <div class="phone app"><div class="page">
+        <div class="rc">
+          <div class="rc-head"><span class="t">The office's round</span><span class="what">each workday on Quickfill</span></div>
+          <div class="rc2">
+            <div class="week">
+              <div class="day"><span class="d">Wed 4</span><div class="bar"><i style="height:100%"></i></div><span class="n v">21</span><span class="w">Dana</span></div>
+              <div class="day"><span class="d">Thu 5</span><div class="bar"><i style="height:95%"></i></div><span class="n v">20</span><span class="w">Dana</span></div>
+              <div class="day"><span class="d">Fri 6</span><div class="bar"><i style="height:100%"></i></div><span class="n v">21</span><span class="w">Rosa</span></div>
+              <div class="day"><span class="d">Mon 9</span><div class="bar"><i style="height:90%"></i></div><span class="n v">19</span><span class="w">Dana</span></div>
+              <div class="day miss"><span class="d">Tue 10</span><div class="bar"></div><span class="n">missed</span><span class="w">&nbsp;</span></div>
+              <div class="day today"><span class="d">Today</span><div class="bar"></div><span class="n v">0</span><span class="w">&nbsp;</span></div>
+            </div>
+            <div class="rfoot"><div class="chips">Mon left <span class="c"><b>6</b> open</span><span class="c"><b>1</b> question</span></div><span class="sp">Start the round</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="gains"><span>a round is a bar a day</span><span>the miss is a hole, said once</span><span>who ran each one</span><span>the count under each bar</span><span>today is the empty one</span><span>amber for one day, not red</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────── 8 · the round on other days ─────────────────────────────── -->
+<section>
+  <h2>8 · The round on other days</h2>
+  <div class="col">
+    <div class="phone app"><div class="page">
+      <div class="statelabel">A morning, yesterday ran</div>
+      <div class="rc"><div class="rc-head"><span class="t">The office's round</span><span class="what">each workday on Quickfill</span></div><div class="rc2">
+        <div class="week">
+          <div class="day"><span class="d">Thu 5</span><div class="bar"><i style="height:95%"></i></div><span class="n v">20</span><span class="w">Dana</span></div>
+          <div class="day"><span class="d">Fri 6</span><div class="bar"><i style="height:100%"></i></div><span class="n v">21</span><span class="w">Rosa</span></div>
+          <div class="day"><span class="d">Mon 9</span><div class="bar"><i style="height:90%"></i></div><span class="n v">19</span><span class="w">Dana</span></div>
+          <div class="day"><span class="d">Tue 10</span><div class="bar"><i style="height:100%"></i></div><span class="n v">21</span><span class="w">Dana</span></div>
+          <div class="day"><span class="d">Wed 11</span><div class="bar"><i style="height:100%"></i></div><span class="n v">21</span><span class="w">Dana</span></div>
+          <div class="day today"><span class="d">Today</span><div class="bar"></div><span class="n v">0</span><span class="w">&nbsp;</span></div>
+        </div>
+        <div class="rfoot"><div class="chips">Wed left <span class="c"><b>4</b> open</span></div><span class="sp blue">Start the round</span></div>
+      </div></div>
+
+      <div class="statelabel">Today has marks</div>
+      <div class="rc"><div class="rc-head"><span class="t">The office's round</span><span class="what">each workday on Quickfill</span></div><div class="rc2">
+        <div class="week">
+          <div class="day"><span class="d">Thu 5</span><div class="bar"><i style="height:95%"></i></div><span class="n v">20</span><span class="w">Dana</span></div>
+          <div class="day"><span class="d">Fri 6</span><div class="bar"><i style="height:100%"></i></div><span class="n v">21</span><span class="w">Rosa</span></div>
+          <div class="day"><span class="d">Mon 9</span><div class="bar"><i style="height:90%"></i></div><span class="n v">19</span><span class="w">Dana</span></div>
+          <div class="day"><span class="d">Tue 10</span><div class="bar"><i style="height:100%"></i></div><span class="n v">21</span><span class="w">Dana</span></div>
+          <div class="day"><span class="d">Wed 11</span><div class="bar"><i style="height:100%"></i></div><span class="n v">21</span><span class="w">Dana</span></div>
+          <div class="day today"><span class="d">Today</span><div class="bar"><i style="height:100%"></i></div><span class="n v">21</span><span class="w">Dana</span></div>
+        </div>
+        <div class="rfoot"><div class="chips">Left open <span class="c h"><b>Warnings</b>?</span><span class="c"><b>Billed Awaiting Payment</b> <b>12</b></span><span class="c"><b>Job follow-ups</b> <b>7</b></span><span class="c"><b>+4</b></span></div><span class="sp quiet">Open Quickfill</span></div>
+      </div></div>
+
+      <div class="statelabel">Four workdays missed</div>
+      <div class="rc redline"><div class="rc-head"><span class="t">The office's round</span><span class="what">each workday on Quickfill</span></div><div class="rc2">
+        <div class="week">
+          <div class="day"><span class="d">Thu 5</span><div class="bar"><i style="height:95%"></i></div><span class="n v">20</span><span class="w">Dana</span></div>
+          <div class="day miss red"><span class="d">Fri 6</span><div class="bar"></div><span class="n">missed</span><span class="w">&nbsp;</span></div>
+          <div class="day miss red"><span class="d">Mon 9</span><div class="bar"></div><span class="n">missed</span><span class="w">&nbsp;</span></div>
+          <div class="day miss red"><span class="d">Tue 10</span><div class="bar"></div><span class="n">missed</span><span class="w">&nbsp;</span></div>
+          <div class="day miss red"><span class="d">Wed 11</span><div class="bar"></div><span class="n">missed</span><span class="w">&nbsp;</span></div>
+          <div class="day today"><span class="d">Today</span><div class="bar"></div><span class="n v">0</span><span class="w">&nbsp;</span></div>
+        </div>
+        <div class="rfoot"><div class="chips">Thu left <span class="c"><b>6</b> open</span></div><span class="sp red">Start the round</span></div>
+      </div></div>
+
+      <div class="statelabel">A Saturday</div>
+      <div class="rc"><div class="rc-head"><span class="t">The office's round</span><span class="what">each workday on Quickfill</span></div><div class="rc2">
+        <div class="week">
+          <div class="day"><span class="d">Mon 9</span><div class="bar"><i style="height:90%"></i></div><span class="n v">19</span><span class="w">Dana</span></div>
+          <div class="day"><span class="d">Tue 10</span><div class="bar"><i style="height:100%"></i></div><span class="n v">21</span><span class="w">Dana</span></div>
+          <div class="day"><span class="d">Wed 11</span><div class="bar"><i style="height:100%"></i></div><span class="n v">21</span><span class="w">Dana</span></div>
+          <div class="day"><span class="d">Thu 12</span><div class="bar"><i style="height:95%"></i></div><span class="n v">20</span><span class="w">Rosa</span></div>
+          <div class="day"><span class="d">Fri 13</span><div class="bar"><i style="height:100%"></i></div><span class="n v">21</span><span class="w">Dana</span></div>
+          <div class="day today off"><span class="d">Sat</span><div class="bar"></div><span class="n">none due</span><span class="w">&nbsp;</span></div>
+        </div>
+        <div class="rfoot"><div class="chips">Fri left <span class="c"><b>5</b> open</span></div><span class="sp quiet">Open Quickfill</span></div>
+      </div></div>
+    </div></div>
+    <div class="gains"><span>red from three holes in a row</span><span>today with marks: what is left open, as chips that open</span><span>a weekend owes none</span></div>
+    <p class="soft" style="font-size:0.86rem;max-width:56ch">As built. A round is the stations due that day, so no day has a fixed count. A bar is that day against the fullest day drawn. The card does not say whether today's round is finished.</p>
+  </div>
+</section>
+
+<!-- ─────────────────────────────── 9 · the round, one other idea ─────────────────────────────── -->
+<section>
+  <h2>9 · One other idea for the round</h2>
+  <div class="pair">
+    <div class="col">
+      <h3>B · A Needs you row, and no card <span class="tag plain">other idea</span></h3>
+      <div class="phone app"><div class="page"><div class="nycard">
+        <div class="nyhead"><span class="t">Needs you</span><span class="pill">10</span></div>
+        <div class="nyrows">
+          <div class="nz subject"><div class="ti">No office round <span class="v">Tue, Nov 10</span></div><div class="foot"><div class="chips"><span class="c">last <b>Mon</b> · <b>Dana</b> · <b>19</b> stations</span></div><span class="sp">Start the round</span></div></div>
+          <div class="nz dim"><div class="ti"><span class="v">12</span> people are waiting on us</div><div class="foot"><div class="de">Answer them, or say what we owe them.</div><span class="sp">Follow up</span></div></div>
+        </div>
+      </div></div></div>
+      <div class="gains"><span>for: one list, nothing on a day it ran</span><span>against: no week to see</span><span>against: the proof it ran is on Quickfill only</span></div>
+    </div>
+    <div class="col">
+      <div class="ask">
+        <p><b>Your picks for the round</b></p>
+        <p>1. The card: A or B.</p>
+        <p>2. Red: after one missed workday as today, or after three.</p>
+      </div>
+      <p class="soft" style="font-size:0.86rem;max-width:46ch">The card cannot say what a missed day cost. It reads who marked which station, and a station counts its work only when someone opens it.</p>
+    </div>
+  </div>
+</section>
+
+</div>
+<script>
+document.querySelectorAll('.seg').forEach(function (seg) {
+  seg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    document.body.setAttribute('data-' + seg.dataset.set, b.dataset.v);
+    seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+  });
+});
+</script>
+</body>
+</html>

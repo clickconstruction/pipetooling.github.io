@@ -2,7 +2,7 @@
 title: jump between dashboard sections
 category: Getting Started
 roles: all
-keywords: dashboard navigation, section bar, dock, jump to section, scroll, bottom bar
+keywords: dashboard navigation, section bar, dock, jump to section, scroll, bottom bar, back to top, top of the page, scroll up
 order: 11
 ---
 On desktop, a floating bar sits at the bottom of the Dashboard and the Quickfill page. It holds one chip per major section.
@@ -20,6 +20,12 @@ The bar stays out of the way on phones and tablets. {{icon:help|gear}} It's desk
 
 Want it gone for a while? Click the **>** at the bar's right edge. The bar collapses to a single small button tucked into the bottom-right corner. Click **<** there to bring the bar back. The choice sticks on your device.
 
+## Back to top
+
+A long Dashboard ends with a quiet {{button:outline|↑ Back to top}} under the last card. Press it and the page goes back to its top. The press is there on a phone and at a computer.
+
+The press shows only when the page is two screens long or more. A short Dashboard does not need it.
+
 ## What the chips point at
 
 | Chip | Section |
@@ -29,7 +35,7 @@ Want it gone for a while? Click the **>** at the bar's right edge. The bar colla
 | Teams Inbox | The **Teams Inbox** card. Notes to the dev, Dispatch and Estimator inboxes grouped together |
 | My Inbox | My Inbox card. Due Today, Overdue and Recently Completed Tasks |
 | My Schedule | My Schedule card. Today and tomorrow blocks |
-| Bids | My Bids. For a primary it starts folded. Press the ▶ title to open it |
+| Bids | My Bids. For a primary it starts folded. Press the ▶ title to open it. See [keep up with your bids](/help/keep-up-with-your-bids-on-the-dashboard) |
 | Reports | Recent Reports |
 | Assigned Jobs | Assigned Jobs card. It starts collapsed. Tap the ▶ title to expand. Your choice is remembered |
 | Billing | Billing Pipeline card. It sits below Assigned Jobs |

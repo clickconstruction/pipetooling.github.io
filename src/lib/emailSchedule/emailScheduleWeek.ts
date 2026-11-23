@@ -272,7 +272,7 @@ export function buildMyEmailWeekGrid(
       if (o.ymd !== ymd) continue
       entries.push({
         stream: o.stream,
-        label: o.stream === 'billed_report' ? 'Billed report' : o.stream === 'gc_statement' ? 'GC statement' : o.stream === 'weekly_movement' ? 'Weekly movement' : o.stream === 'weekly_money' ? 'Weekly money' : o.stream === 'payment_forecast' ? 'Payment forecast' : o.stream === 'money_waiting' ? 'Money waiting' : o.stream === 'crew_day' ? 'Crew Day' : o.stream === 'statement_round' ? 'Statement round' : o.stream === 'gc_money_monday' ? 'GC money' : o.stream === 'people_week' ? 'Your people’s week' : 'My dispatch day',
+        label: o.stream === 'billed_report' ? 'Billed report' : o.stream === 'gc_statement' ? 'GC statement' : o.stream === 'weekly_movement' ? 'Weekly movement' : o.stream === 'weekly_money' ? 'Weekly money' : o.stream === 'payment_forecast' ? 'Payment forecast' : o.stream === 'money_waiting' ? 'Money waiting' : o.stream === 'crew_day' ? 'Who worked' : o.stream === 'statement_round' ? 'Statement round' : o.stream === 'gc_money_monday' ? 'GC money' : o.stream === 'people_week' ? 'The team’s week' : 'My dispatch day',
         timeLabel: formatMinutes(o.minutes),
         minutes: o.minutes,
         detail: o.detail,

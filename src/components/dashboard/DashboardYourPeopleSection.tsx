@@ -60,7 +60,7 @@ export function DashboardYourPeopleSection({ authUserId, enabled, onVisibleChang
   return (
     <DashboardGroupCard
       id="dash-your-people"
-      title="Your people"
+      title="Team’s open tasks"
       headerRight={
         <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <button

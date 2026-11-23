@@ -23,6 +23,8 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 4. **Quickfill** is the office's daily round. The page holds review sections, each with a button that says you've looked. See [run the office day with Quickfill](/help/quickfill).
 5. **People** holds accounts, hours, contracts, and [your subs](/help/review-your-subs).
 
+A row at the top of your Dashboard reads **Task Mode**, **Dashboard** and **Job Mode**. The blue part is the page you are on. Tap another part to switch. See [the row at the top](/help/job-mode-clocking#the-row-at-the-top).
+
 ## Money
 
 [Bill a customer and get paid](/help/ready-to-bill-pipeline) is the main flow. Split billing is covered in [bill part of a job to someone else](/help/bill-part-of-a-job-to-someone-else). What you owe subs lives in [sub labor outstanding](/help/sub-labor-outstanding). Per-step work orders are in [pay a sub per step](/help/pay-a-sub-per-step).
@@ -60,7 +62,7 @@ On a phone the Dashboard is in office order:
 
 - The clock row is one line, ***Clocked in · 03:12:07***, with {{button:outline|Focus}} and {{button:outline|Clock out}}.
 - My Schedule hides while you have no blocks.
-- Everything under the money tiles is one line each, with {{button:outline|Open ▾}}. The lines are Who's in, Crew Day, My Inbox, Team inboxes, Recent reports, Billing pipeline and My Time.
-- Every one of those lines says how many, like *Crew Day · 12 people · 14 jobs · 8 flags*, *Recent reports · 3 new · 12 listed* or *My Time · 6.2 h this week*.
+- Everything under the money tiles is one line each, with {{button:outline|Open ▾}}. The lines are Who's in, Who worked, My Inbox, Team inboxes, Recent reports, Billing pipeline and My Time.
+- Every one of those lines says how many, like *Who worked · 12 people · 14 jobs · 8 flags*, *Recent reports · 3 new · 12 listed* or *My Time · 6.2 h this week*.
 - **Job report** and **Tally** are two small links under the clock row, instead of two squares.
 - With Dispatch Mode on, **Needs you** is a one-line door to the Inbox tab. There the list walks one card at a time.

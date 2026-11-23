@@ -1,0 +1,852 @@
+<title>My Bids refresh</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap">
+<style>
+/* Layout: a review sheet for two cards. Each card is a pair of phone frames read left to right (before, after), then pairs of phone frames read left to right (before, after), the swipe as a strip of frames, one frame to try, then the desk. */
+:root {
+  --ground: #eceff3;
+  --sheet: #ffffff;
+  --ink: #141b27;
+  --ink-soft: #586375;
+  --rule: #cdd3dc;
+  --pick: #0f766e;
+  --pick-tint: #dcf2ee;
+  --warn: #b45309;
+  --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --app-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0c1117; --sheet: #151c26; --ink: #edf1f6; --ink-soft: #9ba7b9; --rule: #2b3543;
+    --pick: #5eead4; --pick-tint: #12322e; --warn: #fbbf24;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0c1117; --sheet: #151c26; --ink: #edf1f6; --ink-soft: #9ba7b9; --rule: #2b3543;
+  --pick: #5eead4; --pick-tint: #12322e; --warn: #fbbf24;
+  color-scheme: dark;
+}
+
+/* The app's own look inside the frames: the values of src/index.css, light and dark. A frame wears one of the two whatever the page's theme is. */
+.app.lt {
+  --a-bg: #f0f2f5; --a-surface: #ffffff; --a-subtle: #f9fafb; --a-muted-bg: #f3f4f6;
+  --a-border: #cfd4db; --a-border-strong: #aab2bd;
+  --a-strong: #111827; --a-700: #374151; --a-600: #4b5563; --a-muted: #6b7280; --a-link: #2563eb;
+  --a-blue-tint: #eff6ff; --a-blue-border: #bfdbfe; --a-blue-800: #1e40af; --a-blue-200: #dbeafe;
+  --a-violet-bg: #ede9fe; --a-violet-border: #c4b5fd; --a-violet-800: #5b21b6;
+  --a-amber-tint: #fffbeb; --a-amber-border: #fcd34d; --a-amber-800: #92400e; --a-amber-900: #78350f;
+  --a-red-tint: #fef2f2; --a-red-700: #b91c1c; --a-red-border: #fca5a5;
+}
+.app.dk {
+  --a-bg: #111827; --a-surface: #1f2937; --a-subtle: #18212f; --a-muted-bg: #374151;
+  --a-border: #374151; --a-border-strong: #4b5563;
+  --a-strong: #f9fafb; --a-700: #d1d5db; --a-600: #d1d5db; --a-muted: #9ca3af; --a-link: #60a5fa;
+  --a-blue-tint: #1e3358; --a-blue-border: #1e40af; --a-blue-800: #93c5fd; --a-blue-200: #24407a;
+  --a-violet-bg: #332457; --a-violet-border: #5b21b6; --a-violet-800: #c4b5fd;
+  --a-amber-tint: #3a2f11; --a-amber-border: #92400e; --a-amber-800: #fcd34d; --a-amber-900: #fcd34d;
+  --a-red-tint: #3b1a1a; --a-red-700: #f87171; --a-red-border: #991b1b;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 28px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 48px; }
+h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 1.9rem; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 0.95rem; font-weight: 700; margin: 0; }
+p { margin: 0; }
+.prose { max-width: 64ch; display: grid; gap: 10px; }
+.soft { color: var(--ink-soft); }
+section { display: grid; gap: 18px; min-width: 0; }
+.tag { font-family: var(--body); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; background: var(--pick-tint); color: var(--pick); vertical-align: middle; white-space: nowrap; }
+
+dl { margin: 0; }
+.brief { display: grid; max-width: 74ch; border-top: 1px solid var(--rule); }
+.brief div { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.brief dt, .facts dt, .eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.brief dt { padding-top: 3px; }
+.brief dd, .facts dd { margin: 0; }
+
+.looks { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.85rem; color: var(--ink-soft); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--sheet); }
+.seg button { font: inherit; font-weight: 600; color: var(--ink); background: none; border: 0; min-height: 44px; padding: 0 14px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); }
+button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--pick); outline-offset: 2px; }
+
+.frames { display: flex; flex-wrap: wrap; gap: 28px 24px; align-items: flex-start; }
+.col { display: grid; gap: 8px; min-width: 0; max-width: 100%; }
+.step { font-size: 0.85rem; font-weight: 700; }
+.step small { font-weight: 500; color: var(--ink-soft); font-size: inherit; }
+.note { font-size: 0.84rem; color: var(--ink-soft); max-width: 44ch; }
+.note.bad { color: var(--warn); font-weight: 600; }
+.note.good { color: var(--pick); font-weight: 600; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 14px 26px; max-width: 1040px; border-top: 1px solid var(--rule); padding-top: 14px; }
+.facts dd { font-size: 0.9rem; margin-top: 3px; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 0.9rem; min-width: 620px; max-width: 980px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 14px 9px 0; border-bottom: 1px solid var(--rule); }
+th { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+ol.plain, ul.plain { margin: 0; padding-left: 1.2rem; display: grid; gap: 8px; max-width: 72ch; }
+code { font-size: 0.86em; }
+
+/* ---------- the app, inside a frame ---------- */
+.app { background: var(--a-bg); color: var(--a-700); font-family: var(--app-font); font-size: 16px; line-height: 1.5; border: 1px solid var(--rule); border-radius: 20px; overflow: hidden; padding: 12px 8px; max-width: 100%; position: relative; }
+.app.w430 { width: 430px; }
+.app.lt { --a-green: #15803d; }
+.app.dk { --a-green: #4ade80; }
+.app.w320 { width: 320px; }
+.app.desk { width: 960px; border-radius: 12px; padding: 16px; }
+.app h2 { font-family: inherit; }
+.card { border: 1px solid var(--a-border); border-radius: 8px; background: var(--a-surface); overflow: hidden; }
+.head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 2.75rem; padding: 0.3rem 1rem 0.3rem calc(1rem - 4px); background: var(--a-muted-bg); border-left: 4px solid #f97316; border-bottom: 1px solid var(--a-border); }
+.fold { display: flex; align-items: center; gap: 0.5rem; color: var(--a-strong); min-width: 0; }
+.fold h2 { font-size: 1.125rem; font-weight: 700; letter-spacing: 0.01em; color: var(--a-strong); }
+.newbid { background: #2563eb; color: #fff; border-radius: 6px; font-size: 0.875rem; font-weight: 500; white-space: nowrap; }
+.pill { font-size: 0.6875rem; font-weight: 600; padding: 0.15rem 0.45rem; border-radius: 4px; line-height: 1.2; white-space: nowrap; }
+.pill.est { background: var(--a-blue-200); border: 1px solid #93c5fd; color: var(--a-blue-800); }
+.pill.am { background: var(--a-violet-bg); border: 1px solid var(--a-violet-border); color: var(--a-violet-800); }
+.unread { background: var(--a-amber-tint); border: 1px solid var(--a-amber-border); border-left: 3px solid #f59e0b; border-radius: 6px; }
+.unread .uh { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.unread .ut { font-size: 0.8125rem; font-weight: 600; color: var(--a-amber-800); }
+.unread .un { font-size: 0.8125rem; color: var(--a-amber-900); }
+.markread { border: 1px solid #d97706; border-radius: 4px; background: var(--a-surface); color: var(--a-amber-900); font-size: 0.8125rem; font-weight: 500; font-family: inherit; white-space: nowrap; }
+
+/* BEFORE: the card as it is on main */
+.before .head .newbid { padding: 0.35rem 0.75rem; }
+.before .body { padding: 0.5rem 1rem 1rem; }
+.before ul { list-style: none; margin: 0; padding: 0; }
+.before li { margin-bottom: 0.5rem; }
+.brow { display: flex; align-items: center; gap: 0.5rem; }
+.bbox { flex: 1; min-width: 0; padding: 0.5rem 0.75rem; background: var(--a-blue-tint); border: 1px solid var(--a-blue-border); border-radius: 4px; color: var(--a-blue-800); font-size: 0.875rem; }
+.btop { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+.bname { flex: 1; min-width: 0; font-weight: 500; }
+.btrade { color: var(--a-muted); margin-left: 0.5rem; font-weight: 400; }
+.bchips { flex-shrink: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.25rem; }
+.bdue { margin-top: 0.25rem; color: var(--a-600); }
+.bprev { flex-shrink: 0; padding: 0.35rem 0.55rem; background: var(--a-muted-bg); border: 1px solid var(--a-border-strong); border-radius: 4px; color: var(--a-700); font-size: 0.8125rem; }
+.beye { flex-shrink: 0; padding: 0.35rem; color: var(--a-muted); position: relative; display: block; }
+.beye svg { display: block; }
+.beye.ring::after { content: ""; position: absolute; inset: -9px; border: 2px solid #ef4444; border-radius: 50%; }
+.before .unread { margin: 0.35rem 0 0 0.5rem; padding: 0.6rem 0.75rem 0.6rem 1rem; }
+.before .unread .uh { margin-bottom: 0.5rem; }
+.before .markread { padding: 0.35rem 0.6rem; }
+.bfoot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.875rem; }
+.bfoot .lnk { color: var(--a-link); text-decoration: underline; }
+.bfoot .r { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* AFTER */
+.after .head .newbid { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.85rem; }
+.after ul { list-style: none; margin: 0; padding: 0; }
+.grp + .grp { border-top: 1px solid var(--a-border); }
+.gh { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 0.5rem; align-items: center; text-align: left; min-height: 44px; padding: 0.45rem 1rem; background: none; border: 0; cursor: pointer; font-family: inherit; color: var(--a-strong); }
+.gh .tri { font-size: 0.75rem; color: var(--a-muted); }
+.gh .line { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; min-width: 0; }
+.gh .gn { font-size: 0.9375rem; font-weight: 700; }
+.gh .gc { font-size: 0.8125rem; font-weight: 700; padding: 0 0.45rem; border-radius: 999px; background: var(--a-muted-bg); color: var(--a-700); font-variant-numeric: tabular-nums; }
+.gh .flag { font-size: 0.75rem; font-weight: 700; }
+.gh .flag.red { color: var(--a-red-700); }
+.gh .flag.amber { color: var(--a-amber-800); }
+.gh .gloss { grid-column: 2; font-size: 0.8125rem; color: var(--a-muted); font-weight: 400; }
+.row { border-top: 1px solid var(--a-border); }
+.clip { position: relative; overflow: clip; }
+.strip { position: absolute; top: 0; bottom: 0; right: 0; display: flex; }
+.strip .hide { width: 100%; border: 0; background: #6b7280; color: #fff; font-family: inherit; font-weight: 700; font-size: 0.875rem; cursor: pointer; text-align: right; padding: 0 0.9rem; white-space: nowrap; }
+.strip.armed .hide { background: #2563eb; }
+.strip.tap .hide { text-align: center; padding: 0; }
+.slide { position: relative; display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1rem; background: var(--a-surface); touch-action: pan-y; transition: transform 160ms ease-out; }
+.slide.dragging { transition: none; }
+.live .slide { cursor: grab; user-select: none; -webkit-user-select: none; }
+.main { flex: 1; min-width: 0; display: grid; gap: 0.3rem; color: inherit; text-decoration: none; }
+.who { display: grid; gap: 0.3rem; min-width: 0; }
+.nm { font-size: 0.9375rem; font-weight: 600; color: var(--a-link); overflow-wrap: anywhere; line-height: 1.3; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.vals { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.15rem 0.5rem; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.vals .lab { color: var(--a-muted); }
+.vals b { color: var(--a-strong); font-weight: 700; }
+.vals .late { color: var(--a-red-700); font-weight: 700; }
+.vals .wait { color: var(--a-muted); }
+.btn { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 0.8rem; border: 1px solid var(--a-border-strong); border-radius: 6px; background: var(--a-muted-bg); color: var(--a-700); font-family: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.btn.quiet { background: var(--a-surface); }
+.after .unread { margin: 0 1rem 0.7rem; padding: 0.35rem 0.5rem 0.6rem 0.75rem; }
+.after .markread { min-height: 44px; padding: 0 0.75rem; cursor: pointer; }
+.row.gone .slide { background: var(--a-subtle); }
+.row.gone .nm { color: var(--a-700); }
+.statew { font-size: 0.75rem; font-weight: 600; color: var(--a-muted); }
+.afoot { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.15rem 1rem; border-top: 1px solid var(--a-border); min-height: 44px; }
+.afoot .hint { font-size: 0.8125rem; color: var(--a-muted); }
+.afoot .door { margin-left: auto; display: inline-flex; align-items: center; min-height: 44px; font-size: 0.875rem; font-weight: 600; color: var(--a-link); white-space: nowrap; }
+.finger { position: absolute; right: 30%; top: 50%; width: 38px; height: 38px; margin-top: -19px; border-radius: 50%; background: color-mix(in srgb, var(--a-link) 35%, transparent); border: 2px solid var(--a-link); pointer-events: none; }
+.finger::before { content: "←"; position: absolute; left: -26px; top: 4px; font-weight: 700; color: var(--a-link); }
+.toast { display: flex; align-items: center; gap: 0.75rem; margin: 10px 4px 0; padding: 0.7rem 0.9rem; background: #10b981; color: #fff; border-radius: 8px; font-size: 0.875rem; font-weight: 500; box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
+.toast span { flex: 1; min-width: 0; }
+.toast button { min-height: 36px; padding: 0 0.7rem; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.6); color: #fff; border-radius: 4px; font-family: inherit; font-size: 0.8125rem; font-weight: 700; cursor: pointer; }
+.live .toast { position: sticky; bottom: 10px; }
+
+/* the desk */
+.app.desk .main { grid-template-columns: minmax(0, 1fr) 17rem; align-items: center; column-gap: 1rem; }
+.app.desk .who { grid-template-columns: minmax(0, auto) auto; justify-content: start; align-items: center; column-gap: 0.6rem; }
+.app.desk .gh .line { flex-wrap: nowrap; }
+.app.desk .gh { grid-template-columns: auto auto minmax(0, 1fr); }
+.app.desk .gh .gloss { grid-column: 3; }
+.app.desk .bbox { font-size: 0.875rem; }
+
+/* ---------- Recent Reports ---------- */
+.newpill { background: #2563eb; color: #fff; font-size: 0.75rem; font-weight: 600; border-radius: 999px; padding: 0.1rem 0.55rem; white-space: nowrap; }
+.pix { color: #3b82f6; display: inline-flex; }
+.rdot { flex-shrink: 0; width: 8px; height: 8px; border-radius: 999px; background: #3b82f6; }
+.empty { margin: 0; padding: 0.9rem 1rem; font-size: 0.875rem; color: var(--a-muted); }
+.empty strong { color: var(--a-700); }
+/* BEFORE: the card as it is on main */
+.rbefore .hwrap { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; column-gap: 0.5rem; row-gap: 0.25rem; }
+.rbefore .fold { flex: 1 1 auto; min-width: fit-content; gap: 0.45rem; }
+.rbefore .fold h2, .reports .fold h2 { white-space: nowrap; }
+.rbefore .tri, .reports .tri { font-size: 0.8rem; color: var(--a-muted); }
+.rbefore .acts { position: relative; margin-left: auto; display: inline-flex; align-items: center; gap: 0.6rem; flex-shrink: 0; font-size: 0.8125rem; color: var(--a-link); white-space: nowrap; }
+.rbefore .acts.ring::after { content: ""; position: absolute; inset: -5px -9px; border: 2px solid #ef4444; border-radius: 20px; }
+.rbefore .env { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--a-border-strong); border-radius: 6px; background: var(--a-surface); color: var(--a-muted); }
+.rbefore .body { padding: 0.5rem 1rem 1rem; min-height: 1.5rem; }
+.rbefore ul { list-style: none; margin: 0; padding: 0; }
+.rbefore li { margin-bottom: 0.5rem; border: 1px solid var(--a-border); border-radius: 8px; background: var(--a-surface); padding: 0.5rem 0.75rem; display: flex; align-items: flex-start; gap: 0.55rem; }
+.rbefore li .rdot { margin-top: 7px; }
+.rbefore .rt { display: flex; align-items: baseline; gap: 0.5rem; }
+.rbefore .rname { flex: 1; min-width: 0; font-weight: 600; color: var(--a-strong); text-decoration: underline; text-decoration-color: var(--a-border-strong); text-underline-offset: 3px; }
+.rbefore .rclock { flex-shrink: 0; font-size: 0.75rem; color: var(--a-muted); white-space: nowrap; }
+.rbefore .rsub { font-size: 0.8125rem; color: var(--a-muted); margin-top: 0.15rem; display: flex; align-items: center; gap: 0.35rem; }
+/* AFTER */
+.reports .fold { gap: 0.45rem; }
+.rrow .slide { align-items: flex-start; gap: 0.55rem; }
+.rrow .mk { flex-shrink: 0; width: 12px; display: flex; justify-content: center; padding-top: 7px; }
+.rrow .tick { color: var(--a-green); font-size: 0.8rem; line-height: 1; margin-top: -2px; }
+.rrow .main { cursor: pointer; }
+.rrow .nm.rep { color: var(--a-strong); }
+.rrow.seen .nm.rep { font-weight: 400; }
+.rrow.seen .slide { background: var(--a-subtle); }
+.rrow .vals { align-items: center; }
+.rrow .vals .by { color: var(--a-700); }
+.caret { flex-shrink: 0; align-self: center; color: var(--a-muted); font-size: 1.15rem; width: 1rem; text-align: center; }
+.rrow .btn { align-self: center; }
+.xbody { padding: 0 1rem 0.85rem 2.3rem; font-size: 0.875rem; background: var(--a-surface); color: var(--a-700); }
+.xbody .xl { display: block; color: var(--a-muted); font-weight: 500; font-size: 0.8125rem; margin-top: 0.5rem; }
+.xbody .xacts { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.7rem; }
+.grp.topline { border-top: 1px solid var(--a-border); }
+.foot2 { border-top: 1px solid var(--a-border); }
+.foot2 .fr { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.3rem 1rem; min-height: 44px; }
+.foot2 .fr + .fr { border-top: 1px solid var(--a-border); }
+.foot2 .hint { font-size: 0.8125rem; color: var(--a-muted); }
+.foot2 .door, .foot2 .mail { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; font-size: 0.875rem; font-weight: 600; color: var(--a-link); white-space: nowrap; }
+.foot2 .door { margin-left: auto; }
+.app.desk .rrow .slide { align-items: center; }
+.app.desk .rrow .mk { padding-top: 0; }
+.app.desk .rrow .main { grid-template-columns: minmax(0, 1fr) 17rem; }
+h3 + .frames, h3 + .scroll { margin-top: -6px; }
+
+/* ---------- My Bids row: one box, one press. The name takes the full width. ---------- */
+.app { --a-rail-gray: #9ca3af; }
+.app.dk { --a-rail-gray: #6b7280; }
+.after:not(.reports) ul { padding: 0 0.75rem 0.75rem; display: grid; gap: 0.5rem; }
+.brw { border-top: 0; min-width: 0; }
+.brw .clip { border-radius: 8px; }
+.brw .slide { display: flex; align-items: center; gap: 0.6rem; background: var(--a-subtle); border: 1px solid var(--a-border); border-left: 4px solid var(--rail); border-radius: 8px; padding: 0.65rem 0.875rem; min-height: 60px; }
+.tone-red { --rail: #dc2626; }
+.tone-amber { --rail: #f59e0b; }
+.tone-gray { --rail: var(--a-rail-gray); }
+.brw .main { gap: 0.3rem; cursor: pointer; }
+.brw .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; font-size: 0.8125rem; }
+.brw .when { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.4rem; font-variant-numeric: tabular-nums; }
+.brw .when .lab, .brw .when .wait { color: var(--a-muted); }
+.brw .when b { color: var(--a-strong); font-weight: 700; }
+.brw .when .late { color: var(--a-red-700); font-weight: 600; }
+.brw .go { flex-shrink: 0; color: var(--a-muted); font-size: 1.2rem; line-height: 1; }
+.brw .pline { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.brw .btn { padding: 0 0.8rem; font-size: 0.8125rem; }
+.after .brw .unread { margin: 0.35rem 0 0 0.5rem; }
+.brw.gone .nm { color: var(--a-700); }
+.app.desk .brw .main { grid-template-columns: none; }
+/* the bid's window, as a press on a bid opens it */
+.win { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); padding: 4.25rem 0.6rem 1rem; z-index: 5; }
+.sheet { position: sticky; top: 14px; background: var(--a-surface); color: var(--a-700); border: 1px solid var(--a-border); border-radius: 10px; padding: 0.9rem 1rem 1rem; display: grid; gap: 0.7rem; box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35); font-size: 0.875rem; }
+.sheet .wt { font-size: 1.0625rem; font-weight: 700; color: var(--a-strong); overflow-wrap: anywhere; }
+.sheet .wd { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.2rem 0.9rem; margin: 0; }
+.sheet .wd dt { color: var(--a-muted); }
+.sheet .wd dd { margin: 0; color: var(--a-strong); font-weight: 600; }
+.sheet .wl { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--a-muted); }
+.sheet .wg { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.4rem; }
+.sheet .wk { width: 3.2rem; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--a-muted); }
+.sheet .wdoor { display: inline-flex; align-items: center; min-height: 36px; padding: 0 0.6rem; border: 1px solid var(--a-border); border-radius: 4px; background: var(--a-subtle); color: var(--a-700); font-size: 0.8125rem; }
+.sheet .wa { display: flex; justify-content: flex-end; gap: 0.5rem; }
+@media (prefers-reduced-motion: reduce) { .slide { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="prose">
+    <p class="eyebrow">Dashboard · the mock-up behind punch list #426</p>
+    <h1>My Bids and Recent Reports</h1>
+    <p class="soft">Two cards and one swipe. A swipe to the left puts a row away, on both cards, with Undo. Every bid, job, street and person on this page is made up.</p>
+  </header>
+
+  <div class="looks"><span>Paint the frames</span>
+    <span class="seg" id="looks">
+      <button type="button" data-look="both" aria-pressed="true">Both</button>
+      <button type="button" data-look="lt" aria-pressed="false">Light</button>
+      <button type="button" data-look="dk" aria-pressed="false">Dark</button>
+    </span>
+  </div>
+
+  <section>
+    <h2>My Bids, before and after</h2>
+    <p class="prose soft">These frames are 430 px wide, the width of the phone in your screenshots.</p>
+    <div class="frames">
+      <div class="col"><p class="step">Before <small>as it is today</small></p><div id="f-before"></div>
+        <p class="note bad">Each card says Unsent. The name gets a third of the width. Three links hold everything else.</p></div>
+      <div class="col"><p class="step">After <span class="tag">recommended</span></p><div id="f-after"></div>
+        <p class="note good">The heading says the state once. Each bid is one box with its name across the full width. A press opens it. A swipe hides it.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Recent Reports, before and after</h2>
+    <div class="frames">
+      <div class="col"><p class="step">Before <small>as it is today</small></p><div id="r-before"></div>
+        <p class="note bad">The heading takes two rows. The time sits at the right and its day sits under the name. They are one moment.</p></div>
+      <div class="col"><p class="step">After <span class="tag">recommended</span></p><div id="r-after"></div>
+        <p class="note good">The heading is one row. The presses for the whole list sit at the foot. The day and the time read together.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Three lines each</h2>
+    <div class="frames">
+      <div class="col"><h3>My Bids</h3>
+        <dl class="brief">
+          <div><dt>Found</dt><dd>Hide is kept on the one phone. A note on a sent or hidden bid cannot be seen. The card says Unsent for bids the Bid Board calls Won or has put away.</dd></div>
+          <div><dt>Change</dt><dd>Group by the Bid Board's own states. One box per bid with one press, which opens the bid's window. Swipe left to hide. Hidden becomes the last group.</dd></div>
+          <div><dt>Your pick</dt><dd>Picks 1 to 5 at the foot of the page.</dd></div>
+        </dl>
+      </div>
+      <div class="col"><h3>Recent Reports</h3>
+        <dl class="brief">
+          <div><dt>Found</dt><dd>The card holds the newest eight and no more, so a ninth new report is never shown. Done cannot be undone. A cleared list draws a blank.</dd></div>
+          <div><dt>Change</dt><dd>One heading row. Mark opened, Email reports and View all move to the foot. Swipe a report left to mark it opened. Opened becomes a group.</dd></div>
+          <div><dt>Your pick</dt><dd>Picks 6 to 8 at the foot of the page.</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>My Bids: one press per bid</h2>
+    <p class="prose soft">A person does two things with a bid here. They hide it, or they go into it. So a bid has two moves and no buttons: a press goes in and a swipe hides. The name and the due line take the full width of the box.</p>
+    <div class="frames">
+      <div class="col"><p class="step">1 <small>The bid</small></p><div id="f-w1"></div><p class="note">The edge is red for past due, amber for due within three days, grey for the rest.</p></div>
+      <div class="col"><p class="step">2 <small>A press opens the bid's window</small></p><div id="f-w2"></div><p class="note">This is the window Preview opens today. It shows the bid and has a door to every tab of it.</p></div>
+      <div class="col"><p class="step">Not picked <small>two doors</small></p><div id="f-alt"></div><p class="note">A press jumps straight to Submission &amp; Followup, as today. Preview sits small at the bottom right.</p></div>
+    </div>
+    <dl class="facts">
+      <div><dt>Why the window</dt><dd>Today a press always lands on Submission &amp; Followup. An estimator pricing a bid then has to find Counts or Pricing. The window's doors go straight to any tab.</dd></div>
+      <div><dt>Like a job</dt><dd>A job's name opens the job's window all over the app. A bid's name would open the bid's window the same way.</dd></div>
+      <div><dt>Space</dt><dd>With no press on the row, a bid is two lines on most phones. The name is never squeezed by a button.</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2>One swipe, both cards <span class="tag">A · recommended</span></h2>
+    <p class="prose soft">Swipe a row to the left. A strip shows what the swipe does. Pull until the strip turns blue, then let go. The row moves to the folded group at the foot of its card. Undo brings it back for ten seconds. The group's own press brings it back any time.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Card</th><th>The strip says</th><th>The row goes to</th><th>The press that brings it back</th><th>Kept</th></tr></thead>
+        <tbody>
+          <tr><td><strong>My Bids</strong></td><td>Hide</td><td>Hidden</td><td>Show again</td><td>On this phone today. See pick 4.</td></tr>
+          <tr><td><strong>Recent Reports</strong></td><td>Mark opened</td><td>Opened</td><td>Mark unread</td><td>For you, on every device.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>My Bids</h3>
+    <div class="frames">
+      <div class="col"><p class="step">1 <small>At rest</small></p><div id="f-s1"></div><p class="note">No icon. The foot of the card says how to hide.</p></div>
+      <div class="col"><p class="step">2 <small>Mid-swipe</small></p><div id="f-s2"></div><p class="note">The row slides over the strip. The strip is blue, so letting go will hide the bid.</p></div>
+      <div class="col"><p class="step">3 <small>After</small></p><div id="f-s3"></div><p class="note">The bid is in Hidden. Undo stays for ten seconds.</p></div>
+    </div>
+    <h3>Recent Reports</h3>
+    <div class="frames">
+      <div class="col"><p class="step">1 <small>At rest</small></p><div id="r-s1"></div><p class="note">The foot says how to mark one opened, beside the press that marks them all.</p></div>
+      <div class="col"><p class="step">2 <small>Mid-swipe</small></p><div id="r-s2"></div><p class="note">The same strip, the same blue, with this card's own words.</p></div>
+      <div class="col"><p class="step">3 <small>After</small></p><div id="r-s3"></div><p class="note">The report is in Opened. The badge reads 7 new. Undo stays for ten seconds.</p></div>
+    </div>
+    <dl class="facts">
+      <div><dt>Left only</dt><dd>People's rows already slide left to show their presses. The Pipeline's rows slide right to move a job forward. Left keeps one meaning.</dd></div>
+      <div><dt>Scroll and Back</dt><dd>A touch that moves up or down scrolls the page. The phone's Back swipe starts at the left edge and moves right, so a left swipe never starts it.</dd></div>
+      <div><dt>Hard to do by accident</dt><dd>The row must travel 112 px before the strip turns blue. A shorter swipe springs back.</dd></div>
+      <div><dt>Built once</dt><dd>One shared row over the hook People's rows use, <code>useSwipeRow</code>. Both cards draw their rows with it.</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2>Try it</h2>
+    <p class="prose soft">These two frames work. Swipe a row left with a finger, or drag it with a mouse. Press a bid to open its window. Press a report to open it in place. Press a heading to fold it. Tab reaches the strip's press on every row.</p>
+    <div class="looks"><span>Swipe</span>
+      <span class="seg" id="modes">
+        <button type="button" data-mode="A" aria-pressed="true">A · let go to put away</button>
+        <button type="button" data-mode="B" aria-pressed="false">B · uncover, then tap</button>
+      </span>
+    </div>
+    <div class="frames">
+      <div class="col"><p class="step">My Bids</p><div id="f-live"></div></div>
+      <div class="col"><p class="step">Recent Reports</p><div id="r-live"></div></div>
+    </div>
+    <p class="prose soft"><strong>B, the one alternative.</strong> The swipe only uncovers the press and waits for a tap, as People's rows do today. No row is put away by accident, and each one takes two touches.</p>
+  </section>
+
+  <section>
+    <h2>At a desk</h2>
+    <p class="prose soft">A mouse cannot swipe, so each row carries the same act as a word press on its right: Hide on a bid, Mark opened on a report. Tab reaches it at any width. A screen reader hears the press and the row's name.</p>
+    <div class="frames"><div class="col"><p class="step">My Bids, before</p><div class="scroll"><div id="f-dbefore"></div></div></div></div>
+    <div class="frames"><div class="col"><p class="step">My Bids, after</p><div class="scroll"><div id="f-dafter"></div></div></div></div>
+    <div class="frames"><div class="col"><p class="step">Recent Reports, before</p><div class="scroll"><div id="r-dbefore"></div></div></div></div>
+    <div class="frames"><div class="col"><p class="step">Recent Reports, after</p><div class="scroll"><div id="r-dafter"></div></div></div></div>
+  </section>
+
+  <section>
+    <h2>At 320 px</h2>
+    <div class="frames">
+      <div class="col"><p class="step">My Bids, before</p><div id="f-before320"></div><p class="note bad">The third bid has both chips. They take the whole box and its name is squeezed out.</p></div>
+      <div class="col"><p class="step">My Bids, after</p><div id="f-after320"></div><p class="note good">Every name reads. The chips sit under it.</p></div>
+    </div>
+    <div class="frames">
+      <div class="col"><p class="step">Recent Reports, before</p><div id="r-before320"></div></div>
+      <div class="col"><p class="step">Recent Reports, after</p><div id="r-after320"></div><p class="note good">The heading is still one row.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Two things you would miss today</h2>
+    <div class="frames">
+      <div class="col"><p class="step">A note on a sent bid, before</p><div id="f-nbefore"></div><p class="note bad">The note is behind Sent bids (29). The card shows nothing.</p></div>
+      <div class="col"><p class="step">After</p><div id="f-nafter"></div><p class="note good">The group stays folded and still shows that one bid.</p></div>
+    </div>
+    <div class="frames">
+      <div class="col"><p class="step">Every report cleared, before</p><div id="r-ebefore"></div><p class="note bad">The list is blank. Nothing says it is clear, and Done cannot be undone.</p></div>
+      <div class="col"><p class="step">After</p><div id="r-eafter"></div><p class="note good">The card says nothing is new. The reports wait in Opened with Mark unread.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What each card holds</h2>
+    <h3>My Bids</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Group</th><th>What it holds</th><th>Order</th><th>Opens</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Unsent</strong></td><td>No sent date and no answer. A past due date shows in red. No due date reads No due date.</td><td>Oldest due date first, no due date last</td><td>Open</td></tr>
+          <tr><td><strong>Not yet won or lost</strong></td><td>Sent, with no answer yet.</td><td>Newest sent first</td><td>Folded</td></tr>
+          <tr><td><strong>Won</strong></td><td>Marked won.</td><td>Newest sent first</td><td>Folded</td></tr>
+          <tr><td><strong>Started or Complete</strong></td><td>Marked started or complete.</td><td>Newest sent first</td><td>Folded</td></tr>
+          <tr><td><strong>Hidden</strong></td><td>Bids you hid, in any state. Each row says its state and has Show again.</td><td>As above</td><td>Folded</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="prose soft">The words and the orders are the Bid Board's own. The trade is left off a bid while all your bids share one trade. A press on a bid opens its window.</p>
+    <h3>Recent Reports</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Part</th><th>What it is</th><th>After</th></tr></thead>
+        <tbody>
+          <tr><td><strong>New</strong></td><td>A report you have not opened. The mark is yours alone and follows you to every device.</td><td>The list. Eight at a time, newest first.</td></tr>
+          <tr><td><strong>Opened</strong></td><td>You pressed it, swiped it, or pressed Mark opened.</td><td>A folded group at the foot, with Mark unread on each row.</td></tr>
+          <tr><td><strong>The time and the day</strong></td><td>One moment, when the report was filed, drawn in two places.</td><td>One value under the name: yesterday 1:02 PM.</td></tr>
+          <tr><td><strong>The pictures icon</strong></td><td>Opens the job's customer pictures. Red means the job has no link, and a press asks Dispatch for one.</td><td>Kept, beside the time.</td></tr>
+          <tr><td><strong>The envelope</strong></td><td>Opens Email reports, where you set who gets each report as it is filed.</td><td>At the foot, in words.</td></tr>
+          <tr><td><strong>View all</strong></td><td>Opens Jobs, Reports, every report ever filed.</td><td>At the foot, on the right.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Your picks</h2>
+    <ol class="plain">
+      <li><strong>The swipe, for both cards: A or B.</strong> A puts the row away on letting go, with Undo. B uncovers the press and waits for a tap. A is recommended, since one press undoes it.</li>
+      <li><strong>My Bids. One press per bid, or two doors?</strong> One press opens the bid's window, which has a door to every tab. Two doors keeps today's jump to Submission &amp; Followup and a small Preview. <strong>Answered: one press.</strong></li>
+      <li><strong>My Bids. Should a hidden bid show again while it has unread updates?</strong> Today it stays hidden and the note is never seen. Recommended: yes, until you press Mark read.</li>
+      <li><strong>My Bids. Should Hidden follow you to every device?</strong> Today the list lives in one phone's browser. Opened reports already follow you. Recommended: yes, as its own small step with one database change.</li>
+      <li><strong>My Bids. Should the card leave out a bid someone put away with Archive from board?</strong> Today it still lists them as Unsent. Recommended: yes, to match the Bid Board.</li>
+      <li><strong>Recent Reports. Should Opened be the one put-away state?</strong> Today there are two, Opened and Done, and Done cannot be undone. Recommended: yes. The Done press goes, and a report already Done reads as Opened.</li>
+      <li><strong>Recent Reports. Should the list refill as you clear it?</strong> Today it is the newest eight and no more. Recommended: yes, eight at a time, from the last 14 days. Older reports are behind View all.</li>
+      <li><strong>Recent Reports. Should a press on a report's name open the report?</strong> Today the name opens the job and the rest of the row opens the report. Recommended: yes. Job detail stays inside the opened report.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>The build, as small steps</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Step</th><th>Belongs to</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>My Bids</td><td><strong>The read.</strong> The Bid Board's own rule for a bid's state. The 50 bid limit stops cutting off the newest due dates. No new look.</td></tr>
+          <tr><td>2</td><td>My Bids</td><td><strong>The groups.</strong> Headings with counts and folds, one box per bid with one press, the Bid Board door, Hide as a word press at a desk, the Hidden group.</td></tr>
+          <tr><td>3</td><td>Recent Reports</td><td><strong>The heading and the foot.</strong> One heading row, the foot's two rows, the day and time as one value, Mark opened as a word press, the Opened group, the words for a clear list.</td></tr>
+          <tr><td>4</td><td>Shared</td><td><strong>The swipe.</strong> One shared row with the strip, the blue mark, Undo and the keyboard's way in. My Bids uses it in this step.</td></tr>
+          <tr><td>5</td><td>Recent Reports</td><td><strong>The swipe on reports.</strong> The same shared row, with Mark opened. The guides for both cards.</td></tr>
+          <tr><td>6</td><td>My Bids</td><td><strong>Hidden follows you.</strong> Only if you say yes to pick 4.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var TODAY = new Date(2026, 10, 23, 12);
+  var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var MODE = 'A';
+  var ARM = 112; // px a row travels before letting go puts it away (A)
+  var EYE = '<svg width="16" height="16" viewBox="0 0 640 640" fill="currentColor" aria-hidden="true"><path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L504.5 470.8C507.2 468.4 509.9 466 512.5 463.6C559.3 420.1 590.6 368.2 605.5 332.5C608.8 324.6 608.8 315.8 605.5 307.9C590.6 272.2 559.3 220.2 512.5 176.8C465.4 133.1 400.7 96.2 319.9 96.2C263.1 96.2 214.3 114.4 173.9 140.4L73 39.1zM208.9 175.1C241 156.2 278.1 144 320 144C385.2 144 438.8 173.6 479.9 211.7C518.4 247.4 545 290 558.5 320C544.9 350 518.3 392.5 479.9 428.3C476.8 431.1 473.7 433.9 470.5 436.7L425.8 392C439.8 371.5 448 346.7 448 320C448 249.3 390.7 192 320 192C293.3 192 268.5 200.2 248 214.2L208.9 175.1zM390.9 357.1L282.9 249.1C294 243.3 306.6 240 320 240C364.2 240 400 275.8 400 320C400 333.4 396.7 346 390.9 357.1zM135.4 237.2L101.4 203.2C68.8 240 46.4 279 34.5 307.7C31.2 315.6 31.2 324.4 34.5 332.3C49.4 368 80.7 420 127.5 463.4C174.6 507.1 239.3 544 320.1 544C357.4 544 391.3 536.1 421.6 523.4L384.2 486C364.2 492.4 342.8 496 320 496C254.8 496 201.2 466.4 160.1 428.3C121.6 392.6 95 350 81.5 320C91.9 296.9 110.1 266.4 135.5 237.2z"/></svg>';
+  var PIX = '<span class="pix"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="3" width="14" height="13" rx="2"/><path d="M3 8v11a2 2 0 0 0 2 2h12"/><path d="m9 13 3-3 3 3 2-2 4 4"/></svg></span>';
+  var ENV = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>';
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function parts(ymd) {
+    var a = ymd.split('-').map(Number), d = new Date(a[0], a[1] - 1, a[2], 12);
+    return { label: WD[d.getDay()] + ' ' + a[1] + '/' + a[2], days: Math.round((TODAY - d) / 864e5), short: a[1] + '/' + a[2] + '/' + String(a[0]).slice(2) };
+  }
+  function ymdBack(n) { var d = new Date(TODAY.getTime() - n * 864e5); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  function days(n, tail) { return n + (n === 1 ? ' day ' : ' days ') + tail; }
+  function has(list, id) { return list.indexOf(id) >= 0; }
+  function drop(list, id) { var i = list.indexOf(id); if (i >= 0) list.splice(i, 1); }
+
+  // What every swipe row shares: the strip under the row and where the row sits.
+  function swipeBits(st, id, label, name, tapW) {
+    var W = st.mode === 'B' ? tapW : 160;
+    var px = st.drag && st.drag.id === id ? st.drag.px : (st.openId === id ? -W : 0);
+    var armed = st.mode !== 'B' && px <= -ARM;
+    return {
+      strip: st.desk ? '' : '<div class="strip' + (armed ? ' armed' : '') + (st.mode === 'B' ? ' tap' : '') + '" style="width:' + W + 'px"><button type="button" class="hide" data-act="away" data-id="' + id + '" aria-label="' + label + ', ' + esc(name) + '">' + label + '</button></div>',
+      slide: (px ? ' style="transform:translateX(' + px + 'px)"' : '') + (st.desk ? '' : ' data-swipe="1"'),
+      finger: st.finger === id ? '<span class="finger"></span>' : ''
+    };
+  }
+  function toastHtml(o) { return o.toast ? '<div class="toast" role="status"><span>' + esc(o.toast) + '</span><button type="button" data-act="undo">Undo</button></div>' : ''; }
+
+  // =====================  MY BIDS  =====================
+  // Every name below is made up.
+  var R = [['est'], ['am'], ['est', 'am']];
+  function mk(prefix, names, firstBack, stepBack, outcome) {
+    return names.map(function (name, i) { return { id: prefix + i, name: name, roles: R[(i * 2 + 1) % 3], sent: ymdBack(firstBack + i * stepBack), state: outcome }; });
+  }
+  var BIDS = {
+    unsent: [
+      { id: 'u0', name: '212 Alder St plumbing changes', roles: ['am'], due: '2026-04-08', state: 'unsent' },
+      { id: 'u1', name: '88 Quarry Rd Ste 100', roles: ['est'], due: null, age: 19, state: 'unsent' },
+      { id: 'u2', name: 'Harlan Construction-Brick Oven Pizza Fairview', roles: ['est', 'am'], due: null, age: 6, state: 'unsent' }
+    ],
+    pending: mk('p', ['Maple Court Lot 7', '1420 Juniper Ave tenant finish', 'Birchline Homes-Sunset Ridge Ph 2', '36 Tanner Way remodel', 'Ortega & Pike-Lakeview Dental', '905 Cobalt Dr Ste B', 'Wren Hollow Lot 22', 'Northgate Storage Bldg C', '77 Sable Ln addition', 'Kestrel Builders-Taco Verde Hillcrest', '2300 Larkspur Blvd shell', 'Pinyon Flats Lot 3', '18 Drover St water heater', 'Summit Row Townhomes Bldg 4', '640 Ferris Rd Ste 210', 'Calloway Homes-Stone Creek Lot 9', '51 Mesa Vista repipe', 'Brightwater Car Wash', '1108 Orchard Bend', 'Tully Design Build-Ridgeview Vet', '29 Lantern Ct ADU'], 3, 6, 'pending'),
+    won: mk('w', ['Wren Hollow Lot 18', '410 Saddle Ridge', 'Kestrel Builders-Juniper Coffee', '15 Fennel Way remodel', 'Pinyon Flats Lot 1'], 24, 17, 'won'),
+    started: mk('s', ['Maple Court Lot 2', '880 Cobalt Dr Ste A', 'Calloway Homes-Stone Creek Lot 4'], 96, 40, 'started'),
+    stowed: [{ id: 'h0', name: '602 Harbor St rough-in', roles: ['est'], due: '2026-02-17', state: 'unsent' }]
+  };
+  var NOTES = {
+    u0: { head: 'Recent Customer Notes', text: 'Spoke with Dana. Call back about the bids in a week or two.', by: 'Marco', when: 'Feb 20, 26' },
+    p4: { head: 'Recent Bid Notes', text: 'The owner wants the price held to the end of the month.', by: 'Priya', when: '2h ago' }
+  };
+  var GROUPS = [
+    { key: 'unsent', name: 'Unsent', gloss: 'Still to price and send.' },
+    { key: 'pending', name: 'Not yet won or lost', gloss: 'Sent. Waiting on an answer.' },
+    { key: 'won', name: 'Won', gloss: 'The customer said yes.' },
+    { key: 'started', name: 'Started or Complete', gloss: 'The work is under way or done.' }
+  ];
+  var STATE_WORD = { unsent: 'Unsent', pending: 'Not yet won or lost', won: 'Won', started: 'Started or Complete' };
+  var ALL = [].concat(BIDS.unsent, BIDS.pending, BIDS.won, BIDS.started, BIDS.stowed);
+  function bid(id) { return ALL.filter(function (b) { return b.id === id; })[0]; }
+
+  function chips(b) {
+    return (has(b.roles, 'est') ? '<span class="pill est">Estimator</span>' : '') + (has(b.roles, 'am') ? '<span class="pill am">Account Manager</span>' : '');
+  }
+  function unreadBox(b, n) {
+    return '<div class="unread"><div class="uh"><span class="ut">Unread updates</span><button type="button" class="markread" data-act="read" data-id="' + b.id + '">Mark read</button></div>' +
+      '<div class="ut" style="margin-bottom:0.3rem">' + n.head + '</div><div class="un">' + esc(n.text) + ' <b>' + n.by + ', ' + n.when + '</b></div></div>';
+  }
+
+  function before(o) {
+    var rows = BIDS.unsent.map(function (b, i) {
+      var due = b.due ? parts(b.due).short : '—';
+      var n = has(o.notes, b.id) ? NOTES[b.id] : null;
+      return '<li><div class="brow"><div class="bbox"><div class="btop"><div class="bname">' + esc(b.name) + '<span class="btrade">(Plumbing)</span></div><div class="bchips">' + chips(b) + '</div></div>' +
+        '<div class="bdue">Due ' + due + ' · Unsent</div></div><span class="bprev">Preview</span><span class="beye' + (o.ring && i === 0 ? ' ring' : '') + '">' + EYE + '</span></div>' +
+        (n ? unreadBox(b, n) : '') + '</li>';
+    }).join('');
+    return '<div class="card before"><div class="head"><span class="fold"><span aria-hidden="true">▼</span><h2>My Bids (32)</h2></span><span class="newbid">New Bid</span></div>' +
+      '<div class="body"><ul>' + rows + '</ul><div class="bfoot"><span class="lnk">View all</span><span class="r"><span class="lnk">Sent bids (29) ▼</span><span class="lnk">View hidden (1)</span></span></div></div></div>';
+  }
+
+  // One box per bid, one press: the name across the full width, then when it is due and the role chips.
+  function bidTone(b) {
+    if (b.state !== 'unsent') return 'gray';
+    if (!b.due) return b.age > 14 ? 'red' : 'gray';
+    var d = parts(b.due).days;
+    return d > 0 ? 'red' : (d >= -3 ? 'amber' : 'gray');
+  }
+  function whenHtml(b, gone) {
+    var tail = function (words, late) { return '<span class="' + (late && !gone ? 'late' : 'wait') + '">' + words + '</span>'; };
+    if (b.state === 'unsent') {
+      if (!b.due) return '<b>No due date</b>' + tail(days(b.age, 'on the board'), b.age > 14);
+      var p = parts(b.due);
+      return '<span class="lab">Due</span><b>' + p.label + '</b>' + (p.days > 0 ? tail(days(p.days, 'past due'), true) : '');
+    }
+    var s = parts(b.sent);
+    return '<span class="lab">Sent</span><b>' + s.label + '</b>' + tail(days(s.days, 'ago'), false);
+  }
+  function bidRow(b, o, gone) {
+    var sw = gone ? { strip: '', slide: '', finger: '' } : swipeBits(o, b.id, 'Hide', b.name, 88);
+    var n = !gone && has(o.notes, b.id) && !has(o.read, b.id) ? NOTES[b.id] : null;
+    var meta = '<span class="meta"><span class="when">' + (gone ? '<span class="lab">' + STATE_WORD[b.state] + '</span>' : '') + whenHtml(b, gone) + '</span><span class="chips">' + chips(b) + '</span></span>';
+    var right = gone ? '<button type="button" class="btn quiet" data-act="back" data-id="' + b.id + '">Show again</button>'
+      : o.desk ? '<button type="button" class="btn quiet" data-act="away" data-id="' + b.id + '" aria-label="Hide, ' + esc(b.name) + '">Hide</button>'
+      : o.alt ? '' : '<span class="go" aria-hidden="true">›</span>';
+    // The alternative keeps two doors: the row jumps into the bid and Preview sits small at the bottom right.
+    var words = o.alt && !gone
+      ? '<span class="nm">' + esc(b.name) + '</span><span class="when" style="font-size:0.8125rem">' + whenHtml(b, false) + '</span><span class="pline"><span class="chips">' + chips(b) + '</span><span class="btn">Preview</span></span>'
+      : '<span class="nm">' + esc(b.name) + '</span>' + meta;
+    return '<li class="row brw' + (gone ? ' gone' : '') + '" data-id="' + b.id + '"><div class="clip">' + sw.strip + '<div class="slide tone-' + (gone ? 'gray' : bidTone(b)) + '"' + sw.slide + '>' +
+      '<span class="main"' + (gone ? '' : ' data-act="open" data-id="' + b.id + '"') + '>' + words + '</span>' + right + sw.finger + '</div></div>' + (n ? unreadBox(b, n) : '') + '</li>';
+  }
+  // What a press on a bid opens: the bid's window, with a door to every tab of the bid.
+  function winHtml(b) {
+    var doors = function (label, names) { return '<div class="wg"><span class="wk">' + label + '</span>' + names.map(function (x) { return '<span class="wdoor">' + x + '</span>'; }).join('') + '</div>'; };
+    return '<div class="win"><div class="sheet" role="dialog" aria-label="' + esc(b.name) + '"><div class="wt">' + esc(b.name) + '</div>' +
+      '<dl class="wd"><dt>Outcome</dt><dd>' + STATE_WORD[b.state] + '</dd><dt>Bid due date</dt><dd>' + (b.due ? parts(b.due).short : '—') + '</dd><dt>Bid date sent</dt><dd>' + (b.sent ? parts(b.sent).short : '—') + '</dd><dt>Your part</dt><dd>' + (has(b.roles, 'est') ? 'Estimator' : '') + (b.roles.length === 2 ? ', ' : '') + (has(b.roles, 'am') ? 'Account Manager' : '') + '</dd></dl>' +
+      '<div class="wl">Open in Bids</div>' + doors('Scope', ['Bid Board', 'Working', 'Counts']) + doors('Price', ['Takeoffs', 'Labor', 'Pricing', 'Cover Letter']) + doors('Send', ['Submission', 'RFI']) +
+      '<div class="wa"><span class="btn quiet">Edit bid</span><button type="button" class="btn" data-act="close">Close</button></div></div></div>';
+  }
+  function gh(key, name, count, open, flags, gloss) {
+    return '<button type="button" class="gh" data-act="fold" data-key="' + key + '" aria-expanded="' + open + '"><span class="tri" aria-hidden="true">' + (open ? '▼' : '▶') + '</span>' +
+      '<span class="line"><span class="gn">' + name + '</span><span class="gc">' + count + '</span>' + flags + '</span>' + (open && gloss ? '<span class="gloss">' + gloss + '</span>' : '') + '</button>';
+  }
+  function after(o) {
+    var hidden = o.hidden, total = 0, html = '';
+    GROUPS.forEach(function (g) {
+      var list = BIDS[g.key].filter(function (b) { return !has(hidden, b.id); });
+      total += list.length;
+      if (!list.length && g.key !== 'unsent') return;
+      var open = has(o.open, g.key);
+      var late = g.key === 'unsent' ? list.filter(function (b) { return b.due && parts(b.due).days > 0; }).length : 0;
+      var fresh = list.filter(function (b) { return has(o.notes, b.id) && !has(o.read, b.id); });
+      var shown = open ? list : fresh;
+      html += '<div class="grp">' + gh(g.key, g.name, list.length, open, (late ? '<span class="flag red">' + late + ' past due</span>' : '') + (fresh.length ? '<span class="flag amber">' + fresh.length + ' unread</span>' : ''), g.gloss) +
+        (open && !list.length ? '<p class="empty">Nothing unsent. Every bid went out.</p>' : '') +
+        (shown.length ? '<ul>' + shown.map(function (b) { return bidRow(b, o, false); }).join('') + '</ul>' : '') + '</div>';
+    });
+    var gone = ALL.filter(function (b) { return has(hidden, b.id); });
+    if (gone.length) {
+      var hopen = has(o.open, 'hidden');
+      html += '<div class="grp">' + gh('hidden', 'Hidden', gone.length, hopen, '', 'You hid these. Show again puts one back.') + (hopen ? '<ul>' + gone.map(function (b) { return bidRow(b, o, true); }).join('') + '</ul>' : '') + '</div>';
+    }
+    return '<div class="card after"><div class="head"><span class="fold"><span aria-hidden="true">▼</span><h2>My Bids (' + total + ')</h2></span><span class="newbid">New Bid</span></div>' + html +
+      '<div class="afoot">' + (o.desk ? '' : '<span class="hint">Swipe a bid left to hide it.</span>') + '<span class="door">Bid Board ›</span></div></div>' + toastHtml(o) + (o.win ? winHtml(bid(o.win)) : '');
+  }
+  function base(more) {
+    var o = { hidden: ['h0'], open: ['unsent'], notes: ['u0'], read: [], mode: 'A', drag: null, openId: null, desk: false, toast: null, finger: null, alt: false, win: null };
+    for (var k in more) o[k] = more[k];
+    return o;
+  }
+
+  // =====================  RECENT REPORTS  =====================
+  // Every job and person below is made up.
+  var REPORTS = [
+    { id: 'r0', job: 'Cedar Ridge Lot 14 Bathroom Rough', by: 'Marco', day: 'yesterday', clock: '1:02 PM' },
+    { id: 'r1', job: 'Okafor Gas Test', by: 'Marco', day: 'Nov 21', clock: '4:08 PM' },
+    { id: 'r2', job: 'Lindqvist Water Heater', by: 'Marco', day: 'Nov 21', clock: '12:47 PM' },
+    { id: 'r3', job: 'Ferris Rd Slab Leak', by: 'Marco', day: 'Nov 21', clock: '10:43 AM' },
+    { id: 'r4', job: 'Tanner Way Repair', by: 'Marco', day: 'Nov 20', clock: '7:52 PM' },
+    { id: 'r5', job: 'Tanner Way Repair', by: 'Marco', day: 'Nov 20', clock: '7:51 PM' },
+    { id: 'r6', job: 'Maple Court Lot 7 Top Out', by: 'Priya', day: 'Nov 20', clock: '11:57 AM' },
+    { id: 'r7', job: 'Sable Ln Hall Bath', by: 'Marco', day: 'Nov 20', clock: '11:50 AM' }
+  ];
+  function rep(id) { return REPORTS.filter(function (r) { return r.id === id; })[0]; }
+
+  function rBefore(o) {
+    var rows = REPORTS.filter(function (r) { return !has(o.done, r.id); }).map(function (r) {
+      return '<li><span class="rdot"></span><div style="flex:1;min-width:0"><div class="rt"><span class="rname">' + esc(r.job) + '</span><span class="rclock">' + r.clock + '</span></div>' +
+        '<div class="rsub"><span>' + r.by + ' · ' + r.day + '</span>' + PIX + '</div></div></li>';
+    });
+    var n = rows.length;
+    return '<div class="card rbefore"><div class="head"><div class="hwrap"><span class="fold"><span aria-hidden="true" class="tri">▼</span><h2>Recent Reports</h2>' + (n ? '<span class="newpill">' + n + ' new</span>' : '') + '</span>' +
+      '<span class="acts' + (o.ring ? ' ring' : '') + '">' + (n ? '<span>Mark ' + n + ' opened</span>' : '') + '<span>View all →</span><span class="env">' + ENV + '</span></span></div></div>' +
+      '<div class="body"><ul>' + rows.join('') + '</ul></div></div>';
+  }
+
+  function repRow(r, o, gone) {
+    var seen = gone || has(o.seen, r.id), open = o.expanded === r.id;
+    var sw = gone ? { strip: '', slide: '', finger: '' } : swipeBits(o, r.id, 'Mark opened', r.job, 124);
+    var mark = seen ? '<span class="tick" aria-label="Opened">✓</span>' : '<span class="rdot" aria-label="New report"></span>';
+    var right = gone
+      ? '<button type="button" class="btn quiet" data-act="back" data-id="' + r.id + '">Mark unread</button>'
+      : (o.desk ? '<button type="button" class="btn quiet" data-act="away" data-id="' + r.id + '" aria-label="Mark opened, ' + esc(r.job) + '">Mark opened</button>' : '<span class="caret" aria-hidden="true">' + (open ? '▾' : '›') + '</span>');
+    var body = open ? '<div class="xbody"><span class="xl">Work done</span>Set the tub and the shower valve. Tested at 80 psi for 15 minutes.<span class="xl">Next</span>Trim after tile.' +
+      '<div class="xacts"><span class="btn quiet">Job detail</span><span class="btn quiet">Map</span><button type="button" class="btn quiet" data-act="back" data-id="' + r.id + '">Mark unread</button></div></div>' : '';
+    return '<li class="row rrow' + (seen ? ' seen' : '') + (gone ? ' gone' : '') + '" data-id="' + r.id + '"><div class="clip">' + sw.strip + '<div class="slide"' + sw.slide + '>' +
+      '<span class="mk">' + mark + '</span><span class="main"' + (gone ? '' : ' data-act="expand" data-id="' + r.id + '"') + '><span class="nm rep">' + esc(r.job) + '</span>' +
+      '<span class="vals"><span class="by">' + r.by + '</span><b>' + r.day + ' ' + r.clock + '</b>' + PIX + '</span></span>' + right + sw.finger + '</div></div>' + body + '</li>';
+  }
+  function rAfter(o) {
+    var listed = REPORTS.filter(function (r) { return !has(o.away, r.id); });
+    var fresh = listed.filter(function (r) { return !has(o.seen, r.id); }).length;
+    var gone = REPORTS.filter(function (r) { return has(o.away, r.id); });
+    var html = listed.length ? '<ul>' + listed.map(function (r) { return repRow(r, o, false); }).join('') + '</ul>'
+      : '<p class="empty"><strong>Nothing new to read.</strong> A report lands here when the crew files one.</p>';
+    if (gone.length) html += '<div class="grp topline">' + gh('opened', 'Opened', gone.length, o.groupOpen, '', 'You marked these opened. Mark unread puts one back.') + (o.groupOpen ? '<ul>' + gone.map(function (r) { return repRow(r, o, true); }).join('') + '</ul>' : '') + '</div>';
+    var rowA = listed.length ? '<div class="fr">' + (o.desk ? '<span class="hint">' + fresh + (fresh === 1 ? ' new report' : ' new reports') + '</span>' : '<span class="hint">Swipe a report left to mark it opened.</span>') +
+      (fresh ? '<button type="button" class="btn" data-act="all">Mark ' + fresh + ' opened</button>' : '') + '</div>' : '';
+    return '<div class="card after reports"><div class="head"><span class="fold"><span aria-hidden="true" class="tri">▼</span><h2>Recent Reports</h2>' + (fresh ? '<span class="newpill">' + fresh + ' new</span>' : '') + '</span></div>' + html +
+      '<div class="foot2">' + rowA + '<div class="fr"><span class="mail">' + ENV + 'Email reports</span><span class="door">View all ›</span></div></div></div>' + toastHtml(o);
+  }
+  function rbase(more) {
+    var o = { away: [], seen: [], expanded: null, groupOpen: false, mode: 'A', drag: null, openId: null, desk: false, toast: null, finger: null };
+    for (var k in more) o[k] = more[k];
+    return o;
+  }
+  var ALLR = REPORTS.map(function (r) { return r.id; });
+
+  // =====================  THE FRAMES  =====================
+  var frames = [];
+  function mount(id, cls, look, html, isStatic) {
+    var host = document.getElementById(id);
+    host.className = 'app ' + cls + ' ' + look;
+    host.dataset.look = look;
+    host.innerHTML = html;
+    if (isStatic) host.inert = true;
+    frames.push(host);
+    return host;
+  }
+  mount('f-before', 'w430', 'dk', before({ notes: ['u0'], ring: true }), true);
+  mount('f-after', 'w430', 'dk', after(base()), true);
+  mount('r-before', 'w430', 'dk', rBefore({ done: [], ring: true }), true);
+  mount('r-after', 'w430', 'dk', rAfter(rbase()), true);
+  mount('f-w1', 'w320', 'dk', after(base({ notes: [] })), true);
+  mount('f-w2', 'w320', 'dk', after(base({ notes: [], win: 'u0' })), true);
+  mount('f-alt', 'w320', 'dk', after(base({ notes: [], alt: true })), true);
+  mount('f-s1', 'w320', 'dk', after(base({ notes: [] })), true);
+  mount('f-s2', 'w320', 'dk', after(base({ notes: [], drag: { id: 'u1', px: -132 }, finger: 'u1' })), true);
+  mount('f-s3', 'w320', 'dk', after(base({ notes: [], hidden: ['h0', 'u1'], toast: 'Hidden: 88 Quarry Rd Ste 100.' })), true);
+  mount('r-s1', 'w320', 'dk', rAfter(rbase()), true);
+  mount('r-s2', 'w320', 'dk', rAfter(rbase({ drag: { id: 'r1', px: -132 }, finger: 'r1' })), true);
+  mount('r-s3', 'w320', 'dk', rAfter(rbase({ away: ['r1'], toast: 'Marked opened: Okafor Gas Test.' })), true);
+  mount('f-dbefore', 'desk', 'lt', before({ notes: ['u0'], ring: false }), true);
+  mount('f-dafter', 'desk', 'lt', after(base({ desk: true })), true);
+  mount('r-dbefore', 'desk', 'lt', rBefore({ done: [], ring: false }), true);
+  mount('r-dafter', 'desk', 'lt', rAfter(rbase({ desk: true })), true);
+  mount('f-before320', 'w320', 'lt', before({ notes: ['u0'], ring: false }), true);
+  mount('f-after320', 'w320', 'lt', after(base()), true);
+  mount('r-before320', 'w320', 'lt', rBefore({ done: [], ring: false }), true);
+  mount('r-after320', 'w320', 'lt', rAfter(rbase()), true);
+  mount('f-nbefore', 'w320', 'lt', before({ notes: [], ring: false }), true);
+  mount('f-nafter', 'w320', 'lt', after(base({ notes: ['p4'] })), true);
+  mount('r-ebefore', 'w320', 'lt', rBefore({ done: ALLR, ring: false }), true);
+  mount('r-eafter', 'w320', 'lt', rAfter(rbase({ away: ALLR })), true);
+
+  document.getElementById('looks').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    this.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    frames.forEach(function (f) { f.classList.remove('lt', 'dk'); f.classList.add(b.dataset.look === 'both' ? f.dataset.look : b.dataset.look); });
+  });
+
+  // =====================  THE TWO FRAMES THAT WORK  =====================
+  // One controller for both cards: the same swipe, the same Undo, the same way in for a keyboard.
+  function liveFrame(id, S, render, on) {
+    var host = mount(id, 'w430 live', 'dk', '', false), timer = null, undo = null, justSwiped = false, g = null;
+    function paint() { S.mode = MODE; host.innerHTML = render(S); }
+    function say(text, back) {
+      S.toast = text; undo = back; clearTimeout(timer);
+      timer = setTimeout(function () { S.toast = null; undo = null; paint(); }, 10000);
+    }
+    function act(name, arg) { S.openId = null; if (on[name]) on[name](arg, say); paint(); }
+    host.addEventListener('click', function (e) {
+      if (justSwiped) { e.preventDefault(); return; }
+      var t = e.target.closest('[data-act]');
+      if (!t) { if (S.openId) { S.openId = null; paint(); } return; }
+      if (t.dataset.act === 'undo') { if (undo) undo(); S.toast = null; undo = null; paint(); return; }
+      act(t.dataset.act, t.dataset.id || t.dataset.key);
+    });
+    // Tab lands on a row's strip press: the row slides aside to show it.
+    host.addEventListener('focusin', function (e) {
+      var b = e.target.closest('.strip .hide'); if (!b || S.openId === b.dataset.id) return;
+      var rid = b.dataset.id; S.openId = rid; paint();
+      var again = host.querySelector('.strip .hide[data-id="' + rid + '"]'); if (again) again.focus();
+    });
+    // The swipe. 6 px decides swipe or scroll, as in the app's own kernel.
+    host.addEventListener('pointerdown', function (e) {
+      var el = e.target.closest('.slide[data-swipe]'); if (!el || e.target.closest('button')) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      var rid = el.closest('.row').dataset.id, strip = el.parentNode.querySelector('.strip');
+      g = { el: el, strip: strip, id: rid, x: e.clientX, y: e.clientY, pid: e.pointerId, axis: null, W: parseInt(strip.style.width, 10), wasOpen: S.openId === rid };
+    });
+    host.addEventListener('pointermove', function (e) {
+      if (!g || e.pointerId !== g.pid) return;
+      var dx = e.clientX - g.x, dy = e.clientY - g.y;
+      if (!g.axis) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        g.axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+        if (g.axis === 'h') { try { g.el.setPointerCapture(g.pid); } catch (err) {} g.el.classList.add('dragging'); }
+      }
+      if (g.axis !== 'h') return;
+      var px = Math.min(0, Math.max(-g.W, (g.wasOpen ? -g.W : 0) + dx));
+      g.el.style.transform = 'translateX(' + px + 'px)';
+      if (MODE === 'A') g.strip.classList.toggle('armed', px <= -ARM);
+    });
+    function end(e) {
+      if (!g || e.pointerId !== g.pid) return;
+      var cur = g; g = null;
+      if (cur.axis !== 'h') return;
+      justSwiped = true; setTimeout(function () { justSwiped = false; }, 0);
+      cur.el.classList.remove('dragging');
+      var dx = e.clientX - cur.x;
+      if (MODE === 'A') {
+        if (!cur.wasOpen && dx <= -ARM) { cur.el.style.transform = 'translateX(-100%)'; setTimeout(function () { act('away', cur.id); }, 150); return; }
+        S.openId = null; paint(); return;
+      }
+      var third = cur.W / 3;
+      S.openId = (cur.wasOpen ? dx < third : dx <= -third) ? cur.id : null; paint();
+    }
+    host.addEventListener('pointerup', end);
+    host.addEventListener('pointercancel', end);
+    paint();
+    return paint;
+  }
+
+  var SB = base({ notes: ['u0', 'p4'] });
+  var paintBids = liveFrame('f-live', SB, after, {
+    fold: function (k) { if (has(SB.open, k)) drop(SB.open, k); else SB.open.push(k); },
+    away: function (id, say) { if (!has(SB.hidden, id)) SB.hidden.push(id); say('Hidden: ' + bid(id).name + '.', function () { drop(SB.hidden, id); }); },
+    back: function (id) { drop(SB.hidden, id); SB.toast = null; },
+    read: function (id) { SB.read.push(id); },
+    open: function (id) { SB.win = id; },
+    close: function () { SB.win = null; }
+  });
+  var SR = rbase();
+  var paintReports = liveFrame('r-live', SR, rAfter, {
+    fold: function () { SR.groupOpen = !SR.groupOpen; },
+    expand: function (id) { SR.expanded = SR.expanded === id ? null : id; if (SR.expanded && !has(SR.seen, id)) SR.seen.push(id); },
+    away: function (id, say) {
+      var wasSeen = has(SR.seen, id);
+      if (!has(SR.away, id)) SR.away.push(id);
+      if (!wasSeen) SR.seen.push(id);
+      if (SR.expanded === id) SR.expanded = null;
+      say('Marked opened: ' + rep(id).job + '.', function () { drop(SR.away, id); if (!wasSeen) drop(SR.seen, id); });
+    },
+    all: function (_, say) {
+      var ids = REPORTS.filter(function (r) { return !has(SR.away, r.id) && !has(SR.seen, r.id); }).map(function (r) { return r.id; });
+      ids.forEach(function (id) { SR.away.push(id); SR.seen.push(id); });
+      SR.expanded = null;
+      say(ids.length + (ids.length === 1 ? ' report' : ' reports') + ' marked opened.', function () { ids.forEach(function (id) { drop(SR.away, id); drop(SR.seen, id); }); });
+    },
+    back: function (id) { drop(SR.away, id); drop(SR.seen, id); if (SR.expanded === id) SR.expanded = null; SR.toast = null; }
+  });
+
+  document.getElementById('modes').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    this.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    MODE = b.dataset.mode; SB.openId = null; SR.openId = null; paintBids(); paintReports();
+  });
+})();
+</script>

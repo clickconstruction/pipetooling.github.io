@@ -3,13 +3,14 @@ import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
 import { LIEN_DESK_PATH } from '../../lib/lien/lienDeskRoute'
 import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
-import { DISPATCH_MODE_INBOX_PATH, needsYouDoorLine, needsYouLienStripUnderDoor } from '../../lib/phoneLayout/needsYouPlace'
+import { DISPATCH_MODE_INBOX_PATH, needsYouDoorLine } from '../../lib/phoneLayout/needsYouPlace'
+import { lienDeskCardShown } from '../../lib/dashboard/lienDeskCard'
 import { useNewPhoneLayout } from '../../hooks/useNewPhoneLayout'
 import { PaintAMapPress } from '../paintedMap/PaintAMapPress'
 import { JobModeTopRow } from '../jobMode/JobModeTopRow'
 import { canSeeWaitingOnLeader } from '../../lib/dashboard/waitingOnLeader'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
-import NeedsYouLienBoardStrip from './NeedsYouLienBoardStrip'
+import DashboardLienDeskCard from './DashboardLienDeskCard'
 import DashboardWaitingOnLeaderCard from './DashboardWaitingOnLeaderCard'
 import { DashboardOfficeRoundCard } from './DashboardOfficeRoundCard'
 import { GcReviewWeekDoneNotice } from '../DashboardGcReviewWeeklyBanner'
@@ -107,7 +108,7 @@ export interface DashboardPinnedQuickRowProps {
   needsYouDoorTo?: string
   /**
    * The door stands in for the Needs you list alone, so the rest of the card's neighbourhood stays on the page: the
-   * Lien desk's strip, drawn under the door as a card of its own, and the two cards under the list, the office's
+   * Lien desk's card, drawn under the door, and the two cards under the list, the office's
    * round and, for the office, what waits on the leader. Unset, the door takes all three to the Inbox tab, as the
    * office person's phone has had it since v2.3883.
    */
@@ -380,8 +381,8 @@ export function DashboardPinnedQuickRow({
 
   // The two cards under the list: drawn with the banners, and left off a page whose door takes them to the Inbox tab.
   const cardsUnderTheList = !hideBanners && (!needsYouDoor || needsYouDoorKeepsCards)
-  // The Lien desk's strip on its own: under a door that keeps the cards, while the list has a line, as the card shows it.
-  const lienStripUnderDoor = needsYouLienStripUnderDoor({ door: doorLine != null, cardsStay: needsYouDoorKeepsCards, bannersHidden: hideBanners })
+  // The Lien desk's card (punch list #423): beside Needs you, under a door that keeps the cards or right above the list's card, and never inside it.
+  const lienDeskCardHere = lienDeskCardShown({ door: needsYouDoor, cardsStay: needsYouDoorKeepsCards, bannersHidden: hideBanners })
 
   const pinsToShow = filterPinsToShow(visiblePins)
 
@@ -489,7 +490,7 @@ export function DashboardPinnedQuickRow({
           <span style={{ color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Inbox ›</span>
         </button>
       ) : null}
-      {lienStripUnderDoor ? <NeedsYouLienBoardStrip standalone strip={needsYou.lienBoardStrip} userId={authUserId} role={role} onOpenBoard={() => navigate(LIEN_DESK_PATH)} /> : null}
+      {lienDeskCardHere ? <DashboardLienDeskCard card={needsYou.lienDeskCard} userId={authUserId} role={role} onOpenBoard={() => navigate(LIEN_DESK_PATH)} /> : null}
       {!hideBanners && !needsYouDoor && (
         <DashboardNeedsYouCard
           userId={authUserId}
@@ -497,13 +498,11 @@ export function DashboardPinnedQuickRow({
           items={needsYouItems}
           onAction={press.onAction}
           onSecondary={press.onSecondary}
-          lienBoardStrip={needsYou.lienBoardStrip}
-          onOpenBoard={() => navigate(LIEN_DESK_PATH)}
         />
       )}
       {/* Waiting on the leader (punch list #365, PR 2): the lines only he can clear, for the office that chases them. */}
       {cardsUnderTheList ? <DashboardWaitingOnLeaderCard authUserId={authUserId} role={role} enabled={canSeeWaitingOnLeader(role)} desk={needsYou.lienDeskData} deskReading={needsYou.reading.lienDesk} /> : null}
-      {/* The office's round (v2.5845, punch list #176, change 5): the round's close sheet in two lines, for the office. */}
+      {/* The office's round (v2.5845, punch list #176, change 5; a week of bars since punch list #424), for the office. */}
       {cardsUnderTheList ? <DashboardOfficeRoundCard enabled={officeEligible} /> : null}
       {/* Wednesday GC certification (v2.1984): the due state lives in the card
           (v2.2490); the green rest-of-Wednesday confirmation stays a notice. */}

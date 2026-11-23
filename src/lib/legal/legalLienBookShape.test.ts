@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { LIEN_BOOK_COUNSEL_SELECT, LIEN_BOOK_JOB_COLUMNS_SENT, shapeLienBookForCounsel } from './legalLienBookShape'
+import { LIEN_BOOK_COUNSEL_SELECT, LIEN_BOOK_JOB_COLUMNS_SENT, LIEN_BOOK_OWNER_CALL_SELECT, shapeLienBookForCounsel } from './legalLienBookShape'
 import { assembleLienBookInput, LIEN_BOOK_JOB_COLUMNS, parseLienBookRaw } from '../jobs/lienTimelineBookAssemble'
 
 const deskItem = {
@@ -43,6 +43,21 @@ describe('shapeLienBookForCounsel', () => {
     expect(shaped.gcs[0]).toEqual({ id: 'g1', name: 'Sample Contracting', lien_notice_policy: 'hold' })
   })
 
+  it('sends the owner’s answers as four values a job, and nothing else off the call (v2.8315)', () => {
+    const call = { at: '2026-10-01T16:30:00Z', name: 'Taunya Sample', owesGc: 'yes', owesAmount: 12000, reserved: 'held', originalContractCompletedOn: '2026-08-30', note: 'Jordan said the GC is slow', told: ['card one'], wantsToPayUs: true }
+    const notice = (job_id: string) => ({ job_id, kind: 'notice_53_056', voided_at: null, fields: { notice: { ownerName: 'Sam Owner' }, coverLetter: 'Dear …', ownerCall: call } })
+    const jobs = [{ id: 'j1', job_name: 'Tenant finish-out', customer_name: 'Sample Contracting', gc_customer_id: 'g1' }, { id: 'jz', job_name: 'ZZ test job', customer_name: 'Sample Contracting', gc_customer_id: 'g1' }]
+    const out = shapeLienBookForCounsel({ rows: [], affidavitRows: [], items: [deskItem], filings: [], jobs, gcs: [gc], addresses: [], owners: [], ownerCallItems: [notice('j1'), notice('jz')] })
+    // The kept job's facts, cut to their keys; the ZZ job's call leaves with the job.
+    expect(out.ownerFacts).toEqual({ j1: { paidOut: 'no', owesAmount: 12000, reserved: 'held', releasedOn: null } })
+    const flat = JSON.stringify(out)
+    for (const secret of ['ownerCall', 'Taunya Sample', 'Jordan said', 'card one', 'wantsToPayUs', '2026-10-01T16:30', '2026-08-30', 'coverLetter', 'Dear …']) expect(flat, secret).not.toContain(secret)
+    // With no call read, the key is there and empty: the client then knows not to look in its items.
+    expect(shaped.ownerFacts).toEqual({})
+    expect(LIEN_BOOK_OWNER_CALL_SELECT).toBe('job_id, kind, voided_at, fields')
+    expect(LIEN_BOOK_COUNSEL_SELECT.deskItems).not.toContain('fields')
+  })
+
   it('names the same columns in the selects the function runs', () => {
     expect(LIEN_BOOK_COUNSEL_SELECT.deskItems).toBe(Object.keys(shaped.items[0] ?? {}).join(', '))
     expect(LIEN_BOOK_COUNSEL_SELECT.filings).toBe(Object.keys(shaped.filings[0] ?? {}).join(', '))
@@ -58,6 +73,12 @@ describe('shapeLienBookForCounsel', () => {
     const input = assembleLienBookInput(raw!, '2026-10-05')
     expect(input.jobs.j1).toMatchObject({ label: '1042 · Tenant finish-out', county: 'Hays', ownerName: 'Sam Owner', openBalance: 14400, gcName: 'Sample Contracting', homestead: false })
     expect(input.policyByCustomer.g1).toBe('hold')
+    // v2.8315: the facts ride into the book's input; a payload from an older function has no key and hands none.
+    expect(input.ownerFactsByJob).toEqual({})
+    const withFacts = assembleLienBookInput(parseLienBookRaw(JSON.parse(JSON.stringify({ ...shaped, jobs: [job], ownerFacts: { j1: { paidOut: 'yes', owesAmount: null, reserved: 'never', releasedOn: null, note: 'x' } } })))!, '2026-10-05')
+    expect(withFacts.ownerFactsByJob).toEqual({ j1: { paidOut: 'yes', owesAmount: null, reserved: 'never', releasedOn: null } })
+    const { ownerFacts: _gone, ...older } = shaped
+    expect(assembleLienBookInput(parseLienBookRaw(JSON.parse(JSON.stringify({ ...older, jobs: [job] })))!, '2026-10-05').ownerFactsByJob).toBeUndefined()
     expect(input.filingsByJob.j1).toHaveLength(1)
   })
 })

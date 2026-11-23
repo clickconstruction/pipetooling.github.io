@@ -27,6 +27,7 @@ lien-closed-paid-activity
 sub-sheet-stamps
 sub-sheet-draw-invoice
 gc-papers
+form-pdf-opens-outlive-paper
 gc-trade-sign-sow
 revenue-riders
 gc-portal-p5
@@ -165,3 +166,5 @@ document-builders
 document-builder-sheets
 coi-checked-against-a-sheet
 write-down-first-amount
+working-hours
+stripe-paid-day
