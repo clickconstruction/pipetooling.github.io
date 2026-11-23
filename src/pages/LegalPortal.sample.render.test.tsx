@@ -183,6 +183,21 @@ describe('LegalPortal — the sample matter', () => {
     expect(screen.getByText('1063 · Whitfield residence — repipe')).toBeTruthy()
   })
 
+  it('fills Paid out to GC and 10 % reserved on the job whose owner answered, and leaves a ? on the others (v2.8315)', async () => {
+    await openSample()
+    fireEvent.click(screen.getByRole('button', { name: 'Lien grid' }))
+    await waitFor(() => expect(document.querySelector('[data-legal-portal-lien-grid]')).not.toBeNull())
+    const cellsOf = (job: string) => {
+      const row = screen.getByText(job).closest('tr') as HTMLElement
+      const cell = (label: string) => Array.from(row.querySelectorAll('td')).find((td) => td.getAttribute('data-label') === label)?.textContent
+      return { paidOut: cell('Paid out to GC'), reserved: cell('10 % reserved') }
+    }
+    // The sample matter's owner called: it still owes the GC $12,000 and holds the 10 %. The same call reads on Paper.
+    expect(cellsOf('1042 · Tenant finish-out — Suite 200')).toEqual({ paidOut: 'no · $12,000 owed', reserved: 'yes · held' })
+    expect(cellsOf('1057 · Plum Creek Dental — rough-in')).toEqual({ paidOut: '?', reserved: '?' })
+    expect(cellsOf('1063 · Whitfield residence — repipe')).toEqual({ paidOut: '?', reserved: '?' })
+  })
+
   it('shows two promises, one kept and one broken, and the firm’s question with the office’s answer', async () => {
     await openSample()
     fireEvent.click(screen.getByRole('button', { name: 'Record of contact' }))

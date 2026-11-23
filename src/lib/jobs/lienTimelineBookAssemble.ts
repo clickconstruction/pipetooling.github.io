@@ -7,6 +7,7 @@ import { lienPropertyOwnerDisplayName, resolveLienProperty, type CustomerAddress
 import { lienPublicStanding, type LienPublicRecord } from './lienPublicProperty'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import type { LienBookJob, LienTimelineBookInput } from './lienTimelineBook'
+import { parseLienOwnerFactsByJob, type LienOwnerFacts } from '../../../supabase/functions/_shared/lienOwnerFacts'
 
 /**
  * The book's raw rows → the kernel's input (punch list #41, PR 2). The
@@ -51,6 +52,11 @@ export type LienBookRaw = {
   gcs: LienBookRawGc[]
   addresses: CustomerAddressRow[]
   owners: Array<NonNullable<JobPropertyOwnerLike> & { job_id: string }>
+  /**
+   * The owner's answers as facts, by job (`lienOwnerFacts.ts`): the firm's portal carries them, since its items
+   * travel without `fields`. Absent from the office's own read, whose items carry the calls.
+   */
+  ownerFacts?: Record<string, LienOwnerFacts>
 }
 
 /** The select the book needs from jobs_ledger — the hook and the function read the same columns. */
@@ -116,7 +122,7 @@ export function assembleLienBookInput(raw: LienBookRaw, todayYmd: string): LienT
       ...(address ? { publicStanding: lienPublicStanding(address as LienPublicRecord) } : {}),
     }
   }
-  return { rows, affidavitRows, items: raw.items, filingsByJob, demandLettersByJob, jobs, policyByCustomer, todayYmd }
+  return { rows, affidavitRows, items: raw.items, filingsByJob, demandLettersByJob, jobs, policyByCustomer, ...(raw.ownerFacts ? { ownerFactsByJob: raw.ownerFacts } : {}), todayYmd }
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -139,5 +145,7 @@ export function parseLienBookRaw(v: unknown): LienBookRaw | null {
     gcs: arr<LienBookRawGc>(v.gcs),
     addresses: arr<CustomerAddressRow>(v.addresses),
     owners: arr<NonNullable<JobPropertyOwnerLike> & { job_id: string }>(v.owners),
+    // Only a function that sends the facts has the key; an older one leaves the book to read its items.
+    ...(isRecord(v.ownerFacts) ? { ownerFacts: parseLienOwnerFactsByJob(v.ownerFacts) } : {}),
   }
 }

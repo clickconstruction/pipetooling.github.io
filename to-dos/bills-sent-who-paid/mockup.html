@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bills sent: who paid, when, and what came in each day</title>
+<style>
+  /* A plan to decide on. Nothing here is built. The owner asked that Bills sent show more clearly who has paid and
+     when, and how much money comes in from Stripe on any given day. Drawn 2026-11-23, with that day as today.
+     Every name, job, address, bill number, check number, amount and count on this page is made up: Northgate
+     Plumbing Co., Ridgeway Builders, Larkfield Construction, Sable Ridge Builders, Brightwater Homes, Priya and
+     Marcus in the office, jobs J1396 to J1436. No live row is on this page. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-red-700: #b91c1c; --text-green-700: #15803d; --text-green-800: #166534; --text-amber-800: #92400e; --text-blue-700: #1d4ed8; --text-violet-700: #6d28d9;
+    --bg-red-tint: #fef2f2; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-blue-tint: #eff6ff; --bg-violet-tint: #f5f3ff;
+    --border-amber: #fcd34d; --border-green: #bbf7d0;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-red-700: #f87171; --text-green-700: #4ade80; --text-green-800: #86efac; --text-amber-800: #fcd34d; --text-blue-700: #93c5fd; --text-violet-700: #c4b5fd;
+    --bg-red-tint: #3b1a1a; --bg-amber-tint: #3a2f11; --bg-green-tint: #12301f; --bg-blue-tint: #1e3358; --bg-violet-tint: #2c2350;
+    --border-amber: #92400e; --border-green: #166534;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 80px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  header.top > div:first-child { flex: 1 1 520px; min-width: 0; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); }
+  header.top p { margin: 8px 0 0; max-width: 92ch; }
+  .themes { display: flex; gap: 6px; }
+  .themes button { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .themes button[aria-pressed="true"] { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font-size: 20px; margin: 44px 0 4px; color: var(--text-strong); }
+  h2 small { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
+  .lede { margin: 0 0 6px; max-width: 96ch; }
+  .note { margin: 16px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 96ch; border-radius: 0 8px 8px 0; }
+  .note b { color: var(--text-strong); }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 22px; margin-top: 14px; align-items: start; }
+  .two.desk { grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 1100px) { .two.desk { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  .two.phones { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 380px)); justify-content: start; }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .col.sug .cap { color: var(--new); }
+  .say { margin: 0; font-size: 13px; max-width: 70ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: 0 6px 22px rgba(0,0,0,.14); overflow: hidden; background: var(--bg-page); color: var(--text-base); min-width: 0; }
+  .col.sug .frame, .frame.sug { border: 2px solid var(--new); }
+  .frame.phone { border-radius: 26px; max-width: 380px; }
+  .pad { padding: 12px; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--new); background: var(--new-tint); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; white-space: nowrap; }
+
+  .pick { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .pick > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .pick > div.sug { border: 2px solid var(--new); background: var(--new-tint); }
+  .pick h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .pick .sug h3 { color: var(--new); }
+  .pick ul { margin: 0; padding-left: 20px; }
+  .pick li { margin: 0 0 4px; }
+
+  /* drawn app pieces */
+  .bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 12px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+  .bar b { color: var(--text-strong); font-size: 15px; }
+  .bar .right { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .find { display: block; width: 100%; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-muted); font-size: 13px; margin-top: 8px; }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+  .chipb { font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); white-space: nowrap; }
+  button.chipb { cursor: pointer; }
+  .chipb.on { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); font-weight: 700; }
+  .chipb.fresh { border: 2px solid var(--new); padding: 2px 9px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 12.5px; font-weight: 700; min-height: 30px; padding: 3px 11px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); white-space: nowrap; }
+  .day { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; margin: 12px 0 4px; padding: 6px 10px; border-radius: 6px; background: var(--bg-subtle); border-left: 3px solid var(--text-blue-700); font-size: 13.5px; font-weight: 800; color: var(--text-strong); }
+  .day small { font-weight: 500; color: var(--text-muted); font-size: 12.5px; }
+  .day .sum { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .day .back { flex: 1 0 100%; text-align: right; font-weight: 600; font-size: 12.5px; color: var(--text-700); font-variant-numeric: tabular-nums; }
+  .day .back b { color: var(--text-strong); }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 6px; }
+  .tile { font: inherit; text-align: left; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 6px 9px; min-width: 0; color: inherit; }
+  .tile small { display: block; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile b { font-size: 15px; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .tile span { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .tile.amber { background: var(--bg-amber-tint); border-color: var(--border-amber); } .tile.amber b, .tile.amber small { color: var(--text-amber-800); }
+  .tile.green { background: var(--bg-green-tint); border-color: var(--border-green); } .tile.green small { color: var(--text-green-800); }
+  .tile.fresh { outline: 2px solid var(--new); outline-offset: -2px; }
+  .frame.phone .tiles { grid-template-columns: 1fr 1fr; }
+  .frame.phone .tile span { display: block; }
+
+  /* the switch between the two views */
+  .switch { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; background: var(--surface); margin-bottom: 8px; }
+  .switch span, .switch button { font: inherit; font-size: 13px; font-weight: 600; min-height: 34px; display: flex; align-items: center; justify-content: center; color: var(--text-700); background: transparent; border: 0; padding: 0 8px; text-align: center; }
+  .switch .on { background: var(--text-strong); color: var(--surface); font-weight: 700; }
+  .frame.phone .switch span, .frame.phone .switch button { min-height: 44px; }
+
+  /* a line: the page as it is */
+  .ln { display: grid; grid-template-columns: 68px minmax(0, 1fr) auto; gap: 1px 10px; padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; min-width: 0; }
+  .ln + .ln { margin-top: 4px; }
+  .ln .t { grid-row: 1 / span 3; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ln .what { min-width: 0; overflow-wrap: anywhere; }
+  .ln .what b { color: var(--text-strong); text-decoration: underline; text-underline-offset: 2px; }
+  .ln .what i { font-style: normal; color: var(--text-green-700); font-weight: 600; }
+  .ln .amt { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-strong); text-align: right; white-space: nowrap; }
+  .ln .amt.quiet { color: var(--text-muted); }
+  .ln .to { grid-column: 2 / -1; color: var(--text-700); min-width: 0; overflow-wrap: anywhere; }
+  .ln .to .addr { color: var(--text-strong); font-weight: 600; }
+  .ln .how { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 3px 8px; align-items: center; font-size: 12.5px; color: var(--text-muted); min-width: 0; }
+  .ln u { text-decoration: underline; text-underline-offset: 2px; color: var(--text-700); }
+  .rt { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; white-space: nowrap; background: var(--bg-green-tint); color: var(--text-green-800); }
+  .rt.text { background: var(--bg-violet-tint); color: var(--text-violet-700); }
+  .rt.plain { background: var(--bg-muted); color: var(--text-700); }
+  .rt.bank { background: var(--bg-blue-tint); color: var(--text-blue-700); }
+  /* The owner, 2026-11-23: the cents are always smaller than the rest of the number, so the dollars read first. The app has the piece: AmountSmallCents, at 0.7em. */
+  span.c { font-size: .7em !important; display: inline !important; margin: 0 !important; color: inherit !important; }
+  .ok { color: var(--text-green-700); font-weight: 600; }
+  .dim { color: var(--text-muted); }
+  .foot { margin: 10px 0 0; font-size: 12px; color: var(--text-muted); }
+  .n { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; border-radius: 50%; background: var(--text-red-700); color: var(--surface); font-size: 10.5px; font-weight: 800; vertical-align: middle; margin: 0 2px; flex: 0 0 auto; }
+  ol.why { margin: 4px 0 0; padding: 0; list-style: none; font-size: 13px; display: grid; gap: 5px; }
+  ol.why li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 0 4px; align-items: start; }
+
+  /* a line: payment made plain. The money column holds the amount, then the stamp, then how. */
+  .ln.pay { grid-template-columns: 68px minmax(0, 1fr) minmax(128px, auto); }
+  .ln.pay .money { grid-column: 3; display: grid; gap: 2px; justify-items: end; align-content: start; text-align: right; min-width: 0; }
+  .ln.pay .money { grid-row: 1 / span 2; }
+  .ln.pay .to { grid-column: 2; }
+  .ln.pay .how { grid-column: 2 / -1; }
+  /* The owner, 2026-11-23: whether it arrived sits at the right edge of its row, under the money column. */
+  .how .dl { margin-left: auto; text-align: right; white-space: nowrap; }
+  .stamp { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 8px; white-space: nowrap; }
+  .stamp.paid { background: var(--bg-green-tint); color: var(--text-green-800); border: 1px solid var(--border-green); }
+  .stamp.part { background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px solid var(--border-amber); }
+  .stamp.open { color: var(--text-700); border: 1px dashed var(--border-strong); font-weight: 600; }
+  .money .howp { font-size: 11.5px; color: var(--text-muted); white-space: nowrap; }
+  .money .howp b { color: var(--text-700); font-weight: 600; }
+
+  /* phone, and the desk drawing on a narrow screen: the time moves above the line */
+  .frame.phone .ln { grid-template-columns: minmax(0, 1fr) auto; padding: 9px 10px; border-radius: 10px; font-size: 13.5px; }
+  .frame.phone .ln .t { grid-row: auto; grid-column: 1; display: flex; flex-wrap: wrap; gap: 3px 7px; align-items: center; font-weight: 400; color: var(--text-muted); font-size: 12.5px; }
+  .frame.phone .ln .t b { color: var(--text-strong); font-weight: 700; font-size: 13.5px; }
+  .frame.phone .ln .amt { grid-column: 2; grid-row: 1; }
+  .frame.phone .ln .what, .frame.phone .ln .to, .frame.phone .ln .how { grid-column: 1 / -1; }
+  .frame.phone .ln .what { font-weight: 600; color: var(--text-strong); }
+  .frame.phone .ln .how { font-size: 12.5px; color: var(--text-700); }
+  .frame.phone .ln .paybar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; margin: 6px -10px -9px; padding: 7px 10px; border-top: 1px solid var(--border); border-radius: 0 0 10px 10px; font-size: 12.5px; }
+  .frame.phone .ln .paybar.paid { background: var(--bg-green-tint); color: var(--text-green-800); border-top-color: var(--border-green); }
+  .frame.phone .ln .paybar.part { background: var(--bg-amber-tint); color: var(--text-amber-800); border-top-color: var(--border-amber); }
+  .frame.phone .ln .paybar.open { background: var(--bg-subtle); color: var(--text-700); }
+  .frame.phone .ln .paybar b { font-weight: 800; }
+  .frame.phone .ln .paybar span { margin-left: auto; color: var(--text-700); }
+  .frame.phone .chips { flex-wrap: nowrap; overflow: hidden; }
+  .frame.phone .chipb { min-height: 38px; display: inline-flex; align-items: center; }
+  @media (max-width: 640px) {
+    .frame:not(.phone) .ln, .frame:not(.phone) .ln.pay { grid-template-columns: minmax(0, 1fr) auto; }
+    .frame:not(.phone) .ln .t { grid-row: auto; grid-column: 1 / -1; }
+    .frame:not(.phone) .ln .to, .frame:not(.phone) .ln .how { grid-column: 1 / -1; }
+    .frame:not(.phone) .ln.pay .money { grid-column: 1 / -1; grid-row: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; text-align: left; margin-top: 3px; }
+    .frame:not(.phone) .ln.pay .money .howp { white-space: normal; }
+  }
+
+  /* By day paid */
+  .pv { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 12px; margin-top: 10px; align-items: start; }
+  .cal { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px; min-width: 0; }
+  .cal .mh { display: flex; align-items: center; gap: 8px; padding: 0 2px 6px; }
+  .cal .mh b { color: var(--text-strong); font-size: 14px; }
+  .cal .mh span { margin-left: auto; font-size: 12.5px; color: var(--text-700); font-variant-numeric: tabular-nums; text-align: right; }
+  .cal .mh button { font: inherit; width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); cursor: pointer; }
+  .frame.phone .cal .mh button { width: 44px; height: 44px; }
+  .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+  .grid .wd { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); text-align: center; padding: 2px 0; }
+  .cell { font: inherit; display: grid; align-content: start; gap: 1px; min-height: 58px; padding: 4px 5px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); text-align: left; min-width: 0; cursor: pointer; }
+  .frame.phone .cell { min-height: 50px; padding: 3px 3px; }
+  .cell .dn { font-size: 11px; font-weight: 600; }
+  .cell .am { font-size: 12.5px; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+  .frame.phone .cell .am { font-size: 11px; letter-spacing: -.02em; }
+  .cell .ct { font-size: 10.5px; color: var(--text-700); white-space: nowrap; overflow: hidden; }
+  .frame.phone .cell .ct { display: none; }
+  .cell.has { background: var(--bg-green-tint); border-color: var(--border-green); color: var(--text-green-800); }
+  .cell.today { box-shadow: inset 0 0 0 2px var(--text-blue-700); }
+  .cell.picked { background: var(--text-strong); border-color: var(--text-strong); color: var(--surface); }
+  .cell.picked .am, .cell.picked .ct { color: var(--surface); }
+  .cell.later { background: var(--bg-subtle); border-style: dashed; cursor: default; }
+  .cell.blank { visibility: hidden; }
+  .dayp { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+  .dayp h4 { margin: 0 0 6px; font-size: 15px; color: var(--text-strong); }
+  .vl { display: grid; grid-template-columns: minmax(96px, auto) minmax(0, 1fr); gap: 2px 12px; font-size: 13px; margin: 0 0 8px; }
+  .vl dt { color: var(--text-muted); }
+  .vl dd { margin: 0; color: var(--text-strong); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .vl dd button { font: inherit; font-weight: 600; font-size: 12.5px; border: 0; background: transparent; padding: 0; margin-left: 8px; color: var(--text-700); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+  .dep { margin: 8px 0 0; padding: 4px 8px; border-radius: 6px; background: var(--bg-subtle); font-size: 12.5px; color: var(--text-700); display: flex; flex-wrap: wrap; gap: 2px 8px; }
+  .dep b { color: var(--text-strong); margin-left: auto; font-variant-numeric: tabular-nums; }
+  .pl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 10px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13px; min-width: 0; }
+  .pl:first-of-type { border-top: 0; }
+  .pl .what { min-width: 0; overflow-wrap: anywhere; }
+  .pl .what b { color: var(--text-strong); text-decoration: underline; text-underline-offset: 2px; }
+  .pl .what i { font-style: normal; color: var(--text-green-700); font-weight: 600; }
+  .pl .amt { font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  .pl .facts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 3px 8px; align-items: center; font-size: 12.5px; color: var(--text-muted); }
+  .pl .facts b { color: var(--text-700); font-weight: 600; }
+  .pl .facts .part { color: var(--text-amber-800); font-weight: 600; }
+  .none { margin: 6px 0 0; padding: 12px; border: 1px dashed var(--border-strong); border-radius: 8px; font-size: 13px; color: var(--text-700); text-align: center; }
+  .none button { font: inherit; font-size: 12.5px; font-weight: 700; min-height: 30px; padding: 3px 11px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); cursor: pointer; margin-left: 6px; }
+  .frame.phone .none button { min-height: 44px; display: block; margin: 8px auto 0; }
+
+  table.t { width: 100%; border-collapse: collapse; margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; font-size: 13px; }
+  .scroll { overflow-x: auto; max-width: 100%; }
+  .scroll table.t { min-width: 720px; }
+  table.t th, table.t td { text-align: left; padding: 7px 10px; border-top: 1px solid var(--border); vertical-align: top; }
+  table.t th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border-top: 0; background: var(--bg-subtle); }
+  table.t td:first-child { color: var(--text-strong); font-weight: 600; }
+  table.t tr.sug td { background: var(--new-tint); }
+  ol.calls { margin: 12px 0 0; padding-left: 22px; max-width: 96ch; }
+  ol.calls li { margin: 0 0 8px; }
+  ol.calls b { color: var(--text-strong); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #422 · the mock-up the owner approved on 2026-11-23</p>
+    <h1>Bills sent: who paid, when, and what came in each day</h1>
+    <p>The owner asked for two things on Bills sent. The leader should see at a glance who has paid and when. He should also see how much money came in from Stripe on any given day. This page shows the list as it is, the list with payment made plain, and a second view by the day the money came. Today on this page is Monday, Nov 23. Every name and number is made up.</p>
+  </div>
+  <div class="themes" role="group" aria-label="Theme">
+    <button type="button" data-set="light" aria-pressed="true">Light</button>
+    <button type="button" data-set="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<nav class="jump">
+  <a href="#short">The short of it</a>
+  <a href="#desk">1 · The list at a desk</a>
+  <a href="#phone">2 · The list on a phone</a>
+  <a href="#paid">3 · By day paid</a>
+  <a href="#paidphone">4 · By day paid on a phone</a>
+  <a href="#means">What a day can mean</a>
+  <a href="#where">Where it lives</a>
+  <a href="#calls">The calls</a>
+</nav>
+
+<h2 id="short">The short of it</h2>
+<div class="pick">
+  <div>
+    <h3>What I found</h3>
+    <ul>
+      <li>The page already knows when a bill was paid. It says so in small green words at the end of a line, beside <i>Delivered</i> in the same green.</li>
+      <li>The page reads how each bill was paid and never draws it.</li>
+      <li>A bill sent by text, or before Oct 5, says <i>Paid since</i> with no day.</li>
+      <li>Nothing on the page adds up what was paid. No tile, no chip, no word on the day band.</li>
+      <li>The list is in the order bills went out. No screen lists money by the day it came.</li>
+    </ul>
+  </div>
+  <div class="sug">
+    <h3>What I suggest</h3>
+    <ul>
+      <li><b>On the list:</b> a stamp under each amount. It says <i>Paid</i> with the day and how, or <i>Not paid</i> with the days out.</li>
+      <li><b>On each day band:</b> how many of that day's bills are paid, and what is still out.</li>
+      <li><b>A second view, By day paid:</b> a month of days with what came in on each. Press a day to see its total and its bills.</li>
+      <li>The chip <b>Stripe</b> narrows the month to Stripe money alone.</li>
+      <li>One page, one switch at the top. No new door to learn.</li>
+    </ul>
+  </div>
+  <div>
+    <h3>What it costs</h3>
+    <ul>
+      <li>Four small builds, one after the other.</li>
+      <li>No new table. The page reads the payment rows the app already keeps.</li>
+      <li>No new access rule. The same four office roles open the page.</li>
+      <li>One fix is the owner's call: a Stripe payment made in the evening is filed on the next day.</li>
+    </ul>
+  </div>
+</div>
+
+<h2 id="desk">1 · The list at a desk <small>as it is, beside payment made plain</small></h2>
+<p class="lede">Both drawings show the same seven sends. Look for who has paid in each one.</p>
+<div class="two desk">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame">
+      <div class="bar"><b>Bills sent</b><span class="right"><span class="btn">Print</span><span class="btn">Download CSV</span></span></div>
+      <div class="pad">
+        <div class="tiles">
+          <div class="tile"><small>Today</small><b>2 bills</b> <span>$5,930.00</span></div>
+          <div class="tile"><small>This week</small><b>2 bills</b> <span>$5,930.00</span></div>
+          <div class="tile amber"><small>No send on record</small><b>4</b></div>
+        </div>
+        <span class="find">Find a bill: a job, a customer, an address, a bill number</span>
+        <div class="chips"><span class="chipb on">All</span><span class="chipb">Email</span><span class="chipb">Text</span><span class="chipb">Printed</span><span class="chipb">Statement</span><span class="chipb">Housecall Pro</span><span class="chipb">Recorded by hand</span><span class="chipb">Did not arrive</span><span class="chipb">No send on record</span></div>
+
+        <div class="day"><span>Today · Mon, Nov 23</span><span class="sum">2 bills · $5,930.00</span><span class="n">4</span></div>
+        <div class="ln"><div class="t">9:28 AM</div><div class="what"><b>Bill 1433-0001</b> · <i>J1433 Ridgeway Lot 8 top-out</i> · Ridgeway Builders</div><div class="amt">$4,180.00</div><div class="to">To Dana Whitlock · <span class="addr">ap@ridgewaybuilders.example</span></div><div class="how"><span class="rt">Email</span><span>by Priya</span><span class="ok">Delivered 9:28 AM</span><u>Copy as sent</u></div></div>
+        <div class="ln"><div class="t">8:02 AM</div><div class="what"><b>Bill 1436-0001</b> · <i>J1436 Reyes water heater</i> · Tamsin Reyes</div><div class="amt">$1,750.00<span class="n">3</span></div><div class="to">To <span class="addr">tamsin.reyes@mailbox.example</span></div><div class="how"><span class="rt">Email</span><span>by Marcus</span><span class="ok">Opened 8:15 AM</span><span class="ok">Paid Nov 23</span><span class="n">1</span><span class="n">2</span><u>Copy as sent</u></div></div>
+
+        <div class="day"><span>Fri, Nov 20</span><span class="sum">3 bills · $9,640.00</span></div>
+        <div class="ln"><div class="t">3:41 PM</div><div class="what"><b>Bill 1429-0002</b> · <i>J1429 Larkfield Lot 14 rough</i> · Larkfield Construction</div><div class="amt">$5,200.00</div><div class="to">To Owen Hart · <span class="addr">billing@larkfield.example</span></div><div class="how"><span class="rt">Email</span><span>by Priya</span><span class="ok">Delivered 3:41 PM</span><u>Copy as sent</u></div></div>
+        <div class="ln"><div class="t">1:15 PM</div><div class="what"><b>Bill 1431-0001</b> · <i>J1431 Hollis Dental fit-out</i> · Hollis Dental Group</div><div class="amt">$3,120.00</div><div class="to">To <span class="addr">office@hollisdental.example</span></div><div class="how"><span class="rt">Email</span><span>by Marcus</span><span class="ok">Opened 1:32 PM</span><span class="n">6</span><u>Copy as sent</u></div></div>
+        <div class="ln"><div class="t">10:07 AM</div><div class="what"><b>Bill</b> · <i>J1425 Okafor repipe</i> · Dana Okafor</div><div class="amt">$1,320.00</div><div class="to">To Dana Okafor · <span class="addr">(405) 555-0142</span></div><div class="how"><span class="rt text">Text</span><span>by Priya</span><span class="ok">Delivered</span><span class="ok">Paid since</span><span class="n">5</span></div></div>
+
+        <div class="day"><span>Thu, Nov 19</span><span class="sum">1 bill · $6,890.00</span><small>1 sent again</small></div>
+        <div class="ln"><div class="t">2:30 PM</div><div class="what"><b>Bill 1412-0002</b> · <i>J1412 Sable Ridge Lot 3 finish</i> · Sable Ridge Builders</div><div class="amt quiet">$4,410.00</div><div class="to">To <span class="addr">pay@sableridge.example</span></div><div class="how"><span class="rt">Email, sent again</span><span>by Priya</span><span>2nd send. First sent Tue, Nov 10.</span><span class="ok">Delivered 2:30 PM</span><span class="ok">Paid Nov 20</span><u>Copy as sent</u></div></div>
+        <div class="ln"><div class="t">11:12 AM</div><div class="what"><b>Bill 1427-0001</b> · <i>J1427 Brightwater model home</i> · Brightwater Homes</div><div class="amt">$6,890.00</div><div class="to">To <span class="addr">payables@brightwater.example</span></div><div class="how"><span class="rt">Email</span><span>by Marcus</span><span class="ok">Delivered 11:12 AM</span><u>Copy as sent</u></div></div>
+        <p class="foot">All times are Central. A day’s total counts each bill once, on the day it first went.</p>
+      </div>
+    </div>
+    <div class="cap">Why paid does not read</div>
+    <ol class="why">
+      <li><span class="n">1</span><span><b>It is the last of five small things.</b> Paid sits at the end of the grey row, after the pill, the sender and the delivery word.</span></li>
+      <li><span class="n">2</span><span><b>Two greens say two things.</b> <i>Delivered</i> is about the email. <i>Paid</i> is about the money. They look the same.</span></li>
+      <li><span class="n">3</span><span><b>The amount looks the same paid or owed.</b> The eye goes to the bold amount first, and it says nothing of payment.</span></li>
+      <li><span class="n">4</span><span><b>Nothing adds it up.</b> The band counts what went out. No tile and no chip says what came back.</span></li>
+      <li><span class="n">5</span><span><b>Some lines have no day.</b> A text, a Housecall Pro bill and an older email read <i>Paid since</i>. The day is found through the sent copy, and these have none.</span></li>
+      <li><span class="n">6</span><span><b>Part paid says nothing.</b> A check for half the bill is on record. The line is silent until the bill is paid in full.</span></li>
+    </ol>
+    <p class="say">One more that cannot be drawn. The page reads how each bill was paid and throws the word away. For a Stripe payment the word it reads is empty anyway.</p>
+  </div>
+
+  <div class="col sug">
+    <div class="cap">My suggestion · payment made plain</div>
+    <div class="frame">
+      <div class="bar"><b>Bills sent</b><span class="right"><span class="btn">Print</span><span class="btn">Download CSV</span></span></div>
+      <div class="pad">
+        <div class="switch" role="group" aria-label="View"><span class="on">By day sent</span><span>By day paid</span></div>
+        <div class="tiles">
+          <div class="tile"><small>Today</small><b>2 bills</b> <span>$5,930.00</span></div>
+          <div class="tile"><small>This week</small><b>2 bills</b> <span>$5,930.00</span></div>
+          <div class="tile fresh"><small>Not paid</small><b>9 bills</b> <span>$31,270.00</span></div>
+          <div class="tile green fresh"><small>Paid this week</small><b>2 payments</b> <span>$3,250.00</span></div>
+          <div class="tile amber"><small>No send on record</small><b>4</b></div>
+        </div>
+        <span class="find">Find a bill: a job, a customer, an address, a bill number</span>
+        <div class="chips"><span class="chipb on">All</span><span class="chipb fresh">Not paid</span><span class="chipb fresh">Paid</span><span class="chipb">Email</span><span class="chipb">Text</span><span class="chipb">Printed</span><span class="chipb">Statement</span><span class="chipb">Housecall Pro</span><span class="chipb">Recorded by hand</span><span class="chipb">Did not arrive</span><span class="chipb">No send on record</span></div>
+
+        <div class="day"><span>Today · Mon, Nov 23</span><span class="sum">2 bills · $5,930.00</span><span class="back"><b>1 of 2</b> paid · <b>$4,180.00</b> still out</span></div>
+        <div class="ln pay"><div class="t">9:28 AM</div><div class="what"><b>Bill 1433-0001</b> · <i>J1433 Ridgeway Lot 8 top-out</i> · Ridgeway Builders</div><div class="money"><span class="amt">$4,180.00</span><span class="stamp open">Not paid</span><span class="howp">sent today</span></div><div class="to">To Dana Whitlock · <span class="addr">ap@ridgewaybuilders.example</span></div><div class="how"><span class="rt">Email</span><span>by Priya</span><u>Copy as sent</u><span class="dl">Delivered 9:28 AM</span></div></div>
+        <div class="ln pay"><div class="t">8:02 AM</div><div class="what"><b>Bill 1436-0001</b> · <i>J1436 Reyes water heater</i> · Tamsin Reyes</div><div class="money"><span class="amt">$1,750.00</span><span class="stamp paid">✓ Paid today</span><span class="howp"><b>Card · Stripe</b> · 8:21 AM</span></div><div class="to">To <span class="addr">tamsin.reyes@mailbox.example</span></div><div class="how"><span class="rt">Email</span><span>by Marcus</span><u>Copy as sent</u><span class="dl">Opened 8:15 AM</span></div></div>
+
+        <div class="day"><span>Fri, Nov 20</span><span class="sum">3 bills · $9,640.00</span><span class="back"><b>1 of 3</b> paid · <b>$6,820.00</b> still out</span></div>
+        <div class="ln pay"><div class="t">3:41 PM</div><div class="what"><b>Bill 1429-0002</b> · <i>J1429 Larkfield Lot 14 rough</i> · Larkfield Construction</div><div class="money"><span class="amt">$5,200.00</span><span class="stamp open">Not paid</span><span class="howp">3 days out</span></div><div class="to">To Owen Hart · <span class="addr">billing@larkfield.example</span></div><div class="how"><span class="rt">Email</span><span>by Priya</span><u>Copy as sent</u><span class="dl">Delivered 3:41 PM</span></div></div>
+        <div class="ln pay"><div class="t">1:15 PM</div><div class="what"><b>Bill 1431-0001</b> · <i>J1431 Hollis Dental fit-out</i> · Hollis Dental Group</div><div class="money"><span class="amt">$3,120.00</span><span class="stamp part">Part paid · $1,500.00</span><span class="howp"><b>Check 2291</b> · today · $1,620.00 out</span></div><div class="to">To <span class="addr">office@hollisdental.example</span></div><div class="how"><span class="rt">Email</span><span>by Marcus</span><u>Copy as sent</u><span class="dl">Opened 1:32 PM</span></div></div>
+        <div class="ln pay"><div class="t">10:07 AM</div><div class="what"><b>Bill</b> · <i>J1425 Okafor repipe</i> · Dana Okafor</div><div class="money"><span class="amt">$1,320.00</span><span class="stamp paid">✓ Paid Sat, Nov 21</span><span class="howp"><b>Card · Stripe</b> · in 1 day</span></div><div class="to">To Dana Okafor · <span class="addr">(405) 555-0142</span></div><div class="how"><span class="rt text">Text</span><span>by Priya</span><span class="dl">Delivered</span></div></div>
+
+        <div class="day"><span>Thu, Nov 19</span><span class="sum">1 bill · $6,890.00</span><small>1 sent again</small><span class="back"><b>0 of 1</b> paid · <b>$6,890.00</b> still out</span></div>
+        <div class="ln pay"><div class="t">2:30 PM</div><div class="what"><b>Bill 1412-0002</b> · <i>J1412 Sable Ridge Lot 3 finish</i> · Sable Ridge Builders</div><div class="money"><span class="amt quiet">$4,410.00</span><span class="stamp paid">✓ Paid Fri, Nov 20</span><span class="howp"><b>Check 4417</b> · bank deposit</span></div><div class="to">To <span class="addr">pay@sableridge.example</span></div><div class="how"><span class="rt">Email, sent again</span><span>by Priya</span><span>2nd send. First sent Tue, Nov 10.</span><u>Copy as sent</u><span class="dl">Delivered 2:30 PM</span></div></div>
+        <div class="ln pay"><div class="t">11:12 AM</div><div class="what"><b>Bill 1427-0001</b> · <i>J1427 Brightwater model home</i> · Brightwater Homes</div><div class="money"><span class="amt">$6,890.00</span><span class="stamp open">Not paid</span><span class="howp">4 days out</span></div><div class="to">To <span class="addr">payables@brightwater.example</span></div><div class="how"><span class="rt">Email</span><span>by Marcus</span><u>Copy as sent</u><span class="dl">Delivered 11:12 AM</span></div></div>
+        <p class="foot">All times are Central. A day’s total counts each bill once, on the day it first went. Paid and still out count the same bills.</p>
+      </div>
+    </div>
+    <div class="cap">What changed</div>
+    <ol class="why">
+      <li><span></span><span><b>A money column.</b> The amount, then the stamp, then how. The eye runs down one column and reads who paid.</span></li>
+      <li><span></span><span><b>Green means money, and only money.</b> The delivery word turns grey and moves to the right edge of its row. A bounce stays red.</span></li>
+      <li><span></span><span><b>The day and the way.</b> <i>Card · Stripe</i>, <i>Check 4417 · bank deposit</i>, <i>Cash · typed by hand</i>. These are the job window's own words.</span></li>
+      <li><span></span><span><b>Not paid is said too.</b> With the days since the bill first went.</span></li>
+      <li><span></span><span><b>Every line has its day.</b> The page reads the payment by the bill, so a text and an older email get theirs.</span></li>
+      <li><span></span><span><b>The band and the tiles add it up.</b> <b>Not paid</b> narrows the list. <b>Paid this week</b> opens the second view.</span></li>
+      <li><span></span><span><b>Cents are small.</b> The dollars of every amount read first.</span></li>
+    </ol>
+  </div>
+</div>
+
+<h2 id="phone">2 · The list on a phone</h2>
+<p class="lede">The leader reads this page on his phone. A card keeps its rows. The payment becomes a bar across the foot of the card.</p>
+<div class="two phones">
+  <div class="col">
+    <div class="cap">Now</div>
+    <div class="frame phone">
+      <div class="bar"><b>Bills sent</b></div>
+      <div class="pad">
+        <div class="tiles">
+          <div class="tile"><small>Today</small><b>2 bills</b> <span>$5,930.00</span></div>
+          <div class="tile"><small>This week</small><b>2 bills</b> <span>$5,930.00</span></div>
+        </div>
+        <span class="find">Find a bill</span>
+        <div class="chips"><span class="chipb on">All</span><span class="chipb">Email</span><span class="chipb">Text</span><span class="chipb">Printed</span><span class="chipb">Statement</span></div>
+        <div class="day"><span>Today · Mon, Nov 23</span><span class="sum">2 bills · $5,930.00</span></div>
+        <div class="ln"><div class="t"><b>9:28 AM</b><span class="rt">Email</span><span>by Priya</span></div><div class="amt">$4,180.00</div><div class="what">J1433 Ridgeway Lot 8 top-out · Ridgeway Builders</div><div class="to">To ap@ridgewaybuilders.example</div><div class="how"><span class="ok">Delivered 9:28 AM</span></div></div>
+        <div class="ln"><div class="t"><b>8:02 AM</b><span class="rt">Email</span><span>by Marcus</span></div><div class="amt">$1,750.00</div><div class="what">J1436 Reyes water heater · Tamsin Reyes</div><div class="to">To tamsin.reyes@mailbox.example</div><div class="how"><span class="ok">Opened 8:15 AM · Paid Nov 23</span></div></div>
+        <div class="day"><span>Fri, Nov 20</span><span class="sum">3 bills · $9,640.00</span></div>
+        <div class="ln"><div class="t"><b>3:41 PM</b><span class="rt">Email</span><span>by Priya</span></div><div class="amt">$5,200.00</div><div class="what">J1429 Larkfield Lot 14 rough · Larkfield Construction</div><div class="to">To billing@larkfield.example</div><div class="how"><span class="ok">Delivered 3:41 PM</span></div></div>
+        <div class="ln"><div class="t"><b>10:07 AM</b><span class="rt text">Text</span><span>by Priya</span></div><div class="amt">$1,320.00</div><div class="what">J1425 Okafor repipe · Dana Okafor</div><div class="to">To (405) 555-0142</div><div class="how"><span class="ok">Delivered · Paid since</span></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col sug">
+    <div class="cap">My suggestion</div>
+    <div class="frame phone">
+      <div class="bar"><b>Bills sent</b></div>
+      <div class="pad">
+        <div class="switch" role="group" aria-label="View"><span class="on">By day sent</span><span>By day paid</span></div>
+        <div class="tiles">
+          <div class="tile"><small>Today</small><b>2 bills</b> <span>$5,930.00</span></div>
+          <div class="tile fresh"><small>Not paid</small><b>9 bills</b> <span>$31,270.00</span></div>
+        </div>
+        <span class="find">Find a bill</span>
+        <div class="chips"><span class="chipb on">All</span><span class="chipb fresh">Not paid</span><span class="chipb fresh">Paid</span><span class="chipb">Email</span><span class="chipb">Text</span></div>
+        <div class="day"><span>Today · Mon, Nov 23</span><span class="sum">2 bills · $5,930.00</span><span class="back"><b>1 of 2</b> paid · <b>$4,180.00</b> still out</span></div>
+        <div class="ln"><div class="t"><b>9:28 AM</b><span class="rt">Email</span><span>by Priya</span></div><div class="amt">$4,180.00</div><div class="what">J1433 Ridgeway Lot 8 top-out · Ridgeway Builders</div><div class="to">To ap@ridgewaybuilders.example</div><div class="how"><span class="dl">Delivered 9:28 AM</span></div><div class="paybar open"><b>Not paid</b><span>sent today</span></div></div>
+        <div class="ln"><div class="t"><b>8:02 AM</b><span class="rt">Email</span><span>by Marcus</span></div><div class="amt">$1,750.00</div><div class="what">J1436 Reyes water heater · Tamsin Reyes</div><div class="to">To tamsin.reyes@mailbox.example</div><div class="how"><span class="dl">Opened 8:15 AM</span></div><div class="paybar paid"><b>✓ Paid today</b><span>Card · Stripe · 8:21 AM</span></div></div>
+        <div class="day"><span>Fri, Nov 20</span><span class="sum">3 bills · $9,640.00</span><span class="back"><b>1 of 3</b> paid · <b>$6,820.00</b> still out</span></div>
+        <div class="ln"><div class="t"><b>3:41 PM</b><span class="rt">Email</span><span>by Priya</span></div><div class="amt">$5,200.00</div><div class="what">J1429 Larkfield Lot 14 rough · Larkfield Construction</div><div class="to">To billing@larkfield.example</div><div class="how"><span class="dl">Delivered 3:41 PM</span></div><div class="paybar open"><b>Not paid</b><span>3 days out</span></div></div>
+        <div class="ln"><div class="t"><b>1:15 PM</b><span class="rt">Email</span><span>by Marcus</span></div><div class="amt">$3,120.00</div><div class="what">J1431 Hollis Dental fit-out · Hollis Dental Group</div><div class="to">To office@hollisdental.example</div><div class="how"><span class="dl">Opened 1:32 PM</span></div><div class="paybar part"><b>Part paid · $1,500.00</b><span>Check 2291 · $1,620.00 out</span></div></div>
+        <div class="ln"><div class="t"><b>10:07 AM</b><span class="rt text">Text</span><span>by Priya</span></div><div class="amt">$1,320.00</div><div class="what">J1425 Okafor repipe · Dana Okafor</div><div class="to">To (405) 555-0142</div><div class="how"><span class="dl">Delivered</span></div><div class="paybar paid"><b>✓ Paid Sat, Nov 21</b><span>Card · Stripe</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 id="paid">3 · By day paid <small>the second view · press a day, press a chip</small></h2>
+<p class="lede">This view answers one question. What came in on a given day? The month shows a figure on each day money came. Press a day to see its total and the bills behind it. The drawing opens with <b>Stripe</b> pressed and Wednesday, Nov 18 picked. It can be pressed.</p>
+<div class="frame sug" style="margin-top:14px">
+  <div class="bar"><b>Bills sent</b><span class="right"><span class="btn">Print</span><span class="btn">Download CSV</span></span></div>
+  <div class="pad"><div class="paidview" data-how="stripe" data-day="2026-11-18"></div></div>
+</div>
+<p class="note"><b>What the figure is.</b> Each payment at the amount it paid off the bill. A Stripe payment sits on the day the customer paid. A check sits on the day its deposit posted at the bank. A check typed in by hand sits on the day the person named. Stripe's fee is not taken off, because the app does not keep it.</p>
+
+<h2 id="paidphone">4 · By day paid on a phone</h2>
+<p class="lede">The same view at a phone's width. The month comes first and the picked day follows. Each day is a press a thumb can hit. This drawing opens on every way of paying, with Friday, Nov 20 picked.</p>
+<div class="two phones">
+  <div class="col sug">
+    <div class="frame phone">
+      <div class="bar"><b>Bills sent</b></div>
+      <div class="pad"><div class="paidview" data-how="all" data-day="2026-11-20"></div></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">What to look for</div>
+    <ol class="why">
+      <li><span></span><span><b>One deposit, two bills.</b> A check that paid two bills is drawn as one deposit with its bills under it.</span></li>
+      <li><span></span><span><b>A day with no money</b> is a plain cell. Press one to read the empty words and the press they offer.</span></li>
+      <li><span></span><span><b>Later days</b> are dashed and cannot be pressed.</span></li>
+      <li><span></span><span><b>The last tile</b> is Stripe's next payout to the bank. It is less than the Stripe total, because the fee is taken out.</span></li>
+      <li><span></span><span><b>A bill's number</b> opens that bill's record, as on the list.</span></li>
+    </ol>
+  </div>
+</div>
+
+<h2 id="means">What "money from Stripe on a day" can mean</h2>
+<p class="lede">The app keeps one fact about a Stripe payment: a payment row with the bill, the amount and a day. The table says what each meaning would need.</p>
+<div class="scroll">
+<table class="t">
+  <tr><th>Meaning</th><th>What the app holds</th><th>What it would take</th></tr>
+  <tr class="sug"><td>A · The day the customer paid, at the bill's amount <span class="tag">my pick</span></td><td>Held for every Stripe payment. The Dashboard's Money in bar reads the same rows the same way.</td><td>Nothing new. One flaw to fix: a payment made in the evening is filed on the next day.</td></tr>
+  <tr><td>B · The day the payout reaches the bank</td><td>Not kept. The app can ask Stripe for the next payout and the last one. It cannot say which bills are inside a payout.</td><td>A new read of Stripe's payout history. Then a second day for the same money, on the same page.</td></tr>
+  <tr><td>C · After Stripe's fee</td><td>Not kept. No fee, no net amount.</td><td>The same new read as B. The figure would no longer match the bills.</td></tr>
+  <tr><td>A refund made in Stripe</td><td>Not seen. The bill stays paid.</td><td>The view cannot show it until the app records refunds.</td></tr>
+  <tr><td>A bank debit still on its way</td><td>Not seen. The payment appears on the day it settles.</td><td>Nothing. The view says so in its foot.</td></tr>
+  <tr><td>A disputed card payment</td><td>Kept as a case, with the payment it names.</td><td>The line can carry a red word, <i>Disputed</i>.</td></tr>
+</table>
+</div>
+
+<h2 id="where">Where it lives</h2>
+<div class="scroll">
+<table class="t">
+  <tr><th>Place</th><th>For it</th><th>Against it</th></tr>
+  <tr class="sug"><td>A second view on Bills sent <span class="tag">my pick</span></td><td>He opens this page now. It is pinned and bookmarked. The search, the bill's record, print and CSV are already here.</td><td>The page's name says <i>sent</i>. The switch has to carry the second meaning.</td></tr>
+  <tr><td>A page of its own</td><td>A clean name, such as <i>Money in by day</i>.</td><td>A new door, a new pin, a new guide and a new access row for the same people.</td></tr>
+  <tr><td>The Dashboard's Money in bar</td><td>It already shows Stripe payments on their day.</td><td>It is one week, and it mixes what landed with what is only expected. It can link here.</td></tr>
+  <tr><td>Banking, the Stripe product</td><td>The word Stripe is already on it.</td><td>It opens for a developer and the controller only. It lists Stripe's invoices, not days.</td></tr>
+</table>
+</div>
+
+<h2 id="calls">The calls</h2>
+<ol class="calls">
+  <li><b>Build it this way?</b> One stamp on the list and one second view. Or the list alone first.</li>
+  <li><b>Which day is a Stripe day?</b> The day the customer paid. Or wait for the payout day, which needs a new read of Stripe.</li>
+  <li><b>Fix the evening payments?</b> One small database change files a Stripe payment on the Central day. Older rows can be corrected once, after a list of them is read.</li>
+  <li><b>Is the next payout shown?</b> One tile with the amount and the day it reaches the bank. Or leave it on the Dashboard only.</li>
+  <li><b>Does By day paid show every way, or Stripe only?</b> Every way, with a chip for Stripe. Or Stripe alone.</li>
+  <li><b>Are the days out shown on a bill not paid?</b> Yes, as small grey words. Or the words <i>Not paid</i> alone.</li>
+  <li><b>What should a Stripe payment be called?</b> <i>Card · Stripe</i>, as the job window says today. Or plain <i>Stripe</i>, since the app cannot tell a card from a bank debit.</li>
+</ol>
+<p class="note"><b>One thing only the leader has.</b> The day he wanted to check when he asked. I would open the first build on that day and read him its total.</p>
+
+</div>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var buttons = document.querySelectorAll('.themes button');
+    function set(theme) {
+      root.setAttribute('data-theme', theme);
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-set') === theme)); });
+    }
+    var asked = new URLSearchParams(location.search).get('theme');
+    if (asked === 'dark' || asked === 'light') set(asked);
+    else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) set('dark');
+    buttons.forEach(function (b) { b.addEventListener('click', function () { set(b.getAttribute('data-set')); }); });
+  })();
+
+  /* By day paid. Every row is made up. One row is one payment on one bill. */
+  (function () {
+    var TODAY = '2026-11-23';
+    var HOWS = [
+      { key: 'all', label: 'All' },
+      { key: 'stripe', label: 'Stripe' },
+      { key: 'check', label: 'Check' },
+      { key: 'transfer', label: 'Bank transfer' },
+      { key: 'cash', label: 'Cash' }
+    ];
+    var NOUN = { all: '', stripe: ' from Stripe', check: ' by check', transfer: ' by bank transfer', cash: ' in cash' };
+    var PAY = [
+      { d: '2026-11-23', how: 'stripe', src: 'Card · Stripe', cls: 'text', bill: '1436-0001', job: 'J1436 Reyes water heater', payer: 'Tamsin Reyes', amt: 1750, sent: '2026-11-23', at: '8:21 AM' },
+      { d: '2026-11-23', how: 'check', src: 'Check · typed by hand', cls: 'plain', bill: '1431-0001', job: 'J1431 Hollis Dental fit-out', payer: 'Hollis Dental Group', amt: 1500, sent: '2026-11-20', ref: 'Check 2291', part: 1620 },
+      { d: '2026-11-21', how: 'stripe', src: 'Card · Stripe', cls: 'text', bill: '1425-0001', job: 'J1425 Okafor repipe', payer: 'Dana Okafor', amt: 1320, sent: '2026-11-20', at: '7:48 PM' },
+      { d: '2026-11-20', how: 'check', src: 'Check · bank deposit', cls: 'bank', bill: '1412-0002', job: 'J1412 Sable Ridge Lot 3 finish', payer: 'Sable Ridge Builders', amt: 4410, sent: '2026-11-10', dep: 'Check 4417 from Sable Ridge Builders' },
+      { d: '2026-11-20', how: 'check', src: 'Check · bank deposit', cls: 'bank', bill: '1409-0001', job: 'J1409 Sable Ridge Lot 2 finish', payer: 'Sable Ridge Builders', amt: 2260, sent: '2026-11-06', dep: 'Check 4417 from Sable Ridge Builders' },
+      { d: '2026-11-18', how: 'stripe', src: 'Card · Stripe', cls: 'text', bill: '1423-0001', job: 'J1423 Pruitt drain repair', payer: 'Joel Pruitt', amt: 1495, sent: '2026-11-18', at: '4:37 PM' },
+      { d: '2026-11-18', how: 'stripe', src: 'Card · Stripe', cls: 'text', bill: '1418-0002', job: 'J1418 Brightwater Lot 5 top-out', payer: 'Brightwater Homes', amt: 3960, sent: '2026-11-12', at: '1:02 PM' },
+      { d: '2026-11-18', how: 'stripe', src: 'Card · Stripe', cls: 'text', bill: '1420-0001', job: 'J1420 Marlow kitchen rough', payer: 'Elena Marlow', amt: 2480, sent: '2026-11-16', at: '9:14 AM' },
+      { d: '2026-11-18', how: 'check', src: 'Check · bank deposit', cls: 'bank', bill: '1415-0001', job: 'J1415 Larkfield Lot 11 rough', payer: 'Larkfield Construction', amt: 5100, sent: '2026-11-05', dep: 'Check 7730 from Larkfield Construction' },
+      { d: '2026-11-17', how: 'transfer', src: 'Transfer · bank deposit', cls: 'bank', bill: '1411-0001', job: 'J1411 Ridgeway Lot 6 finish', payer: 'Ridgeway Builders', amt: 4125, sent: '2026-11-03', dep: 'Transfer from Ridgeway Builders' },
+      { d: '2026-11-17', how: 'transfer', src: 'Transfer · bank deposit', cls: 'bank', bill: '1406-0001', job: 'J1406 Ridgeway Lot 5 top-out', payer: 'Ridgeway Builders', amt: 2750, sent: '2026-10-30', dep: 'Transfer from Ridgeway Builders' },
+      { d: '2026-11-17', how: 'transfer', src: 'Transfer · bank deposit', cls: 'bank', bill: '1404-0002', job: 'J1404 Ridgeway Lot 4 rough', payer: 'Ridgeway Builders', amt: 3300, sent: '2026-10-28', dep: 'Transfer from Ridgeway Builders' },
+      { d: '2026-11-13', how: 'stripe', src: 'Card · Stripe', cls: 'text', bill: '1417-0001', job: 'J1417 Hale bath remodel', payer: 'Corinne Hale', amt: 2150, sent: '2026-11-11', at: '2:26 PM' },
+      { d: '2026-11-13', how: 'stripe', src: 'Card · Stripe', cls: 'text', bill: '1414-0001', job: 'J1414 Tovar sewer line', payer: 'Luis Tovar', amt: 3890, sent: '2026-11-09', at: '10:51 AM' },
+      { d: '2026-11-12', how: 'check', src: 'Check · bank deposit', cls: 'bank', bill: '1401-0001', job: 'J1401 Brightwater Lot 2 finish', payer: 'Brightwater Homes', amt: 4600, sent: '2026-10-27', dep: 'Check 1188 from Brightwater Homes' },
+      { d: '2026-11-09', how: 'stripe', src: 'Card · Stripe', cls: 'text', bill: '1408-0001', job: 'J1408 Ames gas line', payer: 'Petra Ames', amt: 980, sent: '2026-11-06', at: '12:39 PM' },
+      { d: '2026-11-09', how: 'check', src: 'Check · bank deposit', cls: 'bank', bill: '1399-0002', job: 'J1399 Larkfield Lot 9 finish', payer: 'Larkfield Construction', amt: 3450, sent: '2026-10-26', dep: 'Check 7702 from Larkfield Construction' },
+      { d: '2026-11-08', how: 'stripe', src: 'Card · Stripe', cls: 'text', bill: '1410-0001', job: 'J1410 Doyle water service', payer: 'Rory Doyle', amt: 2275, sent: '2026-11-06', at: '9:40 PM' },
+      { d: '2026-11-06', how: 'cash', src: 'Cash · typed by hand', cls: 'plain', bill: '1407-0001', job: 'J1407 Finch faucet swap', payer: 'Ada Finch', amt: 385, sent: '2026-11-06' },
+      { d: '2026-11-04', how: 'check', src: 'Check · bank deposit', cls: 'bank', bill: '1396-0001', job: 'J1396 Sable Ridge Lot 1 finish', payer: 'Sable Ridge Builders', amt: 5825, sent: '2026-10-21', dep: 'Check 4398 from Sable Ridge Builders' },
+      { d: '2026-11-02', how: 'stripe', src: 'Card · Stripe', cls: 'text', bill: '1398-0001', job: 'J1398 Quill tub valve', payer: 'Mara Quill', amt: 640, sent: '2026-10-30', at: '3:05 PM' }
+    ];
+    /* Draw the cents of every amount under a root smaller than its dollars. */
+    function smallCents(root) {
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      var nodes = [];
+      while (walker.nextNode()) if (/\$[\d,]+\.\d\d/.test(walker.currentNode.nodeValue)) nodes.push(walker.currentNode);
+      nodes.forEach(function (node) {
+        var frag = document.createDocumentFragment();
+        node.nodeValue.split(/(\$[\d,]+)(\.\d\d)/).forEach(function (part, i) {
+          if (!part) return;
+          if (i % 3 === 2) { var c = document.createElement('span'); c.className = 'c'; c.textContent = part; frag.appendChild(c); }
+          else frag.appendChild(document.createTextNode(part));
+        });
+        node.parentNode.replaceChild(frag, node);
+      });
+    }
+    document.querySelectorAll('.col.sug .frame').forEach(smallCents);
+    var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    var MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    function dateOf(ymd) { var p = ymd.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+    function dayWords(ymd) { var d = dateOf(ymd); return WD[d.getDay()] + ', ' + MO[d.getMonth()] + ' ' + d.getDate(); }
+    function daysBetween(a, b) { return Math.round((dateOf(b) - dateOf(a)) / 86400000); }
+    function money(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function whole(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+    /* A phone's cell is about 46 px wide: $640 stays whole, $5,825 reads $5.8k. */
+    function short(n) { return n < 1000 ? whole(n) : '$' + (Math.round(n / 100) / 10).toFixed(1).replace(/\.0$/, '') + 'k'; }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function sum(rows) { return rows.reduce(function (s, r) { return s + r.amt; }, 0); }
+    function counted(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+
+    document.querySelectorAll('.paidview').forEach(function (rootEl) {
+      var state = { how: rootEl.getAttribute('data-how') || 'all', day: rootEl.getAttribute('data-day') || TODAY };
+      var phone = !!rootEl.closest('.frame.phone');
+      function rowsFor(how) { return how === 'all' ? PAY : PAY.filter(function (r) { return r.how === how; }); }
+      function draw() {
+        var rows = rowsFor(state.how);
+        var onDay = function (ymd) { return rows.filter(function (r) { return r.d === ymd; }); };
+        var today = onDay(TODAY);
+        var week = rows.filter(function (r) { return r.d >= '2026-11-22' && r.d <= TODAY; });
+        var noun = state.how === 'all' ? '' : ' · ' + HOWS.filter(function (h) { return h.key === state.how; })[0].label;
+        var h = '';
+        h += '<div class="switch" role="group" aria-label="View"><span>By day sent</span><span class="on">By day paid</span></div>';
+        h += '<div class="tiles">';
+        h += '<div class="tile"><small>Today' + noun + '</small><b>' + counted(today.length, 'payment', 'payments') + '</b> <span>' + money(sum(today)) + '</span></div>';
+        h += '<div class="tile"><small>This week' + noun + '</small><b>' + counted(week.length, 'payment', 'payments') + '</b> <span>' + money(sum(week)) + '</span></div>';
+        h += '<div class="tile green"><small>November' + noun + '</small><b>' + counted(rows.length, 'payment', 'payments') + '</b> <span>' + money(sum(rows)) + '</span></div>';
+        h += '<div class="tile"><small>Next Stripe payout</small><b>$2,980.37</b> <span>at the bank Wed, Nov 25</span></div>';
+        h += '</div>';
+        h += '<div class="chips" role="group" aria-label="How it was paid">';
+        HOWS.forEach(function (c) { h += '<button type="button" class="chipb' + (c.key === state.how ? ' on' : '') + '" data-how="' + c.key + '" aria-pressed="' + (c.key === state.how) + '">' + c.label + '</button>'; });
+        h += '</div>';
+
+        h += '<div class="pv"><div class="cal"><div class="mh"><button type="button" aria-label="October">‹</button><b>November 2026</b><button type="button" aria-label="December" disabled style="opacity:.4">›</button><span>' + money(sum(rows)) + '</span></div><div class="grid">';
+        WD.forEach(function (w) { h += '<div class="wd">' + w + '</div>'; });
+        for (var d = 1; d <= 30; d++) {
+          var ymd = '2026-11-' + (d < 10 ? '0' + d : d);
+          var got = onDay(ymd);
+          var cls = 'cell' + (got.length ? ' has' : '') + (ymd === TODAY ? ' today' : '') + (ymd === state.day ? ' picked' : '') + (ymd > TODAY ? ' later' : '');
+          var label = dayWords(ymd) + (got.length ? ', ' + money(sum(got)) + ', ' + counted(got.length, 'payment', 'payments') : ', nothing came in');
+          h += '<button type="button" class="' + cls + '" data-day="' + ymd + '"' + (ymd > TODAY ? ' disabled' : '') + ' aria-pressed="' + (ymd === state.day) + '" aria-label="' + esc(label) + '"><span class="dn">' + d + '</span>' + (got.length ? '<span class="am">' + (phone ? short(sum(got)) : whole(sum(got))) + '</span><span class="ct">' + counted(got.length, 'bill', 'bills') + '</span>' : '') + '</button>';
+        }
+        for (var b = 0; b < 5; b++) h += '<span class="cell blank"></span>';
+        h += '</div><p class="foot">A figure is what came in that day' + NOUN[state.how] + '. The ring is today. Stripe’s fee is not taken off. All times are Central.</p></div>';
+
+        var picked = onDay(state.day);
+        var every = PAY.filter(function (r) { return r.d === state.day; });
+        h += '<div class="dayp"><h4>' + (state.day === TODAY ? 'Today · ' : '') + dayWords(state.day) + '</h4>';
+        if (!picked.length) {
+          h += '<div class="none">Nothing came in' + NOUN[state.how] + ' on ' + dayWords(state.day) + '.' + (state.how !== 'all' && every.length ? ' <button type="button" data-how="all">Show every way that day</button>' : ' <button type="button" data-day="' + TODAY + '">Go to today</button>') + '</div>';
+        } else {
+          h += '<dl class="vl"><dt>Came in' + NOUN[state.how] + '</dt><dd>' + money(sum(picked)) + '</dd><dt>Bills</dt><dd>' + picked.length + '</dd>';
+          if (state.how !== 'all' && every.length > picked.length) h += '<dt>Every way that day</dt><dd>' + money(sum(every)) + '<button type="button" data-how="all">Show</button></dd>';
+          h += '</dl>';
+          var lastDep = null;
+          picked.forEach(function (r) {
+            if (r.dep && r.dep !== lastDep) {
+              var same = picked.filter(function (x) { return x.dep === r.dep; });
+              if (same.length > 1) h += '<div class="dep"><span>One deposit · ' + esc(r.dep) + ' · ' + counted(same.length, 'bill', 'bills') + '</span><b>' + money(sum(same)) + '</b></div>';
+            }
+            lastDep = r.dep || null;
+            var gap = daysBetween(r.sent, r.d);
+            var facts = '<span class="rt ' + r.cls + '">' + esc(r.src) + '</span>';
+            if (r.ref) facts += '<b>' + esc(r.ref) + '</b>';
+            if (r.dep && picked.filter(function (x) { return x.dep === r.dep; }).length === 1) facts += '<b>' + esc(r.dep.split(' from ')[0]) + '</b>';
+            if (r.at) facts += '<span>Paid <b>' + r.at + '</b></span>';
+            facts += '<span>Sent <b>' + dayWords(r.sent) + '</b></span>';
+            facts += '<span>' + (gap === 0 ? 'the same day' : '<b>' + counted(gap, 'day', 'days') + '</b> after it went') + '</span>';
+            if (r.part) facts += '<span class="part">Part of the bill. ' + money(r.part) + ' still out.</span>';
+            h += '<div class="pl"><div class="what"><b>Bill ' + r.bill + '</b> · <i>' + esc(r.job) + '</i> · ' + esc(r.payer) + '</div><div class="amt">' + money(r.amt) + '</div><div class="facts">' + facts + '</div></div>';
+          });
+        }
+        h += '</div></div>';
+        rootEl.innerHTML = h;
+        smallCents(rootEl);
+      }
+      rootEl.addEventListener('click', function (ev) {
+        var t = ev.target.closest('button');
+        if (!t || t.disabled) return;
+        if (t.hasAttribute('data-how')) state.how = t.getAttribute('data-how');
+        if (t.hasAttribute('data-day')) state.day = t.getAttribute('data-day');
+        draw();
+      });
+      draw();
+    });
+  })();
+</script>
+</body>
+</html>

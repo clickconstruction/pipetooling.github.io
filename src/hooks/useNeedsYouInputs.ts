@@ -1,7 +1,8 @@
 import { useJobsNeedingMe } from './useJobsClosedToMe'
 import { jobPapersNeedsYou } from '../lib/jobs/jobPapers'
 import { useMemo } from 'react'
-import { buildLienBoard, lienBoardDots, type LienBoardDot } from '../lib/jobs/lienBoard'
+import { buildLienBoard } from '../lib/jobs/lienBoard'
+import { lienDeskCard, type LienDeskCard } from '../lib/dashboard/lienDeskCard'
 import { isLienOffice } from '../lib/jobs/lienDesk'
 import { buildLienLeaderSignCard } from '../lib/jobs/lienLeaderSignCard'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
@@ -174,8 +175,9 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { watch: lienWatch } = useLienWatchNudge(lienEnabled, hideZzTestJobs)
   const docsmit = useDocsmitSettings()
   const { data: lienDeskData, loading: lienDeskLoading } = useLienDeskData(lienEnabled, todayYmdInAppTz(), { light: true, hideZzTestJobs })
-  // The Board's four numbers as dots (v2.7334): the Needs you card's one-line strip for the office, a door to the desk at the Board.
-  const lienBoardStrip = useMemo<LienBoardDot[] | null>(() => {
+  // The Lien desk's card (punch list #423): three of the Board's tiles and its red line, for the office, a door to the desk at the Board.
+  // It stands beside the Needs you list and is no line of it. Until this card the same counts were a strip of four dots inside the list's card (v2.7334).
+  const lienDeskCardModel = useMemo<LienDeskCard | null>(() => {
     if (!lienEnabled || !lienDeskData || !isLienOffice(role)) return null
     const board = buildLienBoard({
       todayYmd: todayYmdInAppTz(),
@@ -186,7 +188,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
       jobName: (jobId) => (lienDeskData.jobsById[jobId]?.job_name ?? '').trim(),
       gcName: (gcId) => lienDeskData.gcsById[gcId]?.name ?? '',
     })
-    return board.empty ? null : lienBoardDots(board)
+    return board.empty ? null : lienDeskCard(board, { viewerIsLeader: role === 'dev' || role === 'master_technician' })
   }, [lienEnabled, lienDeskData, role])
   // The leader's card (v2.7435): the notices that wait on his signature, read off the same desk data as the row it replaces.
   const lienDeskLeader = role === 'dev' || role === 'master_technician'
@@ -493,7 +495,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     doorData,
     officeEligible,
     /** The Board's four dots for the Needs you card's strip (v2.7334); null off the office, with no desk, or with nothing on it. */
-    lienBoardStrip,
+    lienDeskCard: lienDeskCardModel,
     /** Whether the leader's lien sources are still being read: the short Dashboard holds its list back until they are in, so it never says nothing waits too early. */
     reading: { lienDesk: lienDeskLoading, lienWaivers: lienSignature.loading },
     /** The Lien desk's own read, for the office's Waiting on card (punch list #365, PR 2), so the desk is read once a page. */

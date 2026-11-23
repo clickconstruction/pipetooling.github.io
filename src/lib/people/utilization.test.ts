@@ -316,3 +316,48 @@ describe('hoursOfWords', () => {
     expect(hoursOfWords(31.5, 40)).toBe('31.5 of 40 h')
   })
 })
+
+describe('working hours on the board', () => {
+  // Six to noon on five days, set by the office from the Sunday of Nov 1.
+  const sixToNoon = [[], [[360, 720]], [[360, 720]], [[360, 720]], [[360, 720]], [[360, 720]], []] as [number, number][][]
+  const set = (over: Partial<AvailableHoursAnswer> = {}): AvailableHoursAnswer => ({ user_id: 'u-isiah', hours_per_week: 30, days: sixToNoon, effective_from: '2026-11-01', set_by: 'office', set_at: '2026-11-02T10:00:00Z', kind: 'set', ...over })
+  const own: AvailableHoursAnswer = { user_id: 'u-isiah', hours_per_week: 45, effective_from: '2026-09-20', set_by: 'u-isiah', set_at: '2026-09-20T10:00:00Z' }
+
+  it('win over a person’s own answer, from their Sunday on and not before', () => {
+    const board = buildUtilizationBoard({ todayYmd: TODAY, nowMs: NOW, people: [isiah], sessions: [...week('u-isiah', '2026-10-25', [9, 9, 9, 9, 9]), ...week('u-isiah', '2026-11-01', [6, 6, 6, 6, 6])], answers: [own, set()] })
+    const p = board.people[0]!
+    expect(p.canWork).toMatchObject({ hours: 30, source: 'set', setBy: 'office' })
+    expect(p.canWork.days).toEqual(sixToNoon)
+    const last = p.weeks[6]!
+    expect([last.source, last.canWorkHours, last.pct]).toEqual(['set', 30, 100])
+    const before = p.weeks[5]!
+    expect([before.source, before.canWorkHours, before.pct]).toEqual(['answered', 45, 100])
+  })
+
+  it('count the minutes a punch fell outside them', () => {
+    // The sessions start at 7:00 and run 6 hours, so the last hour of each day is past noon.
+    const board = buildUtilizationBoard({ todayYmd: TODAY, nowMs: NOW, people: [isiah], sessions: week('u-isiah', '2026-11-01', [6, 6, 6, 6, 6]), answers: [set()] })
+    expect(board.people[0]!.weeks[6]!.outsideHours).toBe(5)
+  })
+
+  it('hold a salaried person too, and an answer is never read as working hours', () => {
+    const salaried = buildUtilizationBoard({ todayYmd: TODAY, nowMs: NOW, people: [{ ...abraham, salariedWeek: [0, 6, 6, 6, 6, 6, 0] }], sessions: week('u-abraham', '2026-11-01', [6, 6, 6, 6, 6]), answers: [set({ user_id: 'u-abraham' })] })
+    expect(salaried.people[0]!.canWork).toMatchObject({ hours: 30, source: 'set' })
+    expect(answerInForce([own, set()], TODAY)).toBe(own)
+    expect(answerInForce([set()], TODAY)).toBeNull()
+  })
+
+  it('fall back to the answer once they are taken off again', () => {
+    const board = buildUtilizationBoard({ todayYmd: TODAY, nowMs: NOW, people: [isiah], sessions: week('u-isiah', '2026-11-01', [6, 6, 6, 6, 6]), answers: [own, set(), set({ days: null, hours_per_week: 0, effective_from: '2026-11-08', set_at: '2026-11-08T09:00:00Z' })] })
+    const p = board.people[0]!
+    expect(p.canWork).toMatchObject({ hours: 45, source: 'answered' })
+    expect(p.weeks[6]!.source).toBe('set')
+    expect(p.weeks[7]!.source).toBe('answered')
+  })
+
+  it('add up in quarter hours', () => {
+    const short = [[], [[360, 615]], [[360, 720]], [[360, 720]], [[360, 720]], [[360, 720]], []] as [number, number][][]
+    const board = buildUtilizationBoard({ todayYmd: TODAY, nowMs: NOW, people: [isiah], sessions: week('u-isiah', '2026-11-01', [4, 6, 6, 6, 6]), answers: [set({ days: short, hours_per_week: 28.25 })] })
+    expect(board.people[0]!.canWork.hours).toBe(28.25)
+  })
+})
