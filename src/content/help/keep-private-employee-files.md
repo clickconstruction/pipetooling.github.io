@@ -29,6 +29,10 @@ Stick to facts with dates. If it is an impression, say whose: "my read after the
 
 Write N§16 in an entry to point at section 16 of the narrative. On the Timeline it becomes a press that opens the narrative there. In the narrative's Jump to list, a cited section shows how many entries cite it. Press the count to see them.
 
+## Send a link to one file
+
+Open the person's file. The address names that person while the file is open. Copy the address and send it. The link opens the same file for another dev. A link to someone you cannot see opens the list. A line above it says the link matched no one.
+
 ## Entries can't be edited or deleted
 
 That is deliberate. The raw log is trustworthy because nothing in it can be quietly rewritten. Made a mistake? You add a new entry that corrects the old one.

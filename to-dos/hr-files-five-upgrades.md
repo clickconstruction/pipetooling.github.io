@@ -175,7 +175,7 @@ free.
 
 ## Found on the live walks (2026-11-13)
 
-- A cold load of `/people?tab=hr&person=<people.id>` opens the HR roster, and the `person` part of the address is gone. Seen locally and live. The People page's tab effect is not the cause. It is older than this train; a fix for whoever owns People → HR's deep links.
+- ~~A cold load of `/people?tab=hr&person=<people.id>` opens the HR roster, and the `person` part of the address is gone.~~ Fixed by v2.8387: the global Person Desk handler stripped every `person=`, also a bare HR id. The address now keeps the person while the file is open.
 - `dev-mcp` passed Supabase's 5 MB upload limit with v2.7104. The upload carries `src/types/database.ts` (1.45 MB) through type-only imports in the generated edge kernels. It was deployed with that file stood in by a type stub, so the code that runs is main's. The lasting fix is to keep the type-only file out of the upload, likely in `scripts/edge-kernels.mjs`. Every later seat PR of this train needs one of the two.
 - Test rows on `ZZ Test Hand`, all made up: two entries and one correction link, a narrative written twice, one counsel-only record numbered Ev #1, and case Item 1 (closed) with its two log lines.
 
@@ -249,7 +249,7 @@ A second session read every PR of the train, checked the live policies and grant
 
 - The words of `plan_hr_entry` and `plan_person_doc` said to take `person_id` from `find_person`. That verb answers a login's `users.id`, and the doors take the roster row's `people.id`. Seen 2026-11-20. v2.8316 (server 0.127.0) makes both say what `plan_case` and `plan_engagement` say, in the two descriptions and the two refusals. Three more lines carry the same pointer and belong to other threads: the `tag.person` refusal in `devMcpMailTag.ts` and two lines of `devMcpTrips.ts`.
 - v2.8061 and v2.8082 are held by render tests alone. A live walk of v2.8061 needs a read that fails. One of v2.8082 needs a second test file, which this card's rule does not allow.
-- A cold load of `/people?tab=hr&person=<people.id>` dropped the person on 2026-11-13. It is older than this train, and no one has checked it since.
+- ~~A cold load of `/people?tab=hr&person=<people.id>` dropped the person on 2026-11-13.~~ Fixed by v2.8387, not walked live yet.
 - The branch `claude/315-hr-seat-section-freshness` is still on GitHub. Its work is on main as v2.8197, so it can be deleted.
 
 ## How to verify each PR
