@@ -85,7 +85,7 @@ The job reads **billed · scheduled in kind** in the customer's profile window. 
 :::
 
 :::card A GC's statement and GC Review
-**GC Review** leaves the bill out of the GC's bills and totals. A line at the foot says how much is scheduled in kind. The statement the GC gets says the same line under its total.
+**GC Review** leaves the bill out of the GC's bills and totals. A line at the foot says how much is scheduled in kind. The statement the GC gets says the same line under its total. The office's weekly statement email says it too.
 :::
 
 :::

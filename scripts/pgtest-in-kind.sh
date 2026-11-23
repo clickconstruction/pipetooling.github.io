@@ -15,7 +15,8 @@
 # keeps the row; an ended deal lets its jobs go; an empty deal is deleted. Then 30_pay_speed.sql (v2.6834, migration
 # *_in_kind_leaves_pay_speed): an In kind payment gets its pay_speed_exclusions row and the sampler skips it. Then
 # 40_gc_statement.sql (v2.8309, migration *_gc_statement_in_kind_apart): a GC's statement payload keeps a deal's bills off
-# its rows and every sum, in in_kind_rows, the statement week follows, and an ended deal's bills are owed again. Each
+# its rows and every sum, in in_kind_rows, the statement week follows and counts them for its one line (v2.8320,
+# migration *_statement_week_in_kind_line), and an ended deal's bills are owed again. Each
 # raises on its first failed assertion and ends with its own PASSED line. PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from
 # scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -24,7 +25,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55581}"
 NAME="pgtest-in-kind"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_in_kind_arrangements.sql supabase/migrations/*_in_kind_leaves_pay_speed.sql supabase/migrations/*_gc_statement_in_kind_apart.sql)"
+WRITES="$(ls supabase/migrations/*_in_kind_arrangements.sql supabase/migrations/*_in_kind_leaves_pay_speed.sql supabase/migrations/*_gc_statement_in_kind_apart.sql supabase/migrations/*_statement_week_in_kind_line.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
