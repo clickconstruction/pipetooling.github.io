@@ -163,6 +163,47 @@ describe('DocumentsPhotosTab', () => {
     await screen.findAllByTestId('documents-photos-row')
   })
 
+  it('draws only the newest ask: an older read that fails late does not put its line over rows that read', async () => {
+    // The first screen's read is slow and will fail. The chip's read is quick and reads.
+    let failTheFirst: (e: Error) => void = () => {}
+    const slowThenQuick: UploadedPhotosIo = {
+      ...fakeIo(),
+      list: vi.fn(async (q: UploadedPhotosQuery) => {
+        io.asks.push(q)
+        if (q.source === 'all') return new Promise<never>((_, reject) => (failTheFirst = reject))
+        return { rows: [row({ id: 'b1', source: 'bid', caption: 'Meter, north wall', bid_id: 'bid-1', job_id: null })], more: false }
+      }),
+    }
+    renderWithProviders(<DocumentsPhotosTab io={slowThenQuick} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Bid photos' }))
+    await screen.findByText('Meter, north wall')
+    await act(async () => {
+      failTheFirst(new Error('canceling statement due to statement timeout'))
+    })
+    expect(screen.queryByText(/statement timeout/)).toBeNull()
+    expect(screen.getByText('Meter, north wall')).toBeTruthy()
+  })
+
+  it('draws only the newest ask: an older read that lands late does not replace the newer rows', async () => {
+    let landTheFirst: (r: { rows: UploadedPhotoRow[]; more: boolean }) => void = () => {}
+    const slowThenQuick: UploadedPhotosIo = {
+      ...fakeIo(),
+      list: vi.fn(async (q: UploadedPhotosQuery) => {
+        io.asks.push(q)
+        if (q.source === 'all') return new Promise<{ rows: UploadedPhotoRow[]; more: boolean }>((resolve) => (landTheFirst = resolve))
+        return { rows: [row({ id: 'b1', source: 'bid', caption: 'Meter, north wall', bid_id: 'bid-1', job_id: null })], more: false }
+      }),
+    }
+    renderWithProviders(<DocumentsPhotosTab io={slowThenQuick} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Bid photos' }))
+    await screen.findByText('Meter, north wall')
+    await act(async () => {
+      landTheFirst({ rows: [row({ id: 'r9', caption: 'Top Out, from the slow read' })], more: false })
+    })
+    expect(screen.queryByText('Top Out, from the slow read')).toBeNull()
+    expect(screen.getByText('Meter, north wall')).toBeTruthy()
+  })
+
   it('opens the viewer from a thumbnail, with the doors, and narrows to one person from it', async () => {
     io.rows = [row({ drive_file_id: 'd1', filed_at: '2026-11-01T20:20:00Z', storage_path: null }), row({ id: 'p2', by_name: 'Jordan Pike', taken_at: '2026-11-01T16:52:00Z' })]
     const fake = fakeIo()
