@@ -362,7 +362,8 @@ against the pick.
 - GC mode's `company_id` papers stay as they are. A trade company has a contact, so they can move later.
 - A trade company's agreement is listed under the **GC projects** chip today, for the roles that read GC
   mode's papers. With call 7 a sub's company's agreement is one of those lines, and the office looks for
-  it under **Staff and subs**. The kind's group moves in step 6.
+  it under **Staff and subs**. The kind's group moved in step 6, v2.8419 (#9564, `docs/recent-features/v2.8419.md`),
+  with **Who is it with?** finding a sub by the company's name and **Add to a list** offering a trade company.
 - `gc_companies` requires one trade at least, and GC mode's own pages are dev only. Step 6 is the
   office's door to a company.
 - `esign_consents.audience` allows *customer*, *sub* and *gc*. A supply house needs a value.
