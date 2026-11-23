@@ -37,6 +37,10 @@ const bidsRead: { rows: unknown[]; hold: Promise<void> | null } = { rows: BIDS, 
 /** What the other tables answer: someone else's note on a bid makes it unread. */
 const otherRows: Record<string, unknown[]> = {}
 const openBidPreview = vi.fn()
+/** True for a test that runs on a device held in the hand, where a bid is hidden with a swipe. */
+const device = { handHeld: false }
+
+vi.mock('../../lib/paintedMap/handHeld', () => ({ handHeld: () => device.handHeld }))
 
 vi.mock('../../contexts/BidPreviewModalContext', () => ({ useBidPreview: () => ({ openBidPreview }) }))
 
@@ -83,6 +87,7 @@ afterEach(() => {
   for (const k of Object.keys(otherRows)) delete otherRows[k]
   openBidPreview.mockClear()
   localStorage.clear()
+  device.handHeld = false
 })
 
 describe('DashboardMyBidsSection — how the card opens', () => {
@@ -234,3 +239,53 @@ describe('DashboardMyBidsSection — the bids by state (punch list #426)', () =>
     expect(screen.getByText('HVAC')).toBeTruthy()
   })
 })
+
+describe('DashboardMyBidsSection — hiding a bid (punch list #426, step 4)', () => {
+  const pointer = (el: Element, type: string, x: number) => fireEvent(el, new window.MouseEvent(type, { bubbles: true, clientX: x, clientY: 10, button: 0 }))
+
+  it('at a desk, Hide says what it did, and Undo puts the bid back', async () => {
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    expect(document.querySelector('[data-my-bids-hint]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide, Fire Cabinet Installation' }))
+    expect(await screen.findByText('Hidden: Fire Cabinet Installation.')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'My Bids, 1 bid' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(await loadedHeading()).toBeTruthy()
+    expect(screen.getByText('Fire Cabinet Installation')).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('dashboard_my_bids_hidden_me') ?? '[]')).toEqual([])
+  })
+
+  it('on a device held in the hand, a swipe to the left hides the bid and the card says how', async () => {
+    device.handHeld = true
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    expect(document.querySelector('[data-my-bids-hint]')?.textContent).toBe('Swipe a bid left to hide it.')
+    const slide = document.querySelector('[data-my-bid="b1"] [data-swipe-away-slide]') as HTMLElement
+    pointer(slide, 'pointerdown', 300)
+    pointer(slide, 'pointermove', 280)
+    pointer(slide, 'pointermove', 150)
+    pointer(slide, 'pointerup', 150)
+    expect(await screen.findByText('Hidden: Fire Cabinet Installation.')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Hidden, 1 bid' })).toBeTruthy()
+    // The swipe did not also open the bid.
+    expect(openBidPreview).not.toHaveBeenCalled()
+    expect(JSON.parse(localStorage.getItem('dashboard_my_bids_hidden_me') ?? '[]')).toEqual(['b1'])
+  })
+
+  it('on a device held in the hand, a short swipe leaves the bid, and a press still opens its window', async () => {
+    device.handHeld = true
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    const slide = document.querySelector('[data-my-bid="b2"] [data-swipe-away-slide]') as HTMLElement
+    pointer(slide, 'pointerdown', 300)
+    pointer(slide, 'pointermove', 280)
+    pointer(slide, 'pointermove', 240)
+    pointer(slide, 'pointerup', 240)
+    expect(screen.getByRole('button', { name: 'My Bids, 2 bids' })).toBeTruthy()
+    await new Promise((r) => setTimeout(r, 5))
+    fireEvent.click(screen.getByText('Restroom Stalls'))
+    expect(openBidPreview).toHaveBeenCalledWith('b2')
+  })
+})
+

@@ -26,6 +26,7 @@ import {
   formatRelativeCompactAgo,
   isMyBidOffTheBoard,
   myBidGroupLabel,
+  myBidHiddenWords,
   myBidHasUnread,
   myBidState,
   myBidWhen,
@@ -45,6 +46,9 @@ import { EmptyState } from '../EmptyState'
 import { MY_BIDS_ONLY_HIDDEN_EMPTY, MY_BIDS_UNSENT_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 import { NEEDS_YOU_RAIL } from '../../lib/dashboard/needsYouPalette'
 import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { SwipeAwayRow } from '../shared/SwipeAwayRow'
+import { handHeld } from '../../lib/paintedMap/handHeld'
+import { swipeAwayHint } from '../../lib/swipeAway'
 import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 export function DashboardMyBidsSection({
@@ -57,7 +61,9 @@ export function DashboardMyBidsSection({
   /** Reports the data half of the section's render gate so the parent's SectionDock entry can mirror it. */
   onContentVisibleChange: (visible: boolean) => void
 }) {
-  const { showToast } = useToastContext()
+  const { showToast, showActionToast } = useToastContext()
+  /** On a device held in the hand a bid is hidden with a swipe; at a desk, with a word press (punch list #426). */
+  const swipes = useMemo(() => handHeld(), [])
   const bidPreview = useBidPreview()
 
   const [myBids, setMyBids] = useState<MyBidRow[]>([])
@@ -225,22 +231,25 @@ export function DashboardMyBidsSection({
     }
   }, [authUserId])
 
-  function hideBid(bidId: string) {
-    const next = new Set(hiddenBidIds)
-    next.add(bidId)
-    setHiddenBidIds(next)
-    if (authUserId && typeof window !== 'undefined') {
-      localStorage.setItem(`dashboard_my_bids_hidden_${authUserId}`, JSON.stringify([...next]))
-    }
-  }
-
-  function unhideBid(bidId: string) {
-    const next = new Set(hiddenBidIds)
-    next.delete(bidId)
-    setHiddenBidIds(next)
-    if (authUserId && typeof window !== 'undefined') {
-      localStorage.setItem(`dashboard_my_bids_hidden_${authUserId}`, JSON.stringify([...next]))
-    }
+  /** The hidden ids, changed from what they are now and kept on the device in the same step. */
+  const writeHidden = (change: (ids: Set<string>) => void) =>
+    setHiddenBidIds((prev) => {
+      const next = new Set(prev)
+      change(next)
+      if (authUserId && typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`dashboard_my_bids_hidden_${authUserId}`, JSON.stringify([...next]))
+        } catch {
+          /* a full or blocked store: the bid is still hidden until the page loads again */
+        }
+      }
+      return next
+    })
+  const unhideBid = (bidId: string) => writeHidden((ids) => ids.delete(bidId))
+  /** Hide says what it did, with Undo for ten seconds. Show again in the Hidden group works at any time. */
+  const hideBid = (b: MyBidRow) => {
+    writeHidden((ids) => ids.add(b.id))
+    showActionToast(myBidHiddenWords(b.project_name || 'Untitled'), { label: 'Undo', onClick: () => unhideBid(b.id) }, { durationMs: 10000 })
   }
 
   const markMyBidNotesReadAsViewed = useCallback(
@@ -469,66 +478,78 @@ export function DashboardMyBidsSection({
   const bidBox = (b: MyBidRow, mode: 'shown' | 'hidden') => {
     const when = myBidWhen(b)
     const name = b.project_name || 'Untitled'
+    const box: CSSProperties = {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.6rem',
+      background: 'var(--bg-subtle)',
+      border: '1px solid var(--border)',
+      borderLeft: `4px solid ${NEEDS_YOU_RAIL[mode === 'hidden' ? 'gray' : when.tone]}`,
+      borderRadius: 8,
+      padding: '0.65rem 0.875rem',
+    }
+    const words = (
+      <button
+        type="button"
+        data-my-bid-open
+        onClick={() => bidPreview?.openBidPreview(b.id)}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: 44,
+          display: 'grid',
+          alignContent: 'center',
+          gap: '0.3rem',
+          margin: 0,
+          padding: 0,
+          border: 'none',
+          background: 'none',
+          textAlign: 'left',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          color: 'var(--text-700)',
+        }}
+      >
+        <span style={{ fontSize: '0.9375rem', fontWeight: 600, lineHeight: 1.3, overflowWrap: 'anywhere', color: mode === 'hidden' ? 'var(--text-700)' : 'var(--text-link)' }}>{name}</span>
+        <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.6rem', fontSize: '0.8125rem' }}>
+          <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0 0.4rem', fontVariantNumeric: 'tabular-nums' }}>
+            {mode === 'hidden' ? <span style={{ color: 'var(--text-muted)' }}>{MY_BID_STATE_WORDS[myBidState(b)]}</span> : null}
+            {when.label ? <span style={{ color: 'var(--text-muted)' }}>{when.label}</span> : null}
+            <WorkedOutValue>{when.value}</WorkedOutValue>
+            {when.tail ? when.late && mode === 'shown' ? <WorkedOutValue tone="red">{when.tail}</WorkedOutValue> : <span style={{ color: 'var(--text-muted)' }}>{when.tail}</span> : null}
+          </span>
+          {card.showTrade && b.service_type_name ? <span style={{ color: 'var(--text-muted)' }}>{b.service_type_name}</span> : null}
+          <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+            {b.myBidRoles === 'estimator' || b.myBidRoles === 'both' ? <span style={rolePill('estimator')}>Estimator</span> : null}
+            {b.myBidRoles === 'account_manager' || b.myBidRoles === 'both' ? <span style={rolePill('account_manager')}>Account Manager</span> : null}
+          </span>
+        </span>
+      </button>
+    )
     return (
       <li key={b.id} data-my-bid={b.id}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.6rem',
-            background: 'var(--bg-subtle)',
-            border: '1px solid var(--border)',
-            borderLeft: `4px solid ${NEEDS_YOU_RAIL[mode === 'hidden' ? 'gray' : when.tone]}`,
-            borderRadius: 8,
-            padding: '0.65rem 0.875rem',
-          }}
-        >
-          <button
-            type="button"
-            data-my-bid-open
-            onClick={() => bidPreview?.openBidPreview(b.id)}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              minHeight: 44,
-              display: 'grid',
-              alignContent: 'center',
-              gap: '0.3rem',
-              margin: 0,
-              padding: 0,
-              border: 'none',
-              background: 'none',
-              textAlign: 'left',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              color: 'var(--text-700)',
-            }}
-          >
-            <span style={{ fontSize: '0.9375rem', fontWeight: 600, lineHeight: 1.3, overflowWrap: 'anywhere', color: mode === 'hidden' ? 'var(--text-700)' : 'var(--text-link)' }}>{name}</span>
-            <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.6rem', fontSize: '0.8125rem' }}>
-              <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0 0.4rem', fontVariantNumeric: 'tabular-nums' }}>
-                {mode === 'hidden' ? <span style={{ color: 'var(--text-muted)' }}>{MY_BID_STATE_WORDS[myBidState(b)]}</span> : null}
-                {when.label ? <span style={{ color: 'var(--text-muted)' }}>{when.label}</span> : null}
-                <WorkedOutValue>{when.value}</WorkedOutValue>
-                {when.tail ? when.late && mode === 'shown' ? <WorkedOutValue tone="red">{when.tail}</WorkedOutValue> : <span style={{ color: 'var(--text-muted)' }}>{when.tail}</span> : null}
-              </span>
-              {card.showTrade && b.service_type_name ? <span style={{ color: 'var(--text-muted)' }}>{b.service_type_name}</span> : null}
-              <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                {b.myBidRoles === 'estimator' || b.myBidRoles === 'both' ? <span style={rolePill('estimator')}>Estimator</span> : null}
-                {b.myBidRoles === 'account_manager' || b.myBidRoles === 'both' ? <span style={rolePill('account_manager')}>Account Manager</span> : null}
-              </span>
-            </span>
-          </button>
-          {mode === 'shown' ? (
-            <button type="button" onClick={() => hideBid(b.id)} aria-label={`Hide, ${name}`} style={wordPress}>
-              Hide
-            </button>
-          ) : (
+        {mode === 'shown' ? (
+          // A swipe to the left hides the bid on a device held in the hand; at a desk the same act is the word press.
+          <SwipeAwayRow label="Hide" name={name} swipe={swipes} radius={8} onAway={() => hideBid(b)}>
+            {(press) => (
+              <div style={box}>
+                {words}
+                {press ?? (
+                  <span aria-hidden style={{ flexShrink: 0, color: 'var(--text-muted)', fontSize: '1.2rem', lineHeight: 1 }}>
+                    ›
+                  </span>
+                )}
+              </div>
+            )}
+          </SwipeAwayRow>
+        ) : (
+          <div style={box}>
+            {words}
             <button type="button" onClick={() => unhideBid(b.id)} aria-label={`Show again, ${name}`} style={wordPress}>
               Show again
             </button>
-          )}
-        </div>
+          </div>
+        )}
         {mode === 'shown' && myBidHasUnread(b) ? unreadBox(b) : null}
       </li>
     )
@@ -674,7 +695,12 @@ export function DashboardMyBidsSection({
                 </div>
               ) : null}
               <div style={{ ...groupLine(false), display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', minHeight: 44 }}>
-                {readCut ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{MY_BIDS_CUT_WORDS}</span> : null}
+                {readCut || swipes ? (
+                  <span style={{ display: 'grid', gap: '0.15rem', padding: '0.35rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    {swipes ? <span data-my-bids-hint>{swipeAwayHint('bid', 'hide it')}</span> : null}
+                    {readCut ? <span>{MY_BIDS_CUT_WORDS}</span> : null}
+                  </span>
+                ) : null}
                 <Link
                   to="/bids?tab=bid-board"
                   style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }}

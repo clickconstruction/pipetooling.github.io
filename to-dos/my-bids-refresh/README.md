@@ -2,15 +2,15 @@
 name: "My Bids and Recent Reports on the Dashboard: one swipe to put a row away"
 number: 426
 group: ready
-status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · steps 1 to 3 of 6 in review
+status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · steps 1 to 4 of 6 in review
 summary: >
   The owner wants the eye icon on each My Bids row replaced by a swipe and the bids grouped by state.
   He wants Recent Reports' heading back on one row, its presses moved to the foot, and the same swipe
   to mark a report opened, so a person can clear work off a list. The plan is one swipe for both
   cards: left, a strip that names the act, Undo, and a folded group at the foot that holds what was
   put away. The reading also found things neither ask named, listed below for each card.
-next: Steps 4 to 6 of the build list, in order.
-size: L as a train of six (S · M · M · M · S · S); left: steps 4 to 6
+next: Steps 5 and 6 of the build list, then the owner's try of the swipe on his phone.
+size: L as a train of six (S · M · M · M · S · S); left: steps 5 and 6
 blocker: None.
 opinion: build — the owner said go on every recommendation
 ---
@@ -21,8 +21,9 @@ opinion: build — the owner said go on every recommendation
 
 The owner said **go, as recommended** on 2026-11-23. Every pick below is answered. The build is six small
 PRs, listed under *The build*. Step 1, the My Bids read, is the PR that adds this card. Step 2, the groups
-and the one-press bid, is the PR after it. Step 3, Recent Reports' heading and foot, is the third. Steps 4
-to 6 are not built.
+and the one-press bid, is the PR after it. Step 3, Recent Reports' heading and foot, is the third. Step 4,
+the shared swipe on My Bids, is the fourth. Steps 5 and 6 are not built. The swipe has not been tried on a
+real phone.
 
 The mock-up is [`mockup.html`](mockup.html). For each card it draws the card as it is beside the card as
 planned at 430 px and at 320 px, the swipe in three frames, and the desk. Two frames work under a finger or
@@ -339,7 +340,7 @@ Each PR claims its version, ships its release note and fragment, and passes the 
 | 1, in review | My Bids | S | **The read.** The grouping kernel over `getSubmissionSectionKey`, the board's two orders and its due-date parts, with tests. The read stops the 50 from cutting live bids, adds `created_at`, and leaves out adopted bids and, on pick 5, archived ones. On the screen, a bid that read *Unsent* reads its true state. |
 | 2, in review | My Bids | M | **The groups.** Headings, counts and folds, one box per bid with one press, the **Bid Board** door, **Hide** as a word press, the **Hidden** group with **Show again**, the fix for the vanished card, and picks 2 and 3. |
 | 3, in review | Recent Reports | M | **The heading and the foot.** One heading row, the foot's two rows, the day and time as one value, **Mark opened** as a word press on each row, the **Opened** group with **Mark unread**, the words for a clear list, the read of the marks narrowed to the listed reports, and picks 6, 7 and 8. |
-| 4 | Shared | M | **The swipe.** `SwipeAwayRow` and `settleAt` on `useSwipeRow`, the strip, the blue mark, **Undo** and the keyboard's way in, with a render smoke on pointer events. My Bids uses it in this PR. |
+| 4, in review | Shared | M | **The swipe.** `SwipeAwayRow` and `settleAt` on `useSwipeRow`, the strip, the blue mark, **Undo** and the keyboard's way in, with a render smoke on pointer events. My Bids uses it in this PR. |
 | 5 | Recent Reports | S | **The swipe on reports.** The same shared row with **Mark opened**. The guides for both cards. |
 | 6 | My Bids | S, a migration | **Hidden follows you.** Pick 4. |
 
