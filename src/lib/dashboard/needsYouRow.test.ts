@@ -35,6 +35,13 @@ describe('needsYouPhoneFigure', () => {
     expect(needsYouPhoneFigure({ title: '14 purchases need a job', figure: '14' })).toBeNull()
     expect(needsYouPhoneFigure({ title: 'A mailed notice has no tracking number', figure: '' })).toBeNull()
   })
+
+  it('a row that shows its values is read by the title it draws, the count marked inside it', () => {
+    const shown = { title: '⟪n|3⟫ texts to send', names: '', peek: null, chips: [] }
+    // The plain title says no number, but the drawn one leads with 3: no second 3 beside the press.
+    expect(needsYouPhoneFigure({ title: 'Today’s sends', figure: '3', shown })).toBeNull()
+    expect(needsYouPhoneFigure({ title: 'Today’s sends', figure: '4', shown })).toBe('4')
+  })
 })
 
 describe('the press on a phone', () => {

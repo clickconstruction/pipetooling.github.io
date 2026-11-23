@@ -5,7 +5,17 @@ import {
   buildMyBidRows,
   collectMyBidNoteAuthorIds,
   formatRelativeCompactAgo,
+  groupMyBids,
+  isMyBidOffTheBoard,
   isMyBidStreamUnread,
+  MY_BID_STATES,
+  MY_BID_STATE_WORDS,
+  MY_BIDS_DASHBOARD_ROW_LIMIT,
+  MY_BIDS_NOT_LOST_FILTER,
+  MY_BIDS_ON_THE_BOARD_FILTER,
+  MY_BIDS_READ_ORDER,
+  myBidState,
+  myBidsReadIsCut,
   myBidRolesForUser,
   myBidsStartsOpen,
   truncateMyBidNotePreview,
@@ -255,3 +265,96 @@ describe('myBidsStartsOpen', () => {
     expect(myBidsStartsOpen(undefined)).toBe(true)
   })
 })
+
+describe('myBidState — the Bid Board\'s rule (punch list #426)', () => {
+  it('reads the answer before the sent date, so a won bid with no sent date is Won', () => {
+    expect(myBidState({ outcome: 'won', bid_date_sent: null })).toBe('won')
+    expect(myBidState({ outcome: 'started_or_complete', bid_date_sent: null })).toBe('startedOrComplete')
+  })
+
+  it('with no answer, the sent date decides', () => {
+    expect(myBidState({ outcome: null, bid_date_sent: null })).toBe('unsent')
+    expect(myBidState({ outcome: null, bid_date_sent: '2026-11-03' })).toBe('pending')
+  })
+
+  it('a lost bid that slips through reads as its sent date says, never a fifth state', () => {
+    expect(myBidState({ outcome: 'lost', bid_date_sent: '2026-11-03' })).toBe('pending')
+    expect(myBidState({ outcome: 'lost', bid_date_sent: null })).toBe('unsent')
+  })
+
+  it('has the board\'s words for every state, in the order a person works them', () => {
+    expect(MY_BID_STATES.map((s) => MY_BID_STATE_WORDS[s])).toEqual(['Unsent', 'Not yet won or lost', 'Won', 'Started or Complete'])
+  })
+})
+
+describe('isMyBidOffTheBoard', () => {
+  it('an adopted bid is off, whatever its state', () => {
+    expect(isMyBidOffTheBoard({ outcome: 'won', bid_date_sent: '2026-11-03', adopted_into_bid_id: 'other' })).toBe(true)
+  })
+
+  it('an archived bid is off only while it is unsent, as on the board', () => {
+    const archived = '2026-05-11T15:00:00Z'
+    expect(isMyBidOffTheBoard({ outcome: null, bid_date_sent: null, working_board_archived_at: archived })).toBe(true)
+    expect(isMyBidOffTheBoard({ outcome: null, bid_date_sent: '2026-11-03', working_board_archived_at: archived })).toBe(false)
+    expect(isMyBidOffTheBoard({ outcome: 'won', bid_date_sent: null, working_board_archived_at: archived })).toBe(false)
+  })
+
+  it('a bid with neither mark stays', () => {
+    expect(isMyBidOffTheBoard({ outcome: null, bid_date_sent: null })).toBe(false)
+  })
+})
+
+describe('groupMyBids', () => {
+  const bid = (id: string, over: Partial<{ outcome: string | null; bid_date_sent: string | null; bid_due_date: string | null }>) => ({
+    id,
+    outcome: null,
+    bid_date_sent: null,
+    bid_due_date: null,
+    ...over,
+  })
+
+  it('unsent bids run oldest due date first, with no due date last', () => {
+    const g = groupMyBids([bid('none', {}), bid('late', { bid_due_date: '2026-04-08' }), bid('soon', { bid_due_date: '2026-11-26' })])
+    expect(g.unsent.map((b) => b.id)).toEqual(['late', 'soon', 'none'])
+  })
+
+  it('every other state runs newest sent first', () => {
+    const g = groupMyBids([
+      bid('p-old', { bid_date_sent: '2026-09-01' }),
+      bid('p-new', { bid_date_sent: '2026-11-20' }),
+      bid('w-old', { outcome: 'won', bid_date_sent: '2026-02-07' }),
+      bid('w-new', { outcome: 'won', bid_date_sent: '2026-06-17' }),
+      bid('s', { outcome: 'started_or_complete', bid_date_sent: '2026-01-05' }),
+    ])
+    expect(g.pending.map((b) => b.id)).toEqual(['p-new', 'p-old'])
+    expect(g.won.map((b) => b.id)).toEqual(['w-new', 'w-old'])
+    expect(g.startedOrComplete.map((b) => b.id)).toEqual(['s'])
+    expect(g.unsent).toEqual([])
+  })
+
+  it('leaves the list it was given untouched', () => {
+    const list = [bid('b', { bid_due_date: '2026-11-26' }), bid('a', { bid_due_date: '2026-04-08' })]
+    groupMyBids(list)
+    expect(list.map((b) => b.id)).toEqual(['b', 'a'])
+  })
+})
+
+describe('the read', () => {
+  it('keeps what is not lost and what the board still lists', () => {
+    expect(MY_BIDS_NOT_LOST_FILTER).toBe('outcome.is.null,outcome.neq.lost')
+    expect(MY_BIDS_ON_THE_BOARD_FILTER).toBe('working_board_archived_at.is.null,outcome.not.is.null,bid_date_sent.not.is.null')
+  })
+
+  it('sorts the bids with no answer first, each pile newest first, so a cut falls on the oldest decided bids', () => {
+    expect(MY_BIDS_READ_ORDER).toEqual([
+      { column: 'outcome', ascending: false, nullsFirst: true },
+      { column: 'created_at', ascending: false, nullsFirst: false },
+    ])
+  })
+
+  it('says it was cut only when it came back full', () => {
+    expect(myBidsReadIsCut(MY_BIDS_DASHBOARD_ROW_LIMIT - 1)).toBe(false)
+    expect(myBidsReadIsCut(MY_BIDS_DASHBOARD_ROW_LIMIT)).toBe(true)
+  })
+})
+

@@ -12,7 +12,7 @@ Each account opens as the same five-section packet the Legal desk shows. The por
 
 1. On **Jobs → Pipeline → Collections**, open {{button:outline|⚖ Legal}}. The header shows {{button:outline|Portal link}} beside the firm's name once a firm is set up. To set one up, press **Set up the firm…** in that header. Settings → Jobs, bills and liens → Collections law firm holds the same details.
 2. Pick the firm's address, then press {{button:blue|Create the firm's link}}. The address is a name part you type and three characters you roll with the dice, such as `my.clickplumbing.com/snell-law-f6a`. The whole address is the key, so keep it private. The address shows on the list any time. {{button:blue|Copy}} puts it on your clipboard. {{button:outline|Preview ↗}} opens what the firm sees, without counting as their visit.
-3. Under **One person's link**, type who the link is for, pick the address and press {{button:outline|Add a link}}. That person gets their own address. Turning it off leaves the firm's other links working. The firm's own link is the one in every email the firm gets.
+3. Under **One person's link**, type who the link is for, pick the address and press {{button:outline|Add a link}}. That person gets their own address. Turning it off leaves the firm's other links working. The firm's own link is the one in every email the firm gets. What a person saves on their own link is recorded under the name you typed. See [Who recorded it](#who-recorded-it).
 4. Press {{button:outline|Send…}} on a link to email it. Tick the firm's address on file or type one. You can add a line of your own. Press {{button:blue|Send the link}}. The email comes from the company and is signed by you. A reply comes back to you. Its first step asks the firm to add the people who should get our emails. The list then shows who it went to and when.
 5. **Change address…** lets you type a new name part or roll the tail again. Saving it kills the old address. **Rotate** keeps the name and rolls three new characters, and kills the old one too. Rotating the firm's own link also kills the link in every email the firm already has. Send the new link after a Rotate. **Turn off** is the kill switch for that link. The firm gets "This link is no longer active" on it.
 6. A wrong address is counted. After ten wrong tries in an hour from one connection, the portal refuses that connection for the hour. The right address always opens.
@@ -92,7 +92,16 @@ On a matter's **Fees & steps** tab the firm can:
 
 The firm settles for what can be had. The call is theirs, and we get what we get. Their matter card says so: *Settling: Settle as you can. Record the settlement with its amount.* A *settled* step always carries the settlement amount. The step moves the stage at once and lands on your Needs You card. There is no floor to set and no sign-off to wait on. Under the matter card the firm sees the same cards the desk draws. Those are what each path nets, with the line above which settling beats a full win. The printed packet carries them too.
 
-Each act carries a date and a name. The date starts as today, and the firm can set an earlier one. The name is picked under **Recorded by**, from the people on the firm's Notifications page. Both show on the desk's tables. The name is the firm's own word for who did it. The portal has no sign-in, so it proves nothing on its own.
+### Who recorded it
+
+Each act carries a date and a name. The date starts as today, and the firm can set an earlier one. Both show on the desk's tables.
+
+The name depends on the link the act came in on.
+
+- **On one person's link** the name is that person. The portal shows it beside **Recorded by**, with nothing to pick. The name comes from the link, so the page cannot change it. The desk shows it as *Dana Reyes · firm · own link*.
+- **On the firm's own link** the name is picked under **Recorded by**, from the people on the firm's Notifications page. Anyone holding that link can pick any name. The desk shows it as *Dana Reyes · firm · name picked*.
+
+The portal has no sign-in. A name on one person's link is only as sure as that link is private. Give each person their own link when you need to know who did what. Turn a link off when its person leaves. Start here's **Answered by** follows the same rule.
 
 A mistake is undone, never deleted. The firm presses **Undo…** on its own fee, cost or unapplied payment and types why. You do the same on a fee, cost or note the office wrote. An undone row stays struck through, with the reason, and leaves every total.
 

@@ -33,3 +33,23 @@ export function useOfficeAnchor(enabled: boolean): OfficeAnchor | null {
   }, [enabled])
   return anchor
 }
+
+/**
+ * The anchor with whether the read has ended (v2.8330), for a card whose first view depends on it: the
+ * Dashboard's jobs map opens on the office, so it waits for the answer and never draws one view and jumps to
+ * another. `settled` with no anchor is no office on record, or a read that failed.
+ */
+export function useOfficeAnchorState(enabled: boolean): { anchor: OfficeAnchor | null; settled: boolean } {
+  const [state, setState] = useState<{ anchor: OfficeAnchor | null; settled: boolean }>({ anchor: null, settled: false })
+  useEffect(() => {
+    if (!enabled) return
+    let cancelled = false
+    void loadOfficeAnchor().then((a) => {
+      if (!cancelled) setState({ anchor: a, settled: true })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [enabled])
+  return state
+}

@@ -20,6 +20,7 @@ import type { LienBoardDot } from '../../lib/jobs/lienBoard'
 import { NEEDS_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 import LienLeaderSignCardView from './LienLeaderSignCardView'
 import NeedsYouLienBoardStrip from './NeedsYouLienBoardStrip'
+import { NeedsYouRowWords } from './NeedsYouRowWords'
 import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
@@ -213,12 +214,6 @@ export function DashboardNeedsYouCard({
     borderRadius: 8,
     padding: '0.7rem 0.875rem',
   })
-  const rowTitle = (it: NeedsYouItem) => (
-    <>
-      <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{it.title}</div>
-      <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: 1 }}>{it.detail}</div>
-    </>
-  )
   const rowPressTone = (it: NeedsYouItem) => ({
     background: ACTION_BG[it.severity],
     color: ACTION_FG[it.severity],
@@ -234,7 +229,7 @@ export function DashboardNeedsYouCard({
     return (
       <div key={it.key} data-needs-you-row={it.key} data-needs-you-layout="phone" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', ...rowBox(it) }}>
         <div data-needs-you-words style={{ minWidth: 0 }}>
-          {rowTitle(it)}
+          <NeedsYouRowWords item={it} />
         </div>
         {/* The row's last line: a line's own links on the left where it has any, the figure and the press at the right.
             Where the links and the press do not fit one line, the press takes the next one, still at the right. */}
@@ -284,7 +279,7 @@ export function DashboardNeedsYouCard({
     ) : (
       <div key={it.key} data-needs-you-row={it.key} data-needs-you-layout="desk" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem 0.875rem', ...rowBox(it) }}>
         <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-          {rowTitle(it)}
+          <NeedsYouRowWords item={it} />
           {secondaryLinks(it)}
         </div>
         <div style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{it.figure}</div>

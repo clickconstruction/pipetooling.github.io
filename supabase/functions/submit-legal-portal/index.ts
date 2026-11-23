@@ -10,7 +10,7 @@ import { askGuessGate, GUESS_LOCKED_MSG } from '../_shared/legalPortalGuessGate.
 import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
-import { askLegalConfirmCap, firmVoidProblem, voidIsRetry, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalConfirmCapKeys, legalConfirmTwinMessage, legalPlanDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
+import { askLegalConfirmCap, firmVoidProblem, voidIsRetry, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalConfirmCapKeys, legalConfirmTwinMessage, legalLinkPerson, legalPlanDateProblem, legalRateLimitMessage, recordedByForLink } from '../_shared/legalPortalActs.ts'
 import { counselReadDraftProblem, counselReadEntryBody, counselReadMetaForDb, counselReadMetaFromDraft, type CounselTries } from '../_shared/legalCounselRead.ts'
 import { firmStepDecision, isLegalFirmStep, LEGAL_FIRM_STEP_WORDS, legalMatterOnPortal } from '../_shared/legalStages.ts'
 import { shapeLegalFirmIntake } from '../_shared/legalFirmIntake.ts'
@@ -46,6 +46,10 @@ import { shapeLegalFirmIntake } from '../_shared/legalFirmIntake.ts'
  * Since item 18 every matter act may carry `occurredOn` (the date the firm sets,
  * not in the future), `clientId` (a uuid: a retry or double click saves once, the first
  * entry is answered) and `recordedById` (a person on the firm's list → meta.recordedBy).
+ * Since v2.8312 the link decides who an act is recorded by (`recordedByForLink`): on one
+ * person's link it is that person and `recordedById` is not read; on the firm's shared link
+ * it is the pick, saved with `how: 'shared_link'`. Start here's *Answered by* follows the
+ * same rule.
  */
 
 const corsHeaders = {
@@ -70,12 +74,12 @@ async function sha256Hex(value: string): Promise<string> {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-type Link = { firm_id: string; revoked_at: string | null }
+type Link = { id: string; firm_id: string; revoked_at: string | null; purpose: string | null; label: string | null }
 
 async function resolveLink(admin: SupabaseClient, token: string): Promise<Link | null> {
   // The hash first (item 22): the raw column is on its way out; it stays as the fallback for a link minted before the hash existed.
-  let { data: link } = await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token_hash', await sha256Hex(token)).maybeSingle()
-  if (!link) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token', token).maybeSingle()).data
+  let { data: link } = await admin.from('legal_portal_links').select('id, firm_id, revoked_at, purpose, label').eq('token_hash', await sha256Hex(token)).maybeSingle()
+  if (!link) link = (await admin.from('legal_portal_links').select('id, firm_id, revoked_at, purpose, label').eq('token', token).maybeSingle()).data
   const l = link as Link | null
   return l && !l.revoked_at ? l : null
 }
@@ -108,7 +112,8 @@ serve(async (req) => {
 
     // --- The firm's answers to Start here (v2.4821) -------------------------
     if (kind === 'intake') {
-      const by = str(body.by, 120)
+      // On one person's link the answers are that person's, whatever the page sent.
+      const by = legalLinkPerson(link) ?? str(body.by, 120)
       if (!by) return jsonResponse({ error: 'Say who at the firm is answering.' }, 400)
       const { error } = await admin.from('legal_firms').update({ intake: shapeLegalFirmIntake(body.answers), intake_sent_at: new Date().toISOString(), intake_sent_by: by }).eq('id', link.firm_id)
       return error ? jsonResponse({ error: 'Could not send your answers. Please try again.' }, 500) : jsonResponse({ ok: true })
@@ -240,14 +245,18 @@ serve(async (req) => {
     let entryKind = kind
     let notice: string | null = null
     if (clientId) meta.clientId = clientId
-    // #85 item 18 (b): who recorded it — a person on the firm's own list, never free text.
-    const recordedById = str(body.recordedById, 64)
+    // #85 item 18 (b): who recorded it — never free text. On one person's link it is that person, read from
+    // the link and not from the body (v2.8312). On the firm's shared link it is a pick from the firm's own list.
+    const recordedById = legalLinkPerson(link) ? '' : str(body.recordedById, 64)
+    let picked: { id: string; name: string } | null = null
     if (recordedById) {
       const { data: who } = await admin.from('legal_firm_recipients').select('id, name').eq('id', recordedById).eq('firm_id', link.firm_id).is('removed_at', null).maybeSingle()
       // An id that names nobody on this firm's list is refused, never saved as "the firm".
       if (!who) return jsonResponse({ error: 'Pick who recorded this from the list.' }, 400)
-      meta.recordedBy = { id: (who as { id: string }).id, name: (who as { name: string }).name }
+      picked = { id: (who as { id: string }).id, name: (who as { name: string }).name }
     }
+    const recordedBy = recordedByForLink(link, picked)
+    if (recordedBy) meta.recordedBy = recordedBy
 
     // #85 item 18 (a): the firm undoes its own act, with a reason both sides read. Nothing is deleted.
     if (kind === 'void') {

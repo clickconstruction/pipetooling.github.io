@@ -166,8 +166,9 @@ serve(async (req) => {
       // The same job scope the statement shows (customer-portal's rule).
       // Who pays (v2.3346): a promise covers the jobs this viewer actually owes
       // on — the job rule + each open bill's pick, the same test the statement uses.
-      const jobSelect = 'id, status, customer_id, gc_customer_id, bill_to_party'
-      type ScopeJob = { id: string; status: string | null; customer_id: string | null; gc_customer_id: string | null; bill_to_party: string | null }
+      // A job an in kind deal pays is not in the scope (v2.8314, punch list #301): its bill is scheduled, not owed.
+      const jobSelect = 'id, status, customer_id, gc_customer_id, bill_to_party, in_kind_arrangement_id'
+      type ScopeJob = { id: string; status: string | null; customer_id: string | null; gc_customer_id: string | null; bill_to_party: string | null; in_kind_arrangement_id: string | null }
       let jobs: ScopeJob[] = []
       if (link.audience === 'all') {
         const { data } = await admin
@@ -188,7 +189,7 @@ serve(async (req) => {
             .in('job_id', jobs.map((j) => j.id))
             .eq('status', PORTAL_OPEN_INVOICE_STATUS)
         : { data: [] }
-      const promiseJobIds = owedJobIdsForViewer(jobs, (scopeInvRaw ?? []) as Array<{ job_id: string; bill_to_party: string | null; bill_to_email: string | null }>, link.customer_id)
+      const promiseJobIds = owedJobIdsForViewer(jobs.filter((j) => !j.in_kind_arrangement_id), (scopeInvRaw ?? []) as Array<{ job_id: string; bill_to_party: string | null; bill_to_email: string | null }>, link.customer_id)
       if (promiseJobIds.length === 0) {
         return jsonResponse({ error: 'Nothing is open on your account right now — thank you!' }, 400)
       }

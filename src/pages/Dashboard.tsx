@@ -43,6 +43,7 @@ import { DashboardUpcomingInspectionsSection } from '../components/dashboard/Das
 import { DashboardRecentReportsSection } from '../components/dashboard/DashboardRecentReportsSection'
 import { DashboardMyBidsSection } from '../components/dashboard/DashboardMyBidsSection'
 import { SectionDock } from '../components/SectionDock'
+import { BackToTop } from '../components/BackToTop'
 import {
   getPinnedForUserFromSupabase,
   type PinnedItem,
@@ -53,9 +54,6 @@ import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useWeeklyTeamLaborTotal } from '../hooks/useWeeklyTeamLaborTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
-import { isLienOffice } from '../lib/jobs/lienDesk'
-import { useLienMonth } from '../hooks/useLienMonth'
-import { DashboardLienMonthCard } from '../components/dashboard/DashboardLienMonthCard'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -169,8 +167,6 @@ export default function Dashboard() {
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
   /** ZZ test jobs off the Billed pin for every role but a dev who shows them (punch list #61, v2.5120). */
   const hideZzTestJobs = useZzTestJobsHidden(role)
-  // The lien month (punch list #235, PR 3): the desk's five zones as a card, for everyone who can open the desk.
-  const { month: lienMonth } = useLienMonth(isLienOffice(role), hideZzTestJobs)
   const isDocVisible = useDocumentVisibility()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
@@ -389,6 +385,8 @@ export default function Dashboard() {
   const [yourPeopleDockVisible, setYourPeopleDockVisible] = useState(false)
   // Training (punch list #111): the card reports whether it drew, so the dock lists it only when there is a course to show.
   const [trainingDockVisible, setTrainingDockVisible] = useState(false)
+  /** The page's top, where Back to top lands focus (v2.8334). */
+  const dashboardTopRef = useRef<HTMLDivElement>(null)
   const [pinnedRoutes, setPinnedRoutes] = useState<PinnedItem[]>([])
   const {
     assignedJobs,
@@ -1597,7 +1595,8 @@ export default function Dashboard() {
     ) : null
 
   return (
-    <div style={{ paddingBottom: dockSections.length > 1 && !phoneOffice ? '4.5rem' : 0 }}>
+    // The page's top is where Back to top lands focus (v2.8334): it takes focus from a press, never from Tab, and draws no ring around the whole page.
+    <div ref={dashboardTopRef} tabIndex={-1} data-dashboard-top="" style={{ paddingBottom: dockSections.length > 1 && !phoneOffice ? '4.5rem' : 0, outline: 'none' }}>
       {dockSections.length > 1 && !phoneOffice ? (
         <SectionDock
           sections={dockSections}
@@ -1967,8 +1966,7 @@ export default function Dashboard() {
             <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
             <DashboardBillingPipelineSection {...billingPipelineSectionProps} />
           </PhoneFold>
-          {/* The lien month (v2.6650, punch list #235): the Lien desk's five zones in one strip, with the zone today is in, what slipped and next month's queue. */}
-          <DashboardLienMonthCard month={lienMonth} />
+          {/* The lien month card stood here from v2.6650 until punch list #423: the Dashboard says how the Lien desk stands once, in `DashboardLienDeskCard` beside Needs you. */}
         </>
       )}
 
@@ -2047,7 +2045,6 @@ export default function Dashboard() {
             userId={authUser.id}
             hoursDaysCorrect={hoursDaysCorrectSet}
             disableDayEditor={dashboardSelfIsSalary}
-            salariedWeek={dashboardSelfSalariedWeek}
             onWeekSeconds={setMyTimeWeekSeconds}
           />
         </PhoneFold>
@@ -2059,6 +2056,8 @@ export default function Dashboard() {
           Renders nothing while nothing is required of the role or the tables are not on prod yet. */}
       {authUser?.id && <div id="dash-training" aria-hidden="true" style={dockAnchorStyle} />}
       {authUser?.id && <DashboardTrainingSection userId={authUser.id} role={role} onVisibility={setTrainingDockVisible} />}
+      {/* Back to top (v2.8334): a quiet press at the foot of the page, for every role, drawn only when the page is two screens or more. */}
+      <BackToTop topRef={dashboardTopRef} onPress={() => recordNavClick(authUser?.id, role, 'dashboard', '#back-to-top')} />
 
       <ApplyScheduleApprovedConfirmModal {...applySchedule.approvedConfirm} />
 

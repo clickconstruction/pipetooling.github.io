@@ -64,3 +64,26 @@ describe('send-contract-for-signature, the handler', () => {
     expect(personPath.split('refuseArchivedCaller(').length - 1).toBe(1)
   })
 })
+
+describe('send-contract-for-signature, the company branch', () => {
+  const source = readFileSync(resolve(__dirname, '../../supabase/functions/send-contract-for-signature/index.ts'), 'utf8')
+  // The company branch is its own function, above the handler.
+  const branch = source.slice(source.indexOf('async function sendCompanyPaper('), source.indexOf('serve(async (req)'))
+
+  it('refuses an archived caller, then asks who the caller is, before it reads the paper', () => {
+    const archived = branch.indexOf('refuseArchivedCaller(')
+    const gate = branch.indexOf('companyPaperCallerRefusal(')
+    const read = branch.indexOf(".from('person_contract_documents')")
+    expect(archived).toBeGreaterThan(-1)
+    expect(gate).toBeGreaterThan(archived)
+    expect(read).toBeGreaterThan(gate)
+  })
+
+  it('reads the caller with the service role, by the id the token named', () => {
+    expect(branch).toMatch(/admin\.from\('users'\)\.select\('role, name, email, read_only, is_digital_twin'\)\.eq\('id', ctx\.userId\)/)
+  })
+
+  it('no longer asks the list every other trade email asks', () => {
+    expect(source).not.toContain('GC_TRADE_EMAIL_ROLES')
+  })
+})

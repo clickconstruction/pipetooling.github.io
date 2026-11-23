@@ -52,6 +52,8 @@ import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGap
 import type { GcNeedsYou } from './gc/needsYou'
 import type { CustomerMessagesCounts } from './followUp/customerCounts'
 import { WHAT_WAITED_WORDS, type WhatWaited } from './messages/whatWaited'
+import type { TodaysSendsNeed } from './offers/offers'
+import { plainSentence } from './valuesInPlace'
 import { STALE_COUNT_DAYS } from './materials/onSite'
 import { nudgeWords } from './research/permitBuilders'
 import { lookAlikeNudgeWords } from './research/lookAlikeWorklist'
@@ -206,6 +208,11 @@ export type NeedsYouItem = {
   /** Drawn before every other line (v2.7435): the leader's lien card while a window is inside the week or closed. */
   first?: boolean
   /**
+   * A row that shows its values (punch list #424): the Cards view draws these in place of the title and the detail.
+   * The title and the detail above still say it, as plain words, for Walk the list, a fold's summary and a trail chip.
+   */
+  shown?: NeedsYouShown
+  /**
    * The number the destination will show when this card opens it (v2.2896,
    * journey-map Tier-2 #16), when the destination counts a wider pile than the
    * card — e.g. the tally card's "100 over 2 days" opens a page saying "105
@@ -214,6 +221,21 @@ export type NeedsYouItem = {
    * number by construction.
    */
   destinationFigure?: string
+}
+
+/**
+ * What a row shows in place of a sentence (punch list #424). Every string may hold values a kernel marked with `val`
+ * (`valuesInPlace.ts`): the card draws each value bold and the fixed words around it in grey, so a person can tell
+ * what changes from what does not.
+ */
+export type NeedsYouShown = {
+  /** The title, its count marked: *⟪3⟫ texts to send*. */
+  title: string
+  /** The names it is about, each marked. '' when the chips carry the names. */
+  names: string
+  /** One thing shown as itself: the words of the one text that waits. */
+  peek: string | null
+  chips: ReadonlyArray<{ kind: 'timed' | 'held' | 'old'; text: string }>
 }
 
 /**
@@ -811,10 +833,11 @@ export type NeedsYouInputs = {
   customerMessages?: CustomerMessagesCounts | null
   /**
    * Today's sends (v2.5595, punch list #115): the texts the morning run prepared for the office to press, and the ones
-   * the office prepared for a morning, as `useTodaysSends` counts them (`lib/offers/offers.ts` → `todaysSendsLine`).
+   * the office prepared for a morning, as `useTodaysSends` reads them (`lib/offers/offers.ts` → `todaysSendsNeed`, which
+   * writes the row from the texts themselves since punch list #424).
    */
   todaysSendsEnabled?: boolean
-  todaysSends?: { count: number; line: string } | null
+  todaysSends?: TodaysSendsNeed | null
   /**
    * While you were off (v2.6060, punch list #141 PR 4): the pushes the viewer's own Push me hours held since they last
    * closed, one wait per customer's line, as `useWhileOff` reads them (`messages/whatWaited.ts` → `whatWaited`). Everyone
@@ -1639,15 +1662,17 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   }
 
   if (inputs.todaysSendsEnabled && inputs.todaysSends && inputs.todaysSends.count > 0) {
+    // The row shows the texts (punch list #424): how many can go, who to, a timed text's time, a held text's cause.
     const t = inputs.todaysSends
     items.push({
       key: 'todays-sends',
-      severity: 'amber',
-      kicker: 'Messages',
-      title: 'Today’s sends',
-      detail: t.line,
+      severity: t.severity,
+      kicker: 'Texts to customers',
+      title: plainSentence(t.title),
+      detail: t.detail,
       figure: t.count > 99 ? '99+' : String(t.count),
-      actionLabel: 'Open',
+      actionLabel: t.press,
+      shown: { title: t.title, names: t.names, peek: t.peek, chips: t.chips },
     })
   }
 

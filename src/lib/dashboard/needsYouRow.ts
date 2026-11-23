@@ -1,4 +1,5 @@
 import type { NeedsYouItem } from '../dashboardNeedsYou'
+import { plainSentence } from '../valuesInPlace'
 
 /**
  * A Needs you row on a phone (v2.8329, the owner's ask of 2026-11-23). Every source draws one row: the words
@@ -33,8 +34,10 @@ export function needsYouFigureInTitle(title: string, figure: string): boolean {
  * The figure a phone row draws beside its press, or null when the title already says it, so one
  * row never shows the same number twice.
  */
-export function needsYouPhoneFigure(item: Pick<NeedsYouItem, 'title' | 'figure'>): string | null {
+export function needsYouPhoneFigure(item: Pick<NeedsYouItem, 'title' | 'figure' | 'shown'>): string | null {
   const f = item.figure.trim()
-  if (!f || needsYouFigureInTitle(item.title, f)) return null
+  // A row that shows its values (punch list #424) draws its own title, the count in it. That is the title to read.
+  const drawnTitle = item.shown ? plainSentence(item.shown.title) : item.title
+  if (!f || needsYouFigureInTitle(drawnTitle, f)) return null
   return f
 }
