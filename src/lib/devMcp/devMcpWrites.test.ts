@@ -161,10 +161,10 @@ describe('devMcpWrites — the allowlist', () => {
     // the bill's four doors — ensure_single_ready_to_bill_invoice_for_job, update_job_status, bill_pay_code, contact_for_customer (v2.6794),
     // the Collections flag's set_job_collections_flag (v2.6795), and the payment's remove and link RPCs and the combine's
     // migrate_job_ledger_costs_and_delete (v2.6940), a sheet payment's remove_labor_job_payment (v2.6944) and its
-    // record_sub_sending (v2.7357), the pay setup's three — set_pay_config, the schedule's clear and today's salary sync (v2.7821), the task close's task_no_longer_applies (v2.7823),
+    // record_sub_sending (v2.7357), the pay setup's three — set_pay_config, the schedule's clear and today's salary sync (v2.7821) — and its working hours' two, set_working_hours as the plan's dry run and as the apply (punch list #429), the task close's task_no_longer_applies (v2.7823),
     // the rounds pair's robot_rounds_stop, the Rounds card's own RPC, once a key (v2.7970),
     // and the approvals list's two doors, dev_kept_plan_keep after a kept plan's dry run and dev_kept_plan_decide after an apply (v2.7987).
-    expect(SERVER.match(/restPost\(/g)?.length).toBe(29)
+    expect(SERVER.match(/restPost\(/g)?.length).toBe(31)
     expect(planVerbFor('apply_hr_entry')).toBe('plan_hr_entry')
     expect(planVerbFor('revert_cost_batch')).toBeNull()
   })
@@ -214,7 +214,7 @@ describe('the event verbs (v2.6682, punch list #169)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.127.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.129.0'")
     expect(SERVER).toContain('plan_matter_event → apply_matter_event')
     expect(SERVER).toContain('one hundred and fifty-six verbs')
   })
@@ -332,7 +332,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.127.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.129.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -441,7 +441,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.127.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.129.0'")
   })
 })
 
@@ -541,7 +541,7 @@ describe('the evidence verbs (v2.6426)', () => {
     expect(SERVER).toContain('for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)')
     expect(SERVER.indexOf('await fileEvidenceToDrive(session, evidenceId)')).toBeGreaterThan(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)'))
     expect(SERVER).toContain("if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {") // argsForLog
-    expect(SERVER).toContain("const SERVER_VERSION = '0.127.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.129.0'")
   })
 })
 
@@ -590,7 +590,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.127.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.129.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else')
   })
 })
@@ -814,7 +814,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.127.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.129.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
@@ -922,7 +922,7 @@ describe('the Materials on site move (v2.6808, punch list #209)', () => {
       expect(SERVER).toContain(`case '${verb}':`)
     }
     expect(SERVER).toContain('plan_materials_move → apply_materials_move')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.127.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.129.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else')
     expect(Object.keys(WRITE_VERBS)).toHaveLength(156)
   })
@@ -1235,7 +1235,7 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.127.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.129.0'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
     expect(SERVER).toContain('one hundred and fifty-six verbs')
   })
@@ -1319,7 +1319,7 @@ describe('the clock session verbs (v2.6437)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.127.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.129.0'")
     const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
     const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
     expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')
@@ -1546,6 +1546,6 @@ describe('whose id a person-file plan takes (v2.8316, punch list #315)', () => {
     expect(SERVER).not.toContain('a people.id: find_person')
     expect(HR_MIGRATION).toContain('FROM public.people pe WHERE pe.id = v_person_id')
     expect(DOC_MIGRATION).toContain('FROM public.people pe WHERE pe.id = v_person_id')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.127.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.129.0'")
   })
 })
