@@ -17,7 +17,7 @@ import { createElement, lazy, useState, type ComponentType } from 'react'
  * load that failed is asked for again on a later open, where `React.lazy` keeps the failure for good.
  *
  * Later, not at once. The render that was waiting gets the failure, so its boundary can say so. Until
- * v2.8306 the next ask began the moment a load failed: the waiting render drew again, asked again and
+ * v2.8327 the next ask began the moment a load failed: the waiting render drew again, asked again and
  * failed again, with no pause and no error for any boundary to catch, for as long as the file stayed away.
  */
 

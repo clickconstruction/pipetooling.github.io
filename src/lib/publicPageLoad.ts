@@ -1,5 +1,5 @@
 /**
- * What a public page says while its code loads, and when that load fails (v2.8306).
+ * What a public page says while its code loads, and when that load fails (v2.8327).
  *
  * A page a customer, a sub, a GC or the law firm opens from a link is a chunk of its own, so the link no
  * longer downloads every other public page with it. The price is one more file to fetch before the page

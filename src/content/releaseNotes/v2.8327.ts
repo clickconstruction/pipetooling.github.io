@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.8306',
+  version: 'v2.8327',
   date: '2026-11-22',
   title: 'Customer links open with less to download, and say so when a page does not load',
   kind: 'fix',

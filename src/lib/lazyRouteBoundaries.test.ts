@@ -5,6 +5,10 @@ import {
   lazyComponentNames,
   lazyRoutesWithoutSuspense,
   lazyRouteWithoutSuspenseWords,
+  onDemandImports,
+  publicRouteNotOnDemandWords,
+  publicRoutesNotOnDemand,
+  ROUTES_KEPT_IN_THE_ENTRY,
   routesOutsideLayout,
   routesSitInChunkBoundary,
 } from './lazyRouteBoundaries'
@@ -173,8 +177,112 @@ describe('lazyRouteWithoutSuspenseWords', () => {
   })
 })
 
+describe('onDemandImports', () => {
+  it('reads each lazy and lazyWindow page with what it imports, and skips a plain import and a comment', () => {
+    const source = `
+      import SignIn from './pages/SignIn'
+      const Jobs = lazy(() => import('./pages/Jobs'))
+      const PayLink = lazyWindow(() => import("./pages/PayLink"))
+      const Old = React.lazy(
+        () => import('./pages/Old'),
+      )
+      // const Gone = lazy(() => import('./pages/Gone'))
+    `
+    expect(onDemandImports(source)).toEqual([
+      { name: 'Jobs', how: 'lazy', specifier: './pages/Jobs' },
+      { name: 'PayLink', how: 'lazyWindow', specifier: './pages/PayLink' },
+      { name: 'Old', how: 'lazy', specifier: './pages/Old' },
+    ])
+  })
+})
+
+describe('publicRoutesNotOnDemand', () => {
+  /** A small App.tsx with one page held through lazyWindow, one through lazy and one imported plainly. */
+  const publicApp = (routes: string): string => `
+import SignIn from './pages/SignIn'
+import Rating from './pages/Rating'
+const PayLink = lazyWindow(() => import('./pages/PayLink'))
+const Preview = lazy(() => import('./pages/Preview'))
+<Routes>
+  ${routes}
+  <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+    <Route path="rating" element={<Rating />} />
+  </Route>
+</Routes>
+`
+  const kept = { '/sign-in': 'the first page' }
+
+  it('passes a page held through lazyWindow inside PublicPage, with props or on lines of its own', () => {
+    const routes = `
+      <Route path="/pay/:id" element={<PublicPage tone="plain" compact><PayLink /></PublicPage>} />
+      <Route
+        path="/p"
+        element={
+          <PublicPage>
+            <PayLink />
+          </PublicPage>
+        }
+      />`
+    expect(publicRoutesNotOnDemand(publicApp(routes), kept)).toEqual([])
+  })
+
+  it('names a public page imported plainly, bare or inside PublicPage', () => {
+    const routes = `
+      <Route path="/rate" element={<Rating />} />
+      <Route path="/rate2" element={<PublicPage><Rating /></PublicPage>} />`
+    expect(publicRoutesNotOnDemand(publicApp(routes), kept)).toEqual(['/rate', '/rate2'])
+  })
+
+  it('names a public page held with plain lazy, which has no loading look and no customer words', () => {
+    const routes = '<Route path="/look" element={<Suspense fallback={null}><Preview /></Suspense>} />'
+    expect(publicRoutesNotOnDemand(publicApp(routes), kept)).toEqual(['/look'])
+    expect(publicRoutesNotOnDemand(publicApp('<Route path="/look" element={<PublicPage><Preview /></PublicPage>} />'), kept)).toEqual(['/look'])
+  })
+
+  it('names a route where a plain page sits beside the PublicPage, and a PublicPage that draws nothing', () => {
+    const routes = `
+      <Route path="/two" element={<><PublicPage><PayLink /></PublicPage><Rating /></>} />
+      <Route path="/none" element={<PublicPage></PublicPage>} />`
+    expect(publicRoutesNotOnDemand(publicApp(routes), kept)).toEqual(['/two', '/none'])
+  })
+
+  it('leaves a route behind ProtectedRoute and a route on the kept list alone', () => {
+    const routes = `
+      <Route path="/sign-in" element={<SignIn />} />
+      <Route path="/staff" element={<ProtectedRoute><Rating /></ProtectedRoute>} />`
+    expect(publicRoutesNotOnDemand(publicApp(routes), kept)).toEqual([])
+    expect(publicRoutesNotOnDemand(publicApp(routes), {})).toEqual(['/sign-in'])
+  })
+
+  it('does not look inside the Layout', () => {
+    expect(publicRoutesNotOnDemand(publicApp(''), kept)).toEqual([])
+  })
+
+  it('says what is wrong and the fix', () => {
+    const words = publicRouteNotOnDemandWords('/rate')
+    expect(words).toContain('"/rate"')
+    expect(words).toContain('lazyWindow')
+    expect(words).toContain('<PublicPage>')
+    expect(words).toContain('ON_DEMAND_PAGES')
+    expect(words).toContain('ROUTES_KEPT_IN_THE_ENTRY')
+  })
+})
+
 describe('src/App.tsx', () => {
   const source = readFileSync(join(__dirname, '..', 'App.tsx'), 'utf8')
+
+  it('loads every page that opens with no sign-in on demand, inside PublicPage', () => {
+    // A parser that read no route would pass with nothing checked.
+    expect(routesOutsideLayout(source).filter((r) => /^<PublicPage[\s>]/.test(r.element.trim())).length).toBeGreaterThan(20)
+    const atFault = publicRoutesNotOnDemand(source)
+    expect(atFault, atFault.map(publicRouteNotOnDemandWords).join('\n')).toEqual([])
+  })
+
+  it('keeps no path on the kept list that is not a route outside the Layout', () => {
+    const paths = routesOutsideLayout(source).map((r) => r.path)
+    const stale = Object.keys(ROUTES_KEPT_IN_THE_ENTRY).filter((path) => !paths.includes(path))
+    expect(stale, `ROUTES_KEPT_IN_THE_ENTRY names ${stale.join(', ')}, which src/App.tsx no longer draws outside the Layout. Take it off the list.`).toEqual([])
+  })
 
   it('is read as it is written: lazy pages, routes above the Layout, the Layout left out', () => {
     // A parser that found nothing would pass the check below without checking anything.

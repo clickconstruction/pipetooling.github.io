@@ -347,7 +347,7 @@ export default defineConfig({
         // permit research list statically, which moved it and what it reads out of a lazy chunk into this one.
         // Six days took this MiB, so the split began the same day: the three job windows load on demand (v2.8098,
         // `lazyWindow`), which took the main chunk from 9,465,107 bytes on the live site to 5,671,756, and six more
-        // windows (v2.8104) took it to 4,307,275. The public pages moved out on 2026-11-22 (v2.8306): 4,431,395 bytes
+        // windows (v2.8104) took it to 4,307,275. The public pages moved out on 2026-11-22 (v2.8327): 4,431,395 bytes
         // to 2,988,614. The Settings page's chunk, 5,755,946 bytes, is the largest file, 4,729,814 under the cap.
         // `src/lib/entryGraph.repo.test.ts` now holds the entry's eager imports to a budget in PR CI, so growth
         // is refused on the PR that brings it. Nothing in PR CI measures the Settings chunk, so the cap stays here

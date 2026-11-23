@@ -21,7 +21,7 @@ import {
 } from '../lib/publicPageLoad'
 
 /**
- * A page someone opens from a link with no sign-in, loaded on demand (v2.8306). `App.tsx` holds each one
+ * A page someone opens from a link with no sign-in, loaded on demand (v2.8327). `App.tsx` holds each one
  * through `lazyWindow` and draws it inside this: the page's own frame with *Loading…* while its code
  * comes, and words with a press when the code did not come. Each page keeps a `Suspense` of its own, since
  * a press on one that opens another would otherwise suspend in a click and blank the page (v2.6868).

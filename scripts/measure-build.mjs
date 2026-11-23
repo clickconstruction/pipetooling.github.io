@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * What a built app weighs, read from `dist/` after `vite build` (the main chunk's split, v2.8306).
+ * What a built app weighs, read from `dist/` after `vite build` (the main chunk's split, v2.8327).
  *
  *   node scripts/measure-build.mjs [dist] [PayLink EstimateAccept …]
  *

@@ -108,7 +108,7 @@ describe('lazyWindow', () => {
       </Caught>,
     )
     expect(await screen.findByText('caught: Failed to fetch dynamically imported module')).toBeTruthy()
-    // Once. Before v2.8306 the waiting render asked again at once, without end, and nothing was ever caught.
+    // Once. Before v2.8327 the waiting render asked again at once, without end, and nothing was ever caught.
     expect(load).toHaveBeenCalledTimes(1)
     view.unmount()
 

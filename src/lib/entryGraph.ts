@@ -160,7 +160,7 @@ export const ON_DEMAND_WINDOWS: ReadonlyArray<string> = [
 ]
 
 /**
- * Pages someone opens from a link with no sign-in (v2.8306): the estimate, the account page, pay, the
+ * Pages someone opens from a link with no sign-in (v2.8327): the estimate, the account page, pay, the
  * agreement, the rating, the portals, the rooms and the short links. `App.tsx` holds each through
  * `lazyWindow` inside `PublicPage`, so a customer's link downloads its own page and not the others. None
  * may be reachable from the entry by static imports.
@@ -193,8 +193,8 @@ export const ON_DEMAND_PAGES: ReadonlyArray<string> = [
 
 /**
  * The most source the entry may reach eagerly. A megabyte of source is about 0.4 MB of chunk: on 2026-11-20,
- * 14.1 MB of source built a main chunk of 5,671,756 bytes, and 10.8 MB built one of 4,307,275. On 2026-11-22
- * the public pages moved out (v2.8306) and the entry reaches 7.7 MB. Lower this as more moves out; raise
+ * 14.1 MB of source built a main chunk of 5,671,756 bytes, and 10.8 MB built one of 4,307,275. On 2026-11-23
+ * the public pages moved out (v2.8327) and the entry reaches 7.6 MB. Lower this as more moves out; raise
  * it only with the reason beside it, as the precache cap's comment asks.
  */
-export const ENTRY_SOURCE_BUDGET_BYTES = 9 * 1024 * 1024
+export const ENTRY_SOURCE_BUDGET_BYTES = 8.5 * 1024 * 1024

@@ -63,7 +63,7 @@ const Estimates = lazy(() => import('./pages/Estimates'))
 const Documents = lazy(() => import('./pages/Documents'))
 const EstimateAcceptStaffPreview = lazy(() => import('./pages/EstimateAcceptStaffPreview'))
 /**
- * The pages someone opens from a link with no sign-in (v2.8306). Each is a chunk of its own, held through
+ * The pages someone opens from a link with no sign-in (v2.8327). Each is a chunk of its own, held through
  * `lazyWindow` and drawn inside `PublicPage`, so a customer's pay link no longer downloads the estimate, the
  * portals and the law firm's page with it. `ON_DEMAND_PAGES` in `src/lib/entryGraph.ts` lists them, and a
  * plain `import X from './pages/X'` here fails `entryGraph.repo.test.ts` with the chain that did it.
@@ -91,8 +91,10 @@ const PaintedWay = lazyWindow(() => import('./pages/PaintedWay'))
 const BuilderLink = lazyWindow(() => import('./pages/BuilderLink'))
 const ReceiptLink = lazyWindow(() => import('./pages/ReceiptLink'))
 const FileLinkPage = lazyWindow(() => import('./pages/FileLinkPage'))
-import PartnerStatement from './pages/PartnerStatement'
-import Logbook from './pages/Logbook'
+// Two signed-in pages inside the Layout, lazy as every other page there is (v2.8327). They were plain imports with no
+// reason on record, and held 148 kB of the entry's source.
+const PartnerStatement = lazy(() => import('./pages/PartnerStatement'))
+const Logbook = lazy(() => import('./pages/Logbook'))
 import ContractBookPreview from './pages/ContractBookPreview'
 import FileOpen from './pages/FileOpen'
 import TaskShortcut from './pages/TaskShortcut'

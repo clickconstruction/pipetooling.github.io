@@ -1,6 +1,6 @@
 /**
  * Which routes outside the Layout draw a lazy page (`lazy()` or `lazyWindow()`) with no `<Suspense>` around it.
- * `<PublicPage>` holds a `<Suspense>` of its own, so a page inside one is covered (v2.8306).
+ * `<PublicPage>` holds a `<Suspense>` of its own, so a page inside one is covered (v2.8327).
  *
  * Pure: it reads the source text of `src/App.tsx` and nothing else. The Layout wraps its `<Outlet>` in a boundary, so
  * every route inside it is covered. A route above the Layout route (`path="/"`) has none unless its own `element`
@@ -111,6 +111,77 @@ export function lazyRouteWithoutSuspenseWords(path: string): string {
     'It sits outside the Layout, so a click or Back onto it before its chunk has loaded leaves a blank page. ' +
     `Wrap a page that opens with no sign-in in <PublicPage> inside the route's element, as ${example} is, ` +
     'and one behind ProtectedRoute in <Suspense fallback={null}>.'
+  )
+}
+
+export type OnDemandImport = {
+  /** The component's name in `App.tsx`. */
+  name: string
+  /** `lazyWindow` for a page that opens with no sign-in, `lazy` for every other. */
+  how: 'lazy' | 'lazyWindow'
+  /** What it imports, as written: `./pages/PayLink`. */
+  specifier: string
+}
+
+/** Every `const X = lazy(() => import('…'))` and `const X = lazyWindow(() => import('…'))`, in order. */
+export function onDemandImports(appSource: string): OnDemandImport[] {
+  const out: OnDemandImport[] = []
+  const re = /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:React\.)?(lazyWindow|lazy)\s*\(\s*\(\s*\)\s*=>\s*import\s*\(\s*['"]([^'"\n]+)['"]\s*\)/g
+  for (const m of stripComments(appSource).matchAll(re)) {
+    if (m[1] && m[3]) out.push({ name: m[1], how: m[2] === 'lazyWindow' ? 'lazyWindow' : 'lazy', specifier: m[3] })
+  }
+  return out
+}
+
+/**
+ * The routes outside the Layout that stay in the entry on purpose, each with its reason. Every other route there is
+ * either behind `ProtectedRoute` or a page someone opens with no sign-in, and that one loads on demand inside
+ * `<PublicPage>`. Add a path here only with a reason as good as these.
+ */
+export const ROUTES_KEPT_IN_THE_ENTRY: Readonly<Record<string, string>> = {
+  '/sign-in': 'the first page a signed-out person sees',
+  '/dev-login': 'a sign-in page',
+  '/reset-password': 'a sign-in page',
+  '/reset-password-confirm': 'a sign-in page',
+  '/accept-invite': 'a sign-in page',
+  '/task': 'the Add Task icon opens here, and its 6 kB is not worth a wait on a launch',
+  '/files/:source/:id': 'a signed-in link that asks for the sign-in itself, 2 kB',
+}
+
+/** The component names an element draws: every `<Name` that starts with a capital. */
+function componentsDrawn(element: string): string[] {
+  return [...element.matchAll(/<([A-Z][\w$]*)(?=[\s>/])/g)].map((m) => m[1]!)
+}
+
+/**
+ * The paths of the routes outside the Layout that open with no sign-in and are not loaded on demand (v2.8327). A
+ * route is fine when it is on `kept`, when its element is behind `ProtectedRoute`, or when the element is a
+ * `<PublicPage>` that draws only pages held through `lazyWindow`. Anything else is a public page imported plainly,
+ * which puts it and all it reads in the chunk every visit downloads. An empty list is the good answer.
+ */
+export function publicRoutesNotOnDemand(appSource: string, kept: Readonly<Record<string, string>> = ROUTES_KEPT_IN_THE_ENTRY): string[] {
+  const windows = new Set(onDemandImports(appSource).filter((i) => i.how === 'lazyWindow').map((i) => i.name))
+  return routesOutsideLayout(appSource)
+    .filter(({ path, element }) => {
+      if (Object.prototype.hasOwnProperty.call(kept, path)) return false
+      const code = element.trim()
+      if (/^<ProtectedRoute(?=[\s>])/.test(code)) return false
+      if (!/^<PublicPage(?=[\s>])/.test(code) || !/<\/PublicPage\s*>$/.test(code)) return true
+      const pages = componentsDrawn(code).filter((name) => name !== 'PublicPage')
+      return pages.length === 0 || pages.some((name) => !windows.has(name))
+    })
+    .map(({ path }) => path)
+}
+
+/** The failure's words for one such route: what is wrong, why it matters and the fix. */
+export function publicRouteNotOnDemandWords(path: string): string {
+  return (
+    `The route "${path}" in src/App.tsx opens with no sign-in and is not loaded on demand. ` +
+    'A page imported plainly there is built into the main chunk, which every customer link downloads. ' +
+    "Hold the page with `const Page = lazyWindow(() => import('./pages/Page'))`, draw it as " +
+    '`<PublicPage><Page /></PublicPage>` in the route, and add its file to ON_DEMAND_PAGES in src/lib/entryGraph.ts. ' +
+    'A page for someone signed in goes inside the Layout or behind ProtectedRoute. ' +
+    'One that must stay in the entry is named in ROUTES_KEPT_IN_THE_ENTRY with its reason.'
   )
 }
 
