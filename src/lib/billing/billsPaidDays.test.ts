@@ -150,6 +150,12 @@ describe('billsPaidLines', () => {
   })
   it('lists money on a job with no bill named', () => {
     expect(lines.find((l) => l.id === 'n1')).toMatchObject({ what: 'Payment', billId: null, jobWords: 'J1431 · Hollis Dental fit-out', payer: 'Hollis Dental Group', partOfBill: false })
+    // A bill names who it went to, from its sent copy, over the job's customer: a builder pays for a homeowner's job.
+    const billed = billsPaidLines(input([payment({ id: 's1', note: 'Stripe' }), payment({ id: 'n1', billId: null, jobId: J(4), amount: 385, paymentType: 'Cash' })], { sentTo: new Map([[B(1), ' Sable Ridge Builders ']]) }))
+    expect(billed.find((l) => l.id === 's1')!.payer).toBe('Sable Ridge Builders')
+    // A payment with no bill, and a bill with no named send, keep the job's customer.
+    expect(billed.find((l) => l.id === 'n1')!.payer).toBe('Hollis Dental Group')
+    expect(billsPaidLines(input([payment({ id: 's1', note: 'Stripe' })], { sentTo: new Map() }))[0]!.payer).toBe('Elena Marlow')
   })
   it('puts a Stripe payment first in its day, newest first, and keeps one deposit’s payments together', () => {
     const day = billsPaidLines(

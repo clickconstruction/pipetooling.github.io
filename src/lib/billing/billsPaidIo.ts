@@ -84,7 +84,7 @@ export async function readBillsPaid(span: { from: string; to: string }): Promise
   const [billRows, copyRows] = await Promise.all([
     inChunks(billIds, (chunk) => supabase.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, created_at, sent_to_customer_at, stripe_invoice_id, stripe_invoice_status, stripe_mode, external_send_channel').in('id', chunk)),
     // Each bill's sends: the number it carries is in a copy's title, and the oldest copy is the day it first went.
-    inChunks(billIds, (chunk) => supabase.from('sent_documents').select('source_id, title, sent_at, kind').eq('source_table', 'jobs_ledger_invoices').in('source_id', chunk).like('kind', 'bill%').order('sent_at', { ascending: true }).limit(BILLS_PAID_PAGE)),
+    inChunks(billIds, (chunk) => supabase.from('sent_documents').select('source_id, title, sent_at, kind, recipient_name').eq('source_table', 'jobs_ledger_invoices').in('source_id', chunk).like('kind', 'bill%').order('sent_at', { ascending: true }).limit(BILLS_PAID_PAGE)),
   ])
   const bills = new Map<string, BillsPaidBill>()
   for (const r of billRows) {
@@ -104,6 +104,7 @@ export async function readBillsPaid(span: { from: string; to: string }): Promise
   }
   const numbers = new Map<string, string>()
   const firstSent = new Map<string, string>()
+  const sentTo = new Map<string, string>()
   for (const r of copyRows) {
     const billId = text(r.source_id)
     // A copy to the copy list and a record made by hand are not the bill's own send.
@@ -111,6 +112,8 @@ export async function readBillsPaid(span: { from: string; to: string }): Promise
     const number = billNumberFromTitle(text(r.title))
     if (number && !numbers.has(billId)) numbers.set(billId, number)
     if (text(r.kind) !== 'bill_by_hand' && text(r.sent_at) && !firstSent.has(billId)) firstSent.set(billId, text(r.sent_at))
+    // Who the bill went to, from its first send that names one: the name By day sent draws on the same bill.
+    if (text(r.recipient_name).trim() && !sentTo.has(billId)) sentTo.set(billId, text(r.recipient_name).trim())
   }
 
   const jobIds = [...new Set([...payments.map((p) => p.jobId), ...[...bills.values()].map((b) => b.jobId)].filter((id): id is string => !!id))]
@@ -120,7 +123,7 @@ export async function readBillsPaid(span: { from: string; to: string }): Promise
     if (!text(r.id)) continue
     jobs.set(text(r.id), { id: text(r.id), hcp_number: text(r.hcp_number) || null, click_number: text(r.click_number) || null, job_name: text(r.job_name) || null, customer_name: text(r.customer_name) || null })
   }
-  return { payments, bills, jobs, numbers, firstSent, more: payments.length >= BILLS_PAID_PAGE }
+  return { payments, bills, jobs, numbers, firstSent, sentTo, more: payments.length >= BILLS_PAID_PAGE }
 }
 
 /** Stripe's next payout to the bank: what it adds to, after Stripe's fee, and the day it arrives. */
