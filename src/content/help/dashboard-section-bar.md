@@ -2,7 +2,7 @@
 title: jump between dashboard sections
 category: Getting Started
 roles: all
-keywords: dashboard navigation, section bar, dock, jump to section, scroll, bottom bar
+keywords: dashboard navigation, section bar, dock, jump to section, scroll, bottom bar, back to top, top of the page, scroll up
 order: 11
 ---
 On desktop, a floating bar sits at the bottom of the Dashboard and the Quickfill page. It holds one chip per major section.
@@ -19,6 +19,12 @@ On desktop, a floating bar sits at the bottom of the Dashboard and the Quickfill
 The bar stays out of the way on phones and tablets. {{icon:help|gear}} It's desktop-only, wider than 640px. It never covers a modal.
 
 Want it gone for a while? Click the **>** at the bar's right edge. The bar collapses to a single small button tucked into the bottom-right corner. Click **<** there to bring the bar back. The choice sticks on your device.
+
+## Back to top
+
+A long Dashboard ends with a quiet {{button:outline|↑ Back to top}} under the last card. Press it and the page goes back to its top. The press is there on a phone and at a computer.
+
+The press shows only when the page is two screens long or more. A short Dashboard does not need it.
 
 ## What the chips point at
 
