@@ -11,10 +11,17 @@
  *
  * Interactions: a pin opens the same read-only / tabbed job window the job
  * rows open (`openJobDetailFromDashboardJobRow`); Directions is the rows'
- * Google Maps link via `openInExternalBrowser`; Hide map is a per-device
- * preference; Fit all re-centers on every pin.
+ * Google Maps link via `openInExternalBrowser`.
+ *
+ * The head folds the card (v2.8330), as Assigned Jobs and the other sections fold: a triangle and the title as
+ * one press, the whole head on a phone, kept per device under the key Hide map wrote. The map opens on the
+ * office view (`lib/map/officeView.ts`): centred on the office, about a hundred miles to the frame's nearer
+ * edge, where it used to fit every pin and let one far job shrink the rest. A job the view leaves out is named
+ * in a line under the map, **Fit all** shows every pin and **Office view** comes back. With no office on record
+ * the map fits its pins as it did.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useOfficeAnchorState } from '../../hooks/useOfficeAnchor'
 import type { UserRole } from '../../hooks/useAuth'
 import { useDashboardJobsMapPins } from '../../hooks/useDashboardJobsMapPins'
 import {
@@ -31,9 +38,11 @@ import {
 } from '../../lib/dashboardJobsMap'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
 import { MAP_TIME_PINS_WORDS } from '../../lib/map/mapTime'
+import { OFFICE_VIEW_BACK, OFFICE_VIEW_SHOW_ALL, countOutsideOfficeView, officeView, officeViewLine, type OfficeViewMode } from '../../lib/map/officeView'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { EmptyState } from '../EmptyState'
 import { PinsMapFrame } from '../map/PinsMapFrame'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { DashboardJobsMapPopupBody } from './DashboardJobsMapPopupBody'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
 import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
@@ -100,7 +109,27 @@ export function DashboardJobsMapCard({
   const [hidden, setHidden] = useState<boolean>(() => readDashboardJobsMapHidden())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [fitSignal, setFitSignal] = useState(0)
+  // What the map shows: the office view each time the card opens, every pin once Fit all is pressed. A visit's state.
+  const [viewMode, setViewMode] = useState<OfficeViewMode>('office')
   const { pins, unmapped, noAddress, resolving, total } = useDashboardJobsMapPins(assignedJobs, superintendentJobs, !hidden)
+  const office = useOfficeAnchorState(!hidden)
+  // The map's box arrives after the pins and the office do, so its width is read off the node itself when it mounts.
+  const [mapBox, setMapBox] = useState<HTMLDivElement | null>(null)
+  const [mapWidth, setMapWidth] = useState<number | null>(null)
+  useEffect(() => {
+    if (!mapBox) return
+    const read = () => setMapWidth(mapBox.getBoundingClientRect().width || null)
+    read()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(read)
+    ro.observe(mapBox)
+    return () => ro.disconnect()
+  }, [mapBox])
+  const mapHeight = isMobile ? 260 : 360
+  const officeLat = office.anchor?.lat ?? null
+  const officeLng = office.anchor?.lng ?? null
+  const view = useMemo(() => (officeLat == null || officeLng == null ? null : officeView({ lat: officeLat, lng: officeLng }, { width: mapWidth, height: mapHeight })), [officeLat, officeLng, mapWidth, mapHeight])
+  const outside = useMemo(() => countOutsideOfficeView(pins, view), [pins, view])
 
   const legend = useMemo(() => dashboardJobsMapLegend(pins), [pins])
   const selected = useMemo(() => pins.find((p) => p.id === selectedId) ?? null, [pins, selectedId])
@@ -113,6 +142,13 @@ export function DashboardJobsMapCard({
       writeDashboardJobsMapHidden(!h)
       return !h
     })
+    // A card opened again opens on the office view.
+    setViewMode('office')
+  }, [])
+  // One press, two ways: every pin, or back to the office. The bump re-fits a map the person has dragged.
+  const switchView = useCallback(() => {
+    setViewMode((m) => (m === 'office' ? 'all' : 'office'))
+    setFitSignal((n) => n + 1)
   }, [])
   const openJob = useCallback((p: DashboardJobsMapPin | DashboardJobsMapJob) => openJobDetailFromDashboardJobRow(p.row), [openJobDetailFromDashboardJobRow])
   const directions = useCallback((p: DashboardJobsMapPin | DashboardJobsMapJob) => openInExternalBrowser(dashboardJobsMapDirectionsUrl(p.address)), [])
@@ -131,7 +167,13 @@ export function DashboardJobsMapCard({
 
   const unmappedAll = [...unmapped, ...noAddress]
   const unmappedLine = dashboardJobsMapUnmappedLine(unmappedAll.length)
-  const mapHeight = isMobile ? 260 : 360
+  // With no office to centre on the map fits its pins, as it did, and Fit all is a plain re-fit.
+  const onOfficeView = view != null && viewMode === 'office'
+  const viewLine = view ? officeViewLine({ mode: viewMode, outside }) : null
+  const viewPress = view ? (viewMode === 'office' ? OFFICE_VIEW_SHOW_ALL : OFFICE_VIEW_BACK) : OFFICE_VIEW_SHOW_ALL
+  const pressView = view ? switchView : () => setFitSignal((n) => n + 1)
+  // The press earns its place when there is more than one pin to fit, or a view to come back to.
+  const showViewPress = !hidden && pins.length > 0 && (view ? pins.length > 1 || outside > 0 || viewMode === 'all' : pins.length > 1)
 
   return (
     <section
@@ -148,31 +190,74 @@ export function DashboardJobsMapCard({
         gap: isMobile ? '0.625rem' : '0.75rem',
       }}
     >
-      <DashboardCardHead card={{ top: isMobile ? '0.75rem' : '1rem', side: isMobile ? '0.75rem' : '1rem', radius: isMobile ? 12 : 8 }} below="0" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', color: 'var(--text-muted)' }}>
+      <DashboardCardHead
+        card={{ top: isMobile ? '0.75rem' : '1rem', side: isMobile ? '0.75rem' : '1rem', radius: isMobile ? 12 : 8 }}
+        below="0"
+        closed={hidden}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}
+      >
+        {/* The fold (v2.8330): the triangle and the title are one press, as on Assigned Jobs. On a phone it fills the head, so a touch anywhere on it folds the card. */}
+        <button
+          type="button"
+          data-jobs-map-fold=""
+          onClick={toggleHidden}
+          aria-expanded={!hidden}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            flex: isMobile ? '1 1 100%' : '0 1 auto',
+            minWidth: 0,
+            minHeight: isMobile ? 44 : undefined,
+            padding: 0,
+            border: 'none',
+            background: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            textAlign: 'left',
+          }}
+        >
+          <span aria-hidden style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            {hidden ? '▶' : '▼'}
+          </span>
           <PinGlyph />
           <DashboardCardTitle>Your jobs on a map</DashboardCardTitle>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.875rem', flexWrap: 'wrap' }}>
-          {!isMobile && legend.length > 0 ? <Legend legend={legend} /> : null}
-          {!hidden && pins.length > 1 && !isMobile ? (
-            <button type="button" onClick={() => setFitSignal((n) => n + 1)} style={OUTLINE_BUTTON_STYLE}>
-              Fit all
-            </button>
-          ) : null}
-          <button type="button" onClick={toggleHidden} aria-expanded={!hidden} style={{ ...LINK_BUTTON_STYLE, minHeight: isMobile ? 44 : undefined }}>
-            {hidden ? 'Show map' : isMobile ? 'Hide' : 'Hide map'}
-          </button>
-        </div>
+        </button>
+        {/* The head's own presses sit beside the fold, never inside it: a press on Fit all leaves the card open. */}
+        {!isMobile ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem', flexWrap: 'wrap' }}>
+            {legend.length > 0 ? <Legend legend={legend} /> : null}
+            {showViewPress ? (
+              <button type="button" data-jobs-map-view-press="" onClick={pressView} style={OUTLINE_BUTTON_STYLE}>
+                {viewPress}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </DashboardCardHead>
 
       {hidden ? null : (
         <>
-          {isMobile && legend.length > 0 ? <Legend legend={legend} /> : null}
+          {/* A phone's head is the fold alone, so the counts and the view press share the line under it. */}
+          {isMobile && (legend.length > 0 || showViewPress) ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {legend.length > 0 ? <Legend legend={legend} /> : <span />}
+              {showViewPress && office.settled ? (
+                <button type="button" data-jobs-map-view-press="" onClick={pressView} style={{ ...MOBILE_ACTION_STYLE, flex: '0 0 auto', padding: '0.4rem 0.9rem' }}>
+                  {viewPress}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
 
           {loading && pins.length === 0 ? (
             <DashboardListRowSkeleton rows={2} />
+          ) : pins.length > 0 && !office.settled ? (
+            // The first view depends on the office, so the map waits for it: one view, never two.
+            <div ref={setMapBox} style={{ position: 'relative', height: mapHeight, borderRadius: isMobile ? 10 : 6, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-muted)' }} />
           ) : pins.length > 0 ? (
+            <div ref={setMapBox} data-jobs-map-view={onOfficeView ? 'office' : 'all'} style={{ minWidth: 0 }}>
             <PinsMapFrame
               surface="dashboard-jobs-map"
               style={{ borderRadius: isMobile ? 10 : 6, overflow: 'hidden', border: '1px solid var(--border)' }}
@@ -181,12 +266,15 @@ export function DashboardJobsMapCard({
               onSelect={setSelectedId}
               renderPopup={renderPopup}
               fitSignal={fitSignal}
+              // The office view is the canvases' own fit override: the box they land on its zoom for. Every pin still draws.
+              fitPoints={view && viewMode === 'office' ? view.fitPoints : null}
               height={mapHeight}
               isMobile={isMobile}
               timeDotsWords={MAP_TIME_PINS_WORDS}
               // The card sits in the Dashboard's scroll: the wheel scrolls the page until the map is clicked
               scrollZoomAfterClick
             />
+            </div>
           ) : (
             <div style={{ position: 'relative', height: mapHeight, borderRadius: isMobile ? 10 : 6, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-muted)' }}>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
@@ -226,6 +314,14 @@ export function DashboardJobsMapCard({
                   Directions
                 </button>
               </div>
+            </div>
+          ) : null}
+
+          {/* A job the office view leaves out is named here, with the press that shows it, so none is lost. */}
+          {pins.length > 0 && office.settled && viewLine ? (
+            <div data-jobs-map-view-line="" style={{ fontSize: '0.875rem', color: 'var(--text-base)' }}>
+              <ValueSentence text={viewLine} />
+              {viewMode === 'office' ? <span> {OFFICE_VIEW_SHOW_ALL} shows every job.</span> : null}
             </div>
           ) : null}
 
