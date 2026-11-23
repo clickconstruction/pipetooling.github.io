@@ -10,6 +10,7 @@ import { paidByBill, paymentView, supplyPayMethodWords, usd, type SupplyPayment,
 import { MOVE_REASONS, ON_ACCOUNT, moveTargets, paymentHistory, paymentOnBill, planMove, type MoveBill, type MoveReason, type SupplyPaymentEvent } from '../../lib/materials/payments/supplyPaymentMove'
 import type { MoveSupplyPaymentInput } from '../../lib/materials/payments/supplyPaymentsIo'
 import { supplyBankLineWords, type SupplyBankCandidate, type SupplyBankLine } from '../../lib/materials/payments/supplyPaymentBank'
+import { MoneyText } from '../Money'
 
 /**
  * One payment to a supply house, with every bill it touched (the owner's ask of 2026-11-16). A paid row opens it.
@@ -143,7 +144,7 @@ export function SupplyPaymentWindow({
       'Move this payment',
       <>
         <p style={{ ...quiet, margin: '0 0 0.9rem' }} data-testid="supply-payment-move-sub">
-          {usd(plan.max)} of the {dayWords(payment.paid_on)} {how || 'payment'} · now {moveFrom === ON_ACCOUNT ? `on account with ${houseName}` : `on ${fromBill?.invoice_number ?? 'a bill'}`}
+          <MoneyText text={usd(plan.max)} /> of the {dayWords(payment.paid_on)} {how || 'payment'} · now {moveFrom === ON_ACCOUNT ? `on account with ${houseName}` : `on ${fromBill?.invoice_number ?? 'a bill'}`}
         </p>
         <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
           <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>How much to move</span>
@@ -265,7 +266,7 @@ export function SupplyPaymentWindow({
               <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>{r.label}</div>
               {r.state ? <div style={quiet}>{r.state}</div> : null}
             </div>
-            <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: r.amount < 0 ? 'var(--text-green-700)' : 'var(--text-strong)' }}>{usd(r.amount)}</div>
+            <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: r.amount < 0 ? 'var(--text-green-700)' : 'var(--text-strong)' }}><MoneyText text={usd(r.amount)} /></div>
             {/* A credit memo's line is not money that moves. */}
             {r.amount > 0 ? (
               <button type="button" style={linkPress} disabled={busy} onClick={() => openMove(r.billId)} aria-label={`Move the ${usd(r.amount)} on ${r.label}`}>
@@ -280,7 +281,7 @@ export function SupplyPaymentWindow({
               <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>On account with {houseName}</div>
               <div style={quiet}>not on a bill yet</div>
             </div>
-            <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{usd(view.onAccount)}</div>
+            <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={usd(view.onAccount)} /></div>
             <button type="button" style={linkPress} disabled={busy} onClick={() => openMove(ON_ACCOUNT)}>
               Put on a bill…
             </button>

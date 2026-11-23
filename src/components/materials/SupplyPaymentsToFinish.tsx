@@ -6,6 +6,7 @@ import { usd } from '../../lib/materials/payments/supplyPayment'
 import { finishHeading, finishRows, type PaymentToFinish } from '../../lib/materials/payments/supplyPaymentsFinish'
 import type { SupplyFinishIo } from '../../lib/materials/payments/supplyPaymentsFinishIo'
 import { SupplyPaymentHowEditor } from './SupplyPaymentHowEditor'
+import { MoneyText } from '../Money'
 
 /**
  * Payments that still need how they were paid, under Accounts payable (the owner's call 4, 2026-11-16).
@@ -76,7 +77,7 @@ export function SupplyPaymentsToFinish({
         <span>
           {finishHeading(rows.length)} {open ? '▾' : '▸'}
         </span>
-        <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{usd(rows.reduce((s, r) => s + r.amount, 0))}</span>
+        <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={usd(rows.reduce((s, r) => s + r.amount, 0))} /></span>
       </button>
       {open ? (
         <div>
@@ -115,7 +116,7 @@ export function SupplyPaymentsToFinish({
                   )
                 })()}
               </div>
-              <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{usd(r.amount)}</div>
+              <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={usd(r.amount)} /></div>
               <button type="button" onClick={() => setFinishing(payments.find((p) => p.id === r.id) ?? null)} aria-label={`Finish ${r.title}`} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.25rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 Finish…
               </button>

@@ -11,6 +11,7 @@ import { MaterialsPoLaneSignpost } from './MaterialsPoLaneSignpost'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { assemblyListEmptyWords } from '../../lib/materials/materialsEmptyWords'
+import { Money } from '../Money'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -409,7 +410,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
                                 title="Estimated at each part's lowest supply-house price (direct parts only — nested assemblies not included)"
                                 style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
                               >
-                                ${formatCurrency(assemblyEstimatedCost)}
+                                <Money amount={assemblyEstimatedCost} />
                               </span>
                             )}
                           </div>
@@ -880,7 +881,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
                             <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{po.name}</div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                               <span>
-                                {po.items.filter(i => Number(i.price_at_time ?? 0) > 0).length} of {po.items.length} priced • ${formatCurrency(total)}
+                                {po.items.filter(i => Number(i.price_at_time ?? 0) > 0).length} of {po.items.length} priced • <Money amount={total} />
                               </span>
                               <span
                                 title={po.created_at ? `Created ${new Date(po.created_at).toLocaleString()}` : undefined}
@@ -947,7 +948,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
                       </div>
                     )}
                     <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                      {editingPO.items.filter(i => Number(i.price_at_time ?? 0) > 0).length} of {editingPO.items.length} priced • ${formatCurrency(editingPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0))} total
+                      {editingPO.items.filter(i => Number(i.price_at_time ?? 0) > 0).length} of {editingPO.items.length} priced • <Money amount={editingPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0)} /> total
                     </div>
                   </div>
                   <button
@@ -1098,8 +1099,8 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
                                   )}
                                 </select>
                               </td>
-                              <td style={{ padding: '0.75rem' }}>${formatCurrency(item.price_at_time)}</td>
-                              <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(item.price_at_time * item.quantity)}</td>
+                              <td style={{ padding: '0.75rem' }}><Money amount={item.price_at_time} /></td>
+                              <td style={{ padding: '0.75rem', fontWeight: 600 }}><Money amount={item.price_at_time * item.quantity} /></td>
                               <td style={{ padding: '0.75rem' }}>
                                 {item.source_template ? (
                                   <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', borderRadius: 4 }} title={`From: ${item.source_template?.name ?? 'Unknown'}`}>

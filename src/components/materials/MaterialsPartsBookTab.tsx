@@ -10,6 +10,7 @@ import { HouseNumbersWindow } from './HouseNumbersWindow'
 import { CodesWithNoPartWindow } from './CodesWithNoPartWindow'
 import { supabaseCodesIo } from '../../lib/materials/lines/codesWithNoPartIo'
 import { PriceSheetDoor } from './PriceSheetDoor'
+import { MoneyText } from '../Money'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
@@ -336,7 +337,7 @@ export function MaterialsPartsBookTab({
                           <td style={{ padding: '0.75rem' }}>{part.manufacturer || '-'}</td>
                           <td style={{ padding: '0.75rem' }}>{part.part_type?.name || '-'}</td>
                           <td style={{ padding: '0.75rem' }}>
-                            {bestPrice ? `$${bestPrice.price.toFixed(2)} (${bestPrice.supply_house?.name ?? 'Unknown'})` : ''}
+                            {bestPrice ? <MoneyText text={`$${bestPrice.price.toFixed(2)} (${bestPrice.supply_house?.name ?? 'Unknown'})`} /> : ''}
                           </td>
                           <td style={{ padding: '0.75rem' }}>{priceCount}</td>
                           <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
@@ -381,7 +382,7 @@ export function MaterialsPartsBookTab({
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
                                         {part.prices.map((price: PartWithPrices['prices'][number]) => (
                                           <div key={price.id}>
-                                            ${price.price.toFixed(2)} {price.supply_house?.name ?? 'Unknown'}
+                                            <MoneyText text={`$${price.price.toFixed(2)}`} /> {price.supply_house?.name ?? 'Unknown'}
                                           </div>
                                         ))}
                                       </div>

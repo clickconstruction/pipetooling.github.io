@@ -3,6 +3,7 @@ import { AlertCircle } from 'lucide-react'
 import { billDateWords, billDayName, groupSupplyBills, isBareOfJobAccount, supplyBillSummary, type SupplyBillGroup } from '../../lib/materials/supplyBillGroups'
 import { isSupplyCredit } from '../../lib/supplyHouseDocument'
 import { formatCurrency } from '../../lib/format'
+import { Money, MoneyText } from '../Money'
 
 /**
  * A supply house's bills, as its card shows them at a desk (punch list #334 PR 5, 2026-11-12).
@@ -224,7 +225,7 @@ export function SupplyHouseBillsCard({
         {/* The amount and the two presses stay together, so a narrow card wraps them as one and Edit never drops alone. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: '0 0 auto', marginLeft: 'auto' }}>
           <div style={{ fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right', minWidth: 96, color: credit ? 'var(--text-green-700)' : 'var(--text-strong)' }} data-testid="supply-bill-amount">
-            {credit ? `− $${formatCurrency(Math.abs(b.amount))}` : `$${formatCurrency(b.amount)}`}
+            {credit ? <MoneyText text={`− $${formatCurrency(Math.abs(b.amount))}`} /> : <Money amount={b.amount} />}
             {credit && <span style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 500 }}>credit</span>}
           </div>
           {/* Each bill is marked by itself, and the press names the act. */}
@@ -261,7 +262,7 @@ export function SupplyHouseBillsCard({
         {onAccount > 0.005 ? (
           <div data-testid="supply-bills-stat-account" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.55rem 0.75rem', minWidth: 0 }}>
             <div style={label}>On account</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', color: 'var(--text-green-700)' }}>${formatCurrency(onAccount)}</div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', color: 'var(--text-green-700)' }}><Money amount={onAccount} /></div>
             <div style={quiet}>sent past the bills, offered on the next payment</div>
           </div>
         ) : null}
