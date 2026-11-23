@@ -742,6 +742,8 @@ The cron's `sweep` comes with `X-Cron-Secret`.
 its files list to every office role through `drive-link`'s `list_company` (a training account too, a read), and **Upload a file** on Documents → Company puts into it for dev · master · assistant · controller only (`COMPANY_PUT_ROLES`, `canUploadCompanyFiles`), the owner's word of 2026-11-01;
 the estimator reads and opens the folder.
 `company_documents` itself is unchanged (read the five, write dev and, since v2.6762, the owner).
+**A supply house bill's PDF** (`drive-link`'s `read_bill`, v2.8396, punch list #431): the bill's row is read as the caller, so the `supply_house_invoices` policy decides whose bill it is (dev, leader, assistant, controller), and an estimator, who passes the door's own role check, is answered 403.
+It reads only a file inside the bills folder, since the service account can read files the office cannot.
 `jobs_ledger.drive_folder_tidied_at` and `drive_folder_hold` (`20261101163412`) read as the rest of the job's row, and the customer profile's folder door (v2.6288) reads `customers.google_drive_link` as the rest of the customer's row.
 **The file index** (`file_index`, v2.6319, punch list #240): read through `file_index_select` (the paragraph below;
 closed to twins since v2.6396), written by the service role alone — `drive-link`'s `index` and `index_job` from a staff session of the office roles (a training account is refused, since they write our table) and the `file-index-sweep` cron with `X-Cron-Secret`;
