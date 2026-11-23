@@ -2,7 +2,7 @@
 title: see what the team sees
 category: Office
 roles: dev, master_technician
-keywords: what the team sees, team emails, staff emails, digest preview, crew day, money waiting, payment forecast, billed awaiting, who gets which email, whose week, a person, email subjects, sign-in email, invitation email, workflow notification, email me the real one, next release, settings
+keywords: what the team sees, team emails, staff emails, digest preview, who worked, crew day, money waiting, payment forecast, billed awaiting, who gets which email, whose week, a person, email subjects, sign-in email, invitation email, workflow notification, email me the real one, next release, settings
 order: 66
 ---
 **Settings → What the team sees** shows every email the app sends someone on the team. The tab lays them out as **one person's week**, in the order they land in the inbox.
@@ -23,7 +23,7 @@ The chips at the top pick a role. The roles are Dev, Leader, Assistant, Controll
 Some streams, the kinds of email, go to a list kept on **Emails & reports**. Those cards are *Paid in Full notifications*, *Ready to Bill notifications*, *Signed agreements*, *Portal requests* and the *Job report digest*. For those, the tab reads the list. For the rest, the role decides, the same way the sender does.
 
 :::example A controller's morning
-Crew day · Money waiting · Payment forecast — then, during the day, Payment recorded and Check returned as they happen; Weekly money movement on Monday; the account man's ask on Wednesday.
+Who worked · Money waiting · Payment forecast — then, during the day, Payment recorded and Check returned as they happen; Weekly money movement on Monday; the account man's ask on Wednesday.
 :::
 
 ## What each row can show
@@ -31,7 +31,7 @@ Crew day · Money waiting · Payment forecast — then, during the day, Payment 
 The count line under the toolbar reads *26 emails · 26 render live*. Every row wears {{chip:green|renders live}}. The row uses the same email builder the sender runs, fed the sample company. You open the row and the email is in the frame.
 
 - Three template emails read the live rows on **Email templates & testing**. Those three are the invitation, the sign-in link and the workflow stage notice. So an edit there shows here the moment you refresh. The task reminder's words are fixed in the app.
-- Four digests can also show the real one. The four are Crew day, Money waiting, Payment forecast and Billed awaiting payment. Under the sample, {{button:outline|Show the real one — today’s, over live rows, for your eyes only}} builds today's email. {{button:outline|Email me the real one}} sends that same email to you.
+- Four digests can also show the real one. The four are Who worked, Money waiting, Payment forecast and Billed awaiting payment. Under the sample, {{button:outline|Show the real one — today’s, over live rows, for your eyes only}} builds today's email. {{button:outline|Email me the real one}} sends that same email to you.
 
 ## Changing who gets one
 

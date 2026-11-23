@@ -37,7 +37,7 @@ export function emailStreamCardId(key: EmailStreamKey): string {
 //   weekly_money    weekly-money-email-dispatch "Weekly money movement — …"
 //   weekly_movement weekly-movement-email-dispatch "Weekly movement — …"
 //   gc_money_monday gc-money-monday-email      "Our GC money, Mon Oct 12" (v2.5024)
-//   people_week     people-week-email          "Your people’s week · Nov 2 to 8" (v2.6603)
+//   people_week     people-week-email          "The team’s week · Nov 2 to 8" (v2.8329; "Your people’s week · …" before it, v2.6603)
 //   signed_agreements accept-estimate · sign-bid-room "<who> signed $4,250 · …" (v2.3794; v2.3793 "<who> signed — $…"; before it "Signed — …", v2.2743)
 //   gc_statement    gc-statement-email-dispatch "Click Plumbing open balances: …" (v2.2131; pre-v2.2131 "Open balances — …") / "Open balances (all …) — …"
 const SUBJECT_PATTERNS: Array<[RegExp, EmailStreamKey]> = [
@@ -51,7 +51,7 @@ const SUBJECT_PATTERNS: Array<[RegExp, EmailStreamKey]> = [
   [/^weekly money movement — /i, 'weekly_money'],
   [/^weekly movement — /i, 'weekly_movement'],
   [/^our gc money, /i, 'gc_money_monday'],
-  [/^your people[’']s week · /i, 'people_week'],
+  [/^(?:your people|the team)[’']s week · /i, 'people_week'],
   [/^open balances/i, 'gc_statement'],
   [/^click plumbing open balances/i, 'gc_statement'],
   [/^signed — /i, 'signed_agreements'],

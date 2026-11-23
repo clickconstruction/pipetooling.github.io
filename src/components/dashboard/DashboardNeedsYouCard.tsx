@@ -13,6 +13,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { useNewPhoneLayout } from '../../hooks/useNewPhoneLayout'
 import { needsYouInitialMode, needsYouTrailChips, needsYouWalkOrder, pushNeedsYouHandled, type NeedsYouHandled } from '../../lib/dashboard/phoneOffice'
 import { NEEDS_YOU_ACTION_BG, NEEDS_YOU_ACTION_FG, NEEDS_YOU_RAIL, NEEDS_YOU_WALK_TINT } from '../../lib/dashboard/needsYouPalette'
+import { NEEDS_YOU_PRESS_MIN_HEIGHT, NEEDS_YOU_PRESS_TOUCH_PAD_PX, needsYouPhoneFigure } from '../../lib/dashboard/needsYouRow'
 import { FILL_IN_ACTION_LABEL, fillInKindOfItem, fillInOtherLinesHeading, type FillInKind } from '../../lib/needsYou/fillIn'
 import { EmptyState } from '../EmptyState'
 import { NEEDS_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
@@ -164,7 +165,7 @@ export function DashboardNeedsYouCard({
 
   const secondaryLinks = (item: NeedsYouItem) =>
     item.secondary && item.secondary.length > 0 ? (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.35rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.75rem', marginTop: '0.35rem' }}>
         {item.secondary.map((sec) => (
           <button
             key={sec.key}
@@ -196,49 +197,89 @@ export function DashboardNeedsYouCard({
   const trail = needsYouTrailChips(handled, walkItems)
 
   // One line of the Cards view (the viewer's, or a fold's once opened). The leader's lien notices are a card of their own (v2.7435).
+  // On a phone every source draws the same row (v2.8329): the words across the row's full width, so a long sentence is never
+  // squeezed, and a small press at the bottom right, the figure beside it unless the title already says it. A first cut put the
+  // press in a right-hand column; the owner saw it and did not want the words narrowed. At a desk the row is as it was.
+  const rowBox = (it: NeedsYouItem) => ({
+    background: 'var(--bg-subtle)',
+    border: '1px solid var(--border)',
+    borderLeft: `4px solid ${RAIL[it.severity]}`,
+    borderRadius: 8,
+    padding: '0.7rem 0.875rem',
+  })
+  const rowPressTone = (it: NeedsYouItem) => ({
+    background: ACTION_BG[it.severity],
+    color: ACTION_FG[it.severity],
+    border: it.severity === 'gray' ? '1px solid var(--border-strong)' : 'none',
+    borderRadius: 6,
+    fontSize: '0.8125rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+  })
+  const phoneRow = (it: NeedsYouItem) => {
+    const figure = needsYouPhoneFigure(it)
+    const { background, color, border, borderRadius, fontSize, fontWeight, cursor } = rowPressTone(it)
+    return (
+      <div key={it.key} data-needs-you-row={it.key} data-needs-you-layout="phone" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', ...rowBox(it) }}>
+        <div data-needs-you-words style={{ minWidth: 0 }}>
+          <NeedsYouRowWords item={it} />
+        </div>
+        {/* The row's last line: a line's own links on the left where it has any, the figure and the press at the right.
+            Where the links and the press do not fit one line, the press takes the next one, still at the right. */}
+        <div data-needs-you-foot style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '0.5rem 0.75rem' }}>
+          <div data-needs-you-links style={{ flex: '1 1 auto', minWidth: 0 }}>
+            {secondaryLinks(it)}
+          </div>
+          <div data-needs-you-press-end style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.6rem', flex: '0 1 auto', minWidth: 0, maxWidth: '100%', marginLeft: 'auto' }}>
+            {figure ? (
+              <span data-needs-you-figure style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                {figure}
+              </span>
+            ) : null}
+            {/* A small press with a thumb's touch area: the button is 44 px tall and clear, the pill inside it is the press the eye sees.
+                The margins take back the height the touch area adds, so the row is no taller for it. */}
+            <button
+              type="button"
+              onClick={() => act(it)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                minHeight: NEEDS_YOU_PRESS_MIN_HEIGHT,
+                minWidth: NEEDS_YOU_PRESS_MIN_HEIGHT,
+                margin: `-${NEEDS_YOU_PRESS_TOUCH_PAD_PX}px 0`,
+                padding: 0,
+                border: 'none',
+                background: 'none',
+                cursor,
+                fontFamily: 'inherit',
+              }}
+            >
+              <span data-needs-you-press style={{ background, color, border, borderRadius, fontSize, fontWeight, padding: '0.4rem 0.8rem', lineHeight: 1.2, textAlign: 'center' }}>
+                {actionLabelOf(it)}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
   const row = (it: NeedsYouItem) =>
     it.lienSign ? (
       <LienLeaderSignCardView key={it.key} card={it.lienSign} phone={isPhone} rail={RAIL[it.severity]} onOpen={(href, press) => openLienNotice(it, href, press)} />
+    ) : isPhone ? (
+      phoneRow(it)
     ) : (
-            <div
-              key={it.key}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '0.6rem 0.875rem',
-                background: 'var(--bg-subtle)',
-                border: '1px solid var(--border)',
-                borderLeft: `4px solid ${RAIL[it.severity]}`,
-                borderRadius: 8,
-                padding: '0.7rem 0.875rem',
-              }}
-            >
-              <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-                <NeedsYouRowWords item={it} />
-                {secondaryLinks(it)}
-              </div>
-              <div style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                {it.figure}
-              </div>
-              <button
-                type="button"
-                onClick={() => act(it)}
-                style={{
-                  background: ACTION_BG[it.severity],
-                  color: ACTION_FG[it.severity],
-                  border: it.severity === 'gray' ? '1px solid var(--border-strong)' : 'none',
-                  borderRadius: 6,
-                  padding: '0.45rem 0.9rem',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-              >
-                {actionLabelOf(it)}
-              </button>
-            </div>
+      <div key={it.key} data-needs-you-row={it.key} data-needs-you-layout="desk" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem 0.875rem', ...rowBox(it) }}>
+        <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+          <NeedsYouRowWords item={it} />
+          {secondaryLinks(it)}
+        </div>
+        <div style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{it.figure}</div>
+        <button type="button" onClick={() => act(it)} style={{ ...rowPressTone(it), padding: '0.45rem 0.9rem', flexShrink: 0 }}>
+          {actionLabelOf(it)}
+        </button>
+      </div>
     )
 
   const chip = (key: string, label: string, active: boolean, onClick: () => void) => (

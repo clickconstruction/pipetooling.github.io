@@ -73,7 +73,7 @@ describe('the dashboard folds (v2.3883)', () => {
 })
 
 describe('the three folds that had no count (v2.3891)', () => {
-  it('Crew Day: people, jobs, and flags when there are any', () => {
+  it('Who worked: people, jobs, and flags when there are any', () => {
     expect(crewDayFoldHeadline({ people: 12, jobs: 14, flags: 8 })).toEqual({ words: '12 people · 14 jobs · 8 flags', tone: 'amber' })
     expect(crewDayFoldHeadline({ people: 1, jobs: 1, flags: 0 })).toEqual({ words: '1 person · 1 job', tone: 'quiet' })
     expect(crewDayFoldHeadline({ people: 0, jobs: 0, flags: 0 })?.words).toBe('nobody on the day')
