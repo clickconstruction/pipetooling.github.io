@@ -99,6 +99,7 @@
     "test:pg:sub-sheet-draw-invoice": "bash scripts/pgtest-sub-sheet-draw-invoice.sh",
     "test:pg:bid-jobs-opened": "bash scripts/pgtest-bid-jobs-opened.sh",
     "test:pg:primary-paid-verbs": "bash scripts/pgtest-primary-paid-verbs.sh",
+    "test:pg:stripe-paid-day": "bash scripts/pgtest-stripe-paid-day.sh",
     "test:pg:primary-money-verbs": "bash scripts/pgtest-primary-money-verbs.sh",
     "test:pg:write-down-first-amount": "bash scripts/pgtest-write-down-first-amount.sh",
     "test:pg:messages-follow-up": "bash scripts/pgtest-messages-follow-up.sh",
