@@ -3,9 +3,10 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
+import { COMPANY_PAPER_SEND_ROLES } from '../../../supabase/functions/_shared/companySigningSend'
 import { GC_CUSTOMER_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcCustomerEmails'
 import { CLAUSE_APPROVER_ROLES, MESSAGES_OFFICE_ROLES, MESSAGES_TECH_ROLES } from '../../../supabase/functions/_shared/messagesTeams'
-import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_CLAUSE_APPROVE_TEAM, GC_CLAUSE_EDIT_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_SCHEDULE_TEAM, GC_TRADE_EMAIL_TEAM, MESSAGES_TECH_TEAM, canApproveClause, canEditClause, canMessageCustomersFromJobMode, canOpenGcProjects, canOpenMessages, canReadJobMessages, canOpenOwnerContractFile, readsCustomerLinesInJobUpdates, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding, canUseGcSchedule } from './access'
+import { COMPANY_PAPER_SEND_TEAM, GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_CLAUSE_APPROVE_TEAM, GC_CLAUSE_EDIT_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_SCHEDULE_TEAM, GC_TRADE_EMAIL_TEAM, MESSAGES_TECH_TEAM, canApproveClause, canEditClause, canMessageCustomersFromJobMode, canOpenGcProjects, canOpenMessages, canReadJobMessages, canOpenOwnerContractFile, readsCustomerLinesInJobUpdates, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding, canUseGcSchedule, canSendCompanyPaper } from './access'
 import { GC_TABLE_DOORS } from './doors'
 
 describe('canOpenGcProjects', () => {
@@ -131,6 +132,31 @@ describe('canSeeGcMoney', () => {
 
   it('names the same roles as the database, so the two copies cannot drift', () => {
     expect([...GC_MONEY_TEAM].sort()).toEqual(moneyTeamInSql().sort())
+  })
+})
+
+describe('canSendCompanyPaper', () => {
+  it('lets the four roles that send any paper send a company its paper', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller'] as UserRole[]) {
+      expect(canSendCompanyPaper(role)).toBe(true)
+    }
+  })
+
+  it('keeps everyone else and a session with no role yet from sending', () => {
+    for (const role of ['estimator', 'superintendent', 'primary', 'subcontractor', 'helpers'] as UserRole[]) {
+      expect(canSendCompanyPaper(role)).toBe(false)
+    }
+    expect(canSendCompanyPaper(null)).toBe(false)
+    expect(canSendCompanyPaper(undefined)).toBe(false)
+  })
+
+  it('names the same roles as the send function, so the two copies cannot drift', () => {
+    expect([...COMPANY_PAPER_SEND_TEAM].sort()).toEqual([...COMPANY_PAPER_SEND_ROLES].sort())
+  })
+
+  it('is wider than every other trade email, which stays a dev’s', () => {
+    expect(canSendGcTradeEmail('assistant')).toBe(false)
+    expect(canSendCompanyPaper('assistant')).toBe(true)
   })
 })
 

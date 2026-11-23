@@ -8,8 +8,13 @@
  *
  * Dependency-free on purpose (the time zone is passed in), so the client's
  * tests run the same file — src/lib/statementWeekEmail.ts re-exports it.
+ * Its one import is the pure in kind words, the file every other reader's line comes from.
  * Email-safe markup: inline styles, light colors, no scripts.
+ *
+ * A bill an in kind deal pays is on no GC's amount here (v2.8309: the payload behind the week leaves it
+ * out). Since v2.8320 the email says one line under its summary: how much is scheduled in kind.
  */
+import { inKindApartWords, type InKindApart } from '../_shared/inKindApart.ts'
 
 export type OfficeWeekItem = {
   gc_id: string
@@ -42,6 +47,8 @@ export type OfficeWeekPayload = {
   office: true
   items: OfficeWeekItem[]
   counts: { gcs: number; to_check: number; to_send: number; to_send_total: number; words_due: number; done: number; late: number; total: number }
+  /** The bills GCs pay that an in kind deal covers, on no item and in no count (v2.8320). Absent from a payload older than migration 20261123024500. */
+  in_kind?: InKindApart | null
 }
 
 export function isOfficeWeekPayload(v: unknown): v is OfficeWeekPayload {
@@ -157,11 +164,24 @@ function summaryLine(p: Pick<OfficeWeekPayload, 'counts'>): string {
   return `${plural(c.gcs, 'GC', 'GCs')} over $10,000 · ${usdRound(c.total)} outstanding · ${c.to_check} to check · ${c.to_send} to send · ${plural(c.words_due, 'word', 'words')} to get`
 }
 
+/**
+ * The week's one line on the bills it left out because a deal pays them: "$1,200 on 2 bills is scheduled in kind,
+ * not money owed." '' when there are none, or when the payload is from before the key.
+ */
+export function officeWeekInKindLine(p: Pick<OfficeWeekPayload, 'in_kind'>): string {
+  const inKind = p.in_kind
+  if (!inKind) return ''
+  const words = inKindApartWords({ count: Number(inKind.count) || 0, dollars: Number(inKind.dollars) || 0 }, 'money owed')
+  return words ? `${words}.` : ''
+}
+
 export function officeWeekText(p: OfficeWeekPayload, o: OfficeWeekRenderOpts): string {
   const L: string[] = []
+  const inKindLine = officeWeekInKindLine(p)
   L.push(`${o.dateLabel} · the week’s GC statements`)
   L.push(officeWeekSubject(p, o.recipientName))
   L.push(summaryLine(p))
+  if (inKindLine) L.push(inKindLine)
   L.push('')
   L.push(`THE STANDARD: ${OFFICE_STANDARD}`)
   for (const g of groupOfficeWeek(p, o.recipientUserId)) {
@@ -199,6 +219,7 @@ const TEMP_COLOR: Record<string, { bg: string; fg: string }> = {
 export function renderOfficeWeekHtml(p: OfficeWeekPayload, o: OfficeWeekRenderOpts): string {
   const chip = (text: string, bg: string, fg: string) => `<span style="display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;background:${bg};color:${fg};margin:0 6px 4px 0;white-space:nowrap;">${text}</span>`
   const groups = groupOfficeWeek(p, o.recipientUserId)
+  const inKindLine = officeWeekInKindLine(p)
 
   const cards = groups
     .map((g) => {
@@ -254,7 +275,8 @@ export function renderOfficeWeekHtml(p: OfficeWeekPayload, o: OfficeWeekRenderOp
     <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;">
       <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">${esc(o.dateLabel)} · the week&rsquo;s GC statements</div>
       <h1 style="margin:0 0 2px;font-size:21px;color:#0f172a;">${esc(officeWeekSubject(p, o.recipientName))}</h1>
-      <div style="font-size:13px;color:#475569;margin-bottom:14px;">${esc(summaryLine(p))}</div>
+      <div style="font-size:13px;color:#475569;margin-bottom:${inKindLine ? '2px' : '14px'};">${esc(summaryLine(p))}</div>
+      ${inKindLine ? `<div style="font-size:12px;color:#64748b;margin-bottom:14px;">${esc(inKindLine)}</div>` : ''}
       <div style="border-left:3px solid #BA7517;background:#FAEEDA;padding:10px 14px;margin-bottom:16px;">
         <div style="font-size:13px;font-weight:700;color:#633806;">The standard</div>
         <div style="font-size:14px;color:#854F0B;line-height:1.5;">${esc(OFFICE_STANDARD)}</div>

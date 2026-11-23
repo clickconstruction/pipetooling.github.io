@@ -8,6 +8,7 @@ export {
   groupOfficeWeek,
   groupTitle,
   isOfficeWeekPayload,
+  officeWeekInKindLine,
   officeWeekStep,
   officeWeekSubject,
   officeWeekText,

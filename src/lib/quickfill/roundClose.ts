@@ -1,5 +1,5 @@
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { formatMarkTime, isWorkdayYmd, addDaysYmd } from './markHistory'
+import { formatDayLabel, formatMarkTime, isWorkdayYmd, addDaysYmd } from './markHistory'
 import type { MarkOutcome } from './markOutcome'
 
 /**
@@ -7,9 +7,9 @@ import type { MarkOutcome } from './markOutcome'
  * looked at today* was true after a six-minute stamp pass and said nothing of what was still
  * open. The sheet reads the day's mark events, with the outcome each press wrote (change 1),
  * and says what is clean, what was worked and is still open, and what was handed up as a
- * question. The same sheet is the Dashboard's **The office's round** card, so the owner knows
- * the round ran without opening Quickfill, and learns of a missed day the morning after.
- * Nothing new on the server: the events are the record. Pure.
+ * question. The Dashboard's **The office's round** card draws a week of the same sheets
+ * (`officeRoundWeek`), so the owner sees the round ran without opening Quickfill, and sees a
+ * missed day as a hole. Nothing new on the server: the events are the record. Pure.
  */
 export type RoundCloseEvent = {
   section_id: string
@@ -111,29 +111,116 @@ export function previousWorkdayYmd(ymd: string): string {
   return d
 }
 
-export type OfficeRoundState =
-  | { kind: 'today'; sheet: RoundCloseSheet }
-  | { kind: 'not-yet'; previous: RoundCloseSheet | null; previousYmd: string; weekend: boolean }
-  | { kind: 'missed'; previousYmd: string; lastSheet: RoundCloseSheet | null; lastYmd: string | null; weekend: boolean }
+/** A missed round turns the card red from this many workdays in a row. Fewer are amber. */
+export const ROUND_RED_FROM_WORKDAYS = 3
+/** The workdays the card draws before today. */
+export const ROUND_WEEK_PAST_DAYS = 5
+
+export type RoundWeekCell = {
+  ymd: string
+  /**
+   * `ran`: a station was marked that day. `missed`: a workday with no mark. `today`: today, whatever it holds.
+   * `off`: today on a weekend with no mark, when no round is due.
+   */
+  kind: 'ran' | 'missed' | 'today' | 'off'
+  /** Stations marked that day. */
+  looked: number
+  /** Whoever pressed most that day. */
+  who: string | null
+  /** The bar's height, 0 to 1: this day's stations against the most looked at on any day drawn. */
+  fill: number
+}
+
+/** What a round left: today's once it has started, else the last one that ran among the days drawn. */
+export type RoundWeekLeft = { ymd: string; today: boolean; at: string | null; open: RoundCloseLine[]; questions: RoundCloseLine[] }
+
+export type OfficeRoundWeek = {
+  /** The last `ROUND_WEEK_PAST_DAYS` workdays, oldest first, then today. */
+  cells: RoundWeekCell[]
+  phase: 'not-started' | 'started' | 'weekend'
+  /** Workdays with no mark, counted back from the last workday. It stops at the days drawn. */
+  missedInARow: number
+  tone: 'quiet' | 'amber' | 'red' | 'green'
+  left: RoundWeekLeft | null
+}
 
 /**
- * The Dashboard card's state: the round ran today (its sheet); no round yet today, with the
- * previous workday's sheet; or the previous workday had no marks at all (`missed`), with the
- * last day that had any. On a weekend with no marks the card reads *not yet* against Friday.
+ * The Dashboard card as a week (punch list #424): one cell a workday, so a round is a thing a person sees and a
+ * missed day is a hole, said once. The card had a red chip, a grey line and a sentence that each said the miss, and
+ * never said what a round is. A round holds the stations due that day, each on its own rhythm (`round.ts`), so a day
+ * has no fixed count to be measured against: a bar's height is that day against the fullest day drawn, and the
+ * number under it is the fact. One missed workday is amber and `ROUND_RED_FROM_WORKDAYS` in a row are red, where one
+ * was red before. Whether today's round is finished is Quickfill's to say: the card reads marks, not the queue.
  */
-export function officeRoundState(events: ReadonlyArray<RoundCloseEvent>, todayYmd: string, label: (sectionId: string) => string): OfficeRoundState {
+export function officeRoundWeek(events: ReadonlyArray<RoundCloseEvent>, todayYmd: string, label: (sectionId: string) => string): OfficeRoundWeek {
+  const days: string[] = []
+  let d = todayYmd
+  for (let i = 0; i < ROUND_WEEK_PAST_DAYS; i++) {
+    d = previousWorkdayYmd(d)
+    days.unshift(d)
+  }
+  const past = days.map((ymd) => roundCloseSheet(events, ymd, label))
   const today = roundCloseSheet(events, todayYmd, label)
-  if (today.stations > 0) return { kind: 'today', sheet: today }
-  const previousYmd = previousWorkdayYmd(todayYmd)
-  const previous = roundCloseSheet(events, previousYmd, label)
-  // On a Saturday or a Sunday no round is due (v2.5868): the card says the last one, not that one has not started.
-  if (previous.stations > 0) return { kind: 'not-yet', previous, previousYmd, weekend: !isWorkdayYmd(todayYmd) }
-  // The previous workday had no marks: find the last day that did.
-  const days = [...new Set(events.map((e) => calendarYmdInAppTzFromIso(e.marked_at)).filter((d) => d && d < previousYmd))].sort()
-  const lastYmd = days[days.length - 1] ?? null
-  const lastSheet = lastYmd ? roundCloseSheet(events, lastYmd, label) : null
-  // A weekend after a Friday with no marks still reads missed; a weekday with no round yet, against a marked Friday, reads not yet above.
-  return { kind: 'missed', previousYmd, lastSheet, lastYmd, weekend: !isWorkdayYmd(todayYmd) }
+  const started = today.stations > 0
+  const weekend = !isWorkdayYmd(todayYmd)
+  const most = Math.max(today.stations, ...past.map((s) => s.stations))
+  const fill = (n: number) => (most > 0 ? n / most : 0)
+  const cells: RoundWeekCell[] = past.map((s) => ({ ymd: s.ymd, kind: s.stations > 0 ? 'ran' : 'missed', looked: s.stations, who: s.who, fill: fill(s.stations) }))
+  cells.push({ ymd: todayYmd, kind: !started && weekend ? 'off' : 'today', looked: today.stations, who: today.who, fill: fill(today.stations) })
+  let missedInARow = 0
+  for (let i = past.length - 1; i >= 0 && past[i]!.stations === 0; i--) missedInARow++
+  const last = started ? today : ([...past].reverse().find((s) => s.stations > 0) ?? null)
+  const left = last ? { ymd: last.ymd, today: started, at: last.at, open: last.open, questions: last.questions } : null
+  const tone = started ? 'green' : missedInARow >= ROUND_RED_FROM_WORKDAYS ? 'red' : missedInARow > 0 ? 'amber' : 'quiet'
+  return { cells, phase: started ? 'started' : weekend ? 'weekend' : 'not-started', missedInARow, tone, left }
+}
+
+function weekdayShort(ymd: string): string {
+  return formatDayLabel(ymd).split(',')[0] ?? ymd
+}
+
+/** A cell's head: *Mon 9*, *Today*, or the weekday on a weekend with no round due. */
+export function roundCellDay(cell: Pick<RoundWeekCell, 'ymd' | 'kind'>): string {
+  if (cell.kind === 'today') return 'Today'
+  if (cell.kind === 'off') return weekdayShort(cell.ymd)
+  return `${weekdayShort(cell.ymd)} ${Number(cell.ymd.slice(8, 10))}`
+}
+
+/** The fixed words of the card. Every value beside them is drawn apart, in bold. */
+export const ROUND_WEEK_WORDS = {
+  /** The one line that says what a round is. */
+  what: 'each workday on Quickfill',
+  missed: 'missed',
+  noneDue: 'none due',
+  open: 'open',
+  clean: 'clean',
+  leftToday: 'Left open',
+  start: 'Start the round',
+  quickfill: 'Open Quickfill',
+} as const
+
+/** What a cell says in full, for a reader that cannot see the bar. */
+export function roundCellTitle(cell: RoundWeekCell): string {
+  const day = cell.kind === 'today' ? 'Today' : formatDayLabel(cell.ymd)
+  if (cell.kind === 'missed') return `${day}: no round ran.`
+  if (cell.kind === 'off') return `${day}: no round is due.`
+  const stations = `${cell.looked} ${cell.looked === 1 ? 'station' : 'stations'} looked at`
+  return `${day}: ${stations}${cell.who ? `, mostly by ${cell.who}` : ''}.`
+}
+
+/** The words before what a round left: *Left open* for today's, *Mon left* for an earlier one. */
+export function roundLeftLabel(left: Pick<RoundWeekLeft, 'ymd' | 'today'>): string {
+  return left.today ? ROUND_WEEK_WORDS.leftToday : `${weekdayShort(left.ymd)} left`
+}
+
+/**
+ * The card's one press. Before today's first mark it starts the round, on the station `roundStartStation` picks.
+ * Once a station is marked, or on a weekend that owes no round, it opens Quickfill and claims nothing.
+ */
+export function roundWeekPress(week: Pick<OfficeRoundWeek, 'phase' | 'missedInARow'>): 'start' | 'quickfill' {
+  if (week.phase === 'started') return 'quickfill'
+  if (week.phase === 'weekend' && week.missedInARow === 0) return 'quickfill'
+  return 'start'
 }
 
 export type RoundStart = { sectionId: string; label: string; lastYmd: string | null }
@@ -161,46 +248,4 @@ export function roundStartStation(events: ReadonlyArray<RoundCloseEvent>, statio
     if (!best || d < (best.lastYmd ?? '')) best = { sectionId: s.sectionId, label: s.label, lastYmd: d }
   }
   return best ?? { sectionId: first.sectionId, label: first.label, lastYmd: null }
-}
-
-/** The press under the card's sentence: it opens the station the round starts on. On a weekend after a miss the round is not today's. */
-export const ROUND_START_PRESS = "Start today's round"
-export const ROUND_START_PRESS_WEEKEND = 'Start the round'
-export function roundStartPress(state: OfficeRoundState): string {
-  return state.kind === 'missed' && state.weekend ? ROUND_START_PRESS_WEEKEND : ROUND_START_PRESS
-}
-
-/**
- * The card's sentence while no round has run today: what happened, then where today's starts, so the
- * person reads a press and not a state. A weekend owes no round and says so.
- */
-export function roundStartWords(state: OfficeRoundState, start: RoundStart | null, dayLabel: (ymd: string) => string): string {
-  if (state.kind === 'today') return ''
-  if (state.kind === 'not-yet' && state.weekend) return 'No round is due on the weekend.'
-  const lead = state.kind === 'missed' ? `The round did not run ${dayLabel(state.previousYmd)}.` : 'The round has not started yet.'
-  if (!start) return `${lead} It opens on Quickfill.`
-  const since = start.lastYmd ? `marked last ${dayLabel(start.lastYmd)}` : 'which has waited longest'
-  const whose = state.kind === 'missed' && state.weekend ? 'The next round starts on' : "Today's starts on"
-  return `${lead} ${whose} ${start.label}, ${since}.`
-}
-
-/** *Today 9:51 AM · Dana · 8 still open · 2 questions* and the like, for the card's head. */
-export function officeRoundHeadline(state: OfficeRoundState, dayLabel: (ymd: string) => string): string {
-  if (state.kind === 'today') {
-    const s = state.sheet
-    const parts = [`Today ${s.at ?? ''}`.trim()]
-    if (s.who) parts.push(s.who)
-    parts.push(`${s.stations} ${s.stations === 1 ? 'station' : 'stations'}`)
-    if (s.open.length) parts.push(`${s.open.length} still open`)
-    if (s.questions.length) parts.push(`${s.questions.length} ${s.questions.length === 1 ? 'question' : 'questions'}`)
-    return parts.join(' · ')
-  }
-  if (state.kind === 'not-yet') {
-    const p = state.previous
-    if (!p) return state.weekend ? '' : 'No round yet today'
-    const last = `${dayLabel(state.previousYmd)} ${p.at ?? ''} · ${p.stations} stations · ${p.open.length} still open`
-    return state.weekend ? `Last round ${last}` : `No round yet today · ${last}`
-  }
-  // The card's chip already says *No round Thursday*; the headline adds the last round that did run, or nothing.
-  return state.lastSheet && state.lastYmd ? `Last round ${dayLabel(state.lastYmd)} ${state.lastSheet.at ?? ''} · ${state.lastSheet.stations} stations` : ''
 }
