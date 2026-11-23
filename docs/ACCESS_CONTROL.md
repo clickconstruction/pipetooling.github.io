@@ -1315,6 +1315,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   It refuses a training account, a digital twin and an archived caller itself, and a No on a bullet that is not on the list to look at.
   It refuses a second answer at a stage in words that name who answered first (v2.8178, `docs/migrations/20261121150500_start_check_arrive_once.md`), so one person's **Yes, all as told** never replaces another's No.
   Since v2.8238 (`docs/migrations/20261122030000_start_check_arrive_again.md`) it keeps a later No on a bullet we saw as a yes, and an answer to a bullet that is asked about again, each as an arrival of its own.
+  Since v2.8368 (`docs/migrations/20261123100000_start_check_arrive_shown.md`) it takes a third argument, the bullets the card showed, and marks those alone, with the same grants and the two-argument call still resolving.
   Both functions read what there is to look at from `start_check_to_look(fixture)`, a definer function nobody signed in may call.
   The crew holds no insert or update grant on any `start_check_*` table, so this function is the only way a crew member writes there.
 - **`start_check_windows(job_ids)`** reads our window's two days for the desk, SECURITY DEFINER, since `job_stage_windows` is read by no primary.
