@@ -2047,6 +2047,7 @@ The row stays readable to the contracts roles as before.
 **Opening the PDF** goes only through `open-contract-form-pdf`: `dev`, `controller`, or a `master_technician` present in `pay_approved_masters`;
 since v2.8108 an `estimator` too, for a paper that is with an outside company and no other (punch list #403, above under Documents → Agreements);
 each open is logged in `contract_form_pdf_opens`, which a dev and the controller read and nobody signed in can write, and since v2.8108 the link is handed over only once that line is kept.
+Since v2.8323 (punch list #403, the owner's fourth decision of 2026-11-22, `20261123030000_form_pdf_opens_outlive_paper.sql`) a line of that log outlives its paper: deleting a paper empties the line's link and leaves the line, with the paper's name and who it was with kept on it, and who reads the log is unchanged.
 No client-side storage policy exists on that bucket.
 The template bucket `contract-form-templates` has one storage policy: devs manage;
 the signer page receives a 15-minute signed URL from `get-contract-for-signer`.
