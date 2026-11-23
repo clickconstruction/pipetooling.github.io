@@ -53494,7 +53494,11 @@ export type Database = {
       }
       start_check_arrival_state: { Args: { p_job_id: string }; Returns: Json }
       start_check_arrive: {
-        Args: { p_fixture_id: string; p_not_as_told?: string[] }
+        Args: {
+          p_fixture_id: string
+          p_not_as_told?: string[]
+          p_shown?: string[]
+        }
         Returns: Json
       }
       start_check_decide: {

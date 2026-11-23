@@ -164,6 +164,33 @@ describe('plan_mail_tag · the kernel', () => {
   })
 })
 
+describe('whose id a person tag takes (v2.8411)', () => {
+  // find_person reads `users`, and gmail-mine's person tag looks the id up in `people`: a login's users.id is refused there.
+  const DOOR = "the roster row's people.id, as get_case_brief and get_person_file answer it in person.id; find_person answers a login's users.id, which this door refuses"
+  const TOOL = "the people.id get_case_brief answers in person.id; not find_person's users.id"
+
+  it('refuses a person_id that is no uuid in the words the person-file doors use', () => {
+    expect(mailTagArgs({ tag: { account: 'dana@example-plumbing.test', thread_id: THREAD, person: { person_id: 'nobody' } } }, KNOWN)).toEqual({
+      ok: false,
+      error: `tag.person needs person_id, a uuid: ${DOOR}. stop: true lifts the follow instead of tagging.`,
+    })
+  })
+
+  it('the tool, the door and the skill say the same, and none sends a caller to find_person for a people.id', () => {
+    const from = SERVER.indexOf("name: 'plan_mail_tag',")
+    expect(from).toBeGreaterThan(-1)
+    expect(SERVER.slice(from, SERVER.indexOf('\n  },', from))).toContain(`tag.person: { person_id } (${TOOL})`)
+    expect(SERVER).not.toContain('{ person_id } (find_person)')
+    expect(MINE).toContain("admin.from('people').select('id, name').eq('id', ask.person.personId).maybeSingle()")
+    expect(MINE).toContain(`"No person has that id. It is ${DOOR}."`)
+    expect(MINE).not.toContain('No person has that id (find_person)')
+    expect(SKILL).toContain("`person: { person_id }` (the `people.id` that `get_case_brief` answers in `person.id`; not `find_person`'s `users.id`) in place of `job`")
+    expect(SKILL).toContain("`get_person_file` a teammate (its `person.id` is the `people.id`; `find_person` answers a login's `users.id`)")
+    expect(SKILL).not.toContain('(find_person)')
+    expect(SKILL).not.toContain('`find_person` or `get_person_file` a teammate')
+  })
+})
+
 describe('the doors and the docs', () => {
   it('gmail-mine opens the tag to a dev’s key with the seat header, as a current login, and answers the plan before anything is written', () => {
     expect(MINE).toContain("if (req.headers.get('X-Dev-Seat') !== 'dev-mcp' || who.role !== 'dev') return refuse(")
@@ -182,7 +209,7 @@ describe('the doors and the docs', () => {
   })
 
   it('the seat declares both verbs, plans through gmail-mine as the dev, asks the log before a second apply, and keeps view_as off them', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.128.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.131.0'")
     expect(SERVER).toContain('personTagPlanReply(commitment, preview, hash)')
     expect(SERVER).toContain("mailTagAppliedWords(prior, 'person')")
     for (const verb of ['plan_mail_tag', 'apply_mail_tag']) {

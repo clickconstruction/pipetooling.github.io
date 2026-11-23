@@ -125,8 +125,8 @@ export function LienStepCardItems({ card, roomy = false }: { card: LienStepCard;
               placeItems: 'center',
               fontSize: roomy ? '0.8rem' : '0.66rem',
               fontWeight: 700,
-              border: `1.5px solid ${it.state === 'done' ? '#16a34a' : it.state === 'now' ? tone.fg : 'var(--border-strong)'}`,
-              background: it.state === 'done' ? '#16a34a' : 'var(--surface)',
+              border: `1.5px solid ${it.state === 'done' ? '#15803d' : it.state === 'now' ? tone.fg : 'var(--border-strong)'}`,
+              background: it.state === 'done' ? '#15803d' : 'var(--surface)',
               color: it.state === 'done' ? '#fff' : it.state === 'now' ? tone.fg : 'var(--text-muted)',
               boxShadow: it.state === 'now' ? `0 0 0 3px ${tone.tint}` : 'none',
             }}

@@ -3,6 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   lazyComponentNames,
+  lazyRouteInPlainErrorBoundaryWords,
+  lazyRoutesInPlainErrorBoundary,
   lazyRoutesWithoutSuspense,
   lazyRouteWithoutSuspenseWords,
   onDemandImports,
@@ -295,6 +297,51 @@ const Preview = lazy(() => import('./pages/Preview'))
   })
 })
 
+describe('lazyRoutesInPlainErrorBoundary', () => {
+  const layoutApp = (routes: string): string => `
+import { lazy } from 'react'
+import SignIn from './pages/SignIn'
+import { ErrorBoundary } from './components/ErrorBoundary'
+const Messages = lazy(() => import('./pages/Messages'))
+const Logbook = lazy(() => import('./pages/Logbook'))
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/sign-in" element={<SignIn />} />
+      <Route path="/" element={<Layout />}>
+${routes}
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
+`
+  it('names a route inside the Layout that puts a lazy page in the plain boundary', () => {
+    expect(lazyRoutesInPlainErrorBoundary(layoutApp('<Route path="messages" element={<ErrorBoundary><Messages /></ErrorBoundary>} />'))).toEqual(['messages'])
+  })
+  it('reads a prop on the page and a second route', () => {
+    const routes = '<Route path="my-logbook" element={<ErrorBoundary><Logbook own /></ErrorBoundary>} />\n<Route path="messages" element={<ErrorBoundary fallback={null}><Messages /></ErrorBoundary>} />'
+    expect(lazyRoutesInPlainErrorBoundary(layoutApp(routes))).toEqual(['my-logbook', 'messages'])
+  })
+  it('passes RoutePageBoundary, a bare lazy page and a plain page in the plain boundary', () => {
+    const routes = [
+      '<Route path="messages" element={<RoutePageBoundary><Messages /></RoutePageBoundary>} />',
+      '<Route path="logbook" element={<Logbook />} />',
+      '<Route path="hello" element={<ErrorBoundary><SignIn /></ErrorBoundary>} />',
+    ].join('\n')
+    expect(lazyRoutesInPlainErrorBoundary(layoutApp(routes))).toEqual([])
+  })
+  it('does not read a comment as a route', () => {
+    expect(lazyRoutesInPlainErrorBoundary(layoutApp('{/* <Route path="messages" element={<ErrorBoundary><Messages /></ErrorBoundary>} /> */}'))).toEqual([])
+  })
+  it('says what is wrong and the fix', () => {
+    const words = lazyRouteInPlainErrorBoundaryWords('messages')
+    expect(words).toContain('"messages"')
+    expect(words).toContain('<RoutePageBoundary>')
+    expect(words).toContain('Reload')
+  })
+})
+
 describe('src/App.tsx', () => {
   const source = readFileSync(join(__dirname, '..', 'App.tsx'), 'utf8')
 
@@ -318,6 +365,13 @@ describe('src/App.tsx', () => {
     expect(paths).toEqual(expect.arrayContaining(['/sign-in', '/t/:token', '/pay/:id', '*']))
     expect(paths).not.toContain('/')
     expect(paths).not.toContain('dashboard')
+  })
+
+  it('holds no lazy page in the plain ErrorBoundary, which has no press for a page that did not load', () => {
+    const atFault = lazyRoutesInPlainErrorBoundary(source)
+    expect(atFault, atFault.map(lazyRouteInPlainErrorBoundaryWords).join('\n')).toEqual([])
+    // The fifteen routes that keep a boundary of their own are still there, under the name that hands a lost chunk up.
+    expect((source.match(/<RoutePageBoundary>/g) ?? []).length).toBeGreaterThanOrEqual(15)
   })
 
   it('wraps every lazy route outside the Layout in a Suspense', () => {

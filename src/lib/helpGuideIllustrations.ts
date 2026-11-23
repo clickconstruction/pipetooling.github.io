@@ -46,7 +46,7 @@ export const GUIDE_DEAD_BUTTON = { fill: '#e5e7eb', ink: '#374151' } as const
 
 const BUTTON_STYLES: Record<string, string> = {
   blue: 'background:#2563eb;color:white;border:none;',
-  green: 'background:#16a34a;color:white;border:none;',
+  green: 'background:#15803d;color:white;border:none;',
   amber: 'background:#d97706;color:white;border:none;',
   red: 'background:#dc2626;color:white;border:none;',
   purple: 'background:#7c3aed;color:white;border:none;',

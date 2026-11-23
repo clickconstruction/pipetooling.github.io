@@ -110,7 +110,7 @@ export function TaskFinishSheet({
           type="button"
           onClick={() => void press()}
           disabled={!canGo}
-          style={{ width: '100%', height: 48, borderRadius: 12, border: 'none', fontSize: '1rem', fontWeight: 700, cursor: canGo ? 'pointer' : 'not-allowed', background: canGo ? '#16a34a' : DEAD_PRESS_FILL, color: canGo ? 'white' : DEAD_PRESS_TEXT }}
+          style={{ width: '100%', height: 48, borderRadius: 12, border: 'none', fontSize: '1rem', fontWeight: 700, cursor: canGo ? 'pointer' : 'not-allowed', background: canGo ? '#15803d' : DEAD_PRESS_FILL, color: canGo ? 'white' : DEAD_PRESS_TEXT }}
         >
           {saving ? '…' : rule.pressWords}
         </button>

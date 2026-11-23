@@ -43,7 +43,7 @@ export function GcReviewWeekDoneNotice({ status }: { status: GcReviewWeekStatus 
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: 999,
-            background: '#16a34a',
+            background: '#15803d',
             color: '#fff',
             fontSize: '1rem',
             fontWeight: 700,
