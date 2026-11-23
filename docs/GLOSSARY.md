@@ -1974,8 +1974,9 @@ the **office** lists under it with a line of its own.
 Salaried people read against their set week from pay (`salaried_week_hours`, v2.7948, a day off taking that day's hours) and stay out of the counts unless `record_hours_but_salary` and a punch in the window, when a drawn week wins and the set week stands in for the assumed 40;
 a person archived inside the window keeps their weeks as *Left the roster*.
 The office draws a person's week from the row (**Set hours** / **Change**, `AvailableHoursModal` with `WeekAvailabilityPainter`);
-a person draws their own from My Time's **Your hours** block, which reads their last eight pay weeks against it, or from the same block as a card under Your record in Job Mode (v2.6709, `DashboardMyHoursBlock`;
+a person draws their own from the quiet line at the foot of My Time's picture (`MyTimeCanWorkLine`, v2.8338), or from the **Your hours** card under Your record in Job Mode (v2.6709, `DashboardMyHoursBlock`;
 guide *draw the hours you can work each week*).
+My Time's own picture counts the person's time by day and by week and measures nothing against the answer (`DashboardMyTimePicture` over `myTimeWeeks.ts`, v2.8338, guide *see the time I have added up*).
 Gate `canOpenHoursTab` (the clock's readers).
 Kernels: [`utilization.ts`](../src/lib/people/utilization.ts), [`weekAvailability.ts`](../src/lib/people/weekAvailability.ts);
 reads `fetchUtilizationBoard.ts`;

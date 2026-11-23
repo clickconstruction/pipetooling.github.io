@@ -22,7 +22,6 @@ import {
   crewDayOfficeOnlyEmptyWords,
   financeDrillEmptyWords,
   myScheduleDayEmptyWords,
-  myTimeWeekEmptyWords,
   recentReportsEmptyWords,
   staleFollowUpEmptyWords,
   supervisorReportsOwedEmptyWords,
@@ -98,15 +97,6 @@ describe('dashboardEmptyWords: the presses', () => {
     expect(clearFilters).toHaveBeenCalledTimes(1)
   })
 
-  it('My time offers Last week until last week is open', () => {
-    const show = vi.fn()
-    const words = myTimeWeekEmptyWords(show)
-    expect(read(words)).toBe('Nothing clocked this week. Last week shows the week before.')
-    press(words)
-    expect(show).toHaveBeenCalledTimes(1)
-    expect(myTimeWeekEmptyWords(null)).toEqual({ main: 'Nothing clocked this week.' })
-  })
-
   it('the stale purchases window: Stale hiding everything offers To sort', () => {
     const toSort = vi.fn()
     const stale = staleFollowUpEmptyWords({ staleOnly: true, anyRows: true, showToSort: toSort })
@@ -176,7 +166,6 @@ describe('dashboardEmptyWords: plain words', () => {
       arCustomersEmptyWords({ query: '', filtered: false, hasCollections: false, clearSearch: noop, clearFilters: noop }),
       financeDrillEmptyWords({ query: 'Hartline', clearSearch: noop, clearFilters: noop }),
       financeDrillEmptyWords({ query: '', clearSearch: noop, clearFilters: noop }),
-      myTimeWeekEmptyWords(noop),
       staleFollowUpEmptyWords({ staleOnly: true, anyRows: true, showToSort: noop }),
       staleFollowUpEmptyWords({ staleOnly: false, anyRows: false, showToSort: noop }),
       assignedJobsSearchEmptyWords('zzz', noop),
