@@ -32,7 +32,7 @@ vi.mock('../supabase', () => {
 })
 
 import { AGREEMENTS_SELECT } from './agreementsLedger'
-import { AGREEMENTS_VIEW, countAgreementsWaiting, readAgreements } from './agreementsLedgerIo'
+import { AGREEMENTS_VIEW, countAgreementsNotSent, countAgreementsWaiting, readAgreements } from './agreementsLedgerIo'
 
 const calls = () => db.reads[db.reads.length - 1]?.calls ?? []
 const ops = () => calls().map(([op]) => op)
@@ -144,5 +144,31 @@ describe('countAgreementsWaiting', () => {
     expect(await countAgreementsWaiting('all')).toBeNull()
     db.throws = true
     expect(await countAgreementsWaiting('all')).toBeNull()
+  })
+})
+
+describe('countAgreementsNotSent', () => {
+  it('counts the papers that were made and never sent, without reading them', async () => {
+    db.answer = { data: null, error: null, count: 2 }
+    expect(await countAgreementsNotSent('all')).toBe(2)
+    expect(calls()).toEqual([
+      ['select', ['id', { count: 'exact', head: true }]],
+      ['eq', ['state', 'not_sent']],
+    ])
+  })
+
+  it('counts under a kind chip, and an estimator’s kinds under theirs', async () => {
+    db.answer = { data: null, error: null, count: 1 }
+    expect(await countAgreementsNotSent('outside')).toBe(1)
+    expect(calls()[2]).toEqual(['in', ['kind', ['customer_agreement', 'supply_house_agreement', 'outside_agreement']]])
+    expect(await countAgreementsNotSent('outside', 'estimator')).toBe(1)
+    expect(calls()[2]).toEqual(['in', ['kind', ['customer_agreement', 'supply_house_agreement', 'trade_agreement', 'company_agreement']]])
+  })
+
+  it('answers null when the count cannot be read, which draws no chip', async () => {
+    db.answer = { data: null, error: { message: 'no' }, count: null }
+    expect(await countAgreementsNotSent('all')).toBeNull()
+    db.throws = true
+    expect(await countAgreementsNotSent('all')).toBeNull()
   })
 })

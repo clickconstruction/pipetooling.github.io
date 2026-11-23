@@ -7,7 +7,9 @@
  * that waits acts where it sits: a job's contract opens its Contract window, and a staff, sub or partner paper carries
  * Send again and Copy the signing link, both through the one sender, and the list reads again after. An outside
  * party's paper that is not signed also carries Take back: it asks first, deletes through the one guarded delete, says
- * what came of it, and reads again. A signed paper carries none.
+ * what came of it, and reads again. A signed paper carries none. A party's paper that was made and never sent reads
+ * not sent under a chip that shows while one exists, says what kind of paper it is when it is not an agreement, and
+ * carries Send, which opens the Send window for a first send.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -32,6 +34,9 @@ const io = vi.hoisted(() => ({
   reminderReads: [] as string[][],
   reminderWrites: [] as Array<{ id: string; turnOn: boolean }>,
   reminderFail: null as null | Error,
+  /** How many papers were made and never sent; the Not sent chip shows while it is above none. */
+  notSent: 0 as number | null,
+  notSentCounts: [] as string[],
   /** Who is signed in. The office's assistant unless a test says otherwise. */
   role: 'assistant' as string,
   takeBacks: [] as string[],
@@ -69,6 +74,10 @@ vi.mock('../../lib/documents/agreementsLedgerIo', () => ({
   countAgreementsWaiting: async (kind: string) => {
     io.counts.push(kind)
     return io.waiting
+  },
+  countAgreementsNotSent: async (kind: string) => {
+    io.notSentCounts.push(kind)
+    return io.notSent
   },
 }))
 vi.mock('../../lib/contracts/personPaperSendIo', () => ({
@@ -177,6 +186,8 @@ beforeEach(() => {
   io.reminderWrites = []
   io.reminderFail = null
   io.role = 'assistant'
+  io.notSent = 0
+  io.notSentCounts = []
   io.takeBacks = []
   io.takeBackOutcome = { kind: 'taken' }
   io.takeBackFail = null
@@ -581,6 +592,79 @@ describe('DocumentsAgreementsTab', () => {
     renderWithProviders(<DocumentsAgreementsTab />)
     const rows = await lines()
     expect(Array.from(rows[0]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Send again', 'Copy the signing link', 'Take back'])
+  })
+
+  it('a paper that was made and never sent reads not sent, says its kind, and carries Send, then Take back for the leader', async () => {
+    io.role = 'master_technician'
+    io.notSent = 2
+    io.rows = [
+      partyPaper({ id: 'supply_house_agreement:p7', source_id: 'p7', state: 'not_sent', paper_name: 'Request for taxpayer number', at_day: '2026-11-21', facts: { status: 'unsent', party_kind: 'supply_house', doc_type: 'w9' } }),
+      partyPaper({ id: 'outside_agreement:p8', kind: 'outside_agreement', source_id: 'p8', state: 'not_sent', with_name: 'Haddad Engineering', at_day: '2026-11-20', facts: { status: 'unsent', party_kind: 'none', doc_type: 'agreement' } }),
+    ]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    const rows = await lines()
+    expect(rows.map((r) => r.textContent)).toEqual([
+      'Supply houseW-9Request for taxpayer numberWith Tallgrass Supply Conot sentMade Nov 21SendTake back',
+      'Not on a listMutual secrecy agreementWith Haddad Engineeringnot sentMade Nov 20Add to a listSendTake back',
+    ])
+    // Its name is words: a paper that was never sent has no record to open.
+    expect(Array.from(rows[0]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Send', 'Take back'])
+    // Send opens the Send window on that paper, for a first send, and the list reads again once it is sent.
+    const before = io.asks.length
+    fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Send' }))
+    expect((await screen.findByTestId('send-window')).textContent).toContain('first|p7|')
+    expect(io.facts).toEqual(['p7'])
+    fireEvent.click(screen.getByRole('button', { name: 'fake send' }))
+    await waitFor(() => expect(io.asks.length).toBe(before + 1))
+    expect(screen.queryByTestId('send-window')).toBeNull()
+  })
+
+  it('Take back on a paper that was never sent says nobody holds a link', async () => {
+    io.role = 'dev'
+    io.notSent = 1
+    io.rows = [partyPaper({ id: 'supply_house_agreement:p7', source_id: 'p7', state: 'not_sent', facts: { status: 'unsent', party_kind: 'supply_house' } })]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    fireEvent.click(screen.getByRole('button', { name: 'Take back' }))
+    expect(await screen.findByText('This deletes the copy of Mutual secrecy agreement made for Tallgrass Supply Co. It was never sent, so nobody holds a link. It cannot be undone.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Take back the paper' }))
+    expect(await screen.findByText('Mutual secrecy agreement was taken back. It was never sent.')).toBeTruthy()
+    expect(io.takeBacks).toEqual(['p7'])
+  })
+
+  it('the Not sent chip shows while a paper is not sent, carries the count, and asks for that state', async () => {
+    io.rows = [waitingPaper()]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    // Nothing is unsent: no chip.
+    expect(screen.queryByRole('button', { name: /^Not sent/ })).toBeNull()
+    expect(io.notSentCounts).toEqual(['all'])
+    cleanup()
+    io.notSent = 2
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    const chip = await screen.findByRole('button', { name: 'Not sent · 2' })
+    fireEvent.click(chip)
+    await waitFor(() => expect(lastAsk()).toMatchObject({ state: 'not_sent' }))
+    // The chip stays while it is the one picked, also once the last unsent paper is sent or taken back.
+    expect(screen.getByRole('button', { name: 'Not sent · 2' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('a count that cannot be read draws no Not sent chip, and the list is as it was', async () => {
+    io.notSent = null
+    io.rows = [waitingPaper()]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    expect(screen.queryByRole('button', { name: /^Not sent/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Sent and signed' })).toBeTruthy()
+  })
+
+  it('an assistant sends a paper that was never sent and takes none back', async () => {
+    io.notSent = 1
+    io.rows = [partyPaper({ id: 'supply_house_agreement:p7', source_id: 'p7', state: 'not_sent', facts: { status: 'unsent', party_kind: 'supply_house' } })]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    const rows = await lines()
+    expect(Array.from(rows[0]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Send'])
   })
 
   it('a work order opens its window on the job, and one with no job is not a press', async () => {
