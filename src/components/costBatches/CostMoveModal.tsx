@@ -27,6 +27,7 @@ import { buildCostMovePlan, costMoveDefaultAllocationNote, usd, type CostMoveJob
 import { costMoveTotals, costMoveTotalsWords, type CostMoveRow } from '../../lib/costBatches/costMoveRows'
 import { applyCostBatch, dryRunCostBatch, type CostMoveJobRow } from '../../lib/costBatches/costMoveReads'
 import { CostBatchJobPicker } from './CostBatchJobPicker'
+import { MoneyText } from '../Money'
 
 /** Above the job window (1010) and the windows it opens itself (the pay application at 1030). */
 export const COST_MOVE_MODAL_Z_INDEX = 1100
@@ -178,7 +179,7 @@ export function CostMoveModal({ sourceJob, rows, onRequestClose, onApplied, zInd
     <ResponsiveModalShell title={title} onRequestClose={onRequestClose} footer={footer} maxWidthDesktop={760} zIndex={zIndex}>
       <div style={body}>
         <p style={quiet}>
-          From <strong style={{ color: 'var(--text-strong)' }}>{formatJobLedgerSummaryLine(prefixMap, sourceJob.service_type_id, sourceJob.hcp_number, sourceJob.job_name, sourceJob.job_address, sourceJob.click_number)}</strong>: {costMoveTotalsWords(totals)}.
+          From <strong style={{ color: 'var(--text-strong)' }}>{formatJobLedgerSummaryLine(prefixMap, sourceJob.service_type_id, sourceJob.hcp_number, sourceJob.job_name, sourceJob.job_address, sourceJob.click_number)}</strong>: <MoneyText text={costMoveTotalsWords(totals)} />.
         </p>
 
         {applied ? (
@@ -245,7 +246,7 @@ export function CostMoveModal({ sourceJob, rows, onRequestClose, onApplied, zInd
                   ))}
                   {Object.entries(planSummary.releasedFrom).map(([id, dollars]) => (
                     <li key={`released-${id}`}>
-                      <span style={{ fontWeight: 600 }}>{jobLabel(id)}</span> — releases {usd(dollars)} of bank allocations
+                      <span style={{ fontWeight: 600 }}>{jobLabel(id)}</span> — releases <MoneyText text={usd(dollars)} /> of bank allocations
                     </li>
                   ))}
                 </ul>
@@ -303,8 +304,8 @@ export function CostMoveModal({ sourceJob, rows, onRequestClose, onApplied, zInd
                       <tr key={`${l.jobId}:${l.field}`}>
                         <td style={td}>{jobLabel(l.jobId)}</td>
                         <td style={td}>{COST_BATCH_FIELD_LABELS[l.field]}</td>
-                        <td style={tdNum}>{l.field === 'allocated' || l.field === 'otherCharges' ? usd(l.plan) : l.plan}</td>
-                        <td style={tdNum}>{l.field === 'allocated' || l.field === 'otherCharges' ? usd(l.dryRun) : l.dryRun}</td>
+                        <td style={tdNum}>{l.field === 'allocated' || l.field === 'otherCharges' ? <MoneyText text={usd(l.plan)} /> : l.plan}</td>
+                        <td style={tdNum}>{l.field === 'allocated' || l.field === 'otherCharges' ? <MoneyText text={usd(l.dryRun)} /> : l.dryRun}</td>
                         <td style={{ ...td, color: l.ok ? 'var(--text-green-700)' : 'var(--text-red-700)', fontWeight: 700 }}>{l.ok ? '✓' : '✗'}</td>
                       </tr>
                     ))}

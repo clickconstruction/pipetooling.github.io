@@ -14,6 +14,7 @@ import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { EmptyState } from '../EmptyState'
 import { LinkButton } from './developmentPageBits'
+import { MoneyText } from '../Money'
 
 const SITE_VALUE_WORDS = '(each job’s % done × its price, summed, right axis)'
 const SITE_VALUE_HIDDEN = 'Value line hidden: no job on the chart has both a price and a percent'
@@ -161,12 +162,12 @@ export function DevelopmentTimeline({ read, phone, openJob }: { read: SiteTimeli
             <div key={j.jobId} data-testid={`timeline-strip-row-${j.jobId}`} style={{ display: 'grid', gridTemplateColumns: phone ? 'minmax(0, 1fr) auto' : 'auto minmax(0, 1fr) auto', columnGap: 10, alignItems: 'baseline', padding: '2px 0' }}>
               <span style={{ minWidth: 0 }}>{openJob ? <LinkButton onClick={() => openJob(j.jobId)} title="Open the job">{j.label}</LinkButton> : j.label}</span>
               {phone ? null : <span style={{ color: 'var(--text-muted)', minWidth: 0, overflowWrap: 'anywhere' }}>{siteTimelineLeftOutReason(j)}</span>}
-              <span style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right', color: j.endExpense === 0 ? 'var(--text-muted)' : undefined }}>{money(j.endExpense)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right', color: j.endExpense === 0 ? 'var(--text-muted)' : undefined }}><MoneyText text={money(j.endExpense)} /></span>
               {phone ? <span style={{ color: 'var(--text-muted)', gridColumn: '1 / -1', overflowWrap: 'anywhere' }}>{siteTimelineLeftOutReason(j)}</span> : null}
             </div>
           ))}
           <div data-testid="timeline-strip-sum" style={{ borderTop: '1px solid var(--border-strong)', marginTop: 4, paddingTop: 4, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-            Chart ends at {money(strip.chartEnd)} · Not on the chart {money(strip.offChart)} · <strong>Together {money(strip.together)}</strong>, the Scoreboard’s cost before overhead
+            Chart ends at <MoneyText text={money(strip.chartEnd)} /> · Not on the chart <MoneyText text={money(strip.offChart)} /> · <strong>Together <MoneyText text={money(strip.together)} /></strong>, the Scoreboard’s cost before overhead
           </div>
         </div>
       ) : null}

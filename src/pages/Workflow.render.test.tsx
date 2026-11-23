@@ -145,6 +145,7 @@ vi.mock('../hooks/useAuth', async () => {
 
 import Workflow from './Workflow'
 import { installDomShims, settle } from '../test/renderSmokeMocks'
+import { moneyText } from '../test/moneyText'
 
 function step(id: string, name: string, sequence_order: number, status: string, extra: Row = {}): Row {
   return {
@@ -352,7 +353,7 @@ describe('Workflow page', () => {
     world.projections = [{ id: 'pr1', workflow_id: 'w1', stage_name: 'Rough', memo: 'draw', amount: 5000, sequence_order: 1, step_id: null, placement: null }]
     renderWorkflow('dev', fourSteps())
     await stagesLoaded('s3')
-    expect(await screen.findByText('Projections: $5,000.00')).toBeTruthy()
+    expect(await screen.findByText(moneyText('Projections: $5,000.00'))).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add step' })).toBeTruthy()
   })
 

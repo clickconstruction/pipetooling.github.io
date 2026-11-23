@@ -8,6 +8,7 @@ import { extractContactFromCustomer } from '../../lib/customerContactDisplay'
 import { isPathAllowedForRole } from '../../lib/layoutRouteAccess'
 import { formatErrorMessage, withRetry, withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { MoneyText } from '../Money'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type BidRow = Database['public']['Tables']['bids']['Row']
@@ -390,7 +391,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
                           </Link>
                         </td>
                         <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>{estimateSnapshotStatusLabel(est.status)}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'right' }}>{formatUsdFromCents(est.total_cents)}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'right' }}><MoneyText text={formatUsdFromCents(est.total_cents)} /></td>
                         <td style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
                           {est.updated_at ? calendarYmdInAppTzFromIso(String(est.updated_at)) || '—' : '—'}
                         </td>

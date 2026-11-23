@@ -27,6 +27,7 @@ import type { PersonDeskViewer } from '../../lib/people/personDeskGates'
 import type { PersonKey } from '../../lib/people/personKey'
 import { BTN, BTN_BLUE, BTN_QUIET, DESK_EDITOR_Z, deskBtn } from './personDeskShared'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 type Resolutions = Record<string, { state: 'done' | 'left_open'; reason?: string }>
 
@@ -271,7 +272,7 @@ export function PersonDeskBringBackModal({
           <>
             {action.hourlyWage != null && action.hourlyWage > 0 ? (
               <button type="button" style={deskBtn(BTN, busy != null)} disabled={busy != null} onClick={() => markDone(it.id)}>
-                Keep {money(action.hourlyWage)}
+                Keep <MoneyText text={money(action.hourlyWage)} />
               </button>
             ) : null}
             <button type="button" style={deskBtn(BTN_BLUE, busy != null)} disabled={busy != null} onClick={() => setWageDraft(action.hourlyWage != null && action.hourlyWage > 0 ? String(action.hourlyWage) : '')}>

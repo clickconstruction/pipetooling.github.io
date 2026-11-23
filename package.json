@@ -42,6 +42,7 @@
     "check:press-blue": "node scripts/codemods/press-blue-sweep.mjs --check",
     "check:press-green": "node scripts/codemods/press-green-sweep.mjs --check",
     "check:font-shorthand": "node scripts/codemods/font-shorthand-sweep.mjs --check",
+    "check:small-cents": "node scripts/codemods/small-cents-sweep.mjs --check --changed",
     "check:error-words": "node scripts/codemods/error-reason-sweep.mjs --check --changed",
     "check:doc-lines": "node scripts/codemods/doc-sentence-lines.mjs --check",
     "map": "node scripts/map-surface.mjs",

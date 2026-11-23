@@ -6243,7 +6243,10 @@ The cents' size is one ratio for the whole app, `MONEY_CENTS_EM`, in `em` so it 
 A loss wears a true minus before the dollar sign, a signed figure a plus or a minus, and a figure in whole dollars has no cents to draw.
 A place that cannot draw a span keeps the plain words (`moneyWords`): a tooltip, a CSV, a print, an email, a box a person types in.
 `AmountSmallCents`, `MoneyWithSmallCents` and the charges surfaces' `Money` are older names that draw through the door.
-The first screen swept is Job Summary.
+A screen is moved to the door by `node scripts/codemods/small-cents-sweep.mjs`, never by hand, and the surfaces moved so far are the files in `scripts/codemods/small-cents-swept/`, one a sweep.
+`check:small-cents` reads those files and refuses a PR that writes `$` and `formatCurrency` into a swept screen (v2.8376).
+A customer's screen, a print and anything inside a `data-theme="light"` wrapper keep the look they have, the owner's call of 2026-11-23.
+A test finds an amount drawn through the door with `moneyText` ([`moneyText.ts`](../src/test/moneyText.ts)), since the figure is two spans.
 
 ### Before we start (a stage's list)
 For each stage line the office writes a short list of what must be true before the crew goes (punch list #382;

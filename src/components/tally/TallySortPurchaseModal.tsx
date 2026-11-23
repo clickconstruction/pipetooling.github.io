@@ -14,6 +14,7 @@ import { formatTallyCurrency, formatTallyPostedParts } from '../../lib/tally/for
 import { mercurySwipeAtIso } from '../../lib/mercurySwipeTime'
 import { tallyUniqueJobSplitEntries, type TallyLinkedMercuryRow } from '../../lib/mercuryTxRowFromTally'
 import type { Json } from '../../types/database'
+import { MoneyText } from '../Money'
 
 export type TallySortPurchaseModalProps = {
   open: boolean
@@ -287,7 +288,7 @@ export function TallySortPurchaseModal({
           <>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '1.65rem', fontWeight: 700, color: 'var(--text-strong)', lineHeight: 1.1 }}>
-                {formatTallyCurrency(Math.abs(total))}
+                <MoneyText text={formatTallyCurrency(Math.abs(total))} />
               </div>
               <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)', marginTop: 2 }}>
                 {(row.counterparty_name ?? '').trim() || 'Card purchase'}
@@ -325,7 +326,7 @@ export function TallySortPurchaseModal({
                   >
                     {sel && lines.length > 1 && line ? (
                       <span style={{ float: 'right', fontWeight: 700, color: 'var(--text-blue-700)', fontSize: '0.8125rem' }}>
-                        {formatTallyCurrency(Math.abs(line.amount))}
+                        <MoneyText text={formatTallyCurrency(Math.abs(line.amount))} />
                       </span>
                     ) : null}
                     <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-strong)' }}>{j.main}</span>
@@ -369,7 +370,7 @@ export function TallySortPurchaseModal({
                 })}
                 {remainder !== 0 ? (
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>
-                    {formatTallyCurrency(Math.abs(remainder))} unallocated — amounts must add up to the purchase.
+                    <MoneyText text={formatTallyCurrency(Math.abs(remainder))} /> unallocated — amounts must add up to the purchase.
                   </div>
                 ) : null}
               </div>
@@ -406,8 +407,8 @@ export function TallySortPurchaseModal({
                 {saving
                   ? 'Saving…'
                   : lines.length === 1
-                    ? `Assign ${formatTallyCurrency(Math.abs(total))} ✓`
-                    : `Save split · ${formatTallyCurrency(Math.abs(total))} ✓`}
+                    ? <MoneyText text={`Assign ${formatTallyCurrency(Math.abs(total))} ✓`} />
+                    : <MoneyText text={`Save split · ${formatTallyCurrency(Math.abs(total))} ✓`} />}
               </button>
             ) : null}
 

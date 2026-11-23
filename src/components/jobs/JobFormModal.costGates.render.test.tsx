@@ -59,6 +59,7 @@ vi.mock('./useJobCostSnapshot', () => ({ useJobCostSnapshot: () => snapshot.valu
 
 import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import JobFormModal from './JobFormModal'
+import { moneyText } from '../../test/moneyText'
 
 const cleanLabor = { ...labor.value }
 const cleanSnapshot = { ...snapshot.value }
@@ -100,7 +101,7 @@ describe('Edit Job: Delete against Reassign follows the cost loads', () => {
     await openCedarBend()
     const win = await openDeleteWindow()
     expect(win.getByText('This job has costs attached')).toBeTruthy()
-    expect(win.getByText(/Team labor \(est\.\): \$320\.00/)).toBeTruthy()
+    expect(win.getByText(moneyText(/Team labor \(est\.\): \$320\.00/))).toBeTruthy()
     expect(win.getByRole('button', { name: 'Reassign to another job…' })).toBeTruthy()
     expect(win.queryByRole('button', { name: 'Delete' })).toBeNull()
   })
@@ -109,8 +110,8 @@ describe('Edit Job: Delete against Reassign follows the cost loads', () => {
     snapshot.value = { ...cleanSnapshot, supplyInvoiceTotal: 100, tallyPartLines: [{ id: 't1', fixtureName: 'Lav', quantity: 1, partName: 'P-trap', lineTotal: 40.5, createdAt: null, createdByName: null }] }
     await openCedarBend({ materials: [{ id: 'm1', description: 'Permit', amount: 125, charged_on: null, memo: null }] })
     const win = await openDeleteWindow()
-    expect(win.getByText(/supply invoices: \$140\.50/)).toBeTruthy()
-    expect(win.getByText('Billed materials: $125.00')).toBeTruthy()
+    expect(win.getByText(moneyText(/supply invoices: \$140\.50/))).toBeTruthy()
+    expect(win.getByText(moneyText('Billed materials: $125.00'))).toBeTruthy()
     expect(win.getByRole('button', { name: 'Reassign to another job…' })).toBeTruthy()
   })
 

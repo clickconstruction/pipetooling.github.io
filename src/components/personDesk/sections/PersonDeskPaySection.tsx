@@ -16,6 +16,7 @@ import { SalaryWorkScheduleSettings } from '../../SalaryWorkScheduleSettings'
 import type { WeekDays } from '../../../lib/people/weekAvailability'
 import { PersonDeskWorkingHoursRow } from './PersonDeskWorkingHoursRow'
 import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, DeskRow, DeskSection, LockTag, deskBtn, fmtDate } from '../personDeskShared'
+import { MoneyText } from '../../Money'
 
 type TimeOffRow = { id: string; start_date: string; end_date: string; kind: string | null; note: string | null }
 type StubRow = { period_start: string; period_end: string; paid_at: string | null }
@@ -229,13 +230,13 @@ export function PersonDeskPaySection({
                   <>
                     <span style={{ fontWeight: 600 }}>A set week</span>
                     {weekLine ? <span data-salaried-week>{weekLine}</span> : <span style={{ color: 'var(--text-amber-800)' }}>no weekly pay</span>}
-                    {facts.hourlyWage != null ? <span style={{ color: 'var(--text-muted)' }}>{money(facts.hourlyWage)} / h</span> : null}
+                    {facts.hourlyWage != null ? <span style={{ color: 'var(--text-muted)' }}><MoneyText text={money(facts.hourlyWage)} /> / h</span> : null}
                   </>
                 ) : (
                   <>
                     <span style={{ fontWeight: 600 }}>By the hour</span>
-                    <span>{facts.hourlyWage != null ? `${money(facts.hourlyWage)} / h` : 'no wage'}</span>
-                    {facts.officeWage != null ? <span style={{ color: 'var(--text-muted)' }}>office {money(facts.officeWage)} / h</span> : null}
+                    <span>{facts.hourlyWage != null ? <MoneyText text={`${money(facts.hourlyWage)} / h`} /> : 'no wage'}</span>
+                    {facts.officeWage != null ? <span style={{ color: 'var(--text-muted)' }}>office <MoneyText text={money(facts.officeWage)} /> / h</span> : null}
                   </>
                 )}
               </DeskRow>
@@ -363,7 +364,7 @@ export function PersonDeskPaySection({
                       <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                         $<input type="number" step="0.01" min="0" value={edit.weeklyPay} onChange={(e) => setEdit({ ...edit, weeklyPay: e.target.value })} style={{ width: 100, fontSize: '0.8125rem' }} aria-label="Weekly pay" />
                       </label>
-                      {plan?.ok && plan.comesTo ? <span style={{ color: 'var(--text-muted)' }}>works out to {money(plan.comesTo.wage)} an hour</span> : null}
+                      {plan?.ok && plan.comesTo ? <span style={{ color: 'var(--text-muted)' }}>works out to <MoneyText text={money(plan.comesTo.wage)} /> an hour</span> : null}
                     </div>
                   </div>
                   {plan?.ok && plan.comesTo ? (
