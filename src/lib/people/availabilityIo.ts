@@ -22,7 +22,9 @@ export type AvailabilityIo = {
   readonly kind: 'local' | 'supabase'
 }
 
-const ANSWER_COLUMNS = 'user_id, hours_per_week, days, effective_from, set_by, created_at, note'
+const ANSWER_COLUMNS_BEFORE_KIND = 'user_id, hours_per_week, days, effective_from, set_by, created_at, note'
+/** `kind` came with working hours (migration `20261123075925`): `set` rows are a person's working hours. */
+const ANSWER_COLUMNS = `${ANSWER_COLUMNS_BEFORE_KIND}, kind`
 
 type AnswerRow = {
   user_id: string
@@ -32,6 +34,7 @@ type AnswerRow = {
   set_by: string | null
   created_at: string
   note: string | null
+  kind?: string | null
 }
 
 function rowToAnswer(r: AnswerRow): AvailableHoursAnswer {
@@ -43,7 +46,14 @@ function rowToAnswer(r: AnswerRow): AvailableHoursAnswer {
     set_by: r.set_by,
     set_at: r.created_at,
     note: r.note,
+    kind: r.kind === 'set' ? 'set' : 'answer',
   }
+}
+
+/** A database that does not have `kind` yet answers 42703 for the column: every row there is an answer. */
+function lacksKindColumn(error: unknown): boolean {
+  const e = error as { code?: unknown; message?: unknown } | null
+  return e?.code === '42703' && typeof e.message === 'string' && e.message.includes('kind')
 }
 
 const byDate = (a: AvailableHoursAnswer, b: AvailableHoursAnswer) => a.effective_from.localeCompare(b.effective_from) || a.set_at.localeCompare(b.set_at)
@@ -57,11 +67,19 @@ export function supabaseAvailabilityIo(): AvailabilityIo {
       const rows: AnswerRow[] = []
       for (const chunk of chunks) {
         if (chunk && chunk.length === 0) continue
-        const data = await withSupabaseRetry(async () => {
-          let q = supabase.from('person_available_hours').select(ANSWER_COLUMNS).order('effective_from').order('created_at')
-          if (chunk) q = q.in('user_id', chunk)
-          return await q
-        }, 'available hours')
+        const readWith = (columns: string) =>
+          withSupabaseRetry(async () => {
+            let q = supabase.from('person_available_hours').select(columns).order('effective_from').order('created_at')
+            if (chunk) q = q.in('user_id', chunk)
+            return await q
+          }, 'available hours')
+        let data: unknown
+        try {
+          data = await readWith(ANSWER_COLUMNS)
+        } catch (error) {
+          if (!lacksKindColumn(error)) throw error
+          data = await readWith(ANSWER_COLUMNS_BEFORE_KIND)
+        }
         rows.push(...((data ?? []) as unknown as AnswerRow[]))
       }
       return rows.map(rowToAnswer).sort(byDate)
@@ -79,7 +97,7 @@ export function supabaseAvailabilityIo(): AvailabilityIo {
               set_by: answer.set_by,
               note: answer.note ?? null,
             })
-            .select(ANSWER_COLUMNS)
+            .select(ANSWER_COLUMNS_BEFORE_KIND)
             .single(),
         'save available hours',
       )

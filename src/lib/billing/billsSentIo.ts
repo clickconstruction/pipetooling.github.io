@@ -20,12 +20,17 @@
  *
  * Punch list #340 adds the list the form picks from: `readBillHandWays` reads `bill_hand_ways`, the ways a bill can
  * go when the app did not send it. A read that is refused answers null and the form offers the four kept in code.
+ *
+ * Punch list #422 adds who paid: the payment rows of the bills on the page (`jobs_ledger_payments` by `invoice_id`,
+ * which the page's four roles read), turned into one state a bill by `billsPaidByBill`. Best effort, and all or
+ * nothing: a read that fails answers no states, so no bill is called *Not paid* on half an answer.
  */
 import { supabase } from '../supabase'
 import { chunkIds } from '../supabasePaging'
 import { parseSentCopy, sentDocumentInsert, type SentFiling } from '../sent/sentCopies'
 import { payLinkRef } from './payLink'
 import { parseBillHandWay, type BillHandWay } from './billHandWays'
+import { billsPaidByBill, type BillPaidState, type BillPayment } from './billsPaid'
 import {
   BILLS_SENT_KIND_PREFIX,
   BILLS_SENT_OTHER_KINDS,
@@ -74,9 +79,21 @@ export function payLinkRefInText(body: string): { kind: 'id' | 'code'; value: st
 }
 
 type BillRow = BillsSentBill & { payCode: string | null }
-const BILL_COLS = 'id, job_id, amount, status, pay_code, billed_at, created_at'
+const BILL_COLS = 'id, job_id, amount, status, pay_code, billed_at, created_at, stripe_invoice_id, stripe_invoice_status, external_send_channel'
 const billOf = (r: Record<string, unknown>): BillRow | null =>
-  text(r.id) ? { id: text(r.id), jobId: text(r.job_id) || null, amount: numberOrNull(r.amount), status: text(r.status), payCode: text(r.pay_code) || null, billedAtIso: text(r.billed_at) || text(r.created_at) || null } : null
+  text(r.id)
+    ? {
+        id: text(r.id),
+        jobId: text(r.job_id) || null,
+        amount: numberOrNull(r.amount),
+        status: text(r.status),
+        payCode: text(r.pay_code) || null,
+        billedAtIso: text(r.billed_at) || text(r.created_at) || null,
+        stripeInvoiceId: text(r.stripe_invoice_id) || null,
+        stripeInvoiceStatus: text(r.stripe_invoice_status) || null,
+        externalSendChannel: text(r.external_send_channel) || null,
+      }
+    : null
 
 /** A list read that answers no rows when it fails: the lines it would add are left out, and the rest still draw. */
 async function rows(read: () => PromiseLike<{ data: unknown; error: unknown }>): Promise<Array<Record<string, unknown>>> {
@@ -178,6 +195,47 @@ async function readMarks(copyIds: string[]): Promise<Map<string, BillsSentMark>>
   return out
 }
 
+const PAYMENT_COLS = 'id, invoice_id, amount, paid_on, created_at, payment_type, note, reference_number, mercury_transaction_id, stripe_credit_note_id'
+
+/**
+ * Where each bill stands, from its own payment rows. Undefined when any part of the read fails: the lines then say
+ * paid or not from the bill's status, as they did before, and never *Not paid* for a bill whose payments were not read.
+ */
+async function readPaid(bills: ReadonlyArray<BillRow>): Promise<Map<string, BillPaidState> | undefined> {
+  const payments: BillPayment[] = []
+  try {
+    const parts = await Promise.all(
+      chunkIds(
+        bills.map((b) => b.id),
+        IN_CHUNK,
+      ).map((chunk) => supabase.from('jobs_ledger_payments').select(PAYMENT_COLS).in('invoice_id', chunk).order('id').limit(1000)),
+    )
+    for (const part of parts) {
+      // A full page means rows were left behind: half an answer, so none.
+      if (part.error || (part.data ?? []).length >= 1000) return undefined
+      for (const raw of (part.data ?? []) as unknown as Array<Record<string, unknown>>) {
+        const amount = numberOrNull(raw.amount)
+        if (!text(raw.id) || !text(raw.invoice_id) || amount == null) continue
+        payments.push({
+          id: text(raw.id),
+          billId: text(raw.invoice_id),
+          amount,
+          paidOn: text(raw.paid_on) || null,
+          createdAtIso: text(raw.created_at) || null,
+          paymentType: text(raw.payment_type) || null,
+          note: text(raw.note) || null,
+          referenceNumber: text(raw.reference_number) || null,
+          bankTransactionId: text(raw.mercury_transaction_id) || null,
+          stripeCreditNoteId: text(raw.stripe_credit_note_id) || null,
+        })
+      }
+    }
+  } catch {
+    return undefined
+  }
+  return billsPaidByBill(bills, payments)
+}
+
 /**
  * What the screen draws from: the newest `limit` sends of bill-like papers and the facts beside them. Throws when
  * the sends themselves cannot be read.
@@ -202,7 +260,7 @@ export async function readBillsSent(opts: { limit: number }): Promise<BillsSentI
     rows(() =>
       supabase
         .from('jobs_ledger_invoices')
-        .select(`${BILL_COLS}, sent_to_customer_at, external_send_channel`)
+        .select(`${BILL_COLS}, sent_to_customer_at`)
         .in('external_send_channel', ['housecallpro', 'physical'])
         .not('sent_to_customer_at', 'is', null)
         .order('sent_to_customer_at', { ascending: false })
@@ -304,14 +362,17 @@ export async function readBillsSent(opts: { limit: number }): Promise<BillsSentI
       ...texts.map((t) => t.jobId).filter((id): id is string => !!id),
     ]),
   ]
-  const jobs = await inChunks<BillsSentJob>(
-    jobIds,
-    (chunk) => supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, customer_name').in('id', chunk),
-    (r) =>
-      text(r.id)
-        ? { id: text(r.id), hcp_number: text(r.hcp_number) || null, click_number: text(r.click_number) || null, job_name: text(r.job_name) || null, job_address: text(r.job_address) || null, customer_name: text(r.customer_name) || null }
-        : null,
-  )
+  const [jobs, paid] = await Promise.all([
+    inChunks<BillsSentJob>(
+      jobIds,
+      (chunk) => supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, customer_name').in('id', chunk),
+      (r) =>
+        text(r.id)
+          ? { id: text(r.id), hcp_number: text(r.hcp_number) || null, click_number: text(r.click_number) || null, job_name: text(r.job_name) || null, job_address: text(r.job_address) || null, customer_name: text(r.customer_name) || null }
+          : null,
+    ),
+    readPaid([...allBills.values()]),
+  ])
 
   return {
     copies,
@@ -324,5 +385,6 @@ export async function readBillsSent(opts: { limit: number }): Promise<BillsSentI
     texts,
     unsent,
     marks,
+    paid,
   }
 }

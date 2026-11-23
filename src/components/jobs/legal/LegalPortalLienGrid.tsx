@@ -31,6 +31,9 @@ type LienRailLens = 'gc' | 'court'
  * its justice precincts, the jobs over the justice limit under their county, and with more than one court
  * shown a band opens each court's run of rows, on the screen and on the print.
  */
+/** The `?` under *Paid out to GC* and *10 % reserved* (v2.8315): both fill from the owner's call, so a blank is an answer not on record. */
+const OWNER_NOT_ANSWERED_TITLE = 'The owner’s answer is not on record yet'
+
 /** `initialShow`: the sample opens on All (#85 item 9) so the matter's own job shows beside the due ones. */
 export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initialShow = 'due' }: { raw: LienBookRaw; todayYmd: string; companyName: string; initialShow?: LienBookShow }) {
   const [lens, setLens] = useState<LienRailLens>('gc')
@@ -77,10 +80,10 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
   }
   const seg = (on: boolean): React.CSSProperties => ({ font: 'inherit', fontSize: 12.5, padding: '4px 10px', border: 'none', cursor: 'pointer', background: on ? INK : CARD, color: on ? '#fff' : MUTED, fontWeight: on ? 600 : 500 })
   const unknown = (title: string) => <span style={{ color: PAPER_RED, fontWeight: 700 }} title={title}>?</span>
-  const fact = (v: string) => (v ? v : unknown('A fact the office has not entered yet'))
+  const fact = (v: string, missing = 'A fact the office has not entered yet') => (v ? v : unknown(missing))
   // A cell that is only a `?` centres it (v2.4753); a cell with words keeps the column's left edge.
   // On a card (v2.4808) a fact the office has not entered drops out; the card's last line names them all.
-  const factTd = (key: LienCardFact, v: string, extra?: React.CSSProperties) => <CardCell label={labelOf(key)} drop={!v} style={{ ...td, ...(v ? extra : { textAlign: 'center' }) }}>{fact(v)}</CardCell>
+  const factTd = (key: LienCardFact, v: string, extra?: React.CSSProperties, missing?: string) => <CardCell label={labelOf(key)} drop={!v} style={{ ...td, ...(v ? extra : { textAlign: 'center' }) }}>{fact(v, missing)}</CardCell>
   return (
     <div style={portalCard} data-legal-portal-lien-grid>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
@@ -206,8 +209,8 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
         <CardCell label={labelOf('notices')} style={{ ...td, ...(noticeIsUnknown(c) ? { textAlign: 'center' } : null) }}>{noticeCell(c)}</CardCell>
         {factTd('affidavit', c.affidavit)}
         {factTd('bond', c.bond)}
-        {factTd('paidOut', c.paidOut)}
-        {factTd('reserved', c.reserved)}
+        {factTd('paidOut', c.paidOut, undefined, OWNER_NOT_ANSWERED_TITLE)}
+        {factTd('reserved', c.reserved, undefined, OWNER_NOT_ANSWERED_TITLE)}
         {factTd('contractCompleted', c.contractCompleted)}
         {lienCardMissingLine(c) ? <CardCell label="" className="legalCardOnly" style={{ ...td, color: PAPER_RED }} data-legal-card-missing>{lienCardMissingLine(c)}</CardCell> : null}
       </tr>

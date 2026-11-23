@@ -1973,8 +1973,9 @@ Two sides: the **field** (leaders, helpers, subs, superintendents) carries the l
 the **office** lists under it with a line of its own.
 Salaried people read against their set week from pay (`salaried_week_hours`, v2.7948, a day off taking that day's hours) and stay out of the counts unless `record_hours_but_salary` and a punch in the window, when a drawn week wins and the set week stands in for the assumed 40;
 a person archived inside the window keeps their weeks as *Left the roster*.
+A person with **working hours** (a `set` row on `person_available_hours`, v2.8345) is held to them, salaried or not, from the row's Sunday on: the source reads *working hours*, the row has no **Change** press, and a punch outside them is counted (`workingHours.ts`, v2.8350).
 The office draws a person's week from the row (**Set hours** / **Change**, `AvailableHoursModal` with `WeekAvailabilityPainter`);
-a person draws their own from the quiet line at the foot of My Time's picture (`MyTimeCanWorkLine`, v2.8338), or from the **Your hours** card under Your record in Job Mode (v2.6709, `DashboardMyHoursBlock`;
+a person draws their own from the quiet line at the foot of My Time's picture (`MyTimeCanWorkLine`, v2.8338), on the full Dashboard or on the **My Time** card under Your record in Job Mode (`DashboardMyTimeCard`, v2.8347;
 guide *draw the hours you can work each week*).
 My Time's own picture counts the person's time by day and by week and measures nothing against the answer (`DashboardMyTimePicture` over `myTimeWeeks.ts`, v2.8338, guide *see the time I have added up*).
 Gate `canOpenHoursTab` (the clock's readers).
@@ -6588,6 +6589,7 @@ a mark when its stages left outrun the working days), thin grey arrows down each
 since v2.7796 a closed end at the foot of each column in the place of Missed on the heading line, *Window closed · no notice* under Sent and *Lien day passed · not filed* under Served, dashed with grey chips and no arrow into it, drawn only while a job is in it (`lienClosedEnd.ts`, the owner's pick of 2026-11-18), an affidavit not filed whose day has passed standing there whatever its status and a notice leaving once its closed months are recorded;
 since v2.7801 a chip at a closed end, and *Answer N ›* on the bin's title line, open **the closed window** (`LienClosedWindow`), which says what closed, the day and where the day is counted from, then asks: for a passed lien day *The date is wrong* (the last day of work, with *Record the filing ›*), *Keep collecting* (off the lien path with the reason, into Collections) or *Let it go* (the Uncollectible mark, asked twice), and for a closed month with the lien day ahead *Send a late notice*, *The date is wrong* or *Record it closed*;
 since v2.7817 a job whose lien day passed with nothing filed stays in *Lien day passed · not filed* past its seventh day, read from `list_lien_closed_days` beside the windows reader (`withLienClosedDays`), until a filing is recorded, its last day of work is set right, it is taken off the lien path, it is marked Uncollectible or it is paid;
+since v2.8341 a tile on a phone draws the day's label as two lines, the day and then its parts, and ends its small line with its door, *N to sign · Show them ›*, where a computer keeps one label and the door at the top right (`lienBoardPhoneTile.ts`);
 a bin's head narrows the list under it;
 the page's title opens To do at the Board from any view, and since v2.7465 on a computer the title is the first tab, *⏱ Lien desk · N to do* (a phone keeps the title on its own row and its first tab reads *To do · N*);
 since v2.7333 every chip is a press to the desk's door for its stage (the property record at the missing line, the paper on By paper as a history entry of its own so Back returns to the Board, the run on that envelope, the affidavit, the Lien window) and the same press sits on every job number on To do, By date and By paper's notice and affidavit lists (a retainage row, By job's number and a pane's heading still open the job);
@@ -6638,7 +6640,8 @@ Since v2.7372 a computer's row is two lines: the job, what it owes and its press
 a held affidavit's press names the missing fact and opens the property record on it, and *On track* carries **Print N for notarization ›**, a door to the Ready to file list named as the button it opens (v2.7398).
 Since v2.7381 a chip pointed at or focused on a computer shows a card before any press: the job's name, address, customer and GC, its paper and bin, the day, what is unpaid, the job's other paper and where the press goes (`lienBoardChipCard.ts`);
 since v2.7419 a chip that will not make its day lists the stages it still has to pass by name.
-On a phone the tiles always show and the bins stand behind **Show the bins · N**.
+On a phone since v2.8346 (punch list #428) a switch of two stands at the Board's top, **By day** (the tiles) and **The flow** (the two columns side by side as counts, a stage a press, no chip, `lienBoardFlow.ts`, `LienBoardPhoneFlow.tsx`), where the bins stood behind **Show the bins · N** until then.
+A pressed stage narrows the list and the Board draws one pinned line, **‹ The flow**, where the stage stands, its column's cells and the bin's own press, kept in the history entry so the phone's Back returns to the flow.
 Kernel [`lienBoard.ts`](../src/lib/jobs/lienBoard.ts), component `LienBoard.tsx`;
 guide *read the Board on the Lien desk*.
 
@@ -6791,6 +6794,14 @@ it lists the same customer's other bills with no send on record to tick, files o
 and it reads the record back above the button before the press, *The record will read:* (`byHandReadBack`, v2.7351), since a record cannot be changed once saved.
 **Did not arrive** (v2.7053) is a send the mail service bounced, or a text that failed, on a bill not paid with no later send that arrived.
 **No send on record** (v2.7052) is a bill the app made that has no email, text or print on any record: it sits in a strip above the days, never on a day.
+**Paid, Part paid, Not paid** (v2.8333, punch list #422) is where a bill stands, drawn as a stamp under its amount on every send of it, from the bill's own payment rows (`billPaidState`, `src/lib/billing/billsPaid.ts`).
+A paid bill's stamp carries the newest payment's day and, under it, the way in the job window's words (*Card · Stripe*, *Check 4417 · bank deposit*) and the days the money took from the bill's first send.
+**Still out** is an open bill's amount or a part-paid bill's remainder;
+a day's band counts it over the bills that first went that day (*1 of 3 paid · $6,820.00 still out*), and the **Not paid** tile over every bill on the list.
+**By day paid** (v2.8343) is the page's second view, behind the switch at its top and at `/bills-sent?view=paid`: a month of days, each with what came in, and behind a picked day its total and its payments (`src/lib/billing/billsPaidDays.ts`).
+**A day's figure** is each payment at what it took off its bill, on the payment's own day: a Stripe payment the day the customer paid, a matched deposit the day it posted at the bank, a typed payment the day the person named;
+Stripe's fee is not taken off, a refund made in Stripe is not seen, a credit in kind is listed and never added, and a test-mode bill's payment is left out.
+The chips narrow the month to one way of paying, **Stripe** first, and **one deposit** that paid several bills is drawn once with its bills under it.
 Readers are the sent copies' own: dev, master, assistant, controller.
 
 ### Document builder (Documents → Document builder)
@@ -7113,11 +7124,11 @@ since v2.6096, punch list #178, `statement-round` → GC Review over the card an
 **Snooze / Dismiss** exist only on alert items and are per device (`localStorage`, `bulkDeleteAlertDismiss.ts` / `claimDevAlertDismiss.ts`).
 Help: `needs-you-card.md`.
 Architecture: `DASHBOARD_SECTIONS_ARCHITECTURE.md` → Needs You card.
-Since v2.7334 the Dashboard's card opens with the Lien desk's Board as four dots on one line for the office, a press that opens the desk at the Board (`lienBoardStrip` from `useNeedsYouInputs`;
+Since v2.8339 (punch list #423) the Lien desk's counts are a card of their own beside the Dashboard's card, three values and a red line while a paper is late or at risk, a press that opens the desk at the Board, where from v2.7334 they were four dots on one line inside it (`lienDeskCard` from `useNeedsYouInputs`;
 *The Board* above).
 On a phone under the **New phone layout** tick (v2.8289) the Dashboard draws the list as its one-line door wherever the page's mode has an Inbox tab ([`needsYouPlace.ts`](../src/lib/phoneLayout/needsYouPlace.ts), `needsYouDashboardDoor`).
 The door is the office phone's door of v2.3883 (`data-needs-you-door`), handed the tab it opens: Dispatch Mode's Inbox or Job Mode's Inbox.
-A door that is new under the tick stands in for the list alone, so the Lien desk's strip ([`NeedsYouLienBoardStrip`](../src/components/dashboard/NeedsYouLienBoardStrip.tsx), drawn on its own as a card, `needsYouLienStripUnderDoor`) and the office's round stay on the Dashboard under it (`cardsStay`), where the office phone's door takes them to the Inbox tab as before.
+A door that is new under the tick stands in for the list alone, so the Lien desk's card ([`DashboardLienDeskCard`](../src/components/dashboard/DashboardLienDeskCard.tsx), `lienDeskCardShown`) and the office's round stay on the Dashboard under it (`cardsStay`), where the office phone's door takes them to the Inbox tab as before.
 Job Mode's own Dashboard, which drew neither the card nor the door, draws the door while a line is the viewer's own (`needsYouJobModeDoor`).
 With no mode on, or in Task Mode, there is no Inbox tab to lead to, so the card stays on the Dashboard.
 Under the tick the card opens on **Walk the list** for every role with no saved choice (`needsYouInitialMode`), with **Cards** one chip away, and a saved choice still wins.
