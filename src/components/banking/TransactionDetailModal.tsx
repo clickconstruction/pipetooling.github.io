@@ -43,6 +43,7 @@ import {
   type AccountingRuleFormState,
   type AccountingRuleSaveDraft,
 } from './AccountingRuleFormModal'
+import { MoneyText } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type JobSearchRow = { id: string; hcp_number: string; click_number: string; job_name: string; job_address: string; service_type_id: string | null; service_type_name?: string | null }
@@ -546,7 +547,7 @@ export function TransactionDetailModal({
                       <button type="button" onClick={() => removeLine(ln.jobId)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #fecdd3', background: '#fff1f2', color: '#e11d48', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>Remove</button>
                     </div>
                     {ln.mode === 'percent' && displayTotal > 0 && dd !== null && ln.valueStr.trim() !== '' ? (
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>≈ {formatCurrency(dd)} of {formatCurrency(displayTotal)}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>≈ <MoneyText text={formatCurrency(dd)} /> of <MoneyText text={formatCurrency(displayTotal)} /></div>
                     ) : null}
                     <input type="text" value={ln.note} onChange={(e) => updateLine(ln.jobId, { note: e.target.value })} placeholder="Note (optional)" style={{ width: '100%', marginTop: '0.4rem', padding: '6px 10px', fontSize: '0.8125rem', boxSizing: 'border-box', border: '1px solid var(--border)', borderRadius: 8 }} />
                   </div>
@@ -554,7 +555,7 @@ export function TransactionDetailModal({
               })}
               {lines.length > 0 ? (
                 <div style={{ fontSize: '0.8125rem', marginBottom: '0.5rem', color: displayTotal <= 0 ? 'var(--text-muted)' : canSaveSplits ? 'var(--text-green-600)' : 'var(--text-amber-700)' }}>
-                  {displayTotal <= 0 ? 'Zero charge — cannot split.' : <>Allocated: {allocationSum.ok ? formatCurrency(allocationSum.sum) : '—'} · Remainder: {allocationSum.ok ? formatCurrency(remainder) : '—'}</>}
+                  {displayTotal <= 0 ? 'Zero charge — cannot split.' : <>Allocated: {allocationSum.ok ? <MoneyText text={formatCurrency(allocationSum.sum)} /> : '—'} · Remainder: {allocationSum.ok ? <MoneyText text={formatCurrency(remainder)} /> : '—'}</>}
                 </div>
               ) : null}
             </>

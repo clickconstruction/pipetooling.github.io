@@ -6,6 +6,7 @@ import type { DragSortLabelBucketVisualState } from './dragSortLabelBucketCard'
 import { DragSortLabelBucketCard } from './dragSortLabelBucketCard'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { MoneyText } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -80,7 +81,7 @@ function FocusTransactionCard({ row }: { row: MercuryTxRow }) {
           gap: '0.75rem',
         }}
       >
-        <div style={{ fontWeight: 800, fontSize: '1.35rem', color: 'var(--text-slate-900)' }}>{formatUsd(Number(row.amount))}</div>
+        <div style={{ fontWeight: 800, fontSize: '1.35rem', color: 'var(--text-slate-900)' }}><MoneyText text={formatUsd(Number(row.amount))} /></div>
         <div
           style={{
             display: 'flex',

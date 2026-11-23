@@ -1,5 +1,6 @@
 import { forwardRef } from 'react'
 import { INTERNAL_TRANSFERS_DEFAULT_KEY } from '../../lib/dragSortDefaultLabels'
+import { MoneyText } from '../Money'
 
 export function formatUsdDragSortBucket(n: number): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -73,7 +74,7 @@ function DragSortBucketStatsFooter({
       }}
     >
       <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', minWidth: 0 }}>
-        {count} tx · {formatUsdDragSortBucket(amountSum)}
+        {count} tx · <MoneyText text={formatUsdDragSortBucket(amountSum)} />
       </span>
       {scheduleTrim ? (
         <span
@@ -111,7 +112,7 @@ function DragSortBucketStatsInlineCluster({
       }}
     >
       <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', minWidth: 0 }}>
-        {count} tx · {formatUsdDragSortBucket(amountSum)}
+        {count} tx · <MoneyText text={formatUsdDragSortBucket(amountSum)} />
       </span>
       {scheduleTrim ? (
         <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-slate-600)' }}>
