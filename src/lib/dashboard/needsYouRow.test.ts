@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NEEDS_YOU_PRESS_COLUMN, NEEDS_YOU_PRESS_MIN_HEIGHT, needsYouFigureInTitle, needsYouPhoneFigure } from './needsYouRow'
+import { NEEDS_YOU_PRESS_MIN_HEIGHT, NEEDS_YOU_PRESS_TOUCH_PAD_PX, needsYouFigureInTitle, needsYouPhoneFigure } from './needsYouRow'
 
 describe('needsYouFigureInTitle', () => {
   it('finds a count the title leads with or carries inside', () => {
@@ -37,10 +37,10 @@ describe('needsYouPhoneFigure', () => {
   })
 })
 
-describe('the press column', () => {
-  it('is one width for every row, bounded both ways, and a thumb tall', () => {
-    // A clamp with fixed ends: no label can widen it, and a narrow phone can only take it down to the floor.
-    expect(NEEDS_YOU_PRESS_COLUMN).toMatch(/^clamp\(5\.25rem, \d+vw, 6\.5rem\)$/)
+describe('the press on a phone', () => {
+  it('has a thumb-tall touch area, and gives back what that adds so the row is no taller', () => {
     expect(NEEDS_YOU_PRESS_MIN_HEIGHT).toBeGreaterThanOrEqual(44)
+    // A pill of about 32 px inside a 44 px touch area leaves 6 px above and under it.
+    expect(NEEDS_YOU_PRESS_TOUCH_PAD_PX * 2).toBeLessThanOrEqual(NEEDS_YOU_PRESS_MIN_HEIGHT - 30)
   })
 })

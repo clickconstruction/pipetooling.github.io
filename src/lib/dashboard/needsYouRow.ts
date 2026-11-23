@@ -1,19 +1,21 @@
 import type { NeedsYouItem } from '../dashboardNeedsYou'
 
 /**
- * A Needs you row on a phone (v2.8329, the owner's ask of 2026-11-23): two columns, the words on
- * the left and the press on the right, so the eye reads what to do and then lands on what to
- * press. Every source draws this one row. Before it the row wrapped: the press fell under the
- * words on the left unless its label was short enough to fit beside the count.
+ * A Needs you row on a phone (v2.8329, the owner's ask of 2026-11-23). Every source draws one row: the words
+ * across the row's full width, and a small press at the bottom right, so the eye reads what to do and ends on
+ * what to press. Before it the row wrapped: the press fell under the words on the left unless its label was
+ * short enough to fit beside the count.
  *
- * The press column is one width down the list, so the presses line up. It narrows a little on a
- * small phone and never widens for a long label: a label that does not fit wraps inside its press,
- * which grows taller.
+ * A first cut put the press in a right-hand column of one width. The owner saw it drawn and did not want the
+ * words narrowed, since some lines run to several sentences: *keep it like a smaller button in the bottom
+ * right*. So the press is as wide as its own words and as small as it was, and its touch area is a thumb tall.
  */
-export const NEEDS_YOU_PRESS_COLUMN = 'clamp(5.25rem, 27vw, 6.5rem)'
 
-/** A phone press is at least a thumb tall. */
+/** The press's touch area on a phone: a thumb tall, though the pill drawn inside it is smaller. */
 export const NEEDS_YOU_PRESS_MIN_HEIGHT = 44
+
+/** What the touch area adds above and under the pill, taken back by the button's margins so the row is no taller. */
+export const NEEDS_YOU_PRESS_TOUCH_PAD_PX = 6
 
 const escapeForRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -28,7 +30,7 @@ export function needsYouFigureInTitle(title: string, figure: string): boolean {
 }
 
 /**
- * The figure a phone row draws above its press, or null when the title already says it, so one
+ * The figure a phone row draws beside its press, or null when the title already says it, so one
  * row never shows the same number twice.
  */
 export function needsYouPhoneFigure(item: Pick<NeedsYouItem, 'title' | 'figure'>): string | null {
