@@ -28,6 +28,7 @@ import { lienArCustomerChip, lienArLensCounts, lienArLensMatch, type LienArChip,
 import { LienArChipLine, LienArCustomerChipTag } from './LienArChipTag'
 import { EmptyState } from './EmptyState'
 import { arCustomersEmptyWords } from '../lib/dashboard/dashboardEmptyWords'
+import { Money } from './Money'
 
 /** Bill-tone colors — same set as the Pipeline's Money waiting bars (saturated status colors stay literal). */
 const BILL_TONE: Record<OpenBillTone, { bar: string; bg: string; fg: string }> = {
@@ -237,7 +238,7 @@ export default function DashboardArCustomersView({
             {/* A customer on a Pay calendar is read against the bill's due day, not the wait (punch list #323). */}
             {b.calendar ? calendarBillWords(b.calendar) : shortDate(b.item.dateYmd)}
           </span>
-          <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>${formatCurrency(b.item.amount)}</span>
+          <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}><Money amount={b.item.amount} /></span>
         </div>
         {b.item.pctComplete != null ? (
           <div style={{ fontSize: '0.6875rem', color: 'var(--text-faint)', margin: '0.1rem 0 0 2.2rem' }}>{b.item.pctComplete}% done</div>
@@ -448,7 +449,7 @@ export default function DashboardArCustomersView({
                   {onPaceRows.length} customer{onPaceRows.length === 1 ? '' : 's'} on pace
                 </span>
                 <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
-                  ${formatCurrency(onPaceRows.reduce((s, r) => s + r.open, 0))}
+                  <Money amount={onPaceRows.reduce((s, r) => s + r.open, 0)} />
                 </span>
               </div>
               {onPaceOpen ? onPaceRows.map((row, i) => customerRow(row, mainRows.length + i)) : null}
@@ -472,7 +473,7 @@ export default function DashboardArCustomersView({
                 <span aria-hidden style={{ fontSize: '0.6rem', width: '0.7em', transform: collectionsOpen ? 'rotate(90deg)' : 'none' }}>▶</span>
                 <span style={{ fontWeight: 600 }}>Collections (difficult to collect)</span>
                 <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
-                  {collectionsSection.count} bill{collectionsSection.count === 1 ? '' : 's'} · ${formatCurrency(collectionsSection.total)}
+                  {collectionsSection.count} bill{collectionsSection.count === 1 ? '' : 's'} · <Money amount={collectionsSection.total} />
                 </span>
               </div>
               {collectionsOpen ? (

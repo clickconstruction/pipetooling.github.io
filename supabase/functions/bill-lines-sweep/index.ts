@@ -8,7 +8,7 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 import { DRIVE, googleAccessToken } from '../_shared/driveUpload.ts'
 import { driveFileBytes } from '../_shared/driveJobFolder.ts'
 import { textFromBytes } from '../_shared/fileText.ts'
-import { newPassSpend, type PassSpend, type PdfReadLimits } from '../_shared/fileIndexKernel.ts'
+import { newPassSpend, pdfPagesText, type PassSpend, type PdfDoc, type PdfReadLimits } from '../_shared/fileIndexKernel.ts'
 import { BILL_BETAS, BILL_FILE_MAX_BYTES, BILL_MODEL, billCostCents, billMedia, type BillMedia } from '../_shared/billRead.ts'
 import { CHECK_RULES, type PaperKind } from '../_shared/paperChecks.ts'
 import {
@@ -18,6 +18,8 @@ import {
   PAGES_PER_READ,
   PAPERS_SCHEMA,
   PAPERS_SYSTEM,
+  PAGE_TEXT_FILES,
+  PAGE_TEXT_PAPERS,
   RECHECK_FILES,
   RECHECK_PAPERS,
   SWEEP_CONCURRENCY,
@@ -36,6 +38,8 @@ import {
   papersUserMessage,
   probePick,
   probeWords,
+  pageTextWords,
+  paperPageText,
   recheckStored,
   recheckWords,
   seenKey,
@@ -148,6 +152,32 @@ async function driveMeta(google: string, fileId: string): Promise<{ meta: DriveM
   if (res.ok) return { meta: (await res.json()) as DriveMeta }
   const reason = await res.text().catch(() => '')
   return { status: res.status === 403 && /RateLimitExceeded|rateLimitExceeded|quotaExceeded/.test(reason) ? 429 : res.status }
+}
+
+/**
+ * A PDF's text a page at a time (punch list #431), each page shaped as the whole text is (`pdfPagesText`), so a paper
+ * keeps the words of its own pages when one file holds several bills. Null when the file will not open: the paper is
+ * then written with no words, and the fill below tries the file again.
+ */
+async function pageTextsOf(bytes: Uint8Array): Promise<string[] | null> {
+  try {
+    const { getDocumentProxy } = await import('npm:unpdf@2.1.0')
+    const pdf = await getDocumentProxy(bytes)
+    try {
+      const doc = pdf as unknown as PdfDoc
+      const out: string[] = []
+      for (let n = 1; n <= Math.min(doc.numPages, SWEEP_MAX_PAGES); n++) {
+        const one = await pdfPagesText({ numPages: 1, getPage: () => doc.getPage(n) }, { maxPages: 1, budgetMs: TEXT_LIMITS.budgetMs }, () => performance.now())
+        out.push(one.text)
+      }
+      return out
+    } finally {
+      void Promise.resolve(pdf.loadingTask?.destroy?.()).catch(() => {})
+    }
+  } catch (e) {
+    console.warn('[bill-lines-sweep] page text', e instanceof Error ? e.message : String(e))
+    return null
+  }
 }
 
 /** A PDF's page ranges as PDFs of their own. Null when pdf-lib cannot open the file. */
@@ -335,7 +365,7 @@ async function readFile(s: RunState, job: FileJob, holds: ReadonlyMap<string, Sw
       if ('text' in layer) {
         pages = layer.pages
         const whole = layer.pagesRead == null || layer.pages == null || layer.pagesRead >= layer.pages
-        text = whole ? { text: layer.text, layer: true } : { text: null, layer: null }
+        text = whole ? { text: layer.text, layer: true, pages: await pageTextsOf(bytes) } : { text: null, layer: null }
       } else if (layer.why === 'scan') {
         pages = 'pages' in layer ? (layer.pages ?? null) : null
         text = { text: null, layer: false }
@@ -407,6 +437,13 @@ async function readFile(s: RunState, job: FileJob, holds: ReadonlyMap<string, Sw
           await s.admin.from('supply_papers').delete().eq('id', paperId)
           return 'failed'
         }
+      }
+      // The paper's own words, for the all-bills search (punch list #431). A write of its own, so a paper is never
+      // lost over its words: before migration 20261123193100 is pushed the column is not there, and the paper stands.
+      const pageText = paperPageText(text.pages, paper.pageFrom, paper.pageTo)
+      if (pageText != null) {
+        const { error: textError } = await s.admin.from('supply_papers').update({ page_text: pageText }).eq('id', paperId)
+        if (textError) console.warn('[bill-lines-sweep] page text', textError.message)
       }
       return row.check.state === 'adds_up' ? 'adds_up' : 'kept'
     }
@@ -548,6 +585,55 @@ async function recheckOff(admin: SupabaseClient, google: () => Promise<string>, 
   return out
 }
 
+/**
+ * The words of the papers read before the words were kept (punch list #431): a few files a run, no model read. Each
+ * file is opened once and every paper read from it takes the words of its own pages. A file with no words to give (a
+ * file Drive no longer hands over, one too big, a scan after all) leaves its papers an empty string, so the run after
+ * does not open it again. A run that cannot reach Drive, or has no time left, leaves the papers for the next.
+ */
+async function fillPageText(admin: SupabaseClient, google: () => Promise<string>, startedMs: number): Promise<{ papers: number; files: number }> {
+  const out = { papers: 0, files: 0 }
+  const { data, error } = await admin
+    .from('supply_papers')
+    .select('id, drive_file_id, page_from, page_to')
+    .is('page_text', null)
+    .eq('text_layer', true)
+    .not('drive_file_id', 'is', null)
+    .order('read_at', { ascending: false })
+    .limit(PAGE_TEXT_PAPERS)
+  if (error) {
+    // Before migration 20261123193100 is pushed the column is not there: nothing is due, and the sweep goes on.
+    console.warn('[bill-lines-sweep] page text', error.message)
+    return out
+  }
+  const byFile = new Map<string, { id: string; page_from: number | null; page_to: number | null }[]>()
+  for (const p of (data ?? []) as { id: string; drive_file_id: string; page_from: number | null; page_to: number | null }[]) byFile.set(p.drive_file_id, [...(byFile.get(p.drive_file_id) ?? []), p])
+  for (const fileId of byFile.keys()) {
+    if (out.files >= PAGE_TEXT_FILES || Date.now() - startedMs >= SWEEP_START_BUDGET_MS) break
+    const token = await google()
+    const got = await driveMeta(token, fileId)
+    let pages: string[] | null = null
+    if ('status' in got) {
+      // Anything but gone or not shared may pass (a rate limit, Drive down): the file waits for the next run.
+      if (got.status !== 404 && got.status !== 403) continue
+    } else if (!got.meta.trashed) {
+      const bytes = await driveFileBytes(token, fileId, BILL_FILE_MAX_BYTES)
+      if (bytes === null) continue
+      if (bytes !== 'tooBig') pages = await pageTextsOf(bytes)
+    }
+    out.files += 1
+    // Every paper read from this file, the ones past this run's list among them, so the file is opened once.
+    const { data: all, error: allError } = await admin.from('supply_papers').select('id, page_from, page_to').eq('drive_file_id', fileId).is('page_text', null)
+    if (allError) continue
+    for (const p of (all ?? []) as { id: string; page_from: number | null; page_to: number | null }[]) {
+      const { error: writeError } = await admin.from('supply_papers').update({ page_text: paperPageText(pages, p.page_from, p.page_to) ?? '' }).eq('id', p.id).is('page_text', null)
+      if (writeError) console.warn('[bill-lines-sweep] page text', writeError.message)
+      else out.papers += 1
+    }
+  }
+  return out
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
   if (req.method !== 'POST') return json({ ok: false, error: 'badRequest', words: 'Ask for the sweep with POST.' }, 405)
@@ -665,10 +751,16 @@ serve(async (req) => {
       return { checked: 0, addUp: 0 }
     })
 
+    // The papers read before their words were kept get them now, a few files a run: no model read, so no cap.
+    const pageText = await fillPageText(admin, google, started).catch((e) => {
+      console.error('[bill-lines-sweep] page text', e instanceof Error ? e.message : String(e))
+      return { papers: 0, files: 0 }
+    })
+
     const after = sweepPlan({ ...(await loadState(admin)), nowMs: Date.now() })
-    const line = [sweepWords(run, after.status), recheckWords(recheck.checked, recheck.addUp)].filter(Boolean).join(' ')
+    const line = [sweepWords(run, after.status), recheckWords(recheck.checked, recheck.addUp), pageTextWords(pageText.papers, pageText.files)].filter(Boolean).join(' ')
     console.log(`[bill-lines-sweep] ${line}`)
-    return json({ ok: true, ran: true, run, files: results, recheck, status: after.status, ms: Date.now() - started, line })
+    return json({ ok: true, ran: true, run, files: results, recheck, pageText, status: after.status, ms: Date.now() - started, line })
   } catch (e) {
     const refusal = modelRefusalWhy(e)
     console.error('[bill-lines-sweep]', refusal.status ?? '', refusal.why)

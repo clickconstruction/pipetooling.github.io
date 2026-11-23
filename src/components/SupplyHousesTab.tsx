@@ -50,6 +50,7 @@ import { AgingCellWindow } from './materials/AgingCellWindow'
 import { formatYmdLocal } from '../lib/materials/agingCellByJob'
 import { useSupplyHouseAccountsPayable, type AgingInvoiceRow } from './materials/useSupplyHouseAccountsPayable'
 import { useSupplyHouseInvoiceForm, type SupplyHouse, type SupplyHouseInvoice, type SupplyHousesTabRole } from './materials/useSupplyHouseInvoiceForm'
+import { Money } from './Money'
 
 type UserRole = SupplyHousesTabRole
 
@@ -492,7 +493,7 @@ export function SupplyHousesTab({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'start', marginBottom: '0.75rem' }}>
               <span aria-hidden="true" />
               <div style={{ fontSize: '1rem', fontWeight: 600, textAlign: 'center', alignSelf: 'center' }}>
-                Supply Houses: ${formatCurrency(supplyBookTotal(supplyHouseSummary))}
+                Supply Houses: <Money amount={supplyBookTotal(supplyHouseSummary)} />
                 {interestYearWords ? (
                   <div style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }} data-testid="supply-interest-year">
                     {interestYearWords}
@@ -567,7 +568,7 @@ export function SupplyHousesTab({
                 {!narrowAging && agingMoveData.loaded && (agingMoveStrip.count > 0 ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap', margin: '0 auto 0.9rem', maxWidth: 900, padding: '0.45rem 0.8rem', border: '1px solid var(--border)', borderLeft: '4px solid #0f766e', borderRadius: 8, background: 'var(--bg-emerald-tint)', fontSize: '0.8125rem', color: 'var(--text-emerald-800)' }}>
                     <span>
-                      <strong>${formatCurrency(agingMoveStrip.dollars)}</strong> on {agingMoveStrip.count} current invoice{agingMoveStrip.count === 1 ? '' : 's'} is not on a job account yet — a house moves a charge only while it is current.
+                      <strong><Money amount={agingMoveStrip.dollars} /></strong> on {agingMoveStrip.count} current invoice{agingMoveStrip.count === 1 ? '' : 's'} is not on a job account yet — a house moves a charge only while it is current.
                       {agingMoveStrip.askedCount > 0 ? <> <strong>{agingMoveStrip.askedCount}</strong> asked, awaiting the house.</> : null}
                       {agingMoveStrip.soonestDueYmd ? <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}> Soonest window closes {formatYmdLocal(agingMoveStrip.soonestDueYmd)}.</span> : null}
                     </span>
@@ -605,7 +606,7 @@ export function SupplyHousesTab({
                         </span>
                         {billPill(row.supply_house_id)}
                       </span>
-                      <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: row.outstanding > 0 ? 700 : 400, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>${formatCurrency(row.outstanding)}</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: row.outstanding > 0 ? 700 : 400, fontSize: '0.875rem', whiteSpace: 'nowrap' }}><Money amount={row.outstanding} /></span>
                       <span aria-hidden style={{ color: 'var(--text-muted)' }}>›</span>
                     </button>
                   )
@@ -650,7 +651,7 @@ export function SupplyHousesTab({
                           {billPill(row.supply_house_id)}
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: row.outstanding > 0 ? 600 : 400 }}>
-                          ${formatCurrency(row.outstanding)}
+                          <Money amount={row.outstanding} />
                         </td>
                         <td style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                           {row.monthlyPaymentDay ? ordinalDay(row.monthlyPaymentDay) : '—'}

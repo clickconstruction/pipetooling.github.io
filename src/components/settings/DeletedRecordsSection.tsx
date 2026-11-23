@@ -45,6 +45,7 @@ import {
   shouldShowBulkDeleteAlert,
   type BulkDeleteAlertDismissState,
 } from '../../lib/bulkDeleteAlertDismiss'
+import { MoneyText } from '../Money'
 
 /** Deep-link anchor id (dashboard "Review deletions" → this section, opened). */
 export const RECENTLY_DELETED_ANCHOR_ID = 'settings-recently-deleted'
@@ -547,7 +548,7 @@ export default function DeletedRecordsSection() {
                                 {tableRows.map((row) => (
                                   <details key={row.id} style={{ marginLeft: '0.75rem' }}>
                                     <summary style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>
-                                      {summarizeDeletedRowForTable(row.table_name, row.row_data, { userNameById })}
+                                      <MoneyText text={summarizeDeletedRowForTable(row.table_name, row.row_data, { userNameById })} />
                                     </summary>
                                     <pre
                                       style={{

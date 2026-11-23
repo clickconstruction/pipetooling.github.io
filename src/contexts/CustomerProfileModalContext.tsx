@@ -1,7 +1,9 @@
 import { createContext, Suspense, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { WindowLoadBoundary } from '../components/WindowLoadBoundary'
 import { WindowOpening } from '../components/WindowOpening'
 import { lazyWindow } from '../lib/lazyWindow'
+import { WINDOW_NAMES } from '../lib/windowLoad'
 import type { CustomerProfileView } from '../lib/customers/customerProfileView'
 import { readCustomerTimelineParam } from '../lib/customers/customerTimelineSearch'
 
@@ -54,6 +56,7 @@ export function CustomerProfileModalProvider({ children }: { children: ReactNode
     >
       {children}
       {openState != null && (
+        <WindowLoadBoundary what={WINDOW_NAMES.customer} onGaveUp={closeCustomerProfile} resetKey={openState.instanceKey}>
         <Suspense fallback={CUSTOMER_OPENING}>
         <CustomerProfileModal
           key={`${openState.customerId}-${openState.instanceKey}`}
@@ -62,6 +65,7 @@ export function CustomerProfileModalProvider({ children }: { children: ReactNode
           onClose={closeCustomerProfile}
         />
         </Suspense>
+        </WindowLoadBoundary>
       )}
     </CustomerProfileModalContext.Provider>
   )

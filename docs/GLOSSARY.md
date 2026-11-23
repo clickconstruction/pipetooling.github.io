@@ -4757,6 +4757,7 @@ What of it is on main, one line a piece:
   Since v2.8307 *Never said that* leaves the day on the thread while another promise of the customer's still names it (`dayStillPromised`), and a line on the screen says so.
   Since v2.8382 (punch list #421) the move line names a written promise's kind in words (`runningPromise`): *quote*, *start*, *delivery*, *insurance*, *W-9*, *payment*, *their answer* for a customer's answer on our bid, *on site*, *answer* and *certificate* for an architect's, and *their word* for a day given on a call.
   The same PR holds the words of a heard day's choice (`messages/heardChoice.ts`): the line it draws under, the day read in the app's zone, the presses by who they are and *just talk*.
+  Since v2.8383 `write_down_heard` writes a heard day and its kind in one press, or just talk with its day, on a customer's, a trade partner's or an architect's own text or voicemail, each only the kinds the screen offers them, and a payment mark names its Pipeline job (`message_promises.job_id`, `write_down_payment`'s `p_job_id`).
   Since v2.8278 (punch list #334) the sheet sits on the modal stack (`useModalStackEntry`) and Escape closes it when it is the top window and no save is on its way, wherever it was opened from, while *Never said that*'s own question takes the key first.
 - **R3** · v2.5411: `stepsByFlow` and `qrStepName` name a quick reply's step across a kind's flows, the residential customer's beside the GC customer's.
 - **R4 · 1** · v2.5396: the residential customer flow, eleven facts from booked to review asked and two papers, the estimate and the bill (migration `20261014050000`;
@@ -6247,7 +6248,10 @@ The cents' size is one ratio for the whole app, `MONEY_CENTS_EM`, in `em` so it 
 A loss wears a true minus before the dollar sign, a signed figure a plus or a minus, and a figure in whole dollars has no cents to draw.
 A place that cannot draw a span keeps the plain words (`moneyWords`): a tooltip, a CSV, a print, an email, a box a person types in.
 `AmountSmallCents`, `MoneyWithSmallCents` and the charges surfaces' `Money` are older names that draw through the door.
-The first screen swept is Job Summary.
+A screen is moved to the door by `node scripts/codemods/small-cents-sweep.mjs`, never by hand, and the surfaces moved so far are the files in `scripts/codemods/small-cents-swept/`, one a sweep.
+`check:small-cents` reads those files and refuses a PR that writes `$` and `formatCurrency` into a swept screen (v2.8376).
+A customer's screen, a print and anything inside a `data-theme="light"` wrapper keep the look they have, the owner's call of 2026-11-23.
+A test finds an amount drawn through the door with `moneyText` ([`moneyText.ts`](../src/test/moneyText.ts)), since the figure is two spans.
 
 ### Before we start (a stage's list)
 For each stage line the office writes a short list of what must be true before the crew goes (punch list #382;
@@ -6925,7 +6929,8 @@ The Documents page's list of every agreement on file, for the office and, since 
 A line is a kind tag (*Contract · Warranty · Their paper · Staff · Sub · Partner · Work order*, and since v2.7625 GC mode's *Owner contract · Statement of work · Trade company*), the paper's name, who it is with, the job, where it stands in that kind's own words, and the day it was signed, sent or ended.
 Every kind shares three states, *waiting*, *signed* and *ended*, which the second row of chips asks for: **Sent and signed** (where the tab opens), **Waiting on a signature** with its count, **Signed**, **Voided or ended**.
 A draft is never on it, and a signed paper filed over several jobs is one line that names the first job and counts the rest.
-An estimator's tab (punch list #403, call 8) has the chips **All**, **Outside companies** and **Work orders**, lists what their role reads, and carries no **Send a paper**, no **Contract library** and no press on a line.
+An estimator's tab (punch list #403, call 8) has the chips **All**, **Outside companies** and **Work orders**, lists what their role reads, and carries no **Send a paper**, no **Contract library** and no act on a line.
+Since v2.8388 a signed line's name opens its **Signed contract** window for an estimator, which lists **Form answers** and draws the **Signature** for an outside company's paper, and a training account's line opens nothing.
 It reads the `agreements_on_file` view, where each table's own row security decides what the reader sees ([`agreementsLedger.ts`](../src/lib/documents/agreementsLedger.ts), [`DocumentsAgreementsTab.tsx`](../src/components/documents/DocumentsAgreementsTab.tsx)).
 It adds a view and renames nothing: *Contract* under a job on the Jobs tab and in the job window, the Customer page's **Agreements** card, People → Contracts and Partnerships → Agreements keep their names.
 Since v2.7932 a staff, sub or partner paper that waits on a signature acts on its own line: **Send again** emails a new signing link through the window People → Contracts uses, and **Copy the signing link** makes a link to text and emails nobody.
@@ -6962,6 +6967,8 @@ The `agreements_on_file` view answers a party's paper as *customer_agreement*, *
 Since v2.8354 (punch list #403, the owner's first decision, `20261123083000_agreements_every_party_paper.sql`) the view answers a party's paper of any kind and any state: a W-9, a certificate or a licence carries a second tag from `facts.doc_type`, and a paper made and never sent reads the state *not_sent*, drawn as *not sent* under a **Not sent** chip that shows while one exists, with **Send** on its line beside **Take back** (`agreementCanBeSent`, [`agreementsActs.ts`](../src/lib/documents/agreementsActs.ts)).
 *Not on a list* is a party whose contact has no record yet.
 Since v2.8313 (punch list #403, step 5, `20261123020000_sub_company_ground.sql`) a roster person can work for a trade company: `person_trade_companies` holds one row a person, written through `person_trade_company_set` or `person_trade_company_enter` by the office's four roles, and a person's paper fills `signing_for` from that link when it is made and each time it is sent, while a signed paper keeps what it said (who may write it: [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md)).
+Since v2.8381 (punch list #403, step 6) People → Contracts draws a **trade company** row above the subs who work for it, tagged *Trade company* and naming its workers, a worker with a title first ([`subCompanies.ts`](../src/lib/people/subCompanies.ts)).
+**Their company** is the value in place on a sub's opened row that enters, moves or clears that link, with **Same as their name** for a sub whose business carries their own name, and a new name makes a trade company whose trade is Plumbing.
 Since v2.8162 a party's own page lists its papers: a supply house's window under **Papers**, and the Customer page's **Agreements** card under *Papers with this customer* ([`PartyPapers.tsx`](../src/components/contracts/PartyPapers.tsx), [`partyPapers.ts`](../src/lib/contracts/partyPapers.ts)).
 A paper is a party's when its contact is the party's own or that of a person there: a person on file at the customer, or a rep of the house.
 That list holds every kind and every state, so a W-9 and a paper that reads *not sent* are on it, where the Agreements tab lists agreements that were sent.

@@ -26,6 +26,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { EmptyState } from '../EmptyState'
 import { WAITING_ON_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
+import { MoneyText } from '../Money'
 
 /** Waiting-label tone per age state: muted while fresh, amber then red as the office falls behind. */
 function waitTone(state: AgeState): { color: string; fontWeight?: number } {
@@ -346,11 +347,10 @@ export function FieldQueueLineItemsSection({
                           fontVariantNumeric: 'tabular-nums',
                         }}
                       >
-                        $
-                        {fixtureLineTotalDollars(row).toLocaleString('en-US', {
+                        <MoneyText text={`$${fixtureLineTotalDollars(row).toLocaleString('en-US', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
-                        })}
+                        })}`} />
                       </td>
                     </tr>
                   )
@@ -383,11 +383,10 @@ export function FieldQueueLineItemsSection({
                 marginLeft: 'auto',
               }}
             >
-              Job total: $
-              {fixtureJobTotal.toLocaleString('en-US', {
+              Job total: <MoneyText text={`$${fixtureJobTotal.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
-              })}
+              })}`} />
             </div>
           </div>
         </>
@@ -836,7 +835,7 @@ export default function DashboardFieldCollectPaymentQueue({
                               flexShrink: 0,
                               padding: '0.35rem 0.75rem',
                               fontSize: '0.875rem',
-                              background: opts.length === 0 ? '#2563eb' : '#16a34a',
+                              background: opts.length === 0 ? '#2563eb' : '#15803d',
                               color: 'white',
                               border: 'none',
                               borderRadius: 4,

@@ -14,6 +14,7 @@ import {
   type PendingApprovalSessionRow,
   type UnassignedTimeWeekData,
 } from '../../lib/moneyfillWeekClose'
+import { MoneyText } from '../Money'
 
 /**
  * Moneyfill clock-time queues (v2.1446 — WEEKLY_MONEY_PLAN.md Phase 3,
@@ -72,7 +73,7 @@ export function MoneyfillUnassignedTimeSection({ weekMonday }: { weekMonday: str
         shown as dollars.{' '}
         {data !== 'loading' && data != null ? (
           <b style={{ color: 'var(--text-700)' }}>
-            {data.totalUnallocatedHours.toFixed(1)} h · {money(data.totalAtWage)}
+            {data.totalUnallocatedHours.toFixed(1)} h · <MoneyText text={money(data.totalAtWage)} />
           </b>
         ) : null}
       </p>
@@ -106,7 +107,7 @@ export function MoneyfillUnassignedTimeSection({ weekMonday }: { weekMonday: str
                     <td style={td(true)}>{r.dayHoursRaw.toFixed(1)}</td>
                     <td style={{ ...td(true), color: 'var(--text-muted)' }}>{r.overheadOnDay.toFixed(1)}</td>
                     <td style={{ ...td(true), fontWeight: 700, color: 'var(--text-red-700)' }}>{r.unallocatedHrs.toFixed(1)} h</td>
-                    <td style={{ ...td(true), fontWeight: 650 }}>{wage != null ? money(r.unallocatedHrs * wage) : '—'}</td>
+                    <td style={{ ...td(true), fontWeight: 650 }}>{wage != null ? <MoneyText text={money(r.unallocatedHrs * wage)} /> : '—'}</td>
                     <td style={td(true)}>
                       <button
                         type="button"
@@ -185,7 +186,7 @@ export function MoneyfillPendingApprovalSection({
         labor cost that isn’t booked to any job yet. Same week as Draft Payroll; the other queues here keep the Mon–Sun close week.{' '}
         {rows !== 'loading' && rows != null ? (
           <b style={{ color: 'var(--text-700)' }}>
-            {rows.length} session{rows.length === 1 ? '' : 's'} · {money(dollars)} at wage
+            {rows.length} session{rows.length === 1 ? '' : 's'} · <MoneyText text={money(dollars)} /> at wage
           </b>
         ) : null}
       </p>
@@ -223,7 +224,7 @@ export function MoneyfillPendingApprovalSection({
                     {fmtTime(r.clockedInAt)} – {fmtTime(r.clockedOutAt)}
                   </td>
                   <td style={td(true)}>{r.hours.toFixed(1)}</td>
-                  <td style={{ ...td(true), fontWeight: 650 }}>{r.atWage != null ? money(r.atWage) : '—'}</td>
+                  <td style={{ ...td(true), fontWeight: 650 }}>{r.atWage != null ? <MoneyText text={money(r.atWage)} /> : '—'}</td>
                   <td style={{ ...td(true), whiteSpace: 'nowrap' }}>
                     {typedStamps.get(r.id)?.hold ? (
                       <TypedHoldNote hold={typedStamps.get(r.id)?.hold ?? 'typed'} style={{ marginRight: 6, whiteSpace: 'nowrap' }} />

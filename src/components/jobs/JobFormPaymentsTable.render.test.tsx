@@ -12,6 +12,7 @@ import { renderWithProviders, useAuthModuleMock } from '../../test/renderSmokeMo
 import { JobFormPaymentsTable } from './JobFormPaymentsTable'
 import type { PaymentRow } from '../../lib/jobs/jobFormTypes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { moneyText } from '../../test/moneyText'
 
 vi.mock('../../hooks/useAuth', async () => useAuthModuleMock())
 const trace = vi.hoisted(() => ({ events: [] as unknown[], labels: {} as Record<string, string> }))
@@ -158,7 +159,7 @@ describe('JobFormPaymentsTable bill-apply chips (v2.2570) — for money still be
   it('one unapplied draft: inline chips with the amount match first, one tap applies', () => {
     const update = vi.fn()
     renderTable([paymentRow({ amount: 9440 })], { editing: jobWithTwoBills(), updatePaymentRow: update, persisted: new Set() })
-    expect(screen.getByText(/Which bill does this \$9,440\.00 pay/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/Which bill does this \$9,440\.00 pay/))).toBeTruthy()
     const chips = screen.getAllByTitle(/Apply this payment to the/)
     expect(chips[0]?.textContent).toContain('9,440.00 bill')
     expect(chips[0]?.textContent).toContain('matches this payment')
@@ -188,9 +189,9 @@ describe('JobFormPaymentsTable — cash on a Stripe bill (v2.3692)', () => {
     renderTable([paymentRow({ id: 'draft', amount: 1500 })], { editing: jobWithOneStripeBill(), persisted: new Set() })
     expect(screen.queryByTitle(/Apply this payment to the/)).toBeNull()
     expect(screen.queryByText(/Which bill does this/)).toBeNull()
-    expect(screen.getByText(/The \$1,500\.00 bill went out through Stripe/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/The \$1,500\.00 bill went out through Stripe/))).toBeTruthy()
     expect(screen.getByLabelText('Payment amount')).toBeTruthy()
-    fireEvent.click(screen.getByText('Record on the $1,500.00 bill →'))
+    fireEvent.click(screen.getByText(moneyText('Record on the $1,500.00 bill →')))
     expect(handoffs).toEqual([{ invoiceId: 'inv-s', amount: 1500, draftRowId: 'draft' }])
   })
 
@@ -212,7 +213,7 @@ describe('JobFormPaymentsTable — cash on a Stripe bill (v2.3692)', () => {
     const chips = screen.getAllByTitle(/Apply this payment to the/)
     expect(chips).toHaveLength(1)
     expect(chips[0]?.textContent).toContain('400.00 bill')
-    expect(screen.getByText('Record on the $1,500.00 bill →')).toBeTruthy()
+    expect(screen.getByText(moneyText('Record on the $1,500.00 bill →'))).toBeTruthy()
     const select = screen.getByLabelText('Apply this payment to a specific invoice') as HTMLSelectElement
     expect([...select.options].map((o) => o.value)).toEqual(['', 'inv-plain'])
   })

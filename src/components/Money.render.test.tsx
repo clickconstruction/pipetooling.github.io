@@ -27,6 +27,16 @@ describe('Money', () => {
     expect(small?.getAttribute('style')).not.toMatch(/px|rem|font:/)
   })
 
+  it('a press with an amount in its name is still found by that name', () => {
+    const { getByRole } = render(
+      <button type="button">
+        Keep <Money amount={24} />
+      </button>,
+    )
+    // Without `display: inline` said on the spans, the test DOM reads the name as "Keep $24 .00".
+    expect(getByRole('button', { name: 'Keep $24.00' })).toBeTruthy()
+  })
+
   it('never breaks between the dollars and the cents', () => {
     const { container } = render(<Money amount={12} />)
     expect((container.firstElementChild as HTMLElement).style.whiteSpace).toBe('nowrap')

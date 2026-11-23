@@ -58,7 +58,7 @@ function switchStyle(on: boolean, saving: boolean): CSSProperties {
     fontSize: '0.85rem',
     fontWeight: 600,
     cursor: saving ? 'default' : 'pointer',
-    background: on ? '#16a34a' : 'var(--surface)',
+    background: on ? '#15803d' : 'var(--surface)',
     color: on ? 'white' : 'var(--text-base)',
     opacity: saving ? 0.6 : 1,
   }

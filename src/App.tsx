@@ -120,8 +120,8 @@ import { TestReportModalProvider } from './contexts/TestReportModalContext'
 import { JobDetailOpenerBridgeProvider } from './contexts/JobDetailOpenerBridgeContext'
 import { JobFormModalProvider } from './contexts/JobFormModalContext'
 import { BidPreviewModalProvider } from './contexts/BidPreviewModalContext'
-import { ErrorBoundary } from './components/ErrorBoundary'
 import { RouteChunkBoundary } from './components/RouteChunkBoundary'
+import { RoutePageBoundary } from './components/RoutePageBoundary'
 import { PublicPage } from './components/PublicPage'
 import { lazyWindow } from './lib/lazyWindow'
 import { DailyGoalsGateProvider } from './contexts/DailyGoalsGateContext'
@@ -463,25 +463,27 @@ function AppContent() {
           <Route path="workflows/:projectId" element={<Workflow />} />
           <Route path="jobs" element={<Jobs />} />
           <Route path="accounts-receivable" element={<JobsAccountsReceivable />} />
+          {/* A route that keeps a boundary of its own around a lazy page uses RoutePageBoundary: a crash is caught there, and a
+              page whose code did not come goes to the Layout's chunk boundary, with its one reload and its Reload press. */}
           {/* Bills sent (punch list #327): every bill that left, to whom and the minute it went, read from the sent copies. */}
-          <Route path="bills-sent" element={<ErrorBoundary><BillsSent /></ErrorBoundary>} />
-          <Route path="in-kind" element={<ErrorBoundary><InKind /></ErrorBoundary>} />
+          <Route path="bills-sent" element={<RoutePageBoundary><BillsSent /></RoutePageBoundary>} />
+          <Route path="in-kind" element={<RoutePageBoundary><InKind /></RoutePageBoundary>} />
           <Route path="legal-desk" element={<LegalDeskPage />} />
           <Route path="lien-desk" element={<LienDeskPage />} />
-          <Route path="projects-board" element={<ErrorBoundary><ProjectsBoard /></ErrorBoundary>} />
+          <Route path="projects-board" element={<RoutePageBoundary><ProjectsBoard /></RoutePageBoundary>} />
           <Route path="schedule-dispatch" element={<ScheduleDispatch />} />
           <Route path="banking" element={<Banking />} />
-          <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />
-          <Route path="bridge" element={<ErrorBoundary><Bridge /></ErrorBoundary>} />
-          <Route path="gc" element={<ErrorBoundary><GcProjects /></ErrorBoundary>} />
-          <Route path="messages" element={<ErrorBoundary><Messages /></ErrorBoundary>} />
+          <Route path="quickfill" element={<RoutePageBoundary><Quickfill /></RoutePageBoundary>} />
+          <Route path="bridge" element={<RoutePageBoundary><Bridge /></RoutePageBoundary>} />
+          <Route path="gc" element={<RoutePageBoundary><GcProjects /></RoutePageBoundary>} />
+          <Route path="messages" element={<RoutePageBoundary><Messages /></RoutePageBoundary>} />
           {/* A training course, read at the person's own pace (punch list #111): the lessons ride in this lazy chunk. */}
-          <Route path="training/:slug" element={<ErrorBoundary><Training /></ErrorBoundary>} />
-          <Route path="moneyfill" element={<ErrorBoundary><Moneyfill /></ErrorBoundary>} />
-          <Route path="partnerships" element={<ErrorBoundary><Partnerships /></ErrorBoundary>} />
-          <Route path="my-statement" element={<ErrorBoundary><PartnerStatement /></ErrorBoundary>} />
-          <Route path="logbook/:userId" element={<ErrorBoundary><Logbook /></ErrorBoundary>} />
-          <Route path="my-logbook" element={<ErrorBoundary><Logbook own /></ErrorBoundary>} />
+          <Route path="training/:slug" element={<RoutePageBoundary><Training /></RoutePageBoundary>} />
+          <Route path="moneyfill" element={<RoutePageBoundary><Moneyfill /></RoutePageBoundary>} />
+          <Route path="partnerships" element={<RoutePageBoundary><Partnerships /></RoutePageBoundary>} />
+          <Route path="my-statement" element={<RoutePageBoundary><PartnerStatement /></RoutePageBoundary>} />
+          <Route path="logbook/:userId" element={<RoutePageBoundary><Logbook /></RoutePageBoundary>} />
+          <Route path="my-logbook" element={<RoutePageBoundary><Logbook own /></RoutePageBoundary>} />
           <Route path="people" element={<People />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="map" element={<Map />} />
@@ -496,8 +498,8 @@ function AppContent() {
           <Route path="checklist" element={<Checklist />} />
           <Route path="roadmap" element={<Roadmap />} />
           <Route path="punch-list" element={<PunchList />} />
-          <Route path="first-looks" element={<ErrorBoundary><FirstLooks /></ErrorBoundary>} />
-          <Route path="first-look/:id" element={<ErrorBoundary><FirstLookRead /></ErrorBoundary>} />
+          <Route path="first-looks" element={<RoutePageBoundary><FirstLooks /></RoutePageBoundary>} />
+          <Route path="first-look/:id" element={<RoutePageBoundary><FirstLookRead /></RoutePageBoundary>} />
           <Route path="tally" element={<JobTally />} />
           <Route path="m/:code" element={<MachineCode />} />
           <Route path="settings" element={<Settings />} />

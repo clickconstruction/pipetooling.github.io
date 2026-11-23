@@ -15,6 +15,7 @@ import {
   type EstimateLineItemNormalized,
 } from '../../lib/estimateLineItemNormalize'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import { MoneyText } from '../Money'
 
 type LineItem = EstimateLineItemNormalized
 
@@ -115,7 +116,7 @@ export default function EstimateDraftLineItems({
             <span style={{ display: 'block', marginTop: '0.2rem', color: 'var(--text-muted)' }}>
               {totalCents === 0
                 ? 'The draft was created at $0 — add the cost lines below if the price changes.'
-                : `Carried below as one net-change line (${formatSignedCentsUsd(totalCents)}). Split it into itemized lines if the customer wants the breakdown.`}
+                : <MoneyText text={`Carried below as one net-change line (${formatSignedCentsUsd(totalCents)}). Split it into itemized lines if the customer wants the breakdown.`} />}
             </span>
           </div>
         )
@@ -407,7 +408,7 @@ export default function EstimateDraftLineItems({
         )}
       </ul>
       <p style={{ fontWeight: 600, textAlign: 'right' }}>
-        {isCO ? <>Net change to contract: {formatSignedCentsUsd(totalCents)}</> : <>Total: {formatMoney(totalCents)}</>}
+        {isCO ? <>Net change to contract: <MoneyText text={formatSignedCentsUsd(totalCents)} /></> : <>Total: <MoneyText text={formatMoney(totalCents)} /></>}
       </p>
     </>
   )

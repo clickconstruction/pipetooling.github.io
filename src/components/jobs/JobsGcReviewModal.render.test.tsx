@@ -17,6 +17,7 @@ import type { RoundMarkRow } from '../../lib/jobs/gcStatementRounds'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { JobsGcReviewModal } from './JobsGcReviewModal'
+import { moneyText } from '../../test/moneyText'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -288,7 +289,7 @@ describe('JobsGcReviewModal', () => {
     const kestrin = within(sheet.getAllByTestId('gc-call-sheet-row').find((el) => within(el).queryByText('Kestrin Contracting'))!)
     fireEvent.click(kestrin.getByRole('button', { name: 'Show Kestrin Contracting’s bills' }))
     expect(kestrin.getAllByTestId('gc-bill-line')).toHaveLength(2)
-    expect(kestrin.getByText(/not in the \$26,000\.00 above: \$1,500\.00/)).toBeTruthy()
+    expect(kestrin.getByText(moneyText(/not in the \$26,000\.00 above: \$1,500\.00/))).toBeTruthy()
   })
 
   it('By Development lists each development once, with its bills inside and no track', async () => {

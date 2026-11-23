@@ -13,6 +13,7 @@ import { loadMercuryCash } from '../lib/bridge/mercuryCash'
 import { supabase } from '../lib/supabase'
 import { EmptyState } from './EmptyState'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { MoneyText } from './Money'
 
 /**
  * Account nicknames (dev only). Redrawn for punch list #155: a dev used to name a
@@ -414,7 +415,7 @@ function AccountCard({
           <>
             <b style={{ fontWeight: 600 }}>{listed.name}</b>
             <span style={{ color: 'var(--text-muted)' }}>
-              {kind ? `${kind} · ` : ''}balance {fmtUsd(listed.currentBalance)}
+              {kind ? `${kind} · ` : ''}balance <MoneyText text={fmtUsd(listed.currentBalance)} />
             </span>
             <button
               type="button"
@@ -458,10 +459,10 @@ function AccountCard({
                   {fmtDate(facts.firstIso)} to {fmtDate(facts.lastIso)}
                 </span>
                 <span>
-                  in <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{fmtUsd(facts.inUsd)}</b>
+                  in <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}><MoneyText text={fmtUsd(facts.inUsd)} /></b>
                 </span>
                 <span>
-                  out <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{fmtUsd(facts.outUsd)}</b>
+                  out <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}><MoneyText text={fmtUsd(facts.outUsd)} /></b>
                 </span>
                 {facts.frequent.length > 0 ? (
                   <span>often {facts.frequent.map((c) => `${c.name} ×${c.count}`).join(', ')}</span>
@@ -482,7 +483,7 @@ function AccountCard({
                       color: l.amount > 0 ? 'var(--text-green-700)' : 'var(--text-strong)',
                     }}
                   >
-                    {fmtSigned(l.amount)}
+                    <MoneyText text={fmtSigned(l.amount)} />
                   </span>
                 </li>
               ))}

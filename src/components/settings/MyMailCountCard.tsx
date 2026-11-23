@@ -83,7 +83,7 @@ export function MyMailCountCard({ role, userId: userIdProp, io: ioProp, nowIso }
           aria-label={MY_MAIL_TITLE}
           disabled={busy}
           onClick={() => void save(() => io.setOn(row.id, !row.is_on), { is_on: !row.is_on })}
-          style={{ marginLeft: 'auto', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.15rem 0.7rem', fontSize: '0.85rem', fontWeight: 600, cursor: busy ? 'default' : 'pointer', background: row.is_on ? '#16a34a' : 'var(--surface)', color: row.is_on ? 'white' : 'var(--text-base)' }}
+          style={{ marginLeft: 'auto', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.15rem 0.7rem', fontSize: '0.85rem', fontWeight: 600, cursor: busy ? 'default' : 'pointer', background: row.is_on ? '#15803d' : 'var(--surface)', color: row.is_on ? 'white' : 'var(--text-base)' }}
         >
           {row.is_on ? 'On' : 'Off'}
         </button>

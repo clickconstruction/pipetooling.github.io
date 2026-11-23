@@ -9,6 +9,7 @@ import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { useAuth } from '../../hooks/useAuth'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { MoneyText } from '../Money'
 
 /**
  * Moneyfill queue: card purchases posted in the close week with no job
@@ -54,7 +55,7 @@ export function MoneyfillCardChargesSection({ weekMonday }: { weekMonday: string
         office. Split each one in Banking → User Sort (Link…).{' '}
         {rows !== 'loading' && rows != null ? (
           <b style={{ color: 'var(--text-700)' }}>
-            ${dollars.toLocaleString('en-US', { minimumFractionDigits: 2 })} · {rows.length} charge{rows.length === 1 ? '' : 's'}
+            <MoneyText text={`$${dollars.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} /> · {rows.length} charge{rows.length === 1 ? '' : 's'}
           </b>
         ) : null}
       </p>
@@ -92,7 +93,7 @@ export function MoneyfillCardChargesSection({ weekMonday }: { weekMonday: string
                   <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>{formatMercuryDebitCardIdCompact(r.debitCardId)}</td>
                   <td style={{ padding: '0.4rem 0.5rem' }}>{r.counterparty ?? '—'}</td>
                   <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontWeight: 650, fontVariantNumeric: 'tabular-nums' }}>
-                    ${Math.abs(r.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    <MoneyText text={`$${Math.abs(r.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
                   </td>
                   <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>
                     <button

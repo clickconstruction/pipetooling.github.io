@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { FieldQueueLineItemsSection } from './DashboardFieldCollectPaymentQueue'
+import { moneyText } from '../../test/moneyText'
 
 const edge = vi.hoisted(() => ({ invoke: vi.fn() }))
 
@@ -51,12 +52,12 @@ describe('FieldQueueLineItemsSection', () => {
 
     expect(await screen.findByText(OFFLINE_READ_MESSAGE)).toBeTruthy()
     expect(screen.queryByText(/Failed to send a request to the Edge Function/)).toBeNull()
-    expect(screen.getByText('Saved total: $1,250.00.')).toBeTruthy()
+    expect(screen.getByText(moneyText('Saved total: $1,250.00.'))).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: /retry/i }))
     expect(await screen.findByText('This invoice is not on Stripe yet.')).toBeTruthy()
     await waitFor(() => expect(edge.invoke).toHaveBeenCalledTimes(2))
     expect(screen.queryByRole('button', { name: /retry/i })).toBeNull()
-    expect(screen.getByText('Saved total: $1,250.00.')).toBeTruthy()
+    expect(screen.getByText(moneyText('Saved total: $1,250.00.'))).toBeTruthy()
   })
 })

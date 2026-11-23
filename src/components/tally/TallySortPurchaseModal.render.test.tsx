@@ -20,6 +20,7 @@ vi.mock('../../lib/tally/fetchSortModeDayJobs', () => ({
 import { TallySortPurchaseModal } from './TallySortPurchaseModal'
 import type { TallyLinkedMercuryRow } from '../../lib/mercuryTxRowFromTally'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 const DAY_JOBS = [
   { id: 'j1', main: 'JP942 · Spigots replaced', address: '686 Bellamy St, Seguin' },
@@ -67,10 +68,10 @@ describe('TallySortPurchaseModal', () => {
     renderWithProviders(<TallySortPurchaseModal {...makeProps()} />)
     await settle()
     expect(screen.getByText('1 of 1')).toBeTruthy()
-    expect(screen.getByText('$90.42')).toBeTruthy()
+    expect(screen.getByText(moneyText('$90.42'))).toBeTruthy()
     await waitFor(() => expect(screen.getByText('JP942 · Spigots replaced')).toBeTruthy())
     screen.getByText('JP942 · Spigots replaced').click()
-    await waitFor(() => expect(screen.getByText('Assign $90.42 ✓')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(moneyText('Assign $90.42 ✓'))).toBeTruthy())
   })
 
   it('a second tap turns the screen into an even, editable split', async () => {
@@ -78,9 +79,9 @@ describe('TallySortPurchaseModal', () => {
     renderWithProviders(<TallySortPurchaseModal {...makeProps()} />)
     await waitFor(() => expect(screen.getByText('JP942 · Spigots replaced')).toBeTruthy())
     screen.getByText('JP942 · Spigots replaced').click()
-    await waitFor(() => expect(screen.getByText('Assign $90.42 ✓')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(moneyText('Assign $90.42 ✓'))).toBeTruthy())
     screen.getByText('JP926 · Debra Blakely PRV').click()
-    await waitFor(() => expect(screen.getByText('Save split · $90.42 ✓')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(moneyText('Save split · $90.42 ✓'))).toBeTruthy())
     const inputs = screen.getAllByLabelText(/Amount for/) as HTMLInputElement[]
     expect(inputs).toHaveLength(2)
     expect(inputs[0]!.value).toBe('45.21')

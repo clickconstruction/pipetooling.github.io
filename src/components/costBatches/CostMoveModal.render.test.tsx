@@ -11,6 +11,7 @@ import { CostMoveModal } from './CostMoveModal'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { CostMoveBankRow, CostMoveClockRow, CostMoveSupplyRow } from '../../lib/costBatches/costMoveRows'
 import type { Json } from '../../types/database'
+import { moneyText } from '../../test/moneyText'
 
 const SOURCE = '11111111-1111-4111-8111-111111111111'
 const TARGET = '22222222-2222-4222-8222-222222222222'
@@ -96,7 +97,7 @@ describe('CostMoveModal', () => {
     renderWithProviders(<CostMoveModal sourceJob={sourceJob} rows={[bank, supply, clock]} onRequestClose={onRequestClose} onApplied={onApplied} />)
     expect(screen.getByRole('dialog')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Move 3 rows to another job' })).toBeTruthy()
-    expect(screen.getByText(/1 bank row \(-\$84\.10\) · 1 invoice \(\$507\.80\) · 1 session \(9\.5 h\)/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/1 bank row \(-\$84\.10\) · 1 invoice \(\$507\.80\) · 1 session \(9\.5 h\)/))).toBeTruthy()
 
     // The target and the reason make the plan.
     fireEvent.change(screen.getByLabelText('The job the rows move to'), { target: { value: '629' } })

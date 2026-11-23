@@ -8,6 +8,8 @@
  * - An estimator opens a signed form whose paper is with an outside company, a signed W-9 among them (punch list #403,
  *   the owner's calls 10 and 11 of 2026-11-20). The database says which papers those are: `estimator_reads_paper`,
  *   the same rule the estimator's read policy follows. A digital twin reads as an estimator and opens none.
+ * - An estimator in training opens none either (punch list #403, the owner's second decision of 2026-11-22): a
+ *   training account reads the line and is refused the signed file. The other openers are as they were.
  * - Everyone else is refused, an assistant among them, who reads the row and not the file.
  * - A signed hours statement is payroll data and opens for a dev and the controller alone (the call of 2026-11-02).
  */
@@ -16,6 +18,8 @@
 export interface FormPdfCaller {
   role?: string | null
   is_digital_twin?: boolean | null
+  /** Training mode (`users.read_only`). */
+  read_only?: boolean | null
 }
 
 /** A refusal, in the words the caller reads. */
@@ -36,16 +40,17 @@ export const FORM_PDF_REFUSALS = {
   twin: 'A digital twin cannot open a signed form.',
   hoursStatement: 'A signed hours statement opens for a dev or the controller alone.',
   estimator: 'An estimator opens a signed form of an outside company, and no other.',
+  training: 'A training account does not open a signed form.',
 } as const
 
 const refuse = (error: string): FormPdfRefusal => ({ status: 403, error, code: 'forbidden' })
 
-/** What the caller is to the gate. A twin is `none` whatever its role says. */
+/** What the caller is to the gate. A twin is `none` whatever its role says, and so is an estimator in training. */
 export function formPdfOpener(caller: FormPdfCaller | null | undefined): FormPdfOpener {
   const role = caller?.role ?? ''
   if (role === 'dev' || role === 'controller') return 'always'
   if (role === 'master_technician') return 'master'
-  if (role === 'estimator' && !caller?.is_digital_twin) return 'estimator'
+  if (role === 'estimator' && !caller?.is_digital_twin && !caller?.read_only) return 'estimator'
   return 'none'
 }
 
@@ -67,7 +72,9 @@ export function formPdfRefusal(caller: FormPdfCaller | null | undefined, facts: 
   const opener = formPdfOpener(caller)
   if (opener === 'always') return null
   if (opener === 'none') {
-    return refuse(caller?.role === 'estimator' && caller?.is_digital_twin ? FORM_PDF_REFUSALS.twin : FORM_PDF_REFUSALS.role)
+    if (caller?.role !== 'estimator') return refuse(FORM_PDF_REFUSALS.role)
+    // An estimator the gate turned away before it asked about the paper: a twin first, then a training account.
+    return refuse(caller.is_digital_twin ? FORM_PDF_REFUSALS.twin : caller.read_only ? FORM_PDF_REFUSALS.training : FORM_PDF_REFUSALS.role)
   }
   if (opener === 'master') {
     if (!facts.payApprovedMaster) return refuse(FORM_PDF_REFUSALS.role)

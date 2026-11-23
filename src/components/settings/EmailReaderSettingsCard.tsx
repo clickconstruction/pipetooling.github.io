@@ -77,7 +77,7 @@ export function EmailReaderSettingsCard({ io = DEFAULT_IO, nowIso }: { io?: Emai
               fontSize: '0.85rem',
               fontWeight: 600,
               cursor: saving ? 'default' : 'pointer',
-              background: loaded.on ? '#16a34a' : 'var(--surface)',
+              background: loaded.on ? '#15803d' : 'var(--surface)',
               color: loaded.on ? 'white' : 'var(--text-base)',
               opacity: saving ? 0.6 : 1,
             }}
