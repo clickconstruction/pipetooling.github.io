@@ -14,7 +14,10 @@ import {
   billsSentFilter,
   billsSentLines,
   billsSentListHtml,
+  billsSentBackWords,
   billsSentPaidWords,
+  billsSentPayPlain,
+  billsSentPayWords,
   billsSentPhoneWords,
   billsSentRecord,
   billsSentRecordHtml,
@@ -37,6 +40,7 @@ import {
   type BillsSentCopy,
   type BillsSentInput,
 } from './billsSent'
+import type { BillPaidState } from './billsPaid'
 
 // Made-up data throughout: no live bill, job, customer or address.
 const BILL_A = 'aaaaaaaa-1111-4111-8111-111111111111'
@@ -208,7 +212,8 @@ describe('billsSent — days, tiles and the search', () => {
   })
 
   it('sums today and the week that began on Sunday', () => {
-    expect(billsSentTiles(lines, '2026-11-12')).toEqual({ today: { bills: 1, total: 4860 }, week: { bills: 1, total: 4860 } })
+    // Not paid counts the one open bill on the list; the paid one adds nothing.
+    expect(billsSentTiles(lines, '2026-11-12')).toEqual({ today: { bills: 1, total: 4860 }, week: { bills: 1, total: 4860 }, unpaid: { bills: 1, total: 4860 } })
     // Nov 3 is in the week before: it is out of this week's tile and in its own.
     expect(billsSentTiles(lines, '2026-11-06').week).toEqual({ bills: 1, total: 9750 })
   })
@@ -452,11 +457,11 @@ describe('billsSent — out of the app (PR 5)', () => {
     expect(rows[0]).toBe(BILLS_SENT_CSV_HEAD.join(','))
     expect(rows).toHaveLength(5)
     // A second send: not in the day total, with which send it is. A name that opens like a formula is led with an apostrophe, and its comma and quotes are held.
-    expect(rows[1]).toBe('2026-11-12,11:02 AM,Bill 1412-0002,J1412 · Sable Ridge Lot 14,"\'=Sable, ""Ridge"" Builders",4860.00,no,"\'=Sable, ""Ridge"" Builders",hal@sableridge.example,,"Email, sent again",Priya,2,Delivered 11:02 AM,,')
+    expect(rows[1]).toBe('2026-11-12,11:02 AM,Bill 1412-0002,J1412 · Sable Ridge Lot 14,"\'=Sable, ""Ridge"" Builders",4860.00,no,"\'=Sable, ""Ridge"" Builders",hal@sableridge.example,,"Email, sent again",Priya,2,Delivered 11:02 AM,Not paid,,,4860.00,,')
     // A Housecall Pro day: no time, and what the app does not have.
-    expect(rows[2]).toBe('2026-11-11,,Bill,J1398 · Larkfield Clinic,Larkfield Construction,9750.00,yes,,,,Housecall Pro,,1,,Paid since,"Sent from Housecall Pro. The app has the day only. It has no address, no sender and no copy."')
-    expect(rows[3]).toBe('2026-11-03,4:41 PM,Bill 1412-0002,J1412 · Sable Ridge Lot 14,Sable Ridge Builders,4860.00,yes,Sable Ridge Builders,hal@sableridge.example,,Email,Priya,1,,,')
-    expect(rows[4]).toBe(',,Bill,J1398 · Larkfield Clinic,Larkfield Construction,2140.00,no,,,,No send on record,,,,,"Billed Mon, Nov 9 at 3:26 PM."')
+    expect(rows[2]).toBe('2026-11-11,,Bill,J1398 · Larkfield Clinic,Larkfield Construction,9750.00,yes,,,,Housecall Pro,,1,,Paid,,,0.00,,"Sent from Housecall Pro. The app has the day only. It has no address, no sender and no copy."')
+    expect(rows[3]).toBe('2026-11-03,4:41 PM,Bill 1412-0002,J1412 · Sable Ridge Lot 14,Sable Ridge Builders,4860.00,yes,Sable Ridge Builders,hal@sableridge.example,,Email,Priya,1,,Not paid,,,4860.00,,')
+    expect(rows[4]).toBe(',,Bill,J1398 · Larkfield Clinic,Larkfield Construction,2140.00,no,,,,No send on record,,,,Not paid,,,,,"Billed Mon, Nov 9 at 3:26 PM."')
     expect(billsSentCsvFileName('2026-11-12')).toBe('bills-sent-2026-11-12.csv')
   })
 
@@ -470,6 +475,136 @@ describe('billsSent — out of the app (PR 5)', () => {
     expect(html).toContain('<td class="when">Day only</td>')
     expect(html).toContain('Printed Thu, Nov 12 · 3:00 PM.')
     expect(html.indexOf('no send on record')).toBeLessThan(html.indexOf('Today · Thu, Nov 12'))
+  })
+})
+
+describe('billsSent — who paid, when and how (punch list #422)', () => {
+  const BILL_C = 'cccccccc-3333-4333-8333-333333333333'
+  const pay = (over: Partial<BillPaidState>): BillPaidState => ({ kind: 'paid', paidOn: '2026-11-10', paidAmount: 9750, outAmount: 0, wayWords: 'Check 4417 · bank deposit', paidAtIso: null, payments: [], ...over })
+  const data = input(
+    [
+      // Bill A: sent Nov 3, sent again Nov 12, not paid.
+      copy({ id: 'a2', sentAt: '2026-11-12T17:02:00.000Z' }),
+      copy({ id: 'a1', sentAt: '2026-11-03T22:41:00.000Z' }),
+      // Bill B: sent Nov 3, paid by check on Nov 10.
+      copy({ id: 'b1', sentAt: '2026-11-03T15:00:00.000Z', sourceId: BILL_B, jobIds: [JOB_B], recipientName: 'Larkfield Construction', recipientEmails: ['ap@larkfield.example'] }),
+      // Bill C: sent Nov 3, a check for part of it on Nov 9.
+      copy({ id: 'c1', sentAt: '2026-11-03T14:00:00.000Z', sourceId: BILL_C, jobIds: [JOB_B] }),
+      copy({ id: 's1', kind: 'gc_statement', title: 'Statement for Ridgeway Builders', sentAt: '2026-11-12T13:00:00.000Z', sourceTable: '', sourceId: null, jobIds: [] }),
+    ],
+    {
+      bills: new Map([
+        [BILL_A, { id: BILL_A, jobId: JOB_A, amount: 4860, status: 'billed' }],
+        [BILL_B, { id: BILL_B, jobId: JOB_B, amount: 9750, status: 'paid' }],
+        [BILL_C, { id: BILL_C, jobId: JOB_B, amount: 3120, status: 'billed' }],
+      ]),
+      paid: new Map([
+        [BILL_A, pay({ kind: 'open', paidOn: null, paidAmount: 0, outAmount: 4860, wayWords: '' })],
+        [BILL_B, pay({ payments: [{ id: 'p1', ymd: '2026-11-10', amount: 9750, wayWords: 'Check 4417 · bank deposit', atIso: null, stripe: false, inKind: false, bankTransactionId: 'm1' }] })],
+        [BILL_C, pay({ kind: 'part', paidOn: '2026-11-09', paidAmount: 1500, outAmount: 1620, wayWords: 'Check 2291 · typed by hand' })],
+      ]),
+    },
+  )
+  const lines = billsSentLines(data)
+  const by = (id: string) => lines.find((l) => l.id === id)!
+
+  it('puts where the bill stands on every send of it, and nothing on a statement', () => {
+    expect(lines.map((l) => [l.id, l.pay?.kind ?? null, l.paid, l.paidOn, l.firstYmd])).toEqual([
+      ['a2', 'open', false, null, '2026-11-03'],
+      ['s1', null, false, null, '2026-11-12'],
+      ['a1', 'open', false, null, '2026-11-03'],
+      ['b1', 'paid', true, '2026-11-10', '2026-11-03'],
+      ['c1', 'part', false, '2026-11-09', '2026-11-03'],
+    ])
+  })
+
+  it('says a bill is not paid and how long it has been out, from its first send', () => {
+    expect(billsSentPayWords(by('a2'), '2026-11-12')).toEqual({ tone: 'open', stamp: 'Not paid', stampAmount: null, way: '', when: '9 days out', outAmount: null })
+    expect(billsSentPayWords(by('a1'), '2026-11-04')!.when).toBe('1 day out')
+    expect(billsSentPayWords(by('a1'), '2026-11-03')!.when).toBe('sent today')
+    expect(billsSentPayPlain(by('a2'), '2026-11-12')).toBe('Not paid · 9 days out')
+  })
+
+  it('says a bill is paid, the day, the way and how long the money took', () => {
+    expect(billsSentPayWords(by('b1'), '2026-11-12')).toEqual({ tone: 'paid', stamp: 'Paid Tue, Nov 10', stampAmount: null, way: 'Check 4417 · bank deposit', when: 'in 7 days', outAmount: null })
+    expect(billsSentPayWords(by('b1'), '2026-11-10')!.stamp).toBe('Paid today')
+    expect(billsSentPayPlain(by('b1'), '2026-11-12')).toBe('Paid Tue, Nov 10 · Check 4417 · bank deposit · in 7 days')
+    // Paid the day it went: the same day. Paid with no day on record: the word alone.
+    expect(billsSentPayWords({ pay: pay({ paidOn: '2026-11-03' }), firstYmd: '2026-11-03' }, '2026-11-12')!.when).toBe('the same day')
+    expect(billsSentPayWords({ pay: pay({ paidOn: null, wayWords: '' }), firstYmd: '2026-11-03' }, '2026-11-12')).toMatchObject({ stamp: 'Paid', way: '', when: '' })
+    // A payment dated before the bill first went says no span: the days are never negative.
+    expect(billsSentPayWords({ pay: pay({ paidOn: '2026-11-01' }), firstYmd: '2026-11-03' }, '2026-11-12')!.when).toBe('')
+  })
+
+  it('says the time of a Stripe payment that landed today, and the days it took on any later day', () => {
+    // 8:21 AM Central on Thu, Nov 12.
+    const stripe = { pay: pay({ paidOn: '2026-11-12', wayWords: 'Card · Stripe', paidAtIso: '2026-11-12T14:21:00.000Z' }), firstYmd: '2026-11-11' }
+    expect(billsSentPayWords(stripe, '2026-11-12')).toMatchObject({ stamp: 'Paid today', way: 'Card · Stripe', when: '8:21 AM' })
+    expect(billsSentPayWords(stripe, '2026-11-13')).toMatchObject({ stamp: 'Paid Thu, Nov 12', when: 'in 1 day' })
+  })
+
+  it('says a part payment, its day and what is still out', () => {
+    expect(billsSentPayWords(by('c1'), '2026-11-12')).toEqual({ tone: 'part', stamp: 'Part paid', stampAmount: 1500, way: 'Check 2291 · typed by hand', when: 'Mon, Nov 9', outAmount: 1620 })
+    expect(billsSentPayPlain(by('c1'), '2026-11-09')).toBe('Part paid $1,500.00 · Check 2291 · typed by hand · today · $1,620.00 out')
+  })
+
+  it('says nothing on a line that is no bill’s', () => {
+    expect(billsSentPayWords(by('s1'), '2026-11-12')).toBeNull()
+    expect(billsSentPayPlain(by('s1'), '2026-11-12')).toBe('')
+  })
+
+  it('counts on a day band how many of its bills are paid and what is still out', () => {
+    const days = billsSentDays(lines, '2026-11-12')
+    // Nov 12 holds a second send and a statement: no bill first went that day.
+    expect(days.map((d) => [d.ymd, d.back, billsSentBackWords(d.back)])).toEqual([
+      ['2026-11-12', { bills: 0, paid: 0, out: 0 }, ''],
+      ['2026-11-03', { bills: 3, paid: 1, out: 6480 }, '1 of 3 paid · $6,480.00 still out'],
+    ])
+    expect(billsSentBackWords({ bills: 2, paid: 2, out: 0 })).toBe('2 of 2 paid')
+  })
+
+  it('adds up what is not paid, a part-paid bill for what is left of it, each bill once', () => {
+    expect(billsSentTiles(lines, '2026-11-12').unpaid).toEqual({ bills: 2, total: 6480 })
+    // A bill whose first send is off the page still counts, by the send that is on it.
+    expect(billsSentTiles([by('a2')], '2026-11-12').unpaid).toEqual({ bills: 1, total: 4860 })
+  })
+
+  it('narrows the list to what is not paid, and to what is paid', () => {
+    expect(billsSentFilter(lines, 'unpaid', '').map((l) => l.id)).toEqual(['a2', 'a1', 'c1'])
+    expect(billsSentFilter(lines, 'paid', '').map((l) => l.id)).toEqual(['b1'])
+    expect(billsSentFilter(lines, 'unpaid', 'larkfield').map((l) => l.id)).toEqual(['c1'])
+  })
+
+  it('puts each payment on the bill’s record, and the state in words', () => {
+    const paidRecord = billsSentRecord(BILL_B, lines, data)!
+    expect(paidRecord.stateWords).toBe('Paid Tue, Nov 10')
+    expect(paidRecord.payments).toEqual([{ id: 'p1', when: 'Tue, Nov 10', amount: 9750, way: 'Check 4417 · bank deposit' }])
+    expect(billsSentRecord(BILL_C, lines, data)!.stateWords).toBe('Part paid, $1,620.00 still out')
+    expect(billsSentRecord(BILL_A, lines, data)!).toMatchObject({ stateWords: 'Not paid', payments: [] })
+    const html = billsSentRecordHtml(paidRecord, '2026-11-12T21:00:00.000Z')
+    expect(html).toContain('<h2>Payments, oldest first</h2>')
+    expect(html).toContain('<td class="when">Tue, Nov 10</td><td><b>$9,750.00</b> · Check 4417 · bank deposit</td>')
+  })
+
+  it('writes the payment into the spreadsheet and the print', () => {
+    const rows = billsSentCsv(lines).trimEnd().split('\r\n')
+    const tail = (row: string) => row.split(',').slice(-6).join(',')
+    // Paid, Paid on, Paid how, Still out, Days to pay, Note.
+    expect(tail(rows[4]!)).toBe('Paid,2026-11-10,Check 4417 · bank deposit,0.00,7,')
+    expect(tail(rows[5]!)).toBe('Part paid,2026-11-09,Check 2291 · typed by hand,1620.00,,')
+    expect(tail(rows[1]!)).toBe('Not paid,,,4860.00,,')
+    const html = billsSentListHtml(billsSentDays(lines, '2026-11-12'), [], { printedAtIso: '2026-11-12T21:00:00.000Z', shownWords: 'All.', todayYmd: '2026-11-12' })
+    expect(html).toContain('<b>Tue, Nov 3</b> <span>3 bills · $17,730.00 · 1 of 3 paid · $6,480.00 still out</span>')
+    expect(html).toContain('Paid Tue, Nov 10 · Check 4417 · bank deposit · in 7 days')
+  })
+
+  it('falls back to the bill’s status when the payments did not read', () => {
+    const [line] = billsSentLines(input([copy({ id: 'p1', sourceId: BILL_B, jobIds: [JOB_B] })], { marks: new Map([['p1', { id: 'p1', lastEvent: 'delivered', lastEventAtIso: null, emailType: 'stripe_bill', paidOn: '2026-11-09', paidHow: null }]]) }))
+    expect(line!.pay).toMatchObject({ kind: 'paid', paidOn: '2026-11-09', wayWords: '' })
+    expect(billsSentPayWords(line!, '2026-11-12')).toMatchObject({ stamp: 'Paid Mon, Nov 9', way: '' })
+    // A bill sent back to Ready to Bill owes nothing yet: no stamp.
+    const [back] = billsSentLines(input([copy({})], { bills: new Map([[BILL_A, { id: BILL_A, jobId: JOB_A, amount: 4860, status: 'ready_to_bill' }]]) }))
+    expect(back!.pay).toBeNull()
   })
 })
 

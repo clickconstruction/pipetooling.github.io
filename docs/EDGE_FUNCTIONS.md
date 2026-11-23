@@ -5916,7 +5916,7 @@ Response **`lines`** (from Stripe **`listLineItems`**) pass through **`stripeInv
 
 **Purpose**: The next Stripe payout (amount, arrival day, status) and the pending balance behind it, for the Dashboard's **Money in** bar (punch list #191): `GET /v1/payouts?limit=10` + `GET /v1/balance`. Read-only — nothing else in the app reads payouts (the webhook ignores `payout.*` and no table stores them). The next payout is the earliest-arriving `pending` / `in_transit` one; `paid` ones are already in the bank. Arrival days come back as company-calendar `YYYY-MM-DD` (America/Chicago).
 
-**Callers**: `src/lib/moneyInWeekLoad.ts` (the Money in bar's loader; the payout chip is drawn on the day it lands, never summed — it is landed card money reaching the bank).
+**Callers**: `src/lib/moneyInWeekLoad.ts` (the Money in bar's loader; the payout chip is drawn on the day it lands, never summed — it is landed card money reaching the bank), and since v2.8343 `src/lib/billing/billsPaidIo.ts` (`readStripePayout`, the tile *Next Stripe payout to the bank* on Bills sent → By day paid, drawn beside the days and added to none).
 
 **Endpoint**: `POST /functions/v1/get-stripe-payouts` (body `{}`; optional `stripe_mode: 'test' | 'live'`, default per `resolveStripeBillingMode` — live when both keys exist)
 
