@@ -35,6 +35,7 @@ import { JobCombineStatusNotice } from './JobCombineStatusNotice'
 import { useJobStatusPctPair } from './useJobStatusPctPair'
 import { EmptyState } from '../EmptyState'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money, MoneyText } from '../Money'
 
 const JOBS_COMBINE_SEPARATE_MODAL_Z_INDEX = 1050
 
@@ -1187,8 +1188,8 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                                       {ln.name || '(unnamed line)'}
                                     </span>
                                     <span style={{ flexShrink: 0, color: 'var(--text-muted)' }}>
-                                      {ln.count} × ${formatCurrency(ln.unitPrice)} →{' '}
-                                      <strong style={{ color: 'var(--text-700)' }}>${formatCurrency(ln.extended)}</strong>
+                                      {ln.count} × <Money amount={ln.unitPrice} /> →{' '}
+                                      <strong style={{ color: 'var(--text-700)' }}><Money amount={ln.extended} /></strong>
                                     </span>
                                   </div>
                                 ))
@@ -1214,7 +1215,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                                   return `New — all ${n} ${n === 1 ? 'line' : 'lines'} together`
                                 })()}
                               </span>
-                              <span>${formatCurrency(cSourcePreview.lineItemsRevenue + cTargetPreview.lineItemsRevenue)}</span>
+                              <span><Money amount={cSourcePreview.lineItemsRevenue + cTargetPreview.lineItemsRevenue} /></span>
                             </div>
                           ) : null}
                         </div>
@@ -1408,8 +1409,8 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 500 }}>{(f.name ?? '').trim() || '(unnamed line)'}</div>
                             <div style={{ color: 'var(--text-muted)' }}>
-                              qty {f.count} · ${formatCurrency(Number(f.line_unit_price) || 0)} unit →{' '}
-                              <strong>${formatCurrency(line$)}</strong> extended
+                              qty {f.count} · <Money amount={Number(f.line_unit_price) || 0} /> unit →{' '}
+                              <strong><Money amount={line$} /></strong> extended
                             </div>
                           </div>
                         </li>
@@ -1427,7 +1428,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
 
                 {sPickCount > 0 ? (
                   <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-                    <strong>New job revenue (from selected lines):</strong> ${formatCurrency(projectedSplitRevenue)}
+                    <strong>New job revenue (from selected lines):</strong> <Money amount={projectedSplitRevenue} />
                   </p>
                 ) : null}
 
@@ -1771,7 +1772,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                                 {en.lineCount > 0 ? (
                                   <>
                                     <strong>
-                                      {en.lineCount} {en.lineCount === 1 ? 'line' : 'lines'} · ${formatCurrency(en.lineRevenue)}
+                                      {en.lineCount} {en.lineCount === 1 ? 'line' : 'lines'} · <Money amount={en.lineRevenue} />
                                     </strong>{' '}
                                     — {en.lineSummary}
                                   </>
@@ -1787,7 +1788,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                                     <span style={{ fontWeight: 600, color: 'var(--text-green-800)' }}>
                                       Last paid {formatDaysAgoShort(en.lastPaidDaysAgo)}
                                     </span>
-                                    {` ($${formatCurrency(en.paidTotal)}${en.lineRevenue > 0 ? ` of $${formatCurrency(en.lineRevenue)}` : ''})`}
+                                    <MoneyText text={` ($${formatCurrency(en.paidTotal)}${en.lineRevenue > 0 ? ` of $${formatCurrency(en.lineRevenue)}` : ''})`} />
                                   </>
                                 ) : (
                                   'No payments yet'

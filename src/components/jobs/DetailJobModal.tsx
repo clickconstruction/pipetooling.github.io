@@ -144,6 +144,7 @@ import { JobPaintedMapsStrip } from '../paintedMap/JobPaintedMapsStrip'
 import { JobTripsLine } from '../trips/JobTripsLine'
 import { useJobTrips } from '../../hooks/useJobTrips'
 import { developmentDoorFor } from '../../lib/developments/readDoor'
+import { MoneyText } from '../Money'
 
 export type DetailJobScheduleContext = {
   workDate: string
@@ -3264,7 +3265,7 @@ export default function DetailJobModal({
                               {f.name || 'Discount'}
                               <span style={{ color: 'var(--text-green-800)', fontWeight: 600 }}>
                                 {' '}
-                                −{formatCurrency(-Number(f.line_unit_price))}
+                                −<MoneyText text={formatCurrency(-Number(f.line_unit_price))} />
                               </span>
                             </>
                           ) : (
@@ -3275,7 +3276,7 @@ export default function DetailJobModal({
                               Number(f.line_unit_price) > 0 ? (
                                 <span style={{ color: 'var(--text-muted)' }}>
                                   {' '}
-                                  @ {formatCurrency(Number(f.line_unit_price))} ea.
+                                  @ <MoneyText text={formatCurrency(Number(f.line_unit_price))} /> ea.
                                 </span>
                               ) : null}
                             </>
@@ -3296,7 +3297,7 @@ export default function DetailJobModal({
             {showJobDetailJobTotal(authRole) ? (
               <div style={{ marginTop: '1rem' }}>
                 <DetailRow label="Job Total" noBottomMargin centered>
-                  {fullJob.revenue != null ? formatCurrency(Number(fullJob.revenue)) : '—'}
+                  {fullJob.revenue != null ? <MoneyText text={formatCurrency(Number(fullJob.revenue))} /> : '—'}
                 </DetailRow>
               </div>
             ) : null}
@@ -3318,7 +3319,7 @@ export default function DetailJobModal({
                         fontSize: '0.875rem',
                       }}
                     >
-                      {formatCurrency(Number(p.amount ?? 0))}
+                      <MoneyText text={formatCurrency(Number(p.amount ?? 0))} />
                       {p.payment_type?.trim() ? (
                         <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>Type: {p.payment_type.trim()}</span>
                       ) : null}
@@ -3349,7 +3350,7 @@ export default function DetailJobModal({
                         fontSize: '0.875rem',
                       }}
                     >
-                      {formatCurrency(Number(inv.amount ?? 0))}
+                      <MoneyText text={formatCurrency(Number(inv.amount ?? 0))} />
                       <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>{inv.status ?? ''}</span>
                     </li>
                   ))}
@@ -3393,7 +3394,7 @@ export default function DetailJobModal({
                 {showJobDetailJobTotal(authRole) ? (
                   <div style={{ marginTop: '1rem' }}>
                     <DetailRow label="Job Total" noBottomMargin centered>
-                      {limitedJob.revenue != null ? formatCurrency(Number(limitedJob.revenue)) : '—'}
+                      {limitedJob.revenue != null ? <MoneyText text={formatCurrency(Number(limitedJob.revenue))} /> : '—'}
                     </DetailRow>
                   </div>
                 ) : null}
@@ -3457,7 +3458,7 @@ export default function DetailJobModal({
             {showJobDetailJobTotal(authRole) ? (
               <div style={{ marginTop: '1rem' }}>
                 <DetailRow label="Job Total" noBottomMargin centered>
-                  {limitedJob.revenue != null ? formatCurrency(Number(limitedJob.revenue)) : '—'}
+                  {limitedJob.revenue != null ? <MoneyText text={formatCurrency(Number(limitedJob.revenue))} /> : '—'}
                 </DetailRow>
               </div>
             ) : null}

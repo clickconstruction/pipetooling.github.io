@@ -4,7 +4,7 @@
  * that lived here gave way to the money card (`JobFormMoneyCard`, v2.4307).
  */
 import { useState, type CSSProperties } from 'react'
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
+import { Money } from '../Money'
 
 /** How the ② block lists its money (v2.4294): each bill with the payments under it, or everything on one date line. */
 export type BillsAndPaymentsView = 'bill' | 'date'
@@ -101,7 +101,7 @@ export function InvoicesSectionHeading({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
             <span style={{ ...EXPLAINER_CHIP_BASE, background: '#16a34a', border: '1px solid rgba(255,255,255,0.5)' }}>
-              ${formatCurrency(sampleDollars ?? 1450)}
+              <Money amount={sampleDollars ?? 1450} />
             </span>
             <span style={{ whiteSpace: 'nowrap' }}>→ Ready to Bill → Billed → Paid</span>
           </div>

@@ -35,6 +35,7 @@ import { jobStripePayLink, testReportDataFromRow, testReportJobInfoFromJob, test
 import { cachedTestReportSettings, fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
 import { buildTestReportPdfBlob } from '../../lib/jobsDocuments/testReportPdf'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { MoneyText } from '../Money'
 
 /**
  * The Test report modal (v2.3298) — opened from the Stages row's test-report
@@ -496,7 +497,7 @@ export default function TestReportModal({
           ) : null}
 
           {payLink ? (
-            <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Stripe bill on this job: ${payLink.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} — the pay link rides in the report email.</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Stripe bill on this job: <MoneyText text={`$${payLink.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} /> — the pay link rides in the report email.</div>
           ) : (
             <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>No Stripe bill on this job yet — Bill Customer first if the report email should carry a pay link.</div>
           )}

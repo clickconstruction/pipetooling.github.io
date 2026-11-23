@@ -18,6 +18,7 @@ import { resolveJobBudget } from '../../lib/jobs/jobBudget'
 import type { JobBudgetState } from '../../hooks/useJobBudget'
 import type { JobChargesTimelineInputs } from '../../hooks/useJobChargesTimelineInputs'
 import { settle } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 const inputs: JobChargesTimelineInputs = {
   chargeEvents: [
@@ -57,7 +58,7 @@ describe('JobBudgetCard · Frame A', () => {
     const labor = within(card).getByTestId('budget-row-labor')
     expect(within(labor).getByText('1,020 h')).toBeTruthy()
     expect(within(labor).getByText('1,180 h')).toBeTruthy()
-    expect(within(labor).getByText('$44,840 @ $38.00')).toBeTruthy()
+    expect(within(labor).getByText(moneyText('$44,840 @ $38.00'))).toBeTruthy()
     const materials = within(card).getByTestId('budget-row-materials')
     expect(within(materials).getByText('$37,900')).toBeTruthy()
     expect(within(materials).getByText('$31,200')).toBeTruthy()

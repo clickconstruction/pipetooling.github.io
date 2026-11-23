@@ -25,6 +25,7 @@ import {
 } from '../../lib/hazmatFeeEdit'
 import { HazmatFeeEditDialog } from './HazmatFeeEditDialog'
 import ConfirmDialog from '../ConfirmDialog'
+import { Money } from '../Money'
 
 /**
  * Rider rows for the ① Line Items table (v2.1029 — previously a standalone
@@ -228,7 +229,7 @@ export function JobFormHazmatRiderRows({
               ) : null}
               <span style={{ flex: 1 }} />
               <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                ${formatCurrency(Number(row.fee_amount))}
+                <Money amount={Number(row.fee_amount)} />
               </span>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>

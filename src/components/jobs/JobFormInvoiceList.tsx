@@ -45,6 +45,7 @@ import { billPaidBar, orderMoneyByDate, splitBillsAndPayments, type MercuryDepos
 import { BillsViewSwitch, type BillsAndPaymentsView } from './JobFormSegmentsBar'
 import { JobFormPaymentLine, type PaymentLineActions } from './JobFormPaymentLine'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money } from '../Money'
 
 type JobFormInvoiceListProps = {
   editing: JobWithDetails
@@ -768,7 +769,7 @@ export function JobFormInvoiceList({
                 ☣ Hazmat
               </span>
             ) : null}
-            <span className={`jobInvoiceAmt${isPaid ? ' soft' : ''}`}>${formatCurrency(row.amount)}</span>
+            <span className={`jobInvoiceAmt${isPaid ? ' soft' : ''}`}><Money amount={row.amount} /></span>
             <span className="jobInvoiceSp" />
 
             {isDraft ? (
@@ -955,15 +956,15 @@ export function JobFormInvoiceList({
       })}
       {byDate && totals.open > 0.005 ? (
         <div className="jobMoneyDateRow today" data-testid="date-today-row">
-          <span className="jobMoneyDateToday">Today · ${formatCurrency(totals.open)} still open</span>
+          <span className="jobMoneyDateToday">Today · <Money amount={totals.open} /> still open</span>
         </div>
       ) : null}
       <div className="jobInvoiceSum" data-testid="invoice-sum">
-        {totals.toBill > 0 ? <span>to bill <b>${formatCurrency(totals.toBill)}</b></span> : null}
-        {totals.paid > 0 ? <span>paid <b>${formatCurrency(totals.paid)}</b></span> : null}
-        <span>open <b>${formatCurrency(totals.open)}</b></span>
-        {totals.paid > 0 ? <span>= billed <b>${formatCurrency(totals.billed)}</b></span> : null}
-        {totals.unapplied > 0 ? <span title="Money received on this job that is not applied to any bill listed here">+ <b>${formatCurrency(totals.unapplied)}</b> on no bill</span> : null}
+        {totals.toBill > 0 ? <span>to bill <b><Money amount={totals.toBill} /></b></span> : null}
+        {totals.paid > 0 ? <span>paid <b><Money amount={totals.paid} /></b></span> : null}
+        <span>open <b><Money amount={totals.open} /></b></span>
+        {totals.paid > 0 ? <span>= billed <b><Money amount={totals.billed} /></b></span> : null}
+        {totals.unapplied > 0 ? <span title="Money received on this job that is not applied to any bill listed here">+ <b><Money amount={totals.unapplied} /></b> on no bill</span> : null}
       </div>
       {confirmDeleteInvoice ? (
         <div
@@ -999,7 +1000,7 @@ export function JobFormInvoiceList({
           >
             <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-strong)' }}>Delete draft invoice?</div>
             <div style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
-              This deletes the <strong>${formatCurrency(Number(confirmDeleteInvoice.amount ?? 0))}</strong> draft. Nothing has
+              This deletes the <strong><Money amount={Number(confirmDeleteInvoice.amount ?? 0)} /></strong> draft. Nothing has
               been sent to the customer. Any line-item segments on this draft go back to unbilled.
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -1057,7 +1058,7 @@ export function JobFormInvoiceList({
           >
             <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-strong)' }}>Remove this bill?</div>
             <div style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
-              The <strong>${formatCurrency(Number(confirmRemoveMarkedPaid.amount ?? 0))}</strong> bill is marked paid, but no payment is
+              The <strong><Money amount={Number(confirmRemoveMarkedPaid.amount ?? 0)} /></strong> bill is marked paid, but no payment is
               recorded on it. Removing it changes no payment and no balance owed. Its amount goes back to unbilled.
               Remove it only if it was never a real bill.
             </div>
@@ -1119,7 +1120,7 @@ export function JobFormInvoiceList({
           >
             <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-strong)' }}>Send this bill back?</div>
             <div style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
-              The <strong>${formatCurrency(Number(confirmSendBackInvoice.amount ?? 0))}</strong> bill is removed and its
+              The <strong><Money amount={Number(confirmSendBackInvoice.amount ?? 0)} /></strong> bill is removed and its
               amount returns to unbilled. If it was the job&rsquo;s only sent bill, the job moves back to Ready to Bill.
             </div>
             {invoiceNeedsStripeVoidForRevert(confirmSendBackInvoice) ? (
