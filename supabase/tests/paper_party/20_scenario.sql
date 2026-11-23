@@ -647,7 +647,9 @@ $$;
 -- The same, with any count of lines above none said as some.
 CREATE FUNCTION pp.differ() RETURNS text LANGUAGE sql AS $$ SELECT regexp_replace(pp.views_differ(), 'of [1-9][0-9]*$', 'of some') $$;
 -- How a view reaches each record, read off its plan with the walks priced out: the lines that find a record by its key.
--- The settings are put back before the function returns.
+-- The read is one paper's line, as paperParty.ts reads it: over the whole list the planner may still choose one walk
+-- of a small table for every line, whichever join it can use, so only one outer row says which join it can use. The
+-- settings are put back before the function returns.
 CREATE FUNCTION pp.by_key(p_view text) RETURNS text LANGUAGE plpgsql AS $$
 DECLARE
   line text;
@@ -656,9 +658,9 @@ BEGIN
   PERFORM set_config('enable_seqscan', 'off', true);
   PERFORM set_config('enable_hashjoin', 'off', true);
   PERFORM set_config('enable_mergejoin', 'off', true);
-  FOR line IN EXECUTE format('EXPLAIN (COSTS OFF) SELECT with_name FROM %s', p_view) LOOP
-    -- The lines that reach the supply house and the trade company, in the log, so a plan that walks says how.
-    IF line ~ '(supply_houses|gc_companies|psh|pgc)' THEN RAISE NOTICE 'plan of %: %', p_view, line; END IF;
+  FOR line IN EXECUTE format($q$EXPLAIN (COSTS OFF) SELECT with_name FROM %s WHERE source_id = '00000000-0000-0000-0000-000004030190'$q$, p_view) LOOP
+    -- The lines that reach the three records, in the log, so a plan that walks says how.
+    IF line ~ '(customers|supply_houses|gc_companies|Join Filter|Index Cond: \(+id = (CASE|COALESCE))' THEN RAISE NOTICE 'plan of %: %', p_view, line; END IF;
     IF line ~ 'Index Cond: \(+id = (CASE WHEN \(|COALESCE\()pc[_0-9]*\.customer_id' THEN found := found || 'customer'::text; END IF;
     IF line ~ 'Index Cond: \(+id = (CASE WHEN \(|COALESCE\()pc[_0-9]*\.supply_house_id' THEN found := found || 'house'::text; END IF;
     IF line ~ 'Index Cond: \(+id = (CASE WHEN \(|COALESCE\()pc[_0-9]*\.gc_company_id' THEN found := found || 'trade'::text; END IF;
