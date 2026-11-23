@@ -190,7 +190,7 @@ export function TaskPercentSheet({
             type="button"
             onClick={() => void donePress()}
             disabled={saving}
-            style={{ width: '100%', height: 48, borderRadius: 12, border: 'none', fontSize: '1rem', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? DEAD_PRESS_FILL : '#16a34a', color: saving ? DEAD_PRESS_TEXT : 'white' }}
+            style={{ width: '100%', height: 48, borderRadius: 12, border: 'none', fontSize: '1rem', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', background: saving ? DEAD_PRESS_FILL : '#15803d', color: saving ? DEAD_PRESS_TEXT : 'white' }}
           >
             {doneWords}
           </button>

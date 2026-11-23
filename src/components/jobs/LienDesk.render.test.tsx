@@ -25,6 +25,7 @@ import { LIEN_AFFIDAVIT_PILES, buildLienAffidavitQueue, withContractorAddress, w
 import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
 import { resetPropertyLookupCache } from '../../lib/customers/propertyLookupCache'
 import { buildLienSupplierJobs, type LienSupplierJob } from '../../lib/jobs/lienJobSuppliers'
+import { moneyText } from '../../test/moneyText'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -5062,7 +5063,7 @@ describe('LienDesk the owner’s call and the piles (v2.3767)', () => {
       const card = document.querySelector<HTMLElement>('[data-lien-suppliers-card="owed"]')!
       expect(within(card).getByText('notice goes out Oct 14')).toBeTruthy()
       expect(within(card).getByText('Dana said so · noted Sep 12 by Grace')).toBeTruthy()
-      expect(within(card).getByText('Reece says $8,950.00')).toBeTruthy()
+      expect(within(card).getByText(moneyText('Reece says $8,950.00'))).toBeTruthy()
       fireEvent.click(within(card).getByRole('button', { name: 'Change what they told us…' }))
       fireEvent.click(within(card).getByRole('button', { name: 'Clear' }))
       await waitFor(() => expect(clearWordMock).toHaveBeenCalledWith('j650', 'reece'))

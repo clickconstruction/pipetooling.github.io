@@ -285,7 +285,7 @@ export function ChecklistInstanceCard({
             fontWeight: 600,
             padding: '0.25rem 0.6rem',
             borderRadius: 8,
-            background: '#16a34a',
+            background: '#15803d',
             color: 'white',
           }}
         >
@@ -374,7 +374,7 @@ export function ChecklistInstanceCard({
           flexShrink: 0,
           borderRadius: 6,
           border: isCompleted ? 'none' : '2px solid var(--text-600)',
-          background: isCompleted ? '#16a34a' : 'var(--surface)',
+          background: isCompleted ? '#15803d' : 'var(--surface)',
           color: 'white',
           fontSize: '0.8rem',
           lineHeight: 1,
@@ -424,7 +424,7 @@ export function ChecklistInstanceCard({
         </span>
       ) : null}
       {status.kind === 'signed_off' ? (
-        <span style={{ ...rowChipBase, background: '#16a34a', color: 'white' }} title={`by ${name(status.byUserId)} ${stripStamp(status.at)}`}>
+        <span style={{ ...rowChipBase, background: '#15803d', color: 'white' }} title={`by ${name(status.byUserId)} ${stripStamp(status.at)}`}>
           Signed off
         </span>
       ) : null}
@@ -566,7 +566,7 @@ export function ChecklistInstanceCard({
               flexShrink: 0,
               borderRadius: 8,
               border: isCompleted ? 'none' : '2.5px solid var(--text-600)',
-              background: isCompleted ? '#16a34a' : 'var(--surface)',
+              background: isCompleted ? '#15803d' : 'var(--surface)',
               color: 'white',
               fontSize: '0.95rem',
               lineHeight: 1,
@@ -711,7 +711,7 @@ export function ChecklistInstanceCard({
             flexShrink: 0,
             borderRadius: 9,
             border: isCompleted ? 'none' : '2.5px solid var(--text-600)',
-            background: isCompleted ? '#16a34a' : 'var(--surface)',
+            background: isCompleted ? '#15803d' : 'var(--surface)',
             color: 'white',
             fontSize: '1.1rem',
             lineHeight: 1,

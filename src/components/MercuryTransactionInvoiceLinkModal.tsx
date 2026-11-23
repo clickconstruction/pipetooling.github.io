@@ -10,6 +10,7 @@ import { EmptyState } from './EmptyState'
 import { BillViewer } from './materials/BillViewer'
 import { useOptionalAuth } from '../hooks/useAuth'
 import { canShareSupplyInvoice, supplyInvoiceShareUrl } from '../lib/jobs/supplyInvoiceList'
+import { MoneyText } from './Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type InvoiceLinkRow =
@@ -219,7 +220,7 @@ export default function MercuryTransactionInvoiceLinkModal({
           Link invoices
         </h2>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-          This card charge of <strong>{formatCurrency(txAmount)}</strong>
+          This card charge of <strong><MoneyText text={formatCurrency(txAmount)} /></strong>
           {transaction.counterparty_name ? (
             <>
               {' '}
@@ -248,7 +249,7 @@ export default function MercuryTransactionInvoiceLinkModal({
                   <span style={{ fontWeight: 600 }}>{r.supply_house_name} · #{r.invoice_number}</span>
                   <span style={{ color: 'var(--text-muted)' }}> · {formatInvoiceDate(r.invoice_date)}</span>
                 </span>
-                <span style={{ whiteSpace: 'nowrap', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(Number(r.amount))}</span>
+                <span style={{ whiteSpace: 'nowrap', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={formatCurrency(Number(r.amount))} /></span>
               </label>
             ))}
             <div
@@ -268,7 +269,7 @@ export default function MercuryTransactionInvoiceLinkModal({
             >
               <span>{total.words}</span>
               <span style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                {formatCurrency(chosenSum)} of {formatCurrency(txAmount)}
+                <MoneyText text={formatCurrency(chosenSum)} /> of <MoneyText text={formatCurrency(txAmount)} />
               </span>
             </div>
           </div>
@@ -358,7 +359,7 @@ export default function MercuryTransactionInvoiceLinkModal({
                         ) : null}
                       </span>
                       <span style={{ whiteSpace: 'nowrap', fontWeight: 600 }}>
-                        {formatCurrency(Number(r.amount))}
+                        <MoneyText text={formatCurrency(Number(r.amount))} />
                       </span>
                     </span>
                     <span style={{ display: 'block', color: 'var(--text-muted)', marginTop: 2 }}>

@@ -14,6 +14,7 @@ import { purchaseFillInRows, type PurchaseSource } from '../../lib/needsYou/fill
 import type { PurchaseFillInIo, PurchaseSaved } from '../../lib/needsYou/fillInPurchasesIo'
 import { NeedsYouFillInDeck } from './NeedsYouFillInDeck'
 import type { FillInRow } from '../../hooks/useFillInRows'
+import { moneyText } from '../../test/moneyText'
 
 const navigate = vi.fn()
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<typeof import('react-router-dom')>()), useNavigate: () => navigate }))
@@ -111,7 +112,7 @@ describe('NeedsYouFillInDeck · purchases', () => {
     const h = harness()
     h.render()
     await settle()
-    expect(screen.getByText('$184.20 at Ferguson Plumbing · Oct 27')).toBeTruthy()
+    expect(screen.getByText(moneyText('$184.20 at Ferguson Plumbing · Oct 27'))).toBeTruthy()
     expect(screen.getByText('1 of 2 purchases')).toBeTruthy()
     expect(screen.getByText('Bought Tuesday, Oct 27.')).toBeTruthy()
     expect(screen.getByText('Your memo: “PRV and fittings for Beck”.')).toBeTruthy()
@@ -126,14 +127,14 @@ describe('NeedsYouFillInDeck · purchases', () => {
     await settle()
     expect(h.saves[0]).toEqual({ txId: 'tx-1', rows: [{ job_id: 'j-650', amount: -184.2 }], labels: ['JP650 · Maple Street remodel'] })
     expect(trail()).toContain('$184.20 at Ferguson Plumbing · Oct 27 · on JP650 · Maple Street remodel · the tally has it')
-    expect(screen.getByText('$40.00 at Home Depot · Oct 28')).toBeTruthy()
+    expect(screen.getByText(moneyText('$40.00 at Home Depot · Oct 28'))).toBeTruthy()
     expect(screen.getByText('2 of 2 · 1 saved')).toBeTruthy()
     // Undo clears the splits and brings the row back.
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     await waitFor(() => expect(h.undos.length).toBe(1))
     await settle()
     expect(h.undos[0]).toEqual({ txId: 'tx-1' })
-    expect(screen.getByText('$184.20 at Ferguson Plumbing · Oct 27')).toBeTruthy()
+    expect(screen.getByText(moneyText('$184.20 at Ferguson Plumbing · Oct 27'))).toBeTruthy()
   })
 
   it('two chips split the charge evenly, an amount typed balances the other, and Save writes both rows', async () => {

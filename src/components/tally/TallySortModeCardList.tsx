@@ -6,6 +6,7 @@ import {
   tallyUniqueJobSplitEntries,
   type TallyLinkedMercuryRow,
 } from '../../lib/mercuryTxRowFromTally'
+import { MoneyText } from '../Money'
 
 export type TallySortModeCardListProps = {
   rows: TallyLinkedMercuryRow[]
@@ -111,7 +112,7 @@ export function TallySortModeCardList({
                 {(row.counterparty_name ?? '').trim() || 'Card purchase'}
               </span>
               <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>
-                {formatTallyCurrency(Math.abs(Number(row.amount)))}
+                <MoneyText text={formatTallyCurrency(Math.abs(Number(row.amount)))} />
               </span>
             </div>
             <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 1 }}>

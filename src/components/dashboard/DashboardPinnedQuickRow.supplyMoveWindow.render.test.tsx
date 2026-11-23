@@ -9,6 +9,7 @@ import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { installDomShims, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { NeedsYouInputs } from '../../lib/dashboardNeedsYou'
 import { DashboardPinnedQuickRow } from './DashboardPinnedQuickRow'
+import { moneyText } from '../../test/moneyText'
 
 const WINDOW = { count: 14, dollars: 7474.71, asked: 3, soonestDueYmd: '2026-10-25' }
 const seen: NeedsYouInputs[] = []
@@ -68,7 +69,7 @@ describe('DashboardPinnedQuickRow · the move window on Needs You', () => {
     const last = seen[seen.length - 1]!
     expect(last.supplyMoveWindowEnabled).toBe(true)
     expect(last.supplyMoveWindow).toEqual(WINDOW)
-    expect(screen.getByText('$7,474.71 on 14 current invoices is not on a job account yet')).toBeTruthy()
+    expect(screen.getByText(moneyText('$7,474.71 on 14 current invoices is not on a job account yet'))).toBeTruthy()
   })
 
   it.each(['estimator', 'primary'] as const)('%s does not', async (role) => {

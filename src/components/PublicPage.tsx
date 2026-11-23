@@ -1,4 +1,4 @@
-import { Component, Suspense, useEffect, useState, type CSSProperties, type ErrorInfo, type ReactNode } from 'react'
+import { Component, Suspense, useEffect, useRef, useState, type CSSProperties, type ErrorInfo, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import AuthPublicLandingLayout from './AuthPublicLandingLayout'
 import { safeSessionStorage } from '../lib/acceptInviteState'
@@ -9,6 +9,7 @@ import {
   isChunkLoadError,
   startChunkRecoveryReload,
 } from '../lib/chunkLoadRecovery'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 import { hardReloadFromRoot } from '../lib/hardReload'
 import { CARD, COPPER, INK, MUTED, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
 import {
@@ -17,7 +18,9 @@ import {
   PUBLIC_PAGE_SLOW_WORDS,
   PUBLIC_PAGE_TRY_AGAIN,
   PUBLIC_PAGE_WORD_AFTER_MS,
+  probeForSignal,
   publicPageLostView,
+  publicPageTryAgainAct,
   type PublicPageTone,
 } from '../lib/publicPageLoad'
 
@@ -129,15 +132,28 @@ export function PublicPageLoading({ tone = 'paper', compact = false }: FrameProp
   )
 }
 
+/** The press while the page asks the network: dead, in the theme's own greys (`deadPress.ts`). */
+const deadPress: CSSProperties = { ...press, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' }
+
 /**
  * The page's code did not come and the one automatic reload is spent, or there is no network to reload
- * from. Says so in a customer's words, with one press. Offline the press stays here and answers in words,
- * since a reload would land on the browser's own error page; the page loads by itself when the signal is back.
+ * from. Says so in a customer's words, with one press. Offline the first press stays here and answers in
+ * words, since a reload would land on the browser's own error page; the page loads by itself when the signal
+ * is back. A phone can say it is offline when it is not, so a second press asks the network itself and
+ * reloads only when it answers (`publicPageTryAgainAct`).
  */
 function PublicPageLost({ tone = 'paper', compact = false }: FrameProps) {
   const [offline, setOffline] = useState(browserSaysOffline)
   const [pressedOffline, setPressedOffline] = useState(false)
+  const [checking, setChecking] = useState(false)
   const [leaving, setLeaving] = useState(false)
+  const here = useRef(true)
+  useEffect(() => {
+    here.current = true
+    return () => {
+      here.current = false
+    }
+  }, [])
   useEffect(() => {
     const back = () => {
       setOffline(false)
@@ -152,21 +168,36 @@ function PublicPageLost({ tone = 'paper', compact = false }: FrameProps) {
     }
   }, [])
   if (leaving) return <PublicPageLoading tone={tone} compact={compact} />
-  const view = publicPageLostView(!offline, pressedOffline)
-  const tryAgain = () => {
-    if (browserSaysOffline()) {
-      setOffline(true)
-      setPressedOffline(true)
-      return
-    }
+  const view = publicPageLostView(!offline, pressedOffline, checking)
+  const reload = () => {
     setLeaving(true)
     hardReloadFromRoot()
   }
+  const tryAgain = () => {
+    if (checking) return
+    const act = publicPageTryAgainAct(!browserSaysOffline(), pressedOffline)
+    if (act === 'reload') {
+      reload()
+      return
+    }
+    setOffline(true)
+    if (act === 'answer') {
+      setPressedOffline(true)
+      return
+    }
+    // The second press: the browser's word is not taken for it. One small ask, and a reload only on an answer.
+    setChecking(true)
+    void probeForSignal().then((answered) => {
+      if (!here.current) return
+      setChecking(false)
+      if (answered) reload()
+    })
+  }
   return (
     <PublicPageFrame tone={tone} compact={compact}>
-      <div role="alert" data-public-page={view.reload ? 'lost' : 'offline'}>
+      <div role="alert" data-public-page={view.reload ? 'lost' : view.checking ? 'checking' : 'offline'}>
         <p style={tone === 'landing' ? { margin: 0 } : { margin: '0 auto', maxWidth: '30ch' }}>{view.words}</p>
-        <button type="button" style={press} onClick={tryAgain}>
+        <button type="button" style={view.checking ? deadPress : press} disabled={view.checking} onClick={tryAgain}>
           {PUBLIC_PAGE_TRY_AGAIN}
         </button>
       </div>

@@ -58,3 +58,41 @@ describe('ConfirmDialogProvider', () => {
     expect(answer).toBe(false)
   })
 })
+
+/** A matchMedia that answers the phone query `(max-width: 640px)` as `narrow` says. */
+function stubWidth(narrow: boolean) {
+  const mq = (query: string) => ({ matches: narrow && query.includes('max-width: 640px'), media: query, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, onchange: null, dispatchEvent: () => false })
+  Object.defineProperty(window, 'matchMedia', { configurable: true, writable: true, value: mq })
+}
+
+describe('ConfirmDialogProvider · the presses', () => {
+  it('stand 44 px tall at a phone width, so a thumb lands on them (the #389 walk measured 35.5)', () => {
+    stubWidth(true)
+    render(
+      <ConfirmDialogProvider>
+        <Asker />
+      </ConfirmDialogProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+    for (const name of ['Cancel', 'Remove the row']) {
+      const press = screen.getByRole('button', { name })
+      expect(press.style.minHeight).toBe('44px')
+      expect(press.style.padding).toBe('0.5rem 1rem')
+    }
+  })
+
+  it('keep the desk look at a desk width: the same padding and no floor', () => {
+    stubWidth(false)
+    render(
+      <ConfirmDialogProvider>
+        <Asker />
+      </ConfirmDialogProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+    for (const name of ['Cancel', 'Remove the row']) {
+      const press = screen.getByRole('button', { name })
+      expect(press.style.minHeight).toBe('')
+      expect(press.style.padding).toBe('0.5rem 1rem')
+    }
+  })
+})

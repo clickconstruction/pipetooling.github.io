@@ -6,6 +6,7 @@ import type { LaborJob, LaborJobPayment } from '../../types/laborJob'
 import { DashboardGroupCard } from './DashboardGroupCard'
 import { sortSubMoneySheets, subSheetPayableWords } from '../../lib/dashboard/subMoneySheets'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { MoneyText } from '../Money'
 
 /**
  * "Your money" card for subcontractor-like roles (RUN_SUBS_PLAN Phase 3,
@@ -231,7 +232,7 @@ export function DashboardSubMoneySection({ visible }: { visible: boolean }) {
             {offer.projectName ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> — {offer.projectName}</span> : null}
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', margin: '0.25rem 0' }}>
-            <span style={{ fontSize: '1.2rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums' }}>{money(offer.amount)}</span>
+            <span style={{ fontSize: '1.2rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money(offer.amount)} /></span>
             {offer.retainagePct > 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{offer.retainagePct}% retainage</span>}
           </div>
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
@@ -290,7 +291,7 @@ export function DashboardSubMoneySection({ visible }: { visible: boolean }) {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
         <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Balance owed to you</span>
-        <span style={{ fontSize: '1.35rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums' }}>{money(totalBalance)}</span>
+        <span style={{ fontSize: '1.35rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money(totalBalance)} /></span>
       </div>
 
       {commitments.some((c) => c.status !== 'offered') && (
@@ -317,7 +318,7 @@ export function DashboardSubMoneySection({ visible }: { visible: boolean }) {
                   {c.status}
                 </span>
               </span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 650 }}>{money(c.amount)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 650 }}><MoneyText text={money(c.amount)} /></span>
             </div>
           ))}
         </div>
@@ -359,14 +360,14 @@ export function DashboardSubMoneySection({ visible }: { visible: boolean }) {
                     ) : null}
                   </span>
                   <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: s.balance > 0 ? 700 : 400 }}>
-                    {s.balance > 0 ? `${money(s.balance)} open` : 'settled'}
+                    {s.balance > 0 ? <MoneyText text={`${money(s.balance)} open`} /> : 'settled'}
                   </span>
                 </button>
                 {expandedId === s.id && (
                   <div style={{ padding: '0.35rem 0 0.35rem 1.1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     <div>
-                      Total {money(s.totalCost)} · paid {money(s.paid)}
-                      {s.backcharges > 0 ? <> · backcharges {money(s.backcharges)}</> : null}
+                      Total <MoneyText text={money(s.totalCost)} /> · paid <MoneyText text={money(s.paid)} />
+                      {s.backcharges > 0 ? <> · backcharges <MoneyText text={money(s.backcharges)} /></> : null}
                     </div>
                     {s.payments.length > 0 && (
                       <div style={{ marginTop: '0.25rem' }}>
@@ -375,7 +376,7 @@ export function DashboardSubMoneySection({ visible }: { visible: boolean }) {
                             <span>{p.memo || (Number(p.amount) < 0 ? 'Backcharge' : 'Payment')}</span>
                             <span style={{ fontVariantNumeric: 'tabular-nums' }}>
                               {Number(p.amount) < 0 ? '−' : '+'}
-                              {money(Math.abs(Number(p.amount)))} · {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              <MoneyText text={money(Math.abs(Number(p.amount)))} /> · {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </span>
                           </div>
                         ))}

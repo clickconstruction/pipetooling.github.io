@@ -13,6 +13,7 @@ import { installDomShims, settle } from '../../test/renderSmokeMocks'
 import { ToastProvider } from '../../contexts/ToastContext'
 import type { InvoiceWithJobForBillView } from './HostedStripeBillPanel'
 import type { StripeInvoiceDetailsSuccess } from '../../lib/stripeInvoiceDetailsResponse'
+import { moneyText } from '../../test/moneyText'
 
 const TRIP = { trip_charge: 'client_not_home', amount: 150 }
 let feeLines: unknown = [TRIP]
@@ -140,7 +141,7 @@ describe('SplitBillModal · the bill’s riders', () => {
   it('no part holds more fees than its own amount: a $200 charge split $100 / $150 is refused in words', async () => {
     feeLines = [{ trip_charge: 'site_not_ready', amount: 200 }]
     await split('100')
-    expect(await screen.findByText('The $200.00 trip charge on this bill needs a part of at least $200.00.')).toBeTruthy()
+    expect(await screen.findByText(moneyText('The $200.00 trip charge on this bill needs a part of at least $200.00.'))).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Split into 2 bills' }) as HTMLButtonElement).disabled).toBe(true)
     expect(voided).not.toHaveBeenCalled()
   })

@@ -147,11 +147,17 @@ jobs:
       - name: A blue press under white words fills with #2563eb
         run: npm run check:press-blue
 
+      - name: A green press under white words fills with #15803d
+        run: npm run check:press-green
+
       - name: A style's size and weight are not reset by the font shorthand
         run: npm run check:font-shorthand
 
       - name: An error names its reason (fails on added lines only)
         run: npm run check:error-words
+
+      - name: An amount draws its cents smaller, through the one door (swept surfaces, added lines only)
+        run: npm run check:small-cents
 
       # Git merges by line, and an entry written as one line of several thousand characters conflicted whenever two
       # PRs amended it (2026-11-16: one PR dropped from the queue three times on docs/GLOSSARY.md alone).

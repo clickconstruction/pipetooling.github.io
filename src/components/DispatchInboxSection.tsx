@@ -42,6 +42,7 @@ import {
 } from '../lib/ageState'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../lib/orangeUnderWords'
+import { MoneyText } from './Money'
 
 export type DispatchInboxRow = {
   id: string
@@ -877,7 +878,7 @@ export function DispatchInboxSection({
                         ) : null}
                         {jobDraft ? (
                           <div data-dispatch-job-draft={req.id} style={{ marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-                            {jobDraftWords(jobDraft, fromLabel)}
+                            <MoneyText text={jobDraftWords(jobDraft, fromLabel)} />
                           </div>
                         ) : null}
                         {jobAccountLines}

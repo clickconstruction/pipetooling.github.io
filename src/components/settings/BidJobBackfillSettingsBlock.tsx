@@ -6,6 +6,7 @@ import { useTypedConfirm } from '../../hooks/useTypedConfirm'
 import { countWord } from '../../lib/typedConfirm'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { pairExactValueMatches, unambiguousMatches, type BackfillBid, type BackfillJob, type BidJobValueMatch } from '../../lib/jobs/bidJobValueMatches'
+import { MoneyText } from '../Money'
 
 /**
  * Settings → Data & recovery (dev): the one-time list of unlinked jobs whose price
@@ -142,7 +143,7 @@ export default function BidJobBackfillSettingsBlock() {
                         {p.bidLabel}
                         {p.ambiguous ? <span style={{ marginLeft: 6, fontSize: '0.72rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>ambiguous</span> : null}
                       </td>
-                      <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{usd(p.jobRevenue)}</td>
+                      <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={usd(p.jobRevenue)} /></td>
                       <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
                         <button type="button" onClick={() => void linkOne(p)} disabled={busy != null} style={{ padding: '0.25rem 0.6rem', background: 'var(--surface)', color: 'var(--text-blue-700)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>
                           {busy === p.jobId ? 'Linking…' : 'Link'}
