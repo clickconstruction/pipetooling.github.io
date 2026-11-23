@@ -14,6 +14,8 @@ const io = vi.hoisted(() => ({ readOwnLicenses: vi.fn(), saveOwnLicenseDate: vi.
 vi.mock('../../lib/licenseRoll/ownLicensesIo', () => io)
 const pulls = vi.hoisted(() => ({ readRollPulls: vi.fn(), pullRollFile: vi.fn() }))
 vi.mock('../../lib/licenseRoll/rollPullsIo', () => pulls)
+const everyone = vi.hoisted(() => ({ EVERYONE_PAGE: 50, readEveryoneFrame: vi.fn(), readEveryonePage: vi.fn(), readPersonSheet: vi.fn(), readNotesFor: vi.fn(), addRollNote: vi.fn(), deleteRollNote: vi.fn(), leaveOffRoll: vi.fn(), putBackOnRoll: vi.fn() }))
+vi.mock('../../lib/licenseRoll/everyoneIo', () => everyone)
 vi.mock('../../utils/dateUtils', async (original) => ({ ...(await original<typeof import('../../utils/dateUtils')>()), todayYmdInAppTz: () => '2026-11-21' }))
 
 import { StateRollOwn } from './StateRollOwn'
@@ -117,12 +119,15 @@ describe('StateRollTab · the views', () => {
   beforeEach(() => {
     io.readOwnLicenses.mockReset().mockResolvedValue(read())
     pulls.readRollPulls.mockReset().mockResolvedValue({ pulls: [], kept: {}, lapsed: 0, counties: ['BEXAR'] })
+    everyone.readEveryoneFrame.mockReset().mockResolvedValue({ counties: ['BEXAR'], notes: [], current: 0, lapsed: 0, withNotes: 0, leftOff: [] })
+    everyone.readEveryonePage.mockReset().mockResolvedValue({ rows: [], total: 0 })
   })
   afterEach(cleanup)
 
-  it('has Pulls alone, and no strip, for a person who may not open People → Licenses', async () => {
+  it('has Everyone and Pulls, and never Our own, for a person who may not open People → Licenses', async () => {
     renderWithProviders(<StateRollTab />)
-    await screen.findByRole('button', { name: 'Pull 4 files' })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Everyone' }).getAttribute('aria-current')).toBe('true'))
+    expect(screen.getByRole('button', { name: 'Pulls' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Our own' })).toBeNull()
     expect(io.readOwnLicenses).not.toHaveBeenCalled()
   })
@@ -138,7 +143,8 @@ describe('StateRollTab · the views', () => {
 
   it('never opens Our own from a link for a person who may not', async () => {
     renderWithProviders(<StateRollTab />, { route: '/prospects?tab=roll&roll=own' })
-    await screen.findByRole('button', { name: 'Pull 4 files' })
+    await waitFor(() => expect(everyone.readEveryoneFrame).toHaveBeenCalled())
+    expect(screen.getByRole('button', { name: 'Everyone' }).getAttribute('aria-current')).toBe('true')
     expect(io.readOwnLicenses).not.toHaveBeenCalled()
   })
 })

@@ -2708,6 +2708,7 @@ A training-mode account cannot sign, since starting a paper is a write.
   The State roll tab (`/prospects?tab=roll`, v2.8198, punch list #411) is not theirs: it opens to `users.team_prospects_access`, the Hiring switch itself, through `user_can_read_license_roll()` on `license_roll`, `license_roll_changes`, `license_roll_pulls`, `license_roll_counties`, `license_roll_left_off` and `license_roll_notes`.
   A shared Hiring column does not open the State roll.
   Its **Our own** view (v2.8233) is drawn only for a person who also passes People → Licenses' gate (`canAccessLicenses`), and it reads and writes `person_licenses` under that table's own policy, so it reaches no one the Licenses tab does not.
+  Its **Everyone** view and the person's sheet (v2.8390) are drawn for every Hiring holder, and a row's **One of ours** tag only for one who also passes `canAccessLicenses`.
   Nobody signed in writes a roll row: `license-roll-pull` writes with the service key, and the tab's **Pull 4 files** press runs it under the caller's JWT after the same gate and the archived-caller guard.
   The gate opens three writes to a person.
   A county: a Hiring holder adds a `license_roll_counties` row as themself (`added_by`) or removes one (v2.8159), and no screen offers it yet.
