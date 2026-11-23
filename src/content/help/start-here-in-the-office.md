@@ -23,7 +23,7 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 4. **Quickfill** is the office's daily round. The page holds review sections, each with a button that says you've looked. See [run the office day with Quickfill](/help/quickfill).
 5. **People** holds accounts, hours, contracts, and [your subs](/help/review-your-subs).
 
-A row at the top of your Dashboard reads **Task Mode**, **Dashboard** and **Job Mode**. The blue part is the page you are on. Tap another part to switch. See [the row at the top](/help/job-mode-clocking#the-row-at-the-top).
+On a computer, the {{icon:gear}} gear menu lists **Dashboard**, **Job Mode** and **Task Mode** under **Modes**. A blue dot marks the page you are on. Tap another line to switch. See [the list in the gear menu](/help/job-mode-clocking#the-list-in-the-gear-menu). On a phone the same three are a row at the top of your Dashboard. See [the row at the top](/help/job-mode-clocking#the-row-at-the-top).
 
 ## Money
 
