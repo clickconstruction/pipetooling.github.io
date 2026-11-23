@@ -7,6 +7,8 @@ import {
   groupJobActivityLinesByDay,
 } from './jobActivityLine'
 import type { JobThreadActivityItem, JobThreadNoteRow } from '../../components/JobThreadNotesPanel'
+import { JOB_ACTIVITY_EVENT_RENDER } from '../jobActivityEvent'
+import { jobActivityEventsFromRpc, type JobActivityEventRpcRow } from '../jobActivityEventsFromRpc'
 
 const note = (id: string, at: string, body: string, author: string | null = 'Roxi'): JobThreadActivityItem => ({
   kind: 'note',
@@ -255,5 +257,63 @@ describe('the Customer filter is everything to or from the customer (v2.6690, pu
     expect(filterJobActivityLines(lines, 'billing').map((l) => l.key)).toEqual(['e-sent', 'e-signed', 'e-release', 'e-paid'])
     // Numbers were given before the filter, so the signed contract is line 3 under every pill.
     expect(filterJobActivityLines(lines, 'customer')[1]!.number).toBe(3)
+  })
+})
+
+/**
+ * v2.8319 (punch list #85): the invoice trigger writes an `invoice_write_down` row for every write-down of a bill, so
+ * one bill can have several, all carrying the bill's id as `source_id`. The rows below are as the trigger writes them
+ * for a bill of 500 taken to 450, to 400 and to 380, the last through Stripe.
+ */
+describe('several write-downs of one bill', () => {
+  const BILL = 'bill-1'
+  const writeDown = (id: string, at: string, actor: string | null, summary: string, detail: Record<string, unknown>): JobActivityEventRpcRow => ({
+    id,
+    event_type: 'invoice_write_down',
+    occurred_at: at,
+    actor_user_id: actor ? `u-${actor}` : null,
+    actor_name: actor,
+    summary,
+    detail: { invoice_id: BILL, source_id: BILL, ...detail },
+    financial: true,
+  })
+  // Newest first, as the feed's read hands them over.
+  const rows = [
+    writeDown('w3', '2026-11-20T15:00:00Z', 'Rosa', 'Agreed write-down: $400.00 → $380.00 — third agreed', { previous_amount: 400, amount: 380, first_amount: 500 }),
+    writeDown('w2', '2026-11-12T15:00:00Z', 'Rosa', 'Agreed write-down: $450.00 → $400.00 — second agreed', { previous_amount: 450, amount: 400, first_amount: 500 }),
+    // A line written before v2.8319: no step's after, no first amount, and on a Stripe bill nobody on it.
+    writeDown('w1', '2026-11-03T15:00:00Z', null, 'Agreed write-down: $500.00 → $450.00 — first agreed', { previous_amount: 500 }),
+  ]
+
+  it('is a line each, oldest first, with its own before and after and its person', () => {
+    const lines = buildJobActivityLines(jobActivityEventsFromRpc(rows))
+    expect(lines.map((l) => [l.number, l.key, l.who, l.body])).toEqual([
+      [1, 'ev:w1', 'System', 'Agreed write-down: $500.00 → $450.00 — first agreed'],
+      [2, 'ev:w2', 'Rosa', 'Agreed write-down: $450.00 → $400.00 — second agreed'],
+      [3, 'ev:w3', 'Rosa', 'Agreed write-down: $400.00 → $380.00 — third agreed'],
+    ])
+    // Each step starts where the one before it ended, so the three read as one bill going down.
+    const steps = lines.map((l) => /\$([\d,.]+) → \$([\d,.]+)/.exec(l.body)!.slice(1, 3))
+    expect(steps[1]![0]).toBe(steps[0]![1])
+    expect(steps[2]![0]).toBe(steps[1]![1])
+  })
+
+  it('keys each line by its own row, never by the bill, so none is dropped as a repeat', () => {
+    const lines = buildJobActivityLines(jobActivityEventsFromRpc(rows))
+    expect(new Set(lines.map((l) => l.key)).size).toBe(3)
+    expect(lines.every((l) => l.item?.kind === 'event' && l.item.event.detail?.source_id === BILL)).toBe(true)
+  })
+
+  it('files all of them under Billing with the Write-down tag, and none under Customer', () => {
+    const lines = buildJobActivityLines(jobActivityEventsFromRpc(rows))
+    expect(JOB_ACTIVITY_EVENT_RENDER.invoice_write_down).toMatchObject({ tag: 'Write-down', bucket: 'billing' })
+    expect(filterJobActivityLines(lines, 'billing')).toHaveLength(3)
+    expect(filterJobActivityLines(lines, 'customer')).toHaveLength(0)
+    expect(countJobActivityLines(lines).billing).toBe(3)
+  })
+
+  it('groups them under the day each was made', () => {
+    const lines = buildJobActivityLines(jobActivityEventsFromRpc(rows))
+    expect(groupJobActivityLinesByDay(lines).map((g) => g.lines.map((l) => l.key))).toEqual([['ev:w1'], ['ev:w2'], ['ev:w3']])
   })
 })
