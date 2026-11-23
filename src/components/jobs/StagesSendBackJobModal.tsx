@@ -14,6 +14,7 @@ import { SEND_BACK_REWORK_REASON, SEND_BACK_STAGE_BILLED_REASON, type SendBackJo
 import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
 import SendBackReasonField from './SendBackReasonField'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { MoneyText } from '../Money'
 
 export type StagesSendBackJobTarget = {
   id: string
@@ -59,7 +60,7 @@ export function StagesSendBackJobModal({
             {target.toStatus === 'ready_to_bill'
               ? 'This will move the job back to Ready to Bill.'
               : target.billing?.stageBilledContinues
-                ? `The job returns to Working. ${
+                ? <MoneyText text={`The job returns to Working. ${
                     target.billing.billedCount === 1
                       ? 'Its billed line stays billed'
                       : `Its ${target.billing.billedCount} billed lines stay billed`
@@ -67,7 +68,7 @@ export function StagesSendBackJobModal({
                     target.rtbDraftCount > 0
                       ? ' The unsent remainder draft is removed and comes back automatically the next time the job is ready to bill.'
                       : ''
-                  }`
+                  }`} />
                 : target.rtbDraftCount > 0
                 ? `This will move the job back to Assigned Jobs (Working). ${
                     target.rtbDraftCount === 1

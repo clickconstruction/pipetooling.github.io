@@ -6,11 +6,11 @@
  * (`planPartialInvoice`) and every write; page-global `error` is shown here and cleared by
  * the tab (JOBS_STAGES_TAB map, quirk "Page-global `error`"). `job` is the row the dialog was opened for.
  */
-import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { jobPartialInvoiceRemainingDollars } from '../../lib/jobsStagesBoard'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money } from '../Money'
 
 export function StagesCreatePartialInvoiceModal({
   job,
@@ -38,7 +38,7 @@ export function StagesCreatePartialInvoiceModal({
           <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Create partial invoice</h2>
           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} · {job.job_name ?? '—'}</p>
           <div style={{ marginBottom: '1rem' }}>
-            <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>Remaining: ${formatCurrency(jobPartialInvoiceRemainingDollars(job))}</div>
+            <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>Remaining: <Money amount={jobPartialInvoiceRemainingDollars(job)} /></div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
               Amount ($)
               <input

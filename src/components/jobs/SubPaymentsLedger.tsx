@@ -67,6 +67,7 @@ import { bankLineWords, bankMatchedWords, bankReadFromYmd, bankReadWords, matchU
 import { useSubPaymentBank } from '../../hooks/useSubPaymentBank'
 import { SubLedgerPeople, SubLedgerStatement } from './SubLedgerBySub'
 import { chip, field, jobLink, outPress, pill, td, th, tile, tileLabel, tileSub } from './subLedgerStyles'
+import { MoneyText } from '../Money'
 
 export type LedgerGrouping = 'date' | 'sub'
 
@@ -108,7 +109,7 @@ function Amount({ line }: { line: LedgerLine }) {
       </span>
       {line.creditKept > 0 ? (
         <span data-ledger-kept={line.id} title="Sent with this payment, past what the sheets needed. It is kept as their credit." style={{ display: 'block', fontSize: '0.72rem', fontWeight: 400, color: 'var(--text-green-700)' }}>
-          + ${line.creditKept.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kept as credit
+          + <MoneyText text={`$${line.creditKept.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} /> kept as credit
         </span>
       ) : null}
     </>
@@ -117,7 +118,7 @@ function Amount({ line }: { line: LedgerLine }) {
 
 function Left({ line }: { line: LedgerLine }) {
   if (line.leftOnSheet === 0) return <span style={pill('green')}>paid in full</span>
-  if (line.leftOnSheet < 0) return <span style={{ color: 'var(--text-green-700)' }}>{leftOnSheetWords(line.leftOnSheet)}</span>
+  if (line.leftOnSheet < 0) return <span style={{ color: 'var(--text-green-700)' }}><MoneyText text={leftOnSheetWords(line.leftOnSheet)} /></span>
   return <AmountSmallCents value={line.leftOnSheet} />
 }
 
@@ -397,7 +398,7 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
           </strong>
           <span style={tileSub}>
             {ledgerPaidWords(totals)}
-            {totals.creditKept ? ` · $${totals.creditKept.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} of it kept as credit` : ''}
+            {totals.creditKept ? <MoneyText text={` · $${totals.creditKept.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} of it kept as credit`} /> : ''}
           </span>
         </div>
         <div style={tile} data-ledger-tile="backcharged">
@@ -417,13 +418,13 @@ export function SubPaymentsLedger({ error, laborJobs, laborJobsLoading, laborJob
         {by === 'sub' ? (
           <div style={tile} data-ledger-tile="owed">
             <span style={tileLabel}>We owe today</span>
-            <strong style={{ fontSize: '1.15rem', color: 'var(--text-strong)' }}>{statement ? weOweWords(statement.owedToday) : <AmountSmallCents value={subTotals.weOwe} />}</strong>
+            <strong style={{ fontSize: '1.15rem', color: 'var(--text-strong)' }}>{statement ? <MoneyText text={weOweWords(statement.owedToday)} /> : <AmountSmallCents value={subTotals.weOwe} />}</strong>
             <span style={tileSub}>
               {statement
                 ? statement.crew
                   ? 'crew pay runs through payroll'
                   : creditNoteWords(statement.credit)
-                    ? `after their ${creditNoteWords(statement.credit)}`
+                    ? <MoneyText text={`after their ${creditNoteWords(statement.credit)}`} />
                     : 'every sheet of theirs, whatever the period'
                 : ['still open on sheets', overPaidWords(subTotals.over), creditNoteWords(subTotals.credit) ? `${creditNoteWords(subTotals.credit)} held` : ''].filter(Boolean).join(' · ')}
             </span>

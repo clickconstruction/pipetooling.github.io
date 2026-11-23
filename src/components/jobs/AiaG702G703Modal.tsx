@@ -74,6 +74,7 @@ import {
 } from '../../lib/aiaPayApplicationHistory'
 import AiaG702G703History from './AiaG702G703History'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
@@ -895,7 +896,7 @@ export default function AiaG702G703Modal({
               <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
                 {mismatch.differences.map((d) => (
                   <li key={d.key}>
-                    {d.label}: {formatAiaMoney(d.here)} here, {formatAiaMoney(d.fromPrevious)} from application {mismatch.previousNumber}.
+                    {d.label}: <MoneyText text={formatAiaMoney(d.here)} /> here, <MoneyText text={formatAiaMoney(d.fromPrevious)} /> from application {mismatch.previousNumber}.
                   </li>
                 ))}
               </ul>
@@ -960,7 +961,7 @@ export default function AiaG702G703Modal({
               <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
                 {changedAfter.differences.map((d) => (
                   <li key={d.label}>
-                    {d.label}: {formatAiaMoney(d.was)} went out, {formatAiaMoney(d.now)} now.
+                    {d.label}: <MoneyText text={formatAiaMoney(d.was)} /> went out, <MoneyText text={formatAiaMoney(d.now)} /> now.
                   </li>
                 ))}
               </ul>
@@ -1125,8 +1126,8 @@ export default function AiaG702G703Modal({
                       }}
                     >
                       <span style={{ flex: '1 1 14rem' }}>
-                        The work is all in. Retainage at 0 on this final application releases the {formatAiaMoney(releaseOffer.heldNow)} held:{' '}
-                        {formatAiaMoney(releaseOffer.moreDue)} more is due, and the bill you tie to it carries the release.
+                        The work is all in. Retainage at 0 on this final application releases the <MoneyText text={formatAiaMoney(releaseOffer.heldNow)} /> held:{' '}
+                        <MoneyText text={formatAiaMoney(releaseOffer.moreDue)} /> more is due, and the bill you tie to it carries the release.
                       </span>
                       <button
                         type="button"
@@ -1164,8 +1165,8 @@ export default function AiaG702G703Modal({
                     >
                       <span style={{ flex: '1 1 14rem' }}>
                         This job is {Math.round(dropOffer.pctComplete * 100)}% complete. Past 50% the contract may drop retainage to 5% of
-                        everything to date. Held would go from {formatAiaMoney(dropOffer.heldNow)} to {formatAiaMoney(dropOffer.heldAtReduced)},
-                        and {formatAiaMoney(dropOffer.moreDue)} more would be due.
+                        everything to date. Held would go from <MoneyText text={formatAiaMoney(dropOffer.heldNow)} /> to <MoneyText text={formatAiaMoney(dropOffer.heldAtReduced)} />,
+                        and <MoneyText text={formatAiaMoney(dropOffer.moreDue)} /> more would be due.
                       </span>
                       <button
                         type="button"
@@ -1340,15 +1341,15 @@ export default function AiaG702G703Modal({
                   style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem 0.6rem', padding: '0.5rem 0.6rem', borderRadius: 4, fontSize: '0.8125rem', background: 'var(--bg-amber-100)', color: 'var(--text-amber-900)', border: '1px solid var(--border-amber)' }}
                 >
                   <span style={{ flex: '1 1 14rem' }}>
-                    The lines add to {formatAiaMoney(gap.total)}. The contract to date is {formatAiaMoney(preview.math.contractSumToDate)}. They are{' '}
-                    {formatAiaMoney(Math.abs(gap.gap))} {gap.gap > 0 ? 'short' : 'over'}.
+                    The lines add to <MoneyText text={formatAiaMoney(gap.total)} />. The contract to date is <MoneyText text={formatAiaMoney(preview.math.contractSumToDate)} />. They are{' '}
+                    <MoneyText text={formatAiaMoney(Math.abs(gap.gap))} /> {gap.gap > 0 ? 'short' : 'over'}.
                   </span>
                   <button
                     type="button"
                     onClick={scaleLines}
                     style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', fontWeight: 600, borderRadius: 4, cursor: 'pointer', border: '1px solid currentColor', background: 'none', color: 'inherit' }}
                   >
-                    Scale the lines to {formatAiaMoney(preview.math.contractSumToDate)}
+                    Scale the lines to <MoneyText text={formatAiaMoney(preview.math.contractSumToDate)} />
                   </button>
                 </div>
               ) : null}

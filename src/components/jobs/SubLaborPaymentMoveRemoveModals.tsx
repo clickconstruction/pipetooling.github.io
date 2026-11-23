@@ -26,6 +26,7 @@ import {
 } from '../../lib/jobs/subPaymentMoveRemove'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { MoneyText } from '../Money'
 
 export type SubLaborPaymentMoveRemoveHandle = {
   openMove: (payment: EditingPaymentTarget) => void
@@ -136,7 +137,7 @@ function SubLaborPaymentMoveRemoveModalsInner(
           <div role="dialog" aria-modal="true" aria-labelledby="sub-payment-move-title" style={panel} onClick={(e) => e.stopPropagation()} data-testid="sub-payment-move-dialog">
             <h2 id="sub-payment-move-title" style={h2}>Move this {moving.isBackcharge ? 'backcharge' : 'payment'}</h2>
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--bg-subtle)', display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.9rem' }}>
-              <span><strong>{paymentSummary(moving)}</strong></span>
+              <span><strong><MoneyText text={paymentSummary(moving)} /></strong></span>
               <span style={{ color: 'var(--text-muted)' }}>on {fromSheet ? sheetLabel(fromSheet, laborJobNamesByJobId) : 'this sheet'}</span>
             </div>
             <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.9rem', fontWeight: 600 }}>
@@ -183,8 +184,8 @@ function SubLaborPaymentMoveRemoveModalsInner(
             {plan ? (
               <div data-testid="sub-payment-move-plan" style={{ border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 8, padding: '0.6rem 0.75rem', fontSize: '0.875rem', lineHeight: 1.5, color: 'var(--text-700)' }}>
                 <div style={{ fontWeight: 700, color: 'var(--text-amber-700)' }}>What changes</div>
-                <div>{plan.from.label}: paid {money(plan.from.paidBefore)} → <strong>{money(plan.from.paidAfter)}</strong>, owed {money(plan.from.owedBefore)} → <strong>{money(plan.from.owedAfter)}</strong></div>
-                <div>{plan.to.label}: paid {money(plan.to.paidBefore)} → <strong>{money(plan.to.paidAfter)}</strong>, owed {money(plan.to.owedBefore)} → <strong>{money(plan.to.owedAfter)}{plan.toPaidInFull ? ' · paid in full' : ''}</strong></div>
+                <div>{plan.from.label}: paid <MoneyText text={money(plan.from.paidBefore)} /> → <strong><MoneyText text={money(plan.from.paidAfter)} /></strong>, owed <MoneyText text={money(plan.from.owedBefore)} /> → <strong><MoneyText text={money(plan.from.owedAfter)} /></strong></div>
+                <div>{plan.to.label}: paid <MoneyText text={money(plan.to.paidBefore)} /> → <strong><MoneyText text={money(plan.to.paidAfter)} /></strong>, owed <MoneyText text={money(plan.to.owedBefore)} /> → <strong><MoneyText text={money(plan.to.owedAfter)} />{plan.toPaidInFull ? ' · paid in full' : ''}</strong></div>
                 <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>Date, memo and the portal-visibility setting travel with it.</div>
               </div>
             ) : null}
@@ -197,7 +198,7 @@ function SubLaborPaymentMoveRemoveModalsInner(
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button type="button" onClick={() => setMoving(null)} disabled={moveBusy} style={btn}>Cancel</button>
               <button type="button" onClick={() => void submitMove()} disabled={moveBusy || !toSheet} style={{ ...primary, opacity: moveBusy || !toSheet ? 0.6 : 1 }}>
-                {moveBusy ? 'Moving…' : toSheet ? `Move ${money(Math.abs(moving.amount))} to ${(toSheet.job_number ?? '').trim() || 'that sheet'}` : 'Pick a sheet'}
+                {moveBusy ? 'Moving…' : toSheet ? <MoneyText text={`Move ${money(Math.abs(moving.amount))} to ${(toSheet.job_number ?? '').trim() || 'that sheet'}`} /> : 'Pick a sheet'}
               </button>
             </div>
           </div>
@@ -209,7 +210,7 @@ function SubLaborPaymentMoveRemoveModalsInner(
           <div role="dialog" aria-modal="true" aria-labelledby="sub-payment-remove-title" style={{ ...panel, maxWidth: 500 }} onClick={(e) => e.stopPropagation()} data-testid="sub-payment-remove-dialog">
             <h2 id="sub-payment-remove-title" style={h2}>Remove this {removing.isBackcharge ? 'backcharge' : 'payment'}?</h2>
             <div style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--text-700)' }}>
-              Removes <strong>{paymentSummary(removing)}</strong> from <strong>{fromSheetFor(removing, laborJobs, laborJobNamesByJobId)}</strong>. The sheet's balance moves by that amount and the line leaves the sub's portal.
+              Removes <strong><MoneyText text={paymentSummary(removing)} /></strong> from <strong>{fromSheetFor(removing, laborJobs, laborJobNamesByJobId)}</strong>. The sheet's balance moves by that amount and the line leaves the sub's portal.
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
               <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>Why?</div>

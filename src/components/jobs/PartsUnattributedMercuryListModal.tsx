@@ -13,6 +13,7 @@ import {
 } from '../../lib/mercuryCardNicknameUserMatch'
 import { dedupeUnattributedRows } from '../../lib/dedupeUnattributedMercuryRows'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 const overlay: CSSProperties = {
   position: 'fixed',
@@ -200,7 +201,7 @@ export function PartsUnattributedMercuryListModal({
                         <td style={{ padding: '0.4rem 0.5rem' }}>{cardLabel}</td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>{accountLabel}</td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>{cp}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>{formatCurrency(lineAmount)}</td>
+                        <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}><MoneyText text={formatCurrency(lineAmount)} /></td>
                         <td
                           style={{
                             padding: '0.4rem 0.5rem',
