@@ -70,7 +70,10 @@ import {
   type SubCompany,
 } from '../../lib/people/subCompanies'
 import { loadSubCompanies } from '../../lib/people/subCompaniesIo'
-import { SubCompanyHeadRow, SubCompanyLines } from './SubCompanyLines'
+import { SubCompanyFootRow, SubCompanyHeadRow, SubCompanyLines } from './SubCompanyLines'
+import { COMPANY_PAPER_WORDS, companyPaperLines, type CompanyPaperRow } from '../../lib/people/subCompanyPapers'
+import { loadCompanyPapers } from '../../lib/people/subCompanyPapersIo'
+import { SubCompanyPaperWindow } from './SubCompanyPaperWindow'
 
 /** Small tinted pill for a document signing state; anything unknown renders as unsent. */
 function ContractStatusChip({ status, label }: { status: string; label: string }) {
@@ -168,12 +171,16 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
     updated_at: string
     book_version_date: string | null
     form_template_id?: string | null
+    /** Who the Book entry is for (`sub`, `staff`, …): a sub's company is offered the subs' papers (punch list #403). */
+    audience?: string | null
   }
   type PersonContractAssignment = { id: string; person_name: string; template_id: string }
   type PersonContractDocument = {
     id: string
     person_name: string
     document_name: string
+    /** The business the person signs for, kept from their company's link (punch list #403, step 5). */
+    signing_for?: string | null
     url: string | null
     signing_body_html: string | null
     signing_body_format: string
@@ -214,6 +221,9 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
   const [subCompanyLinks, setSubCompanyLinks] = useState<PersonCompanyLink[]>([])
   const [subCompanies, setSubCompanies] = useState<SubCompany[]>([])
   const [subCompaniesError, setSubCompaniesError] = useState<string | null>(null)
+  /** The linked companies' own papers (PR 2), and the window open on one company, if any. */
+  const [companyPapers, setCompanyPapers] = useState<CompanyPaperRow[]>([])
+  const [companyPaperWindow, setCompanyPaperWindow] = useState<{ kind: 'send' | 'enter'; companyId: string } | null>(null)
   const [selectedContractsPersonName, setSelectedContractsPersonName] = useState<string | null>(null)
   /** Contract library (v2.1411): merged Documents/Packets modal replacing Contract Book + Manage templates. */
   const [contractLibraryModalOpen, setContractLibraryModalOpen] = useState(false)
@@ -654,7 +664,8 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       supabase.from('contract_templates').select(CONTRACT_PACKET_COLUMNS).order('sequence_order'),
       supabase.from('contract_template_documents').select(CONTRACT_BOOK_COLUMNS).order('template_id').order('sequence_order'),
       supabase.from('person_contract_assignments').select(CONTRACT_ASSIGNMENT_COLUMNS),
-      supabase.from('person_contract_documents').select(PERSON_PAPER_COLUMNS),
+      // signing_for (punch list #403, step 6): a worker's own paper says which company they sign for.
+      supabase.from('person_contract_documents').select(`${PERSON_PAPER_COLUMNS}, signing_for`),
     ])
     setContractsLoading(false)
     if (templatesRes.error) setContractsError(templatesRes.error.message)
@@ -1705,8 +1716,10 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
   const reloadSubCompanies = useCallback(async () => {
     try {
       const read = await loadSubCompanies()
+      const papers = await loadCompanyPapers([...new Set(read.links.map((l) => l.company_id))])
       setSubCompanyLinks(read.links)
       setSubCompanies(read.companies)
+      setCompanyPapers(papers)
       setSubCompaniesError(null)
     } catch (e) {
       setSubCompaniesError(formatErrorMessage(e))
@@ -2079,6 +2092,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                                             doc && doc.lineage_version > 1 ? `v${doc.lineage_version}` : '',
                                             appliedLabel ? `applied ${appliedLabel}${appliedCustom ? ' (set manually)' : ''}` : '',
                                             doc?.signed_at ? `signed ${doc.signed_at}` : '',
+                                            doc?.signing_for?.trim() ? COMPANY_PAPER_WORDS.signingFor(doc.signing_for.trim()) : '',
                                           ].filter(Boolean)
                                           return (
                                             <div
@@ -2196,6 +2210,11 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                                                     v{doc.lineage_version}
                                                   </span>
                                                 ) : null}
+                                                {doc?.signing_for?.trim() ? (
+                                                  <div style={{ marginTop: '0.15rem', fontSize: '0.75rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
+                                                    {COMPANY_PAPER_WORDS.signingFor(doc.signing_for.trim())}
+                                                  </div>
+                                                ) : null}
                                                 {doc?.url?.trim() || doc?.note?.trim() ? (
                                                   <div style={{ marginTop: '0.15rem', fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                     {doc?.url?.trim() ? (
@@ -2252,8 +2271,14 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                               renderRosterRow(piece.name, false)
                             ) : (
                               <Fragment key={`company:${piece.group.company.id}`}>
-                                <SubCompanyHeadRow group={piece.group} />
+                                <SubCompanyHeadRow
+                                  group={piece.group}
+                                  papers={companyPaperLines(companyPapers, piece.group.company.id)}
+                                  onSend={() => setCompanyPaperWindow({ kind: 'send', companyId: piece.group.company.id })}
+                                  onEnter={() => setCompanyPaperWindow({ kind: 'enter', companyId: piece.group.company.id })}
+                                />
                                 {piece.group.workers.map((w) => renderRosterRow(w.name, false, true))}
+                                <SubCompanyFootRow companyId={piece.group.company.id} />
                               </Fragment>
                             ),
                           )}
@@ -3354,6 +3379,28 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
         />
       ) : null}
 
+      {companyPaperWindow
+        ? (() => {
+            const piece = rosterByCompany(contractsPersonNamesSorted, companyPlaces).find(
+              (x) => x.kind === 'company' && x.group.company.id === companyPaperWindow.companyId,
+            )
+            if (!piece || piece.kind !== 'company') return null
+            return (
+              <SubCompanyPaperWindow
+                kind={companyPaperWindow.kind}
+                group={piece.group}
+                papers={companyPapers.filter((p) => p.company_id === companyPaperWindow.companyId)}
+                bookEntries={contractTemplateDocuments.map((d) => ({ id: d.id, document_name: d.document_name, audience: d.audience ?? null, form_template_id: d.form_template_id ?? null }))}
+                roster={people}
+                onClose={() => setCompanyPaperWindow(null)}
+                onDone={() => {
+                  setCompanyPaperWindow(null)
+                  void reloadSubCompanies()
+                }}
+              />
+            )
+          })()
+        : null}
       {paperEntryFor ? (
         <ContractFormPaperEntryModal
           personName={paperEntryFor}

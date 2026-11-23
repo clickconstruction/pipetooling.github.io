@@ -22,9 +22,38 @@ import {
   type SubCompany,
 } from '../../lib/people/subCompanies'
 import { keepPersonCompany, keepPersonCompanyTitle } from '../../lib/people/subCompaniesIo'
+import { COMPANY_PAPER_WORDS, companyPaperDetail, companyPaperStateWords, type CompanyPaperRow } from '../../lib/people/subCompanyPapers'
 
-/** The company's row: its name, its tag, and its workers. */
-export function SubCompanyHeadRow({ group }: { group: CompanyGroup }) {
+/** The state chip on a company's paper, in the tab's own colours. */
+function PaperStateChip({ status }: { status: string }) {
+  const look =
+    status === 'signed'
+      ? { background: 'var(--bg-green-100)', color: 'var(--text-green-800)' }
+      : status === 'sent'
+        ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+        : { background: 'var(--bg-200)', color: 'var(--text-700)' }
+  return (
+    <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.45rem', borderRadius: 999, whiteSpace: 'nowrap', ...look }}>{companyPaperStateWords(status)}</span>
+  )
+}
+
+const pressLook = { padding: '0.35rem 0.7rem', minHeight: 36, fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer' } as const
+
+/**
+ * The company's row: its name, its tag, its workers, and its own papers once with **Send for signature** and
+ * **Enter from paper** (PR 2). With no `papers` handed in, the row names the company and its workers alone.
+ */
+export function SubCompanyHeadRow({
+  group,
+  papers,
+  onSend,
+  onEnter,
+}: {
+  group: CompanyGroup
+  papers?: readonly CompanyPaperRow[]
+  onSend?: () => void
+  onEnter?: () => void
+}) {
   return (
     <tr data-sub-company-row={group.company.id} style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
       <td colSpan={2} style={{ padding: '0.75rem' }}>
@@ -47,6 +76,54 @@ export function SubCompanyHeadRow({ group }: { group: CompanyGroup }) {
         <div style={{ marginTop: '0.2rem', fontSize: '0.8125rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
           <ValueSentence text={companyWorkersLine(group.workers)} />
         </div>
+        {papers ? (
+          <div data-sub-company-papers style={{ marginTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            {papers.length === 0 ? (
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{COMPANY_PAPER_WORDS.none}</p>
+            ) : (
+              papers.map((p) => (
+                <div
+                  key={p.id}
+                  data-sub-company-paper={p.id}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', padding: '0.5rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)' }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 500, overflowWrap: 'anywhere' }}>{p.document_name}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
+                      <ValueSentence text={companyPaperDetail(p)} />
+                    </div>
+                  </div>
+                  <PaperStateChip status={p.status} />
+                </div>
+              ))
+            )}
+            {onSend || onEnter ? (
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {onSend ? (
+                  <button type="button" onClick={onSend} style={{ ...pressLook, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600 }}>
+                    {COMPANY_PAPER_WORDS.send}
+                  </button>
+                ) : null}
+                {onEnter ? (
+                  <button type="button" onClick={onEnter} style={{ ...pressLook, border: '1px solid var(--border-strong)', background: 'var(--surface)' }}>
+                    {COMPANY_PAPER_WORDS.enter}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </td>
+    </tr>
+  )
+}
+
+/** Under a company's last worker: where else its papers are. */
+export function SubCompanyFootRow({ companyId }: { companyId: string }) {
+  return (
+    <tr data-sub-company-foot={companyId} style={{ borderBottom: '1px solid var(--border)' }}>
+      <td colSpan={2} style={{ padding: '0.4rem 0.75rem 0.6rem 1.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', borderLeft: '3px solid var(--border-strong)' }}>
+        {COMPANY_PAPER_WORDS.foot}
       </td>
     </tr>
   )

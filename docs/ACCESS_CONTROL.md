@@ -989,6 +989,8 @@ Nobody else reads a row of it, an estimator and the person themself among them, 
 Its two doors, `person_trade_company_set` and `person_trade_company_enter`, run as the caller and say so in words to anyone off the four roles.
 Since v2.8381 People → Contracts reads those links only for the four roles (`isOfficeRole`), so the company rows and the **Their company** control are drawn for them alone, and anyone else sees the tab as before.
 A company the control makes goes through `gc_add_company` as the caller, under `gc_companies`' team policy (`gc_office_team()`).
+Since v2.8394 the company's **Send for signature** keeps the signer as a person at the company who gets its contracts under `gc_company_people`' team policy, makes the copy through `gc_company_paper` and names the signer under the paper's own update policy, then calls `send-contract-for-signature`'s company branch with `from: 'office'`, which takes the four roles (v2.8322).
+**Enter from paper** makes the copy the same way and marks it signed under the paper's own update policy, so no function is called and nothing is emailed.
 A person's paper takes `signing_for` from that link through definer triggers, so no read policy on a paper changes: an estimator reads no person's paper, whether or not it names a company.
 Since v2.8013 (punch list #376, `20261120133000_person_paper_reminders.sql`) a waiting staff or sub paper's own reminder switch is a write to its row under `person_contract_documents`' existing write policy, the four roles that send a paper.
 The switch for all is the `app_settings` row `person_paper_reminders_v1`, which the owner and a dev change under one update policy on that key, and it ships off.
