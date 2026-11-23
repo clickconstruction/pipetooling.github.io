@@ -9,7 +9,7 @@ covers:
   - src/components/bids/BidFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-20
+last_updated: 2026-11-23
 ---
 
 > **v2.7279 (after `mapped_at`) — the GC's difficulty chip:** `BidsBidBoardTab.tsx` reads `useGcDifficultyStandings(true)` once and draws `GcDifficultyChip` (*Rated N points*) beside the GC's name in the list row, the opened row's GC/Builder fact and the phone card, *Rate them* on the opened row only since v2.7296 (`docs/recent-features/v2.7279.md`, `v2.7296.md`, punch list #357).
@@ -275,7 +275,7 @@ Regenerate the fact sheet (`npm run map -- <file>`), re-read ranges from it, fli
 
 ## Shared substrate
 
-- **Selection / URL state is the parent's.** Board: `bidBoardSectionOpen`, `bidBoardDeepLinkHighlightId/Gen` (+ a 2,500 ms clear timer and, in `applyBidBoardDeepLinkToBid`, a scroll that waits for the row and holds it in view until the board is still, `lib/scrollToRowAndHold.ts`, ringing the row again once it rests), lost-summary open state; jump icons and flow doors navigate through `selectBidAndSyncUrl` / `openBidFlowDoor`. Form: `editingBid`, `bidFormOpen`, `bidWindowInitialTab` (the window's `key` is `${editingBid.id}:${bidWindowInitialTab}`, so switching bids remounts the form).
+- **Selection / URL state is the parent's.** Board: `bidBoardSectionOpen`, `bidBoardDeepLinkHighlightId/Gen` (+ a 2,500 ms clear timer and, in `applyBidBoardDeepLinkToBid`, a scroll that waits for the row and holds it in view until the board is still, `lib/scrollToRowAndHold.ts` (v2.8259), ringing the row again once it rests), lost-summary open state; jump icons and flow doors navigate through `selectBidAndSyncUrl` / `openBidFlowDoor`. Form: `editingBid`, `bidFormOpen`, `bidWindowInitialTab` (the window's `key` is `${editingBid.id}:${bidWindowInitialTab}`, so switching bids remounts the form).
 - **The form's data engine is `useBidEditForm`** ([`lib/bids/useBidEditForm.ts`](../src/lib/bids/useBidEditForm.ts), 377 lines: 34 `useState`, `bidRowToFormValues` 134–172, `missingFields` 296–302), owned by `Bids.tsx` and shared with the autosave slice and `saveBid`. Tests import only its types (`bidFormAutosave`, `bidFormPayload`, `bidUpdatePrune`, `BidFormModal.render`); the hook and `bidRowToFormValues` have no test. The form is already a view over this seam, so no new hook is needed before F-region moves.
 - **The board has no data engine.** Everything is a parent cache or a per-concern hook (B5, B6). Two hook seams are worth building before Stage B: `useBidBoardRowFocus` (B4) and `useBidBoardNotesUnread` (B5).
 - **Cross-surface duplication:**

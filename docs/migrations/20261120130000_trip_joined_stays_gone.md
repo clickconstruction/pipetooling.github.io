@@ -89,3 +89,5 @@ The whole trips bed ran green on the build Mac's local Postgres 15, with the tri
 ## Push
 
 `supabase db push` once this file is on main. The screen's half works before and after the push: until the push a stale save is not refused, as before.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274).

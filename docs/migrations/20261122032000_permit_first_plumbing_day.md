@@ -40,3 +40,5 @@ Nothing reads v4 yet. The clock's change is its own PR, armed after this file is
 ## Release order
 
 `supabase db push` from a main checkout after the merge. Order against the client deploy does not matter: no client calls v4 until the next PR.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274).

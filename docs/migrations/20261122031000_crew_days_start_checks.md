@@ -28,3 +28,5 @@ No client change needs it and no client is misread by it. A person it holds out 
 ## Tested
 
 `supabase/tests/start_checks/30_arrive.sql`, two new checks: a helper on no team with a clock-in on the job fifteen days ago is told nothing, and with one fourteen days ago is asked. Docker does not run on the Mac this was written on, so the SQL beds workflow is the bed's first run.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274).

@@ -8,7 +8,7 @@ covers:
   - src/pages/SubPortal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-11-23
 ---
 
 > **Line numbers are exact as of `a05cef4c4`** (from the `npm run map -- src/pages/SubPortal.tsx` fact sheet; the file is byte-identical at `db92699d2`) and rot with the next edit — **search the symbol**; the range is only a hint.
@@ -18,6 +18,8 @@ last_updated: 2026-09-25
 Its company-keyed sibling for GC mode is the trade partner portal at `/t/<link>` (`src/pages/GcTradePortal.tsx`, `gc-trade-portal`); [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md#gc-trade-portal) has its read.
 
 The no-login **"Work & pay statement"** a subcontractor opens from a minted capability link — the customer portal's person-keyed sibling. The sub sees their open sheets (line items, Agreed · Paid · Open, a four-dot stage rail), the 90-day payment ledger (a payment's amount, day and memo; never its method, its sending or a credit, which `sub-portal` does not select — *Sub payment method* in the Glossary), paperwork status, "Your days", and can **act**: report percent done, say "my work here is done", move their picked dates, sign-to-accept / decline / "can't do those days" on work offers, open a signing page for unsigned paperwork, and mark days off. Bilingual EN/ES toggle, print-ready (Print = the PDF path), single-theme light.
+
+Since v2.7597 (punch list #371) a switch under the head, **Today** and **Statements** (a link can open on it with `?view=statements`), opens [`SubPortalStatementsView`](../src/components/subPortal/SubPortalStatementsView.tsx) on the `papers` block `sub-portal` hands over, and the switch is drawn only when the function sent one. Since v2.7609 a sub answers from that view (**Got it**, **Something is wrong**, rows of `sub_paper_acks`), and since v2.8273 **Confirm** on a work statement the office made is built behind `SUB_PAPER_CONFIRM_LIVE` (`supabase/functions/_shared/subPapers.ts`, `false`), one confirm per copy since v2.8298 (`sub_paper_acks_confirmed_paper_key`). The words and the rules are the Glossary's *Sub papers*; the read and the answers are [EDGE_FUNCTIONS.md → sub-portal](./EDGE_FUNCTIONS.md#sub-portal).
 
 | Fact | Value |
 |---|---|

@@ -44,3 +44,5 @@ Prod runs Postgres 17; nothing here is newer than 12 (`AS MATERIALIZED`).
 ## Verify after the push
 
 Read-only: `select column_name from information_schema.columns where (table_name, column_name) in (('legal_notification_queue','claimed_until'),('legal_firm_recipients','digest_claimed_until'))` returns two rows, and `select proname from pg_proc where proname like 'legal_notify_claim_%'` returns two. After the next tick with the function deployed, no open queue row keeps a `claimed_until` in the future for longer than the run took.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274); types regenerated in #9332.
