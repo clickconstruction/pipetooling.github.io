@@ -2,7 +2,7 @@
 name: "Working hours: a start and an end for each day, set for a person"
 number: 429
 group: close
-status: asked 2026-11-23 · a plan and a mock-up, then a second pass · the owner's go the same day, *build it all*, with every pick kept · the database door is PR 1 · left: the kernel and readers, the row and its lock, the clock, the dev seat
+status: asked 2026-11-23 · a plan and a mock-up, then a second pass · the owner's go the same day, *build it all*, with every pick kept · built: the database door (PR 1), the kernel and Utilization (PR 2), the Working hours row with its lock and the line on My Time (PR 3) · left: the clock, the usual day's lock, the dev seat
 summary: >
   A new helper works 6:00 AM to 12:00 PM on five days, 30 hours. The app should let a dev or the
   controller set those hours for a person, in 15-minute blocks. Today three things describe a

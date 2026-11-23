@@ -125,6 +125,7 @@ A session swap that Exit finds refused signs that browser out and lands on the s
 Every imitation is on record before its link exists (v2.6290, `20261101175329_user_imitations.sql`, punch list #230): `login-as-user` writes `user_imitations` (who imitated, whom, when) as the service role and opens no imitation it cannot record, since the session it opens carries the person's own JWT;
 a dev alone reads the table (`USING (public.is_dev())`), nobody signed in writes it, `anon` holds nothing, and the three fences cover it.
 `gmail-mine` reads it to refuse such a session (*Messages, My email* below).
+The app activity heartbeat reads it too (v2.8251, `20261122021600_imitated_session_holds_app_activity.sql`): `bump_user_app_activity()` writes nothing when `session_opened_by_imitation()` says the calling session's magic-link sign-in falls from 1 minute before an imitation of the same person to 2 minutes after it, a window of minutes where `gmail-mine` reads back a day, since a wrong hold here would cost a person their own activity.
 The door (v2.3608;
 the Settings rail's chip and `/settings#view-as` since v2.4041, not the gear menu): **View as…** (dev only, `ViewAsPanel`) — the Roles list backed by the samples with their switch chips, and a People search;
 guide *see the app as a role or as a person*.
@@ -939,17 +940,22 @@ A trade reads the sheets sent to it on its own page (`/t/:token`), and nothing o
 Since v2.8024 a dev also types on a walked builder's draft, publishes it as the next revision and marks a revision as read by an attorney, through the same row and the same trigger.
 
 **Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office and, since v2.8175, to an estimator to read (`canSeeAgreements`: dev · master · assistant · controller · estimator, where `canActOnAgreements` stays the four).
-The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `person_contract_documents` since v2.7977 also the estimator for an outside company's agreement alone, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
+The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `person_contract_documents` since v2.7977 also the estimator for an outside company's paper (an agreement alone until v2.8108, below), `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
 Since v2.7625 GC mode's papers are in it under the same rule: `gc_owner_contract_sends` answers a dev, `gc_sows` a dev, the owner and the controller, and a trade company's agreement the office, so under the **GC projects** chip an assistant sees a company's agreement alone.
 No policy changed for it, and nobody reads a paper through it that they could not read before.
 Since v2.7932 a waiting staff, sub or partner line carries **Send again** and **Copy the signing link**: both call `send-contract-for-signature` as the reader, which reads the paper under the caller's own policy and refuses one it cannot read.
 Since v2.8101 that function also says who may send before it reads the paper: the four roles that write one, never a training account or a digital twin.
+Since v2.8348 (punch list #403, the owner's first decision) an outside party's line that is not signed carries **Take back**: one delete of the paper's row as the caller, asking for a party's paper with no job that is unsent or sent, so a signed paper is never removed and the signing link ends with the row.
+The press is drawn for the two roles the library lets delete a paper (`canTakeBackPapers` is `canDeleteFromContractLibrary`, below), which is the app's own rule: `person_contract_documents`' delete policy has answered the office's four roles since `20260714200000_dissolve_assistant_pay_linkage.sql`, and no policy changed.
+The training-mode blocks, the twin fence and the archived seal hold on it as on every write, and an estimator's delete removes nothing.
+Since v2.8352 a party's line that was never sent carries **Send**, the window and the function **Send again** uses, so it is the four roles' under the same rule.
 Since v2.7937 **Send a paper** writes a person's copy as People → Contracts' quick send does, under `person_contract_documents`' own write policy, and reads the Contract Book and the roster under theirs.
 Since v2.7938 the tab's **Contract library** door opens People's library with one copy of its role rules (`contractLibraryRoles.ts`): the owner and a dev delete, and the controller and a dev see the Forms tab.
 Since v2.7726 a person's copy of a paper a job requires is in it with its job, under the same read as every person's agreement: the office.
 `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
 Since v2.8175 (punch list #403, the owner's call 8) an `estimator` has the tab to read, and an old link to it lands them on it: the kind chips are the ones their role reads (*All*, *Outside companies*, *Work orders*), with no **Send a paper**, no **Contract library**, and no press on a line.
-Their list is what the view answers them under each table's own read, an outside company's agreements from `person_contract_documents` and work orders from `step_commitments`, so no policy changed for it.
+Their list is what the view answers them under each table's own read, an outside company's papers from `person_contract_documents` and work orders from `step_commitments`, so no policy changed for it.
+Since v2.8354 (`20261123083000_agreements_every_party_paper.sql`) the view lists a party's paper of every kind and every state, so their list also holds an outside company's W-9, certificate and paper never sent, rows their policy already read.
 Since v2.7977 (punch list #403, `20261120010000_paper_party.sql`, the owner's calls 4 and 7) one more read policy, `person_contract_documents_estimator_outside`, lets an estimator read a paper that is with an outside company: a trade company's own paper (`company_id`), or a party's paper whose contact (`party_contact_id`) is a customer, a person at one, a supply house, a rep, a trade company or a person at one.
 Since v2.8108 (`20261120080000_estimator_reads_outside_papers.sql`, the owner's call 9) that is every kind of such a paper, a W-9 and an insurance certificate among them, where v2.7977 opened an agreement alone, and the rule is the function `paper_is_outside_company`.
 It opens no paper filed under a person and no party on no list, and a digital twin reads none.
@@ -3487,6 +3493,13 @@ The table's insert policy takes `kind = 'answer'` alone, so nobody signed in, a 
 An answer is written as before: by the person, or for anyone by a dev, an assistant, the controller or a pay-approved master.
 `working_hours_on(user, day)` is a security invoker, so it answers what the caller may already read.
 Migration `20261123075925_working_hours_door.sql`.
+Since v2.8353 a change to `people_pay_config.salaried_week_hours` is a **dev**'s or the **controller**'s, held by the trigger `people_pay_config_week_dev_or_controller`.
+A pay-approved owner still changes a wage, and a new pay row on the default week is made by anyone who may make one.
+The **Working hours** row on a person's sheet (*Pay & schedule*) is changed by a dev or the controller, and an owner with pay approval reads it locked.
+**Edit pay setup** shows the seven hour boxes to a dev or the controller for a person with no working hours, and one worked-out line otherwise.
+An answer is refused while the person's working hours are in force, their own and the office's, by `has_working_hours(user)` in the table's insert policy.
+The person reads their working hours at the foot of **My Time** on the Dashboard, with no press.
+Migration `20261123082812_working_hours_lock.sql`.
 
 **Vehicle holders (any role, v2.1648):** whoever currently holds a company vehicle (open `vehicle_possessions` row) gets scoped self-service via the `holds_vehicle()` policies (migration `20260814183650_vehicle_holder_access.sql`): SELECT on their vehicle + its readings/service events/problem reports + own possessions, INSERT odometer readings (`created_by = auth.uid()`), and INSERT problem reports (`reported_by = auth.uid()`).
 Surfaced as the Dashboard **My Vehicle** card (below My Time).
