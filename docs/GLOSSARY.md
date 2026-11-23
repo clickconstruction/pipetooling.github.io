@@ -1997,7 +1997,7 @@ the row says *Nothing the app can see* and shows the clock-out note if one was l
 Amounts follow the payroll gate and are stripped server-side (`get_day_book_payload`).
 Rows written with no actor (service-role sends, backfills) are counted on the day header as *and N more by the system*.
 The schedule keeps a ledger of moves (v2.3726);
-Crew Day and its email carry each office person's one line (v2.3728, v2.3733);
+Who worked and its email carry each office person's one line (v2.3728, v2.3733);
 the queue counts a past day still held (deposits · contracts · billing) are recorded from a dev's or controller's Dashboard once a day (v2.3736, v2.3743, v2.3801), so a day nobody looked stays unknown.
 
 ### Scores (People → Review · the team scorecard)
@@ -3400,14 +3400,26 @@ On those screens a rough reading moves no map and adds no place, **How far am I?
 The box map's **Show where I am** follows the phone, so it waits the 4 seconds, and the presses that ask once call a rough reading rough at once.
 Guide `paint-a-map`, *When Precise Location looks off*.
 
-### Your people
+### Who worked (Dashboard)
+The Dashboard card that shows one day of the whole team by person: scheduled against clocked, hours, field reports and flags.
+Named Crew Day until v2.8329, when the owner renamed it because office people are on it too.
+The code keeps the old name: `DashboardCrewDaySection`, `crewDay.ts`, `isCrewDayRole`, the `crew_day` email stream, `get_crew_day_payload`, the `dash-crew-day` anchor.
+Its end-of-day email (`crew-day-email-dispatch`) says **Who worked** in its subject and in Settings.
+A *crew day* in lower case is still the unit a job's pace is read in, and is no part of this card.
+Guides `see-what-your-crews-did-today`, `get-a-daily-crew-email`.
+
+### Team's open tasks
+Named Your people until v2.8329.
+The code keeps the old name (`DashboardYourPeopleSection`, `dashboardYourPeople.ts`, the `dash-your-people` anchor).
 The office's Dashboard section under My Inbox since v2.6600 (punch list #273;
 `DashboardYourPeopleSection.tsx` over `src/lib/dashboardYourPeople.ts`): one row per person with an open one-off card, the ring on their newest card, *moved today* / *moved Wed* / *stuck 32 days* on Review's own age rule (`ONE_OFF_TASK_AGE`, amber 7 / red 31), **🔔 Remind** through `send-checklist-notification`, **Open Review**, and since v2.6603 **✉ Get this every Monday**.
 Guide `review-my-teams-completed-tasks`.
 
-### Your people's week
+### The team's week
+Named Your people's week until v2.8329.
+An older send keeps its old subject and still links to the stream.
 The Monday email (punch list #273, v2.6603), the `people_week` Report Subscriptions stream: one email a week about the people the reader picks, each person's cards that finished or moved (from and to percent, the lines ticked, the photos, the last words), their roadmap tasks with the stage, the jobs they clocked on with the job's percent and their reports, and the cards stuck past a month.
-Asked for through `PeopleWeekSheet.tsx` (**✉ Email me their week** on Checklist → Review, **✉ Get this every Monday** on Your people;
+Asked for through `PeopleWeekSheet.tsx` (**✉ Email me their week** on Checklist → Review, **✉ Get this every Monday** on Team's open tasks;
 since v2.6644 the picker lists our staff alone — `loadPeopleToPick` leaves subcontractor accounts out, helpers stay — and a first chain picks the board's people only when the picker lists them);
 rows in `people_week_email_requests`, the payload `get_people_week_payload`, the dispatcher `people-week-email`.
 Guide `get-a-monday-email-of-your-peoples-week`;
@@ -3453,9 +3465,9 @@ As of v2.683 the office's Recently Completed block hides entirely when nothing c
 Since v2.8040 the title's row holds the card's one door, **View all →** to the Checklist, at its right edge, and Due Today, Overdue and Recently Completed each carry a quiet label with a count (`MY_INBOX_DOOR` and `myInboxSectionLabels` in `lib/dashboardMyInbox.ts`).
 The section-dock's **My Inbox** chip anchors to the card whenever it renders.
 Since v2.6595 and v2.6597 (punch list #273) its one-off cards carry the Done when… lines and the ring (`useTaskLines`, `onSetPercent`;
-the boot read carries `percent_complete` and `roadmap_group_task_id`), and since v2.6600 the office roles see **Your people** right under it (`DashboardYourPeopleSection` over `lib/dashboardYourPeople.ts`, row 6b of the Dashboard map): one row per person with an open one-off card, the viewer left out — the card that moved last, else the oldest open one, with its ring as a reading, the chip *moved today* · *moved Wed* · *stuck 32 days* on Review's `ONE_OFF_TASK_AGE` line, the people who moved last leading, *3 cards done this week · 2 moved · 1 stuck* above, **Open Review →** and **🔔 Remind** through `send-checklist-notification` with the board's own toasts;
+the boot read carries `percent_complete` and `roadmap_group_task_id`), and since v2.6600 the office roles see **Team's open tasks** (Your people until v2.8329) right under it (`DashboardYourPeopleSection` over `lib/dashboardYourPeople.ts`, row 6b of the Dashboard map): one row per person with an open one-off card, the viewer left out — the card that moved last, else the oldest open one, with its ring as a reading, the chip *moved today* · *moved Wed* · *stuck 32 days* on Review's `ONE_OFF_TASK_AGE` line, the people who moved last leading, *3 tasks done this week · 2 moved · 1 stuck* above, **Open Review →** and **🔔 Remind** through `send-checklist-notification` with the board's own toasts;
 hidden while nobody has an open card;
-the dock chip **Your people** follows it;
+the dock chip **Team's open tasks** follows it;
 guide `review-my-teams-completed-tasks`.
 
 **See**: `RECENT_FEATURES.md` → v2.681, v2.683;

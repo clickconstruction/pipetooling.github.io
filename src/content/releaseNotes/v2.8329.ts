@@ -3,13 +3,13 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.8329',
   date: '2026-11-23',
-  title: 'Needs you on a phone: the words on the left, the button on the right',
+  title: 'Dashboard: Needs you buttons on the right on a phone, and three clearer names',
   kind: 'feature',
   highlights: [
-    'On a phone, every line of Needs you now reads left to right: what needs doing on the left, the button to press on the right.',
-    'The buttons are one width and line up down the list, and each is tall enough for a thumb. A long label wraps inside its button.',
-    'A line’s number sits above its button. Where the title already says the number, it shows once.',
-    'Nothing else changed: each line keeps its words, its colour and where its button goes. At a desk the list looks as it did.',
+    'On a phone, every line of Needs you reads left to right: what needs doing on the left, the button on the right. The buttons are one width and thumb height, a long label wraps inside its button, and a number the title already says shows once.',
+    'The Crew Day card is now Who worked, since office people are on it too. Its envelope reads Email Who worked, and the end-of-day email and its Settings rows carry the same name.',
+    'The Your people card is now Team’s open tasks. Its top line counts tasks done this week.',
+    'The Monday email Your people’s week is now The team’s week, on its sheet, in Settings and in its subject.',
   ],
 }
 

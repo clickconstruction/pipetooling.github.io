@@ -1241,7 +1241,7 @@ export default function Dashboard() {
 
   /** Crew Day (v2.2602): mounted directly above each myInboxCard position; self-gates on isCrewDayRole. */
   const crewDaySection = (
-    <PhoneFold spaced fold={phoneOffice && Boolean(authUser?.id) && isCrewDayRole(role)} section="dash-crew-day" userId={authUser?.id} title="Crew Day" headline={crewDayFoldHeadline(crewDaySummary)}>
+    <PhoneFold spaced fold={phoneOffice && Boolean(authUser?.id) && isCrewDayRole(role)} section="dash-crew-day" userId={authUser?.id} title="Who worked" headline={crewDayFoldHeadline(crewDaySummary)}>
       <DashboardCrewDaySection authUserId={authUser?.id} role={role} onSummary={setCrewDaySummary} />
     </PhoneFold>
   )
@@ -1488,9 +1488,9 @@ export default function Dashboard() {
     { id: 'dash-my-schedule', label: 'My Schedule', visible: Boolean(authUser?.id) },
     { id: 'dash-notifications', label: 'Notifications', visible: showFinancials },
     { id: 'dash-clocked-in', label: 'ClockedIn', visible: Boolean(authUser?.id && showClockActivityStrip) },
-    { id: 'dash-crew-day', label: 'Crew Day', visible: Boolean(authUser?.id) && isCrewDayRole(role) },
+    { id: 'dash-crew-day', label: 'Who worked', visible: Boolean(authUser?.id) && isCrewDayRole(role) },
     { id: 'dash-my-inbox', label: 'My Inbox', visible: myInboxDockVisible },
-    { id: 'dash-your-people', label: 'Your people', visible: yourPeopleDockVisible },
+    { id: 'dash-your-people', label: 'Team’s open tasks', visible: yourPeopleDockVisible },
     {
       id: 'dash-teams-inbox',
       label: 'Teams Inbox',

@@ -61,7 +61,7 @@ const SAMPLE_DEFAULT_SUBJECTS: Record<string, string> = {
   money_waiting: 'Money waiting — Tue, Sep 2',
   billed_awaiting: 'Billed awaiting payment — Tue, Sep 2',
   payment_forecast: 'Payment forecast — Tue, Sep 2',
-  crew_day: 'Crew day — Tue, Sep 2',
+  crew_day: 'Who worked — Tue, Sep 2',
   weekly_money: 'Weekly money movement — Sep 1 – Sep 5',
   weekly_movement: 'Weekly movement — Sep 1 – Sep 5',
   schedule_day: "Tomorrow's schedule — Tue, Sep 2",

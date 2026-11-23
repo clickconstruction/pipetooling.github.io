@@ -224,7 +224,7 @@ export function PeopleWeekSheet({
   const emailPicture = preview ? (
     // The email's own page, sandboxed, and light as an inbox shows it. Its subject is its first line.
     <div data-theme="light">
-      <iframe title={preview.subject || 'Your people’s week, as it would go now'} sandbox="" srcDoc={preview.html} style={{ display: 'block', width: '100%', height: isMobile ? 300 : 380, border: '1px solid var(--border-strong)', borderRadius: 10, background: 'var(--surface)' }} />
+      <iframe title={preview.subject || 'The team’s week, as it would go now'} sandbox="" srcDoc={preview.html} style={{ display: 'block', width: '100%', height: isMobile ? 300 : 380, border: '1px solid var(--border-strong)', borderRadius: 10, background: 'var(--surface)' }} />
     </div>
   ) : (
     // Light as an inbox shows it, on either theme: it is a picture of the email, not a part of the sheet.
@@ -312,7 +312,7 @@ export function PeopleWeekSheet({
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
           <h2 id="people-week-sheet-title" style={{ margin: 0, fontSize: '1.125rem', flex: 1 }}>
-            Your people’s week
+            The team’s week
           </h2>
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0 4px' }}>
             ×
