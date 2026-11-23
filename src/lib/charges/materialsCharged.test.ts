@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { chargeMaterials, chargedAtMarkup, marginOfMarkup, type MaterialLineInput } from './materialsCharged'
-import { moneyParts, moneyWords } from './moneyParts'
+import { moneyParts, moneyWords } from '../moneyParts'
 
 const inv = (id: string, label: string, cost: number, more: Partial<MaterialLineInput> = {}): MaterialLineInput => ({ id, kind: 'supply_invoice', label, dateKey: '2026-04-16', cost, ...more })
 

@@ -123,7 +123,7 @@ The shape, on a local Postgres 15 as a role under a policy that reads a column, 
 
 - `agreements_on_file`: `20261123190000_agreements_party_join_by_key.sql` (v2.8389), the three joins as a `CASE`. The
   `paper-party` bed rebuilds the view as it stood and asserts five roles read the same lines from both, and that the
-  plan finds all three records by key.
+  plan finds the customer and the supply house by key; the trade company's lookup is logged, not held.
 - `people_hours_recorded`: `20261123190100_people_hours_recorded_pay_join_by_key.sql` (its own PR), the pay config join as
   a `CASE`. A new bed, `people-hours-recorded`, does the same over each side of the full join.
 
