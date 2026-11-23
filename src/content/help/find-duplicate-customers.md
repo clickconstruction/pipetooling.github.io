@@ -24,15 +24,15 @@ Two customers land in a group when they share **any** of: name, address, phone, 
 
 Click a customer's name in the group to open Edit. Expand **Merge with another customer** and pick the other one. Before anything moves, the window lists what the other customer holds.
 
-Everything linked to the other customer moves to the one you keep. That means its jobs, bids, estimates, projects, properties, files, ratings, portal links, payment notes and legal matters. Every other record that names the customer moves too.
+Everything linked to the other customer moves to the one you keep. The other customer's jobs, bids, estimates, projects, properties, files, ratings, portal links, payment notes and legal matters all move. Every other record that names the customer moves too.
 
 Some things a customer can hold only once. The window says what happens to each under **Where only one can stand**.
 
 - The customer you keep keeps its own portal address. The other address stops working.
 - The customer you keep keeps its own follow-up setting and pay calendar.
 - A second live portal link, open proposal room or sent paper is closed and kept.
-- When both have a statement mark for one week, the newer mark stands.
-- When both answered one word ask, the newer answer stands.
+- If both customers have a statement mark for one week, the newer mark stands.
+- If both customers answered one word ask, the newer answer stands.
 - A property both customers hold folds into one when nothing on it differs.
 
 Anything a merge drops is kept in the deleted records. A dev can bring it back.
