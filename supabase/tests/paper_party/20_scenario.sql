@@ -5,7 +5,12 @@
 --   * a party's paper is filed under a name no person can have, keeps no roster person even when the party is named like
 --     one, and takes its party back from that name; the two checks hold the shape both ways;
 --   * Documents → Agreements lists a party's paper under one of four new kinds, by the record's own name, with who
---     signs in its facts, and never shows or searches the stored name;
+--     signs in its facts, and never shows or searches the stored name; since migration *_agreements_every_party_paper
+--     (the owner's first decision) it lists a party's paper of any kind and any state: a W-9 and a certificate say
+--     their kind, a copy nobody sent reads not_sent, and a person's or a trade company's own tax form is still no line;
+--   * Take back (v2.8348), the statement Documents → Agreements sends: it removes a party's paper that is out or was
+--     never sent for the owner and a dev, never a signed one, nothing for an estimator, and for an assistant and the
+--     controller exactly what the table's delete policy says; the copy under Sent copies stays;
 --   * each role reads what it read before and no more, but the estimator, who reads every kind of an outside company's
 --     paper, a W-9 and a certificate among them (migration *_estimator_reads_outside_papers, the owner's call 9), and
 --     still no staff paper, no sub's own, no person's tax form and nobody on no list; a digital twin and an archived
@@ -154,6 +159,19 @@ CREATE FUNCTION pp.lines() RETURNS text LANGUAGE sql AS $$
   FROM public.agreements_on_file a
   WHERE a.kind IN ('customer_agreement', 'supply_house_agreement', 'trade_agreement', 'outside_agreement')
 $$;
+-- Take back, as Documents → Agreements sends it (src/lib/documents/paperTakeBackIo.ts): one statement that asks for a
+-- party's paper that is not signed and that no job requires. Run as the caller, so row security answers. How many went.
+CREATE FUNCTION pp.take_back(p_id uuid) RETURNS text LANGUAGE sql AS $$
+  WITH gone AS (
+    DELETE FROM public.person_contract_documents
+    WHERE id = p_id AND party_contact_id IS NOT NULL AND job_id IS NULL AND status IN ('unsent', 'sent')
+    RETURNING id)
+  SELECT count(*)::text FROM gone
+$$;
+-- What the table's delete policy says of the caller, from the policy's own four questions: '1' may delete, '0' may not.
+CREATE FUNCTION pp.may_delete() RETURNS text LANGUAGE sql AS $$
+  SELECT CASE WHEN public.is_dev() OR public.is_pay_approved_master() OR public.is_master_or_dev() OR public.is_assistant_of_pay_approved_master() THEN '1' ELSE '0' END
+$$;
 GRANT USAGE ON SCHEMA pp TO authenticated, anon;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pp TO authenticated, anon;
 
@@ -251,6 +269,8 @@ SELECT pp.send('00000000-0000-0000-0000-000004030119', public.paper_party_contac
 SELECT pp.send('00000000-0000-0000-0000-000004030120', pp.by_email('noor@haddadeng.example'), 'Haddad Engineering', 'W-9', 'sent', 'Noor Haddad', NULL, 'noor@haddadeng.example', 'Haddad Engineering', 'w9', '2026-11-19T16:00:00Z');
 UPDATE public.person_contract_documents SET signer_printed_name = 'Dana M. Ruiz' WHERE id = '00000000-0000-0000-0000-000004030111';
 UPDATE public.person_contract_documents SET signer_last_viewed_at = '2026-11-15T18:00:00Z' WHERE id = '00000000-0000-0000-0000-000004030113';
+-- The copy nobody sent was made on a day of its own, so its line has a day to sort and show.
+UPDATE public.person_contract_documents SET created_at = '2026-11-11T15:00:00Z' WHERE id = '00000000-0000-0000-0000-000004030118';
 RESET ROLE;
 
 SELECT pp.same('a party''s paper is filed under its stored name, with its frozen name and no roster person',
@@ -281,25 +301,41 @@ UPDATE public.person_contract_documents SET signer_name = 'Pat Tallman', signer_
 SELECT pp.same('the view is security_invoker', (SELECT reloptions::text FROM pg_class WHERE oid = 'public.agreements_on_file'::regclass), '{security_invoker=true}');
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d3');
 SET LOCAL ROLE authenticated;
+-- Since *_agreements_every_party_paper a party's paper is a line whatever its kind and state: the W-9s (116, 120), the
+-- customer's certificate (119, signed the same day as 111 and drawn above it by its id) and the copy nobody sent (118).
 SELECT pp.same('the assistant reads a party''s papers as lines, newest first', pp.lines(), concat_ws(E'\n',
+  'outside_agreement|waiting|W-9|Haddad Engineering|none|Noor Haddad|-|Haddad Engineering|-|2026-11-19',
   'outside_agreement|waiting|Mutual secrecy agreement|Haddad Engineering|none|Noor Haddad|Structural engineer|Haddad Engineering|-|2026-11-19',
   'supply_house_agreement|waiting|Mutual secrecy agreement|Tallgrass Supply Co.|supply_house|Lena Park|Branch manager|Tallgrass Supply Co.|-|2026-11-18',
+  'customer_agreement|signed|Certificate of insurance|Ridgeway Builders|customer|Dana Ruiz|-|Ridgeway Builders|-|2026-11-17',
   'customer_agreement|signed|Site secrecy agreement|Ridgeway Builders|customer|Dana Ruiz|Project manager|Ridgeway Builders|Dana M. Ruiz|2026-11-17',
+  'supply_house_agreement|waiting|W-9|Tallgrass Supply Co.|supply_house|Omar Reyes|-|Tallgrass Supply Co.|-|2026-11-15',
   'supply_house_agreement|waiting|Credit terms letter|Tallgrass Supply Co.|supply_house|Omar Reyes|Credit desk|Tallgrass Supply Co.|-|2026-11-15',
   'trade_agreement|signed|Subcontractor agreement|Juniper Mechanical LLC|trade|Marco Ibarra|Owner|Juniper Mechanical LLC|-|2026-11-14',
-  'outside_agreement|waiting|Mutual secrecy agreement|Pat Tallman|none|Pat Tallman|-|-|-|2026-11-12'));
-SELECT pp.same('every kind the assistant reads', pp.kinds(), 'company_agreement 1, customer_agreement 1, outside_agreement 2, person_agreement 2, supply_house_agreement 2, trade_agreement 1');
-SELECT pp.same('a party''s W-9 and a copy nobody sent are no lines',
-  (SELECT count(*)::text FROM public.agreements_on_file WHERE source_id IN ('00000000-0000-0000-0000-000004030116', '00000000-0000-0000-0000-000004030118')), '0');
+  'outside_agreement|waiting|Mutual secrecy agreement|Pat Tallman|none|Pat Tallman|-|-|-|2026-11-12',
+  'supply_house_agreement|not_sent|Mutual secrecy agreement|Cedar Mutual Insurance|supply_house|-|-|-|-|2026-11-11'));
+SELECT pp.same('every kind the assistant reads', pp.kinds(), 'company_agreement 1, customer_agreement 2, outside_agreement 3, person_agreement 2, supply_house_agreement 4, trade_agreement 1');
+SELECT pp.same('a party''s W-9, its certificate and a copy nobody sent are lines, each with its state and its kind',
+  (SELECT string_agg(concat_ws(' ', right(source_id::text, 3), state, facts->>'doc_type'), ',' ORDER BY source_id) FROM public.agreements_on_file
+   WHERE source_id IN ('00000000-0000-0000-0000-000004030116', '00000000-0000-0000-0000-000004030118', '00000000-0000-0000-0000-000004030119', '00000000-0000-0000-0000-000004030120')),
+  '116 waiting w9,118 not_sent agreement,119 signed coi,120 waiting w9');
+SELECT pp.same('only a party''s line says its kind', (SELECT count(*)::text FROM public.agreements_on_file WHERE facts ? 'doc_type' AND NOT (facts ? 'party_kind')), '0');
+SELECT pp.same('and every party''s line does', (SELECT bool_and(facts ? 'doc_type')::text FROM public.agreements_on_file WHERE facts ? 'party_kind'), 'true');
+SELECT pp.same('not_sent is a party''s unsent paper and no other line', (SELECT string_agg(right(source_id::text, 3), ',' ORDER BY source_id) FROM public.agreements_on_file WHERE state = 'not_sent'), '118');
+SELECT pp.same('a teammate''s W-9, a sub''s certificate and a trade company''s own W-9 and certificate are still no lines',
+  (SELECT count(*)::text FROM public.agreements_on_file WHERE source_id IN ('00000000-0000-0000-0000-000004030104', '00000000-0000-0000-0000-000004030105', '00000000-0000-0000-0000-000004030106', '00000000-0000-0000-0000-000004030107')), '0');
+SELECT pp.same('the find box finds a W-9 by those words', (SELECT string_agg(right(source_id::text, 3), ',' ORDER BY source_id) FROM public.agreements_on_file WHERE find_text ILIKE '%w9%'), '116,120');
+SELECT pp.same('a certificate by its words', (SELECT string_agg(right(source_id::text, 3), ',' ORDER BY source_id) FROM public.agreements_on_file WHERE find_text ILIKE '%insurance certificate%'), '119');
+SELECT pp.same('and an unsent paper by the words not sent', (SELECT string_agg(right(source_id::text, 3), ',' ORDER BY source_id) FROM public.agreements_on_file WHERE find_text ILIKE '%not sent%'), '118');
 SELECT pp.same('a party''s line names no roster person', (SELECT string_agg(DISTINCT concat_ws('|', coalesce(person_id::text, '-'), coalesce(person_kind, '-')), ',') FROM public.agreements_on_file WHERE facts ? 'party_kind'), '-|-');
 SELECT pp.same('the stored name is never shown or searched', (SELECT bool_or(find_text LIKE '%party:%' OR with_name LIKE 'party:%')::text FROM public.agreements_on_file), 'false');
 SELECT pp.same('the line carries the party''s contact', (SELECT (facts->>'party_contact_id' = pp.by_email('noor@haddadeng.example')::text)::text FROM public.agreements_on_file WHERE source_id = '00000000-0000-0000-0000-000004030115'), 'true');
 SELECT pp.same('an opened paper still carries when', (SELECT (facts ? 'signer_last_viewed_at')::text FROM public.agreements_on_file WHERE source_id = '00000000-0000-0000-0000-000004030113'), 'true');
-SELECT pp.same('the find box finds a party by its signer', (SELECT string_agg(kind, ',' ORDER BY kind) FROM public.agreements_on_file WHERE find_text ILIKE '%omar reyes%'), 'supply_house_agreement');
-SELECT pp.same('by the business', (SELECT string_agg(kind, ',' ORDER BY kind) FROM public.agreements_on_file WHERE find_text ILIKE '%tallgrass%'), 'supply_house_agreement,supply_house_agreement');
-SELECT pp.same('by the words supply house', (SELECT count(*)::text FROM public.agreements_on_file WHERE find_text ILIKE '%supply house%'), '2');
-SELECT pp.same('by the words not on a list', (SELECT count(*)::text FROM public.agreements_on_file WHERE find_text ILIKE '%not on a list%'), '2');
-SELECT pp.same('and every outside company''s by those words', (SELECT string_agg(kind, ',' ORDER BY kind) FROM public.agreements_on_file WHERE find_text ILIKE '%outside company%'), 'customer_agreement,outside_agreement,outside_agreement,supply_house_agreement,supply_house_agreement');
+SELECT pp.same('the find box finds a party by its signer', (SELECT string_agg(kind, ',' ORDER BY kind) FROM public.agreements_on_file WHERE find_text ILIKE '%omar reyes%'), 'supply_house_agreement,supply_house_agreement');
+SELECT pp.same('by the business', (SELECT string_agg(kind, ',' ORDER BY kind) FROM public.agreements_on_file WHERE find_text ILIKE '%tallgrass%'), 'supply_house_agreement,supply_house_agreement,supply_house_agreement');
+SELECT pp.same('by the words supply house', (SELECT count(*)::text FROM public.agreements_on_file WHERE find_text ILIKE '%supply house%'), '4');
+SELECT pp.same('by the words not on a list', (SELECT count(*)::text FROM public.agreements_on_file WHERE find_text ILIKE '%not on a list%'), '3');
+SELECT pp.same('and every outside company''s by those words', (SELECT string_agg(kind, ',' ORDER BY kind) FROM public.agreements_on_file WHERE find_text ILIKE '%outside company%'), 'customer_agreement,customer_agreement,outside_agreement,outside_agreement,outside_agreement,supply_house_agreement,supply_house_agreement,supply_house_agreement,supply_house_agreement');
 SELECT pp.same('find_text is lower case', (SELECT bool_and(find_text = lower(find_text))::text FROM public.agreements_on_file), 'true');
 -- A staff paper and a trade company's read as before, and a staff paper's facts gain its signer once it is kept.
 SELECT pp.same('a staff paper, a sub''s own and a trade company''s read as before',
@@ -321,7 +357,7 @@ RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d1');
 SET LOCAL ROLE authenticated;
 SELECT pp.same('a dev reads every paper', pp.rows(), '101,102,103,104,105,106,107,111,112,113,114,115,116,117,118,119,120');
-SELECT pp.same('and every kind', pp.kinds(), 'company_agreement 1, customer_agreement 1, outside_agreement 2, person_agreement 2, supply_house_agreement 2, trade_agreement 1');
+SELECT pp.same('and every kind', pp.kinds(), 'company_agreement 1, customer_agreement 2, outside_agreement 3, person_agreement 2, supply_house_agreement 4, trade_agreement 1');
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d2');
 SET LOCAL ROLE authenticated;
@@ -341,7 +377,13 @@ SET LOCAL ROLE authenticated;
 -- certificate. Not 101, 102, 105 or 106 (a person's, a W-9 and a certificate among them), nor 115, 117 or 120 (on no
 -- list, a W-9 among them).
 SELECT pp.same('an estimator reads every kind of an outside company''s paper and nothing else', pp.rows(), '103,104,107,111,112,113,114,116,118,119');
-SELECT pp.same('an estimator''s lines are the outside companies''', pp.kinds(), 'company_agreement 1, customer_agreement 1, supply_house_agreement 2, trade_agreement 1');
+-- Their lines follow their rows: the supply house's W-9 (116), the insurer's unsent copy (118) and the customer's
+-- certificate (119) are lines for them too now, and nobody's on no list is.
+SELECT pp.same('an estimator''s lines are the outside companies''', pp.kinds(), 'company_agreement 1, customer_agreement 2, supply_house_agreement 4, trade_agreement 1');
+SELECT pp.same('an estimator reads the unsent copy as not sent, and the W-9 by its kind',
+  (SELECT string_agg(concat_ws(' ', right(source_id::text, 3), state, facts->>'doc_type'), ',' ORDER BY source_id) FROM public.agreements_on_file WHERE source_id IN ('00000000-0000-0000-0000-000004030116', '00000000-0000-0000-0000-000004030118')),
+  '116 waiting w9,118 not_sent agreement');
+SELECT pp.same('and no line of a party on no list, a W-9 among them', (SELECT count(*)::text FROM public.agreements_on_file WHERE kind = 'outside_agreement'), '0');
 SELECT pp.same('an estimator reads no person''s paper', (SELECT count(*)::text FROM public.person_contract_documents WHERE person_id IS NOT NULL OR (party_contact_id IS NULL AND company_id IS NULL)), '0');
 SELECT pp.same('an estimator reads an outside company''s tax forms and certificates',
   (SELECT string_agg(right(id::text, 3) || ' ' || doc_type, ',' ORDER BY id) FROM public.person_contract_documents WHERE doc_type <> 'agreement'), '104 w9,107 coi,116 w9,119 coi');
@@ -369,6 +411,51 @@ UPDATE public.person_contract_documents SET status = 'signed' WHERE id = '000000
 DELETE FROM public.person_contract_documents WHERE id = '00000000-0000-0000-0000-000004030112';
 RESET ROLE;
 SELECT pp.same('and changes none', (SELECT status FROM public.person_contract_documents WHERE id = '00000000-0000-0000-0000-000004030112'), 'sent');
+
+-- 5b · Take back (v2.8348). Five papers with the insurer, written by the assistant: 141 out, 142 signed, 143 never
+-- sent, 144 and 145 out. The copy of 141's email is under Sent copies, which names its paper with no key.
+SELECT pp.as_user('00000000-0000-0000-0000-0000000403d3');
+SET LOCAL ROLE authenticated;
+SELECT pp.send('00000000-0000-0000-0000-000004030141', pp.on('supply_house_id', '00000000-0000-0000-0000-0000000403a2'), 'Cedar Mutual Insurance', 'Paper to take back', 'sent', 'Iris Cho', NULL, 'iris@cedarmutual.example', 'Cedar Mutual Insurance', 'agreement', '2026-11-20T15:00:00Z');
+SELECT pp.send('00000000-0000-0000-0000-000004030142', pp.on('supply_house_id', '00000000-0000-0000-0000-0000000403a2'), 'Cedar Mutual Insurance', 'Paper they signed', 'signed', 'Iris Cho', NULL, 'iris@cedarmutual.example', 'Cedar Mutual Insurance', 'agreement', '2026-11-20T15:00:00Z', '2026-11-21');
+SELECT pp.send('00000000-0000-0000-0000-000004030143', pp.on('supply_house_id', '00000000-0000-0000-0000-0000000403a2'), 'Cedar Mutual Insurance', 'Paper nobody sent', 'unsent', NULL, NULL, NULL, NULL);
+SELECT pp.send('00000000-0000-0000-0000-000004030144', pp.on('supply_house_id', '00000000-0000-0000-0000-0000000403a2'), 'Cedar Mutual Insurance', 'Paper the controller tries', 'sent', 'Iris Cho', NULL, 'iris@cedarmutual.example', 'Cedar Mutual Insurance', 'agreement', '2026-11-20T15:00:00Z');
+SELECT pp.send('00000000-0000-0000-0000-000004030145', pp.on('supply_house_id', '00000000-0000-0000-0000-0000000403a2'), 'Cedar Mutual Insurance', 'Paper the assistant tries', 'sent', 'Iris Cho', NULL, 'iris@cedarmutual.example', 'Cedar Mutual Insurance', 'agreement', '2026-11-20T15:00:00Z');
+RESET ROLE;
+INSERT INTO public.sent_documents (kind, how, source_table, source_id) VALUES ('person_contract', 'email', 'person_contract_documents', '00000000-0000-0000-0000-000004030141');
+SELECT pp.as_user('00000000-0000-0000-0000-0000000403d5');
+SET LOCAL ROLE authenticated;
+SELECT pp.same('an estimator reads the paper and takes nothing back', pp.take_back('00000000-0000-0000-0000-000004030141'), '0');
+RESET ROLE;
+-- The delete policy is narrower than the write policy, so the press is the owner's and a dev's. What an assistant and
+-- the controller are answered is whatever that policy says of them here, and never a refusal in words.
+SELECT pp.as_user('00000000-0000-0000-0000-0000000403d4');
+SET LOCAL ROLE authenticated;
+SELECT pp.same('the controller is answered what the delete policy says', pp.take_back('00000000-0000-0000-0000-000004030144'), pp.may_delete());
+RESET ROLE;
+SELECT pp.as_user('00000000-0000-0000-0000-0000000403d3');
+SET LOCAL ROLE authenticated;
+SELECT pp.same('and so is an assistant', pp.take_back('00000000-0000-0000-0000-000004030145'), pp.may_delete());
+RESET ROLE;
+SELECT pp.as_user('00000000-0000-0000-0000-0000000403d2');
+SET LOCAL ROLE authenticated;
+SELECT pp.same('the owner may delete a paper', pp.may_delete(), '1');
+SELECT pp.same('and still takes back no signed paper: the statement asks for an unsigned one', pp.take_back('00000000-0000-0000-0000-000004030142'), '0');
+SELECT pp.same('the owner takes back a paper that is out', pp.take_back('00000000-0000-0000-0000-000004030141'), '1');
+SELECT pp.same('and a second press finds nothing to take', pp.take_back('00000000-0000-0000-0000-000004030141'), '0');
+RESET ROLE;
+SELECT pp.as_user('00000000-0000-0000-0000-0000000403d1');
+SET LOCAL ROLE authenticated;
+SELECT pp.same('a dev takes back a paper that was never sent', pp.take_back('00000000-0000-0000-0000-000004030143'), '1');
+RESET ROLE;
+SELECT pp.same('the signed paper is kept, and the two taken back are gone',
+  (SELECT string_agg(right(id::text, 3) || ' ' || status, ',' ORDER BY id) FROM public.person_contract_documents
+   WHERE id IN ('00000000-0000-0000-0000-000004030141', '00000000-0000-0000-0000-000004030142', '00000000-0000-0000-0000-000004030143')), '142 signed');
+SELECT pp.same('the copy of the email that went out stays under Sent copies',
+  (SELECT count(*)::text FROM public.sent_documents WHERE source_table = 'person_contract_documents' AND source_id = '00000000-0000-0000-0000-000004030141'), '1');
+SELECT pp.same('and the contact the paper was with is still there', (pp.on('supply_house_id', '00000000-0000-0000-0000-0000000403a2') IS NOT NULL)::text, 'true');
+-- The section's own rows go, so the rest of the scenario reads the papers it read before.
+DELETE FROM public.person_contract_documents WHERE id IN ('00000000-0000-0000-0000-000004030142', '00000000-0000-0000-0000-000004030144', '00000000-0000-0000-0000-000004030145');
 
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d9');
 SET LOCAL ROLE authenticated;
