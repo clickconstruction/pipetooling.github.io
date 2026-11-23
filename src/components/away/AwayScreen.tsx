@@ -13,7 +13,7 @@ const CARD: CSSProperties = { background: 'var(--surface)', border: '1px solid v
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
 const PRESS: CSSProperties = { font: 'inherit', fontWeight: 700, fontSize: '0.875rem', borderRadius: 8, padding: '10px 12px', width: '100%', cursor: 'pointer', textAlign: 'center', textDecoration: 'none', display: 'block', boxSizing: 'border-box' }
 const BLUE: CSSProperties = { ...PRESS, background: '#2563eb', border: '1px solid #2563eb', color: '#fff' }
-const GREEN: CSSProperties = { ...PRESS, background: '#16a34a', border: '1px solid #16a34a', color: '#fff' }
+const GREEN: CSSProperties = { ...PRESS, background: '#15803d', border: '1px solid #15803d', color: '#fff' }
 const QUIET: CSSProperties = { ...PRESS, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-strong)' }
 
 export type AwayScreenProps = {

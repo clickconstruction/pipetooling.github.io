@@ -4756,6 +4756,8 @@ What of it is on main, one line a piece:
   Since v2.8255 a day the customer said in their own text or voicemail, not yet gone by, is drawn beside the press as *They said Fri Nov 27.* and the sheet opens with it in **Pay by** (`heardDayOnLine` over `daySaidIn`), written only on Save.
   Since v2.8271 a promise saved from a line also marks that line's own promise as a payment by the day (`write_down_payment`), so the job's *They promised* row names it and the thread reads *Their move · until Fri Nov 27 · payment* once our word is the newest, and *Never said that* takes the mark back off.
   Since v2.8307 *Never said that* leaves the day on the thread while another promise of the customer's still names it (`dayStillPromised`), and a line on the screen says so.
+  Since v2.8382 (punch list #421) the move line names a written promise's kind in words (`runningPromise`): *quote*, *start*, *delivery*, *insurance*, *W-9*, *payment*, *their answer* for a customer's answer on our bid, *on site*, *answer* and *certificate* for an architect's, and *their word* for a day given on a call.
+  The same PR holds the words of a heard day's choice (`messages/heardChoice.ts`): the line it draws under, the day read in the app's zone, the presses by who they are and *just talk*.
   Since v2.8278 (punch list #334) the sheet sits on the modal stack (`useModalStackEntry`) and Escape closes it when it is the top window and no save is on its way, wherever it was opened from, while *Never said that*'s own question takes the key first.
 - **R3** · v2.5411: `stepsByFlow` and `qrStepName` name a quick reply's step across a kind's flows, the residential customer's beside the GC customer's.
 - **R4 · 1** · v2.5396: the residential customer flow, eleven facts from booked to review asked and two papers, the estimate and the bill (migration `20261014050000`;
@@ -6230,7 +6232,22 @@ A kernel that writes a sentence marks each value as `⟪kind|text⟫` with `val`
 `keepVerdict` says what Keep means for a draft: nothing changed, a finished value, or the reason the field stays open.
 Since v2.8299 a value handed `startOpen` draws its field at once, for a fact a screen asks for right after another: the Lien desk's retainage pane asks how our contract ended, then opens its day.
 A screen a firm or a read-only account reads sits inside `ValuesInPlaceOff` and draws every value with no press.
+Since v2.8374 an amount in a worked-out or a changeable value draws its cents smaller, through the door **Small cents** names.
 The words to ask for it on any screen are *give this screen values in place*.
+
+### Small cents (an amount on a screen)
+The owner's rule for money on a screen, given for the whole app on 2026-11-23: the cents are drawn smaller than the rest of the amount, so the dollars read at a glance.
+Punch list #254 had the rule for the charges surfaces and #422 for Bills sent.
+One kernel splits a figure into its sign, its dollars and its cents ([`moneyParts.ts`](../src/lib/moneyParts.ts)), and one door draws it ([`Money.tsx`](../src/components/Money.tsx), v2.8374).
+`Money` draws a number, `MoneyText` draws words a kernel already wrote, and `MoneyTspans` draws a chart's label.
+The cents' size is one ratio for the whole app, `MONEY_CENTS_EM`, in `em` so it follows the text around it.
+A loss wears a true minus before the dollar sign, a signed figure a plus or a minus, and a figure in whole dollars has no cents to draw.
+A place that cannot draw a span keeps the plain words (`moneyWords`): a tooltip, a CSV, a print, an email, a box a person types in.
+`AmountSmallCents`, `MoneyWithSmallCents` and the charges surfaces' `Money` are older names that draw through the door.
+A screen is moved to the door by `node scripts/codemods/small-cents-sweep.mjs`, never by hand, and the surfaces moved so far are the files in `scripts/codemods/small-cents-swept/`, one a sweep.
+`check:small-cents` reads those files and refuses a PR that writes `$` and `formatCurrency` into a swept screen (v2.8376).
+A customer's screen, a print and anything inside a `data-theme="light"` wrapper keep the look they have, the owner's call of 2026-11-23.
+A test finds an amount drawn through the door with `moneyText` ([`moneyText.ts`](../src/test/moneyText.ts)), since the figure is two spans.
 
 ### Before we start (a stage's list)
 For each stage line the office writes a short list of what must be true before the crew goes (punch list #382;
@@ -6945,6 +6962,8 @@ The `agreements_on_file` view answers a party's paper as *customer_agreement*, *
 Since v2.8354 (punch list #403, the owner's first decision, `20261123083000_agreements_every_party_paper.sql`) the view answers a party's paper of any kind and any state: a W-9, a certificate or a licence carries a second tag from `facts.doc_type`, and a paper made and never sent reads the state *not_sent*, drawn as *not sent* under a **Not sent** chip that shows while one exists, with **Send** on its line beside **Take back** (`agreementCanBeSent`, [`agreementsActs.ts`](../src/lib/documents/agreementsActs.ts)).
 *Not on a list* is a party whose contact has no record yet.
 Since v2.8313 (punch list #403, step 5, `20261123020000_sub_company_ground.sql`) a roster person can work for a trade company: `person_trade_companies` holds one row a person, written through `person_trade_company_set` or `person_trade_company_enter` by the office's four roles, and a person's paper fills `signing_for` from that link when it is made and each time it is sent, while a signed paper keeps what it said (who may write it: [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md)).
+Since v2.8381 (punch list #403, step 6) People → Contracts draws a **trade company** row above the subs who work for it, tagged *Trade company* and naming its workers, a worker with a title first ([`subCompanies.ts`](../src/lib/people/subCompanies.ts)).
+**Their company** is the value in place on a sub's opened row that enters, moves or clears that link, with **Same as their name** for a sub whose business carries their own name, and a new name makes a trade company whose trade is Plumbing.
 Since v2.8162 a party's own page lists its papers: a supply house's window under **Papers**, and the Customer page's **Agreements** card under *Papers with this customer* ([`PartyPapers.tsx`](../src/components/contracts/PartyPapers.tsx), [`partyPapers.ts`](../src/lib/contracts/partyPapers.ts)).
 A paper is a party's when its contact is the party's own or that of a person there: a person on file at the customer, or a rep of the house.
 That list holds every kind and every state, so a W-9 and a paper that reads *not sent* are on it, where the Agreements tab lists agreements that were sent.

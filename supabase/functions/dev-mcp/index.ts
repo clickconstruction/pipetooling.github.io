@@ -146,7 +146,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // The note each server version carries (what it added and why, in the words of the day) lives in
 // docs/dev-mcp/SERVER_NOTES.md, oldest first, and a new version adds its note there. They were comments here until
 // they weighed 44 KB of this function's upload, which the deploy refuses past 5 MB (npm run check:edge-bundles).
-const SERVER_VERSION = '0.130.0'
+const SERVER_VERSION = '0.132.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 /** v2.7987 (punch list #315, upgrade 3a): what a person-file plan takes for the approvals list, and what its description says of it. */
@@ -332,7 +332,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_mail_tag',
-    description: "Dry-run tagging a whole Gmail conversation onto a job (server 0.30.0): out of the box of the login named, as that person, through gmail-mine's own tag — the Messages → My email press — so every mail lands on the job's Activity and notes at its own time, a line the boxes already hold is tied instead of written twice, and later mail in the conversation follows by itself. The plan lists each mail with what the tag would do (write, tie, skip and why), the counts, and the job the conversation was on before when a tag would move it. Nothing is written. Find the conversation with search_mail (a hit's thread_id) and the job with find_job. Since server 0.42.0 (punch list #289) the target may be a person instead — tag.person: { person_id } (find_person): each mail becomes a dated entry on that person's HR file (From, To, Cc, Subject, Sent, the files by name and size, the body as plain text), on the mail's own day, as you, carrying its Gmail id, so a mail the file already holds is left and later mail follows as entries; an archived login's box may be read for it. tag.person.stop: true plans lifting that follow instead: the row goes, every entry stays.",
+    description: "Dry-run tagging a whole Gmail conversation onto a job (server 0.30.0): out of the box of the login named, as that person, through gmail-mine's own tag — the Messages → My email press — so every mail lands on the job's Activity and notes at its own time, a line the boxes already hold is tied instead of written twice, and later mail in the conversation follows by itself. The plan lists each mail with what the tag would do (write, tie, skip and why), the counts, and the job the conversation was on before when a tag would move it. Nothing is written. Find the conversation with search_mail (a hit's thread_id) and the job with find_job. Since server 0.42.0 (punch list #289) the target may be a person instead — tag.person: { person_id } (the people.id get_case_brief answers in person.id; not find_person's users.id): each mail becomes a dated entry on that person's HR file (From, To, Cc, Subject, Sent, the files by name and size, the body as plain text), on the mail's own day, as you, carrying its Gmail id, so a mail the file already holds is left and later mail follows as entries; an archived login's box may be read for it. tag.person.stop: true plans lifting that follow instead: the row goes, every entry stays.",
     inputSchema: { type: 'object', properties: { tag: { type: 'object', description: "{ account (the address the hit names), thread_id (the hit's thread_id), job: { jobs_ledger_id | bid_id | project_id } | person: { person_id, stop? }, for_record? (a job tag's, since server 0.80.0: true files every mail for the record whatever its age, so nothing opens on Follow up; without it a mail older than 14 days is filed and a newer one lands as today's mail would — each mail's lands says which) }" } }, required: ['tag'] },
   },
   {
@@ -367,12 +367,12 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_person_evidence',
-    description: "Dry-run a piece of evidence on a person's HR file (docs/HR_FILES.md → Evidence): a record — the day it is about, a title, a memo on what it shows and why it matters — and its files, sent as content_base64 (a photo, a PDF, an email as .eml, a screenshot; each under 10 MB, at most 20 files a record) or, for a file already in Drive — a file the office filed by hand — as { name, drive_url }, which is linked and never staged (v2.6541). Since 0.130.0 a file may be declared instead of sent, the way for anything of size, a recording or a long PDF, up to 50 MB: { name, staged: true, size_bytes, sha256, mime? } (wc -c and shasum -a 256 say them). The plan then answers upload: one address a declared file, good for two hours and one upload, with the curl line that sends the file from your machine straight to the private bucket, so its bytes never ride through a tool call. Send each, then apply. The server turns each sent file into its name, mime, size and sha256 before the dry run, so the plan commits to the files themselves; replies with the person, the record as it would be written, where it lands in Drive (People › the person › the day · the title), whether the People folder is set, and a plan_hash. Nothing is written or stored by the plan. You are named as the author. Since 0.118.0 the reply's exhibit names the number the file would give the record (would_take, Ev #N), read and never taken: leave the number out of the title.",
+    description: "Dry-run a piece of evidence on a person's HR file (docs/HR_FILES.md → Evidence): a record — the day it is about, a title, a memo on what it shows and why it matters — and its files, sent as content_base64 (a photo, a PDF, an email as .eml, a screenshot; each under 10 MB, at most 20 files a record) or, for a file already in Drive — a file the office filed by hand — as { name, drive_url }, which is linked and never staged (v2.6541). Since 0.132.0 a file may be declared instead of sent, the way for anything of size, a recording or a long PDF, up to 50 MB: { name, staged: true, size_bytes, sha256, mime? } (wc -c and shasum -a 256 say them). The plan then answers upload: one address a declared file, good for two hours and one upload, with the curl line that sends the file from your machine straight to the private bucket, so its bytes never ride through a tool call. Send each, then apply. The server turns each sent file into its name, mime, size and sha256 before the dry run, so the plan commits to the files themselves; replies with the person, the record as it would be written, where it lands in Drive (People › the person › the day · the title), whether the People folder is set, and a plan_hash. Nothing is written or stored by the plan. You are named as the author. Since 0.118.0 the reply's exhibit names the number the file would give the record (would_take, Ev #N), read and never taken: leave the number out of the title.",
     inputSchema: { type: 'object', properties: { evidence: { type: 'object', description: "{ person_id (a people.id — get_person_file resolves a login or a name), dated_on (YYYY-MM-DD, not ahead of today), title (under 160), memo (under 4,000), entry_id? (the person_file_entries.id it proves), counsel_only? (true keeps the record here only, never filed in Drive), files: [{ name (with its extension), content_base64, mime? } | { name, staged: true, size_bytes, sha256, mime? (declared; the plan answers where its bytes go) } | { name, drive_url (a file already in Drive) }] }" } }, required: ['evidence'] },
   },
   {
     name: 'apply_person_evidence',
-    description: 'Keep the evidence you planned: the same evidence plus the plan_hash from plan_person_evidence. Runs the dry run again first and writes only when it still matches. Stages each sent file in the private hr-files bucket as you, reads each declared file back from the address the plan gave (0.130.0) and holds its size and sha256 to the plan — a file not sent yet, or not the planned one, refuses the apply in words and writes nothing, and a wrong file is taken out of the bucket — then writes the record and its file rows as you (a linked file as its address alone; append-only: a correction is a new record), then asks hr-evidence-drive to file the staged ones into the People Shared Drive — fail-soft: a refusal leaves the record standing as not in Drive, and the sweep tries again every ten minutes while a file waits. A record of linked files alone never asks Drive. One apply per plan. The reply names the number the file gave the record (exhibit_no, Ev #N).',
+    description: 'Keep the evidence you planned: the same evidence plus the plan_hash from plan_person_evidence. Runs the dry run again first and writes only when it still matches. Stages each sent file in the private hr-files bucket as you, reads each declared file back from the address the plan gave (0.132.0) and holds its size and sha256 to the plan — a file not sent yet, or not the planned one, refuses the apply in words and writes nothing, and a wrong file is taken out of the bucket — then writes the record and its file rows as you (a linked file as its address alone; append-only: a correction is a new record), then asks hr-evidence-drive to file the staged ones into the People Shared Drive — fail-soft: a refusal leaves the record standing as not in Drive, and the sweep tries again every ten minutes while a file waits. A record of linked files alone never asks Drive. One apply per plan. The reply names the number the file gave the record (exhibit_no, Ev #N).',
     inputSchema: { type: 'object', properties: { evidence: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['evidence', 'plan_hash'] },
   },
   {
@@ -1476,7 +1476,7 @@ const HR_FILES_BUCKET = 'hr-files'
 
 /** An evidence verb's files (v2.6426): each decoded, checked against the panel's caps, digested. `args` is the input with every content_base64 replaced by mime, size_bytes and sha256. */
 /** A file to stage (bytes), or a linked one (v2.6541: already in Drive, sent as its address alone) in the plan's order. */
-/** Or, since 0.130.0, a declared one: named by its size and sha256, its bytes sent by the agent straight to the bucket (devMcpEvidenceUpload.ts). */
+/** Or, since 0.132.0, a declared one: named by its size and sha256, its bytes sent by the agent straight to the bucket (devMcpEvidenceUpload.ts). */
 type EvidenceFiles = { args: Record<string, unknown>; files: Array<{ bytes: Uint8Array; mime: string; name: string; sha256: string } | { name: string; driveUrl: string } | { name: string; declared: DeclaredFile }> }
 
 async function evidenceBytes(args: Record<string, unknown>): Promise<EvidenceFiles | { error: string }> {
@@ -1502,7 +1502,7 @@ async function evidenceBytes(args: Record<string, unknown>): Promise<EvidenceFil
       continue
     }
     if (f && f.staged === true) {
-      // A declared file (0.130.0): no bytes travel here. Its facts ride as a sent file's do, so the plan commits to
+      // A declared file (0.132.0): no bytes travel here. Its facts ride as a sent file's do, so the plan commits to
       // them; the apply reads the object the agent sent and holds it to these before any row is written.
       if (b64) return { error: `${name}: send content_base64 (the file itself) or staged: true (the file declared), not both.` }
       const declared = declaredFileInput(name, f.size_bytes, f.sha256, EVIDENCE_STAGED_MAX_BYTES)
@@ -1529,7 +1529,7 @@ async function evidenceBytes(args: Record<string, unknown>): Promise<EvidenceFil
 }
 
 /**
- * 0.130.0: where each declared file of an evidence plan goes (devMcpEvidenceUpload.ts). The record's id and the files'
+ * 0.132.0: where each declared file of an evidence plan goes (devMcpEvidenceUpload.ts). The record's id and the files'
  * ids come from the plan's hash, so the plan and its apply name the same paths with nothing kept in between. Storage
  * is asked, as the dev, for an address that takes one upload of that one path; a path that already holds its object
  * reads as in place. Nothing is stored by asking.
@@ -1566,7 +1566,7 @@ async function evidenceUploadSlots(jwt: string, personId: string, hash: string, 
 }
 
 /**
- * 0.130.0: a declared file as it sits in the bucket, read back as the dev: its size and its sha256, null when nothing
+ * 0.132.0: a declared file as it sits in the bucket, read back as the dev: its size and its sha256, null when nothing
  * is at the path. A size that already differs from the plan's is answered without reading the bytes.
  */
 async function stagedEvidenceFacts(jwt: string, path: string, plannedSize: number): Promise<{ size: number; sha256: string } | null | { error: string }> {
@@ -6274,7 +6274,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         // v2.7976 (punch list #315, upgrade 2): the number the file would give the record, read and never taken, beside
         // the plan. Outside the hash: the plan already commits to the person's record count, which moves when it does.
         if (isEvidence) {
-          // 0.130.0: a declared file's address rides beside the plan, outside the hash: the paths come from the hash itself.
+          // 0.132.0: a declared file's address rides beside the plan, outside the hash: the paths come from the hash itself.
           const declares = evidence && !('error' in evidence) && evidence.files.some((f) => 'declared' in f)
           const upload = declares && evidence && !('error' in evidence) ? { upload: uploadPlanWords(await evidenceUploadSlots(session, String(built.target), String(planned.plan_hash), evidence.files)) } : {}
           return ok({ ...planned, exhibit: exhibitPlanWords(await nextExhibitNo(session, String(built.target))), ...upload }, { target: built.target })
@@ -6318,7 +6318,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         }
         if (evidence && !('error' in evidence)) {
           // The files first, as the dev, under the record's folder in hr-files; the RPC refuses the rows unless every one is there.
-          // 0.130.0: with a declared file the record's id and the files' ids are the ones the plan's addresses were made
+          // 0.132.0: with a declared file the record's id and the files' ids are the ones the plan's addresses were made
           // for, worked out from the plan's hash; without one they are made here, as before.
           const uploadIds = evidence.files.some((f) => 'declared' in f) ? await evidenceUploadIds(String(built.planHash), evidence.files.length) : null
           const evidenceId = uploadIds ? uploadIds.evidenceId : crypto.randomUUID()

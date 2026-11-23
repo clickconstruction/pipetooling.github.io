@@ -13,6 +13,7 @@ import {
   type EditingLineItem,
   type WorkflowLineItemModalsProps,
 } from './WorkflowLineItemModals'
+import { moneyText } from '../../test/moneyText'
 
 type LineItem = NonNullable<EditingLineItem['item']>
 
@@ -81,7 +82,7 @@ describe('WorkflowLineItemModals', () => {
     const props = { ...closed(), confirmDeleteLineItem: { item: lineItem, stepName: 'Rough' } }
     await renderSettled(<WorkflowLineItemModals {...props} />, { loaded: () => screen.findByText('Delete line item?') })
     expect(screen.getByText(/Pipe and fittings/)).toBeTruthy()
-    expect(screen.getByText(/\(\$1,234\.50\)/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/\(\$1,234\.50\)/))).toBeTruthy()
     expect(screen.getByText(/Date: Sep 7, 2026/)).toBeTruthy()
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
@@ -147,7 +148,7 @@ describe('WorkflowLineItemModals', () => {
   it('PO picker: lists the finalized POs with totals and attaches the one clicked to the step', async () => {
     const props = { ...closed(), addingPOToStep: 's1', availablePOs: [{ id: 'po1', name: 'Rough-in order', total: 4210.5 }] }
     await renderSettled(<WorkflowLineItemModals {...props} />, { loaded: () => screen.findByText('Add Purchase Order to Step') })
-    expect(screen.getByText('$4210.50')).toBeTruthy()
+    expect(screen.getByText(moneyText('$4210.50'))).toBeTruthy()
     fireEvent.click(screen.getByText('Rough-in order'))
     expect(props.onAddPOToStep).toHaveBeenCalledWith('s1', 'po1')
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
@@ -198,9 +199,9 @@ describe('WorkflowLineItemModals', () => {
       },
     }
     await renderSettled(<WorkflowLineItemModals {...props} />, { loaded: () => screen.findByText('Rough-in order') })
-    expect(screen.getByText('$42.50')).toBeTruthy()
-    expect(screen.getByText('$6.00')).toBeTruthy()
-    expect(screen.getByText('$48.50')).toBeTruthy()
+    expect(screen.getByText(moneyText('$42.50'))).toBeTruthy()
+    expect(screen.getByText(moneyText('$6.00'))).toBeTruthy()
+    expect(screen.getByText(moneyText('$48.50'))).toBeTruthy()
     expect(screen.getByText('-')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(props.onCloseViewPO).toHaveBeenCalledTimes(1)
@@ -212,7 +213,7 @@ describe('WorkflowLineItemModals', () => {
       viewingInvoice: { id: 'i1', invoice_number: 'INV-1001', supply_house_name: 'Ferguson', amount: 1250.5, link: 'files.test/inv.pdf' },
     }
     await renderSettled(<WorkflowLineItemModals {...props} />, { loaded: () => screen.findByText('Invoice #INV-1001') })
-    expect(screen.getByText('$1,250.50')).toBeTruthy()
+    expect(screen.getByText(moneyText('$1,250.50'))).toBeTruthy()
     const link = screen.getByRole('link', { name: 'View invoice link' })
     expect(link.getAttribute('href')).toBe('https://files.test/inv.pdf')
     expect(link.getAttribute('rel')).toBe('noopener noreferrer')

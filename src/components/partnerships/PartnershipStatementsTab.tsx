@@ -7,6 +7,7 @@ import { useOfficePartnerLedger } from '../../hooks/useOfficePartnerLedger'
 import { planStatementClose } from '../../lib/partnerLedger/statementCloseWeeks'
 import { EmptyState } from '../EmptyState'
 import { partnershipStatementsEmptyWords } from '../../lib/partnerLedger/partnershipsEmptyWords'
+import { MoneyText } from '../Money'
 
 /**
  * Partnerships → Statements tab (PARTNERSHIPS_PLAN.md PR 3): the weekly
@@ -167,7 +168,7 @@ export function PartnershipStatementsTab({
                   attaching {pendingOffsets.length - excluded.size} of {pendingOffsets.length}
                   {' · '}
                   <span style={{ fontWeight: 650, color: attachingNet < 0 ? 'var(--text-red-600)' : '#16a34a' }}>
-                    {attachingNet < 0 ? '−' : '+'}{money(Math.abs(attachingNet))}
+                    {attachingNet < 0 ? '−' : '+'}<MoneyText text={money(Math.abs(attachingNet))} />
                   </span>
                 </span>
                 <button
@@ -181,8 +182,8 @@ export function PartnershipStatementsTab({
             </div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
               {excluded.size === 0
-                ? balanceBridgeText(ledger.split, personName)
-                : `attaching everything would take the posted ${officeBalanceLabel(ledger.split.postedBalance, personName)} to ${officeBalanceLabel(ledger.split.ledgerBalance, personName)} — unchecked charges stay pending`}
+                ? <MoneyText text={balanceBridgeText(ledger.split, personName)} />
+                : <MoneyText text={`attaching everything would take the posted ${officeBalanceLabel(ledger.split.postedBalance, personName)} to ${officeBalanceLabel(ledger.split.ledgerBalance, personName)} — unchecked charges stay pending`} />}
             </div>
             {chargesOpen ? (
               <>
@@ -211,7 +212,7 @@ export function PartnershipStatementsTab({
                     <span style={{ color: 'var(--text-muted)' }}> · {o.occurred_date}</span>
                   </span>
                   <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 650, whiteSpace: 'nowrap', color: amt < 0 ? 'var(--text-red-600)' : '#16a34a' }}>
-                    {amt < 0 ? '−' : '+'}{money(Math.abs(amt))}
+                    {amt < 0 ? '−' : '+'}<MoneyText text={money(Math.abs(amt))} />
                   </span>
                 </label>
               )
@@ -267,8 +268,8 @@ export function PartnershipStatementsTab({
               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
                 <b>Week {s.period_start} – {s.period_end}</b>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {ledgerHours(s).toFixed(2)} h · gross {money(Number(s.gross_pay))}
-                  {paid > 0 ? ` · paid ${money(paid)}` : ''}
+                  {ledgerHours(s).toFixed(2)} h · gross <MoneyText text={money(Number(s.gross_pay))} />
+                  {paid > 0 ? <MoneyText text={` · paid ${money(paid)}`} /> : ''}
                 </div>
               </div>
             </div>

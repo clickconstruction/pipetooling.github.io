@@ -38,6 +38,7 @@ import { EmptyState } from '../EmptyState'
 import { READY_TO_BILL_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 import type { UserRole } from '../../hooks/useAuth'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { MoneyText } from '../Money'
 
 function ReadyToBillJobIconToolbar({
   jobId,
@@ -284,7 +285,7 @@ export function DashboardBillingPipelineSection({
                                 path reverts an invoice with payments back to ready_to_bill), so the
                                 RTB loaders correctly map with an empty payments map. */}
                             <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
-                              {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                              <MoneyText text={`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -338,7 +339,7 @@ export function DashboardBillingPipelineSection({
                                   return
                                 }
                                 openDashboardBillCustomerInvoice(inv)
-                              }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Bill Customer'}</button>
+                              }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Bill Customer'}</button>
                               {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
                             </div>
                           </div>
@@ -374,10 +375,10 @@ export function DashboardBillingPipelineSection({
                           </div>
                           {bundleInv != null ? (
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
-                              Billing line: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              Billing line: <MoneyText text={`$${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
                             </div>
                           ) : (
-                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: <MoneyText text={`$${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} /></div>
                           )}
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -417,7 +418,7 @@ export function DashboardBillingPipelineSection({
                                   return
                                 }
                                 openDashboardBillCustomerInvoice(bundleInv)
-                              }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Bill Customer for this billing line (e.g. Stripe)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === bundleInv.id ? '…' : 'Bill Customer'}</button>
+                              }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Bill Customer for this billing line (e.g. Stripe)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === bundleInv.id ? '…' : 'Bill Customer'}</button>
                             ) : (
                               <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(j.customer_id)) {
@@ -479,13 +480,13 @@ export function DashboardBillingPipelineSection({
                             )}
                           </div>
                           <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
-                            {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                            <MoneyText text={`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
                             {(() => {
                               const { applied, open } = dashboardBilledInvoiceAmounts(inv)
                               if (applied <= 0) return null
                               return (
                                 <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                                  {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                                  <MoneyText text={`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
                                 </div>
                               )
                             })()}
@@ -509,7 +510,7 @@ export function DashboardBillingPipelineSection({
                           <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: effectiveJobLedgerNumber(inv.hcp_number, inv.click_number) || '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                           <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
                           <div className="billingPipelineActionAgePair">
-                            <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Mark Paid'}</button>
+                            <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Mark Paid'}</button>
                             {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
                           </div>
                         </div>
@@ -609,7 +610,7 @@ export function DashboardBillingPipelineSection({
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(480px, calc(100vw - 2rem))', maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {`Job ${effectiveJobLedgerNumber(sendBackInvoice.inv.hcp_number, sendBackInvoice.inv.click_number) || '—'} · ${sendBackInvoice.inv.job_name || '—'} · $${sendBackInvoice.inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+              <MoneyText text={`Job ${effectiveJobLedgerNumber(sendBackInvoice.inv.hcp_number, sendBackInvoice.inv.click_number) || '—'} · ${sendBackInvoice.inv.job_name || '—'} · $${sendBackInvoice.inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
             </p>
             {sendBackInvoice.action === 'delete' && (
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>This will remove the invoice from Ready to Bill.</p>

@@ -28,6 +28,7 @@ import { pageTabStyle } from '../../lib/pageTabStyle'
 import { tapHintCss } from '../../lib/tapHint'
 import { useEstimateThreadNotes } from '../../hooks/useEstimateThreadNotes'
 import { ESTIMATES_PAGE_CLASS, estimatesFocusVisibleCss, estimatesPageShellCss } from './estimatesPageCss'
+import { MoneyText } from '../Money'
 
 /**
  * The Estimates list, `/estimates`: the Pipeline's lanes (Unsent, Sent, Declined, Accepted) and the
@@ -529,9 +530,9 @@ export default function EstimatesListPage() {
             </div>
           )}
           <div style={{ display: 'flex', gap: '1.6rem', flexWrap: 'wrap', borderTop: '2px solid var(--border-strong)', marginTop: '0.9rem', paddingTop: '0.6rem', fontSize: '0.85rem' }}>
-            <span><span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Accepted this month</span><strong style={{ color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(ledgerTotals.acceptedThisMonthCents)}</strong></span>
-            <span><span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Outstanding sent</span><strong style={{ color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(ledgerTotals.outstandingSentCents)}</strong></span>
-            <span><span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Accepted, not on a job</span><strong style={{ color: ledgerTotals.acceptedUnlinkedCents > 0 ? 'var(--text-red-700)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(ledgerTotals.acceptedUnlinkedCents)}</strong></span>
+            <span><span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Accepted this month</span><strong style={{ color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={formatMoney(ledgerTotals.acceptedThisMonthCents)} /></strong></span>
+            <span><span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Outstanding sent</span><strong style={{ color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={formatMoney(ledgerTotals.outstandingSentCents)} /></strong></span>
+            <span><span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Accepted, not on a job</span><strong style={{ color: ledgerTotals.acceptedUnlinkedCents > 0 ? 'var(--text-red-700)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={formatMoney(ledgerTotals.acceptedUnlinkedCents)} /></strong></span>
           </div>
         </div>
       ) : (

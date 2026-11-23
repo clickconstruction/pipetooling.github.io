@@ -12,6 +12,7 @@ import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { PersonDeskViewer } from '../../lib/people/personDeskGates'
 import type { PersonKey } from '../../lib/people/personKey'
 import type { BringBackLoad } from '../../lib/people/bringBackFacts'
+import { moneyText } from '../../test/moneyText'
 
 const writes: Array<{ what: string; args: unknown }> = []
 const invoke = vi.fn(async (name: string, opts: unknown) => {
@@ -170,7 +171,7 @@ describe('PersonDeskBringBackModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Change…' }))
     fireEvent.change(screen.getByLabelText('New hourly wage'), { target: { value: '26' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save wage' }))
-    await screen.findByText(/\$26\.00 \/ h, set Nov 2029/)
+    await screen.findByText(moneyText(/\$26\.00 \/ h, set Nov 2029/))
     leaveOpen('renewal in the mail')
     leaveOpen('sending Monday')
     fireEvent.click(screen.getByLabelText(/Give back 2 open roadmap tasks/))
@@ -188,7 +189,7 @@ describe('PersonDeskBringBackModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Change…' }))
     fireEvent.change(screen.getByLabelText('New hourly wage'), { target: { value: '20' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save wage' }))
-    await screen.findByText(/\$20\.00 \/ h, set Nov 2029/)
+    await screen.findByText(moneyText(/\$20\.00 \/ h, set Nov 2029/))
     expect(screen.queryByText(/No pay setup/)).toBeNull()
   })
 

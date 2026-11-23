@@ -15,6 +15,7 @@ import type { Json } from '../../types/database'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../../lib/ledgerDisplayPrefixes'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { MoneyText } from '../Money'
 
 export type TallyClockWindowAllocateModalProps = {
   open: boolean
@@ -348,7 +349,7 @@ export function TallyClockWindowAllocateModal({
           <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             Jobs and bids from your sessions on{' '}
             <strong style={{ color: 'var(--text-700)' }}>{dateRangeLabel || '…'}</strong>. Amount{' '}
-            <strong style={{ color: 'var(--text-700)' }}>{formatTallyCurrency(transactionAmount)}</strong> is split evenly
+            <strong style={{ color: 'var(--text-700)' }}><MoneyText text={formatTallyCurrency(transactionAmount)} /></strong> is split evenly
             across selected jobs.
           </p>
         </div>

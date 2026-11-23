@@ -6,6 +6,7 @@ import { formatWorkOrderWindow, notifyWorkOrderOffered } from '../../lib/workflo
 import { pickerComplianceSummary, type ComplianceDocInput } from '../../lib/people/subCompliance'
 import { calendarYmdInAppTzFromIso, localCalendarDayKey } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 /**
  * Sub work-order panel on an expanded step card (RUN_SUBS_PLAN Phase 2,
@@ -320,7 +321,7 @@ export function StepCommitmentPanel({
               >
                 {c.display_name}
               </span>
-              <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{money(balance.agreed)}</span>
+              <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money(balance.agreed)} /></span>
               {Number(c.retainage_pct) > 0 && (
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({Number(c.retainage_pct)}% retainage)</span>
               )}
@@ -351,20 +352,20 @@ export function StepCommitmentPanel({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1.1rem', fontSize: '0.8125rem', marginBottom: actions.length > 0 ? '0.55rem' : 0 }}>
               <span>
                 <span style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)', display: 'block' }}>Paid to date</span>
-                <span className="num" style={{ fontVariantNumeric: 'tabular-nums' }}>{money(balance.paidToDate)}</span>
+                <span className="num" style={{ fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money(balance.paidToDate)} /></span>
               </span>
               <span>
                 <span style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)', display: 'block' }}>Backcharges</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(balance.backcharges)}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money(balance.backcharges)} /></span>
               </span>
               <span>
                 <span style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)', display: 'block' }}>Balance</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 650 }}>{money(balance.balanceRemaining)}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 650 }}><MoneyText text={money(balance.balanceRemaining)} /></span>
               </span>
               {balance.retainageHeld > 0 && (
                 <span>
                   <span style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)', display: 'block' }}>Retainage held</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(balance.retainageHeld)}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money(balance.retainageHeld)} /></span>
                 </span>
               )}
             </div>
@@ -472,7 +473,7 @@ export function StepCommitmentPanel({
                     }
                     onClick={() => requestSettle(c)}
                   >
-                    Settle → release {money(balance.agreed - balance.retainageHeld)}
+                    Settle → release <MoneyText text={money(balance.agreed - balance.retainageHeld)} />
                   </button>
                 )}
                 {actions.includes('cancel') && (
@@ -575,7 +576,7 @@ export function StepCommitmentPanel({
                 <div style={{ fontWeight: 700, marginBottom: '0.3rem' }}>Release to Sub Labor?</div>
                 <div>
                   {settlePreview.report.created_new_sheet ? 'Creates a new sub sheet' : 'Updates the linked sub sheet'} for{' '}
-                  <strong>{c.display_name}</strong> with <strong>{money(Number(settlePreview.report.released_amount))}</strong>
+                  <strong>{c.display_name}</strong> with <strong><MoneyText text={money(Number(settlePreview.report.released_amount))} /></strong>
                   {Number(settlePreview.report.retainage_pct) > 0 && (
                     <> ({Number(settlePreview.report.retainage_pct)}% retainage held back)</>
                   )}
@@ -584,7 +585,7 @@ export function StepCommitmentPanel({
                 </div>
                 <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem' }}>
                   <button type="button" className="wf-btn-primary" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={confirmSettle}>
-                    Confirm — release {money(Number(settlePreview.report.released_amount))}
+                    Confirm — release <MoneyText text={money(Number(settlePreview.report.released_amount))} />
                   </button>
                   <button type="button" className="wf-btn-ghost" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={() => setSettlePreview(null)}>
                     Cancel

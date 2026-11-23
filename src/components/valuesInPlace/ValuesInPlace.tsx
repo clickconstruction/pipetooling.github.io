@@ -15,6 +15,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 import {
   SET_OWN_LABEL,
   VALUES_LEGEND,
@@ -36,11 +37,15 @@ export function ValuesInPlaceOff({ off = true, children }: { off?: boolean; chil
 
 // ---------- A worked-out value ----------
 
-/** A value the app works out: plain bold, no press. `tone` is for a value that is itself the warning. */
+/**
+ * A value the app works out: plain bold, no press. `tone` is for a value that is itself the warning. An amount
+ * handed in as words (`$1,250.00`, or a marked sentence's value) draws its cents smaller through the app's one
+ * door, `MoneyText`; a screen that holds the number hands in `<Money amount={…} />` instead.
+ */
 export function WorkedOutValue({ children, tone, title }: { children: ReactNode; tone?: 'red' | 'green'; title?: string }) {
   return (
     <b className="vipWorked" data-value="worked-out" data-tone={tone} title={title}>
-      {children}
+      {typeof children === 'string' ? <MoneyText text={children} /> : children}
     </b>
   )
 }
@@ -98,6 +103,13 @@ export interface ChangeableValueProps {
    * it like any other, and a later press opens it again.
    */
   startOpen?: boolean
+  /** A `text` field's offers as it is typed: the names the value is usually one of. Anything else may still be typed. */
+  suggestions?: ReadonlyArray<string>
+  /**
+   * Presses in the open field that keep a value at once, through the same check as Keep: a sub's company *Same as
+   * their name* (punch list #403). One whose value is already the value is not drawn.
+   */
+  fills?: ReadonlyArray<{ label: string; value: string }>
 }
 
 /**
@@ -105,7 +117,7 @@ export interface ChangeableValueProps {
  * own field with Keep and Cancel. A click or a key inside it never reaches a row or a card it sits in.
  */
 export function ChangeableValue(props: ChangeableValueProps) {
-  const { text, label, type, value, onKeep, choices, min, max, whole, canClear, hint, preview, reason, check, fromDefault, backToDefault, locked } = props
+  const { text, label, type, value, onKeep, choices, min, max, whole, canClear, hint, preview, reason, check, fromDefault, backToDefault, locked, suggestions, fills } = props
   const offAround = useContext(OffContext)
   const off = props.off ?? offAround
   const [open, setOpen] = useState(props.startOpen === true)
@@ -119,6 +131,7 @@ export function ChangeableValue(props: ChangeableValueProps) {
   const refocus = useRef(false)
   const alive = useRef(true)
   const noteId = useId()
+  const listId = useId()
 
   useEffect(() => {
     alive.current = true
@@ -160,7 +173,7 @@ export function ChangeableValue(props: ChangeableValueProps) {
     return (
       <span className="vipLockedWrap" title={locked.why}>
         <span className="vipLocked" data-value="locked">
-          {text}
+          <MoneyText text={text} />
         </span>{' '}
         <span className="vipTag">{locked.tag}</span>
       </span>
@@ -200,12 +213,12 @@ export function ChangeableValue(props: ChangeableValueProps) {
     )
   }
 
-  const keep = () => {
+  const keep = (typed: string = draft) => {
     if (busy) return
     const el = inputRef.current
     const verdict = keepVerdict({
       type,
-      draft,
+      draft: typed,
       value,
       unfinished: type === 'date' && el instanceof HTMLInputElement && el.validity.badInput,
       min,
@@ -256,7 +269,7 @@ export function ChangeableValue(props: ChangeableValueProps) {
         }}
         onKeyDown={stopRowKeys}
       >
-        {text}
+        <MoneyText text={text} />
       </button>
     )
   }
@@ -317,10 +330,19 @@ export function ChangeableValue(props: ChangeableValueProps) {
           min={min}
           max={max}
           step={type === 'number' ? (whole ? 1 : 'any') : undefined}
+          list={suggestions && suggestions.length > 0 ? listId : undefined}
+          autoComplete={suggestions && suggestions.length > 0 ? 'off' : undefined}
           onChange={(e) => change(e.target.value)}
           onKeyDown={onFieldKey}
         />
       )}
+      {type !== 'choice' && suggestions && suggestions.length > 0 ? (
+        <datalist id={listId}>
+          {suggestions.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
+      ) : null}
       {reason ? (
         <input
           className="vipInput vipReason"
@@ -336,12 +358,28 @@ export function ChangeableValue(props: ChangeableValueProps) {
           onKeyDown={onFieldKey}
         />
       ) : null}
-      <button type="button" className="vipKeep" disabled={busy} aria-busy={busy || undefined} onClick={keep}>
+      <button type="button" className="vipKeep" disabled={busy} aria-busy={busy || undefined} onClick={() => keep()}>
         {busy ? VALUE_FIELD_WORDS.keeping : VALUE_FIELD_WORDS.keep}
       </button>
       <button type="button" className="vipCancel" disabled={busy} onClick={close}>
         {VALUE_FIELD_WORDS.cancel}
       </button>
+      {(fills ?? [])
+        .filter((f) => f.value.trim() !== '' && f.value.trim() !== value.trim())
+        .map((f) => (
+          <button
+            key={f.label}
+            type="button"
+            className="vipCancel"
+            disabled={busy}
+            onClick={() => {
+              setDraft(f.value)
+              keep(f.value)
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
       {backToDefault ? (
         <button type="button" className="vipCancel" disabled={busy} onClick={() => run(backToDefault.onPress)}>
           {backToDefault.label}

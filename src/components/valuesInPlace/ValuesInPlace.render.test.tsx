@@ -342,6 +342,42 @@ describe('a sentence, the lines and the legend', () => {
   })
 })
 
+describe('ChangeableValue offers and fills (punch list #403)', () => {
+  it('a text field offers its suggestions as it is typed, and anything else may still be kept', () => {
+    const onKeep = vi.fn()
+    render(<ChangeableValue text="None on file" label="their company" type="text" value="" onKeep={onKeep} suggestions={['Sample Mechanical LLC', 'Sample Pipe Co']} />)
+    fireEvent.click(screen.getByRole('button', { name: 'None on file, their company, press to change' }))
+    const box = screen.getByLabelText('their company') as HTMLInputElement
+    const list = document.getElementById(box.getAttribute('list') ?? '')
+    expect(list?.tagName).toBe('DATALIST')
+    expect([...(list?.querySelectorAll('option') ?? [])].map((o) => o.getAttribute('value'))).toEqual(['Sample Mechanical LLC', 'Sample Pipe Co'])
+    fireEvent.change(box, { target: { value: 'Another Sample Co' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+    expect(onKeep).toHaveBeenCalledWith('Another Sample Co', { reason: '' })
+  })
+
+  it('a fill keeps its value in one press, through the same check, and is not drawn when it is the value already', () => {
+    const onKeep = vi.fn()
+    const { rerender } = render(<ChangeableValue text="None on file" label="their company" type="text" value="" onKeep={onKeep} fills={[{ label: 'Same as their name', value: 'Pat Sample' }]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'None on file, their company, press to change' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Same as their name' }))
+    expect(onKeep).toHaveBeenCalledTimes(1)
+    expect(onKeep).toHaveBeenCalledWith('Pat Sample', { reason: '' })
+    rerender(<ChangeableValue text="Pat Sample" label="their company" type="text" value="Pat Sample" onKeep={onKeep} fills={[{ label: 'Same as their name', value: 'Pat Sample' }]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Pat Sample, their company, press to change' }))
+    expect(screen.queryByRole('button', { name: 'Same as their name' })).toBeNull()
+  })
+
+  it('a fill the check refuses keeps the field open with the reason', () => {
+    const onKeep = vi.fn()
+    render(<ChangeableValue text="None on file" label="their company" type="text" value="" onKeep={onKeep} check={() => 'Too long.'} fills={[{ label: 'Same as their name', value: 'Pat Sample' }]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'None on file, their company, press to change' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Same as their name' }))
+    expect(onKeep).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert').textContent).toBe('Too long.')
+  })
+})
+
 describe('the looks in index.css', () => {
   const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8')
   const rule = (selector: string) => {

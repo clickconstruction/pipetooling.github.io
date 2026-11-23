@@ -1,5 +1,5 @@
 /**
- * A file declared on plan_person_evidence, not sent (dev-mcp 0.130.0). A file sent as content_base64 rides inside the
+ * A file declared on plan_person_evidence, not sent (dev-mcp 0.132.0). A file sent as content_base64 rides inside the
  * tool call, so it passes through the agent's own output and through this function's JSON body: past a few megabytes
  * neither holds. A declared file is named by what it is — its name, its size and its sha256 — and its bytes go from
  * the agent's machine straight to the private hr-files bucket, to an address the plan hands back for that one file.

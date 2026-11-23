@@ -18,7 +18,7 @@ import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_STAGED_MAX_BYTES } from '../../../sup
 import { writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 
 /**
- * A file declared on plan_person_evidence, not sent (dev-mcp 0.130.0): the rules that say what a declared file is,
+ * A file declared on plan_person_evidence, not sent (dev-mcp 0.132.0): the rules that say what a declared file is,
  * where its bytes go, and what the apply holds it to. The handler itself is run in devMcpEvidenceUpload.run.test.ts.
  */
 

@@ -4,7 +4,7 @@
 
 ## Why
 
-The function is the dev seat's door for a piece of evidence on a person's HR file (`plan_person_evidence` → `apply_person_evidence`). Its 10 MB cap was the size a browser upload and a tool call's JSON body carry. Since dev-mcp 0.130.0 the seat's agent can declare a file by its size and sha256 and send the bytes straight to the private `hr-files` bucket, to a signed upload address the plan answers. The seat reads the object back and holds it to the plan before it calls this function. So the size a call can carry is no longer the limit, and a recording of 11 MB or 14 MB can be staged like any other file.
+The function is the dev seat's door for a piece of evidence on a person's HR file (`plan_person_evidence` → `apply_person_evidence`). Its 10 MB cap was the size a browser upload and a tool call's JSON body carry. Since dev-mcp 0.132.0 the seat's agent can declare a file by its size and sha256 and send the bytes straight to the private `hr-files` bucket, to a signed upload address the plan answers. The seat reads the object back and holds it to the plan before it calls this function. So the size a call can carry is no longer the limit, and a recording of 11 MB or 14 MB can be staged like any other file.
 
 ## What changes
 
@@ -20,4 +20,4 @@ No table, no policy and no grant changes. `CREATE OR REPLACE` keeps the function
 
 ## Order
 
-Idempotent: a second run replaces the function with the same text. `CREATE OR REPLACE FUNCTION` takes a brief lock on the function alone, and the `SET lock_timeout` keeps it from queueing. Push it before dev-mcp 0.130.0 is deployed. Pushed late, nothing breaks: a declared file over 10 MB is refused by the function in words until the push, and every file of 10 MB or less files as before. No type regeneration: the signature is unchanged.
+Idempotent: a second run replaces the function with the same text. `CREATE OR REPLACE FUNCTION` takes a brief lock on the function alone, and the `SET lock_timeout` keeps it from queueing. Push it before dev-mcp 0.132.0 is deployed. Pushed late, nothing breaks: a declared file over 10 MB is refused by the function in words until the push, and every file of 10 MB or less files as before. No type regeneration: the signature is unchanged.

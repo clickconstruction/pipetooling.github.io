@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 /**
  * Render smoke for Job Mode's My Time card: the picture of the time added up, the quiet line that asks an hourly
- * person their hours and asks a salaried person nothing, the week it hands Job Mode's This week square, a read
- * that fails, and the read made again when the clock changes.
+ * person their hours and asks a salaried person nothing, a salaried person told their working hours as the
+ * Dashboard tells them, the week it hands Job Mode's This week square, a read that fails, and the read made again
+ * when the clock changes. Made-up people and hours.
  */
 import { act, cleanup, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -11,8 +12,8 @@ import { UpdateFocusOpenerBridgeProvider, useUpdateFocusOpenerBridge } from '../
 import { MY_TIME_WEEKS, buildMyTimeWeeks, type MyTimeSession } from '../../lib/dashboard/myTimeWeeks'
 import { myTimeThisWeekHours } from '../../lib/dashboard/myTimeWeeksIo'
 import { topRowHoursValue } from '../../lib/jobMode/topRow'
-import { localAvailabilityIo } from '../../lib/people/availabilityIo'
-import { payWeeksEndingAt } from '../../lib/people/utilization'
+import { localAvailabilityIo, type AvailabilityIo } from '../../lib/people/availabilityIo'
+import { payWeeksEndingAt, type AvailableHoursAnswer } from '../../lib/people/utilization'
 import { DashboardMyTimeCard, MY_TIME_CARD_ANCHOR } from './DashboardMyTimeCard'
 import { JOB_MODE_HOURS_ANCHOR } from '../jobMode/JobModeTopRow'
 
@@ -52,15 +53,27 @@ describe('DashboardMyTimeCard', () => {
     expect(screen.queryByRole('button', { name: /Set hours|Change/ })).toBeNull()
   })
 
+  it('tells a salaried person the working hours the office set, with no press', async () => {
+    // Set Sun Nov 22 by the office: 6:00 AM to 12:00 PM Monday to Friday, with Wednesday a half day to 9:00 AM.
+    const hours: AvailableHoursAnswer = { user_id: 'u-me', hours_per_week: 27, days: [[], [[360, 720]], [[360, 720]], [[360, 540]], [[360, 720]], [[360, 720]], []], effective_from: '2026-11-22', set_by: 'u-office', set_at: '2026-11-22T10:00:00Z', kind: 'set' }
+    const io = { kind: 'local', listAnswers: async () => [hours], saveAnswer: async () => {} } as unknown as AvailabilityIo
+    renderWithProviders(<DashboardMyTimeCard userId="u-me" displayName="ZZ Test Wes" isSalary read={async () => build([punch('2026-11-23', '06:00', '12:00')])} io={io} />)
+    await settle()
+    const line = await screen.findByTestId('my-time-working-hours')
+    expect(line.textContent).toBe('Mon, Tue, Thu, Fri: 6:00 AM to 12:00 PM.Wed: 6:00 AM to 9:00 AM.The office sets these hours.')
+    expect(line.querySelector('button')).toBeNull()
+    expect(screen.queryByTestId('my-time-can-work')).toBeNull()
+  })
+
   it('hands Job Mode the week its own figure prints, and zero for a week with nothing', async () => {
     const onWeek = vi.fn()
-    const first = renderWithProviders(<DashboardMyTimeCard userId="u-me" displayName="Isiah" isSalary onWeek={onWeek} read={async () => build([punch('2026-11-23', '08:00', '12:30'), punch('2026-11-24', '13:00', '14:15')])} />)
+    const first = renderWithProviders(<DashboardMyTimeCard userId="u-me" displayName="Isiah" isSalary onWeek={onWeek} read={async () => build([punch('2026-11-23', '08:00', '12:30'), punch('2026-11-24', '13:00', '14:15')])} io={localAvailabilityIo()} />)
     await settle()
     expect(await screen.findByLabelText('This week: 5 h 45 m')).toBeTruthy()
     expect(onWeek).toHaveBeenLastCalledWith(5.8)
     expect(topRowHoursValue(onWeek.mock.lastCall?.[0])).toBe('5.8 h')
     first.unmount()
-    renderWithProviders(<DashboardMyTimeCard userId="u-me" displayName="Isiah" isSalary onWeek={onWeek} read={async () => build([])} />)
+    renderWithProviders(<DashboardMyTimeCard userId="u-me" displayName="Isiah" isSalary onWeek={onWeek} read={async () => build([])} io={localAvailabilityIo()} />)
     await settle()
     expect(await screen.findByLabelText('This week: 0 m')).toBeTruthy()
     expect(onWeek).toHaveBeenLastCalledWith(0)
@@ -97,7 +110,7 @@ describe('DashboardMyTimeCard', () => {
     renderWithProviders(
       <UpdateFocusOpenerBridgeProvider>
         <Teller />
-        <DashboardMyTimeCard userId="u-me" displayName="Isiah" isSalary onWeek={onWeek} read={read} />
+        <DashboardMyTimeCard userId="u-me" displayName="Isiah" isSalary onWeek={onWeek} read={read} io={localAvailabilityIo()} />
       </UpdateFocusOpenerBridgeProvider>,
     )
     await settle()

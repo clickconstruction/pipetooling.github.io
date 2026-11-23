@@ -17,6 +17,7 @@ import {
 import type { PriceBookEntryWithFixture, PriceBookVersion } from '../../lib/bids/bidPricingEngineTypes'
 import { settle } from '../../test/renderSmokeMocks'
 import { DISPATCH_MODE_FOOTER_Z_INDEX } from '../dispatchMode/DispatchModeFooter'
+import { moneyText } from '../../test/moneyText'
 
 const version = (id: string, name: string, o: Record<string, unknown> = {}) =>
   ({ id, name, bid_id: null, is_robot: false, sort_order: 0, ...o }) as unknown as PriceBookVersion
@@ -123,7 +124,7 @@ describe('BidsPriceBookDrawer', () => {
     render(<BidsPriceBookDrawer {...p} />)
     await settle()
     expect(screen.getByRole('status').textContent).toContain('2 more price options on this bid hold the same')
-    fireEvent.click(screen.getByText('Use $190.00 on this bid'))
+    fireEvent.click(screen.getByText(moneyText('Use $190.00 on this bid')))
     expect(p.offer.onApply).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByText('Leave this bid alone'))
     expect(p.offer.onDismiss).toHaveBeenCalledTimes(1)
@@ -132,14 +133,14 @@ describe('BidsPriceBookDrawer', () => {
   it('the entries table: combined shows one price, stage shows three with a dash for zero; the search filters', async () => {
     const { unmount } = render(<BidsPriceBookDrawer {...parts()} />)
     await settle()
-    expect(screen.getByText('$175.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$175.00'))).toBeTruthy()
     expect(screen.queryByRole('columnheader', { name: 'Rough In' })).toBeNull()
     unmount()
     render(<BidsPriceBookDrawer {...parts({ entries: { displayMode: 'stage', search: 'lav' } })} />)
     await settle()
     expect(screen.getByRole('columnheader', { name: 'Rough In' })).toBeTruthy()
     expect(screen.queryByText('Toilet')).toBeNull()
-    expect(screen.getByText('$80.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$80.00'))).toBeTruthy()
     expect(screen.getByText('—')).toBeTruthy()
   })
 

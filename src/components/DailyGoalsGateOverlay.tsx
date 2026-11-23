@@ -109,7 +109,7 @@ export default function DailyGoalsGateOverlay() {
             fontWeight: 600,
             border: 'none',
             borderRadius: 8,
-            background: allChecked && !saving ? '#16a34a' : DEAD_PRESS_FILL,
+            background: allChecked && !saving ? '#15803d' : DEAD_PRESS_FILL,
             color: allChecked && !saving ? 'white' : DEAD_PRESS_TEXT,
             cursor: allChecked && !saving ? 'pointer' : 'not-allowed',
           }}
