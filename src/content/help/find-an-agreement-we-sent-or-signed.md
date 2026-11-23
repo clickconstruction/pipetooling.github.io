@@ -164,6 +164,13 @@ Someone on your roster is not sent a paper this way. Close the window and pick t
 
 The new line sits under **Outside companies**. It can be sent again or copied as a link from its line.
 
+**A company may already have the paper out.** The app checks when you pick the company. A window then says who has the paper and the day it went. It offers two presses.
+
+- **Send it to Lena Park again** sends the same copy to the same person. They get a new signing link. The link sent before stops working.
+- **Send a second copy to someone else** makes a new copy for another person there. The first copy stays as it is, with its own link. Each person signs their own copy.
+
+Each copy is its own line under **Outside companies**.
+
 ## Add someone to a list
 
 A paper sent to someone you typed in reads **Not on a list**. Its line carries **Add to a list**, signed or not.
