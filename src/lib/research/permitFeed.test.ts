@@ -131,6 +131,20 @@ describe('pullSinceDay', () => {
   it('reaches back seventy-five days on a first run', () => {
     expect(pullSinceDay(null, '2026-11-09')).toBe('2026-08-26')
   })
+  it('looks back as many days as it is told, and as far on a first run', () => {
+    expect(pullSinceDay('2026-11-13', '2026-11-22', 75, 30)).toBe('2026-10-14')
+    expect(pullSinceDay('2026-11-13', '2026-11-22', undefined, 30)).toBe('2026-10-14')
+    expect(pullSinceDay(null, '2026-11-22', 14, 30)).toBe('2026-11-08')
+  })
+  it('counts a newest day after today as today (v2.8328)', () => {
+    // A day typed a year ahead would start the pull in next November and read nothing until then.
+    expect(pullSinceDay('2027-11-09', '2026-11-22')).toBe('2026-11-12')
+    expect(pullSinceDay('2026-11-23', '2026-11-22')).toBe('2026-11-12')
+    expect(pullSinceDay('2026-11-22', '2026-11-22')).toBe('2026-11-12')
+    expect(pullSinceDay('2026-11-21', '2026-11-22')).toBe('2026-11-11')
+    // It is still a feed with rows held: the look-back, not the first run's reach.
+    expect(pullSinceDay('2027-11-09', '2026-11-22', 75, 30)).toBe('2026-10-23')
+  })
   it('reads a feed day with or without a time', () => {
     expect(dayOf('2026-11-06T00:00:00')).toBe('2026-11-06')
     expect(dayOf(null)).toBeNull()

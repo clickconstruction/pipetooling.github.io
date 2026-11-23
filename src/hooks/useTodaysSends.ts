@@ -1,15 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { TodaysSendsNeed } from '../lib/offers/offers'
 
-/** The Dashboard's Today's sends line: how many texts wait, and the line that says ready, morning and held. */
-export interface TodaysSendsNeed {
-  count: number
-  line: string
-}
+export type { TodaysSendsNeed }
 
 /**
- * Today's sends (v2.5595, punch list #115): the Needs you line's count, beside `useCustomerMessagesCounts` and built the
- * same way. The offers kernel and its reads load on demand, only when the line is on, so the Dashboard's own chunk does
- * not grow. Null while off, loading, or when nothing waits. Refetches on window focus like the neighbouring nudges, and
+ * Today's sends (v2.5595, punch list #115): the Needs you row, beside `useCustomerMessagesCounts` and built the
+ * same way. Since punch list #424 the kernel writes the whole row from the texts (`todaysSendsNeed`). The offers
+ * kernel and its reads load on demand, only when the line is on, so the Dashboard's own chunk does not grow. Null while off, loading, or when nothing waits. Refetches on window focus like the neighbouring nudges, and
  * on `reload` after the window sent, held or put a text away.
  */
 export function useTodaysSends(enabled: boolean): { need: TodaysSendsNeed | null; reload: () => void } {
@@ -20,9 +17,8 @@ export function useTodaysSends(enabled: boolean): { need: TodaysSendsNeed | null
       return
     }
     try {
-      const [{ supabaseOffersIo }, { todaysSends, todaysSendsLine }] = await Promise.all([import('../lib/offers/offersIo'), import('../lib/offers/offers')])
-      const rows = todaysSends(await supabaseOffersIo().loadOpen())
-      setNeed(rows.length ? { count: rows.length, line: todaysSendsLine(rows) } : null)
+      const [{ supabaseOffersIo }, { todaysSends, todaysSendsNeed }] = await Promise.all([import('../lib/offers/offersIo'), import('../lib/offers/offers')])
+      setNeed(todaysSendsNeed(todaysSends(await supabaseOffersIo().loadOpen())))
     } catch {
       setNeed(null)
     }

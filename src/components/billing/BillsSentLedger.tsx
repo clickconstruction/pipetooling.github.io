@@ -20,13 +20,12 @@ import {
   billsSentGaps,
   billsSentLines,
   billsSentListHtml,
-  billsSentMoney,
   billsSentPaidWords,
+  billsSentPayWords,
   billsSentPhoneWords,
   billsSentRecord,
   billsSentRecordHtml,
   billsSentRecordPath,
-  billsSentSumWords,
   billsSentTiles,
   billsSentTime,
   byHandDayOffered,
@@ -39,11 +38,13 @@ import {
   byHandReadBack,
   byHandReadBackLead,
   byHandRecordLabel,
+  plural,
   type BillsSentByHandDraft,
   type BillsSentChip,
   type BillsSentGap,
   type BillsSentInput,
   type BillsSentLine,
+  type BillsSentPayWords,
   type BillsSentRecord,
   type BillsSentRoute,
   type BillsSentSum,
@@ -61,6 +62,13 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { AmountSmallCents } from '../AmountSmallCents'
+import { THUMB, billLink, chipStyle, jobLink, money, phoneButton, strong, tile, tileSmall } from './billsSentLook'
+import { BillsPaidByDay } from './BillsPaidByDay'
+import { billsPaidLines, billsPaidSum, type BillsPaidSum } from '../../lib/billing/billsPaidDays'
+import { readBillsPaid } from '../../lib/billing/billsPaidIo'
+import { companyWeekStartSundayContaining } from '../../utils/dateUtils'
+import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 
 /**
  * Bills sent (punch list #327, PR 1): every bill that left the company, newest first under a band per day, one line
@@ -96,8 +104,6 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 const STEP = 300
 
 const input: CSSProperties = { font: 'inherit', fontSize: '0.9375rem', width: '100%', padding: '0.5rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box' }
-const tile: CSSProperties = { border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 8, padding: '0.4rem 0.6rem', minWidth: 0 }
-const tileSmall: CSSProperties = { display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)' }
 const dayHead: CSSProperties = {
   position: 'sticky',
   top: 0,
@@ -117,12 +123,7 @@ const dayHead: CSSProperties = {
 }
 const small: CSSProperties = { color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.8125rem' }
 const lineBox: CSSProperties = { display: 'grid', gap: '0.05rem 0.6rem', padding: '0.5rem 0.6rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: '0.8125rem', minWidth: 0, marginTop: '0.25rem' }
-const strong: CSSProperties = { color: 'var(--text-strong)', fontWeight: 700 }
-const money: CSSProperties = { ...strong, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }
 const press: CSSProperties = { font: 'inherit', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', color: 'var(--text-700)', textDecoration: 'underline', textUnderlineOffset: 2 }
-const jobLink: CSSProperties = { color: 'var(--text-green-700)', fontWeight: 600, textDecoration: 'none' }
-/** A bill's name as a press: the underline alone marks it, in the words' own colour. */
-const billLink: CSSProperties = { ...strong, textDecoration: 'underline', textUnderlineOffset: 2 }
 
 const ROUTE_COLORS: Readonly<Record<BillsSentRoute, { background: string; color: string }>> = {
   email: { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' },
@@ -134,23 +135,7 @@ const ROUTE_COLORS: Readonly<Record<BillsSentRoute, { background: string; color:
   other: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
 }
 
-/** A press a thumb can hit: the least height a phone's own controls take. */
-const THUMB = 44
 
-function chipStyle(pressed: boolean, phone = false): CSSProperties {
-  return {
-    ...(phone ? { minHeight: 38, flex: '0 0 auto', whiteSpace: 'nowrap' as const } : {}),
-    font: 'inherit',
-    padding: '0.2rem 0.7rem',
-    fontSize: '0.8125rem',
-    borderRadius: 999,
-    cursor: 'pointer',
-    fontWeight: pressed ? 700 : 500,
-    border: `1px solid ${pressed ? 'var(--text-strong)' : 'var(--border-strong)'}`,
-    background: pressed ? 'var(--text-strong)' : 'var(--surface)',
-    color: pressed ? 'var(--surface)' : 'var(--text-700)',
-  }
-}
 
 function Tile({ label, sum, testId, stacked = false }: { label: string; sum: BillsSentSum; testId: string; stacked?: boolean }) {
   return (
@@ -159,26 +144,76 @@ function Tile({ label, sum, testId, stacked = false }: { label: string; sum: Bil
       <b style={{ color: 'var(--text-strong)', fontSize: '0.9375rem' }}>
         {sum.bills} {sum.bills === 1 ? 'bill' : 'bills'}
       </b>{' '}
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', ...(stacked ? { display: 'block' } : {}) }}>{billsSentMoney(sum.total)}</span>
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', ...(stacked ? { display: 'block' } : {}) }}><AmountSmallCents value={sum.total} /></span>
     </div>
   )
 }
 
-function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; onOpen: (line: BillsSentLine) => void }) {
+/** The looks of a line's stamp: green is money in, amber is part of it, a dashed box is none yet. */
+const STAMP_LOOKS: Readonly<Record<BillsSentPayWords['tone'], CSSProperties>> = {
+  paid: { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', border: '1px solid var(--border-green)', fontWeight: 700 },
+  part: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber, var(--border-strong))', fontWeight: 700 },
+  open: { color: 'var(--text-700)', border: '1px dashed var(--border-strong)', fontWeight: 600 },
+}
+
+/** Who has paid, as a stamp: *✓ Paid Fri, Nov 20*, *Part paid · $1,500.00*, *Not paid*. */
+function PayStamp({ words }: { words: BillsSentPayWords }) {
+  return (
+    <span data-testid="bills-sent-stamp" data-tone={words.tone} style={{ display: 'inline-block', fontSize: '0.75rem', borderRadius: 6, padding: '0.05rem 0.5rem', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', ...STAMP_LOOKS[words.tone] }}>
+      {words.tone === 'paid' ? '✓ ' : ''}
+      {words.stamp}
+      {words.stampAmount != null ? (
+        <>
+          {' · '}
+          <AmountSmallCents value={words.stampAmount} />
+        </>
+      ) : null}
+    </span>
+  )
+}
+
+/** The small words under a stamp: the way in bold, then when, then what is still out. Null when there is nothing to say. */
+function PayHow({ words }: { words: BillsSentPayWords }) {
+  if (!words.way && !words.when && words.outAmount == null) return null
+  return (
+    <span data-testid="bills-sent-pay-how" style={{ fontSize: '0.71875rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+      {words.way ? <b style={{ color: 'var(--text-700)', fontWeight: 600 }}>{words.way}</b> : null}
+      {words.way && words.when ? ' · ' : ''}
+      {words.when}
+      {words.outAmount != null ? (
+        <>
+          {words.way || words.when ? ' · ' : ''}
+          <AmountSmallCents value={words.outAmount} /> out
+        </>
+      ) : null}
+    </span>
+  )
+}
+
+/** How a send's arrival reads: a bounce is red, the mail service's silence is quiet, and an arrival is plain, since green on this page means money. */
+function deliveryStyle(tone: BillsSentLine['deliveryTone']): CSSProperties {
+  return { color: tone === 'bad' ? 'var(--text-red-700)' : tone === 'ok' ? 'var(--text-700)' : 'var(--text-muted)', fontWeight: tone === 'bad' ? 600 : 500, marginLeft: 'auto', textAlign: 'right' }
+}
+
+function Line({ line, phone, today, onOpen }: { line: BillsSentLine; phone: boolean; today: string; onOpen: (line: BillsSentLine) => void }) {
   const colors = ROUTE_COLORS[line.route]
   const again = billsSentAgainWords(line)
   const time = line.dayOnly ? 'Day only' : billsSentTime(line.atIso)
   const span: CSSProperties = phone ? { gridColumn: '1 / -1', minWidth: 0 } : { gridColumn: '2 / -1', minWidth: 0 }
   const kept = !!line.copy?.copyPath
   const by = billsSentByWords(line)
-  const paid = billsSentPaidWords(line)
-  const toneColor = line.deliveryTone === 'ok' ? 'var(--text-green-700)' : line.deliveryTone === 'bad' ? 'var(--text-red-700)' : 'var(--text-muted)'
+  const pay = billsSentPayWords(line, today)
+  // A line with no payment state keeps the word it had: a bill the page knows is paid and nothing more.
+  const paid = pay ? '' : billsSentPaidWords(line)
+  // The money column: the amount, then who has paid, then how. The address beside it keeps to its own column.
+  // The column is three lines beside two rows: the second row takes the slack, so the bill and its address stay together.
+  const beside: CSSProperties = pay && !phone ? { gridColumn: '2', minWidth: 0 } : span
   // The payer is on the line above: the name is said again only when the copy went to someone else, or names no address.
   const toName = line.toAddresses.length > 0 && line.toName === line.payer ? '' : line.toName
   return (
-    <div data-testid="bills-sent-line" style={{ ...lineBox, gridTemplateColumns: phone ? 'minmax(0, 1fr) auto' : '4.6rem minmax(0, 1fr) auto', ...(line.stillMissed ? { borderColor: 'var(--text-red-700)' } : {}) }}>
-      <div style={phone ? { ...strong, gridColumn: '1 / -1', fontVariantNumeric: 'tabular-nums' } : { ...strong, gridRow: '1 / span 3', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{time}</div>
-      <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+    <div data-testid="bills-sent-line" style={{ ...lineBox, gridTemplateColumns: phone ? 'minmax(0, 1fr) auto' : '4.6rem minmax(0, 1fr) auto', ...(pay && !phone ? { gridTemplateRows: 'auto 1fr' } : {}), ...(line.stillMissed ? { borderColor: 'var(--text-red-700)' } : {}) }}>
+      <div style={phone ? { ...strong, gridColumn: '1 / -1', fontVariantNumeric: 'tabular-nums' } : { ...strong, gridColumn: '1', gridRow: '1 / span 3', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{time}</div>
+      <div style={{ minWidth: 0, overflowWrap: 'anywhere', ...(phone ? {} : { gridColumn: '2', gridRow: '1' }) }}>
         {line.billId ? (
           <Link to={billsSentRecordPath(line.billId)} style={billLink} title="Open every send of this bill">
             {line.what}
@@ -200,9 +235,13 @@ function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; on
         ) : null}
         {line.payer ? ` · ${line.payer}` : ''}
       </div>
-      <div style={line.counts ? money : { ...money, color: 'var(--text-muted)' }}>{line.amount != null ? billsSentMoney(line.amount) : ''}</div>
+      <div data-testid="bills-sent-money" style={{ display: 'grid', gap: '0.1rem', justifyItems: 'end', alignContent: 'start', minWidth: 0, ...(phone ? {} : { gridColumn: '3', gridRow: pay ? '1 / span 2' : '1' }) }}>
+        <span style={line.counts ? money : { ...money, color: 'var(--text-muted)' }}>{line.amount != null ? <AmountSmallCents value={line.amount} /> : ''}</span>
+        {pay ? <PayStamp words={pay} /> : null}
+        {pay ? <PayHow words={pay} /> : null}
+      </div>
       {line.toAddresses.length > 0 || line.toName ? (
-        <div style={{ ...span, color: 'var(--text-700)', overflowWrap: 'anywhere' }} data-testid="bills-sent-to">
+        <div style={{ ...beside, color: 'var(--text-700)', overflowWrap: 'anywhere' }} data-testid="bills-sent-to">
           To {toName}
           {toName && line.toAddresses.length > 0 ? ' · ' : ''}
           <span style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{line.toAddresses.join(', ')}</span>
@@ -219,7 +258,6 @@ function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; on
         <span style={{ fontSize: '0.6875rem', fontWeight: 700, borderRadius: 999, padding: '0.05rem 0.5rem', whiteSpace: 'nowrap', background: colors.background, color: colors.color }}>{line.routeWords}</span>
         {by ? <span>{by}</span> : null}
         {again ? <span>{again}</span> : null}
-        {line.delivery ? <span style={{ color: toneColor, fontWeight: line.deliveryTone === 'quiet' ? 500 : 600 }}>{line.delivery}</span> : null}
         {paid ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{paid}</span> : null}
         {kept ? (
           <button type="button" style={press} onClick={() => onOpen(line)} title="Open the copy as it went out">
@@ -228,25 +266,46 @@ function Line({ line, phone, onOpen }: { line: BillsSentLine; phone: boolean; on
         ) : line.copy ? (
           <span style={{ color: 'var(--text-amber-800)' }}>The copy was not kept. This line is the record.</span>
         ) : null}
+        {/* Whether it arrived sits at the right edge of the row, under the money column (the owner, 2026-11-23). */}
+        {line.delivery ? (
+          <span data-testid="bills-sent-delivery" style={deliveryStyle(line.deliveryTone)}>
+            {line.delivery}
+          </span>
+        ) : null}
       </div>
     </div>
   )
 }
 
 const phoneCard: CSSProperties = { display: 'block', padding: '0.6rem 0.7rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, fontSize: '0.875rem', minWidth: 0, marginTop: '0.3rem', color: 'var(--text-base)', textDecoration: 'none' }
-const phoneButton: CSSProperties = { font: 'inherit', fontSize: '0.875rem', fontWeight: 700, minHeight: THUMB, padding: '0 0.9rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }
 
 /**
  * A line on a phone: the time, how it went and the amount, then the work, then where it went and whether it
  * arrived. A bill's line is one press, the whole of it, that opens the bill's record. A line that is no bill's
  * (a statement) keeps its own press for the copy.
  */
-function PhoneLine({ line, onOpen }: { line: BillsSentLine; onOpen: (line: BillsSentLine) => void }) {
+function PhoneLine({ line, today, onOpen }: { line: BillsSentLine; today: string; onOpen: (line: BillsSentLine) => void }) {
   const colors = ROUTE_COLORS[line.route]
   const words = billsSentPhoneWords(line)
   const by = billsSentByWords(line)
-  const paid = billsSentPaidWords(line)
-  const toneColor = line.deliveryTone === 'ok' ? 'var(--text-green-700)' : line.deliveryTone === 'bad' ? 'var(--text-red-700)' : 'var(--text-muted)'
+  const pay = billsSentPayWords(line, today)
+  const paid = pay ? '' : billsSentPaidWords(line)
+  const bar: CSSProperties | null = pay
+    ? {
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: '0.15rem 0.5rem',
+        margin: '0.4rem -0.7rem -0.6rem',
+        padding: '0.4rem 0.7rem',
+        borderTop: `1px solid ${pay.tone === 'paid' ? 'var(--border-green)' : pay.tone === 'part' ? 'var(--border-amber, var(--border-strong))' : 'var(--border)'}`,
+        borderRadius: '0 0 9px 9px',
+        background: pay.tone === 'paid' ? 'var(--bg-green-tint)' : pay.tone === 'part' ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)',
+        color: pay.tone === 'paid' ? 'var(--text-green-800)' : pay.tone === 'part' ? 'var(--text-amber-800)' : 'var(--text-700)',
+        fontSize: '0.8125rem',
+        fontVariantNumeric: 'tabular-nums',
+      }
+    : null
   const card: CSSProperties = line.stillMissed ? { ...phoneCard, borderColor: 'var(--text-red-700)' } : phoneCard
   const body = (
     <>
@@ -254,23 +313,45 @@ function PhoneLine({ line, onOpen }: { line: BillsSentLine; onOpen: (line: Bills
         <b style={{ ...strong, fontVariantNumeric: 'tabular-nums' }}>{line.dayOnly ? 'Day only' : billsSentTime(line.atIso)}</b>
         <span style={{ fontSize: '0.6875rem', fontWeight: 700, borderRadius: 999, padding: '0.05rem 0.5rem', whiteSpace: 'nowrap', background: colors.background, color: colors.color }}>{line.routeWords}</span>
         {by ? <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{by}</span> : null}
-        <span style={{ ...(line.counts ? money : { ...money, color: 'var(--text-muted)' }), marginLeft: 'auto' }}>{line.amount != null ? billsSentMoney(line.amount) : ''}</span>
+        <span style={{ ...(line.counts ? money : { ...money, color: 'var(--text-muted)' }), marginLeft: 'auto' }}>{line.amount != null ? <AmountSmallCents value={line.amount} /> : ''}</span>
       </div>
       <div style={{ ...strong, fontWeight: 600, overflowWrap: 'anywhere', marginTop: '0.15rem' }}>{words.main}</div>
       {words.to ? <div style={{ color: 'var(--text-700)', fontSize: '0.8125rem', overflowWrap: 'anywhere', marginTop: '0.1rem' }}>{words.to}</div> : null}
       {line.delivery || words.again || paid ? (
-        <div style={{ color: 'var(--text-700)', fontSize: '0.8125rem', marginTop: '0.05rem' }} data-testid="bills-sent-line-facts">
-          {line.delivery ? <span style={{ color: toneColor, fontWeight: line.deliveryTone === 'quiet' ? 500 : 600 }}>{line.delivery}</span> : null}
-          {words.again ? `${line.delivery ? ' · ' : ''}${words.again}` : ''}
-          {paid ? (
-            <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>
-              {line.delivery || words.again ? ' · ' : ''}
-              {paid}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0 0.5rem', color: 'var(--text-700)', fontSize: '0.8125rem', marginTop: '0.05rem' }} data-testid="bills-sent-line-facts">
+          {words.again ? <span>{words.again}</span> : null}
+          {paid ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{paid}</span> : null}
+          {line.delivery ? (
+            <span data-testid="bills-sent-delivery" style={deliveryStyle(line.deliveryTone)}>
+              {line.delivery}
             </span>
           ) : null}
         </div>
       ) : null}
       {line.note ? <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: '0.1rem' }}>{line.note}</div> : null}
+      {pay && bar ? (
+        <div style={bar} data-testid="bills-sent-pay-bar" data-tone={pay.tone}>
+          <b style={{ fontWeight: 800 }}>
+            {pay.tone === 'paid' ? '✓ ' : ''}
+            {pay.stamp}
+            {pay.stampAmount != null ? (
+              <>
+                {' · '}
+                <AmountSmallCents value={pay.stampAmount} />
+              </>
+            ) : null}
+          </b>
+          <span style={{ marginLeft: 'auto', color: 'var(--text-700)', textAlign: 'right' }}>
+            {[pay.way, pay.when].filter(Boolean).join(' · ')}
+            {pay.outAmount != null ? (
+              <>
+                {pay.way || pay.when ? ' · ' : ''}
+                <AmountSmallCents value={pay.outAmount} /> out
+              </>
+            ) : null}
+          </span>
+        </div>
+      ) : null}
     </>
   )
   if (line.billId) {
@@ -430,7 +511,7 @@ function ByHandForm({ gap, others, waysCtl, onSaved, onRan, onClose }: { gap: Bi
                   {g.paid ? ' Paid since.' : ''}
                 </span>
               </span>
-              <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{g.amount != null ? billsSentMoney(g.amount) : ''}</b>
+              <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{g.amount != null ? <AmountSmallCents value={g.amount} /> : ''}</b>
             </label>
           ))}
         </div>
@@ -485,7 +566,7 @@ function GapRow({ gap, others, why, waysCtl, onSaved, onRan }: { gap: BillsSentG
         ) : null}
         {gap.payer ? ` · ${gap.payer}` : ''}
       </div>
-      <div style={money}>{gap.amount != null ? billsSentMoney(gap.amount) : ''}</div>
+      <div style={money}>{gap.amount != null ? <AmountSmallCents value={gap.amount} /> : ''}</div>
       <div style={{ gridColumn: '1 / -1', color: 'var(--text-700)' }}>
         {gap.billedWords} {gap.paid ? 'Paid since. The app sent nothing for this bill.' : 'Not paid. The app has no email, text or print for this bill.'}{' '}
         {saying ? null : (
@@ -581,9 +662,25 @@ function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onO
             </>
           ) : null}
         </h2>
-        <span style={{ ...money, marginLeft: 'auto' }}>{record.amount != null ? billsSentMoney(record.amount) : ''}</span>
+        <span style={{ ...money, marginLeft: 'auto' }}>{record.amount != null ? <AmountSmallCents value={record.amount} /> : ''}</span>
       </div>
       <p style={{ margin: '0.1rem 0 0.5rem', color: 'var(--text-muted)' }}>{[record.payer, record.stateWords].filter(Boolean).join(' · ')}</p>
+      {record.payments.length > 0 ? (
+        <div data-testid="bills-sent-record-payments" style={{ margin: '0 0 0.5rem', padding: '0.4rem 0.6rem', borderRadius: 8, background: 'var(--bg-green-tint)', border: '1px solid var(--border-green)' }}>
+          <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-green-800)' }}>{record.payments.length === 1 ? 'The payment on this bill' : 'The payments on this bill, oldest first'}</div>
+          {record.payments.map((p) => (
+            <div key={p.id} data-testid="bills-sent-record-payment" style={{ display: 'flex', flexWrap: 'wrap', gap: '0 0.6rem', alignItems: 'baseline', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>
+              <WorkedOutValue>{p.when}</WorkedOutValue>
+              <span>{p.way}</span>
+              <span style={{ marginLeft: 'auto' }}>
+                <WorkedOutValue>
+                  <AmountSmallCents value={p.amount} />
+                </WorkedOutValue>
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {record.events.length === 0 ? (
         <p style={{ margin: '0.4rem 0', color: 'var(--text-amber-800)' }} data-testid="bills-sent-record-none">
           This bill has no send on record. The app sent no email, text or print for it.
@@ -619,8 +716,24 @@ function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onO
 export function BillsSentLedger() {
   const { showToast } = useToastContext()
   const phone = useIsMobile()
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const billParam = params.get('bill')
+  // The page's two views behind one switch (punch list #422): bills by the day they went, money by the day it came.
+  const view: 'sent' | 'paid' = params.get('view') === 'paid' ? 'paid' : 'sent'
+  const setView = useCallback(
+    (next: 'sent' | 'paid') => {
+      setParams((prev) => {
+        const to = new URLSearchParams(prev)
+        // The second view's own state (its day, its month, its chip) leaves the address with it.
+        for (const key of ['view', 'day', 'month', 'how']) to.delete(key)
+        if (next === 'paid') to.set('view', 'paid')
+        return to
+      })
+    },
+    [setParams],
+  )
+  // The list is read for the first view and for one bill's record. The second view reads its own month.
+  const listWanted = view === 'sent' || !!billParam
   const [route, setRoute] = useState<BillsSentChip>('all')
   const [typed, setTyped] = useState('')
   const [limit, setLimit] = useState(STEP)
@@ -630,6 +743,7 @@ export function BillsSentLedger() {
   const [tries, setTries] = useState(0)
 
   useEffect(() => {
+    if (!listWanted) return
     let cancelled = false
     setReading(true)
     void readBillsSent({ limit })
@@ -647,7 +761,7 @@ export function BillsSentLedger() {
     return () => {
       cancelled = true
     }
-  }, [limit, tries])
+  }, [limit, tries, listWanted])
   const retry = useCallback(() => setTries((n) => n + 1), [])
 
   // The list under How the bill went, read with the page and again after each change to it. Until it answers, and
@@ -664,6 +778,23 @@ export function BillsSentLedger() {
   const waysCtl = useMemo<BillHandWaysCtl>(() => ({ ways: waysRead.ways, canEdit: waysRead.fromTable, reload: reloadWays }), [waysRead, reloadWays])
 
   const today = todayYmdInAppTz()
+  // What came in since the Sunday that began this week, for the tile that opens the second view. Its own small
+  // read by day, so a payment on a bill older than the list is counted. Best effort: no answer, no tile.
+  const [paidWeek, setPaidWeek] = useState<BillsPaidSum | null>(null)
+  useEffect(() => {
+    if (view !== 'sent' || billParam) return
+    let cancelled = false
+    void readBillsPaid({ from: companyWeekStartSundayContaining(today) ?? today, to: today })
+      .then((read) => {
+        if (!cancelled) setPaidWeek(billsPaidSum(billsPaidLines(read)))
+      })
+      .catch(() => {
+        if (!cancelled) setPaidWeek(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [view, billParam, today, tries])
   const lines = useMemo(() => (data ? billsSentLines(data) : []), [data])
   const tiles = useMemo(() => billsSentTiles(lines, today), [lines, today])
   const shown = useMemo(() => billsSentFilter(lines, route, typed), [lines, route, typed])
@@ -714,11 +845,40 @@ export function BillsSentLedger() {
     )
   }
 
+  const switchPress = (pressed: boolean): CSSProperties => ({
+    fontFamily: 'inherit',
+    fontSize: '0.8125rem',
+    fontWeight: pressed ? 700 : 600,
+    minHeight: phone ? THUMB : 34,
+    border: 'none',
+    cursor: 'pointer',
+    background: pressed ? 'var(--text-strong)' : 'transparent',
+    color: pressed ? 'var(--surface)' : 'var(--text-700)',
+  })
+  const viewSwitch = (
+    <div role="group" aria-label="View" data-testid="bills-sent-view" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
+      <button type="button" aria-pressed={view === 'sent'} onClick={() => setView('sent')} style={switchPress(view === 'sent')}>
+        By day sent
+      </button>
+      <button type="button" aria-pressed={view === 'paid'} onClick={() => setView('paid')} style={switchPress(view === 'paid')}>
+        By day paid
+      </button>
+    </div>
+  )
+  if (view === 'paid') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        {viewSwitch}
+        <BillsPaidByDay />
+      </div>
+    )
+  }
+
   // What goes out of the app is what the list shows: the lines the chip and the search leave, and the open gaps with them.
   const outGaps = stripVisible ? gapsShown.open : []
   const shownWords = [BILLS_SENT_ROUTE_CHIPS.find((c) => c.key === route)?.label ?? 'All', typed.trim() ? `“${typed.trim()}”` : ''].filter(Boolean).join(' · ') + '.'
   const printList = () => {
-    if (!openHtmlPrintWindow(billsSentListHtml(days, outGaps, { printedAtIso: new Date().toISOString(), shownWords }))) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
+    if (!openHtmlPrintWindow(billsSentListHtml(days, outGaps, { printedAtIso: new Date().toISOString(), shownWords, todayYmd: today }))) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
   }
   const saveCsv = () => {
     // The byte order mark lets a spreadsheet read the file's accents and dots as written.
@@ -740,15 +900,40 @@ export function BillsSentLedger() {
     ) : null
   // A tile that counts something to look at is the press that shows it.
   const tilePress: CSSProperties = { ...tile, font: 'inherit', textAlign: 'left', cursor: 'pointer' }
+  // On a phone an even count of tiles sits two to a row, so no tile is left alone on a row of its own.
+  const tileCount = 2 + (tiles.unpaid.bills > 0 ? 1 : 0) + (paidWeek && paidWeek.payments > 0 ? 1 : 0) + (missed > 0 ? 1 : 0) + (gaps.open.length > 0 ? 1 : 0)
   // On a phone the strip is one line until it is asked for, so the list is on the first screen.
   const stripFolded = phone && route === 'all'
 
   return (
     <section aria-label="Bills sent" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+      {viewSwitch}
       {phone ? null : outRow}
-      <div style={{ display: 'grid', gridTemplateColumns: phone ? 'repeat(auto-fit, minmax(5.2rem, 1fr))' : 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: phone ? (tileCount % 2 === 0 ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(5.2rem, 1fr))') : 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' }}>
         <Tile label="Today" sum={tiles.today} testId="bills-sent-tile-today" stacked={phone} />
         <Tile label="This week" sum={tiles.week} testId="bills-sent-tile-week" stacked={phone} />
+        {tiles.unpaid.bills > 0 ? (
+          <button type="button" onClick={() => setRoute('unpaid')} style={tilePress} data-testid="bills-sent-tile-unpaid" title="Show the bills on this list that are not paid in full">
+            <span style={tileSmall}>Not paid</span>
+            <b style={{ color: 'var(--text-strong)', fontSize: '0.9375rem' }}>
+              {tiles.unpaid.bills} {tiles.unpaid.bills === 1 ? 'bill' : 'bills'}
+            </b>{' '}
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', ...(phone ? { display: 'block' } : {}) }}>
+              <AmountSmallCents value={tiles.unpaid.total} />
+            </span>
+          </button>
+        ) : null}
+        {paidWeek && paidWeek.payments > 0 ? (
+          <button type="button" onClick={() => setView('paid')} style={{ ...tilePress, background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)' }} data-testid="bills-sent-tile-paid-week" title="See what came in, a day at a time">
+            <span style={{ ...tileSmall, color: 'var(--text-green-800)' }}>Paid this week</span>
+            <b style={{ color: 'var(--text-strong)', fontSize: '0.9375rem' }}>
+              {paidWeek.payments} {paidWeek.payments === 1 ? 'payment' : 'payments'}
+            </b>{' '}
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', ...(phone ? { display: 'block' } : {}) }}>
+              <AmountSmallCents value={paidWeek.total} />
+            </span>
+          </button>
+        ) : null}
         {missed > 0 ? (
           <button type="button" onClick={() => setRoute('missed')} style={{ ...tilePress, background: 'var(--bg-red-tint)', borderColor: 'var(--text-red-700)' }} data-testid="bills-sent-tile-missed">
             <span style={{ ...tileSmall, color: 'var(--text-red-700)' }}>Did not arrive</span>
@@ -799,11 +984,36 @@ export function BillsSentLedger() {
               <div key={day.ymd || 'none'}>
                 <h2 style={dayHead} data-testid="bills-sent-day">
                   <span>{day.label}</span>
-                  <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{billsSentSumWords(day.sum)}</span>
+                  <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>
+                    {day.sum.bills > 0 ? (
+                      <>
+                        {plural(day.sum.bills, 'bill')} · <AmountSmallCents value={day.sum.total} />
+                      </>
+                    ) : (
+                      '0 bills'
+                    )}
+                  </span>
                   {extras ? <span style={small}>{extras}</span> : null}
+                  {day.back.bills > 0 ? (
+                    <span data-testid="bills-sent-day-back" style={{ flex: '1 0 100%', textAlign: 'right', fontWeight: 500, fontSize: '0.8125rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>
+                      <WorkedOutValue>
+                        {day.back.paid} of {day.back.bills}
+                      </WorkedOutValue>{' '}
+                      paid
+                      {day.back.out > 0 ? (
+                        <>
+                          {' · '}
+                          <WorkedOutValue>
+                            <AmountSmallCents value={day.back.out} />
+                          </WorkedOutValue>{' '}
+                          still out
+                        </>
+                      ) : null}
+                    </span>
+                  ) : null}
                 </h2>
                 {day.lines.map((line) =>
-                  phone ? <PhoneLine key={line.id} line={line} onOpen={(l) => void open(l)} /> : <Line key={line.id} line={line} phone={false} onOpen={(l) => void open(l)} />,
+                  phone ? <PhoneLine key={line.id} line={line} today={today} onOpen={(l) => void open(l)} /> : <Line key={line.id} line={line} phone={false} today={today} onOpen={(l) => void open(l)} />,
                 )}
               </div>
             )
@@ -820,7 +1030,7 @@ export function BillsSentLedger() {
       {phone ? outRow : null}
       {data != null ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.75rem' }} data-testid="bills-sent-foot">
-          All times are Central. A day’s total counts each bill once, on the day it first went. A send before Oct 5, 2026 has its time and no address, because the app kept no copy then. Delivered means their mail server took it. It does not mean someone read it.
+          All times are Central. A day’s total counts each bill once, on the day it first went. Paid and still out count those same bills. Not paid counts every bill on this list that is not paid in full. A send before Oct 5, 2026 has its time and no address, because the app kept no copy then. Delivered means their mail server took it. It does not mean someone read it.
         </p>
       ) : null}
     </section>
