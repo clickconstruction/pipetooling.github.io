@@ -27,6 +27,8 @@ The SQL bed `bid-photos` (`scripts/pgtest-bid-photos.sh`, `supabase/tests/bid_ph
 
 Apply order: either way round. The client reads the same columns from the old view and the new one, so nothing breaks before the push; the list keeps timing out until it. Push after the merge. No types regen and no dev-mcp catalog rebuild: the view's columns are unchanged.
 
+**Applied** to prod on 2026-11-23 at 00:13 UTC with `supabase db push` from a checkout at `origin/main`, a minute after #9409 merged. The migration drift check then read 1,448 versions applied against 1,448 files. Read back the same minute: the ledger lists this version, and the view's join reads `j.id = CASE WHEN (m.jobs_ledger_id IS NOT NULL) THEN m.jobs_ledger_id ELSE gp.billing_job_id END`, with thirty columns, `security_invoker` and no `anon` select. The live view's newest hundred read in 367 ms as a dev and 403 ms as an assistant, and its `message` rows alone in 103 ms as an assistant. Walked on clicktooling.com the same hour, signed in as a dev: **All** drew a hundred rows and **Texts & email** a hundred, with no red line.
+
 ## Seen while here, not changed
 
 Two other `security_invoker` views on prod join through a `COALESCE`: `agreements_on_file` (three joins) and `people_hours_recorded` (one). Neither was measured.
