@@ -19,3 +19,7 @@ Starts with `SET lock_timeout = '3s';`. No new table, so no fence calls. Idempot
 **Order.** Pushed after its merge, then `sub-portal` is redeployed. Neither waits on the other. Before the push, the function writes as it did. After the push and before the redeploy, a refused second confirm would answer *That could not be saved*, which no page can reach while the switch is off.
 
 **Checked.** The bed `sub-papers` gains a fourth scenario, `supabase/tests/sub_papers/50_ack_confirmed_once.sql`: the index is there and unique over the confirms that name a copy, a second confirm of one copy is refused by it, the next revision takes its own confirm once, two notes on the same copy are kept, and a voided copy keeps its confirm. The runner applies this file a second time.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here.

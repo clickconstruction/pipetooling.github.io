@@ -40,3 +40,7 @@ Nothing reads v4 yet. The clock's change is its own PR, armed after this file is
 ## Release order
 
 `supabase db push` from a main checkout after the merge. Order against the client deploy does not matter: no client calls v4 until the next PR.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here.

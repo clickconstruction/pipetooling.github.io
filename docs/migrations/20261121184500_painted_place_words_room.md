@@ -30,3 +30,7 @@ The migration's own block was also run twice on a local Postgres 15 over a stub 
 ## Order
 
 Additive: every row that passed the old check passes the new one. No `CREATE TABLE`, so no fence calls. The lock is an `ALTER TABLE` on a small table, with no row on prod on 2026-11-21, under the 3 second timeout. The push can come any time after the merge. **The screens that follow must not merge before the push**: a description past 200 characters would be refused by the table.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here.

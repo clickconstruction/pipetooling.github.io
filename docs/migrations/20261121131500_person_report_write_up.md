@@ -46,3 +46,7 @@ Write someone up: the ground under the phone sheet a leader or a superintendent 
 ## After the push
 
 `src/types/database.ts` and the dev seat's catalog learn the columns and the functions with the PR that first calls them.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here. The types followed in #9220.

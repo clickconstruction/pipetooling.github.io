@@ -72,3 +72,7 @@ The merge reads the foreign keys off the catalog, so a new table that points at 
 ## Release order
 
 Either order is safe. The client reads the plan when the preview gives one and shows the six counts it always did when not. Push after the merge.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here. No types PR has followed yet: `src/types/database.ts` does not hold `merge_customers_plan` or the other helpers this file adds.

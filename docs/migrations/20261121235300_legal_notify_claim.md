@@ -44,3 +44,7 @@ Prod runs Postgres 17; nothing here is newer than 12 (`AS MATERIALIZED`).
 ## Verify after the push
 
 Read-only: `select column_name from information_schema.columns where (table_name, column_name) in (('legal_notification_queue','claimed_until'),('legal_firm_recipients','digest_claimed_until'))` returns two rows, and `select proname from pg_proc where proname like 'legal_notify_claim_%'` returns two. After the next tick with the function deployed, no open queue row keeps a `claimed_until` in the future for longer than the run took.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here. The types followed in #9332.

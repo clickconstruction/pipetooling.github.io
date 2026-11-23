@@ -42,3 +42,7 @@ The owner settled both on 2026-11-19.
 ## After the merge
 
 `supabase db push`, then a types PR (`npm run gen-types:linked`). No client calls any of it yet, so nothing waits on the push.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here. No types PR has followed yet: `src/types/database.ts` does not hold `person_trade_companies` or the functions this file adds.

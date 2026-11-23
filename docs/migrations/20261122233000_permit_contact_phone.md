@@ -65,3 +65,7 @@ Nothing reads any of this yet. Find their names and Compare are their own PR, ar
 ## Release order
 
 `supabase db push` after the merge, then `supabase functions deploy permit-pull`. Either order is safe: deployed ahead of this file, the pull drops the column from its upsert and carries on.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here. The types followed in #9435.

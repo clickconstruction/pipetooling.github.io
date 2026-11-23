@@ -23,3 +23,7 @@ No table, so no fence call. Safe to run twice.
 ```sql
 SELECT jobname, schedule, active FROM cron.job WHERE jobname LIKE 'license-roll-pull-%' ORDER BY schedule;   -- five rows
 ```
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here.

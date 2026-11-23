@@ -34,3 +34,7 @@ Nothing calls the function until the client PR that follows the push and the typ
 ## Apply
 
 `supabase db push` once this PR is on `main`. Nothing on the client depends on the order.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here. The types followed in #9365.

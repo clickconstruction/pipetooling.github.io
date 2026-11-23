@@ -17,3 +17,7 @@ The row is seeded off on purpose. The lessons were written from code sections re
 ## Verify
 
 Read-only on prod after the push: `select slug, enabled, offered, required_roles, good_for_months from training_courses order by slug` reads four rows, the new one off, offered and with no roles; `select * from training_state_for(auth.uid())` as any role reads nothing for it. The bed `npm run test:pg:training` (CI's `sql-beds` job) asserts the seed.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here.

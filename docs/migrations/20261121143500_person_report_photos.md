@@ -32,3 +32,7 @@ Write someone up, the photos (punch list #410, PR 5; `to-dos/write-someone-up/`)
 ## After the push
 
 `src/types/database.ts` and the dev seat's catalog learn the table with the PR that first reads it.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here. The types followed in #9234.

@@ -59,3 +59,7 @@ The migration was also run twice on a local Postgres 15 over a stub of its table
 ## Order
 
 Additive and idempotent. No `CREATE TABLE`, so no fence calls. Every `ALTER TABLE` adds a nullable column or one with a constant default, which rewrites no row, under the 3 second timeout. The foreign key takes a brief lock on `painted_map_lines` as well as `painted_map_places`. The push can come any time after the merge. **The screens that follow must not merge before the push**: they name the new columns in their reads and call the new functions.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here. The types followed in #9290.

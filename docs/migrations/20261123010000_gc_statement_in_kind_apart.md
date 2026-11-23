@@ -9,3 +9,7 @@ The row object is built once in a new CTE, `rows_obj`, so both lists hold one sh
 Readers: `gc-statement-email-dispatch` and `send-gc-statement-email` (through `_shared/gcStatementGateIo.ts`) net `in_kind_rows` by the payment rule and count them with `setInKindApart`. `get_statement_week_for_office` calls this function, so its amounts, its over 90 days and its $10,000 line leave such a bill out with no change of its own.
 
 **Apply order:** push right after the merge, then deploy the two functions. A function deployed before the push sees no `in_kind_rows` and sets nothing apart, as before. A function not yet deployed after the push lists fewer rows and smaller sums, with no line saying why.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here.

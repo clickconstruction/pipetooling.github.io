@@ -41,3 +41,7 @@ A stand-in rig on the local Postgres 15, not the app's schema: the first migrati
 - An untick takes off the person's own row and leaves the other's for them to read.
 
 The rig's `users` table has no row security. On prod the trigger's read of the caller's own row is proved by the first real tick after the push.
+
+## Applied
+
+On the prod ledger, read on 2026-11-23 with the dev seat's `check_migration_ledger` during a docs catch-up. The push's own time and checks were not recorded here. The types followed in #9302.
