@@ -6,7 +6,45 @@
  * the request, the email's input, the `gc_trade_messages` row and the sent copy. The person path is
  * `contractSigningSend.ts`, pinned against main and untouched by this branch.
  */
-import { parseTradeEmail, TRADE_EMAIL_LIMITS, type GcTradeEmailInput, type TradeEmailLine } from './gcTradeEmail.ts'
+import { GC_TRADE_EMAIL_FROM_NAME, parseTradeEmail, TRADE_EMAIL_LIMITS, type GcTradeEmailInput, type TradeEmailLine } from './gcTradeEmail.ts'
+import { SIGNING_SEND_ROLES } from './contractSigningSend.ts'
+import { PORTAL_COMPANY } from './portalCompany.ts'
+
+/**
+ * Who may send a trade company's paper (punch list #403, step 5): the four roles that send any paper for signature, a
+ * dev, a leader, an assistant and the controller. It was `GC_TRADE_EMAIL_ROLES`, a dev alone, which every other email
+ * to a trade partner still asks. The client's copy is `COMPANY_PAPER_SEND_TEAM` in `src/lib/gc/access.ts`, and
+ * `access.test.ts` fails when the two differ.
+ */
+export const COMPANY_PAPER_SEND_ROLES: readonly string[] = SIGNING_SEND_ROLES
+
+/** The caller's account row, as far as the company branch's gate reads it. */
+export interface CompanyPaperCaller {
+  role?: string | null
+  read_only?: boolean | null
+  is_digital_twin?: boolean | null
+}
+
+/**
+ * The company branch's refusal of its caller, as a trade email's error key, or null to carry on. The role is said
+ * first: anyone off the four roles is `officeOnly`. Then a training account and a digital twin, whatever their role,
+ * are `readOnly`. An archived account is refused before this is asked (`refuseArchivedCaller`).
+ */
+export function companyPaperCallerRefusal(caller: CompanyPaperCaller | null | undefined): 'officeOnly' | 'readOnly' | null {
+  if (!caller || !COMPANY_PAPER_SEND_ROLES.includes(String(caller.role ?? ''))) return 'officeOnly'
+  if (caller.read_only || caller.is_digital_twin) return 'readOnly'
+  return null
+}
+
+/**
+ * Whose name a company's paper goes out under. GC mode's company window sends as the GC, as every trade email does. The
+ * office sends a sub's company its paper as the company a sub knows, the name a person's own paper comes from.
+ */
+export type CompanyPaperFrom = 'gc' | 'office'
+
+export function companyPaperFromName(from: CompanyPaperFrom): string {
+  return from === 'office' ? PORTAL_COMPANY.name : GC_TRADE_EMAIL_FROM_NAME
+}
 
 /** What the office posts for a company's paper. */
 export interface CompanySigningRequest {
@@ -22,6 +60,8 @@ export interface CompanySigningRequest {
   lines: TradeEmailLine[]
   /** The step's words on its button, the portal's `readSign`. */
   actionLabel: string
+  /** Whose name it goes out under: `office` from People, else the GC's. */
+  from: CompanyPaperFrom
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -29,7 +69,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /**
  * The company branch's request, or not: `{ person_contract_document_id, public_origin?, trade_email: { companyId, key,
- * lang, subject, lines, actionLabel } }`. The words are held to gc-trade-email's own limits (`parseTradeEmail`).
+ * lang, subject, lines, actionLabel, from? } }`. The words are held to gc-trade-email's own limits (`parseTradeEmail`).
+ * `from` is `office` or it is the GC.
  */
 export function parseCompanySigningRequest(body: unknown): { ok: true; req: CompanySigningRequest } | { ok: false } {
   if (!isObject(body) || !isObject(body.trade_email)) return { ok: false }
@@ -43,7 +84,8 @@ export function parseCompanySigningRequest(body: unknown): { ok: true; req: Comp
   const origin = body.public_origin
   const publicOrigin = typeof origin === 'string' && origin.startsWith('http') ? origin : null
   const { companyId, key, lang, subject, lines } = parsed.req
-  return { ok: true, req: { documentId, publicOrigin, companyId, key, lang, subject, lines, actionLabel } }
+  const from: CompanyPaperFrom = te.from === 'office' ? 'office' : 'gc'
+  return { ok: true, req: { documentId, publicOrigin, companyId, key, lang, subject, lines, actionLabel, from } }
 }
 
 /** The portal message a company's paper goes as: its master agreement is `msa`; any other paper (a W-9) is `paper`. */

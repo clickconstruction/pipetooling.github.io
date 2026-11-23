@@ -17,6 +17,7 @@ import { FILL_IN_ACTION_LABEL, fillInKindOfItem, fillInOtherLinesHeading, type F
 import { EmptyState } from '../EmptyState'
 import { NEEDS_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 import LienLeaderSignCardView from './LienLeaderSignCardView'
+import { NeedsYouRowWords } from './NeedsYouRowWords'
 import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
 /**
@@ -214,8 +215,7 @@ export function DashboardNeedsYouCard({
               }}
             >
               <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{it.title}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: 1 }}>{it.detail}</div>
+                <NeedsYouRowWords item={it} />
                 {secondaryLinks(it)}
               </div>
               <div style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>

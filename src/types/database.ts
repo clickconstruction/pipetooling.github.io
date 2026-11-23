@@ -34554,6 +34554,52 @@ export type Database = {
           },
         ]
       }
+      person_trade_companies: {
+        Row: {
+          company_id: string
+          linked_at: string
+          linked_by: string | null
+          person_id: string
+          title: string | null
+        }
+        Insert: {
+          company_id: string
+          linked_at?: string
+          linked_by?: string | null
+          person_id: string
+          title?: string | null
+        }
+        Update: {
+          company_id?: string
+          linked_at?: string
+          linked_by?: string | null
+          person_id?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_trade_companies_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "gc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_trade_companies_linked_by_fkey"
+            columns: ["linked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_trade_companies_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_watch_notices: {
         Row: {
           body: string
@@ -47136,6 +47182,10 @@ export type Database = {
         Args: { p_customer_id: string; p_work_date: string }
         Returns: undefined
       }
+      customer_merge_moves_only: {
+        Args: { p_column: string; p_new: Json; p_old: Json }
+        Returns: boolean
+      }
       customer_page_word_blanks: { Args: { t: string }; Returns: string[] }
       customer_portal_papers: {
         Args: { p_customer_ids: string[] }
@@ -47166,6 +47216,14 @@ export type Database = {
       customer_rating_called: {
         Args: { p_note?: string; p_rating_id: string }
         Returns: Json
+      }
+      customer_reference_columns: {
+        Args: never
+        Returns: {
+          col: unknown
+          key: string
+          tbl: unknown
+        }[]
       }
       cut_drive_link: { Args: { p_link_id: string }; Returns: string }
       day_book_payload_for: {
@@ -51198,6 +51256,31 @@ export type Database = {
         Args: { p_field_choices: Json; p_survivor: string; p_victim: string }
         Returns: Json
       }
+      merge_customers_drop: {
+        Args: {
+          p_group: string
+          p_ids: string[]
+          p_key: unknown
+          p_table: unknown
+        }
+        Returns: number
+      }
+      merge_customers_exceptions: {
+        Args: { p_survivor: string; p_victim: string }
+        Returns: {
+          detail: string
+          row_id: string
+          what: string
+        }[]
+      }
+      merge_customers_keyless: {
+        Args: { p_apply: boolean; p_survivor: string; p_victim: string }
+        Returns: Json
+      }
+      merge_customers_plan: {
+        Args: { p_survivor: string; p_victim: string }
+        Returns: Json
+      }
       merge_material_parts: {
         Args: { p_drop: string; p_keep: string }
         Returns: Json
@@ -51760,6 +51843,15 @@ export type Database = {
       person_file_thing: {
         Args: { p_id: string; p_kind: string }
         Returns: Json
+      }
+      person_signs_for: { Args: { p_person_id: string }; Returns: string }
+      person_trade_company_enter: {
+        Args: { p_company: Json; p_person_id: string; p_title?: string }
+        Returns: string
+      }
+      person_trade_company_set: {
+        Args: { p_company_id: string; p_person_id: string; p_title?: string }
+        Returns: undefined
       }
       pipeline_customer_lines: {
         Args: { p_job_ids: string[]; p_per_job?: number }

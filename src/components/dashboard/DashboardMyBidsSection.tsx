@@ -9,13 +9,20 @@ import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import {
   MY_BID_OTHERS_VISIBLE_STEP,
+  MY_BID_STATE_WORDS,
   MY_BIDS_DASHBOARD_ROW_LIMIT,
+  MY_BIDS_NOT_LOST_FILTER,
+  MY_BIDS_ON_THE_BOARD_FILTER,
+  MY_BIDS_READ_ORDER,
   bucketMyBidCustomerContactsFromOthers,
   bucketMyBidSubmissionsFromOthers,
   buildMyBidRows,
   collectMyBidNoteAuthorIds,
   formatMyBidPreviewDate,
   formatRelativeCompactAgo,
+  groupMyBids,
+  isMyBidOffTheBoard,
+  myBidState,
   myBidsStartsOpen,
   truncateMyBidNotePreview,
   type MyBidBaseRow,
@@ -95,16 +102,21 @@ export function DashboardMyBidsSection({
             supabase
               .from('bids')
               .select(
-                'id, project_name, bid_due_date, bid_date_sent, outcome, customer_id, estimator_id, account_manager_id, service_type:service_types(name)'
+                'id, project_name, bid_due_date, bid_date_sent, outcome, customer_id, estimator_id, account_manager_id, created_at, working_board_archived_at, adopted_into_bid_id, service_type:service_types(name)'
               )
               .or(`estimator_id.eq.${uidForFilter},account_manager_id.eq.${uidForFilter}`)
-              .or('outcome.is.null,outcome.neq.lost')
-              .order('bid_due_date', { ascending: true, nullsFirst: false })
+              .or(MY_BIDS_NOT_LOST_FILTER)
+              // What the Bid Board no longer lists is not listed here (punch list #426): an adopted bid, and an unsent one archived from the board.
+              .is('adopted_into_bid_id', null)
+              .or(MY_BIDS_ON_THE_BOARD_FILTER)
+              // The limit cuts the oldest decided bids, never the newest due dates.
+              .order(MY_BIDS_READ_ORDER[0].column, { ascending: MY_BIDS_READ_ORDER[0].ascending, nullsFirst: MY_BIDS_READ_ORDER[0].nullsFirst })
+              .order(MY_BIDS_READ_ORDER[1].column, { ascending: MY_BIDS_READ_ORDER[1].ascending, nullsFirst: MY_BIDS_READ_ORDER[1].nullsFirst })
               .limit(MY_BIDS_DASHBOARD_ROW_LIMIT),
           'load dashboard my bids'
         )
         if (cancelled) return
-        const baseRows = (rawRows ?? []) as MyBidBaseRow[]
+        const baseRows = ((rawRows ?? []) as MyBidBaseRow[]).filter((r) => !isMyBidOffTheBoard(r))
         const bidIds = baseRows.map((r) => r.id)
         const uid = authUserId
         if (bidIds.length === 0) {
@@ -351,8 +363,10 @@ export function DashboardMyBidsSection({
             <>
               {(() => {
                 const visibleBids = myBids.filter((b) => !hiddenBidIds.has(b.id))
-                const unsentBids = visibleBids.filter((b) => !b.bid_date_sent)
-                const sentBids = visibleBids.filter((b) => b.bid_date_sent != null)
+                // The Bid Board's own states and orders (punch list #426): a bid with an answer is never in the unsent pile.
+                const byState = groupMyBids(visibleBids)
+                const unsentBids = byState.unsent
+                const sentBids = [...byState.pending, ...byState.won, ...byState.startedOrComplete]
                 const myBidPillEstimator: CSSProperties = {
                   fontSize: '0.6875rem',
                   fontWeight: 600,
@@ -376,14 +390,7 @@ export function DashboardMyBidsSection({
                   color: 'var(--text-violet-800)',
                 }
                 const renderBidItem = (b: typeof myBids[0], cardStyle: CSSProperties, mode: 'visible' | 'hidden' = 'visible') => {
-                  const status =
-                    !b.bid_date_sent
-                      ? 'Unsent'
-                      : b.outcome === 'won'
-                        ? 'Won'
-                        : b.outcome === 'started_or_complete'
-                          ? 'Started or Complete'
-                          : 'Pending'
+                  const status = MY_BID_STATE_WORDS[myBidState(b)]
                   const dueStr = b.bid_due_date
                     ? new Date(b.bid_due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
                     : '—'
