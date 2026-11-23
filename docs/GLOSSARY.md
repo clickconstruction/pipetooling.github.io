@@ -6910,6 +6910,7 @@ The **signer** is the human who signs: a name, a title and an address kept on th
 The two are kept apart because a rep leaves a supply house and the paper must still say who signed.
 `party_name` freezes the party's name on the paper, so a paper never loses the name of who it was with.
 The `agreements_on_file` view answers a party's paper as *customer_agreement*, *supply_house_agreement*, *trade_agreement* or *outside_agreement*, by what the contact points at today ([`paperParty.ts`](../src/lib/contracts/paperParty.ts)).
+Since v2.8354 (punch list #403, the owner's first decision, `20261123083000_agreements_every_party_paper.sql`) the view answers a party's paper of any kind and any state: a W-9, a certificate or a licence carries a second tag from `facts.doc_type`, and a paper made and never sent reads the state *not_sent*, drawn as *not sent* under a **Not sent** chip that shows while one exists, with **Send** on its line beside **Take back** (`agreementCanBeSent`, [`agreementsActs.ts`](../src/lib/documents/agreementsActs.ts)).
 *Not on a list* is a party whose contact has no record yet.
 Since v2.8162 a party's own page lists its papers: a supply house's window under **Papers**, and the Customer page's **Agreements** card under *Papers with this customer* ([`PartyPapers.tsx`](../src/components/contracts/PartyPapers.tsx), [`partyPapers.ts`](../src/lib/contracts/partyPapers.ts)).
 A paper is a party's when its contact is the party's own or that of a person there: a person on file at the customer, or a rep of the house.
