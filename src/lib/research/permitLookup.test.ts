@@ -4,6 +4,7 @@ import {
   builderKeyOf,
   companyFactsFromPlaces,
   companyLookupKey,
+  contactDomainOf,
   contactParts,
   keptDays,
   lookupIsFresh,
@@ -11,9 +12,14 @@ import {
   parcelFactsFromCounty,
   parcelFactsFromCountyAtPoint,
   parcelLookupKey,
+  phoneDigitsOf,
+  phoneWords,
   placesQuery,
+  SHARED_DOMAINS,
   situsWhere,
 } from '../../../supabase/functions/_shared/permitLookup'
+import { readFileSync } from 'node:fs'
+import { OPEN_MAIL_DOMAINS } from '../emailIn/leftOutSenders'
 
 describe('contactParts', () => {
   it('splits a person and a company on the comma', () => {
@@ -130,5 +136,35 @@ describe('how long an answer is kept', () => {
     }
     expect(keptDays({ kind: 'parcel', found: false, error: '' })).toBe(7)
     expect(keptDays({ kind: 'parcel', found: false, error: undefined })).toBe(7)
+  })
+})
+
+describe('a phone and a domain, as the database reads them too (v2.8296)', () => {
+  // The same lists, in the same order, as the bed permit-name-contacts asks permit_phone_digits and
+  // permit_contact_domain. An answer that changes here must change there.
+  it('a phone is ten digits, its extension and its leading 1 dropped', () => {
+    const asked = ['(512) 555-0101', '1-512-555-0101', '512.555.0101 ext. 7', '512', '512555010155', '0000000000', null, '+1 512 555 0101 x22']
+    expect(asked.map((v) => phoneDigitsOf(v) ?? 'null').join(' ')).toBe('5125550101 5125550101 5125550101 null null null null 5125550101')
+    expect(phoneDigitsOf(5125550101)).toBe('5125550101')
+    expect(phoneDigitsOf({})).toBeNull()
+    expect(phoneWords('5125550101')).toBe('(512) 555-0101')
+    expect(phoneWords('512')).toBe('512')
+  })
+
+  it('a domain is a company’s own, off an email or a website', () => {
+    const asked = [
+      'https://www.RidgewayBuilders.com/contact', 'office@mail.ridgewaybuilders.com', 'Dana <dana@gmail.com>', 'http://ridgeway.com:8080/x', 'ridgeway',
+      null, 'facebook.com/ridgeway', 'tallpine.wixsite.com/home', 'Dana <dana@tallpine.dev>', 'www.oakmill.co',
+    ]
+    expect(asked.map((v) => contactDomainOf(v) ?? 'null').join(' ')).toBe('ridgewaybuilders.com ridgewaybuilders.com null ridgeway.com null null null null tallpine.dev oakmill.co')
+  })
+
+  it('holds the list the migration holds, and every open mail service is on it', () => {
+    const sql = readFileSync('supabase/migrations/20261122233000_permit_contact_phone.sql', 'utf8')
+    const between = sql.slice(sql.indexOf('-- SHARED_DOMAINS:START'), sql.indexOf('-- SHARED_DOMAINS:END'))
+    const inSql = [...between.matchAll(/'([a-z0-9.-]+)'/g)].map((m) => m[1])
+    expect(inSql).toEqual([...SHARED_DOMAINS])
+    expect(new Set(SHARED_DOMAINS).size).toBe(SHARED_DOMAINS.length)
+    for (const d of OPEN_MAIL_DOMAINS) expect(SHARED_DOMAINS).toContain(d)
   })
 })

@@ -293,11 +293,42 @@ SELECT ps.same('v4 is v3 with that one column and nothing else moved, and the fi
              WHERE (r.plumber_permit_on IS NULL) <> (r.plumber_first_permit_on IS NULL) OR r.plumber_first_permit_on > r.plumber_permit_on),
   '0/3/0');
 
+-- Only the building's own plumbing permit counts (migration *_permit_building_plumbing_only). The rule first, on
+-- every plumbing type prod held the day it was written, and a permit with no type, which counts as it always did.
+SELECT ps.same('a general plumbing permit, or a plumbing type with no qualifier, is the building''s plumbing',
+  (SELECT string_agg(public.permit_is_building_plumbing(t)::text, ' ' ORDER BY ord) FROM (VALUES
+     (1, 'Plumbing General Permit'), (2, 'Plumbing Permit'), (3, 'Plumbing'), (4, 'Commercial Plumbing'), (5, 'Residential - Plumbing'),
+     (6, 'Plumbing Irrigation Permit'), (7, 'Plumbing Gas Permit'), (8, 'Plumbing Sewer Permit'), (9, 'Plumbing Backflow Permit'),
+     (10, 'LSR Plumbing Permit'), (11, 'Plumbing Completion Permit'), (12, 'Plumbing Medical Gas Permit'), (13, 'Plumbing MRFPSS Permit'),
+     (14, NULL)) v(ord, t)),
+  'true true true true true false false false false false false false false true');
+-- Fern City, where the address ties. Brookline has two jobs. A lawn sprinkler permit sits at the first, and a
+-- plumber's permit at the second. Before the rule the sprinkler closed the first job and named the irrigator.
+INSERT INTO public.permits (id, city, source, permit_number, permit_type, kind, stage, residential, work_type, address, address_key, submitted_on, issued_on, contact, builder_key) VALUES
+  ('00000000-0000-0000-0000-0000003021a1', 'Fern City', 'bed', 'FC-1', 'Comm Remodel Permit', 'building', 'applied', false, 'Commercial remodel', '2 FERN WAY', '2 fern way', CURRENT_DATE - 8, NULL, 'Ada Brook, Brookline Build', 'brooklinebuild'),
+  ('00000000-0000-0000-0000-0000003021a2', 'Fern City', 'bed', 'FC-I1', 'Plumbing Irrigation Permit', 'plumbing', 'issued', false, 'Plumbing Irrigation', '2 FERN WAY', '2 fern way', NULL, CURRENT_DATE - 3, 'Green Arc Irrigation', 'greenarcirrigation'),
+  ('00000000-0000-0000-0000-0000003021a3', 'Fern City', 'bed', 'FC-2', 'Comm Remodel Permit', 'building', 'applied', false, 'Commercial remodel', '6 MOSS LN', '6 moss ln', CURRENT_DATE - 7, NULL, 'Ada Brook, Brookline Build', 'brooklinebuild'),
+  ('00000000-0000-0000-0000-0000003021a4', 'Fern City', 'bed', 'FC-P2', 'Plumbing Permit', 'plumbing', 'issued', false, 'Plumbing', '6 MOSS LN', '6 moss ln', NULL, CURRENT_DATE - 2, 'Heron Plumbing', 'heronplumbing'),
+  -- San Antonio: a sprinkler permit on the open application's own number, and another applicant's at its address.
+  ('00000000-0000-0000-0000-0000003021a5', 'San Antonio', 'bed', 'SA-APP-1', 'Plumbing Irrigation Permit', 'plumbing', 'issued', false, 'Plumbing Irrigation', '800 TOWER BLVD', '800 tower blvd', NULL, CURRENT_DATE - 1, 'Nora Vance, Ridgeline Interiors', 'ridgelineinteriors'),
+  ('00000000-0000-0000-0000-0000003021a6', 'San Antonio', 'bed', 'IRR-7', 'Plumbing Irrigation Permit', 'plumbing', 'issued', false, 'Plumbing Irrigation', '800 TOWER BLVD', '800 tower blvd', NULL, CURRENT_DATE - 1, 'Green Arc Irrigation', 'greenarcirrigation');
+SELECT ps.same('a sprinkler permit closes no job and names no plumber, and a plumber''s permit still does, on every read',
+  (SELECT string_agg(permit_number || ':' || COALESCE(plumber, 'none') || ':' || COALESCE((CURRENT_DATE - plumber_permit_on)::text, 'open') || ':' || COALESCE((CURRENT_DATE - plumber_first_permit_on)::text, 'open')
+                     || ':' || builder_permits || '/' || builder_open || ':' || plumbing_nearby, ' ' ORDER BY permit_number)
+   FROM public.research_permits_v4('Fern City', CURRENT_DATE - 60, false))
+  || ' ' || (SELECT string_agg(key || ':' || permits || '/' || open || ':' || COALESCE(plumber, 'nobody') || 'x' || plumber_jobs, ' ' ORDER BY key) FROM public.research_builders('Fern City'))
+  || ' ' || (SELECT plumber IS NULL AND plumber_permit_on IS NULL FROM public.research_permits('Fern City', CURRENT_DATE - 60, false) WHERE permit_number = 'FC-1')::text,
+  'FC-1:none:open:open:2/1:0 FC-2:Heron Plumbing:2:2:2/1:0 brooklinebuild:2/1:Heron Plumbingx1 true');
+SELECT ps.same('in San Antonio a sprinkler permit on the job''s own number closes nothing, and another''s at the address is not said as plumbing nearby',
+  (SELECT COALESCE(plumber, 'none') || ':' || COALESCE((CURRENT_DATE - plumber_permit_on)::text, 'open') || ':' || COALESCE((CURRENT_DATE - plumber_first_permit_on)::text, 'open') || ':' || builder_open || ':' || plumbing_nearby
+   FROM public.research_permits_v4('San Antonio', CURRENT_DATE - 60, false) WHERE permit_number = 'SA-APP-1'),
+  'none:open:open:1:2');
+
 -- The fences reached the two new tables, and the new reads are closed to the anon key.
 SELECT ps.same('both tables carry the read-only fence',
   (SELECT count(DISTINCT tablename)::text FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('builders', 'builder_marks') AND permissive = 'RESTRICTIVE'), '2');
 SELECT ps.same('anon runs none of the new functions',
-  (SELECT count(*)::text FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('research_permits_v2', 'research_builders', 'permit_funnel', 'permit_set_builder_keys', 'permit_skim_wait', 'permit_address_plumbing_counts', 'research_permits_v3', 'research_permits_v4', 'research_bid_counts', 'research_bid_party_key') AND has_function_privilege('anon', p.oid, 'EXECUTE')), '0');
+  (SELECT count(*)::text FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('research_permits_v2', 'research_builders', 'permit_funnel', 'permit_set_builder_keys', 'permit_skim_wait', 'permit_address_plumbing_counts', 'permit_is_building_plumbing', 'research_permits_v3', 'research_permits_v4', 'research_bid_counts', 'research_bid_party_key') AND has_function_privilege('anon', p.oid, 'EXECUTE')), '0');
 
 DO $$ BEGIN RAISE NOTICE 'permit_skim PASSED'; END $$;
 ROLLBACK;

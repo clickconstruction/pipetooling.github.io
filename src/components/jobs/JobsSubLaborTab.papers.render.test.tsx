@@ -3,14 +3,16 @@
  * The papers' presses on the Pay view (punch list #350): Statement of account… on a person's group, Work statement…
  * in Print's place on the ⋯ menu of a sheet that is one person's, and Payment record… beside a payment in the opened
  * row. A sheet two subs share keeps Print and offers no paper. The presses are the office's: a superintendent who
- * reaches the Pay view gets none, and keeps Print.
+ * reaches the Pay view gets none, and keeps Print. On a phone the group's header is one press and a row has no ⋯
+ * menu, so the papers' door is the sheet's bottom sheet of verbs.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { installDomShims, makeLaborJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import JobsSubLaborTab from './JobsSubLaborTab'
 
-vi.mock('../../hooks/useIsNarrowScreen', () => ({ useIsNarrowScreen: () => false }))
+const narrow = vi.hoisted(() => ({ on: false }))
+vi.mock('../../hooks/useIsNarrowScreen', () => ({ useIsNarrowScreen: () => narrow.on }))
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
@@ -50,6 +52,7 @@ beforeAll(installDomShims)
 afterEach(() => {
   cleanup()
   who.superintendent = false
+  narrow.on = false
 })
 
 const mine = makeLaborJob({ id: 'sheet-1', assigned_to_name: 'Sam Sub', job_number: 'S-212' })
@@ -167,5 +170,61 @@ describe('JobsSubLaborTab · the papers (#350)', () => {
     fireEvent.click([...document.querySelectorAll('tr')].find((tr) => tr.firstElementChild?.textContent === '▶') as HTMLElement)
     expect(screen.queryByRole('button', { name: 'Payment record…' })).toBeNull()
     expect(screen.queryByRole('dialog', { name: 'Papers for Sam Sub' })).toBeNull()
+  })
+})
+
+describe('JobsSubLaborTab · the papers on a phone (#350)', () => {
+  const verbsOf = (dialog: HTMLElement) => [...dialog.querySelectorAll('button')].map((x) => x.querySelector('span')?.textContent ?? x.textContent)
+  const openSheet = async (id: string) => {
+    await settle()
+    fireEvent.click(document.querySelector(`[data-sub-pay-phone-row="${id}"]`) as HTMLElement)
+    return screen.getByRole('dialog')
+  }
+
+  it("a sheet that is one person's offers Work statement… in Print's place, and it opens the window on that sheet", async () => {
+    narrow.on = true
+    const { onPrintJobSubSheet } = mount()
+    const sheet = await openSheet('sheet-1')
+    expect(verbsOf(sheet)).toEqual(expect.arrayContaining(['Work statement…', 'Statement of account…']))
+    expect(verbsOf(sheet)).not.toContain('Print')
+    fireEvent.click(screen.getByText('Work statement…'))
+    const dialog = screen.getByRole('dialog', { name: 'Papers for Sam Sub' })
+    expect(dialog.getAttribute('data-open')).toBe('work')
+    expect(dialog.getAttribute('data-sheet')).toBe('sheet-1')
+    expect(dialog.getAttribute('data-key')).toBe('id:sam')
+    expect(onPrintJobSubSheet).not.toHaveBeenCalled()
+    // The sheet of verbs closed behind the press: the papers window is the one dialog left.
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+  })
+
+  it('Statement of account… in the same sheet opens the window on the person', async () => {
+    narrow.on = true
+    mount()
+    await openSheet('sheet-1')
+    fireEvent.click(screen.getByText('Statement of account…'))
+    const dialog = screen.getByRole('dialog', { name: 'Papers for Sam Sub' })
+    expect(dialog.getAttribute('data-open')).toBe('statement')
+    expect(dialog.getAttribute('data-key')).toBe('id:sam')
+  })
+
+  it('a sheet two subs share keeps Print and offers no paper', async () => {
+    narrow.on = true
+    const { onPrintJobSubSheet } = mount([shared])
+    const sheet = await openSheet('sheet-2')
+    expect(verbsOf(sheet)).toContain('Print')
+    expect(verbsOf(sheet)).not.toContain('Work statement…')
+    expect(verbsOf(sheet)).not.toContain('Statement of account…')
+    fireEvent.click(screen.getByText('Print'))
+    expect(onPrintJobSubSheet).toHaveBeenCalledWith(expect.objectContaining({ id: 'sheet-2' }))
+  })
+
+  it('a superintendent gets no paper press on a phone either, and keeps Print', async () => {
+    narrow.on = true
+    who.superintendent = true
+    mount()
+    const sheet = await openSheet('sheet-1')
+    expect(verbsOf(sheet)).toContain('Print')
+    expect(verbsOf(sheet)).not.toContain('Work statement…')
+    expect(verbsOf(sheet)).not.toContain('Statement of account…')
   })
 })

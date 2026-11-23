@@ -290,6 +290,17 @@ describe('what a permit on the address is', () => {
     expect(plumbingTypeOf(null)).toBeNull()
   })
 
+  it('answers every plumbing type prod holds as the skim’s SQL rule does (v2.8295)', () => {
+    // The same thirteen types, in the same order, as the bed permit-skim asks permit_is_building_plumbing.
+    // A type that changes here must change there: the skim and a bid's window say one thing about a permit.
+    const types = [
+      'Plumbing General Permit', 'Plumbing Permit', 'Plumbing', 'Commercial Plumbing', 'Residential - Plumbing',
+      'Plumbing Irrigation Permit', 'Plumbing Gas Permit', 'Plumbing Sewer Permit', 'Plumbing Backflow Permit',
+      'LSR Plumbing Permit', 'Plumbing Completion Permit', 'Plumbing Medical Gas Permit', 'Plumbing MRFPSS Permit',
+    ]
+    expect(types.map((t) => plumbingTypeOf(t) === 'general').join(' ')).toBe('true true true true true false false false false false false false false')
+  })
+
   it('hints at this job by a telling word the two names share', () => {
     expect(looksLikeThisJob('Mill Street Lofts, Building C', 'MILL STREET LOFTS BLDG C')).toBe(true)
     expect(looksLikeThisJob('Mill Street Lofts, Building C', 'MILL ST COFFEE TI')).toBe(true)

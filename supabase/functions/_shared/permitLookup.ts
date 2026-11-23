@@ -46,6 +46,52 @@ export function builderKeyOf(contact: string | null | undefined): string | null 
   return nameKey(company ?? person)
 }
 
+/**
+ * A US phone as ten digits, or null. An extension is dropped, and a leading 1. Anything else is no phone:
+ * Austin's feed writes three digits, twelve, and one digit ten times. The twin of SQL's
+ * `permit_phone_digits` (migration `20261122233000_permit_contact_phone`); `permitLookup.test.ts` and the bed
+ * `permit-name-contacts` ask both the same list.
+ */
+export function phoneDigitsOf(value: unknown): string | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null
+  const raw = String(value).replace(/\s*(x|ext\.?)\s*[0-9]+\s*$/i, '').replace(/[^0-9]/g, '')
+  const d = /^1[0-9]{10}$/.test(raw) ? raw.slice(1) : raw
+  return /^[0-9]{10}$/.test(d) && !/^([0-9])\1{9}$/.test(d) ? d : null
+}
+
+/** Ten digits as a person reads a phone: "(512) 555-0101". Anything else comes back as it was. */
+export function phoneWords(digits: string): string {
+  return /^[0-9]{10}$/.test(digits) ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` : digits
+}
+
+/**
+ * Domains that say nothing about who answers from them: a mail service anyone can sign up for, and a site
+ * that hosts everyone's page. SQL's `permit_contact_domain` holds the same list between its two markers, and
+ * `permitLookup.test.ts` fails when the two differ.
+ */
+export const SHARED_DOMAINS: readonly string[] = [
+  'gmail.com', 'googlemail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'live.com', 'msn.com', 'icloud.com',
+  'me.com', 'aol.com', 'att.net', 'sbcglobal.net', 'comcast.net', 'proton.me', 'protonmail.com', 'ymail.com',
+  'verizon.net', 'gvtc.com', 'satx.rr.com', 'rr.com', 'mac.com', 'mail.com', 'gmx.com',
+  'facebook.com', 'instagram.com', 'linkedin.com', 'yelp.com', 'google.com', 'goo.gl', 'youtube.com',
+  'twitter.com', 'x.com', 'nextdoor.com', 'bbb.org', 'angi.com', 'houzz.com', 'yellowpages.com',
+  'mapquest.com', 'buildzoom.com', 'linktr.ee', 'wixsite.com', 'business.site', 'godaddysites.com',
+  'squarespace.com', 'weebly.com', 'wordpress.com', 'webflow.io', 'github.io',
+]
+
+/**
+ * The domain a company answers from: the part after the @ of an email, or the host of a website, cut to its
+ * last two labels. Null for one of `SHARED_DOMAINS`, and for anything that is not a domain. The twin of
+ * SQL's `permit_contact_domain`.
+ */
+export function contactDomainOf(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const v = value.trim().toLowerCase()
+  const host = v.includes('@') ? v.match(/@([^@\s>]+)>?$/)?.[1] : v.match(/^(?:[a-z][a-z0-9+.-]*:\/\/)?([^/:?#\s]+)/)?.[1]
+  const d = host?.match(/([a-z0-9-]+\.[a-z]{2,})\.?$/)?.[1] ?? null
+  return d == null || SHARED_DOMAINS.includes(d) ? null : d
+}
+
 /** What to ask Google Places for: the company when there is one, else the person, with the city. */
 export function placesQuery(contact: string | null | undefined, city: string): string | null {
   const { person, company } = contactParts(contact)

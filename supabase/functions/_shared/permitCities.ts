@@ -7,7 +7,7 @@
  * each city's doors. No I/O here; `src/lib/research/permitCities.test.ts` holds it.
  */
 import { addressKeyOf, dayOf, feedPageSql, numberOf, permitRowFromSanAntonio, SA_APPLIED_FEED, SA_ISSUED_FEED, SAN_ANTONIO_CKAN, textOf, type PermitFeed, type PermitRow, type PermitStage, type PermitTypeClass } from './permitFeed.ts'
-import { builderKeyOf, SAN_ANTONIO_PERMIT_PORTAL } from './permitLookup.ts'
+import { builderKeyOf, phoneDigitsOf, SAN_ANTONIO_PERMIT_PORTAL } from './permitLookup.ts'
 import { TRAVIS_PARCEL_POINTS, WILLIAMSON_PARCEL_POINTS, type ParcelPointSource } from './permitParcelPoints.ts'
 
 /** One feed of one city, whatever door it is read through. */
@@ -19,8 +19,8 @@ export type FeedReader = {
   /** The URL of one page: rows filed on or after `sinceDay`, oldest first, `limit` rows from `offset`. */
   pageUrl: (sinceDay: string, limit: number, offset: number) => string
   /**
-   * The same page stopped before `untilDay`, for a read back as history (punch list #307). A feed
-   * without it cannot be read back yet, and `permit-pull` says so.
+   * The same page stopped before `untilDay`, for a read back as history (punch list #307). Every
+   * city's feed has it since v2.8297. A feed without it cannot be read back, and `permit-pull` says so.
    */
   pageUrlBefore?: (sinceDay: string, untilDay: string, limit: number, offset: number) => string
   /**
@@ -177,7 +177,12 @@ export function permitRowFromAustin(record: Record<string, unknown>): PermitRow 
   const point = texasPoint(record['latitude'], record['longitude'])
   // Who pulled it: the contractor's company on the permit, else the applicant's, else the person named.
   // Each without the city's MAIN mark; `raw` keeps the feed's own text.
-  const contact = austinName(record['contractor_company_name']) ?? austinName(record['applicant_org']) ?? austinName(record['contractor_full_name']) ?? austinName(record['applicant_full_name'])
+  const company = austinName(record['contractor_company_name'])
+  const applicantOrg = austinName(record['applicant_org'])
+  const contractor = austinName(record['contractor_full_name'])
+  const contact = company ?? applicantOrg ?? contractor ?? austinName(record['applicant_full_name'])
+  // The phone is the same party's: the contractor's beside a contractor's name, the applicant's beside an applicant's.
+  const fromContractor = company != null || (applicantOrg == null && contractor != null)
   const zip = (textOf(record['original_zip']) ?? '').match(/^\d{5}/)?.[0] ?? null
   return {
     city: 'Austin',
@@ -200,28 +205,35 @@ export function permitRowFromAustin(record: Record<string, unknown>): PermitRow 
     area_sf: positive(record['total_new_add_sqft']),
     contact,
     builder_key: builderKeyOf(contact),
+    contact_phone: contact == null ? null : phoneDigitsOf(record[fromContractor ? 'contractor_phone' : 'applicant_phone']),
     raw: record,
   }
 }
 
-/** The Socrata `$where` for the kinds the pull keeps, issued on or after a day. */
-export function austinWhere(sinceDay: string): string {
+/** The Socrata `$where` for the kinds the pull keeps, issued on or after a day, and before `untilDay` when a read back gives one. */
+export function austinWhere(sinceDay: string, untilDay?: string): string {
   assertDay(sinceDay, 'austinWhere')
+  if (untilDay != null) assertDay(untilDay, 'austinWhere')
   const list = (words: string[]) => words.map((w) => `'${w}'`).join(', ')
   const commercial = `(permit_class_mapped = 'Commercial' AND work_class in (${list(Object.keys(AUSTIN_COMMERCIAL_WORK))}))`
   const residential = `(permit_class_mapped = 'Residential' AND work_class in (${list(Object.keys(AUSTIN_RESIDENTIAL_WORK))}))`
   const plumbing = `(permittype = 'PP' AND work_class not in (${list(AUSTIN_PLUMBING_LEFT_OUT)}))`
-  return `issue_date >= '${sinceDay}T00:00:00' AND ((permittype = 'BP' AND (${commercial} OR ${residential})) OR ${plumbing})`
+  const before = untilDay == null ? '' : ` AND issue_date < '${untilDay}T00:00:00'`
+  return `issue_date >= '${sinceDay}T00:00:00'${before} AND ((permittype = 'BP' AND (${commercial} OR ${residential})) OR ${plumbing})`
+}
+
+/** One page of Austin's dataset for a `$where`, oldest first. */
+function austinPageUrl(where: string, limit: number, offset: number): string {
+  const q = new URLSearchParams({ $where: where, $order: 'issue_date ASC, permit_number ASC', $limit: String(Math.max(1, Math.floor(limit))), $offset: String(Math.max(0, Math.floor(offset))) })
+  return `${AUSTIN_SOCRATA}?${q.toString()}`
 }
 
 export const AUSTIN_READER: FeedReader = {
   source: AUSTIN_SOURCE,
   city: 'Austin',
   stage: 'issued',
-  pageUrl: (sinceDay, limit, offset) => {
-    const q = new URLSearchParams({ $where: austinWhere(sinceDay), $order: 'issue_date ASC, permit_number ASC', $limit: String(Math.max(1, Math.floor(limit))), $offset: String(Math.max(0, Math.floor(offset))) })
-    return `${AUSTIN_SOCRATA}?${q.toString()}`
-  },
+  pageUrl: (sinceDay, limit, offset) => austinPageUrl(austinWhere(sinceDay), limit, offset),
+  pageUrlBefore: (sinceDay, untilDay, limit, offset) => austinPageUrl(austinWhere(sinceDay, untilDay), limit, offset),
   recordsOf: (body) => {
     if (Array.isArray(body)) return body as Record<string, unknown>[]
     const b = body as { message?: unknown; error?: unknown } | null
@@ -257,15 +269,40 @@ type MapLayer = {
   /** The layer's address, without `/query`. */
   layerUrl: string
   pageSize: number
-  /** The layer's SQL for the kinds the pull keeps, filed or issued on or after a day. */
-  where: (sinceDay: string) => string
+  /** The layer's SQL for the kinds the pull keeps, filed or issued on or after a day, and before `untilDay` when a read back gives one. */
+  where: (sinceDay: string, untilDay?: string) => string
   orderBy: string
   rowOf: (record: Record<string, unknown>) => PermitRow | null
   prefer?: (held: PermitRow, next: PermitRow) => PermitRow
 }
 
+/**
+ * A layer's test that a row's day falls in the window: any of `columns` on or after `since`, and before
+ * `until` when a read back gives one. With no `until` it is the test the daily pull has always written.
+ * A read back holds each column to the window by itself: a row applied for in one step and issued in a
+ * later one is read in both, and the second read is a duplicate the read back ignores.
+ */
+export function layerDayWindow(columns: readonly string[], since: string, until?: string): string {
+  const one = (c: string) => (until == null ? `${c} >= DATE '${since}'` : `(${c} >= DATE '${since}' AND ${c} < DATE '${until}')`)
+  const tests = columns.map(one)
+  return tests.length === 1 ? (tests[0] as string) : `(${tests.join(' OR ')})`
+}
+
 /** A reader over one map layer: its attributes are the record, and its point rides along as `_lat` and `_lng`. */
 function mapLayerReader(layer: MapLayer): FeedReader {
+  const page = (where: string, limit: number, offset: number): string => {
+    const q = new URLSearchParams({
+      where,
+      outFields: '*',
+      returnGeometry: 'true',
+      outSR: '4326',
+      orderByFields: layer.orderBy,
+      resultOffset: String(Math.max(0, Math.floor(offset))),
+      resultRecordCount: String(Math.max(1, Math.min(Math.floor(limit), layer.pageSize))),
+      f: 'json',
+    })
+    return `${layer.layerUrl}/query?${q.toString()}`
+  }
   return {
     source: layer.source,
     city: layer.city,
@@ -274,17 +311,12 @@ function mapLayerReader(layer: MapLayer): FeedReader {
     pageSize: layer.pageSize,
     pageUrl: (sinceDay, limit, offset) => {
       assertDay(sinceDay, layer.source)
-      const q = new URLSearchParams({
-        where: layer.where(sinceDay),
-        outFields: '*',
-        returnGeometry: 'true',
-        outSR: '4326',
-        orderByFields: layer.orderBy,
-        resultOffset: String(Math.max(0, Math.floor(offset))),
-        resultRecordCount: String(Math.max(1, Math.min(Math.floor(limit), layer.pageSize))),
-        f: 'json',
-      })
-      return `${layer.layerUrl}/query?${q.toString()}`
+      return page(layer.where(sinceDay), limit, offset)
+    },
+    pageUrlBefore: (sinceDay, untilDay, limit, offset) => {
+      assertDay(sinceDay, layer.source)
+      assertDay(untilDay, layer.source)
+      return page(layer.where(sinceDay, untilDay), limit, offset)
     },
     recordsOf: (body) => {
       const b = body as { error?: { message?: unknown }; features?: Array<{ attributes?: Record<string, unknown>; geometry?: { x?: unknown; y?: unknown } | null }> } | null
@@ -375,7 +407,7 @@ export const SAN_MARCOS_READER = mapLayerReader({
   city: 'San Marcos',
   layerUrl: SAN_MARCOS_LAYER,
   pageSize: 1000,
-  where: (since) => `(APPLIED >= DATE '${since}' OR ISSUED >= DATE '${since}') AND TYPE IN (${sqlList(SAN_MARCOS_KINDS)})`,
+  where: (since, until) => `${layerDayWindow(['APPLIED', 'ISSUED'], since, until)} AND TYPE IN (${sqlList(SAN_MARCOS_KINDS)})`,
   orderBy: 'APPLIED ASC, OBJECTID ASC',
   rowOf: permitRowFromSanMarcos,
 })
@@ -440,7 +472,7 @@ export const SEGUIN_READER = mapLayerReader({
   city: 'Seguin',
   layerUrl: SEGUIN_LAYER,
   pageSize: 1000,
-  where: (since) => `USER_APPLYDATE >= DATE '${since}' AND (${SEGUIN_KINDS.map((k) => `USER_DESCRIPTION LIKE '${k.starts}%'`).join(' OR ')})`,
+  where: (since, until) => `${layerDayWindow(['USER_APPLYDATE'], since, until)} AND (${SEGUIN_KINDS.map((k) => `USER_DESCRIPTION LIKE '${k.starts}%'`).join(' OR ')})`,
   orderBy: 'USER_APPLYDATE ASC, OBJECTID ASC',
   rowOf: permitRowFromSeguin,
 })
@@ -529,7 +561,7 @@ export const NEW_BRAUNFELS_READER = mapLayerReader({
   city: 'New Braunfels',
   layerUrl: NEW_BRAUNFELS_LAYER,
   pageSize: 1000,
-  where: (since) => `(Permit_Submit_Date >= DATE '${since}' OR Permit_Issue_Date >= DATE '${since}') AND Permit_Group = 'Building' AND Permit_TYPE_DESC IN (${sqlList(NEW_BRAUNFELS_TYPES)})`,
+  where: (since, until) => `${layerDayWindow(['Permit_Submit_Date', 'Permit_Issue_Date'], since, until)} AND Permit_Group = 'Building' AND Permit_TYPE_DESC IN (${sqlList(NEW_BRAUNFELS_TYPES)})`,
   orderBy: 'Permit_Submit_Date ASC, OBJECTID ASC',
   rowOf: permitRowFromNewBraunfels,
   prefer: preferNewBraunfels,

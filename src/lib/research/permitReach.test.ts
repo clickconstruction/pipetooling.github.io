@@ -83,12 +83,16 @@ describe('a read back as history', () => {
     expect(historyAsk('San Antonio', HISTORY_GOAL_YMD, TODAY, OPEN)).toBeNull()
     expect(historyAsk('San Antonio', '2024-06-01', TODAY, OPEN)).toBeNull()
     expect(historyAsk('San Antonio', null, TODAY, OPEN)).toBeNull()
-    // A city whose feed cannot be read up to a day has no read back yet.
+    // A city that is not on the list handed in has no read back.
     expect(historyAsk('Seguin', '2026-08-26', TODAY, OPEN)).toBeNull()
-    // San Antonio is the city with a read back, so the press asks there with no list handed in.
-    expect(HISTORY_CITIES).toEqual(['San Antonio'])
+    // Every city the pull reads has a read back since v2.8297, so the press asks there with no list handed in.
+    expect(HISTORY_CITIES).toEqual(['San Antonio', 'Austin', 'New Braunfels', 'San Marcos', 'Seguin'])
     expect(historyAsk('San Antonio', '2026-08-26', TODAY)).toMatchObject({ since: '2026-05-26', until: '2026-08-26' })
-    expect(historyAsk('Austin', '2026-08-26', TODAY)).toBeNull()
+    expect(historyAsk('Austin', '2026-08-27', TODAY)).toMatchObject({ since: '2026-05-27', until: '2026-08-27', press: 'Read back to May 27', words: 'Austin\'s records here start Aug 27.' })
+    expect(historyAsk('New Braunfels', '2026-08-27', TODAY)?.words).toBe('New Braunfels\' records here start Aug 27.')
+    expect(historyAsk('San Marcos', '2025-02-10', TODAY)).toMatchObject({ since: HISTORY_GOAL_YMD, until: '2025-02-10' })
+    // A city the pull does not read has none.
+    expect(historyAsk('Leon Valley', '2026-08-27', TODAY)).toBeNull()
   })
 
   it('says what a read back kept', () => {

@@ -17,6 +17,12 @@
  * (`messages/handToOrder.ts`); ↓ and ↑ walk the rows, Enter hands it to the lit one, Escape closes. With nothing
  * typed the first row is *I'll take it*, so Enter alone takes it. The samples, the twins and the walk tester are
  * not on the team the reads hand in (`loadGcTeam`, `followUpThreadIo.loadTeam`).
+ *
+ * In a folded thread header the pill is a face alone (`face`, punch list #348). The folded header was drawn that way
+ * on 2026-10-12 and the window has handed the look to the slot since; the slot did not read it, so a phone drew the
+ * whole pill, 171 px of a 296 px row, and the person's name had no room. The face is the holder's initials, or ? for
+ * nobody. Its words are its name to a screen reader and its hover. A phone has no hover, so the menu says under its
+ * head what the words said about who is off. The menu stays on the screen from wherever the face sits (`whoMenuPlace`).
  */
 import { Fragment, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import type { FollowUpContact } from '../../lib/followUp/followUpRows'
@@ -32,6 +38,7 @@ import { splitTextForQueryHighlight } from '../../lib/assignJobPickerHighlight'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { EmptyState } from '../EmptyState'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { WHO_MENU_WIDTH, whoMenuPlace, type WhoMenuPlace } from '../../lib/followUp/whoMenuPlace'
 
 export type { Teammate }
 
@@ -52,6 +59,8 @@ export interface WhoHasItPillProps {
   bare?: boolean
   /** The team's Push me hours (v2.6060), for the off words; none reads as nobody off. */
   pushHours?: PushHoursByUser
+  /** In a folded thread header (punch list #348): the face alone. The words are its name and its hover, and the menu says who is off. */
+  face?: boolean
 }
 
 const initials = (name: string) =>
@@ -62,8 +71,6 @@ const initials = (name: string) =>
     .join('')
     .slice(0, 2)
 
-const MENU_WIDTH = 280
-
 const ROLE_WORDS: Readonly<Record<string, string>> = {
   dev: 'dev',
   master_technician: 'owner',
@@ -73,7 +80,7 @@ const ROLE_WORDS: Readonly<Record<string, string>> = {
   superintendent: 'superintendent',
 }
 
-export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, onHand, busy, held, bare, pushHours }: WhoHasItPillProps) {
+export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, onHand, busy, held, bare, pushHours, face }: WhoHasItPillProps) {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
   const input = useRef<HTMLInputElement>(null)
@@ -83,8 +90,9 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
   const [query, setQuery] = useState('')
   const [lit, setLit] = useState(0)
   // The menu hangs from the pill's right edge, as a desktop row draws the pill at the right; on a phone the pill
-  // wraps to the row's left and a right-hung menu runs off the screen, so it hangs from the left when the right would not fit.
-  const [fromLeft, setFromLeft] = useState(false)
+  // wraps to the row's left and a right-hung menu runs off the screen, so it hangs from the left when the right would
+  // not fit, and is slid onto the screen when neither fits (`whoMenuPlace`).
+  const [place, setPlace] = useState<WhoMenuPlace>({ right: 0 })
   useEffect(() => {
     if (!open) return
     const away = (e: MouseEvent) => {
@@ -97,11 +105,20 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
     if (!open) return
     setQuery('')
     setLit(0)
-    const at = box.current?.getBoundingClientRect()
-    setFromLeft(Boolean(at && at.right - MENU_WIDTH < 8))
     // On a phone the keyboard would jump up over the list, so the box waits for a tap.
     if (!phone) input.current?.focus()
   }, [open, phone])
+  // Placed on open, and again when the screen turns or the window is resized while it is open.
+  useEffect(() => {
+    if (!open) return
+    const placeIt = () => {
+      const at = box.current?.getBoundingClientRect()
+      setPlace(at ? whoMenuPlace({ left: at.left, right: at.right }, document.documentElement.clientWidth || window.innerWidth) : { right: 0 })
+    }
+    placeIt()
+    window.addEventListener('resize', placeIt)
+    return () => window.removeEventListener('resize', placeIt)
+  }, [open])
 
   const mine = contact.hasUserId === me.id
   const since = contact.hasSince ? hasSinceWords(whenWords(contact.hasSince, nowIso), exactStamp(contact.hasSince)) : ''
@@ -157,17 +174,19 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
       <button
         type="button"
         title={held ? READING_AGAIN_WORDS : tip}
+        aria-label={face ? label : undefined}
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={busy || held}
         data-held={held ? '' : undefined}
+        data-who-face={face ? '' : undefined}
         onClick={() => setOpen((o) => !o)}
         className={className}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: '0.35rem',
-          padding: bare ? '0 0.55rem 0 0.15rem' : '0.15rem 0.6rem 0.15rem 0.2rem',
+          padding: face ? 0 : bare ? '0 0.55rem 0 0.15rem' : '0.15rem 0.6rem 0.15rem 0.2rem',
           borderRadius: 999,
           border: bare ? undefined : '1px solid var(--border-strong)',
           background: mine ? 'var(--bg-blue-tint)' : bare ? undefined : 'var(--surface)',
@@ -196,7 +215,7 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
         >
           {contact.has ? initials(mine ? me.name : contact.has) : '?'}
         </span>
-        {label}
+        {!face && label}
       </button>
       {open && (
         <span
@@ -204,10 +223,10 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
           aria-label={`Who has ${contact.name}`}
           style={{
             position: 'absolute',
-            ...(fromLeft ? { left: 0 } : { right: 0 }),
+            ...place,
             top: 'calc(100% + 4px)',
             zIndex: 20,
-            width: MENU_WIDTH,
+            width: WHO_MENU_WIDTH,
             maxWidth: '85vw',
             display: 'grid',
             gap: 2,
@@ -223,6 +242,12 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.2rem 0.3rem' }}>
             {whoPickerHead(me.name, contact.name, contact.has ? (mine ? me.name : contact.has) : null, sinceShort)}
           </span>
+          {/* A face has no words and a phone has no hover, so the menu says who is off. */}
+          {face && off && (
+            <span data-who-off style={{ fontSize: '0.8rem', color: 'var(--text-600)', padding: '0 0.3rem 0.2rem' }}>
+              {offPillTip(off)}
+            </span>
+          )}
           <input
             ref={input}
             type="text"

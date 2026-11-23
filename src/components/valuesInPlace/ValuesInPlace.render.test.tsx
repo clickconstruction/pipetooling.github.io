@@ -285,6 +285,19 @@ describe('the other looks', () => {
     expect(screen.queryByRole('button')).toBeNull()
     expect(screen.getByText('Tue Dec 8').tagName).toBe('B')
   })
+
+  it('a value asked to start open draws its field at once; Cancel closes it, and a press opens it again', () => {
+    const onKeep = vi.fn()
+    render(<ChangeableValue text="no day yet" label="the day it ended" type="date" value="" onKeep={onKeep} startOpen />)
+    expect((screen.getByLabelText('the day it ended') as HTMLInputElement).value).toBe('')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByLabelText('the day it ended')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'no day yet, the day it ended, press to change' }))
+    fireEvent.change(screen.getByLabelText('the day it ended'), { target: { value: '2026-09-03' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+    expect(onKeep).toHaveBeenCalledTimes(1)
+    expect(onKeep.mock.calls[0]?.[0]).toBe('2026-09-03')
+  })
 })
 
 describe('a sentence, the lines and the legend', () => {

@@ -1,4 +1,5 @@
-import type { GcReviewGroup } from '../gcReviewRollup'
+import { gcGroupsInKind, type GcReviewGroup } from '../gcReviewRollup'
+import { inKindApartWords } from '../inKind/inKindApart'
 import { formatCurrency, formatPrintDaysSince } from '../jobs/jobFormatting'
 
 /**
@@ -7,6 +8,9 @@ import { formatCurrency, formatPrintDaysSince } from '../jobs/jobFormatting'
  * window.open/print glue stays at the call site. One section per GC group;
  * pass a single group for the per-GC Print button or every group for
  * Print all.
+ *
+ * A bill an in kind deal pays is on no group's rows (v2.8309). The sheet
+ * says one line under its totals: how much it left out.
  */
 
 const escapeHtml = (s: string) =>
@@ -60,6 +64,8 @@ export function buildGcStatementReportHtml(
     groups.length > 1
       ? `<p style="font-size:1rem; font-weight:700; text-align:right; margin-top:0.5rem">Total: $${formatCurrency(grandTotal)}</p>`
       : ''
+  const inKindWords = inKindApartWords(gcGroupsInKind(groups), 'money owed')
+  const inKindHtml = inKindWords ? `<p style="font-size:0.8125rem; color:#4b5563; text-align:right; margin-top:0.35rem">${escapeHtml(inKindWords)}.</p>` : ''
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
   body { font-family: sans-serif; margin: 1in; }
@@ -70,6 +76,6 @@ export function buildGcStatementReportHtml(
   @media print { body { margin: 0.5in; } }
 </style></head><body>
   <h1>${title}</h1>
-  ${sectionsHtml}${grandTotalHtml}
+  ${sectionsHtml}${grandTotalHtml}${inKindHtml}
 </body></html>`
 }
