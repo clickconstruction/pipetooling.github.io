@@ -915,10 +915,15 @@ the apprentice file is read for ours alone.
 **Gone** means the state's file no longer has the row.
 A gone row is taken off 28 days later.
 **Left off** means a person asked not to be listed, and no pull keeps them.
+Since v2.8380 the sheet's **Leave off** press writes it and takes the person's rows off at once, by number and by name and ZIP.
+**Put back on the list**, at the foot of Everyone, removes it, and the next pull keeps the person again.
 The roll holds no phone, street address or email, since the state gives none for a person.
 It is not People → Licenses, which holds our own team's licenses.
 **Our own** (v2.8233) is the tab's view that lays each plumbing license we hold beside the state's row of the same number and rank, for a person who may also open People → Licenses.
 **Use the state's date** saves the state's expiry on that license's `person_licenses` row.
+**Everyone** (v2.8390) is the tab's view of the kept roll for our counties, searched by name or number and read fifty rows at a time, for everyone who holds the Hiring switch.
+A row opens the **person's sheet**: the state's facts, **What changed, as we saw it** (the `license_roll_changes` lines, from our first pull), **Our notes** and **Leave off**.
+**Our notes** are `license_roll_notes` rows, kept by the license's number and by name and ZIP, so a note outlives the roll row and follows a new rank.
 
 ### Stage / Step
 Individual work phase in a project workflow (e.g., "Rough In", "Inspection", "Top Out", "Trim Set").
