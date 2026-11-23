@@ -12,8 +12,10 @@
 # have and keeps no roster person; Documents → Agreements lists it under one of four new kinds; each role reads what it
 # read before, but the estimator, who reads every kind of an outside company's paper and no person's paper and nobody
 # on no list; the signed form's gate is told yes for exactly those papers; the paper follows its contact through Who
-# is this?, a fold and a deleted record; and the fold's
-# helper moves nothing for a twin, a training account, an archived account or a primary. It raises on its first failed
+# is this?, a fold and a deleted record; the fold's
+# helper moves nothing for a twin, a training account, an archived account or a primary; and since *_estimator_reach a
+# contact that holds a paper is named by the four roles alone, while an estimator reads the layout and the signature
+# image of an outside company's paper and a training estimator reads neither. It raises on its first failed
 # assertion and ends with "paper_party PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds
 # workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -25,7 +27,9 @@ IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # In order: the ground puts its own policy back, then the widening restates it, as on prod.
 # Last, the view's newest definition (punch list #403, the owner's first decision): the ground restates the view as
 # it stood, so the migration that widens it to every paper of an outside party runs after it, as on prod.
-WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql) $(ls supabase/migrations/*_agreements_every_party_paper.sql)"
+# And the estimator's reach (punch list #403, the owner's second decision): the ground also puts the fold's helper
+# back as it stood, so the migration that adds its refusal runs after it, as on prod.
+WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql) $(ls supabase/migrations/*_agreements_every_party_paper.sql) $(ls supabase/migrations/*_estimator_reach.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

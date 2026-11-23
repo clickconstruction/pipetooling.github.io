@@ -123,6 +123,7 @@ import { SupplyHousesTab } from './SupplyHousesTab'
 import { renderWithProviders, settle } from '../test/renderSmokeMocks'
 import { todayYmdInAppTz, ymdAddDays } from '../utils/dateUtils'
 import { agingCellTitle, nextMonthlyPaymentDueYmd } from '../lib/supplyHouseAging'
+import { moneyText } from '../test/moneyText'
 
 const TODAY = todayYmdInAppTz()
 const inDays = (n: number): string => ymdAddDays(TODAY, n)
@@ -217,9 +218,9 @@ describe('SupplyHousesTab — the book', () => {
   it('counts a bill paid in part for what is left on it, in the house’s balance and in the total', async () => {
     await renderTab()
     // Ridge: 500 left of 800, plus 250, plus 60. Canal: 500.
-    expect(within(houseRow('h-ridge')).getByText('$810.00')).toBeTruthy()
-    expect(within(houseRow('h-canal')).getByText('$500.00')).toBeTruthy()
-    expect(screen.getByText(/Supply Houses: \$1,310\.00/)).toBeTruthy()
+    expect(within(houseRow('h-ridge')).getByText(moneyText('$810.00'))).toBeTruthy()
+    expect(within(houseRow('h-canal')).getByText(moneyText('$500.00'))).toBeTruthy()
+    expect(screen.getByText(moneyText(/Supply Houses: \$1,310\.00/))).toBeTruthy()
   })
 
   it('lists the most owed house first, and says how many houses are 60 or more days past due', async () => {
@@ -259,7 +260,7 @@ describe('SupplyHousesTab — a house and its bills', () => {
     expect(screen.getByText(/S-late/)).toBeTruthy()
     expect(screen.getByText(/S-job/)).toBeTruthy()
     expect(screen.queryByText(/S-done/)).toBeNull()
-    expect(screen.getByText(/\$300\.00 paid · \$500\.00 left of \$800\.00/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/\$300\.00 paid · \$500\.00 left of \$800\.00/))).toBeTruthy()
     expect(screen.getAllByText(/1017 · Elm Street/).length).toBeGreaterThan(0)
     expect(screen.getByText('pays on the 10th')).toBeTruthy()
   })
@@ -293,7 +294,7 @@ describe('SupplyHousesTab — a house and its bills', () => {
     await screen.findByRole('button', { name: 'Mark unpaid: S-job' })
     expect(writesTo('supply_house_invoices', 'update')).toEqual([{ table: 'supply_house_invoices', op: 'update', values: { is_paid: true }, filters: [['eq', 'id', 'job']] }])
     // The balance reads the book again: 500 + 250 are left on Ridge.
-    await waitFor(() => expect(within(houseRow('h-ridge')).getByText('$750.00')).toBeTruthy())
+    await waitFor(() => expect(within(houseRow('h-ridge')).getByText(moneyText('$750.00'))).toBeTruthy())
   })
 
   it('Record a payment opens the house’s payment window', async () => {
@@ -341,7 +342,7 @@ describe('SupplyHousesTab — the bill form', () => {
     expect(insert?.values).toMatchObject({ supply_house_id: 'h-ridge', invoice_number: 'S-new', amount: 123.45, invoice_date: TODAY, due_date: nextMonthlyPaymentDueYmd(10, TODAY), is_paid: false, document_kind: 'invoice' })
     expect(writesTo('supply_house_invoice_job_allocations')).toEqual([])
     await screen.findByText(/S-new/)
-    await waitFor(() => expect(within(houseRow('h-ridge')).getByText('$933.45')).toBeTruthy())
+    await waitFor(() => expect(within(houseRow('h-ridge')).getByText(moneyText('$933.45'))).toBeTruthy())
   })
 
   it('a job picked in the form goes on the bill at 100%, and an open account at the house turns the flag on', async () => {
@@ -386,7 +387,7 @@ describe('SupplyHousesTab — the bill form', () => {
     expect(update?.values).toMatchObject({ invoice_number: 'S-late', amount: 300 })
     // An edited bill on no job clears its jobs.
     expect(writesTo('supply_house_invoice_job_allocations', 'delete')).toHaveLength(1)
-    await waitFor(() => expect(within(houseRow('h-ridge')).getByText('$860.00')).toBeTruthy())
+    await waitFor(() => expect(within(houseRow('h-ridge')).getByText(moneyText('$860.00'))).toBeTruthy())
   })
 
   it('Delete asks first, then removes the row and closes the form', async () => {

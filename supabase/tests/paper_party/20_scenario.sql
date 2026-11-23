@@ -18,8 +18,13 @@
 --     account read none;
 --   * estimator_reads_paper, which the signed form's gate asks, answers yes for exactly the papers an estimator reads,
 --     and no for everyone who is not an estimator;
---   * the paper follows its contact through Who is this?, a fold run by an estimator who may not write a paper, and a
---     record deleted by a screen, where the frozen name still says who it was with;
+--   * the paper follows its contact through Who is this?, a fold, and a record deleted by a screen, where the frozen
+--     name still says who it was with;
+--   * since migration *_estimator_reach (the owner's second decision): a contact that holds a paper is named by the
+--     four roles alone, in place, by a fold, or by a statement of the caller's own, and an estimator still names a
+--     contact that holds none; an estimator reads the layout of a form an outside company's paper is filled on and
+--     that paper's signature image, and a training estimator, a digital twin and everyone off the four roles read
+--     neither;
 --   * the fold's helper, called by hand, moves nothing for a twin, a training account, an archived account or a primary;
 --   * the e-sign ledger takes the audience 'outside'.
 -- Every name, company, address and date is made up. The records are made as postgres, standing in for the screens;
@@ -39,7 +44,8 @@ INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000403d8', 'sub@party.test'),
   ('00000000-0000-0000-0000-0000000403d9', 'twin@party.test'),
   ('00000000-0000-0000-0000-0000000403da', 'trainee@party.test'),
-  ('00000000-0000-0000-0000-0000000403db', 'gone@party.test');
+  ('00000000-0000-0000-0000-0000000403db', 'gone@party.test'),
+  ('00000000-0000-0000-0000-0000000403dc', 'trainee-estimator@party.test');
 INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VALUES
   ('00000000-0000-0000-0000-0000000403d1', 'dev@party.test', 'Party Dev', 'dev', false, false),
   ('00000000-0000-0000-0000-0000000403d2', 'master@party.test', 'Party Master', 'master_technician', false, false),
@@ -51,7 +57,8 @@ INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VAL
   ('00000000-0000-0000-0000-0000000403d8', 'sub@party.test', 'Ortega Mechanical', 'subcontractor', false, false),
   ('00000000-0000-0000-0000-0000000403d9', 'twin@party.test', 'Party Twin', 'estimator', false, true),
   ('00000000-0000-0000-0000-0000000403da', 'trainee@party.test', 'Party Trainee', 'assistant', true, false),
-  ('00000000-0000-0000-0000-0000000403db', 'gone@party.test', 'Party Gone', 'estimator', false, false)
+  ('00000000-0000-0000-0000-0000000403db', 'gone@party.test', 'Party Gone', 'estimator', false, false),
+  ('00000000-0000-0000-0000-0000000403dc', 'trainee-estimator@party.test', 'Party Trainee Estimator', 'estimator', true, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 UPDATE public.users SET archived_at = now() WHERE id = '00000000-0000-0000-0000-0000000403db';
 
@@ -169,6 +176,16 @@ CREATE FUNCTION pp.take_back(p_id uuid) RETURNS text LANGUAGE sql AS $$
     RETURNING id)
   SELECT count(*)::text FROM gone
 $$;
+-- The form layouts a caller reads, by the last two of each id, and the signature images, by the last three of the
+-- paper each is kept under.
+CREATE FUNCTION pp.layouts() RETURNS text LANGUAGE sql AS $$
+  SELECT coalesce(string_agg(right(t.id::text, 2), ',' ORDER BY t.id), 'none') FROM public.contract_form_templates t
+  WHERE t.id::text LIKE '00000000-0000-0000-0000-0000040301%'
+$$;
+CREATE FUNCTION pp.images() RETURNS text LANGUAGE sql AS $$
+  SELECT coalesce(string_agg(right(split_part(o.name, '/', 1), 3), ',' ORDER BY o.name), 'none') FROM storage.objects o
+  WHERE o.bucket_id = 'contract-signer-signatures'
+$$;
 GRANT USAGE ON SCHEMA pp TO authenticated, anon;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pp TO authenticated, anon;
 
@@ -269,6 +286,27 @@ UPDATE public.person_contract_documents SET signer_last_viewed_at = '2026-11-15T
 -- The copy nobody sent was made on a day of its own, so its line has a day to sort and show.
 UPDATE public.person_contract_documents SET created_at = '2026-11-11T15:00:00Z' WHERE id = '00000000-0000-0000-0000-000004030118';
 RESET ROLE;
+
+-- Three form layouts and four signature images, made as postgres (migration *_estimator_reach). f1 is the W-9 the
+-- trade company's own (104) and the supply house's (116) are filled on. f2 is a staff form (101). f3 is a second W-9
+-- layout, a teammate's own (105) and the one of someone on no list (120). A paper's kind matches its form's, so the
+-- trigger that copies a form's kind changes none. The images are kept under 104, 105 and 120, and one under a folder
+-- that is no paper's.
+INSERT INTO public.contract_form_templates (id, name, pdf_storage_path, status, doc_type, published_at) VALUES
+  ('00000000-0000-0000-0000-0000040301f1', 'Party bed W-9', 'bed/w9.pdf', 'published', 'w9', now()),
+  ('00000000-0000-0000-0000-0000040301f2', 'Party bed staff form', 'bed/staff.pdf', 'published', 'agreement', now()),
+  ('00000000-0000-0000-0000-0000040301f3', 'Party bed W-9, second layout', 'bed/w9b.pdf', 'published', 'w9', now());
+UPDATE public.person_contract_documents SET form_template_id = '00000000-0000-0000-0000-0000040301f1' WHERE id IN ('00000000-0000-0000-0000-000004030104', '00000000-0000-0000-0000-000004030116');
+UPDATE public.person_contract_documents SET form_template_id = '00000000-0000-0000-0000-0000040301f2' WHERE id = '00000000-0000-0000-0000-000004030101';
+UPDATE public.person_contract_documents SET form_template_id = '00000000-0000-0000-0000-0000040301f3' WHERE id IN ('00000000-0000-0000-0000-000004030105', '00000000-0000-0000-0000-000004030120');
+SELECT pp.same('a form on a paper changed no paper''s kind',
+  (SELECT string_agg(right(id::text, 3) || ' ' || doc_type, ',' ORDER BY id) FROM public.person_contract_documents WHERE form_template_id IS NOT NULL), '101 agreement,104 w9,105 w9,116 w9,120 w9');
+INSERT INTO storage.buckets (id, name, public) VALUES ('contract-signer-signatures', 'contract-signer-signatures', false) ON CONFLICT (id) DO NOTHING;
+INSERT INTO storage.objects (bucket_id, name) VALUES
+  ('contract-signer-signatures', '00000000-0000-0000-0000-000004030104/signature.png'),
+  ('contract-signer-signatures', '00000000-0000-0000-0000-000004030105/signature.png'),
+  ('contract-signer-signatures', '00000000-0000-0000-0000-000004030120/signature.png'),
+  ('contract-signer-signatures', 'gc-sows/00000000-0000-0000-0000-000004030104/signature.png');
 
 SELECT pp.same('a party''s paper is filed under its stored name, with its frozen name and no roster person',
   pp.paper('00000000-0000-0000-0000-000004030112'), right(pp.on('supply_house_contact_id', '00000000-0000-0000-0000-0000000403a3')::text, 4) || '|true|Tallgrass Supply Co.|no person');
@@ -402,6 +440,11 @@ SELECT pp.same('and a party''s: a customer''s contact, then one on no list',
     public.paper_is_outside_company(NULL, NULL, NULL, pp.by_email('noor@haddadeng.example'))::text),
   'true false');
 SELECT pp.same('each line names its party for the estimator', (SELECT bool_and(with_name <> '')::text FROM public.agreements_on_file), 'true');
+-- The signed record's two reads (migration *_estimator_reach): the layout of a form an outside company's paper is
+-- filled on, and that paper's signature image. Not the staff form's, not the layout only a teammate's and a party on
+-- no list are filled on, not their images, and not a file under a folder that is no paper's.
+SELECT pp.same('an estimator reads the layout an outside company''s paper is filled on, and no other', pp.layouts(), 'f1');
+SELECT pp.same('and the signature image of an outside company''s paper, and no other', pp.images(), '104');
 SELECT pp.refused('an estimator writes no paper', $q$SELECT pp.send('00000000-0000-0000-0000-000004030131', pp.by_email('noor@haddadeng.example'), 'X', 'D', 'unsent', NULL, NULL, NULL, NULL)$q$, 'row-level security');
 -- An update of a row the estimator reads changes nothing: no write policy opens to them.
 UPDATE public.person_contract_documents SET status = 'signed' WHERE id = '00000000-0000-0000-0000-000004030112';
@@ -457,16 +500,19 @@ DELETE FROM public.person_contract_documents WHERE id = '00000000-0000-0000-0000
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d9');
 SET LOCAL ROLE authenticated;
 SELECT pp.same('a digital twin, an estimator by role, reads no paper', pp.rows(), 'none');
+SELECT pp.same('no layout and no signature image', pp.layouts() || ' ' || pp.images(), 'none none');
 SELECT pp.same('and the gate''s question says no for every paper', (SELECT count(*)::text FROM unnest(pp.all_papers()) x WHERE public.estimator_reads_paper(x)), '0');
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403db');
 SET LOCAL ROLE authenticated;
 SELECT pp.same('an archived estimator reads no paper', pp.rows(), 'none');
+SELECT pp.same('no layout and no signature image', pp.layouts() || ' ' || pp.images(), 'none none');
 SELECT pp.same('and the gate''s question says no for every paper', (SELECT count(*)::text FROM unnest(pp.all_papers()) x WHERE public.estimator_reads_paper(x)), '0');
 RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d6');
 SET LOCAL ROLE authenticated;
 SELECT pp.same('a primary reads no paper', pp.rows(), 'none');
+SELECT pp.same('no layout and no signature image', pp.layouts() || ' ' || pp.images(), 'none none');
 SELECT pp.same('and the gate''s question says no for every paper', (SELECT count(*)::text FROM unnest(pp.all_papers()) x WHERE public.estimator_reads_paper(x)), '0');
 SELECT pp.same('and no line', pp.kinds(), 'none');
 RESET ROLE;
@@ -481,6 +527,14 @@ RESET ROLE;
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403da');
 SET LOCAL ROLE authenticated;
 SELECT pp.same('a training assistant reads what an assistant reads', pp.rows(), '101,102,103,104,105,106,107,111,112,113,114,115,116,117,118,119,120');
+SELECT pp.same('every layout, under the table''s own policy, which this migration does not touch', pp.layouts(), 'f1,f2,f3');
+RESET ROLE;
+-- A training estimator reads the line and no more (migration *_estimator_reach): the rows an estimator reads, with
+-- no layout and no signature image.
+SELECT pp.as_user('00000000-0000-0000-0000-0000000403dc');
+SET LOCAL ROLE authenticated;
+SELECT pp.same('a training estimator reads the papers an estimator reads', pp.rows(), '103,104,107,111,112,113,114,116,118,119');
+SELECT pp.same('and no layout and no signature image', pp.layouts() || ' ' || pp.images(), 'none none');
 RESET ROLE;
 SET LOCAL ROLE anon;
 DO $$
@@ -510,7 +564,44 @@ SELECT pp.same('and neither is open to a caller who is not signed in',
     has_function_privilege('authenticated', 'public.estimator_reads_paper(uuid)', 'EXECUTE')::text, has_function_privilege('authenticated', 'public.paper_is_outside_company(uuid, uuid, uuid, uuid)', 'EXECUTE')::text),
   'false false true true');
 
+-- The two read rules of migration *_estimator_reach, as written: each asks for an estimator who is not in training,
+-- and the image's asks the gate's own question. The guards' helper is closed to everyone signed in.
+SELECT pp.same('the layout''s policy asks for an estimator, no twin, no training account, and an outside company''s paper',
+  (SELECT concat_ws(' ', (q LIKE '%is_estimator()%')::text, (q LIKE '%is_digital_twin()%')::text, (q LIKE '%is_read_only()%')::text, (q LIKE '%paper_is_outside_company(%')::text)
+   FROM (SELECT pg_get_expr(polqual, polrelid) AS q FROM pg_policy WHERE polrelid = 'public.contract_form_templates'::regclass AND polname = 'contract_form_templates_estimator_outside') x),
+  'true true true true');
+SELECT pp.same('the image''s policy names the bucket, refuses a training account and asks the gate''s question, for reading alone',
+  (SELECT concat_ws(' ', (q LIKE '%contract-signer-signatures%')::text, (q LIKE '%is_read_only()%')::text, (q LIKE '%estimator_reads_paper(%')::text, polcmd::text)
+   FROM (SELECT pg_get_expr(polqual, polrelid) AS q, polcmd FROM pg_policy WHERE polrelid = 'storage.objects'::regclass AND polname = 'contract_signer_signatures_estimator_outside') x),
+  'true true true r');
+SELECT pp.same('nobody signed in may ask whether a contact holds a paper',
+  concat_ws(' ', has_function_privilege('anon', 'public.contact_holds_paper(uuid)', 'EXECUTE')::text, has_function_privilege('authenticated', 'public.contact_holds_paper(uuid)', 'EXECUTE')::text,
+    has_function_privilege('service_role', 'public.contact_holds_paper(uuid)', 'EXECUTE')::text), 'false false true');
+
 -- 6 · The paper follows its contact. Add to a list is Who is this?: Noor becomes a person at the customer, in place.
+-- Naming a party who holds a paper is the four roles' (the owner's second decision, migration *_estimator_reach): an
+-- estimator, who would read her papers once she is at a customer, is refused on every path, and still names someone
+-- who holds none.
+SELECT pp.as_user('00000000-0000-0000-0000-0000000403d5');
+SET LOCAL ROLE authenticated;
+SELECT pp.refused('an estimator cannot say who a party on no list is once they hold a paper',
+  format($q$SELECT public.name_contact(%L, 'customers', '00000000-0000-0000-0000-0000000403c1', 'customer', 'Noor Haddad')$q$, pp.by_email('noor@haddadeng.example')),
+  'only the office says who they are');
+SELECT pp.refused('nor name them a lead',
+  format($q$SELECT public.name_contact(%L, NULL, NULL, 'lead', 'Noor Haddad')$q$, pp.by_email('noor@haddadeng.example')),
+  'only the office says who they are');
+SELECT pp.refused('nor write it on the contact with a statement of their own',
+  format($q$UPDATE public.contacts SET kind = 'customer', customer_id = '00000000-0000-0000-0000-0000000403c1' WHERE id = %L$q$, pp.by_email('noor@haddadeng.example')),
+  'only the office says who they are');
+-- What is not a naming still passes for them: what she goes by.
+UPDATE public.contacts SET goes_by = 'Noor' WHERE id = pp.by_email('noor@haddadeng.example');
+SELECT public.contact_make_for_channel('email', 'nopaper@elsewhere.example');
+SELECT pp.same('an estimator still names someone who holds no paper',
+  (public.name_contact(pp.by_email('nopaper@elsewhere.example'), 'customers', '00000000-0000-0000-0000-0000000403c1', 'customer', 'Quinn Abara') = pp.by_email('nopaper@elsewhere.example'))::text, 'true');
+RESET ROLE;
+SELECT pp.same('Noor is still on no list, with the goes-by the estimator gave her',
+  pp.who(pp.by_email('noor@haddadeng.example')) || '|' || (SELECT goes_by FROM public.contacts WHERE id = pp.by_email('noor@haddadeng.example')), 'unknown|no record|Noor Haddad|email noor@haddadeng.example|Noor');
+SELECT pp.same('and the one with no paper is at the customer', pp.who(pp.by_email('nopaper@elsewhere.example')), 'customer|customer|Quinn Abara|email nopaper@elsewhere.example');
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d3');
 SET LOCAL ROLE authenticated;
 SELECT pp.same('Who is this? names Noor a person at the customer, on the contact she had',
@@ -524,10 +615,34 @@ SELECT pp.as_user('00000000-0000-0000-0000-0000000403d5');
 SET LOCAL ROLE authenticated;
 SELECT pp.same('the estimator reads her papers once she is at a customer, her W-9 among them', pp.rows(), '103,104,107,111,112,113,114,115,116,118,119,120');
 SELECT pp.same('and the gate''s question follows', public.estimator_reads_paper('00000000-0000-0000-0000-000004030120')::text, 'true');
--- A fold, run by an estimator who may not write a paper: the other typed-in signer turns out to be the rep. The helper
--- is a definer, so the paper moves and the folded contact goes.
+SELECT pp.same('the layout her W-9 is filled on reads now, and its signature image', pp.layouts() || ' ' || pp.images(), 'f1,f3 104,120');
+-- A fold: the other typed-in signer turns out to be the rep, whose contact is there already. An estimator is refused
+-- it too, since the folded contact is on no list and holds a paper, and nothing moves. The assistant runs it: the
+-- helper is a definer, so the paper moves and the folded contact goes.
 SELECT set_config('pp.was', pp.by_email('pat@elsewhere.example')::text, true);
-SELECT pp.same('the estimator names the other one the rep, and the contact folds into the rep''s',
+SELECT pp.refused('an estimator cannot fold a party on no list who holds a paper into a record',
+  format($q$SELECT public.name_contact(%L, 'supply_house_contacts', '00000000-0000-0000-0000-0000000403a3', 'supply_house')$q$, current_setting('pp.was')),
+  'only the office says who they are');
+SELECT pp.refused('nor run the fold by itself',
+  format($q$SELECT public.contacts_fold(%L, %L)$q$, current_setting('pp.was'), pp.on('supply_house_contact_id', '00000000-0000-0000-0000-0000000403a3')),
+  'only the office says who they are');
+SELECT pp.refused('nor ask the helper to carry the paper by itself',
+  format($q$SELECT public.contacts_fold_papers(%L, %L)$q$, current_setting('pp.was'), pp.on('supply_house_contact_id', '00000000-0000-0000-0000-0000000403a3')),
+  'only the office says who they are');
+-- A fold between two outside companies' contacts is no naming, and the helper carries its papers for an estimator as
+-- before: the customer's certificate (119) goes to the trade company's contact. It is put back as postgres.
+SELECT public.contacts_fold_papers(pp.on('customer_id', '00000000-0000-0000-0000-0000000403c1'), pp.on('gc_company_id', '00000000-0000-0000-0000-0000000403b1'));
+RESET ROLE;
+SELECT pp.same('the helper carried a paper between two outside companies for the estimator',
+  pp.paper('00000000-0000-0000-0000-000004030119'), right(pp.on('gc_company_id', '00000000-0000-0000-0000-0000000403b1')::text, 4) || '|true|Ridgeway Builders|no person');
+UPDATE public.person_contract_documents SET party_contact_id = pp.on('customer_id', '00000000-0000-0000-0000-0000000403c1'), person_name = 'party:' || pp.on('customer_id', '00000000-0000-0000-0000-0000000403c1')::text
+  WHERE id = '00000000-0000-0000-0000-000004030119';
+SELECT pp.same('the refused folds moved nothing, and the contact is still there',
+  pp.paper('00000000-0000-0000-0000-000004030117') || ' ' || pp.who(current_setting('pp.was')::uuid),
+  right(current_setting('pp.was'), 4) || '|true|Pat Tallman|no person unknown|no record|Pat Tallman|email pat@elsewhere.example');
+SELECT pp.as_user('00000000-0000-0000-0000-0000000403d3');
+SET LOCAL ROLE authenticated;
+SELECT pp.same('the assistant names the other one the rep, and the contact folds into the rep''s',
   public.name_contact(current_setting('pp.was')::uuid, 'supply_house_contacts', '00000000-0000-0000-0000-0000000403a3', 'supply_house')::text,
   pp.on('supply_house_contact_id', '00000000-0000-0000-0000-0000000403a3')::text);
 RESET ROLE;

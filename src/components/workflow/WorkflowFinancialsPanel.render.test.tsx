@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { renderSettled } from '../../test/renderSmokeMocks'
 import { WorkflowFinancialsPanel, type WorkflowFinancialsPanelProps } from './WorkflowFinancialsPanel'
+import { moneyText } from '../../test/moneyText'
 
 type Projection = WorkflowFinancialsPanelProps['projections'][number]
 type LineItem = WorkflowFinancialsPanelProps['lineItems'][string][number]
@@ -72,9 +73,9 @@ afterEach(() => {
 
 describe('WorkflowFinancialsPanel', () => {
   it('shows the three figures — what is left in green — and keeps the table shut until Details', async () => {
-    await renderSettled(<WorkflowFinancialsPanel {...props()} />, { loaded: () => screen.findByText('Projections: $60,500.00') })
-    expect(screen.getByText('Ledger: $39,000.00')).toBeTruthy()
-    const left = screen.getByText('Left: $21,500.00')
+    await renderSettled(<WorkflowFinancialsPanel {...props()} />, { loaded: () => screen.findByText(moneyText('Projections: $60,500.00')) })
+    expect(screen.getByText(moneyText('Ledger: $39,000.00'))).toBeTruthy()
+    const left = screen.getByText(moneyText('Left: $21,500.00'))
     expect(left.style.color).toBe('rgb(4, 120, 87)')
     expect(screen.queryByRole('table')).toBeNull()
     expect(screen.getByRole('button', { name: /Details/ })).toBeTruthy()
@@ -82,14 +83,14 @@ describe('WorkflowFinancialsPanel', () => {
 
   it('prints an overspend in parentheses, in red', async () => {
     const p = props({ projections: [projection('p1', 'Rough', 30000)] })
-    await renderSettled(<WorkflowFinancialsPanel {...p} />, { loaded: () => screen.findByText('Projections: $30,000.00') })
-    const left = screen.getByText('Left: ($9,000.00)')
+    await renderSettled(<WorkflowFinancialsPanel {...p} />, { loaded: () => screen.findByText(moneyText('Projections: $30,000.00')) })
+    const left = screen.getByText(moneyText('Left: ($9,000.00)'))
     expect(left.style.color).toBe('rgb(185, 28, 28)')
   })
 
   it('shows a stage manager who is not dev or master the Ledger alone', async () => {
     const p = props({ canEditProjections: false, projections: [] })
-    await renderSettled(<WorkflowFinancialsPanel {...p} />, { loaded: () => screen.findByText('Ledger: $39,000.00') })
+    await renderSettled(<WorkflowFinancialsPanel {...p} />, { loaded: () => screen.findByText(moneyText('Ledger: $39,000.00')) })
     expect(screen.queryByText(/^Projections:/)).toBeNull()
     expect(screen.queryByText(/^Left:/)).toBeNull()
     expect(screen.queryByRole('button', { name: '+ Add Projection' })).toBeNull()
@@ -100,7 +101,7 @@ describe('WorkflowFinancialsPanel', () => {
   })
 
   it('opens the table on Details and shuts it again', async () => {
-    await renderSettled(<WorkflowFinancialsPanel {...props()} />, { loaded: () => screen.findByText('Projections: $60,500.00') })
+    await renderSettled(<WorkflowFinancialsPanel {...props()} />, { loaded: () => screen.findByText(moneyText('Projections: $60,500.00')) })
     fireEvent.click(screen.getByRole('button', { name: /Details/ }))
     const table = screen.getByRole('table')
     expect(within(table).getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
@@ -126,7 +127,7 @@ describe('WorkflowFinancialsPanel', () => {
 
   it('says so when there is nothing to list, and offers to add a projection', async () => {
     const p = props({ projections: [], lineItems: { s1: [], s2: [] } })
-    await renderSettled(<WorkflowFinancialsPanel {...p} />, { loaded: () => screen.findByText('Projections: $0.00') })
+    await renderSettled(<WorkflowFinancialsPanel {...p} />, { loaded: () => screen.findByText(moneyText('Projections: $0.00')) })
     fireEvent.click(screen.getByRole('button', { name: /Details/ }))
     // The empty table names Add Projection as its press (punch list #184, sweep C).
     expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No projections or ledger items yet. Add Projection adds the first.')
@@ -137,7 +138,7 @@ describe('WorkflowFinancialsPanel', () => {
 
   it('hands Add, Edit and Delete back to the page with the projection', async () => {
     const p = props()
-    await renderSettled(<WorkflowFinancialsPanel {...p} />, { loaded: () => screen.findByText('Projections: $60,500.00') })
+    await renderSettled(<WorkflowFinancialsPanel {...p} />, { loaded: () => screen.findByText(moneyText('Projections: $60,500.00')) })
     fireEvent.click(screen.getByRole('button', { name: '+ Add Projection' }))
     expect(p.onAddProjection).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: /Details/ }))
@@ -150,7 +151,7 @@ describe('WorkflowFinancialsPanel', () => {
 
   it('links a line item’s receipt with its scheme repaired', async () => {
     const p = props({ lineItems: { s1: [lineItem('i1', 's1', 10, { link: 'files.test/r.pdf' })], s2: [] } })
-    await renderSettled(<WorkflowFinancialsPanel {...p} />, { loaded: () => screen.findByText('Ledger: $10.00') })
+    await renderSettled(<WorkflowFinancialsPanel {...p} />, { loaded: () => screen.findByText(moneyText('Ledger: $10.00')) })
     fireEvent.click(screen.getByRole('button', { name: /Details/ }))
     const link = screen.getByTitle('files.test/r.pdf')
     expect(link.getAttribute('href')).toBe('https://files.test/r.pdf')

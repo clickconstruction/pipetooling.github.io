@@ -14,6 +14,7 @@ import {
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { partnershipTimelineEmptyWords } from '../../lib/partnerLedger/partnershipsEmptyWords'
+import { MoneyText } from '../Money'
 
 /**
  * Partnerships → Timeline tab (owner-approved mockup): money, infractions,
@@ -221,7 +222,7 @@ export function PartnershipTimelineTab({
           title={balanceConventionTitle(personName)}
           style={{ fontSize: '1.4rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums', color: posted < 0 ? 'var(--text-red-600)' : undefined }}
         >
-          {posted < 0 ? '−' : ''}{money(posted)}
+          {posted < 0 ? '−' : ''}<MoneyText text={money(posted)} />
         </span>
         <span style={{ fontSize: '0.8rem', fontWeight: 650, color: posted < 0 ? 'var(--text-red-600)' : posted > 0 ? '#16a34a' : 'var(--text-muted)' }}>
           {officeBalanceWords(posted, personName)}
@@ -229,7 +230,7 @@ export function PartnershipTimelineTab({
         <span title={balanceConventionTitle(personName)} style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           {ledger.split.pendingCount === 0
             ? 'posted balance · nothing pending, so the Ledger tab says the same'
-            : balanceBridgeText(ledger.split, personName)}
+            : <MoneyText text={balanceBridgeText(ledger.split, personName)} />}
         </span>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', margin: '0.25rem 0 0.5rem' }}>
@@ -295,11 +296,11 @@ export function PartnershipTimelineTab({
               {r.amount != null ? (
                 <span style={{ flex: 'none', fontVariantNumeric: 'tabular-nums', fontWeight: 650, fontSize: '0.84rem', color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)' }}>
                   {r.amount >= 0 ? '+' : '−'}
-                  {money(r.amount)}
+                  <MoneyText text={money(r.amount)} />
                 </span>
               ) : null}
               <span style={{ flex: 'none', width: '5.2rem', textAlign: 'right', fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                {r.balance != null ? `${r.balance < 0 ? '−' : ''}${money(r.balance)}` : ''}
+                {r.balance != null ? <MoneyText text={`${r.balance < 0 ? '−' : ''}${money(r.balance)}`} /> : ''}
               </span>
             </div>
           )

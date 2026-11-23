@@ -2,7 +2,7 @@
 name: "My Time: the week and the eight weeks, redrawn"
 number: 427
 group: close
-status: asked 2026-11-23 · five options drawn, then one picture on the owner's word, no quota on this card · his go the same day, *build it all* · the picture in My Time v2.8338 · Job Mode's card v2.8347, with the old hours block retired · left: a look with real hours through View as, as a salaried and an hourly person
+status: asked 2026-11-23 · five options drawn, then one picture on the owner's word, no quota on this card · his go the same day, *build it all* · the picture in My Time v2.8338 and Job Mode's card v2.8347, with the old hours block retired, both live the same day · left: a look with real hours through View as, as a salaried and an hourly person
 summary: >
   On the Dashboard's My Time card, the asker did not like how two parts look: a row of eight small
   bars with a four-colour caption, and seven lines of text for the week's days. Reading them found
@@ -10,7 +10,7 @@ summary: >
   hidden, and a week one hour over reads red. On his word, the card stops grading time against a
   quota. The second mock-up is one picture: the week's time as a big number, a column for each
   day, and a column for each of eight weeks that opens that week's days.
-next: A walk as a salaried and an hourly person through View as, on the full Dashboard and in Job Mode. Then the card closes on the owner's word.
+next: A walk as a salaried and an hourly person through View as, on the full Dashboard and in Job Mode, which step 3 of working hours' [`LIVE_TEST.md`](../working-hours/LIVE_TEST.md) covers for an hourly person. Then the card closes on the owner's word.
 size: M as a train of two (M · S); left: a look with real hours (XS)
 blocker: A look with real hours.
 ver: v2.8338, v2.8347

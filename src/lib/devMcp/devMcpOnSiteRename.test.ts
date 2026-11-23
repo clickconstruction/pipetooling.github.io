@@ -39,7 +39,7 @@ describe('the verbs — in the table, on the server, in the docs', () => {
     const withRpc = Object.values(WRITE_VERBS).filter((v) => v.rpc !== null)
     expect(withRpc).toHaveLength(58)
     expect(new Set(withRpc.map((v) => v.rpc)).size).toBe(25)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.128.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.131.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else:')
     expect(SERVER).toContain('fifty-eight POST one of twenty-five hard-coded, dev-gated RPCs as the dev (dev_on_site_write and')
     expect(SERVER).toContain('plan_container_edit → apply_container_edit (a live box')

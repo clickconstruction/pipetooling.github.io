@@ -4,6 +4,7 @@ import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { DashboardGroupCard } from './DashboardGroupCard'
 import { parsePartnerJobCosting, parsePartnerJobsPayload, type PartnerJobCosting, type PartnerJobRow } from '../../lib/partnerLedger/partnerJobsPayload'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { MoneyText } from '../Money'
 
 /**
  * "Your jobs" — the partner's §5 window (PARTNERSHIPS_PLAN.md PR 7).
@@ -93,7 +94,7 @@ export function DashboardPartnerJobsSection({ asPartnershipId }: { asPartnership
                 {j.job_name && j.job_name !== j.label ? ` — ${j.job_name}` : ''}
               </span>
               {j.profit_share != null ? (
-                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#16a34a', fontSize: '0.82rem' }}>+{money(j.profit_share)}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#16a34a', fontSize: '0.82rem' }}>+<MoneyText text={money(j.profit_share)} /></span>
               ) : null}
               {costingOn ? (
                 <button
@@ -114,7 +115,7 @@ export function DashboardPartnerJobsSection({ asPartnershipId }: { asPartnership
                 ) : (
                   <>
                     {costing.revenue != null ? (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>job total {money(costing.revenue)}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>job total <MoneyText text={money(costing.revenue)} /></div>
                     ) : null}
                     {costing.hours.length > 0 ? (
                       <>

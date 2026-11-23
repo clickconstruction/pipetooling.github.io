@@ -634,7 +634,7 @@ export default function TeamReviewSection({
                       type="button"
                       onClick={allRated ? finishToReflect : saveAndAdvance}
                       disabled={busy}
-                      style={{ padding: '0.5rem 1rem', background: allRated ? '#16a34a' : '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                      style={{ padding: '0.5rem 1rem', background: allRated ? '#15803d' : '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontWeight: 600 }}
                     >
                       {busy
                         ? 'Saving…'

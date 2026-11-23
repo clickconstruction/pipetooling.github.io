@@ -169,4 +169,5 @@ imitated-session
 write-down-first-amount
 working-hours
 stripe-paid-day
+license-roll-notes
 people-hours-recorded

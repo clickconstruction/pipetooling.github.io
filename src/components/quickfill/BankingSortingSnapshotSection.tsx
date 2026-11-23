@@ -7,7 +7,6 @@ import {
   filterMercuryRowsForSorting,
   filterMercuryRowsIncompleteForSorting,
 } from '../../lib/bankingSortingCounts'
-import { formatCurrency } from '../../lib/format'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import { shortUuidPrefix } from '../../lib/shortUuidPrefix'
 import { supabase } from '../../lib/supabase'
@@ -25,6 +24,7 @@ import { fetchAttributionsByMercuryTxIds, fetchJobAllocationsByMercuryTxIds } fr
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { canAccessBanking as canAccessBankingRole } from '../../lib/bankingAccess'
 import { EmptyState } from '../EmptyState'
+import { Money } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -453,7 +453,7 @@ export function BankingSortingSnapshotSection() {
                       return (
                         <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.4rem', whiteSpace: 'nowrap' }}>{formatPostedDate(r.posted_at)}</td>
-                          <td style={{ padding: '0.5rem 0.4rem', textAlign: 'right' }}>${formatCurrency(Number(r.amount))}</td>
+                          <td style={{ padding: '0.5rem 0.4rem', textAlign: 'right' }}><Money amount={Number(r.amount)} /></td>
                           <td
                             style={{
                               padding: '0.5rem 0.4rem',

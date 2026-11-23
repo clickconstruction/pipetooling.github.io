@@ -34,6 +34,7 @@ vi.mock('../jobs/LienReleaseModal', () => ({
 import { DashboardLienReleaseQueueModal } from './DashboardLienReleaseQueueModal'
 import type { JobLienReleaseRow, LienUnconditionalQueueRow } from '../../lib/jobs/lienReleaseTracking'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 function row(p: Partial<LienUnconditionalQueueRow> = {}): LienUnconditionalQueueRow {
   const release = {
@@ -93,9 +94,9 @@ describe('DashboardLienReleaseQueueModal', () => {
     expect(screen.getByText('#1042 · Mission Flats — Bldg C')).toBeTruthy()
     expect(screen.getByText('Lakeline Medical')).toBeTruthy()
     expect(screen.getByText(/Harvey Builders · 4410 Mission Flats Dr/)).toBeTruthy()
-    expect(screen.getByText('$408.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$408.00'))).toBeTruthy()
     expect(screen.getByText(/Cleared Sep 1, 2026/)).toBeTruthy()
-    expect(screen.getByText(/Check #4471 · \$408\.00 applied/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/Check #4471 · \$408\.00 applied/))).toBeTruthy()
     expect(screen.getAllByRole('button', { name: 'Issue unconditional' })).toHaveLength(2)
     expect(screen.getAllByRole('button', { name: 'View release' })).toHaveLength(2)
     expect(screen.getByText(/across 2 jobs still owed/)).toBeTruthy()

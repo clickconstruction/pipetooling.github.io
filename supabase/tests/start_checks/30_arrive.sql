@@ -2,7 +2,8 @@
 -- one stage whose days have come, shown only what nobody of ours has seen; Yes, all as told turns each into a yes we
 -- saw in the arriving person's name; a No opens its bullet again and sends Dispatch one stage check; a second yes
 -- cannot replace a No (migration *_start_check_arrive_once); a later No is kept, and a bullet with a No is asked about
--- again once it has a new yes (migration *_start_check_arrive_again); and who the two functions refuse.
+-- again once it has a new yes (migration *_start_check_arrive_again); the card's answer marks only the bullets it showed
+-- (migration *_start_check_arrive_shown); and who the two functions refuse.
 -- Fixtures are written as postgres; presses run as each user; everything
 -- rolls back. Raises on the first failed assertion; ends with "start_check_arrive PASSED".
 -- See scripts/pgtest-start-checks.sh. Never against prod. Every name here is made up.
@@ -63,15 +64,18 @@ INSERT INTO public.jobs_ledger_fixtures (id, job_id, name, stage_kind, sequence_
   ('00000000-0000-0000-0000-0000003821c1', '00000000-0000-0000-0000-0000003821b1', 'Rough In', 'order', 1),
   ('00000000-0000-0000-0000-0000003821c2', '00000000-0000-0000-0000-0000003821b1', 'Top Out', 'order', 2),
   ('00000000-0000-0000-0000-0000003821c3', '00000000-0000-0000-0000-0000003821b1', 'Trim Set', 'order', 3),
-  ('00000000-0000-0000-0000-0000003821c4', '00000000-0000-0000-0000-0000003821b1', 'Final', 'order', 4);
+  ('00000000-0000-0000-0000-0000003821c4', '00000000-0000-0000-0000-0000003821b1', 'Final', 'order', 4),
+  ('00000000-0000-0000-0000-0000003821c5', '00000000-0000-0000-0000-0000003821b1', 'Gas Test', 'any', 5);
 INSERT INTO public.job_stage_windows (id, job_id, fixture_id, window_start, window_end) VALUES
   ('00000000-0000-0000-0000-0000003821e1', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c1', public.app_today() - 1, public.app_today() + 3),
-  ('00000000-0000-0000-0000-0000003821e2', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c2', public.app_today() + 30, public.app_today() + 34);
+  ('00000000-0000-0000-0000-0000003821e2', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c2', public.app_today() + 30, public.app_today() + 34),
+  ('00000000-0000-0000-0000-0000003821e5', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c5', public.app_today() + 60, public.app_today() + 61);
 INSERT INTO public.jobs_ledger_team_members (job_id, user_id) VALUES
   ('00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821aa'), ('00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821ac'),
   ('00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821ad'), ('00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821ae');
 -- Rough In: three on them (one Ray told us, one we saw, one open) and one of ours. Top Out and Trim Set: one each.
--- Final: one the office has already seen, so nobody has arrived there and there is nothing to look at.
+-- Final: one the office has already seen, so nobody has arrived there and there is nothing to look at. Gas Test: two on
+-- them, its days far off until section 6, where the card sends the list it showed.
 INSERT INTO public.start_check_bullets (id, job_id, fixture_id, sort_order, words, waits_on, reads) VALUES
   ('00000000-0000-0000-0000-000000382101', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c1', 1, 'The slab is poured.', 'them', NULL),
   ('00000000-0000-0000-0000-000000382102', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c1', 2, 'Power is on.', 'them', NULL),
@@ -79,7 +83,9 @@ INSERT INTO public.start_check_bullets (id, job_id, fixture_id, sort_order, word
   ('00000000-0000-0000-0000-000000382104', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c1', 4, 'Our material lands.', 'us', 'hand'),
   ('00000000-0000-0000-0000-000000382105', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c2', 1, 'Framing is done.', 'them', NULL),
   ('00000000-0000-0000-0000-000000382106', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c3', 1, 'The walls are painted.', 'them', NULL),
-  ('00000000-0000-0000-0000-000000382107', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c4', 1, 'The water is on.', 'them', NULL);
+  ('00000000-0000-0000-0000-000000382107', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c4', 1, 'The water is on.', 'them', NULL),
+  ('00000000-0000-0000-0000-000000382108', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c5', 1, 'The gas meter is set.', 'them', NULL),
+  ('00000000-0000-0000-0000-000000382109', '00000000-0000-0000-0000-0000003821b1', '00000000-0000-0000-0000-0000003821c5', 2, 'The gas line is stubbed in.', 'them', NULL);
 INSERT INTO public.start_check_marks (bullet_id, job_id, know, who_name, how, said_on, source) VALUES
   ('00000000-0000-0000-0000-000000382101', '00000000-0000-0000-0000-0000003821b1', 'word', 'Ray Ortiz', 'by phone', public.app_today() - 3, 'office'),
   ('00000000-0000-0000-0000-000000382102', '00000000-0000-0000-0000-0000003821b1', 'saw', 'Dana Office', 'on site', public.app_today() - 2, 'office'),
@@ -200,6 +206,30 @@ SELECT sca.as_user('00000000-0000-0000-0000-0000003821ab');
 SELECT sca.same('one fourteen days ago does', public.start_check_arrival_state('00000000-0000-0000-0000-0000003821b1') ->> 'ok', 'true');
 RESET ROLE;
 SELECT sca.same('anon may call neither', (SELECT count(*) FROM information_schema.role_routine_grants WHERE routine_schema = 'public' AND routine_name IN ('start_check_arrive', 'start_check_arrival_state') AND grantee IN ('anon', 'PUBLIC'))::text, '0');
+
+-- 6 · The card sends the list it showed (migration *_start_check_arrive_shown). Gas Test's days come, with two bullets
+-- to look at. Hector's card showed the meter alone, read before the office wrote the line: his Yes, all as told marks
+-- the meter and leaves the line as it is, with no mark of ours, and the read asks nobody about it since someone has
+-- arrived and it carries no No. Dana's old card showing the meter alone is refused by name, as any second yes; her
+-- card showing both keeps a No on the line, news though nobody of ours saw it. A No must be on a shown bullet.
+UPDATE public.job_stage_windows SET window_start = public.app_today() - 1, window_end = public.app_today() + 3 WHERE id = '00000000-0000-0000-0000-0000003821e5';
+SET LOCAL ROLE authenticated;
+SELECT sca.as_user('00000000-0000-0000-0000-0000003821aa');
+SELECT sca.same('Gas Test is asked about with its two bullets', (SELECT string_agg(b ->> 'words', ' | ') FROM jsonb_array_elements(public.start_check_arrival_state('00000000-0000-0000-0000-0000003821b1') #> '{stage,bullets}') AS b), 'The gas meter is set. | The gas line is stubbed in.');
+SELECT sca.refused('a No on a bullet the card did not show is sent back to read the list', $$SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c5', ARRAY['00000000-0000-0000-0000-000000382109']::uuid[], ARRAY['00000000-0000-0000-0000-000000382108']::uuid[])$$, 'The list has changed');
+SELECT sca.refused('a card that showed nothing there is to look at is sent back too', $$SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c5', '{}'::uuid[], ARRAY['00000000-0000-0000-0000-000000382107']::uuid[])$$, 'The list has changed');
+SELECT sca.same('Yes, all as told from a card that showed the meter alone marks the meter alone', (SELECT (r ->> 'as_told') || ' as told, ' || (r ->> 'not_as_told') || ' not' FROM (SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c5', '{}'::uuid[], ARRAY['00000000-0000-0000-0000-000000382108']::uuid[]) AS r) AS x), '1 as told, 0 not');
+SELECT sca.same('the line the card did not show is left to the office: someone has arrived and it carries no No, so nobody is asked', (public.start_check_arrival_state('00000000-0000-0000-0000-0000003821b1') -> 'stage')::text, 'null');
+RESET ROLE;
+SELECT sca.same('the meter is a yes we saw and the line has no mark of ours', (SELECT count(*) FROM public.start_check_marks WHERE bullet_id = '00000000-0000-0000-0000-000000382108' AND know = 'saw' AND taken_back_at IS NULL)::text || ', ' || (SELECT count(*) FROM public.start_check_marks WHERE bullet_id = '00000000-0000-0000-0000-000000382109')::text, '1, 0');
+SET LOCAL ROLE authenticated;
+SELECT sca.as_user('00000000-0000-0000-0000-0000003821a1');
+SELECT sca.refused('an old card that showed only what is seen now is a second yes, refused by name', $$SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c5', '{}'::uuid[], ARRAY['00000000-0000-0000-0000-000000382108']::uuid[])$$, 'Hector Helper already answered for this stage.');
+CREATE TEMP TABLE sca_shown ON COMMIT DROP AS SELECT public.start_check_arrive('00000000-0000-0000-0000-0000003821c5', ARRAY['00000000-0000-0000-0000-000000382109']::uuid[], ARRAY['00000000-0000-0000-0000-000000382108', '00000000-0000-0000-0000-000000382109']::uuid[]) AS r;
+SELECT sca.same('a card that showed both keeps a No on the line nobody of ours saw, with its line to Dispatch', (SELECT (r ->> 'as_told') || ' as told, ' || (r ->> 'not_as_told') || ' not, a line to Dispatch: ' || ((r ->> 'dispatch_request_id') IS NOT NULL)::text FROM sca_shown), '0 as told, 1 not, a line to Dispatch: true');
+RESET ROLE;
+SELECT sca.same('the two-argument call still resolves, for the client until the deploy lands', (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname = 'start_check_arrive')::text || ' function, ' || (SELECT pg_get_function_identity_arguments(p.oid) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname = 'start_check_arrive'), '1 function, p_fixture_id uuid, p_not_as_told uuid[], p_shown uuid[]');
+SELECT sca.same('and the three-argument one carries the grants', has_function_privilege('authenticated', 'public.start_check_arrive(uuid, uuid[], uuid[])', 'execute')::text || ', ' || has_function_privilege('anon', 'public.start_check_arrive(uuid, uuid[], uuid[])', 'execute')::text, 'true, false');
 
 SELECT 'start_check_arrive PASSED' AS result;
 ROLLBACK;

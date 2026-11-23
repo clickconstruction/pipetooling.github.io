@@ -251,7 +251,7 @@ export default function CustomerRating() {
                     padding: '0.65rem',
                     borderRadius: '0.6rem',
                     border: 'none',
-                    background: wordsSent ? '#16a34a' : GO,
+                    background: wordsSent ? '#15803d' : GO,
                     color: '#fff',
                     fontWeight: 600,
                     cursor: saving || wordsSent || !words.trim() ? 'default' : 'pointer',

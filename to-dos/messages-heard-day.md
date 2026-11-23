@@ -1,8 +1,8 @@
 ---
 name: "Messages: a day was heard, say what it is"
 number: 421
-group: gated
-status: saved 2026-11-22 when #129 closed, on the owner's word to handle what it left · nothing built · three pieces of Messages' cut 2 that are in the database and the kernels and on no screen · read on prod the same day, nobody has ever used the table they write
+group: ready
+status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 armed · PR 2 the migration open, unarmed
 summary: >
   When a person names a day in a text or a voicemail, Messages was planned to lift the day out,
   ask the office what it is a promise of, and write it where that kind of date lives. The table, the
@@ -10,13 +10,27 @@ summary: >
   voicemail's Keep the day, the row that offers a heard day, and the choice under the line. Card
   #129 built the one kind the office uses, a customer's promise to pay, by another road. This card
   keeps the rest so it is not lost, with what exists, what is missing and what it would take.
-next: The owner's call, build it, leave it for later or drop it. If it is built, a mock-up of the choice under a line comes first, drawn from the prototype's offer line and from what Write down their word looks like today.
+next: The migration (PR 2, `write_down_heard`), then the choice under a line (PR 3), the write-throughs' hands (PR 4) and the payment mark's job (PR 5).
 size: M as a train of five (S · XS · M · M · XS)
-blocker: The owner's call on whether to build it. Nothing waits on it.
-opinion: later — the one kind people use, a customer's payment, is built, and the other kinds would serve three contacts today
+blocker: Nothing. PR 3 to 5 wait on PR 2's push.
+opinion: build — the owner's call of 2026-11-23
 ---
 
 # Messages: a day was heard, say what it is (#421)
+
+## Left to do
+
+The owner's calls of 2026-11-23: **build it**, and **straight to the choice** (one press under the line, no offered row). A
+customer's payment opens #129's sheet. The screens he approved are the *after* of the ledger's `heard` section.
+
+1. **PR 1, v2.8382**: the words of the choice (`messages/heardChoice.ts`) and the move line's words; the Follow up guide
+   no longer describes the unseen button. PR #9510, armed.
+2. **PR 2, v2.8383**: the migration (`20261123185942_heard_day_write.sql`): `write_down_heard` writes a line's day and
+   kind in one press or just talk, and `message_promises.job_id` with `write_down_payment`'s `p_job_id` gives a payment
+   mark its job. Open, unarmed: the parent pushes it, then a types PR and the dev seat's deploy.
+3. **PR 3, v2.8384**: the choice under a line. Not yet open.
+4. **PR 4, v2.8385**: the write-throughs' hands. Not yet open.
+5. **PR 5, v2.8386**: a payment mark carries its job. Not yet open.
 
 ## Where this comes from
 

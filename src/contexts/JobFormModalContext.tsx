@@ -2,8 +2,10 @@ import { createContext, Suspense, useCallback, useContext, useState } from 'reac
 import type { NewJobCustomerPrefill } from '../lib/messages/leadDoors'
 import type { JobDraft } from '../lib/bids/jobDraft'
 import type { JobFormFocusRow } from '../lib/jobs/jobFormFocusRow'
+import { WindowLoadBoundary } from '../components/WindowLoadBoundary'
 import { WindowOpening } from '../components/WindowOpening'
 import { lazyWindow } from '../lib/lazyWindow'
+import { WINDOW_NAMES } from '../lib/windowLoad'
 import JobContractAfterCreatePrompt from '../components/jobs/JobContractAfterCreatePrompt'
 import JobAccountsAfterCreatePrompt from '../components/jobs/JobAccountsAfterCreatePrompt'
 import JobSubmittalsAfterCreatePrompt from '../components/jobs/JobSubmittalsAfterCreatePrompt'
@@ -178,6 +180,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
   return (
     <JobFormModalContext.Provider value={value}>
       {children}
+      <WindowLoadBoundary what={WINDOW_NAMES.jobForm} onGaveUp={closeJobForm} resetKey={instanceKey}>
       <Suspense fallback={JOB_FORM_OPENING}>
       {openState.kind === 'edit' ? (
         <JobFormModal
@@ -220,6 +223,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
         />
       ) : null}
       </Suspense>
+      </WindowLoadBoundary>
       <JobContractAfterCreatePrompt
         jobId={contractPromptJobId}
         onClose={() => {

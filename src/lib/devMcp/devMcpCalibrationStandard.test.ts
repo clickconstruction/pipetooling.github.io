@@ -198,7 +198,7 @@ describe('the calibration standard from the dev seat (v2.7934)', () => {
     expect(branch).not.toContain('twin_shadow_runs') // no score is rewritten, and the table is never read: it answers a signed-in person no rows
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
     expect(branch).toContain('const prior = await hooks.priorApply(name, fresh)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.128.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.131.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else')
     expect(SERVER).toContain('plan_calibration_standard → apply_calibration_standard (a person made a calibration standard')
     expect(README).toContain('| `plan_calibration_standard(calibration)` · `apply_calibration_standard(calibration, plan_hash)` |')

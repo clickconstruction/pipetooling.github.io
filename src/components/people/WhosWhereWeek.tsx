@@ -54,7 +54,7 @@ function Disc({ person, hollow, size = HEAD }: { person: WwPerson; hollow: boole
         <span
           aria-label="can run a job"
           title="Can run a job — masters always; a helper or sub once the office switches off “needs supervision”. Read off the schedule, never set here."
-          style={{ position: 'absolute', top: -8, right: -10, fontSize: 9, fontWeight: 800, letterSpacing: '0.04em', background: '#16a34a', color: 'white', borderRadius: 999, padding: '1px 5px', lineHeight: 1.3 }}
+          style={{ position: 'absolute', top: -8, right: -10, fontSize: 9, fontWeight: 800, letterSpacing: '0.04em', background: '#15803d', color: 'white', borderRadius: 999, padding: '1px 5px', lineHeight: 1.3 }}
         >
           SUP
         </span>
@@ -214,7 +214,7 @@ export default function WhosWhereWeek({ week, loading, whenEmpty }: Props) {
           listed only (masters never clock)
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <i aria-hidden style={{ fontSize: 8, fontWeight: 800, background: '#16a34a', color: 'white', borderRadius: 999, padding: '1px 4px', fontStyle: 'normal' }}>SUP</i>
+          <i aria-hidden style={{ fontSize: 8, fontWeight: 800, background: '#15803d', color: 'white', borderRadius: 999, padding: '1px 4px', fontStyle: 'normal' }}>SUP</i>
           can run a job — read off the schedule, not set here
         </span>
         <span>

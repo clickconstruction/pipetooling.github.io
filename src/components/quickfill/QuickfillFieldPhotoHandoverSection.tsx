@@ -251,7 +251,7 @@ export function QuickfillFieldPhotoHandoverSection({
                   fontWeight: 600,
                   borderRadius: 6,
                   border: 'none',
-                  background: valid && !busy ? '#16a34a' : 'var(--bg-muted)',
+                  background: valid && !busy ? '#15803d' : 'var(--bg-muted)',
                   color: valid && !busy ? 'white' : 'var(--text-muted)',
                   cursor: valid && !busy ? 'pointer' : 'not-allowed',
                 }}

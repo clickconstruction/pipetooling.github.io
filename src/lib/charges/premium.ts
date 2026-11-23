@@ -4,7 +4,7 @@
  * a premium, below a shortfall, the same a wash. Office words only: the customer copy never prints them (the owner,
  * 2026-11-03, who considered warranty and discount and dropped both because each means something else in the app).
  */
-import { moneyWords } from './moneyParts'
+import { moneyWords } from '../moneyParts'
 
 export type PremiumKind = 'premium' | 'shortfall' | 'even'
 

@@ -36,6 +36,7 @@ import {
   type LeanRow,
   type LeanState,
 } from '../../lib/quickfill/leanRead'
+import { Money, MoneyText } from '../Money'
 
 /**
  * Quickfill → Billed Awaiting Payment (v2.2190): "Who owes what" — the same
@@ -251,8 +252,8 @@ export function BilledAwaitingPaymentSection({ lastMarkedAt = null }: { /** The 
           </b>
           {counts.past60 > 0 && <> · {counts.past60} past 60 days</>}
           {' · '}
-          {counts.bills} bill{counts.bills === 1 ? '' : 's'} · ${formatCurrency(counts.total)} open · {groups.length} customer{groups.length === 1 ? '' : 's'}
-          {excluded.count > 0 ? ` · ${excluded.count} bill${excluded.count === 1 ? '' : 's'} on paid or missing jobs excluded ($${formatCurrency(excluded.total)})` : ''}
+          {counts.bills} bill{counts.bills === 1 ? '' : 's'} · <Money amount={counts.total} /> open · {groups.length} customer{groups.length === 1 ? '' : 's'}
+          {excluded.count > 0 ? <MoneyText text={` · ${excluded.count} bill${excluded.count === 1 ? '' : 's'} on paid or missing jobs excluded ($${formatCurrency(excluded.total)})`} /> : ''}
           {inKindLine ? ` · ${inKindLine}` : ''}
         </span>
         <Link to={LEAN_CALL_MODE_HREF} style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', whiteSpace: 'nowrap' }}>
@@ -447,7 +448,7 @@ function GroupRows({
           {lean.lastTouchLine && <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{lean.lastTouchLine}</span>}
           {lean.promisedYmd && <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem' }}>promised {formatDayLabel(lean.promisedYmd)}</span>}
         </td>
-        <td style={{ ...cell, textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(g.total)}</td>
+        <td style={{ ...cell, textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}><Money amount={g.total} /></td>
       </tr>
       {open && canLean && (
         <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }} data-lean-presses>
@@ -506,7 +507,7 @@ function GroupRows({
               <td style={cell} />
               <td style={{ ...cell, textAlign: 'center' }}>{ageChip(b.ageDays, b.ageHandSet, dueOf(b) ? dueOf(b)! < todayYmd : null, dueOf(b))}</td>
               <td style={{ ...cell, fontSize: '0.75rem', color: 'var(--text-muted)' }}>{dueOf(b) ? `due ${payCalendarMonthDay(dueOf(b)!)} · pay calendar` : null}</td>
-              <td style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(b.amount)}</td>
+              <td style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><Money amount={b.amount} /></td>
             </tr>
           ))
         : null}

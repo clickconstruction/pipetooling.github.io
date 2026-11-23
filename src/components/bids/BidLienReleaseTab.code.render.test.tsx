@@ -11,6 +11,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { BidLienReleaseTab } from './BidLienReleaseTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import { moneyText } from '../../test/moneyText'
 
 const authState = vi.hoisted(() => ({ role: 'estimator' as string }))
 vi.mock('../../hooks/useAuth', async () => {
@@ -236,7 +237,7 @@ describe('BidLienReleaseTab — the code door and the records (v2.5958)', () => 
     ]
     renderTab()
     fireEvent.click(await screen.findByRole('button', { name: 'Conditional · progress — $30,400 · sent Oct 1' }))
-    expect(await screen.findByText(/in the sum of \$30,400\.00/)).toBeTruthy()
+    expect(await screen.findByText(moneyText(/in the sum of \$30,400\.00/))).toBeTruthy()
   })
 
   it('a held primary keeps the plain hold line, with no code door', async () => {

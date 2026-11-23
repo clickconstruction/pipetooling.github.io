@@ -183,7 +183,7 @@ describe('a twin\'s held seat made again from the dev seat (v2.7974)', () => {
     expect(branch.indexOf('tt = ttSeatLookup(')).toBeLessThan(branch.indexOf('const fresh = await planHash(name, p, dry.reply)'))
     expect(branch.indexOf('if (fresh !== built.planHash) return refused(planMismatch(')).toBeLessThan(branch.indexOf("await invokeAsDev(session, 'ct-bridge'"))
     expect(branch).toContain('const prior = await hooks.priorApply(name, fresh)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.128.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.131.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else')
     expect(SERVER).toContain("plan_twin_seat → apply_twin_seat (a twin's held seat in CountTooling or TakeoffTooling made again")
     expect(README).toContain('| `plan_twin_seat(seat)` · `apply_twin_seat(seat, plan_hash)` |')

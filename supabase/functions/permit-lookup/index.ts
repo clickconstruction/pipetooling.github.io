@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 import { permitCity } from '../_shared/permitCities.ts'
 import {
@@ -101,7 +101,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
  * does not carry the row. Held to the permit at the address being looked up, since the answer is
  * kept under that address. Null on any miss, so the lookup falls back to the address and the point.
  */
-async function parcelIdOnPermit(admin: ReturnType<typeof createClient>, home: ParcelSource, permitId: unknown, key: string): Promise<string | null> {
+async function parcelIdOnPermit(admin: SupabaseClient, home: ParcelSource, permitId: unknown, key: string): Promise<string | null> {
   if (!home.id || typeof permitId !== 'string' || !UUID.test(permitId)) return null
   const { data, error } = await admin.from('permits').select(`city, address, parcel_id:raw->>${home.id.permitKey}`).eq('id', permitId).maybeSingle()
   if (error) console.warn(JSON.stringify({ fn: 'permit-lookup', permit: error.message }))

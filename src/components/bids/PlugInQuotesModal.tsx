@@ -459,7 +459,7 @@ export function PlugInQuotesModal({
           </span>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="button" onClick={onClose} style={{ padding: '0.5rem 0.9rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>Cancel</button>
-            <button type="button" disabled={!houseId || savableLines.length === 0 || saving} onClick={() => void save()} style={{ padding: '0.5rem 1.1rem', background: houseId && savableLines.length > 0 ? '#16a34a' : 'var(--bg-200)', color: houseId && savableLines.length > 0 ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: houseId && savableLines.length > 0 ? 'pointer' : 'not-allowed', font: 'inherit', fontWeight: 600 }}>
+            <button type="button" disabled={!houseId || savableLines.length === 0 || saving} onClick={() => void save()} style={{ padding: '0.5rem 1.1rem', background: houseId && savableLines.length > 0 ? '#15803d' : 'var(--bg-200)', color: houseId && savableLines.length > 0 ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: houseId && savableLines.length > 0 ? 'pointer' : 'not-allowed', font: 'inherit', fontWeight: 600 }}>
               {saving ? 'Saving…' : 'Save quote → compare'}
             </button>
           </div>
