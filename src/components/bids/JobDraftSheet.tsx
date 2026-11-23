@@ -110,7 +110,7 @@ export function JobDraftSheet({ bidId, onClose, onSent, io = supabaseJobDraftIo,
         type="button"
         onClick={() => void submit()}
         disabled={!full || !!waits || sending}
-        style={{ padding: '0.4rem 0.8rem', fontFamily: 'inherit', fontWeight: 600, background: '#16a34a', color: 'white', border: 'none', borderRadius: 6, cursor: !full || waits || sending ? 'not-allowed' : 'pointer', opacity: !full || waits || sending ? 0.6 : 1 }}
+        style={{ padding: '0.4rem 0.8rem', fontFamily: 'inherit', fontWeight: 600, background: '#15803d', color: 'white', border: 'none', borderRadius: 6, cursor: !full || waits || sending ? 'not-allowed' : 'pointer', opacity: !full || waits || sending ? 0.6 : 1 }}
       >
         {sending ? 'Sending…' : 'Send to Dispatch'}
       </button>

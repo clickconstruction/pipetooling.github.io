@@ -287,7 +287,7 @@ export function ApplyPicksToCostsModal({
             type="button"
             disabled={applying || plan.rows.length === 0 || remaindersOff.length > 0}
             onClick={() => void apply()}
-            style={{ padding: '0.5rem 1.1rem', background: plan.rows.length === 0 || remaindersOff.length > 0 ? 'var(--bg-200)' : '#16a34a', color: plan.rows.length === 0 || remaindersOff.length > 0 ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: applying || plan.rows.length === 0 || remaindersOff.length > 0 ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
+            style={{ padding: '0.5rem 1.1rem', background: plan.rows.length === 0 || remaindersOff.length > 0 ? 'var(--bg-200)' : '#15803d', color: plan.rows.length === 0 || remaindersOff.length > 0 ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: applying || plan.rows.length === 0 || remaindersOff.length > 0 ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
           >
             {applying ? 'Applying…' : `Apply to ${plan.rows.length} row${plan.rows.length === 1 ? '' : 's'}`}
           </button>

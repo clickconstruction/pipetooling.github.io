@@ -105,13 +105,16 @@ export function paperMakesAPdf(row: PaperWordsRow & { status?: string | null; fo
 export interface PaperPdfCaller {
   role?: string | null
   is_digital_twin?: boolean | null
+  /** Training mode (`users.read_only`). */
+  read_only?: boolean | null
 }
 
 /**
  * What the caller is to `person-paper-pdf`, from their account row alone. `office` is one of the four roles that send
  * a paper. `estimator` needs the paper to be an outside company's (punch list #376, Taunya's call of 2026-11-21, as
  * #403's call 10 gives them such a company's signed form). `none` is refused whatever the paper, a digital twin among
- * them, which reads as an estimator.
+ * them, which reads as an estimator, and an estimator in training (punch list #403, the owner's second decision: a
+ * training account reads the line and is refused the signed file, and this press may also make and keep a PDF).
  */
 export type PaperPdfOpener = 'office' | 'estimator' | 'none'
 
@@ -121,12 +124,13 @@ export const PAPER_PDF_REFUSALS = {
   role: 'Only the office opens a signed paper’s PDF.',
   twin: 'A digital twin cannot open a signed paper’s PDF.',
   estimator: 'An estimator opens a signed paper of an outside company, and no other.',
+  training: 'A training account does not open a signed paper’s PDF.',
 } as const
 
 export function paperPdfOpener(caller: PaperPdfCaller | null | undefined): PaperPdfOpener {
   const role = caller?.role ?? ''
   if (PAPER_PDF_OFFICE_ROLES.includes(role)) return 'office'
-  if (role === 'estimator' && !caller?.is_digital_twin) return 'estimator'
+  if (role === 'estimator' && !caller?.is_digital_twin && !caller?.read_only) return 'estimator'
   return 'none'
 }
 
@@ -138,7 +142,10 @@ export function paperPdfOpener(caller: PaperPdfCaller | null | undefined): Paper
 export function paperPdfRefusal(caller: PaperPdfCaller | null | undefined, facts: { estimatorReads?: boolean }): string | null {
   const opener = paperPdfOpener(caller)
   if (opener === 'office') return null
-  if (opener === 'none') return caller?.role === 'estimator' && caller?.is_digital_twin ? PAPER_PDF_REFUSALS.twin : PAPER_PDF_REFUSALS.role
+  if (opener === 'none') {
+    if (caller?.role !== 'estimator') return PAPER_PDF_REFUSALS.role
+    return caller.is_digital_twin ? PAPER_PDF_REFUSALS.twin : caller.read_only ? PAPER_PDF_REFUSALS.training : PAPER_PDF_REFUSALS.role
+  }
   return facts.estimatorReads === true ? null : PAPER_PDF_REFUSALS.estimator
 }
 

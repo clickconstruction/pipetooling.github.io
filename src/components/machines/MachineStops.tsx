@@ -336,7 +336,7 @@ export function MachineArrivalStop({ jobId, jobWords, compact, userId, byName }:
           </span>
           <div role="group" aria-label={`Is ${x.machine.unitLabel} here`} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.35rem' }}>
             {(['here', 'later', 'not_coming'] as ArrivalAnswer[]).map((a) => (
-              <button key={a} type="button" style={{ ...press, minHeight: 40, fontSize: '0.8125rem', ...(a === 'here' ? { background: '#16a34a', borderColor: '#16a34a', color: '#fff' } : {}) }} onClick={() => answer(x, a)}>
+              <button key={a} type="button" style={{ ...press, minHeight: 40, fontSize: '0.8125rem', ...(a === 'here' ? { background: '#15803d', borderColor: '#15803d', color: '#fff' } : {}) }} onClick={() => answer(x, a)}>
                 {ANSWER_WORDS[a]}
               </button>
             ))}

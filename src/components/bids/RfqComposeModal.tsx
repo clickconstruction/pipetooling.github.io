@@ -476,7 +476,7 @@ export function RfqComposeModal({
                   type="button"
                   disabled={sending}
                   onClick={() => void send()}
-                  style={{ padding: '0.5rem 1.1rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: sending ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
+                  style={{ padding: '0.5rem 1.1rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: sending ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
                 >
                   {sending ? 'Sending…' : `Send ${ready.length} request${ready.length === 1 ? '' : 's'}`}
                 </button>

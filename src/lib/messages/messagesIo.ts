@@ -20,6 +20,7 @@ import { loadSentEmailsTo } from '../sent/sentCopiesIo'
 import { factJobKeys, railJobKeys, type InviteJobRow, type ProjectRolesRow } from './factJobs'
 import { jobTilesByKey, type BidTileRow, type GcProjectTileRow, type JobTile, type PipelineTileRow } from './jobTiles'
 import { activeJobKeys } from '../followUp/newLaneRows'
+import { paperHolderNamingRefusal } from '../contacts/paperHolderNaming'
 import { lineFilesFromRows, withLineFiles, type MessageAttachmentRow } from './lineFiles'
 import { jobRefOf, threadMessagesFromRows, type MessageRow } from './load'
 import { sentLines } from './sentLines'
@@ -413,22 +414,34 @@ const jobArgs = (key: string | null) => {
   return { p_job_kind: ref?.kind ?? null, p_job_id: ref?.id ?? null }
 }
 
+/**
+ * `name_contact`, with the one refusal the screens say in their own words: a contact that holds a paper is named by
+ * the office's four roles alone (punch list #403, `contacts/paperHolderNaming.ts`). Every other failure is thrown as
+ * it came.
+ */
+async function nameContactRpc(args: Record<string, unknown>): Promise<string> {
+  try {
+    return taken(await rpc('name_contact', args), 'name the number') as unknown as string
+  } catch (e) {
+    const refused = paperHolderNamingRefusal(e)
+    if (refused) throw new Error(refused)
+    throw e
+  }
+}
+
 /** Who is this?: the contact points at a record, or folds into the one already there. Answers who holds the thread now. */
 export async function nameContact(
   contactId: string,
   target: { record: NonNullable<ContactRecord>; kind: Exclude<ContactKind, 'unknown'>; name?: string | null; jobKey?: string | null },
 ): Promise<string> {
-  return taken(
-    await rpc('name_contact', {
-      p_contact_id: contactId,
-      p_record_table: target.record.table,
-      p_record_id: target.record.id,
-      p_kind: target.kind,
-      p_name: target.name?.trim() || null,
-      ...jobArgs(target.jobKey ?? null),
-    }),
-    'name the number',
-  ) as unknown as string
+  return nameContactRpc({
+    p_contact_id: contactId,
+    p_record_table: target.record.table,
+    p_record_id: target.record.id,
+    p_kind: target.kind,
+    p_name: target.name?.trim() || null,
+    ...jobArgs(target.jobKey ?? null),
+  })
 }
 
 /**
@@ -436,10 +449,7 @@ export async function nameContact(
  * to Prospects or a booking points it at a record. Answers who holds the thread now.
  */
 export async function nameAsLead(contactId: string, name: string | null): Promise<string> {
-  return taken(
-    await rpc('name_contact', { p_contact_id: contactId, p_record_table: null, p_record_id: null, p_kind: 'lead', p_name: name?.trim() || null, p_job_kind: null, p_job_id: null }),
-    'name the number',
-  ) as unknown as string
+  return nameContactRpc({ p_contact_id: contactId, p_record_table: null, p_record_id: null, p_kind: 'lead', p_name: name?.trim() || null, p_job_kind: null, p_job_id: null })
 }
 
 /**

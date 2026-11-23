@@ -110,6 +110,43 @@ export function lazyRoutesWithoutSuspense(appSource: string): string[] {
     .map(({ path }) => path)
 }
 
+/**
+ * The paths of the routes, inside the Layout or out of it, whose `element` puts a lazy page inside the plain
+ * `<ErrorBoundary>`. That boundary catches a page whose code did not come and draws small red words with nothing to
+ * press, where the chunk boundary above it would reload once and offer **Reload**. An empty list is the good answer.
+ * The fix is `<RoutePageBoundary>`, which keeps the catch for an ordinary crash and hands a lost chunk up.
+ */
+export function lazyRoutesInPlainErrorBoundary(appSource: string): string[] {
+  const lazyNames = lazyComponentNames(appSource)
+  if (lazyNames.length === 0) return []
+  const source = stripComments(appSource)
+  const start = source.search(/<Routes[\s>]/)
+  if (start === -1) return []
+  const end = source.indexOf('</Routes>', start)
+  const block = source.slice(start, end === -1 ? undefined : end)
+  const starts = [...block.matchAll(/<Route(?=[\s>/])/g)].map((m) => m.index)
+  const paths: string[] = []
+  for (let i = 0; i < starts.length; i++) {
+    const { element, rest } = splitElement(block.slice(starts[i], starts[i + 1]))
+    if (!/<ErrorBoundary(?=[\s>/])/.test(element)) continue
+    const code = element.replace(/"[^"\n]*"|'[^'\n]*'/g, '""')
+    const drawsLazy = lazyNames.some((name) => new RegExp(`(?<![\\w$.])${name.replace(/\$/g, '\\$')}(?![\\w$])`).test(code))
+    if (!drawsLazy) continue
+    const path = rest.match(/\bpath=(?:"([^"]*)"|'([^']*)'|\{\s*["'`]([^"'`]*)["'`]\s*\})/)
+    paths.push(path?.[1] ?? path?.[2] ?? path?.[3] ?? NO_PATH)
+  }
+  return paths
+}
+
+/** The failure's words for one route held in the plain boundary: what is wrong and the fix. */
+export function lazyRouteInPlainErrorBoundaryWords(path: string): string {
+  return (
+    `The route "${path}" in src/App.tsx draws a lazy page inside the plain <ErrorBoundary>. ` +
+    'When the page\'s code does not come, that boundary draws "Something went wrong" with nothing to press. ' +
+    'Use <RoutePageBoundary> in its place: it still catches a crash, and it hands a lost chunk to the chunk boundary above, which offers Reload.'
+  )
+}
+
 /** The failure's words for one route: what is wrong, why it matters and the fix. */
 export function lazyRouteWithoutSuspenseWords(path: string): string {
   // The example is a route that is wrapped, so it is never the route at fault.

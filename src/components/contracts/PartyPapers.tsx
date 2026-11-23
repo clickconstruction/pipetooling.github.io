@@ -15,6 +15,7 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import {
   PARTY_PAPERS_SEND_PAGE,
   PARTY_PAPER_TONE_COLORS,
+  canOpenSignedRecord,
   canReadPartyPapers,
   canSendPartyPapers,
   partyPaperCountWords,
@@ -87,11 +88,17 @@ export function PartyPapersList({
   surface,
   showEmpty = false,
   partyName,
+  opensRecords = true,
 }: {
   read: PartyPapersRead
   canSend: boolean
   surface: string
   showEmpty?: boolean
+  /**
+   * The reader opens a signed paper's record from its name (`canOpenSignedRecord`). A training estimator reads the
+   * line and opens nothing (punch list #403, the owner's second decision), so their signed line is plain words.
+   */
+  opensRecords?: boolean
   /** The party's name today. A paper that names another business says *signing for* it on its line. */
   partyName?: string | null
 }) {
@@ -134,7 +141,7 @@ export function PartyPapersList({
                     {/* The tag sits level with the name, also when a phone's 44px press makes the name taller. */}
                     <span style={nameRow}>
                       <span style={tag}>{l.kind}</span>
-                      {l.opens ? (
+                      {l.opens && opensRecords ? (
                         <button type="button" style={namePress(narrow)} onClick={() => setSignedDocId(l.id)}>
                           {l.name}
                         </button>
@@ -172,7 +179,7 @@ export function PartyPapersList({
  * list says where a paper is sent from. Every other role is drawn nothing, and nothing is read for them.
  */
 export function PartyPapersSection({ party, partyName, heading = 'Papers' }: { party: PartyRecord; partyName?: string | null; heading?: string }) {
-  const { role } = useAuth()
+  const { role, readOnly } = useAuth()
   const reads = canReadPartyPapers(role)
   const read = usePartyPapers(reads ? party : null)
   if (!reads) return null
@@ -180,7 +187,7 @@ export function PartyPapersSection({ party, partyName, heading = 'Papers' }: { p
     <section aria-label={heading} data-testid="party-papers-section" style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
       <div style={{ fontWeight: 600, marginBottom: '0.15rem' }}>{heading}</div>
       <p style={{ ...quiet, marginBottom: '0.4rem' }}>The papers that are with this house or one of its contacts.</p>
-      <PartyPapersList read={read} canSend={canSendPartyPapers(role)} surface={`party-papers-${party.kind}`} showEmpty partyName={partyName} />
+      <PartyPapersList read={read} canSend={canSendPartyPapers(role)} opensRecords={canOpenSignedRecord(role, readOnly)} surface={`party-papers-${party.kind}`} showEmpty partyName={partyName} />
     </section>
   )
 }
@@ -190,7 +197,7 @@ export function PartyPapersSection({ party, partyName, heading = 'Papers' }: { p
  * of the same name. Drawn only when there is a paper or a failed read to show, as the office's card is.
  */
 export function PartyPapersCard({ party, partyName }: { party: PartyRecord; partyName?: string | null }) {
-  const { role } = useAuth()
+  const { role, readOnly } = useAuth()
   const reads = canReadPartyPapers(role)
   const read = usePartyPapers(reads ? party : null)
   if (!reads || partyPapersQuiet(read)) return null
@@ -201,7 +208,7 @@ export function PartyPapersCard({ party, partyName }: { party: PartyRecord; part
         <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--text-muted)' }}>the papers that are with this customer</span>
       </div>
       <div style={{ padding: '6px 13px 10px' }}>
-        <PartyPapersList read={read} canSend={canSendPartyPapers(role)} surface={`party-papers-${party.kind}`} partyName={partyName} />
+        <PartyPapersList read={read} canSend={canSendPartyPapers(role)} opensRecords={canOpenSignedRecord(role, readOnly)} surface={`party-papers-${party.kind}`} partyName={partyName} />
       </div>
     </div>
   )

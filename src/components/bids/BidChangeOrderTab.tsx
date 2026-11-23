@@ -360,7 +360,7 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
                     disabled={sendingForSignature}
                     title="Review what will be created, enter the net change, then a signable change order draft opens in Estimates"
                     onClick={() => openBridgeSheet(bid, form)}
-                    style={{ padding: '0.5rem 1rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: sendingForSignature ? 'wait' : 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: sendingForSignature ? 'wait' : 'pointer' }}
                   >
                     {sendingForSignature ? 'Creating…' : 'Send for signature →'}
                   </button>
@@ -443,7 +443,7 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
                     if (cents === null) return
                     void sendForSignature(bridgeSheet.bid, bridgeSheet.form, cents)
                   }}
-                  style={{ padding: '0.5rem 1rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: sendingForSignature || cents === null ? 'not-allowed' : 'pointer' }}
+                  style={{ padding: '0.5rem 1rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: sendingForSignature || cents === null ? 'not-allowed' : 'pointer' }}
                 >
                   {sendingForSignature ? 'Creating…' : 'Create draft →'}
                 </button>
