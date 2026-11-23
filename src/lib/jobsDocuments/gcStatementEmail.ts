@@ -1,4 +1,4 @@
-import type { GcReviewGroup, GcReviewGroupBy } from '../gcReviewRollup'
+import { gcGroupsInKind, type GcReviewGroup, type GcReviewGroupBy } from '../gcReviewRollup'
 import { formatCurrency } from '../jobs/jobFormatting'
 import {
   GC_STATEMENT_COMPANY_NAME,
@@ -9,6 +9,7 @@ import {
   gcStatementIntroHtml,
   renderStatementByPropertyHtml,
   renderStatementByPropertyText,
+  statementInKindLine,
   statementReceivedFromChecks,
   type StatementBillIn,
   type StatementReceivedIn,
@@ -219,6 +220,7 @@ export function buildGcStatementEmailHtml(
     receivedSinceYmd: opts?.receivedSinceYmd,
     qrImgSrc: opts?.qrImgSrc,
     introText: opts?.introText,
+    inKind: group.inKind,
   })
 }
 
@@ -243,6 +245,8 @@ export function buildGcReviewShareAllEmailHtml(
 ): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   const scope = opts?.groupBy === 'development' ? 'development' : 'GC'
+  // Mirror of render.ts: the dispatcher reads the payload's `in_kind`, the sum of the same sections.
+  const inKindLine = statementInKindLine(gcGroupsInKind(report.groups))
   const sectionsHtml = report.groups
     .map(
       (g) => `<p style="margin:16px 0 4px;font-size:14px;font-weight:bold;color:#111827">${escapeHtml(g.gcName)} <span style="font-weight:normal;font-size:12px;color:#6b7280">· ${g.jobCount} job${g.jobCount === 1 ? '' : 's'} · $${formatCurrency(g.subtotal)}</span></p>
@@ -263,7 +267,8 @@ export function buildGcReviewShareAllEmailHtml(
         <td style="padding:9px 6px;border-top:2px solid #9ca3af;font-size:14px;font-weight:bold;color:#111827;text-align:right">$${formatCurrency(report.grandTotal)}</td>
       </tr>
     </tbody>
-  </table>
+  </table>${inKindLine ? `
+  <p style="margin:6px 6px 0;font-size:12px;color:#6b7280">${escapeHtml(inKindLine)}</p>` : ''}
   <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${gcStatementFooterHtml(opts?.officePhone)}</p>
 </div>`
 }
@@ -279,6 +284,7 @@ export function buildGcReviewShareAllEmailText(
 ): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   const scope = opts?.groupBy === 'development' ? 'development' : 'GC'
+  const inKindLine = statementInKindLine(gcGroupsInKind(report.groups))
   const sections = report.groups.flatMap((g) => [
     `${g.gcName} · ${g.jobCount} job${g.jobCount === 1 ? '' : 's'} · $${formatCurrency(g.subtotal)}`,
     ...g.rows.map(statementRowText),
@@ -292,6 +298,7 @@ export function buildGcReviewShareAllEmailText(
     '',
     ...sections,
     `Total owed: $${formatCurrency(report.grandTotal)}`,
+    ...(inKindLine ? [inKindLine] : []),
     '',
     gcStatementFooterLine(opts?.officePhone),
   ].join('\n')
@@ -333,5 +340,6 @@ export function buildGcStatementEmailText(
     received: opts?.received,
     receivedSinceYmd: opts?.receivedSinceYmd,
     introText: opts?.introText,
+    inKind: group.inKind,
   })
 }
