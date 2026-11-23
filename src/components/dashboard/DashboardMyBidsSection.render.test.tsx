@@ -46,7 +46,7 @@ vi.mock('../../lib/supabase', async () => {
       return { data: bidsRead.rows, error: null }
     }
     const chain: Record<string, unknown> = {}
-    for (const m of ['select', 'or', 'order', 'limit']) chain[m] = () => chain
+    for (const m of ['select', 'or', 'is', 'order', 'limit']) chain[m] = () => chain
     chain.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => answer().then(ok, bad)
     return chain
   }
@@ -124,3 +124,37 @@ describe('DashboardMyBidsSection — how the card opens', () => {
     expect(screen.queryByText('Fire Cabinet Installation')).toBeNull()
   })
 })
+
+describe('DashboardMyBidsSection — the Bid Board\'s own states (punch list #426)', () => {
+  const row = (over: Record<string, unknown>) => ({ ...BIDS[0], ...over })
+
+  it('a bid marked won with no sent date is not in the unsent list, and reads Won once the sent bids open', async () => {
+    bidsRead.rows = [row({ id: 'u1', project_name: 'Alder St changes' }), row({ id: 'w1', project_name: 'Quarry Rd shell', outcome: 'won', bid_date_sent: null })]
+    renderWithProviders(section('estimator'))
+    expect(await screen.findByText('Alder St changes')).toBeTruthy()
+    expect(screen.queryByText('Quarry Rd shell')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Sent bids \(1\)/ }))
+    expect(screen.getByText('Quarry Rd shell')).toBeTruthy()
+    expect(screen.getByText(/· Won$/)).toBeTruthy()
+  })
+
+  it('a bid the Bid Board no longer lists is not drawn: archived from the board while unsent, or adopted', async () => {
+    bidsRead.rows = [
+      row({ id: 'u1', project_name: 'Alder St changes' }),
+      row({ id: 'a1', project_name: 'Harbor St rough-in', working_board_archived_at: '2026-05-11T15:00:00Z' }),
+      row({ id: 'a2', project_name: 'Maple Court Lot 2', adopted_into_bid_id: 'u1' }),
+    ]
+    renderWithProviders(section('estimator'))
+    expect(await screen.findByRole('button', { name: 'My Bids, 1 bid' })).toBeTruthy()
+    expect(screen.queryByText('Harbor St rough-in')).toBeNull()
+    expect(screen.queryByText('Maple Court Lot 2')).toBeNull()
+  })
+
+  it('a sent bid with no answer reads the board\'s words, Not yet won or lost', async () => {
+    bidsRead.rows = [row({ id: 'p1', project_name: 'Juniper Ave finish', bid_date_sent: '2026-11-03' })]
+    renderWithProviders(section('estimator'))
+    fireEvent.click(await screen.findByRole('button', { name: /Sent bids \(1\)/ }))
+    expect(screen.getByText(/· Not yet won or lost$/)).toBeTruthy()
+  })
+})
+
