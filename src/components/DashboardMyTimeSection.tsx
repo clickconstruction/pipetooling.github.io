@@ -4,43 +4,20 @@ import { supabase } from '../lib/supabase'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
 import { useAuth } from '../hooks/useAuth'
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
-import { getDefaultWeekRange, getLastWeekRange, localCalendarDayKey } from '../utils/dateUtils'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 import { DashboardMyTimeDayEditorModal } from './DashboardMyTimeDayEditorModal'
 import { PersonalTimeOffModal } from './PersonalTimeOffModal'
-import { EmptyState } from './EmptyState'
-import { DashboardMyHoursBlock } from './dashboard/DashboardMyHoursBlock'
-import type { SalariedWeek } from '../lib/salariedEffectiveHours'
-import { myTimeWeekEmptyWords } from '../lib/dashboard/dashboardEmptyWords'
+import { DashboardMyTimePicture } from './dashboard/DashboardMyTimePicture'
+import { MyTimeCanWorkLine } from './dashboard/MyTimeCanWorkLine'
+import { MY_TIME_WEEKS, buildMyTimeWeeks, myTimeSessionSeconds, type MyTimeDay, type MyTimeWeek } from '../lib/dashboard/myTimeWeeks'
+import { payWeeksEndingAt } from '../lib/people/utilization'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
 import { DashboardCardHead, DashboardCardTitle } from './dashboard/DashboardCardTitle'
 
-function toLocalDateString(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-/** Friendly duration for the stat tiles (v2.1551): "7h 24m", "45m", "0m". */
-function formatDurationHM(seconds: number): string {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  if (h === 0) return `${m}m`
-  return `${h}h ${m}m`
-}
-
 function formatHours(seconds: number): string {
   const hrs = seconds / 3600
   return hrs % 1 === 0 ? `${hrs.toFixed(1)} hrs` : `${hrs.toFixed(2)} hrs`
-}
-
-/** Split `formatHours` output so the numeric part can be styled bold and ` hrs` stays normal weight. */
-function formatHoursBoldParts(seconds: number): { value: string; suffix: string } {
-  const s = formatHours(seconds)
-  const idx = s.indexOf(' hrs')
-  if (idx === -1) return { value: s, suffix: '' }
-  return { value: s.slice(0, idx), suffix: s.slice(idx) }
 }
 
 function renderBreakdownList(
@@ -142,90 +119,6 @@ function renderBreakdownList(
   )
 }
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-type HoursByDayOptions = {
-  sessionCountByDay?: Map<string, number>
-  onDayClick?: (dateStr: string) => void
-  editableRange?: { start: string; end: string }
-  /** Days marked correct in People → Hours; those cells are not clickable. */
-  hoursDaysCorrect?: Set<string>
-  /** Salaried Dashboard UX: show “On Shift” instead of numeric hours when the day has time. */
-  useOnShiftDayLabel?: boolean
-}
-
-function renderHoursByDay(weekStart: string, secondsByDay: Map<string, number>, options?: HoursByDayOptions) {
-  const dates: string[] = []
-  const d = new Date(weekStart + 'T00:00:00')
-  for (let i = 0; i < 7; i++) {
-    dates.push(localCalendarDayKey(d))
-    d.setDate(d.getDate() + 1)
-  }
-  const { sessionCountByDay, onDayClick, editableRange, hoursDaysCorrect, useOnShiftDayLabel } =
-    options ?? {}
-
-  return (
-    <div className="hoursByDayGrid">
-      {dates.map((dateStr, i) => {
-        const sec = secondsByDay.get(dateStr) ?? 0
-        const d2 = new Date(dateStr + 'T00:00:00')
-        const label = `${DAY_NAMES[i]} ${d2.getMonth() + 1}/${d2.getDate()}`
-        const parts = sec > 0 ? formatHoursBoldParts(sec) : null
-        const showOnShift = Boolean(useOnShiftDayLabel && sec > 0)
-        const count = sessionCountByDay?.get(dateStr) ?? 0
-        const inRange =
-          editableRange != null && dateStr >= editableRange.start && dateStr <= editableRange.end
-        const dayLocked = Boolean(hoursDaysCorrect?.has(dateStr))
-        const isInteractive =
-          Boolean(onDayClick && sessionCountByDay && inRange && sec > 0 && count > 0 && !dayLocked)
-
-        const hoursLabel = showOnShift ? 'On Shift' : parts ? `${parts.value}${parts.suffix}` : '—'
-
-        const inner = (
-          <>
-            <span className="hoursByDayDateLine">{label}:</span>
-            <span className="hoursByDayHoursLine">
-              {showOnShift ? (
-                <span style={{ fontWeight: 600 }}>On Shift</span>
-              ) : parts ? (
-                <>
-                  <strong style={{ fontWeight: 600 }}>{parts.value}</strong>
-                  {parts.suffix}
-                </>
-              ) : (
-                '—'
-              )}
-            </span>
-            {isInteractive ? (
-              <span className="hoursByDayGoalsLine">{count === 1 ? '1 pending' : `${count} pending`}</span>
-            ) : null}
-          </>
-        )
-
-        if (isInteractive && onDayClick) {
-          return (
-            <button
-              key={dateStr}
-              type="button"
-              className="hoursByDayCell hoursByDayCell--interactive"
-              aria-label={`Edit time for ${label.replace(':', '')}, ${hoursLabel}, ${count} sessions`}
-              onClick={() => onDayClick(dateStr)}
-            >
-              {inner}
-            </button>
-          )
-        }
-
-        return (
-          <span key={dateStr} className="hoursByDayCell">
-            {inner}
-          </span>
-        )
-      })}
-    </div>
-  )
-}
-
 type SessionRow = {
   id: string
   clocked_in_at: string
@@ -254,73 +147,49 @@ type BreakdownItem = {
 type Props = {
   userId: string
   hoursDaysCorrect: Set<string>
-  /** When true (e.g. salaried pay config), week day cells do not open the My Time day editor. */
+  /** A salaried person: their days are the office's to change, so no day opens the day editor and no hours are asked. */
   disableDayEditor?: boolean
-  /** A salaried person's own set week, for Your hours (8 hours Monday to Friday when missing). */
-  salariedWeek?: SalariedWeek | null
   /** This week's seconds, for a host that draws the section folded (v2.3891); null while loading. */
   onWeekSeconds?: (seconds: number | null) => void
 }
 
-export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disableDayEditor = false, salariedWeek = null, onWeekSeconds }: Props) {
+export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disableDayEditor = false, onWeekSeconds }: Props) {
   const prefixMap = useLedgerPrefixMap()
-  const { user: authUser, role: authRole } = useAuth()
+  const { user: authUser } = useAuth()
   const myTimeSubjectDisplayName = useMemo(() => {
     if (authUser?.id === userId) return displayNameFromAuthUser(authUser)?.trim() || 'You'
     return 'User'
   }, [authUser, userId])
   const [loading, setLoading] = useState(true)
-  const [totalSecondsToday, setTotalSecondsToday] = useState(0)
   const [totalSecondsWeek, setTotalSecondsWeek] = useState(0)
-  const [totalSecondsLastWeek, setTotalSecondsLastWeek] = useState(0)
+  /** Every session of the weeks the picture shows, and the moment they were read: the picture is built from both. */
+  const [read, setRead] = useState<{ sessions: SessionRow[]; todayYmd: string; nowMs: number } | null>(null)
+  /** The week whose days the picture draws; null follows the current week. */
+  const [chosenWeek, setChosenWeek] = useState<number | null>(null)
   useEffect(() => {
     onWeekSeconds?.(loading ? null : totalSecondsWeek)
     // The number is the message; the callback's identity is not.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, totalSecondsWeek])
-  const [showLastWeek, setShowLastWeek] = useState(false)
   const [breakdown, setBreakdown] = useState<BreakdownItem[]>([])
   const [breakdownOpen, setBreakdownOpen] = useState(false)
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
   const [breakdownLastWeek, setBreakdownLastWeek] = useState<BreakdownItem[]>([])
   const [expandedKeysLastWeek, setExpandedKeysLastWeek] = useState<Set<string>>(new Set())
-  const [secondsByDayThisWeek, setSecondsByDayThisWeek] = useState<Map<string, number>>(new Map())
-  const [secondsByDayLastWeek, setSecondsByDayLastWeek] = useState<Map<string, number>>(new Map())
-  const [rawSessionsThisWeek, setRawSessionsThisWeek] = useState<SessionRow[]>([])
-  const [rawSessionsLastWeek, setRawSessionsLastWeek] = useState<SessionRow[]>([])
   const [editorDate, setEditorDate] = useState<string | null>(null)
   const [timeOffModalOpen, setTimeOffModalOpen] = useState(false)
   const [myTimeJobLabels, setMyTimeJobLabels] = useState<Record<string, string>>({})
   const [myTimeBidLabels, setMyTimeBidLabels] = useState<Record<string, string>>({})
 
-  const sessionCountByDay = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const s of rawSessionsThisWeek) {
-      m.set(s.work_date, (m.get(s.work_date) ?? 0) + 1)
-    }
-    return m
-  }, [rawSessionsThisWeek])
+  const weeks: MyTimeWeek[] = useMemo(
+    () => (read ? buildMyTimeWeeks({ weeks: payWeeksEndingAt(read.todayYmd, MY_TIME_WEEKS), sessions: read.sessions, todayYmd: read.todayYmd, nowMs: read.nowMs }) : []),
+    [read],
+  )
+  const currentWeek = weeks.findIndex((w) => w.current)
+  const selectedWeek = chosenWeek != null && chosenWeek >= 0 && chosenWeek < weeks.length ? chosenWeek : currentWeek
+  const showsLastWeek = currentWeek > 0 && selectedWeek === currentWeek - 1
 
-  const sessionCountByDayLastWeek = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const s of rawSessionsLastWeek) {
-      m.set(s.work_date, (m.get(s.work_date) ?? 0) + 1)
-    }
-    return m
-  }, [rawSessionsLastWeek])
-
-  const myTimeModalSessions = useMemo(() => {
-    if (!editorDate) return []
-    const { start, end } = getDefaultWeekRange()
-    if (editorDate >= start && editorDate <= end) {
-      return rawSessionsThisWeek.filter((s) => s.work_date === editorDate)
-    }
-    const { start: ls, end: le } = getLastWeekRange()
-    if (editorDate >= ls && editorDate <= le) {
-      return rawSessionsLastWeek.filter((s) => s.work_date === editorDate)
-    }
-    return []
-  }, [editorDate, rawSessionsThisWeek, rawSessionsLastWeek])
+  const myTimeModalSessions = useMemo(() => (editorDate && read ? read.sessions.filter((s) => s.work_date === editorDate) : []), [editorDate, read])
 
   useEffect(() => {
     if (editorDate && hoursDaysCorrect.has(editorDate)) {
@@ -335,73 +204,35 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
   const loadData = useCallback(async () => {
     if (!userId) return
     setLoading(true)
-    const today = toLocalDateString(new Date())
-    const { start, end } = getDefaultWeekRange()
-    const { start: lastStart, end: lastEnd } = getLastWeekRange()
+    // One read for the picture's weeks. This week and last week are cut from it for the job breakdown, and the
+    // day is the company's own, since a session's work_date is (docs/TIME_AND_ZONES.md).
+    const todayYmd = todayYmdInAppTz()
+    const payWeeks = payWeeksEndingAt(todayYmd, MY_TIME_WEEKS)
+    const thisWeek = payWeeks[payWeeks.length - 1]!
+    const lastWeek = payWeeks[payWeeks.length - 2] ?? thisWeek
     const now = Date.now()
 
-    const [{ data, error }, { data: lastWeekData }] = await Promise.all([
-      supabase
-        .from('clock_sessions')
-        .select(
-          'id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index'
-        )
-        .eq('user_id', userId)
-        .is('rejected_at', null)
-        .is('revoked_at', null)
-        .gte('work_date', start)
-        .lte('work_date', end),
-      supabase
-        .from('clock_sessions')
-        .select(
-          'id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index'
-        )
-        .eq('user_id', userId)
-        .is('rejected_at', null)
-        .is('revoked_at', null)
-        .gte('work_date', lastStart)
-        .lte('work_date', lastEnd),
-    ])
+    const { data, error } = await supabase
+      .from('clock_sessions')
+      .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index')
+      .eq('user_id', userId)
+      .is('rejected_at', null)
+      .is('revoked_at', null)
+      .gte('work_date', payWeeks[0]!.start)
+      .lte('work_date', thisWeek.end)
 
     if (error) {
       setLoading(false)
       return
     }
 
-    const sessions = (data ?? []) as SessionRow[]
-    setRawSessionsThisWeek(sessions)
-    const lastWeekSessions = (lastWeekData ?? []) as SessionRow[]
-    setRawSessionsLastWeek(lastWeekSessions)
+    const all = (data ?? []) as SessionRow[]
+    setRead({ sessions: all, todayYmd, nowMs: now })
+    const sessions = all.filter((s) => s.work_date >= thisWeek.start && s.work_date <= thisWeek.end)
+    const lastWeekSessions = lastWeek === thisWeek ? [] : all.filter((s) => s.work_date >= lastWeek.start && s.work_date <= lastWeek.end)
 
-    function sessionSeconds(s: SessionRow): number {
-      const inMs = new Date(s.clocked_in_at).getTime()
-      const outMs = s.clocked_out_at ? new Date(s.clocked_out_at).getTime() : now
-      return Math.floor((outMs - inMs) / 1000)
-    }
-
-    const todaySeconds = sessions
-      .filter((s) => s.work_date === today)
-      .reduce((sum, s) => sum + sessionSeconds(s), 0)
-    const weekSeconds = sessions.reduce((sum, s) => sum + sessionSeconds(s), 0)
-    const lastWeekSeconds = lastWeekSessions.reduce((sum, s) => sum + sessionSeconds(s), 0)
-
-    setTotalSecondsToday(todaySeconds)
-    setTotalSecondsWeek(weekSeconds)
-    setTotalSecondsLastWeek(lastWeekSeconds)
-
-    const secondsByDay = new Map<string, number>()
-    for (const s of sessions) {
-      const cur = secondsByDay.get(s.work_date) ?? 0
-      secondsByDay.set(s.work_date, cur + sessionSeconds(s))
-    }
-    setSecondsByDayThisWeek(secondsByDay)
-
-    const secondsByDayLW = new Map<string, number>()
-    for (const s of lastWeekSessions) {
-      const cur = secondsByDayLW.get(s.work_date) ?? 0
-      secondsByDayLW.set(s.work_date, cur + sessionSeconds(s))
-    }
-    setSecondsByDayLastWeek(secondsByDayLW)
+    const sessionSeconds = (s: SessionRow): number => myTimeSessionSeconds(s, todayYmd, now)
+    setTotalSecondsWeek(sessions.reduce((sum, s) => sum + sessionSeconds(s), 0))
 
     type ParentGroup = { type: 'job' | 'bid'; jobId?: string; bidId?: string; byNotes: Map<string, number> }
     const parentGroups = new Map<string, ParentGroup>()
@@ -669,7 +500,12 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
     { debounceMs: 500 },
   )
 
-  const handleToggleLastWeek = () => setShowLastWeek((prev) => !prev)
+  /** A day the person can open themself: this week's, with time on it, and not one the office marked correct. */
+  const canPressDay = useCallback(
+    (day: MyTimeDay, week: MyTimeWeek) => !disableDayEditor && week.current && day.kind !== 'come' && day.seconds > 0 && day.sessions > 0 && !hoursDaysCorrect.has(day.ymd),
+    [disableDayEditor, hoursDaysCorrect],
+  )
+  const shownBreakdown = selectedWeek === currentWeek ? breakdown : showsLastWeek ? breakdownLastWeek : []
 
   if (loading && breakdown.length === 0) {
     return (
@@ -692,40 +528,31 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
         padding: '0.85rem 1rem 1rem',
       }}
     >
-      {/* One My Time card (v2.1551): header, duration tiles, always-visible week
-          grid, breakdown behind the toggle, one action row. The orange clock
-          strip above stays as-is (owner request). */}
+      {/* One My Time card (v2.1551): header, the picture of the time added up, the
+          job breakdown behind the toggle, one action row. The orange clock strip
+          above stays as-is (owner request). */}
       <DashboardCardHead below="0.6rem">
         <DashboardCardTitle>My Time</DashboardCardTitle>
       </DashboardCardHead>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.75rem' }}>
-        <div style={{ background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.5rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Today</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>
-            {formatDurationHM(totalSecondsToday)}
-          </div>
-        </div>
-        <div style={{ background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.5rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>This week</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>
-            {formatDurationHM(totalSecondsWeek)}
-          </div>
-        </div>
-      </div>
-      {/* Your hours (design spike): what you said you can work, this week against it, eight weeks as bars. */}
-      <DashboardMyHoursBlock userId={userId} displayName={myTimeSubjectDisplayName} role={authRole ?? ''} isSalary={disableDayEditor} salariedWeek={salariedWeek} />
-      {renderHoursByDay(getDefaultWeekRange().start, secondsByDayThisWeek, {
-        sessionCountByDay,
-        onDayClick: disableDayEditor ? undefined : setEditorDate,
-        editableRange: getDefaultWeekRange(),
-        hoursDaysCorrect,
-        useOnShiftDayLabel: disableDayEditor,
-      })}
-      {breakdown.length > 0 && (
+      {/* The picture (the owner, 2026-11-23): the week's time as one figure, a column for each day and for each of the
+          last eight weeks. It replaces the two tiles, the hours block and the seven lines of text. */}
+      <DashboardMyTimePicture
+        weeks={weeks}
+        selected={selectedWeek}
+        onSelect={setChosenWeek}
+        canPressDay={canPressDay}
+        onDayPress={disableDayEditor ? undefined : setEditorDate}
+      >
+        {/* The office plans the crew from the answer, so the card still asks. A salaried person's week is on pay. */}
+        {disableDayEditor ? null : <MyTimeCanWorkLine userId={userId} displayName={myTimeSubjectDisplayName} />}
+      </DashboardMyTimePicture>
+      {/* The job-by-job fold follows the week chosen, for this week and last week. An older week shows its days only. */}
+      {shownBreakdown.length > 0 && (
         <>
           <button
             type="button"
             onClick={() => setBreakdownOpen((o) => !o)}
+            aria-expanded={breakdownOpen}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -741,21 +568,27 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
             }}
           >
             <span aria-hidden>{breakdownOpen ? '▼' : '▶'}</span>
-            This week detail
+            {showsLastWeek ? 'Last week detail' : 'This week detail'}
           </button>
           {breakdownOpen &&
-            renderBreakdownList(breakdown, expandedKeys, (key) => {
-              setExpandedKeys((prev) => {
-                const next = new Set(prev)
-                if (next.has(key)) next.delete(key)
-                else next.add(key)
-                return next
-              })
-            })}
+            (showsLastWeek
+              ? renderBreakdownList(breakdownLastWeek, expandedKeysLastWeek, (key) => {
+                  setExpandedKeysLastWeek((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(key)) next.delete(key)
+                    else next.add(key)
+                    return next
+                  })
+                })
+              : renderBreakdownList(breakdown, expandedKeys, (key) => {
+                  setExpandedKeys((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(key)) next.delete(key)
+                    else next.add(key)
+                    return next
+                  })
+                }))}
         </>
-      )}
-      {!loading && breakdown.length === 0 && totalSecondsWeek === 0 && (
-        <EmptyState compact {...myTimeWeekEmptyWords(showLastWeek ? null : () => setShowLastWeek(true))} />
       )}
       <div
         style={{
@@ -767,27 +600,6 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
           paddingTop: '0.7rem',
         }}
       >
-        <button
-          type="button"
-          onClick={handleToggleLastWeek}
-          aria-expanded={showLastWeek}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            padding: '0.3rem 0.7rem',
-            background: showLastWeek ? 'var(--bg-subtle)' : 'var(--surface)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 6,
-            cursor: 'pointer',
-            fontSize: '0.8125rem',
-            color: 'var(--text-700)',
-            fontWeight: 500,
-          }}
-        >
-          <span aria-hidden>{showLastWeek ? '▼' : '▶'}</span>
-          Last week
-        </button>
         {/* A day the clock missed (v2.4257): the person reports it, the office approves it. Not for salaried people. */}
         {disableDayEditor ? null : <MissedClockInDoor userId={userId} variant="button" />}
         {/* Personal Time Off moved here from Settings → Your account (v2.1544). */}
@@ -809,28 +621,6 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
           Personal Time Off…
         </button>
       </div>
-      {showLastWeek && (
-        <>
-          <div className="myTimeLastWeekSummary">
-            <div style={{ marginTop: '0.5rem', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
-              Last week: {formatDurationHM(totalSecondsLastWeek)}
-            </div>
-            {renderHoursByDay(getLastWeekRange().start, secondsByDayLastWeek, {
-              sessionCountByDay: sessionCountByDayLastWeek,
-              useOnShiftDayLabel: disableDayEditor,
-            })}
-          </div>
-          {breakdownLastWeek.length > 0 &&
-            renderBreakdownList(breakdownLastWeek, expandedKeysLastWeek, (key) => {
-              setExpandedKeysLastWeek((prev) => {
-                const next = new Set(prev)
-                if (next.has(key)) next.delete(key)
-                else next.add(key)
-                return next
-              })
-            })}
-        </>
-      )}
       <PersonalTimeOffModal open={timeOffModalOpen} userId={userId} onClose={() => setTimeOffModalOpen(false)} />
       {editorDate && !disableDayEditor && (
         <DashboardMyTimeDayEditorModal

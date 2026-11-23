@@ -47,6 +47,19 @@ export function canSendGcTradeEmail(role: UserRole | null | undefined): boolean 
 }
 
 /**
+ * Who sends a trade company its own paper for signature (punch list #403, step 5): the four roles that send any paper,
+ * a dev, a leader, an assistant and the controller. A sub's company is a trade company, so the office sends its
+ * agreement from People. The client's copy of `COMPANY_PAPER_SEND_ROLES`
+ * (`supabase/functions/_shared/companySigningSend.ts`), which `send-contract-for-signature` asks; `access.test.ts` fails
+ * when the two differ. Every other email to a trade partner stays with `canSendGcTradeEmail`.
+ */
+export const COMPANY_PAPER_SEND_TEAM: readonly UserRole[] = ['dev', 'master_technician', 'assistant', 'controller']
+
+export function canSendCompanyPaper(role: UserRole | null | undefined): boolean {
+  return role != null && COMPANY_PAPER_SEND_TEAM.includes(role)
+}
+
+/**
  * GC mode, the Building lane (U3a-ii): who opens Building's windows on a job being built, the Daily
  * log first. A dev while Building is built, since every Building table's policy is `is_dev()` until
  * Building's door (`doors.ts`). `access.test.ts` fails when this list and those doors disagree, so the

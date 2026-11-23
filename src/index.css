@@ -1783,106 +1783,69 @@ button:focus-visible {
   gap: 0.5rem;
 }
 
-/* My Time: Hours by day - 7 columns on desktop, vertical stack on mobile */
-.hoursByDayGrid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.25rem 0.5rem;
-  margin-bottom: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--bg-page);
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  color: var(--text-muted);
-}
-
-.hoursByDayCell {
-  min-width: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-button.hoursByDayCell.hoursByDayCell--interactive {
-  margin: 0;
-  padding: 0.15rem 0.25rem;
-  width: 100%;
-  max-width: 100%;
-  font: inherit;
-  font-size: inherit;
-  color: inherit;
-  text-align: inherit;
-  line-height: inherit;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  box-sizing: border-box;
-}
-
-button.hoursByDayCell.hoursByDayCell--interactive:hover {
-  background: var(--bg-muted);
-  border-color: var(--border);
-}
-
-button.hoursByDayCell.hoursByDayCell--interactive:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
-}
-
-.hoursByDayGoalsLine {
-  font-size: 0.75rem;
-  color: var(--text-faint);
-  line-height: 1.2;
-}
-
-@media (min-width: 641px) {
-  .hoursByDayCell {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    align-items: center;
-    text-align: center;
-  }
-
-  button.hoursByDayCell.hoursByDayCell--interactive {
-    text-align: center;
-  }
-}
-
+/* My Time's picture (the owner, 2026-11-23): the time added up, and the days it came from. One big figure, a column
+   for each day of the week chosen, and a column for each of the last eight weeks. One colour, since the card counts
+   time and grades nothing. A stopped day (the end-of-day stop closed it) is the only other look, and it carries a
+   mark and a sentence as well as its amber. */
+.myTimePic { background: var(--bg-subtle); border-radius: 8px; padding: 0.35rem 0.7rem 0.7rem; margin-bottom: 0.5rem; }
+.myTimeNav { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; }
+.myTimeArrow { width: 44px; height: 44px; margin: 0; padding: 0; border: none; border-radius: 8px; background: none; color: var(--text-link); font: inherit; font-size: 1.4rem; font-weight: 700; line-height: 1; cursor: pointer; }
+.myTimeArrow:hover { background: var(--bg-muted); }
+.myTimeArrow:disabled { color: var(--text-faint); background: none; cursor: default; }
+.myTimeNavLabel { text-align: center; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.myTimeHeads { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.6rem; margin-top: 0.1rem; }
+.myTimeBig { font-size: 1.9rem; font-weight: 700; line-height: 1.05; color: var(--text-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.myTimeBig small { font-size: 1.05rem; font-weight: 700; }
+.myTimeSide { text-align: right; font-size: 0.75rem; line-height: 1.3; color: var(--text-muted); }
+.myTimeSide b { display: block; font-size: 1.05rem; color: var(--text-strong); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.myTimeLive { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.25rem; font-size: 0.78rem; color: var(--text-700); }
+.myTimeLive i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #2563eb; box-shadow: 0 0 0 3px var(--bg-blue-tint); }
+.myTimeAlert { display: flex; gap: 0.5rem; margin-top: 0.5rem; padding: 0.5rem 0.6rem; border-radius: 8px; background: var(--bg-amber-tint); color: var(--text-amber-800); font-size: 0.8125rem; line-height: 1.4; }
+.myTimeAlert i { flex: none; width: 20px; height: 20px; border: 2px solid currentColor; border-radius: 50%; font-style: normal; font-weight: 800; font-size: 0.8125rem; line-height: 16px; text-align: center; }
+.myTimeAlert .vipWorked { color: inherit; }
+.myTimeDays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 0.6rem; }
+.myTimeDay { display: grid; grid-template-rows: auto auto 56px auto auto; justify-items: center; gap: 2px; min-width: 0; margin: 0; padding: 4px 0 5px; border: 1.5px solid transparent; border-radius: 8px; background: none; color: inherit; font: inherit; }
+button.myTimeDay { cursor: pointer; }
+button.myTimeDay:hover { background: var(--bg-muted); }
+button.myTimeDay:focus-visible, .myTimeWeek:focus-visible, .myTimeArrow:focus-visible, .myTimeBack:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; }
+.myTimeDayName { font-size: 0.6875rem; line-height: 1.2; color: var(--text-muted); }
+.myTimeDayDate { padding: 0 5px; border-radius: 9px; font-size: 0.75rem; font-weight: 600; line-height: 1.3; color: var(--text-700); }
+.myTimeCol { position: relative; width: 72%; max-width: 28px; height: 56px; border-bottom: 2px solid var(--border-strong); }
+.myTimeCol i { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 4px 4px 0 0; background: #2563eb; }
+.myTimeCol em { position: absolute; left: 50%; top: -2px; width: 16px; height: 16px; transform: translateX(-50%); border: 1.5px solid var(--text-amber-800); border-radius: 50%; background: var(--bg-amber-tint); color: var(--text-amber-800); font-style: normal; font-weight: 800; font-size: 0.6875rem; line-height: 13px; text-align: center; }
+.myTimeH { font-size: 0.875rem; font-weight: 700; line-height: 1.15; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.myTimeM { min-height: 12px; font-size: 0.65625rem; line-height: 1.15; color: var(--text-700); font-variant-numeric: tabular-nums; }
+.myTimeDay--zero .myTimeH { font-weight: 500; color: var(--text-muted); }
+.myTimeDay--come { opacity: 0.55; }
+.myTimeDay--come .myTimeCol { border-bottom-style: dashed; }
+.myTimeDay--today { border-color: var(--text-link); background: var(--bg-blue-tint); }
+.myTimeDay--today .myTimeDayDate { background: #2563eb; color: #fff; }
+.myTimeDay--running .myTimeCol i { background: linear-gradient(to bottom, #93c5fd 0 4px, #2563eb 4px); }
+.myTimeDay--stopped { border-color: var(--text-amber-800); border-style: dashed; }
+.myTimeDay--stopped .myTimeCol i { background: repeating-linear-gradient(135deg, var(--text-amber-800) 0 3px, transparent 3px 6px); }
+.myTimeDay--stopped .myTimeH, .myTimeDay--stopped .myTimeM { color: var(--text-amber-800); }
+.myTimeHint { margin-top: 0.4rem; font-size: 0.75rem; line-height: 1.4; color: var(--text-muted); }
+.myTimeBack { min-height: 44px; margin: 0; padding: 0; border: none; background: none; color: var(--text-link); font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+.myTimeRule { margin: 0.7rem 0 0.5rem; border-top: 1px solid var(--border); }
+.myTimeEyebrow { margin: 0; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.myTimeWeeks { display: grid; gap: 3px; margin-top: 0.4rem; }
+.myTimeWeek { display: grid; grid-template-rows: auto auto 40px auto; justify-items: center; gap: 1px; min-width: 0; min-height: 44px; margin: 0; padding: 3px 0 4px; border: 1.5px solid transparent; border-radius: 7px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.myTimeWeek:hover { background: var(--bg-muted); }
+.myTimeWeek .myTimeH { font-size: 0.75rem; }
+.myTimeWeek .myTimeM { min-height: 11px; font-size: 0.59375rem; }
+.myTimeWeek .myTimeCol { width: 62%; max-width: 20px; height: 40px; }
+.myTimeWeek .myTimeCol i { border-radius: 3px 3px 0 0; opacity: 0.6; }
+.myTimeWeekDate { font-size: 0.625rem; line-height: 1.3; letter-spacing: -0.02em; white-space: nowrap; color: var(--text-muted); }
+.myTimeWeek--on { border-color: var(--text-link); background: var(--bg-blue-tint); }
+.myTimeWeek--on .myTimeCol i { opacity: 1; }
+.myTimeWeek--on .myTimeWeekDate { font-weight: 700; color: var(--text-strong); }
+.myTimeOffice { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.6rem; font-size: 0.78rem; color: var(--text-muted); }
+.myTimeOffice button { min-height: 32px; padding: 0.2rem 0.65rem; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-700); font: inherit; font-size: 0.78rem; font-weight: 500; white-space: nowrap; cursor: pointer; }
 @media (max-width: 640px) {
-  .hoursByDayGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .hoursByDayCell {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: baseline;
-    column-gap: 0.25rem;
-  }
-
-  button.hoursByDayCell.hoursByDayCell--interactive {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: flex-start;
-    text-align: left;
-  }
-
-  /* My Time: last week total + day rows align with right-aligned "Last week detail" toggle */
-  .myTimeLastWeekSummary {
-    text-align: right;
-  }
-
-  .myTimeLastWeekSummary .hoursByDayGrid {
-    justify-items: end;
-    text-align: right;
-  }
-
-  .myTimeLastWeekSummary .hoursByDayCell {
-    align-items: flex-end;
-  }
+  .myTimeOffice button { min-height: 44px; }
 }
+
+
 
 /* Dashboard My Time day editor — vertical timeline (scroll + touch-friendly strip) */
 .myTimeDayTimelineScroll {
