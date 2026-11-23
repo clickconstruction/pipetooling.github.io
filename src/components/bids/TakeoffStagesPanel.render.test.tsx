@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TakeoffStagesPanel } from './TakeoffStagesPanel'
 import { computeMaterialsByStage, stageWeights } from '../../lib/bids/materialsByStage'
+import { moneyText } from '../../test/moneyText'
 
 const summary = computeMaterialsByStage({
   countRows: [
@@ -49,7 +50,7 @@ describe('TakeoffStagesPanel', () => {
     expect(screen.getByTestId('stage-scaled-top_out').textContent).toBe('$150.00')
     expect(screen.getByTestId('stage-scaled-trim_set').textContent).toBe('$300.00')
     expect(screen.getByTestId('stage-scaled-total').textContent).toBe('$600.00')
-    expect(screen.getByText(/2 of 3 costed fixtures staged · 1 still needs a stage \(\$50\.00\)/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/2 of 3 costed fixtures staged · 1 still needs a stage \(\$50\.00\)/))).toBeTruthy()
     expect(screen.getByText(/Shares 25 · 25 · 50 %/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Print schedule of values/ })).toBeNull()
   })
