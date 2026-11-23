@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import type { PermitRow } from '../_shared/permitFeed.ts'
-import { feedPasses, feedsToPull, passDayColumns, passStarts, permitCity, PERMIT_CITY_NAMES, type FeedPass, type FeedReader, type NewestHeldDays } from '../_shared/permitCities.ts'
+import { feedPasses, feedsToPull, heldPassStarts, issuedReadingRecord, passDayColumns, passStarts, permitCity, PERMIT_CITY_NAMES, type FeedPass, type FeedReader, type KeptIssuedReading, type NewestHeldDays } from '../_shared/permitCities.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { builderKeyOf } from '../_shared/permitLookup.ts'
 import { fillPoints, idBatches, idOfAny, parcelIdsToAsk, withoutPointColumns, type ParcelPoint, type ParcelPointSource } from '../_shared/permitParcelPoints.ts'
@@ -23,6 +23,9 @@ import { fillPoints, idBatches, idOfAny, parcelIdsToAsk, withoutPointColumns, ty
  * on that feed's rows, and its day is `issuedSince` in the feed's answer. Every reading's start is
  * worked out before the feed's first row is written (`passStarts`, v2.8328): the first reading
  * writes fresh issued days, and a start counted back from those skipped the permits dated before it.
+ * The second reading also keeps its own start on `permit_pulls` (`issued_since`, `issued_whole`,
+ * v2.8402): while the newest kept one did not read to its end, the next starts no later than it
+ * (`heldPassStarts`), so a month of failed second readings cannot walk past what was issued meanwhile.
  *
  * Auth: `X-Cron-Secret` = CRON_SECRET, or a bearer JWT whose user passes
  * `user_can_research_permits()`. Body: `{ city?: string, since?: 'YYYY-MM-DD', until?: 'YYYY-MM-DD', dry_run?: boolean }`.
@@ -87,6 +90,17 @@ async function newestHeldDay(admin: SupabaseClient, source: string, column: Feed
   return (data as Record<string, string | null> | null)?.[column] ?? null
 }
 
+/**
+ * The newest kept word on a feed's second reading (`permit_pulls.issued_since`, `issued_whole`, v2.8402).
+ * Deployed ahead of migration *_permit_pulls_issued_reading there is no column: nothing is kept yet.
+ */
+async function keptIssuedReading(admin: SupabaseClient, source: string): Promise<KeptIssuedReading | null> {
+  const { data, error } = await admin.from('permit_pulls').select('issued_since, issued_whole').eq('source', source).not('issued_whole', 'is', null).order('ran_at', { ascending: false }).limit(1).maybeSingle()
+  if (error || !data) return null
+  const row = data as { issued_since: string | null; issued_whole: boolean | null }
+  return { issuedSince: row.issued_since, issuedWhole: row.issued_whole }
+}
+
 async function readPage(feed: FeedReader, pass: FeedPass, since: string, size: number, offset: number, until: string | null): Promise<Record<string, unknown>[]> {
   const url = until && feed.pageUrlBefore ? feed.pageUrlBefore(since, until, size, offset) : pass.pageUrl(since, size, offset)
   const res = await fetch(url, { headers: { Accept: 'application/json' } })
@@ -145,6 +159,9 @@ serve(async (req) => {
   for (const feed of feedsToPull(askedCity)) {
     const outcome: FeedOutcome = { source: feed.source, since: '', seen: 0, kept: 0, pages: 0, error: null }
     outcomes.push(outcome)
+    // The second reading's start and whether it read to its end, kept on the run's row (v2.8402).
+    let issued: { passes: FeedPass[]; starts: string[] } | null = null
+    let issuedWhole = false
     try {
       // The parcel layers that refused a read in this run: one refusal ends the asking of that layer, so a layer that is down does not spend the time budget.
       const refused = new Set<ParcelPointSource>()
@@ -155,7 +172,10 @@ serve(async (req) => {
       if (!sinceOverride) {
         for (const col of passDayColumns(passes)) newestHeld[col] = await newestHeldDay(admin, feed.source, col)
       }
-      const starts = passStarts(passes, newestHeld, today, sinceOverride)
+      // The second reading's own kept start holds it back while the last one did not finish (v2.8402).
+      const kept = sinceOverride || !passes.some((p) => p.issuedAgain) ? null : await keptIssuedReading(admin, feed.source)
+      const starts = heldPassStarts(passes, passStarts(passes, newestHeld, today, sinceOverride), kept, sinceOverride)
+      issued = { passes, starts }
       for (const [i, pass] of passes.entries()) {
         // A reading cut short by the time budget ends the feed: the next run carries on.
         if (outcome.error) break
@@ -241,19 +261,25 @@ serve(async (req) => {
           if (records.length < size) break
           offset += size
         }
+        // Read to its end: no error and no time budget stopped it. The page cap ends a reading as it always did.
+        if (pass.issuedAgain && !outcome.error) issuedWhole = true
       }
     } catch (e) {
       outcome.error = e instanceof Error ? e.message : String(e)
     }
     if (!dryRun) {
-      await admin.from('permit_pulls').insert({
+      const run = {
         source: feed.source,
         city: feed.city,
         since: outcome.since || null,
         rows_seen: outcome.seen,
         rows_kept: outcome.kept,
         error: outcome.error,
-      })
+      }
+      const kept = issued ? issuedReadingRecord(issued.passes, issued.starts, issuedWhole, sinceOverride) : { issued_since: null, issued_whole: null }
+      const { error: runError } = await admin.from('permit_pulls').insert({ ...run, ...kept })
+      // Deployed ahead of migration *_permit_pulls_issued_reading, the row still lands, without issued_since and issued_whole.
+      if (runError && /issued_(since|whole)/.test(runError.message)) await admin.from('permit_pulls').insert(run)
     }
     console.log(JSON.stringify({ fn: 'permit-pull', ...outcome }))
   }
