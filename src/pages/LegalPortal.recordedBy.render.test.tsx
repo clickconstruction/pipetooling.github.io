@@ -26,7 +26,7 @@ afterEach(() => {
 const company = { name: 'Click Plumbing and Electrical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' }
 
 async function openPortal(linkPerson: string | null) {
-  const payload = { ...(sampleLegalPortalResponse(company as never, new Date().toISOString().slice(0, 10)) as Record<string, unknown>), linkPerson }
+  const payload: Record<string, unknown> = { ...(sampleLegalPortalResponse(company as never, new Date().toISOString().slice(0, 10)) as unknown as Record<string, unknown>), linkPerson }
   const posts: Array<Record<string, unknown>> = []
   vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
     if (String(url).includes('submit-legal-portal')) {

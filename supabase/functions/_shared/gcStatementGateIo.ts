@@ -6,7 +6,7 @@
  */
 import { todayYmdInAppTz } from './appTimeZone.ts'
 import { gcCertWeekStartYmd, gcStatementGate, type GcStatementCertIn, type GcStatementGateResult } from './gcStatementGate.ts'
-import { applyPaymentRule, attachJobTotals, payloadJobIds, type GcStatementPayload, type GcStatementPayloadGroup, type GcStatementPayloadRow } from './gcStatementPayload.ts'
+import { applyPaymentRule, attachJobTotals, payloadJobIds, setInKindApart, type GcStatementPayload, type GcStatementPayloadGroup, type GcStatementPayloadRow } from './gcStatementPayload.ts'
 
 // deno-lint-ignore no-explicit-any
 export async function readGcStatementGate(admin: any, gcId: string, opts: { rows?: readonly GcStatementPayloadRow[]; now?: Date } = {}): Promise<GcStatementGateResult> {
@@ -38,6 +38,8 @@ async function liveRows(admin: any, gcId: string): Promise<GcStatementPayloadRow
     attachJobTotals(payload, Object.fromEntries(((totals ?? []) as Array<{ id: string; revenue: number | null }>).map((j) => [j.id, j.revenue])))
   }
   applyPaymentRule(payload)
+  // v2.8309: a bill an in kind deal pays is not on the statement, so it is not checked either.
+  setInKindApart(payload)
   return payload.groups.find((g) => g.entity_id === gcId)?.rows ?? []
 }
 

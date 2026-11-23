@@ -2,7 +2,7 @@
 title: see a customer's full history and lifetime value
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: customer page, customer hub, drive folder, customer folder, lifetime value, LCV, customer profile, open balance, customer history, customer detail, property, additional addresses, county, legal description, owner of record, parcel, lien-ready, appraisal district, CAD
+keywords: customer page, customer hub, permits tab, names on permits, drive folder, customer folder, lifetime value, LCV, customer profile, open balance, customer history, customer detail, property, additional addresses, county, legal description, owner of record, parcel, lien-ready, appraisal district, CAD
 order: 41
 ---
 Every customer has a page of their own. Click their name on the Customers page to see who they are, their worth and everything in motion.
@@ -68,6 +68,14 @@ The **Jobs** tab is the customer's complete job history. It includes paid jobs t
 ## Audit their invoices
 
 The **Invoices** tab lists every invoice across all the customer's jobs. Each row shows the channel: Stripe, HCP or Physical. HCP is short for HouseCall Pro. It shows the status: {{chip:gray|Draft}} {{chip:yellow|Billed}} {{chip:blue|Partial}} {{chip:green|Paid}}. It shows the amount, the billed date and the last-paid date. Billed invoices waiting 30+ days show their age on the chip. Stripe invoices link straight to the hosted invoice. The **Lifetime** row at the bottom is the same number as the money strip up top. It includes jobs that were billed before the app kept invoice rows. Its *collected* figure counts every payment on the customer's jobs, just like the strip.
+
+## See what the city has on their jobs
+
+The **Permits** tab lists the jobs you priced for this customer. Each one shows what the city has on its address. Below the jobs are the names on permits tied to the customer.
+
+The office and estimators see this tab. The **Profile** tab has a **Names on permits** line that opens it.
+
+Read more in [See the jobs you priced for a GC](/help/see-what-the-city-has-on-a-bids-address#see-the-jobs-you-priced-for-a-gc).
 
 ## Follow the Activity feed
 

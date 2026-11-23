@@ -226,6 +226,11 @@ serve(async (req) => {
                 const bare = slice.map(({ builder_key: _dropped, ...rest }: Record<string, unknown>) => rest)
                 ;({ error } = await admin.from('permits').upsert(bare, { onConflict: 'city,source,permit_number,permit_type', ignoreDuplicates: false }))
               }
+              // Deployed ahead of migration *_permit_contact_phone, the same: the rows land without their phone.
+              if (error && /contact_phone/.test(error.message)) {
+                const bare = slice.map(({ contact_phone: _dropped, ...rest }: Record<string, unknown>) => rest)
+                ;({ error } = await admin.from('permits').upsert(bare, { onConflict: 'city,source,permit_number,permit_type', ignoreDuplicates: history }))
+              }
               if (error) throw new Error(`the upsert failed: ${error.message}`)
             }
           }

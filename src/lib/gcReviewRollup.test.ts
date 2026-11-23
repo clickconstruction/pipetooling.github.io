@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildGcReviewRollup, GC_REVIEW_NO_DEVELOPMENT_KEY, GC_REVIEW_NO_GC_KEY } from './gcReviewRollup'
+import { buildGcReviewRollup, gcGroupsInKind, GC_REVIEW_NO_DEVELOPMENT_KEY, GC_REVIEW_NO_GC_KEY } from './gcReviewRollup'
 import type { StageRow } from './jobsStagesBoard'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
@@ -211,5 +211,98 @@ describe('buildGcReviewRollup', () => {
     )
     expect(rollup.groups.map((g) => g.gcName)).toEqual(['Lowbeck Contracting', 'Kestrin Contracting'])
     expect(rollup.groups[0]!.oldestAgeDays).toBe(30)
+  })
+
+  describe('a bill an in kind deal pays (v2.8309, punch list #301)', () => {
+    const DEAL = 'deal-1'
+
+    it('a covered bill is on no row, no subtotal and no age, and the group counts it', () => {
+      const onDeal = job({ id: 'j1', gcCustomer: KESTRIN, in_kind_arrangement_id: DEAL })
+      const money = job({ id: 'j2', gcCustomer: KESTRIN })
+      const rollup = buildGcReviewRollup(
+        [
+          // The deal's bill is the oldest: it must not set the group's age.
+          invRow({ id: 'i1', job: onDeal, amount: 700, billed_at: '2026-01-01T17:00:00Z' }),
+          invRow({ id: 'i2', job: money, amount: 300 }),
+        ],
+        [],
+        { now: NOW },
+      )
+      const g = rollup.groups[0]!
+      expect(g.rows.map((r) => r.key)).toEqual(['i2'])
+      expect(g.subtotal).toBe(300)
+      expect(g.jobCount).toBe(1)
+      expect(g.oldestAgeDays).toBe(30)
+      expect(g.inKind).toEqual({ count: 1, dollars: 700 })
+      expect(rollup.grandTotal).toBe(300)
+      expect(rollup.inKind).toEqual({ count: 1, dollars: 700 })
+    })
+
+    it('a payer part covered keeps the bills off the deal as money owed', () => {
+      const onDeal = job({ id: 'j1', gcCustomer: KESTRIN, in_kind_arrangement_id: DEAL })
+      const off = job({ id: 'j2', gcCustomer: KESTRIN })
+      const other = job({ id: 'j3', gcCustomer: LOWBECK })
+      const rollup = buildGcReviewRollup(
+        [
+          invRow({ id: 'i1', job: onDeal, amount: 500 }),
+          invRow({ id: 'i2', job: onDeal, amount: 250 }),
+          invRow({ id: 'i3', job: off, amount: 900 }),
+          invRow({ id: 'i4', job: other, amount: 40 }),
+        ],
+        [],
+        { now: NOW },
+      )
+      const kestrin = rollup.groups.find((g) => g.gcId === KESTRIN.id)!
+      expect(kestrin.subtotal).toBe(900)
+      expect(kestrin.inKind).toEqual({ count: 2, dollars: 750 })
+      // A payer with no deal counts nothing.
+      expect(rollup.groups.find((g) => g.gcId === LOWBECK.id)!.inKind).toEqual({ count: 0, dollars: 0 })
+      expect(gcGroupsInKind(rollup.groups)).toEqual({ count: 2, dollars: 750 })
+    })
+
+    it('an ordinary late bill is aged and owed as before', () => {
+      const late = job({ id: 'j1', gcCustomer: KESTRIN })
+      const rollup = buildGcReviewRollup([invRow({ id: 'i1', job: late, amount: 800, billed_at: '2026-03-01T17:00:00Z' })], [], { now: NOW })
+      expect(rollup.groups[0]!.subtotal).toBe(800)
+      expect(rollup.groups[0]!.oldestAgeDays).toBeGreaterThan(90)
+      expect(rollup.inKind).toEqual({ count: 0, dollars: 0 })
+    })
+
+    it('a payer whose every bill is on a deal has no group, and the rollup still counts the bills', () => {
+      const onDeal = job({ id: 'j1', gcCustomer: KESTRIN, in_kind_arrangement_id: DEAL })
+      const rollup = buildGcReviewRollup([invRow({ id: 'i1', job: onDeal, amount: 700 })], [], { now: NOW })
+      expect(rollup.groups).toEqual([])
+      expect(rollup.grandTotal).toBe(0)
+      expect(rollup.inKind).toEqual({ count: 1, dollars: 700 })
+    })
+
+    it('a bill a credit has paid off is left out and not counted', () => {
+      const paidOff = job({ id: 'j1', gcCustomer: KESTRIN, in_kind_arrangement_id: DEAL, payments: [{ id: 'p1', job_id: 'j1', invoice_id: 'i1', amount: 700, paid_on: '2026-07-10', payment_type: 'in_kind', reference_number: null, sequence_order: 1 }] as never })
+      const rollup = buildGcReviewRollup([invRow({ id: 'i1', job: paidOff, amount: 700 })], [], { now: NOW })
+      expect(rollup.groups).toEqual([])
+      expect(rollup.inKind).toEqual({ count: 0, dollars: 0 })
+    })
+
+    it('Include Collections neither lists nor counts a deal\'s bill', () => {
+      const onDeal = job({ id: 'j1', gcCustomer: KESTRIN, in_kind_arrangement_id: DEAL })
+      const money = job({ id: 'j2', gcCustomer: KESTRIN })
+      const rows = [invRow({ id: 'i1', job: onDeal, amount: 700 }), invRow({ id: 'i2', job: money, amount: 300 })]
+      const off = buildGcReviewRollup([], rows, { now: NOW })
+      expect(off.collectionsCount).toBe(1)
+      expect(off.collectionsTotal).toBe(300)
+      expect(off.inKind).toEqual({ count: 0, dollars: 0 })
+      const on = buildGcReviewRollup([], rows, { now: NOW, includeCollections: true })
+      expect(on.groups[0]!.rows.map((r) => r.key)).toEqual(['i2'])
+      expect(on.inKind).toEqual({ count: 1, dollars: 700 })
+    })
+
+    it('by development the same bill is left out of its development', () => {
+      const dev = { id: 'dev-1', name: 'Harbor Row' }
+      const onDeal = job({ id: 'j1', development: dev as never, in_kind_arrangement_id: DEAL })
+      const money = job({ id: 'j2', development: dev as never })
+      const rollup = buildGcReviewRollup([invRow({ id: 'i1', job: onDeal, amount: 700 }), invRow({ id: 'i2', job: money, amount: 300 })], [], { now: NOW, groupBy: 'development' })
+      expect(rollup.groups[0]!.subtotal).toBe(300)
+      expect(rollup.groups[0]!.inKind).toEqual({ count: 1, dollars: 700 })
+    })
   })
 })
