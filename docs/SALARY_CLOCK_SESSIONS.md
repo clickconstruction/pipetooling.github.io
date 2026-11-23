@@ -5,7 +5,7 @@ file: SALARY_CLOCK_SESSIONS.md
 type: Runbook / Reference
 purpose: Salaried auto-session sync behavior (salary_sync_one_user_clock_sessions)
 audience: Developers, Operators
-last_updated: 2026-11-20
+last_updated: 2026-11-23
 ---
 
 > **Audience**: Developers and operators changing pay, My Time, or salary Settings.  
@@ -34,7 +34,7 @@ Salaried users get **auto materialized** `clock_sessions` rows with `origin = 's
 The materialized `salary_schedule` sessions above drive the **calendar/On-Shift display**. They do **not** drive payroll math. The per-person flags live on `people_pay_config`:
 
 - **`is_salary`** — the flag. Payroll and costing credit each day its hours in the person's week (`salaried_week_hours` below, 8 h on weekdays and 0 on weekends by default, the old flat 8/0).
-- **`salaried_week_hours`** — the paid hours of each day of this person's salaried week (v2.7826, migration `20261118160000`): seven numbers, Sunday first, in quarter hours, 0 for a day off, 8 on the five weekdays by default. Since v2.7829 the payroll tier pays a day its hours in this week in place of the flat 8/0 (`salariedWeekOf` in `salariedEffectiveHours.ts`, carried on the payroll window as `week`), so a Saturday pays when the week says so and a weekday the week leaves out pays nothing. Since v2.7840 (migration `20261118190000`) the five database cost readers (`get_man_hours_by_job`, `keep_job_baseline`, `list_project_board`, `superintendent_scores`, `get_weekly_money_movement_payload`) ask `salaried_hours_on(week, day)` in place of an 8/0 each wrote out for itself, and `list_people_pay_flags` returns the week as its last column. Since v2.7865 the app's own cost readers ask the same week through `salariedWeekOf` and `salariedFlatDayHours` (`laborDayHours` in `teamLabor.ts`, `crewDayHours` in `siteLabor.ts`, `teamBoard.ts`, the Bridge's `vectorDays.ts`, `peopleHoursUnallocatedRows.ts` and the pay-report year calendar in `PeoplePayStubsTab.tsx`). Only an old pay report with no day rows keeps the flat 8, because it must show what was paid. Since v2.7948 *Your hours* and People → Utilization hold a salaried person to this week too (`self_salary_clock_state` returns it, migration `20261119160000`). Since v2.7864 the person's sheet sets the column: *Pay & schedule* → **Edit pay setup** → *A set week* (`paySetupEdit.ts`, → `PEOPLE_TABS_ARCHITECTURE.md`). The Pay lens, the Hire form and the Employment tab leave it alone. The workday template still draws one 8-hour block (the 480-minute checks on `salary_work_schedule_templates`), so on a shorter week the sessions run 8 hours while pay and cost follow the week.
+- **`salaried_week_hours`** — the paid hours of each day of this person's salaried week (v2.7826, migration `20261118160000`): seven numbers, Sunday first, in quarter hours, 0 for a day off, 8 on the five weekdays by default. Since v2.7829 the payroll tier pays a day its hours in this week in place of the flat 8/0 (`salariedWeekOf` in `salariedEffectiveHours.ts`, carried on the payroll window as `week`), so a Saturday pays when the week says so and a weekday the week leaves out pays nothing. Since v2.7840 (migration `20261118190000`) the five database cost readers (`get_man_hours_by_job`, `keep_job_baseline`, `list_project_board`, `superintendent_scores`, `get_weekly_money_movement_payload`) ask `salaried_hours_on(week, day)` in place of an 8/0 each wrote out for itself, and `list_people_pay_flags` returns the week as its last column. Since v2.7865 the app's own cost readers ask the same week through `salariedWeekOf` and `salariedFlatDayHours` (`laborDayHours` in `teamLabor.ts`, `crewDayHours` in `siteLabor.ts`, `teamBoard.ts`, the Bridge's `vectorDays.ts`, `peopleHoursUnallocatedRows.ts` and the pay-report year calendar in `PeoplePayStubsTab.tsx`). Only an old pay report with no day rows keeps the flat 8, because it must show what was paid. Since v2.7948 *Your hours* and People → Utilization hold a salaried person to this week too (`self_salary_clock_state` returns it, migration `20261119160000`). Since v2.7864 the person's sheet sets the column: *Pay & schedule* → **Edit pay setup** → *A set week* (`paySetupEdit.ts`, → `PEOPLE_TABS_ARCHITECTURE.md`). The Pay lens, the Hire form and the Employment tab leave it alone. The workday template itself still holds one 8-hour block (the 480-minute checks on `salary_work_schedule_templates`). Since v2.8356 the sync takes the day's start and end from the person's **working hours** when they have any (→ *Working hours* below), so a shorter week makes shorter sessions; a person with a template and no working hours still gets 8.
 - **`record_hours_but_salary`** — lets a salaried person still **log** hours that show on the Hours surfaces; **costing stays on the person's week** (the flat 8/0 by default) regardless.
 
 There is **no** stored salary amount: pay = `hourly_wage` × credited hours, and the Pay & schedule card works the weekly figure out from the wage and the week (`salariedWeekLine`).
@@ -101,7 +101,23 @@ Partial unique indexes enforce one continuous row per user/day and one row per (
 - **`salary_work_schedule_day_overrides`** — optional row per `(user_id, work_date)`. A day override is **meaningful** when `mode` or `segment_a_start_local` is set (used to allow weekend work when `exclude_weekends` is true).
 - **`user_time_off`** — inclusive ranges, `kind` = **`unpaid`** or **`paid`** (since `20260713120000`; paid is salaried-only by product decision). Sync **ignores `kind`**: any row **DELETE**s non-final **`salary_schedule`** rows for that **`work_date`** and **returns**. The paid/unpaid distinction is payroll-only (see the payroll section above). **Current deployed body**: it does **not** then set **`clocked_out_at`** on **`user_punch`** rows (contrast **`20270331180000`**-era docs). Operators should treat lingering opens separately if needed.
 
-Resolution order for calendar display: **time off → weekend exclusion (when template says weekdays-only and override not meaningful) → day override → template**.
+Resolution order for calendar display: **time off → working hours (when the person has any and the override is not meaningful) → weekend exclusion (when template says weekdays-only and override not meaningful) → day override → template**.
+
+---
+
+## Working hours
+
+Since v2.8345 a person can have **working hours**: a `set` row on `person_available_hours`, a week with a start and an end for each day in 15-minute blocks, written only by `set_working_hours` for a dev or the controller. Since v2.8356 the sync reads them:
+
+- **The day's ranges** come from the newest `set` row that had started (`effective_from` on or before the day) and was saved before the day began. Hours saved during a day reach the clock from the next day.
+- **No range** is a day off: the day's unapproved `salary_schedule` rows are deleted and nothing is made. The template's weekend rule is not asked.
+- **One range** is a continuous day at that start and length. **Two ranges** are the split day's two slots, with the break between.
+- **A meaningful override** still wins for its day, and is no longer held to 480 minutes.
+- **No working hours** (none set, or taken off again): the template's start and length, as before.
+- **The template row is still the switch.** A person with working hours and no template clocks in themself.
+- **Who writes the template.** Since v2.8357 a dev or the controller only (the insert and update policies). The person and pay staff read it, may delete it, and keep the custom schedule for one date.
+
+The client reads a day the same way through `workingDayForClock` (`src/lib/people/workingHours.ts`), which `resolveCalendarWorkday.ts` and `salaryOnShift.ts` take.
 
 ---
 
@@ -229,6 +245,8 @@ When My Time **merges** multiple `clock_sessions` rows into **one** visual segme
 | **`20270601000000`** | **Tail consolidation.** Identical body to **`20260515092032`** but with a year-2027 timestamp so it sorts **after** every other salary migration. Without it, a fresh **`supabase db reset`** would run `20260515092032` first, then re-run the older 2027 salary files in order, ending with **`20270516120000`**'s body (missing the approved-but-open product change). With this tail, fresh-DB rebuilds always end at the same body the linked DB has. No-op on the linked DB beyond a single `CREATE OR REPLACE FUNCTION` that produces the same body (idempotent). Keep its body in lock-step with `20260515092032` if either is updated; better yet, write a new tail. **Post-squash**: the baseline (`20250101000000`) carries this body and both files are archived; later changes are the ordinary dated migrations below, not tails. |
 | **`20260922001000`** | People spine (v2.3698): an archived account (`users.archived_at`) gets the day's unapproved `salary_schedule` rows deleted and the function returns; `sync_salary_clock_sessions_for_day` skips archived templates. |
 | **`20261014200000`** | **The continuous open-punch guard (v2.5509).** The canonical NULL-index insert, inside the window and at catch-up, is skipped while any non-rejected, non-revoked session overlaps `[t_start, t_end)` in half-open form (`clocked_in_at < t_end AND (clocked_out_at IS NULL OR t_start < clocked_out_at)`, an open session blocking whatever `p_now` is). A punch before the start is the day's row; one ending at or before `t_start` does not block. SQL bed `salary-sync-open-punch`. |
+| **`20261123083429`** | **Working hours (v2.8356).** The day's start and end come from the person's set week when they have one: no range is a day off, one a continuous day, two a split day. A row saved during a day holds from the next day. The override's two 480-minute checks are dropped. SQL bed `working-hours`. |
+| **`20261123093000`** | **The usual day's writers (v2.8357).** The insert and update policies on `salary_work_schedule_templates` narrow to a dev and the controller. Reading, deleting and one date's override are unchanged. No function body changes. |
 
 ---
 

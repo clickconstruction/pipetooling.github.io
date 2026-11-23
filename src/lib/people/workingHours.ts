@@ -8,6 +8,7 @@
  * into the lines a screen draws (days that share hours are one line, wherever they fall), the words, and the
  * small moves the row's field makes. Pure. Times are minutes from midnight on the person's own clock.
  */
+import { startOfYmdInAppTzMs } from '../../utils/dateUtils'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
 import { payWeekContaining } from '../payWeekAnchor'
 import { val } from '../valuesInPlace'
@@ -25,6 +26,14 @@ const READ_ORDER = [1, 2, 3, 4, 5, 6, 0] as const
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
 const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'] as const
+
+/**
+ * Who sets a person's standing hours: their working hours and the usual day of their workday schedule. A dev or
+ * the controller, as `set_working_hours` and the schedule table's write policies hold it.
+ */
+export function canSetStandingSchedule(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'controller'
+}
 
 // ---------- the shape ----------
 
@@ -144,6 +153,22 @@ export function setRowInForce(rows: readonly AvailableHoursAnswer[], ymd: string
 /** A person's working hours on a day, or null with none set or with them taken off. */
 export function workingHoursInForce(rows: readonly AvailableHoursAnswer[], ymd: string): WeekDays | null {
   return setRowInForce(rows, ymd)?.days ?? null
+}
+
+/**
+ * A day's ranges as the clock's own sync reads them (`salary_sync_one_user_clock_sessions`): from the newest set
+ * row that had started and was saved before the day began, so hours saved during a day reach the clock from the
+ * next day and a session already running is never moved. An empty list is a day off. Null with no working hours.
+ */
+export function workingDayForClock(rows: readonly AvailableHoursAnswer[], ymd: string): Segment[] | null {
+  const dayStartMs = startOfYmdInAppTzMs(ymd)
+  let best: AvailableHoursAnswer | null = null
+  for (const a of rows) {
+    if (!isSet(a) || a.effective_from > ymd || !(Date.parse(a.set_at) < dayStartMs)) continue
+    if (!best || newer(a, best)) best = a
+  }
+  if (!best?.days) return null
+  return (best.days[new Date(`${ymd}T12:00:00Z`).getUTCDay()] ?? []).map(([s, e]): Segment => [s, e])
 }
 
 /**

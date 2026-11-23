@@ -8,6 +8,8 @@ import {
   type MyTimeEmptyDayHint,
 } from '../../lib/myTimeSalaryPrefetch'
 import { resolveCalendarWorkday, UNPAID_TIME_OFF_LABEL } from '../../lib/resolveCalendarWorkday'
+import { defaultAvailabilityIo } from '../../lib/people/availabilityIo'
+import { workingDayForClock } from '../../lib/people/workingHours'
 import { syncSalaryClockSessionsUnasked } from '../../lib/salaryScheduleSync'
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database'
@@ -100,7 +102,7 @@ export function useMyTimeSalaryPrefetch({
           return
         }
 
-        const [overrideRes, timeOffRes] = await Promise.all([
+        const [overrideRes, timeOffRes, hoursRows] = await Promise.all([
           withSupabaseRetry(
             async () =>
               supabase
@@ -121,6 +123,10 @@ export function useMyTimeSalaryPrefetch({
                 .gte('end_date', dateStr),
             'my time strip user time off',
           ),
+          // The person's working hours give the day its own start and end; a read that fails leaves the template's day.
+          defaultAvailabilityIo()
+            .listAnswers([effectiveSubjectUserId])
+            .catch(() => []),
         ])
         if (cancelled) return
 
@@ -132,6 +138,7 @@ export function useMyTimeSalaryPrefetch({
             timeOffRows,
             template: tmpl,
             overrideForDate: overrideRow,
+            workingDay: hoursRows.length ? workingDayForClock(hoursRows, dateStr) : null,
           }),
         )
 

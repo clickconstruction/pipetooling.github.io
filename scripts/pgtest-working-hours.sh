@@ -9,7 +9,8 @@
 # scenario in the folder then plays in name order, each inside one transaction that rolls back: 10_door tries the
 # shapes a week may and may not take, signs in as each role at the door, sets the helper's week with pay standing
 # still, moves a salaried day's length with the seven numbers and the pay log following, and writes to the table
-# itself as a signed-in person; 20_lock holds the seven numbers and a person's answer. A scenario raises on its first
+# itself as a signed-in person; 20_lock holds the seven numbers and a person's answer; 30_clock makes a salaried
+# day's sessions at the person's own start and end; 40_schedule holds the usual day to a dev and the controller. A scenario raises on its first
 # failed assertion and ends with a line that says PASSED, so a later migration adds its file and this script stays
 # as it is. PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from
 # scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.

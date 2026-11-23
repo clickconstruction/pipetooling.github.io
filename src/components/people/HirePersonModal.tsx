@@ -36,6 +36,7 @@ export function HirePersonModal({
   isDev,
   canAccessPay,
   canAccessContracts,
+  canSetSchedule,
   initialKind,
   onClose,
   onHired,
@@ -44,6 +45,8 @@ export function HirePersonModal({
   isDev: boolean
   canAccessPay: boolean
   canAccessContracts: boolean
+  /** A dev or the controller: a salaried hire's workday start shows for them alone, as the database holds it. */
+  canSetSchedule: boolean
   /** The Kind the form opens on: an empty roster group's + Hire passes its own (punch list #184, sweep C); Helper otherwise. */
   initialKind?: PersonKind
   onClose: () => void
@@ -96,7 +99,7 @@ export function HirePersonModal({
   }, [archived, input.name, input.email, someoneElse])
   const archivedWords = archivedMatch ? archivedMatchWords(archivedMatch) : null
 
-  const caps = useMemo(() => ({ canInvite: isDev, canAccessPay, canAccessContracts }), [isDev, canAccessPay, canAccessContracts])
+  const caps = useMemo(() => ({ canInvite: isDev, canAccessPay, canAccessContracts, canSetSchedule }), [isDev, canAccessPay, canAccessContracts, canSetSchedule])
   const plan = useMemo(() => hirePlan(input, caps), [input, caps])
   const started = Object.keys(results).length > 0
   const allDone = started && plan.steps.every((s) => results[s.id]?.state === 'done')
@@ -349,12 +352,15 @@ export function HirePersonModal({
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                       <input type="checkbox" checked={input.isSalary} onChange={(e) => set('isSalary', e.target.checked)} /> Salaried — a flat 8-hour day, weekdays
                     </label>
-                    {input.isSalary ? (
+                    {input.isSalary && canSetSchedule ? (
                       <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                         from <input type="time" value={input.workdayStart} onChange={(e) => set('workdayStart', e.target.value)} step={900} style={{ fontSize: '0.875rem', padding: '0.25rem 0.4rem' }} aria-label="Workday start" />
                       </label>
                     ) : null}
                   </div>
+                  {input.isSalary && !canSetSchedule ? (
+                    <span data-hire-hours-later style={{ color: 'var(--text-muted)' }}>A dev or the controller sets their hours after. Until then they clock in and out.</span>
+                  ) : null}
                   <span style={{ color: 'var(--text-muted)' }}>A pay row always carries a wage — salaried days are priced at it. Office rate and the vehicle deal are set on their desk after.</span>
                 </div>
               ) : null}

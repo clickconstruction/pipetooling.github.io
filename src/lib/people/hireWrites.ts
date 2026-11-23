@@ -49,7 +49,13 @@ export type HireInput = {
   packetTemplateId: string | null
 }
 
-export type HireCaps = { canInvite: boolean; canAccessPay: boolean; canAccessContracts: boolean }
+export type HireCaps = {
+  canInvite: boolean
+  canAccessPay: boolean
+  canAccessContracts: boolean
+  /** A dev or the controller: the only ones who set a person's standing hours, so the only ones whose hire saves a workday (punch list #429). */
+  canSetSchedule: boolean
+}
 
 export type HireStepId = 'account' | 'roster' | 'pay' | 'workday' | 'packet'
 export type HireStep = { id: HireStepId; label: string; detail: string }
@@ -74,7 +80,7 @@ export function hirePlan(input: HireInput, caps: HireCaps): { steps: HireStep[];
   if (paid && caps.canAccessPay && (input.hourlyWage == null || !(input.hourlyWage > 0))) {
     problems.push(input.isSalary ? 'A salaried hire needs the hourly rate the flat 8-hour day is priced at.' : 'An hourly wage is required — a pay row with no wage cannot be paid.')
   }
-  if (input.isSalary && !/^\d{2}:\d{2}$/.test(input.workdayStart)) problems.push('Pick the workday start time.')
+  if (input.isSalary && caps.canSetSchedule && !/^\d{2}:\d{2}$/.test(input.workdayStart)) problems.push('Pick the workday start time.')
 
   const steps: HireStep[] = []
   const kindLabel = KIND_LABELS[input.kind]
@@ -88,7 +94,7 @@ export function hirePlan(input: HireInput, caps: HireCaps): { steps: HireStep[];
       detail: input.isSalary ? `Salaried at $${(input.hourlyWage ?? 0).toFixed(2)}/h (the flat 8-hour day)` : `$${(input.hourlyWage ?? 0).toFixed(2)}/h`,
     })
   }
-  if (input.isSalary) steps.push({ id: 'workday', label: 'Workday', detail: `8 hours from ${input.workdayStart}, weekdays — sessions appear on the clock strip by themselves` })
+  if (input.isSalary && caps.canSetSchedule) steps.push({ id: 'workday', label: 'Workday', detail: `8 hours from ${input.workdayStart}, weekdays — sessions appear on the clock strip by themselves` })
   if (input.packetTemplateId && caps.canAccessContracts) steps.push({ id: 'packet', label: 'Paperwork', detail: 'The packet is assigned; send each document from Contracts' })
   return { steps, problems }
 }

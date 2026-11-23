@@ -19,16 +19,30 @@ export function getSalaryScheduleWindowsUtc(
   workDateYmd: string,
   template: TemplateRow,
   overrideForDate: OverrideRo | null | undefined,
+  /** The person's working hours on the day, as `resolveCalendarWorkday` takes them. */
+  workingDay?: ReadonlyArray<readonly [number, number]> | null,
 ): Array<{ start: number; end: number }> | null {
-  return buildScheduleWindowsUtc(workDateYmd, template, overrideForDate)
+  return buildScheduleWindowsUtc(workDateYmd, template, overrideForDate, workingDay)
 }
 
 function buildScheduleWindowsUtc(
   workDateYmd: string,
   template: TemplateRow,
   overrideForDate: OverrideRo | null | undefined,
+  workingDay?: ReadonlyArray<readonly [number, number]> | null,
 ): Array<{ start: number; end: number }> | null {
   const ov = overrideIsMeaningful(overrideForDate) ? overrideForDate : null
+  if (!ov && workingDay != null) {
+    // Working hours: each range is a window on the template's clock, midnight of the day plus its minutes.
+    const zone = effectiveSalaryTz(template, overrideForDate)
+    const out: Array<{ start: number; end: number }> = []
+    for (const [s, e] of workingDay) {
+      const start = salaryZonedWallClockToUtcMs(workDateYmd, Math.floor(s / 60), s % 60, 0, zone)
+      if (start == null) return null
+      out.push({ start, end: start + (e - s) * 60 * 1000 })
+    }
+    return out
+  }
   const mode = (ov?.mode ?? template.mode) === 'split' ? 'split' : 'continuous'
   const saTimeStr = ov?.segment_a_start_local ?? template.segment_a_start_local ?? '08:00:00'
   const saDur = ov?.segment_a_duration_minutes ?? template.segment_a_duration_minutes ?? 480
@@ -65,17 +79,19 @@ export function getSalarySyntheticClockInIso(params: {
   timeOffRows: TimeOffRow[]
   template: TemplateRow
   overrideForDate: OverrideRo | null | undefined
+  workingDay?: ReadonlyArray<readonly [number, number]> | null
 }): string | null {
-  const { workDateYmd, nowMs, timeOffRows, template, overrideForDate } = params
+  const { workDateYmd, nowMs, timeOffRows, template, overrideForDate, workingDay } = params
   const resolution = resolveCalendarWorkday({
     workDateYmd,
     timeOffRows,
     template,
     overrideForDate,
+    workingDay,
   })
   if (resolution.kind !== 'scheduled') return null
 
-  const windows = getSalaryScheduleWindowsUtc(workDateYmd, template, overrideForDate)
+  const windows = getSalaryScheduleWindowsUtc(workDateYmd, template, overrideForDate, workingDay)
   if (!windows || windows.length === 0) return null
 
   for (const w of windows) {

@@ -13,6 +13,7 @@ import {
   usualWorkingDay,
   withWorkingDays,
   workingChangeSentence,
+  workingDayForClock,
   workingClockChoices,
   workingDayProblem,
   workingDaysCountWords,
@@ -154,6 +155,18 @@ describe('the set week in force', () => {
     expect(workingHoursInForce([...rows, later], '2026-11-28')).toEqual(weekdays([360, 615]))
     expect(workingHoursInForce([...rows, later], '2026-11-29')).toEqual(weekdays([420, 780]))
     expect(workingHoursComing([...rows, later], '2026-11-25')).toBe(later)
+  })
+
+  it('reaches the clock from the day after a save, so a running session is never moved', () => {
+    // Saved Wednesday Nov 25 at 9:00 AM Central, for the Sunday of Nov 22.
+    const before = row({ set_at: '2026-11-21T18:00:00Z' })
+    const midWeek = row({ days: weekdays([420, 780]), set_at: '2026-11-25T15:00:00Z' })
+    expect(workingDayForClock([before, midWeek], '2026-11-25')).toEqual([[360, 720]])
+    expect(workingDayForClock([before, midWeek], '2026-11-26')).toEqual([[420, 780]])
+    expect(workingDayForClock([before, midWeek], '2026-11-28')).toEqual([])
+    expect(workingDayForClock([midWeek], '2026-11-25')).toBeNull()
+    expect(workingDayForClock([before], '2026-11-21')).toBeNull()
+    expect(workingDayForClock([before, row({ days: null, set_at: '2026-11-23T18:00:00Z' })], '2026-11-25')).toBeNull()
   })
 
   it('names the two Sundays hours may start on', () => {

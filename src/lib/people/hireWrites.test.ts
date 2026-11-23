@@ -13,7 +13,7 @@ const base: HireInput = {
   workdayStart: '08:00',
   packetTemplateId: null,
 }
-const devCaps = { canInvite: true, canAccessPay: true, canAccessContracts: true }
+const devCaps = { canInvite: true, canAccessPay: true, canAccessContracts: true, canSetSchedule: true }
 
 describe('hirePlan', () => {
   it('an hourly helper with a login: invite (born linked), then pay', () => {
@@ -32,6 +32,15 @@ describe('hirePlan', () => {
     expect(noLogin.steps[0]!.detail).toContain('no login')
   })
 
+  it('a hirer who is not a dev or the controller saves no workday: standing hours are theirs to set (punch list #429)', () => {
+    const owner = { canInvite: false, canAccessPay: true, canAccessContracts: true, canSetSchedule: false }
+    const plan = hirePlan({ ...base, isSalary: true, hourlyWage: 30, invite: false, email: '', workdayStart: '' }, owner)
+    expect(plan.steps.map((s) => s.id)).toEqual(['roster', 'pay'])
+    // The start is not asked for, so an empty one is no problem.
+    expect(plan.problems).toEqual([])
+    expect(hirePlan({ ...base, isSalary: true, hourlyWage: 30, workdayStart: '' }, devCaps).problems).toContain('Pick the workday start time.')
+  })
+
   it('no email means a roster row, not an invite; a packet adds the paperwork step', () => {
     const { steps, problems } = hirePlan({ ...base, email: '', invite: false, packetTemplateId: 'tpl-1' }, devCaps)
     expect(problems).toEqual([])
@@ -48,9 +57,9 @@ describe('hirePlan', () => {
   })
 
   it('a non-dev cannot send the invite, and a viewer without pay access gets no pay step', () => {
-    const { problems } = hirePlan(base, { canInvite: false, canAccessPay: true, canAccessContracts: true })
+    const { problems } = hirePlan(base, { canInvite: false, canAccessPay: true, canAccessContracts: true, canSetSchedule: false })
     expect(problems.some((p) => p.startsWith('Only a dev can send the invite'))).toBe(true)
-    const { steps } = hirePlan({ ...base, invite: false, email: '' }, { canInvite: false, canAccessPay: false, canAccessContracts: false })
+    const { steps } = hirePlan({ ...base, invite: false, email: '' }, { canInvite: false, canAccessPay: false, canAccessContracts: false, canSetSchedule: false })
     expect(steps.map((s) => s.id)).toEqual(['roster'])
   })
 

@@ -3500,6 +3500,11 @@ The **Working hours** row on a person's sheet (*Pay & schedule*) is changed by a
 An answer is refused while the person's working hours are in force, their own and the office's, by `has_working_hours(user)` in the table's insert policy.
 The person reads their working hours at the foot of **My Time** on the Dashboard, with no press.
 Migration `20261123082812_working_hours_lock.sql`.
+Since v2.8357 the usual day of a workday schedule (`salary_work_schedule_templates`) is written by a **dev** or the **controller** alone, by the table's insert and update policies.
+The person, pay staff and a team lead still read it, and the person and pay staff may still delete it.
+A custom schedule for one date (`salary_work_schedule_day_overrides`) is unchanged: the person's own for today, pay staff's for any day.
+The **Workday schedule** window shows the usual day with its fields off to anyone else, and **Hire** saves a salaried hire's workday only for a dev or the controller.
+Migration `20261123093000_working_hours_schedule_lock.sql`.
 
 **Vehicle holders (any role, v2.1648):** whoever currently holds a company vehicle (open `vehicle_possessions` row) gets scoped self-service via the `holds_vehicle()` policies (migration `20260814183650_vehicle_holder_access.sql`): SELECT on their vehicle + its readings/service events/problem reports + own possessions, INSERT odometer readings (`created_by = auth.uid()`), and INSERT problem reports (`reported_by = auth.uid()`).
 Surfaced as the Dashboard **My Vehicle** card (below My Time).

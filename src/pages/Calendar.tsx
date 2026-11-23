@@ -30,6 +30,9 @@ import {
   type CalendarClockSessionRaw,
 } from '../lib/calendarClockSessionDisplay'
 import { resolveCalendarWorkday, timeOffKindLabel } from '../lib/resolveCalendarWorkday'
+import { defaultAvailabilityIo } from '../lib/people/availabilityIo'
+import type { AvailableHoursAnswer } from '../lib/people/utilization'
+import { workingDayForClock } from '../lib/people/workingHours'
 import { formatDateKey, getDaysInMonth, getVisibleGridDateRange, monthAnchorForMyDay } from '../lib/calendarMonthGrid'
 import type { ClockSessionRow } from '../types/clockSessions'
 import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
@@ -266,6 +269,8 @@ export default function Calendar() {
   const [showWeekends, setShowWeekends] = useState(() => !mobileCalendarLayout)
   const [isSalaryLayerEligible, setIsSalaryLayerEligible] = useState(false)
   const [salaryTemplate, setSalaryTemplate] = useState<SalaryTemplateRow | null>(null)
+  /** The signed-in person's rows on `person_available_hours`: a set week gives each day its own start and end. */
+  const [workingHoursRows, setWorkingHoursRows] = useState<AvailableHoursAnswer[]>([])
   const [salaryOverridesByDate, setSalaryOverridesByDate] = useState<Record<string, SalaryOverrideRow>>({})
   const [timeOffRows, setTimeOffRows] = useState<UserTimeOffRow[]>([])
   const [ncnsByWorkDate, setNcnsByWorkDate] = useState<Map<string, NcnsCalendarDayInfo>>(() => new Map())
@@ -490,6 +495,12 @@ export default function Calendar() {
         }
         setIsSalaryLayerEligible(true)
         setSalaryTemplate(template)
+        // The person's working hours give each day its own start and end (punch list #429). A read that fails
+        // leaves the template's day, as before.
+        void defaultAvailabilityIo()
+          .listAnswers([authUser.id])
+          .then((rows) => setWorkingHoursRows(rows))
+          .catch(() => setWorkingHoursRows([]))
         const [ovList, ptoList] = await Promise.all([
           withSupabaseRetry(
             async () =>
@@ -730,6 +741,7 @@ export default function Calendar() {
       timeOffRows,
       template: salaryTemplate,
       overrideForDate: salaryOverridesByDate[formatDateKey(date)],
+      workingDay: workingHoursRows.length ? workingDayForClock(workingHoursRows, formatDateKey(date)) : null,
     })
   }
 
