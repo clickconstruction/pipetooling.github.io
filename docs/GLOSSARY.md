@@ -1975,7 +1975,7 @@ Salaried people read against their set week from pay (`salaried_week_hours`, v2.
 a person archived inside the window keeps their weeks as *Left the roster*.
 A person with **working hours** (a `set` row on `person_available_hours`, v2.8345) is held to them, salaried or not, from the row's Sunday on: the source reads *working hours*, the row has no **Change** press, and a punch outside them is counted (`workingHours.ts`, v2.8350).
 The office draws a person's week from the row (**Set hours** / **Change**, `AvailableHoursModal` with `WeekAvailabilityPainter`);
-a person draws their own from the quiet line at the foot of My Time's picture (`MyTimeCanWorkLine`, v2.8338), or from the **Your hours** card under Your record in Job Mode (v2.6709, `DashboardMyHoursBlock`;
+a person draws their own from the quiet line at the foot of My Time's picture (`MyTimeCanWorkLine`, v2.8338), on the full Dashboard or on the **My Time** card under Your record in Job Mode (`DashboardMyTimeCard`, v2.8347;
 guide *draw the hours you can work each week*).
 My Time's own picture counts the person's time by day and by week and measures nothing against the answer (`DashboardMyTimePicture` over `myTimeWeeks.ts`, v2.8338, guide *see the time I have added up*).
 Gate `canOpenHoursTab` (the clock's readers).
