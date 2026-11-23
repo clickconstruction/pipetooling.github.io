@@ -1142,6 +1142,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Our copy's lasting link (`/files/messages/<attachment>`, `/files/bills/<invoice>`) opens under the office's `message_attachments` and `supply_house_invoices` policies and the bucket's `gc_office_team()` read.
   Since v2.8391 (punch list #431) `/files/bills/<invoice>` also opens a bill with no copy of ours, by going to the Drive link on its row, read under the same `supply_house_invoices` policy.
   The Job Summary's share press, which copies that link, shows to the four roles that policy lets read a bill (dev, leader, assistant, controller) and to nobody else who sees the list.
+  Since v2.8399 `/files/bills/<invoice>` is the bill viewer as a page (`BillOpen.tsx`) and no longer leaves the app: the bill is read as the reader, so anyone that policy keeps out reads *This file is not one you can open.* and sees no amounts.
+  On the Job Summary the same four roles open a bill in the viewer, and anyone else who sees the list keeps the bill's Drive link in a tab of its own.
 
 ### Materials on site — the cages and boxes on a job site (v2.6039, `20261029010000_materials_on_site.sql`)
 

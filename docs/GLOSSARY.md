@@ -5160,6 +5160,8 @@ Since v2.7103 the sums know what the papers print: a price rounded on a paper th
 On the Supply houses tab each bill's **Lines** cell reads *6 lines · adds up*, the gap (*5 lines · $12.40 short of the subtotal*) with **Look**, *counted as read by …*, *No lines yet* or *No PDF on this bill* (`rowLinesWords`, `paperRows.ts`).
 **Look** (`PaperLookModal.tsx`) is the paper beside the lines: the strip names the sum that is off, the line whose own arithmetic fails is marked, a person fixes a number or types the missing line and the strip turns green before **Save N lines**;
 **Count it as read anyway** keeps the gap beside the lines with their name.
+**The bill viewer** (`BillViewer.tsx`, v2.8399, punch list #431) is a supply house bill drawn in place over the list it came from, with that list beside the paper so Previous, Next and the arrow keys flip through it as it is searched.
+It draws the pages of the PDF that are this bill, shows the bill's facts beside them, and is also the page a bill's lasting link opens (`/files/bills/<invoice id>`).
 The office writes through `supply_paper_save` and `supply_paper_accept` (`20261109210000`).
 **The sweep** (v2.6882, the edge function `bill-lines-sweep`, kernel `_shared/billSweep.ts`) reads a bill nobody filled from its PDF: every ten minutes it opens the Drive file a row links as the service account, asks the reader for every paper in the file, gives each row its paper by the invoice number (exactly, or since v2.6897 the printed number with a short suffix the office did not type when the totals agree) and writes it as the service role, so a typed bill's Lines cell fills by itself;
 it is also the backfill of the bills on file.
