@@ -657,6 +657,8 @@ BEGIN
   PERFORM set_config('enable_hashjoin', 'off', true);
   PERFORM set_config('enable_mergejoin', 'off', true);
   FOR line IN EXECUTE format('EXPLAIN (COSTS OFF) SELECT with_name FROM %s', p_view) LOOP
+    -- The lines that reach the supply house and the trade company, in the log, so a plan that walks says how.
+    IF line ~ '(supply_houses|gc_companies|psh|pgc)' THEN RAISE NOTICE 'plan of %: %', p_view, line; END IF;
     IF line ~ 'Index Cond: \(+id = (CASE WHEN \(|COALESCE\()pc[_0-9]*\.customer_id' THEN found := found || 'customer'::text; END IF;
     IF line ~ 'Index Cond: \(+id = (CASE WHEN \(|COALESCE\()pc[_0-9]*\.supply_house_id' THEN found := found || 'house'::text; END IF;
     IF line ~ 'Index Cond: \(+id = (CASE WHEN \(|COALESCE\()pc[_0-9]*\.gc_company_id' THEN found := found || 'trade'::text; END IF;
@@ -667,6 +669,13 @@ BEGIN
   RETURN coalesce(array_to_string(found, ','), '');
 END $$;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pp TO authenticated;
+-- The bed's supply houses and trade companies are a handful, few enough that one walk of the table costs less than a
+-- lookup per line and the planner picks the walk whichever join it can use. Two thousand more of each, as on a real
+-- account, so the plan says which join it can use.
+INSERT INTO public.supply_houses (name, vendor_kind) SELECT 'Bed Supply ' || g, 'supply_house' FROM generate_series(1, 2000) g;
+INSERT INTO public.gc_companies (name, trades) SELECT 'Bed Trade ' || g, '{Plumbing}' FROM generate_series(1, 2000) g;
+ANALYZE public.supply_houses;
+ANALYZE public.gc_companies;
 -- The office's four roles and the estimator, whose read is the narrowest of those who read a party's paper.
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d1');
 SET LOCAL ROLE authenticated;
