@@ -1,0 +1,251 @@
+import { useMemo, useState, type CSSProperties } from 'react'
+import { AmountSmallCents } from '../AmountSmallCents'
+import { EmptyState } from '../EmptyState'
+import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { useOptionalToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
+import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import {
+  SUPPLY_INVOICE_SEARCH_FROM,
+  SUPPLY_INVOICE_WORDS as WORDS,
+  canShareSupplyInvoice,
+  invoiceDayWords,
+  searchSupplyInvoices,
+  supplierSiteHref,
+  supplyHouseChips,
+  supplyInvoiceCountWords,
+  supplyInvoicePdfHref,
+  supplyInvoiceShareUrl,
+  type SupplyInvoiceRow,
+} from '../../lib/jobs/supplyInvoiceList'
+import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+
+/** The glyph on the share press: a link, since the press copies one. */
+function LinkGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" />
+      <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
+    </svg>
+  )
+}
+
+const linkStyle: CSSProperties = {
+  margin: 0,
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  fontFamily: 'inherit',
+  fontSize: 'inherit',
+  color: 'var(--text-link)',
+  textDecoration: 'underline',
+  cursor: 'pointer',
+  textAlign: 'left',
+}
+
+/**
+ * A job's supply house invoices on the Job Summary (punch list #431, PR 1): the list the Parts Cost section opens.
+ * Each invoice number opens the bill's PDF. For the office, an icon to its left copies the app's own link to the bill
+ * and says so in a toast. A list of eight or more grows a search box over the house, the number, the date and the
+ * amount, with a chip per supply house and a count and a total of what is left. Cents are drawn small and a date
+ * drops this year. The kernel is `lib/jobs/supplyInvoiceList.ts`; this file draws it.
+ */
+export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[] }) {
+  const { role } = useAuth()
+  const toast = useOptionalToastContext()
+  const narrow = useIsNarrowScreen()
+  const [query, setQuery] = useState('')
+  const [house, setHouse] = useState<string | null>(null)
+  const todayYmd = useMemo(() => todayYmdInAppTz(), [])
+
+  const canShare = canShareSupplyInvoice(role)
+  const searchable = rows.length >= SUPPLY_INVOICE_SEARCH_FROM
+  const chips = useMemo(() => (searchable ? supplyHouseChips(rows) : []), [rows, searchable])
+  // A chip whose house left the list (the rows were read again) no longer narrows it.
+  const liveHouse = house != null && chips.some((c) => c.name === house) ? house : null
+  const found = useMemo(() => searchSupplyInvoices(rows, searchable ? query : '', liveHouse), [rows, searchable, query, liveHouse])
+  const narrowed = found.rows.length !== rows.length
+
+  const clear = () => {
+    setQuery('')
+    setHouse(null)
+  }
+
+  const copyLink = async (row: SupplyInvoiceRow) => {
+    const url = supplyInvoiceShareUrl(row.invoice_id, row.job_id)
+    try {
+      await navigator.clipboard.writeText(url)
+      toast?.showToast(WORDS.copied, 'success')
+    } catch {
+      toast?.showToast(WORDS.copyByHand(url), 'info')
+    }
+  }
+
+  const press = narrow ? 44 : 24
+  const shareCell = (row: SupplyInvoiceRow, hasPdf: boolean) => {
+    if (!canShare) return null
+    // A bill with no PDF has nothing for the link to open yet, so its row keeps the gap and no press.
+    if (!hasPdf) return <span aria-hidden="true" style={{ width: press, flex: 'none' }} />
+    return (
+      <button
+        type="button"
+        onClick={() => void copyLink(row)}
+        title={WORDS.shareTitle}
+        aria-label={WORDS.shareLabel(row.invoice_number)}
+        data-testid="supply-invoice-share"
+        style={{ width: press, height: press, flex: 'none', display: 'inline-grid', placeItems: 'center', margin: 0, padding: 0, border: 'none', borderRadius: 6, background: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+      >
+        <LinkGlyph />
+      </button>
+    )
+  }
+
+  const invoiceCell = (row: SupplyInvoiceRow) => {
+    const pdf = supplyInvoicePdfHref(row)
+    const site = pdf ? null : supplierSiteHref(row)
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: narrow ? 0 : '0.15rem', flexWrap: 'wrap', minWidth: 0 }}>
+        {shareCell(row, !!pdf)}
+        {pdf ? (
+          <button type="button" onClick={() => openInExternalBrowser(pdf)} style={{ ...linkStyle, minHeight: narrow ? 44 : undefined }}>
+            {row.invoice_number}
+          </button>
+        ) : (
+          <>
+            <span>{row.invoice_number}</span>
+            <span title={WORDS.noPdfTitle} style={{ marginLeft: '0.4rem', padding: '0 0.3rem', borderRadius: 4, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.92em', whiteSpace: 'nowrap' }}>
+              {WORDS.noPdf}
+            </span>
+            {site ? (
+              <button type="button" onClick={() => openInExternalBrowser(site)} style={{ ...linkStyle, marginLeft: '0.4rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {WORDS.supplierSite} ↗
+              </button>
+            ) : null}
+          </>
+        )}
+      </span>
+    )
+  }
+
+  const cell: CSSProperties = { padding: '0.25rem 0.4rem' }
+  const fontSize = narrow ? '0.8125rem' : '0.75rem'
+
+  return (
+    // The list sits inside rows and folds that open on a press or a key: neither should hear what happens in here.
+    <div data-testid="supply-invoice-list" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} style={{ maxWidth: 560, fontSize }}>
+      {searchable ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.45rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={WORDS.searchPlaceholder}
+              aria-label={WORDS.searchLabel}
+              autoComplete="off"
+              style={{
+                flex: narrow ? '1 1 100%' : '1 1 220px',
+                maxWidth: narrow ? undefined : 320,
+                minWidth: 0,
+                padding: narrow ? '0.6rem 0.6rem' : '0.3rem 0.5rem',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                background: 'var(--surface)',
+                color: 'var(--text-strong)',
+                fontFamily: 'inherit',
+                // 16 px on a phone, so the screen does not zoom when the box takes the finger.
+                fontSize: narrow ? '16px' : '0.75rem',
+              }}
+            />
+            <span data-testid="supply-invoice-count" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              <WorkedOutValue>{found.rows.length}</WorkedOutValue> {supplyInvoiceCountWords(found.rows.length, rows.length)}
+              {narrowed ? (
+                <>
+                  {' · '}
+                  <WorkedOutValue>
+                    <AmountSmallCents value={found.total} />
+                  </WorkedOutValue>
+                </>
+              ) : null}
+            </span>
+          </div>
+          {chips.length > 0 ? (
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: narrow ? 'nowrap' : 'wrap', overflowX: narrow ? 'auto' : undefined }}>
+              {[{ name: null as string | null, label: WORDS.allHouses, count: rows.length }, ...chips.map((c) => ({ name: c.name as string | null, label: c.name, count: c.count }))].map((chip) => {
+                const on = chip.name === liveHouse
+                return (
+                  <button
+                    key={chip.name ?? ''}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setHouse(chip.name)}
+                    style={{
+                      flex: 'none',
+                      padding: narrow ? '0.5rem 0.75rem' : '0.15rem 0.55rem',
+                      border: `1px solid ${on ? 'var(--text-700)' : 'var(--border)'}`,
+                      borderRadius: 999,
+                      background: on ? 'var(--text-700)' : 'var(--surface)',
+                      color: on ? 'var(--surface)' : 'var(--text-700)',
+                      fontFamily: 'inherit',
+                      fontSize: 'inherit',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {chip.label} <span style={{ opacity: 0.7, fontVariantNumeric: 'tabular-nums' }}>{chip.count}</span>
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {found.rows.length === 0 ? (
+        <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'invoices', query }), { onPress: clear })} />
+      ) : narrow ? (
+        <div>
+          {found.rows.map((row) => (
+            <div
+              key={`${row.invoice_id}-${row.job_id}`}
+              data-testid="supply-invoice-row"
+              style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: '0.5rem', borderTop: '1px solid var(--border)', padding: '0.1rem 0 0.45rem' }}
+            >
+              <div style={{ minWidth: 0 }}>{invoiceCell(row)}</div>
+              <div style={{ alignSelf: 'center', fontWeight: 600, fontSize: '0.9375rem', fontVariantNumeric: 'tabular-nums' }}>
+                <AmountSmallCents value={row.allocated_amount} />
+              </div>
+              <div style={{ color: 'var(--text-muted)', paddingLeft: canShare ? press : 0, minWidth: 0 }}>{row.supply_house_name || '—'}</div>
+              <div style={{ color: 'var(--text-muted)', textAlign: 'right', whiteSpace: 'nowrap' }}>{invoiceDayWords(row.invoice_date, todayYmd)}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+          <thead>
+            <tr style={{ background: 'var(--bg-muted)' }}>
+              <th style={{ ...cell, textAlign: 'left' }}>Supply house</th>
+              <th style={{ ...cell, textAlign: 'left' }}>Invoice</th>
+              <th style={{ ...cell, textAlign: 'left' }}>Date</th>
+              <th style={{ ...cell, textAlign: 'right' }}>Allocated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {found.rows.map((row) => (
+              <tr key={`${row.invoice_id}-${row.job_id}`} data-testid="supply-invoice-row" style={{ borderTop: '1px solid var(--border)' }}>
+                <td style={cell}>{row.supply_house_name || '—'}</td>
+                <td style={cell}>{invoiceCell(row)}</td>
+                <td style={{ ...cell, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{invoiceDayWords(row.invoice_date, todayYmd)}</td>
+                <td style={{ ...cell, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                  <AmountSmallCents value={row.allocated_amount} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  )
+}
