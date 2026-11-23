@@ -113,6 +113,8 @@ Every send is its own line. A second send reads *Email, sent again*.
 
 A second send also says which send it is and the day of the first one. The words read like *2nd send. First sent Tue, Nov 3.*
 
+A line may have no amount. The line then reads *This bill is no longer on the job.* The bill was taken back or replaced after it went.
+
 ## See every send of one bill
 
 Press the bill's name on a line. The name is underlined.
