@@ -2,7 +2,7 @@
 name: "Lien information on the Dashboard: two sightings, one answer"
 number: 423
 group: close
-status: asked by the owner 2026-11-23 with phone screenshots, first of the strip alone, then of the strip and the lien month card together · read in the code and drawn as a before and after the same day · the owner picked option 1 on 2026-11-23, *I like your new After option 1, recommended, one place, let's log that in to build* · built and live the same day: the Lien desk card beside Needs you in v2.8339 and the lien month card dropped in v2.8342, both looked at by hand on a dev server · left: the office's word for the leader, and the owner's look on his own phone
+status: asked by the owner 2026-11-23 with phone screenshots, first of the strip alone, then of the strip and the lien month card together · read in the code and drawn as a before and after the same day · the owner picked option 1 on 2026-11-23, *I like your new After option 1, recommended, one place, let's log that in to build* · built and live the same day: the Lien desk card beside Needs you in v2.8339 and the lien month card dropped in v2.8342, both looked at by hand on a dev server · the office's word for the leader, the one piece of the plan left out, built in v2.8372 on the owner's *Yes, fix it here* · left: the owner's look on his own phone
 summary: >
   A leader's Dashboard shows Lien desk information twice: a strip at the top of the Needs you card and
   the lien month card far below, after the Billing pipeline. The owner does not like the strip's look
@@ -11,11 +11,11 @@ summary: >
   the Board on 2026-11-15. The recommendation is one place, at the top: a slim card of its own beside
   Needs you and not inside it, with three values in columns and one red line while a paper is past its
   day, and the lien month card dropped. Needs you then holds only things to press.
-next: The card's middle count names the leader for the office, as the Board on the desk does (a small PR, see *Where it stands*). Then Todd opens the Dashboard on his phone and says what still reads wrong, and this card is retired.
-size: S as a train of three, built as two (S · S); left: the leader's name for the office (XS) and a look
+next: Todd opens the Dashboard on his phone and says what still reads wrong. Then this card is retired.
+size: S as a train of three, built as two and a small third (S · S · XS); left: a look
 blocker: none
-ver: v2.8339 · v2.8342
-opinion: close — built and live; one small word is left, then a look on a phone
+ver: v2.8339 · v2.8342 · v2.8372
+opinion: close — built and live; what is left is a look on a phone
 ---
 
 # Lien information on the Dashboard: two sightings, one answer (#423)
@@ -287,10 +287,10 @@ those doors. Whether the page can be opened on one from a link was not looked at
 
 **What differs from the plan.**
 
-- **The office reads *waiting on the leader*.** The plan's PR 1 said *waiting on* and his name, as the
-  Board on the desk says it. v2.8339's fragment gave a reason that does not hold: the desk names the
-  master most of its jobs wait on (`boardLeaderName` in `useLienDeskBoard.ts`), and the Dashboard could do
-  the same. One small PR is left, in `useNeedsYouInputs.ts`.
+- **The office read *waiting on the leader* until v2.8372.** The plan's PR 1 said *waiting on* and his name,
+  as the Board on the desk says it. v2.8339 left it out on a reason that did not hold: the desk names the master
+  most of its papers wait on. v2.8372 gives the card that name, by the one rule both now read
+  (`lienBoardLeaderUserId`), and was looked at as the Sample assistant at 1,400 px and at 320 px.
 - **The Inbox tab's card lost the strip**, and the Lien desk card stands above it. The owner was not
   asked. It follows from the card leaving Needs you.
 - **The lien month card went before the owner's December look.** He gave the go for everything the same day.
