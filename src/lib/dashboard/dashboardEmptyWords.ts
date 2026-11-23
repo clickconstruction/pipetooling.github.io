@@ -143,6 +143,9 @@ export function myScheduleDayEmptyWords(day: 'today' | 'tomorrow', addJob: Press
   return { main: `Nothing scheduled ${day}.`, next: { label: '+ Add job', onPress: addJob }, tail: 'puts a job on your day.' }
 }
 
+/** Recent Reports with reports on file and none new: the good state (punch list #426). The list was a blank before. */
+export const RECENT_REPORTS_CLEAR_EMPTY: EmptyStateWords = { main: 'Nothing new to read.', tail: 'A report lands here when the crew files one.' }
+
 /**
  * Recent Reports with no report yet. A person who only files reports writes them from the card
  * above; everyone else gets Jobs → Reports, where New report is. A primary reads their own jobs'
