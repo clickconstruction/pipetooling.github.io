@@ -45,6 +45,8 @@ The bid moves to **Hidden** at the bottom of the card. A note at the bottom of t
 
 Hiding changes nothing on the bid. Nobody else sees a difference.
 
+A hidden bid follows you. Hide it on your phone and it is hidden on the computer too. If a hide cannot be saved, the bid stays hidden on that device and a note says why.
+
 To bring one back, open **Hidden** and press {{button:outline|Show again}}.
 
 A hidden bid comes back by itself when someone writes a note on it. The bid stays in its group until you press {{button:outline-amber|Mark read}}.

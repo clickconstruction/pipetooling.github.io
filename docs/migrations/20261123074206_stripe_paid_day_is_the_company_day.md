@@ -30,11 +30,11 @@ A day the webhook names still stands: a check recorded on a Stripe bill keeps th
 
 ## What it does not do
 
-It does not touch a row already written. The older Stripe rows that sit a day late are a separate step, to take only on the owner's word and after their list is read:
+It does not touch a row already written. The older Stripe rows that sat a day late were a separate step, taken on the owner's word the same day after their list was read: `20261123162010_stripe_paid_day_older_rows.sql` (v2.8371) moves them back.
 
-- the rows whose note is *Stripe*, with no payment type, whose `paid_on` is one day after the company's day of `created_at`;
-- an update fires the payments table's history trigger, so each corrected row gains a line in its job's trail;
-- a payment that moves from a Monday to a Sunday can move between weeks on Weekly money and the Bridge.
+- the rows whose note is *Stripe*, with no payment type, number or recorder, whose `paid_on` is one day after the company's day of `created_at`;
+- no trigger on the payments table writes a line on an update, so a moved row's job trail does not change;
+- a payment that moves from a Monday to a Sunday moves between weeks on Weekly money.
 
 `mark_invoice_paid` and `mark_job_paid` default the same way (`20261019120000_primary_paid_verbs.sql`). They are left as they are: the app's payment windows name the day when they call them.
 

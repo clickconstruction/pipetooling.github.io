@@ -16,7 +16,7 @@ export type MemoryStart = {
   onDesk: boolean
   /** What the crew is asked on arrival, and what it answered. */
   arrival?: ArrivalAsk | null
-  arrived?: { fixtureId: string; notAsTold: string[] }
+  arrived?: { fixtureId: string; notAsTold: string[]; shown: string[] }
   /** When set, the desk covers these jobs alone. */
   deskJobs?: string[]
   /** The next desk check fails with this error, once. */
@@ -132,9 +132,9 @@ export function memoryStartChecksIo(db: MemoryStart): StartChecksIo {
       else db.job = { id: db.job?.id ?? id('s'), development_id: null, job_id: home.jobId, notice_days: days, shows_on_gc_page: db.job?.shows_on_gc_page ?? false }
     },
     readArrival: async () => db.arrival ?? null,
-    arrive: async (fixtureId, notAsTold) => {
+    arrive: async (fixtureId, notAsTold, shown) => {
       write('arrive')
-      db.arrived = { fixtureId, notAsTold: [...notAsTold] }
+      db.arrived = { fixtureId, notAsTold: [...notAsTold], shown: [...shown] }
       db.arrival = null
       return { dispatchRequestId: notAsTold.length ? 'dr-1' : null, pushed: true }
     },
