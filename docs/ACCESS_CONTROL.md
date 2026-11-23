@@ -3437,7 +3437,15 @@ staff paths still use **`is_dev_or_master_or_assistant()`** unchanged.
 | Edit customers | ✅ | ✅ Own | ✅ Adopted | ❌ | ✅ Basic fields only | ❌ | ❌ |
 | Delete customers | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Change customer owner | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Merge two customers | ✅ | ✅ | ✅ Both customers have an owner | ❌ | ❌ | ❌ | ❌ |
 | Quick Fill | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+
+**Merge two customers** is the database's rule, not the screen's alone.
+`merge_customers` and `preview_merge_customers` are SECURITY DEFINER and carry no role test in their own lines: each calls `assert_caller_can_merge_customer_pair` once it holds the two rows.
+That function lets a dev or a leader through, lets an assistant or a controller through when both customers have an owner (`master_user_id`), and answers everyone else *Not allowed to merge customers*;
+the Edit Customer window shows the press to the same four roles (`showMergeUi` in `EditCustomerForm.tsx`).
+A caller in training mode is stopped at the merge's first write by the read-only statement trigger, a digital twin is an estimator and is refused by role, and an archived caller's request never reaches the function.
+The `merge-customers` bed holds the refusals: nobody signed out, an estimator, and an assistant in training mode.
 
 ### Project Management
 
@@ -3786,6 +3794,7 @@ do not copy it for tables holding real data.
 - **DELETE**: Not granted;
   UI shows no delete for estimators
 - **UI**: No **Advanced** (owner), **merge**, or **delete** in edit modal
+- **Merge**: refused by the database too ([Customer Management](#customer-management))
 
 **Workflow (Bids)**:
 1. Estimator opens "+ Add new customer" modal in Bids
