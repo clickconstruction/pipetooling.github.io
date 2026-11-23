@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { pullSinceDay, type PermitRow } from '../_shared/permitFeed.ts'
-import { feedPasses, feedsToPull, permitCity, PERMIT_CITY_NAMES, type FeedPass, type FeedReader } from '../_shared/permitCities.ts'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import type { PermitRow } from '../_shared/permitFeed.ts'
+import { feedPasses, feedsToPull, passDayColumns, passStarts, permitCity, PERMIT_CITY_NAMES, type FeedPass, type FeedReader, type NewestHeldDays } from '../_shared/permitCities.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { builderKeyOf } from '../_shared/permitLookup.ts'
 import { fillPoints, idBatches, idOfAny, parcelIdsToAsk, withoutPointColumns, type ParcelPoint, type ParcelPointSource } from '../_shared/permitParcelPoints.ts'
@@ -19,8 +19,10 @@ import { fillPoints, idBatches, idOfAny, parcelIdsToAsk, withoutPointColumns, ty
  * read a second time in the same run, by that issued day (`feedPasses`, punch list #405). An
  * application is filed on one day and takes its permit's day weeks later, long after the first
  * reading stopped going back to its filing day: read once, it said it still waited for ever, and
- * Market's clock lost it. The second reading starts ten days before the newest issued day held on
- * that feed's rows, and its day is `issuedSince` in the feed's answer.
+ * Market's clock lost it. The second reading starts thirty days before the newest issued day held
+ * on that feed's rows, and its day is `issuedSince` in the feed's answer. Every reading's start is
+ * worked out before the feed's first row is written (`passStarts`, v2.8328): the first reading
+ * writes fresh issued days, and a start counted back from those skipped the permits dated before it.
  *
  * Auth: `X-Cron-Secret` = CRON_SECRET, or a bearer JWT whose user passes
  * `user_can_research_permits()`. Body: `{ city?: string, since?: 'YYYY-MM-DD', until?: 'YYYY-MM-DD', dry_run?: boolean }`.
@@ -77,6 +79,12 @@ async function askPoints(source: ParcelPointSource, ids: readonly string[]): Pro
   const body = await res.json().catch(() => null)
   if (body == null) throw new Error(`the parcel layer answered ${res.status} with no rows`)
   return source.pointsOf(body)
+}
+
+/** The newest day one feed's rows hold in a day column, null when they hold none. Read before the feed's first page is written (`passStarts`). */
+async function newestHeldDay(admin: SupabaseClient, source: string, column: FeedPass['dayColumn']): Promise<string | null> {
+  const { data } = await admin.from('permits').select(column).eq('source', source).not(column, 'is', null).order(column, { ascending: false }).limit(1).maybeSingle()
+  return (data as Record<string, string | null> | null)?.[column] ?? null
 }
 
 async function readPage(feed: FeedReader, pass: FeedPass, since: string, size: number, offset: number, until: string | null): Promise<Record<string, unknown>[]> {
@@ -140,23 +148,18 @@ serve(async (req) => {
     try {
       // The parcel layers that refused a read in this run: one refusal ends the asking of that layer, so a layer that is down does not spend the time budget.
       const refused = new Set<ParcelPointSource>()
-      for (const pass of feedPasses(feed, history)) {
+      const passes = feedPasses(feed, history)
+      // Every reading's start is worked out here, before a row is written: the first reading upserts
+      // the issued days the second counts back from (punch list #405, v2.8328).
+      const newestHeld: NewestHeldDays = {}
+      if (!sinceOverride) {
+        for (const col of passDayColumns(passes)) newestHeld[col] = await newestHeldDay(admin, feed.source, col)
+      }
+      const starts = passStarts(passes, newestHeld, today, sinceOverride)
+      for (const [i, pass] of passes.entries()) {
         // A reading cut short by the time budget ends the feed: the next run carries on.
         if (outcome.error) break
-        let since = sinceOverride
-        if (!since) {
-          const col = pass.dayColumn
-          const { data: newest } = await admin
-            .from('permits')
-            .select(col)
-            .eq('source', feed.source)
-            .not(col, 'is', null)
-            .order(col, { ascending: false })
-            .limit(1)
-            .maybeSingle()
-          const newestDay = (newest as Record<string, string | null> | null)?.[col] ?? null
-          since = pullSinceDay(newestDay, today)
-        }
+        const since = starts[i]!
         if (pass.issuedAgain) outcome.issuedSince = since
         else outcome.since = since
         let offset = 0
