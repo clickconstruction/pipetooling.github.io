@@ -34,7 +34,7 @@ describe('canTakeBackPapers: who has the press', () => {
     expect(canTakeBackPapers('master_technician')).toBe(true)
   })
 
-  it('nobody else: the database answers an assistant’s or the controller’s delete nothing', () => {
+  it('nobody else: the app’s own rule for deleting a paper, which is narrower than the database’s', () => {
     for (const role of ['assistant', 'controller', 'estimator', 'subcontractor', 'helpers', 'primary', 'superintendent', '', null, undefined]) {
       expect(canTakeBackPapers(role)).toBe(false)
     }
