@@ -1,6 +1,7 @@
 -- One search across every supply house bill (punch list #431, PR 5, migration *_supply_bill_search): what a word
--- finds, by a bill's own facts and by a line read from its paper; how a day, a month and a year narrow; that a % and a
--- _ are never wild; the line a hit names; and who finds anything at all, since the function runs as the caller.
+-- finds, by a bill's own facts, by its job, by what its paper prints, by a line read from its paper and by any other
+-- word of its page; how a day, a month and a year narrow; that a % and a _ are never wild; the line or the words a hit
+-- names; and who finds anything at all, since the function runs as the caller.
 -- Fixtures are written as postgres; the tries run as each account under RLS; everything rolls back. Every house,
 -- number, part and amount is made up. Raises on the first failed assertion; ends with "supply_bill_search PASSED".
 -- See scripts/pgtest-supply-bill-search.sh. Never against prod.
@@ -40,6 +41,13 @@ INSERT INTO public.supply_paper_lines (paper_id, line_no, description, house_cod
   ('00000000-0000-0000-0000-0000004310c2', 2, '3/4 in. ball valve, full port', 'BV-FP-075', ''),
   ('00000000-0000-0000-0000-0000004310c3', 1, '2 in. ball valve, full port', 'BV-FP-200', 'T-900-2'),
   ('00000000-0000-0000-0000-0000004310c3', 2, '', 'NH-CPL-4', '');
+-- What the papers themselves print: a PO and an order number, and one page's words as the sweep keeps them. The
+-- second page is long, so its hit is shown the words near the word and not the page.
+UPDATE public.supply_papers SET po_text = 'RIVERBEND STORAGE', order_number = 'SO-88120',
+  page_text = E'HARLOW SUPPLY\nShip to: 2201 HILLSIDE RD\nRIVERBEND SELF STORAGE\nOrdered by: Dana\n50 gal gas water heater'
+  WHERE id = '00000000-0000-0000-0000-0000004310c1';
+UPDATE public.supply_papers SET page_text = repeat('filler line ', 20) || 'ZEBRA crossing note ' || repeat('filler line ', 20)
+  WHERE id = '00000000-0000-0000-0000-0000004310c2';
 INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000004310e1', 'Bill Search Bed Work');
 INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name, customer_id) VALUES
   ('00000000-0000-0000-0000-0000004310d1', '00000000-0000-0000-0000-0000004310a1', '00000000-0000-0000-0000-0000004310e1', 'ZZ Test Larkspur Commons', NULL);
@@ -98,6 +106,15 @@ SELECT sb.same('a PDF is a link or a copy of ours, and a blank link is none', (S
 SELECT sb.same('the jobs a bill is on come with it', (SELECT jsonb_array_length(jobs) || ' | ' || (jobs->0->>'job_name') || ' | ' || (jobs->0->>'id') || ' | ' || ((jobs->0->>'pct')::numeric = 100)::text FROM public.search_supply_bills(ARRAY['7602'])), '1 | ZZ Test Larkspur Commons | 00000000-0000-0000-0000-0000004310d1 | true');
 SELECT sb.same('a bill on no job has an empty list', (SELECT jobs::text FROM public.search_supply_bills(ARRAY['harlow'])), '[]');
 SELECT sb.same('the limit holds, and a silly one is one', (SELECT count(*)::text FROM public.search_supply_bills(ARRAY['brightwater'], NULL, NULL, NULL, 2)) || ' / ' || (SELECT count(*)::text FROM public.search_supply_bills(ARRAY['brightwater'], NULL, NULL, NULL, 0)), '2 / 1');
+
+SELECT sb.same('the job a bill is on finds it, and names no line', sb.found(ARRAY['larkspur', 'commons']) || ' ~ ' || (SELECT coalesce(on_paper, 'none') FROM public.search_supply_bills(ARRAY['larkspur'])), 'BW 7602-01 ~ none');
+SELECT sb.same('the PO and the order number the paper prints', sb.found(ARRAY['riverbend', 'storage']) || ' / ' || sb.found(ARRAY['so-88120']), 'HS-204418 / HS-204418');
+SELECT sb.same('any other word of the page finds its bill', sb.found(ARRAY['hillside']) || ' / ' || sb.found(ARRAY['ordered', 'dana']), 'HS-204418 / HS-204418');
+SELECT sb.same('a bill the page found is shown the words around the word', (SELECT on_paper FROM public.search_supply_bills(ARRAY['hillside'])), 'HARLOW SUPPLY Ship to: 2201 HILLSIDE RD RIVERBEND SELF STORAGE Ordered by: Dana 50 gal gas water heater');
+SELECT sb.same('a long page is cut to the words near the word', (SELECT (on_paper LIKE '%filler line ZEBRA crossing note filler line%')::text || ' ' || (length(on_paper) BETWEEN 60 AND 110)::text FROM public.search_supply_bills(ARRAY['zebra'])), 'true true');
+SELECT sb.same('a line names the hit before the page does', (SELECT on_paper || ' ~ ' || on_paper_code FROM public.search_supply_bills(ARRAY['heater'])), '50 gal gas water heater ~ WH-50-GAS');
+SELECT sb.same('a page with no words read is asked nothing', sb.found(ARRAY['zzzz', 'hillside']), '');
+SELECT sb.same('the column is the paper''s own', (SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'supply_papers' AND column_name = 'page_text'), 'text');
 
 -- ---------- Who finds anything: the function runs as the caller ----------
 
