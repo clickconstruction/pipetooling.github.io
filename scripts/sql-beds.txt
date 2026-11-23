@@ -165,3 +165,4 @@ document-builders
 document-builder-sheets
 coi-checked-against-a-sheet
 write-down-first-amount
+stripe-paid-day
