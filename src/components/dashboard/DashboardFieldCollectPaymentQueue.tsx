@@ -835,7 +835,7 @@ export default function DashboardFieldCollectPaymentQueue({
                               flexShrink: 0,
                               padding: '0.35rem 0.75rem',
                               fontSize: '0.875rem',
-                              background: opts.length === 0 ? '#2563eb' : '#16a34a',
+                              background: opts.length === 0 ? '#2563eb' : '#15803d',
                               color: 'white',
                               border: 'none',
                               borderRadius: 4,

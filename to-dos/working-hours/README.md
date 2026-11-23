@@ -2,20 +2,53 @@
 name: "Working hours: a start and an end for each day, set for a person"
 number: 429
 group: close
-status: asked 2026-11-23 · a plan and a mock-up, then a second pass · the owner's go the same day, *build it all*, with every pick kept · built: the database door (PR 1), the kernel and Utilization (PR 2), the Working hours row with its lock and the line on My Time (PR 3), the clock (PR 4), the usual day's lock (PR 5) · left: the dev seat
+status: asked 2026-11-23 · a plan and a mock-up, then a second pass · the owner's go the same day, *build it all*, with every pick kept · built and live the same day: the database door, the kernel and Utilization, the Working hours row with its lock and the line on My Time, the clock with the usual day's lock, and the dev seat · left: an outside session's live test, then the helper's hours set on his sheet
 summary: >
   A new helper works 6:00 AM to 12:00 PM on five days, 30 hours. The app should let a dev or the
   controller set those hours for a person, in 15-minute blocks. Today three things describe a
   person's week and none of them is that. The plan makes one of them the truth: a week with a start
-  and an end for each day. Pay hours and the clock's own sessions are worked out from it. Five small
-  PRs, and nothing is built.
-next: PR 2, the kernel and the readers, once the door is pushed and the types are regenerated.
-size: L as a train of five (S · S · M · M · S)
+  and an end for each day. Pay hours and the clock's own sessions are worked out from it. Built and
+  live on 2026-11-23, in five PRs.
+next: An outside session runs [`LIVE_TEST.md`](LIVE_TEST.md). Then a dev or the controller sets the helper's hours on his sheet, and the card closes.
+size: L as a train of five (S · S · M · M · S), built as five, with the clock and the usual day's lock in one PR and the dev seat as the fifth
 blocker: None.
-opinion: build — the shape is already in the app, and the first three PRs give the helper his hours with no change to pay
+ver: v2.8345 · v2.8350 · v2.8353 · v2.8356 · v2.8357 · v2.8358
+opinion: close — built and live; an outside session's test and the helper's own hours are left
 ---
 
 # Working hours
+
+## Where it stands
+
+**Built and live, 2026-11-23.** Every PR merged that day, all four migrations are applied (`npm run
+check:migration-drift` reads fully applied), and `dev-mcp` 0.129.0 is deployed.
+
+- **v2.8345, the database door** (#9461). `kind` on `person_available_hours`, `set_working_hours`,
+  `working_hours_on` and `working_week_ok`. Migration `20261123075925`.
+- **v2.8350, the kernel and Utilization** (#9465). `workingHours.ts`, and Utilization reads a set week
+  over any answer.
+- **v2.8353, the Working hours row, its lock and the line on My Time** (#9477). Migration
+  `20261123082812`: the seven numbers on pay are a dev's or the controller's, and an answer is closed
+  while working hours are in force.
+- **v2.8356 and v2.8357, the clock and the usual day's lock** (#9492). Migrations `20261123083429` and
+  `20261123093000`.
+- **v2.8358, the dev seat** (#9493). `plan_pay_setup` takes `working_hours`, through the same door.
+- The types after the pushes are #9499.
+
+**What differs from the plan.**
+
+- **The clock and the usual day's lock went as one PR**, as this card first drew PR 4. The build had
+  split them, and they went back together to save a round in the merge queue.
+- **The Workday… presses stay for everyone.** The card drew them hidden from anyone but a dev or the
+  controller. They also open the custom schedule for one date, which pay staff use, so the window holds
+  the rule: the usual day's fields are off for anyone else.
+- **Hire saves no workday for anyone else.** An owner's salaried hire gets no workday row, and the form
+  says a dev or the controller sets their hours. Until then the person clocks in and out.
+- **The dev seat is 0.129.0**, after #9438's 0.128.0, which merged first.
+
+**The live test.** [`LIVE_TEST.md`](LIVE_TEST.md) is a run sheet for a session that did not build this.
+It checks the seat, the office's row, the person's My Time line, and, on the user's word, the salaried
+path and the next day's clock.
 
 The mock-up is [`mockup.html`](mockup.html). It draws the desk and the phone, in light and in dark,
 and its first panel is the row itself, live. Every name and every figure on it is made up. No wage
@@ -323,3 +356,4 @@ Each has the pick the plan drew.
 - As the owner's and an assistant's sample accounts: the row reads locked, and a direct write is
   refused by the database.
 - Delete the `ZZ Test` rows, and name any the database will not let go.
+- After the build: the run sheet for an outside session is [`LIVE_TEST.md`](LIVE_TEST.md).

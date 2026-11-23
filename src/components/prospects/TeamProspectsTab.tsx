@@ -596,7 +596,7 @@ function SortableCandidateCard({
             disabled={busy}
             onClick={onTryOut}
             title="Put them on the roster as a trial helper — they get a login, can be scheduled and clock in"
-            style={{ ...smallButtonStyle(busy), padding: '0.3rem 0.55rem', background: '#16a34a', color: 'white', border: 'none' }}
+            style={{ ...smallButtonStyle(busy), padding: '0.3rem 0.55rem', background: '#15803d', color: 'white', border: 'none' }}
           >
             Try out
           </button>
@@ -1817,12 +1817,12 @@ export default function TeamProspectsTab({ authUserId, isDev, canEditOnboarding 
                                 Back to Screen
                               </button>
                               {isHelperColumn(title) && (
-                                <button type="button" disabled={busy} onClick={() => startTryOut(c)} title="Put them on the roster as a trial helper — they get a login, can be scheduled and clock in" style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
+                                <button type="button" disabled={busy} onClick={() => startTryOut(c)} title="Put them on the roster as a trial helper — they get a login, can be scheduled and clock in" style={{ ...smallButtonStyle(busy), background: '#15803d', color: 'white', border: 'none' }}>
                                   Try out
                                 </button>
                               )}
                               {powers.canHire && (
-                                <button type="button" disabled={busy} onClick={() => setStatus(c, 'hired')} title="Advance to Hire" style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
+                                <button type="button" disabled={busy} onClick={() => setStatus(c, 'hired')} title="Advance to Hire" style={{ ...smallButtonStyle(busy), background: '#15803d', color: 'white', border: 'none' }}>
                                   Advance
                                 </button>
                               )}
@@ -1879,7 +1879,7 @@ export default function TeamProspectsTab({ authUserId, isDev, canEditOnboarding 
                         {tally && <TrialTallyBlock tally={tally} />}
                         <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.45rem' }}>
                           {powers.canHire && (
-                            <button type="button" disabled={busy} onClick={() => endTryOut(c, 'hired')} title="Hire — the trial flag clears; they stay a regular helper" style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
+                            <button type="button" disabled={busy} onClick={() => endTryOut(c, 'hired')} title="Hire — the trial flag clears; they stay a regular helper" style={{ ...smallButtonStyle(busy), background: '#15803d', color: 'white', border: 'none' }}>
                               Hire
                             </button>
                           )}
@@ -2249,7 +2249,7 @@ export default function TeamProspectsTab({ authUserId, isDev, canEditOnboarding 
                 type="button"
                 onClick={addHireToRoster}
                 disabled={busy}
-                style={{ padding: '0.5rem 1rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
               >
                 {busy ? 'Adding…' : 'Add to roster'}
               </button>

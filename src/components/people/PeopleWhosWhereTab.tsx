@@ -107,7 +107,7 @@ function Head({ head, size = HEAD_SIZE }: { head: WwHead; size?: number }) {
         {wwInitials(head.person.name)}
       </span>
       {isSupervisor(head.person) && (
-        <span aria-label="can run a job" style={{ position: 'absolute', top: -6, right: 2, fontSize: 8, fontWeight: 800, letterSpacing: '0.04em', background: '#16a34a', color: 'white', borderRadius: 999, padding: '1px 4px', lineHeight: 1.3 }}>
+        <span aria-label="can run a job" style={{ position: 'absolute', top: -6, right: 2, fontSize: 8, fontWeight: 800, letterSpacing: '0.04em', background: '#15803d', color: 'white', borderRadius: 999, padding: '1px 4px', lineHeight: 1.3 }}>
           SUP
         </span>
       )}

@@ -5,6 +5,8 @@ import { readDriveSettings } from '../_shared/driveSettings.ts'
 import { driveFailureOf } from '../_shared/driveFailure.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { DRIVE_TRASH_WORDS, isTrashAction, lienRowsUse, parseTrashAsk, trashNote, type TrashAsk } from '../_shared/driveTrash.ts'
+import { BILL_FILE_WORDS, insideBillsFolder, isBillReadAction, parseBillReadAsk, type BillFileWhy, type BillReadAsk, type DriveStep } from '../_shared/billFile.ts'
+import { fileIdOfLink } from '../_shared/billSweep.ts'
 import { NO_COMPANY_FOLDER_WORDS } from '../_shared/whereFilesGo.ts'
 import { childFolder, driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half, type JobFolder } from '../_shared/driveJobFolder.ts'
 import { photoDriveName, photoNameInputOf, type PhotoAttachmentRow } from '../_shared/gcKernels/index.ts'
@@ -111,6 +113,10 @@ import { JOB_PAPERS_LOCK_WORDS, jobsShutToUser } from '../_shared/jobPapersLock.
  *   POST { action: 'read', job, driveFileId }            → the bytes of a file inside the job's folder, as an octet stream,
  *                                                        up to 30 MB, for a paper the app prints from the file (a filed
  *                                                        lien's stamped scan into the copies to mail); a read
+ *   POST { action: 'read_bill', invoiceId }              → the bytes of a supply house bill's PDF, as an octet stream, up
+ *                                                        to 30 MB, for the app's bill viewer (punch list #431): the bill's
+ *                                                        row is read as the caller, and the file must sit in the bills
+ *                                                        folder (`_shared/billFile.ts`); a read
  *   POST { action: 'list_company' }                      → the company papers folder's files (the office's setting
  *                                                        `drive_company_folder_id`, Documents → Where files go) → { files,
  *                                                        capped, folder: { id, url } }; 409 while no folder is set
@@ -350,6 +356,63 @@ async function trashDoor(admin: SupabaseClient, ask: TrashAsk, userId: string): 
   return json({ trashed: trash, name, url: driveViewUrl(ask.driveFileId) })
 }
 
+/** One file or folder as the bills fence reads it; null when Drive will not show it to the app. */
+async function billStep(google: string, id: string): Promise<DriveStep | null> {
+  const res = await fetch(`${DRIVE}/files/${encodeURIComponent(id)}?fields=name,parents,driveId&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${google}` } })
+  if (res.status === 404 || res.status === 403) {
+    void res.body?.cancel().catch(() => {})
+    return null
+  }
+  if (!res.ok) throw new Error(`Drive answered ${res.status}`)
+  const meta = (await res.json()) as { name?: string; parents?: string[]; driveId?: string }
+  return { name: meta.name ?? '', parent: meta.parents?.[0] ?? null, driveId: meta.driveId ?? null }
+}
+
+/**
+ * A supply house bill's PDF for the app's viewer (punch list #431, `_shared/billFile.ts`). The bill's row is read as
+ * the caller, so their own policy decides whose bill it is. The file is the one the row links, and it must sit in the
+ * bills folder: the link is a field the office types, and this account reads files the office cannot.
+ */
+async function billDoor(asCaller: SupabaseClient, ask: BillReadAsk, role: string): Promise<Response> {
+  const refuse = (why: BillFileWhy, status: number, retry = false, more: Record<string, unknown> = {}) => json({ error: BILL_FILE_WORDS[why], why, retry, ...more }, status)
+  const { data, error } = await asCaller.from('supply_house_invoices').select('id, link').eq('id', ask.invoiceId).maybeSingle()
+  if (error) return refuse('unread', 500, true)
+  if (!data) return refuse('not_yours', 403)
+  const fileId = fileIdOfLink((data as { link?: string | null }).link)
+  if (!fileId) return refuse('no_file', 404)
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 500)
+  const google = await googleAccessToken(saJson)
+  const where = await insideBillsFolder(fileId, (id) => billStep(google, id), Deno.env.get('BILLS_DRIVE_FOLDER_ID') ?? null)
+  if (where.gone) return refuse('gone', 404)
+  // A dev is told the folders the file sits under, so a renamed bills folder is told from a stray file.
+  if (!where.inside) return refuse('not_a_bill_file', 403, false, role === 'dev' ? { seen: where.seen } : {})
+  const meta = await driveGet<{ mimeType?: string; trashed?: boolean }>(google, `${DRIVE}/files/${encodeURIComponent(fileId)}?fields=mimeType,trashed&supportsAllDrives=true`)
+  if (meta.trashed) return refuse('trashed', 409)
+  if ((meta.mimeType ?? '').startsWith('application/vnd.google-apps.')) return refuse('no_bytes', 415)
+  const file = await driveMedia(google, fileId)
+  if (!file.ok || !file.body) {
+    void file.body?.cancel().catch(() => {})
+    return refuse('unanswered', 502, true)
+  }
+  const length = Number(file.headers.get('Content-Length') ?? '')
+  if (Number.isFinite(length) && length > READ_CAP_BYTES) {
+    void file.body.cancel().catch(() => {})
+    return refuse('too_big', 413)
+  }
+  // Always an octet stream, as `read` answers: the viewer tells a PDF from a picture by the file's first bytes.
+  return new Response(file.body, {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/octet-stream',
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+      ...(file.headers.get('Content-Length') ? { 'Content-Length': file.headers.get('Content-Length')! } : {}),
+    },
+  })
+}
+
 async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const auth = req.headers.get('Authorization') ?? ''
@@ -374,6 +437,13 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
     const trashAsk = parseTrashAsk(body)
     if (!trashAsk) return json({ error: DRIVE_TRASH_WORDS.notAnAsk }, 400)
     return await trashDoor(admin, trashAsk, u.user.id)
+  }
+  // A supply house bill's PDF for the viewer (punch list #431): a read, so a training account is served, and a door
+  // of its own for the same reason the trash is. The bill's row is read as the caller, through `anon`.
+  if (isBillReadAction(body)) {
+    const billAsk = parseBillReadAsk(body)
+    if (!billAsk) return json({ error: BILL_FILE_WORDS.notAnAsk }, 400)
+    return await billDoor(anon, billAsk, String(who.role))
   }
   const ask = parseOfficeAsk(body)
   if (!ask) return json({ error: 'That is not an ask this door takes.' }, 400)

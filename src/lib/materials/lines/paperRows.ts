@@ -18,6 +18,9 @@ export interface PaperRow {
   poText: string
   filePath: string | null
   driveFileId: string | null
+  /** The pages of the file that are this paper (punch list #431): one PDF often holds several bills. The read sets both. */
+  pageFrom?: number | null
+  pageTo?: number | null
   subtotalCents: number | null
   taxCents: number | null
   freightCents: number | null
