@@ -272,7 +272,7 @@ The first of ours to reach a stage is asked **Is it as told?** in Job Mode. The 
 
 A **Yes, all as told** turns each of those bullets into a yes we saw, in that person's name.
 
-A **No** on a bullet opens the bullet again. The customer's word on that bullet is taken back. The stage turns red, and its sentence names who got there and the day.
+A **No** on a bullet opens the bullet again. The customer's word on that bullet is taken back. The stage turns red, and its sentence names who got there and the day. The stage stays red while a **No** stands. Tick the bullet once the customer says it is true, and the stage goes back to its own sentence.
 
 The bullet's line reads *said No on site* in red. The line names who said it and the day. Two of ours can arrive and say No on different bullets. Each bullet then names its own No. Ask them again, and tick the bullet once it is true.
 
