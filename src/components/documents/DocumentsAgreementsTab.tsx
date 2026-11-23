@@ -45,6 +45,8 @@ import {
   signingLinkByHandPrompt,
   signingLinkCopiedWords,
 } from '../../lib/documents/agreementsActs'
+import { TAKE_BACK_LABEL, canTakeBackPapers, takeBackConfirm, takeBackOutcomeWords, takeBackVerdict } from '../../lib/documents/paperTakeBack'
+import { takeBackPartyPaper } from '../../lib/documents/paperTakeBackIo'
 import { readPersonPaperSendFacts, sendPersonPaperForSignature, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
 import { ADD_TO_A_LIST_LABEL } from '../../lib/documents/paperPartyList'
 import { NO_PAPER_REMINDERS, readPaperReminders, writePaperReminderSwitch, type PaperReminders } from '../../lib/contracts/personPaperReminderIo'
@@ -74,6 +76,9 @@ import { documentsLinkButton, documentsQuietButton } from '../jobs/jobDocumentsS
  * state, the box finds by customer, job number, person or paper, and a press opens the window that kind already has.
  * A staff, sub or partner paper that waits on a signature acts where it sits: Send again and Copy the signing link, both
  * through the sender People → Contracts uses (`lib/documents/agreementsActs.ts`), and the list reads again after.
+ * An outside party's paper that is not signed also carries **Take back** (punch list #403): the paper is deleted and its
+ * signing link ends, after a confirm that says so (`lib/documents/paperTakeBack.ts`). A signed paper is kept. The
+ * press is the leader's and a dev's, the two roles that delete a paper anywhere in the app.
  * **Send a paper**, beside the box, sends a Contract Book paper to a person (`AgreementsSendPaper.tsx`), and
  * **Contract library** opens the library People → Contracts opens, in place (`AgreementsContractLibrary.tsx`).
  * The read is the `agreements_on_file` view, where each table's own row security decides what the reader sees; a read
@@ -132,6 +137,8 @@ const NO_DOOR = { kind: 'none' } as const
 const actBusy: CSSProperties = { ...documentsQuietButton, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'wait' }
 /** Add to a list: the one press on a line that makes a record, so it reads as the main press. */
 const addPress: CSSProperties = { ...documentsQuietButton, background: '#2563eb', border: '1px solid #2563eb', color: 'white', fontWeight: 600 }
+/** Take back deletes a paper, so its words are red: the one press on a line that removes something. */
+const takeBackPress: CSSProperties = { ...documentsQuietButton, color: 'var(--text-red-700)' }
 
 function pickChipStyle(pressed: boolean): CSSProperties {
   const base: CSSProperties = { ...documentsQuietButton, borderRadius: 999, fontWeight: pressed ? 700 : 500 }
@@ -144,6 +151,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   /** Whose tab this is: the office acts on it, and an estimator reads it (punch list #403, call 8). */
   const reader = agreementsReader(role)
   const canAct = canActOnAgreements(role)
+  /** Take back deletes a paper, so it is the leader's and a dev's, as deleting one is on People (punch list #403). */
+  const mayTakeBack = canAct && canTakeBackPapers(role)
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const promptDialog = usePromptDialog()
@@ -356,6 +365,25 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     }
   }
 
+  // Take back: the paper is deleted and its signing link ends with it. The confirm says so first. The delete itself
+  // asks for an unsigned paper, so one signed a moment ago is kept, and the office is told which it was.
+  const takeBack = async (row: AgreementRow) => {
+    if (busyAct || !mayTakeBack) return
+    const verdict = takeBackVerdict(row)
+    if (!verdict.ok) return
+    if (!(await confirmDialog(takeBackConfirm(row, verdict.sent)))) return
+    setBusyAct(`back:${row.id}`)
+    try {
+      const told = takeBackOutcomeWords(await takeBackPartyPaper(row.source_id), row, verdict.sent)
+      showToast(told.words, told.tone)
+      retry()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The paper was not taken back.'), 'error')
+    } finally {
+      setBusyAct(null)
+    }
+  }
+
   const empty = agreementsEmptyWords(query, reader)
 
   return (
@@ -462,6 +490,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                       const acts = canAct && agreementCanBeSentAgain(row)
                       const sending = busyAct === `send:${row.id}`
                       const linking = busyAct === `link:${row.id}`
+                      const canTakeBack = mayTakeBack && takeBackVerdict(row).ok
+                      const takingBack = busyAct === `back:${row.id}`
                       const kept = agreementMayHaveReminders(row) ? reminders.byId.get(row.source_id) : undefined
                       const reminder = kept ? paperReminderLine(kept, reminders.switchOn) : ({ kind: 'none' } as const)
                       const reminderWords = paperReminderWords(reminder, (iso) => formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(iso)))
@@ -528,6 +558,11 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                                   {linking ? 'Making the link…' : COPY_SIGNING_LINK_LABEL}
                                 </button>
                               </>
+                            ) : null}
+                            {canTakeBack ? (
+                              <button type="button" style={takingBack ? actBusy : takeBackPress} disabled={busyAct != null} onClick={() => void takeBack(row)}>
+                                {takingBack ? 'Taking it back…' : TAKE_BACK_LABEL}
+                              </button>
                             ) : null}
                           </div>
                         </div>

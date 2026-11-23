@@ -14,7 +14,7 @@ describe('crewDayEmail (the digest’s renderer, lifted v2.4163)', () => {
     expect(view.subsToday).toEqual([{ personName: "Sam's Plumbing LLC", label: 'Rough-in · 1041 · Cedar Bend Apartments', span: 'Sep 29' }])
   })
   it('subject and text read the day', () => {
-    expect(crewDayEmailSubject(view)).toBe('Crew Day — Tue, Sep 29 · 6 people · 40.4 h · 3 reports · 3 flags')
+    expect(crewDayEmailSubject(view)).toBe('Who worked — Tue, Sep 29 · 6 people · 40.4 h · 3 reports · 3 flags')
     const t = crewDayEmailText(view)
     expect(t).toContain('Subs on site today')
     expect(t).toContain('(on the clock)')
