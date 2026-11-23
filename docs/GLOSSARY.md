@@ -6642,7 +6642,7 @@ Kernel [`lienBoard.ts`](../src/lib/jobs/lienBoard.ts), component `LienBoard.tsx`
 guide *read the Board on the Lien desk*.
 
 **The lien month** (**v2.6645** · 6648, punch list #235): the office's rhythm for lien work, the owner's policy of 2026-11-01 refined 2026-11-07 — reminders on days 1 to 5, notices on days 6 to 9, liens on days 10 to 13, catch-up on the 14th and 15th, nothing scheduled from the 16th — as the five-zone bar across the top of To do until the Board took its place in v2.7332 (`LienMonthBar`, deleted then;
-the Dashboard's lien month card still draws the zones through `useLienMonth`), each zone sized by its days with its count left, its count done and what slipped (red, the first job named, carried into Catch-up), today marked, one press per zone that narrows the list to that zone's work;
+the Dashboard's lien month card drew the zones through `useLienMonth` until v2.8342, punch list #423, when it was dropped and its hook with it), each zone sized by its days with its count left, its count done and what slipped (red, the first job named, carried into Catch-up), today marked, one press per zone that narrows the list to that zone's work;
 the rule is `LIEN_MONTH_RULE` in `lib/jobs/lienMonthRhythm.ts` and reads under § Rules.
 A policy, not an app rule: the bar sends, files and moves nothing.
 
