@@ -41,6 +41,7 @@ import PeopleWhosWhereTab from '../components/people/PeopleWhosWhereTab'
 import PeopleUtilizationTab from '../components/people/PeopleUtilizationTab'
 import PeopleSpendingTab from '../components/people/PeopleSpendingTab'
 import { canOpenSpending } from '../lib/people/spendingAccess'
+import { canSetStandingSchedule } from '../lib/people/workingHours'
 import { PeopleScoreboardTab } from '../components/people/PeopleScoreboardTab'
 import { PeopleScoresTab } from '../components/people/PeopleScoresTab'
 import PeoplePayStubsTab, { type PayStubRow } from '../components/people/PeoplePayStubsTab'
@@ -2105,6 +2106,7 @@ export default function People() {
           isDev={isDev}
           canAccessPay={canAccessPay}
           canAccessContracts={canAccessContracts}
+          canSetSchedule={canSetStandingSchedule(authRole)}
           initialKind={hireOpen.kind}
           onClose={() => setHireOpen(null)}
           onHired={() => {

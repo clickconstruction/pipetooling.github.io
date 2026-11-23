@@ -65,7 +65,7 @@ or out.
 
 ## Salaried workday schedule
 
-For salaried people, the **Salaried workday** card edits their daily schedule right here. The card has the same settings as Settings → Salaried workday. The settings are a continuous or split day, start time, weekends, and a custom schedule for a single date. If the card says no login user matches the person's name, fix the roster name or invite them first. A person who still clocks in by hand before their start keeps that punch as their day. The app adds no scheduled session over it.
+For salaried people, the **Salaried workday** card edits their daily schedule right here. The card has the same settings as Settings → Salaried workday. The settings are a continuous or split day, start time, weekends, and a custom schedule for a single date. A dev or the controller changes the usual day. Everyone else reads it there with its fields off. A custom schedule for a single date is still theirs to save. If the card says no login user matches the person's name, fix the roster name or invite them first. A person who still clocks in by hand before their start keeps that punch as their day. The app adds no scheduled session over it.
 
 ## Recording time off
 

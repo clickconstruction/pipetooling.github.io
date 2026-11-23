@@ -37,7 +37,7 @@ describe('HirePersonModal and a teammate who left', () => {
 
   it('stops on the old name, offers Bring back, and goes on after This is someone else', async () => {
     const onClose = vi.fn()
-    renderWithProviders(<HirePersonModal authUserId="u-dev" isDev={true} canAccessPay={true} canAccessContracts={false} onClose={onClose} onHired={vi.fn()} />)
+    renderWithProviders(<HirePersonModal authUserId="u-dev" isDev={true} canAccessPay={true} canAccessContracts={false} canSetSchedule={true} onClose={onClose} onHired={vi.fn()} />)
     await settle()
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'corinne vela' } })
     await screen.findByText('Corinne Vela left on Nov 3, 2026.')
@@ -50,7 +50,7 @@ describe('HirePersonModal and a teammate who left', () => {
 
   it('matches the old email under a new name and opens the desk with the window up', async () => {
     const onClose = vi.fn()
-    renderWithProviders(<HirePersonModal authUserId="u-dev" isDev={true} canAccessPay={true} canAccessContracts={false} onClose={onClose} onHired={vi.fn()} />)
+    renderWithProviders(<HirePersonModal authUserId="u-dev" isDev={true} canAccessPay={true} canAccessContracts={false} canSetSchedule={true} onClose={onClose} onHired={vi.fn()} />)
     await settle()
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Corinne Ortega' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'Corinne.Vela@example.com' } })
@@ -58,5 +58,19 @@ describe('HirePersonModal and a teammate who left', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Bring back Corinne' }))
     expect(open).toHaveBeenCalledWith({ userId: 'u-corinne', personId: 'p-corinne', displayName: 'Corinne Vela', flow: 'bring_back' })
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('asks a dev or the controller for a salaried hire\'s workday start, and tells anyone else who sets the hours', async () => {
+    const { unmount } = renderWithProviders(<HirePersonModal authUserId="u-dev" isDev={true} canAccessPay={true} canAccessContracts={false} canSetSchedule={true} onClose={vi.fn()} onHired={vi.fn()} />)
+    await settle()
+    fireEvent.click(screen.getByLabelText(/Salaried/))
+    expect(screen.getByLabelText('Workday start')).toBeTruthy()
+    expect(document.querySelector('[data-hire-hours-later]')).toBeNull()
+    unmount()
+    renderWithProviders(<HirePersonModal authUserId="u-owner" isDev={false} canAccessPay={true} canAccessContracts={false} canSetSchedule={false} onClose={vi.fn()} onHired={vi.fn()} />)
+    await settle()
+    fireEvent.click(screen.getByLabelText(/Salaried/))
+    expect(screen.queryByLabelText('Workday start')).toBeNull()
+    expect(document.querySelector('[data-hire-hours-later]')?.textContent).toBe('A dev or the controller sets their hours after. Until then they clock in and out.')
   })
 })

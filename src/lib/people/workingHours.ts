@@ -27,6 +27,14 @@ const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
 const COUNT_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'] as const
 
+/**
+ * Who sets a person's standing hours: their working hours and the usual day of their workday schedule. A dev or
+ * the controller, as `set_working_hours` and the schedule table's write policies hold it.
+ */
+export function canSetStandingSchedule(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'controller'
+}
+
 // ---------- the shape ----------
 
 /** Why a day's ranges cannot be kept, in plain words, or null. `name` is the day as the sentence says it. */

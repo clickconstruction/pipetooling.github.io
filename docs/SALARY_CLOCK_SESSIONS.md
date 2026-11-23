@@ -115,6 +115,7 @@ Since v2.8345 a person can have **working hours**: a `set` row on `person_availa
 - **A meaningful override** still wins for its day, and is no longer held to 480 minutes.
 - **No working hours** (none set, or taken off again): the template's start and length, as before.
 - **The template row is still the switch.** A person with working hours and no template clocks in themself.
+- **Who writes the template.** Since v2.8357 a dev or the controller only (the insert and update policies). The person and pay staff read it, may delete it, and keep the custom schedule for one date.
 
 The client reads a day the same way through `workingDayForClock` (`src/lib/people/workingHours.ts`), which `resolveCalendarWorkday.ts` and `salaryOnShift.ts` take.
 
@@ -245,6 +246,7 @@ When My Time **merges** multiple `clock_sessions` rows into **one** visual segme
 | **`20260922001000`** | People spine (v2.3698): an archived account (`users.archived_at`) gets the day's unapproved `salary_schedule` rows deleted and the function returns; `sync_salary_clock_sessions_for_day` skips archived templates. |
 | **`20261014200000`** | **The continuous open-punch guard (v2.5509).** The canonical NULL-index insert, inside the window and at catch-up, is skipped while any non-rejected, non-revoked session overlaps `[t_start, t_end)` in half-open form (`clocked_in_at < t_end AND (clocked_out_at IS NULL OR t_start < clocked_out_at)`, an open session blocking whatever `p_now` is). A punch before the start is the day's row; one ending at or before `t_start` does not block. SQL bed `salary-sync-open-punch`. |
 | **`20261123083429`** | **Working hours (v2.8356).** The day's start and end come from the person's set week when they have one: no range is a day off, one a continuous day, two a split day. A row saved during a day holds from the next day. The override's two 480-minute checks are dropped. SQL bed `working-hours`. |
+| **`20261123093000`** | **The usual day's writers (v2.8357).** The insert and update policies on `salary_work_schedule_templates` narrow to a dev and the controller. Reading, deleting and one date's override are unchanged. No function body changes. |
 
 ---
 
