@@ -12,9 +12,11 @@
  * brings a taken-back paper back, which the confirm says.
  *
  * Who may: the leader and a dev, the two roles that delete a paper anywhere in the app (`canDeleteFromContractLibrary`,
- * the rule People → Contracts keeps). The table's own delete policy is narrower than its write policy: it answers a
- * plain assistant and the controller nothing. So the press is drawn for the two roles the delete works for, and the
- * rest of the office sends, sends again and copies a link as before.
+ * the rule People → Contracts keeps). The rule is the app's own, and it is narrower than the database: the table's
+ * delete policy answers the office's four roles, an assistant and the controller among them (since
+ * `20260714200000_dissolve_assistant_pay_linkage.sql`). So the press is drawn for the two roles the app lets delete a
+ * paper on every other page, and the rest of the office sends, sends again and copies a link as before. Opening it to
+ * the four roles is this one function, and is the owner's call.
  *
  * What it refuses, and why:
  *   - **A signed paper.** It is the agreement itself. Its e-sign record, its signed copy and the log of who opened it
