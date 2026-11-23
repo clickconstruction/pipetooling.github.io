@@ -1126,6 +1126,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - **The doors**: *Record this bill* / *Not a bill* on a thread write `message_attachments.paper_answer` under the office team's existing policy (the W-9 offer's) and the check `message_attachments_answer_to_an_offer` (v2.6141, migration `20261030080000`, in place of `…_answer_to_a_guess`: an answer stands on a guessed paper or on a file we keep a copy of, never on a link or a file left in Gmail);
   the thread's and the row's doors show only to the office roles while the switch is on.
   Our copy's lasting link (`/files/messages/<attachment>`, `/files/bills/<invoice>`) opens under the office's `message_attachments` and `supply_house_invoices` policies and the bucket's `gc_office_team()` read.
+  Since v2.8391 (punch list #431) `/files/bills/<invoice>` also opens a bill with no copy of ours, by going to the Drive link on its row, read under the same `supply_house_invoices` policy.
+  The Job Summary's share press, which copies that link, shows to the four roles that policy lets read a bill (dev, leader, assistant, controller) and to nobody else who sees the list.
 
 ### Materials on site — the cages and boxes on a job site (v2.6039, `20261029010000_materials_on_site.sql`)
 

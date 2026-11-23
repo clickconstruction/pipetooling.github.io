@@ -10,7 +10,7 @@
  */
 import { driveJobOf } from '../documents/jobFilesIo'
 import { supabase } from '../supabase'
-import { supplyHouseWebsitePortalHref } from '../supplyHouseWebsite'
+import { billLinkHref } from '../materials/bills/billLink'
 import { driveFileOfRouteId, type FileSource } from './fileRoute'
 
 export type FileTarget = { url: string } | { problem: 'notYours' | 'notHere' }
@@ -46,12 +46,6 @@ async function driveFileTarget(id: string): Promise<FileTarget> {
   }
   const url = (r.data as { url?: unknown } | null)?.url
   return typeof url === 'string' && url.startsWith('https://') ? { url } : { problem: 'notHere' }
-}
-
-/** A bill's pasted link as an address to go to: http or https alone, and never a map link someone pasted there. */
-export function billLinkHref(link: string | null | undefined): string | null {
-  const href = supplyHouseWebsitePortalHref(link)
-  return href && /^https?:\/\//i.test(href) ? href : null
 }
 
 async function billFileTarget(invoiceId: string): Promise<FileTarget> {

@@ -27,7 +27,8 @@ vi.mock('../supabase', () => ({
   },
 }))
 
-import { billLinkHref, fileTarget } from './fileOpenIo'
+import { fileTarget } from './fileOpenIo'
+import { billLinkHref } from '../materials/bills/billLink'
 
 const open = () => fileTarget({ source: 'bills', id: 'inv-1' })
 
