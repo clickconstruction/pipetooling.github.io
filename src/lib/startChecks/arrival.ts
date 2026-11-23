@@ -19,6 +19,8 @@ export const ARRIVAL_WORDS = {
   keeping: 'Keeping…',
   saidYes: 'Saved: all as told.',
   saidNo: (n: number) => `Dispatch has it: ${countWords(n, 'thing', 'things')} not as told.`,
+  /** The line is in the inbox and the push to the dispatchers' phones failed: the crew is told, so a phone call can stand in. */
+  notPushed: 'The line is in the inbox, but no phone rang. Call Dispatch too.',
   either: 'Keep working either way.',
   notKept: 'That was not kept',
   /** The fallback when a refused read carries no reason of its own. */
