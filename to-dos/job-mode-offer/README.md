@@ -158,10 +158,10 @@ header, since the header measures its own links to decide when to fold them away
 3. **The handle:** built as drawn, on (`MODE_ROW_HANDLE`). It is 24 px, the smallest press the app allows.
 4. **Who gets it:** answered, everyone (`modeRowOfferedToRole`). Built for the eight roles whose first
    page is the Dashboard.
-5. **The estimator:** open. The estimator's first page is Bids, and the estimator's header has no Home
-   press, so the row has no page of the estimator's to sit on. Left as it was: the gear menu's two rows
-   and the green strip. Putting the row on top of Bids is the other way, and it needs a word for the
-   middle third there.
+5. **The estimator:** answered, left out. An estimator who opens the app lands on Bids, since the route
+   guard sends `/` there, and only a fresh sign-in lands on the Dashboard. The owner saw a before and
+   after of the row on top of Bids, with **Bids** as the middle third, and said to leave it out
+   (2026-11-23). The estimator keeps the gear menu's two rows and the green strip.
 
 Calls 2 and 3 are one line each in `src/lib/modeRow.ts`.
 
