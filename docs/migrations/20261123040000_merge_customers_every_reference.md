@@ -72,3 +72,5 @@ The merge reads the foreign keys off the catalog, so a new table that points at 
 ## Release order
 
 Either order is safe. The client reads the plan when the preview gives one and shows the six counts it always did when not. Push after the merge.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274); types regenerated in #9442.
