@@ -11,14 +11,15 @@ import type { QuickSendPersonRow } from '../contractsQuickSend'
 import type { BookPaperRow } from '../jobs/jobPapers'
 import { supabaseJobPapersIo } from '../jobs/jobPapersIo'
 import { fetchRosterPeople } from '../people/rosterPeople'
-import { sendRoster, sendRosterNames } from './agreementsSend'
+import { loadSubCompanies } from '../people/subCompaniesIo'
+import { sendRoster, sendRosterNames, sendRosterWithCompanies } from './agreementsSend'
 
 export type AgreementsSendBook = {
   book: BookPaperRow[]
   personDocuments: QuickSendPersonRow[]
   rosterNames: string[]
-  /** The same people with whether the roster says sub, for Who is it with? (punch list #403). */
-  roster: Array<{ name: string; sub: boolean }>
+  /** The same people with whether the roster says sub, and a sub's trade company, for Who is it with? (punch list #403). */
+  roster: Array<{ name: string; sub: boolean; company?: string }>
 }
 
 /** The columns a quick send reads of a person's paper. */
@@ -26,16 +27,18 @@ export const QUICK_SEND_PERSON_COLUMNS = 'id, person_name, document_name, status
 
 /** Everything the send needs, read together. Throws with the reason. */
 export async function readAgreementsSendBook(): Promise<AgreementsSendBook> {
-  const [book, docs, roster] = await Promise.all([
+  const [book, docs, roster, subCompanies] = await Promise.all([
     supabaseJobPapersIo.readBook(),
     withSupabaseRetry(async () => supabase.from('person_contract_documents').select(QUICK_SEND_PERSON_COLUMNS), 'read the papers people hold'),
     fetchRosterPeople(supabase),
+    // Who works for which trade company only helps the find box: a read that fails leaves the roster as it was.
+    loadSubCompanies().catch(() => ({ links: [], companies: [] })),
   ])
   return {
     book,
     // A trade partner company's papers share the table and are no person's: never offered, never counted.
     personDocuments: ((docs ?? []) as unknown as QuickSendPersonRow[]).filter((d) => !isCompanyPaperName(d.person_name)),
     rosterNames: sendRosterNames(roster),
-    roster: sendRoster(roster),
+    roster: sendRosterWithCompanies(sendRoster(roster), roster, subCompanies.links, subCompanies.companies),
   }
 }

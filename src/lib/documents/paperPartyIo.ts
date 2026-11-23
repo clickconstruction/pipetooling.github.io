@@ -11,6 +11,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import type { PaperPartyKind } from '../contracts/paperParty'
 import type { PartyBusiness, PartyCustomer, PartyCustomerPerson, PartyRecordTable, PartyRep, PartySupplyHouse } from './paperPartyPick'
 import { PARTY_CONTACT_COLUMN, partyContactIsOwn, type PartyCopyOut } from './partyPaperOut'
+import type { ListRecordTable, TradeBusiness } from './paperPartyList'
 
 // `paper_party_contact` joins the generated types with the types PR after its push; until then the client is cast once.
 const db = supabase as unknown as SupabaseClient
@@ -216,12 +217,59 @@ export async function addSupplyHouse(name: string): Promise<string> {
   return (row as unknown as { id: string }).id
 }
 
+// ── A trade company on Add to a list (punch list #403, step 6) ────────────────────────────────────────────────────────
+
+/** Trade companies whose name holds what was typed, a few. The GC office team reads them; anyone else finds none. Throws with the reason. */
+export async function searchTradeCompanies(typed: string): Promise<TradeBusiness[]> {
+  const q = typed.trim()
+  if (q.length < 2) return []
+  const like = `%${q.replace(/[%_,()]/g, ' ')}%`
+  const rows = await withSupabaseRetry(async () => supabase.from('gc_companies').select('id, name').ilike('name', like).order('name').limit(12), 'find the trade companies')
+  return ((rows ?? []) as unknown as Array<{ id: string; name: string | null }>)
+    .map((c): TradeBusiness => ({ table: 'gc_companies', id: c.id, name: (c.name ?? '').trim(), party: 'trade' }))
+    .filter((c) => c.name !== '')
+}
+
+/**
+ * A new trade company with its trade, and the person as someone there who gets its contracts, through
+ * `gc_add_company` as Add a company makes one. Returns the company and the person's own row there. Throws with the reason.
+ */
+export async function addTradeCompany(name: string, trades: readonly string[], person: { name: string; email: string }): Promise<{ companyId: string; personRowId: string }> {
+  const companyId = await withSupabaseRetry(
+    async () =>
+      supabase.rpc('gc_add_company', {
+        company: { name: name.trim(), trades: [...trades], known: true, people: [{ name: person.name.trim(), email: person.email.trim(), gets: ['contracts'] }] },
+      }),
+    'add the trade company',
+  )
+  if (typeof companyId !== 'string' || !companyId) throw new Error('The trade company was not added.')
+  const row = await withSupabaseRetry(
+    async () => supabase.from('gc_company_people').select('id').eq('company_id', companyId).is('removed_at', null).order('created_at').limit(1).single(),
+    'read them at the trade company',
+  )
+  return { companyId, personRowId: (row as unknown as { id: string }).id }
+}
+
+/** Keep a person the office typed at a trade company we keep, as someone there who gets its contracts. Returns their row. */
+export async function keepSignerWithTradeCompany(companyId: string, signer: { name: string; email: string }): Promise<{ table: 'gc_company_people'; id: string }> {
+  const row = await withSupabaseRetry(
+    async () =>
+      supabase
+        .from('gc_company_people')
+        .insert({ company_id: companyId, name: signer.name.trim(), email: signer.email.trim(), role: '', gets: ['contracts'], added_by: 'office' })
+        .select('id')
+        .single(),
+    'keep them at the trade company',
+  )
+  return { table: 'gc_company_people', id: (row as unknown as { id: string }).id }
+}
+
 /**
  * Say what a contact with no record is: Messages' *Who is this?* (`name_contact`). The contact then points at the
  * record, or folds into the contact that already is that record, and its papers follow either way. Returns the contact
  * that holds the papers now. Throws with words the office can act on.
  */
-export async function namePartyContact(contactId: string, record: { table: PartyRecordTable; id: string }, kind: 'customer' | 'supply_house', name?: string): Promise<string> {
+export async function namePartyContact(contactId: string, record: { table: ListRecordTable; id: string }, kind: 'customer' | 'supply_house' | 'trade', name?: string): Promise<string> {
   try {
     // On a company's own row a name says which person there this is: someone the row has no person record for.
     const named = (name ?? '').trim()

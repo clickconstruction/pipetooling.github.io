@@ -4,6 +4,7 @@ import {
   ADD_TO_A_LIST_LABEL,
   addToListTitle,
   addedToListWords,
+  listBusinessTag,
   listChoiceRefusal,
   listConfirmLabel,
   listMadeKey,
@@ -11,12 +12,27 @@ import {
   listPlan,
   papersComeWords,
   writeOnce,
+  type ListBusiness,
   type ListChoice,
   type ListPlan,
+  type ListRecordTable,
   type MadeRecord,
+  type TradeBusiness,
 } from '../../lib/documents/paperPartyList'
-import type { PartyBusiness, PartyCustomer, PartySupplyHouse } from '../../lib/documents/paperPartyPick'
-import { addSupplyHouse, keepSignerWithBusiness, namePartyContact, readListPerson, readPartyPaperNames, readPartyShortLists, searchPartyCustomers, type ListPersonRead } from '../../lib/documents/paperPartyIo'
+import type { PartyCustomer, PartySupplyHouse } from '../../lib/documents/paperPartyPick'
+import {
+  addSupplyHouse,
+  addTradeCompany,
+  keepSignerWithBusiness,
+  keepSignerWithTradeCompany,
+  namePartyContact,
+  readListPerson,
+  readPartyPaperNames,
+  readPartyShortLists,
+  searchPartyCustomers,
+  searchTradeCompanies,
+  type ListPersonRead,
+} from '../../lib/documents/paperPartyIo'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -26,7 +42,7 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 /**
  * Documents → Agreements, **Add to a list** (punch list #403, step 3, the second PR). A paper that went to someone on
  * no list reads *Not on a list* until the office says what they are. This window asks: a new customer, a new supply
- * house or vendor, or someone at a company the app already keeps. The paper points at their contact, so it comes with
+ * house or vendor, a new trade company (step 6), or someone at a company the app already keeps. The paper points at their contact, so it comes with
  * them and nothing is copied (`name_contact`, the act Messages calls *Who is this?*).
  *
  * A new customer is made in the app's own New customer form, opened on their name, so a customer is made one way.
@@ -61,14 +77,17 @@ export function PaperPartyAddToList({
   const [attempt, setAttempt] = useState(0)
   const [choice, setChoice] = useState<ListChoice>('customer')
   const [company, setCompany] = useState('')
-  const [picked, setPicked] = useState<PartyBusiness | null>(null)
+  const [picked, setPicked] = useState<ListBusiness | null>(null)
   const [typed, setTyped] = useState('')
   const [houses, setHouses] = useState<PartySupplyHouse[]>([])
   const [customers, setCustomers] = useState<PartyCustomer[]>([])
+  const [trades, setTrades] = useState<TradeBusiness[]>([])
   const [housesFailure, setHousesFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [housesAttempt, setHousesAttempt] = useState(0)
   const [customersFailure, setCustomersFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [customersAttempt, setCustomersAttempt] = useState(0)
+  const [tradesFailure, setTradesFailure] = useState<OfflineRecoveryLastError | null>(null)
+  const [tradesAttempt, setTradesAttempt] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   /** The app's own New customer form, open on the plan it finishes. */
@@ -136,22 +155,48 @@ export function PaperPartyAddToList({
       clearTimeout(timer)
     }
   }, [searching, typed, customersAttempt])
+  // The trade companies are found by name as a customer is (punch list #403, step 6), each read with its own Retry.
+  useEffect(() => {
+    setTradesFailure(null)
+    if (!searching || typed.trim().length < 2) {
+      setTrades([])
+      return
+    }
+    let live = true
+    const timer = setTimeout(() => {
+      searchTradeCompanies(typed).then(
+        (found) => live && setTrades(found),
+        (e: unknown) => {
+          if (!live) return
+          setTrades([])
+          setTradesFailure(recoveryFailureFromError(e, 'The trade companies did not read.'))
+        },
+      )
+    }, 250)
+    return () => {
+      live = false
+      clearTimeout(timer)
+    }
+  }, [searching, typed, tradesAttempt])
 
   const who = useMemo(() => ({ name: person?.name ?? '', email: person?.email ?? '', company }), [person, company])
   const options = useMemo(() => listOptions(who), [who])
-  const found = useMemo<PartyBusiness[]>(() => {
+  const found = useMemo<ListBusiness[]>(() => {
     const words = typed.toLowerCase().split(/\s+/).filter(Boolean)
     if (words.length === 0) return []
     const matches = (name: string) => words.every((w) => name.toLowerCase().includes(w))
     return [
-      ...customers.map((c): PartyBusiness => ({ table: 'customers', id: c.id, name: c.name, party: 'customer' })),
-      ...houses.filter((h) => matches(h.name)).map((h): PartyBusiness => ({ table: 'supply_houses', id: h.id, name: h.name, party: 'supply_house' })),
+      ...customers.map((c): ListBusiness => ({ table: 'customers', id: c.id, name: c.name, party: 'customer' })),
+      ...houses.filter((h) => matches(h.name)).map((h): ListBusiness => ({ table: 'supply_houses', id: h.id, name: h.name, party: 'supply_house' })),
+      ...trades,
     ]
-  }, [customers, houses, typed])
+  }, [customers, houses, trades, typed])
 
   /** Keep the signer with a company once: a press after a failure finds the row the first press kept. */
-  const keepOnce = (business: PartyBusiness, signer: { name: string; email: string }) =>
-    writeOnce(made.current, listMadeKey('kept', [business.table, business.id, signer.name, signer.email]), () => keepSignerWithBusiness(business, signer, user?.id))
+  const keepOnce = (business: ListBusiness, signer: { name: string; email: string }): Promise<{ table: ListRecordTable; id: string }> =>
+    writeOnce<{ table: ListRecordTable; id: string }>(made.current, listMadeKey('kept', [business.table, business.id, signer.name, signer.email]), () =>
+      business.party === 'trade' ? keepSignerWithTradeCompany(business.id, signer) : keepSignerWithBusiness(business, signer, user?.id),
+    )
 
   /** Put them on the list: keep them under the company when there is one, then say what their contact is. */
   const finish = async (plan: ListPlan, customerId: string | null) => {
@@ -162,19 +207,28 @@ export function PaperPartyAddToList({
       let where: string
       if (plan.kind === 'new-customer') {
         if (!customerId) return
-        const business: PartyBusiness = { table: 'customers', id: customerId, name: plan.customerName, party: 'customer' }
+        const business: ListBusiness = { table: 'customers', id: customerId, name: plan.customerName, party: 'customer' }
         const record = plan.person ? await keepOnce(business, plan.person) : { table: 'customers' as const, id: customerId }
         await namePartyContact(person.contactId, record, 'customer')
         where = plan.customerName
       } else if (plan.kind === 'new-supply-house') {
         const house = await writeOnce(made.current, listMadeKey('house', [plan.houseName]), async () => ({ table: 'supply_houses', id: await addSupplyHouse(plan.houseName) }))
-        const business: PartyBusiness = { table: 'supply_houses', id: house.id, name: plan.houseName, party: 'supply_house' }
+        const business: ListBusiness = { table: 'supply_houses', id: house.id, name: plan.houseName, party: 'supply_house' }
         // A rep is kept by their address. With none on the paper, they are named on the house's own row.
         const record = plan.person.email ? await keepOnce(business, plan.person) : { table: 'supply_houses' as const, id: house.id }
         await namePartyContact(person.contactId, record, 'supply_house', plan.person.email ? undefined : plan.person.name)
         where = plan.houseName
+      } else if (plan.kind === 'new-trade') {
+        // The company and them at it are one write; a press after a failure finds both.
+        const made1 = await writeOnce(made.current, listMadeKey('trade', [plan.companyName]), async () => {
+          const added = await addTradeCompany(plan.companyName, plan.trades, plan.person)
+          return { table: 'gc_company_people', id: added.personRowId }
+        })
+        await namePartyContact(person.contactId, { table: 'gc_company_people', id: made1.id }, 'trade')
+        where = plan.companyName
       } else {
-        const keepsARow = plan.business.table === 'customers' || plan.person.email !== ''
+        // A customer and a trade company keep everyone as a row of their own; a supply house keeps a rep by their address.
+        const keepsARow = plan.business.table === 'customers' || plan.business.table === 'gc_companies' || plan.person.email !== ''
         const record = keepsARow ? await keepOnce(plan.business, plan.person) : { table: plan.business.table, id: plan.business.id }
         await namePartyContact(person.contactId, record, plan.business.party, keepsARow ? undefined : plan.person.name)
         where = plan.business.name
@@ -264,13 +318,14 @@ export function PaperPartyAddToList({
             {choice !== 'existing' ? (
               <label style={{ display: 'block', marginTop: '0.7rem', fontSize: '0.8125rem' }}>
                 <span style={{ fontWeight: 600 }}>{choice === 'customer' ? 'Company (optional)' : 'Company'}</span>
-                <input type="text" value={company} onChange={(e) => setCompany(e.target.value)} placeholder={choice === 'customer' ? 'Leave empty when they are the customer' : 'The supply house or the vendor'} maxLength={200} autoComplete="off" style={field} />
+                <input type="text" value={company} onChange={(e) => setCompany(e.target.value)} placeholder={choice === 'customer' ? 'Leave empty when they are the customer' : choice === 'trade' ? 'The trade company' : 'The supply house or the vendor'} maxLength={200} autoComplete="off" style={field} />
               </label>
             ) : (
               <div style={{ marginTop: '0.7rem' }}>
-                <input type="search" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Find a customer or a supply house" aria-label="Find a customer or a supply house" style={field} />
+                <input type="search" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Find a customer, a supply house or a trade company" aria-label="Find a customer, a supply house or a trade company" style={field} />
                 {housesFailure ? <OfflineRetryPanel failure={housesFailure} onRetry={() => setHousesAttempt((n) => n + 1)} surface="paper-party-add-to-list-houses" idempotent style={{ marginTop: '0.45rem' }} /> : null}
                 {customersFailure ? <OfflineRetryPanel failure={customersFailure} onRetry={() => setCustomersAttempt((n) => n + 1)} surface="paper-party-add-to-list-customers" idempotent style={{ marginTop: '0.45rem' }} /> : null}
+                {tradesFailure ? <OfflineRetryPanel failure={tradesFailure} onRetry={() => setTradesAttempt((n) => n + 1)} surface="paper-party-add-to-list-trades" idempotent style={{ marginTop: '0.45rem' }} /> : null}
                 {picked ? (
                   <p style={{ margin: '0.45rem 0 0', fontSize: '0.8125rem' }} data-testid="paper-party-list-picked">
                     They are at <strong>{picked.name}</strong>.
@@ -279,7 +334,7 @@ export function PaperPartyAddToList({
                 {found.map((b) => (
                   <button key={`${b.table}:${b.id}`} type="button" className="paper-party-row" onClick={() => setPicked(b)} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', width: '100%', padding: '0.45rem 0.55rem', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem', textAlign: 'left', color: 'var(--text-strong)' }}>
                     <span style={{ fontWeight: picked?.id === b.id ? 700 : 500, overflowWrap: 'anywhere' }}>{b.name}</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>{b.party === 'customer' ? 'Customer' : 'Supply house'}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>{listBusinessTag(b)}</span>
                   </button>
                 ))}
               </div>

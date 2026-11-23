@@ -3,7 +3,7 @@
  * company and address here is made up.
  */
 import { describe, expect, it } from 'vitest'
-import { ADD_TO_A_LIST_LABEL, addToListTitle, addedToListWords, listChoiceRefusal, listConfirmLabel, listMadeKey, listOptions, listPlan, papersComeWords, writeOnce, type ListPerson, type MadeRecord } from './paperPartyList'
+import { ADD_TO_A_LIST_LABEL, addToListTitle, addedToListWords, listBusinessTag, listChoiceRefusal, listConfirmLabel, listMadeKey, listOptions, listPlan, papersComeWords, writeOnce, type ListPerson, type MadeRecord } from './paperPartyList'
 
 const noor: ListPerson = { name: 'Noor Haddad', email: 'noor@haddadeng.example', company: 'Haddad Engineering' }
 const alone: ListPerson = { name: 'Noor Haddad', email: 'noor@haddadeng.example', company: '' }
@@ -17,16 +17,28 @@ describe('the window', () => {
     expect(addToListTitle({ name: ' ' })).toBe('Add them to a list')
   })
 
-  it('offers three things they can become, with what each makes', () => {
+  it('offers four things they can become, with what each makes', () => {
     expect(listOptions(noor)).toEqual([
       { choice: 'customer', title: 'A new customer', sub: 'Haddad Engineering, with Noor Haddad as a person there' },
       { choice: 'supply_house', title: 'A new supply house or vendor', sub: 'Haddad Engineering, with Noor Haddad as a rep' },
-      { choice: 'existing', title: 'Someone at a company we already have', sub: 'Search customers and supply houses' },
+      { choice: 'trade', title: 'A new trade company', sub: 'Haddad Engineering, with Noor Haddad as a person there' },
+      { choice: 'existing', title: 'Someone at a company we already have', sub: 'Search customers, supply houses and trade companies' },
     ])
   })
 
-  it('someone with no company is the customer themselves, and a supply house asks for its name', () => {
-    expect(listOptions(alone).map((o) => o.sub)).toEqual(['Noor Haddad, as the customer', 'Type the company’s name. Noor Haddad is added as a rep.', 'Search customers and supply houses'])
+  it('someone with no company is the customer themselves, and a supply house or a trade company asks for its name', () => {
+    expect(listOptions(alone).map((o) => o.sub)).toEqual([
+      'Noor Haddad, as the customer',
+      'Type the company’s name. Noor Haddad is added as a rep.',
+      'Type the company’s name. Noor Haddad is added as a person there.',
+      'Search customers, supply houses and trade companies',
+    ])
+  })
+
+  it('tags each company it finds by its kind', () => {
+    expect(listBusinessTag({ party: 'customer' })).toBe('Customer')
+    expect(listBusinessTag({ party: 'supply_house' })).toBe('Supply house')
+    expect(listBusinessTag({ party: 'trade' })).toBe('Trade company')
   })
 
   it('says which papers come with them', () => {
@@ -47,6 +59,19 @@ describe('a choice', () => {
     expect(listPlan('supply_house', noor, null)).toEqual({ kind: 'new-supply-house', houseName: 'Haddad Engineering', person: { name: 'Noor Haddad', email: 'noor@haddadeng.example' } })
     expect(listChoiceRefusal('supply_house', alone, null)).toBe('Type the supply house’s or the vendor’s name.')
     expect(listPlan('supply_house', alone, null)).toBeNull()
+  })
+
+  it('a new trade company needs its name, starts with the trade Plumbing, and takes them as a person there', () => {
+    expect(listPlan('trade', noor, null)).toEqual({ kind: 'new-trade', companyName: 'Haddad Engineering', trades: ['Plumbing'], person: { name: 'Noor Haddad', email: 'noor@haddadeng.example' } })
+    expect(listChoiceRefusal('trade', alone, null)).toBe('Type the trade company’s name.')
+    expect(listPlan('trade', alone, null)).toBeNull()
+    expect(listConfirmLabel('trade', null)).toBe('Add as a trade company')
+  })
+
+  it('a trade company we keep can be picked like any other', () => {
+    const mech = { table: 'gc_companies' as const, id: 'g1', name: 'ZZ Sample Mechanical LLC', party: 'trade' as const }
+    expect(listPlan('existing', noor, mech)).toEqual({ kind: 'existing', business: mech, person: { name: 'Noor Haddad', email: 'noor@haddadeng.example' } })
+    expect(listConfirmLabel('existing', mech)).toBe('Add to ZZ Sample Mechanical LLC')
   })
 
   it('a company the app has needs picking, and takes them as a person on file there', () => {

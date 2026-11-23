@@ -20,6 +20,7 @@ import {
   partySaysLine,
   partySigningFor,
   repName,
+  rosterRowSub,
   sendPartyHint,
   sendWindowPartyOfPick,
   type PartyLists,
@@ -134,6 +135,22 @@ describe('the rows', () => {
     expect(repName({ name: null, label: 'Credit desk' })).toBe('Credit desk')
     expect(repName({ name: ' Lena Park ', label: 'Lena' })).toBe('Lena Park')
     expect(repName({ name: null, label: null })).toBe('A desk')
+  })
+})
+
+describe('a sub under their company (punch list #403, step 6)', () => {
+  const withCompany: PartyLists = { ...lists, roster: [...lists.roster, { name: 'Lee Sample', sub: true, company: 'ZZ Sample Mechanical LLC' }] }
+  const rows = (typed: string, chip: Parameters<typeof partyRows>[2] = 'all') => partyRows(withCompany, typed, chip).map((r) => `${r.title} | ${r.sub} | ${r.tag}`)
+
+  it('finds a worker by the company’s name, and says who they sign for', () => {
+    expect(rows('sample mech').slice(0, -1)).toEqual(['Lee Sample | Signs for ZZ Sample Mechanical LLC | Sub'])
+    expect(rows('lee', 'subs').slice(0, -1)).toEqual(['Lee Sample | Signs for ZZ Sample Mechanical LLC | Sub'])
+    expect(rows('sample', 'team').slice(0, -1)).toEqual([])
+  })
+
+  it('a person with no company signs for themselves', () => {
+    expect(rosterRowSub('')).toBe('Signs for themselves')
+    expect(rosterRowSub('  ZZ Sample Mechanical LLC ')).toBe('Signs for ZZ Sample Mechanical LLC')
   })
 })
 

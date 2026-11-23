@@ -3,7 +3,7 @@
  * keeps, and who can be picked. Every name here is made up.
  */
 import { describe, expect, it } from 'vitest'
-import { papersMatching, sendablePapers, sendRoster, sendRosterNames } from './agreementsSend'
+import { papersMatching, sendablePapers, sendRoster, sendRosterNames, sendRosterWithCompanies } from './agreementsSend'
 import { quickSendNoContentWords, quickSendPickPlan, type QuickSendPersonRow } from '../contractsQuickSend'
 
 const bookRow = (over: Record<string, unknown>) => ({
@@ -78,6 +78,29 @@ describe('sendRoster', () => {
       { name: 'Priya Nair', sub: false },
     ])
     expect(sendRoster(roster).map((p) => p.name)).toEqual(sendRosterNames(roster))
+  })
+})
+
+describe('sendRosterWithCompanies (punch list #403, step 6)', () => {
+  const row = (person_id: string | null, roster_name: string, is_archived = false) => ({ person_id, account_kind: 'person' as const, is_archived, roster_name, account_name: null, pay_name: roster_name })
+  const people = [
+    { name: 'Lee Sample', sub: true },
+    { name: 'Priya Nair', sub: false },
+  ]
+  const companies = [{ id: 'c-mech', name: 'ZZ Sample Mechanical LLC' }]
+
+  it('gives a worker the name of their trade company, and nobody else one', () => {
+    const roster = [row('p-lee', 'Lee Sample'), row('p-priya', 'Priya Nair')]
+    expect(sendRosterWithCompanies(people, roster, [{ person_id: 'p-lee', company_id: 'c-mech', title: 'Owner' }], companies)).toEqual([
+      { name: 'Lee Sample', sub: true, company: 'ZZ Sample Mechanical LLC' },
+      { name: 'Priya Nair', sub: false },
+    ])
+  })
+
+  it('leaves the roster as it was with no links read, and gives a shared name no company', () => {
+    expect(sendRosterWithCompanies(people, [row('p-lee', 'Lee Sample')], [], companies)).toEqual(people)
+    const twice = [row('p-lee', 'Lee Sample'), row('p-lee-2', 'Lee Sample'), row('p-priya', 'Priya Nair')]
+    expect(sendRosterWithCompanies(people, twice, [{ person_id: 'p-lee', company_id: 'c-mech', title: null }], companies)[0]).toEqual({ name: 'Lee Sample', sub: true })
   })
 })
 
