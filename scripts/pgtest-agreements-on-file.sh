@@ -26,7 +26,9 @@ IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # That migration also puts the estimator's first read policy back, so the one that widens it runs after it, as on prod.
 # Last, the view's newest definition (punch list #403, the owner's first decision): the ground restates the view as
 # it stood, so the migration that widens it to every paper of an outside party runs after it, as on prod.
-WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql) $(ls supabase/migrations/*_agreements_every_party_paper.sql)"
+# And the estimator's reach (punch list #403, the owner's second decision): the ground also puts the fold's helper
+# back as it stood, so the migration that adds its refusal runs after it, as on prod.
+WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql) $(ls supabase/migrations/*_agreements_every_party_paper.sql) $(ls supabase/migrations/*_estimator_reach.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
