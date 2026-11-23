@@ -22,6 +22,6 @@ No table, so no fence call. Every statement is safe to run twice.
 
 Push this before `send-contract-for-signature` and `remind-person-papers` are deployed: the send now reads `doc_type` and `reminders_enabled` and writes the reminder columns. The old client and the old function do not read the new columns, so the push is safe ahead of both.
 
-## Not applied yet
+## Applied
 
-This PR waits on the owner's calls. The migration is not pushed and neither function is deployed until it is armed.
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274); types regenerated in #9252.

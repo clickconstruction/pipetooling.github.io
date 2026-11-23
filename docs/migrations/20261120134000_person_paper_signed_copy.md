@@ -19,6 +19,6 @@ No table, so no fence call. No bucket and no policy. Both statements are safe to
 
 Push this before `accept-contract` and `person-paper-pdf` are deployed. Ahead of the push, `accept-contract`'s read of the new columns answers nothing and the signing carries on with no copy, so a deploy in the wrong order breaks no signature.
 
-## Not applied yet
+## Applied
 
-This PR waits on the owner's calls. The migration is not pushed and no function is deployed until it is armed.
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274); types regenerated in #9294.

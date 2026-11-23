@@ -41,3 +41,5 @@ A stand-in rig on the local Postgres 15, not the app's schema: the first migrati
 - An untick takes off the person's own row and leaves the other's for them to read.
 
 The rig's `users` table has no row security. On prod the trigger's read of the caller's own row is proved by the first real tick after the push.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274); types regenerated in #9302.

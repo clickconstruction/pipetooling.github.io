@@ -28,3 +28,5 @@ No client change needs it and no client is misread by it. The card shows the ref
 ## Tested
 
 `supabase/tests/start_checks/30_arrive.sql`, now 26 checks: a second answer at a stage that had a No is refused by name, and it kept nothing, one arrival and no yes on the bullet. The check for a stage with nothing to look at moved to a stage nobody has arrived at. `scripts/pgtest-start-checks.sh` applies this migration twice with the two before it. Docker does not run on the Mac this was written on, so the SQL beds workflow was its first run.
+
+**Applied** to prod by 2026-11-23: `npm run check:migration-drift` read 1,454 versions applied against 1,454 local files, this version among them (read in the docs pass after #9274).
