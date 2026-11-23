@@ -3,23 +3,25 @@
  * Needs you line. What is read once for every city, what is read for one, and one city counted
  * whole. The counting itself is `lookAlikeWorklist.ts`. No kernel logic here.
  */
-import { loadAllNameAnswers, loadCustomerNames, loadPermitsByHouseNumber, loadRecentBidsWithCustomer } from './bidSiteIo'
+import { loadAllNameAnswers, loadAllNameContactMatches, loadCustomerNames, loadPermitsByHouseNumber, loadRecentBidsWithCustomer } from './bidSiteIo'
 import { numbersToAsk } from './bidSitePanel'
 import { readLookAlikeCounts, rememberLookAlikeCount } from './lookAlikeCountMemory'
 import { cityLookAlikes, freshLookAlikeCount, ourBids, settledNames, siteCountsInCity, sumCityLookAlikes, type CityLookAlikes, type LookAlikeNeed, type LookAlikeShared, type WorklistBid } from './lookAlikeWorklist'
+import { contactMatchesByCustomer } from './nameLikeness'
 import { readLastCity } from './permitCityDoors'
 import { RESEARCH_CITIES } from './permitResearch'
 import { loadBuilders } from './permitResearchIo'
 
 /**
- * What every city's worklist stands on: the answers given, our customers by name, and the newest
- * thousand bids with a customer on them. Null before the answers table is on the database.
+ * What every city's worklist stands on: the answers given, our customers by name, the newest
+ * thousand bids with a customer on them, and the phones and web domains our customers share with
+ * names on permits. Null before the answers table is on the database.
  */
 export async function loadLookAlikeShared(): Promise<LookAlikeShared | null> {
   const answers = await loadAllNameAnswers()
   if (answers == null) return null
-  const [customers, bids] = await Promise.all([loadCustomerNames(), loadRecentBidsWithCustomer()])
-  return { answers: answers.rows, customers, bids }
+  const [customers, bids, matches] = await Promise.all([loadCustomerNames(), loadRecentBidsWithCustomer(), loadAllNameContactMatches()])
+  return { answers: answers.rows, customers, bids, contacts: contactMatchesByCustomer(matches ?? []) }
 }
 
 /** The names on permits that sit on addresses we bid to each customer, in one city: one read by house number. */

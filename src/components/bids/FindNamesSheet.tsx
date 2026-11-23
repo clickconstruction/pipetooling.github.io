@@ -2,14 +2,29 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { createPortal } from 'react-dom'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { contactParts } from '../../../supabase/functions/_shared/permitLookup'
-import { RESEARCH_CITIES, shortDay } from '../../lib/research/permitResearch'
+import { RESEARCH_CITIES } from '../../lib/research/permitResearch'
 import { builderName } from '../../lib/research/permitBuilders'
 import { loadBuilders } from '../../lib/research/permitResearchIo'
 import { permitsOnSite, readBidAddress } from '../../lib/research/bidSite'
 import { numbersToAsk, type GcBid, type SitePermitRow } from '../../lib/research/bidSitePanel'
-import { loadBidsOfCustomers, loadNameAnswers, loadPermitsByHouseNumber, loadPermitsOfName, recordNameAnswer, type NamePermit } from '../../lib/research/bidSiteIo'
+import { loadBidsOfCustomers, loadCompanyLookupFacts, loadNameAnswers, loadNameByKey, loadNameContactMatches, loadOurContactRows, loadPermitsByHouseNumber, loadPermitsOfName, recordNameAnswer, type NamePermit } from '../../lib/research/bidSiteIo'
 import { foldNameAnswers, listedName } from '../../lib/research/nameAnswers'
-import { compareRows, markName, searchNames, siteCountsByName, suggestNames, tiePressWords, type PermitName, type SitePermitHit } from '../../lib/research/nameLikeness'
+import {
+  compareContactsOf,
+  compareRows,
+  contactMatchesByCustomer,
+  foldContactMatches,
+  listedLineWords,
+  markName,
+  searchNames,
+  siteCountsByName,
+  suggestNames,
+  tiePressWords,
+  type CompareContacts,
+  type ContactMatch,
+  type PermitName,
+  type SitePermitHit,
+} from '../../lib/research/nameLikeness'
 import { ROBOT_BID_RE } from '../../lib/bids/bidPursuit'
 import { PermitChip } from './PermitChip'
 import { EmptyState } from '../EmptyState'
@@ -18,9 +33,10 @@ import { BidGcTiedNames } from './BidGcTiedNames'
 /**
  * Find a customer's names on permits (punch list #307, PR 9). Our names for customers do not
  * match the names a city lists, so a person links them here. The sheet suggests names that may
- * be the customer, each with its reasons: a permit on an address we bid to them first, then how
- * alike the names are. Compare puts ours beside the city's. A search reaches every name. Two
- * presses on a name, and nothing is tied on a likeness alone.
+ * be the customer, each with its reasons: a permit on an address we bid to them first, then a
+ * phone or a web domain the two share (v2.8308), then how alike the names are. Compare puts ours
+ * beside the city's. A search reaches every name. Two presses on a name, and nothing is tied on
+ * a likeness or a shared phone alone.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.45 }
 const sub: CSSProperties = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 4 }
@@ -28,7 +44,7 @@ const primary: CSSProperties = { background: '#2563eb', color: '#fff', border: '
 const ghost: CSSProperties = { background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: 600, minHeight: 34, cursor: 'pointer', fontFamily: 'inherit' }
 const linkPress: CSSProperties = { background: 'none', border: 0, padding: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }
 
-type Known = { names: PermitName[]; hits: Array<SitePermitHit & { id: string }>; bids: GcBid[]; settled: Set<string> }
+type Known = { names: PermitName[]; hits: Array<SitePermitHit & { id: string }>; bids: GcBid[]; settled: Set<string>; /** What each name shares with the customer, by name key. */ shared: Map<string, ContactMatch[]> }
 type Loaded = { state: 'loading' } | { state: 'absent' } | { state: 'done'; known: Known } | { state: 'failed'; message: string }
 
 /** A name as the screen draws it: the words it shares with ours marked. */
@@ -48,34 +64,52 @@ export function MarkedName({ name, marked }: { name: string; marked: readonly st
   )
 }
 
-function CompareBlock({ customerName, known, name }: { customerName: string; known: Known; name: PermitName }) {
-  const [permits, setPermits] = useState<NamePermit[] | null>(null)
+/** What Compare reads for one name: its permits, and what each side holds to be reached by. The second is an extra: when it cannot be read the rest still shows, with the reason. */
+type Compared = { permits: NamePermit[]; contacts: CompareContacts | null; contactsError: string | null }
+
+function CompareBlock({ customerIds, customerName, known, name }: { customerIds: readonly string[]; customerName: string; known: Known; name: PermitName }) {
+  const [read, setRead] = useState<Compared | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const idsKey = [...customerIds].sort().join(',')
+  const shared = known.shared.get(name.key)
   useEffect(() => {
     let live = true
-    loadPermitsOfName(name.key)
-      .then((rows) => live && setPermits(rows))
-      .catch((e) => live && setError(formatErrorMessage(e)))
+    const ids = idsKey === '' ? [] : idsKey.split(',')
+    ;(async () => {
+      const permits = await loadPermitsOfName(name.key)
+      let contacts: CompareContacts | null = null
+      let contactsError: string | null = null
+      try {
+        const [ours, lookups] = await Promise.all([loadOurContactRows(ids), loadCompanyLookupFacts(name.key)])
+        contacts = compareContactsOf(ours, { permitPhones: permits.map((p) => p.contact_phone), lookups }, shared ?? [])
+      } catch (e) {
+        contactsError = formatErrorMessage(e)
+      }
+      if (live) setRead({ permits, contacts, contactsError })
+    })().catch((e) => live && setError(formatErrorMessage(e)))
     return () => {
       live = false
     }
-  }, [name.key])
+  }, [name.key, idsKey, shared])
   if (error) return <div style={{ ...muted, color: 'var(--text-red-700)' }}>{error}</div>
-  if (!permits) return <div style={muted}>Reading what the city has under this name…</div>
+  if (!read) return <div style={muted}>Reading what the city has under this name…</div>
   const ours = known.bids.filter((b) => !ROBOT_BID_RE.test(b.project_name ?? ''))
   const siteStreets = ours.map((b) => readBidAddress(b.address, RESEARCH_CITIES)).flatMap((s) => (s.kind === 'site' ? [s.street] : []))
-  const rows = compareRows({ customerName, bidAddresses: ours.map((b) => b.address), siteStreets, name: name.name, permits, onOurSites: known.hits.filter((h) => h.builderKey === name.key) })
+  const rows = compareRows({ customerName, bidAddresses: ours.map((b) => b.address), siteStreets, name: name.name, permits: read.permits, onOurSites: known.hits.filter((h) => h.builderKey === name.key), contacts: read.contacts ?? undefined })
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', fontSize: '0.8125rem' }} data-testid="name-compare">
-      {rows.flatMap((r, i) =>
-        [r.ours, r.theirs].map((cell, j) => (
-          <div key={`${i}-${j}`} style={{ padding: '7px 10px', borderTop: i === 0 && j === 0 ? 0 : '1px solid var(--border)', background: r.hit ? 'var(--bg-green-tint)' : 'transparent', minWidth: 0 }}>
-            <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{cell.label}</span>
-            {cell.value}
-          </div>
-        )),
-      )}
-    </div>
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', fontSize: '0.8125rem' }} data-testid="name-compare">
+        {rows.flatMap((r, i) =>
+          [r.ours, r.theirs].map((cell, j) => (
+            <div key={`${i}-${j}`} style={{ padding: '7px 10px', borderTop: i === 0 && j === 0 ? 0 : '1px solid var(--border)', background: r.hit ? 'var(--bg-green-tint)' : 'transparent', minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{cell.label}</span>
+              {cell.value}
+            </div>
+          )),
+        )}
+      </div>
+      {read.contactsError && <div style={{ ...muted, color: 'var(--text-red-700)' }}>The phones and web domains could not be read. {read.contactsError}</div>}
+    </>
   )
 }
 
@@ -91,7 +125,7 @@ export function FindNamesSheet({ customerIds, customerName, onClose }: { custome
     const ids = idsKey === '' ? [] : idsKey.split(',')
     const answers = await loadNameAnswers(ids)
     if (answers == null) return setLoaded({ state: 'absent' })
-    const [perCity, bids] = await Promise.all([Promise.all(RESEARCH_CITIES.map((c) => loadBuilders(c))), loadBidsOfCustomers(ids)])
+    const [perCity, bids, matchRows] = await Promise.all([Promise.all(RESEARCH_CITIES.map((c) => loadBuilders(c))), loadBidsOfCustomers(ids), loadNameContactMatches(ids)])
     const byKey = new Map<string, PermitName>()
     for (const rows of perCity) {
       for (const r of rows ?? []) {
@@ -120,7 +154,14 @@ export function FindNamesSheet({ customerIds, customerName, onClose }: { custome
     }
     const states = foldNameAnswers(answers.rows, ids)
     const settled = new Set([...states.values()].filter((s) => s.all || s.someoneElse).map((s) => s.key))
-    setLoaded({ state: 'done', known: { names: [...byKey.values()], hits: [...hits.values()], bids, settled } })
+    // The names that share a phone or a web domain with them. One neither list carries is read by its key.
+    const shared = foldContactMatches(contactMatchesByCustomer(matchRows ?? []), ids)
+    for (const key of shared.keys()) {
+      if (byKey.has(key) || settled.has(key)) continue
+      const found = await loadNameByKey(key)
+      if (found) byKey.set(key, found)
+    }
+    setLoaded({ state: 'done', known: { names: [...byKey.values()], hits: [...hits.values()], bids, settled, shared } })
   }, [idsKey])
 
   useEffect(() => {
@@ -134,7 +175,8 @@ export function FindNamesSheet({ customerIds, customerName, onClose }: { custome
   }, [load])
 
   const known = loaded.state === 'done' ? loaded.known : null
-  const suggestions = useMemo(() => (known ? suggestNames(customerName, known.names, siteCountsByName(known.hits), known.settled) : []), [known, customerName])
+  const siteCounts = useMemo(() => siteCountsByName(known?.hits ?? []), [known])
+  const suggestions = useMemo(() => (known ? suggestNames(customerName, known.names, siteCounts, known.settled, known.shared) : []), [known, customerName, siteCounts])
   const found = useMemo(() => {
     if (!known) return []
     const offered = new Set(suggestions.map((s) => s.key))
@@ -170,7 +212,7 @@ export function FindNamesSheet({ customerIds, customerName, onClose }: { custome
             ))}
           </div>
         )}
-        <div style={muted}>{n.permits > 0 ? `Listed on ${n.permits} commercial permit${n.permits === 1 ? '' : 's'} we can see${n.lastOn ? ` · last ${shortDay(n.lastOn)}` : ''}` : 'Listed on a permit on an address you bid to them'}</div>
+        <div style={muted}>{listedLineWords(n, siteCounts.get(n.key) ?? 0)}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <button type="button" disabled={busy} onClick={() => void answer(n, true)} style={primary}>
             {tiePressWords(isCompany)}
@@ -182,7 +224,7 @@ export function FindNamesSheet({ customerIds, customerName, onClose }: { custome
             {open ? 'Hide the comparison' : 'Compare ›'}
           </button>
         </div>
-        {open && known && <CompareBlock customerName={customerName} known={known} name={n} />}
+        {open && known && <CompareBlock customerIds={customerIds} customerName={customerName} known={known} name={n} />}
       </div>
     )
   }
@@ -209,7 +251,7 @@ export function FindNamesSheet({ customerIds, customerName, onClose }: { custome
               {RESEARCH_CITIES.map((city) => <PermitChip key={city} chip={{ words: city, tone: 'blue' }} />)}
             </div>
             <div style={sub}>Names that may be them</div>
-            {suggestions.length === 0 ? <EmptyState main={`Nothing on permits resembles ${customerName}, and no permit sits on an address you bid to them. Search below.`} compact /> : suggestions.slice(0, 8).map((s, i) => row(s, { reasons: s.reasons, marked: s.marked, top: i === 0 && s.onOurSites > 0 }))}
+            {suggestions.length === 0 ? <EmptyState main={`Nothing on permits resembles ${customerName}, shares a phone or a web domain with them, or sits on an address you bid to them. Search below.`} compact /> : suggestions.slice(0, 8).map((s, i) => row(s, { reasons: s.reasons, marked: s.marked, top: i === 0 && (s.onOurSites > 0 || s.shared.length > 0) }))}
             <div style={sub}>Or search every name on permits</div>
             <input type="search" aria-label="Search every name on permits" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search a company or a person" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '8px 11px', font: 'inherit', fontSize: '0.875rem', minHeight: 38, background: 'var(--surface)', color: 'var(--text-strong)' }} />
             {query.trim() !== '' && (found.length === 0 ? <EmptyState main="No name on permits begins with those words." compact /> : found.map((n) => row(n, {})))}
