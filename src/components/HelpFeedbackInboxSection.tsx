@@ -211,7 +211,7 @@ export function HelpFeedbackInboxSection() {
                     void closeHelpFeedback(row.id, closeNoteDraft)
                     setCloseNoteDraft('')
                   }}
-                  style={{ padding: '0.4rem 0.85rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: 500 }}
+                  style={{ padding: '0.4rem 0.85rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: 500 }}
                 >
                   {busy ? 'Closing…' : 'Answer and close'}
                 </button>

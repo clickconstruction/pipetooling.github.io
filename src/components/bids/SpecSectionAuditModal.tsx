@@ -447,7 +447,7 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
                         onClick={() => void pin(row, picked[row.fixture] ?? null)}
                         style={{
                           padding: '0.35rem 0.8rem',
-                          background: picked[row.fixture] ? '#16a34a' : 'var(--bg-200)',
+                          background: picked[row.fixture] ? '#15803d' : 'var(--bg-200)',
                           color: picked[row.fixture] ? 'white' : 'var(--text-faint)',
                           border: 'none',
                           borderRadius: 4,

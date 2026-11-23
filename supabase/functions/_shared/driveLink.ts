@@ -170,7 +170,8 @@ const OFFICE_READS: ReadonlySet<string> = new Set<OfficeAsk['action']>(['list', 
 /** A digital twin's refusal at the office's door, true to what it asked (v2.6488): a search is not a change. The door stays shut either way. */
 export function twinRefusalWords(action: unknown): string {
   if (action === 'search' || action === 'search_index') return 'A digital twin cannot search Drive.'
-  if (typeof action === 'string' && OFFICE_READS.has(action)) return 'A digital twin cannot read Drive.'
+  // `read_bill` is a read too (punch list #431): a door of its own at `drive-link`, so it is not one of the asks above.
+  if (typeof action === 'string' && (OFFICE_READS.has(action) || action === 'read_bill')) return 'A digital twin cannot read Drive.'
   return 'A digital twin cannot change Drive.'
 }
 

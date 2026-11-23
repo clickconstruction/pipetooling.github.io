@@ -143,7 +143,7 @@ describe('the trip verbs are on the allowlist, over the app’s own door', () =>
     expect(SERVER).toContain('its number on its site (trip_number, since v2.7886')
     // The note a version carries lives in the notes file since v2.7999, not in the function's upload.
     expect(readFileSync('docs/dev-mcp/SERVER_NOTES.md', 'utf8')).toContain('0.106.0 (v2.7886, punch list #379')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.129.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.131.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else:')
     expect(SERVER).toContain('plan_trip → apply_trip (a trip to a site away from home')
     expect(SERVER).toContain('read_trips reads a site’s or a job’s trips'.replace(/’/g, "'"))
@@ -277,7 +277,7 @@ describe('tripInput — the shape', () => {
     expect(refusal({ people: [{ name: 'Dana', days: [{ from: '2026-01-01', to: '2026-12-31', kind: 'site' }] }] })).toBe(`plan_trip: Dana’s days: a run is at most ${TRIP_RUN_MAX_DAYS} days; 2026-01-01 to 2026-12-31 is 365.`)
     expect(refusal({ people: [{ name: 'Dana', days: [{ from: '2026-11-03', to: '2026-10-31', kind: 'site' }] }] })).toContain('a run ends on or after the day it starts')
     expect(refusal({ people: [{ name: 'Dana', days: 'all week' }] })).toContain('days is an object of day to kind, or a list of runs')
-    expect(refusal({ people: [{ name: 'Dana', person_id: 'dana', days: DANA_DAYS }] })).toContain('Dana’s person_id is a people.id')
+    expect(refusal({ people: [{ name: 'Dana', person_id: 'dana', days: DANA_DAYS }] })).toContain("Dana’s person_id is the roster row's people.id")
     expect(refusal({ asked_by: 'the GC' })).toBe('plan_trip: asked_by is us or them.')
     expect(refusal({ asked_by: 'us', asked_who: 'Walt' })).toContain('they go with asked_by: "them"')
     expect(refusal({ billing: 'free' })).toBe('plan_trip: billing is inside, extra or ours.')
@@ -357,6 +357,29 @@ describe('fillTripPeople — a name laid over the roster', () => {
     expect(filled.people[0]).toEqual({ name: 'Dana', person_id: DANA, user_id: DANA_LOGIN, days: { '2026-10-31': 'site' } })
     expect(filled.fits.map((f) => f.roster)).toEqual(['on the roster, by the id given', 'on the roster, by the id given: the roster names them omar'])
     expect(fillTripPeople([person('Walt', { person_id: LUIS })], roster, [])).toEqual({ refused: expect.stringContaining('Walt’s person_id names nobody on the roster') })
+  })
+})
+
+describe('whose id a trip takes for a person (v2.8411)', () => {
+  // find_person reads `users`, and the trip is laid over `people`: a login's users.id reads as nobody on the roster.
+  const DOOR = "the roster row's people.id, as get_case_brief and get_person_file answer it in person.id; find_person answers a login's users.id, which this door refuses"
+  const TOOL = "the people.id get_case_brief answers in person.id; not find_person's users.id"
+
+  it('refuses a person_id that is no uuid, and one that names nobody, in the words the person-file doors use', () => {
+    expect(refusal({ people: [{ name: 'Dana', person_id: 'dana', days: DANA_DAYS }] })).toBe(`plan_trip: Dana’s person_id is ${DOOR}. Leave it out and the roster is searched by name.`)
+    expect(fillTripPeople([{ name: 'Walt', person_id: LUIS, days: { '2026-10-31': 'site' } }], [], [])).toEqual({ refused: `Walt’s person_id names nobody on the roster. It is ${DOOR}. Leave it out and the roster is searched by name.` })
+  })
+
+  it('still sends a caller to find_person for a login, which is what that verb answers', () => {
+    expect(refusal({ people: [{ name: 'Dana', user_id: 'dana', days: DANA_DAYS }] })).toBe('plan_trip: Dana’s user_id is a users.id (find_person).')
+  })
+
+  it('no line of the kernel sends a caller to find_person for a people.id, and the roster is read from people', () => {
+    expect(KERNEL).toContain(`Pass person_id (${TOOL}) to tie one to the roster.`)
+    expect(KERNEL).not.toContain('a people.id (find_person)')
+    expect(KERNEL).not.toContain('find_person gives a people.id')
+    expect(KERNEL).not.toContain('person_id (find_person)')
+    expect(KERNEL).toContain("readRowsByIds(reader, 'people', 'id,name,account_user_id', givenIds)")
   })
 })
 
