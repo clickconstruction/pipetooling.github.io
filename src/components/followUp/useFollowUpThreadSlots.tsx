@@ -33,6 +33,8 @@ import { newestLineIn, SEND_AS_TASK, threadTaskPreset } from '../../lib/messages
 import { backPillTip, threadStateRows } from '../../lib/followUp/thread'
 import { canOpenGcProjects } from '../../lib/gc/access'
 import {
+  dayKeptWords,
+  dayStillPromised,
   heardDayOnLine,
   heardDaySheetLine,
   heardDayTip,
@@ -183,15 +185,24 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
   /**
    * The mark a word leaves on its line (v2.8271): the sheet saved the Pipeline's promise, and the line it opened under
    * takes the day as a payment promise of its own, which the job's summary and the move chip read. *Never said that*
-   * takes the day off every line of the thread that carries it. A refusal is said in words and undoes nothing: the
-   * Pipeline's record stands either way.
+   * takes the day off every line of the thread that carries it, unless another promise of the customer's still names
+   * that day (v2.8307): a customer has one thread, so the day stays for the job that still holds it, and a line says
+   * so. A refusal is said in words and undoes nothing: the Pipeline's record stands either way.
    */
-  const markLine = async (messageId: string, said: PromiseSheetWord) => {
+  const markLine = async (messageId: string, said: PromiseSheetWord, customerId: string | null) => {
     const write = io.writeDownPayment
     if (!write || (said.kind === 'never' && said.claim)) return
     try {
       if (said.kind === 'promise') await write(messageId, said.ymd)
-      else for (const id of linesMarkedFor(rows.promises, said.ymd)) await write(id, null)
+      else {
+        const marked = linesMarkedFor(rows.promises, said.ymd)
+        // Read after the void, so the word taken off is gone and what is left is what still stands.
+        if (marked.length > 0 && customerId && dayStillPromised(await loadLines(customerId), said.ymd)) {
+          showToast(dayKeptWords(said.ymd), 'info')
+          return
+        }
+        for (const id of marked) await write(id, null)
+      }
       reread()
       await load()
     } catch (e) {
@@ -281,7 +292,7 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
                 initialChannel={wordChannel(m.channel)}
                 onClose={() => setWord(null)}
                 onSaved={() => reread()}
-                onWord={(said) => void markLine(m.id, said)}
+                onWord={(said) => void markLine(m.id, said, c.customerId ?? null)}
               />
             ) : null}
           </span>
