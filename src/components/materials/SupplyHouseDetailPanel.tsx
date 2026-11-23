@@ -6,7 +6,7 @@
  * house, its bills and its payments are the tab's data (`ap`), the presses that pay a bill or open a payment are the
  * payments' engine (`payments`), and the rest are the tab's own doors, lent as props.
  */
-import { type Dispatch, type SetStateAction } from 'react'
+import { useState, type Dispatch, type SetStateAction } from 'react'
 import { ordinalDay } from '../../lib/materials/supplyHousePhone'
 import { telHrefFor } from '../../lib/phoneContact'
 import type { PaperRow } from '../../lib/materials/lines/paperRows'
@@ -20,6 +20,8 @@ import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../../utils/dateUtil
 import { billDateWords } from '../../lib/materials/supplyBillGroups'
 import { removedLately } from '../../lib/materials/payments/supplyPaymentMove'
 import { SupplyHouseBillsCard } from './SupplyHouseBillsCard'
+import { BillViewer } from './BillViewer'
+import { SUPPLY_INVOICE_WORDS, supplyInvoiceShareUrl } from '../../lib/jobs/supplyInvoiceList'
 import { houseOnAccountTotal, supplyBillCardRows, supplyBillsToList } from '../../lib/materials/supplyHouseBillRows'
 import { supabaseSupplyPaymentsIo } from '../../lib/materials/payments/supplyPaymentsIo'
 import { billPaidBy } from '../../lib/materials/payments/supplyPayment'
@@ -56,7 +58,18 @@ export function SupplyHouseDetailPanel({ ap, payments, sortedSupplyHouseSummary,
   const { selectedSupplyHouseForDetail, supplyHouseInvoices, supplyHousePOs, poGeneratorCodesForSelectedHouse, supplyHouseDetailLoading, supplyHouseJobDetailsMap, housePayments, paidThisVisit, loadSupplyHouseDetail } = ap
   const { setHowEditId, puttingBackPaymentId, setPuttingBackPaymentId, payingInvoiceId, openRecordPayment, refreshHouseMoney, toggleInvoicePaid } = payments
   const { showToast } = useToastContext()
+  // The bill viewer over the card (punch list #431): the bill on show, and the card's bills in the order it drew them.
+  const [seeBill, setSeeBill] = useState<{ id: string; listed: readonly string[] } | null>(null)
   if (!selectedSupplyHouseForDetail) return null
+  const copyBillLink = async (billId: string) => {
+    const url = supplyInvoiceShareUrl(billId, null)
+    try {
+      await navigator.clipboard.writeText(url)
+      showToast(SUPPLY_INVOICE_WORDS.copied, 'success')
+    } catch {
+      showToast(SUPPLY_INVOICE_WORDS.copyByHand(url), 'info')
+    }
+  }
   return (
   <div style={{ padding: '1rem 1.5rem', background: 'var(--bg-subtle)', borderLeft: '3px solid #3b82f6' }}>
     {supplyHouseDetailLoading ? (
@@ -148,6 +161,8 @@ export function SupplyHouseDetailPanel({ ap, payments, sortedSupplyHouseSummary,
                   const inv = byId(id)
                   if (inv) void openPaperLook(inv)
                 }}
+                onSeeBill={(id, listed) => setSeeBill({ id, listed })}
+                onShareBill={(id) => void copyBillLink(id)}
                 removedPayments={removedLately(housePayments.payments, Date.now(), (ymd) => billDateWords(ymd, billToday), calendarYmdInAppTzFromIso).map((r) => ({ id: r.payment.id, words: r.words }))}
                 puttingBackId={puttingBackPaymentId}
                 onFinish={(billId) => setHowEditId(billPaidBy(billId, housePayments.payments, housePayments.lines).needsHowId ?? null)}
@@ -257,6 +272,19 @@ export function SupplyHouseDetailPanel({ ap, payments, sortedSupplyHouseSummary,
         </section>
       </>
     )}
+    {seeBill ? (
+      <BillViewer
+        // The card's bills in the order it drew them, so Previous and Next go down the card.
+        items={seeBill.listed.flatMap((id) => {
+          const inv = supplyHouseInvoices.find((x) => x.id === id)
+          return inv ? [{ invoiceId: inv.id, number: inv.invoice_number, house: selectedSupplyHouseForDetail.name, dateYmd: (inv.invoice_date ?? '').slice(0, 10), amount: Number(inv.amount) || 0 }] : []
+        })}
+        openId={seeBill.id}
+        onOpen={(id) => setSeeBill({ id, listed: seeBill.listed })}
+        onClose={() => setSeeBill(null)}
+        shareUrlOf={(id) => supplyInvoiceShareUrl(id, null)}
+      />
+    ) : null}
   </div>
   )
 }

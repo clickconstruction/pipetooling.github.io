@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { EmptyState } from '../EmptyState'
+import { CopyLinkIcon } from '../icons/CopyLinkIcon'
 import { BillViewer } from '../materials/BillViewer'
 import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { useOptionalToastContext } from '../../contexts/ToastContext'
@@ -27,16 +28,6 @@ import { supabasePaperIo, type PaperIo } from '../../lib/materials/lines/paperIo
 import type { BillViewerItem } from '../../lib/materials/bills/billViewer'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-
-/** The glyph on the share press: a link, since the press copies one. */
-function LinkGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" />
-      <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
-    </svg>
-  )
-}
 
 const linkStyle: CSSProperties = {
   margin: 0,
@@ -136,7 +127,7 @@ export function JobSummarySupplyInvoiceList({ rows, paperIo }: { rows: SupplyInv
         data-testid="supply-invoice-share"
         style={{ width: press, height: press, flex: 'none', display: 'inline-grid', placeItems: 'center', margin: 0, padding: 0, border: 'none', borderRadius: 6, background: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
       >
-        <LinkGlyph />
+        <CopyLinkIcon />
       </button>
     )
   }

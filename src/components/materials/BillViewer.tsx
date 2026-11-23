@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { SignedAmountSmallCents } from '../AmountSmallCents'
+import { CopyLinkIcon } from '../icons/CopyLinkIcon'
 import { ValueLine, ValueLines, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { useOptionalToastContext } from '../../contexts/ToastContext'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
@@ -33,15 +34,6 @@ export interface BillViewerProps {
   io?: BillViewerIo
   /** A page of its own, opened from a bill's link: there is no screen behind it to press. */
   standalone?: boolean
-}
-
-function LinkGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" />
-      <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
-    </svg>
-  )
 }
 
 const NO_WORDS: readonly string[] = []
@@ -366,7 +358,7 @@ export function BillViewer({ items, openId, onOpen, onClose, jobId = null, searc
           {!narrow && showNav ? nav('top') : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: narrow ? 0 : '0.4rem' }}>
             <button type="button" onClick={() => void copyLink()} title={SUPPLY_INVOICE_WORDS.shareTitle} aria-label={SUPPLY_INVOICE_WORDS.shareTitle} style={iconBtn}>
-              <LinkGlyph />
+              <CopyLinkIcon />
             </button>
             {driveHref && !narrow ? (
               <button type="button" onClick={() => openInExternalBrowser(driveHref)} style={btn}>

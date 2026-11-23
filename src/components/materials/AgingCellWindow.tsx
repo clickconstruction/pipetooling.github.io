@@ -6,7 +6,7 @@
  * (`useSupplyHouseAgingWindows`), handed in whole as `aging` and read under the names the tab used, and the doors out
  * of it (a bill's Edit window, the house's Record a payment, the house itself) are the tab's, lent as props.
  */
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { formatCurrency } from '../../lib/format'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
@@ -18,6 +18,8 @@ import {
   invoicesForAgingCell,
   isMovableAgingInvoice,
 } from '../../lib/supplyHouseAging'
+import { supplyInvoiceShareUrl } from '../../lib/jobs/supplyInvoiceList'
+import { BillViewer } from './BillViewer'
 import { AgingInvoiceDoor, AgingMakePaymentDoor, AgingRowDoors } from './AgingCellDoors'
 import { SUPPLY_MOVE_ASK_AGE, ageState } from '../../lib/ageState'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../../lib/stickyModalHeaderStyle'
@@ -74,6 +76,8 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
     markMovedConfirmed,
     setInvoiceJobAcct,
   } = aging
+  // The bill viewer over the window (punch list #431): the bill on show, flipped through the cell's own bills.
+  const [seeBillId, setSeeBillId] = useState<string | null>(null)
   if (!agingCellModal) return null
   const { houseId, cell } = agingCellModal
   const isMovableList = cell === 'movable'
@@ -199,9 +203,16 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
           ) : null}
         </span>
         {inv.link ? (
-          <a className="aging-win-ext" href={inv.link} target="_blank" rel="noreferrer" title="The invoice" aria-label={`Open invoice ${inv.invoice_number}`}>
+          <button
+            type="button"
+            className="aging-win-ext"
+            onClick={() => setSeeBillId(inv.id)}
+            title="See the bill here, without leaving the page"
+            aria-label={`See invoice ${inv.invoice_number}`}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 'inherit', cursor: 'pointer' }}
+          >
             ↗
-          </a>
+          </button>
         ) : (
           <span className="aging-win-ext" />
         )}
@@ -560,6 +571,16 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
           )
         })()}
       </div>
+      {seeBillId ? (
+        <BillViewer
+          // The cell's own bills, so Previous and Next stay inside what the window lists.
+          items={cellRows.map((inv) => ({ invoiceId: inv.id, number: inv.invoice_number, house: houseNameOf(inv.supply_house_id), dateYmd: (inv.invoice_date ?? '').slice(0, 10), amount: Number(inv.amount) || 0 }))}
+          openId={seeBillId}
+          onOpen={setSeeBillId}
+          onClose={() => setSeeBillId(null)}
+          shareUrlOf={(id) => supplyInvoiceShareUrl(id, null)}
+        />
+      ) : null}
     </div>
   )
 }
