@@ -118,7 +118,12 @@ BEGIN
   BEGIN
     INSERT INTO public.license_roll_notes (source, license_class, license_number, body) VALUES ('tsbpe', 'journeyman', 'J-90001', 'x');
     RAISE EXCEPTION 'FAILED: a training account wrote a note';
-  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: a training account cannot write a note';
+  EXCEPTION
+    -- The training fence's statement trigger refuses before row security does, with its own words.
+    WHEN insufficient_privilege THEN RAISE NOTICE 'ok: a training account cannot write a note';
+    WHEN raise_exception THEN
+      IF SQLERRM LIKE 'FAILED:%' THEN RAISE; END IF;
+      RAISE NOTICE 'ok: a training account cannot write a note';
   END;
 END $$;
 DO $$
@@ -177,7 +182,7 @@ DO $$
 BEGIN
   BEGIN
     DELETE FROM public.license_roll_left_off;
-  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  EXCEPTION WHEN insufficient_privilege OR raise_exception THEN NULL;
   END;
 END $$;
 RESET ROLE;
