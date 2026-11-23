@@ -22,6 +22,7 @@ import { theirPaperFromRow, theirPaperLine } from '../jobs/theirPaper'
 import { buildJobWorkOrderCoverage, workOrderChipLabel } from '../subWorkOrders/workOrderCoverage'
 import { weekdayDate } from '../gc/words'
 import { isPartyAgreementKind, paperPartyKind, paperSignerFromFacts, paperSignerLine, partyAgreementTag, partyNeedsAList, signingForBeside } from '../contracts/paperParty'
+import { partyPaperKindWords } from '../contracts/partyPapers'
 
 /** The kinds the view answers. A kind the kernel does not know still draws, as a plain agreement. */
 export type AgreementKind =
@@ -40,8 +41,12 @@ export type AgreementKind =
   | 'trade_agreement'
   | 'outside_agreement'
 
-/** Where an agreement stands, the same three for every kind: out to be signed, signed, or over. */
-export type AgreementState = 'waiting' | 'signed' | 'ended'
+/**
+ * Where an agreement stands, the same for every kind: out to be signed, signed, or over. Since punch list #403's first
+ * decision an outside party's paper has a fourth: `not_sent`, made and never sent. No other kind is listed before it is
+ * sent, so no other kind reads it.
+ */
+export type AgreementState = 'waiting' | 'signed' | 'ended' | 'not_sent'
 
 /** One row of `agreements_on_file`. `facts` holds the columns of the kind's own table that its words are made from. */
 export interface AgreementRow {
@@ -141,8 +146,19 @@ export const AGREEMENT_STATE_CHIPS: ReadonlyArray<{ key: StatePick; label: strin
   { key: 'live', label: 'Sent and signed' },
   { key: 'waiting', label: 'Waiting on a signature' },
   { key: 'signed', label: 'Signed' },
+  // An outside party's paper that was made and never sent (punch list #403). Drawn only while one exists.
+  { key: 'not_sent', label: 'Not sent' },
   { key: 'ended', label: 'Voided or ended' },
 ]
+
+/**
+ * The state chips a reader is drawn. **Not sent** shows only while a paper is not sent, or while it is the chip picked:
+ * most days nothing is made and left unsent, and a chip that always opens an empty list is noise. `notSent` is the
+ * count under the kind picked, or null when it could not be read, which hides the chip as none does.
+ */
+export function agreementStateChips(notSent: number | null, picked: StatePick): ReadonlyArray<{ key: StatePick; label: string }> {
+  return AGREEMENT_STATE_CHIPS.filter((c) => c.key !== 'not_sent' || picked === 'not_sent' || (notSent != null && notSent > 0))
+}
 
 /**
  * The chips an estimator has (punch list #403, call 8): the kinds their role reads and no other. An outside company is
@@ -196,6 +212,8 @@ export const AGREEMENT_STATE_COLORS: Readonly<Record<AgreementState, { backgroun
   waiting: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' },
   signed: { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' },
   ended: { background: 'var(--bg-red-100)', color: 'var(--text-red-700)' },
+  // The quiet pair the party's own page gives *not sent* (`PARTY_PAPER_TONE_COLORS.unsent`).
+  not_sent: { background: 'var(--bg-muted)', color: 'var(--text-muted)' },
 }
 
 /** *Waiting on a signature · 3*: the chip carries the count when something waits, and the words alone when nothing does. */
@@ -275,7 +293,7 @@ function fact(row: Pick<AgreementRow, 'facts'>, key: string): unknown {
 }
 
 function stateOf(row: Pick<AgreementRow, 'state'>): AgreementState {
-  return row.state === 'waiting' || row.state === 'signed' ? row.state : 'ended'
+  return row.state === 'waiting' || row.state === 'signed' || row.state === 'not_sent' ? row.state : 'ended'
 }
 
 /**
@@ -377,6 +395,19 @@ export function agreementSigningForWords(row: Pick<AgreementRow, 'kind' | 'with_
   return signingForBeside(signer.signingFor, [row.with_name, signer.name, signer.printedName])
 }
 
+/**
+ * What kind of paper a party's line is, when it is not an agreement: *W-9*, *Insurance certificate*, *License*. Since
+ * punch list #403's first decision the tab lists every paper that is with an outside party, so a line may be a tax
+ * form or a certificate, and a second tag says so. '' for an agreement, for a row that says no kind, and for every
+ * line that is not a party's: those are agreements, which the tab is named for.
+ */
+export function agreementPaperKindWords(row: Pick<AgreementRow, 'kind' | 'facts'>): string {
+  if (!isPartyAgreementKind(row.kind)) return ''
+  const docType = str(fact(row, 'doc_type'))
+  if (!docType || docType === 'agreement') return ''
+  return partyPaperKindWords(docType)
+}
+
 /** Whether a line carries **Add to a list**: an outside party's paper whose party has no record yet, signed or not. */
 export function agreementNeedsAList(row: Pick<AgreementRow, 'kind' | 'facts'>): boolean {
   return isPartyAgreementKind(row.kind) && partyNeedsAList(paperPartyKind(fact(row, 'party_kind')))
@@ -426,6 +457,8 @@ export function agreementStateChip(row: Pick<AgreementRow, 'kind' | 'state' | 'f
   if (row.kind === 'person_agreement' || row.kind === 'partner_agreement' || row.kind === 'company_agreement' || isPartyAgreementKind(row.kind)) {
     if (fact(row, 'replaced') === true) return { words: 'replaced by a newer one', tone }
     if (tone === 'signed') return { words: 'signed ✓', tone }
+    // The party's own page says *not sent* of the same paper (`partyPaperLine`): one word for it on both.
+    if (tone === 'not_sent') return { words: 'not sent', tone }
     return { words: fact(row, 'signer_last_viewed_at') != null ? 'viewed, not signed' : 'never opened', tone }
   }
   if (row.kind === 'work_order') {
@@ -466,7 +499,7 @@ export function agreementStateChip(row: Pick<AgreementRow, 'kind' | 'state' | 'f
     if (tone === 'signed') return { words: 'signed ✓', tone }
     return { words: tone === 'waiting' ? 'waiting on their signature' : 'cancelled', tone }
   }
-  return { words: tone === 'waiting' ? 'waiting on a signature' : tone === 'signed' ? 'signed ✓' : 'ended', tone }
+  return { words: tone === 'waiting' ? 'waiting on a signature' : tone === 'signed' ? 'signed ✓' : tone === 'not_sent' ? 'not sent' : 'ended', tone }
 }
 
 /** The verb before the day: what happened on it. */
@@ -474,6 +507,8 @@ function dayVerb(row: Pick<AgreementRow, 'kind' | 'state' | 'facts'>): string {
   const tone = stateOf(row)
   if (tone === 'signed') return 'Signed'
   if (tone === 'waiting') return 'Sent'
+  // A paper that was never sent has one day to show: the day it was made.
+  if (tone === 'not_sent') return 'Made'
   const status = str(fact(row, 'status'))
   if (row.kind === 'work_order') return status === 'declined' ? 'Declined' : status === 'cancelled' ? 'Cancelled' : 'Expired'
   // A cancelled statement of work keeps no cancel day: the day on its line is the day it was sent.
