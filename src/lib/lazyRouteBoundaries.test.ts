@@ -40,6 +40,10 @@ function AppContent() {
 }
 `
 
+/** The same small App.tsx with routes below the Layout's closing tag, ending in the catch-all redirect. */
+const below = (routes: string): string =>
+  app('<Route path="/sign-in" element={<SignIn />} />').replace('</Routes>', `${routes}\n<Route path="*" element={<Navigate to="/" replace />} />\n</Routes>`)
+
 describe('lazyComponentNames', () => {
   it('reads the names declared with lazy(), and not a plain import', () => {
     expect(lazyComponentNames(app(''))).toEqual(['BoxCode', 'Preview', 'Jobs'])
@@ -55,7 +59,7 @@ describe('lazyComponentNames', () => {
 })
 
 describe('routesOutsideLayout', () => {
-  it('stops at the Layout route and leaves out the routes nested in it', () => {
+  it('leaves out the Layout route and the routes nested in it', () => {
     const routes = routesOutsideLayout(app('<Route path="/sign-in" element={<SignIn />} />\n<Route path="/b" element={<BoxCode />} />'))
     expect(routes.map((r) => r.path)).toEqual(['/sign-in', '/b'])
     expect(routes[1]?.element).toBe('<BoxCode />')
@@ -63,6 +67,29 @@ describe('routesOutsideLayout', () => {
 
   it('answers nothing for a file with no <Routes>', () => {
     expect(routesOutsideLayout('const BoxCode = lazy(() => import("./BoxCode"))')).toEqual([])
+  })
+
+  it('reads the routes after the Layout’s closing tag too, where the catch-all sits', () => {
+    const routes = routesOutsideLayout(below('<Route path="/promo" element={<BoxCode />} />'))
+    expect(routes.map((r) => r.path)).toEqual(['/sign-in', '/promo', '*'])
+    expect(routes[1]?.element).toBe('<BoxCode />')
+  })
+
+  it('reads a route after a Layout route that has no children', () => {
+    const source = '<Routes><Route path="/" element={<Layout />} /><Route path="/promo" element={<BoxCode />} /></Routes>'
+    expect(routesOutsideLayout(source).map((r) => r.path)).toEqual(['/promo'])
+  })
+})
+
+describe('a route below the Layout', () => {
+  it('is named when it draws a lazy page with no Suspense', () => {
+    expect(lazyRoutesWithoutSuspense(below('<Route path="/promo" element={<BoxCode />} />'))).toEqual(['/promo'])
+    expect(lazyRoutesWithoutSuspense(below('<Route path="/promo" element={<Suspense fallback={null}><BoxCode /></Suspense>} />'))).toEqual([])
+  })
+
+  it('is named when it is a public page imported plainly, and the redirect beside it is left alone', () => {
+    expect(publicRoutesNotOnDemand(below('<Route path="/promo" element={<SignIn />} />'), { '/sign-in': 'the first page' })).toEqual(['/promo'])
+    expect(publicRoutesNotOnDemand(below(''), { '/sign-in': 'the first page' })).toEqual([])
   })
 })
 
@@ -288,7 +315,7 @@ describe('src/App.tsx', () => {
     // A parser that found nothing would pass the check below without checking anything.
     expect(lazyComponentNames(source)).toEqual(expect.arrayContaining(['GcTradePortal', 'PayLink', 'EstimateAcceptStaffPreview', 'Jobs']))
     const paths = routesOutsideLayout(source).map((r) => r.path)
-    expect(paths).toEqual(expect.arrayContaining(['/sign-in', '/t/:token', '/pay/:id']))
+    expect(paths).toEqual(expect.arrayContaining(['/sign-in', '/t/:token', '/pay/:id', '*']))
     expect(paths).not.toContain('/')
     expect(paths).not.toContain('dashboard')
   })

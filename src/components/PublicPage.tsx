@@ -1,6 +1,7 @@
 import { Component, Suspense, useEffect, useState, type CSSProperties, type ErrorInfo, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import AuthPublicLandingLayout from './AuthPublicLandingLayout'
+import { safeSessionStorage } from '../lib/acceptInviteState'
 import {
   browserSaysOffline,
   chunkBoundaryView,
@@ -34,7 +35,8 @@ type FrameProps = {
   compact?: boolean
 }
 
-const session = (): Storage | null => (typeof sessionStorage !== 'undefined' ? sessionStorage : null)
+/** `safeSessionStorage`: a browser that blocks storage throws on the accessor itself, and a throw inside the boundary would unmount the page. */
+const session = safeSessionStorage
 
 function PublicPageFrame({ tone = 'paper', compact = false, children }: FrameProps & { children: ReactNode }) {
   if (tone === 'landing') {

@@ -3,7 +3,7 @@
  * `<PublicPage>` holds a `<Suspense>` of its own, so a page inside one is covered (v2.8327).
  *
  * Pure: it reads the source text of `src/App.tsx` and nothing else. The Layout wraps its `<Outlet>` in a boundary, so
- * every route inside it is covered. A route above the Layout route (`path="/"`) has none unless its own `element`
+ * every route inside it is covered. A route above or below the Layout route (`path="/"`) has none unless its own `element`
  * carries one, and a lazy page opened there by a click, a `navigate(...)` in a press or Back/Forward suspends inside
  * synchronous input, which React answers with a blank page (v2.6868, v2.6876). `main.tsx` keeps
  * `v7_startTransition: false` on purpose, so the answer is a boundary, never a transition.
@@ -50,8 +50,9 @@ function splitElement(route: string): { element: string; rest: string } {
 }
 
 /**
- * The `<Route>`s between `<Routes>` and the Layout route (`path="/"`), in order. The Layout route and everything nested
- * in it are left out. With no Layout route, every route in `<Routes>` counts as outside it.
+ * The `<Route>`s of `<Routes>` that are not the Layout route (`path="/"`) and not nested in it, in order: those above
+ * it, and those after its closing tag, where the catch-all sits. A route down there is ranked by react-router like any
+ * other, so a public page added below the Layout works and must be read too. With no Layout route, every route counts.
  */
 export function routesOutsideLayout(appSource: string): RouteOutsideLayout[] {
   const source = stripComments(appSource)
@@ -62,11 +63,18 @@ export function routesOutsideLayout(appSource: string): RouteOutsideLayout[] {
 
   const starts = [...block.matchAll(/<Route(?=[\s>/])/g)].map((m) => m.index)
   const routes: RouteOutsideLayout[] = []
+  // Where the Layout's nested routes end: its closing tag is the last `</Route>`, since the Layout is the one route
+  // with children. Routes that start before it are the Layout's own.
+  let skipUntil = -1
   for (let i = 0; i < starts.length; i++) {
+    if (starts[i]! < skipUntil) continue
     const { element, rest } = splitElement(block.slice(starts[i], starts[i + 1]))
     const path = rest.match(/\bpath=(?:"([^"]*)"|'([^']*)'|\{\s*["'`]([^"'`]*)["'`]\s*\})/)
     const pathText = path?.[1] ?? path?.[2] ?? path?.[3] ?? NO_PATH
-    if (pathText === '/') break
+    if (pathText === '/' && skipUntil === -1) {
+      skipUntil = Math.max(block.lastIndexOf('</Route>'), starts[i]! + 1)
+      continue
+    }
     routes.push({ path: pathText, element })
   }
   return routes
@@ -155,8 +163,8 @@ function componentsDrawn(element: string): string[] {
 
 /**
  * The paths of the routes outside the Layout that open with no sign-in and are not loaded on demand (v2.8327). A
- * route is fine when it is on `kept`, when its element is behind `ProtectedRoute`, or when the element is a
- * `<PublicPage>` that draws only pages held through `lazyWindow`. Anything else is a public page imported plainly,
+ * route is fine when it is on `kept`, when its element is behind `ProtectedRoute` or is only a `<Navigate>`, or when
+ * the element is a `<PublicPage>` that draws only pages held through `lazyWindow`. Anything else is a public page imported plainly,
  * which puts it and all it reads in the chunk every visit downloads. An empty list is the good answer.
  */
 export function publicRoutesNotOnDemand(appSource: string, kept: Readonly<Record<string, string>> = ROUTES_KEPT_IN_THE_ENTRY): string[] {
@@ -166,6 +174,9 @@ export function publicRoutesNotOnDemand(appSource: string, kept: Readonly<Record
       if (Object.prototype.hasOwnProperty.call(kept, path)) return false
       const code = element.trim()
       if (/^<ProtectedRoute(?=[\s>])/.test(code)) return false
+      // A redirect draws no page of its own: the catch-all below the Layout sends an unknown address to the start.
+      const drawn = componentsDrawn(code)
+      if (drawn.length > 0 && drawn.every((name) => name === 'Navigate')) return false
       if (!/^<PublicPage(?=[\s>])/.test(code) || !/<\/PublicPage\s*>$/.test(code)) return true
       const pages = componentsDrawn(code).filter((name) => name !== 'PublicPage')
       return pages.length === 0 || pages.some((name) => !windows.has(name))

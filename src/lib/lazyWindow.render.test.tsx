@@ -2,8 +2,8 @@
 /**
  * Render smoke for `lazyWindow`: a window not yet loaded shows the boundary's fallback and then itself,
  * a warmed window is drawn in the same pass with no fallback, a mounted window keeps its state when its
- * code lands, a failed load is asked for again on the next mount, and a load that keeps failing reaches
- * its boundary instead of being asked for without end.
+ * code lands, a failed load is asked for again on the next mount, a load that keeps failing reaches its
+ * boundary instead of being asked for without end, and a load that resolves to nothing is a failure too.
  */
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { Component, Suspense, useState, type ReactNode } from 'react'
@@ -137,6 +137,36 @@ describe('lazyWindow', () => {
     )
     expect(await screen.findByRole('button', { name: 'back 0' })).toBeTruthy()
     expect(load).toHaveBeenCalledTimes(2)
+    vi.restoreAllMocks()
+  })
+
+  it('a load that resolves to nothing is a failure like any other, and the window can still load later', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    // What a lost chunk leaves when main.tsx cancels Vite's throw: the import resolves, to nothing.
+    let nothing = true
+    const load = vi.fn(async () => (nothing ? (undefined as unknown as { default: typeof Counter }) : { default: Counter }))
+    const Window = lazyWindow(load)
+    const view = render(
+      <Caught>
+        <Suspense fallback={<p>Opening…</p>}>
+          <Window label="empty" />
+        </Suspense>
+      </Caught>,
+    )
+    expect(await screen.findByText(/^caught: /)).toBeTruthy()
+    expect(load).toHaveBeenCalledTimes(1)
+    view.unmount()
+
+    // The file is back. A warm-up asks afresh, where the nothing used to be kept for good.
+    nothing = false
+    await Window.preload()
+    expect(load).toHaveBeenCalledTimes(2)
+    render(
+      <Suspense fallback={<p>Opening…</p>}>
+        <Window label="back" />
+      </Suspense>,
+    )
+    expect(screen.getByRole('button', { name: 'back 0' })).toBeTruthy()
     vi.restoreAllMocks()
   })
 })

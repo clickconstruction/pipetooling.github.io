@@ -164,6 +164,24 @@ describe('PublicPage', () => {
     expect(container.querySelector('[data-public-page="loading"]')).not.toBeNull()
   })
 
+  it('a browser that blocks storage still gets the reload and the loading look, not an empty page', () => {
+    const own = Object.getOwnPropertyDescriptor(window, 'sessionStorage')
+    Object.defineProperty(window, 'sessionStorage', {
+      configurable: true,
+      get: () => {
+        throw new DOMException('The operation is insecure.', 'SecurityError')
+      },
+    })
+    try {
+      const { container } = render(page(<Throws error={lostChunk()} />))
+      expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
+      expect(container.querySelector('[data-public-page="loading"]')).not.toBeNull()
+    } finally {
+      if (own) Object.defineProperty(window, 'sessionStorage', own)
+      else delete (window as { sessionStorage?: Storage }).sessionStorage
+    }
+  })
+
   it('an error that is not a lost chunk is the routes’ boundary’s to say', () => {
     render(page(<Throws error={new Error('boom')} />))
     expect(screen.getByText('Something went wrong loading this page.')).toBeTruthy()

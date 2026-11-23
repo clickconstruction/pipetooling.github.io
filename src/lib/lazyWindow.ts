@@ -41,18 +41,19 @@ export function lazyWindow<P extends object>(load: () => Promise<Loaded<P>>): La
   let failedAt: number | null = null
   const once = (): Promise<Loaded<P>> => {
     if (!pending) {
-      pending = load().then(
-        (module) => {
+      pending = load()
+        .then((module) => {
+          // A lost chunk can resolve to nothing: `main.tsx` cancels Vite's throw when it starts the recovery
+          // reload. Reading `default` then throws here, and the catch below treats it as the failure it is.
           loaded = module.default
           return module
-        },
-        (error: unknown) => {
+        })
+        .catch((error: unknown) => {
           pending = null
           // A load nobody rendered for (a warm-up) leaves `suspended` untouched, so the first open asks again.
           if (waitedOn) failedAt = Date.now()
           throw error
-        },
-      )
+        })
     }
     return pending
   }
