@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-20
+last_updated: 2026-11-23
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -6204,6 +6204,7 @@ The office's Needs You line *Ray owes us 6 answers on 2 stages* (`start-answers-
 **Is it as told?**, the crew's look on arrival (v2.8110), is a card at the head of the job's details in Job Mode ([`JobModeArrivalCheck.tsx`](../src/components/jobMode/JobModeArrivalCheck.tsx)): it lists the bullets on them that nobody of ours has seen, from the first of our days for the stage, and is asked once a stage.
 **Yes, all as told** turns each into a yes we saw in that person's name, and a **No** takes their word back, leaves the bullet open, turns the stage red (`saidNo`) and sends Dispatch one line, all through `start_check_arrive`.
 Since v2.8238 a bullet with a No is asked about again once the office or the customer gives a new yes on it, and a No sent after someone else's yes is kept as an arrival of its own.
+Since v2.8360 the card says when a No's push to the dispatchers' phones failed, since the line is kept before the push, and the Schedule look says *Reading the schedule…* while its first read is out.
 That line is a **Stage check (to Dispatch)** with no check behind it: `notAsToldFrom` in [`arrival.ts`](../src/lib/startChecks/arrival.ts) reads it, and its door is **Open the list**.
 The list is written on the job window's **Documents → Before we start** ([`JobDocumentsStartChecks.tsx`](../src/components/jobs/JobDocumentsStartChecks.tsx) over [`StartCheckStage.tsx`](../src/components/startChecks/StartCheckStage.tsx)), for the job's desk (`start_checks_desk`).
 The Development page's **Schedule** look (v2.8006, [`DevelopmentScheduleCard.tsx`](../src/components/developments/DevelopmentScheduleCard.tsx)) draws one card a stage ahead on the site, sorted by trouble, each with its standing in one sentence (`stageStanding`) under a banner of what the customer owes us (`siteBanner`).
