@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
-import { formatCurrency } from '../../lib/format'
+import { moneyWords } from '../../lib/moneyParts'
+import { Money, MoneyText } from '../Money'
 import { baselineFrozenWords, baselineHeadWords, baselineKeptWords, baselineReadWords, baselineScoreWords, pctDoneWords, timeLeftWords, type CostsVerdict } from '../../lib/jobs/jobCostsVerdict'
 import { bidBaselineUsable, bidNotUsableWords, bidRateNeeded, bookBaselineUsable, bookBaselineWhy } from '../../lib/jobs/awardBaseline'
 import type { BaselineReading } from '../../lib/bids/bidBaselineRates'
@@ -141,7 +142,7 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
                     <td style={tdNum}>{s.atCompletionUsd != null ? usd0(s.atCompletionUsd) : '—'}</td>
                     <td style={{ ...tdNum, ...(s.budgetUsd == null && s.budgetHours == null ? muted : {}) }}>{s.budgetHours != null ? `${h0(s.budgetHours)}${s.budgetUsd != null ? ` · ${usd0(s.budgetUsd)}` : ''}` : s.budgetUsd != null ? usd0(s.budgetUsd) : s.budgetWords}</td>
                     <td style={{ ...td, ...muted, minWidth: 160 }}>
-                      {s.key === 'labor' && b.avgWageUsd != null ? `$${formatCurrency(b.avgWageUsd)}/h${b.hoursPerThousand != null ? ` · ${b.hoursPerThousand.toFixed(1)} h per $1k so far` : ''}` : ''}
+                      {s.key === 'labor' && b.avgWageUsd != null ? <MoneyText text={`${moneyWords(b.avgWageUsd)}/h${b.hoursPerThousand != null ? ` · ${b.hoursPerThousand.toFixed(1)} h per $1k so far` : ''}`} /> : ''}
                       {s.key === 'materials' && b.materialsPctOfPrice != null ? `${Math.round(b.materialsPctOfPrice)}% of the price` : ''}
                       {s.pctOfBudget != null ? ` · ${Math.round(s.pctOfBudget)}% of the bid figure${s.aheadPts != null ? (s.aheadPts > 5 ? ' · ahead of the work' : s.aheadPts < -5 ? ' · behind the work' : ' · with the work') : ''}` : ''}
                     </td>
@@ -226,7 +227,7 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
           <div style={{ display: 'flex', gap: '0.5rem 1rem', flexWrap: 'wrap', fontSize: '0.82rem' }}>
             <span><b>{h0(b.teamHours)}</b> team</span>
             {b.hoursPerThousand != null ? <span><b>{b.hoursPerThousand.toFixed(1)} h</b> per $1k of price</span> : null}
-            {b.avgWageUsd != null ? <span><b>${formatCurrency(b.avgWageUsd)}/h</b> average wage</span> : null}
+            {b.avgWageUsd != null ? <span><b><Money amount={b.avgWageUsd} />/h</b> average wage</span> : null}
             {b.people != null ? <span><b>{b.people}</b> {b.people === 1 ? 'person' : 'people'}</span> : null}
             <span><b>{usd0(b.materialsUsd)}</b> materials{b.materialsPctOfPrice != null ? ` · ${Math.round(b.materialsPctOfPrice)}% of price` : ''}</span>
           </div>

@@ -54,7 +54,7 @@ export type DayPressTone = 'orange' | 'green' | 'blue' | 'red' | 'grey'
  */
 export const DAY_PRESS_COLORS: Record<DayPressTone, string> = {
   orange: CLOCK_IN_ACCENT_UNDER_WORDS,
-  green: '#16a34a',
+  green: '#15803d',
   blue: '#1d4ed8',
   red: '#dc2626',
   grey: DEAD_PRESS_FILL,

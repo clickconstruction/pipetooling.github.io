@@ -26,7 +26,17 @@ The app also checks for new versions on its own about once an hour. It checks ag
 
 ## If a page ever fails to load
 
-Right after an update, a page can occasionally fail to load its files. The app fixes this itself. You briefly see **Updating app…** and it reloads once automatically. If something is still saving, it waits for that first. If it still can't load, it shows a **Reload** button. If all else fails, use the fix-it page:
+Right after an update, a page can occasionally fail to load its files. The app fixes this itself. You briefly see **Updating app…** and it reloads once automatically. If something is still saving, it waits for that first. If it still can't load, it shows a **Reload** button.
+
+A window can fail to load the same way, for example a job you pressed on a list. Then only the window gives up. The page behind it stays as it was. An amber line tells you:
+
+:::example When a window cannot load
+The job could not open. Check your signal, then press it again.
+:::
+
+Press the same row again once you have a signal.
+
+If all else fails, use the fix-it page:
 
 1. Go to `/fix-cache.html`. It is also linked from **Settings** as **Fix app**.
 2. Click **Fix app**. It clears the app's caches and reloads fresh.

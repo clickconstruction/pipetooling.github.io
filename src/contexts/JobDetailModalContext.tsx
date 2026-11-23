@@ -15,10 +15,12 @@ import {
 import type { OpenStageChecklistAsk } from '../components/stageChecklists/JobStageChecklistStrip'
 import type { DetailJobModalAssignedJobRow, DetailJobScheduleContext } from '../components/jobs/DetailJobModal'
 import type { JobWindowTab } from '../components/jobs/JobWindowModal'
+import { WindowLoadBoundary } from '../components/WindowLoadBoundary'
 import { WindowOpening } from '../components/WindowOpening'
 import { useAuth } from '../hooks/useAuth'
 import { useWarmWindows } from '../hooks/useWarmWindows'
 import { lazyWindow } from '../lib/lazyWindow'
+import { WINDOW_NAMES } from '../lib/windowLoad'
 import { resolveJobWindowMode } from '../lib/jobDetailModalRole'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -246,6 +248,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
             }}
           />
         ) : windowMode === 'window' ? (
+          <WindowLoadBoundary what={WINDOW_NAMES.job} onGaveUp={closeJobDetail} resetKey={openState.instanceKey}>
           <Suspense fallback={JOB_OPENING}>
           <JobWindowModal
             key={openState.instanceKey}
@@ -271,7 +274,9 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
             onSaved={handleSaved}
           />
           </Suspense>
+          </WindowLoadBoundary>
         ) : (
+          <WindowLoadBoundary what={WINDOW_NAMES.job} onGaveUp={closeJobDetail} resetKey={openState.instanceKey}>
           <Suspense fallback={JOB_OPENING}>
           <DetailJobModal
             key={openState.instanceKey}
@@ -292,6 +297,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
             }}
           />
           </Suspense>
+          </WindowLoadBoundary>
         )
       ) : null}
     </JobDetailModalContext.Provider>

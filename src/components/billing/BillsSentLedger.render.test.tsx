@@ -184,7 +184,7 @@ describe('BillsSentLedger', () => {
     expect(delivery.style.color).toBe('var(--text-700)')
     expect(delivery.parentElement!.lastElementChild).toBe(delivery)
     // Cents are smaller than the dollars.
-    const cents = within(lines[1]!).getByTestId('bills-sent-money').querySelector('span span') as HTMLElement
+    const cents = within(lines[1]!).getByTestId('bills-sent-money').querySelector('[data-cents]') as HTMLElement
     expect([cents.textContent, cents.style.fontSize]).toEqual(['.50', '0.7em'])
     // The band says how many of its bills are paid and what is still out: the open bill and the rest of the part-paid one.
     expect(screen.getByTestId('bills-sent-day-back').textContent).toBe('1 of 3 paid · $6,480.00 still out')

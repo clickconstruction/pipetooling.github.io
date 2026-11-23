@@ -16,7 +16,7 @@ import { READING_AGAIN_WORDS } from '../../lib/keptRead'
 export type QuickfillMarkPressesLayout = 'bar' | 'stack' | 'foot' | 'small'
 
 const PALETTE: Record<MarkOutcome, { background: string; border: string; color: string }> = {
-  done: { background: '#16a34a', border: '#16a34a', color: '#fff' },
+  done: { background: '#15803d', border: '#15803d', color: '#fff' },
   worked: { background: '#2563eb', border: '#2563eb', color: '#fff' },
   question: { background: 'var(--bg-subtle)', border: 'var(--border-strong)', color: 'var(--text-700)' },
 }

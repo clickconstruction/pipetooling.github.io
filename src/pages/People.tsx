@@ -37,6 +37,7 @@ import PeopleOverheadTab from '../components/people/PeopleOverheadTab'
 import PeopleReviewTab from '../components/people/PeopleReviewTab'
 import PeopleDayBookTab from '../components/people/PeopleDayBookTab'
 import { dropDayBookDoorParams, type DayBookDoor } from '../lib/people/dayBookDoor'
+import { dropHrPersonParams } from '../lib/people/hrPersonLink'
 import PeopleWhosWhereTab from '../components/people/PeopleWhosWhereTab'
 import PeopleUtilizationTab from '../components/people/PeopleUtilizationTab'
 import PeopleSpendingTab from '../components/people/PeopleSpendingTab'
@@ -1923,6 +1924,8 @@ export default function People() {
       next.set('tab', tab)
       // The Day book's week and person leave the URL with it; the page remembers them.
       if (tab !== 'day_book') dropDayBookDoorParams(next)
+      // HR's person and theme leave with it (hrPersonLink): another tab would read the roster id as its own.
+      if (activeTab === 'hr' && tab !== 'hr') dropHrPersonParams(next)
       return next
     })
   }

@@ -801,7 +801,7 @@ export function QuoteCompareModal({
                   disabled={applyItems.length === 0}
                   title={applyItems.length === 0 ? 'Pick some prices first' : 'Write the picked prices onto this bid’s row costs (materials only, with revert tags)'}
                   onClick={() => setApplyOpen(true)}
-                  style={{ padding: '0.5rem 0.9rem', background: applyItems.length === 0 ? 'var(--bg-200)' : '#16a34a', color: applyItems.length === 0 ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: applyItems.length === 0 ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
+                  style={{ padding: '0.5rem 0.9rem', background: applyItems.length === 0 ? 'var(--bg-200)' : '#15803d', color: applyItems.length === 0 ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: applyItems.length === 0 ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
                 >
                   Apply picks to costs
                 </button>
@@ -1117,7 +1117,7 @@ function PickAnnotationDialog({
             type="button"
             disabled={leadTextBad}
             onClick={() => onSave({ reasonKind: askWhy ? reasonKind : null, reasonNote: note, leadTimeDays: leadText.trim() === '' ? leadDays : parseLeadTime(leadText), statusOverride })}
-            style={{ padding: '0.45rem 0.9rem', background: leadTextBad ? 'var(--bg-200)' : '#16a34a', color: leadTextBad ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: leadTextBad ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
+            style={{ padding: '0.45rem 0.9rem', background: leadTextBad ? 'var(--bg-200)' : '#15803d', color: leadTextBad ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: leadTextBad ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
           >
             Save
           </button>

@@ -113,7 +113,7 @@ export function SubmittalSheetStrip({
               </span>
               <span style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 {confirmLabels?.[fileIndex] && onConfirmGuesses ? (
-                  <button type="button" disabled={busy} onClick={() => onConfirmGuesses(fileIndex)} style={{ ...btn, background: '#16a34a', borderColor: '#16a34a', color: 'white', fontWeight: 600 }} data-testid="confirm-guesses">
+                  <button type="button" disabled={busy} onClick={() => onConfirmGuesses(fileIndex)} style={{ ...btn, background: '#15803d', borderColor: '#15803d', color: 'white', fontWeight: 600 }} data-testid="confirm-guesses">
                     {confirmLabels[fileIndex]}
                   </button>
                 ) : null}

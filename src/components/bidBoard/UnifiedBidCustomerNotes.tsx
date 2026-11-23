@@ -833,7 +833,7 @@ export function UnifiedBidCustomerNotesActionButtons({
         }}
         style={{
           padding: '0.25rem 0.65rem',
-          background: !customerId ? DEAD_PRESS_FILL : addingKind === 'customer' ? '#15803d' : '#16a34a',
+          background: !customerId ? DEAD_PRESS_FILL : addingKind === 'customer' ? '#15803d' : '#15803d',
           color: !customerId ? DEAD_PRESS_TEXT : 'white',
           border: 'none',
           borderRadius: 4,
