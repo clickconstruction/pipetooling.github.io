@@ -13,7 +13,9 @@
 # read before, but the estimator, who reads every kind of an outside company's paper and no person's paper and nobody
 # on no list; the signed form's gate is told yes for exactly those papers; the paper follows its contact through Who
 # is this?, a fold and a deleted record; and the fold's
-# helper moves nothing for a twin, a training account, an archived account or a primary. It raises on its first failed
+# helper moves nothing for a twin, a training account, an archived account or a primary; and a party's paper finds its
+# customer, supply house or trade company by the record's key, with every reader's lines the same as the view's before
+# (punch list #430). It raises on its first failed
 # assertion and ends with "paper_party PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds
 # workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -24,8 +26,9 @@ NAME="pgtest-paper-party"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # In order: the ground puts its own policy back, then the widening restates it, as on prod.
 # Last, the view's newest definition (punch list #403, the owner's first decision): the ground restates the view as
-# it stood, so the migration that widens it to every paper of an outside party runs after it, as on prod.
-WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql) $(ls supabase/migrations/*_agreements_every_party_paper.sql)"
+# it stood, so the migration that widens it to every paper of an outside party runs after it, as on prod. Then the one
+# that finds a party's record by its key (punch list #430), which restates the view again with three joins as a CASE.
+WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql) $(ls supabase/migrations/*_agreements_every_party_paper.sql) $(ls supabase/migrations/*_agreements_party_join_by_key.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
