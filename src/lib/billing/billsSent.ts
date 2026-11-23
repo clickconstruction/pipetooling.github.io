@@ -315,13 +315,14 @@ const billIdOf = (copy: BillsSentCopy): string | null => (copy.sourceTable === B
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
-/**
- * The lines, newest first. A copy to the copy list folds into the send it rode with. Each line knows which send of
- * its bill it is from every send on record (`earlier`), so a second send whose first is off the page still says so.
- */
 /** After this many days with no word from a mail server, the line stops saying the answer is still to come. */
 export const BILLS_SENT_NO_ANSWER_DAYS = 2
 
+/**
+ * The lines, newest first. A copy to the copy list folds into the send it rode with. Each line knows which send of
+ * its bill it is from every send on record (`earlier`), so a second send whose first is off the page still says so.
+ * `todayYmd` is the company's day: with it a long silence from a mail server says how long it has run.
+ */
 export function billsSentLines(input: BillsSentInput, opts: { todayYmd?: string } = {}): BillsSentLine[] {
   const ms = (iso: string): number => {
     const t = Date.parse(iso)
