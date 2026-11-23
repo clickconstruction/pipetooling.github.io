@@ -342,7 +342,7 @@ describe('AgreementsSendPaper', () => {
     expect((await screen.findByTestId('send-window')).textContent).toContain('first|null|')
     expect(screen.getByTestId('send-window-party').textContent).toBe('Tallgrass Supply Co.|listed|keep Tallgrass Supply Co.|||')
     fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
-    await waitFor(() => expect(io.party.at(-1)).toBe('sends party-row'))
+    await waitFor(() => expect(io.party[io.party.length - 1]).toBe('sends party-row'))
     // The mock's contact is the one that holds the copy that is out: a first send would have reused it.
     expect(io.party.filter((line) => line.startsWith('wrote'))).toEqual(['wrote insert party:3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d · Subcontractor Handbook · Tallgrass Supply Co.'])
     expect(io.party).not.toContain('sends p-out')
