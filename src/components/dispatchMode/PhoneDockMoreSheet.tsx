@@ -359,7 +359,7 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
                             height: 18,
                             borderRadius: 4,
                             border: '1px solid var(--border)',
-                            background: m.on ? '#16a34a' : 'var(--surface)',
+                            background: m.on ? '#15803d' : 'var(--surface)',
                             color: '#fff',
                             alignItems: 'center',
                             justifyContent: 'center',

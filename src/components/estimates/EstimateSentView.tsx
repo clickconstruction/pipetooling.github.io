@@ -30,6 +30,7 @@ import EstimateResendLinkPanel from './EstimateResendLinkPanel'
 import { EstimateWhatWent } from './EstimateWhatWent'
 import IpAddressMapButton from './IpAddressMapButton'
 import { estPrimaryButton, estSecondaryButton, estSmallSecondaryButton } from './estimatesPageStyles'
+import { MoneyText } from '../Money'
 
 /** The Job section's anchor: `/estimates/:number#estimate-job` scrolls to it after the load. */
 export const ESTIMATE_JOB_SECTION_HASH = 'estimate-job'
@@ -209,11 +210,11 @@ export default function EstimateSentView({
         <p>
           {isCO ? (
             <>
-              <strong>Net change to contract:</strong> {formatSignedCentsUsd(row.total_cents)}
+              <strong>Net change to contract:</strong> <MoneyText text={formatSignedCentsUsd(row.total_cents)} />
             </>
           ) : (
             <>
-              <strong>Total:</strong> {formatMoney(row.total_cents)}
+              <strong>Total:</strong> <MoneyText text={formatMoney(row.total_cents)} />
             </>
           )}
         </p>

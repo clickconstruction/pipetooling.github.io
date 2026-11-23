@@ -15,6 +15,7 @@ import { PipelineMoneyOpportunities } from '../jobs/PipelineMoneyOpportunities'
 import { stagesMoneyMoveHref, stagesMoneyMoveKeyForPipelineMove, type StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
 import type { PipelineMoveKey } from '../../lib/jobs/pipelineOverview'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { Money, MoneyText } from '../Money'
 
 /**
  * Quickfill → "Jobs Cleanup" (v2.2145, owner-approved mockup): one station
@@ -197,7 +198,7 @@ export function QuickfillJobsCleanupSection() {
               ? 'loading…'
               : sheetCount === 0
                 ? 'every sheet is attached to a job ✅'
-                : `${sheetCount} sheet${sheetCount === 1 ? '' : 's'} · $${formatCurrency(sums.total)}${sums.due > 0 ? ` · $${formatCurrency(sums.due)} due` : ''}`}
+                : <MoneyText text={`${sheetCount} sheet${sheetCount === 1 ? '' : 's'} · $${formatCurrency(sums.total)}${sums.due > 0 ? ` · $${formatCurrency(sums.due)} due` : ''}`} />}
           </span>
         </div>
         {sheetsError ? (
@@ -242,8 +243,8 @@ export function QuickfillJobsCleanupSection() {
                 </span>
               </span>
               <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600 }}>${formatCurrency(r.total)}</span>
-                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{r.due > 0 ? `$${formatCurrency(r.due)} due` : 'Paid'}</span>
+                <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600 }}><Money amount={r.total} /></span>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{r.due > 0 ? <MoneyText text={`$${formatCurrency(r.due)} due`} /> : 'Paid'}</span>
               </span>
               <button
                 type="button"

@@ -1,0 +1,18 @@
+# The small surfaces, swept together with the tooling (v2.8376).
+src/components/*.tsx
+src/components/costBatches
+src/components/customers
+src/components/dashboard
+src/components/developments
+src/components/dispatchMode
+src/components/estimates
+src/components/moneyfill
+src/components/needsYou
+src/components/partnerships
+src/components/personDesk
+src/components/projects
+src/components/quickfill
+src/components/settings
+src/components/tally
+src/components/tickets
+src/components/workflow

@@ -20,6 +20,7 @@ import {
   type ZzJobRow,
   type ZzSweepRow,
 } from '../../lib/jobs/zzTestJobSweep'
+import { MoneyText } from '../Money'
 
 const cell: React.CSSProperties = { padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)' }
 
@@ -246,7 +247,7 @@ export default function ZzTestJobSweepSection() {
                         <td style={cell}>{r.customerName}</td>
                         <td style={{ ...cell, whiteSpace: 'nowrap' }}>{r.status.replace(/_/g, ' ')}</td>
                         <td style={{ ...cell, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                          ${r.revenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <MoneyText text={`$${r.revenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                         </td>
                         <td style={{ ...cell, whiteSpace: 'nowrap' }}>
                           {r.ageDays === null ? 'no date' : `${r.ageDays} ${r.ageDays === 1 ? 'day' : 'days'}`}

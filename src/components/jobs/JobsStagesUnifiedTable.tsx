@@ -242,7 +242,7 @@ export default function JobsStagesUnifiedTable(tableProps: JobsStagesUnifiedTabl
     fontWeight: 600,
     border: '1px solid rgba(255,255,255,0.5)',
     borderRadius: 4,
-    background: '#16a34a',
+    background: '#15803d',
     color: 'white',
     lineHeight: 1.2,
     // "Invoice: 891" must never break after the colon in a narrow column.

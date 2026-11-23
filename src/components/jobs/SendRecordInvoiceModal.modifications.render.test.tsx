@@ -10,6 +10,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 import SendRecordInvoiceModal from './SendRecordInvoiceModal'
+import { moneyText } from '../../test/moneyText'
 
 const calls = vi.hoisted(() => ({ rpc: [] as string[], writes: [] as string[] }))
 
@@ -120,7 +121,7 @@ describe('SendRecordInvoiceModal — the Invoice Modifications cards across the 
       />,
     )
     await waitFor(() => {
-      expect(screen.getByText(/RTB \$2,630\.00/)).toBeTruthy()
+      expect(screen.getByText(moneyText(/RTB \$2,630\.00/))).toBeTruthy()
     })
 
     // The Stripe card opens closed, on the Stripe tab.

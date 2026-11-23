@@ -108,7 +108,7 @@ export function BidBoardNotesPanel({
           padding: '0.25rem 0.65rem',
           border: 'none',
           borderRight: '1px solid var(--border-strong)',
-          background: notesTab === 'customer' ? '#16a34a' : 'var(--surface)',
+          background: notesTab === 'customer' ? '#15803d' : 'var(--surface)',
           color: notesTab === 'customer' ? '#ffffff' : 'var(--text-700)',
           cursor: !bid.customers?.id ? 'not-allowed' : 'pointer',
           fontWeight: notesTab === 'customer' ? 600 : 400,

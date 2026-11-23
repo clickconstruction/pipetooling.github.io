@@ -353,7 +353,7 @@ export function MultipleSegmentGeneratorModal({
               padding: '0.45rem 0.9rem',
               fontSize: '0.8125rem',
               fontWeight: 600,
-              background: payload.length === 0 ? 'var(--border-strong)' : '#16a34a',
+              background: payload.length === 0 ? 'var(--border-strong)' : '#15803d',
               color: 'white',
               border: 'none',
               borderRadius: 6,

@@ -24,6 +24,7 @@ import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { INTERNAL_TRANSFERS_DEFAULT_KEY } from '../lib/dragSortDefaultLabels'
 import { fetchAttributionsByMercuryTxIds, fetchJobAllocationsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
 import { decideSplitSaveGuard, seedStateFromRows, type MercurySplitSeedState } from '../lib/mercuryAllocModalSeed'
+import { MoneyText } from './Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type JobSearchRow = {
@@ -1163,7 +1164,7 @@ export function MercuryTransactionAllocationsModal({
                   ) : null}
                 </td>
                 <td style={{ padding: '0.45rem 0.5rem', textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                  {formatCurrency(Number(transaction.amount))}
+                  <MoneyText text={formatCurrency(Number(transaction.amount))} />
                 </td>
                 <td
                   style={{
@@ -1613,7 +1614,7 @@ export function MercuryTransactionAllocationsModal({
               ) : null}
               {ln.mode === 'percent' && displayTotal > 0 && Number.isFinite(dd ?? NaN) && ln.valueStr.trim() !== '' ? (
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-                  ≈ {formatCurrency(dd ?? 0)} of {formatCurrency(displayTotal)}
+                  ≈ <MoneyText text={formatCurrency(dd ?? 0)} /> of <MoneyText text={formatCurrency(displayTotal)} />
                 </div>
               ) : null}
               <input
@@ -1652,8 +1653,8 @@ export function MercuryTransactionAllocationsModal({
             'Zero charge — remove job lines or adjust the transaction in Mercury.'
           ) : (
             <>
-              Allocated: {allocationSum.ok ? formatCurrency(allocationSum.sum) : '—'} · Remainder:{' '}
-              {allocationSum.ok ? formatCurrency(remainder) : '—'}
+              Allocated: {allocationSum.ok ? <MoneyText text={formatCurrency(allocationSum.sum)} /> : '—'} · Remainder:{' '}
+              {allocationSum.ok ? <MoneyText text={formatCurrency(remainder)} /> : '—'}
             </>
           )}
         </div>

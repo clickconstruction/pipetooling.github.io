@@ -13,6 +13,7 @@ import { receiptFillInRows, type ReceiptChaseSource } from '../../lib/needsYou/f
 import type { ReceiptFillInIo } from '../../lib/needsYou/fillInReceiptsIo'
 import { NeedsYouFillInDeck } from './NeedsYouFillInDeck'
 import type { FillInRow } from '../../hooks/useFillInRows'
+import { moneyText } from '../../test/moneyText'
 
 const navigate = vi.fn()
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<typeof import('react-router-dom')>()), useNavigate: () => navigate }))
@@ -131,7 +132,7 @@ describe('NeedsYouFillInDeck · receipts', () => {
     await settle()
     fireEvent.click(press('Copy the receipt link'))
     await waitFor(() => expect(h.copyLink).toHaveBeenCalledWith('charge-r-cell'))
-    expect(await screen.findByText('Receipt link copied for $228.58 at Ridgeway Supply. It opens until Nov 18.')).toBeTruthy()
+    expect(await screen.findByText(moneyText('Receipt link copied for $228.58 at Ridgeway Supply. It opens until Nov 18.'))).toBeTruthy()
     expect(cardTitle()).toBe('Jordan has no cell on file, and $228.58 at Ridgeway Supply posted to their card.')
     expect(h.saves).toEqual([])
   })
