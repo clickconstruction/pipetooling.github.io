@@ -14,7 +14,7 @@ San Antonio's applications are read twice a night (`feedPasses`): by filing day,
 
 ## Who reads it
 
-- `permit-pull` (v2.8401, its own PR): before a feed's readings start, it reads that source's newest row with `issued_whole` set. When that value is false, the second reading starts no later than its `issued_since`, so a run of failures carries its start until a reading finishes. It writes both columns on every run of a feed read twice. Deployed before this push, the function reads no kept start and writes its row without the two columns.
+- `permit-pull` (v2.8402, its own PR): before a feed's readings start, it reads that source's newest row with `issued_whole` set. When that value is false, the second reading starts no later than its `issued_since`, so a run of failures carries its start until a reading finishes. It writes both columns on every run of a feed read twice. Deployed before this push, the function reads no kept start and writes its row without the two columns.
 - Nothing in the client reads the columns. `permitResearchIo.ts` reads `since`, `ran_at` and `error` only.
 
 ## Owed after the push
