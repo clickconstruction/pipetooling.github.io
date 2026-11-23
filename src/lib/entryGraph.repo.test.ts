@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { APP_ENTRY, eagerGraph, ENTRY_SOURCE_BUDGET_BYTES, ON_DEMAND_WINDOWS, whyEager, type ReadSource } from './entryGraph'
+import { APP_ENTRY, eagerGraph, ENTRY_SOURCE_BUDGET_BYTES, ON_DEMAND_PAGES, ON_DEMAND_WINDOWS, whyEager, type ReadSource } from './entryGraph'
 
 /**
  * The repo's own entry, held to its budget (the main chunk's split, 2026-11-20). PR CI never runs the
@@ -39,6 +39,17 @@ describe('the app entry’s eager imports', () => {
       chain,
       chain.length
         ? `${window} is back in the main chunk through:\n  ${chain.join('\n  <- ')}\nA file on that chain imports its neighbour for its code. Import the type only (\`import type\`), or load the window with lazyWindow.`
+        : '',
+    ).toEqual([])
+  })
+
+  it.each(ON_DEMAND_PAGES)('%s loads when its link is opened, never with the entry', (page) => {
+    expect(read(page), `${page} is listed in ON_DEMAND_PAGES and is not in the repo`).not.toBeNull()
+    const chain = whyEager(graph, page)
+    expect(
+      chain,
+      chain.length
+        ? `${page} is back in the main chunk through:\n  ${chain.join('\n  <- ')}\nA file on that chain imports its neighbour for its code. In App.tsx hold the page with lazyWindow inside PublicPage; elsewhere import the type only (\`import type\`).`
         : '',
     ).toEqual([])
   })

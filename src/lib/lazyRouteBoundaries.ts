@@ -1,5 +1,6 @@
 /**
- * Which routes outside the Layout draw a `lazy()` page with no `<Suspense>` around it.
+ * Which routes outside the Layout draw a lazy page (`lazy()` or `lazyWindow()`) with no `<Suspense>` around it.
+ * `<PublicPage>` holds a `<Suspense>` of its own, so a page inside one is covered (v2.8306).
  *
  * Pure: it reads the source text of `src/App.tsx` and nothing else. The Layout wraps its `<Outlet>` in a boundary, so
  * every route inside it is covered. A route above the Layout route (`path="/"`) has none unless its own `element`
@@ -25,10 +26,10 @@ function stripComments(source: string): string {
     .replace(/^\s*\/\/.*$/gm, '')
 }
 
-/** The names declared `const X = lazy(…)` (or `React.lazy(…)`). */
+/** The names declared `const X = lazy(…)` (or `React.lazy(…)`), and `const X = lazyWindow(…)`, which is lazy too. */
 export function lazyComponentNames(appSource: string): string[] {
   const names: string[] = []
-  const re = /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:React\.)?lazy\s*\(/g
+  const re = /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:React\.)?lazy(?:Window)?\s*\(/g
   for (const m of stripComments(appSource).matchAll(re)) if (m[1]) names.push(m[1])
   return names
 }
@@ -73,20 +74,21 @@ export function routesOutsideLayout(appSource: string): RouteOutsideLayout[] {
 
 const count = (text: string, re: RegExp): number => (text.match(re) ?? []).length
 
-/** True when every mention of `name` in the element sits inside an open `<Suspense>`. */
+/** True when every mention of `name` in the element sits inside an open `<Suspense>`, or a `<PublicPage>`, which holds one. */
 function everyMentionIsInsideSuspense(element: string, name: string): boolean {
   const mention = new RegExp(`(?<![\\w$.])${name.replace(/\$/g, '\\$')}(?![\\w$])`, 'g')
   for (const m of element.matchAll(mention)) {
     const before = element.slice(0, m.index)
-    if (count(before, /<Suspense(?=[\s>/])/g) <= count(before, /<\/Suspense\s*>/g)) return false
+    if (count(before, /<(?:Suspense|PublicPage)(?=[\s>/])/g) <= count(before, /<\/(?:Suspense|PublicPage)\s*>/g)) return false
   }
   return true
 }
 
 /**
- * The paths of the routes outside the Layout whose `element` mentions a `lazy()` name that no `<Suspense>` in that same
- * element wraps. An empty list is the good answer. The fix for a path it names is `<Suspense fallback={null}>` around
- * the page in the route's element, as `/t/:token` has.
+ * The paths of the routes outside the Layout whose `element` mentions a lazy name that no `<Suspense>` or
+ * `<PublicPage>` in that same element wraps. An empty list is the good answer. The fix for a path it names is
+ * `<PublicPage>` around a page that opens with no sign-in, as `/t/:token` has, and `<Suspense fallback={null}>` around
+ * one behind `ProtectedRoute`.
  */
 export function lazyRoutesWithoutSuspense(appSource: string): string[] {
   const lazyNames = lazyComponentNames(appSource)
@@ -105,9 +107,10 @@ export function lazyRouteWithoutSuspenseWords(path: string): string {
   // The example is a route that is wrapped, so it is never the route at fault.
   const example = path === '/t/:token' ? '/f/:link' : '/t/:token'
   return (
-    `The route "${path}" in src/App.tsx draws a lazy() page with no <Suspense> around it. ` +
+    `The route "${path}" in src/App.tsx draws a lazy page with no <Suspense> around it. ` +
     'It sits outside the Layout, so a click or Back onto it before its chunk has loaded leaves a blank page. ' +
-    `Wrap the page in <Suspense fallback={null}> inside the route's element, as ${example} is.`
+    `Wrap a page that opens with no sign-in in <PublicPage> inside the route's element, as ${example} is, ` +
+    'and one behind ProtectedRoute in <Suspense fallback={null}>.'
   )
 }
 
