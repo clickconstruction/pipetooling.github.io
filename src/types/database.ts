@@ -43574,6 +43574,7 @@ export type Database = {
       user_bid_notes_read_state: {
         Row: {
           bid_id: string
+          hidden_at: string | null
           last_seen_bid_submission_at: string | null
           last_seen_customer_contact_at: string | null
           updated_at: string
@@ -43581,6 +43582,7 @@ export type Database = {
         }
         Insert: {
           bid_id: string
+          hidden_at?: string | null
           last_seen_bid_submission_at?: string | null
           last_seen_customer_contact_at?: string | null
           updated_at?: string
@@ -43588,6 +43590,7 @@ export type Database = {
         }
         Update: {
           bid_id?: string
+          hidden_at?: string | null
           last_seen_bid_submission_at?: string | null
           last_seen_customer_contact_at?: string | null
           updated_at?: string
@@ -53091,6 +53094,7 @@ export type Database = {
         }
         Returns: Json
       }
+      session_opened_by_imitation: { Args: never; Returns: boolean }
       set_aside_robot_fixtures: {
         Args: { p_reason?: string; p_row_ids: string[] }
         Returns: Json

@@ -1586,7 +1586,7 @@ Mirrors the **`dashboard_clock_strip_scope`** pattern.
 
 **Mode row** — the first-run card that offered Job Mode to a leader or a superintendent is gone since v2.8332: the *Mode row* under *Page mode* is how every role but the estimator turns Job Mode on and gets back.
 A device that stored `'card'` still reads on, and the old put-away key `dashboard_job_mode_card_dismissed_${userId}` is read by nothing.
-**Show full dashboard** at the foot of the Job Mode page is drawn only for the estimator, the one role the row is not drawn for.
+**Show full dashboard** at the foot of the Job Mode page is drawn wherever the row is not: past a phone's width for every role, and at every width for the estimator (v2.8373, `modeRowDrawnHere`).
 
 **Telemetry** — `job_mode_enabled{source}` rows in `ui_nav_clicks` (control `job_mode_enabled`, target `#default` / `#card` / `#gear` / `#row`), once per user per browser session via **[`jobModeTelemetry.ts`](../src/lib/jobModeTelemetry.ts)** — the Dashboard's first render with Job Mode active, the mode row's Job Mode third, or the gear turn-on.
 
@@ -1663,15 +1663,18 @@ Kernel **[`pageMode.ts`](../src/lib/pageMode.ts)**: `resolvePageMode` draws the 
 Job Mode is ahead of Dispatch Mode because Job Mode is a pick made on the device and Dispatch Mode follows the person and is on for assistant-like roles and master technicians before they choose.
 Nothing stored is rewritten: a device that held two or three values from before the rule reads by the same order.
 Hook **[`usePageMode(userId, role)`](../src/hooks/usePageMode.ts)** holds the three toggles' own hooks to the kernel and is the one door that switches a mode: the gear menu, the phone bar's Modes rows, the Task Mode strip's Exit and the mode row all go through its `set`.
-**Mode row** (v2.8332, punch list #425): **Task Mode · Dashboard · Job Mode** as three thirds, the first line above the header (**[`ModeRow`](../src/components/layout/ModeRow.tsx)**, an `AppTopBanner` mounted by `Layout`), for every role whose first page is the Dashboard (`modeRowOfferedToRole`: all nine but `estimator`, whose first page is Bids), on the Dashboard and on the Task Mode checklist.
-For those eight roles the gear menu lists neither **Job Mode** nor **Task Mode** (`gearModesRows`), and the window that shows another person's Task Mode draws the row with Task Mode filled where the strip was.
+**Mode row** (v2.8332, punch list #425): **Task Mode · Dashboard · Job Mode** as three thirds, the first line above the header (**[`ModeRow`](../src/components/layout/ModeRow.tsx)**, an `AppTopBanner` mounted by `Layout`), for every role whose first page is the Dashboard (`modeRowOfferedToRole`: all nine but `estimator`, whose first page is Bids), on the Dashboard and on the Task Mode checklist, at a phone's width only since v2.8373 (`modeRowDrawnHere`).
+On a phone the gear menu lists neither **Job Mode** nor **Task Mode** for those eight roles (`gearModesRows`), and the window that shows another person's Task Mode draws the row with Task Mode filled where the strip was, whatever device that person is on.
 The third of the mode drawn is filled, and Dispatch Mode reads as Dashboard, since the middle third switches Task Mode and Job Mode off and never writes Dispatch Mode.
 On a phone the row is tucked: it shows on the first five opens or until a third is pressed, after every switch, in Task Mode, and for a sub-like role that is off Job Mode, and otherwise a pull down at the top of the page or a tap on its 24 px handle brings it down for that visit.
-On a desk it always shows.
+Past a phone's width it is not drawn (v2.8373, the owner's second look of 2026-11-23): the gear menu holds **Dashboard**, **Job Mode** and **Task Mode** as a list with one dot under *Modes* (**[`GearModeList`](../src/components/layout/GearModeList.tsx)**, rows from `gearModesRows`), and the estimator has that list at every width in place of the two ticks.
+A press in the list goes through the row's own `modeRowPressWrites` and `modeRowLandingPath`, so the list and the row write the same values and land on the same page, and **Dispatch Mode** keeps its own tick under the list.
+A tablet is past a phone's width, so it has the list and not the row.
 The rule and every word are **[`modeRow.ts`](../src/lib/modeRow.ts)** (`modeRowDraw`, `modeRowPressWrites`, `modeRowPull`), and the phone's memory is `mode_row_pressed_${userId}` and `mode_row_opens_${userId}` in `localStorage`.
 Usage rows in `ui_nav_clicks`: control `mode_row` with target `#task` / `#full` / `#job` for a press, and `mode_row_shown` with `#pull` / `#handle` for a tucked row brought down.
-The Task Mode strip is drawn only for the roles the row is not drawn for.
-The same roles have no **Job Mode** or **Task Mode** row in the gear menu or the phone dock's More sheet (`gearModesRows` in `gearMenuSections.ts`): the row is their one door, a leader keeps **Dispatch Mode** there, and the *Modes* label is drawn only over a row.
+A press in the gear menu's list records control `gear_mode` with the same three targets.
+The Task Mode strip is drawn wherever the row is not: past a phone's width, and for the estimator.
+On a phone the same roles have no **Job Mode** or **Task Mode** row in the gear menu or the phone dock's More sheet (`gearModesRows` in `gearMenuSections.ts`): the row is their one door there, a leader keeps **Dispatch Mode** there, and the *Modes* label is drawn only over a row.
 Each toggle keeps its storage and its same-tab event, so a screen that listens for one still follows.
 The pin bar's switch, Tell the dev's switch and Dark Mode are not page modes.
 
@@ -6233,7 +6236,19 @@ A kernel that writes a sentence marks each value as `⟪kind|text⟫` with `val`
 `keepVerdict` says what Keep means for a draft: nothing changed, a finished value, or the reason the field stays open.
 Since v2.8299 a value handed `startOpen` draws its field at once, for a fact a screen asks for right after another: the Lien desk's retainage pane asks how our contract ended, then opens its day.
 A screen a firm or a read-only account reads sits inside `ValuesInPlaceOff` and draws every value with no press.
+Since v2.8374 an amount in a worked-out or a changeable value draws its cents smaller, through the door **Small cents** names.
 The words to ask for it on any screen are *give this screen values in place*.
+
+### Small cents (an amount on a screen)
+The owner's rule for money on a screen, given for the whole app on 2026-11-23: the cents are drawn smaller than the rest of the amount, so the dollars read at a glance.
+Punch list #254 had the rule for the charges surfaces and #422 for Bills sent.
+One kernel splits a figure into its sign, its dollars and its cents ([`moneyParts.ts`](../src/lib/moneyParts.ts)), and one door draws it ([`Money.tsx`](../src/components/Money.tsx), v2.8374).
+`Money` draws a number, `MoneyText` draws words a kernel already wrote, and `MoneyTspans` draws a chart's label.
+The cents' size is one ratio for the whole app, `MONEY_CENTS_EM`, in `em` so it follows the text around it.
+A loss wears a true minus before the dollar sign, a signed figure a plus or a minus, and a figure in whole dollars has no cents to draw.
+A place that cannot draw a span keeps the plain words (`moneyWords`): a tooltip, a CSV, a print, an email, a box a person types in.
+`AmountSmallCents`, `MoneyWithSmallCents` and the charges surfaces' `Money` are older names that draw through the door.
+The first screen swept is Job Summary.
 
 ### Before we start (a stage's list)
 For each stage line the office writes a short list of what must be true before the crew goes (punch list #382;
@@ -6258,6 +6273,7 @@ Since v2.8238 a bullet with a No is asked about again once the office or the cus
 Since v2.8360 the card says when a No's push to the dispatchers' phones failed, since the line is kept before the push, and the Schedule look says *Reading the schedule…* while its first read is out.
 Since v2.8366 a stage holds every arrival and a bullet's *said No on site* line names the arrival that said it (`noOn`), so with two arrivals the earlier No's line is drawn too.
 Since v2.8367 the stage's red *Not as told* sentence holds only while a No stands with no yes since, so a new yes from the office or the customer gives the stage its own sentence back.
+Since v2.8368 the card sends the bullets it showed and `start_check_arrive` marks those alone, so a card older than the list never marks a bullet it did not show.
 That line is a **Stage check (to Dispatch)** with no check behind it: `notAsToldFrom` in [`arrival.ts`](../src/lib/startChecks/arrival.ts) reads it, and its door is **Open the list**.
 The list is written on the job window's **Documents → Before we start** ([`JobDocumentsStartChecks.tsx`](../src/components/jobs/JobDocumentsStartChecks.tsx) over [`StartCheckStage.tsx`](../src/components/startChecks/StartCheckStage.tsx)), for the job's desk (`start_checks_desk`).
 The Development page's **Schedule** look (v2.8006, [`DevelopmentScheduleCard.tsx`](../src/components/developments/DevelopmentScheduleCard.tsx)) draws one card a stage ahead on the site, sorted by trouble, each with its standing in one sentence (`stageStanding`) under a banner of what the customer owes us (`siteBanner`).
