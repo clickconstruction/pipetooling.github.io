@@ -4707,6 +4707,7 @@ What of it is on main, one line a piece:
   Since v2.5649 (punch list #129) a customer's own line in the thread carries **Write down their word** under it (`useFollowUpThreadSlots`' `underLine`, `messages/wordFromLine.ts` over `list_customer_money_strip`): the Pipeline's promise sheet on the job the line is tied to, else the customer's one job with money open, else a pick, with the customer's name and the line's channel filled in.
   Since v2.8255 a day the customer said in their own text or voicemail, not yet gone by, is drawn beside the press as *They said Fri Nov 27.* and the sheet opens with it in **Pay by** (`heardDayOnLine` over `daySaidIn`), written only on Save.
   Since v2.8271 a promise saved from a line also marks that line's own promise as a payment by the day (`write_down_payment`), so the job's *They promised* row names it and the thread reads *Their move · until Fri Nov 27 · payment* once our word is the newest, and *Never said that* takes the mark back off.
+  Since v2.8307 *Never said that* leaves the day on the thread while another promise of the customer's still names it (`dayStillPromised`), and a line on the screen says so.
 - **R3** · v2.5411: `stepsByFlow` and `qrStepName` name a quick reply's step across a kind's flows, the residential customer's beside the GC customer's.
 - **R4 · 1** · v2.5396: the residential customer flow, eleven facts from booked to review asked and two papers, the estimate and the bill (migration `20261014050000`;
   *Flow · step*).
@@ -4923,6 +4924,7 @@ The papers the office hands a sub (punch list #350): a **Statement of account** 
 and a **Payment record** for one sending (who was paid, how, what it was applied to with open before and after, and what stays open), under the sending's own number `PR-<n>` since v2.7475.
 No paper says invoice, receipt or owed, and six sentences that wait on counsel print boxed as draft wording (`SUB_PAPER_COUNSEL_PENDING`).
 The window is `SubPapersWindow` (`SubPapersWindowConnected.tsx` over the view in `SubPapersWindow.tsx`): *Statement of account…* on a person's group in **Jobs → Subs → Pay** and on their block in **People → Subs**, *Work statement…* in Print's place on the ⋯ menu of a sheet that is one person's (a shared sheet and a crew sheet keep Print) and under an open sheet in the block, *Payment record…* beside a payment in a sheet's opened row, and the window after Record payment (`AfterRecordPaymentWindow`), which says the sub has been sent nothing and, since v2.7983, offers to send the record (*Send the payment record…* opens the papers window on its send step).
+Since v2.8303 the Pay view on a phone opens it from a sheet's bottom sheet of verbs (`subPayPhoneVerbs`): *Work statement…* in Print's place and *Statement of account…* after it, with a payment record reached from the window's own pick.
 Since v2.8025 those presses show only for the office roles who see sub pay (`isOfficeRole`), and a superintendent who reaches the Pay view keeps Print.
 The window opens at once on its own frame, *Getting the papers ready…*, until the letterhead, the roster row and the register are read (`SubPapersWaiting`, v2.8100), and it stacks above the phone's *What we owe* sheet it is opened from (`SCHEDULE_SHEET_Z`, v2.8094).
 It picks the person's sheets by `sheetOwedTo` (`paperSheetsFor`), checks the whole set with `subPapersAddUp` and draws none when it fails, previews the paper as the print page (`subPapersHtml.ts`), and Print and Download draw the PDF in the browser (`_shared/subPapersPdf.ts`, which the dev seat's `sub-statement` draws with too, and which since v2.8089 draws a box that runs over a page on both pages) and file a sent copy (`sub_statement_of_account`, `sub_work_statement`, `sub_payment_record`) on the person and each job.
@@ -4957,7 +4959,7 @@ Since v2.7597 (punch list #371) a sub reads the same papers on their own page: a
 The sub's page never gives out a number: a statement of account saved there reads *Saved from your page*, and a work statement that changed since the office's copy says so and drops its revision.
 Print on the sub's page still prints the Today paper, whichever view shows.
 Since v2.7609 a sub answers from that view: **Got it** marks a payment received, once, and **Something is wrong** sends the office a note about a statement or a payment (`sub_paper_acks`, written by `sub-portal`).
-Since v2.8273 a third answer is built and switched off (`SUB_PAPER_CONFIRM_LIVE`, false): **Confirm** on a work statement the office made and that has not changed since, kept as a `confirmed` row with the paper, the revision the sub saw and what it came to.
+Since v2.8273 a third answer is built and switched off (`SUB_PAPER_CONFIRM_LIVE`, false): **Confirm** on a work statement the office made and that has not changed since, kept as a `confirmed` row with the paper, the revision the sub saw and what it came to, one row per copy since v2.8298 (the unique index `sub_paper_acks_confirmed_paper_key`).
 A confirm on record prints on the work statement on both sides by one rule (`portalConfirms`), and the paper says so once the statement has changed.
 What a confirm means is the second of counsel's six sentences, still draft wording.
 The Pay view reads them back (`src/lib/subWorkOrders/subPaperAnswers.ts`, `useSubPaperAnswers`): a grey *Received · from their page* chip on the payment's line, and a red flag on the sheet until someone presses **Mark answered** (`answer_sub_paper_ack`).
@@ -6174,6 +6176,7 @@ A value that can be changed, but not by this person, is shown with a dashed line
 One fact sits on each line, the label on the left and the values in a column (`ValueLines`), and there is no *Change a date* link or edit window for a value already on the screen.
 A kernel that writes a sentence marks each value as `⟪kind|text⟫` with `val`, the screen draws it with `ValueSentence`, and a text or an email reads it with `plainSentence` ([`valuesInPlace.ts`](../src/lib/valuesInPlace.ts)).
 `keepVerdict` says what Keep means for a draft: nothing changed, a finished value, or the reason the field stays open.
+Since v2.8299 a value handed `startOpen` draws its field at once, for a fact a screen asks for right after another: the Lien desk's retainage pane asks how our contract ended, then opens its day.
 A screen a firm or a read-only account reads sits inside `ValuesInPlaceOff` and draws every value with no press.
 The words to ask for it on any screen are *give this screen values in place*.
 

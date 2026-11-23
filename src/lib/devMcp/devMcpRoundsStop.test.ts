@@ -186,7 +186,7 @@ describe('the rounds stopped and started from the dev seat (v2.7970)', () => {
     expect(branch).not.toContain('token_hash')
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
     expect(branch).toContain('const prior = await hooks.priorApply(name, fresh)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.126.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.127.0'")
     expect(SERVER).toContain('plan_rounds_stop → apply_rounds_stop (the rounds stopped on a twin\'s key or started again')
     expect(README).toContain('| `plan_rounds_stop(rounds)` · `apply_rounds_stop(rounds, plan_hash)` |')
   })

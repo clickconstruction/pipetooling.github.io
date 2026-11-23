@@ -88,6 +88,8 @@ On a phone or in a narrow window, the top of the thread folds to fit.
 
 - Press {{button:outline|‹}} beside their face to go back to everyone.
 - Press the arrow beside their company to show their numbers and addresses.
+- The round face beside the phone says who has the conversation. A **?** means nobody has it yet.
+- Press the face to take the conversation or hand it to a teammate.
 - The chips sit in one row. The sentence sits under them on a row of its own.
 - The person's jobs sit in one row under the sentence.
 - Swipe a row sideways to see the rest of it.

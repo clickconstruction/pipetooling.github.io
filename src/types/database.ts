@@ -5986,7 +5986,6 @@ export type Database = {
       builders: {
         Row: {
           created_at: string
-          customer_id: string | null
           key: string
           kind: string | null
           name: string
@@ -5995,7 +5994,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          customer_id?: string | null
           key: string
           kind?: string | null
           name: string
@@ -6004,7 +6002,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          customer_id?: string | null
           key?: string
           kind?: string | null
           name?: string
@@ -6012,13 +6009,6 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "builders_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "builders_updated_by_fkey"
             columns: ["updated_by"]
@@ -33510,6 +33500,13 @@ export type Database = {
           reminder_count: number
           reminders_enabled: boolean
           sent_at: string | null
+          sheet_asks: string[] | null
+          sheet_checked_at: string | null
+          sheet_checked_by: string | null
+          sheet_missing: string[] | null
+          sheet_project_id: string | null
+          sheet_revision: number | null
+          sheet_sent_back_at: string | null
           sign_by: string | null
           signed_at: string | null
           signed_copy_sent_at: string | null
@@ -33573,6 +33570,13 @@ export type Database = {
           reminder_count?: number
           reminders_enabled?: boolean
           sent_at?: string | null
+          sheet_asks?: string[] | null
+          sheet_checked_at?: string | null
+          sheet_checked_by?: string | null
+          sheet_missing?: string[] | null
+          sheet_project_id?: string | null
+          sheet_revision?: number | null
+          sheet_sent_back_at?: string | null
           sign_by?: string | null
           signed_at?: string | null
           signed_copy_sent_at?: string | null
@@ -33636,6 +33640,13 @@ export type Database = {
           reminder_count?: number
           reminders_enabled?: boolean
           sent_at?: string | null
+          sheet_asks?: string[] | null
+          sheet_checked_at?: string | null
+          sheet_checked_by?: string | null
+          sheet_missing?: string[] | null
+          sheet_project_id?: string | null
+          sheet_revision?: number | null
+          sheet_sent_back_at?: string | null
           sign_by?: string | null
           signed_at?: string | null
           signed_copy_sent_at?: string | null
@@ -33726,6 +33737,20 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_sheet_checked_by_fkey"
+            columns: ["sheet_checked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_sheet_project_id_fkey"
+            columns: ["sheet_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -47380,6 +47405,19 @@ export type Database = {
           request_id: string
         }[]
       }
+      document_builder_coi_mark_good: {
+        Args: {
+          p_asks: string[]
+          p_good_until: string
+          p_paper_id: string
+          p_sheet_id: string
+        }
+        Returns: undefined
+      }
+      document_builder_coi_send_back: {
+        Args: { p_missing: string[]; p_paper_id: string; p_sheet_id: string }
+        Returns: undefined
+      }
       draft_estimate_line_from_message: {
         Args: {
           p_estimate_id: string
@@ -52278,7 +52316,6 @@ export type Database = {
         Args: { p_city: string }
         Returns: {
           bids: number
-          customer_id: string
           key: string
           kind: string
           last_bid_on: string

@@ -12,11 +12,13 @@
  *
  * The mark on the line (v2.8271): a promise saved from a line also marks that line's own promise as a payment by the
  * day (`write_down_payment` on `message_promises`), which the job's thread summary and the thread's move chip read.
- * *Never said that* takes the mark off every line of the thread that carries the day (`linesMarkedFor`).
+ * *Never said that* takes the mark off every line of the thread that carries the day (`linesMarkedFor`), unless
+ * another promise of the customer's still names that day (`dayStillPromised`, v2.8307).
  */
 import type { PromiseChannel } from '../jobs/paymentPromises'
 import type { BidMoneyLine } from '../bids/bidMoneyLine'
 import { val } from '../valuesInPlace'
+import { dayLabel } from './owed'
 import { daySaidIn } from './voicemailRead'
 
 /** The channels a customer's own word comes on. A note or an event is ours. */
@@ -127,6 +129,21 @@ export interface LinePromiseMark {
  */
 export function linesMarkedFor(promises: readonly LinePromiseMark[], ymd: string): string[] {
   return promises.filter((p) => p.state === 'written' && p.kind === 'payment' && p.day === ymd).map((p) => p.message_id)
+}
+
+/**
+ * A promise to pay by `ymd` still stands on one of the customer's jobs (v2.8307). A customer has one thread, so a
+ * line's mark speaks for every job of theirs: *Never said that* on one job leaves the day on the thread while another
+ * promise names it. `lines` is read after the void, so the word taken off is not among them. A paid claim names the day
+ * they say they paid, never a day to wait for.
+ */
+export function dayStillPromised(lines: readonly Pick<BidMoneyLine, 'words'>[], ymd: string): boolean {
+  return lines.some((l) => l.words.some((w) => w.kind !== 'paid_claim' && w.promisedYmd === ymd))
+}
+
+/** Said when a word came off one job and the thread keeps its day for another promise. */
+export function dayKeptWords(ymd: string): string {
+  return `Their line still shows ${dayLabel(ymd)}. Another promise of theirs names that day.`
 }
 
 /** The database has no such function yet: the client is ahead of the push, and the mark is skipped without a word. */
