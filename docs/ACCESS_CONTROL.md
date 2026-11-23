@@ -1800,6 +1800,9 @@ A tech reads only their own row;
 - **Who emails a company** (v2.4936): `gc-trade-email`, a dev only until the portal's door (`GC_TRADE_EMAIL_ROLES` in `_shared/gcTradeEmail.ts`, and its client copy `canSendGcTradeEmail` in `src/lib/gc/access.ts`;
   `access.test.ts` fails when they differ), then the office team.
   Never a training account or a digital twin.
+  A company's own paper for signature is apart from that since v2.8322 (punch list #403, step 5): `send-contract-for-signature`'s company branch takes the four roles that send any paper, a dev, a leader, an assistant and the controller (`COMPANY_PAPER_SEND_ROLES` in `_shared/companySigningSend.ts`, and its client copy `canSendCompanyPaper`), where it took a dev alone.
+  It refuses an archived account first, then anyone off the four roles, then a training account and a digital twin.
+  Every other email to a trade partner still asks `GC_TRADE_EMAIL_ROLES`, a dev.
   It writes `gc_trade_messages` and, on a company's first email, its link with the service role.
 - **Back-charges and change requests** (P4a, v2.5038, `20261010006000_gc_back_charges_change_requests.sql`): `gc_back_charges` and `gc_trade_change_requests` are written by a dev only (`is_dev()`) until the trade wave, with the training-mode and twin blocks;
   `gc_back_charges` is read by the money team since O9 (`gc_back_charges_money_read`), since each draw's net takes off the charges taken.

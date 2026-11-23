@@ -362,6 +362,9 @@ against the pick.
 - `esign_consents.audience` allows *customer*, *sub* and *gc*. A supply house needs a value.
 - `sendCompanyPaper` in `send-contract-for-signature` is the pattern for a paper to a company: it mails
   every person whose `gets` holds *contracts*.
+  Since v2.8322 it takes the office's four roles, where it took a dev, and refuses an archived account.
+  A request that says `from: 'office'` goes out under the name a sub knows, and not the GC's.
+  Every other email to a trade partner is still a dev's (`GC_TRADE_EMAIL_ROLES`).
 - The estimator's read (call 4) is on the paper's row. A signed form's PDF opens through
   `open-contract-form-pdf`, which checks the role itself, so it needs the same rule or an estimator sees
   the line and cannot open the file. Built in v2.8108: both ask `paper_is_outside_company`.

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  COMPANY_PAPER_SEND_ROLES,
+  companyPaperCallerRefusal,
+  companyPaperFromName,
   companyPaperMessageKind,
   companySigningEmailInput,
   companySigningSentCopy,
@@ -37,8 +40,20 @@ describe('send-contract-for-signature, a company’s paper (B6-b-i, call S)', ()
         subject: 'Your master agreement with Click Construction',
         lines: body.trade_email.lines,
         actionLabel: 'Read and sign',
+        from: 'gc',
       },
     })
+  })
+
+  it('goes out under the GC’s name unless the office says it is its own', () => {
+    const gc = parseCompanySigningRequest(body)
+    const office = parseCompanySigningRequest({ ...body, trade_email: { ...body.trade_email, from: 'office' } })
+    const other = parseCompanySigningRequest({ ...body, trade_email: { ...body.trade_email, from: 'anyone' } })
+    expect(gc.ok && gc.req.from).toBe('gc')
+    expect(office.ok && office.req.from).toBe('office')
+    expect(other.ok && other.req.from).toBe('gc')
+    expect(companyPaperFromName('gc')).toBe('Click Construction')
+    expect(companyPaperFromName('office')).toBe('Click Plumbing and Electrical')
   })
 
   it('refuses a request that is not a company paper’s, or whose words are off', () => {
@@ -105,5 +120,33 @@ describe('send-contract-for-signature, a company’s paper (B6-b-i, call S)', ()
       { kind: 'gc_trade_email', title: 'S', recipientName: 'GC test trade company, delete me', source: { table: 'gc_trade_messages', id: 'm1' }, sentBy: 'u1' },
       { to: ['dana@example.com'], cc: ['lee@example.com'], from: 'Click Construction <team@x>', subject: 'S', html: '<p>x</p>', resendEmailId: 're_1' },
     ])
+  })
+})
+
+describe('who sends a company’s paper (punch list #403, step 5)', () => {
+  it('takes the four roles that send any paper', () => {
+    expect([...COMPANY_PAPER_SEND_ROLES]).toEqual(['dev', 'master_technician', 'assistant', 'controller'])
+    for (const role of COMPANY_PAPER_SEND_ROLES) expect(companyPaperCallerRefusal({ role })).toBeNull()
+  })
+
+  it.each(['estimator', 'primary', 'superintendent', 'helpers', 'subcontractor', '', 'DEV'])('refuses the role %j as office only', (role) => {
+    expect(companyPaperCallerRefusal({ role })).toBe('officeOnly')
+  })
+
+  it('refuses a caller with no account row and one with no role', () => {
+    expect(companyPaperCallerRefusal(null)).toBe('officeOnly')
+    expect(companyPaperCallerRefusal(undefined)).toBe('officeOnly')
+    expect(companyPaperCallerRefusal({})).toBe('officeOnly')
+    expect(companyPaperCallerRefusal({ role: null })).toBe('officeOnly')
+  })
+
+  it('refuses a training account and a digital twin whatever their role', () => {
+    expect(companyPaperCallerRefusal({ role: 'assistant', read_only: true })).toBe('readOnly')
+    expect(companyPaperCallerRefusal({ role: 'dev', is_digital_twin: true })).toBe('readOnly')
+    expect(companyPaperCallerRefusal({ role: 'controller', read_only: false, is_digital_twin: false })).toBeNull()
+  })
+
+  it('says the role first, so a twin who is an estimator reads the office line', () => {
+    expect(companyPaperCallerRefusal({ role: 'estimator', is_digital_twin: true })).toBe('officeOnly')
   })
 })
