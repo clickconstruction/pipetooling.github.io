@@ -657,9 +657,9 @@ BEGIN
   PERFORM set_config('enable_hashjoin', 'off', true);
   PERFORM set_config('enable_mergejoin', 'off', true);
   FOR line IN EXECUTE format('EXPLAIN (COSTS OFF) SELECT with_name FROM %s', p_view) LOOP
-    IF line ~ 'Index Cond: \(id = (CASE WHEN \(|COALESCE\()pc[_0-9]*\.customer_id' THEN found := found || 'customer'::text; END IF;
-    IF line ~ 'Index Cond: \(id = (CASE WHEN \(|COALESCE\()pc[_0-9]*\.supply_house_id' THEN found := found || 'house'::text; END IF;
-    IF line ~ 'Index Cond: \(id = (CASE WHEN \(|COALESCE\()pc[_0-9]*\.gc_company_id' THEN found := found || 'trade'::text; END IF;
+    IF line ~ 'Index Cond: \(+id = (CASE WHEN \(|COALESCE\()pc[_0-9]*\.customer_id' THEN found := found || 'customer'::text; END IF;
+    IF line ~ 'Index Cond: \(+id = (CASE WHEN \(|COALESCE\()pc[_0-9]*\.supply_house_id' THEN found := found || 'house'::text; END IF;
+    IF line ~ 'Index Cond: \(+id = (CASE WHEN \(|COALESCE\()pc[_0-9]*\.gc_company_id' THEN found := found || 'trade'::text; END IF;
   END LOOP;
   PERFORM set_config('enable_seqscan', 'on', true);
   PERFORM set_config('enable_hashjoin', 'on', true);
