@@ -8,7 +8,7 @@ const note: ReleaseNote = {
   highlights: [
     'A bill an in kind arrangement pays is no longer on the customer’s statement or in their balance, and it has no pay button.',
     'The bill stays on the page in a card named Scheduled in kind. The card says what the credits have paid and what is still to come.',
-    'A customer whose every open bill is on an arrangement reads “Nothing is owed in money” in place of “all paid up”.',
+    'A customer whose every open bill is on an arrangement reads “Your open bills are scheduled in kind” in place of “all paid up”.',
     'The page no longer asks for a pay-by date on such a job.',
   ],
 }

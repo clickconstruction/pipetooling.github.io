@@ -186,11 +186,12 @@ describe('CustomerPortal render smoke', () => {
     await waitFor(() => expect(screen.getByText(/all paid up/)).toBeTruthy())
   })
 
-  it('a customer whose open bills an in kind arrangement pays: nothing owed in money, the bills in their own card, no pay press (v2.8314)', async () => {
+  it('a customer whose open bills an in kind arrangement pays: not money owed, the bills in their own card, no pay press (v2.8314)', async () => {
     const scheduled = [{ invoiceId: 'i2', jobLabel: 'Shop restroom · Job 1104', jobNumber: '1104', jobName: 'Shop restroom', serviceTag: 'plum', jobAddress: '40 Mill Rd, Kyle, TX 78640', amount: 700, billedAmount: 900, totalPaid: 200, billedOn: '2026-05-01' }]
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ...payload, bills: [], totalDue: 0, scheduledBills: scheduled }), { status: 200 })))
     const { container } = mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText('Nothing is owed in money.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Your open bills are scheduled in kind.')).toBeTruthy())
+    expect(screen.getByText('They are not money owed, and they are listed below.')).toBeTruthy()
     expect(screen.queryByText(/all paid up/)).toBeNull()
     const card = container.querySelector('[data-portal-scheduled-bills]')!
     expect(card.textContent).toContain('Scheduled in kind')

@@ -490,8 +490,8 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
           ) : payload.scheduledBills.length > 0 ? (
             // v2.8314: "no open bills" is wrong beside a card that lists bills an in kind arrangement pays.
             <>
-              <b>Nothing is owed in money.</b>{' '}
-              <span style={{ color: MUTED }}>Your open bills are scheduled in kind. They are listed below.</span>
+              <b>Your open bills are scheduled in kind.</b>{' '}
+              <span style={{ color: MUTED }}>They are not money owed, and they are listed below.</span>
             </>
           ) : (
             <>
