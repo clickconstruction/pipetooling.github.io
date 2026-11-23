@@ -1865,7 +1865,7 @@ export default function DevelopmentPage() {
           />
         ) : null}
 
-        {/* The Schedule look (punch list #382, PR 5): what must be true before each stage ahead, and where it stands. The card draws only when the look shows. */}
+        {/* The Schedule look (punch list #382, PR 5): what must be true before each stage ahead, and where it stands. The card draws only when the look shows, and says it is reading while its first read is out (v2.8360). */}
         <DevelopmentScheduleCard
           anchorId={DEVELOPMENT_JUMP_ANCHOR.schedule}
           developmentId={dev.id}

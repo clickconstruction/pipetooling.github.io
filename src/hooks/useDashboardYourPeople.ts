@@ -93,7 +93,7 @@ export function useDashboardYourPeople(authUserId: string | null, enabled: boole
       setHeadline(yourPeopleHeadline(next, doneThisWeek))
       setError(null)
     } catch (e) {
-      setError(formatErrorMessage(e, 'Your people did not load.'))
+      setError(formatErrorMessage(e, 'Team’s open tasks did not load.'))
     } finally {
       setLoading(false)
     }

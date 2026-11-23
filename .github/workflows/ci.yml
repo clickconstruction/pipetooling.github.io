@@ -170,6 +170,9 @@ jobs:
         if: steps.changed.outputs.docs_only != 'true'
         run: npm test
         env:
+          # The whole suite (5,750 files on 2026-11-23) passed twice in the merge queue and then vitest's own process died
+          # of "JavaScript heap out of memory" while closing, with node's default cap near 2 GB. The runner has room.
+          NODE_OPTIONS: --max-old-space-size=6144
           # Unit tests don't hit Supabase, but src/lib/supabase.ts throws at import
           # if these are unset. Dummy non-empty values satisfy the guard.
           VITE_SUPABASE_URL: https://example.supabase.co

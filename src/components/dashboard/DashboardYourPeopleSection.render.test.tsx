@@ -33,10 +33,10 @@ const row = (over: Partial<YourPersonRow>): YourPersonRow => ({
 describe('DashboardYourPeopleSection', () => {
   it('draws the headline, a row per person with the ring and the chip, and reminds through the function', async () => {
     hookState.rows = [row({}), row({ userId: 'u2', name: 'Rosa', openCount: 1, state: 'stuck', words: 'stuck 32 days', card: { instanceId: 'i2', title: 'One marker every mile', ring: ringState({ completedAt: null, percentComplete: 0, lines: 0, ticked: 0 }), movedAt: null } })]
-    hookState.headline = '3 cards done this week · 1 moved · 1 stuck'
+    hookState.headline = '3 tasks done this week · 1 moved · 1 stuck'
     renderWithProviders(<DashboardYourPeopleSection authUserId="me" enabled />)
-    expect(screen.getByText('Your people')).toBeTruthy()
-    expect(screen.getByTestId('your-people-headline').textContent).toBe('3 cards done this week · 1 moved · 1 stuck')
+    expect(screen.getByText('Team’s open tasks')).toBeTruthy()
+    expect(screen.getByTestId('your-people-headline').textContent).toBe('3 tasks done this week · 1 moved · 1 stuck')
     expect(screen.getAllByTestId('your-people-row')).toHaveLength(2)
     expect(screen.getByText('moved today')).toBeTruthy()
     expect(screen.getByText('stuck 32 days')).toBeTruthy()
@@ -65,7 +65,7 @@ describe('DashboardYourPeopleSection', () => {
     hookState.headline = ''
     const onVisibleChange = vi.fn()
     renderWithProviders(<DashboardYourPeopleSection authUserId="me" enabled onVisibleChange={onVisibleChange} />)
-    expect(screen.queryByText('Your people')).toBeNull()
+    expect(screen.queryByText('Team’s open tasks')).toBeNull()
     expect(onVisibleChange).toHaveBeenCalledWith(false)
   })
 })

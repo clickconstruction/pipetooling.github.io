@@ -33,7 +33,7 @@ export interface PageModeState {
  * on the server, so every screen that listens for one of them still follows.
  *
  * Every door that switches a mode goes through `set`: the gear menu, the phone bar's Modes rows,
- * the Task Mode strip's Exit and the Dashboard's Job Mode card.
+ * the Task Mode strip's Exit and the mode row above the header (`ModeRow`).
  */
 export function usePageMode(userId: string | null | undefined, role: UserRole | string | null | undefined): PageModeState {
   const [taskOn, setTask] = useTaskModeEnabled(userId)

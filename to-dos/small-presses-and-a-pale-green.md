@@ -44,9 +44,14 @@ words on it.
   by side comes before the change.
 - **How it would be done:** a script across the files, merged alone, as `CLAUDE.md` asks of a sweep.
 
-### 2. A toast covers the heading of the card under it
+### 2. ~~A toast covers the heading of the card under it~~ Shipped v2.8359
 
-At phone width a toast sits over the top of the page while it is up. On **Is it as told?** it covered
+Built 2026-11-23 on the owner's word: on a phone the corner toast draws at the foot of the screen, 12 px above
+the tab bar and the Job Mode press bar, centred. The outbox bar is the strip at the top of the page, so the foot
+is clear of it, and the section dock draws nothing at phone width. A desktop's toast, an anchored toast and a
+centre toast keep their places.
+
+At phone width a toast sat over the top of the page while it was up. On **Is it as told?** it covered
 the card's heading for as long as the *not kept* words showed.
 
 The toast's place is the app's. Every screen with a card at the top of a phone has the same overlap.
@@ -55,9 +60,12 @@ The toast's place is the app's. Every screen with a card at the top of a phone h
 - **To check first:** what sits at the foot on each kind of screen, the outbox bar and Job Mode's strip
   among them.
 
-### 3. The shared Retry press is small
+### 3. ~~The shared Retry press is small~~ Shipped v2.8361
 
-**Retry** on a lost signal is 67 by 36 px at 390 px. A thumb needs 44.
+Built 2026-11-23 on the owner's word: `OfflineRetryPanel` draws **Retry** 44 px tall on a phone, with a little more
+room each side, and keeps its 36 px on a desktop.
+
+**Retry** on a lost signal was 67 by 36 px at 390 px. A thumb needs 44.
 
 It is drawn by `OfflineRetryPanel`, which every crew screen uses for a read that fails.
 
