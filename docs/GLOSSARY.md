@@ -6226,7 +6226,19 @@ A kernel that writes a sentence marks each value as `⟪kind|text⟫` with `val`
 `keepVerdict` says what Keep means for a draft: nothing changed, a finished value, or the reason the field stays open.
 Since v2.8299 a value handed `startOpen` draws its field at once, for a fact a screen asks for right after another: the Lien desk's retainage pane asks how our contract ended, then opens its day.
 A screen a firm or a read-only account reads sits inside `ValuesInPlaceOff` and draws every value with no press.
+Since v2.8374 an amount in a worked-out or a changeable value draws its cents smaller, through the door **Small cents** names.
 The words to ask for it on any screen are *give this screen values in place*.
+
+### Small cents (an amount on a screen)
+The owner's rule for money on a screen, given for the whole app on 2026-11-23: the cents are drawn smaller than the rest of the amount, so the dollars read at a glance.
+Punch list #254 had the rule for the charges surfaces and #422 for Bills sent.
+One kernel splits a figure into its sign, its dollars and its cents ([`moneyParts.ts`](../src/lib/moneyParts.ts)), and one door draws it ([`Money.tsx`](../src/components/Money.tsx), v2.8374).
+`Money` draws a number, `MoneyText` draws words a kernel already wrote, and `MoneyTspans` draws a chart's label.
+The cents' size is one ratio for the whole app, `MONEY_CENTS_EM`, in `em` so it follows the text around it.
+A loss wears a true minus before the dollar sign, a signed figure a plus or a minus, and a figure in whole dollars has no cents to draw.
+A place that cannot draw a span keeps the plain words (`moneyWords`): a tooltip, a CSV, a print, an email, a box a person types in.
+`AmountSmallCents`, `MoneyWithSmallCents` and the charges surfaces' `Money` are older names that draw through the door.
+The first screen swept is Job Summary.
 
 ### Before we start (a stage's list)
 For each stage line the office writes a short list of what must be true before the crew goes (punch list #382;

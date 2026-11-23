@@ -66,6 +66,7 @@ import JobSummaryLedgerToolbar, { JobSummarySortHeader } from './JobSummaryLedge
 import JobSummaryCutByPanel, { JobSummaryGroupRow } from './JobSummaryCutByPanel'
 import { JobSummaryJobCell } from './JobSummaryJobCell'
 import { AmountSmallCents, SignedAmountSmallCents } from '../AmountSmallCents'
+import { Money, MoneyText } from '../Money'
 import { shareOfTotalLabel } from '../../lib/jobs/jobSummaryShareOfTotal'
 import JobSummaryDaysView, { type JobSummaryDaysJobLabel } from './JobSummaryDaysView'
 import JobSummaryMonthsView from './JobSummaryMonthsView'
@@ -357,7 +358,7 @@ function renderJobSummarySupplyHouseInvoiceTableContent(
                 )}
               </td>
               <td style={{ padding: '0.25rem 0.4rem' }}>{formatJobSummaryInvoiceDate(row.invoice_date)}</td>
-              <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>${formatCurrency(row.allocated_amount)}</td>
+              <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}><Money amount={row.allocated_amount} /></td>
             </tr>
           )
         })}
@@ -1109,11 +1110,15 @@ export default function JobsJobSummaryTab({
                                         )
                                       ) : (
                                         <p style={{ margin: '0.35rem 0', color: 'var(--text-700)' }}>
-                                          {view.prefs.method === 'A'
-                                            ? `${enriched.hoursInWindow.toFixed(1)} field h × $${(view.ledger?.rates.methodA ?? 0).toFixed(2)}/h (pool ÷ field hours over the window)`
-                                            : view.prefs.method === 'B'
-                                              ? `$${formatCurrency(enriched.revenueUsd)} revenue × ${((view.ledger?.rates.methodB ?? 0) * 100).toFixed(1)}% (pool ÷ invoiced revenue over the window)`
-                                              : `field labor $ × $${(view.ledger?.rates.methodC ?? 0).toFixed(2)} per $1 (pool ÷ field labor $ over the window)`}
+                                          <MoneyText
+                                            text={
+                                              view.prefs.method === 'A'
+                                                ? `${enriched.hoursInWindow.toFixed(1)} field h × $${(view.ledger?.rates.methodA ?? 0).toFixed(2)}/h (pool ÷ field hours over the window)`
+                                                : view.prefs.method === 'B'
+                                                  ? `$${formatCurrency(enriched.revenueUsd)} revenue × ${((view.ledger?.rates.methodB ?? 0) * 100).toFixed(1)}% (pool ÷ invoiced revenue over the window)`
+                                                  : `field labor $ × $${(view.ledger?.rates.methodC ?? 0).toFixed(2)} per $1 (pool ÷ field labor $ over the window)`
+                                            }
+                                          />
                                         </p>
                                       )}
                                       <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -3015,7 +3020,7 @@ export default function JobsJobSummaryTab({
                                                         </td>
                                                         <td style={{ padding: '0.25rem 0.4rem' }}>{debitCardLabel}</td>
                                                         <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                          <AmountSmallCents value={Math.abs(allocCost)} prefix={allocCost < 0 ? '−$' : '$'} />
+                                                          <Money amount={allocCost} />
                                                           {allocCost < 0 ? (
                                                             <span style={{ marginLeft: '0.3rem', fontSize: '0.72em', color: 'var(--text-muted)' }}>refund</span>
                                                           ) : null}

@@ -1,20 +1,14 @@
 import type { CSSProperties } from 'react'
-import { splitMoneyForDisplay, splitMoneyString } from '../../lib/jobs/otherChargeRowDisplay'
+import { Money, MoneyText } from '../Money'
 
-/** The cents, drawn smaller than the dollars (punch list #215). */
-const CENTS_STYLE: CSSProperties = { fontSize: '0.78em' }
+/**
+ * The job form's older names for `Money` (punch list #215): a bare figure with its cents smaller. They draw
+ * through the app's one door now, so a new screen imports from `../Money` and these names go with the sweep.
+ */
 
 /** 39796.7 drawn as "39,796" with ".70" smaller. */
 export function MoneyWithSmallCents({ value, style }: { value: number; style?: CSSProperties }) {
-  const { whole, cents } = splitMoneyForDisplay(value)
-  return (
-    <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...style }}>
-      {whole}
-      <span data-testid="money-cents" style={CENTS_STYLE}>
-        {cents}
-      </span>
-    </span>
-  )
+  return <Money amount={value} symbol="" style={{ fontVariantNumeric: 'tabular-nums', ...style }} />
 }
 
 /**
@@ -22,14 +16,5 @@ export function MoneyWithSmallCents({ value, style }: { value: number; style?: C
  * that is not money ("—", "…") passes through untouched.
  */
 export function MoneyStringWithSmallCents({ text }: { text: string }) {
-  const parts = splitMoneyString(text)
-  if (!parts) return <>{text}</>
-  return (
-    <>
-      {parts.whole}
-      <span data-testid="money-cents" style={CENTS_STYLE}>
-        {parts.cents}
-      </span>
-    </>
-  )
+  return <MoneyText text={text} bare />
 }

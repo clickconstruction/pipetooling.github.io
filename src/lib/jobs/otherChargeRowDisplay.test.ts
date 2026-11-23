@@ -2,40 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   moneyDraftForEditing,
   splitEstimateDescription,
-  splitMoneyForDisplay,
-  splitMoneyString,
 } from './otherChargeRowDisplay'
-
-describe('splitMoneyForDisplay', () => {
-  it('splits dollars with commas from the two-digit cents', () => {
-    expect(splitMoneyForDisplay(39796.7)).toEqual({ whole: '39,796', cents: '.70' })
-    expect(splitMoneyForDisplay(1250)).toEqual({ whole: '1,250', cents: '.00' })
-    expect(splitMoneyForDisplay(384.6)).toEqual({ whole: '384', cents: '.60' })
-    expect(splitMoneyForDisplay(0.05)).toEqual({ whole: '0', cents: '.05' })
-  })
-
-  it('zero, negatives and non-finite input', () => {
-    expect(splitMoneyForDisplay(0)).toEqual({ whole: '0', cents: '.00' })
-    expect(splitMoneyForDisplay(-12.5)).toEqual({ whole: '-12', cents: '.50' })
-    expect(splitMoneyForDisplay(Number.NaN)).toEqual({ whole: '0', cents: '.00' })
-  })
-})
-
-describe('splitMoneyString', () => {
-  it('reads a formatted total, with or without a sign or dollar sign', () => {
-    expect(splitMoneyString('14,115.35')).toEqual({ whole: '14,115', cents: '.35' })
-    expect(splitMoneyString('−40.00')).toEqual({ whole: '−40', cents: '.00' })
-    expect(splitMoneyString('$1,250.00')).toEqual({ whole: '$1,250', cents: '.00' })
-  })
-
-  it('passes anything that is not money through as null', () => {
-    expect(splitMoneyString('—')).toBeNull()
-    expect(splitMoneyString('…')).toBeNull()
-    expect(splitMoneyString('8.0 h')).toBeNull()
-    expect(splitMoneyString('1,250')).toBeNull()
-    expect(splitMoneyString('')).toBeNull()
-  })
-})
 
 describe('splitEstimateDescription', () => {
   it('takes the ESTIMATE prefix off for the chip and keeps it for the data', () => {
