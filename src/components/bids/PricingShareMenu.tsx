@@ -121,7 +121,7 @@ export function PricingShareMenu({
   ]
 
   const caretStyle: React.CSSProperties = canShare
-    ? { padding: '0.5rem 0.65rem', background: '#16a34a', color: 'white', border: 'none', borderLeft: '1px solid rgba(255, 255, 255, 0.35)', borderRadius: '0 4px 4px 0', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }
+    ? { padding: '0.5rem 0.65rem', background: '#15803d', color: 'white', border: 'none', borderLeft: '1px solid rgba(255, 255, 255, 0.35)', borderRadius: '0 4px 4px 0', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }
     : { padding: '0.5rem 0.9rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }
 
   return (
@@ -136,7 +136,7 @@ export function PricingShareMenu({
           title={shareTitle}
           style={{
             padding: '0.5rem 1rem',
-            background: shareDisabled ? 'var(--bg-200)' : '#16a34a',
+            background: shareDisabled ? 'var(--bg-200)' : '#15803d',
             color: shareDisabled ? 'var(--text-faint)' : 'white',
             border: 'none',
             borderRadius: '4px 0 0 4px',

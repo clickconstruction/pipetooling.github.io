@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 /**
- * The signed record, for a reader two of its reads are closed to (punch list #403, step 4): an estimator opens an
- * outside company's signed paper, and their role is refused the form's layout and the signature's image. The window
- * says each in words. It used to wait on both without end. Every name is made up.
+ * The signed record's two reads past the paper's own row: the form's layout and the signature's image (punch list
+ * #403). Since the owner's second decision an estimator is answered both for an outside company's paper, as the
+ * office is, so the window lists the form's answers and draws the signature, with a sensitive answer in the PDF only.
+ * A read that does not come back is said in words, never waited on without end. Every name is made up.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 
-const db = vi.hoisted(() => ({ form: false, layout: null as unknown, imageOpens: true }))
+const db = vi.hoisted(() => ({ form: false, layout: null as unknown, imageOpens: true, values: {} as Record<string, unknown>, hints: null as Record<string, string> | null }))
 
 vi.mock('../../lib/supabase', () => {
   const row = () => ({
@@ -28,7 +29,8 @@ vi.mock('../../lib/supabase', () => {
     signer_consented_at: '2026-11-20T16:00:00Z',
     signer_signature_storage_path: 'pcd-9/signature.png',
     form_template_id: db.form ? 'tpl-w9' : null,
-    form_values: {},
+    form_values: db.values,
+    form_hints: db.hints,
     form_pdf_storage_path: db.form ? 'pcd-9/form.pdf' : null,
   })
   const answer = (table: string, columns: string) => {
@@ -50,14 +52,48 @@ vi.mock('../../lib/supabase', () => {
 
 import { PersonContractSignedRecordModal } from './PersonContractSignedRecordModal'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { emptyFormSchema } from '../../lib/forms/formSchema'
 
 beforeEach(() => {
   db.form = false
   db.layout = null
   db.imageOpens = true
+  db.values = {}
+  db.hints = null
 })
 
-describe('PersonContractSignedRecordModal · a reader its reads are closed to', () => {
+const box = (key: string, type: string, order: number, label: string, more: Record<string, unknown> = {}) => ({ key, type, page: 1, rect: { x: 1, y: 1, w: 1, h: 1 }, order, label, ...more })
+/** A W-9's layout, as `contract_form_templates.schema` keeps it: two answers kept on the row, and a tax number that is not. */
+const W9_LAYOUT = {
+  schema: {
+    ...emptyFormSchema([{ width: 612, height: 792 }]),
+    boxes: [
+      box('business', 'text', 10, 'Business name'),
+      box('title', 'text', 20, 'Signer’s title'),
+      box('tin', 'digits', 30, 'Tax number', { mask: '##-#######', sensitive: true }),
+      box('signature', 'signature', 40, 'Signature'),
+    ],
+  },
+}
+
+describe('PersonContractSignedRecordModal · the form’s layout and the signature’s image', () => {
+  it('lists the form’s answers and draws the signature when both reads answer, a sensitive answer in the PDF only', async () => {
+    db.form = true
+    db.layout = W9_LAYOUT
+    db.values = { business: 'Tallgrass Supply Co.', title: 'Branch manager' }
+    db.hints = { tin: '4410' }
+    renderWithProviders(<PersonContractSignedRecordModal open documentId="pcd-9" onClose={() => {}} />)
+    const image = await screen.findByAltText('Signer signature')
+    expect(image.getAttribute('src')).toBe('https://files.example/signature.png')
+    const answers = Array.from(document.querySelectorAll('dl > div')).map((d) => `${d.querySelector('dt')?.textContent}: ${d.querySelector('dd')?.textContent}`)
+    expect(answers).toEqual(['Business name: Tallgrass Supply Co.', 'Signer’s title: Branch manager', 'Tax number: ••••4410in the PDF only'])
+    // Neither of the words for a read that did not come back is drawn.
+    expect(screen.queryByTestId('signed-record-layout-closed')).toBeNull()
+    expect(screen.queryByTestId('signed-record-signature-wait')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Open signed PDF' })).toBeTruthy()
+    expect(screen.getByText(/An estimator opens an outside company’s\. A training estimator opens none\./)).toBeTruthy()
+  })
+
   it('draws the signature’s image when it opens', async () => {
     renderWithProviders(<PersonContractSignedRecordModal open documentId="pcd-9" onClose={() => {}} />)
     const image = await screen.findByAltText('Signer signature')
@@ -67,7 +103,7 @@ describe('PersonContractSignedRecordModal · a reader its reads are closed to', 
   it('says the signature’s image did not open, and does not wait on it', async () => {
     db.imageOpens = false
     renderWithProviders(<PersonContractSignedRecordModal open documentId="pcd-9" onClose={() => {}} />)
-    expect(await screen.findByText('The signature’s image did not open. It is kept for the office.', {}, { timeout: 8000 })).toBeTruthy()
+    expect(await screen.findByText('The signature’s image did not open. It opens for the office, and for an estimator on an outside company’s paper.', {}, { timeout: 8000 })).toBeTruthy()
     expect(screen.queryByText('Loading signature…')).toBeNull()
   }, 12000)
 

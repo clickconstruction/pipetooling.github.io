@@ -13,6 +13,7 @@ import { workOrderFillInRows, type WorkOrderSources } from '../../lib/needsYou/f
 import type { WorkOrderFillInIo, WorkOrderSaved } from '../../lib/needsYou/fillInWorkOrdersIo'
 import { NeedsYouFillInDeck } from './NeedsYouFillInDeck'
 import type { FillInRow } from '../../hooks/useFillInRows'
+import { moneyText } from '../../test/moneyText'
 
 const navigate = vi.fn()
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<typeof import('react-router-dom')>()), useNavigate: () => navigate }))
@@ -94,7 +95,7 @@ describe('NeedsYouFillInDeck · work orders', () => {
     expect(cardTitle()).toBe('Rudy Vega · #983 Water Heater removal · drafted Oct 21')
     expect(screen.getByText('1 of 2 work orders')).toBeTruthy()
     expect(screen.getByText('Drafted for Rudy Vega Oct 21, 8 days ago.')).toBeTruthy()
-    expect(screen.getByText('From the bid: $4,200.00 sub labor. Rough-in $2,000.00, top-out $1,400.00, trim-set $800.00.')).toBeTruthy()
+    expect(screen.getByText(moneyText('From the bid: $4,200.00 sub labor. Rough-in $2,000.00, top-out $1,400.00, trim-set $800.00.'))).toBeTruthy()
     const save = () => screen.getByRole('button', { name: 'Save and next' }) as HTMLButtonElement
     expect(save().disabled).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'From the bid: $4,200.00 sub labor' }))

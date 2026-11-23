@@ -1,0 +1,4 @@
+# Job Summary, the first screen moved to the door (v2.8374).
+src/components/jobs/JobCostsVerdict.tsx
+src/components/jobs/JobSummary*.tsx
+src/components/jobs/JobsJobSummaryTab.tsx

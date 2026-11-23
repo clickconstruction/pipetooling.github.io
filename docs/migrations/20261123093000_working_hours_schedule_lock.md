@@ -27,4 +27,4 @@ Deploy the client first. The Workday schedule window's one Save press wrote the 
 
 ## Applied
 
-Not yet.
+2026-11-23, after #9492's merge. The ledger lists it, and `npm run check:migration-drift` reads fully applied.

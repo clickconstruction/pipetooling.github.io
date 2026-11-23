@@ -473,7 +473,7 @@ export function ChecklistItemActivity({
                   padding: '0 1rem',
                   borderRadius: 10,
                   border: 'none',
-                  background: posting || completing ? DEAD_PRESS_FILL : '#16a34a',
+                  background: posting || completing ? DEAD_PRESS_FILL : '#15803d',
                   color: posting || completing ? DEAD_PRESS_TEXT : 'white',
                   fontSize: '0.9375rem',
                   fontWeight: 600,

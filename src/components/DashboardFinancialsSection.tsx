@@ -52,6 +52,7 @@ import { googleDrivePreviewEmbedUrl } from '../lib/estimateCustomerAttachment'
 import type { FinancialBucket, FinancialItem, UpcomingPayrollApSection } from '../lib/dashboardFinancials'
 import type { DashboardApBill } from '../hooks/useDashboardFinancials'
 import { todayYmdInAppTz } from '../utils/dateUtils'
+import { Money } from './Money'
 
 type CardKey = 'ar' | 'ap' | 'unbilled'
 
@@ -161,7 +162,7 @@ function ApBillModal({
       >
         <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
           <h3 id="dashboard-financials-bill-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, flex: 1 }}>
-            {bill.houseName} — ${formatCurrency(bill.open)}
+            {bill.houseName} — <Money amount={bill.open} />
           </h3>
           <button
             type="button"
@@ -198,7 +199,7 @@ function ApBillModal({
               ) : null}
             </>,
           )}
-          {factRow('Amount', <strong>${formatCurrency(bill.amount)}</strong>)}
+          {factRow('Amount', <strong><Money amount={bill.amount} /></strong>)}
           {partPaid ? factRow('Paid so far', partPaid) : null}
           {factRow(
             bill.jobs.length === 1 ? 'Job' : 'Jobs',
@@ -362,7 +363,7 @@ function SendToDispatchModal({ item, onClose }: { item: FinancialItem; onClose: 
           Send to Dispatch
         </h3>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          Not billed out: <strong>{item.label}</strong> — ${formatCurrency(item.amount)}
+          Not billed out: <strong>{item.label}</strong> — <Money amount={item.amount} />
         </p>
         <label htmlFor="dashboard-financials-dispatch-note" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
           Note (optional)
@@ -755,7 +756,7 @@ function ItemsModal({
           {extras.lines.map((l, idx) => (
             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-700)', padding: '0.08rem 0' }}>
               <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.label}</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>${formatCurrency(l.amount)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}><Money amount={l.amount} /></span>
             </div>
           ))}
         </div>
@@ -961,7 +962,7 @@ function ItemsModal({
               </button>
             </div>
             <div style={{ marginTop: '0.1rem' }}>
-              <span style={{ fontSize: '1.35rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(bucket.total)}</span>{' '}
+              <span style={{ fontSize: '1.35rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><Money amount={bucket.total} /></span>{' '}
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>
                 · {arCustomersActive ? arCustomersCountLabel : `${bucket.count} item${bucket.count === 1 ? '' : 's'}`}
               </span>
@@ -1043,7 +1044,7 @@ function ItemsModal({
                         {sec.title}
                         <span style={{ marginLeft: 'auto', fontWeight: 600, fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                           {sec.items.length} {sec.noun ?? 'item'}
-                          {sec.items.length === 1 ? '' : 's'} · ${formatCurrency(sec.items.reduce((s, i) => s + i.amount, 0))}
+                          {sec.items.length === 1 ? '' : 's'} · <Money amount={sec.items.reduce((s, i) => s + i.amount, 0)} />
                         </span>
                       </button>
                     ) : null}
@@ -1076,7 +1077,7 @@ function ItemsModal({
                                 </div>
                               </div>
                               <div style={{ textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-                                <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}>${formatCurrency(row.total)}</div>
+                                <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}><Money amount={row.total} /></div>
                               </div>
                             </div>
                             {groupExpanded ? (
@@ -1086,7 +1087,7 @@ function ItemsModal({
                                     <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                       {payrollWeekLabel(w)} {agingChip(w)}
                                     </span>
-                                    <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>${formatCurrency(w.amount)}</span>
+                                    <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}><Money amount={w.amount} /></span>
                                   </div>
                                 ))}
                               </div>
@@ -1161,7 +1162,7 @@ function ItemsModal({
                             })()}
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-                            <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}>${formatCurrency(item.amount)}</div>
+                            <div style={{ fontWeight: 700, fontSize: '0.9375rem' }}><Money amount={item.amount} /></div>
                             {amountContextLine(item)}
                           </div>
                           {onSendToDispatch && item.jobId ? (
@@ -1200,13 +1201,13 @@ function ItemsModal({
           <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', gap: '0.75rem', padding: '0.6rem 1rem', borderTop: '1px solid var(--border)', fontSize: '0.8125rem' }}>
             {q !== '' && !arCustomersActive ? (
               <span style={{ color: 'var(--text-muted)' }}>
-                Showing {shownCount} of {totalItemCount} · <span style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(shownTotal)}</span>
+                Showing {shownCount} of {totalItemCount} · <span style={{ fontVariantNumeric: 'tabular-nums' }}><Money amount={shownTotal} /></span>
               </span>
             ) : (
               <span style={{ fontWeight: 600 }}>{footerTotalLabel}</span>
             )}
             {q === '' || arCustomersActive ? (
-              <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(bucket.total)}</span>
+              <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}><Money amount={bucket.total} /></span>
             ) : null}
           </div>
         </div>
@@ -1287,7 +1288,7 @@ function ItemsModal({
         <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
             <h3 id="dashboard-financials-modal-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, flex: 1, minWidth: 200 }}>
-              {meta.title} — ${formatCurrency(bucket.total)}{' '}
+              {meta.title} — <Money amount={bucket.total} />{' '}
               <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
                 ({arCustomersActive ? arCustomersCountLabel : `${bucket.count} item${bucket.count === 1 ? '' : 's'}`})
               </span>
@@ -1413,8 +1414,7 @@ function ItemsModal({
                             )}
                             <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
                               {section.items.length} {section.noun ?? 'item'}
-                              {section.items.length === 1 ? '' : 's'} · $
-                              {formatCurrency(section.items.reduce((sum, i) => sum + i.amount, 0))}
+                              {section.items.length === 1 ? '' : 's'} · <Money amount={section.items.reduce((sum, i) => sum + i.amount, 0)} />
                             </span>
                           </td>
                         </tr>
@@ -1462,7 +1462,7 @@ function ItemsModal({
                                   <span style={{ marginLeft: '0.35rem' }}>{agingChip(groupAgingItem(row))}</span>
                                 </td>
                                 <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: 600 }}>
-                                  ${formatCurrency(row.total)}
+                                  <Money amount={row.total} />
                                 </td>
                                 {onSendToDispatch ? <td /> : null}
                               </tr>
@@ -1477,7 +1477,7 @@ function ItemsModal({
                                         <span style={{ marginLeft: '0.35rem' }}>{agingChip(w)}</span>
                                       </td>
                                       <td style={{ padding: '0.3rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontSize: '0.8125rem' }}>
-                                        ${formatCurrency(w.amount)}
+                                        <Money amount={w.amount} />
                                       </td>
                                       {onSendToDispatch ? <td /> : null}
                                     </tr>
@@ -1586,7 +1586,7 @@ function ItemsModal({
                             <span style={{ marginLeft: '0.35rem' }}>{agingChip(item)}</span>
                           </td>
                           <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                            ${formatCurrency(item.amount)}
+                            <Money amount={item.amount} />
                             {amountContextLine(item)}
                           </td>
                           {onSendToDispatch ? (
@@ -1627,13 +1627,13 @@ function ItemsModal({
         <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', gap: '0.75rem', padding: '0.6rem 1.25rem', borderTop: '2px solid var(--border)', fontSize: '0.875rem' }}>
           {filtersActive && !arCustomersActive ? (
             <span style={{ color: 'var(--text-muted)' }}>
-              Showing {shownCount} of {totalItemCount} · <span style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(shownTotal)}</span>
+              Showing {shownCount} of {totalItemCount} · <span style={{ fontVariantNumeric: 'tabular-nums' }}><Money amount={shownTotal} /></span>
             </span>
           ) : (
             <span style={{ fontWeight: 600 }}>{footerTotalLabel}</span>
           )}
           {!filtersActive || arCustomersActive ? (
-            <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(bucket.total)}</span>
+            <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}><Money amount={bucket.total} /></span>
           ) : null}
         </div>
       </div>

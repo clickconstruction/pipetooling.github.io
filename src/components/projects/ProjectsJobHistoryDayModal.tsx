@@ -52,6 +52,7 @@ import {
   type DayMercuryLine,
   type DaySupplyLine,
 } from '../../lib/projectsJobHistoryDayCosts'
+import { MoneyText } from '../Money'
 
 const Z_INDEX = 1040
 
@@ -795,11 +796,11 @@ export function ProjectsJobHistoryDayModal({
                   </span>
                   <strong style={{ fontVariantNumeric: 'tabular-nums', fontSize: '1rem' }}>
                     {dayCosts.laborIncomplete ? '≥ ' : ''}
-                    {formatUsd(
+                    <MoneyText text={formatUsd(
                       userRole === 'dev' || userRole === 'master_technician' || userRole === 'controller'
                         ? dayCosts.totalUsd
                         : dayCosts.totalUsd - dayCosts.laborUsd,
-                    )}
+                    )} />
                   </strong>
                 </div>
               </div>
@@ -1100,15 +1101,15 @@ function DayLaborDetail({ lines }: { lines: readonly DayLaborLine[] }) {
             </td>
             <td style={detailTdStyle}>
               <span style={{ color: 'var(--text-slate-600)' }}>
-                {formatHoursDecimal(l.hours)}
-                {l.hourlyWage != null ? ` × ${formatUsd(l.hourlyWage)}/h` : ''}
+                <MoneyText text={formatHoursDecimal(l.hours)} />
+                {l.hourlyWage != null ? <MoneyText text={` × ${formatUsd(l.hourlyWage)}/h`} /> : ''}
               </span>
             </td>
             <td style={detailTdRightStyle}>
               {l.hourlyWage == null ? (
                 <span style={{ color: 'var(--text-amber-700)' }}>No wage configured</span>
               ) : (
-                formatUsd(l.usd)
+                <MoneyText text={formatUsd(l.usd)} />
               )}
             </td>
           </tr>
@@ -1137,7 +1138,7 @@ function DayMercuryDetail({ lines }: { lines: readonly DayMercuryLine[] }) {
                 {l.postedAt ? formatChicagoTime(l.postedAt) : ''}
               </span>
             </td>
-            <td style={detailTdRightStyle}>{formatUsd(l.amountUsd)}</td>
+            <td style={detailTdRightStyle}><MoneyText text={formatUsd(l.amountUsd)} /></td>
           </tr>
         ))}
       </tbody>
@@ -1162,10 +1163,10 @@ function DaySupplyDetail({ lines }: { lines: readonly DaySupplyLine[] }) {
               </td>
               <td style={detailTdStyle}>
                 <span style={{ color: 'var(--text-slate-600)' }}>
-                  {l.pct}% of {formatUsd(l.invoiceTotalUsd)}
+                  {l.pct}% of <MoneyText text={formatUsd(l.invoiceTotalUsd)} />
                 </span>
               </td>
-              <td style={detailTdRightStyle}>{formatUsd(l.allocatedUsd)}</td>
+              <td style={detailTdRightStyle}><MoneyText text={formatUsd(l.allocatedUsd)} /></td>
             </tr>
           )
         })}

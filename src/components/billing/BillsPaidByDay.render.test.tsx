@@ -8,7 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import type { BillsPaidBill, BillsPaidPayment } from '../../lib/billing/billsPaidDays'
+import { billsPaidStepLabel, type BillsPaidBill, type BillsPaidPayment } from '../../lib/billing/billsPaidDays'
 import type { BillsPaidRead } from '../../lib/billing/billsPaidIo'
 import { BillsPaidByDay } from './BillsPaidByDay'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
@@ -147,8 +147,9 @@ describe('BillsPaidByDay', () => {
     // A day that has not come cannot be pressed, and this month is the last one offered.
     const later = screen.getAllByTestId('bills-paid-cell').filter((c) => (c.getAttribute('data-day') ?? '') > today)
     expect(later.every((c) => (c as HTMLButtonElement).disabled)).toBe(true)
-    expect(screen.getAllByRole('button').some((b) => b.textContent === '›')).toBe(false)
-    expect(screen.getAllByRole('button').some((b) => b.textContent === '‹')).toBe(true)
+    expect(screen.queryByTestId('bills-paid-step-on')).toBeNull()
+    // The step back names the month it opens.
+    expect(screen.getByTestId('bills-paid-step-back').textContent).toBe(`‹${billsPaidStepLabel(month, -1)}`)
   })
 
   it('steps to the month before and reads it', async () => {
@@ -157,6 +158,9 @@ describe('BillsPaidByDay', () => {
     await screen.findByTestId('bills-paid-day')
     // With no day named, an older month opens on the newest day money came.
     expect(cellOf(`${OLD}-20`).getAttribute('aria-pressed')).toBe('true')
+    // Each step says where it goes: the month before on the left, the month after on the right.
+    expect(screen.getByTestId('bills-paid-step-back').textContent).toBe('‹Feb')
+    expect(screen.getByTestId('bills-paid-step-on').textContent).toBe('Apr›')
     fireEvent.click(screen.getByRole('button', { name: 'February 2026' }))
     await waitFor(() => expect(io.asks[io.asks.length - 1]).toEqual({ from: '2026-02-01', to: '2026-02-28' }))
     await waitFor(() => expect(screen.getByTestId('bills-paid-month').textContent).toBe('February 2026'))

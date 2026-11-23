@@ -5,6 +5,7 @@ import type { Database } from '../types/database'
 import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { formatCompactNoteDateTime } from '../utils/dateUtils'
 import { EmptyState } from './EmptyState'
+import { MoneyText } from './Money'
 
 const INVOICES_PAGE_SIZE = 500
 
@@ -148,7 +149,7 @@ export function BankingStripeInvoicesPanel() {
                       </Link>
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>{r.sequence_order}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>{formatUsd(Number(r.amount))}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}><MoneyText text={formatUsd(Number(r.amount))} /></td>
                     <td style={{ padding: '0.5rem 0.75rem', fontFamily: 'ui-monospace, monospace' }}>{r.status}</td>
                     <td style={{ padding: '0.5rem 0.75rem', fontFamily: 'ui-monospace, monospace' }}>
                       {r.stripe_invoice_status ?? '—'}

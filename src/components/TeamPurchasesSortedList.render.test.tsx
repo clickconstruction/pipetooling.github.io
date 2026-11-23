@@ -8,6 +8,7 @@ import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../test/renderSmokeMocks'
 import { TeamPurchasesSortedList } from './TeamPurchasesSortedList'
 import type { SortedTeamPurchaseRow } from '../lib/teamPurchasesSorted'
+import { moneyText } from '../test/moneyText'
 
 vi.mock('../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../test/renderSmokeMocks')
@@ -37,7 +38,7 @@ describe('TeamPurchasesSortedList', () => {
     expect(screen.getAllByTestId('team-purchases-sorted-row')).toHaveLength(2)
     // The Dashboard window passes no onUndo, so no row offers Undo there.
     expect(screen.queryByTestId('team-purchases-sorted-undo')).toBeNull()
-    expect(screen.getByText('$183.44 of the charge has no invoice yet')).toBeTruthy()
+    expect(screen.getByText(moneyText('$183.44 of the charge has no invoice yet'))).toBeTruthy()
     expect(screen.getByText(/1048 · Lowbeck remodel/)).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Add invoice' }))

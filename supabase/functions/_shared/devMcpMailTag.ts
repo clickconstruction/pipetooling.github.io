@@ -73,7 +73,7 @@ export function mailTagArgs(args: Record<string, unknown>, known: readonly MailA
   if (jobIn && personIn) return { ok: false, error: 'tag names both a job and a person; a conversation is tagged onto one target a call.' }
   if (personIn) {
     const person = mailTagPersonOf(personIn)
-    if (!person) return { ok: false, error: 'tag.person needs person_id, a people.id (find_person), a uuid; stop: true lifts the follow instead of tagging.' }
+    if (!person) return { ok: false, error: "tag.person needs person_id, a uuid: the roster row's people.id, as get_case_brief and get_person_file answer it in person.id; find_person answers a login's users.id, which this door refuses. stop: true lifts the follow instead of tagging." }
     if (tag.for_record !== undefined) return { ok: false, error: 'for_record belongs to a tag onto a job; an HR file takes each mail as a dated entry and asks nobody.' }
     return { ok: true, value: { account: found, threadId, job: null, person, target: `person ${person.personId}`, forRecord: false } }
   }

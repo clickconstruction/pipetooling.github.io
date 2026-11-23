@@ -34,6 +34,7 @@ vi.mock('../../contexts/ToastContext', () => ({ useToastContext: () => ({ showTo
 
 import LineBudgetSettingsBlock from './LineBudgetSettingsBlock'
 import { resetLineBudgetSettingsForTests } from '../../lib/jobs/lineBudgetSettingsStore'
+import { moneyText } from '../../test/moneyText'
 
 beforeEach(() => {
   saved.length = 0
@@ -51,7 +52,7 @@ describe('LineBudgetSettingsBlock', () => {
     expect(screen.getByTestId('line-budget-readout-rough_in').textContent).toBe('$4,500 labor · 100 h · $3,500 materials · $2,000 margin')
     fireEvent.click(screen.getByRole('button', { name: '$4,000' }))
     expect(screen.getByTestId('line-budget-readout-trim_set').textContent).toBe('$1,600 labor · 36 h · $1,600 materials · $800 margin')
-    expect(screen.getByText('The roster ran $48.20 an hour over the last 90 days, burdened.')).toBeTruthy()
+    expect(screen.getByText(moneyText('The roster ran $48.20 an hour over the last 90 days, burdened.'))).toBeTruthy()
     expect((screen.getByTestId('line-budget-save') as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByTestId('line-budget-save').textContent).toBe('Nothing changed yet')
   })

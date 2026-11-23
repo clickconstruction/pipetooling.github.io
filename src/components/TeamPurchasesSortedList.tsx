@@ -12,6 +12,7 @@ import {
 } from '../lib/teamPurchasesSorted'
 import { tallyUndoLineFromSortedRow } from '../lib/tally/tallyUndoLine'
 import { EmptyState } from './EmptyState'
+import { MoneyText } from './Money'
 
 /**
  * Team purchases follow-up → Sorted (v2.4566): the card charges already sorted, newest sort
@@ -185,7 +186,7 @@ export function TeamPurchasesSortedList({
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontWeight: 600, fontSize: '0.9375rem' }}>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.counterparty_name ?? '—'}</span>
-                    <span style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(Number(r.amount))}</span>
+                    <span style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={formatCurrency(Number(r.amount))} /></span>
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.1rem 0 0.25rem' }}>{formatPosted(r.posted_at)}</div>
                   {detail}
@@ -194,7 +195,7 @@ export function TeamPurchasesSortedList({
               ) : (
                 <>
                   <div style={{ whiteSpace: 'nowrap' }}>{formatPosted(r.posted_at)}</div>
-                  <div style={{ textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(Number(r.amount))}</div>
+                  <div style={{ textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={formatCurrency(Number(r.amount))} /></div>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.counterparty_name ?? ''}>
                       {r.counterparty_name ?? '—'}

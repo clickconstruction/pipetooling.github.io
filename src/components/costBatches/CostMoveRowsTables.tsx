@@ -26,6 +26,7 @@ import { usd } from '../../lib/costBatches/costMovePlan'
 import { countedLabel } from '../../lib/batchWords'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
 import { formatWorkDateYmdFriendly } from '../../utils/dateUtils'
+import { MoneyText } from '../Money'
 
 const section: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.4rem' }
 const headRow: CSSProperties = { display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }
@@ -134,8 +135,8 @@ export function CostMoveRowsTables({ rows, selected, onToggle, onSetMany }: Cost
                     <td style={td}>{r.counterparty ?? '—'}</td>
                     <td style={td}>{cardWords(r)}</td>
                     <td style={tdMuted}>{r.category ?? '—'}</td>
-                    <td style={tdNum}>{usd(r.txAmount)}</td>
-                    <td style={tdNum}>{usd(r.allocationAmount)}</td>
+                    <td style={tdNum}><MoneyText text={usd(r.txAmount)} /></td>
+                    <td style={tdNum}><MoneyText text={usd(r.allocationAmount)} /></td>
                     <td style={tdMuted}>{r.note ?? ''}</td>
                   </tr>
                 ))}
@@ -177,9 +178,9 @@ export function CostMoveRowsTables({ rows, selected, onToggle, onSetMany }: Cost
                     <td style={td}>{r.invoiceNumber || '—'}</td>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>{ymdWords(r.invoiceYmd || null)}</td>
                     <td style={tdMuted}>{r.purchaseOrder ?? ''}</td>
-                    <td style={tdNum}>{usd(r.amount)}</td>
+                    <td style={tdNum}><MoneyText text={usd(r.amount)} /></td>
                     <td style={tdNum}>{`${r.pct}%`}</td>
-                    <td style={tdNum}>{usd(costMoveRowDollars(r))}</td>
+                    <td style={tdNum}><MoneyText text={usd(costMoveRowDollars(r))} /></td>
                     <td style={tdMuted}>{r.isPaid ? 'paid' : 'unpaid'}</td>
                   </tr>
                 ))}
@@ -256,7 +257,7 @@ export function CostMoveRowsTables({ rows, selected, onToggle, onSetMany }: Cost
               {other.map((r) => (
                 <tr key={r.chargeId}>
                   <td style={td}>{r.description}</td>
-                  <td style={tdNum}>{usd(r.amount)}</td>
+                  <td style={tdNum}><MoneyText text={usd(r.amount)} /></td>
                 </tr>
               ))}
             </tbody>

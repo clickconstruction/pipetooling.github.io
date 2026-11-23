@@ -1543,7 +1543,7 @@ export function BidSubmissionFollowupTab({
                 style={{
                   padding: '0.5rem 1rem',
                   border: 'none',
-                  background: submissionFollowupNotesTab === 'customer' ? '#16a34a' : 'var(--surface)',
+                  background: submissionFollowupNotesTab === 'customer' ? '#15803d' : 'var(--surface)',
                   color: submissionFollowupNotesTab === 'customer' ? '#ffffff' : 'var(--text-700)',
                   cursor: !selectedBid.customers?.id ? 'not-allowed' : 'pointer',
                   fontWeight: submissionFollowupNotesTab === 'customer' ? 600 : 400,

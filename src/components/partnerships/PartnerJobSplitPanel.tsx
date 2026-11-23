@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { parsePartnerSplitPreview, type PartnerSplitPreview } from '../../lib/partnerLedger/splitPreview'
+import { MoneyText } from '../Money'
 
 /**
  * §3 profit-split panel on the job detail modal (PARTNERSHIPS_PLAN.md PR 5).
@@ -117,7 +118,7 @@ export function PartnerJobSplitPanel({ jobId }: { jobId: string }) {
           Partner split — {preview.partner_name} <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>(§3, majority confirmed{preview.confirmed_at ? ` ${new Date(preview.confirmed_at).toLocaleDateString()}` : ''})</span>
         </span>
         {livePosting ? (
-          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#16a34a' }}>posted {money(livePosting.amount)}</span>
+          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#16a34a' }}>posted <MoneyText text={money(livePosting.amount)} /></span>
         ) : preview.posted?.reversed ? (
           <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)' }}>previous posting reversed</span>
         ) : null}
@@ -127,24 +128,24 @@ export function PartnerJobSplitPanel({ jobId }: { jobId: string }) {
         {rows.map(([label, amount]) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', padding: '0.25rem 0', fontSize: '0.8rem', borderBottom: '1px solid var(--border)' }}>
             <span style={{ color: 'var(--text-700)' }}>{label}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{signed(amount)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}><MoneyText text={signed(amount)} /></span>
           </div>
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', padding: '0.3rem 0', fontSize: '0.82rem', fontWeight: 700 }}>
           <span>Profit</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{signed(preview.profit)}</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums' }}><MoneyText text={signed(preview.profit)} /></span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', padding: '0.2rem 0', fontSize: '0.78rem', color: 'var(--text-700)' }}>
           <span>Company first {preview.company_first_pct}%</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{signed(-preview.company_first)}</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums' }}><MoneyText text={signed(-preview.company_first)} /></span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', padding: '0.2rem 0 0.2rem 1rem', fontSize: '0.78rem', color: 'var(--text-700)' }}>
           <span>Partner {preview.partner_remainder_pct}% of remainder</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: preview.partner_share >= 0 ? '#16a34a' : 'var(--text-red-600)' }}>{signed(preview.partner_share)}</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: preview.partner_share >= 0 ? '#16a34a' : 'var(--text-red-600)' }}><MoneyText text={signed(preview.partner_share)} /></span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', padding: '0.2rem 0 0.2rem 1rem', fontSize: '0.78rem', color: 'var(--text-700)' }}>
           <span>Company share of remainder</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{signed(preview.company_share)}</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums' }}><MoneyText text={signed(preview.company_share)} /></span>
         </div>
       </div>
 
@@ -157,7 +158,7 @@ export function PartnerJobSplitPanel({ jobId }: { jobId: string }) {
             title={!preview.profit_shares_on ? 'Profit shares are off for this partnership (Deal tab)' : preview.partner_share <= 0 ? 'Partner share is not positive' : undefined}
             style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 650, padding: '0.35rem 0.75rem', borderRadius: 6, border: 'none', background: '#2563eb', color: 'var(--surface)', cursor: 'pointer', opacity: busy || !preview.profit_shares_on || preview.partner_share <= 0 ? 0.55 : 1 }}
           >
-            Post {money(Math.max(0, preview.partner_share))} to partner ledger
+            Post <MoneyText text={money(Math.max(0, preview.partner_share))} /> to partner ledger
           </button>
         ) : (
           <button
@@ -186,7 +187,7 @@ export function PartnerJobSplitPanel({ jobId }: { jobId: string }) {
               <span style={{ flex: '1 1 200px', minWidth: 0, color: 'var(--text-700)' }}>
                 {r.bid_name} · {r.hours.toFixed(1)} h × ${r.rate}
               </span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{money(r.amount)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}><MoneyText text={money(r.amount)} /></span>
               {r.applied_here ? (
                 <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#16a34a' }}>on this job</span>
               ) : r.applied_job_id ? (

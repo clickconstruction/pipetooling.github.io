@@ -298,7 +298,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
                 style={{
                   padding: '0.35rem 0.75rem',
                   fontSize: '0.8125rem',
-                  background: '#16a34a',
+                  background: '#15803d',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,

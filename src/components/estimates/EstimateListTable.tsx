@@ -22,6 +22,7 @@ import { TAP_HINT_DURATION_MS, isDeadTap } from '../../lib/tapHint'
 import { type EstimateOpenState } from '../../lib/estimateOpenState'
 import { type EstimateThreadNoteStats } from '../../hooks/useEstimateThreadNotes'
 import { useAuth } from '../../hooks/useAuth'
+import { MoneyText } from '../Money'
 
 /** Slim outline button for “Create job” in Estimates list Status column. */
 const estimateListCreateJobButtonStyle: CSSProperties = {
@@ -521,7 +522,7 @@ export function EstimateListTable({
                   ) : statusLabel(r.status))
                 )}
               </td>
-              <td style={{ padding: '0.5rem' }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : <>{formatMoney(r.total_cents)}<span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{estimateListOptionsSuffix(r)}</span></>}</td>
+              <td style={{ padding: '0.5rem' }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : <><MoneyText text={formatMoney(r.total_cents)} /><span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{estimateListOptionsSuffix(r)}</span></>}</td>
               <td style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
                 {updatedLines ? (
                   <div
@@ -958,7 +959,7 @@ export function EstimateListCards({
                   {renderCustomerSection(r)}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : <>{formatMoney(r.total_cents)}<span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400 }}>{estimateListOptionsSuffix(r)}</span></>}</div>
+                  <div style={{ fontWeight: 600 }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : <><MoneyText text={formatMoney(r.total_cents)} /><span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400 }}>{estimateListOptionsSuffix(r)}</span></>}</div>
                   {updatedLines ? (
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem', lineHeight: 1.25 }}>
                       <span>{updatedLines.short}</span>
