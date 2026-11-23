@@ -10,6 +10,7 @@ import {
   AGREEMENT_GROUP_COLORS,
   AGREEMENT_GROUP_KINDS,
   AGREEMENTS_READER_DOORS,
+  AGREEMENTS_TRAINING_DOORS,
   AGREEMENT_KIND_CHIPS,
   ESTIMATOR_GROUP_KINDS,
   AGREEMENT_STATE_CHIPS,
@@ -17,6 +18,8 @@ import {
   agreementCountWords,
   agreementDayWords,
   agreementDoor,
+  agreementReaderDoor,
+  agreementsReaderDoorsWords,
   agreementNeedsAList,
   agreementPaperKindWords,
   agreementStateChips,
@@ -112,6 +115,38 @@ describe('an estimator’s chips', () => {
     expect(w).toEqual({ main: 'No agreements yet.', next: '', tail: 'The office sends a paper to an outside company from this tab.' })
     expect(plainWordsFailures(`${w.main} ${w.tail}`)).toEqual([])
     expect(plainWordsFailures(AGREEMENTS_READER_DOORS)).toEqual([])
+  })
+
+  it('tells an estimator at the foot that a signed name is a press, and a training account that it opens none (decision 2)', () => {
+    expect(agreementsReaderDoorsWords(true)).toBe('Press a signed paper’s name to open its record. A paper that is not signed yet has nothing to open.')
+    expect(agreementsReaderDoorsWords(false)).toBe('This list is for reading. A training account opens no signed paper.')
+    expect(agreementsReaderDoorsWords(true)).toBe(AGREEMENTS_READER_DOORS)
+    expect(agreementsReaderDoorsWords(false)).toBe(AGREEMENTS_TRAINING_DOORS)
+    expect(plainWordsFailures(AGREEMENTS_TRAINING_DOORS)).toEqual([])
+    // The old foot sent them to the company's own page. The press is on the line now.
+    expect(AGREEMENTS_READER_DOORS).not.toContain('own page')
+  })
+
+  it('opens an estimator the signed record of a signed line, and nothing else (decision 2)', () => {
+    const line = (kind: string, status: string, more: Record<string, unknown> = {}) =>
+      ({ kind, source_id: 'p1', state: status === 'signed' ? 'signed' : 'waiting', job_id: null, facts: { status }, ...more }) as Parameters<typeof agreementReaderDoor>[0]
+    const signed = { kind: 'person-signed', documentId: 'p1' }
+    // Every kind of outside company's paper they read, signed: a customer's, a supply house's, a trade company's.
+    for (const kind of ['customer_agreement', 'supply_house_agreement', 'trade_agreement', 'company_agreement']) {
+      expect(agreementReaderDoor(line(kind, 'signed'), true), kind).toEqual(signed)
+      // A paper that waits, and one never sent, stay plain words.
+      expect(agreementReaderDoor(line(kind, 'sent'), true), kind).toEqual({ kind: 'none' })
+      expect(agreementReaderDoor(line(kind, 'unsent'), true), kind).toEqual({ kind: 'none' })
+      // A training account opens nothing.
+      expect(agreementReaderDoor(line(kind, 'signed'), false), kind).toEqual({ kind: 'none' })
+    }
+    // What the office opens in a window of its own keeps no press for a reader: a work order, a job's contract, a
+    // paper on People, a GC paper.
+    expect(agreementReaderDoor(line('work_order', 'signed', { job_id: 'j1' }), true)).toEqual({ kind: 'none' })
+    expect(agreementReaderDoor(line('job_contract', 'signed', { job_id: 'j1', facts: { status: 'signed', signed_at: '2026-11-01' } }), true)).toEqual({ kind: 'none' })
+    expect(agreementReaderDoor(line('person_agreement', 'sent'), true)).toEqual({ kind: 'none' })
+    expect(agreementReaderDoor(line('sow', 'signed'), true)).toEqual({ kind: 'none' })
+    expect(agreementReaderDoor(line('company_agreement', 'sent'), true)).toEqual({ kind: 'none' })
   })
 
   it('offers an estimator the same way out of a search or a chip as the office', () => {

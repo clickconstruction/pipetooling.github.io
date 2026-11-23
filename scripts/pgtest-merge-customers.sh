@@ -6,7 +6,9 @@
 #
 # The same bed as scripts/pgtest-gc-customer-contacts.sh: the Supabase Postgres image with every file in
 # supabase/migrations applied in order (about a minute). The merge's newest migration is then applied a second time, which
-# must change nothing. The scenario, inside one transaction that rolls back. Part A: nobody signed out merges; a dev merges a duplicate
+# must change nothing. The scenario, inside one transaction that rolls back. Part A: nobody signed out merges, an
+# estimator is refused the merge and its preview by role, and an assistant in training mode is stopped at the merge's
+# first write (who may merge is the database's rule, assert_caller_can_merge_customer_pair, not the screen's alone); a dev merges a duplicate
 # architect into the kept one, and afterwards every line of the duplicate's GC call log reads on the survivor, still naming
 # its job; the project the duplicate drew and the one it owned name the survivor; a project with no part for the
 # duplicate is untouched; the folds the function already did (projects, the old call log, the chosen address) still
