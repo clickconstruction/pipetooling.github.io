@@ -169,6 +169,7 @@
     "test:pg:trips": "bash scripts/pgtest-trips.sh",
     "test:pg:sub-over-to-credit": "bash scripts/pgtest-sub-over-to-credit.sh",
     "test:pg:sub-gather-sendings": "bash scripts/pgtest-sub-gather-sendings.sh",
+    "test:pg:sub-company-ground": "bash scripts/pgtest-sub-company-ground.sh",
     "test:pg:sub-papers": "bash scripts/pgtest-sub-papers.sh",
     "test:pg:job-required-papers": "bash scripts/pgtest-job-required-papers.sh",
     "test:pg:job-paper-settings": "bash scripts/pgtest-job-paper-settings.sh",

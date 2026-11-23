@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { compareRows, lookAlikePairs, markName, nameLikeness, siteCountsByName, nameWords, oneLetterApart, searchNames, suggestNames, tiePressWords, type PermitName } from './nameLikeness'
+import {
+  CONTACT_MATCH_GRADE,
+  compareContactsOf,
+  compareRows,
+  contactMatchWords,
+  contactMatchesByCustomer,
+  foldContactMatches,
+  listedLineWords,
+  lookAlikePairs,
+  markName,
+  nameLikeness,
+  siteCountsByName,
+  nameWords,
+  oneLetterApart,
+  searchNames,
+  suggestNames,
+  tiePressWords,
+  type ContactMatch,
+  type PermitName,
+} from './nameLikeness'
 
 // Every name here is made up.
 describe('nameWords', () => {
@@ -97,6 +116,86 @@ describe('suggestNames', () => {
     const got = suggestNames('Ridgeway Builders', names, new Map([['permitpros', 3]]), new Set(['ridgewayroofing', 'ridgwaybuilders']))
     expect(got.map((s) => s.key)).toEqual(['ridgewaybuilderstexas'])
   })
+
+  it('offers a name on a shared phone alone, graded beside one name beginning the other', () => {
+    const shared = new Map<string, ContactMatch[]>([['hartwellinteriors', [{ reason: 'phone', value: '2105550142' }]]])
+    const got = suggestNames('Ridgeway Builders', names, new Map(), new Set(), shared)
+    const hartwell = got.find((s) => s.key === 'hartwellinteriors')
+    expect(hartwell).toMatchObject({ grade: CONTACT_MATCH_GRADE, marked: [], shared: [{ reason: 'phone', value: '2105550142' }] })
+    expect(hartwell?.reasons).toEqual([{ words: 'The same phone, (210) 555-0142', tone: 'green' }])
+    // The name that begins theirs carries the same grade, so the busier of the two leads.
+    expect(nameLikeness('Ridgeway Builders', 'Ridgeway Builders of Texas LLC')?.grade).toBe(CONTACT_MATCH_GRADE)
+    expect(got.slice(0, 2).map((s) => s.key)).toEqual(['ridgewaybuilderstexas', 'hartwellinteriors'])
+    // Without the phone the name is not offered at all.
+    expect(suggestNames('Ridgeway Builders', names, new Map(), new Set()).some((s) => s.key === 'hartwellinteriors')).toBe(false)
+  })
+
+  it('puts a shared phone and a shared web domain between the site and the name, and two outrank one', () => {
+    const shared = new Map<string, ContactMatch[]>([
+      ['ridgewaybuilderstexas', [{ reason: 'phone', value: '2105550142' }, { reason: 'domain', value: 'ridgewaybuilders.example' }]],
+      ['ridgwaybuilders', [{ reason: 'domain', value: 'ridgewaybuilders.example' }]],
+    ])
+    const got = suggestNames('Ridgeway Builders', names, new Map([['ridgewaybuilderstexas', 1]]), new Set(), shared)
+    expect(got[0]?.reasons).toEqual([
+      { words: '1 permit on addresses you bid to them', tone: 'green' },
+      { words: 'The same phone, (210) 555-0142', tone: 'green' },
+      { words: 'The same web domain, ridgewaybuilders.example', tone: 'green' },
+      { words: 'One name begins the other', tone: 'amber' },
+    ])
+    expect(got[0]?.grade).toBe(90 + 41 + CONTACT_MATCH_GRADE + 1)
+    expect(got[1]).toMatchObject({ key: 'ridgwaybuilders', grade: 75 + CONTACT_MATCH_GRADE })
+  })
+
+  it('still leaves out their own name, a name answered and one that files for others, whatever they share', () => {
+    const one: ContactMatch[] = [{ reason: 'phone', value: '2105550142' }]
+    const shared = new Map<string, ContactMatch[]>([['ridgewaybuilders', one], ['ridgewayroofing', one], ['permitpros', one]])
+    const got = suggestNames('Ridgeway Builders', names, new Map(), new Set(['ridgewayroofing']), shared)
+    expect(got.map((s) => s.key)).toEqual(['ridgewaybuilderstexas', 'ridgwaybuilders'])
+  })
+})
+
+describe('a phone or a web domain the two share', () => {
+  it('says the match as a person reads it', () => {
+    expect(contactMatchWords({ reason: 'phone', value: '5125550101' })).toBe('The same phone, (512) 555-0101')
+    expect(contactMatchWords({ reason: 'domain', value: 'example.com' })).toBe('The same web domain, example.com')
+  })
+
+  it('reads the rows by customer and name, a phone first, each value once, and drops a reason it does not know', () => {
+    const got = contactMatchesByCustomer([
+      { customer_id: 'c1', builder_key: 'hartwellinteriors', reason: 'domain', value: 'hartwell.example' },
+      { customer_id: 'c1', builder_key: 'hartwellinteriors', reason: 'phone', value: '2105550142' },
+      { customer_id: 'c1', builder_key: 'hartwellinteriors', reason: 'phone', value: '2105550142' },
+      { customer_id: 'c1', builder_key: 'danawhitlow', reason: 'fax', value: '2105550199' },
+      { customer_id: 'c2', builder_key: 'danawhitlow', reason: 'phone', value: '2105550177' },
+    ])
+    expect([...got.keys()]).toEqual(['c1', 'c2'])
+    expect(got.get('c1')).toEqual(new Map([['hartwellinteriors', [{ reason: 'phone', value: '2105550142' }, { reason: 'domain', value: 'hartwell.example' }]]]))
+    expect(got.get('c2')?.get('danawhitlow')).toEqual([{ reason: 'phone', value: '2105550177' }])
+  })
+
+  it('folds two customer rows of one GC into one, each value once', () => {
+    const by = contactMatchesByCustomer([
+      { customer_id: 'c1', builder_key: 'hartwellinteriors', reason: 'phone', value: '2105550142' },
+      { customer_id: 'c2', builder_key: 'hartwellinteriors', reason: 'phone', value: '2105550142' },
+      { customer_id: 'c2', builder_key: 'hartwellinteriors', reason: 'domain', value: 'hartwell.example' },
+      { customer_id: 'c3', builder_key: 'danawhitlow', reason: 'phone', value: '2105550177' },
+    ])
+    expect(foldContactMatches(by, ['c1', 'c2'])).toEqual(new Map([['hartwellinteriors', [{ reason: 'phone', value: '2105550142' }, { reason: 'domain', value: 'hartwell.example' }]]]))
+    expect(foldContactMatches(by, ['c9']).size).toBe(0)
+  })
+})
+
+describe('listedLineWords', () => {
+  const base: PermitName = { key: 'k', name: 'Hartwell Interiors', permits: 0, lastOn: '2026-10-21', kind: null }
+  it('says what the city lists the name on, in the words that are true of how it was found', () => {
+    expect(listedLineWords({ ...base, permits: 4 }, 0)).toBe('Listed on 4 commercial permits we can see · last Oct 21')
+    expect(listedLineWords({ ...base, permits: 1, lastOn: null }, 2)).toBe('Listed on 1 commercial permit we can see')
+    // A name only a site brought in.
+    expect(listedLineWords(base, 1)).toBe('Listed on a permit on an address you bid to them')
+    // A name only a shared phone brought in: its permits are of any kind, and no address of ours is claimed.
+    expect(listedLineWords({ ...base, allPermits: 3 }, 0)).toBe('Listed on 3 permits we can see · last Oct 21')
+    expect(listedLineWords({ ...base, lastOn: null }, 0)).toBe('Listed on a permit we can see')
+  })
 })
 
 describe('searchNames', () => {
@@ -164,6 +263,66 @@ describe('what two records share', () => {
     expect(rows[2]?.ours.value).toBe('No zip on their bids')
   })
 
+  const plain = { customerName: 'Ridgeway Builders', bidAddresses: [], siteStreets: [], name: 'Hartwell Interiors', permits: [], onOurSites: [] }
+
+  it('adds a phones row and a web domains row, each only when one side holds something', () => {
+    expect(compareRows(plain)).toHaveLength(3)
+    expect(compareRows({ ...plain, contacts: { ourPhones: [], ourDomains: [], theirPhones: [], theirDomains: [], shared: [] } })).toHaveLength(3)
+    const rows = compareRows({ ...plain, contacts: { ourPhones: ['2105550100'], ourDomains: [], theirPhones: [], theirDomains: ['hartwell.example'], shared: [] } })
+    expect(rows.slice(3)).toEqual([
+      { ours: { label: 'Phones we hold for them', value: '(210) 555-0100' }, theirs: { label: 'Phones listed with this name', value: 'None listed' }, hit: false },
+      { ours: { label: 'Web domains we hold for them', value: 'None on file' }, theirs: { label: 'Web domains found for this name', value: 'hartwell.example' }, hit: false },
+    ])
+  })
+
+  it('marks a row the read says the two share, the shared value first on both sides', () => {
+    const rows = compareRows({
+      ...plain,
+      contacts: {
+        ourPhones: ['2105550100', '2105550142'],
+        ourDomains: ['ridgeway.example'],
+        theirPhones: ['5125550188', '2105550142'],
+        theirDomains: [],
+        shared: [{ reason: 'phone', value: '2105550142' }],
+      },
+    })
+    expect(rows[3]).toEqual({ ours: { label: 'Phones we hold for them', value: '(210) 555-0142 · (210) 555-0100' }, theirs: { label: 'Phones listed with this name', value: '(210) 555-0142 · (512) 555-0188' }, hit: true })
+    expect(rows[4]).toMatchObject({ theirs: { value: 'None found' }, hit: false })
+  })
+
+  it('shows a value the read ties on both sides even when the lists handed in lack it, and never marks a number the read does not tie', () => {
+    // The tie came off the contacts spine and a lookup, which Compare does not read itself.
+    const tied = compareRows({ ...plain, contacts: { ourPhones: [], ourDomains: [], theirPhones: [], theirDomains: [], shared: [{ reason: 'domain', value: 'hartwell.example' }] } })
+    expect(tied).toHaveLength(4)
+    expect(tied[3]).toEqual({ ours: { label: 'Web domains we hold for them', value: 'hartwell.example' }, theirs: { label: 'Web domains found for this name', value: 'hartwell.example' }, hit: true })
+    // A permit service's number sits under many names: both sides hold it and the read ties nobody.
+    const service = compareRows({ ...plain, contacts: { ourPhones: ['2105550100'], ourDomains: [], theirPhones: ['2105550100'], theirDomains: [], shared: [] } })
+    expect(service[3]?.hit).toBe(false)
+  })
+
+  it('cuts a long side at four and counts the rest', () => {
+    const rows = compareRows({ ...plain, contacts: { ourPhones: ['2105550101', '2105550102', '2105550103', '2105550104', '2105550105', '2105550106'], ourDomains: [], theirPhones: [], theirDomains: [], shared: [] } })
+    expect(rows[3]?.ours.value).toBe('(210) 555-0101 · (210) 555-0102 · (210) 555-0103 · (210) 555-0104 and 2 more')
+  })
+
+  it('reads what each side holds by the database’s own two rules', () => {
+    const got = compareContactsOf(
+      {
+        customers: [{ contact_info: { phone: '(210) 555-0142', email: 'office@ridgeway.example' }, billing_email: 'ap@gmail.com' }, { contact_info: null, billing_email: 'AP@Ridgeway.example' }],
+        persons: [{ phone: '1-210-555-0142 x12', email: null }, { phone: '555', email: 'pm@ridgeway-pm.example' }],
+      },
+      { permitPhones: ['5125550188', null, undefined, '5125550188', '0000000000'], lookups: [{ phone: '(512) 555-0199', website: 'https://www.hartwell.example/contact' }, { website: 'https://facebook.com/hartwell' }, null] },
+      [{ reason: 'phone', value: '2105550142' }],
+    )
+    expect(got).toEqual({
+      ourPhones: ['2105550142'],
+      ourDomains: ['ridgeway.example', 'ridgeway-pm.example'],
+      theirPhones: ['5125550188', '5125550199'],
+      theirDomains: ['hartwell.example'],
+      shared: [{ reason: 'phone', value: '2105550142' }],
+    })
+  })
+
   it('does not say a name is with itself, and says a line that repeats once with its count', () => {
     const rows = compareRows({
       customerName: 'Hartwell & Assoc.',
@@ -223,5 +382,26 @@ describe('lookAlikePairs', () => {
 
   it('stops at the limit', () => {
     expect(lookAlikePairs(customers, names, new Map(), new Map(), 2)).toHaveLength(2)
+  })
+
+  it('pairs a name with a customer through a shared phone on any of its rows, with no word in common', () => {
+    const shared = contactMatchesByCustomer([
+      { customer_id: 'c2', builder_key: 'pecangrovedental', reason: 'phone', value: '2105550142' },
+      // A name this city's list does not carry is not paired here.
+      { customer_id: 'c5', builder_key: 'notonthislist', reason: 'phone', value: '2105550177' },
+    ])
+    const pairs = lookAlikePairs(customers, names, new Map(), new Map(), undefined, shared)
+    const pair = pairs.find((p) => p.suggestion.key === 'pecangrovedental')
+    expect(pair).toMatchObject({ customerId: 'c1', customerName: 'Ridgeway Builders' })
+    expect(pair?.suggestion.reasons).toEqual([{ words: 'The same phone, (210) 555-0142', tone: 'green' }])
+    expect(pairs.some((p) => p.customerId === 'c5')).toBe(false)
+    // Without the read the worklist is as it was.
+    expect(lookAlikePairs(customers, names, new Map(), new Map()).some((p) => p.suggestion.key === 'pecangrovedental')).toBe(false)
+  })
+
+  it('drops a pair a shared phone made once the customer has answered it', () => {
+    const shared = contactMatchesByCustomer([{ customer_id: 'c1', builder_key: 'pecangrovedental', reason: 'phone', value: '2105550142' }])
+    const pairs = lookAlikePairs(customers, names, new Map(), new Map([['c2', new Set(['pecangrovedental'])]]), undefined, shared)
+    expect(pairs.some((p) => p.suggestion.key === 'pecangrovedental')).toBe(false)
   })
 })

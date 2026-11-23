@@ -83,7 +83,11 @@ Press **Find their names on permits** under the names tied to the GC. The same p
 
 A sheet opens with names that may be them. Each one says why it is offered. The strongest reason is a permit on an address you bid to them. The others are about the name. One name may begin the other. They may be one letter apart. They may share a word.
 
-Press **Compare** to see ours beside the city's. What the two share is marked green.
+A name may also share a phone or a web domain with the customer. A green chip then reads {{chip:green|The same phone}} with the number, or {{chip:green|The same web domain}} with the domain. Such a name is offered however different the two names look.
+
+Press **Compare** to see ours beside the city's. What the two share is marked green. Compare also lists the phones and the web domains each side holds.
+
+The city's phone comes from Austin's permits. The other cities list none. A web domain comes from the customer's email and from a company lookup. A mail service like Gmail is never counted. A number under more than three names is a permit service's, and it ties nobody.
 
 Then answer the name once.
 
