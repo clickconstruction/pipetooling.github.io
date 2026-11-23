@@ -1434,7 +1434,7 @@ an offer pressed for a job already answered mints a fresh ask).
 Since v2.6386 the window holds an offer whose step and job got a text after it was prepared (`nudge_sent` read since the oldest open offer;
 the run's own text, Remind now, another offer pressed — the roads an office-made offer, a moved visit's or Send later's, never took, since `sentLately` and `offeredAlready` are the run's) with the day and the door, and the older of two open offers on one step and job (a visit moved twice), `offers.ts`'s `withSentHolds`.
 Since v2.6387 a moved visit's text expires with its visit: the row carries the day its words are about (`nudge_offers.about_on`, written by the schedule's move through `nudge_offer_make`'s `p_about_on`), the window holds it once that day has passed (`heldStaleWords`, over every other hold) and the 9 AM run puts it away before planning (`dismissed_why` `stale`, counted in the run's summary as *expired*).
-The line counts *ready*, *goes in the morning* (*go later* once a waiting row has a time, v2.6774) and *held*;
+Since v2.8336 (punch list #424) the row shows the texts in place of a line of counts: *3 texts to send* counts the ones a person can send, the names they go to sit under it, a clock chip carries a timed text's time and an amber chip a held text's cause in a word or two (`todaysSendsNeed` and `heldCause` in `offers.ts`, every value marked with `val` and drawn apart from the fixed words by `NeedsYouRowWords`), and the press reads **Read them**;
 the GC office team sees it.
 Kernel `src/lib/offers/`;
 window `src/components/dashboard/TodaysSendsWindow.tsx`;

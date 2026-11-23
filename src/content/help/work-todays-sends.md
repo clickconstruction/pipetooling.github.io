@@ -11,10 +11,20 @@ Today's sends is the list of texts the app prepared but did not send. You read e
 ## Find the list
 
 1. Open the Dashboard.
-2. Under **Needs you**, find the line **Today's sends**. It says how many texts are ready, how many go in the morning, and how many are held.
-3. Press {{button:blue|Open}}.
+2. Under **Needs you**, find the row that counts the texts, like *3 texts to send*. Under the count are the names the texts go to.
+3. Press {{button:amber|Read them}}. The press opens the list. It sends nothing.
 
-The line only shows when a text waits.
+:::example The row on the Dashboard
+**3** texts to send
+**Dana Whitfield** · **Marcus Bell** · **Priya Raman**
+{{chip:gray|1 · Tue 9:00 AM}} {{chip:yellow|1 held · no number}} {{button:amber|Read them}}
+:::
+
+The count is the texts you can send now. A grey chip with a clock is a text set to go at a time, and it shows the time. A yellow chip is a held text, and it shows why. With one text to send, the row shows the text itself.
+
+When no text can go, the row reads *2 texts cannot go* and names each person with the cause. When only timed texts wait, the row is grey and needs nobody.
+
+The row only shows when a text waits.
 
 ## Where the texts come from
 

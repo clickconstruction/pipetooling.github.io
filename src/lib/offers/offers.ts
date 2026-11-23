@@ -7,13 +7,14 @@
  * office-made text goes. The reads and the writes are `offersIo.ts`; the window is
  * `components/dashboard/TodaysSendsWindow.tsx`; the run's side is `flows/nudgeDispatch.ts` (`NudgeOffer`, `OFFER_HELD`).
  */
-import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { OFFER_HELD } from '../flows/nudgeDispatch'
 import { RUN_HOUR } from '../flows/nudgeRunLog'
 import { weekdayDate } from '../gc/words'
 import { jobRefOf } from '../messages/jobKeys'
 import { needsRatingLink } from '../ratings/ratingAsk'
-import { SEND_LATER_WORDS } from './sendLater'
+import { plainSentence, val } from '../valuesInPlace'
+import { SEND_LATER_WORDS, shortWhen } from './sendLater'
 
 /** A `nudge_offers` row as the office reads it. */
 export interface OfferRow {
@@ -57,6 +58,8 @@ export interface TodaysSend {
   goesAt: number | null
   /** The office prepared it, so its time can change (`nudge_offer_retime`). */
   office: boolean
+  /** When it was written, ISO: the Dashboard's row says how long the oldest has waited. */
+  preparedAt: string
 }
 
 export interface TodaysSendsInput {
@@ -193,6 +196,7 @@ export function todaysSends(input: TodaysSendsInput, now: Date = new Date()): To
       goesOn: o.sendOn,
       goesAt: o.sendAt ? (Number.isNaN(Date.parse(o.sendAt)) ? null : Date.parse(o.sendAt)) : null,
       office: o.preparedBy === 'office',
+      preparedAt: o.preparedAt,
     }),
   )
   const rank = (r: TodaysSend) => (r.held ? 2 : r.goesOn ? 1 : 0)
@@ -215,20 +219,134 @@ export function readyRows(rows: readonly TodaysSend[]): TodaysSend[] {
   return rows.filter((r) => !r.held && !r.goesOn)
 }
 
+/** A held text's cause in a word or two, for a chip. The window says the whole reason and its door. */
+export function heldCause(held: string): string {
+  if (held.startsWith(HELD_NO_NUMBER)) return 'no number'
+  if (/sent STOP\./.test(held)) return 'sent STOP'
+  if (held.startsWith(OFFER_HELD['prefers email'])) return 'wants email'
+  if (held === OFFER_HELD.answered) return 'already answered'
+  if (held === HELD_IN_KIND) return 'paid in kind'
+  if (held === HELD_NEWER) return 'a newer text waits'
+  if (held.startsWith('A text for this step already went')) return 'already sent'
+  if (held.startsWith('This text names a visit')) return 'the visit has passed'
+  if (held.startsWith('The line still has')) return 'a blank to fill'
+  return 'see why'
+}
+
+/** A chip on the Dashboard's row: a timed text with its time, a held text with its cause, or how long the oldest has waited. */
+export interface TodaysSendsChip {
+  kind: 'timed' | 'held' | 'old'
+  /** Its words, each value marked with `val`. */
+  text: string
+}
+
 /**
- * The Dashboard's line: "3 texts ready to send", "1 text ready to send, 1 goes in the morning, 2 held", "2 held". Since
- * v2.6774 a text handed to a time counts as "goes later", and the whole group reads so once any row has a time.
+ * The Dashboard's row (punch list #424). Until it the row read *Today's sends* over *3 texts ready to send, 1 goes
+ * later, 1 held*, with **Open**: a place for a title, counts with no names, and *held* with no cause. The row is
+ * built from the texts themselves, so it shows them: how many can go, who they go to, a timed text's time and a held
+ * text's cause. Every value is marked with `val`, so the card draws it apart from the fixed words.
  */
-export function todaysSendsLine(rows: readonly TodaysSend[]): string {
-  const ready = readyRows(rows).length
-  const held = rows.filter((r) => r.held).length
-  const waiting = rows.filter((r) => r.goesOn && !r.held)
-  const later = waiting.some((r) => r.goesAt != null)
-  const parts: string[] = []
-  if (ready) parts.push(`${ready} ${ready === 1 ? 'text' : 'texts'} ready to send`)
-  if (waiting.length) parts.push(`${waiting.length} ${waiting.length === 1 ? 'goes' : 'go'} ${later ? 'later' : 'in the morning'}`)
-  if (held) parts.push(`${held} held`)
-  return parts.join(', ')
+export interface TodaysSendsNeed {
+  /** The number in the title: the texts that can go, else the held, else the timed. */
+  count: number
+  /** *⟪3⟫ texts to send*. */
+  title: string
+  /** Who they go to: up to `NAMES_SHOWN` names and how many more. One text names its step too. */
+  names: string
+  /** The words of the text itself, when exactly one can go. */
+  peek: string | null
+  chips: TodaysSendsChip[]
+  /** The press's words. It opens the window and sends nothing. */
+  press: string
+  /** Grey when nothing on the row needs a person: only timed texts wait. */
+  severity: 'amber' | 'gray'
+  /** The names and the chips as one plain line, for a place that draws no values apart. */
+  detail: string
+}
+
+/** The names a row shows before it counts the rest. */
+export const NAMES_SHOWN = 3
+/** The held texts a row names, each with its cause, when none can go. */
+export const HELD_SHOWN = 2
+/** A text that has waited this many days puts its age on the row. */
+export const OLD_FROM_DAYS = 2
+
+const texts = (n: number) => (n === 1 ? 'text' : 'texts')
+
+function namesOf(rows: readonly TodaysSend[]): string {
+  const unique = [...new Set(rows.map((r) => r.who))]
+  const shown = unique.slice(0, NAMES_SHOWN).map((w) => val('who', w))
+  // The count of the rest holds to the last name with spaces that do not break, so *+2* never starts a line by itself.
+  return unique.length > NAMES_SHOWN ? `${shown.join(' · ')}\u00a0·\u00a0${val('more', `+${unique.length - NAMES_SHOWN}`)}` : shown.join(' · ')
+}
+
+const dayNumber = (ymd: string) => Math.round(Date.parse(`${ymd}T12:00:00Z`) / 86_400_000)
+
+/** Whole days the oldest of these texts has waited, on the company's calendar. */
+function oldestDays(rows: readonly TodaysSend[], now: Date): number {
+  const today = dayNumber(todayYmdInAppTz(now))
+  return rows.reduce((most, r) => {
+    const day = calendarYmdInAppTzFromIso(r.preparedAt)
+    return day ? Math.max(most, today - dayNumber(day)) : most
+  }, 0)
+}
+
+/** When a timed text goes: *Tue 9:00 AM*, or the morning's day. */
+function goesWhen(r: Pick<TodaysSend, 'goesOn' | 'goesAt'>, nowMs: number): string {
+  return r.goesAt != null ? shortWhen(r.goesAt, nowMs) : weekdayDate(r.goesOn)
+}
+
+export function todaysSendsNeed(rows: readonly TodaysSend[], now: Date = new Date()): TodaysSendsNeed | null {
+  if (!rows.length) return null
+  const nowMs = now.getTime()
+  const ready = readyRows(rows)
+  const held = rows.filter((r) => r.held)
+  const timed = rows.filter((r) => r.goesOn && !r.held)
+  const one = (r: TodaysSend) => `${val('who', r.who)} · ${r.step}`
+  const timedChip = (): TodaysSendsChip[] =>
+    timed.length === 0 ? [] : [{ kind: 'timed', text: timed.length === 1 ? `${val('n', '1')} · ${val('when', goesWhen(timed[0]!, nowMs))}` : `${val('n', String(timed.length))} timed` }]
+  const done = (need: Omit<TodaysSendsNeed, 'detail'>): TodaysSendsNeed => ({ ...need, detail: [need.names, ...need.chips.map((c) => c.text)].filter(Boolean).map(plainSentence).join(' · ').replace(/\u00a0/g, ' ') })
+
+  if (ready.length > 0) {
+    const days = oldestDays(ready, now)
+    return done({
+      count: ready.length,
+      title: `${val('n', String(ready.length))} ${texts(ready.length)} to send`,
+      names: ready.length === 1 ? one(ready[0]!) : namesOf(ready),
+      peek: ready.length === 1 ? ready[0]!.body.trim() : null,
+      chips: [
+        ...(days >= OLD_FROM_DAYS ? [{ kind: 'old' as const, text: `oldest ${val('age', `${days} days`)}` }] : []),
+        ...timedChip(),
+        ...(held.length === 0 ? [] : [{ kind: 'held' as const, text: held.length === 1 ? `${val('n', '1')} held · ${val('why', heldCause(held[0]!.held ?? ''))}` : `${val('n', String(held.length))} held` }]),
+      ],
+      press: ready.length === 1 ? 'Read it' : 'Read them',
+      severity: 'amber',
+    })
+  }
+  if (held.length > 0) {
+    return done({
+      count: held.length,
+      title: `${val('n', String(held.length))} ${texts(held.length)} cannot go`,
+      names: '',
+      peek: null,
+      chips: [
+        ...held.slice(0, HELD_SHOWN).map((r) => ({ kind: 'held' as const, text: `${val('who', r.who)} · ${val('why', heldCause(r.held ?? ''))}` })),
+        ...(held.length > HELD_SHOWN ? [{ kind: 'held' as const, text: val('more', `+${held.length - HELD_SHOWN}`) }] : []),
+        ...timedChip(),
+      ],
+      press: held.length === 1 ? 'Fix it' : 'Fix them',
+      severity: 'amber',
+    })
+  }
+  return done({
+    count: timed.length,
+    title: timed.length === 1 ? `${val('n', '1')} text goes ${val('when', goesWhen(timed[0]!, nowMs))}` : `${val('n', String(timed.length))} texts go later`,
+    names: timed.length === 1 ? one(timed[0]!) : namesOf(timed),
+    peek: null,
+    chips: [],
+    press: timed.length === 1 ? 'See it' : 'See them',
+    severity: 'gray',
+  })
 }
 
 /** The row's line under a waiting text (v2.6774): "Goes Tue 9:00 AM" with a time, "Goes in the morning of Tue, Oct 20." without. */
