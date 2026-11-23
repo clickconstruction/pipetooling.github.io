@@ -125,8 +125,18 @@ describe('billPaidState', () => {
     expect(state.payments[0]).toMatchObject({ inKind: true, wayWords: 'In kind · typed by hand' })
   })
   it('never leaves a negative amount out, and holds cents', () => {
-    expect(billPaidState(bill(), [payment({ amount: 4000 })])).toMatchObject({ kind: 'part', outAmount: 0 })
+    expect(billPaidState(bill(), [payment({ amount: 4000 })])).toMatchObject({ outAmount: 0 })
     expect(billPaidState(bill({ amount: 100.1 }), [payment({ amount: 33.37 })])).toMatchObject({ paidAmount: 33.37, outAmount: 66.73 })
+  })
+  it('calls a billed bill paid once its rows leave nothing out, whatever its status still says', () => {
+    // A check typed in and held until it clears: the bill stays billed, and the money on record covers it.
+    expect(billPaidState(bill({ amount: 50 }), [payment({ amount: 50, paymentType: 'Check' })])).toMatchObject({ kind: 'paid', paidAmount: 50, outAmount: 0, wayWords: 'Check · typed by hand' })
+    // Two payments that add to the bill, and one that runs over it.
+    expect(billPaidState(bill({ amount: 100.1 }), [payment({ amount: 33.37 }), payment({ id: 'p2', amount: 66.73 })])).toMatchObject({ kind: 'paid', outAmount: 0 })
+    expect(billPaidState(bill(), [payment({ amount: 4000 })])).toMatchObject({ kind: 'paid', outAmount: 0 })
+    // A cent short is still part paid, and a bill with no amount on record cannot be covered.
+    expect(billPaidState(bill({ amount: 50 }), [payment({ amount: 49.99 })])).toMatchObject({ kind: 'part', outAmount: 0.01 })
+    expect(billPaidState(bill({ amount: null }), [payment({ amount: 50 })])).toMatchObject({ kind: 'part', outAmount: 0 })
   })
   it('reads only its own rows', () => {
     expect(billPaidState(bill(), [payment({ billId: OTHER })])).toMatchObject({ kind: 'open', payments: [] })

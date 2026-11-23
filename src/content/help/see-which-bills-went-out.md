@@ -99,7 +99,7 @@ A bill paid today through the pay link shows the time the customer paid.
 
 A bill that is not paid says how long it has been out. The words read like *3 days out*. The days are counted from the first send of the bill.
 
-A part-paid bill says what is still out.
+A part-paid bill says what is still out. A bill reads paid once its payments leave nothing out.
 
 Every send of one bill carries the same stamp. A statement has no stamp, because a statement is not one bill.
 

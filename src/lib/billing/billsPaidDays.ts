@@ -155,7 +155,8 @@ export function billsPaidLines(input: BillsPaidInput): BillsPaidLine[] {
       took: sentYmd ? dayGap(sentYmd, ymd) : null,
       depositId: (p.bankTransactionId ?? '').trim() || null,
       reference: (p.referenceNumber ?? '').trim().replace(/^#/, ''),
-      partOfBill: !!bill && bill.status === 'billed',
+      // A payment is part of its bill while the bill is still open and this payment does not cover it alone.
+      partOfBill: !!bill && bill.status === 'billed' && !((bill.amount ?? 0) > 0 && Math.round(p.amount * 100) >= Math.round((bill.amount ?? 0) * 100)),
     })
   }
   const time = (l: BillsPaidLine): number => (l.atIso ? Date.parse(l.atIso) || 0 : 0)

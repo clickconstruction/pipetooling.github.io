@@ -146,6 +146,9 @@ describe('billsPaidLines', () => {
   })
   it('marks a payment that is part of a bill still open, and a credit in kind', () => {
     expect(lines.find((l) => l.id === 'h1')).toMatchObject({ partOfBill: true, wayWords: 'Check 2291 · typed by hand' })
+    // A payment that covers its billed bill alone is not part of it: nothing is left out.
+    const whole = billsPaidLines(input([payment({ id: 'w1', billId: B(4), jobId: J(4), amount: 2480, paymentType: 'Check' })]))
+    expect(whole[0]).toMatchObject({ partOfBill: false })
     expect(lines.find((l) => l.id === 'k1')).toMatchObject({ inKind: true, wayWords: 'In kind · typed by hand' })
   })
   it('lists money on a job with no bill named', () => {

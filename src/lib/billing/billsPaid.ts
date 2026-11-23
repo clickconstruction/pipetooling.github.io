@@ -121,7 +121,9 @@ const cents = (n: number): number => Math.round(n * 100) / 100
 /**
  * Where a bill stands, from its payment rows. Null for a bill that is neither billed nor paid (one sent back to
  * Ready to Bill owes nothing yet). A bill marked paid is paid, whatever its rows add to. A billed bill with money
- * on it is part paid.
+ * on it is part paid, unless that money covers it: a bill with nothing out is paid, whatever its status still
+ * says. A check typed in and held until it clears leaves the bill billed, and the page once read it *Part paid*
+ * with *$0.00 out* and counted it among the bills not paid.
  */
 export function billPaidState(bill: BillPaidBill, payments: ReadonlyArray<BillPayment>): BillPaidState | null {
   if (bill.status !== 'paid' && bill.status !== 'billed') return null
@@ -145,12 +147,14 @@ export function billPaidState(bill: BillPaidBill, payments: ReadonlyArray<BillPa
   const paidAmount = cents(drawn.reduce((s, p) => s + p.amount, 0))
   const dated = drawn.filter((p) => p.ymd)
   const newest = dated[dated.length - 1] ?? drawn[drawn.length - 1]
-  const paid = bill.status === 'paid'
+  const out = Math.max(0, cents((bill.amount ?? 0) - paidAmount))
+  // Money on record that leaves nothing out has paid the bill. A bill with no amount on record cannot be covered.
+  const paid = bill.status === 'paid' || (paidAmount > 0 && (bill.amount ?? 0) > 0 && out === 0)
   return {
     kind: paid ? 'paid' : paidAmount > 0 ? 'part' : 'open',
     paidOn: newest?.ymd || null,
     paidAmount,
-    outAmount: paid ? 0 : Math.max(0, cents((bill.amount ?? 0) - paidAmount)),
+    outAmount: paid ? 0 : out,
     wayWords: newest?.wayWords ?? '',
     paidAtIso: newest?.atIso ?? null,
     payments: drawn,
