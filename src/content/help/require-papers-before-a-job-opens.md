@@ -81,6 +81,16 @@ The table under the papers lists each person against each paper.
 
 The line beside the heading counts it up, such as *3 of 8 have signed*.
 
+## What the GC sees
+
+The GC on the job reads about a paper built from settings on their own page. They see the level, each topic's choice in plain words, and how many people have signed.
+
+- They see each sub business with the day it finished signing. They see no worker's name.
+- A sub's business is the company on their file. A sub with no company shows under their own name.
+- After you change the settings, their count starts again, as yours does.
+
+A paper written in prose does not show there. What their page looks like is in [see what a customer sees on their portal](/help/see-what-a-customer-sees-on-their-portal#a-paper-a-job-requires).
+
 ## Text someone their signing link
 
 1. Find the person's row in the table.

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PortalBuilders } from '../components/portal/PortalBuilders'
+import { PortalJobPapers } from '../components/portal/PortalJobPapers'
 import { PortalStartChecks } from '../components/portal/PortalStartChecks'
 import { PortalStageAsk } from '../components/portal/PortalStageAsk'
 import { PortalPromiseAsk } from '../components/portal/PortalPromiseAsk'
@@ -440,6 +441,9 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
 
       {/* The Document builder (punch list #404, step 9): a builder the office sent this GC. One about all their jobs leads, and one about a job sits under that job's name. Look only. */}
       <PortalBuilders builders={payload.builders} token={requestToken} company={payload.company.name} jobOrder={payload.startChecks.map((j) => j.jobId)} />
+
+      {/* Papers before a job opens (punch list #389, step 5): what a job's paper asks and who has signed, for the GC on that job. Read only, no worker named. */}
+      <PortalJobPapers jobs={payload.jobPapers} company={payload.company.name} />
 
       {/* GC mode (O7c): the GC jobs we build for them, with the change orders waiting on them and the work to accept. Screen only. */}
       <PortalGcJobs token={requestToken} jobs={payload.gcJobs} formatUsd={formatPortalUsd} payload={payload} />
