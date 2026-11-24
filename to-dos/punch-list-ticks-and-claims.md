@@ -2,7 +2,7 @@
 name: "Punch list: tick the card you are working on, and see who else is"
 number: 418
 group: close
-status: built and live 2026-11-21 to 2026-11-22 on Taunya's two asks of 2026-11-21 · the tick as v2.8196 (#9255) · v2.8199 (#9272) · the claim as v2.8224 (#9287) · v2.8226 (#9299) · both migrations pushed · left: five walks and Taunya's word on one default
+status: built and live 2026-11-21 to 2026-11-22 on Taunya's two asks of 2026-11-21 · the tick as v2.8196 (#9255) · v2.8199 (#9272) · the claim as v2.8224 (#9287) · v2.8226 (#9299) · both migrations pushed · left: five walks and Taunya's word on one default · 2026-11-24 walk 4 walked in the iPhone simulator, which is not a real phone, and it holds
 summary: >
   A checkbox beside every card on /punch-list. Ticking it means "I am working on this". The tick is
   kept in the database, so it is the same on a phone and at a desk. Since v2.8226 a tick is a claim:
@@ -54,6 +54,16 @@ The rules are in `src/lib/todos/punchListTicks.ts` and `src/lib/todos/punchListC
 2. **A claim goes quiet after 12 real hours.** Page: `/punch-list` on clicktooling.com. As whom: one person ticks, a second person looks. Width: any, light. What should be seen: pick a card that no session is editing, since any change to its file keeps the claim fresh. Tick it and leave it. After 12 hours the other person sees *Free to pick up. <name> had it and went quiet …*. The person who ticked sees their own box still ticked, the line *Your claim went quiet …* and **Still on it**. A press on **Still on it** makes the card read as taken again to the other person after a reload. Why not walked: it takes 12 real hours. A quiet claim was seen only on a stand-in table and in the tests.
 3. **A real card that moves section wipes its tick, after the deploy.** Page: `/punch-list` on clicktooling.com. As whom: the person who ticked. Width: any. What should be seen: tick a card a session is about to move, for example a close-out PR changing its `group:`. After the deploy that holds the move, the card draws with no tick and no claim line. The person's own page also deletes the row, so the table holds no row for that card. Why not walked: the page deletes a stale row with no press only on the built site, never on a dev server. The delete is held by the hook's test alone.
 4. **A real phone.** Page: `/punch-list` on clicktooling.com. As whom: Taunya. Width: an iPhone in Safari, light and dark. What should be seen: a thumb lands on the box first time, and on **Still on it**. The claim line wraps under the card's name and nothing runs off the side. Why not walked: the phone checks were Chrome at 390 px with touch, not a phone in a hand.
+   - **In the iPhone simulator, 2026-11-24, holds.** iPhone 17 Pro on iOS 26.4, in Safari, as the dev, in dark and in light. **A simulator is not a real phone:** a press there is a point sent by a tool, not a thumb.
+   - The box is drawn 20 by 20 px. A press 7 px above its edge ticked it, which fits the 44 px the code gives its label.
+     Ticked, the card read *You are working on this. Last update just now.* in a green band under its name, on two lines.
+     The band is 270 px wide and stops 16 px inside the card. Nothing ran off the side at 402 px, in either theme.
+   - Two reloads kept the tick and the line, one in dark and one in light.
+   - **Working on** counted 1 and narrowed the list to the card. It is 131 by 31 px, a pixel under the 32 px this card says.
+   - Unticked, the line went and **Working on** read 0. With the filter still pressed the list read *No cards match the filters.* with **Clear the filters**.
+   - The tick stood under three minutes on #119, a card nobody was on. The table read 0 rows before and after.
+   - **Still on it was not seen.** It shows only on a claim gone quiet, which takes 12 hours.
+   - **Still owed on a real iPhone:** a thumb on the box first time, and a thumb on **Still on it**.
 5. **Training mode, a real master and View as.** Page: `/punch-list`. As whom: a dev or master in training mode, a real master's own sign-in, and the dev under View as. What should be seen: in training mode the claims read, and a tick goes back with a toast that says why. A real master sees every claim with its name. Under View as the page shows what that person sees and deletes nothing by itself. Why not walked: the walks were the dev and the sample leader only. The table's fences were read on prod when each migration was pushed.
 
 ### Loose ends
