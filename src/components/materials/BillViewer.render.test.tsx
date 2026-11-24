@@ -47,6 +47,7 @@ function facts(id: string, over: Partial<BillFacts> = {}): BillFacts {
     pageTo: 5,
     linesWords: '7 lines · adds up',
     linesTone: 'ok',
+    lines: [],
     ...over,
   }
 }
@@ -66,11 +67,11 @@ function fakeIo(over: { bills?: Record<string, BillLoad>; bytes?: Record<string,
   return { io, asked }
 }
 
-function Harness({ io, start = 'a', items = ITEMS, onClose = () => {}, search = false }: { io: BillViewerIo; start?: string; items?: BillViewerItem[]; onClose?: () => void; search?: boolean }) {
+function Harness({ io, start = 'a', items = ITEMS, onClose = () => {}, search = false, markWords }: { io: BillViewerIo; start?: string; items?: BillViewerItem[]; onClose?: () => void; search?: boolean; markWords?: string[] }) {
   const [openId, setOpenId] = useState(start)
   const [query, setQuery] = useState('')
   const shown = search && query ? items.filter((i) => i.number.toLowerCase().includes(query.toLowerCase())) : items
-  return <BillViewer items={shown} openId={openId} onOpen={setOpenId} onClose={onClose} jobId="job-1" io={io} shareUrlOf={(id) => `https://app.example/files/bills/${id}?job=job-1`} search={search ? { query, onQuery: setQuery } : null} />
+  return <BillViewer items={shown} openId={openId} onOpen={setOpenId} onClose={onClose} jobId="job-1" io={io} shareUrlOf={(id) => `https://app.example/files/bills/${id}?job=job-1`} search={search ? { query, onQuery: setQuery } : null} markWords={markWords} />
 }
 let written: string[] = []
 beforeEach(() => {
@@ -262,6 +263,44 @@ describe('BillViewer', () => {
     await settle()
     await settle()
     expect(asked.bytes).toEqual(['a', 'b'])
+  })
+
+  it('the lines read from the paper sit beside it, the first few of a long bill', async () => {
+    const lines = Array.from({ length: 10 }, (_, i) => ({ lineNo: i + 1, code: `C-${i + 1}`, mfr: '', description: i === 8 ? '2 in. ball valve' : `copper tee ${i + 1}`, qty: i + 1, extendedCents: 1250, component: false }))
+    const { io } = fakeIo({ bills: { a: { facts: facts('a', { lines }) } } })
+    renderWithProviders(<Harness io={io} />)
+    await settle()
+    const list = screen.getByTestId('bill-lines')
+    expect(list.textContent).toContain('Lines read from the paper')
+    expect(list.textContent).toContain('copper tee 1')
+    expect(list.textContent).toContain('C-1')
+    expect(list.textContent).toContain('$12.50')
+    expect(list.textContent).not.toContain('ball valve')
+    fireEvent.click(within(list).getByRole('button', { name: 'Show all 10 lines' }))
+    expect(list.textContent).toContain('ball valve')
+    expect(within(list).queryByRole('button', { name: /Show all/ })).toBeNull()
+  })
+
+  it('with a search on, the lines that hold its words come alone and marked', async () => {
+    const lines = Array.from({ length: 10 }, (_, i) => ({ lineNo: i + 1, code: `C-${i + 1}`, mfr: '', description: i === 8 ? '2 in. ball valve' : `copper tee ${i + 1}`, qty: i + 1, extendedCents: 1250, component: false }))
+    const { io } = fakeIo({ bills: { a: { facts: facts('a', { lines }) } } })
+    renderWithProviders(<Harness io={io} markWords={['valve']} />)
+    await settle()
+    const list = screen.getByTestId('bill-lines')
+    expect(list.textContent).toContain('Lines that match your search')
+    expect(list.querySelectorAll('[data-found="true"]')).toHaveLength(1)
+    expect(within(list).getByText('valve').tagName).toBe('B')
+    expect(list.textContent).not.toContain('copper tee')
+    fireEvent.click(within(list).getByRole('button', { name: 'Show all 10 lines' }))
+    expect(list.textContent).toContain('copper tee 1')
+    expect(list.querySelectorAll('[data-found="true"]')).toHaveLength(1)
+  })
+
+  it('a bill with no lines read lists none', async () => {
+    const { io } = fakeIo()
+    renderWithProviders(<Harness io={io} />)
+    await settle()
+    expect(screen.queryByTestId('bill-lines')).toBeNull()
   })
 
   it('one bill alone has no Previous, no Next and no list', async () => {

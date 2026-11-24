@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BILL_LINES_AT_ONCE,
   BILL_PAGES_AT_ONCE,
   BILL_VIEWER_WORDS,
   billEditHref,
   billFileKind,
+  billLinesToList,
   billOnJobAmount,
   billPageNote,
   billPageRange,
   billPagesToDraw,
   billViewerKey,
   billViewerPosition,
+  type BillFactLine,
   type BillViewerItem,
 } from './billViewer'
 import { plainWordsFailures } from '../../plainWords'
@@ -97,6 +100,37 @@ describe('billFileKind: a file is what its first bytes say', () => {
     expect(billFileKind(bytesOf(0xef, 0xbb, 0xbf, 0x25, 0x50, 0x44, 0x46))).toBe('pdf')
     expect(billFileKind(bytesOf(0x3c, 0x68, 0x74, 0x6d, 0x6c))).toBe('other')
     expect(billFileKind(new ArrayBuffer(0))).toBe('other')
+  })
+})
+
+describe('billLinesToList: the lines beside the paper', () => {
+  const line = (lineNo: number, description: string): BillFactLine => ({ lineNo, code: '', mfr: '', description, qty: 1, extendedCents: 100, component: false })
+  const LONG = Array.from({ length: 12 }, (_, i) => line(i + 1, i === 9 ? 'ball valve' : `copper tee ${i + 1}`))
+  const none = () => false
+  const valve = (l: BillFactLine) => l.description.includes('valve')
+
+  it('lists a short bill whole', () => {
+    expect(billLinesToList(LONG.slice(0, 3), none, false)).toMatchObject({ found: 0, more: 0 })
+    expect(billLinesToList(LONG.slice(0, 3), none, false).lines).toHaveLength(3)
+  })
+  it('lists the first few of a long bill and holds the rest behind the press', () => {
+    const list = billLinesToList(LONG, none, false)
+    expect(list.lines).toHaveLength(BILL_LINES_AT_ONCE)
+    expect(list.more).toBe(12 - BILL_LINES_AT_ONCE)
+    expect(billLinesToList(LONG, none, true)).toMatchObject({ more: 0 })
+    expect(billLinesToList(LONG, none, true).lines).toHaveLength(12)
+  })
+  it('with a search on, the lines that hold its words come alone, wherever they sit on the paper', () => {
+    const list = billLinesToList(LONG, valve, false)
+    expect(list.lines.map((l) => l.lineNo)).toEqual([10])
+    expect(list).toMatchObject({ found: 1, more: 11 })
+    // Show all keeps the paper's order and still counts what was found.
+    const all = billLinesToList(LONG, valve, true)
+    expect(all.lines).toHaveLength(12)
+    expect(all).toMatchObject({ found: 1, more: 0 })
+  })
+  it('a bill with no lines lists nothing', () => {
+    expect(billLinesToList([], valve, false)).toEqual({ lines: [], found: 0, more: 0 })
   })
 })
 

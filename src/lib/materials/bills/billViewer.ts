@@ -15,6 +15,20 @@ export interface BillViewerItem {
   amount: number
 }
 
+/** One line read from the bill's paper, as the viewer lists it beside the page. */
+export interface BillFactLine {
+  lineNo: number
+  /** The supply house's own part code, and the maker's number when the paper prints one. */
+  code: string
+  mfr: string
+  description: string
+  /** What was shipped, or ordered when the paper prints no shipped count. */
+  qty: number | null
+  extendedCents: number | null
+  /** A kit's or a bundle's sub-line belongs to the priced line above it. */
+  component: boolean
+}
+
 /** What the viewer shows beside the paper. */
 export interface BillFacts {
   invoiceId: string
@@ -40,6 +54,22 @@ export interface BillFacts {
   /** What the lines read from the paper say: `7 lines · adds up`. */
   linesWords: string
   linesTone: 'ok' | 'off' | 'accepted' | 'none'
+  /** The lines themselves, in the paper's order; empty when the paper was not read. */
+  lines: BillFactLine[]
+}
+
+/** How many lines the viewer lists before the rest wait behind a press. */
+export const BILL_LINES_AT_ONCE = 8
+
+/**
+ * The lines to list beside the paper. With a search on, the lines that hold one of its words come alone, so the
+ * reason a bill was found is the first thing read. Otherwise the first few. `more` is how many wait behind the press.
+ */
+export function billLinesToList(lines: readonly BillFactLine[], holdsWord: (line: BillFactLine) => boolean, showAll: boolean): { lines: BillFactLine[]; found: number; more: number } {
+  const found = lines.filter(holdsWord)
+  if (showAll) return { lines: [...lines], found: found.length, more: 0 }
+  const shown = found.length > 0 ? found : lines.slice(0, BILL_LINES_AT_ONCE)
+  return { lines: shown, found: found.length, more: lines.length - shown.length }
 }
 
 export const BILL_VIEWER_WORDS = {
@@ -66,6 +96,8 @@ export const BILL_VIEWER_WORDS = {
   searchPlaceholder: 'Search this list',
   keysHint: 'flip through the list as it is searched',
   factsNote: 'These facts come from the bill on file. The paper is the supplier’s own PDF.',
+  linesTitle: 'Lines read from the paper',
+  linesFound: 'Lines that match your search',
 } as const
 
 /** Where a bill sits in the list, and the bills either side of it. */
