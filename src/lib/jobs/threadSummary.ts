@@ -182,6 +182,15 @@ function standsLine(inputs: ThreadSummaryInputs, name: string): SummaryLine {
   return { key: 'stands', label: SUMMARY_WORDS.stands, text, href: threadHrefByKind(last.contact.kind, last.contactId, last.id), doorWord: doorWordFor(last.channel) }
 }
 
+/**
+ * The customer's promises that speak for this job (punch list #421 PR 5): a mark that names another of their jobs is
+ * that job's, so a customer with two jobs promised sees each job's own day. A mark that names no job (from before, or any
+ * kind but a payment) speaks for every job, as it did.
+ */
+export function promisesForJob<R extends { job_id?: string | null }>(rows: readonly R[], jobId: string): R[] {
+  return rows.filter((r) => !r.job_id || r.job_id === jobId)
+}
+
 /** Their word: the newest written promise whose day has not passed, on any customer contact of the job. */
 function theirsLine(inputs: ThreadSummaryInputs, name: string, contactIds: readonly string[]): SummaryLine {
   const people = new Set(contactIds)

@@ -15,7 +15,7 @@ import { OWED_COLUMNS } from '../followUp/followUpIo'
 import type { ContactOwedRow, MessagePromiseRow } from '../followUp/followUpRows'
 import { loadJobMessages } from '../messages/messagesIo'
 import type { JobActivityMessage } from './jobActivityMessages'
-import { customerContactIds } from './threadSummary'
+import { customerContactIds, promisesForJob } from './threadSummary'
 
 export interface ThreadSummaryFacts {
   lines: JobActivityMessage[]
@@ -53,7 +53,7 @@ async function customerPeople(db: SupabaseClient, customerId: string): Promise<s
 }
 
 /** A promise's columns with its line inner-joined, so a filter on the line's person keeps only theirs. */
-const PROMISE_COLUMNS = 'id, message_id, kind, state, day, day_words, writes, decided_by, decided_at, message:messages!inner(contact_id, at)'
+const PROMISE_COLUMNS = 'id, message_id, kind, state, day, day_words, writes, job_id, decided_by, decided_at, message:messages!inner(contact_id, at)'
 
 export async function loadThreadSummaryFacts(job: ThreadSummaryJob, todayYmd: string, client: unknown = supabase): Promise<ThreadSummaryFacts> {
   const lines = await loadJobMessages(job)
@@ -70,7 +70,7 @@ export async function loadThreadSummaryFacts(job: ThreadSummaryJob, todayYmd: st
   return {
     lines,
     owed: (owed.data ?? []) as unknown as ContactOwedRow[],
-    promises: (promises.data ?? []) as unknown as MessagePromiseRow[],
+    promises: promisesForJob((promises.data ?? []) as unknown as MessagePromiseRow[], job.id),
     people,
   }
 }

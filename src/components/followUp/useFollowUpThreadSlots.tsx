@@ -45,6 +45,7 @@ import {
   lineStillMarkedWords,
   lineTakesWord,
   markNotThereYet,
+  tiedJobId,
   wordChannel,
   wordLanding,
   WORD_PICK_WORDS,
@@ -220,13 +221,13 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
    * that day (v2.8307): a customer has one thread, so the day stays for the job that still holds it, and a line says
    * so. A refusal is said in words and undoes nothing: the Pipeline's record stands either way.
    */
-  const markLine = async (messageId: string, said: PromiseSheetWord, customerId: string | null) => {
+  const markLine = async (messageId: string, said: PromiseSheetWord, customerId: string | null, jobId: string | null) => {
     const write = io.writeDownPayment
     if (!write || (said.kind === 'never' && said.claim)) return
     try {
-      if (said.kind === 'promise') await write(messageId, said.ymd)
+      if (said.kind === 'promise') await write(messageId, said.ymd, jobId)
       else {
-        const marked = linesMarkedFor(rows.promises, said.ymd)
+        const marked = linesMarkedFor(rows.promises, said.ymd, jobId)
         // Read after the void, so the word taken off is gone and what is left is what still stands.
         if (marked.length > 0 && customerId && dayStillPromised(await loadLines(customerId), said.ymd)) {
           showToast(dayKeptWords(said.ymd), 'info')
@@ -263,7 +264,8 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
     if (!c.customerId) return
     setPressing(`word ${m.id}`)
     try {
-      const landing = wordLanding(await loadLines(c.customerId), m.jobId ?? null)
+      const lines = await loadLines(c.customerId)
+      const landing = wordLanding(lines, tiedJobId(m.jobId, lines))
       if (landing.kind === 'none') showToast(landing.words, 'info')
       else setWord({ messageId: m.id, landing, sheet: landing.kind === 'job' ? landing.line : null })
     } finally {
@@ -301,7 +303,7 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
             initialChannel={wordChannel(m.channel)}
             onClose={() => setWord(null)}
             onSaved={() => reread()}
-            onWord={(said) => void markLine(m.id, said, c.customerId ?? null)}
+            onWord={(said) => void markLine(m.id, said, c.customerId ?? null, open.sheet?.job.id ?? null)}
           />
         ) : null}
       </span>

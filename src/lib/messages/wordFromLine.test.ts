@@ -17,6 +17,7 @@ import {
   markNotThereYet,
   NO_JOB_WORDS,
   NO_STANDING_WORDS,
+  tiedJobId,
   wordChannel,
   wordLanding,
 } from './wordFromLine'
@@ -52,6 +53,20 @@ describe('wordChannel', () => {
     expect(wordChannel('call')).toBe('phone')
     expect(wordChannel('voicemail')).toBe('phone')
     expect(wordChannel('missed')).toBe('phone')
+  })
+})
+
+describe('tiedJobId (punch list #421)', () => {
+  const lines = [line('j1', 4200), { ...line('j2', 900), bidId: 'b9' }]
+  it('a Pipeline key is its job, a bid’s key the job its bid became', () => {
+    expect(tiedJobId('pipeline:j1', lines)).toBe('j1')
+    expect(tiedJobId('bid:b9', lines)).toBe('j2')
+  })
+  it('none for a bid no money line carries, a GC job, no key, or a bare id', () => {
+    expect(tiedJobId('bid:b0', lines)).toBeNull()
+    expect(tiedJobId('project:p1', lines)).toBeNull()
+    expect(tiedJobId(null, lines)).toBeNull()
+    expect(tiedJobId('j1', lines)).toBeNull()
   })
 })
 
@@ -138,6 +153,16 @@ describe('the mark on the line', () => {
     expect(linesMarkedFor(promises, '2026-10-09')).toEqual(['m1', 'm2'])
     expect(linesMarkedFor(promises, '2026-10-10')).toEqual([])
     expect(linesMarkedFor([], '2026-10-09')).toEqual([])
+  })
+
+  it('with a job, a mark naming another job stays, and a mark naming none comes off as before (punch list #421)', () => {
+    const marks = [
+      { message_id: 'mine', kind: 'payment', state: 'written', day: '2026-10-09', job_id: 'j2' },
+      { message_id: 'old', kind: 'payment', state: 'written', day: '2026-10-09', job_id: null },
+      { message_id: 'other', kind: 'payment', state: 'written', day: '2026-10-09', job_id: 'j1' },
+    ]
+    expect(linesMarkedFor(marks, '2026-10-09', 'j2')).toEqual(['mine', 'old'])
+    expect(linesMarkedFor(marks, '2026-10-09')).toEqual(['mine', 'old', 'other'])
   })
   it('the day stays on the thread while another promise of theirs still names it (v2.8307)', () => {
     const word = (kind: 'promise' | 'paid_claim', promisedYmd: string) => ({ kind, promisedYmd }) as BidMoneyLine['words'][number]
