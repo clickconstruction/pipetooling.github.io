@@ -22,6 +22,7 @@
   --a-text: #1a1a1a;
   --a-muted: #6b7280;
   --a-ink800: #1f2937;
+  --a-amber100: #fef3c7;
   --a-amber200: #fde68a;
   --a-amber900: #78350f;
   --a-skel: #dfe3e9;
@@ -45,7 +46,7 @@
 /* The phones wear the app's light or dark look, picked on the bench, whatever the page wears. */
 .look-dark .phone {
   --a-page: #111827; --a-chrome: #111827; --a-surface: #1f2937; --a-border: #374151; --a-border-strong: #4b5563;
-  --a-text: #f3f4f6; --a-muted: #9ca3af; --a-ink800: #e5e7eb; --a-amber200: #57430e; --a-amber900: #fcd34d; --a-skel: #2b3646;
+  --a-text: #f3f4f6; --a-muted: #9ca3af; --a-ink800: #e5e7eb; --a-amber100: #45390f; --a-amber200: #57430e; --a-amber900: #fcd34d; --a-skel: #2b3646;
 }
 
 * { box-sizing: border-box; }
@@ -88,8 +89,19 @@ button:focus-visible { outline: 2px solid var(--pick); outline-offset: 2px; }
 /* ---------- the phone ---------- */
 .phone { width: 100%; max-width: 348px; border: 1px solid var(--rule); border-radius: 22px; background: var(--a-page); color: var(--a-text); overflow: hidden; font-family: var(--body); font-size: 13px; line-height: 1.3; user-select: none; -webkit-user-select: none; }
 .screen { position: relative; overflow: hidden; background: var(--a-page); }
-.phone.live .screen { height: 520px; }
-.phone.still .screen { height: 300px; }
+.phone.live .under { height: 500px; }
+.phone.still .under { height: 290px; }
+/* An iPhone's own bar: the clock, the camera and the battery. The page starts at the top of the glass,
+   so the first line of the page paints this band in its own colour and starts its words under it. */
+.status { position: relative; z-index: 7; height: 50px; padding: 8px 28px 0; display: flex; align-items: center; justify-content: space-between; background: var(--a-chrome); color: var(--a-text); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.phone[data-first="amber"] .status { background: var(--a-amber100); }
+.status .island { position: absolute; left: 50%; top: 11px; width: 92px; height: 27px; margin-left: -46px; border-radius: 14px; background: #000000; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1); }
+.status .icons { display: flex; align-items: center; gap: 5px; }
+.status .icons i { display: block; background: currentColor; }
+.status .icons .sig { width: 16px; height: 10px; clip-path: polygon(0 100%, 0 60%, 22% 60%, 22% 100%, 26% 100%, 26% 40%, 48% 40%, 48% 100%, 52% 100%, 52% 20%, 74% 20%, 74% 100%, 78% 100%, 78% 0, 100% 0, 100% 100%); }
+.status .icons .bat { width: 23px; height: 11px; border-radius: 3px; }
+/* Everything of the page that sits under that bar. The row is clipped here, so it slides up behind the bar and no word crosses the clock or the camera. */
+.under { position: relative; overflow: hidden; }
 .flow { display: flex; flex-direction: column; }
 
 /* the row: three thirds, a thumb tall, as .modeRow draws them */
@@ -220,6 +232,14 @@ code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.86em
           </div>
         </div>
         <div class="knob">
+          <span class="lab" id="lab-bar">Phone</span>
+          <div class="seg" role="group" aria-labelledby="lab-bar">
+            <button type="button" id="bar-on" data-set="bar" data-val="on" aria-pressed="true">iPhone, camera bar</button>
+            <button type="button" id="bar-off" data-set="bar" data-val="off" aria-pressed="false">No bar</button>
+          </div>
+          <span class="why">An iPhone's own bar holds the clock, the camera and the battery. The row starts under it and slides away behind it.</span>
+        </div>
+        <div class="knob">
           <span class="lab" id="lab-top">Top of the page</span>
           <div class="seg" role="group" aria-labelledby="lab-top">
             <button type="button" id="top-viewas" data-set="top" data-val="viewas" aria-pressed="true">View as band</button>
@@ -275,6 +295,7 @@ code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.86em
   <section aria-labelledby="h-second">
     <div class="rowhead"><h2 id="h-second">Second draw: the one to build</h2><span class="tag">The pick</span></div>
     <p class="prose soft">The row lies over the top of the page, the way a phone's own notification does. It comes down over the header and goes back up, and nothing under it moves either time. The bar starts full and runs out, in grey. A small handle stays behind. The thumb's ring sits on Clock In in all four.</p>
+    <p class="prose soft">On an iPhone the top of the glass belongs to the phone: the clock, the camera and the battery. The row never draws there. Its three thirds start under that bar, and when the row leaves it slides up behind the bar, so no word crosses the clock or the camera. The handle's grey runs up under the bar, as the row's does today.</p>
     <div class="stills" id="stills-2"></div>
     <div class="prose">
       <p><strong>What it still costs.</strong> For five seconds on each visit the row covers the search box, the gear and any band above the header. A swipe up clears it at once. A person who wants the gear first will learn the swipe or wait. That is the price of a page that never jumps.</p>
@@ -334,7 +355,7 @@ code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.86em
   var root = document.documentElement;
   var darkNow = root.getAttribute('data-theme') === 'dark' || (root.getAttribute('data-theme') !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
   var calmNow = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  var st = { draw: 2, look: darkNow ? 'dark' : 'light', top: 'viewas', handle: true, calm: calmNow, mode: 'full', phase: 'showing', left: SHOW_MS };
+  var st = { draw: 2, look: darkNow ? 'dark' : 'light', top: 'viewas', handle: true, bar: true, calm: calmNow, mode: 'full', phase: 'showing', left: SHOW_MS };
 
   var GEAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>';
 
@@ -380,8 +401,14 @@ code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.86em
       var y = (o.draw === 1 ? ROW : (o.handle ? GRAB : 0)) + (o.top === 'viewas' ? VIEWAS : 0) + HEAD + 10 + 22;
       thumb = '<div class="thumb" style="top:' + (y - 19) + 'px"></div>';
     }
-    return '<div class="phone ' + (live ? 'live' : 'still') + (o.calm ? ' calm' : '') + '" data-draw="' + o.draw + '"' + (live ? '' : ' aria-hidden="true"') + '><div class="screen">' +
-      (o.draw === 2 ? row : '') + '<div class="shield"></div>' + flow + thumb + '</div></div>';
+    var status = o.bar ? '<div class="status"><span>9:41</span><span class="island"></span><span class="icons"><i class="sig"></i><i class="bat"></i></span></div>' : '';
+    return '<div class="phone ' + (live ? 'live' : 'still') + (o.calm ? ' calm' : '') + '" data-draw="' + o.draw + '" data-first="' + firstLine(o, o.state === 'gone') + '"' + (live ? '' : ' aria-hidden="true"') + '><div class="screen">' +
+      status + '<div class="under">' + (o.draw === 2 ? row : '') + '<div class="shield"></div>' + flow + thumb + '</div></div></div>';
+  }
+  /** Whose colour runs up under the camera bar: the first line of the page. The row and the handle are the header's grey, the View as band is amber. */
+  function firstLine(o, rowGone) {
+    if (o.draw === 1 ? !rowGone : o.handle) return 'chrome';
+    return o.top === 'viewas' ? 'amber' : 'chrome';
   }
   function stillRow(state, calm) {
     if (calm && (state === 'arriving' || state === 'leaving')) return 'opacity:0.5';
@@ -399,16 +426,16 @@ code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.86em
       ['gone', 'Gone', 'No trace of the row. The thumb that aimed at Clock In is on the card under it.'],
     ],
     2: [
-      ['arriving', 'Arriving', 'The row drops over the top of the page. Nothing under it moves.'],
+      ['arriving', 'Arriving', 'The row drops over the top of the page. Nothing under it moves.', 'The row drops out from under the camera bar, over the top of the page. Nothing under it moves.'],
       ['mid', 'Mid-count', 'The bar started full and is running out toward the left.'],
-      ['leaving', 'Leaving', 'The row slides up and out. What was under it never moved.'],
+      ['leaving', 'Leaving', 'The row slides up and out. What was under it never moved.', 'The row slides up behind the camera bar. No word crosses the clock or the camera.'],
       ['gone', 'Gone', 'A small handle is left. Clock In is where it always was.'],
     ],
   };
   function paintStills() {
     [1, 2].forEach(function (d) {
       document.getElementById('stills-' + d).innerHTML = STILLS[d].map(function (s) {
-        return '<figure>' + phoneHTML({ draw: d, state: s[0], top: st.top, handle: st.handle, calm: d === 2 && st.calm, mode: 'full' }) + '<figcaption><b>' + s[1] + '</b>' + s[2] + '</figcaption></figure>';
+        return '<figure>' + phoneHTML({ draw: d, state: s[0], top: st.top, handle: st.handle, bar: st.bar, calm: d === 2 && st.calm, mode: 'full' }) + '<figcaption><b>' + s[1] + '</b>' + (st.bar && s[3] ? s[3] : s[2]) + '</figcaption></figure>';
       }).join('');
     });
   }
@@ -422,7 +449,7 @@ code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.86em
 
   function build(slideIn) {
     seq++;
-    stage.innerHTML = phoneHTML({ draw: st.draw, top: st.top, handle: st.handle, calm: st.calm, mode: st.mode, live: true });
+    stage.innerHTML = phoneHTML({ draw: st.draw, top: st.top, handle: st.handle, bar: st.bar, calm: st.calm, mode: st.mode, live: true });
     phone = stage.firstElementChild;
     st.left = SHOW_MS;
     down = null;
@@ -475,6 +502,7 @@ code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.86em
 
   function paint() {
     phone.setAttribute('data-phase', st.phase);
+    phone.setAttribute('data-first', firstLine(st, st.phase === 'gone'));
     Array.prototype.forEach.call(phone.querySelectorAll('[data-third]'), function (b) {
       var on = b.getAttribute('data-third') === st.mode;
       b.setAttribute('aria-pressed', String(on));
@@ -565,7 +593,7 @@ code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.86em
   };
   function paintKnobs() {
     document.getElementById('wrap').classList.toggle('look-dark', st.look === 'dark');
-    var vals = { draw: String(st.draw), look: st.look, top: st.top, handle: st.handle ? 'on' : 'off', calm: st.calm ? 'on' : 'off' };
+    var vals = { draw: String(st.draw), look: st.look, top: st.top, handle: st.handle ? 'on' : 'off', calm: st.calm ? 'on' : 'off', bar: st.bar ? 'on' : 'off' };
     Array.prototype.forEach.call(document.querySelectorAll('[data-set]'), function (b) {
       b.setAttribute('aria-pressed', String(vals[b.getAttribute('data-set')] === b.getAttribute('data-val')));
       if (b.getAttribute('data-set') === 'handle') b.disabled = st.draw === 1;
@@ -581,6 +609,7 @@ code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.86em
     else if (key === 'top') st.top = val;
     else if (key === 'handle') st.handle = val === 'on';
     else if (key === 'calm') st.calm = val === 'on';
+    else if (key === 'bar') st.bar = val === 'on';
     paintKnobs();
     paintStills();
     if (key !== 'look') { st.mode = 'full'; build(true); }

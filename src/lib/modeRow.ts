@@ -5,11 +5,16 @@
  * the only place that said how to get back. The row is the way in and the way back in one spot: three
  * thirds, the one drawn filled, and a press on another switches to it.
  *
- * On a phone the row is **tucked**. It shows on a person's first visits, after every switch and while
- * a guard below holds it open. After that the page opens with the row out of sight, and a pull down at
- * the top of the page, or a tap on the small handle there, brings it down. The app switches off the
- * rubber band at the top of every page (`overscroll-behavior-y: none` in `index.css`), so nothing else
- * answers that pull.
+ * On the Dashboard the row is **counted** (punch list #433, the owner's third look, 2026-11-24). It
+ * shows on each visit for five seconds, with a bar on its lower edge that runs out, then slides up
+ * and away. `modeRowCount.ts` is that count. The row lies over the top of the page and never pushes
+ * it, so nothing under a thumb moves when the row comes or goes. A small handle keeps the row's
+ * place. A tap on it, or a pull down at the top of the page, brings the row back. The app switches
+ * off the rubber band at the top of every page (`overscroll-behavior-y: none` in `index.css`), so
+ * nothing else answers that pull.
+ *
+ * In Task Mode the row is **held**: a line of the page, always in sight, with no count. Task Mode is
+ * one page and a gear, and the row is its way out.
  *
  * The row is a phone's. Past a phone's width it is not drawn, and the gear menu lists the same three
  * as a list with one dot (`gearModesRows`, the owner's second look, 2026-11-23). A press there goes
@@ -20,15 +25,14 @@
  * row of the gear menu. The estimator, the one role this row is not drawn for, has the gear menu's list
  * at every width.
  *
- * This file is the rule and every word on the row. The rule is pure. The phone's memory of the row
- * (was a third ever pressed, how many times the page opened) is read and written at the foot.
+ * This file is the rule and every word on the row. The rule is pure, and nothing is kept on the
+ * phone: until #433 it remembered a press and a count of opens, to decide when the row began to tuck.
  */
 
 import type { UserRole } from '../hooks/useAuth'
 import { canLeaveJobFieldReport } from './canLeaveJobFieldReport'
 import type { PageMode, PageModeWrite } from './pageMode'
 import { roleHomePath } from './roleGate'
-import { isSubcontractorLikeRole } from './subcontractorLikeRole'
 
 type Role = UserRole | string | null | undefined
 
@@ -42,32 +46,21 @@ export const MODE_ROW_WORDS = {
   /** The row's name for a screen reader. */
   group: 'Mode',
   thirds: { task: 'Task Mode', full: 'Dashboard', job: 'Job Mode' } satisfies Record<ModeRowThird, string>,
-  /** The mark on Job Mode until the person has pressed a third. */
-  newMark: 'New',
   /** The handle's name and its tip. */
   handle: 'Show the mode switcher',
   handleTip: 'Pull down or tap here to switch between Task Mode, the Dashboard and Job Mode',
 } as const
 
-/** Whether the small handle is drawn on the page's top while the row is tucked. One line to change. */
+/** Whether the small handle is drawn in the row's place on the Dashboard. One line to change. */
 export const MODE_ROW_HANDLE = true
-
-/** The row shows on this many opens of the page before it starts to tuck, unless a third is pressed first. */
-export const MODE_ROW_FIRST_VISITS = 5
-
-/**
- * How long the row stays on the page before the open is counted. The office's phone opens on the
- * Dashboard and is sent on to the schedule within a moment (`assistantDispatchLanding`), and that is
- * not a look at the row: counted, five such landings would tuck a row nobody had seen.
- */
-export const MODE_ROW_OPEN_DWELL_MS = 1500
 
 /** How far a finger travels down, at the top of the page, before the row comes down. */
 export const MODE_ROW_PULL_PX = 36
 
-/** The usage controls (`ui_nav_clicks`): a third pressed, and the tucked row brought down. */
+/** The usage controls (`ui_nav_clicks`): a third pressed, the row brought down by hand, and the row sent away by a swipe. */
 export const MODE_ROW_PRESS_CONTROL = 'mode_row'
 export const MODE_ROW_SHOWN_CONTROL = 'mode_row_shown'
+export const MODE_ROW_SENT_CONTROL = 'mode_row_sent'
 
 /**
  * Every role whose first page is the Dashboard, the page the row sits on (the owner, 2026-11-23: *give
@@ -118,32 +111,14 @@ export function modeRowLandingPath(third: ModeRowThird, pathname: string): strin
   return path === '/dashboard' ? null : '/dashboard'
 }
 
-/** What this phone remembers of the row for this person. */
-export interface ModeRowMemory {
-  /** A third was pressed here, ever. */
-  pressed: boolean
-  /** How many times the page opened with the row on it, this open counted. */
-  opens: number
-}
-
-export const MODE_ROW_NO_MEMORY: ModeRowMemory = { pressed: false, opens: 0 }
-
-/** The first visits: the row has to be seen before it earns its tuck. */
-export function modeRowFirstVisits(memory: ModeRowMemory): boolean {
-  return !memory.pressed && memory.opens <= MODE_ROW_FIRST_VISITS
-}
-
 /**
- * The guards that hold the row open on a phone whatever the memory says.
- *
- * - **Task Mode.** The app is one page with a gear, and the green *Task Mode · Exit* strip this row
- *   replaced was always on screen so a borrowed tablet never looked broken. The row keeps that promise.
- * - **A sub or a helper off Job Mode.** Job Mode is their first screen. One of them who pressed
- *   Dashboard keeps the way back in sight until they take it.
+ * Whether the row is held: a line of the page, always in sight, never counted. That is Task Mode, where
+ * the app is one page with a gear and the row is the way out, as the green *Task Mode · Exit* strip
+ * was. Until #433 a sub or a helper off Job Mode held it too. Now they get the same five seconds as
+ * everyone, with the handle and the next visit as their ways back.
  */
-export function modeRowHeldOpen(role: Role, mode: PageMode): boolean {
-  if (mode === 'task') return true
-  return isSubcontractorLikeRole(role as UserRole | null | undefined) && mode !== 'job'
+export function modeRowHeldOpen(mode: PageMode): boolean {
+  return mode === 'task'
 }
 
 /**
@@ -155,8 +130,11 @@ export function modeRowDrawnHere(role: Role, phone: boolean): boolean {
   return phone && modeRowOfferedToRole(role)
 }
 
-/** `none`: not this role, this width or this page. `row`: the three thirds. `tucked`: out of sight, a pull away. */
-export type ModeRowDraw = 'none' | 'row' | 'tucked'
+/**
+ * `none`: not this role, this width or this page. `held`: the three thirds as a line of the page, for
+ * good. `counted`: the handle as the page's first line, and the row over it for five seconds a visit.
+ */
+export type ModeRowDraw = 'none' | 'held' | 'counted'
 
 export function modeRowDraw(input: {
   role: Role
@@ -164,23 +142,13 @@ export function modeRowDraw(input: {
   mode: PageMode
   /** A phone's width. Past it the row is not drawn. */
   phone: boolean
-  memory: ModeRowMemory
-  /** Brought down this visit: by a pull, the handle or a switch. */
-  shownNow: boolean
 }): ModeRowDraw {
   if (!modeRowDrawnHere(input.role, input.phone) || !modeRowOnPage(input.pathname, input.mode)) return 'none'
-  if (input.shownNow) return 'row'
-  if (modeRowFirstVisits(input.memory) || modeRowHeldOpen(input.role, input.mode)) return 'row'
-  return 'tucked'
-}
-
-/** Job Mode wears the mark until a third is pressed, and only while it is the one not yet tried. */
-export function modeRowNewMark(third: ModeRowThird, mode: PageMode, memory: ModeRowMemory): boolean {
-  return third === 'job' && mode !== 'job' && !memory.pressed
+  return modeRowHeldOpen(input.mode) ? 'held' : 'counted'
 }
 
 /**
- * One reading of a finger on the page while the row is tucked. `pull` brings the row down. `cancel`
+ * One reading of a finger on the page while the row is out of sight. `pull` brings the row down. `cancel`
  * stops watching this touch: the page is not at its top, or the finger went up or sideways.
  */
 export function modeRowPull(input: { startX: number; startY: number; x: number; y: number; scrollTop: number }): 'pull' | 'cancel' | 'wait' {
@@ -190,50 +158,4 @@ export function modeRowPull(input: { startX: number; startY: number; x: number; 
   if (dy < -8) return 'cancel'
   if (dx > 12 && dx > dy) return 'cancel'
   return dy >= MODE_ROW_PULL_PX ? 'pull' : 'wait'
-}
-
-/** The open this page load makes of the stored count. It stops one past the first visits, so it never grows. */
-export function modeRowCountOpen(memory: ModeRowMemory): ModeRowMemory {
-  return { ...memory, opens: Math.min(memory.opens + 1, MODE_ROW_FIRST_VISITS + 1) }
-}
-
-/* ------------------------------------------------------------------ the phone's memory */
-
-const PRESSED_PREFIX = 'mode_row_pressed'
-const OPENS_PREFIX = 'mode_row_opens'
-
-export function modeRowPressedKey(userId: string): string {
-  return `${PRESSED_PREFIX}_${userId}`
-}
-
-export function modeRowOpensKey(userId: string): string {
-  return `${OPENS_PREFIX}_${userId}`
-}
-
-/** Pure: whatever is in storage, as a memory. Anything unreadable is no memory. */
-export function parseModeRowMemory(pressed: string | null | undefined, opens: string | null | undefined): ModeRowMemory {
-  const n = Number.parseInt(opens ?? '', 10)
-  return { pressed: pressed === '1', opens: Number.isFinite(n) && n > 0 ? n : 0 }
-}
-
-export function readModeRowMemory(userId: string | null | undefined): ModeRowMemory {
-  if (!userId) return MODE_ROW_NO_MEMORY
-  try {
-    if (typeof localStorage === 'undefined') return MODE_ROW_NO_MEMORY
-    return parseModeRowMemory(localStorage.getItem(modeRowPressedKey(userId)), localStorage.getItem(modeRowOpensKey(userId)))
-  } catch {
-    return MODE_ROW_NO_MEMORY
-  }
-}
-
-export function writeModeRowMemory(userId: string | null | undefined, memory: ModeRowMemory): void {
-  if (!userId) return
-  try {
-    if (typeof localStorage === 'undefined') return
-    if (memory.pressed) localStorage.setItem(modeRowPressedKey(userId), '1')
-    else localStorage.removeItem(modeRowPressedKey(userId))
-    localStorage.setItem(modeRowOpensKey(userId), String(memory.opens))
-  } catch {
-    // ignore
-  }
 }
