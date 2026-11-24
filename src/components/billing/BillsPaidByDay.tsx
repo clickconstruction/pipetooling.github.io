@@ -206,25 +206,29 @@ function PaidLine({ line, phone, how }: { line: BillsPaidLine; phone: boolean; h
  * The quiet line under a picked day: the bank deposits that landed that day and are on no bill yet, what they add
  * to, and the press to where they are put on a bill. Dashed and grey, with its amount grey as a credit in kind's
  * is, because none of it is in the day's figure. A role that cannot open the deposits reads the line with no press.
+ *
+ * Two columns, as a payment's line is: the sentence, which wraps, and the total beside it. On a phone the two do
+ * not fit on one row, and as a wrapping row the total fell to a row of its own under the sentence.
  */
 function NoBillLine({ line, phone, canOpen }: { line: BillsPaidNoBillLine; phone: boolean; canOpen: boolean }) {
-  const band: CSSProperties = { display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.1rem 0.5rem', margin: '0.35rem 0', padding: '0.3rem 0.5rem', borderRadius: 6, border: '1px dashed var(--border)', fontSize: '0.8125rem', color: 'var(--text-muted)', minWidth: 0 }
+  const band: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'baseline', gap: '0.1rem 0.6rem', margin: '0.35rem 0', padding: '0.3rem 0.5rem', borderRadius: 6, border: '1px dashed var(--border)', fontSize: '0.8125rem', color: 'var(--text-muted)', minWidth: 0 }
+  const whole: CSSProperties = { gridColumn: '1 / -1' }
   if (line.kind === 'unread') {
     return (
       <div data-testid="bills-paid-no-bill" data-state="unread" style={band}>
-        {line.words}
+        <span style={whole}>{line.words}</span>
       </div>
     )
   }
   return (
     <div data-testid="bills-paid-no-bill" data-state="deposits" style={band}>
-      <span>
+      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
         <ValueSentence text={line.words} />
       </span>
-      <span style={{ ...money, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+      <span style={{ ...money, color: 'var(--text-muted)' }}>
         <Money amount={line.total} />
       </span>
-      <span style={{ flexBasis: '100%' }}>
+      <span style={whole}>
         {BILLS_PAID_NO_BILL_NOT_ADDED}
         {canOpen ? (
           <>

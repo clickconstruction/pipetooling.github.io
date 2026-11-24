@@ -383,6 +383,33 @@ describe('BillsPaidByDay', () => {
       expect(screen.queryByText('The payments did not read.')).toBeNull()
     })
 
+    it('keeps the total beside the sentence, as a payment’s amount sits beside its name', async () => {
+      // On a phone the sentence and the total do not fit on one row. The line was a wrapping row, so the total fell
+      // to a row of its own under the sentence. As two columns the sentence wraps and the total stays beside it.
+      io.data = march
+      io.phone = true
+      io.noBill = noBill({ [`${OLD}-20`]: { deposits: 2, usd: 1840.75 } })
+      renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-20` })
+      const line = await screen.findByTestId('bills-paid-no-bill')
+      expect(line.style.display).toBe('grid')
+      expect(line.style.gridTemplateColumns).toBe('minmax(0, 1fr) auto')
+      const [sentence, total, rest] = Array.from(line.children) as HTMLElement[]
+      expect(sentence!.textContent).toBe('2 deposits landed that are on no bill yet.')
+      expect(total!.textContent).toBe('$1,840.75')
+      // The words under them, with the press, take the line's whole width.
+      expect(rest!.style.gridColumn).toBe('1 / -1')
+      expect(rest!.textContent).toBe('Not added to the day. Open deposits')
+    })
+
+    it('lets the words that the bank did not read take the line’s whole width', async () => {
+      io.data = march
+      io.noBill = { state: 'unread' }
+      renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-20` })
+      const line = await screen.findByTestId('bills-paid-no-bill')
+      expect((line.firstElementChild as HTMLElement).style.gridColumn).toBe('1 / -1')
+      expect(line.textContent).toBe('The bank deposits did not read. A deposit that is on no bill yet is not shown.')
+    })
+
     it('gives the press a fingertip of height on a phone', async () => {
       io.data = march
       io.phone = true
