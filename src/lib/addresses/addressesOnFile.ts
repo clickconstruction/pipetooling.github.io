@@ -180,17 +180,19 @@ const houseAndRest = (key: string): { house: string; rest: string } | null => {
   return m ? { house: m[1] ?? '', rest: m[2] ?? '' } : null
 }
 
-/** The words of an address as written, each marked when its cleaned form is not among the other side's. */
+const writtenWords = (address: string): string[] => address.trim().split(/\s+/).filter(Boolean)
+
+/**
+ * The words of an address as written, each marked when its cleaned form is not among the other side's. Both sides
+ * are cleaned a word at a time: the whole address's key drops a zip code at its end, so read against the key a zip
+ * both addresses share was marked as a difference.
+ */
 export function markedWords(address: string, other: string): { text: string; differs: boolean }[] {
-  const theirs = new Set(normalizeAddressKey(other).split(' ').filter(Boolean))
-  return address
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((text) => {
-      const cleaned = normalizeAddressKey(text)
-      return { text, differs: cleaned !== '' && !cleaned.split(' ').every((w) => theirs.has(w)) }
-    })
+  const theirs = new Set(writtenWords(other).flatMap((w) => normalizeAddressKey(w).split(' ')).filter(Boolean))
+  return writtenWords(address).map((text) => {
+    const cleaned = normalizeAddressKey(text)
+    return { text, differs: cleaned !== '' && !cleaned.split(' ').every((w) => theirs.has(w)) }
+  })
 }
 
 /**
