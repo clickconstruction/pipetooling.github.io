@@ -200,8 +200,8 @@ leave, which replaces calls 2 and 3. It is drawn and planned in [#433](../mode-r
 
 ## How to verify
 
-1. View as a leader on a phone with nothing stored. The Dashboard opens with the row showing,
-   **Dashboard** filled and a green *New* on **Job Mode**.
+1. View as a leader on a phone with nothing stored. The Dashboard opens with the row showing and
+   **Dashboard** filled. No third carries a mark (v2.8455).
 2. Press **Job Mode**. The Job Mode page opens with the row showing and **Job Mode** filled. Press
    **Dashboard**. The Dashboard is back, with the Dispatch Mode bar if the leader had it.
 3. Reload. The page opens with only the handle. Pull down at the top of the page. The row comes down.

@@ -117,10 +117,11 @@ describe('ModeRow', () => {
     expect(localStorage.getItem(modeRowOpensKey('u1'))).toBe('2')
   })
 
-  it('on a phone it shows on the first visits with Job Mode marked new, and counts the open once the page has stayed', () => {
+  it('on a phone it shows on the first visits with no mark on any third, and counts the open once the page has stayed', () => {
     onAPhone()
     const { view } = draw()
-    expect(words()).toEqual(['Task Mode', 'Dashboard', `Job Mode${MODE_ROW_WORDS.newMark}`])
+    expect(words()).toEqual(['Task Mode', 'Dashboard', 'Job Mode'])
+    expect(view.container.querySelector('.modeRowNew')).toBeNull()
     expect(localStorage.getItem(modeRowOpensKey('u1'))).toBeNull()
     stay()
     expect(localStorage.getItem(modeRowOpensKey('u1'))).toBe('1')
@@ -193,7 +194,7 @@ describe('ModeRow', () => {
     expect(localStorage.getItem(modeRowPressedKey('u1'))).toBe('1')
     expect(vi.mocked(recordNavClick)).toHaveBeenCalledWith('u1', 'master_technician', 'mode_row', '#job')
     expect(vi.mocked(recordNavClick)).toHaveBeenCalledWith('u1', 'master_technician', 'job_mode_enabled', '#row')
-    // The row stays in sight after the switch, with no mark left on Job Mode.
+    // The row stays in sight after the switch.
     expect(words()).toEqual(['Task Mode', 'Dashboard', 'Job Mode'])
   })
 

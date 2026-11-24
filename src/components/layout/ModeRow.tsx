@@ -16,7 +16,6 @@ import {
   modeRowCountOpen,
   modeRowDraw,
   modeRowLandingPath,
-  modeRowNewMark,
   modeRowOnPage,
   modeRowPressWrites,
   modeRowPull,
@@ -48,13 +47,12 @@ function pageScrollTop(): number {
  * that shows another person's Task Mode draws them too, with no press, so that window looks like the
  * person's own screen.
  */
-export function ModeRowThirds({ on, isNew, onPress }: { on: ModeRowThird; isNew?: (third: ModeRowThird) => boolean; onPress?: (third: ModeRowThird) => void }) {
+export function ModeRowThirds({ on, onPress }: { on: ModeRowThird; onPress?: (third: ModeRowThird) => void }) {
   return (
     <div className="modeRow" role="group" aria-label={MODE_ROW_WORDS.group}>
       {MODE_ROW_THIRDS.map((third) => (
         <button key={third} type="button" className="modeRowThird" data-mode-third={third} aria-pressed={third === on} onClick={() => onPress?.(third)}>
           {MODE_ROW_WORDS.thirds[third]}
-          {isNew?.(third) ? <span className="modeRowNew">{MODE_ROW_WORDS.newMark}</span> : null}
         </button>
       ))}
     </div>
@@ -239,7 +237,7 @@ export function ModeRow({
       {...(slideIn ? { 'data-mode-row-in': '' } : null)}
       style={{ background: 'var(--chrome-bg)' }}
     >
-      <ModeRowThirds on={on} isNew={(third) => modeRowNewMark(third, mode, memory)} onPress={press} />
+      <ModeRowThirds on={on} onPress={press} />
     </AppTopBanner>
   )
 }

@@ -42,8 +42,6 @@ export const MODE_ROW_WORDS = {
   /** The row's name for a screen reader. */
   group: 'Mode',
   thirds: { task: 'Task Mode', full: 'Dashboard', job: 'Job Mode' } satisfies Record<ModeRowThird, string>,
-  /** The mark on Job Mode until the person has pressed a third. */
-  newMark: 'New',
   /** The handle's name and its tip. */
   handle: 'Show the mode switcher',
   handleTip: 'Pull down or tap here to switch between Task Mode, the Dashboard and Job Mode',
@@ -172,11 +170,6 @@ export function modeRowDraw(input: {
   if (input.shownNow) return 'row'
   if (modeRowFirstVisits(input.memory) || modeRowHeldOpen(input.role, input.mode)) return 'row'
   return 'tucked'
-}
-
-/** Job Mode wears the mark until a third is pressed, and only while it is the one not yet tried. */
-export function modeRowNewMark(third: ModeRowThird, mode: PageMode, memory: ModeRowMemory): boolean {
-  return third === 'job' && mode !== 'job' && !memory.pressed
 }
 
 /**

@@ -11,7 +11,6 @@ import {
   modeRowFirstVisits,
   modeRowHeldOpen,
   modeRowLandingPath,
-  modeRowNewMark,
   modeRowOfferedToRole,
   modeRowOnPage,
   modeRowOpensKey,
@@ -157,15 +156,6 @@ describe('when the row shows', () => {
     // A leader's Dashboard is their own first screen: nothing to hold.
     expect(modeRowHeldOpen('master_technician', 'full')).toBe(false)
     expect(modeRowHeldOpen('superintendent', 'dispatch')).toBe(false)
-  })
-
-  it('marks Job Mode as new until a third is pressed, and never once Job Mode is on', () => {
-    expect(modeRowNewMark('job', 'full', MODE_ROW_NO_MEMORY)).toBe(true)
-    expect(modeRowNewMark('job', 'dispatch', MODE_ROW_NO_MEMORY)).toBe(true)
-    expect(modeRowNewMark('job', 'job', MODE_ROW_NO_MEMORY)).toBe(false)
-    expect(modeRowNewMark('job', 'full', USED)).toBe(false)
-    expect(modeRowNewMark('task', 'full', MODE_ROW_NO_MEMORY)).toBe(false)
-    expect(modeRowNewMark('full', 'job', MODE_ROW_NO_MEMORY)).toBe(false)
   })
 })
 
