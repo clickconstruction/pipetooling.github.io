@@ -2,7 +2,7 @@
 name: "The mode row shows for five seconds, then leaves"
 number: 433
 group: gated
-status: asked 2026-11-24 after a look at the row on a phone · read and drawn twice the same day, the ask word for word and then again after a critique · nothing is built · waits on the owner's look at the mock-up and a word on nine calls
+status: asked 2026-11-24 after a look at the row on a phone · read and drawn twice the same day, the ask word for word and then again after a critique · the owner liked the second draw and asked that the iPhone's camera bar be allowed for, drawn the same day · nothing is built · waits on a word on nine calls
 summary: >
   The owner likes the idea of the mode row and not how it was built. The New mark comes off Job Mode.
   The row shows on top of a phone's Dashboard for five seconds on each visit, with a bar that says
@@ -10,9 +10,9 @@ summary: >
   can leave under a finger, Task Mode loses its way out and the bar reads as loading. The second draw
   lays the row over the page so nothing under it moves, holds it while a finger is on it, keeps the
   handle and the pull that are already built, and runs a grey bar down to nothing.
-next: The owner watches the mock-up and answers the nine calls. PR 1, the New mark coming off, needs no answer and can go first.
+next: The owner answers the nine calls from the mock-up. PR 1, the New mark coming off, needs no answer and can go first.
 size: M as a train of five (XS · S · S · M · S)
-blocker: The owner's look at the mock-up and a word on the calls. PR 1 waits on nothing.
+blocker: A word on the calls. PR 1 waits on nothing.
 opinion: gated — the second draw is the one to build; calls 1, 2 and 5 are the three that change the build, the rest are a line each
 ---
 
@@ -20,8 +20,8 @@ opinion: gated — the second draw is the one to build; calls 1, 2 and 5 are the
 
 [`mockup.html`](mockup.html) sits beside this card. It is one page with a phone that moves, a
 **Play again** press, the four moments of each draw as stills, the critique and the calls. It has a
-light and a dark look, a View as band to switch on and off, and the form a person gets who asked their
-phone for less motion. Every job, street and name on it is made up.
+light and a dark look, an iPhone's camera bar and a View as band to switch on and off, and the form a
+person gets who asked their phone for less motion. Every job, street and name on it is made up.
 
 The page as the owner saw it is a private artifact:
 
@@ -111,6 +111,14 @@ bottom edge. At five seconds the row slides up and the page slides up after it. 
   a second.
 - **The strip the row uncovers takes no press for a third of a second**, so a thumb aimed at a third
   does not land on the gear.
+- **The camera bar.** The owner, 2026-11-24, on seeing the second draw: *I like your improvements to
+  make this seamless. Please be aware that on iPhones there is a bar at the top that we need to
+  accommodate that holds the camera.* On a Home Screen iPhone the page starts at the top of the glass,
+  under the clock, the camera and the battery. The row never draws there. Its thirds start under that
+  bar, and the row is clipped at the bar's lower edge, so it slides up behind the bar and no word
+  crosses the clock or the camera. The band under the bar is painted by the page's first line, as
+  today: the handle's grey, which is the row's own. With no handle (call 1 flipped) it is the View as
+  band's amber or the header's grey.
 
 **What the second draw still costs.** For five seconds on each visit the row covers the search box,
 the gear and any band above the header. A swipe up clears it. That is the price of a page that never
@@ -177,7 +185,10 @@ flipped call changes the PR named beside it.
 ### PR 3 · The row lies over the page (S)
 
 - **What changes:** on the row's pages the handle is always the page's first line, and the row is
-  drawn over it, fixed to the top of the glass, paying `env(safe-area-inset-top)` itself. Its timing
+  drawn over it. The handle stays the `AppTopBanner` that pays `env(safe-area-inset-top)` and paints
+  the band under the camera bar. The row sits in a clip fixed at `top: env(safe-area-inset-top)`, so
+  it starts under the bar and slides away behind it. The inset is 0px in a browser tab and on
+  Android, where the row slides out past the top of the screen. Its timing
   does not change yet: the first five opens, then the handle. So this PR is one visible change, the
   page no longer starting lower while the row shows.
 - **Where:** `ModeRow.tsx` and the `.modeRow` block of `src/index.css`. The handle stays the
@@ -219,8 +230,10 @@ flipped call changes the PR named beside it.
 
 The lens frame cannot answer these. A Home Screen iPhone and an Android phone, in a hand:
 
-1. **The status bar.** The row's colour runs up under the clock, the row clears the camera, and it
-   slides out past the top of the glass with no strip left behind.
+1. **The camera bar.** On an iPhone with the island and on one with the notch: the thirds start
+   clear of the camera, the band under the clock is one grey with the row, and the row slides away
+   behind the bar with no word crossing the clock. The same with the phone turned on its side, where
+   the camera is at an edge.
 2. **Five seconds, felt.** Whether it is long enough to read three words and press one, with the bar
    in the corner of the eye.
 3. **A resting thumb.** A real finger on a third holds the row past five seconds, and lifting it
@@ -237,4 +250,5 @@ The lens frame cannot answer these. A Home Screen iPhone and an Android phone, i
 
 A mock-up and this plan. Nothing in the app has changed. The mock-up was walked headless at a desk's
 width in the light look and a phone's in the dark: the count, the handle, a held press, a press that
-switches, the swipe up, the pull down and Task Mode holding each did what the page says.
+switches, the swipe up, the pull down and Task Mode holding each did what the page says. With the
+camera bar drawn, the row's thirds start 7 px under it and nothing of the row draws over it at any moment.
