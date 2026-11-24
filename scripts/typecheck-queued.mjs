@@ -6,15 +6,20 @@
  *   npm run typecheck                 # waits for the lock, prints who holds it every 30 s, then runs tsc
  *   TYPECHECK_NO_LOCK=1 npm run typecheck   # CI: no lock, each job is its own machine
  *   TYPECHECK_LOCK_DIR=/some/dir npm run typecheck   # the lock somewhere else
+ *   TYPECHECK_HEAP_MB=20480 npm run typecheck   # this heap, whatever the machine has
  *
- * Extra arguments go to tsc. The exit code is tsc's. The heap is 12 GB since 2026-11-13, when the whole program's check
- * passed 10 GB on GitHub's runners (16 GB of memory); the build's `tsc -b` in package.json has the same heap.
+ * Extra arguments go to tsc. The exit code is tsc's, or 128 + n when a signal ended it (134 for a heap death).
+ * The heap is sized from the machine's memory since 2026-11-24 (scripts/lib/typecheckHeap.mjs: 85% of it, from
+ * 12,288 MB to 16,384 MB), when the whole program's check needed all of the fixed 12 GB it had had since
+ * 2026-11-13; the build's `tsc -b` (scripts/tsc-build.mjs) takes the same heap through scripts/lib/runTsc.mjs,
+ * which also says in one line when tsc died of its heap and gave no verdict.
  */
-import { execFileSync, spawn } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
+import { runTsc as runTscUnderHeap } from './lib/runTsc.mjs'
 import { acquire, holderRecord, lockRoot, LOCK_DIR_NAME } from './lib/typecheckLock.mjs'
 
-const TSC_ARGS = ['--max-old-space-size=12288', 'node_modules/typescript/bin/tsc', '-p', 'tsconfig.json']
+const TSC_ARGS = ['-p', 'tsconfig.json']
 
 function gitCommonDir() {
   try {
@@ -25,21 +30,7 @@ function gitCommonDir() {
 }
 
 function runTsc() {
-  return new Promise((resolveRun) => {
-    const child = spawn(process.execPath, [...TSC_ARGS, ...process.argv.slice(2)], { stdio: 'inherit' })
-    const forward = (signal) => () => {
-      child.kill(signal)
-    }
-    const onInt = forward('SIGINT')
-    const onTerm = forward('SIGTERM')
-    process.on('SIGINT', onInt)
-    process.on('SIGTERM', onTerm)
-    child.on('exit', (code, signal) => {
-      process.off('SIGINT', onInt)
-      process.off('SIGTERM', onTerm)
-      resolveRun(signal ? 1 : code ?? 1)
-    })
-  })
+  return runTscUnderHeap('typecheck', [...TSC_ARGS, ...process.argv.slice(2)])
 }
 
 async function main() {
@@ -48,7 +39,7 @@ async function main() {
   const lockDir = join(lockRoot({ env: process.env, gitCommonDir: gitCommonDir() }), LOCK_DIR_NAME)
   const record = holderRecord({ pid: process.pid, cwd: process.cwd(), startedAt: Date.now() })
   const release = await acquire(lockDir, record, { onWait: (line) => console.error(line) })
-  // A signal while tsc runs is forwarded to tsc above; its exit comes back here and the lock is released.
+  // A signal while tsc runs is forwarded to tsc (scripts/lib/runTsc.mjs); its exit comes back here and the lock is released.
   // A kill -9 leaves the directory with a dead pid, and the next waiter takes it over.
   try {
     return await runTsc()
