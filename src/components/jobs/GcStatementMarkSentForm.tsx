@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { STATEMENT_SEND_CHANNELS, TEMPERATURES, type RoundMarkAction, type StatementSendChannel, type Temperature } from '../../lib/jobs/gcStatementRounds'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { payDateShortcuts, planWordPromise, standingPromiseYmd, wordPromiseHeadline, wordPromiseSummary, type GcWordBill } from '../../lib/jobs/gcWordPromise'
+import { Money } from '../Money'
 
 export type GcStatementMarkPayload = {
   action: Extract<RoundMarkAction, 'sent' | 'contacted'>
@@ -319,7 +319,7 @@ export default function GcStatementMarkSentForm({
                         said {formatYmdMonthDay(b.promisedYmd)}
                       </span>
                     ) : null}
-                    <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>${formatCurrency(b.amount)}</span>
+                    <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}><Money amount={b.amount} /></span>
                   </label>
                 )
               })}

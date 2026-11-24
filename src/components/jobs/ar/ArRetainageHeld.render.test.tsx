@@ -9,6 +9,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { ArRetainageHeld } from './ArRetainageHeld'
 import { buildRetainageHeldSection, retainageBandSummary } from '../../../lib/ar/retainageHeld'
 import { assembleRetainageHeld, type RetainageJobRow } from '../../../lib/ar/retainageHeldRows'
+import { moneyText } from '../../../test/moneyText'
 
 const TODAY = '2026-10-26'
 
@@ -64,7 +65,7 @@ describe('ArRetainageHeld', () => {
     expect(lines[0]!.textContent).toContain('26d since the job finished · Sep 30')
     expect(lines[1]!.textContent).toContain('C1391')
     expect(lines[1]!.textContent).toContain('release billed · awaiting payment')
-    expect(within(lines[1]!).getByText('$700.00').style.textDecoration).toBe('line-through')
+    expect(within(lines[1]!).getByText(moneyText('$700.00')).style.textDecoration).toBe('line-through')
     expect(lines[2]!.textContent).toContain('C1385')
     expect(lines[2]!.textContent).toContain('from pay application 3, saved Oct 18')
     expect(lines[2]!.textContent).toContain('$5,840.00')

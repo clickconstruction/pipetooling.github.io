@@ -7,6 +7,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import GcBillLines, { type GcBillLine } from './GcBillLines'
+import { moneyText } from '../../test/moneyText'
 
 const activity = vi.hoisted(() => ({ fetch: vi.fn() }))
 vi.mock('../../lib/fetchJobActivityEventsForJobLedger', () => ({ fetchJobActivityEventsForJobLedger: activity.fetch }))
@@ -41,7 +42,7 @@ describe('GcBillLines', () => {
     render(<GcBillLines rows={rows} />)
     expect(screen.getAllByTestId('gc-bill-line')).toHaveLength(3)
     expect(lineFor('651').getByText('billed Sep 21, 2026 · 7d')).toBeTruthy()
-    expect(lineFor('651').getByText('$8,780.00')).toBeTruthy()
+    expect(lineFor('651').getByText(moneyText('$8,780.00'))).toBeTruthy()
     expect(lineFor('186').getByText('no bill-out date')).toBeTruthy()
     // Without a way to open the job, the job is text.
     expect(lineFor('651').queryByRole('button', { name: /Dunmere Mallin/ })).toBeNull()
@@ -50,7 +51,7 @@ describe('GcBillLines', () => {
   it('says under a bill what paid it, when the row carries the line', () => {
     render(<GcBillLines rows={[line('651', { paidBy: '$2,000.00 paid by #4821 on Sep 10 · $6,780.00 still open' }), line('790')]} />)
     expect(screen.getAllByTestId('gc-bill-paid-by')).toHaveLength(1)
-    expect(lineFor('651').getByText('$2,000.00 paid by #4821 on Sep 10 · $6,780.00 still open')).toBeTruthy()
+    expect(lineFor('651').getByText(moneyText('$2,000.00 paid by #4821 on Sep 10 · $6,780.00 still open'))).toBeTruthy()
   })
 
   it('the job link opens that job', () => {

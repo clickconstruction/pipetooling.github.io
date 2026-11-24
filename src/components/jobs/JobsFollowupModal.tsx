@@ -42,6 +42,7 @@ import {
 } from '../../lib/jobs/jobFollowupStore'
 import { EmptyState } from '../EmptyState'
 import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
+import { MoneyText } from '../Money'
 
 /**
  * Job Follow-Up Mode (v2.1718): the office reviews quiet jobs one card at a
@@ -139,9 +140,9 @@ function DeckLineItemsPanel({ lineItems, jobTotalDollars, bidDollars, onOpenBill
               <div key={i} style={rowStyle}>
                 <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {li.name}{' '}
-                  <span style={{ color: 'var(--text-slate-500)' }}>· {qty} × {li.unitPrice != null ? lineMoney(li.unitPrice) : '—'}</span>
+                  <span style={{ color: 'var(--text-slate-500)' }}>· {qty} × {li.unitPrice != null ? <MoneyText text={lineMoney(li.unitPrice)} /> : '—'}</span>
                 </span>
-                <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{li.unitPrice != null ? lineMoney(qty * li.unitPrice) : '—'}</span>
+                <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{li.unitPrice != null ? <MoneyText text={lineMoney(qty * li.unitPrice)} /> : '—'}</span>
               </div>
             )
           })}
@@ -152,7 +153,7 @@ function DeckLineItemsPanel({ lineItems, jobTotalDollars, bidDollars, onOpenBill
           ) : null}
           <div style={{ ...rowStyle, borderTop: '1px solid var(--border)', marginTop: '0.28rem', paddingTop: '0.4rem', fontWeight: 800 }}>
             <span>Job total</span>
-            <span>{lineMoney(jobTotalDollars)}</span>
+            <span><MoneyText text={lineMoney(jobTotalDollars)} /></span>
           </div>
           {bidDollars > 0 && Math.abs(delta) >= 1 ? (
             <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', textAlign: 'right', marginTop: '0.12rem' }}>

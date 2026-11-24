@@ -13,6 +13,7 @@ import type { PayApplicationLine } from '../../lib/aiaPayApplicationLines'
 import type { BidSchedule } from '../../lib/aiaBidSchedule'
 import type { SentCopy } from '../../lib/sent/sentCopies'
 import { payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
+import { moneyText } from '../../test/moneyText'
 
 // v2.5032 · a test may sign in as a role that cannot write the applications.
 let authRole = 'dev'
@@ -1170,7 +1171,7 @@ describe('AiaG702G703Modal · v2.5032 the bill an application became', () => {
     expect(screen.getByTestId('aia-history-bill-pick').textContent).toContain('This bill is the payment due, to the cent.')
     fireEvent.click(screen.getByRole('button', { name: 'Tie it' }))
     await waitFor(() => expect(tieSpy).toHaveBeenCalledWith('app-1', 'bill-1'))
-    expect((await screen.findByText('Billed $17,460.00 · nothing paid yet')).getAttribute('data-testid')).toBe('aia-history-paid')
+    expect((await screen.findByText(moneyText('Billed $17,460.00 · nothing paid yet'))).getAttribute('data-testid')).toBe('aia-history-paid')
     expect(screen.queryByTestId('aia-history-bill-pick')).toBeNull()
   })
 

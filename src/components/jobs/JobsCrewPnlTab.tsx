@@ -38,6 +38,7 @@ import type { TeamLaborRow } from '../../utils/teamLabor'
 
 import { LABOR_ASSIGNED_DELIMITER } from '../../lib/combinePeople'
 import { EmptyState } from '../EmptyState'
+import { Money, MoneyText } from '../Money'
 
 type SortKey = CrewPnlSortKey
 
@@ -507,11 +508,11 @@ export default function JobsCrewPnlTab({
                 <tr style={{ borderTop: '1px solid var(--border)', fontWeight: 600, background: 'var(--bg-subtle)' }}>
                   <td style={{ padding: '0.75rem' }}>Total</td>
                   <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatDecimalWorkHoursToHhMm(summary.totals.hours)}</td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(summary.totals.laborCost)}</td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right' }} data-testid="crew-pnl-vehicle-total">{summary.totals.vehicleCost > 0 ? `$${formatCurrency(summary.totals.vehicleCost)}` : '—'}</td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(summary.totals.billing)}</td>
+                  <td style={{ padding: '0.75rem', textAlign: 'right' }}><Money amount={summary.totals.laborCost} /></td>
+                  <td style={{ padding: '0.75rem', textAlign: 'right' }} data-testid="crew-pnl-vehicle-total">{summary.totals.vehicleCost > 0 ? <Money amount={summary.totals.vehicleCost} /> : '—'}</td>
+                  <td style={{ padding: '0.75rem', textAlign: 'right' }}><Money amount={summary.totals.billing} /></td>
                   <td style={{ padding: '0.75rem', textAlign: 'right', color: summary.totals.profit >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
-                    {summary.totals.profit < 0 ? '−' : ''}${formatCurrency(Math.abs(summary.totals.profit))}
+                    {summary.totals.profit < 0 ? '−' : ''}<Money amount={Math.abs(summary.totals.profit)} />
                   </td>
                   <td style={{ padding: '0.75rem' }} />
                 </tr>
@@ -521,8 +522,8 @@ export default function JobsCrewPnlTab({
           {summary.subLabor.total > 0 && (
             <div style={{ margin: '0.6rem 0 0', fontSize: '0.8125rem' }}>
               <span style={{ color: 'var(--text-700)' }}>
-                Sub labor: <strong>${formatCurrency(summary.subLabor.total)}</strong> in range ·{' '}
-                <strong>${formatCurrency(summary.subLabor.linkedTotal)}</strong> linked to jobs (
+                Sub labor: <strong><Money amount={summary.subLabor.total} /></strong> in range ·{' '}
+                <strong><Money amount={summary.subLabor.linkedTotal} /></strong> linked to jobs (
                 {Math.round((summary.subLabor.linkedTotal / summary.subLabor.total) * 100)}%)
               </span>
               {summary.subLabor.unlinkedSheets.length > 0 && (
@@ -533,7 +534,7 @@ export default function JobsCrewPnlTab({
                   <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.2rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                     {summary.subLabor.unlinkedSheets.map((sheet) => (
                       <li key={sheet.id}>
-                        Job # {sheet.jobNumberText ? `"${sheet.jobNumberText}"` : '(blank)'} · {sheet.assignedNames.join(', ') || '—'} · ${formatCurrency(sheet.cost)}
+                        Job # {sheet.jobNumberText ? `"${sheet.jobNumberText}"` : '(blank)'} · {sheet.assignedNames.join(', ') || '—'} · <Money amount={sheet.cost} />
                       </li>
                     ))}
                   </ul>
@@ -613,7 +614,7 @@ function CrewPnlRow({
               title="Sub-sheet dollars whose job number matched no job — cost counted, no billing credit. Fix the sheet's job # (see the audit below the table)."
               style={{ marginLeft: '0.4rem', fontSize: '0.6875rem', color: 'var(--text-red-700)' }}
             >
-              ${formatCurrency(row.unlinkedSubCost)} unlinked
+              <Money amount={row.unlinkedSubCost} /> unlinked
             </span>
           )}
         </td>
@@ -621,27 +622,27 @@ function CrewPnlRow({
           {row.hours > 0 ? formatDecimalWorkHoursToHhMm(row.hours) : '—'}
         </td>
         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-          {row.laborCost > 0 ? `$${formatCurrency(row.laborCost)}` : '—'}
+          {row.laborCost > 0 ? <Money amount={row.laborCost} /> : '—'}
         </td>
         <td
           style={{ padding: '0.75rem', textAlign: 'right' }}
           title={row.vehicleRate != null ? `$${formatCurrency(row.vehicleRate)}/field h × ${row.fieldHours.toLocaleString('en-US', { maximumFractionDigits: 1 })} field h` : undefined}
         >
-          {row.vehicleCost > 0 ? `$${formatCurrency(row.vehicleCost)}` : '—'}
+          {row.vehicleCost > 0 ? <Money amount={row.vehicleCost} /> : '—'}
         </td>
         <td
           style={{ padding: '0.75rem', textAlign: 'right' }}
           title={row.hasEstimatedBilling ? 'Includes equal-split estimates (≈)' : undefined}
         >
-          {row.billing > 0 ? `${row.hasEstimatedBilling ? '≈ ' : ''}$${formatCurrency(row.billing)}` : '—'}
+          {row.billing > 0 ? <MoneyText text={`${row.hasEstimatedBilling ? '≈ ' : ''}$${formatCurrency(row.billing)}`} /> : '—'}
         </td>
         <td
           style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600, color: row.profit >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}
         >
-          {row.profit < 0 ? '−' : ''}${formatCurrency(Math.abs(row.profit))}
+          {row.profit < 0 ? '−' : ''}<Money amount={Math.abs(row.profit)} />
         </td>
         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-          {row.billingPerHour != null ? `$${formatCurrency(row.billingPerHour)}` : '—'}
+          {row.billingPerHour != null ? <Money amount={row.billingPerHour} /> : '—'}
         </td>
       </tr>
       {expanded && (
@@ -687,10 +688,10 @@ function CrewPnlRow({
                       {line.hours > 0 ? formatDecimalWorkHoursToHhMm(line.hours) : '—'}
                     </td>
                     <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                      {line.laborCost > 0 ? `$${formatCurrency(line.laborCost)}` : '—'}
+                      {line.laborCost > 0 ? <Money amount={line.laborCost} /> : '—'}
                     </td>
                     <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                      {line.billing > 0 ? `$${formatCurrency(line.billing)}` : '—'}
+                      {line.billing > 0 ? <Money amount={line.billing} /> : '—'}
                     </td>
                   </tr>
                 ))}

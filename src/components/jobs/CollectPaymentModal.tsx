@@ -26,6 +26,7 @@ import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { billPayCode } from '../../lib/billing/billPayCodeIo'
 import { billTextLink } from '../../lib/billing/billTextLink'
+import { MoneyText } from '../Money'
 
 type CertifyFixture = {
   id: string
@@ -124,7 +125,7 @@ function CollectPaymentFixturesLineItemsTable({ fixtures }: { fixtures: CertifyF
               </td>
               <td style={{ padding: 8, textAlign: 'right' }}>{f.count}</td>
               <td style={{ padding: 8, textAlign: 'right' }}>
-                ${lineTotalDollars(f).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                <MoneyText text={`$${lineTotalDollars(f).toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
               </td>
             </tr>
           ))}
@@ -934,7 +935,7 @@ export default function CollectPaymentModal({
               <p style={{ fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
                 Draft invoice total:{' '}
                 <strong>
-                  ${Number(payload.invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  <MoneyText text={`$${Number(payload.invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
                 </strong>
               </p>
             ) : (payload?.fixtures ?? []).length === 0 ? (
@@ -1027,7 +1028,7 @@ export default function CollectPaymentModal({
                                 <tr key={row.id} style={{ borderTop: '1px solid var(--border)' }}>
                                   <td style={{ padding: 8 }}>{row.work_label}</td>
                                   <td style={{ padding: 8, textAlign: 'right' }}>
-                                    ${Number(row.unit_cost).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                    <MoneyText text={`$${Number(row.unit_cost).toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
                                   </td>
                                   <td style={{ padding: 8, textAlign: 'right' }}>
                                     <button
@@ -1155,9 +1156,9 @@ export default function CollectPaymentModal({
                 >
                   Amount due:{' '}
                   <strong>
-                    ${Number(payload.collect_invoice.amount).toLocaleString('en-US', {
+                    <MoneyText text={`$${Number(payload.collect_invoice.amount).toLocaleString('en-US', {
                       minimumFractionDigits: 2,
-                    })}
+                    })}`} />
                   </strong>
                 </p>
               </>

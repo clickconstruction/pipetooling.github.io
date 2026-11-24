@@ -11,6 +11,7 @@ import { StagesSendBackInvoiceModal } from './StagesSendBackInvoiceModal'
 import { StagesSendBackJobModal } from './StagesSendBackJobModal'
 import { makeInvoice, makeJob } from '../../test/renderSmokeMocks'
 import type { InvoiceWithJob } from '../../lib/jobsStagesBoard'
+import { moneyText } from '../../test/moneyText'
 
 const inv = (p: Record<string, unknown> = {}): InvoiceWithJob =>
   ({ ...makeInvoice({ id: 'inv-1', amount: 1250, status: 'billed', ...p }), job: makeJob({ hcp_number: '878', job_name: 'Acme' }) }) as InvoiceWithJob
@@ -22,7 +23,7 @@ describe('StagesSendBackInvoiceModal', () => {
     const onCheckedChange = vi.fn()
     const { rerender } = render(<StagesSendBackInvoiceModal target={{ inv: inv(), action: 'delete' }} checked={false} onCheckedChange={onCheckedChange} showStripeExplainer={false} busy={false} onCancel={onCancel} onConfirm={onConfirm} />)
     expect(screen.getByText('This will remove the invoice from Ready to Bill.')).toBeTruthy()
-    expect(screen.getByText(/Job 878 · Acme · \$1,250\.00/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/Job 878 · Acme · \$1,250\.00/))).toBeTruthy()
     const buttons = screen.getAllByRole('button')
     expect((buttons[1] as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(screen.getByRole('checkbox'))
@@ -56,7 +57,7 @@ describe('StagesSendBackJobModal', () => {
     const target = { ...base, toStatus: 'working' as const, rtbDraftCount: 1, billing: { rtbDraftCount: 1, rtbNonPrimaryDraftCount: 0, billedCount: 2, billedTotalDollars: 4200, stageBilledContinues: true } }
     const { rerender } = render(<StagesSendBackJobModal target={target} checked={false} onCheckedChange={vi.fn()} needsAttestation={false} collectPaymentNotice={null} statusEventLine="Moved into Ready to Bill by Taunya on Sep 12" reason="" onReasonChange={onReasonChange} busy={false} onCancel={vi.fn()} onConfirm={onConfirm} />)
     expect(screen.getByRole('heading', { name: 'Send Job Back' })).toBeTruthy()
-    expect(screen.getByText(/Its 2 billed lines stay billed \(\$4,200\.00\)\. The unsent remainder draft is removed/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/Its 2 billed lines stay billed \(\$4,200\.00\)\. The unsent remainder draft is removed/))).toBeTruthy()
     expect(screen.getByText('Moved into Ready to Bill by Taunya on Sep 12')).toBeTruthy()
     expect(screen.queryByRole('checkbox')).toBeNull()
     fireEvent.click(screen.getByText('Rework needed'))

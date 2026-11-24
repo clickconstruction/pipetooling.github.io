@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import GcCallSheetModal from './GcCallSheetModal'
 import type { CallSheet, CallSheetBill } from '../../lib/jobs/gcCallSheet'
+import { moneyText } from '../../test/moneyText'
 
 vi.mock('../../lib/fetchJobActivityEventsForJobLedger', () => ({ fetchJobActivityEventsForJobLedger: vi.fn(async () => ({ data: [], error: null })) }))
 
@@ -115,7 +116,7 @@ describe('GcCallSheetModal', () => {
     expect(kestrin.getByText('2 bills — what Kestrin Contracting owes').nextElementSibling?.textContent).toBe('$26,000.00')
     expect(kestrin.getByText(/said Sep 15 · late/)).toBeTruthy()
     // The Collections bill is listed apart, and said to be outside the total.
-    expect(kestrin.getByText(/owed too, and not in the \$26,000\.00 above: \$1,712\.50/)).toBeTruthy()
+    expect(kestrin.getByText(moneyText(/owed too, and not in the \$26,000\.00 above: \$1,712\.50/))).toBeTruthy()
     fireEvent.click(kestrin.getByRole('button', { name: 'Hide Kestrin Contracting’s bills' }))
     expect(screen.queryAllByTestId('gc-bill-line')).toHaveLength(0)
   })

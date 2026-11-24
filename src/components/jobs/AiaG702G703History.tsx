@@ -20,6 +20,7 @@ import { openSentFile } from '../../lib/sent/sentCopiesIo'
 import { useToastContext } from '../../contexts/ToastContext'
 import { type AiaBillsOnJob, aiaBillOptions, aiaPaidLine, suggestAiaBill } from '../../lib/aiaPayApplicationBill'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 /**
  * The first frame of the AIA G702-G703 window on a job with saved applications (v2.4710):
@@ -105,21 +106,21 @@ function Summary({ summary }: { summary: PayApplicationSummary }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.25rem 1rem', padding: '0.6rem 0.75rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-muted)' }}>
         <div style={summaryCell}>
           <span style={summaryKey}>CONTRACT TO DATE</span>
-          <span style={summaryValue}>{formatAiaMoney(summary.contractSumToDate)}</span>
+          <span style={summaryValue}><MoneyText text={formatAiaMoney(summary.contractSumToDate)} /></span>
         </div>
         <div style={summaryCell}>
           <span style={summaryKey}>COMPLETED AND STORED</span>
           <span style={summaryValue}>
-            {formatAiaMoney(summary.totalCompletedAndStored)} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{pct}%</span>
+            <MoneyText text={formatAiaMoney(summary.totalCompletedAndStored)} /> <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{pct}%</span>
           </span>
         </div>
         <div style={summaryCell}>
           <span style={summaryKey}>HELD AS RETAINAGE</span>
-          <span style={summaryValue}>{formatAiaMoney(summary.retainageHeld)}</span>
+          <span style={summaryValue}><MoneyText text={formatAiaMoney(summary.retainageHeld)} /></span>
         </div>
         <div style={summaryCell}>
           <span style={summaryKey}>WORK LEFT</span>
-          <span style={summaryValue}>{formatAiaMoney(summary.workLeft)}</span>
+          <span style={summaryValue}><MoneyText text={formatAiaMoney(summary.workLeft)} /></span>
         </div>
       </div>
       <div
@@ -215,7 +216,7 @@ export default function AiaG702G703History({
                     {app.name ? <span> · {app.name}</span> : null}
                     <span> · {app.periodTo ? `period to ${formatAiaDate(app.periodTo)}` : 'no period typed'} · deleted</span>
                   </span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatAiaMoney(app.currentPaymentDue)} due</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}><MoneyText text={formatAiaMoney(app.currentPaymentDue)} /> due</span>
                   <button
                     type="button"
                     onClick={() => onRestore(app)}
@@ -244,7 +245,7 @@ export default function AiaG702G703History({
                   {app.name ? <span style={{ color: 'var(--text-600)' }}> · {app.name}</span> : null}
                   <span style={{ color: 'var(--text-600)' }}> · {app.periodTo ? `period to ${formatAiaDate(app.periodTo)}` : 'no period typed'}</span>
                 </span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>{formatAiaMoney(app.currentPaymentDue)} due</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-strong)', whiteSpace: 'nowrap' }}><MoneyText text={formatAiaMoney(app.currentPaymentDue)} /> due</span>
                 <button type="button" onClick={() => onOpen(app)} style={quietButton} aria-label={`Open application ${app.applicationNumber}`}>
                   Open
                 </button>
@@ -292,7 +293,7 @@ export default function AiaG702G703History({
             onClick={onNewFinal}
             style={{ padding: '0.5rem 1rem', background: 'var(--surface)', color: '#16a34a', border: '1px solid #16a34a', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}
           >
-            Final application · {nextNumber} · release {formatAiaMoney(finalRelease.held)}
+            Final application · {nextNumber} · release <MoneyText text={formatAiaMoney(finalRelease.held)} />
           </button>
           <span style={muted}>Retainage goes to 0 on it, and the bill you tie to it carries the release.</span>
         </div>

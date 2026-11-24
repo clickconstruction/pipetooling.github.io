@@ -3,7 +3,7 @@ import type { GcReviewRow } from '../../lib/gcReviewRollup'
 import { fetchJobActivityEventsForJobLedger } from '../../lib/fetchJobActivityEventsForJobLedger'
 import type { JobActivityEventRpcRow } from '../../lib/jobActivityEventsFromRpc'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
+import { Money } from '../Money'
 
 export type GcBillLine = GcReviewRow & { promisedYmd?: string | null }
 
@@ -104,7 +104,7 @@ export default function GcBillLines({ rows, onOpenJobDetail, leading, pending, s
                   {promised.late ? ' · late' : ''}
                 </span>
               ) : null}
-              <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', fontSize: '0.8125rem', fontWeight: heavy ? 600 : 400, whiteSpace: 'nowrap' }}>${formatCurrency(r.remaining)}</span>
+              <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', fontSize: '0.8125rem', fontWeight: heavy ? 600 : 400, whiteSpace: 'nowrap' }}><Money amount={r.remaining} /></span>
               <button
                 type="button"
                 onClick={() => toggleActivity(r)}

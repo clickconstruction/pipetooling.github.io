@@ -22,6 +22,7 @@ import { SubsTileModal, HandledCell } from './SubsTileModal'
 import { useQueueState } from './useQueueState'
 import type { RosterContact, SubsTileActions } from './subsTileActions'
 import { acts, btn, chip, ctl, expandedRow, field, fieldWide, formBox, handledRow, label, money, muted, sectionTd, sendLine, sendNote, td, tdAct, tdNum, th, where, who } from './subsTileStyles'
+import { MoneyText } from '../../Money'
 
 export type StagesQueueSub = StagePickerSub
 
@@ -141,7 +142,7 @@ export function StagesQueue({ groups, jobs, subs, contacts, orders, offDaysByPer
                       </div>
                     ) : null}
                   </td>
-                  <td style={{ ...tdNum, ...noBottom }}>{r.row.stage.amount > 0 ? money(r.row.stage.amount) : <span style={muted}>—</span>}</td>
+                  <td style={{ ...tdNum, ...noBottom }}>{r.row.stage.amount > 0 ? <MoneyText text={money(r.row.stage.amount)} /> : <span style={muted}>—</span>}</td>
                   <td style={{ ...tdAct, ...noBottom }} onClick={(e) => e.stopPropagation()}>
                     <span style={acts}>
                       {asked ? (
@@ -224,7 +225,7 @@ export function StagesQueue({ groups, jobs, subs, contacts, orders, offDaysByPer
                 <div style={where}>{r.group.primary}</div>
               </td>
               <td style={td}>{r.row.span ? stageWindowLabel(r.row.span) : '—'}</td>
-              <td style={tdNum}>{r.row.stage.amount > 0 ? money(r.row.stage.amount) : '—'}</td>
+              <td style={tdNum}>{r.row.stage.amount > 0 ? <MoneyText text={money(r.row.stage.amount)} /> : '—'}</td>
               <td style={tdAct}>
                 <HandledCell label={mark.label} onUndo={mark.undo ? () => void mark.undo!() : null} />
               </td>
