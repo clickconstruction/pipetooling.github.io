@@ -15,6 +15,7 @@ import {
   billsPaidEmptyDay,
   billsPaidFilter,
   billsPaidGroupWords,
+  billsPaidLastPaidDay,
   billsPaidLines,
   billsPaidMonthCells,
   billsPaidMonthHtml,
@@ -298,7 +299,8 @@ export function BillsPaidByDay() {
       </div>
     ) : null
 
-  const empty = billsPaidEmptyDay({ ymd: day, how, everyWay: everySum.payments, todayYmd: today })
+  // An empty day's press names where it goes: every way that day, the newest day money came, or another month.
+  const empty = billsPaidEmptyDay({ ymd: day, how, everyWay: everySum.payments, todayYmd: today, lastPaidYmd: billsPaidLastPaidDay(shown, month, today) })
   // A month step names the month it opens, and each sits at its own edge of the card, so neither moves as the month's name changes width.
   const step: CSSProperties = { ...outPress, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', whiteSpace: 'nowrap', ...(phone ? { minWidth: THUMB, padding: '0 0.6rem' } : {}) }
   const chevron: CSSProperties = { fontSize: '1.15em', lineHeight: 1, fontWeight: 400 }
@@ -397,7 +399,7 @@ export function BillsPaidByDay() {
                 compact
                 finger={phone}
                 main={empty.main}
-                next={empty.next === 'Show every way that day' ? { label: empty.next, onPress: () => go({ how: 'all' }) } : empty.next === 'Go to today' ? { label: empty.next, onPress: () => go({ day: today }) } : undefined}
+                next={{ label: empty.next.label, onPress: () => go(empty.next.go) }}
               />
             ) : (
               <>

@@ -300,6 +300,8 @@ Its words read *Bank debit · Stripe*. An older payment from a bank account read
 
 A day may have no Stripe money. The box says so and offers **Show every way that day**.
 
+Any other empty day offers a press that names a day money came. The press reads like **Go to Mon, Nov 23**.
+
 Press {{chip:gray|All}} to see every way again.
 
 The other chips are {{chip:gray|Check}}, {{chip:gray|Bank transfer}}, {{chip:gray|Cash}} and {{chip:gray|Other}}. A chip shows only when some payment in the month came that way.
@@ -333,6 +335,8 @@ A button sits on each side of the month's name. Each button names the month it o
 Press {{button:outline|‹ Oct}} to go back a month. Press {{button:outline|Dec ›}} to come forward again.
 
 The newest month is this one, so it has no button to go forward. A day that has not come cannot be pressed.
+
+A month opens on the newest day money came. This month opens on today once money has come in today.
 
 The address keeps the day, the month and the chip. Save the address to come back to the same day.
 
