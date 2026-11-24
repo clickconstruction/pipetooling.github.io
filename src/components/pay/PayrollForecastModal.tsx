@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { formatCurrency } from '../../lib/format'
 import { EmptyState } from '../EmptyState'
 import { FORECAST_UNPAID_EMPTY, forecastBarsEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { Money } from '../Money'
 
 /**
  * One unpaid pay-stub row surfaced into the forecast UI. The parent
@@ -272,8 +273,7 @@ export function PayrollForecastModal(props: {
             </button>
             {bars.length > 0 && (
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Allocated ${formatCurrency(totalAllocated)} of $
-                {formatCurrency(bars.reduce((s, b) => s + b.allowance, 0))} across {bars.length} bar
+                Allocated <Money amount={totalAllocated} /> of <Money amount={bars.reduce((s, b) => s + b.allowance, 0)} /> across {bars.length} bar
                 {bars.length === 1 ? '' : 's'}
               </span>
             )}
@@ -409,9 +409,9 @@ export function PayrollForecastModal(props: {
                     {/* Filled-to-date summary + remove */}
                     <div style={{ fontSize: '0.72rem', color: over ? 'var(--text-red-700)' : 'var(--text-700)', textAlign: 'center', lineHeight: 1.25 }}>
                       <div>
-                        <strong>${formatCurrency(filled)}</strong>
+                        <strong><Money amount={filled} /></strong>
                         {allowance > 0 && (
-                          <span style={{ color: 'var(--text-muted)' }}> / ${formatCurrency(allowance)}</span>
+                          <span style={{ color: 'var(--text-muted)' }}> / <Money amount={allowance} /></span>
                         )}
                       </div>
                       {bar.dateYmd ? (
@@ -451,7 +451,7 @@ export function PayrollForecastModal(props: {
             <h3 style={{ margin: 0, fontSize: '1rem' }}>
               Unpaid balances
               <span style={{ marginLeft: '0.4rem', fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                ({unpaidRows.length} row{unpaidRows.length === 1 ? '' : 's'} · ${formatCurrency(totalUnpaid)} owed)
+                ({unpaidRows.length} row{unpaidRows.length === 1 ? '' : 's'} · <Money amount={totalUnpaid} /> owed)
               </span>
             </h3>
             {bars.length > 0 && Object.keys(checkedByRow).length > 0 && (
@@ -494,7 +494,7 @@ export function PayrollForecastModal(props: {
                       >
                         <div>{bar.dateYmd ? formatShortDayMonth(bar.dateYmd) : '—'}</div>
                         <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
-                          {bar.allowance > 0 ? `$${formatCurrency(bar.allowance)}` : '—'}
+                          {bar.allowance > 0 ? <Money amount={bar.allowance} /> : '—'}
                         </div>
                       </th>
                     ))}
@@ -510,7 +510,7 @@ export function PayrollForecastModal(props: {
                           {formatShortDayMonth(row.balanceCreatedYmd)}
                         </td>
                         <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right' }}>
-                          ${formatCurrency(row.remaining)}
+                          <Money amount={row.remaining} />
                         </td>
                         {sortedBars.map((bar) => {
                           const isOn = checked?.has(bar.id) ?? false
@@ -536,7 +536,7 @@ export function PayrollForecastModal(props: {
                         Filled
                       </td>
                       <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', fontWeight: 600 }}>
-                        ${formatCurrency(totalAllocated)}
+                        <Money amount={totalAllocated} />
                       </td>
                       {sortedBars.map((bar) => {
                         const filled = filledByBar[bar.id] ?? 0
@@ -552,7 +552,7 @@ export function PayrollForecastModal(props: {
                               color: over ? 'var(--text-red-700)' : 'var(--text-700)',
                             }}
                           >
-                            ${formatCurrency(filled)}
+                            <Money amount={filled} />
                           </td>
                         )
                       })}

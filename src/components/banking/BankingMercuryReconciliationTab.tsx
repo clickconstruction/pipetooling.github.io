@@ -14,6 +14,7 @@ import {
 } from '../../lib/mercuryReconciliation'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 const MONTHS_OPTIONS = [3, 6, 12] as const
 
@@ -61,10 +62,10 @@ function MonthRow({ m }: { m: ReconMonth }) {
           </StatusPill>
         </td>
         <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-slate-600)' }}>
-          {formatSignedUsd(m.endingBalance)}
+          <MoneyText text={formatSignedUsd(m.endingBalance)} />
         </td>
         <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: m.missingValue !== 0 ? 'var(--text-amber-700)' : 'var(--text-slate-400)' }}>
-          {m.missingValue !== 0 ? formatSignedUsd(m.missingValue) : '—'}
+          {m.missingValue !== 0 ? <MoneyText text={formatSignedUsd(m.missingValue)} /> : '—'}
         </td>
       </tr>
       {open && canExpand ? (
@@ -78,7 +79,7 @@ function MonthRow({ m }: { m: ReconMonth }) {
               {m.missingSample.map((t, i) => (
                 <div key={t.id ?? i} style={{ display: 'flex', gap: '0.6rem', fontSize: '0.78rem' }}>
                   <span style={{ minWidth: '5.5rem', color: 'var(--text-slate-500)' }}>{fmtDate(t.postedAt)}</span>
-                  <span style={{ minWidth: '6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatSignedUsd(t.amount)}</span>
+                  <span style={{ minWidth: '6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={formatSignedUsd(t.amount)} /></span>
                   <span style={{ color: 'var(--text-slate-600)' }}>{t.counterpartyName ?? '—'}</span>
                 </div>
               ))}
@@ -108,11 +109,11 @@ function AccountCard({ a }: { a: ReconAccount }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', alignItems: 'center', fontSize: '0.82rem', marginBottom: '0.6rem', padding: '0.45rem 0.6rem', background: 'var(--bg-slate-tint)', borderRadius: 6 }}>
         <span>
           <span style={{ color: 'var(--text-slate-500)' }}>Mercury balance: </span>
-          <strong>{formatSignedUsd(a.currentBalance)}</strong>
+          <strong><MoneyText text={formatSignedUsd(a.currentBalance)} /></strong>
         </span>
         <span>
           <span style={{ color: 'var(--text-slate-500)' }}>Books imply: </span>
-          {a.current.expectedCurrent === null ? '—' : <strong>{formatSignedUsd(a.current.expectedCurrent)}</strong>}
+          {a.current.expectedCurrent === null ? '—' : <strong><MoneyText text={formatSignedUsd(a.current.expectedCurrent)} /></strong>}
         </span>
         <span>
           <StatusPill status={cur === 'ok' ? 'ok' : 'muted'}>

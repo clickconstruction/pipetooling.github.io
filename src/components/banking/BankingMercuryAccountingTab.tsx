@@ -121,6 +121,7 @@ import { MercuryCounterpartyFrequencyModal } from './MercuryCounterpartyFrequenc
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { bankingTableEmptyWords } from '../../lib/banking/bankingEmptyWords'
+import { MoneyText } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -2318,10 +2319,10 @@ export function BankingMercuryAccountingTab({
           <p data-testid="ar-income-switch-note" style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-slate-500)' }}>
             {arIncomeOrgOn === true
               ? arIncomeResult && arIncomeResult.count > 0
-                ? `Every deposit applied in Accounts Receivable is labelled Income as it is applied, unless someone already labelled it. Turning this on labelled ${arIncomeResult.count.toLocaleString()} deposit${arIncomeResult.count === 1 ? '' : 's'} · $${arIncomeResult.dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} that were applied before today.`
+                ? <MoneyText text={`Every deposit applied in Accounts Receivable is labelled Income as it is applied, unless someone already labelled it. Turning this on labelled ${arIncomeResult.count.toLocaleString()} deposit${arIncomeResult.count === 1 ? '' : 's'} · $${arIncomeResult.dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} that were applied before today.`} />
                 : 'Every deposit applied in Accounts Receivable is labelled Income as it is applied, unless someone already labelled it.'
               : arIncomePreview && arIncomePreview.count > 0
-                ? `${arIncomePreview.count.toLocaleString()} deposit${arIncomePreview.count === 1 ? ' is' : 's are'} applied in Accounts Receivable and still unlabelled · $${arIncomePreview.dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Turning this on labels them Income, and every one applied after.`
+                ? <MoneyText text={`${arIncomePreview.count.toLocaleString()} deposit${arIncomePreview.count === 1 ? ' is' : 's are'} applied in Accounts Receivable and still unlabelled · $${arIncomePreview.dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Turning this on labels them Income, and every one applied after.`} />
                 : 'Nothing applied in Accounts Receivable is waiting for a label. Turning this on labels every deposit Income as it is applied.'}
           </p>
         ) : null}
@@ -2857,7 +2858,7 @@ export function BankingMercuryAccountingTab({
                 const otherIds = testOtherMatchingRulesByTxId.get(tx.id) ?? []
                 return (
                   <li key={tx.id} style={{ marginBottom: 6 }}>
-                    {formatUsd(Number(tx.amount))} · {tx.counterparty_name ?? '—'} · {formatBankingDate(tx.posted_at)}
+                    <MoneyText text={formatUsd(Number(tx.amount))} /> · {tx.counterparty_name ?? '—'} · {formatBankingDate(tx.posted_at)}
                     {otherIds.length > 0 ? (
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-slate-500)', marginTop: 2 }}>
                         Also matched by:{' '}

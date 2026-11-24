@@ -13,6 +13,7 @@ import {
 } from '../../lib/fetchMercuryDuplicates'
 import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 export type BankingMercuryDuplicatesPanelProps = {
   /** Called after a mark/undo so the parent reloads rows and totals. */
@@ -192,7 +193,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
                   <div key={c.key} style={{ border: '1px solid var(--border-amber)', borderRadius: 8, background: 'var(--surface)', padding: '0.65rem 0.8rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
                       <div style={{ fontWeight: 700 }}>
-                        {formatUsd(c.members[0]?.amount ?? 0)} · {c.members[0]?.counterpartyName ?? '—'}
+                        <MoneyText text={formatUsd(c.members[0]?.amount ?? 0)} /> · {c.members[0]?.counterpartyName ?? '—'}
                         <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                           {' '}· {c.members.length} transactions{c.maxDaysApart > 0 ? ` · up to ${c.maxDaysApart}d apart` : ' · same day'}
                         </span>
@@ -281,7 +282,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
                     return (
                       <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', padding: '0.3rem 0.5rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6 }}>
                         <span style={{ minWidth: '5.5rem' }}>{formatBankingDate(r.postedAt)}</span>
-                        <span style={{ fontWeight: 600 }}>{formatUsd(r.amount)}</span>
+                        <span style={{ fontWeight: 600 }}><MoneyText text={formatUsd(r.amount)} /></span>
                         <span style={{ flex: '1 1 auto', minWidth: 0, color: 'var(--text-slate-600)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {r.counterpartyName ?? mercuryBankDescriptionFromRaw(r.raw) ?? '—'}
                         </span>

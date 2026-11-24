@@ -3,6 +3,7 @@ import { approvalGroupAge, type ApprovalGroup } from '../../lib/accountingApprov
 import { ageChipStyle } from '../../lib/ageState'
 import { countedLabel } from '../../lib/batchWords'
 import { formatUsd } from './bankingMercuryDragSortLedger'
+import { MoneyText } from '../Money'
 
 export type AccountingApprovalGroupHeaderProps = {
   group: ApprovalGroup
@@ -67,7 +68,7 @@ export const AccountingApprovalGroupHeader = memo(function AccountingApprovalGro
         <span style={{ color: 'var(--text-slate-500)', width: '1rem', flex: '0 0 auto' }}>{expanded ? '▼' : '▶'}</span>
         <span style={{ fontWeight: 700, color: 'var(--text-slate-900)' }}>{group.labelName}</span>
         <span style={{ color: 'var(--text-slate-600)', fontSize: '0.875rem' }}>
-          {group.count.toLocaleString()} {group.count === 1 ? 'item' : 'items'} · {formatUsd(group.totalAmount)}
+          {group.count.toLocaleString()} {group.count === 1 ? 'item' : 'items'} · <MoneyText text={formatUsd(group.totalAmount)} />
         </span>
         {age ? (
           <span

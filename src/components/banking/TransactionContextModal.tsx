@@ -5,6 +5,7 @@ import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatMercuryKind } from '../../lib/mercuryKindLabels'
 import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
+import { MoneyText } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -169,7 +170,7 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
         <td style={{ ...td, fontSize: '0.75rem', color: 'var(--text-slate-500)', whiteSpace: 'nowrap' }}>{acct(r.mercury_account_id, nicknameByAccount)}</td>
         <td style={{ ...td, fontSize: '0.75rem', color: 'var(--text-slate-500)', whiteSpace: 'nowrap' }}>{formatMercuryKind(r.kind)}</td>
         <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: amountColor(Number(r.amount)), fontWeight: 500, whiteSpace: 'nowrap' }}>
-          {usd(Number(r.amount))}
+          <MoneyText text={usd(Number(r.amount))} />
         </td>
       </>
     )
