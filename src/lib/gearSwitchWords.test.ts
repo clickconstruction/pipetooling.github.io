@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PIN_BAR_SWITCH_LABEL, TELL_THE_DEV_SWITCH_LABEL, switchRowAriaLabel, switchRowTip } from './gearSwitchWords'
+import { MODE_ROW_SWITCH_LABEL, PIN_BAR_SWITCH_LABEL, TELL_THE_DEV_SWITCH_LABEL, switchRowAriaLabel, switchRowTip } from './gearSwitchWords'
 
 describe('the gear menu’s show-or-hide switches', () => {
   it('names each row for the thing it shows, never as a mode', () => {
@@ -25,5 +25,12 @@ describe('the gear menu’s show-or-hide switches', () => {
     expect(switchRowAriaLabel('fix')).not.toBe('Tell the dev')
     expect(switchRowAriaLabel('fix')).toContain('wrench')
     expect(switchRowAriaLabel('pin')).toBe('Show the pin bar')
+  })
+
+  it('the mode row’s switch says when the row shows, and what the next press does', () => {
+    expect(MODE_ROW_SWITCH_LABEL).toBe('Modes at open')
+    expect(switchRowTip('modes', true)).toBe('Stop showing the three modes when the app opens')
+    expect(switchRowTip('modes', false)).toBe('Show Task Mode, Dashboard and Job Mode for five seconds when the app opens')
+    expect(switchRowAriaLabel('modes')).toBe('Show the modes when the app opens')
   })
 })

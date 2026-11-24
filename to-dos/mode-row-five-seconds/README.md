@@ -2,18 +2,18 @@
 name: "The mode row shows for five seconds, then leaves"
 number: 433
 group: close
-status: asked 2026-11-24 after a look at the row on a phone · read and drawn twice the same day, the ask word for word and then again after a critique · the owner liked the second draw and asked that the iPhone's camera bar be allowed for, drawn the same day · then *build it all*, so the nine calls stand on their picks · built whole as v2.8461 in one PR: the New mark off, the five seconds, the bar, the row over the page, and the other ways of going to the Dashboard · left: a real phone in a hand
+status: asked 2026-11-24 after a look at the row on a phone · drawn twice and built whole as v2.8461 the same day · the owner tried it on a real phone: it works, the handle takes too much room, the row should shrink into the gear, open the app and then live in the gear menu · built as v2.8497: no handle, the row at the app's opening, the way out into the gear, the three modes in a phone's gear menu and a switch to hide the row · left: the owner's look at this second build on a real phone
 summary: >
-  The owner likes the idea of the mode row and not how it was built. The New mark comes off Job Mode.
-  The row shows on top of a phone's Dashboard for five seconds on each visit, with a bar that says
-  when it will go, then slides up and out. Drawn word for word, the page jumps under a thumb, the row
-  can leave under a finger, Task Mode loses its way out and the bar reads as loading. The second draw
-  lays the row over the page so nothing under it moves, holds it while a finger is on it, keeps the
-  handle and the pull that are already built, and runs a grey bar down to nothing.
-next: Try the row on a real phone, an iPhone on its Home Screen first, then delete the card.
-size: M, built as one client-only PR; left: a look on a real phone (XS)
+  The owner likes the idea of the mode row and not how it was built. The New mark came off Job Mode
+  and the row showed for five seconds a visit over a small handle (v2.8461). On a real phone the
+  handle took too much room. So the row is now the first thing a person sees when the app opens: it
+  shows for five seconds with its grey bar, or until a third is pressed, then shrinks into the gear
+  and leaves nothing behind. From then on the modes are changed in the gear menu, which lists the
+  three on a phone too and holds a switch, Modes at open, that stops the row showing (v2.8497).
+next: Try v2.8497 on a real phone, an iPhone on its Home Screen first. Say whether Modes at open was meant, and whether a minute away should bring the row. Then delete the card.
+size: M, built as two client-only PRs; left: a look on a real phone (XS)
 blocker: A real phone in a hand.
-opinion: close — built on the picks, as the owner said; each call stays a line or a rule to flip later
+opinion: close — the second build follows the owner's words from a real phone; two readings of them are named in the card and each is a line to flip
 ---
 
 # The mode row shows for five seconds, then leaves (#433)
@@ -179,53 +179,90 @@ The merge queue was twelve deep that night, and the steps were one ask on one co
 - **Gone:** the first five opens, the phone's memory of opens and of a press, and the guard for a
   sub or a helper.
 
-To flip a call later: the handle is `MODE_ROW_HANDLE`, the five seconds `MODE_ROW_SHOW_MS`, the minute
-away `MODE_ROW_AWAY_MS`, Task Mode's hold `modeRowHeldOpen`, and the bar's colour one line of
-`.modeRowBar` in `src/index.css`.
+To flip a call later: the five seconds are `MODE_ROW_SHOW_MS`, the minute away `MODE_ROW_AWAY_MS`,
+Task Mode's hold `modeRowHeldOpen`, and the bar's colour one line of `.modeRowBar` in
+`src/index.css`. The handle and its `MODE_ROW_HANDLE` went with v2.8497.
+
+## The owner's look on a real phone (v2.8497)
+
+The owner, 2026-11-24, after trying v2.8461 on a real phone:
+
+> I tested it on a real phone and I decided that the little bar to pull down takes up too much space
+> at the top when it is closed, but it does work, which is great. When a user clicks on dashboard or
+> job mode, I would like the closing animation to show it minimizing to the gear window. That way a
+> user knows they can always change it in the gear window. I would like to use this animation to be
+> the first thing a user sees when they open the app, but then all future changes to be in the gear
+> window, allowing for it to be hidden from the gear window.
+
+Built as v2.8497, one client-only PR. `docs/recent-features/v2.8497.md` is the record, with what was
+walked. This section replaces what *The build (v2.8461)* says of the handle, the pull, the visits and
+a press.
+
+- **No handle, no pull.** With the row gone nothing is drawn, and the top of the Dashboard is the top
+  of every other page. The row's host is a line of no height that is no `AppTopBanner`, so the header
+  keeps paying the status bar by its own rule and nothing moves.
+- **An opening.** The row shows on its first draw after the app loads, and on a return after a
+  minute away. Another page and back, and the Dashboard's own link, bring nothing.
+- **A press closes it**, the lit third too. Five seconds with no press does the same.
+- **Into the gear.** The row shrinks onto the header's gear and the gear answers with a ring.
+- **The gear menu** lists Dashboard, Job Mode and Task Mode on a phone too.
+- **Modes at open**, a tick in the gear menu's Show group, kept on the phone. Unticked, no row.
+- **Show full dashboard** is back under the Job Mode card on a phone.
+- **Task Mode** keeps the row as a line of the page.
+
+Two readings, each a line to flip:
+
+1. *Hidden from the gear window* was read as a switch that hides the row. If the words meant only
+   that the row is put away into the gear, the switch is one row of the menu to take out.
+2. A return after a minute away still counts as opening the app (`MODE_ROW_AWAY_MS`). A phone rarely
+   loads the app afresh, so without it a person who never closes the app would seldom see the row.
 
 ## How to verify
 
-1. As a leader on a phone, open the Dashboard. The row shows with **Dashboard** filled and no mark on
-   **Job Mode**. A grey line under it runs out, and at five seconds the row slides up. A small grey
-   bar is left. Nothing under the row moved.
-2. Tap the grey bar. The row slides down for five seconds more. Pull the page down from its top after
-   it has gone. The same.
-3. Rest a finger on the row past five seconds. It stays. Lift the finger off the row. Five seconds
+1. As a leader on a phone, open the app. The row shows over the top of the Dashboard with
+   **Dashboard** filled. A grey line under it runs out. At five seconds the row shrinks into the gear
+   at the top right and the gear lights up. Nothing is left in the row's place and nothing moved.
+2. Open the app again and tap **Job Mode** on the row. The Job Mode page opens and the row shrinks
+   into the gear at once. **Show full dashboard** is under the card.
+3. Open the app again and tap **Dashboard**, the blue part. Nothing changes and the row shrinks into
+   the gear.
+4. Tap the gear. Under **Modes** are **Dashboard**, **Job Mode** and **Task Mode**, with a dot on
+   the one you are on. Tap **Task Mode**. The checklist opens with the row as a line of the page, and
+   it stays. Tap **Dashboard** on it. The row shrinks into the gear.
+5. Rest a finger on the row past five seconds. It stays. Lift the finger off the row. Five seconds
    later it goes. Swipe up on the row. It goes at once and nothing is pressed.
-4. Tap **Job Mode**. The Job Mode page opens and the row is still there, **Job Mode** filled, for
-   five seconds. Tap **Task Mode**. The checklist opens with the row as a line of the page, and it
-   stays. Tap **Dashboard**.
-5. With the row gone, tap the **Dashboard** link in the header. The row comes back. Go to Jobs and
-   back. The same.
-6. Put the phone away for two minutes and wake it. The row shows. Do it again for ten seconds. It
+6. Go to Jobs and back. No row. Pull the page down from its top. No row.
+7. Put the phone away for two minutes and wake it. The row shows. Do it again for ten seconds. It
    does not.
-7. Switch the phone to less motion. The row fades instead of sliding, and the line is five blocks.
-8. On a Home Screen iPhone the row starts under the clock and the camera, and slides away behind them.
+8. Tap the gear and untick **Modes at open**. Open the app again. No row. Tick it. The row shows.
+9. Switch the phone to less motion. The row fades in place, the gear shows a ring, and the line is
+   five blocks.
+10. On a Home Screen iPhone the row starts under the clock and the camera, and the header sits where
+    it sits on every other page.
 
 ## What a real phone must check
 
 The lens frame cannot answer these. A Home Screen iPhone and an Android phone, in a hand:
 
 1. **The camera bar.** On an iPhone with the island and on one with the notch: the thirds start
-   clear of the camera, the band under the clock is one grey with the row, and the row slides away
-   behind the bar with no word crossing the clock. The same with the phone turned on its side, where
-   the camera is at an edge.
-2. **Five seconds, felt.** Whether it is long enough to read three words and press one, with the bar
-   in the corner of the eye.
-3. **A resting thumb.** A real finger on a third holds the row past five seconds, and lifting it
+   clear of the camera, and the header is at the same height with the row and without it. The same
+   with the phone turned on its side, where the camera is at an edge.
+2. **The way out, seen.** Whether the eye follows the row to the gear in the 380 ms it takes, and
+   whether the gear's ring is enough to say *the modes are here*.
+3. **Five seconds, felt.** Whether it is long enough to read three words and press one.
+4. **A resting thumb.** A real finger on a third holds the row past five seconds, and lifting it
    without a press starts the count whole.
-4. **The swipe up and the pull down**, against the phone's own gestures: an iPhone's pull from the
-   top edge opens its notifications, and Android Chrome has its own pull to refresh.
 5. **The uncovered strip.** A press on a third at the moment the row leaves does not open the gear.
-6. **Less motion**, switched on in the phone's settings: the fade and the five blocks.
-7. **A screen reader.** VoiceOver and TalkBack read the three thirds while the row shows and the
-   handle by its name after.
+6. **Less motion**, switched on in the phone's settings: the fade, the ring and the five blocks.
+7. **A screen reader.** VoiceOver and TalkBack read the three thirds while the row shows, and the
+   gear menu's list after.
 8. **Back from the lock screen** after two minutes, and after ten seconds.
+9. **The switch across a real opening.** Untick **Modes at open**, close the app from the phone's
+   app switcher, open it. No row.
 
 ## Where it stands
 
-Built whole as v2.8461. The built row was walked headless at a phone's width through the lens frame,
-with real touch events, and not on a real phone. The mock-up was walked headless at a desk's
-width in the light look and a phone's in the dark: the count, the handle, a held press, a press that
-switches, the swipe up, the pull down and Task Mode holding each did what the page says. With the
-camera bar drawn, the row's thirds start 7 px under it and nothing of the row draws over it at any moment.
+v2.8461 was tried by the owner on a real phone: it worked, and the handle took too much room.
+v2.8497 answers that look. It was walked headless at a phone's width through the lens frame, with
+real touch events, and not on a real phone. The mock-up beside this card draws v2.8461's handle and
+slide, and was not redrawn for the gear.

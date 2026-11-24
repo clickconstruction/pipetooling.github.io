@@ -53,9 +53,9 @@ The {{icon:gear}} gear menu's list is the other way out. Tap **Dashboard** or **
 
 Job Mode, Dispatch Mode and Task Mode each change the whole app. So only one of them is on at a time.
 
-- The row at the top shows the mode you are in, in blue. The row never shows two.
-- Tap another part of the row and the app switches to it.
-- **Dispatch Mode** is a tick in the {{icon:gear}} gear menu. Tap **Dashboard** on the row and Dispatch Mode is back, if you had Dispatch Mode on.
+- The row at the top shows the mode you are in, in blue. The row never shows two. The {{icon:gear}} gear menu's list marks the same one with a blue dot.
+- Tap another part of the row, or another line of the list, and the app switches to it.
+- **Dispatch Mode** is a tick in the {{icon:gear}} gear menu. Tap **Dashboard** and Dispatch Mode is back, if you had Dispatch Mode on.
 - The gear menu's list marks the mode you are in with a blue dot. The list never marks two.
 
 **Pin bar**, **Tell the dev** and **Dark Mode** are not part of this. Those three sit under **Show** in the gear menu. Each of those goes on or off by itself.

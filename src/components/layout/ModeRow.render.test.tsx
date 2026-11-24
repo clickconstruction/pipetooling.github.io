@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
  * Render smoke for the mode row (punch lists #425 and #433): who it is drawn for, the three thirds in
- * order, the five seconds it shows on a visit to the Dashboard with what holds it and what sends it
- * away, the handle and the pull that bring it back, Task Mode where it stays, and what a press sends
- * through the page mode's door.
+ * order, the five seconds it shows when the app opens with what holds it and what closes it, the way
+ * out into the gear, the nothing it leaves in its place, the phone's switch, Task Mode where it
+ * stays, and what a press sends through the page mode's door.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -12,7 +12,7 @@ vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
 
 import { ModeRow, ModeRowThirds } from './ModeRow'
 import { recordNavClick } from '../../lib/navClickTelemetry'
-import { MODE_ROW_PULL_PX, MODE_ROW_WORDS } from '../../lib/modeRow'
+import { MODE_ROW_HOME_ATTR, MODE_ROW_WORDS } from '../../lib/modeRow'
 import { MODE_ROW_AWAY_MS, MODE_ROW_DEAD_MS, MODE_ROW_OUT_MS, MODE_ROW_SHOW_MS, MODE_ROW_SWIPE_PX } from '../../lib/modeRowCount'
 import type { PageMode } from '../../lib/pageMode'
 
@@ -30,14 +30,6 @@ function onAPhone() {
   })) as unknown as typeof window.matchMedia
 }
 
-function touch(type: 'touchstart' | 'touchmove' | 'touchend', x: number, y: number) {
-  const e = new Event(type, { bubbles: true })
-  Object.defineProperty(e, 'touches', { value: type === 'touchend' ? [] : [{ clientX: x, clientY: y }] })
-  act(() => {
-    document.body.dispatchEvent(e)
-  })
-}
-
 /** A finger on an element. jsdom has no `PointerEvent`, and React reads the event by its name. */
 function finger(type: 'pointerdown' | 'pointermove' | 'pointerup', el: Element, y = 30) {
   act(() => {
@@ -45,7 +37,7 @@ function finger(type: 'pointerdown' | 'pointermove' | 'pointerup', el: Element, 
   })
 }
 
-type Props = { userId: string; role: string; pathname: string; mode: PageMode; search?: string; locationKey?: string }
+type Props = { userId: string; role: string; pathname: string; mode: PageMode; atOpen?: boolean }
 
 function draw(over: Partial<Props> = {}) {
   const setMode = vi.fn()
@@ -63,7 +55,7 @@ function pass(ms: number) {
   })
 }
 
-/** The whole way out: the five seconds, the slide and the dead strip. */
+/** The whole way out: the five seconds, the way to the gear and the dead strip. */
 function untilGone() {
   pass(MODE_ROW_SHOW_MS)
   pass(MODE_ROW_OUT_MS + MODE_ROW_DEAD_MS)
@@ -71,7 +63,10 @@ function untilGone() {
 
 const thirds = () => screen.queryAllByRole('button').filter((b) => b.hasAttribute('data-mode-third'))
 const words = () => thirds().map((b) => b.textContent)
-const handle = () => screen.queryByRole('button', { name: MODE_ROW_WORDS.handle })
+/** A box on the screen: jsdom lays nothing out, so a test that needs one says where it is. */
+function box(left: number, top: number, width: number, height: number): DOMRect {
+  return { left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) } as DOMRect
+}
 const row = () => document.querySelector('.modeRowOver')
 const phase = () => document.querySelector('.modeRowClip')?.getAttribute('data-mode-row-phase') ?? 'gone'
 
@@ -83,7 +78,7 @@ describe('ModeRow', () => {
     sessionStorage.clear()
     vi.mocked(recordNavClick).mockClear()
     window.scrollTo = vi.fn() as unknown as typeof window.scrollTo
-    // The row is a phone's: a desk has the gear menu's list in its place.
+    // The row is a phone's: a desk has the gear menu's list alone.
     onAPhone()
   })
   afterEach(() => {
@@ -137,21 +132,23 @@ describe('ModeRow', () => {
     expect(draw({ pathname: '/checklist', mode: 'task' }).view.container.innerHTML).toBe('')
   })
 
-  it('on the Dashboard the handle is the page’s line and the row is drawn over it, in place on the first paint', () => {
+  it('on the Dashboard the row lies over the page from a line of no height that is no banner, drawn in place when the app opens', () => {
     const { view } = draw()
-    expect(view.container.querySelector('[data-mode-row="tucked"]')).toBeTruthy()
-    expect(handle()).toBeTruthy()
+    const host = view.container.querySelector('[data-mode-row="over"]')
+    expect(host?.className).toBe('modeRowHost')
+    // No `AppTopBanner`: the header under it keeps paying the status bar, so nothing moves.
+    expect(view.container.querySelector('.appTopBanner')).toBeNull()
+    expect(host?.firstElementChild?.className).toBe('modeRowClip')
     expect(phase()).toBe('showing')
-    // The clip comes before the handle, so it starts where the line's own content does.
-    expect(view.container.querySelector('[data-mode-row="tucked"]')?.firstElementChild?.className).toBe('modeRowClip')
     expect(row()?.hasAttribute('data-mode-row-in')).toBe(false)
     expect(row()?.querySelector('.modeRowBar')).toBeTruthy()
     expect(row()?.querySelectorAll('.modeRowBlocks > b').length).toBe(5)
     expect((row() as HTMLElement).style.getPropertyValue('--mode-row-show-ms')).toBe(`${MODE_ROW_SHOW_MS}ms`)
+    expect((row() as HTMLElement).style.getPropertyValue('--mode-row-out-ms')).toBe(`${MODE_ROW_OUT_MS}ms`)
   })
 
-  it('shows for five seconds, leaves, and then only the handle is left', () => {
-    draw()
+  it('shows for five seconds, leaves, and then nothing is left in its place: no handle, no line', () => {
+    const { view } = draw()
     pass(MODE_ROW_SHOW_MS - 100)
     expect(phase()).toBe('showing')
     expect(thirds().length).toBe(3)
@@ -161,30 +158,44 @@ describe('ModeRow', () => {
     expect(phase()).toBe('leaving')
     pass(1)
     expect(phase()).toBe('gone')
-    expect(thirds().length).toBe(0)
-    expect(handle()).toBeTruthy()
+    expect(view.container.innerHTML).toBe('')
   })
 
-  it('does the same on every visit, and keeps nothing on the phone', () => {
-    const { redraw } = draw()
+  it('shows once for an opening: another page and back, or a pull down at the top, brings nothing', () => {
+    const { view, redraw } = draw()
     untilGone()
-    expect(thirds().length).toBe(0)
     redraw({ pathname: '/jobs' })
     redraw({ pathname: '/dashboard' })
-    expect(thirds().length).toBe(3)
-    // Arriving from another page, the row slides down.
-    expect(row()?.hasAttribute('data-mode-row-in')).toBe(true)
-    untilGone()
-    expect(thirds().length).toBe(0)
+    expect(view.container.innerHTML).toBe('')
+    for (const [type, y] of [['touchstart', 200], ['touchmove', 300], ['touchend', 300]] as const) {
+      const e = new Event(type, { bubbles: true })
+      Object.defineProperty(e, 'touches', { value: type === 'touchend' ? [] : [{ clientX: 100, clientY: y }] })
+      act(() => {
+        document.body.dispatchEvent(e)
+      })
+    }
+    pass(1000)
+    expect(view.container.innerHTML).toBe('')
     expect(localStorage.length).toBe(0)
   })
 
+  it('an app that opens on another page shows the row on its first Dashboard, once', () => {
+    const { view, redraw } = draw({ pathname: '/jobs' })
+    expect(view.container.innerHTML).toBe('')
+    redraw({ pathname: '/dashboard' })
+    expect(phase()).toBe('showing')
+    expect(row()?.hasAttribute('data-mode-row-in')).toBe(false)
+    untilGone()
+    redraw({ pathname: '/jobs' })
+    redraw({ pathname: '/dashboard' })
+    expect(view.container.innerHTML).toBe('')
+  })
+
   it('a sub who is off Job Mode gets the same five seconds as everyone', () => {
-    draw({ role: 'subcontractor', mode: 'full' })
+    const { view } = draw({ role: 'subcontractor', mode: 'full' })
     expect(thirds().length).toBe(3)
     untilGone()
-    expect(thirds().length).toBe(0)
-    expect(handle()).toBeTruthy()
+    expect(view.container.innerHTML).toBe('')
   })
 
   it('a page the app sends on at once takes the row with it', () => {
@@ -223,7 +234,7 @@ describe('ModeRow', () => {
   })
 
   it('a swipe up on the row sends it away at once, and a press on its way out does nothing', () => {
-    const { setMode } = draw()
+    const { setMode, view } = draw()
     finger('pointerdown', row()!, 40)
     finger('pointermove', row()!, 40 - MODE_ROW_SWIPE_PX + 2)
     expect(phase()).toBe('held')
@@ -233,39 +244,47 @@ describe('ModeRow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Job Mode' }))
     expect(setMode).not.toHaveBeenCalled()
     pass(MODE_ROW_OUT_MS + MODE_ROW_DEAD_MS)
-    expect(thirds().length).toBe(0)
+    expect(view.container.innerHTML).toBe('')
   })
 
-  it('a tap on the handle brings the row down, sliding, for five seconds more', () => {
-    draw()
-    untilGone()
-    fireEvent.click(handle()!)
-    expect(words()).toEqual(['Task Mode', 'Dashboard', 'Job Mode'])
-    expect(row()?.hasAttribute('data-mode-row-in')).toBe(true)
-    expect(vi.mocked(recordNavClick)).toHaveBeenCalledWith('u1', 'master_technician', 'mode_row_shown', '#handle')
-    untilGone()
-    expect(thirds().length).toBe(0)
+  it('on its way out the row shrinks into the gear: it is told how far and how small, and the gear answers', () => {
+    const gear = document.createElement('button')
+    gear.setAttribute(MODE_ROW_HOME_ATTR, '')
+    gear.getBoundingClientRect = () => box(344, 58, 36, 36)
+    const answers = vi.fn()
+    gear.animate = answers as unknown as typeof gear.animate
+    document.body.appendChild(gear)
+    try {
+      draw()
+      row()!.getBoundingClientRect = () => box(0, 47, 390, 60)
+      pass(MODE_ROW_SHOW_MS)
+      expect(phase()).toBe('leaving')
+      const style = (row() as HTMLElement).style
+      expect(row()?.getAttribute('data-mode-row-out')).toBe('gear')
+      expect(style.getPropertyValue('--mode-row-to-x')).toBe('167px')
+      expect(style.getPropertyValue('--mode-row-to-y')).toBe('-1px')
+      expect(style.getPropertyValue('--mode-row-to-sx')).toBe('0.092')
+      expect(style.getPropertyValue('--mode-row-to-sy')).toBe('0.6')
+      // The gear answers once, as the row lands: after most of the way out, for the dead moment.
+      expect(answers).toHaveBeenCalledTimes(1)
+      const [frames, timing] = answers.mock.calls[0] as [Keyframe[], KeyframeAnimationOptions]
+      expect(frames).toHaveLength(3)
+      expect(timing.delay).toBe(MODE_ROW_OUT_MS - 80)
+      expect(timing.duration).toBe(MODE_ROW_DEAD_MS + 80)
+    } finally {
+      gear.remove()
+    }
   })
 
-  it('a pull down at the top of the page brings the row down, a short one does not, and none is read while the row shows', () => {
+  it('with no gear on the screen the row slides up, as the role dock’s bar has none', () => {
     draw()
-    touch('touchstart', 100, 200)
-    touch('touchmove', 102, 200 + MODE_ROW_PULL_PX + 4)
-    touch('touchend', 0, 0)
-    expect(vi.mocked(recordNavClick)).not.toHaveBeenCalled()
-    untilGone()
-    touch('touchstart', 100, 200)
-    touch('touchmove', 100, 200 + MODE_ROW_PULL_PX - 6)
-    touch('touchend', 0, 0)
-    expect(thirds().length).toBe(0)
-    touch('touchstart', 100, 200)
-    touch('touchmove', 102, 200 + MODE_ROW_PULL_PX + 4)
-    expect(thirds().length).toBe(3)
-    expect(vi.mocked(recordNavClick)).toHaveBeenCalledWith('u1', 'master_technician', 'mode_row_shown', '#pull')
+    pass(MODE_ROW_SHOW_MS)
+    expect(phase()).toBe('leaving')
+    expect(row()?.getAttribute('data-mode-row-out')).toBe('up')
   })
 
-  it('putting the phone away takes the row off, and coming back after a minute is a visit', () => {
-    draw()
+  it('putting the phone away takes the row off, and coming back after a minute is an opening', () => {
+    const { view } = draw()
     expect(thirds().length).toBe(3)
     const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
     const turn = (to: 'hidden' | 'visible') => {
@@ -275,9 +294,8 @@ describe('ModeRow', () => {
       })
     }
     turn('hidden')
-    expect(thirds().length).toBe(0)
-    expect(handle()).toBeTruthy()
-    // A glance elsewhere: back in ten seconds, the row stays out of sight.
+    expect(view.container.innerHTML).toBe('')
+    // A glance elsewhere: back in ten seconds, there is still no row.
     pass(10_000)
     turn('visible')
     expect(thirds().length).toBe(0)
@@ -288,47 +306,42 @@ describe('ModeRow', () => {
     expect(thirds().length).toBe(3)
     expect(row()?.hasAttribute('data-mode-row-in')).toBe(true)
     untilGone()
-    expect(thirds().length).toBe(0)
+    expect(view.container.innerHTML).toBe('')
     visibility.mockRestore()
   })
 
-  it('a press on the Dashboard link while on the Dashboard is a visit, and a window of the page opening is not', () => {
-    const { redraw } = draw({ locationKey: 'a' })
+  it('the phone’s switch: unticked, the Dashboard opens with no row, and ticking it shows the row there and then', () => {
+    const { view, redraw } = draw({ atOpen: false })
+    expect(view.container.innerHTML).toBe('')
+    pass(MODE_ROW_SHOW_MS)
+    expect(view.container.innerHTML).toBe('')
+    redraw({ atOpen: true })
+    expect(phase()).toBe('showing')
     untilGone()
-    expect(thirds().length).toBe(0)
-    // The page opens a window by its address: the query changed, so the row stays away.
-    redraw({ locationKey: 'b', search: '?task=12' })
-    expect(thirds().length).toBe(0)
-    redraw({ locationKey: 'c', search: '' })
-    expect(thirds().length).toBe(0)
-    // The router moved and the address is what it was: the Dashboard link, pressed on the Dashboard.
-    redraw({ locationKey: 'd', search: '' })
-    expect(thirds().length).toBe(3)
-    expect(row()?.hasAttribute('data-mode-row-in')).toBe(true)
-    untilGone()
-    expect(thirds().length).toBe(0)
+    expect(view.container.innerHTML).toBe('')
+    // Unticked and ticked again in the same opening: the row shows again, so the tick is seen to work.
+    redraw({ atOpen: false })
+    redraw({ atOpen: true })
+    expect(phase()).toBe('showing')
   })
 
-  it('in Task Mode neither a return nor the checklist link pressed again starts a count', () => {
-    const { redraw } = draw({ pathname: '/checklist', mode: 'task', locationKey: 'a' })
-    redraw({ pathname: '/checklist', mode: 'task', locationKey: 'b' })
-    expect(document.querySelector('.modeRowClip')).toBeNull()
-    pass(30_000)
+  it('the switch does not take Task Mode’s row, which is the way out', () => {
+    draw({ pathname: '/checklist', mode: 'task', atOpen: false })
     expect(thirds().length).toBe(3)
   })
 
-  it('in Task Mode the row is a line of the page, with no handle, no bar and no count', () => {
+  it('in Task Mode the row is a line of the page, with no bar and no count, and coming back to the app starts none', () => {
     const { view } = draw({ pathname: '/checklist', mode: 'task' })
-    expect(view.container.querySelector('[data-mode-row="row"]')).toBeTruthy()
-    expect(handle()).toBeNull()
+    expect(view.container.querySelector('.appTopBanner[data-mode-row="row"]')).toBeTruthy()
     expect(view.container.querySelector('.modeRowBar')).toBeNull()
+    expect(document.querySelector('.modeRowClip')).toBeNull()
     pass(30_000)
     expect(thirds().length).toBe(3)
     expect(thirds().map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false'])
   })
 
-  it('a press on Job Mode goes through the door as the row, is counted, and gets a fresh five seconds', () => {
-    const { setMode, onLand, redraw } = draw()
+  it('a press on Job Mode goes through the door as the row, is counted, and closes the row at once', () => {
+    const { setMode, onLand, redraw, view } = draw()
     pass(3000)
     fireEvent.click(screen.getByRole('button', { name: 'Job Mode' }))
     expect(setMode.mock.calls).toEqual([['job', true, 'row']])
@@ -336,17 +349,42 @@ describe('ModeRow', () => {
     expect(vi.mocked(recordNavClick)).toHaveBeenCalledWith('u1', 'master_technician', 'mode_row', '#job')
     expect(vi.mocked(recordNavClick)).toHaveBeenCalledWith('u1', 'master_technician', 'job_mode_enabled', '#row')
     redraw({ mode: 'job' })
-    // Three seconds had gone. The row is still there five seconds after the press, less a moment.
-    pass(MODE_ROW_SHOW_MS - 100)
-    expect(phase()).toBe('showing')
-    expect(thirds().map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true'])
-    pass(100)
+    // The choice is made: the row is on its way to the gear, with the new mode lit, and takes no more presses.
     expect(phase()).toBe('leaving')
+    expect(thirds().map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true'])
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }))
+    expect(setMode).toHaveBeenCalledTimes(1)
+    pass(MODE_ROW_OUT_MS + MODE_ROW_DEAD_MS)
+    expect(view.container.innerHTML).toBe('')
     expect(localStorage.length).toBe(0)
   })
 
-  it('a press on Dashboard from the Task Mode checklist switches both modes off, lands on the Dashboard, and the row is counted there', () => {
-    const { setMode, onLand, redraw } = draw({ pathname: '/checklist', mode: 'task' })
+  it('a press on the lit third is a choice to stay: nothing is written and the row closes', () => {
+    const { setMode, onLand, view } = draw({ mode: 'dispatch' })
+    pass(1000)
+    fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }))
+    expect(setMode).not.toHaveBeenCalled()
+    expect(onLand).not.toHaveBeenCalled()
+    expect(phase()).toBe('leaving')
+    expect(vi.mocked(recordNavClick).mock.calls).toEqual([['u1', 'master_technician', 'mode_row_sent', '#lit']])
+    pass(MODE_ROW_OUT_MS + MODE_ROW_DEAD_MS)
+    expect(view.container.innerHTML).toBe('')
+  })
+
+  it('a press on Task Mode switches to it, and the row is then a line of the page', () => {
+    const { setMode, redraw, view } = draw()
+    fireEvent.click(screen.getByRole('button', { name: 'Task Mode' }))
+    expect(setMode.mock.calls).toEqual([['task', true, 'row']])
+    redraw({ mode: 'task' })
+    expect(view.container.querySelector('.appTopBanner[data-mode-row="row"]')).toBeTruthy()
+    expect(document.querySelector('.modeRowClip')).toBeNull()
+    pass(30_000)
+    expect(thirds().length).toBe(3)
+  })
+
+  it('a press on Dashboard from the Task Mode checklist switches both modes off, lands on the Dashboard, and the row is drawn there for its way out alone', () => {
+    const { setMode, onLand, redraw, view } = draw({ pathname: '/checklist', mode: 'task' })
+    pass(20_000)
     fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }))
     expect(setMode.mock.calls).toEqual([
       ['task', false, 'row'],
@@ -354,18 +392,24 @@ describe('ModeRow', () => {
     ])
     expect(onLand).toHaveBeenCalledWith('/dashboard')
     redraw({ pathname: '/dashboard', mode: 'full' })
-    // The row was in sight in Task Mode, so it is drawn in place and not slid down.
-    expect(phase()).toBe('showing')
-    expect(row()?.hasAttribute('data-mode-row-in')).toBe(false)
-    untilGone()
-    expect(thirds().length).toBe(0)
+    // No five seconds: the row was in sight, the choice is made, and it goes to the gear from where it lay.
+    expect(phase()).toBe('leaving')
+    expect(thirds().map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false'])
+    pass(MODE_ROW_OUT_MS + MODE_ROW_DEAD_MS)
+    expect(view.container.innerHTML).toBe('')
+    // The app opened in Task Mode: the Dashboard later opens nothing.
+    redraw({ pathname: '/jobs', mode: 'full' })
+    redraw({ pathname: '/dashboard', mode: 'full' })
+    expect(view.container.innerHTML).toBe('')
   })
 
-  it('a press on the third already on does nothing', () => {
-    const { setMode } = draw({ mode: 'job' })
-    fireEvent.click(screen.getByRole('button', { name: 'Job Mode' }))
+  it('a press on the lit third of Task Mode’s row does nothing: that row stays', () => {
+    const { setMode } = draw({ pathname: '/checklist', mode: 'task' })
+    fireEvent.click(screen.getByRole('button', { name: 'Task Mode' }))
     expect(setMode).not.toHaveBeenCalled()
     expect(vi.mocked(recordNavClick)).not.toHaveBeenCalled()
+    pass(5000)
+    expect(thirds().length).toBe(3)
   })
 
   it('the thirds alone, as the look at another person’s Task Mode draws them: Task Mode filled, and a press does nothing', () => {

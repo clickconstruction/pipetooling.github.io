@@ -8,12 +8,11 @@ import {
   modeRowCountDeadline,
   modeRowBackIsVisit,
   modeRowCountStep,
+  modeRowFlight,
   modeRowOnScreen,
-  modeRowSamePlaceVisit,
   modeRowTakesPress,
   type ModeRowCount,
   type ModeRowCountEvent,
-  type ModeRowPlace,
 } from './modeRowCount'
 
 /** Feed the count a run of events, in order. */
@@ -27,7 +26,7 @@ const time = (now: number): ModeRowCountEvent => ({ type: 'time', now })
 const LEAVE_MS = MODE_ROW_OUT_MS + MODE_ROW_DEAD_MS
 
 describe('the five seconds', () => {
-  it('a visit shows the row for five seconds, whole', () => {
+  it('an opening shows the row for five seconds, whole', () => {
     expect(MODE_ROW_SHOW_MS).toBe(5000)
     const shown = run([arrive()])
     expect(shown).toEqual({ phase: 'showing', showing: 1, slideIn: false, endsAt: T0 + 5000 })
@@ -54,8 +53,8 @@ describe('the five seconds', () => {
     expect(modeRowTakesPress(leaving)).toBe(false)
     expect(run([{ type: 'press', now: T0 + 5100 }], leaving)).toBe(leaving)
     expect(run([{ type: 'touch', now: T0 + 5100, hold: 'finger' }], leaving)).toBe(leaving)
-    // The strip stays dead for the slide and a moment more.
-    expect(LEAVE_MS).toBe(540)
+    // The strip stays dead for the way out and a moment more, while the gear answers.
+    expect(LEAVE_MS).toBe(680)
   })
 
   it('slides in only when the arrival says so, and a row already showing is not slid in again', () => {
@@ -102,13 +101,21 @@ describe('a hold', () => {
 })
 
 describe('a press, a swipe and a page left', () => {
-  it('a press gets a fresh five seconds', () => {
-    expect(run([arrive(), { type: 'press', now: T0 + 3000 }])).toEqual({ phase: 'showing', showing: 2, slideIn: false, endsAt: T0 + 8000 })
+  it('a press closes the row at once: the choice is made', () => {
+    expect(run([arrive(), { type: 'press', now: T0 + 3000 }])).toEqual({ phase: 'leaving', showing: 1, goneAt: T0 + 3000 + LEAVE_MS })
   })
 
-  it('a press under a finger leaves the hold to start the count', () => {
-    const held = run([arrive(), { type: 'touch', now: T0 + 100, hold: 'finger' }])
-    expect(run([{ type: 'press', now: T0 + 200 }], held)).toBe(held)
+  it('a press under a hold closes it too, so a keyboard that chose is not left waiting', () => {
+    const held = run([arrive(), { type: 'touch', now: T0 + 100, hold: 'focus' }])
+    expect(run([{ type: 'press', now: T0 + 200 }], held)).toEqual({ phase: 'leaving', showing: 1, goneAt: T0 + 200 + LEAVE_MS })
+  })
+
+  it('a press on the row Task Mode holds draws the row for its way out alone', () => {
+    const out = run([{ type: 'press', now: T0 }])
+    expect(out).toEqual({ phase: 'leaving', showing: 0, goneAt: T0 + LEAVE_MS })
+    expect(modeRowOnScreen(out)).toBe(true)
+    expect(modeRowTakesPress(out)).toBe(false)
+    expect(run([time(T0 + LEAVE_MS)], out)).toEqual({ phase: 'gone', showing: 0 })
   })
 
   it('a swipe up sends the row away at once, held or not', () => {
@@ -131,37 +138,37 @@ describe('a press, a swipe and a page left', () => {
   })
 
   it('every whole start is numbered, so the bar is drawn again for each', () => {
-    const state = run([arrive(), { type: 'press', now: T0 + 1 }, { type: 'touch', now: T0 + 2, hold: 'finger' }, { type: 'release', now: T0 + 3, hold: 'finger' }, time(T0 + 5003), time(T0 + 6000), arrive(T0 + 7000)])
+    const state = run([arrive(), arrive(T0 + 1), { type: 'touch', now: T0 + 2, hold: 'finger' }, { type: 'release', now: T0 + 3, hold: 'finger' }, time(T0 + 5003), time(T0 + 6000), arrive(T0 + 7000)])
     expect(state.showing).toBe(4)
   })
 })
 
-describe('what counts as a visit', () => {
-  const dash: ModeRowPlace = { pathname: '/dashboard', search: '', key: 'a' }
-
-  it('a press on the Dashboard link while on the Dashboard: the router moved and the address did not', () => {
-    expect(modeRowSamePlaceVisit(dash, { ...dash, key: 'b' })).toBe(true)
-    expect(modeRowSamePlaceVisit({ ...dash, search: '?tab=today' }, { ...dash, search: '?tab=today', key: 'b' })).toBe(true)
-  })
-
-  it('a window or a tab of the page opening changes the query, and is no visit', () => {
-    expect(modeRowSamePlaceVisit(dash, { ...dash, search: '?task=12', key: 'b' })).toBe(false)
-    expect(modeRowSamePlaceVisit({ ...dash, search: '?task=12' }, { ...dash, key: 'b' })).toBe(false)
-    expect(modeRowSamePlaceVisit(dash, { ...dash, search: '#top', key: 'b' })).toBe(false)
-  })
-
-  it('a draw with no move is no visit, nor is the first place the row sees, nor a move from another page', () => {
-    expect(modeRowSamePlaceVisit(dash, { ...dash })).toBe(false)
-    expect(modeRowSamePlaceVisit(null, dash)).toBe(false)
-    expect(modeRowSamePlaceVisit({ pathname: '/jobs', search: '', key: 'a' }, { ...dash, key: 'b' })).toBe(false)
-  })
-
-  it('coming back to the app is a visit after a minute away, and not after a glance elsewhere', () => {
+describe('what counts as an opening', () => {
+  it('coming back to the app is an opening after a minute away, and not after a glance elsewhere', () => {
     expect(MODE_ROW_AWAY_MS).toBe(60_000)
     expect(modeRowBackIsVisit(T0, T0 + 10_000)).toBe(false)
     expect(modeRowBackIsVisit(T0, T0 + 59_999)).toBe(false)
     expect(modeRowBackIsVisit(T0, T0 + 60_000)).toBe(true)
     expect(modeRowBackIsVisit(T0, T0 + 3_600_000)).toBe(true)
     expect(modeRowBackIsVisit(null, T0)).toBe(false)
+  })
+})
+
+describe('the way out, into the gear', () => {
+  const row = { left: 0, top: 47, width: 390, height: 60 }
+  const gear = { left: 344, top: 58, width: 36, height: 36 }
+
+  it('the row’s middle travels to the gear’s middle, and the row ends the gear’s own size', () => {
+    expect(modeRowFlight(row, gear)).toEqual({ x: 167, y: -1, sx: 0.092, sy: 0.6 })
+  })
+
+  it('never grows on the way: a gear larger than the row leaves the row its size', () => {
+    expect(modeRowFlight({ left: 0, top: 0, width: 20, height: 20 }, { left: 0, top: 0, width: 40, height: 40 })).toEqual({ x: 10, y: 10, sx: 1, sy: 1 })
+  })
+
+  it('no gear on the screen, or a box with no size, is no flight: the row slides up', () => {
+    expect(modeRowFlight(row, null)).toBeNull()
+    expect(modeRowFlight(row, { left: 0, top: 0, width: 0, height: 0 })).toBeNull()
+    expect(modeRowFlight({ left: 0, top: 0, width: 0, height: 0 }, gear)).toBeNull()
   })
 })
