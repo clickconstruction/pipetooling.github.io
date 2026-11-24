@@ -2,7 +2,7 @@
 name: "View as: the saves it held back, and what is left to walk"
 number: 417
 group: close
-status: built 2026-11-21 · v2.8176 (#9218), v2.8241 (#9311), v2.8246 (#9318) and v2.8251 (#9324) merged, #9324 on 2026-11-23 with its migration on prod under its original stamp · walks 1, 2 and 4 walked on clicktooling.com on 2026-11-24 on Fable 5.2 and hold, walk 3 rests on its tests · left: four calls for Taunya, and her word to retire the card
+status: built 2026-11-21 · v2.8176 (#9218), v2.8241 (#9311), v2.8246 (#9318) and v2.8251 (#9324) merged, #9324 on 2026-11-23 with its migration on prod under its original stamp · walks 1, 2 and 4 walked on clicktooling.com on 2026-11-24 on Fable 5.2 and hold, walk 3 rests on its tests · call 2 built as v2.8459 (#9620), merged, pushed and walked on 2026-11-24 · left: calls 1, 3 and 4 for Taunya, and her word to retire the card
 summary: >
   A dev in View as is signed in as the person, so saves the app makes with no press landed on that
   person: their last seen time, their app time, a salaried clock sync, and "seen" marks that cleared
@@ -10,11 +10,12 @@ summary: >
   Exit no longer leaves a dev signed in as the person when the session swap is refused. A migration
   that makes the server refuse the activity heartbeat for an imitated session is on prod.
   Exit, the seen mark on a bid request and the server refusal were walked on the live site on
-  2026-11-24 and hold. The salary sync rests on its tests.
-next: Taunya's four calls below, and her word to retire the card. Nothing here is left to build, push or walk. The salary sync stays on its tests until someone sets up a salaried ZZ test person.
-size: S; left: nothing to build or walk, four calls for Taunya
+  2026-11-24 and hold. The salary sync rests on its tests. The four seen marks that are database
+  functions now refuse such a session on the server too (v2.8459), walked live the same day.
+next: Taunya's calls 1, 3 and 4 below, and her word to retire the card. Call 2 is built, pushed and walked. Nothing here is left to build, push or walk. The salary sync stays on its tests until someone sets up a salaried ZZ test person.
+size: S; left: nothing to build or walk, three calls for Taunya
 blocker: "None. Taunya's word of 2026-11-22, *Wait for Fable*, is met: #9324 merged on 2026-11-23, its migration is on prod, and the walks were done on Fable 5.2 on 2026-11-24. Until 2026-11-24 this line said that #9324, merged and not pushed, would hold every Pages deploy. That was wrong, and it never did. A deploy holds only when the client calls a function that a migration not yet on prod creates. A function such a migration replaces is a warning, and the client never calls `session_opened_by_imitation()`."
-ver: v2.8176 · v2.8241 · v2.8246 · v2.8251
+ver: v2.8176 · v2.8241 · v2.8246 · v2.8251 · v2.8459
 opinion: close it on Taunya's word, now that the push and the walks are done — the open calls below are new work, each its own card if Taunya wants it
 mockup: not required — no screen changed; the walks read network calls and rows
 ---
@@ -58,6 +59,13 @@ every save a page makes with no press, in the shared side-session notes folder a
   clean at 1,474 files, and the dev seat's catalog lists `session_opened_by_imitation`. A session
   cannot read a function's body on prod, so the early return in `bump_user_app_activity()` is proved
   by walk 4 below, not by reading it.
+- **v2.8459 (#9620).** Call 2 below, built on a yes given in the building session on 2026-11-24.
+  Migration `20261124084500_imitated_session_holds_seen_marks.sql`: `job_note_tags_seen()`,
+  `task_note_tags_seen()` and `bid_mark_requests_seen()` mark nothing and answer 0 for a session
+  `session_opened_by_imitation()` names, and `legal_firm_intake_seen()` stamps nothing after its own
+  office check. A press made in View as still saves. The `imitated-session` bed gained a second
+  scenario, `30_seen_marks.sql`. Merged at 10:58 UTC and pushed at 11:00 UTC on 2026-11-24: the ledger
+  holds `20261124084500` and the drift check is clean at 1,478 files.
 
 ## Left to do and to walk (2026-11-22, walked 2026-11-24)
 
@@ -137,6 +145,21 @@ Rows were read through the dev seat.
   - Two heartbeats left the browser between the press on Exit and the hand call. Read from the code and not proved here: the first is the leaving page's part of a minute, sent once the dev's session is back, so the time spent looking lands on the dev.
   - The script and its three outputs are in the side-session notes folder of that night, under `417-view-as-walks`.
 
+**The server's hold on the seen mark (v2.8459), on clicktooling.com on 2026-11-24, 11:01 to 11:04 UTC.** The same script, the same way, after the push. The page ran `index-BOr0oYED.js`, the bundle the host named.
+
+- **It holds.**
+  - As the dev, BP398 (ZZ Test) was marked for the Sample estimator again, by the same presses.
+  - In View as the Sample estimator the client sent no `bid_mark_requests_seen` call on two loads, as before.
+  - The call was then sent by hand through the page's own Supabase client, as an older build would send it.
+  - Read by the sample's own session straight before the call, the request was open, unseen and for that person. The old body would have answered 1 and stamped it.
+  - The call answered 0 with status 200 at 11:03:38 UTC. Read straight after, `seen_at` was still null.
+  - The two heartbeats by hand were sent again and answered 204. The sample's activity rows did not move.
+  - Exit landed on `/settings` as the dev, as in walk 1. **Take it back** answered 1 row.
+  - Read through the dev seat after: the row is `taken_back` and `seen_at` is null.
+- **Not walked.** `job_note_tags_seen`, `task_note_tags_seen` and `legal_firm_intake_seen` rest on the bed. The Sample estimator has no cleared tag to hold, and is not the office.
+- **Left on production.** A second closed `bid_mark_requests` row on BP398, `41a412c2-2c5d-44ad-b081-562f44fca25c`, `taken_back`, never seen. A second `user_imitations` row for the Sample estimator, at 11:02 UTC.
+- **Seen, not fixed.** On a PR whose migration only replaces functions, `check:calls-ahead` ends with *the deploy holds until the push*. The deploy's own step prints those calls as a warning and goes on. That sentence is what the mistake about #9324 was read from.
+
 ### Loose ends
 
 - **#9324 and its push, done.** The building session was moved to Opus and asked whether to
@@ -168,8 +191,8 @@ Rows were read through the dev seat.
 - **Server refusals not built.** The salary sync is left client-side on purpose: the server cannot
   tell the clock button's own sync from the sync after a pressed save, which can be for another day.
   The four seen-mark RPCs (`job_note_tags_seen`, `task_note_tags_seen`, `bid_mark_requests_seen`,
-  `legal_firm_intake_seen`) could each take `session_opened_by_imitation()` in one line now that #9324
-  is live. The table writes (`user_bid_notes_read_state`, `bid_plan_questions.seen_at`, the first look
+  `legal_firm_intake_seen`) each took `session_opened_by_imitation()` in one line in v2.8459, so they
+  are built. The table writes (`user_bid_notes_read_state`, `bid_plan_questions.seen_at`, the first look
   stamp) would need a policy or a trigger.
 - **Exit's sign-in page says nothing.** A dev signed out by a refused swap lands on the plain sign-in
   page with no reason given, and a lost signal at the press signs out too, with no retry.
@@ -183,6 +206,8 @@ The recommendation after each is the building session's, not hers.
    flag, or the list grows back.
 2. **Refuse the seen-mark RPCs on the server too?** Recommended: yes, as one small migration after
    #9324 is pushed and walked. Each is one line, and it covers an older build still open somewhere.
+   Answered yes in the building session on 2026-11-24, and built as v2.8459 (#9620). This card does
+   not record whose yes it was.
 3. **Correct the activity rows from before the fix?** Recommended: change nothing. A day's row is
    totals with no session on it, so no correction can be exact. Nine real accounts were imitated on
    19 and 20 November; their first and last seen times can be read against `user_imitations`, their
