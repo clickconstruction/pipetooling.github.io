@@ -59,7 +59,7 @@ const PAGE_WIDTH = 760
 const THUMB_WIDTH = 44
 
 const btn: CSSProperties = { padding: '0.4rem 0.85rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 500 }
-const btnPrimary: CSSProperties = { ...btn, background: '#16a34a', borderColor: '#16a34a', color: 'white', fontWeight: 600 }
+const btnPrimary: CSSProperties = { ...btn, background: '#15803d', borderColor: '#15803d', color: 'white', fontWeight: 600 }
 const btnQuiet: CSSProperties = { ...btn, background: 'transparent', borderColor: 'transparent', color: 'var(--text-muted)' }
 const key: CSSProperties = { display: 'inline-block', font: '0.7rem/1 ui-monospace, Menlo, monospace', padding: '3px 6px', border: '1px solid var(--border-strong)', borderBottomWidth: 2, borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)', marginRight: 4 }
 const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }

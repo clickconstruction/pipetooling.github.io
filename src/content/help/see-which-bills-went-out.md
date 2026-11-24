@@ -308,13 +308,17 @@ A refund made in Stripe does not show on this page. A credit in kind is listed a
 
 ## Move between months
 
-Press ‹ beside the month's name to go back a month. Press › to come forward again.
+A button sits on each side of the month's name. Each button names the month it opens.
 
-The newest month is this one. A day that has not come cannot be pressed.
+Press {{button:outline|‹ Oct}} to go back a month. Press {{button:outline|Dec ›}} to come forward again.
+
+The newest month is this one, so it has no button to go forward. A day that has not come cannot be pressed.
 
 The address keeps the day, the month and the chip. Save the address to come back to the same day.
 
-Press {{button:outline|Print}} to print the month, a day at a time. Press {{button:outline|Download CSV}} to save one row for each payment.
+Press {{button:outline|Print}} to print the month. The page opens with the month of days. Each day's payments follow, newest day first.
+
+Press {{button:outline|Download CSV}} to save one row for each payment.
 
 ## What the list cannot know
 

@@ -23,6 +23,7 @@ import {
   billsPaidOpeningDay,
   billsPaidRange,
   billsPaidShiftMonth,
+  billsPaidStepLabel,
   billsPaidSum,
   billsPaidTiles,
   billsPaidTime,
@@ -198,6 +199,12 @@ describe('billsPaid — the month', () => {
     expect(billsPaidMonthName('2026-02')).toBe('February')
     expect(billsPaidShiftMonth('2026-01', -1)).toBe('2025-12')
     expect(billsPaidShiftMonth('2026-12', 1)).toBe('2027-01')
+    // A step's words: the month it opens, short, with the year only when the step leaves this one.
+    expect(billsPaidStepLabel('2026-11', -1)).toBe('Oct')
+    expect(billsPaidStepLabel('2026-11', 1)).toBe('Dec')
+    expect(billsPaidStepLabel('2026-01', -1)).toBe('Dec 2025')
+    expect(billsPaidStepLabel('2026-12', 1)).toBe('Jan 2027')
+    expect(billsPaidStepLabel('nope', 1)).toBe('')
     expect(billsPaidMonthSpan('2026-11')).toEqual({ first: '2026-11-01', last: '2026-11-30' })
     expect(billsPaidMonthSpan('2028-02').last).toBe('2028-02-29')
   })
@@ -295,7 +302,21 @@ describe('billsPaid — out of the app', () => {
     expect(html).toContain('in kind, not added')
     expect(html).toContain('part of the bill')
     expect(html).toContain('Printed Mon, Nov 23 · 3:00 PM.')
+    // The month's grid leads the page: a week a row from Sunday, a day money came with its figure to the cent.
+    const cal = html.slice(html.indexOf('<table class="cal">'), html.indexOf('</table>') + 8)
+    expect(html.indexOf('<table class="cal">')).toBeGreaterThan(html.indexOf('Newest day first.'))
+    expect(html.indexOf('<table class="cal">')).toBeLessThan(html.indexOf('<tr class="day">'))
+    expect(cal).toContain('<th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>')
+    // November 2026 begins on a Sunday and runs five weeks, the last one filled out to Saturday.
+    expect(cal.match(/<tr>/g)?.length).toBe(6)
+    expect(cal.match(/<td /g)?.length).toBe(35)
+    expect(cal.match(/class="blank"/g)?.length).toBe(5)
+    expect(cal).toContain('<td class="in"><i>20</i><b>$6,670.00</b><span>2 paid</span></td>')
+    // A day with nothing is a number alone, and a day after the print is marked as not come.
+    expect(cal).toContain('<td class="none"><i>21</i></td>')
+    expect(cal).toContain('<td class="later"><i>24</i></td>')
     const none = billsPaidMonthHtml(billsPaidFilter(lines, 'bank'), { month: '2026-11', how: 'bank', printedAtIso: '2026-11-23T21:00:00.000Z' })
     expect(none).toContain('Nothing came in by bank transfer in November 2026.')
+    expect(none).not.toContain('<table class="cal">')
   })
 })
