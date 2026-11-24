@@ -4632,6 +4632,9 @@ Every email to a company goes out through one sender, `gc-trade-email`, by kind:
 a recorded answer about the plans reaches the companies on its trade the same way (guide `ask-the-architect-about-the-plans`), and so does a new set of plans, to the companies asked to quote (guide `issue-a-new-set-of-plans`).
 **Follow up** beside them lists every ask still waiting on a quote, the ones to call first at the top;
 a call logged there, with the day they promised, is a line on the ask, and **Will not do it** / **Cannot do it** keep the reason with the job and the company (guide `follow-up-on-a-quote-from-a-trade-partner`).
+**Take the ask back…** (v2.8440, `gc_take_ask_back`) shows beside the two on an ask the company has not heard about, and deletes it: not opened, not emailed, no contact logged, no quote, not awarded.
+An ask they did hear about is refused in words and keeps its own two closes, so a company that was told never reads as never asked.
+Each take-back is a row in `gc_asks_taken_back` (the trade, the company by id and by its name that day, who asked and when, who took it back and when), since the ask itself is gone and the company may leave the bench after it.
 Its **By people** lists everyone we wait on, each once across their jobs: the number on Follow up's button and on a **GC projects** line on the Dashboard's Needs you, for the office team (v2.4941).
 Its **Work the list**, each person's **Follow up** and a board row's Who to call card open the **Follow up sheet** (v2.5215, guide `work-through-everyone-we-wait-on`): one person at a time, a draft that opens in the reader's own Messages or mail with **I sent it**, and **Call** with what they said, each logged on the ask, on the company, as a promise or in a customer's log.
 Since v2.5226 a dev can send it from Click instead, to a trade partner's people for the kinds ticked, after **Send a test to me**, logged as a nudge once it went.

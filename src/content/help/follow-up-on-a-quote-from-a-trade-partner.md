@@ -2,7 +2,7 @@
 title: follow up on a quote from a trade partner
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, follow up, quote, chase, call, promised, log a contact, will not do it, cannot do it, decline, reason, trade partner, by people, by urgency
+keywords: gc mode, follow up, quote, chase, call, promised, log a contact, will not do it, cannot do it, decline, reason, trade partner, by people, by urgency, take the ask back, undo an ask, asked the wrong company
 where: /gc
 order: 97
 ---
@@ -77,6 +77,25 @@ Here are the reasons to pick from.
 - something else
 
 For **something else**, type their words before you save. The reason stays with this job and with the company.
+
+## Take an ask back
+
+An ask made on the wrong company can come back. The ask comes back only while the company has not heard about it.
+
+1. Find the ask under its trade on the project's card.
+2. Press {{button:outline|Take the ask back…}} beside {{button:outline|Cannot do it}}.
+3. Read the window, then press {{button:red|Take the ask back}}.
+
+The ask is deleted. The company reads as never asked on that trade. You can ask them again.
+
+The button shows only on an ask the company has not heard about. These asks show no button.
+
+- The company opened the ask in its portal.
+- We emailed them the invitation.
+- A call, a text or an email is logged on the ask.
+- Their quote is in, or the trade is awarded to them.
+
+Close one of those with {{button:outline|Will not do it}} or {{button:outline|Cannot do it}}. An awarded trade comes back first. See [award a trade on a GC project](/help/award-a-trade-on-a-gc-project).
 
 ## Find someone else
 
