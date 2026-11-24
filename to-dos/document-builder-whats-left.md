@@ -2,7 +2,7 @@
 name: "Document builder, what is left: the walks owed on prod, the builds left, and a way to tell one visitor from another"
 number: 416
 group: ready
-status: written 2026-11-21 on Taunya's word, *save everything we should build, everything we didn't build and all of the walks we should do to a punch list card so another user on a different computer can pick up where we left off* · 2026-11-22 each walk given its page, its role, its test rows and its widths, and the loose ends named by PR, migration and row, on her word to record what is still owed on every card · the one home for the Document builder's leftovers · nothing on this card is started
+status: written 2026-11-21 on Taunya's word, *save everything we should build, everything we didn't build and all of the walks we should do to a punch list card so another user on a different computer can pick up where we left off* · 2026-11-22 each walk given its page, its role, its test rows and its widths, and the loose ends named by PR, migration and row, on her word to record what is still owed on every card · the one home for the Document builder's leftovers · 2026-11-23 walks 1d, 1e and 1g to 1i walked on prod · 2026-11-24 walks 1b and 1j walked on prod, 1f held · no build on this card is started
 summary: >
   The Document builder (#404) is built but for steps 6 and 10, and live for a dev. This card is the
   one list of what is left, in the order to do it. First the walks on prod that no one has done yet,
@@ -10,9 +10,9 @@ summary: >
   loose ends: PRs not merged, a migration not pushed, the test rows the walks left. Then the builds
   that are ready now, a way to see that the same person opened a link twice, and the builds that
   wait on one of Taunya's calls.
-next: Part 1, the walks, on test rows only. Walks 1g to 1i were walked on 2026-11-23 and hold. 1j can go now that PR #9337 is merged; it needs a file uploaded from the trade's page. Part 3 can start beside the walks. Parts 4 and 5 wait on Taunya's calls.
+next: Part 1, the walks left. 1a and 1c wait on presses that take an award and an ask back, which another session is building. 1f waits on a way to set a billing job on a test project, since no screen does. 1k needs a real phone. Then remove the two test certificates and their two Drive files, named under the 2026-11-24 notes. Part 3 can start beside the walks. Parts 4 and 5 wait on Taunya's calls.
 size: L as five parts (M · S · M · M · L), each alone
-blocker: None for walks 1a to 1f, 1j and 1k. The Sub NDA was published as revision 1 on 2026-11-23, on the owner's go. Parts 4 and 5 wait on Taunya's calls, each named on its line. An attorney's read of the Sub NDA and an insurance agent's read of the sheet come before anything goes to a real GC or a real trade.
+blocker: Walks 1a and 1c wait on a way to undo an award and an ask. Walk 1f waits on a way to set and clear a billing job. None for 1k. The Sub NDA was published as revision 1 on 2026-11-23, on the owner's go. Parts 4 and 5 wait on Taunya's calls, each named on its line. An attorney's read of the Sub NDA and an insurance agent's read of the sheet come before anything goes to a real GC or a real trade.
 opinion: build — the walks first, since each one proves code that is already live
 mockup: not required — #404's mockup.html draws every screen here but the visitor lines in part 4, which are drawn first as that part's own step
 ---
@@ -147,6 +147,56 @@ puts its rows back after, and its line on #404 names what it could not delete.
 - **Seen, not fixed.**
   - A sent row whose trade's page is off offers no **Turn their page on**.
   - The trade's page, opened by a signed-in dev, is not counted as the trade's open. That is as designed, but it means a dev cannot walk an open from the same browser.
+
+**1b, 1f and 1j, on clicktooling.com on 2026-11-24.** As a dev in a headless browser, with the trade's page opened in a second browser that has no sign-in. The office's side was read at 1200 px and 375 px, light and dark. The trade's page was read at 375 px and 730 px.
+
+- **1b holds.**
+  - The send of 2026-11-23 had been taken off and its ZZ person removed before this walk began, so the walk made both again.
+  - A ZZ person at a sink address was added from the trade's own page, ticked for **Pay and papers**.
+  - **To** read that person, the press read **Send to ZZ**, and the row then read *Sent Nov 24 to* that person, *Not opened yet*.
+  - Signed out, the trade's page showed *What your certificate must show* with the job and a *New* chip. **Open the sheet** drew revision 2, and the office's row then read *Opened Nov 24*.
+  - The place line was changed and published as revision 3, then put back and published as revision 4. The publish asked nothing first.
+  - The row read *Changed since they opened it* with **Tell them it changed** at all four looks, with nothing past the edge. The trade's page read *Changed since you opened it* at both widths.
+  - **Tell them it changed** was dead until **Send it anyway** was ticked. The line under it named the sink person and address. Pressed, the row read *Sent Nov 24*, *Not opened yet* and **Send it again**.
+  - The mail log holds both emails to the sink address, the first as *delivered* and the second as *sent*. The sink's own inbox cannot be read from here.
+  - Signed out again, **Open the sheet** drew *Revision 4* with the place as it was, and the office's row read *Opened Nov 24*.
+- **1j holds, but for the email of a send-back.**
+  - #9337 is on main as v2.8264, and a Pages deploy of a later commit had finished.
+  - A made-up one-page PDF went up from the trade's page, signed out, at 375 px, with a run-out day a year ahead. **Send it to Click** is live with a file and no day.
+  - The card read *1 certificate to check*, and the row read *Certificate came in Nov 24* with **Check it against the sheet**.
+  - The check list gave **Open their file**, *They sent it Nov 24* and 8 lines for revision 4: the name, the place, the holder and five coverage lines. *Good until* began on the day the trade gave.
+  - At all four looks, with no line ticked the first press read *0 of 8 checked*, dead, and **Send it back** was dead. With seven ticked it read *7 of 8 checked*, dead, and **Send it back, naming 1 thing missing** was live.
+  - With every line ticked and a day ahead it read **Mark it good**, live. With today or a past day it was dead under *That day has passed. Ask them for the current certificate.* With no day it was dead under *Say the day it is good until.*
+  - **Mark it good** made the row *Certificate good to Nov 24* and the count *Every trade has a certificate.*
+  - The foot line alone was changed and published as revision 5, and the row stayed good.
+  - One amount was changed and published as revision 6. The row read *The sheet changed since their certificate* with **Check it again**, and the count read *1 certificate to check.*
+  - **Check it again**, with the changed amount left unticked, then **Send it back, naming 1 thing missing**. The row read *Sent back Nov 24, 1 thing missing* with the line under it, and the count read *1 trade has no good certificate.*
+  - **The email did not go.** `gc-trade-email` answered 502, and the card said *It is marked as sent back. The email to them did not go. The email did not go out. Try again in a minute.*
+  - The function's own reason is the mail service's: *Invalid `to` field. Please use our testing email address instead of domains like `example.com`.* The company's main contact is at `example.com` and comes first in **Pay and papers**, so the whole email is refused, the sink in copy with it. The email cannot be walked on this test company as it stands.
+  - A second file went up through **Send a newer one** at 730 px. The sheet's row read *Certificate came in Nov 24* again, and a second send-back got the same answer.
+  - Both fields were put back with **Back to the usual** and published as revision 7.
+- **1f held.** No screen sets a billing job on a GC project or clears one.
+  `gc_projects.billing_job_id` is written by a sent pay application, a sent interest bill and a job combine, and by nothing else.
+  So the walk's first step is a row written by hand, and that is the owner's call.
+  Seen without it: today's two copies are under Sent copies, *Contracts and estimates*, as *Insurance sheet email* to the test trade company, and they name no job.
+- **Left on production.**
+  - The test sheet at revision 7, reading as it did at revision 2.
+  - One send, `986a6039-aed2-41b6-ad3f-8be1b1d4eb10`, sent twice and taken off. Its two email log rows, `001a2aa4-faf4-4d7a-aa5e-44f799d4a648` and `2b1e1d20-e6e3-44fe-89b3-2abdd0a88afd`, and its two Sent copies, `886b9867-3364-4bda-960c-49c984d73022` and `a407f609-26b6-4602-858b-4d9551e564e4`.
+  - The ZZ person `1841fe2f-c4e9-4f96-9814-17cf916f4d11`, removed from the trade's page.
+  - Two certificates on the test trade company, `5d7385db-814a-4535-8ea1-3c33c1a7d59a` and `bd8d0d89-1041-46dd-af78-4c3e0f5baac1`, and their file rows in `gc_trade_files`, `b0fea0f6-1947-43b8-b421-8504e19c4841` and `6f899892-6805-4898-a35e-4b8ff0f1d544`. The database lets a dev delete a certificate, but no screen found offers the press for a trade company's, so they stay.
+  - Two Drive files in PipeTooling Jobs → Jobs → GC trade partners → GC test trade company, delete me: `2026-11-24 0044 - ZZ Test certificate 416.pdf` and `2026-11-24 0100 - ZZ Test certificate 416.pdf`. The Drive account this session reaches may read them and may not trash them, so they are a person's to remove.
+  - The trade's portal link of 2026-11-23 reads *Opened 20 times*, from the signed-out looks.
+- **What the two certificates change on the test rows.** The company's own record now reads *Insurance certificate, good to Nov 24* and *Certificate from their portal, waiting for your look*.
+  Anything that reads the company's own certificate now finds one, which was not so before this walk.
+- **Seen, not fixed.**
+  - *Certificate good to Nov 24* drops the year, so a certificate good for a year reads as if it runs out today. The trade's page and the company's record say it the same way.
+  - After a send-back the card says *Try again in a minute*, and the row has no press to try with. The reason the function gave is not shown.
+  - After a send-back the trade's page reads *good to Nov 24 · Click is checking it*, and its *Needs you* no longer asks for a certificate. The company's record still offers **Mark it good**.
+  - A certificate marked good and then sent back keeps `status` `signed`, which is why the company's record still reads it as good.
+  - No group email reaches the test trade company, since its main contact is at `example.com`. A walk that needs one needs that contact at a sink address first.
+  - Publishing a job's sheet asks nothing first.
+- **For the next headless walk.** A new browser for every look pulls every file again, and GitHub Pages answered *Rate limit exceeded* after about forty loads in half an hour. The app then read *The app is slow right now.* A browser profile kept on disk stopped it.
+  A first visit to `/gc` in a new profile draws a walkthrough over the page, and Escape closes it.
 
 **1g. The Sub NDA's Publish and its attorney's mark** (v2.8024)
 
