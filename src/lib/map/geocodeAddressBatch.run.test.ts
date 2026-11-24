@@ -57,23 +57,24 @@ vi.mock('https://esm.sh/@supabase/supabase-js@2', () => ({
 
 const ENV: Record<string, string> = { SUPABASE_URL: 'http://127.0.0.1:9', SUPABASE_ANON_KEY: 'anon-key', GOOGLE_MAPS_API_KEY: 'test-key' }
 
-/** The three map services, each answering what the case sets. */
-const net: { nominatim: Array<{ lat: string; lon: string }> | number; google: string; census: 'none' | number; asked: string[] } = { nominatim: [], google: 'ZERO_RESULTS', census: 'none', asked: [] }
+/**
+ * The two map services, each answering what the case sets. OpenStreetMap's lookup is not among them
+ * (punch list #436): a request to it is an unexpected fetch, so a case that reached it would fail.
+ */
+type Point = { lat: number; lng: number }
+const net: { google: string; googlePoint: Point | null; census: 'none' | number | Point; asked: string[] } = { google: 'ZERO_RESULTS', googlePoint: null, census: 'none', asked: [] }
 const realFetch = globalThis.fetch
 function fakeFetch(input: string | URL | Request): Promise<Response> {
   const url = String(input instanceof Request ? input.url : input)
   const json = (body: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
-  if (url.includes('nominatim.openstreetmap.org')) {
-    net.asked.push('nominatim')
-    return typeof net.nominatim === 'number' ? json({}, net.nominatim) : json(net.nominatim)
-  }
   if (url.includes('maps.googleapis.com')) {
     net.asked.push('google')
-    return json({ status: net.google, results: [] })
+    return net.googlePoint ? json({ status: 'OK', results: [{ geometry: { location: net.googlePoint } }] }) : json({ status: net.google, results: [] })
   }
   if (url.includes('/locations/onelineaddress')) {
     net.asked.push('census')
-    return typeof net.census === 'number' ? json({}, net.census) : json({ result: { addressMatches: [] } })
+    if (typeof net.census === 'number') return json({}, net.census)
+    return json({ result: { addressMatches: net.census === 'none' ? [] : [{ coordinates: { x: net.census.lng, y: net.census.lat } }] } })
   }
   return Promise.reject(new Error(`unexpected fetch ${url}`))
 }
@@ -102,7 +103,7 @@ beforeEach(() => {
   db.missWriteError = null
   db.pointUpserts = []
   db.missUpserts = []
-  net.nominatim = []
+  net.googlePoint = null
   net.google = 'ZERO_RESULTS'
   net.census = 'none'
   net.asked = []
@@ -121,45 +122,41 @@ async function post(body: Record<string, unknown>): Promise<Answer> {
 }
 
 describe('geocode-address-batch remembers an address no service could place (punch list #408)', () => {
-  it('all three services say not found: the miss is kept, with what they said', async () => {
+  it('Google and the Census both say not found: the miss is kept, with what they said', async () => {
     const out = await post({ addresses: [WORDS] })
-    expect(net.asked).toEqual(['nominatim', 'google', 'census'])
+    // Google first, then the Census, and nobody else (punch list #436).
+    expect(net.asked).toEqual(['google', 'census'])
     expect(out.results).toEqual([])
     expect(out.failures).toHaveLength(1)
     expect(out.failures[0]).toMatchObject({ address_normalized: KEY, error_code: 'not_found' })
     expect(out.failures[0]!.remembered).toBeUndefined()
     // A miss that was kept answers with the day, and one that was not does not (v2.8484).
     expect(Number.isFinite(Date.parse(String(out.failures[0]!.checked_at)))).toBe(true)
-    expect(db.missUpserts).toEqual([{ address_normalized: KEY, error_code: 'not_found', detail: 'No match from OpenStreetMap or Google; no match from US Census' }])
+    expect(db.missUpserts).toEqual([{ address_normalized: KEY, error_code: 'not_found', detail: 'No match from Google; no match from US Census' }])
     expect(db.pointUpserts).toEqual([])
   })
 
-  it('OpenStreetMap gives no answer, Google and the Census say not found: the miss is kept all the same (v2.8484)', async () => {
-    net.nominatim = 403
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('two addresses nobody can place: each is asked of both services and each miss is kept', async () => {
     const out = await post({ addresses: [WORDS, `${WORDS} two`] })
     expect(out.failures).toHaveLength(2)
-    expect(out.failures[0]).toMatchObject({ address_normalized: KEY, error_code: 'not_found', detail: 'OpenStreetMap (Nominatim) HTTP 403; no match from Google; no match from US Census' })
-    expect(Number.isFinite(Date.parse(String(out.failures[0]!.checked_at)))).toBe(true)
+    expect(net.asked).toEqual(['google', 'census', 'google', 'census'])
     expect(db.missUpserts.map((m) => m.address_normalized)).toEqual([KEY, `${KEY} two`])
-    // Said once a call in the function's log, not once an address.
-    expect(warn.mock.calls.filter((c) => String(c[0]).includes('OpenStreetMap gave no plain answer'))).toHaveLength(1)
-    warn.mockRestore()
+    expect(warn).not.toHaveBeenCalled()
   })
 
   it('a miss that stands: no service is asked, and the answer says so with the day it was checked', async () => {
     const checked = daysAgo(3)
-    db.misses = [{ address_normalized: KEY, error_code: 'not_found', detail: 'No match from OpenStreetMap or Google; no match from US Census', checked_at: checked }]
+    db.misses = [{ address_normalized: KEY, error_code: 'not_found', detail: 'No match from Google; no match from US Census', checked_at: checked }]
     const out = await post({ addresses: [WORDS] })
     expect(net.asked).toEqual([])
-    expect(out.failures).toEqual([{ address_normalized: KEY, error_code: 'not_found', detail: 'No match from OpenStreetMap or Google; no match from US Census', remembered: true, checked_at: checked }])
+    expect(out.failures).toEqual([{ address_normalized: KEY, error_code: 'not_found', detail: 'No match from Google; no match from US Census', remembered: true, checked_at: checked }])
     expect(db.missUpserts).toEqual([])
   })
 
   it('a miss past its days is asked again, and kept again', async () => {
     db.misses = [{ address_normalized: KEY, error_code: 'not_found', detail: null, checked_at: daysAgo(31) }]
     const out = await post({ addresses: [WORDS] })
-    expect(net.asked).toEqual(['nominatim', 'google', 'census'])
+    expect(net.asked).toEqual(['google', 'census'])
     expect(out.failures[0]!.remembered).toBeUndefined()
     expect(db.missUpserts).toHaveLength(1)
   })
@@ -167,7 +164,7 @@ describe('geocode-address-batch remembers an address no service could place (pun
   it('retry: true, a person\'s Try again, asks past a miss that stands', async () => {
     db.misses = [{ address_normalized: KEY, error_code: 'not_found', detail: null, checked_at: daysAgo(1) }]
     const out = await post({ addresses: [WORDS], retry: true })
-    expect(net.asked).toEqual(['nominatim', 'google', 'census'])
+    expect(net.asked).toEqual(['google', 'census'])
     expect(out.failures[0]!.remembered).toBeUndefined()
     expect(db.missUpserts).toHaveLength(1)
   })
@@ -181,11 +178,21 @@ describe('geocode-address-batch remembers an address no service could place (pun
     expect(net.asked).toEqual([])
   })
 
-  it('an address the street map places is saved as a point, and no miss is written', async () => {
-    net.nominatim = [{ lat: '29.5688', lon: '-97.9647' }]
+  it('an address Google places is saved as a point: the Census is not asked, and no miss is written', async () => {
+    net.googlePoint = { lat: 29.5688, lng: -97.9647 }
+    const out = await post({ addresses: ['123 Made Up St, Seguin, TX 78155'] })
+    expect(out.results).toEqual([{ address_normalized: '123 made up st, seguin, tx 78155', lat: 29.5688, lng: -97.9647 }])
+    expect(net.asked).toEqual(['google'])
+    expect(db.pointUpserts).toEqual(['123 made up st, seguin, tx 78155'])
+    expect(db.missUpserts).toEqual([])
+  })
+
+  it('an address Google misses and the Census places is saved as a point (punch list #436)', async () => {
+    net.census = { lat: 29.5688, lng: -97.9647 }
     const out = await post({ addresses: ['123 Made Up St, Seguin, TX 78155'] })
     expect(out.results).toHaveLength(1)
-    expect(db.pointUpserts).toEqual(['123 made up st, seguin, tx 78155'])
+    expect(out.failures).toEqual([])
+    expect(net.asked).toEqual(['google', 'census'])
     expect(db.missUpserts).toEqual([])
   })
 })
@@ -213,10 +220,11 @@ describe('an outage keeps nothing, so good addresses are not marked for weeks', 
     expect(db.missUpserts).toEqual([])
   })
 
-  it('Google never asked, with no key set', async () => {
+  it('Google never asked, with no key set: the answer says the Census alone was asked', async () => {
     ENV.GOOGLE_MAPS_API_KEY = ''
-    await post({ addresses: [WORDS] })
-    expect(net.asked).toEqual(['nominatim', 'census'])
+    const out = await post({ addresses: [WORDS] })
+    expect(net.asked).toEqual(['census'])
+    expect(out.failures[0]).toMatchObject({ error_code: 'not_found', detail: 'No match from US Census; Google Geocoding is not configured' })
     expect(db.missUpserts).toEqual([])
   })
 })
@@ -225,7 +233,7 @@ describe('the memory is best effort and never fails a batch', () => {
   it('a failed read of the misses asks as before', async () => {
     db.missReadError = 'relation "address_geocode_misses" does not exist'
     const out = await post({ addresses: [WORDS] })
-    expect(net.asked).toEqual(['nominatim', 'google', 'census'])
+    expect(net.asked).toEqual(['google', 'census'])
     expect(out.failures).toHaveLength(1)
     expect(warn).toHaveBeenCalled()
   })
@@ -245,13 +253,18 @@ describe('the memory is best effort and never fails a batch', () => {
   })
 })
 
-describe('the wait between asks is owed only to an address that is asked', () => {
-  it('a remembered address ahead of a new one adds no wait', async () => {
-    db.misses = [{ address_normalized: KEY, error_code: 'not_found', detail: null, checked_at: daysAgo(1) }]
+describe('no address waits on another (punch list #436)', () => {
+  it('two new addresses are asked one after the other, with no pause between them', async () => {
     const timeouts = vi.spyOn(globalThis, 'setTimeout')
-    const out = await post({ addresses: [WORDS, 'ZZ another made up corner'] })
-    expect(timeouts.mock.calls.filter((c) => c[1] === 1100)).toHaveLength(0)
+    await post({ addresses: ['ZZ one made up corner', 'ZZ another made up corner'] })
+    expect(timeouts.mock.calls.filter((c) => typeof c[1] === 'number' && c[1] >= 1000)).toHaveLength(0)
     timeouts.mockRestore()
+  })
+
+  it('a remembered address ahead of a new one is answered from memory, and only the new one is asked', async () => {
+    db.misses = [{ address_normalized: KEY, error_code: 'not_found', detail: null, checked_at: daysAgo(1) }]
+    const out = await post({ addresses: [WORDS, 'ZZ another made up corner'] })
+    expect(net.asked).toEqual(['google', 'census'])
     expect(out.failures.map((f) => [f.address_normalized, f.remembered === true])).toEqual([
       [KEY, true],
       ['zz another made up corner', false],

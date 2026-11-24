@@ -250,7 +250,7 @@ export function MapGeocodeReviewModal({
           </button>
         </div>
         <p style={{ margin: 0, padding: '0.5rem 1rem 0', fontSize: '0.875rem', color: 'var(--text-600)' }}>
-          Select addresses, then <strong>Rerun Google</strong> to refresh coordinates from Google only (ignores Nominatim and the cache
+          Select addresses, then <strong>Rerun Google</strong> to refresh coordinates from Google only (ignores the saved point
           for that request). Use this if a pin is wrong or the address text was updated elsewhere.
         </p>
         {batchError ? (
