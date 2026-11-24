@@ -47,6 +47,18 @@ const people: Person[] = [
     notes: '[bench 2026-06-01] Moved to Houston',
     end_date: '2026-06-01',
   },
+  // v2.8467: the roster row is live and its linked account is archived — not offered for a new sheet
+  {
+    id: 'p-3',
+    master_user_id: 'u-1',
+    kind: 'sub',
+    name: 'Sub Left',
+    email: null,
+    phone: null,
+    notes: null,
+    account_user_id: 'u-gone',
+    account_archived: true,
+  },
 ]
 
 // One stable jobs array: the modal stores the picked job's id, and a fresh
@@ -122,6 +134,13 @@ describe('JobsSubLaborFormModal render smoke', () => {
     await act(async () => handleRef.current!.openNew())
     expect(screen.getByText('Sub Sam')).toBeTruthy()
     expect(screen.queryByText('Sub Benched')).toBeNull()
+  })
+
+  it('a sub whose account is archived is left out of the crew lists, with their roster row still live (v2.8467)', async () => {
+    const { handleRef } = mountHarness()
+    await act(async () => handleRef.current!.openNew())
+    expect(screen.getByText('Sub Sam')).toBeTruthy()
+    expect(screen.queryByText('Sub Left')).toBeNull()
   })
 
   it('a search of the people with no match quotes it, and Clear the search brings them back (#184)', async () => {
