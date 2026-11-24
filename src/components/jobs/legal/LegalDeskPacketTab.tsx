@@ -1,7 +1,7 @@
 
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 
-import { envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords } from '../../../lib/legal/legalLienPaper'
+import { envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalTimelineLastWorkWords } from '../../../lib/legal/legalLienPaper'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry, legalEntryKindWords, stepProposalOf, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
 import { legalPaperNextDoor } from '../../../lib/legal/legalPaperNextDoor'
@@ -254,7 +254,7 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
           <div key={t.jobId} data-legal-job-timeline={t.jobId} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 190px) minmax(0, 1fr)', gap: 12, padding: '8px 0', borderBottom: '1px dotted var(--border)', alignItems: 'start', fontSize: '0.82rem' }}>
             <div>
               <button type="button" onClick={() => { const job = jobOf(t.jobId); if (job) props.onOpenLienInstruments(job) }} style={{ ...btn, fontWeight: 700 }}>{t.jobLabel}</button>
-              <div style={{ ...MUTED, fontSize: '0.76rem' }}>{kindWordsOf(t.jobId)} · {roleWords}{legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource) ? ` · ${legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource)}` : ''}</div>
+              <div style={{ ...MUTED, fontSize: '0.76rem' }}>{kindWordsOf(t.jobId)} · {roleWords}{legalTimelineLastWorkWords(t) ? ` · ${legalTimelineLastWorkWords(t)}` : ''}</div>
               <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={formatLegalMoney(t.openBalance)} /> open</div>
               {t.retainageWords ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>{t.retainageWords}</div> : null}
             </div>

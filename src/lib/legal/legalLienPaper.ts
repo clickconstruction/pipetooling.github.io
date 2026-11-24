@@ -25,6 +25,7 @@ import type { JobLienFilingRow } from '../jobs/lienDeadlines'
 import { noticeDeadlineForMonth } from '../jobs/lienDeadlines'
 import { buildLienTimelineFromWindow } from '../jobs/lienTimelineDesk'
 import { lienBillMonths, type LienBill } from '../jobs/lienBillMonths'
+import { lienClockMonths } from '../jobs/lienLastWorkDay'
 import type { LienTimeline } from '../jobs/lienTimeline'
 import type { JobWorkMonths, WorkMonth } from '../jobs/forecastWorkMonths'
 import { workMonthLabel, workMonthShort } from '../jobs/forecastWorkMonths'
@@ -90,14 +91,43 @@ export function workMonthsFromSessions(jobId: string, sessions: ReadonlyArray<Le
 
 /**
  * Where a job's last day of work comes from (item 25: one fallback chain for the lien clock and the
- * Paper tab, the same as the timeline kernel's): the last approved clock session, else the job's last
- * work date, else the day of its latest sent, unpaid bill (v2.7224, `lienBillMonths`), else the day the job was
- * created (the timeline runs that month), else nothing.
+ * Paper tab, the same as the timeline kernel's). The order, first that holds:
+ *
+ *   1. the day set by hand on the job (`jobs_ledger.lien_last_work_on`), whether it is earlier or later than the hours;
+ *   2. the last approved clock session;
+ *   3. the job's last work date;
+ *   4. the day of its latest sent, unpaid bill (v2.7224, `lienBillMonths`);
+ *   5. the day the job was created (the timeline runs that month);
+ *   6. nothing.
+ *
+ * Step 1 is punch list #335's: the Lien window has counted from the hand day since v2.7193 (the owner's reading of
+ * 2026-11-13, *the day set by hand*, `lienClockMonths`), and this chain began at step 2, so counsel's page could show
+ * a later last day than the window. A hand day comes with the reason it was saved with, and with the last approved
+ * day when hours follow it, so the page can say those hours are there and do not move it. What makes a typed value
+ * a day is the Lien window's own test (`lienClockMonths`).
  */
-export type LegalLastWorkSource = 'sessions' | 'last_work_date' | 'bill' | 'created' | 'none'
+export type LegalLastWorkSource = 'hand' | 'sessions' | 'last_work_date' | 'bill' | 'created' | 'none'
 
-export function legalLastWorkBasis(approvedSessionDays: ReadonlyArray<string>, job: { last_work_date?: string | null; created_at?: string | null; invoices?: ReadonlyArray<LienBill> | null }): { ymd: string | null; source: LegalLastWorkSource } {
+export type LegalLastWorkBasis = {
+  ymd: string | null
+  source: LegalLastWorkSource
+  /** A day set by hand only: the reason it was saved with; '' when none was. */
+  note?: string
+  /** A day set by hand only: the last approved clock day when it follows the hand day; '' when none does. */
+  laterHoursDay?: string
+}
+
+/** The job's columns the chain reads. A row from a `legal-portal` not yet redeployed carries no hand day and reads from step 2. */
+export type LegalLastWorkJob = { lien_last_work_on?: string | null; lien_last_work_note?: string | null; last_work_date?: string | null; created_at?: string | null; invoices?: ReadonlyArray<LienBill> | null }
+
+export function legalLastWorkBasis(approvedSessionDays: ReadonlyArray<string>, job: LegalLastWorkJob): LegalLastWorkBasis {
   const days = [...approvedSessionDays].filter(Boolean).sort()
+  const hand = (job.lien_last_work_on ?? '').slice(0, 10)
+  if (lienClockMonths([], hand).byHand) {
+    const ledger = /^\d{4}-\d{2}-\d{2}/.test(job.last_work_date ?? '') ? String(job.last_work_date).slice(0, 10) : ''
+    const lastHours = [days[days.length - 1] ?? '', ledger].sort().pop() ?? ''
+    return { ymd: hand, source: 'hand', note: (job.lien_last_work_note ?? '').trim(), laterHoursDay: lastHours > hand ? lastHours : '' }
+  }
   if (days.length) return { ymd: days[days.length - 1] ?? null, source: 'sessions' }
   const lw = /^\d{4}-\d{2}-\d{2}/.test(job.last_work_date ?? '') ? String(job.last_work_date).slice(0, 10) : ''
   if (lw) return { ymd: lw, source: 'last_work_date' }
@@ -108,9 +138,17 @@ export function legalLastWorkBasis(approvedSessionDays: ReadonlyArray<string>, j
   return { ymd: null, source: 'none' }
 }
 
-/** The Paper tab's words for that day, saying where it came from. */
-export function legalLastWorkWords(ymd: string | null, source: LegalLastWorkSource | undefined): string {
+/**
+ * The Paper tab's words for that day, saying where it came from. A day set by hand gives its reason and, when
+ * approved hours follow it, says they do not move it; every other source reads as it always did.
+ */
+export function legalLastWorkWords(ymd: string | null, source: LegalLastWorkSource | undefined, hand?: Pick<LegalLastWorkBasis, 'note' | 'laterHoursDay'> | null): string {
   if (!ymd || source === 'none') return ''
+  if (source === 'hand') {
+    const reason = (hand?.note ?? '').trim().replace(/[.\s]+$/, '')
+    const day = `last day of work set by hand ${ymd}${reason ? `, reason: ${reason}` : ''}`
+    return hand?.laterHoursDay ? `${day}. Hours were approved after it, through ${hand.laterHoursDay}. They do not move it.` : day
+  }
   if (source === 'last_work_date') return `last work date on the job ${ymd} (no approved clock session)`
   if (source === 'bill') return `no work date on file: dated from the bill's month, ${ymd.slice(0, 7)}`
   if (source === 'created') return `no work date on file: dated from the job's creation month, ${ymd.slice(0, 7)}`
@@ -120,17 +158,24 @@ export function legalLastWorkWords(ymd: string | null, source: LegalLastWorkSour
 export type LegalJobTimeline = {
   jobId: string
   jobLabel: string
-  /** 'YYYY-MM-DD' of the last approved session, else the ledger's last_work_date, else the job's creation day (`legalLastWorkBasis`); null when none. */
+  /** 'YYYY-MM-DD' by `legalLastWorkBasis`'s order: the day set by hand, else the last approved session, else the ledger's last_work_date, else the bill's day, else the job's creation day; null when none. */
   lastWorkYmd: string | null
   /** Which of those it is. */
   lastWorkSource?: LegalLastWorkSource
+  /** A day set by hand (punch list #335): its reason, and the last approved day when hours follow it. Absent for every other source. */
+  lastWorkHand?: { note: string; laterHoursDay: string }
   openBalance: number
   timeline: LienTimeline
   /** The § 53.057 facts the job row carries — `contract ended Nov 30 · retainage held $2,400 · payment bond on the project`; '' when the row holds none. */
   retainageWords: string
 }
 
-type LienJobRowLike = Pick<JobWithDetails, 'id' | 'created_at' | 'last_work_date'> & { invoices?: ReadonlyArray<LienBill> | null; lien_contract_ended_on?: string | null; lien_retainage_held?: number | null; lien_payment_bond?: string | null }
+/** One job's last-work line on the Paper tab, the firm's page and the packet print: the words for its day and where the day came from. */
+export function legalTimelineLastWorkWords(t: Pick<LegalJobTimeline, 'lastWorkYmd' | 'lastWorkSource' | 'lastWorkHand'>): string {
+  return legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource, t.lastWorkHand)
+}
+
+type LienJobRowLike = Pick<JobWithDetails, 'id' | 'created_at' | 'last_work_date'> & { invoices?: ReadonlyArray<LienBill> | null; lien_last_work_on?: string | null; lien_contract_ended_on?: string | null; lien_retainage_held?: number | null; lien_payment_bond?: string | null }
 
 /** `Nov 30` / `Nov 30, 2027` — the timeline's own short date, kept local so the print needs no React. */
 function shortDay(ymd: string, todayYmd: string): string {
@@ -162,6 +207,8 @@ export function buildLegalJobTimelines(args: {
   lastWorkOf: (jobId: string) => string | null
   /** Where `lastWorkOf`'s day came from (item 25); absent for an older caller. */
   lastWorkSourceOf?: (jobId: string) => LegalLastWorkSource
+  /** A hand day's reason and later hours (punch list #335), for the line's words; absent for an older caller. */
+  lastWorkHandOf?: (jobId: string) => { note: string; laterHoursDay: string } | undefined
   sessions: ReadonlyArray<LegalPaperSessionLike>
   filings: ReadonlyArray<JobLienFilingRow>
   propertyKind: string
@@ -178,14 +225,16 @@ export function buildLegalJobTimelines(args: {
     const timeline = buildLienTimelineFromWindow({
       workMonths: workMonthsFromSessions(j.id, args.sessions, { isSub: args.isSub, propertyKind }),
       filings: args.filings,
-      job: { id: j.id, created_at: j.created_at ?? null, last_work_date: j.last_work_date ?? null, lien_contract_ended_on: j.lien_contract_ended_on ?? null, invoices: j.invoices ?? null },
+      // The day set by hand reaches the path (punch list #335), as it reaches the Lien window's: its month is the last on the clock.
+      job: { id: j.id, created_at: j.created_at ?? null, last_work_date: j.last_work_date ?? null, lien_last_work_on: j.lien_last_work_on ?? null, lien_contract_ended_on: j.lien_contract_ended_on ?? null, invoices: j.invoices ?? null },
       isSub: args.isSub,
       propertyKind,
       openBalance,
       todayYmd: args.todayYmd,
       courtesy: args.items ? lienCourtesyFromItems(args.items.filter((it) => it.job_id === j.id)) : null,
     })
-    return { jobId: j.id, jobLabel: args.labelOf(j.id), lastWorkYmd: args.lastWorkOf(j.id), lastWorkSource: args.lastWorkSourceOf?.(j.id), openBalance, timeline, retainageWords: retainageWordsFor(j, args.todayYmd) }
+    const lastWorkHand = args.lastWorkHandOf?.(j.id)
+    return { jobId: j.id, jobLabel: args.labelOf(j.id), lastWorkYmd: args.lastWorkOf(j.id), lastWorkSource: args.lastWorkSourceOf?.(j.id), ...(lastWorkHand ? { lastWorkHand } : {}), openBalance, timeline, retainageWords: retainageWordsFor(j, args.todayYmd) }
   })
 }
 

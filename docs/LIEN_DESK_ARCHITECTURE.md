@@ -934,6 +934,7 @@ last_updated: 2026-11-21
 > a billed job whose sent bills are paid off leaves the By date list while the desk keeps it under *Nothing billed*.
 > `LienLastWorkDayLine` (kernel `lib/jobs/lienLastWorkDay.ts`: where the day comes from, the words, what a typed day may be — never before the last approved session — and the patch) is the first row of the Months card (`LienDeskMonths` `lastWork`, `flat` since v2.7989, a box above the card until then) and sits in Edit Job's lien row;
 > the timeline's LAST WORK node reads *last day set by hand* (`lastMonthByHand`).
+> Since v2.8481 the Legal desk's packet and the firm's page read the hand day first too, with its reason (`legalLastWorkBasis` in `lib/legal/legalLienPaper.ts`, punch list #335), and `legal-portal` sends the day and the reason on each referred job.
 > The desk's clock-column read falls back to the four old columns until the migration lands.
 > **v2.4717 (what moves first):** before a typed day is saved, `LienLastWorkDayLine` opens `LienLastWorkDayConfirm` — how far the day moves from the clock hours, the dates the law hangs on it (the months the notice names, the § 53.056 window of the last month, the § 53.052 affidavit, the § 53.158 suit) with today beside the new day and the changed rows lit, the reason asked there;
 > kernel [`lienLastWorkDayPreview.ts`](../src/lib/jobs/lienLastWorkDayPreview.ts) (`refused` / `look` / `fine`, pure).

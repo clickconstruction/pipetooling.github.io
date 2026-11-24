@@ -1,7 +1,7 @@
 import { Fragment, useState, type ReactNode } from 'react'
 import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 import { formatLegalMoney, legalSessionWords, type LegalPacket } from '../../../lib/legal/legalPacket'
-import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
+import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalTimelineLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmExhibitWhere, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
 import { contingencyEntries, firmDemand, firmDemandWords, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
@@ -171,7 +171,7 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
         <div key={t.jobId} data-legal-job-timeline={t.jobId} className="legalJobTimeline" style={{ padding: '8px 0', borderBottom: `1px dotted ${HAIR}` }}>
           <div style={{ fontSize: 12.5 }}>
             <b style={{ fontSize: 13 }}>{t.jobLabel}</b>
-            <div style={{ color: MUTED, fontSize: portalSmall(11.5) }}>{kindWordsOf(t.jobId)} · {roleWords}{legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource) ? ` · ${legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource)}` : ''}</div>
+            <div style={{ color: MUTED, fontSize: portalSmall(11.5) }}>{kindWordsOf(t.jobId)} · {roleWords}{legalTimelineLastWorkWords(t) ? ` · ${legalTimelineLastWorkWords(t)}` : ''}</div>
             <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
             {t.retainageWords ? <div style={{ color: MUTED, fontSize: portalSmall(11.5) }}>{t.retainageWords}</div> : null}
           </div>
