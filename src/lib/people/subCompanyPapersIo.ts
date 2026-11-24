@@ -9,7 +9,7 @@ import { supabase } from '../supabase'
 import { fetchAllRows } from '../supabasePaging'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { gcTradeEmailRefusal, readTradeEmailAnswer } from '../gc/tradeEmail'
-import { COMPANY_PAPER_WORDS, companyPaperEmail, companyPaperSendKey, type CompanyPaperRow } from './subCompanyPapers'
+import { COMPANY_PAPER_WORDS, companyPaperEmail, companyPaperSendKey, type CompanyKeptPerson, type CompanyPaperRow } from './subCompanyPapers'
 
 const PAPERS = 'person_contract_documents'
 const COLUMNS = 'id, company_id, document_name, status, signed_at, sent_at, signer_last_viewed_at, lineage_version, form_template_id, signer_name, signer_title'
@@ -21,6 +21,15 @@ export async function loadCompanyPapers(companyIds: readonly string[]): Promise<
     (from, to) => supabase.from(PAPERS).select(COLUMNS).in('company_id', [...companyIds]).order('id').range(from, to),
     'load the companies’ papers',
   )
+}
+
+/** The people a company keeps, with the address each is mailed at: what the send window opens a signer's address from. */
+export async function loadCompanyKeptPeople(companyId: string): Promise<CompanyKeptPerson[]> {
+  const rows = await withSupabaseRetry<CompanyKeptPerson[]>(
+    async () => supabase.from('gc_company_people').select('name, email').eq('company_id', companyId).is('removed_at', null).order('created_at'),
+    'read the people at the company',
+  )
+  return rows ?? []
 }
 
 /** The signer kept as a person at the company who gets its contracts, so the send reaches them. Their email once. */

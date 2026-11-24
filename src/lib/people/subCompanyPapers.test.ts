@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { plainSentence } from '../valuesInPlace'
 import {
   COMPANY_PAPER_WORDS,
+  COMPANY_PRESS_DESK_HEIGHT,
   companyEntryRefusal,
   companyPaperChoices,
   companyPaperDetail,
@@ -13,9 +14,11 @@ import {
   companyPaperLines,
   companyPaperSendKey,
   companyPaperStateWords,
+  companyPressHeight,
   companySendRefusal,
   defaultSigner,
   shortDay,
+  signerEmail,
   workerEmail,
   type CompanyPaperRow,
 } from './subCompanyPapers'
@@ -102,6 +105,32 @@ describe('what the windows offer', () => {
   it('reads a worker’s roster address by name', () => {
     expect(workerEmail(' Pat Sample ', [{ name: 'Pat Sample', email: ' pat@example.test ' }])).toBe('pat@example.test')
     expect(workerEmail('Lee Sample', [{ name: 'Pat Sample', email: 'pat@example.test' }])).toBe('')
+  })
+
+  it('opens a signer’s address on the roster’s, else on the one the company keeps for that name', () => {
+    const roster = [{ name: 'Pat Sample', email: 'pat@example.test' }, { name: 'Lee Sample', email: null }]
+    const kept = [
+      { name: 'Pat Sample', email: 'old-pat@example.test' },
+      { name: 'Kim Sample', email: '' },
+      { name: ' lee SAMPLE ', email: ' lee@example.test ' },
+    ]
+    // The roster's own address wins: it is the worker's.
+    expect(signerEmail('Pat Sample', roster, kept)).toBe('pat@example.test')
+    // No roster address: the company's, whatever the capitals of the name it kept.
+    expect(signerEmail('Lee Sample', roster, kept)).toBe('lee@example.test')
+    // Kept with no address, kept by nobody, and no name at all: nothing.
+    expect(signerEmail('Kim Sample', roster, kept)).toBe('')
+    expect(signerEmail('Someone New', roster, kept)).toBe('')
+    expect(signerEmail('  ', roster, [{ name: '', email: 'blank@example.test' }])).toBe('')
+  })
+
+  it('the empty row promises no paper by name: the Contract Book decides what is offered', () => {
+    expect(COMPANY_PAPER_WORDS.none).toBe('Nothing sent to this company yet. Send for signature offers the Contract Book’s papers for subs.')
+  })
+
+  it('the two presses stand a fingertip tall on a phone and keep the desk’s height at a desk', () => {
+    expect(companyPressHeight(true)).toBe(44)
+    expect(companyPressHeight(false)).toBe(COMPANY_PRESS_DESK_HEIGHT)
   })
 })
 

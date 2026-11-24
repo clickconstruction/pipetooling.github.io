@@ -7,6 +7,7 @@
  */
 
 import { val } from '../valuesInPlace'
+import { PHONE_PRESS_MIN_HEIGHT } from '../phonePress'
 import { signerEmailRefusal } from '../contracts/personPaperSend'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { CompanyWorker } from './subCompanies'
@@ -34,7 +35,7 @@ export const COMPANY_PAPER_WORDS = {
   send: 'Send for signature',
   enter: 'Enter from paper',
   foot: 'The same papers are on Documents → Agreements.',
-  none: 'Nothing sent to this company yet. Send for signature sends it the subcontractor agreement or the W-9.',
+  none: 'Nothing sent to this company yet. Send for signature offers the Contract Book’s papers for subs.',
   signingFor: (company: string) => `signing for ${company}`,
   pickPaper: 'Pick a paper.',
   pickSigner: 'Pick who signs.',
@@ -47,6 +48,14 @@ export const COMPANY_PAPER_WORDS = {
   notEmailed: 'The signing link is made, but the email did not go. Try again in a minute.',
   officeOnly: 'Only the office sends a company its papers.',
 } as const
+
+/** **Send for signature** and **Enter from paper** as a desk draws them, in px. */
+export const COMPANY_PRESS_DESK_HEIGHT = 36
+
+/** How tall the two presses under a company's row stand: the desk's height at a desk, a fingertip on a phone. */
+export function companyPressHeight(narrow: boolean): number {
+  return narrow ? PHONE_PRESS_MIN_HEIGHT : COMPANY_PRESS_DESK_HEIGHT
+}
 
 /** The state chip's words for a company's paper. */
 export function companyPaperStateWords(status: string): string {
@@ -116,8 +125,8 @@ export function companyPaperDetail(p: CompanyPaperRow): string {
 export type CompanyPaperChoice = { id: string; name: string; held: string | null }
 
 /**
- * The Contract Book papers a company is offered: the subs' papers (the subcontractor agreement, the W-9). One the
- * company has signed is listed and held, so the office sees why it is not offered.
+ * The Contract Book papers a company is offered: every paper the Book keeps for subs, under the name the Book gives
+ * it. One the company has signed is listed and held, so the office sees why it is not offered.
  */
 export function companyPaperChoices(entries: readonly BookEntryChoice[], papers: readonly CompanyPaperRow[]): CompanyPaperChoice[] {
   const signed = new Set(papers.filter((p) => p.status === 'signed').map((p) => p.document_name.trim()))
@@ -175,4 +184,20 @@ export function companyPaperSendKey(documentId: string, at: number): string {
 export function workerEmail(name: string, people: ReadonlyArray<{ name: string | null; email: string | null }>): string {
   const want = name.trim()
   return (people.find((p) => (p.name ?? '').trim() === want)?.email ?? '').trim()
+}
+
+/** Someone the company keeps: a person there, with the address its mail goes to. */
+export type CompanyKeptPerson = { name: string | null; email: string | null }
+
+/**
+ * The address the send window opens on for a signer: the roster's, else the one the company keeps for that name. A
+ * sub with no login often has no roster address, and the company's first send kept the one the office typed. The
+ * company's name is matched whatever its capitals. '' when neither holds one.
+ */
+export function signerEmail(name: string, roster: ReadonlyArray<{ name: string | null; email: string | null }>, kept: readonly CompanyKeptPerson[]): string {
+  const own = workerEmail(name, roster)
+  if (own) return own
+  const want = name.trim().toLowerCase()
+  if (!want) return ''
+  return (kept.find((p) => (p.name ?? '').trim().toLowerCase() === want && (p.email ?? '').trim() !== '')?.email ?? '').trim()
 }
