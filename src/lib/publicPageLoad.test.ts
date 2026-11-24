@@ -29,11 +29,19 @@ describe('publicPageLostView', () => {
   it('offline, it says so and the press does not reload', () => {
     expect(publicPageLostView(false, false)).toEqual({ words: PUBLIC_PAGE_OFFLINE_WORDS, reload: false, checking: false })
   })
-  it('a press while offline is answered in words', () => {
+  it('a press while offline whose ask came back with no is answered in words', () => {
     expect(publicPageLostView(false, true)).toEqual({ words: PUBLIC_PAGE_STILL_OFFLINE_WORDS, reload: false, checking: false })
   })
   it('while the page asks the network it says so, and the press is dead', () => {
     expect(publicPageLostView(false, true, true)).toEqual({ words: PUBLIC_PAGE_CHECKING_WORDS, reload: false, checking: true })
+  })
+  it('the words of a first press, in order: offline, checking, then still offline on a no', () => {
+    // Before any press, while the first press's ask is out, and after it failed. The last two differ from
+    // the first, so the press visibly answers even though it no longer answers at once.
+    expect(publicPageLostView(false, false).words).toBe(PUBLIC_PAGE_OFFLINE_WORDS)
+    expect(publicPageLostView(false, true, true).words).toBe(PUBLIC_PAGE_CHECKING_WORDS)
+    expect(publicPageLostView(false, true, false).words).toBe(PUBLIC_PAGE_STILL_OFFLINE_WORDS)
+    expect(new Set([PUBLIC_PAGE_OFFLINE_WORDS, PUBLIC_PAGE_CHECKING_WORDS, PUBLIC_PAGE_STILL_OFFLINE_WORDS]).size).toBe(3)
   })
   it('online, an ask that is still out changes nothing: the press reloads', () => {
     expect(publicPageLostView(true, true, true)).toEqual({ words: PUBLIC_PAGE_LOST_WORDS, reload: true, checking: false })
@@ -41,22 +49,18 @@ describe('publicPageLostView', () => {
 })
 
 describe('publicPageTryAgainAct: what a press on Try again does', () => {
-  it('online, it reloads, whatever was pressed before', () => {
-    expect(publicPageTryAgainAct(true, false)).toBe('reload')
-    expect(publicPageTryAgainAct(true, true)).toBe('reload')
+  it('online, it reloads', () => {
+    expect(publicPageTryAgainAct(true)).toBe('reload')
   })
   it('a browser that cannot say counts as online', () => {
-    expect(publicPageTryAgainAct(undefined, false)).toBe('reload')
+    expect(publicPageTryAgainAct(undefined)).toBe('reload')
   })
-  it('offline, the first press answers in words', () => {
-    expect(publicPageTryAgainAct(false, false)).toBe('answer')
-  })
-  it('offline, the second press asks the network: it never reloads on the browser’s word or the count alone', () => {
-    expect(publicPageTryAgainAct(false, true)).toBe('ask')
+  it('offline, a press asks the network, the first one too: it never reloads on the browser’s word alone', () => {
+    expect(publicPageTryAgainAct(false)).toBe('ask')
   })
 })
 
-describe('the ask a second press sends', () => {
+describe('the ask an offline press sends', () => {
   const answer = (ok: boolean, type: string | null) => ({ ok, headers: { get: (name: string) => (name.toLowerCase() === 'content-type' ? type : null) } })
   afterEach(() => {
     vi.useRealTimers()
@@ -65,7 +69,7 @@ describe('the ask a second press sends', () => {
   it('reads a file the site really serves', () => {
     expect(PUBLIC_PAGE_PROBE_PATH).toBe('/favicon.svg')
     const file = join(__dirname, '..', '..', 'public', 'favicon.svg')
-    expect(existsSync(file), 'public/favicon.svg is what a second Try again asks for. Without it the ask always fails and the press never reloads.').toBe(true)
+    expect(existsSync(file), 'public/favicon.svg is what an offline Try again asks for. Without it the ask always fails and the press never reloads.').toBe(true)
     expect(readFileSync(file, 'utf8')).toContain('<svg')
   })
   it('carries the time, so no cache between here and the server has the answer', () => {
@@ -77,7 +81,7 @@ describe('the ask a second press sends', () => {
     expect(sw).toContain('precacheAndRoute(self.__WB_MANIFEST)')
     expect(
       sw,
-      'src/sw.ts sets ignoreURLParametersMatching. If it matches "signal", the precache answers a second Try again while the phone is offline, ' +
+      'src/sw.ts sets ignoreURLParametersMatching. If it matches "signal", the precache answers an offline Try again with no network, ' +
         'and the page reloads into the browser’s error page. Keep "signal" out of it, or give the ask in publicPageLoad.ts another address.',
     ).not.toContain('ignoreURLParametersMatching')
   })

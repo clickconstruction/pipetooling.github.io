@@ -137,10 +137,10 @@ const deadPress: CSSProperties = { ...press, background: DEAD_PRESS_FILL, color:
 
 /**
  * The page's code did not come and the one automatic reload is spent, or there is no network to reload
- * from. Says so in a customer's words, with one press. Offline the first press stays here and answers in
- * words, since a reload would land on the browser's own error page; the page loads by itself when the signal
- * is back. A phone can say it is offline when it is not, so a second press asks the network itself and
- * reloads only when it answers (`publicPageTryAgainAct`).
+ * from. Says so in a customer's words, with one press. Offline a reload would land on the browser's own
+ * error page, and a phone can say it is offline when it is not. So an offline press, the first one too, asks
+ * the network itself and reloads only when it answers (`publicPageTryAgainAct`). On a no the page stays here
+ * and says so; it loads by itself when the signal is back.
  */
 function PublicPageLost({ tone = 'paper', compact = false }: FrameProps) {
   const [offline, setOffline] = useState(browserSaysOffline)
@@ -175,17 +175,14 @@ function PublicPageLost({ tone = 'paper', compact = false }: FrameProps) {
   }
   const tryAgain = () => {
     if (checking) return
-    const act = publicPageTryAgainAct(!browserSaysOffline(), pressedOffline)
-    if (act === 'reload') {
+    if (publicPageTryAgainAct(!browserSaysOffline()) === 'reload') {
       reload()
       return
     }
+    // The browser's word is not taken for it. One small ask, and a reload only on an answer. The press is
+    // remembered, so a no reads *Still offline…* and the customer sees that the press did something.
     setOffline(true)
-    if (act === 'answer') {
-      setPressedOffline(true)
-      return
-    }
-    // The second press: the browser's word is not taken for it. One small ask, and a reload only on an answer.
+    setPressedOffline(true)
     setChecking(true)
     void probeForSignal().then((answered) => {
       if (!here.current) return
