@@ -121,6 +121,8 @@ vi.mock('./LienInstrumentsModal', () => ({
       </div>
     ) : null,
 }))
+// The Lien window's place on the desk is read while it is open (punch list #335); `JobDocumentsLienPaper.render.test.tsx` holds that read.
+vi.mock('../../hooks/useJobLienDeskEntry', () => ({ useJobLienDeskEntry: () => ({ deskNotice: null, deskAffidavit: null, deskLeader: '', refetch: () => {} }) }))
 const previewSpy = vi.fn((_html: string) => true)
 const whenReadySpy = vi.fn((_build: () => Promise<string>) => Promise.resolve(true))
 vi.mock('../../lib/jobsDocuments/printWindow', () => ({

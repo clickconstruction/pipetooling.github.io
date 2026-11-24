@@ -6381,6 +6381,7 @@ a phone keeps its own box.
 Called *Lien instruments* until v2.4585 (the component is still `LienInstrumentsModal`).
 Since v2.4585 a card under the timeline reads *Your next step* with the days left and one button: a notice or a retainage notice opens the Lien desk on the job, the affidavit, its service and the release of record switch this window's tab (`lienWindowNextStep.ts`).
 Since v2.8478 every button that opens the Lien desk names the job, so an affidavit to draft, approve or review and a retainage notice open on the job's row, as a notice did (`lienWindowDeskDoor.ts`).
+Since v2.8523 the Lien window opened from a job's Documents tab is handed the job's place on the desk too, read while the window is open (`useJobLienDeskEntry`), so its header names the desk's step and carries the desk's door.
 *Open Release of Lien ›* under it opens the waiver window over this one.
 Since v2.4835 the Lien affidavit tab (labelled *Mechanic's lien* until v2.7181;
 the label is `LIEN_WINDOW_TAB_LABEL` in `lienWindowNextStep.ts`) offers *Already filed — record it…* in front of the gate list while no affidavit is on file, for a lien filed by counsel or on paper;

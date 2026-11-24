@@ -365,7 +365,7 @@ export function JobWindowDocumentsTab({
 
       <JobDocumentsTestReports job={job} />
 
-      <JobDocumentsLienPaper job={job} onOverlayOpenChange={onOverlayOpenChange} />
+      <JobDocumentsLienPaper job={job} onOverlayOpenChange={onOverlayOpenChange} onLeave={onLeave} />
 
       <HoursStatementsSection scope={{ kind: 'job', job }} onOverlayOpenChange={onOverlayOpenChange} zIndex={AIA_FROM_JOB_WINDOW_Z_INDEX} />
       <StatementsOfChargesSection job={job} onOverlayOpenChange={onOverlayOpenChange} zIndex={AIA_FROM_JOB_WINDOW_Z_INDEX} />
