@@ -119,7 +119,11 @@ async function open() {
   return view
 }
 
+const realMatchMedia = window.matchMedia
+
 beforeEach(() => {
+  TABLE_ROWS.gc_company_people = []
+  window.matchMedia = realMatchMedia
   seen.role = 'dev'
   seen.tables = []
   seen.rpcs = []
@@ -197,6 +201,44 @@ describe('People → Contracts, a sub’s company’s own papers', () => {
       }),
     )
     expect(seen.invokes).toHaveLength(0)
+  })
+
+  it('the send window opens a signer’s address from the company’s own people when the roster has none, and keeps what the office types', async () => {
+    // Lee has no roster address. The company keeps one for Lee from an earlier send, its capitals as they were typed.
+    TABLE_ROWS.gc_company_people = [{ id: 'gp-lee', name: 'LEE Sample', email: 'lee@example.test', gets: ['contracts'] }]
+    const { container } = await open()
+    await waitFor(() => expect(container.querySelector('[data-sub-company-paper="d-agr"]')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Send for signature' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Send for signature' })
+    const box = within(dialog).getByLabelText('Their email') as HTMLInputElement
+    // The owner's address is the roster's, as before.
+    expect(box.value).toBe('pat@example.test')
+    fireEvent.change(within(dialog).getByLabelText('Who signs'), { target: { value: 'Lee Sample' } })
+    await waitFor(() => expect(box.value).toBe('lee@example.test'))
+    // An address the office types stays, an emptied box included.
+    fireEvent.change(box, { target: { value: '' } })
+    expect(box.value).toBe('')
+    fireEvent.change(box, { target: { value: 'other@example.test' } })
+    expect(box.value).toBe('other@example.test')
+    // Picking the worker again reads their kept address again.
+    fireEvent.change(within(dialog).getByLabelText('Who signs'), { target: { value: 'Pat Sample' } })
+    fireEvent.change(within(dialog).getByLabelText('Who signs'), { target: { value: 'Lee Sample' } })
+    expect(box.value).toBe('lee@example.test')
+    expect(seen.writes).toHaveLength(0)
+  })
+
+  it('on a phone the company’s two presses stand a fingertip tall, and at a desk they keep their own height', async () => {
+    const { container, unmount } = await open()
+    await waitFor(() => expect(container.querySelector('[data-sub-company-paper="d-agr"]')).toBeTruthy())
+    expect((screen.getByRole('button', { name: 'Send for signature' }) as HTMLElement).style.minHeight).toBe('36px')
+    expect((screen.getByRole('button', { name: 'Enter from paper' }) as HTMLElement).style.minHeight).toBe('36px')
+    unmount()
+
+    window.matchMedia = ((query: string) => ({ matches: query === '(max-width: 640px)', media: query, addEventListener: () => undefined, removeEventListener: () => undefined })) as unknown as typeof window.matchMedia
+    const phone = await open()
+    await waitFor(() => expect(phone.container.querySelector('[data-sub-company-paper="d-agr"]')).toBeTruthy())
+    expect((screen.getByRole('button', { name: 'Send for signature' }) as HTMLElement).style.minHeight).toBe('44px')
+    expect((screen.getByRole('button', { name: 'Enter from paper' }) as HTMLElement).style.minHeight).toBe('44px')
   })
 
   it('a send to an address that is not one says so and writes nothing', async () => {
