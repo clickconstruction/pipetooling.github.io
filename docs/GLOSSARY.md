@@ -6947,7 +6947,11 @@ Since v2.8423 a billed bill whose payments on record leave nothing out reads **P
 A paid bill's stamp carries the newest payment's day and, under it, the way in the job window's words (*Card · Stripe*, *Check 4417 · bank deposit*) and the days the money took from the bill's first send.
 Since v2.8422 a check shows its number alone (`checkNumberOf`, `src/lib/jobs/billsAndPayments.ts`: at most 12 characters that start with a digit, a leading *ck#* dropped), so a deposit's id is never drawn and a check with no readable number reads *Check · bank deposit*.
 **Still out** is an open bill's amount or a part-paid bill's remainder;
-a day's band counts it over the bills that first went that day (*1 of 3 paid · $6,820.00 still out*), and the **Not paid** tile over every bill on the list.
+a day's band counts it over the bills that first went that day (*1 of 3 paid · $6,820.00 still out*), and the **Not paid** tile over every bill not paid in full, sent or not.
+Since v2.8492 the **Not paid** tile is everything still out (`billsSentOut`): the bills on the list and the open bills with no send on record as one count and one amount, with the two parts under it as presses (**Sent** turns on the **Not paid** chip, **No send on record** its own) and the age of the oldest.
+The oldest is counted from a sent bill's first send, and from the day it was billed for a bill with no send, which the tile's words say (*Oldest was billed 62 days ago*).
+A bill with no amount on record is counted and adds nothing, and the tile says how many there are.
+A bill with no send whose payments leave nothing out sits with the paid ones in the yellow box, and a part-paid one's row says what is still out.
 **By day paid** (v2.8343) is the page's second view, behind the switch at its top and at `/bills-sent?view=paid`: a month of days, each with what came in, and behind a picked day its total and its payments (`src/lib/billing/billsPaidDays.ts`).
 Since v2.8493 a picked day names the bank deposits that landed that day and are on no bill yet, in one quiet line with **Open deposits**, under **All** alone (`billsPaidNoBillLine` over `src/lib/moneyInDeposits.ts`, the Money in bar's own rule);
 they are never added to a figure, a cell, a tile, the print or the CSV.

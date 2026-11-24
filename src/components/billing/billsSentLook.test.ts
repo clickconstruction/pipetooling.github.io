@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
-import { THUMB, chipStyle, linePress, phoneButton, tile, tileRow } from './billsSentLook'
+import { THUMB, chipStyle, linePress, phoneButton, tile, tileBeside, tilePart, tileRow, tileRowWide, wideTile } from './billsSentLook'
 
 describe('billsSentLook — a press on a phone stands a fingertip tall', () => {
   it('takes its height from the app’s one source', () => {
@@ -37,5 +37,29 @@ describe('tileRow — the tiles over either view', () => {
     expect(tileRow(true, 3)).toEqual(tileRow(true, 5))
     // A tile grows from the width three of them fit a phone at.
     expect(tile.flex).toBe('1 1 5.2rem')
+  })
+})
+
+describe('the wide tile — Not paid, a figure with its two parts', () => {
+  it('takes a row of its own, whichever way the row is laid, and leaves a phone’s small tiles their rows', () => {
+    // The grid reads the column, the wrap reads the flex: one style serves an even count, an odd one and a desk.
+    expect(wideTile).toMatchObject({ gridColumn: '1 / -1', flex: '1 0 100%', display: 'flex', flexWrap: 'wrap' })
+    expect(tileRowWide(true, 2)).toEqual(tileRow(true, 2))
+    expect(tileRowWide(true, 3)).toEqual(tileRow(true, 3))
+    expect(tileBeside(true)).toBe(tile)
+  })
+  it('wraps a desk’s row, so the small tiles fill their row beside no empty column', () => {
+    expect(tileRowWide(false, 4)).toEqual({ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' })
+    // A small one keeps the grid’s least width.
+    expect(tileBeside(false).flex).toBe('1 1 8rem')
+  })
+  it('stands a part a fingertip tall on a phone, and draws the part that wants a look in the yellow box’s colours', () => {
+    expect(tilePart(true).minHeight).toBe(44)
+    expect(tilePart(true, true).minHeight).toBe(44)
+    expect(tilePart(false).minHeight).toBeUndefined()
+    expect(tilePart(false, true).background).toBe('var(--bg-amber-tint)')
+    expect(tilePart(false).background).toBe('var(--surface)')
+    // The family alone is inherited, so the part's own size holds.
+    expect(tilePart(false)).toMatchObject({ fontFamily: 'inherit', fontSize: '0.8125rem' })
   })
 })
