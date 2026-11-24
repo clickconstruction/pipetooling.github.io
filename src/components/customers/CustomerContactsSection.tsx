@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { removeContactConfirm } from '../../lib/customers/removeContactConfirm'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { telHrefFor } from '../../lib/phoneContact'
 
 /**
@@ -8,7 +11,8 @@ import { telHrefFor } from '../../lib/phoneContact'
  * the named people at this customer — spouse, PM, AP clerk, property
  * manager — each with their own phone / email and a role note. Rows read as
  * people; Edit opens an inline sheet. Every change persists on its own
- * (`customer_contact_persons`), independent of the form's Save.
+ * (`customer_contact_persons`), independent of the form's Save. **Remove** asks first, naming the contact
+ * (`removeContactConfirm`); Cancel there writes nothing.
  */
 
 type ContactRow = { id: string; name: string; phone: string | null; email: string | null; note: string | null; gets_bill_copies: boolean | null }
@@ -26,6 +30,7 @@ function draftFromRow(c: ContactRow): ContactDraft {
 
 export default function CustomerContactsSection({ customerId }: { customerId: string }) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [contacts, setContacts] = useState<ContactRow[]>([])
   const [loaded, setLoaded] = useState(false)
   const [editingId, setEditingId] = useState<string | 'new' | null>(null)
@@ -84,11 +89,14 @@ export default function CustomerContactsSection({ customerId }: { customerId: st
 
   async function remove(id: string) {
     if (busy) return
+    // Asked first, by the name the list holds (the sheet's name box may have been typed over).
+    const contact = contacts.find((c) => c.id === id)
+    if (!(await confirmDialog(removeContactConfirm({ name: contact?.name ?? draft.name, getsBillCopies: contact?.gets_bill_copies === true && (contact.email ?? '').trim().length > 0 })))) return
     setBusy(true)
     const { error } = await supabase.from('customer_contact_persons').delete().eq('id', id)
     setBusy(false)
     if (error) {
-      showToast(`Could not remove the contact: ${error.message}`, 'error')
+      showToast(formatErrorMessage(error, 'Could not remove the contact.'), 'error')
       return
     }
     if (editingId === id) close()

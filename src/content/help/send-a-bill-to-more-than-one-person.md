@@ -40,7 +40,7 @@ You open {{button:blue|Send bill…}} on the job. The **Send to** list starts wi
 
 ## Set it from the customer instead
 
-**Customers → click the customer → Contacts** shows the same people. You edit a contact and tick **Gets a copy of every bill**. The contact needs an email. The contact wears a {{chip:green|gets every bill}} chip, so anyone can see who is copied.
+**Customers → click the customer → Contacts** shows the same people. You edit a contact and tick **Gets a copy of every bill**. The contact needs an email. The contact wears a {{chip:green|gets every bill}} chip, so anyone can see who is copied. **Remove** on a contact asks first and names the person. A dev can put a removed contact back for 90 days from Recently deleted.
 
 ## Good to know
 
