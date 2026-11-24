@@ -139,6 +139,8 @@ To see both before you send, open [What customers see](/settings?tab=settings-wh
 
 One button under the list sends to every GC whose page is on. The button asks first and says how many. Each of those sends is about all their jobs.
 
+Under the button, the card says who it held and why. Many GCs held for one reason read as one line with a count. Press that line to see their names.
+
 ## Read where a GC's send stands
 
 - {{chip:gray|Sent Nov 20 to Dana Whitlock}} names the day and the person.

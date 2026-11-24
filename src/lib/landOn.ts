@@ -22,7 +22,8 @@ export type LandOnOptions = {
 
 const LAYS_OUT = typeof navigator === 'undefined' || !/jsdom/i.test(navigator.userAgent)
 
-function prefersReducedMotion(): boolean {
+/** Whether the reader asked the system for less motion. */
+export function prefersReducedMotion(): boolean {
   try {
     return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   } catch {
@@ -42,8 +43,16 @@ export function landOn(el: HTMLElement, opts: LandOnOptions = {}): () => void {
       // A control that cannot take the cursor loses the cursor, not the landing.
     }
   }
+  return lightLanded(el, reduced)
+}
+
+/**
+ * The light alone, for a place its own scroller has already brought into view (the Lien desk's affidavit pane lands a
+ * gate row under its pinned heads, which `scrollIntoView` cannot see). Answers the undo, which takes the light off early.
+ */
+export function lightLanded(el: HTMLElement, reducedMotion: boolean = prefersReducedMotion()): () => void {
   el.setAttribute('data-landed', 'yes')
-  const off = window.setTimeout(() => el.removeAttribute('data-landed'), reduced ? LAND_ON_HOLD_MS : LAND_ON_HOLD_MS + LAND_ON_FADE_MS)
+  const off = window.setTimeout(() => el.removeAttribute('data-landed'), reducedMotion ? LAND_ON_HOLD_MS : LAND_ON_HOLD_MS + LAND_ON_FADE_MS)
   return () => {
     window.clearTimeout(off)
     el.removeAttribute('data-landed')

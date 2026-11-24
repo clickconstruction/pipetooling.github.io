@@ -92,6 +92,31 @@ describe('Toast — where it sits', () => {
     expect(toast.style.bottom).toBe('')
   })
 
+  it('on a phone the toast’s press and its × stand a fingertip tall, and the toast is no taller for it (punch list #426)', () => {
+    viewport.phone = true
+    draw({ message: 'Hidden: a bid.', action: () => {} })
+    const undo = screen.getByRole('button', { name: 'Undo' })
+    expect(undo.style.minHeight).toBe('44px')
+    // The margins give back the 18 px it grew by, so the toast keeps its height.
+    expect(undo.style.marginTop).toBe('-9px')
+    expect(undo.style.marginBottom).toBe('-9px')
+    const dismiss = screen.getByRole('button', { name: 'Dismiss' })
+    expect(dismiss.style.minHeight).toBe('44px')
+    expect(dismiss.style.minWidth).toBe('44px')
+    expect(dismiss.style.marginLeft).toBe('-15px')
+    expect(dismiss.style.marginRight).toBe('-15px')
+  })
+
+  it('at a desk the toast’s press and its × are as they were drawn', () => {
+    draw({ message: 'Hidden: a bid.', action: () => {} })
+    const undo = screen.getByRole('button', { name: 'Undo' })
+    expect(undo.style.minHeight).toBe('')
+    expect(undo.style.marginTop).toBe('')
+    const dismiss = screen.getByRole('button', { name: 'Dismiss' })
+    expect(dismiss.style.minHeight).toBe('')
+    expect(dismiss.style.minWidth).toBe('')
+  })
+
   it('a centre toast on a phone keeps the centre', () => {
     viewport.phone = true
     draw({ message: 'Hold on.', placement: 'center' })

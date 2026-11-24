@@ -11,6 +11,10 @@
 # to two minutes after it is one, and bump_user_app_activity() then writes nothing; a person's own emailed link ten
 # minutes later is not, and is counted; an imitation of someone else says nothing; a claim that cannot be read answers
 # false and never raises. It raises on its first failed assertion and ends with "imitated_session PASSED".
+# Then 30_seen_marks.sql (v2.8459, migration *_imitated_session_holds_seen_marks): the four "seen" marks
+# (job_note_tags_seen, task_note_tags_seen, bid_mark_requests_seen, legal_firm_intake_seen) mark nothing for such a
+# session and answer as if nothing were there, a person's own password or link session marks all four, the firm's
+# office check still refuses in words, and Done pressed in the look still saves. Ends with "imitated_seen_marks PASSED".
 # PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a
 # ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -19,7 +23,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55909}"
 NAME="pgtest-imitated-session"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_imitated_session_holds_app_activity.sql)"
+WRITES="$(ls supabase/migrations/*_imitated_session_holds_app_activity.sql supabase/migrations/*_imitated_session_holds_seen_marks.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -36,9 +40,14 @@ sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 pgtest_migrate
-# A second run must change nothing: both functions are restated the same.
-psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# A second run must change nothing: every function is restated the same.
+for f in $WRITES; do
+  psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+done
 out="$(psql_as postgres -f - < supabase/tests/imitated_session/20_scenario.sql 2>&1 || true)"
 if ! grep -q "imitated_session PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/imitated_session/30_seen_marks.sql 2>&1 || true)"
+if ! grep -q "imitated_seen_marks PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "imitated-session bed ok"

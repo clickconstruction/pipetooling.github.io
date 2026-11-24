@@ -15,6 +15,7 @@ import {
   billsPaidEmptyDay,
   billsPaidFilter,
   billsPaidGroupWords,
+  billsPaidLastPaidDay,
   billsPaidLines,
   billsPaidMonthCells,
   billsPaidMonthHtml,
@@ -49,7 +50,7 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { ValueLine, ValueLines, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
-import { THUMB, billLink, chipStyle, jobLink, money, phoneButton, strong, tile, tileSmall } from './billsSentLook'
+import { THUMB, billLink, chipStyle, jobLink, linePress, money, phoneButton, strong, tile, tileSmall } from './billsSentLook'
 import { MoneyText } from '../Money'
 
 /**
@@ -135,15 +136,17 @@ function DayCell({ cell, picked, phone, onPick }: { cell: BillsPaidCell; picked:
 }
 
 /** One payment of the picked day: the bill and the job, the amount, then the way and how long the money took. */
-function PaidLine({ line }: { line: BillsPaidLine }) {
+function PaidLine({ line, phone }: { line: BillsPaidLine; phone: boolean }) {
   const look = HOW_LOOKS[line.how]
+  // On a phone each name that is a press stands a fingertip tall.
+  const press = linePress(phone)
   const time = billsPaidTime(line)
   const took = billsPaidTookWords(line)
   return (
     <div data-testid="bills-paid-line" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.05rem 0.6rem', padding: '0.45rem 0', borderTop: '1px solid var(--border)', fontSize: '0.8125rem', minWidth: 0 }}>
       <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
         {line.billId ? (
-          <Link to={billsSentRecordPath(line.billId)} style={billLink} title="Open every send of this bill">
+          <Link to={billsSentRecordPath(line.billId)} style={{ ...billLink, ...press }} title="Open every send of this bill">
             {line.what}
           </Link>
         ) : (
@@ -153,7 +156,7 @@ function PaidLine({ line }: { line: BillsPaidLine }) {
           <>
             {' · '}
             {line.jobTo ? (
-              <Link to={line.jobTo} style={jobLink}>
+              <Link to={line.jobTo} style={{ ...jobLink, ...press }}>
                 {line.jobWords}
               </Link>
             ) : (
@@ -298,7 +301,8 @@ export function BillsPaidByDay() {
       </div>
     ) : null
 
-  const empty = billsPaidEmptyDay({ ymd: day, how, everyWay: everySum.payments, todayYmd: today })
+  // An empty day's press names where it goes: every way that day, the newest day money came, or another month.
+  const empty = billsPaidEmptyDay({ ymd: day, how, everyWay: everySum.payments, todayYmd: today, lastPaidYmd: billsPaidLastPaidDay(shown, month, today) })
   // A month step names the month it opens, and each sits at its own edge of the card, so neither moves as the month's name changes width.
   const step: CSSProperties = { ...outPress, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', whiteSpace: 'nowrap', ...(phone ? { minWidth: THUMB, padding: '0 0.6rem' } : {}) }
   const chevron: CSSProperties = { fontSize: '1.15em', lineHeight: 1, fontWeight: 400 }
@@ -397,7 +401,7 @@ export function BillsPaidByDay() {
                 compact
                 finger={phone}
                 main={empty.main}
-                next={empty.next === 'Show every way that day' ? { label: empty.next, onPress: () => go({ how: 'all' }) } : empty.next === 'Go to today' ? { label: empty.next, onPress: () => go({ day: today }) } : undefined}
+                next={{ label: empty.next.label, onPress: () => go(empty.next.go) }}
               />
             ) : (
               <>
@@ -440,7 +444,7 @@ export function BillsPaidByDay() {
                         </div>
                       ) : null}
                       {g.lines.map((l) => (
-                        <PaidLine key={l.id} line={l} />
+                        <PaidLine key={l.id} line={l} phone={phone} />
                       ))}
                     </div>
                   )

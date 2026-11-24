@@ -220,6 +220,7 @@
     "test:pg:salaried-week": "bash scripts/pgtest-salaried-week.sh",
     "test:pg:working-hours": "bash scripts/pgtest-working-hours.sh",
     "test:pg:license-roll-notes": "bash scripts/pgtest-license-roll-notes.sh",
+    "test:pg:address-geocode-misses": "bash scripts/pgtest-address-geocode-misses.sh",
     "test:pg:primary-scope-reports": "bash scripts/pgtest-primary-scope-reports.sh",
     "test:pg:primary-scope-job-photos": "bash scripts/pgtest-primary-scope-job-photos.sh",
     "test:pg:document-builders": "bash scripts/pgtest-document-builders.sh",

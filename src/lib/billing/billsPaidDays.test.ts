@@ -21,6 +21,7 @@ import {
   billsPaidMonthName,
   billsPaidMonthOf,
   billsPaidMonthSpan,
+  billsPaidLastPaidDay,
   billsPaidOpeningDay,
   billsPaidPayoutOf,
   billsPaidPayoutWords,
@@ -241,8 +242,17 @@ describe('billsPaid — the month', () => {
     expect(billsPaidMonthCells([], '2026-12', '2026-11-23').blanks).toBe(2)
     expect(billsPaidMonthCells([], 'nope', '2026-11-23')).toEqual({ blanks: 0, cells: [] })
   })
-  it('opens this month on today, and an older month on the newest day money came', () => {
+  it('opens this month on today when money came today, else where the money is, and an older month on the newest day money came', () => {
     expect(billsPaidOpeningDay(lines, '2026-11', '2026-11-23')).toBe('2026-11-23')
+    // Tuesday morning, nothing in yet: the view opens on Monday, where the money is, and not on an empty today.
+    expect(billsPaidOpeningDay(lines, '2026-11', '2026-11-24')).toBe('2026-11-23')
+    expect(billsPaidLastPaidDay(lines, '2026-11', '2026-11-24')).toBe('2026-11-23')
+    // A day that has not come is never the answer, and a month with no money yet opens on today.
+    expect(billsPaidLastPaidDay(lines, '2026-11', '2026-11-19')).toBe('2026-11-18')
+    expect(billsPaidOpeningDay(lines, '2026-11', '2026-11-03')).toBe('2026-11-03')
+    expect(billsPaidLastPaidDay(lines, '2026-11', '2026-11-03')).toBe('')
+    // A credit in kind today is no money: the view still opens where the money is.
+    expect(billsPaidOpeningDay(lines.filter((l) => l.id !== 'h1'), '2026-11', '2026-11-23')).toBe('2026-11-20')
     expect(billsPaidOpeningDay(lines, '2026-11', '2026-12-04')).toBe('2026-11-23')
     // A credit in kind is no money: it does not pick the day.
     expect(billsPaidOpeningDay(lines.filter((l) => l.id !== 'h1'), '2026-11', '2026-12-04')).toBe('2026-11-20')
@@ -329,12 +339,17 @@ describe('billsPaid — a day', () => {
     expect(billsPaidDayHeading('2026-11-23', '2026-11-23')).toBe('Today · Mon, Nov 23')
     expect(billsPaidDayHeading('2026-11-18', '2026-11-23')).toBe('Wed, Nov 18')
     // The chip hid what came in: offer every way.
-    expect(billsPaidEmptyDay({ ymd: '2026-11-20', how: 'stripe', everyWay: 2, todayYmd: '2026-11-23' })).toEqual({ main: 'Nothing came in from Stripe on Fri, Nov 20.', next: 'Show every way that day' })
-    // Nothing came in any way: offer today.
-    expect(billsPaidEmptyDay({ ymd: '2026-11-19', how: 'all', everyWay: 0, todayYmd: '2026-11-23' })).toEqual({ main: 'Nothing came in on Thu, Nov 19.', next: 'Go to today' })
-    expect(billsPaidEmptyDay({ ymd: '2026-11-19', how: 'check', everyWay: 0, todayYmd: '2026-11-23' })).toEqual({ main: 'Nothing came in by check on Thu, Nov 19.', next: 'Go to today' })
-    // Today itself: nowhere better to send the reader.
-    expect(billsPaidEmptyDay({ ymd: '2026-11-23', how: 'all', everyWay: 0, todayYmd: '2026-11-23' }).next).toBe('')
+    expect(billsPaidEmptyDay({ ymd: '2026-11-20', how: 'stripe', everyWay: 2, todayYmd: '2026-11-23', lastPaidYmd: '2026-11-18' })).toEqual({ main: 'Nothing came in from Stripe on Fri, Nov 20.', next: { label: 'Show every way that day', go: { how: 'all' } } })
+    // Nothing came in any way: the press names the newest day money did come, and goes there.
+    expect(billsPaidEmptyDay({ ymd: '2026-11-19', how: 'all', everyWay: 0, todayYmd: '2026-11-24', lastPaidYmd: '2026-11-23' })).toEqual({ main: 'Nothing came in on Thu, Nov 19.', next: { label: 'Go to Mon, Nov 23', go: { day: '2026-11-23' } } })
+    expect(billsPaidEmptyDay({ ymd: '2026-11-19', how: 'check', everyWay: 0, todayYmd: '2026-11-24', lastPaidYmd: '2026-11-23' })).toEqual({ main: 'Nothing came in by check on Thu, Nov 19.', next: { label: 'Go to Mon, Nov 23', go: { day: '2026-11-23' } } })
+    // An empty today, which once had no press at all: the same press, by name.
+    expect(billsPaidEmptyDay({ ymd: '2026-11-24', how: 'all', everyWay: 0, todayYmd: '2026-11-24', lastPaidYmd: '2026-11-23' }).next).toEqual({ label: 'Go to Mon, Nov 23', go: { day: '2026-11-23' } })
+    // Nothing came in all month so far: the month before is where to look.
+    expect(billsPaidEmptyDay({ ymd: '2026-12-01', how: 'all', everyWay: 0, todayYmd: '2026-12-01', lastPaidYmd: '' }).next).toEqual({ label: 'Open November 2026', go: { month: '2026-11' } })
+    expect(billsPaidEmptyDay({ ymd: '2027-01-02', how: 'stripe', everyWay: 0, todayYmd: '2027-01-02', lastPaidYmd: '' }).next).toEqual({ label: 'Open December 2026', go: { month: '2026-12' } })
+    // An older month that held nothing: this month, which opens where its money is.
+    expect(billsPaidEmptyDay({ ymd: '2026-03-31', how: 'all', everyWay: 0, todayYmd: '2026-11-24', lastPaidYmd: '' }).next).toEqual({ label: 'Open November 2026', go: { month: '2026-11' } })
   })
 })
 

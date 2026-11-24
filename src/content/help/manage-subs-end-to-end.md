@@ -36,6 +36,7 @@ Every row has a **Status**. It is {{chip:green|Active}} with *last worked &lt;da
 
 - {{button:outline|Bench…}} sets a sub aside without archiving them. Pick the date and type a one-line reason. Their portal link, sheets, balances, and documents stay exactly where they are. The row just moves to the bench. A benched sub is left out of the Sub Labor sheet form's crew lists until you reactivate them. A name already on a sheet stays.
 - {{button:blue|Reactivate}} brings them back with one click.
+- A sub whose account is archived is left out of the sheet form's crew lists too. People → Users lists them under **Archived**, where they come back.
 - The app never moves anyone on its own. It only nudges. An active sub with no work for **90 days** shows *Quiet for N months · Bench…*. A sub who never worked shows it 60 days after being added. A benched sub who turns up on a new sheet or accepts a work order shows *New work · Reactivate?*.
 - While benched, a sub sits behind {{button:outline|+ N on the bench}} in the work order's Sub step. They are still pickable there, since offering work is how they come back. They sit under **On the bench** in the Assign… list. They show one gray {{chip:gray|on the bench}} chip on People → Users. Their paperwork nags pause until you reactivate them.
 

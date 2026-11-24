@@ -74,7 +74,9 @@ An email line says what the mail service last reported.
 
 Delivered does not mean someone read the email. Opened is the stronger word.
 
-A red tile at the top reads **Did not arrive** with a count. The tile counts sends that did not arrive on a bill that is still open.
+A red tile at the top reads **Did not arrive** with a count. The tile shows only when a send did not arrive.
+
+The tile counts sends that did not arrive on a bill that is still open.
 
 Press {{chip:gray|Did not arrive}} to see only those sends. Fix the address on the bill and send the bill again.
 
@@ -117,7 +119,11 @@ Every send is its own line. A second send reads *Email, sent again*.
 
 A second send also says which send it is and the day of the first one. The words read like *2nd send. First sent Tue, Nov 3.*
 
-A line may have no amount. The line then reads *This bill is no longer on the job.* The bill was taken back or replaced after it went.
+A line may have no amount. A paper that is not one job's bill has none.
+
+A pay application, a certified bill and a reminder to a general contractor are such papers. A text whose pay link names no bill is another.
+
+A line whose bill is gone says so. The line reads *This bill is no longer on the job.* The bill was taken back or replaced after it went.
 
 ## See every send of one bill
 
@@ -144,6 +150,18 @@ A second line on the band says what has come back. The line reads like *1 of 3 p
 That second line counts the same bills as the total above it.
 
 Two tiles at the top give the same count for today and for this week. The week starts on Sunday.
+
+## A test bill
+
+A test bill is one made to try the app. Its job or its customer has a name that starts with ZZ.
+
+A bill made in Stripe's test mode is a test bill too.
+
+The send stays on the list. The line reads *A test bill. It is in no total.*
+
+A test bill has no stamp. It is in no day's total, no tile and neither payment chip.
+
+The second view, By day paid, leaves a test payment out.
 
 ## Statements and other papers
 
@@ -272,9 +290,15 @@ A month of days shows. A green day has a figure. The figure is what came in that
 
 Press a day. A box shows that day's total and its payments.
 
-Tiles above the month add up the money. This month shows **Today**, **This week** and the month. An older month shows the month alone.
+Tiles above the month add up the money. This month shows **Today**, **This week** and the month. An older month shows the month.
+
+Every month also shows the **Next Stripe payout to the bank** tile.
 
 This week starts on Sunday here. The Dashboard's **Money in** week starts on Monday. A Sunday payment can make the two differ.
+
+A day can differ too. **Money in** counts a bank deposit as soon as it posts. This page counts it once it is put on a bill or a job.
+
+**Money in** marks such a deposit *Landed · not applied yet*.
 
 Each payment names the bill, the job and who paid. A pill says how the money came.
 
@@ -299,6 +323,8 @@ A payment from a bank account takes days to clear. This page puts it on the day 
 Its words read *Bank debit · Stripe*. An older payment from a bank account reads *Card · Stripe*.
 
 A day may have no Stripe money. The box says so and offers **Show every way that day**.
+
+Any other empty day offers a press that names a day money came. The press reads like **Go to Mon, Nov 23**.
 
 Press {{chip:gray|All}} to see every way again.
 
@@ -333,6 +359,8 @@ A button sits on each side of the month's name. Each button names the month it o
 Press {{button:outline|‹ Oct}} to go back a month. Press {{button:outline|Dec ›}} to come forward again.
 
 The newest month is this one, so it has no button to go forward. A day that has not come cannot be pressed.
+
+A month opens on the newest day money came. This month opens on today once money has come in today.
 
 The address keeps the day, the month and the chip. Save the address to come back to the same day.
 

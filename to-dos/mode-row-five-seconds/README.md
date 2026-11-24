@@ -1,8 +1,8 @@
 ---
 name: "The mode row shows for five seconds, then leaves"
 number: 433
-group: gated
-status: asked 2026-11-24 after a look at the row on a phone · read and drawn twice the same day, the ask word for word and then again after a critique · nothing is built · waits on the owner's look at the mock-up and a word on nine calls
+group: close
+status: asked 2026-11-24 after a look at the row on a phone · read and drawn twice the same day, the ask word for word and then again after a critique · the owner liked the second draw and asked that the iPhone's camera bar be allowed for, drawn the same day · then *build it all*, so the nine calls stand on their picks · built whole as v2.8461 in one PR: the New mark off, the five seconds, the bar, the row over the page, and the other ways of going to the Dashboard · left: a real phone in a hand
 summary: >
   The owner likes the idea of the mode row and not how it was built. The New mark comes off Job Mode.
   The row shows on top of a phone's Dashboard for five seconds on each visit, with a bar that says
@@ -10,18 +10,18 @@ summary: >
   can leave under a finger, Task Mode loses its way out and the bar reads as loading. The second draw
   lays the row over the page so nothing under it moves, holds it while a finger is on it, keeps the
   handle and the pull that are already built, and runs a grey bar down to nothing.
-next: The owner watches the mock-up and answers the nine calls. PR 1, the New mark coming off, needs no answer and can go first.
-size: M as a train of five (XS · S · S · M · S)
-blocker: The owner's look at the mock-up and a word on the calls. PR 1 waits on nothing.
-opinion: gated — the second draw is the one to build; calls 1, 2 and 5 are the three that change the build, the rest are a line each
+next: Try the row on a real phone, an iPhone on its Home Screen first, then delete the card.
+size: M, built as one client-only PR; left: a look on a real phone (XS)
+blocker: A real phone in a hand.
+opinion: close — built on the picks, as the owner said; each call stays a line or a rule to flip later
 ---
 
 # The mode row shows for five seconds, then leaves (#433)
 
 [`mockup.html`](mockup.html) sits beside this card. It is one page with a phone that moves, a
 **Play again** press, the four moments of each draw as stills, the critique and the calls. It has a
-light and a dark look, a View as band to switch on and off, and the form a person gets who asked their
-phone for less motion. Every job, street and name on it is made up.
+light and a dark look, an iPhone's camera bar and a View as band to switch on and off, and the form a
+person gets who asked their phone for less motion. Every job, street and name on it is made up.
 
 The page as the owner saw it is a private artifact:
 
@@ -106,11 +106,21 @@ bottom edge. At five seconds the row slides up and the page slides up after it. 
   A swipe up on the row sends it away at once.
 - **The way back** is the handle and the pull, as built. The row also comes back by itself on the
   next visit.
-- **Task Mode keeps the row**, with no count and no bar.
+- **Task Mode keeps the row**, with no count and no bar. There the row stays a line of the page, as
+  it is today. A row that lay over the page for good would cover the header. The mock-up draws it
+  lying over, and the build does not.
 - **Less motion:** no slide. The row is there, then fades out. The bar is five blocks that go out one
   a second.
 - **The strip the row uncovers takes no press for a third of a second**, so a thumb aimed at a third
   does not land on the gear.
+- **The camera bar.** The owner, 2026-11-24, on seeing the second draw: *I like your improvements to
+  make this seamless. Please be aware that on iPhones there is a bar at the top that we need to
+  accommodate that holds the camera.* On a Home Screen iPhone the page starts at the top of the glass,
+  under the clock, the camera and the battery. The row never draws there. Its thirds start under that
+  bar, and the row is clipped at the bar's lower edge, so it slides up behind the bar and no word
+  crosses the clock or the camera. The band under the bar is painted by the page's first line, as
+  today: the handle's grey, which is the row's own. With no handle (call 1 flipped) it is the View as
+  band's amber or the header's grey.
 
 **What the second draw still costs.** For five seconds on each visit the row covers the search box,
 the gear and any band above the header. A swipe up clears it. That is the price of a page that never
@@ -144,83 +154,62 @@ Each is drawn on its pick. The owner flips one with its number and a word.
 9. **The *New* mark.** Off, as asked. Nothing marks Job Mode as new after that. A row that arrives
    with a moving bar on every visit draws the eye more than the mark did. No flip is drawn.
 
-## The build
+## The build (v2.8461)
 
-Five PRs, each client only, no migration and no function. Each feature PR carries its release note,
-its fragment and its docs. PR 1 waits on nothing. PRs 2 to 5 are written for the picks above, and a
-flipped call changes the PR named beside it.
+The owner, 2026-11-24, on the mock-up with the camera bar drawn: *build it all, let me know when it's
+live.* So every call stands on its pick. `docs/recent-features/v2.8461.md` is the record, with what was
+walked.
 
-### PR 1 · The *New* mark comes off (XS)
+The plan read as a train of small PRs. It is built as one, client only, no migration and no function.
+The merge queue was twelve deep that night, and the steps were one ask on one component.
 
-- **Out:** `modeRowNewMark`, `MODE_ROW_WORDS.newMark`, the `isNew` prop of `ModeRowThirds`, the
-  `.modeRowNew` rule in `src/index.css`.
-- **Tests:** the mark's cases leave `modeRow.test.ts`. `ModeRow.render.test.tsx` holds that a phone
-  with nothing stored draws three thirds and no fourth word.
-- **Docs:** the *New* sentence in `docs/GLOSSARY.md`'s **Mode row** line, and step 1 of #425's *How
-  to verify*.
-- **Proof:** the lens frame at 390 px as a superintendent with nothing stored, light and dark.
+- **The *New* mark is off.** `modeRowNewMark` and its rule are deleted.
+- **The count** is `src/lib/modeRowCount.ts`, pure: one state (`showing`, `held`, `leaving`, `gone`)
+  and one step function. `ModeRow` holds it in a reducer and sets one timer for the moment it names.
+  The bar is a CSS animation of the kernel's own length and decides nothing.
+- **The row over the page.** On the Dashboard the handle is always the page's first line, the
+  `AppTopBanner` that pays `env(safe-area-inset-top)`. The row is drawn over it in `.modeRowClip`,
+  which names no `top` and so starts where that line's content does, under the camera bar.
+- **A hold, a swipe, a press.** A finger or a keyboard's focus holds the count, a 16 px swipe up
+  sends the row, a press gets five fresh seconds, and the uncovered strip is dead for 300 ms.
+- **Less motion:** a fade, and five blocks for the bar.
+- **Task Mode** keeps the row as a line of the page, with no count (`modeRowHeldOpen`).
+- **Visits:** the page becoming the Dashboard, the Dashboard link pressed while there
+  (`modeRowSamePlaceVisit`), and a return after a minute away (`modeRowBackIsVisit`).
+- **Gone:** the first five opens, the phone's memory of opens and of a press, and the guard for a
+  sub or a helper.
 
-### PR 2 · The count's kernel, nothing drawn (S)
+To flip a call later: the handle is `MODE_ROW_HANDLE`, the five seconds `MODE_ROW_SHOW_MS`, the minute
+away `MODE_ROW_AWAY_MS`, Task Mode's hold `modeRowHeldOpen`, and the bar's colour one line of
+`.modeRowBar` in `src/index.css`.
 
-- **Kernel:** `src/lib/modeRowCount.ts`, pure. One state (`showing` with the time it ends, `held`,
-  `leaving`, `gone`) and one step function over the events *arrive*, *touch*, *release*, *press*,
-  *swipe up*, *time* and *hidden*. The numbers are named: `MODE_ROW_SHOW_MS` 5000, the 180 ms in, the
-  240 ms out, the 300 ms the uncovered strip stays dead, `MODE_ROW_AWAY_MS` 60000.
-  `modeRowArrival(before, after)` says whether a change of place is a visit: the path became the
-  Dashboard, or the Dashboard link was pressed there. A change of the query alone is not one, so a
-  window opened by a link does not replay the row. `modeRowBarLeft(state, now)` is the share of the
-  bar left, and `modeRowBlocksLit` the five blocks.
-- **Tests:** every event from every state, with a clock passed in. A touch at 4.9 s holds. Release
-  starts whole. Task Mode never counts. A return after 59 s is no visit and after 61 s is one.
-- **Proof:** the tests. Nothing on a screen changes. Calls 2, 3 and 4 live here.
+## How to verify
 
-### PR 3 · The row lies over the page (S)
-
-- **What changes:** on the row's pages the handle is always the page's first line, and the row is
-  drawn over it, fixed to the top of the glass, paying `env(safe-area-inset-top)` itself. Its timing
-  does not change yet: the first five opens, then the handle. So this PR is one visible change, the
-  page no longer starting lower while the row shows.
-- **Where:** `ModeRow.tsx` and the `.modeRow` block of `src/index.css`. The handle stays the
-  `AppTopBanner`. The row over it is not one, so `lib/topBannerInset.test.ts` gets the row's own case.
-- **Tests:** the render smoke holds the handle under a showing row and one line of flow either way.
-- **Docs:** the *Order in `layoutBody`* line of `docs/APP_SHELL_ARCHITECTURE.md`.
-- **Proof:** the lens frame at 320 px and 390 px with each band up in turn. A Home Screen iPhone for
-  the status bar. Call 5 flipped drops this PR, and PR 4 then needs a guard for the jump.
-
-### PR 4 · Five seconds, the bar, the slide (M)
-
-- **What changes:** `ModeRow` runs the kernel. The row shows on each visit, the bar runs, the row
-  slides up and the handle is what is left. A finger holds it, a swipe up sends it, the uncovered
-  strip is dead for 300 ms. Under `prefers-reduced-motion` the slide is a fade and the bar is five
-  blocks. Task Mode holds the row.
-- **One clock.** The kernel's end time is the truth and a timer in the component calls *time*. The
-  bar is a CSS animation of the time left, keyed on the showing, and it never decides anything.
-- **Out:** the first five opens (`modeRowFirstVisits`, `MODE_ROW_FIRST_VISITS`, `modeRowCountOpen`,
-  `MODE_ROW_OPEN_DWELL_MS`), the phone's memory of opens and of a press, and the guard for a sub or a
-  helper in `modeRowHeldOpen`.
-- **Tests:** the render smoke with fake timers set before the first draw and stepped in turns: the
-  row at 4.9 s, the handle alone at 5.3 s, a held row at 10 s, a press that restarts, Task Mode at
-  30 s, and the reduced form. The usage rows gain `mode_row_shown` with `#visit` and `#swipe`.
-- **Docs:** `task-mode.md` and the guide that says how to switch modes, the glossary's **Mode row**
-  line, `docs/DASHBOARD_SECTIONS_ARCHITECTURE.md`'s *way in* line, and #425's card.
-- **Proof:** the lens frame, light and dark, at 320 px and 390 px, each of the eight roles once, then
-  a real phone (below). Calls 1, 4, 6, 7 and 8 are a line or a rule each here.
-
-### PR 5 · The other ways of going to the Dashboard (S)
-
-- **What changes:** coming back to the app after a minute away, and pressing the Dashboard link while
-  on it, each count as a visit (`modeRowArrival`, `MODE_ROW_AWAY_MS`).
-- **Tests:** the kernel's cases from PR 2 wired: a `visibilitychange` after 61 s shows the row, one
-  after 10 s does not.
-- **Proof:** a real phone left on the Dashboard, locked for two minutes and woken. Call 2 flipped
-  drops this PR.
+1. As a leader on a phone, open the Dashboard. The row shows with **Dashboard** filled and no mark on
+   **Job Mode**. A grey line under it runs out, and at five seconds the row slides up. A small grey
+   bar is left. Nothing under the row moved.
+2. Tap the grey bar. The row slides down for five seconds more. Pull the page down from its top after
+   it has gone. The same.
+3. Rest a finger on the row past five seconds. It stays. Lift the finger off the row. Five seconds
+   later it goes. Swipe up on the row. It goes at once and nothing is pressed.
+4. Tap **Job Mode**. The Job Mode page opens and the row is still there, **Job Mode** filled, for
+   five seconds. Tap **Task Mode**. The checklist opens with the row as a line of the page, and it
+   stays. Tap **Dashboard**.
+5. With the row gone, tap the **Dashboard** link in the header. The row comes back. Go to Jobs and
+   back. The same.
+6. Put the phone away for two minutes and wake it. The row shows. Do it again for ten seconds. It
+   does not.
+7. Switch the phone to less motion. The row fades instead of sliding, and the line is five blocks.
+8. On a Home Screen iPhone the row starts under the clock and the camera, and slides away behind them.
 
 ## What a real phone must check
 
 The lens frame cannot answer these. A Home Screen iPhone and an Android phone, in a hand:
 
-1. **The status bar.** The row's colour runs up under the clock, the row clears the camera, and it
-   slides out past the top of the glass with no strip left behind.
+1. **The camera bar.** On an iPhone with the island and on one with the notch: the thirds start
+   clear of the camera, the band under the clock is one grey with the row, and the row slides away
+   behind the bar with no word crossing the clock. The same with the phone turned on its side, where
+   the camera is at an edge.
 2. **Five seconds, felt.** Whether it is long enough to read three words and press one, with the bar
    in the corner of the eye.
 3. **A resting thumb.** A real finger on a third holds the row past five seconds, and lifting it
@@ -235,6 +224,8 @@ The lens frame cannot answer these. A Home Screen iPhone and an Android phone, i
 
 ## Where it stands
 
-A mock-up and this plan. Nothing in the app has changed. The mock-up was walked headless at a desk's
+Built whole as v2.8461. The built row was walked headless at a phone's width through the lens frame,
+with real touch events, and not on a real phone. The mock-up was walked headless at a desk's
 width in the light look and a phone's in the dark: the count, the handle, a held press, a press that
-switches, the swipe up, the pull down and Task Mode holding each did what the page says.
+switches, the swipe up, the pull down and Task Mode holding each did what the page says. With the
+camera bar drawn, the row's thirds start 7 px under it and nothing of the row draws over it at any moment.

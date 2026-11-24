@@ -7,7 +7,7 @@
  * Evidence list with the entry a file sits on, and the Narrative with the summary's stale banner.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, fireEvent, within } from '@testing-library/react'
+import { cleanup, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import PeopleHrTab from './PeopleHrTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { useLocation } from 'react-router-dom'
@@ -193,6 +193,8 @@ describe('PeopleHrTab · the link to one file', () => {
     expect(await screen.findByText('No one you can see matches that link. Pick a person from the list.')).toBeTruthy()
     expect(screen.getByText(/Pick a person to open their file/)).toBeTruthy()
     expect(screen.queryByRole('tab', { name: /Timeline \(/ })).toBeNull()
-    expect(screen.getByTestId('address').textContent).toBe('?tab=hr')
+    // The line and the address are two renders: the router writes the address as a transition, which a slow machine
+    // finishes a tick after the line is drawn.
+    await waitFor(() => expect(screen.getByTestId('address').textContent).toBe('?tab=hr'))
   })
 })

@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase'
 import { isOwnerOrDev } from '../lib/doorRoles'
 import { canSeeStagesMoneyCharts } from '../lib/jobs/stagesRoleGates'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
+import { accountsThatLeft, linkedAccountIds, withAccountArchived } from '../lib/people/leftAccounts'
 import { legalDeskRedirect } from '../lib/legal/legalDeskRoute'
 import { lienDeskRedirect } from '../lib/lien/lienDeskRoute'
 import { jobsPageTabs } from '../lib/jobs/jobsPageTabs'
@@ -114,7 +115,7 @@ const JOBS_SHORT_NEW_JOB_BUTTON_MQ = '(max-width: 640px)'
 
 // Roster (for Labor / Sub Sheet Ledger)
 /** v2.3618: `account_user_id` and `end_date` ride along so the sheet form can leave benched subs out (`lib/people/subBench.ts`). */
-export type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null; account_user_id?: string | null; end_date?: string | null }
+export type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null; account_user_id?: string | null; end_date?: string | null; /** v2.8467: the linked account is archived, so the sheet form leaves the row out (`lib/people/leftAccounts.ts`). */ account_archived?: boolean }
 const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'subs', 'combined-labor', 'teams-summary', 'parts', 'materials', 'job-summary', 'inspections', 'billed']
 /** v2.2927: Work Orders and Sub Labor folded into Subs — old links keep landing. */
 const SUBS_TAB_ALIASES: Record<string, SubsView> = { work_orders: 'work', sub_sheet_ledger: 'pay', labor: 'pay' }
@@ -654,7 +655,13 @@ export default function Jobs() {
   async function loadRoster() {
     if (!authUser?.id) return
     const { data: peopleData } = await supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes, account_user_id, end_date').is('archived_at', null).order('kind').order('name')
-    setPeople((peopleData as Person[]) ?? [])
+    const rows = (peopleData as Person[]) ?? []
+    // v2.8467: which linked accounts have left, so the sheet form offers nobody who has. An archived account is closed
+    // to the office, so the read asks which linked accounts are live and the rest have left. A read that fails, or a
+    // reader who sees none of them, marks nobody, and the rows are offered as they were before.
+    const linked = linkedAccountIds(rows)
+    const { data: liveAccounts } = linked.length > 0 ? await supabase.from('users').select('id').in('id', linked).is('archived_at', null) : { data: null }
+    setPeople(withAccountArchived(rows, accountsThatLeft(linked, ((liveAccounts as Array<{ id: string }> | null) ?? []).map((u) => u.id))))
     await loadUsers()
   }
 
