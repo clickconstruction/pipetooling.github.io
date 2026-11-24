@@ -16,6 +16,11 @@ import { ADDRESS_PIN_PAUSE_MS, addressLooksWhole, addressPinFailureReason, addre
  * court map read it. The line shows to whoever may open /map — the same rule the
  * nav, the Bid map and the Who's in map read (`isPathAllowedForRole`), and the
  * list `geocode-one` admits (v2.4974: the controller was on one side and not the other).
+ *
+ * An address no service could place is remembered for a while (punch list #408), and
+ * `geocode-one` answers it from memory. A look-up the line starts by itself, on a pause or
+ * a blur, takes that answer. A press, *Place it* or *Try again*, sends `retry: true` and
+ * asks the services past the memory.
  */
 export default function JobFormAddressPin({ address, blurSignal = 0 }: { address: string; blurSignal?: number }) {
   // Outside an AuthProvider (render smokes of the form) there is no role and the line stays silent.
@@ -27,14 +32,14 @@ export default function JobFormAddressPin({ address, blurSignal = 0 }: { address
   const timer = useRef<number | null>(null)
   const key = normalizeAddressForGeocodeKey(address)
 
-  const place = useCallback(async (addr: string, googleOnly = false) => {
+  const place = useCallback(async (addr: string, googleOnly = false, pressed = false) => {
     const k = normalizeAddressForGeocodeKey(addr)
     setLastRunFor(k)
     setState({ kind: 'placing' })
     try {
       const res = googleOnly
         ? await invokeGeocodeOneRefreshGoogleOnly(addr)
-        : await supabase.functions.invoke<GeocodeOneResponse>('geocode-one', { body: { address: addr } })
+        : await supabase.functions.invoke<GeocodeOneResponse>('geocode-one', { body: pressed ? { address: addr, retry: true } : { address: addr } })
       const data = (res as { data?: GeocodeOneResponse | null }).data ?? (res as GeocodeOneResponse)
       if (!data || typeof data !== 'object' || !('ok' in data)) throw new Error('no answer')
       if (data.ok) setState({ kind: 'placed', county: ((data as { county?: string }).county ?? '').trim(), source: data.source ?? 'cache' })
@@ -89,9 +94,9 @@ export default function JobFormAddressPin({ address, blurSignal = 0 }: { address
       <span style={{ color: w.tone === 'ok' ? 'var(--text)' : color, animation: w.tone === 'pulse' ? 'jobAddressPinPulse 1.2s ease-in-out infinite' : undefined }}>{w.main}</span>
       {w.tone === 'ok' ? <span aria-hidden style={{ color: '#16a34a' }}>✓</span> : null}
       {w.note ? <span style={{ color: 'var(--text-muted)' }}>· {w.note}</span> : null}
-      {state.kind === 'unplaced' ? <button type="button" onClick={() => void place(address)} style={chip}>Place it</button> : null}
+      {state.kind === 'unplaced' ? <button type="button" onClick={() => void place(address, false, true)} style={chip}>Place it</button> : null}
       {state.kind === 'placed' ? <button type="button" onClick={() => void place(address, true)} title="Ask Google for the pin instead" style={chip}>Not right? Pin from Google</button> : null}
-      {state.kind === 'failed' ? <button type="button" onClick={() => void place(address)} style={chip}>Try again</button> : null}
+      {state.kind === 'failed' ? <button type="button" onClick={() => void place(address, false, true)} style={chip}>Try again</button> : null}
     </div>
   )
 }
