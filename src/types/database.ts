@@ -13783,6 +13783,74 @@ export type Database = {
         }
         Relationships: []
       }
+      gc_asks_taken_back: {
+        Row: {
+          asked_by: string | null
+          asked_on: string
+          by_name: string
+          company_id: string | null
+          company_name: string
+          created_at: string
+          id: string
+          package_id: string
+          taken_back_by: string | null
+          taken_back_on: string
+        }
+        Insert: {
+          asked_by?: string | null
+          asked_on: string
+          by_name?: string
+          company_id?: string | null
+          company_name: string
+          created_at?: string
+          id?: string
+          package_id: string
+          taken_back_by?: string | null
+          taken_back_on?: string
+        }
+        Update: {
+          asked_by?: string | null
+          asked_on?: string
+          by_name?: string
+          company_id?: string | null
+          company_name?: string
+          created_at?: string
+          id?: string
+          package_id?: string
+          taken_back_by?: string | null
+          taken_back_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_asks_taken_back_asked_by_fkey"
+            columns: ["asked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_asks_taken_back_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "gc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_asks_taken_back_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_asks_taken_back_taken_back_by_fkey"
+            columns: ["taken_back_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_back_charges: {
         Row: {
           amount: number
@@ -48461,6 +48529,8 @@ export type Database = {
       }
       gc_submittal_came_in: { Args: { r: Json }; Returns: string }
       gc_submittal_move: { Args: { p_submittal_id: string }; Returns: string }
+      gc_take_ask_back: { Args: { p_invite_id: string }; Returns: undefined }
+      gc_take_award_back: { Args: { p_package_id: string }; Returns: undefined }
       gc_take_back_charge: {
         Args: { p_charge_id: string; p_draw_id: string }
         Returns: string
