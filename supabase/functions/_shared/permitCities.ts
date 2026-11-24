@@ -695,6 +695,37 @@ export function passStarts(passes: readonly FeedPass[], newestHeld: NewestHeldDa
   return passes.map((pass) => sinceOverride ?? pullSinceDay(newestHeld[pass.dayColumn] ?? null, todayYmd, undefined, pass.lookbackDays))
 }
 
+/** The newest kept run's word on a feed's second reading: `permit_pulls.issued_since` and `issued_whole` (punch list #405, v2.8400). */
+export type KeptIssuedReading = { issuedSince: string | null; issuedWhole: boolean | null }
+
+/**
+ * The starts `passStarts` works out, with the second reading held to its own kept start (punch list
+ * #405, v2.8402). The first reading writes issued days too, so a start counted only from the days
+ * held moves on while the second reading is down: a month of failed second readings would walk past
+ * the permits issued in that month. While the newest kept run's second reading did not read to its
+ * end, the next one starts no later than that run's start. A failed run's start is itself held this
+ * way, so a run of failures carries the first one's start until a reading finishes. The body's
+ * `since` still starts every reading on its day, and a feed read once is untouched.
+ */
+export function heldPassStarts(passes: readonly FeedPass[], starts: readonly string[], kept: KeptIssuedReading | null, sinceOverride: string | null = null): string[] {
+  return passes.map((pass, i) => {
+    const start = starts[i]!
+    if (sinceOverride || !pass.issuedAgain || kept?.issuedWhole !== false || !kept.issuedSince) return start
+    return kept.issuedSince < start ? kept.issuedSince : start
+  })
+}
+
+/**
+ * What a run keeps of its second reading on `permit_pulls`: where it started and whether it read to
+ * its end. Null on a feed read once, and on a run started on the body's `since`, which is a one-off
+ * read and must not clear a failure's kept start.
+ */
+export function issuedReadingRecord(passes: readonly FeedPass[], starts: readonly string[], readWhole: boolean, sinceOverride: string | null = null): { issued_since: string | null; issued_whole: boolean | null } {
+  const i = passes.findIndex((p) => p.issuedAgain)
+  if (i < 0 || sinceOverride) return { issued_since: null, issued_whole: null }
+  return { issued_since: starts[i] ?? null, issued_whole: readWhole }
+}
+
 /** The feeds a pull runs: one city's when it is named and known, every city's otherwise, in the list's order. */
 export function feedsToPull(city: string | null | undefined): FeedReader[] {
   const one = permitCity(city)

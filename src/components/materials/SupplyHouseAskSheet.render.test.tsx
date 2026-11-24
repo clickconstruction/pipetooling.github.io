@@ -10,6 +10,7 @@ import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { buildLienSupplierJobs } from '../../lib/jobs/lienJobSuppliers'
 import { buildHouseAsks } from '../../lib/materials/houseAsk'
 import { SupplyHouseAskSheet } from './SupplyHouseAskSheet'
+import { moneyText } from '../../test/moneyText'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -65,7 +66,7 @@ describe('SupplyHouseAskSheet', () => {
     expect(within(sheet).getByRole('tab', { name: /^Reece/ }).getAttribute('aria-selected')).toBe('true')
     expect(sheet.querySelector('[data-house-ask-summary]')?.textContent).toContain('2 jobs · $17,430.81 owed by our books · first notice Oct 15 · 1 paid in full by the customer')
     expect(within(sheet).getByText('customer paid in full')).toBeTruthy()
-    expect(within(sheet).getByText('customer owes us $15,722.49')).toBeTruthy()
+    expect(within(sheet).getByText(moneyText('customer owes us $15,722.49'))).toBeTruthy()
     // No contact on file in the stub: the sheet says so and the message can still be copied.
     expect(within(sheet).getByText(/No one is on file for this house/)).toBeTruthy()
     expect(within(sheet).getByRole('button', { name: 'Copy the ask' })).toBeTruthy()

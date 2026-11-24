@@ -4,8 +4,8 @@ import type { BidSchedule } from '../../lib/aiaBidSchedule'
 import { bidImportLabel, bidImportWhoseFigure } from '../../lib/bids/jobImportFromBid'
 import { BID_CARRY_WORDS, bidStageHoursWhy, bidStageLines, bidStageSplits, defaultBidStageSplitKey, type BidStageLine, type BidStageSplitKey } from '../../lib/bids/jobStagesFromBid'
 import type { AwardBidBreakdown } from '../../lib/jobs/awardBaseline'
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import type { LineBudgetSettings } from '../../lib/jobs/lineBudgets'
+import { Money } from '../Money'
 
 /**
  * How a won bid's price comes onto its job (punch list #397, PR 3).
@@ -144,12 +144,12 @@ export function BidCarryWindow({ ask, onAnswer }: { ask: BidCarryAsk; onAnswer: 
                 <span key={`${row.name}-${i}`} data-testid="bid-carry-row" style={{ display: 'contents' }}>
                   <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{row.name}</span>
                   <span style={{ textAlign: 'right', whiteSpace: 'nowrap', color: row.hoursFrom === 'bid' ? 'var(--text-base)' : 'var(--text-muted)' }}>{BID_CARRY_WORDS.hours(row)}</span>
-                  <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>${formatCurrency(row.priceUsd)}</span>
+                  <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}><Money amount={row.priceUsd} /></span>
                 </span>
               ))}
               <span style={{ borderTop: '1px solid var(--border)', paddingTop: '0.25rem', fontWeight: 600 }}>{BID_CARRY_WORDS.total(result)}</span>
               <span style={{ borderTop: '1px solid var(--border)', paddingTop: '0.25rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>{Math.round(result.totalHours)} h</span>
-              <span data-testid="bid-carry-total" style={{ borderTop: '1px solid var(--border)', paddingTop: '0.25rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}>${formatCurrency(result.totalUsd)}</span>
+              <span data-testid="bid-carry-total" style={{ borderTop: '1px solid var(--border)', paddingTop: '0.25rem', fontWeight: 600, textAlign: 'right', whiteSpace: 'nowrap' }}><Money amount={result.totalUsd} /></span>
             </span>
             <span style={note}>
               {BID_CARRY_WORDS.dollarsFrom(split, bidLabel)} {BID_CARRY_WORDS.hoursFrom(result, bidLabel, bidStageHoursWhy(ask.breakdown, ask.bid, ask.settings))} {BID_CARRY_WORDS.anyTime}

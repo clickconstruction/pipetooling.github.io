@@ -72,8 +72,12 @@ const people = [
 /** Opens the tab and waits for its first read of the papers, which it starts on a short timer and which redraws the table. */
 async function open() {
   const view = renderWithProviders(<PeopleContractsTab people={people} users={[]} canDeletePeopleContracts={false} />)
-  await waitFor(() => expect(seen.tables).toContain('person_contract_documents'))
-  await waitFor(() => expect(view.container.querySelector('[data-contracts-person-row="Amy Staff"]')).toBeTruthy())
+  // contract_templates is read by the tab's own load alone, which starts on its timer and hides the table while it runs.
+  await waitFor(() => expect(seen.tables).toContain('contract_templates'))
+  await waitFor(() => {
+    expect(screen.queryByText('Loading…')).toBeNull()
+    expect(view.container.querySelector('[data-contracts-person-row="Amy Staff"]')).toBeTruthy()
+  })
   return view
 }
 

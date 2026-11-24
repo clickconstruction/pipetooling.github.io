@@ -8,6 +8,7 @@ import {
   type PieSlice,
 } from '../../lib/bankingMercuryUserReviewPie'
 import type { UserReviewLabelRow } from '../../lib/bankingMercuryUserReviewPivot'
+import { MoneyText } from '../Money'
 
 const PIE_COLORS = [
   '#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#9333ea', '#0891b2',
@@ -132,7 +133,7 @@ export function BankingMercuryUserReviewPieView({
       <div style={{ fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--text-700)' }}>
         {drillKey == null ? (
           <span style={{ fontWeight: 600 }}>
-            All {primary === 'person' ? 'people' : 'categories'} · {formatUsd(total)}
+            All {primary === 'person' ? 'people' : 'categories'} · <MoneyText text={formatUsd(total)} />
             <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}> · excludes internal transfers</span>
           </span>
         ) : (
@@ -146,7 +147,7 @@ export function BankingMercuryUserReviewPieView({
             </button>
             <span style={{ color: 'var(--text-faint)' }}> › </span>
             <span style={{ fontWeight: 700 }}>{drillName}</span>
-            <span style={{ color: 'var(--text-muted)' }}> — by {otherDimLabel} · {formatUsd(total)}</span>
+            <span style={{ color: 'var(--text-muted)' }}> — by {otherDimLabel} · <MoneyText text={formatUsd(total)} /></span>
           </span>
         )}
       </div>

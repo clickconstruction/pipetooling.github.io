@@ -6,10 +6,10 @@
  * View door (Edit Job with the reload callbacks) and the scroll to the Working section.
  */
 import type { CapableToBillFigure } from '../../lib/jobs/capableToBillPlan'
-import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { EmptyState } from '../EmptyState'
+import { Money } from '../Money'
 
 export function StagesCapableToBillModal({
   rows,
@@ -60,10 +60,10 @@ export function StagesCapableToBillModal({
                     ) : null}
                   </td>
                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{job.pct_complete != null ? `${job.pct_complete}%` : '—'}</td>
-                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(valueCreated)}</td>
-                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(Number(job.payments_made ?? 0))}</td>
-                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>{openBilling > 0 ? formatCurrency(openBilling) : '—'}</td>
-                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(toBill)}</td>
+                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}><Money amount={valueCreated} symbol="" /></td>
+                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}><Money amount={Number(job.payments_made ?? 0)} symbol="" /></td>
+                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>{openBilling > 0 ? <Money amount={openBilling} symbol="" /> : '—'}</td>
+                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}><Money amount={toBill} symbol="" /></td>
                   <td style={{ padding: '0.5rem 0.75rem' }}>
                     <button
                       type="button"
@@ -79,7 +79,7 @@ export function StagesCapableToBillModal({
             <tfoot>
               <tr style={{ borderTop: '2px solid var(--border)', fontWeight: 600 }}>
                 <td colSpan={5} style={{ padding: '0.5rem 0.75rem' }}>Total</td>
-                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(total)}</td>
+                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}><Money amount={total} symbol="" /></td>
                 <td />
               </tr>
             </tfoot>

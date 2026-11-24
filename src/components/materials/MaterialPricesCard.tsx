@@ -16,6 +16,7 @@ import { formatCurrency } from '../../lib/format'
 import { supabase } from '../../lib/supabase'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { CheckPricesWindow } from './CheckPricesWindow'
+import { Money, MoneyText } from '../Money'
 
 export const MATERIAL_PRICES_GUIDE = 'track-what-your-materials-cost'
 /** Fired on `window` when a book price changed somewhere on the page (v2.4394: the Part Prices window); the card reads again. */
@@ -137,11 +138,11 @@ function SuspectPrices({
       {shown.map((x) => (
         <div key={x.priceId} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.8125rem', color: 'var(--text-amber-900)' }}>
           <div>
-            <strong style={{ overflowWrap: 'anywhere' }}>{x.partName}</strong> at {x.houseName} reads <strong>${formatCurrency(x.price)}</strong>.
+            <strong style={{ overflowWrap: 'anywhere' }}>{x.partName}</strong> at {x.houseName} reads <strong><Money amount={x.price} /></strong>.
           </div>
           <div>
             {x.previousPrice != null
-              ? x.day ? `It was $${formatCurrency(x.previousPrice)} before ${formatWorkDateYmdMonthDayShort(x.day)}.` : `It was $${formatCurrency(x.previousPrice)}.`
+              ? x.day ? <MoneyText text={`It was $${formatCurrency(x.previousPrice)} before ${formatWorkDateYmdMonthDayShort(x.day)}.`} /> : <MoneyText text={`It was $${formatCurrency(x.previousPrice)}.`} />
               : 'No earlier price is on record.'}{' '}
             {bids(x.openBidLabels)}
           </div>

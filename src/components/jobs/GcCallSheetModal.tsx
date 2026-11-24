@@ -13,6 +13,7 @@ import {
   type CallSheetAnswer,
   type CallSheetDraft,
 } from '../../lib/jobs/gcCallSheet'
+import { Money } from '../Money'
 
 type Props = {
   sheet: CallSheet
@@ -112,7 +113,7 @@ export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName,
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '1rem', fontWeight: 700 }}>Call sheet{ownerName ? ` — ${ownerName}` : ''}</span>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              {sheet.rows.length} GC{sheet.rows.length === 1 ? '' : 's'} · ${formatCurrency(sheet.total)}
+              {sheet.rows.length} GC{sheet.rows.length === 1 ? '' : 's'} · <Money amount={sheet.total} />
             </span>
             <button type="button" onClick={onClose} disabled={busy} aria-label="Close the call sheet" style={{ marginLeft: 'auto', border: 'none', background: 'none', fontSize: '1.1rem', cursor: 'pointer', color: 'var(--text-muted)' }}>
               ✕
@@ -148,7 +149,7 @@ export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName,
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
                   <b>{r.gcName}</b>
                   <span style={{ color: 'var(--text-muted)' }}>
-                    ${formatCurrency(r.amount)}
+                    <Money amount={r.amount} />
                     {r.oldestAgeDays != null ? ` · oldest ${r.oldestAgeDays}d` : ''}
                   </span>
                   {r.promise ? (
@@ -244,13 +245,13 @@ export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName,
                         <span>
                           {bills.length} bill{bills.length === 1 ? '' : 's'} — what {r.gcName} owes
                         </span>
-                        <span>${formatCurrency(callSheetBillsSummary(bills).total)}</span>
+                        <span><Money amount={callSheetBillsSummary(bills).total} /></span>
                       </div>
                     ) : null}
                     {collections.length > 0 ? (
                       <>
                         <p style={{ margin: '0.5rem 0 0.3rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          <b style={{ color: 'var(--text-red-700)' }}>In Collections</b> — owed too, and not in the ${formatCurrency(r.amount)} above: ${formatCurrency(callSheetBillsSummary(collections).total)}
+                          <b style={{ color: 'var(--text-red-700)' }}>In Collections</b> — owed too, and not in the <Money amount={r.amount} /> above: <Money amount={callSheetBillsSummary(collections).total} />
                         </p>
                         <GcBillLines rows={collections} onOpenJobDetail={onOpenJobDetail} showCustomer compact todayYmd={todayYmd} />
                       </>

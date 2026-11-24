@@ -59,7 +59,6 @@ import {
 import { buildTemperatureBoard, latestExpectedPayByGc, latestTemperatureByGc, trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
 import GcTemperatureBoard, { TEMP_PILL } from './GcTemperatureBoard'
 import { deleteGcStatementRoundMark, setGcStatementSender, upsertGcStatementRoundMark } from '../../lib/gcStatementRoundIo'
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import {
   gcGroupCertStatus,
   gcReviewSentThisWeek,
@@ -115,6 +114,7 @@ import { planGcUnpaidInvoicePrint } from '../../lib/jobs/gcUnpaidInvoicePrint'
 import { openGcUnpaidInvoicesPdfInNewTab } from '../../lib/jobs/gcUnpaidInvoicePrintIo'
 import { supabase } from '../../lib/supabase'
 import { EmptyState } from '../EmptyState'
+import { Money, MoneyText } from '../Money'
 
 /** Tomorrow's civil date in the company calendar zone, YYYY-MM-DD. */
 function chicagoTomorrowYmd(): string {
@@ -1175,7 +1175,7 @@ export function JobsGcReviewModal({
                     title={`Certified by ${status.cert.certified_by_name || '—'}, then the group changed`}
                     style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}
                   >
-                    Changed since certified · {status.delta >= 0 ? '+' : '−'}${formatCurrency(Math.abs(status.delta))}
+                    Changed since certified · {status.delta >= 0 ? '+' : '−'}<Money amount={Math.abs(status.delta)} />
                   </span>
                 )
               }
@@ -1424,7 +1424,7 @@ export function JobsGcReviewModal({
                   )}
                 </span>
                 <span className="amt">
-                  ${formatCurrency(r.remaining)} <span className="mut">open</span>
+                  <Money amount={r.remaining} /> <span className="mut">open</span>
                 </span>
                 {r.jobAddress ? <span className="addr">{r.jobAddress}</span> : null}
                 <span className="when">
@@ -1511,7 +1511,7 @@ export function JobsGcReviewModal({
                   {r.ageDays != null ? `${r.ageDays}d` : '—'}
                 </td>
                 <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  ${formatCurrency(r.remaining)}
+                  <Money amount={r.remaining} />
                 </td>
                 {!g.isNoGc ? (
                   <td style={{ padding: '0.3rem 0.4rem' }} data-testid="gc-review-waivers">
@@ -1753,7 +1753,7 @@ export function JobsGcReviewModal({
                         }
                         meta={
                           <>
-                            ${formatCurrency(g.subtotal)} · {g.jobCount} job{g.jobCount === 1 ? '' : 's'}
+                            <Money amount={g.subtotal} /> · {g.jobCount} job{g.jobCount === 1 ? '' : 's'}
                             {g.oldestAgeDays != null ? ` · oldest ${g.oldestAgeDays}d` : ''}
                           </>
                         }
@@ -1999,10 +1999,10 @@ export function JobsGcReviewModal({
               onChange={() => setIncludeCollections((p) => !p)}
               style={{ margin: 0 }}
             />
-            Include Collections ({rollup.collectionsCount} · ${formatCurrency(rollup.collectionsTotal)})
+            Include Collections ({rollup.collectionsCount} · <Money amount={rollup.collectionsTotal} />)
           </label>
           <span className="gcReviewFootTotal">
-            Total outstanding <b>${formatCurrency(rollup.grandTotal)}</b>
+            Total outstanding <b><Money amount={rollup.grandTotal} /></b>
           </span>
           {/* The bills an in kind deal pays are on no row and no total above (v2.8309). One line says how much. */}
           {inKindFootWords ? (
@@ -2077,7 +2077,7 @@ export function JobsGcReviewModal({
             />
             {/* Money on a job that no bill carries (v2.4255): the statement counts a bill paid only by payments on that bill. */}
             {gcStatementUnmatchedWords(emailDialogGroup) ? (
-              <p role="note" data-testid="gc-statement-unmatched" style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{gcStatementUnmatchedWords(emailDialogGroup)}</p>
+              <p role="note" data-testid="gc-statement-unmatched" style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}><MoneyText text={gcStatementUnmatchedWords(emailDialogGroup)} /></p>
             ) : null}
             {emailError ? (
               <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{emailError}</p>
@@ -2237,7 +2237,7 @@ export function JobsGcReviewModal({
             <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>Share the whole report</h3>
             <p style={{ margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               {bulk.going.length} {byDevelopment ? 'development' : 'GC'} section{bulk.going.length === 1 ? '' : 's'} ·{' '}
-              ${formatCurrency(bulk.grandTotal)} outstanding
+              <Money amount={bulk.grandTotal} /> outstanding
               {includeCollections ? ' (Collections included)' : ''}
             </p>
             {bulkWaitNote || bulk.held.length > 0 ? (
@@ -2568,7 +2568,7 @@ export function JobsGcReviewModal({
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, padding: '1rem 1.2rem', width: 'min(520px, 92vw)', maxHeight: 'min(92vh, 100%)', overflowY: 'auto', boxSizing: 'border-box', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}>
             <div style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.15rem' }}>{markSentGroup.gcName}</div>
             <p style={{ margin: '0 0 0.6rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              {markSentGroup.jobCount} job{markSentGroup.jobCount === 1 ? '' : 's'} · ${formatCurrency(markSentGroup.subtotal)} outstanding
+              {markSentGroup.jobCount} job{markSentGroup.jobCount === 1 ? '' : 's'} · <Money amount={markSentGroup.subtotal} /> outstanding
               {mergedLastSent[markSentGroup.gcId] ? ` · last sent ${new Date(mergedLastSent[markSentGroup.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ' · never sent'}
             </p>
             <GcStatementMarkSentForm

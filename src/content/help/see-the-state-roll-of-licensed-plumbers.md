@@ -117,4 +117,4 @@ A new license shows **Not on the roll** until the next pull. Press **Pulls**, th
 
 ## What comes next
 
-This page does not name who to call yet. A list of who to call comes later.
+To find a person by name, see [look up a licensed plumber on the state roll](/help/look-up-a-licensed-plumber-on-the-state-roll). A list of who to call comes later.

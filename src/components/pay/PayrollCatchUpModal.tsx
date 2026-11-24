@@ -1,4 +1,3 @@
-import { formatCurrency } from '../../lib/format'
 import { isoWeekNumberFromGregorianYmd, ymdAddDays } from '../../utils/dateUtils'
 import {
   isPayStubFullyPaid,
@@ -15,6 +14,7 @@ import {
 import type { UnreportedWeekRow } from '../../lib/unreportedPayrollWeeks'
 import type { DraftPayrollPayStub } from './DraftPayrollModal'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money } from '../Money'
 
 /**
  * Payroll catch-up (v2.2034): stacked on Draft Payroll, one row per earlier
@@ -123,7 +123,7 @@ export function PayrollCatchUpModal({
               : (
                 <>
                   {unreported.length} person-week{unreported.length === 1 ? '' : 's'} · est.{' '}
-                  <strong style={{ color: 'var(--text-strong)' }}>${formatCurrency(estTotal)}</strong> unreported
+                  <strong style={{ color: 'var(--text-strong)' }}><Money amount={estTotal} /></strong> unreported
                 </>
               )}
           {scannedFrom ? <> · scanned back to {dayLabel(scannedFrom)}</> : null}
@@ -186,7 +186,7 @@ export function PayrollCatchUpModal({
                         {r.hours.toFixed(2)}
                       </td>
                       <td style={{ padding: '0.45rem 0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', verticalAlign: 'middle' }}>
-                        ${formatCurrency(stub ? stub.gross_pay : r.estGross)}
+                        <Money amount={stub ? stub.gross_pay : r.estGross} />
                       </td>
                       <td style={{ padding: '0.45rem 0.6rem', verticalAlign: 'middle' }}>
                         {stub ? (

@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
 import type { StripeInvoicePreviewSuccess } from '../../lib/stripeInvoicePreview'
+import { moneyText } from '../../test/moneyText'
 
 afterEach(cleanup)
 
@@ -58,8 +59,8 @@ describe('StripeBillPreSubmitPreview', () => {
     expect(screen.getByTestId('stripe-bill-local-lines')).toBeTruthy()
     expect(screen.getByTestId('stripe-bill-local-tag').textContent).toMatch(/from the job.s lines/)
     expect(screen.getByText('Negotiated discount (10%)')).toBeTruthy()
-    expect(screen.getByText('−$500.00')).toBeTruthy()
-    expect(screen.getAllByText('$4,500.00').length).toBeGreaterThan(0)
+    expect(screen.getByText(moneyText('−$500.00'))).toBeTruthy()
+    expect(screen.getAllByText(moneyText('$4,500.00')).length).toBeGreaterThan(0)
     expect(screen.getByText(/Add the customer.s email above/)).toBeTruthy()
     expect(screen.queryByText(/Draft line:/)).toBeNull()
   })

@@ -1,5 +1,4 @@
 import { forwardRef, useImperativeHandle, useMemo, useState, type ForwardedRef } from 'react'
-import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -16,6 +15,7 @@ import type { SubLaborSheetAssignee } from '../../lib/subLaborOutstanding'
 import { useRosterSubKinds } from '../../hooks/useRosterSubKinds'
 import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money, MoneyText } from '../Money'
 
 /** Memos are sub-visible on the sub portal (sub-portal train) — say so at the point of writing. */
 const MEMO_PORTAL_HINT = '👁 Shown to the sub on their portal — write it like they’ll read it.'
@@ -269,12 +269,12 @@ const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
           const spillLines = sendingSpillLines(plan)
           return (
             <RecordPaymentShell title="Record payment" zIndex={760} testId="sub-record-payment">
-              <RecordPaymentSummary>{subPaymentSummaryWords(target)}</RecordPaymentSummary>
+              <RecordPaymentSummary><MoneyText text={subPaymentSummaryWords(target)} /></RecordPaymentSummary>
               {creditToUse > 0 ? (
                 <div data-sub-credit-offer style={{ margin: '0 0 0.9rem', padding: '0.55rem 0.7rem', fontSize: '0.8125rem', lineHeight: 1.4, background: 'var(--bg-green-tint)', border: '1px solid var(--border)', borderRadius: 6, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                  <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{creditOfferWords(target.contractor, ctx?.credit ?? 0)}</span>
+                  <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}><MoneyText text={creditOfferWords(target.contractor, ctx?.credit ?? 0)} /></span>
                   <button type="button" disabled={makePaymentSaving} onClick={() => void payFromCredit()} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.3rem 0.75rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: makePaymentSaving ? 'default' : 'pointer' }}>
-                    Use {usd(creditToUse)} on this sheet
+                    Use <MoneyText text={usd(creditToUse)} /> on this sheet
                   </button>
                 </div>
               ) : null}
@@ -318,7 +318,7 @@ const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
                 </>
               ) : plan.ok && plan.spills ? (
                 <div data-sub-sending-plan style={{ margin: '-0.35rem 0 0.75rem', padding: '0.55rem 0.7rem', fontSize: '0.8125rem', lineHeight: 1.45, background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6 }}>
-                  <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{usd(plan.sent)} is more than this sheet needs. It is recorded as one sending:</div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}><MoneyText text={usd(plan.sent)} /> is more than this sheet needs. It is recorded as one sending:</div>
                   <ul style={{ margin: '4px 0 0', paddingLeft: '1.1rem' }}>
                     {spillLines.map((line) => (
                       <li key={line}>{line}</li>
@@ -333,7 +333,7 @@ const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
                 </div>
               ) : plan.ok ? (
                 <p data-sub-payment-after style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', fontWeight: 600, color: plan.leaves <= 0 ? 'var(--text-green-700)' : 'var(--text-700)' }}>
-                  {sendingAfterWords(plan)}
+                  <MoneyText text={sendingAfterWords(plan)} />
                 </p>
               ) : plan.reason === 'blank' ? null : (
                 <p role="alert" data-sub-payment-refusal={plan.reason} style={{ margin: '-0.35rem 0 0.75rem', padding: '0.5rem 0.65rem', fontSize: '0.8125rem', lineHeight: 1.4, color: 'var(--text-red-700)', background: 'var(--bg-red-tint)', border: '1px solid var(--border)', borderRadius: 6 }}>
@@ -399,7 +399,7 @@ const sheet = { id: target.id, label: target.hcp || 'this sheet', remaining }
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(480px, calc(100vw - 2rem))', maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Backcharge</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{backchargeLaborJob.contractor} · {backchargeLaborJob.hcp}</p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>Total: ${formatCurrency(backchargeLaborJob.totalCost)} · Paid: ${formatCurrency(backchargeLaborJob.paid)}</p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>Total: <Money amount={backchargeLaborJob.totalCost} /> · Paid: <Money amount={backchargeLaborJob.paid} /></p>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Amount ($)</label>
               <input
@@ -535,7 +535,7 @@ export function AfterRecordPaymentWindow({ recorded, onDone, onPaper }: { record
       <div role="dialog" aria-modal="true" aria-label="Payment recorded" data-testid="sub-after-record-payment" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-700)', padding: '1.1rem 1.2rem', borderRadius: 8, width: 'min(400px, 100%)', maxHeight: 'min(90vh, 100%)', overflowY: 'auto', boxSizing: 'border-box' }}>
         <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>Payment recorded</h3>
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 4 }}>
-          {usd(recorded.sent)}
+          <MoneyText text={usd(recorded.sent)} />
           {recorded.how ? ` by ${recorded.how}` : ''} to {recorded.name}, on {recorded.sheets} {recorded.sheets === 1 ? 'sheet' : 'sheets'}.
         </div>
         <div style={{ marginTop: 10, padding: '0.5rem 0.7rem', background: 'var(--bg-page)', borderRadius: 6, fontSize: '0.8125rem' }}>{recorded.name} has not been sent a payment record. A sub with a portal sees the payment there now.</div>

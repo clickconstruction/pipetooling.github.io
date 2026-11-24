@@ -96,6 +96,7 @@ import { reservedLineWords, reservedShortWords, stickerMarksWords } from '../../
 import { formatErrorMessage, errorKindOf } from '../../utils/errorHandling'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
+import { MoneyText } from '../Money'
 
 export type MaterialsJob = { id: string; hcp_number: string | null; /** The number the app gave a job with no HCP number (v2.7162): the desk reads the job by it. */ click_number?: string | null; job_name: string | null; customer_name?: string | null; job_address?: string | null; /** The job's Google Drive folder, where its invoices and photos live (jobs_ledger.google_drive_link). */ google_drive_link?: string | null }
 
@@ -1105,7 +1106,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                   </SectionPhoneRow>
                 )
               })}
-              <SectionPhoneFoot words={`In the last ${sinceDays} days`}>{money(reportedMoney)}</SectionPhoneFoot>
+              <SectionPhoneFoot words={`In the last ${sinceDays} days`}><MoneyText text={money(reportedMoney)} /></SectionPhoneFoot>
             </div>
 ) : (
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -1147,7 +1148,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                   </tr>
                 )
               })}
-              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {sinceDays} days</td><td style={{ ...td, ...num, fontWeight: 700 }}>{money(reportedMoney)}</td><td style={td}></td></tr>
+              <tr><td style={{ ...td, fontWeight: 700 }} colSpan={5}>In the last {sinceDays} days</td><td style={{ ...td, ...num, fontWeight: 700 }}><MoneyText text={money(reportedMoney)} /></td><td style={td}></td></tr>
             </tbody>
           </table>
 )}
@@ -1222,7 +1223,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                               <input value={l.name} aria-label="Part" list={namesListId} onChange={(e) => setParsed(parsed.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} style={{ width: '100%', boxSizing: 'border-box', minHeight: 30, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }} />
                               {answered?.refused.has(l.id) ? <div data-testid="delivery-line-refused" style={{ marginTop: '0.2rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-red-700)' }}>{refusedLineWords(answered.refused.get(l.id) ?? '')}</div> : null}
                             </td>
-                            <td style={{ ...td, ...num }}>{linePrice(l, loneIs) != null ? money(linePrice(l, loneIs)!) : l.loneFigure != null ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }} title={LONE_FIGURE_WORDS.title}>{money(l.loneFigure)}?</span> : <span style={muted}>—</span>}</td>
+                            <td style={{ ...td, ...num }}>{linePrice(l, loneIs) != null ? <MoneyText text={money(linePrice(l, loneIs)!)} /> : l.loneFigure != null ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }} title={LONE_FIGURE_WORDS.title}><MoneyText text={money(l.loneFigure)} />?</span> : <span style={muted}>—</span>}</td>
                             <td style={{ ...td, ...num }}><button type="button" aria-label="Leave this line out" title="Leave this line out" style={{ ...btn, minHeight: 30, minWidth: 30, padding: 0, fontWeight: 500 }} onClick={() => setParsed(parsed.filter((_, j) => j !== i))}>×</button></td>
                           </tr>
                         ))}

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { UserRole } from '../../hooks/useAuth'
-import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatAddressTwoLines } from '../../lib/jobs/jobAddressUrls'
 import { useToastContext } from '../../contexts/ToastContext'
 import {
@@ -17,6 +16,7 @@ import {
 import { jobBilledUnpaidDollars } from '../../lib/jobs/invoiceBilling'
 import { jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
 import { STAGES_EDIT_MODE_RAIL_WIDTH, renderStagesEditModeRail, renderStagesJobHcpChip } from './jobsStagesRowShared'
+import { Money, MoneyText } from '../Money'
 
 /**
  * Jobs → Billing tab (Stage B of the Jobs.tsx decomposition — see
@@ -297,13 +297,13 @@ export default function JobsBillingTab({
                       : job.team_members.map((t) => t.users?.name ?? 'Unknown').join(', ')}
                   </td>
                   <td style={{ padding: '0.75rem', whiteSpace: 'pre-wrap' }}>
-                    {billingFixturesCellText(job.fixtures)}
+                    <MoneyText text={billingFixturesCellText(job.fixtures)} />
                   </td>
                   <td style={{ padding: '0.75rem', whiteSpace: 'pre-wrap', maxWidth: 200 }}>
-                    {billingMaterialsCellText(job.materials)}
+                    <MoneyText text={billingMaterialsCellText(job.materials)} />
                   </td>
                   <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {job.revenue != null ? `$${formatCurrency(Number(job.revenue))}` : '—'}
+                    {job.revenue != null ? <Money amount={Number(job.revenue)} /> : '—'}
                     {(() => {
                       const tokens = billingRowMoneyTokens(job, jobBilledUnpaidDollars(job))
                       if (tokens.length === 0) return null
@@ -311,7 +311,7 @@ export default function JobsBillingTab({
                       return (
                         <div style={{ fontSize: '0.6875rem', marginTop: '0.15rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
                           {tokens.map((t) => (
-                            <span key={t.tone} style={{ color: tone[t.tone] }}>{t.label}</span>
+                            <span key={t.tone} style={{ color: tone[t.tone] }}><MoneyText text={t.label} /></span>
                           ))}
                         </div>
                       )
@@ -331,8 +331,8 @@ export default function JobsBillingTab({
                   {attentionOnly ? ' needing labor' : ''}
                 </td>
                 <td style={{ padding: '0.6rem 0.75rem', borderTop: '1px solid var(--border)', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  ${formatCurrency(totals.totalBill)}
-                  <div style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-green-700)' }}>paid ${formatCurrency(totals.totalPaid)}</div>
+                  <Money amount={totals.totalBill} />
+                  <div style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-green-700)' }}>paid <Money amount={totals.totalPaid} /></div>
                 </td>
                 <td style={{ borderTop: '1px solid var(--border)' }} />
               </tr>

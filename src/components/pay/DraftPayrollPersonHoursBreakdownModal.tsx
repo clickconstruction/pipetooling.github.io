@@ -1,12 +1,12 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
-import { formatCurrency } from '../../lib/format'
 import {
   fetchDraftPayrollPersonBreakdown,
   type DraftPayrollBreakdownAssignmentRow,
 } from '../../lib/draftPayrollPersonBreakdown'
 import { formatClockSessionTimestampPartsChicago } from '../../lib/formatClockSessionTimestamp'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { Money } from '../Money'
 
 /** Chicago wall-clock time in the compact "8:05am" style. */
 function shortClockTime(iso: string): string {
@@ -206,7 +206,7 @@ export function DraftPayrollPersonHoursBreakdownModal({
                         ) : null}
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        ${formatCurrency(r.hours * hourlyWage)}
+                        <Money amount={r.hours * hourlyWage} />
                       </td>
                       <td
                         style={{
@@ -236,7 +236,7 @@ export function DraftPayrollPersonHoursBreakdownModal({
                       ) : null}
                     </td>
                     <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      ${formatCurrency(totalGross)}
+                      <Money amount={totalGross} />
                     </td>
                     <td style={{ padding: '0.5rem 0.65rem' }} />
                   </tr>

@@ -19,6 +19,7 @@ vi.mock('../../lib/overheadOfficeJobSettings', () => ({ fetchOverheadOfficeJobLe
 import JobsCrewPnlTab from './JobsCrewPnlTab'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { TeamLaborRow } from '../../utils/teamLabor'
+import { moneyText } from '../../test/moneyText'
 
 const labor = (jobId: string, personName: string, hours: number, cost: number): TeamLaborRow => ({
   jobId,
@@ -53,11 +54,11 @@ describe('JobsCrewPnlTab · the Vehicle part (v2.5039)', () => {
     expect(screen.getByRole('columnheader', { name: 'Vehicle' })).toBeTruthy()
     const mike = screen.getByText('Mike Z').closest('tr')!
     // 8 field h × $5.91 = $47.28; profit −$330 labor − $47.28 vehicle with no billing
-    expect(within(mike).getByText('$47.28').getAttribute('title')).toBe('$5.91/field h × 8 field h')
-    expect(within(mike).getByText('−$377.28')).toBeTruthy()
+    expect(within(mike).getByText(moneyText('$47.28')).getAttribute('title')).toBe('$5.91/field h × 8 field h')
+    expect(within(mike).getByText(moneyText('−$377.28'))).toBeTruthy()
     // Ana's deal is None: Review charges her no vehicle, so neither does Crew P&L
     const ana = screen.getByText('Ana').closest('tr')!
-    expect(within(ana).getByText('−$100.00')).toBeTruthy()
+    expect(within(ana).getByText(moneyText('−$100.00'))).toBeTruthy()
     expect(screen.getByTestId('crew-pnl-vehicle-total').textContent).toBe('$47.28')
     expect(screen.getByTestId('crew-pnl-vehicle-note').textContent).toContain('over 2026-07-12 to 2026-10-09')
   })
@@ -67,7 +68,7 @@ describe('JobsCrewPnlTab · the Vehicle part (v2.5039)', () => {
     renderTab()
     await settle()
     const mike = screen.getByText('Mike Z').closest('tr')!
-    expect(within(mike).getByText('−$330.00')).toBeTruthy()
+    expect(within(mike).getByText(moneyText('−$330.00'))).toBeTruthy()
     expect(screen.getByTestId('crew-pnl-vehicle-total').textContent).toBe('—')
     expect(screen.getByTestId('crew-pnl-vehicle-note').textContent).toContain('could not be read')
   })

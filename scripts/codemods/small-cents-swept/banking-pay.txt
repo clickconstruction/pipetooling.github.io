@@ -1,0 +1,3 @@
+# Banking and Pay (v2.8404).
+src/components/banking
+src/components/pay

@@ -1,8 +1,9 @@
 /**
  * Prospects → State roll (punch list #411): the state's public roll of licensed plumbers, kept for our counties.
- * Two views so far. Pulls: what is kept, when each of the state's files was last read, and what the read changed.
- * It names no person. Our own (`StateRollOwn`): our own licenses beside the state's rows. The views that say who
- * to call come later.
+ * Three views so far. Our own (`StateRollOwn`): our own licenses beside the state's rows. Everyone
+ * (`StateRollEveryone`): the kept roll, searched and paged, where a row opens the person's sheet with our notes and
+ * Leave off. Pulls: what is kept, when each of the state's files was last read, and what the read changed. The view
+ * that says who to call comes later.
  *
  * Values are drawn in place: a count or a day stands apart from its words, one fact a line. Every value here is
  * worked out by the app, so each is plain bold.
@@ -10,7 +11,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
+import { StateRollEveryone } from './StateRollEveryone'
 import { StateRollOwn } from './StateRollOwn'
+import { rollViewFor, type RollView } from '../../lib/licenseRoll/everyone'
 import { pageSubTabStyle } from '../../lib/pageTabStyle'
 import { ValueLine, ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -62,42 +65,40 @@ function FileCard({ line }: { line: PullLine }) {
   )
 }
 
-type RollView = 'own' | 'pulls'
 const ROLL_VIEWS: readonly { key: RollView; label: string }[] = [
   { key: 'own', label: 'Our own' },
+  { key: 'everyone', label: 'Everyone' },
   { key: 'pulls', label: 'Pulls' },
 ]
 
 /**
  * The tab: its views, and the strip that picks one. **Our own** is drawn for a person who may also open
- * People → Licenses, since it reads the same licenses. Anyone else with the tab has Pulls alone and no strip.
- * The view is kept on the address as `roll=own` or `roll=pulls`, so a link opens the same view.
+ * People → Licenses, since it reads the same licenses. Everyone else with the tab has Everyone and Pulls.
+ * The view is kept on the address as `roll=own`, `roll=everyone` or `roll=pulls`, so a link opens the same view.
  */
-export function StateRollTab({ canSeeOwn = false }: { canSeeOwn?: boolean }) {
+export function StateRollTab({ canSeeOwn = false, authUserId = null }: { canSeeOwn?: boolean; authUserId?: string | null }) {
   const [searchParams, setSearchParams] = useSearchParams()
-  const asked = searchParams.get('roll')
-  const view: RollView = !canSeeOwn ? 'pulls' : asked === 'pulls' ? 'pulls' : 'own'
+  const view = rollViewFor(searchParams.get('roll'), canSeeOwn)
   const pick = (next: RollView) =>
     setSearchParams(
       (p) => {
         const params = new URLSearchParams(p)
         params.set('roll', next)
+        params.delete('person')
         return params
       },
       { replace: true },
     )
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 980 }}>
-      {canSeeOwn && (
-        <div role="group" aria-label="State roll views" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {ROLL_VIEWS.map((v) => (
-            <button key={v.key} type="button" aria-current={view === v.key ? 'true' : undefined} onClick={() => pick(v.key)} style={{ ...pageSubTabStyle(view === v.key), fontFamily: 'inherit', minHeight: 44, padding: '0.3rem 1rem' }}>
-              {v.label}
-            </button>
-          ))}
-        </div>
-      )}
-      {view === 'own' ? <StateRollOwn /> : <StateRollPulls />}
+      <div role="group" aria-label="State roll views" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {ROLL_VIEWS.filter((v) => canSeeOwn || v.key !== 'own').map((v) => (
+          <button key={v.key} type="button" aria-current={view === v.key ? 'true' : undefined} onClick={() => pick(v.key)} style={{ ...pageSubTabStyle(view === v.key), fontFamily: 'inherit', minHeight: 44, padding: '0.3rem 1rem' }}>
+            {v.label}
+          </button>
+        ))}
+      </div>
+      {view === 'own' ? <StateRollOwn /> : view === 'everyone' ? <StateRollEveryone canSeeOwn={canSeeOwn} authUserId={authUserId} /> : <StateRollPulls />}
     </div>
   )
 }
@@ -106,7 +107,7 @@ export function StateRollTab({ canSeeOwn = false }: { canSeeOwn?: boolean }) {
 export function StateRollTabForUser({ authUserId }: { authUserId: string }) {
   const access = usePeopleAccess(authUserId)
   if (!access.accessResolved) return <div style={quiet}>Reading the state roll…</div>
-  return <StateRollTab canSeeOwn={access.canAccessLicenses} />
+  return <StateRollTab canSeeOwn={access.canAccessLicenses} authUserId={authUserId} />
 }
 
 function StateRollPulls() {

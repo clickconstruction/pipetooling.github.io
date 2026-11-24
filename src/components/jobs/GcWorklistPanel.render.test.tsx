@@ -12,6 +12,7 @@ import GcWorklistPanel from './GcWorklistPanel'
 import { buildGcWorklist } from '../../lib/jobs/gcWorklist'
 import type { GcReviewGroup } from '../../lib/gcReviewRollup'
 import type { GcReviewCertRow } from '../../lib/jobs/gcReviewCertification'
+import { moneyText } from '../../test/moneyText'
 
 const WEEK = '2026-09-21'
 const group = (gcId: string, gcName: string, subtotal: number): GcReviewGroup => ({ key: gcId, gcId, gcName, isNoGc: false, rows: [], subtotal, jobCount: 2, oldestAgeDays: 41 })
@@ -148,7 +149,7 @@ describe('GcWorklistPanel', () => {
 
   it('says what the statement on screen owes, not only the active bills', () => {
     renderPanel({ statementByGc: new Map([['kestrin', { ...group('kestrin', 'Kestrin Contracting', 31500), jobCount: 3 }]]) })
-    expect(within(rowFor('Kestrin Contracting')).getByText(/\$31,500\.00 · 3 jobs · oldest 41d/)).toBeTruthy()
+    expect(within(rowFor('Kestrin Contracting')).getByText(moneyText(/\$31,500\.00 · 3 jobs · oldest 41d/))).toBeTruthy()
   })
 
   it('a stage picked on the track narrows the list to the GCs waiting there', () => {
@@ -158,7 +159,7 @@ describe('GcWorklistPanel', () => {
     const line = screen.getByRole('status')
     expect(line.textContent).toContain('1 of 3 GCs — checked and waiting to go out · $26,000.00')
     // The group still says what it holds, not what the filter left of it.
-    expect(screen.getByText(/2 GCs · \$48,000\.00/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/2 GCs · \$48,000\.00/))).toBeTruthy()
     fireEvent.click(within(line).getByRole('button', { name: 'Show all 3' }))
     expect(h.onClearStage).toHaveBeenCalled()
   })

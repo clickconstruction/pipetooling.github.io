@@ -11,6 +11,7 @@ import {
   type DiscountReasonPreset,
 } from '../../lib/jobs/discountLine'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { Money } from '../Money'
 
 /** Discount green stays literal (saturated status color, theme rules). */
 /** The discount's ink for words and edges: green-700 (v2.6075); the solid fills keep the literal under white words, 5.35:1. */
@@ -228,7 +229,7 @@ export function BillCustomerDiscountStrip({ rows, scopedIds, billAmount, disable
                 </>
               ) : null}
               {' → '}
-              <strong style={{ color: INK }}>${formatCurrency(plan.newBillAmount)}</strong>
+              <strong style={{ color: INK }}><Money amount={plan.newBillAmount} /></strong>
             </>
           ) : entry?.mode === 'total' ? (
             'Type a total below what the bill is now.'

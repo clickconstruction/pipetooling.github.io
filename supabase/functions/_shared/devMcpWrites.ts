@@ -76,7 +76,7 @@ import { bidLaborInput, isBidLaborVerb } from './devMcpBidLabor.ts'
 import { bidPricesInput, isBidPricesVerb } from './devMcpBidPrices.ts'
 import { bidSubmissionInput, isBidSubmissionVerb } from './devMcpBidSubmission.ts'
 import { isSubLaborPaymentVerb, isSubLaborVerb, isSubStatementVerb, subLaborInput, subLaborPaymentInput, subStatementInput } from './devMcpSubLabor.ts'
-import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
+import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_STAGED_MAX_BYTES, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
 import { LICENSE_LEVELS, licenseTypeText, type LicenseLevel, type LicenseTrade } from './gcKernels/lib/logbook/licenseText.ts'
 
 /** Files on one evidence record through the seat; the panel takes any number, a tool call carries them as base64. */
@@ -1563,7 +1563,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   }
   if (verb === 'plan_person_evidence' || verb === 'apply_person_evidence') {
     const evidence = obj(input.evidence)
-    const shape = `${verb} needs evidence — { person_id (a people.id; get_person_file resolves a login or a name), dated_on (YYYY-MM-DD, the day it is about, not ahead of today), title (under ${EVIDENCE_TITLE_MAX} characters), memo (what it shows and why it matters, under ${EVIDENCE_MEMO_MAX}), entry_id? (the person_file_entries.id it proves), counsel_only? (true keeps the record here only: never filed in Drive, never read back by this seat or by the HR agent — a dev reads it on People → HR), files: [{ name (with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256), mime? } | { name, drive_url (a file already in Drive, linked, never staged) }] — at least one, at most ${EVIDENCE_MAX_FILES}, each sent file under ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB }.`
+    const shape = `${verb} needs evidence — { person_id (a people.id; get_person_file resolves a login or a name), dated_on (YYYY-MM-DD, the day it is about, not ahead of today), title (under ${EVIDENCE_TITLE_MAX} characters), memo (what it shows and why it matters, under ${EVIDENCE_MEMO_MAX}), entry_id? (the person_file_entries.id it proves), counsel_only? (true keeps the record here only: never filed in Drive, never read back by this seat or by the HR agent — a dev reads it on People → HR), files: [{ name (with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256), mime? } | { name, staged: true, size_bytes, sha256, mime? (a file declared, not sent: the plan answers the address its bytes go to) } | { name, drive_url (a file already in Drive, linked, never staged) }] — at least one, at most ${EVIDENCE_MAX_FILES}, each sent file under ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB and each declared file at most ${EVIDENCE_STAGED_MAX_BYTES / 1024 / 1024} MB }.`
     if (!evidence) return { ok: false, error: shape }
     const str = (k: string) => (typeof evidence[k] === 'string' ? (evidence[k] as string).trim() : '')
     const personId = str('person_id')
@@ -1587,7 +1587,9 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
       const mime = f && typeof f.mime === 'string' ? f.mime.trim().toLowerCase() : ''
       const sha256 = f && typeof f.sha256 === 'string' ? f.sha256.trim().toLowerCase() : ''
       const sizeBytes = f && typeof f.size_bytes === 'number' && Number.isInteger(f.size_bytes) ? f.size_bytes : NaN
-      if (!f || !name || name.length > 200 || !mime || !HASH_RE.test(sha256) || !(sizeBytes > 0 && sizeBytes <= EVIDENCE_FILE_MAX_BYTES)) return { ok: false, error: shape }
+      // The facts of a file, sent or declared, are the same four keys. The seat holds a sent file to the smaller cap
+      // before it gets here (evidenceBytes); a declared one may be as large as storage takes.
+      if (!f || !name || name.length > 200 || !mime || !HASH_RE.test(sha256) || !(sizeBytes > 0 && sizeBytes <= EVIDENCE_STAGED_MAX_BYTES)) return { ok: false, error: shape }
       files.push({ name, mime, size_bytes: sizeBytes, sha256 })
     }
     const p: Json = { person_id: personId, dated_on: datedOn, title, memo, files }
