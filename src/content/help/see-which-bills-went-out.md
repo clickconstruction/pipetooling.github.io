@@ -145,6 +145,18 @@ That second line counts the same bills as the total above it.
 
 Two tiles at the top give the same count for today and for this week. The week starts on Sunday.
 
+## A test bill
+
+A test bill is one made to try the app. Its job or its customer has a name that starts with ZZ.
+
+A bill made in Stripe's test mode is a test bill too.
+
+The send stays on the list. The line reads *A test bill. It is in no total.*
+
+A test bill has no stamp. It is in no day's total, no tile and neither payment chip.
+
+The second view, By day paid, leaves a test payment out.
+
 ## Statements and other papers
 
 A statement to a general contractor is one line, marked {{chip:yellow|Statement}}. The line shows the statement's total and how many jobs the statement lists.
