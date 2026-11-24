@@ -5,7 +5,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { lienStandInWords } from '../../lib/jobs/lienBillMonths'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { documentLinkWords } from '../../lib/jobs/lienFilingDocumentLink'
-import { lienGridNoticedWords, lienGridPaperTitle, lienGridPaperWords, type LienGridRow, type LienMonthGrid } from '../../lib/jobs/lienMonthGrid'
+import { LIEN_MONTHS_EMPTY, lienGridNoticedWords, lienGridPaperTitle, lienGridPaperWords, type LienGridRow, type LienMonthGrid } from '../../lib/jobs/lienMonthGrid'
 import { lienNoticeOpensOn } from '../../lib/jobs/lienTimeline'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { useLienTimelineView, type LienTimelineView } from '../../hooks/useLienTimelineView'
@@ -156,6 +156,7 @@ export default function LienDeskMonths({
   onRecordByHand,
   tail,
   lastWork,
+  onSetLastWork,
   headless = false,
 }: {
   grid: LienMonthGrid
@@ -180,6 +181,8 @@ export default function LienDeskMonths({
   tail?: ReactNode
   /** The last day of work (v2.4676): the card's first row. */
   lastWork?: ReactNode
+  /** Open the window that sets the last day of work: the empty card's press (`LIEN_MONTHS_EMPTY`). Absent for a reader who cannot set it. */
+  onSetLastWork?: () => void
   /** The title is drawn by the pane's stacked head instead (v2.4733). */
   headless?: boolean
 }) {
@@ -234,8 +237,12 @@ export default function LienDeskMonths({
       {lastWork ? <div className="lienLedgerRow" data-lien-ledger-last-work>{lastWork}</div> : null}
       {grid.rows.length === 0 ? (
         <div className="lienLedgerRow" data-lien-ledger-empty>
-          {/* The words alone: the next step is the row above, the last day of work and its Change ›. */}
-          <EmptyState compact main="No months on this job yet." />
+          {/* What fills the card, and the press that does (punch list #415): the last day of work gives the job a month. */}
+          {onSetLastWork ? (
+            <EmptyState compact main={LIEN_MONTHS_EMPTY.main} next={{ label: LIEN_MONTHS_EMPTY.next, onPress: onSetLastWork }} tail={LIEN_MONTHS_EMPTY.tail} />
+          ) : (
+            <EmptyState compact main={LIEN_MONTHS_EMPTY.main} tail={LIEN_MONTHS_EMPTY.told} />
+          )}
         </div>
       ) : (
         <>

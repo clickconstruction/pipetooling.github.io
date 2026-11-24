@@ -227,3 +227,16 @@ export function lienGridNoticedWords(cells: Readonly<Record<string, LienGridCell
   if (papers.includes('info')) return 'named after the window — information'
   return 'a notice names it'
 }
+
+/**
+ * The Months card on a job with no month (v2.8535, punch list #415): what fills it, and the press that does. A month
+ * comes from approved hours, a sent bill, or the last day of work. The last day of work is the one a person at the desk
+ * can set there and then, so it is the press, and it opens the window the path's LAST WORK stop opens. A reader who
+ * cannot set the day gets `told`, the words alone. Until then the card said only that it had none.
+ */
+export const LIEN_MONTHS_EMPTY = {
+  main: 'No months on this job yet.',
+  next: 'Set the last day of work ›',
+  tail: 'gives the job its first month.',
+  told: 'Approved hours, a sent bill or a last day of work gives the job its first month.',
+} as const

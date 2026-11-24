@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { LienDeskItemRow, LienDeskMonth } from './lienDesk'
 import type { JobLienFilingRow } from './lienDeadlines'
-import { buildLienMonthGrid, lienGridNoticedWords, lienGridPaperTitle, lienGridPaperWords } from './lienMonthGrid'
+import { LIEN_MONTHS_EMPTY, buildLienMonthGrid, lienGridNoticedWords, lienGridPaperTitle, lienGridPaperWords } from './lienMonthGrid'
+import { plainWordsFailures } from '../plainWords'
 
 const TODAY = '2026-09-23'
 const month = (key: string, deadline: string, over: Partial<LienDeskMonth> = {}): LienDeskMonth => ({ key, approvedHours: 10, deadline, daysLeft: Math.round((Date.parse(deadline) - Date.parse(TODAY)) / 86400000), noticed: false, fromCreation: false, ...over })
@@ -128,5 +129,17 @@ describe('buildLienMonthGrid · a paper recorded in the evening keeps its day (v
     const gone = buildLienMonthGrid(args)
     expect(gone.rows.find((r) => r.month === '2026-07')!.thisNotice).toEqual({ on: true, locked: true, info: true, late: false })
     expect(gone.lateUntil).toBeNull()
+  })
+})
+
+describe('the Months card with no month (punch list #415)', () => {
+  it('says what fills it in plain words, with the press and without', () => {
+    const withPress = `${LIEN_MONTHS_EMPTY.main} ${LIEN_MONTHS_EMPTY.next.replace(' \u203a', '')} ${LIEN_MONTHS_EMPTY.tail}`
+    const told = `${LIEN_MONTHS_EMPTY.main} ${LIEN_MONTHS_EMPTY.told}`
+    expect(withPress).toBe('No months on this job yet. Set the last day of work gives the job its first month.')
+    expect(plainWordsFailures(withPress)).toEqual([])
+    expect(plainWordsFailures(told)).toEqual([])
+    // The press ends on the mark every door on the desk ends on.
+    expect(LIEN_MONTHS_EMPTY.next.endsWith(' \u203a')).toBe(true)
   })
 })

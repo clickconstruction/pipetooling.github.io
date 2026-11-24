@@ -202,6 +202,7 @@ Pick the row. The pane first shows what must be true before the notice can go. T
 - Each column is a § 53.056 notice already sent on the job, lettered A, B and on. A ✓ marks each month the paper names. Its header says when it was sent and links the saved copy.
 - The last column is this notice. The header of that column shows the claim in small figures under the name. Every open month is ticked, because one notice may carry several months. The notice must beat the earliest deadline. Only the months you tick are tinted.
 - On a phone each month sits over its window. An earlier notice shows as a mark like A ✓ under the month it names. The tick stays at the right edge. Every press on the card is as tall as a thumb.
+- A job with no month yet has no grid. The card says what gives the job a month. Press **Set the last day of work ›** there to open the window that sets the day.
 
 The claim amount sits under the grid, with its figure at the right edge under the ticks. Under the figure the card names the months this notice carries and counts them. The bills behind the claim come next, then a few quiet notes, then the notice itself. It is the same paper the Lien window prints. Each page has a label above it, like Page 2 of 3. The labels stack as you scroll, the way the pile titles do on the list. Pages you have passed stack at the top. Pages still ahead stack at the foot. The page under you is lit. Press a label to go to that page.
 
