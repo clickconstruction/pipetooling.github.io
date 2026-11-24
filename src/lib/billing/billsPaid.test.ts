@@ -42,6 +42,11 @@ describe('billPaymentWayWords', () => {
     // The note alone is enough: a read that did not ask for the bill's Stripe columns still knows.
     expect(billPaymentWayWords(payment({ note: ' stripe ' }), bill())).toBe('Card · Stripe')
   })
+  it('names a bank debit the customer made through Stripe, and never calls it a card', () => {
+    expect(billPaymentWayWords(payment({ note: 'Stripe', paymentType: 'Bank debit' }), stripeBill())).toBe('Bank debit · Stripe')
+    // The office's own ACH on a Stripe bill is still one it recorded in Stripe.
+    expect(billPaymentWayWords(payment({ paymentType: 'ACH' }), stripeBill())).toBe('ACH · recorded in Stripe')
+  })
   it('names a check recorded in Stripe, with its number', () => {
     expect(billPaymentWayWords(payment({ paymentType: 'Check', referenceNumber: '2291' }), stripeBill())).toBe('Check 2291 · recorded in Stripe')
   })
