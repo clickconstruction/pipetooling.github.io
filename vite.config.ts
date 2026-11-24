@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 import { parseHelpGuideFrontmatter } from './src/lib/helpGuides'
+import { buildOnlyCloseBundle } from './src/lib/buildOnlyCloseBundle'
 import { PDFJS_ASSET_DIRS, PDFJS_ASSET_PREFIX, pdfjsAssetPath } from './src/lib/pdfjsAssets'
 import { HELP_SHARE_PATH_PREFIX, helpShareCardPath, helpShareCardSvg, helpShareDescription, helpSharePageHtml } from './src/lib/helpShareCard'
 import { formerHelpGuideSlugs } from './src/lib/helpGuideFormerSlugs'
@@ -25,9 +26,13 @@ const bundleAnalyze = process.env.ANALYZE === '1'
  * `/to-dos/submittals/mockup.html` as a page. Not precached (`globIgnores`), and the
  * service worker's navigation fallback leaves `/to-dos/` alone (src/sw.ts). Runs after
  * VitePWA's own closeBundle, so the files never enter the precache manifest either way.
+ *
+ * Every plugin here with a `closeBundle` writes into `dist/`, and each is wrapped in `buildOnlyCloseBundle`
+ * (src/lib/buildOnlyCloseBundle.ts): Vite's dev server calls the hook when it closes too, and a `vitest`
+ * run is one, so unwrapped the copies and the share cards ran at the end of every test run.
  */
 function todoMockupsPlugin() {
-  return {
+  return buildOnlyCloseBundle({
     name: 'todo-mockups',
     closeBundle() {
       const srcRoot = join(process.cwd(), 'to-dos')
@@ -47,7 +52,7 @@ function todoMockupsPlugin() {
       walk('')
       console.log(`todo-mockups: copied ${count} mock-up page(s) under dist/to-dos`)
     },
-  }
+  })
 }
 
 /**
@@ -185,7 +190,7 @@ function appVersionPlugin() {
  * the card has to be real HTML on the server. Pure parts in src/lib/helpShareCard.ts.
  */
 function helpSharePagesPlugin() {
-  return {
+  return buildOnlyCloseBundle({
     name: 'help-share-pages',
     async closeBundle() {
       const guidesDir = join(process.cwd(), 'src', 'content', 'help')
@@ -245,7 +250,7 @@ function helpSharePagesPlugin() {
       await browser?.close()
       console.log(`help-share-pages: wrote ${count} share pages under dist${HELP_SHARE_PATH_PREFIX}${shoot ? ` with ${cards} cards` : ' (site card — no browser)'}${formerPages > 0 ? `, and ${formerPages} at a renamed guide's old address` : ''}`)
     },
-  }
+  })
 }
 
 /**
@@ -258,7 +263,7 @@ function helpSharePagesPlugin() {
 function pdfjsAssetsPlugin() {
   const source = (dir: string) => join(process.cwd(), 'node_modules', 'pdfjs-dist', dir)
   const types: Record<string, string> = { '.wasm': 'application/wasm', '.js': 'text/javascript', '.mjs': 'text/javascript', '.bcmap': 'application/octet-stream', '.pfb': 'application/octet-stream', '.ttf': 'font/ttf' }
-  return {
+  return buildOnlyCloseBundle({
     name: 'pdfjs-assets',
     configureServer(server: { middlewares: { use(fn: (req: { url?: string }, res: { setHeader(k: string, v: string): void; statusCode: number; end(): void }, next: () => void) => void): void } }) {
       server.middlewares.use((req, res, next) => {
@@ -279,11 +284,11 @@ function pdfjsAssetsPlugin() {
       for (const dir of PDFJS_ASSET_DIRS) cpSync(source(dir), join(outDir, dir), { recursive: true })
       console.log(`pdfjs-assets: copied ${PDFJS_ASSET_DIRS.join(', ')} into dist/${PDFJS_ASSET_PREFIX}/`)
     },
-  }
+  })
 }
 
 function copy404Plugin() {
-  return {
+  return buildOnlyCloseBundle({
     name: 'copy-404',
     closeBundle() {
       const outDir = join(process.cwd(), 'dist')
@@ -292,7 +297,7 @@ function copy404Plugin() {
       if (!existsSync(join(outDir, 'index.html'))) return
       copyFileSync(join(outDir, 'index.html'), join(outDir, '404.html'))
     },
-  }
+  })
 }
 
 export default defineConfig({
