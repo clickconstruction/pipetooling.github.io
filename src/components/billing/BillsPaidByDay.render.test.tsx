@@ -8,7 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { billsPaidStepLabel, type BillsPaidBill, type BillsPaidPayment } from '../../lib/billing/billsPaidDays'
+import { billsPaidMonthLabel, billsPaidStepLabel, type BillsPaidBill, type BillsPaidPayment } from '../../lib/billing/billsPaidDays'
 import type { BillsPaidRead } from '../../lib/billing/billsPaidIo'
 import { BillsPaidByDay } from './BillsPaidByDay'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
@@ -220,6 +220,28 @@ describe('BillsPaidByDay', () => {
     expect(texts.some((t) => t?.includes('Check 2291 · typed by hand') && t.includes('Part of the bill. The bill is still open.'))).toBe(true)
   })
 
+  it('opens this month where the money is when nothing has come in today, and an empty today names the day to go to', async () => {
+    // Tue, Nov 24, 2026, noon Central. Only the clock's date is held: the screen's own timers run.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-24T18:00:00.000Z'))
+    try {
+      io.data = read([payment({ id: 's1', note: 'Stripe', paidOn: '2026-11-23', createdAtIso: '2026-11-23T15:14:00.000Z' })])
+      renderWithProviders(<BillsPaidByDay />, { route: '/bills-sent?view=paid' })
+      const day = await screen.findByTestId('bills-paid-day')
+      // Monday's money, not Tuesday's empty box.
+      expect(day.textContent).toContain('Mon, Nov 23')
+      expect(within(day).getAllByTestId('bills-paid-line')).toHaveLength(1)
+      expect(screen.getByTestId('bills-paid-tile-today').textContent).toContain('0 payments')
+      // Today is one press away, and its empty box says where the money is.
+      fireEvent.click(cellOf('2026-11-24'))
+      expect(screen.getByTestId('bills-paid-day').textContent).toContain('Nothing came in on Tue, Nov 24.')
+      fireEvent.click(screen.getByRole('button', { name: 'Go to Mon, Nov 23' }))
+      expect(within(screen.getByTestId('bills-paid-day')).getAllByTestId('bills-paid-line')).toHaveLength(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('saves the month as a spreadsheet named for the month and the chip, and offers neither on an empty month', async () => {
     io.data = march
     const { unmount } = renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&how=stripe&day=${OLD}-18` })
@@ -232,7 +254,8 @@ describe('BillsPaidByDay', () => {
     await screen.findByTestId('bills-paid-day')
     expect(screen.queryByTestId('bills-paid-out')).toBeNull()
     expect(screen.getByTestId('bills-paid-day').textContent).toContain('Nothing came in on Tue, Mar 31.')
-    expect(screen.getByRole('button', { name: 'Go to today' })).toBeTruthy()
+    // An older month that held nothing sends the reader to this month, by name.
+    expect(screen.getByRole('button', { name: `Open ${billsPaidMonthLabel(month)}` })).toBeTruthy()
   })
 
   it('on a phone, writes a day’s amount short and puts the file presses last', async () => {
