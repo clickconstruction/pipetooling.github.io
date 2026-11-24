@@ -238,9 +238,10 @@
     "walk": "vite-node scripts/walk/start.ts",
     "lien:packet": "vite-node scripts/lien-packet/start.ts",
     "walk:bids": "node scripts/bids-live-walk.mjs",
-    "lint": "eslint src --cache --cache-location .cache/eslint/ --cache-strategy content",
+    "lint": "eslint src vite.config.ts playwright.config.ts --cache --cache-location .cache/eslint/ --cache-strategy content",
     "lint:fix": "eslint src --fix --cache --cache-location .cache/eslint/ --cache-strategy content",
     "typecheck": "node scripts/typecheck-queued.mjs",
+    "typecheck:config": "tsc -p tsconfig.node.json",
     "format": "prettier --write src",
     "format:check": "prettier --check src"
   },

@@ -83,6 +83,12 @@ jobs:
           TYPECHECK_NO_LOCK: '1'
         run: npm run typecheck
 
+      # The typecheck above reads `src` alone. vite.config.ts and playwright.config.ts were read by no typecheck
+      # and ignored by eslint until 2026-11-24, so only a build caught a mistake in the build's own config. Three
+      # seconds, no cache: tsconfig.node.json takes the app's options and reads the two files and what they import.
+      - name: Typecheck the build's own config (vite.config.ts, playwright.config.ts)
+        run: npm run typecheck:config
+
       - name: Lint
         run: npm run lint
 
