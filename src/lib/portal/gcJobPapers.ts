@@ -3,7 +3,7 @@
  * shapes and the readers live in `supabase/functions/_shared/portalJobPapers.ts`, so the function that makes the
  * answer and the page that draws it read one file. This adds the page's words. Pure.
  */
-import type { GcJobPaper, GcPaperBusiness } from '../../../supabase/functions/_shared/portalJobPapers'
+import type { GcJobPaper, GcPaperBusiness, GcPaperSigner } from '../../../supabase/functions/_shared/portalJobPapers'
 import { formatPortalDate } from './portalPayload'
 
 export * from '../../../supabase/functions/_shared/portalJobPapers'
@@ -35,6 +35,15 @@ export function gcPaperBusiness(b: GcPaperBusiness): { chip: string; done: boole
     done,
     detail: b.people > 1 ? `${b.signed} of ${people(b.people)} signed` : null,
   }
+}
+
+/** The head over the signers, shown only when the office set the job to name them. */
+export const GC_PAPER_SIGNERS_HEAD = 'Who has signed'
+
+/** One signer: the day they signed as a chip, and the trade company of a sub. */
+export function gcPaperSigner(g: GcPaperSigner): { chip: string; detail: string | null } {
+  const on = formatPortalDate(g.signedOn)
+  return { chip: on ? `Signed ${on}` : 'Signed', detail: g.business }
 }
 
 /** Under the signed card's meter: what a signature opens. */

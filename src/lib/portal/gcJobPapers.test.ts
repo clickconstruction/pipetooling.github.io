@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GC_PAPER_SAMPLE, gcJobPapersFromSql, gcJobPapersOrNone, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSampleUrl, gcPaperSigned, parseGcJobPapers } from './gcJobPapers'
+import { GC_PAPER_SAMPLE, gcJobPapersFromSql, gcJobPapersOrNone, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSampleUrl, gcPaperSigned, gcPaperSigner, gcPaperViewOf, parseGcJobPapers } from './gcJobPapers'
 
 // What the database answers for one job, with made-up words.
 const SQL = [
@@ -49,10 +49,12 @@ describe('gcJobPapers · what a GC reads about a job’s papers', () => {
             ],
             signed: 3,
             total: 9,
+            view: 'businesses',
             businesses: [
               { name: 'Pine Ridge Excavating', people: 2, signed: 2, signedOn: '2026-11-24' },
               { name: 'Sam Sole', people: 1, signed: 0, signedOn: null },
             ],
+            signers: [],
           },
         ],
       },
@@ -81,6 +83,56 @@ describe('gcJobPapers · what a GC reads about a job’s papers', () => {
       { name: 'Half', people: 2, signed: 1, signedOn: null },
       { name: 'Over', people: 1, signed: 1, signedOn: '2026-11-20' },
     ])
+  })
+
+  // The office's setting for what a GC sees. One paper's answer, as the database would send it under each.
+  const seen = (view: unknown, extra: Record<string, unknown> = {}) => {
+    const paper = {
+      id: 'r',
+      paper_name: 'P',
+      signed: 2,
+      total: 4,
+      view,
+      businesses: [{ name: 'Pine Ridge Excavating', people: 2, signed: 2, signed_on: '2026-11-24' }],
+      signers: [
+        { name: 'Tall Pine', business: 'Pine Ridge Excavating', signed_on: '2026-11-23' },
+        { name: 'Hector Helper', business: null, signed_on: '2026-11-24T09:00:00Z' },
+        { name: '', business: 'Nobody', signed_on: '2026-11-24' },
+      ],
+      ...extra,
+    }
+    return gcJobPapersFromSql([{ job_id: 'job-1', papers: [paper] }], GC_JOBS)[0]!.papers[0]!
+  }
+
+  it('every signer by name: the businesses, and each signer with the company of a sub', () => {
+    const paper = seen('names')
+    expect(paper.view).toBe('names')
+    expect(paper.businesses).toHaveLength(1)
+    expect(paper.signers).toEqual([
+      { name: 'Tall Pine', business: 'Pine Ridge Excavating', signedOn: '2026-11-23' },
+      { name: 'Hector Helper', business: null, signedOn: '2026-11-24' },
+    ])
+  })
+
+  it('never hands on a list the setting hides, whatever the answer carries', () => {
+    expect(seen('businesses').signers).toEqual([])
+    expect(seen('businesses').businesses).toHaveLength(1)
+    const count = seen('count')
+    expect([count.view, count.businesses, count.signers, count.signed]).toEqual(['count', [], [], 2])
+    // An answer with no setting, or one that does not read, is the way every paper starts.
+    for (const v of [undefined, null, 7, 'everything', '']) expect(seen(v).view).toBe('businesses')
+    expect(gcPaperViewOf(' Names ')).toBe('names')
+  })
+
+  it('the page reads the setting and the signers back as sent', () => {
+    const sent = gcJobPapersFromSql([{ job_id: 'job-1', papers: [{ id: 'r', paper_name: 'P', signed: 1, total: 2, view: 'names', businesses: [], signers: [{ name: 'Tall Pine', business: null, signed_on: '2026-11-23' }] }] }], GC_JOBS)
+    expect(parseGcJobPapers(JSON.parse(JSON.stringify(sent)))).toEqual(sent)
+    expect(sent[0]!.papers[0]!.signers).toEqual([{ name: 'Tall Pine', business: null, signedOn: '2026-11-23' }])
+  })
+
+  it('says a signer’s day, and the company of a sub', () => {
+    expect(gcPaperSigner({ name: 'Tall Pine', business: 'Pine Ridge Excavating', signedOn: '2026-11-23' })).toEqual({ chip: 'Signed Nov 23, 2026', detail: 'Pine Ridge Excavating' })
+    expect(gcPaperSigner({ name: 'Hector Helper', business: null, signedOn: null })).toEqual({ chip: 'Signed', detail: null })
   })
 
   it('says the level, or a mix of its own', () => {

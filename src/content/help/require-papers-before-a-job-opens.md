@@ -85,10 +85,18 @@ The line beside the heading counts it up, such as *3 of 8 have signed*.
 
 The GC on the job reads about a paper built from settings on their own page. They see the level, each topic's choice in plain words, and how many people have signed.
 
-- They see each sub business with the day it finished signing. They see no worker's name.
+- They see each sub business with the day it finished signing. They see no worker's name unless you set it.
 - A sub's business is the company on their file. A sub with no company shows under their own name.
 - After you change the settings, their count starts again, as yours does.
 - **Download a sample** gives them the job's paper with made-up names and SAMPLE across each page.
+
+You choose how much of that they see. Open **Settings** on the paper's row and find **What the GC sees**.
+
+- **How many have signed** shows the count alone.
+- **How many, and each sub business with its day** is how every paper starts.
+- **How many, each sub business, and every signer by name** adds each person who has signed.
+
+Then press {{button:blue|Save what the GC sees}}. This changes their page and never the paper. Nobody signs again. A new version of the paper keeps your choice.
 
 A paper written in prose does not show there. What their page looks like is in [see what a customer sees on their portal](/help/see-what-a-customer-sees-on-their-portal#a-paper-a-job-requires).
 

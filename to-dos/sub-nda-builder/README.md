@@ -12,8 +12,8 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The two walks left in *Left to do and to walk*, each a person's, with a real phone: a person's own Read and sign, and a finger on the sliders. Three were walked on 2026-11-24 and passed. Before a real job, the real wording in the Contract Book's entry, with its breach and site lines, and an attorney's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Then the rest of step 5: a walk of the GC's page and its sample on the live site, and the office's setting for what a GC sees. Steps 1 to 4 are built, and step 5's block and sample. Beside them, the last steps of the Document builder tab, #404, and Taunya's read, box by box, of the grid in this card's mock-up. Then the open calls below, with the wider calls still open in *The wider look*.
-ver: v2.8014 · v2.8019 · v2.8020 · v2.8145 · v2.8154 · v2.8156 · v2.8182 · v2.8183 · v2.8184 · v2.8229 · v2.8275 · v2.8462 · v2.8467 · v2.8503 · v2.8506
+next: The two walks left in *Left to do and to walk*, each a person's, with a real phone: a person's own Read and sign, and a finger on the sliders. Three were walked on 2026-11-24 and passed. Before a real job, the real wording in the Contract Book's entry, with its breach and site lines, and an attorney's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Then a walk of step 5 on the live site: the GC's page, its sample, and the office's setting for what a GC sees. Steps 1 to 5 are built. Beside them, the last steps of the Document builder tab, #404, and Taunya's read, box by box, of the grid in this card's mock-up. Then the open calls below, with the wider calls still open in *The wider look*.
+ver: v2.8014 · v2.8019 · v2.8020 · v2.8145 · v2.8154 · v2.8156 · v2.8182 · v2.8183 · v2.8184 · v2.8229 · v2.8275 · v2.8462 · v2.8467 · v2.8503 · v2.8506 · v2.8533
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -351,7 +351,8 @@ paper until an entry has a settings list, and the first one is a test entry.
    - **Measured again on the live build, 2026-11-21.** v2.8229's presses read 44 px on prod at both
      widths. A job with no paper showed one more small press, the empty section's own **Add a paper**,
      fixed in v2.8275 with the door on the Papers to sign window.
-5. **The GC's page, read-only (M), in two parts.** The block, the sub businesses, and the sample PDF function.
+5. **The GC's page, read-only (M), in three parts.** The block with the sub businesses, the sample PDF function,
+   and the office's setting for what a GC sees.
    - **What a GC reads. Built, v2.8503.** On the customer portal, under each job they are the GC on that requires
      a paper built from settings: the level, each topic's choice in plain words, how many on the office's own
      roster have signed, and each sub business with the day it finished signing. No worker is named. It is
@@ -361,8 +362,12 @@ paper until an entry has a settings list, and the first one is a test entry.
    - **The sample PDF. Built, v2.8506.** **Download a sample** on that block opens the paper for the job's
      settings with a made-up job and signer and SAMPLE across each page. A new function, `open-job-paper-sample`,
      draws it from the same assembly a signer reads, for the GC on that job alone. Not walked on the live site yet.
-   - **What a GC sees, set by the office.** Not started. Settled 4 lets a job show the count only, or every signer
-     by name. Every job shows the count and the businesses until a job carries that setting.
+   - **What a GC sees, set by the office. Built, v2.8533.** Settled 4 lets a job show the count only, or every
+     signer by name. **What the GC sees** on the paper's one page of settings has the three choices, and every
+     paper starts on the count and the businesses. It is saved in place whoever has signed, nobody signs again,
+     and a new version of the paper keeps it. The row keeps who set it and when. Under the count alone the
+     database sends no business, and it sends the signers only under every signer by name.
+     `20261124170000_job_paper_gc_view.sql`, `jobPaperGcView.ts`. Not walked on the live site yet.
 6. **The GC proposes (M).** The proposal kind, stricter-only checked on the server, the office's take
    and confirm, the record of who and when.
 7. **Their own form (S).** *Theirs* points at a Form Studio form the gate already accepts.

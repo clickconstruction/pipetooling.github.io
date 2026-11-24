@@ -1,7 +1,8 @@
 /**
  * What a GC reads about the papers a job requires (punch list #389, step 5): for each job on their page that requires
  * a paper built from settings, the job's settings in the list's own plain words, the level they come to, how many of
- * the people who can open the job have signed, and each sub business with its day. No worker is named.
+ * the people who can open the job have signed, and each sub business with its day. No worker is named, unless the
+ * office set the job to show every signer by name. The office can also set it to show the count alone.
  *
  * The database answers it whole (`job_papers_gc_page`, the service key only). This file shapes that answer for the
  * page, reads it back on the page, and asks for it. It imports nothing, so the app and its tests read the same file
@@ -24,6 +25,26 @@ export interface GcPaperBusiness {
   signedOn: string | null
 }
 
+/**
+ * What the office set a GC to see of who has signed: the count alone, the count and each sub business with its day
+ * (how every paper starts), or those and every signer by name.
+ */
+export type GcPaperView = 'count' | 'businesses' | 'names'
+export const GC_PAPER_VIEWS: readonly GcPaperView[] = ['count', 'businesses', 'names']
+
+/** Anything that is not one of the three reads as the way every paper starts. */
+export function gcPaperViewOf(v: unknown): GcPaperView {
+  const word = typeof v === 'string' ? v.trim().toLowerCase() : ''
+  return word === 'count' || word === 'names' ? word : 'businesses'
+}
+
+/** One person who has signed, under 'names': their name, the trade company of a sub, and the day. */
+export interface GcPaperSigner {
+  name: string
+  business: string | null
+  signedOn: string | null
+}
+
 export interface GcJobPaper {
   id: string
   name: string
@@ -35,7 +56,12 @@ export interface GcJobPaper {
   /** How many of the people who can open the job have signed this paper, and how many can open it. */
   signed: number
   total: number
+  /** What the office set this GC to see. The two lists below already follow it. */
+  view: GcPaperView
+  /** Empty under 'count'. */
   businesses: GcPaperBusiness[]
+  /** Filled only under 'names'. */
+  signers: GcPaperSigner[]
 }
 
 export interface GcJobPapers {
@@ -71,6 +97,14 @@ function businessesFrom(v: unknown, dayKey: 'signed_on' | 'signedOn'): GcPaperBu
   })
 }
 
+function signersFrom(v: unknown, dayKey: 'signed_on' | 'signedOn'): GcPaperSigner[] {
+  return list(v).flatMap((x) => {
+    const g = bag(x)
+    const name = text(g?.name)
+    return g && name ? [{ name, business: text(g.business) || null, signedOn: day(g[dayKey]) }] : []
+  })
+}
+
 function paperFrom(x: unknown, keys: { name: string; revision: string; aligned: string; dayKey: 'signed_on' | 'signedOn' }): GcJobPaper | null {
   const p = bag(x)
   const id = text(p?.id)
@@ -79,6 +113,8 @@ function paperFrom(x: unknown, keys: { name: string; revision: string; aligned: 
   const level = bag(p.level)
   const levelLabel = text(level?.label)
   const total = count(p.total)
+  // The setting is honoured here as well as in the database: a list the view hides is never handed on.
+  const view = gcPaperViewOf(p.view)
   return {
     id,
     name,
@@ -87,7 +123,9 @@ function paperFrom(x: unknown, keys: { name: string; revision: string; aligned: 
     said: saidFrom(p.said),
     signed: Math.min(count(p.signed), total),
     total,
-    businesses: businessesFrom(p.businesses, keys.dayKey),
+    view,
+    businesses: view === 'count' ? [] : businessesFrom(p.businesses, keys.dayKey),
+    signers: view === 'names' ? signersFrom(p.signers, keys.dayKey) : [],
   }
 }
 

@@ -2,7 +2,8 @@
 /**
  * Render smokes for what a GC reads about a job's papers (punch list #389, step 5), against a fixture: the block sits
  * under its job's name, says the level and the picks in plain words, counts who has signed, and lists each sub
- * business with its day. It names no worker, and its one press downloads the sample. Every name and word is made up.
+ * business with its day. It names no worker unless the office set the job to, and under the count alone it lists no
+ * business. Its one press downloads the sample. Every name and word is made up.
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, within } from '@testing-library/react'
@@ -72,6 +73,28 @@ describe('PortalJobPapers', () => {
     expect(second.getByText('These settings are revision 3 on this job. Everyone signs each revision.')).toBeTruthy()
     expect(second.getByText('Nobody is on this job yet')).toBeTruthy()
     expect(job('job-2').querySelector('[data-portal-job-paper-said]')).toBeNull()
+  })
+
+  it('names no signer as every paper starts, and each one once the office sets the job to', () => {
+    render(<PortalJobPapers jobs={JOBS} company="Made-up Plumbing" />)
+    expect(document.querySelector('[data-portal-job-paper-signers]')).toBeNull()
+    cleanup()
+    const named = parseGcJobPapers([{ jobId: 'job-1', jobLabel: 'J100 · Cedar Bluff', papers: [{ id: 'row-1', name: 'Sample paper', settingsRevision: 1, level: null, said: [], signed: 2, total: 9, view: 'names', businesses: [{ name: 'Pine Ridge Excavating', people: 2, signed: 1, signedOn: null }], signers: [{ name: 'Tall Pine', business: 'Pine Ridge Excavating', signedOn: '2026-11-23' }, { name: 'Hector Helper', business: null, signedOn: '2026-11-24' }] }] }])
+    render(<PortalJobPapers jobs={named} company="Made-up Plumbing" />)
+    const list = document.querySelector('[data-portal-job-paper-signers]') as HTMLElement
+    expect(within(list).getByText('Who has signed')).toBeTruthy()
+    expect([...list.querySelectorAll('[data-portal-job-paper-signer]')].map((r) => r.textContent)).toEqual(['Tall PineSigned Nov 23, 2026Pine Ridge Excavating', 'Hector HelperSigned Nov 24, 2026'])
+    expect(document.querySelectorAll('[data-portal-job-paper-business]').length).toBe(1)
+  })
+
+  it('under the count alone it lists no business and no signer, and still counts', () => {
+    const counted = parseGcJobPapers([{ jobId: 'job-1', jobLabel: 'J100 · Cedar Bluff', papers: [{ id: 'row-1', name: 'Sample paper', settingsRevision: 1, level: null, said: [], signed: 2, total: 9, view: 'count', businesses: [{ name: 'Pine Ridge Excavating', people: 2, signed: 1, signedOn: null }], signers: [{ name: 'Tall Pine', business: null, signedOn: '2026-11-23' }] }] }])
+    render(<PortalJobPapers jobs={counted} company="Made-up Plumbing" />)
+    const signed = document.querySelector('[data-portal-job-paper-signed]') as HTMLElement
+    expect(within(signed).getByText('2 of 9 people have signed')).toBeTruthy()
+    expect(signed.querySelectorAll('[data-portal-job-paper-business], [data-portal-job-paper-signer]').length).toBe(0)
+    expect(signed.textContent).not.toContain('Pine Ridge')
+    expect(signed.textContent).not.toContain('Tall Pine')
   })
 
   it('holds no press without the page’s link, and stays off paper', () => {

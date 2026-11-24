@@ -47,7 +47,7 @@ const RAW = {
 }
 const DEF = parseSettingsDef(RAW) as SettingsDef
 const book = (def: SettingsDef = DEF, over: Partial<BookSettingsPaper> = {}): BookSettingsPaper => ({ id: 'book-1', name: 'Sample secrecy paper', def, revision: 4, readRevision: null, ...over })
-const required = (over: Partial<JobSettingsPaper> = {}): JobSettingsPaper => ({ requiredPaperId: 'row-1', bookDocumentId: 'book-1', picks: { photos: 'ask', term: 'short' }, typed: { party: 'Ridgeway Sample Holdings' }, basis: 'standard', settingsRevision: 1, bookRevision: 4, signed: 0, ...over })
+const required = (over: Partial<JobSettingsPaper> = {}): JobSettingsPaper => ({ requiredPaperId: 'row-1', bookDocumentId: 'book-1', picks: { photos: 'ask', term: 'short' }, typed: { party: 'Ridgeway Sample Holdings' }, basis: 'standard', gcView: 'businesses', settingsRevision: 1, bookRevision: 4, signed: 0, ...over })
 
 function fakeIo(over: Partial<JobPaperSettingsIo> = {}): JobPaperSettingsIo {
   return {
@@ -57,6 +57,7 @@ function fakeIo(over: Partial<JobPaperSettingsIo> = {}): JobPaperSettingsIo {
     requireWithSettings: vi.fn(async () => undefined),
     setSettings: vi.fn(async (id: string) => ({ state: 'saved' as const, requiredPaperId: id, signAgain: 0 })),
     setBasis: vi.fn(async () => undefined),
+    setGcView: vi.fn(async () => undefined),
     ...over,
   }
 }
@@ -220,6 +221,41 @@ describe('JobPaperSettingsWindow, a required paper', () => {
     press('Save the basis')
     await waitFor(() => expect(io.setBasis).toHaveBeenCalledWith('row-1', 'strict'))
     expect(io.setSettings).not.toHaveBeenCalled()
+  })
+
+  it('what the GC sees starts as the row has it, and setting it alone asks nobody to sign again', async () => {
+    const io = fakeIo()
+    open(required({ signed: 2, gcView: 'count' }), io)
+    const control = (await screen.findByLabelText('What the GC sees')) as HTMLSelectElement
+    expect(control.value).toBe('count')
+    expect([...control.options].map((o) => o.textContent)).toEqual(['How many have signed', 'How many, and each sub business with its day', 'How many, each sub business, and every signer by name'])
+    expect((screen.getByRole('button', { name: 'Save the settings' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(control, { target: { value: 'names' } })
+    expect(screen.getByText('This marks the GC’s page, never the paper. Nobody signs again.')).toBeTruthy()
+    press('Save what the GC sees')
+    await waitFor(() => expect(io.setGcView).toHaveBeenCalledWith('row-1', 'names'))
+    expect(io.setSettings).not.toHaveBeenCalled()
+    expect(io.setBasis).not.toHaveBeenCalled()
+  })
+
+  it('with the basis moved too, one press saves both and names both', async () => {
+    const io = fakeIo()
+    open(required({ signed: 2 }), io)
+    fireEvent.change(await screen.findByLabelText('The basis'), { target: { value: 'strict' } })
+    fireEvent.change(screen.getByLabelText('What the GC sees'), { target: { value: 'count' } })
+    press('Save the basis and what the GC sees')
+    await waitFor(() => expect(io.setGcView).toHaveBeenCalledWith('row-1', 'count'))
+    expect(io.setBasis).toHaveBeenCalledWith('row-1', 'strict')
+    expect(io.setSettings).not.toHaveBeenCalled()
+  })
+
+  it('set with a change of settings after a signature, it goes on the new row', async () => {
+    const io = fakeIo({ setSettings: vi.fn(async () => ({ state: 'revised' as const, requiredPaperId: 'row-2', signAgain: 3 })) })
+    open(required({ signed: 3 }), io)
+    fireEvent.change(await screen.findByLabelText('The protected party'), { target: { value: 'Ridgeway Sample Group' } })
+    fireEvent.change(screen.getByLabelText('What the GC sees'), { target: { value: 'names' } })
+    press('Save, and ask 3 people to sign again')
+    await waitFor(() => expect(io.setGcView).toHaveBeenCalledWith('row-2', 'names'))
   })
 
   it('a paper gone from the Book says so', async () => {
