@@ -245,6 +245,8 @@ export interface BillsSentLine {
   paidOn: string | null
   /** Where the bill stands: paid, part paid or not paid, with the day and the way. Null on a line that is no bill's, and on a bill that is neither billed nor paid. */
   pay: BillPaidState | null
+  /** True when `pay` was built from the bill's payment rows. False when they did not read and it stands on the bill's status alone: a missing day is then not read, which is not the same as not on record. */
+  payRead: boolean
   /** The day the bill first went, YYYY-MM-DD, which the days out are counted from. '' when no time parses. */
   firstYmd: string
   /** True for a statement the app sent on a schedule: `by` is then whose schedule it is. */
@@ -465,6 +467,7 @@ export function billsSentLines(input: BillsSentInput, opts: { todayYmd?: string 
       pay,
       firstYmd: ymdOf(times.length ? times[0]! : at),
       bySchedule: mark?.emailType === 'gc_statement_scheduled',
+      payRead: !!input.paid,
       route,
       routeWords: routeWordsOf(copy, route, nth),
       what,
@@ -536,6 +539,7 @@ export function billsSentLines(input: BillsSentInput, opts: { todayYmd?: string 
       pay,
       firstYmd: ymdOf(times.length ? times[0]! : ms(o.atIso)),
       bySchedule: false,
+      payRead: !!input.paid,
       route: o.route,
       routeWords: o.routeWords(nth),
       what,
@@ -703,12 +707,21 @@ function daysFrom(fromYmd: string, toYmd: string): number | null {
 
 const dayOrToday = (ymd: string, todayYmd: string): string => (ymd === todayYmd ? 'today' : formatWorkDateYmdWeekdayShortFriendly(ymd))
 
+/** Under *Paid* with no day: the bill is marked paid and the app holds no payment day for it. */
+export const BILLS_SENT_PAID_NO_DAY = 'day not on record'
+/** Under a paid stamp whose day is earlier than the bill's first send on record: where *in 6 days* would stand. */
+export const BILLS_SENT_PAID_BEFORE_SEND = 'before the first send on record'
+
 /**
  * The stamp under a line's amount: who has paid, the day and the way. Null on a line that is no bill's.
  * A bill paid today by Stripe says the time, since the leader is watching it land. Any other paid bill says how
  * long the money took from the day the bill first went. A bill not paid says how long it has been out.
+ *
+ * A paid stamp never leaves its small words empty without a reason. The live test of 2026-11-24 found ten lines
+ * reading *✓ Paid* alone (bills from Housecall Pro, marked paid with no payment row) and 52 with no span, each paid
+ * before its first send on record. Each now says which it is.
  */
-export function billsSentPayWords(line: Pick<BillsSentLine, 'pay' | 'firstYmd'>, todayYmd: string): BillsSentPayWords | null {
+export function billsSentPayWords(line: Pick<BillsSentLine, 'pay' | 'firstYmd'> & { payRead?: boolean }, todayYmd: string): BillsSentPayWords | null {
   const pay = line.pay
   if (!pay) return null
   if (pay.kind === 'open') {
@@ -718,14 +731,18 @@ export function billsSentPayWords(line: Pick<BillsSentLine, 'pay' | 'firstYmd'>,
   if (pay.kind === 'part') {
     return { tone: 'part', stamp: 'Part paid', stampAmount: pay.paidAmount, way: pay.wayWords, when: pay.paidOn ? dayOrToday(pay.paidOn, todayYmd) : '', outAmount: pay.outAmount }
   }
-  if (!pay.paidOn) return { tone: 'paid', stamp: 'Paid', stampAmount: null, way: pay.wayWords, when: '', outAmount: null }
+  // A bill marked paid with no payment row, or none with a day: the stamp names no day, and the small words say that is why.
+  // When the payments did not read, the day is unread and not known to be missing: the stamp then says the word alone.
+  if (!pay.paidOn) return { tone: 'paid', stamp: 'Paid', stampAmount: null, way: pay.wayWords, when: line.payRead === false ? '' : BILLS_SENT_PAID_NO_DAY, outAmount: null }
   const took = line.firstYmd ? daysFrom(line.firstYmd, pay.paidOn) : null
-  const when = pay.paidOn === todayYmd && pay.paidAtIso ? billsSentTime(pay.paidAtIso) : took == null ? '' : took === 0 ? 'the same day' : `in ${plural(took, 'day')}`
+  // The money came before the first send the app has: no span to count, and the small words say which came first.
+  const early = !!line.firstYmd && pay.paidOn < line.firstYmd
+  const when = pay.paidOn === todayYmd && pay.paidAtIso ? billsSentTime(pay.paidAtIso) : early ? BILLS_SENT_PAID_BEFORE_SEND : took == null ? '' : took === 0 ? 'the same day' : `in ${plural(took, 'day')}`
   return { tone: 'paid', stamp: `Paid ${dayOrToday(pay.paidOn, todayYmd)}`, stampAmount: null, way: pay.wayWords, when, outAmount: null }
 }
 
 /** The stamp as one run of plain words, for a print, a spreadsheet and a reader's ear: *Paid Fri, Nov 20 · Check 4417 · bank deposit · in 10 days*. '' on a line that is no bill's. */
-export function billsSentPayPlain(line: Pick<BillsSentLine, 'pay' | 'firstYmd'>, todayYmd: string): string {
+export function billsSentPayPlain(line: Pick<BillsSentLine, 'pay' | 'firstYmd'> & { payRead?: boolean }, todayYmd: string): string {
   const w = billsSentPayWords(line, todayYmd)
   if (!w) return ''
   const stamp = w.stampAmount != null ? `${w.stamp} ${billsSentMoney(w.stampAmount)}` : w.stamp

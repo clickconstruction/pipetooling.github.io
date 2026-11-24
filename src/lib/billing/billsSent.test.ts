@@ -578,11 +578,17 @@ describe('billsSent — who paid, when and how (punch list #422)', () => {
     expect(billsSentPayWords(by('b1'), '2026-11-12')).toEqual({ tone: 'paid', stamp: 'Paid Tue, Nov 10', stampAmount: null, way: 'Check 4417 · bank deposit', when: 'in 7 days', outAmount: null })
     expect(billsSentPayWords(by('b1'), '2026-11-10')!.stamp).toBe('Paid today')
     expect(billsSentPayPlain(by('b1'), '2026-11-12')).toBe('Paid Tue, Nov 10 · Check 4417 · bank deposit · in 7 days')
-    // Paid the day it went: the same day. Paid with no day on record: the word alone.
+    // Paid the day it went: the same day.
     expect(billsSentPayWords({ pay: pay({ paidOn: '2026-11-03' }), firstYmd: '2026-11-03' }, '2026-11-12')!.when).toBe('the same day')
-    expect(billsSentPayWords({ pay: pay({ paidOn: null, wayWords: '' }), firstYmd: '2026-11-03' }, '2026-11-12')).toMatchObject({ stamp: 'Paid', way: '', when: '' })
-    // A payment dated before the bill first went says no span: the days are never negative.
-    expect(billsSentPayWords({ pay: pay({ paidOn: '2026-11-01' }), firstYmd: '2026-11-03' }, '2026-11-12')!.when).toBe('')
+    // Marked paid with no payment row: the stamp cannot name a day, and the small words say that is why.
+    expect(billsSentPayWords({ pay: pay({ paidOn: null, wayWords: '' }), firstYmd: '2026-11-03' }, '2026-11-12')).toMatchObject({ stamp: 'Paid', way: '', when: 'day not on record' })
+    expect(billsSentPayPlain({ pay: pay({ paidOn: null, wayWords: '' }), firstYmd: '2026-11-03' }, '2026-11-12')).toBe('Paid · day not on record')
+    // The payments did not read: the day is unread, not missing, so the word stands alone as it did.
+    expect(billsSentPayWords({ pay: pay({ paidOn: null, wayWords: '' }), firstYmd: '2026-11-03', payRead: false }, '2026-11-12')!.when).toBe('')
+    // A payment dated before the bill first went: the days are never negative, and the small words say which came first.
+    expect(billsSentPayWords({ pay: pay({ paidOn: '2026-11-01' }), firstYmd: '2026-11-03' }, '2026-11-12')).toMatchObject({ stamp: 'Paid Sun, Nov 1', when: 'before the first send on record' })
+    // With no first send to count from, there is nothing to say.
+    expect(billsSentPayWords({ pay: pay({ paidOn: '2026-11-01' }), firstYmd: '' }, '2026-11-12')!.when).toBe('')
   })
 
   it('says the time of a Stripe payment that landed today, and the days it took on any later day', () => {

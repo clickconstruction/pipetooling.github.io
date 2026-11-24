@@ -103,6 +103,10 @@ A check shows its number when the payment holds one. A check with no number read
 
 The small words also say how long the money took. Those words read like *in 6 days*.
 
+A bill paid before its first send on record reads *before the first send on record*.
+
+A paid bill with no payment day on record reads *day not on record*.
+
 A bill paid today through the pay link shows the time the customer paid.
 
 A bill that is not paid says how long it has been out. The words read like *3 days out*. The days are counted from the first send of the bill.
