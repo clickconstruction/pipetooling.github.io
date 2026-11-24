@@ -1,0 +1,2 @@
+# People (v2.8410).
+src/components/people

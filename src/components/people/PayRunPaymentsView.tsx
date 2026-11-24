@@ -39,6 +39,7 @@ import { PAY_RUN_PAYMENT_MODES, buildPayRunPaymentBands, payRunPaymentBandLine, 
 import { ledgerPayPeriodShortLabel, type PayStubRow } from './PeoplePayStubsTab'
 import { EmptyState } from '../EmptyState'
 import { payRunPaymentsEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { Money } from '../Money'
 
 const PREF_KEY = 'people.payRun.payments.v1'
 type Prefs = { window: PayRunPaymentWindow; sortKey: PayRunPaymentSortKey; sortDir: SortDir; mode: PayRunPaymentsMode }
@@ -177,7 +178,7 @@ export default function PayRunPaymentsView({ onViewStub }: { onViewStub: (stub: 
         <td style={td} title={r.paidAt}>{shortDate(calendarYmdInAppTzFromIso(r.paidAt))}</td>
         <td style={td}>{r.stub.personName}</td>
         <td style={td}>{ledgerPayPeriodShortLabel(r.stub.periodStart, r.stub.periodEnd)}</td>
-        <td style={{ ...td, textAlign: 'right' }}>${formatCurrency(r.amount)}</td>
+        <td style={{ ...td, textAlign: 'right' }}><Money amount={r.amount} /></td>
         <td style={td}>
           {source.kind ? (
             <span style={source.fromMemo ? { ...tag, borderStyle: 'dashed', background: 'transparent', color: 'var(--text-700)' } : tag} title={source.fromMemo ? 'Read from the memo — recorded before the method was kept on the payment' : r.sourceId ? `${paySourceLabel(source.kind)} · ${r.sourceId}` : undefined}>
@@ -293,7 +294,7 @@ export default function PayRunPaymentsView({ onViewStub }: { onViewStub: (stub: 
                 <td colSpan={3} style={{ ...td, fontWeight: 600, borderTop: '2px solid var(--border)', borderBottom: 'none' }}>
                   {visible.length === rows.length ? `${visible.length} ${visible.length === 1 ? 'payment' : 'payments'}` : `${visible.length} of ${rows.length} shown`}
                 </td>
-                <td style={{ ...td, textAlign: 'right', fontWeight: 600, borderTop: '2px solid var(--border)', borderBottom: 'none' }}>${formatCurrency(totals.sumUsd)}</td>
+                <td style={{ ...td, textAlign: 'right', fontWeight: 600, borderTop: '2px solid var(--border)', borderBottom: 'none' }}><Money amount={totals.sumUsd} /></td>
                 <td colSpan={4} style={{ ...td, borderTop: '2px solid var(--border)', borderBottom: 'none' }} />
               </tr>
             </tfoot>

@@ -1,6 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { formatCurrency } from '../../../lib/format'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../../utils/dateUtils'
 import { useLedgerPrefixMap } from '../../../contexts/LedgerDisplayPrefixContext'
@@ -26,6 +25,7 @@ import type { TeamSummaryBreakdown } from '../teamSummary/types'
 import type { PeopleReviewView } from '../../../lib/people/reviewViewStorage'
 import { buildReviewJobsRollup, type ReviewRollupRowInput } from '../../../lib/people/reviewJobsRollup'
 import { buildReviewTasksRollup } from '../../../lib/people/reviewTasksRollup'
+import { Money, MoneyText } from '../../Money'
 
 /**
  * People → Review: the per-person panel under the Team Summary (punch list #46 row 8, the Review
@@ -689,7 +689,7 @@ export function PeopleReviewPersonPanel({
                                   }}
                                   title={j.job_id && j.revenueBeforeOverhead !== 0 && j.totalLaborOnJob > 0 ? "See everyone's profit share on this job" : undefined}
                                 >
-                                  <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</div>
+                                  <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? <MoneyText text={signedCurrency(j.allocatedRevenueBeforeOverhead)} /> : '—'}</div>
                                   <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                     if (j.revenueBeforeOverhead === 0) return '—'
                                     const pct = Math.round((j.allocatedRevenueBeforeOverhead / j.revenueBeforeOverhead) * 100)
@@ -698,8 +698,8 @@ export function PeopleReviewPersonPanel({
                                   })()}</div>
                                 </td>
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
-                                  <div style={{ fontWeight: 600 }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</div>
-                                  <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</div>
+                                  <div style={{ fontWeight: 600 }}>{j.allocatedTotalBill > 0 ? <Money amount={j.allocatedTotalBill} /> : '—'}</div>
+                                  <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{j.valueCreated > 0 ? <Money amount={j.valueCreated} /> : '—'}</div>
                                 </td>
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                   <div style={{ fontSize: '0.8125rem' }}>{revProfitStr}</div>
@@ -799,7 +799,7 @@ export function PeopleReviewPersonPanel({
                                   }}
                                   title={j.revenueBeforeOverhead !== 0 && j.totalLaborOnJob > 0 ? "See everyone's profit share on this job" : undefined}
                                 >
-                                  <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</div>
+                                  <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? <MoneyText text={signedCurrency(j.allocatedRevenueBeforeOverhead)} /> : '—'}</div>
                                   <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                     if (j.revenueBeforeOverhead === 0) return '—'
                                     const pct = Math.round((j.allocatedRevenueBeforeOverhead / j.revenueBeforeOverhead) * 100)
@@ -808,8 +808,8 @@ export function PeopleReviewPersonPanel({
                                   })()}</div>
                                 </td>
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
-                                  <div style={{ fontWeight: 600 }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</div>
-                                  <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</div>
+                                  <div style={{ fontWeight: 600 }}>{j.allocatedTotalBill > 0 ? <Money amount={j.allocatedTotalBill} /> : '—'}</div>
+                                  <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{j.valueCreated > 0 ? <Money amount={j.valueCreated} /> : '—'}</div>
                                 </td>
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                   <div style={{ fontSize: '0.8125rem' }}>{revProfitStr}</div>

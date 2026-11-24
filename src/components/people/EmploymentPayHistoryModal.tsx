@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
-import { formatCurrency } from '../../lib/format'
 import type { PayStubRow } from './PeoplePayStubsTab'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
+import { Money } from '../Money'
 
 /** Below People.tsx's Z_PEOPLE_PAY_MODAL (1100) so the pay-report view stacks above this modal. */
 const MODAL_Z = 1090
@@ -160,7 +160,7 @@ export function EmploymentPayHistoryModal({ personName, onClose, onOpenPayReport
             Pay history — {personName}
           </h2>
           <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            Last {windowDays} days · {rows.length} payment{rows.length === 1 ? '' : 's'} · ${formatCurrency(total)}
+            Last {windowDays} days · {rows.length} payment{rows.length === 1 ? '' : 's'} · <Money amount={total} />
           </span>
         </div>
 
@@ -191,7 +191,7 @@ export function EmploymentPayHistoryModal({ personName, onClose, onOpenPayReport
                     {formatPaidDate(r.paid_at)}
                   </span>
                   <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-strong)', minWidth: '5.5rem' }}>
-                    ${formatCurrency(r.amount)}
+                    <Money amount={r.amount} />
                   </span>
                   <span style={{ flex: '1 1 10rem', color: r.memo ? 'var(--text-700)' : 'var(--text-faint)', fontSize: '0.875rem' }}>
                     {r.memo ?? '—'}

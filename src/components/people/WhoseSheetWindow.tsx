@@ -13,6 +13,7 @@ import type { UnattributedGroup } from '../../lib/people/subsHqRows'
 import { assignedNamesLabel } from '../../lib/people/subsHqRows'
 import { whoseSheetPlan, type WhoseSheetChoice } from '../../lib/subWorkOrders/sheetCrewWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { MoneyText } from '../Money'
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
@@ -48,7 +49,7 @@ export function WhoseSheetWindow({ group, roster, suggestion, saving, onAssign, 
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 4 }}>
           {group.jobNumber ? `#${group.jobNumber} · ` : ''}
           {group.label}
-          {group.sheetCount > 1 ? ` · ${group.sheetCount} sheets` : ''} · {money(group.totalBalance)} open · written for {group.rawAssignedTo ? assignedNamesLabel(group.rawAssignedTo) : 'nobody'}
+          {group.sheetCount > 1 ? ` · ${group.sheetCount} sheets` : ''} · <MoneyText text={money(group.totalBalance)} /> open · written for {group.rawAssignedTo ? assignedNamesLabel(group.rawAssignedTo) : 'nobody'}
         </div>
 
         <button type="button" aria-pressed={kind === 'one'} onClick={() => setKind('one')} style={card(kind === 'one')}>
@@ -88,7 +89,7 @@ export function WhoseSheetWindow({ group, roster, suggestion, saving, onAssign, 
               {plan.adds.length > 0 ? (
                 <div style={{ marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
                   {plan.adds.map((a) => `${a.name} +${money(a.amount)}`).join(' · ')} ·{' '}
-                  <b style={{ color: plan.sumsToOpen ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{plan.sumsToOpen ? `= ${money(group.totalBalance)} ✓ the open money, once` : 'does not add up to the open money'}</b>
+                  <b style={{ color: plan.sumsToOpen ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{plan.sumsToOpen ? <MoneyText text={`= ${money(group.totalBalance)} ✓ the open money, once`} /> : 'does not add up to the open money'}</b>
                 </div>
               ) : null}
             </>

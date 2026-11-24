@@ -23,6 +23,8 @@
  * Left alone on purpose, since a span cannot be drawn there or the reader is not the team:
  *  - a string handed to a prop (`title`, `aria-label`, a toast, a CSV cell, a print builder): it stays words;
  *  - `<option>`, an SVG `<title>`, and SVG `<text>` (a chart's label takes `MoneyTspans` by hand);
+ *  - a line that also holds an older bare empty sentence (*Nothing paid yet*): `check:empty-words` would count
+ *    the sentence as new once the line changes, so the line and its amount stay until a hand reworks the sentence;
  *  - anything inside a `data-theme="light"` wrapper, and the public pages and portal cards (SKIP_PUBLIC): a
  *    customer's screen and a print keep the look they have until the owner says otherwise;
  *
@@ -404,6 +406,9 @@ const heldBare = []
 const heldSvg = []
 const heldProps = []
 const heldNames = []
+const heldEmpty = []
+/** A bare empty sentence drawn on a line, as `src/lib/emptyStateCheck.ts` reads one: it opens on No, Nothing, None or Nobody. */
+const BARE_EMPTY_ON_LINE = /(?:>|['"`])\s*(?:No|Nothing|None|Nobody)\s[^.?!<>{}'"`]{0,80}[.!]?\s*(?:<|['"`])/
 let totals = { money: 0, text: 0, imports: 0 }
 /** The functions read as money, with how many drawn calls each has: a dry run's list to check by eye. */
 const readAsMoney = new Map()
@@ -513,6 +518,22 @@ function sweepFile(f) {
     return
   }
 
+  // `check:empty-words` fails a bare empty sentence on a line a PR writes and only counts one on a line it left
+  // alone. Rewriting an amount would make an older sentence on the same line count as new, so that line is left
+  // exactly as it is and listed: the amount moves when a hand gives the sentence its next press.
+  const sourceLines = text.split('\n')
+  const lineAt = (pos) => sf.getLineAndCharacterOfPosition(pos).line
+  for (const e of [...edits]) {
+    for (let l = lineAt(e.start); l <= lineAt(e.end - 1); l++) {
+      if (BARE_EMPTY_ON_LINE.test(sourceLines[l] ?? '')) {
+        heldEmpty.push(`${f}:${l + 1}: ${(sourceLines[l] ?? '').trim().slice(0, 110)}`)
+        edits.splice(edits.indexOf(e), 1)
+        break
+      }
+    }
+  }
+  if (!edits.length) return
+
   // A file that already uses the door's names for something else is a hand's job.
   const taken = ['Money', 'MoneyText'].filter((name) => edits.some((e) => e.text.startsWith(`<${name} `)) && new RegExp(`\\b(function|const|class|type|interface)\\s+${name}\\b`).test(text))
   const foreignImport = sf.statements.find((st) => ts.isImportDeclaration(st) && ts.isStringLiteral(st.moduleSpecifier) && !/(^|\/)Money$/.test(st.moduleSpecifier.text) && st.importClause?.namedBindings && ts.isNamedImports(st.importClause.namedBindings) && st.importClause.namedBindings.elements.some((el) => el.name.text === 'Money' || el.name.text === 'MoneyText'))
@@ -607,6 +628,7 @@ for (const f of files) {
 if (CHANGED) console.log(BASE ? `check:small-cents reads the lines this change wrote on the swept surfaces, against ${BASE.slice(0, 12)}.` : 'check:small-cents: nothing to compare (a push to main), so nothing to refuse.')
 console.log(`${DRY ? '[dry] ' : ''}files: ${report.length} · amounts → Money: ${totals.money} · words with an amount → MoneyText: ${totals.text} · imports added: ${totals.imports}`)
 if (report.length) console.log(report.join('\n'))
+if (heldEmpty.length) console.log(`\nLeft as it is (the line also holds an older empty sentence, which check:empty-words would count as new):\n${[...new Set(heldEmpty)].join('\n')}`)
 if (heldNames.length) console.log(`\nLeft for a hand (the file has its own Money, so the import would clash):\n${heldNames.join('\n')}`)
 if (HELD) {
   if (readAsMoney.size) console.log(`\nFunctions read as money to the cent (drawn calls): ${[...readAsMoney].sort((a, b) => b[1] - a[1]).map(([n, c]) => `${n} ${c}`).join(' · ')}`)

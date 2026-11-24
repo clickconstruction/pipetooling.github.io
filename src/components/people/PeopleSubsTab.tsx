@@ -37,6 +37,7 @@ import { RideAlongCleanUpWindow } from './RideAlongCleanUpWindow'
 import { rideAlongCleanUp, rideAlongOfferWords } from '../../lib/subWorkOrders/rideAlongCleanUp'
 import { sheetLabel } from '../../lib/jobs/subPaymentMoveRemove'
 import { saveBlobAs } from '../../lib/storageSave'
+import { MoneyText } from '../Money'
 
 /**
  * People → Subs: one row per subcontractor relationship (RUN_SUBS_PLAN
@@ -718,7 +719,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
           }}
         >
           <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-amber-900)' }}>
-            {actionableSheetCount} {actionableSheetCount === 1 ? 'sheet needs' : 'sheets need'} one sub · {money(actionableGroups.reduce((n, g) => n + g.totalBalance, 0))} open
+            {actionableSheetCount} {actionableSheetCount === 1 ? 'sheet needs' : 'sheets need'} one sub · <MoneyText text={money(actionableGroups.reduce((n, g) => n + g.totalBalance, 0))} /> open
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', margin: '0.15rem 0 0.5rem' }}>
             {actionableSheetCount === 1 ? 'Its' : 'Their'} money is counted once, here. It is in no sub's Balance due until {actionableSheetCount === 1 ? 'the sheet names' : 'each sheet names'} one sub.
@@ -928,7 +929,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                       onClick={() => setOwedOpenKey(`id:${row.personId}`)}
                       style={{ font: 'inherit', fontWeight: 700, fontVariantNumeric: 'tabular-nums', border: 'none', background: 'none', padding: '0.2rem 0', cursor: 'pointer', color: fig.amount > 0 ? 'var(--text-link)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}
                     >
-                      {fig.amount > 0 ? money(fig.amount) : 'paid up'} ›
+                      {fig.amount > 0 ? <MoneyText text={money(fig.amount)} /> : 'paid up'} ›
                     </button>
                   ) : (
                     <span style={{ color: 'var(--text-faint)' }}>—</span>
@@ -1124,7 +1125,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                           c.stepName ?? 'Step'
                         )}
                         {c.projectName ? <span style={{ color: 'var(--text-muted)' }}> @ {c.projectName}</span> : null}{' '}
-                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(c.amount)}</span>{' '}
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money(c.amount)} /></span>{' '}
                         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({c.status})</span>
                       </div>
                     ))
@@ -1140,7 +1141,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                       onClick={() => setOwedOpenKey((prev) => (prev === owedKey ? null : owedKey))}
                       style={{ font: 'inherit', fontWeight: 'inherit', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: fig.amount > 0 ? 'var(--text-link)' : 'var(--text-muted)', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}
                     >
-                      {fig.amount > 0 ? money(fig.amount) : 'paid up'} {owedOpen ? '▾' : '▸'}
+                      {fig.amount > 0 ? <MoneyText text={money(fig.amount)} /> : 'paid up'} {owedOpen ? '▾' : '▸'}
                     </button>
                   ) : (
                     '—'
@@ -1149,7 +1150,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                   {fig.team ? <div style={{ fontSize: '0.7rem', fontWeight: 650, color: 'var(--text-violet-700)' }}>{sheetOwedToChip('team')}</div> : null}
                   {creditNoteWords(creditByPersonId.get(row.personId) ?? 0) ? (
                     <div data-testid={`subs-credit-${row.personId}`} title="Sent past what their sheets needed. The next payment to them offers it first." style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-green-700)' }}>
-                      {creditNoteWords(creditByPersonId.get(row.personId) ?? 0)}
+                      <MoneyText text={creditNoteWords(creditByPersonId.get(row.personId) ?? 0)} />
                     </div>
                   ) : null}
                 </td>
@@ -1185,7 +1186,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                 </td>
                 <td style={{ padding: '0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                   {row.sheetCount} sheet{row.sheetCount === 1 ? '' : 's'} · {row.settledCount} settled
-                  {row.backchargeTotal > 0 ? <> · {money(row.backchargeTotal)} backcharged</> : null}
+                  {row.backchargeTotal > 0 ? <> · <MoneyText text={money(row.backchargeTotal)} /> backcharged</> : null}
                 </td>
               </tr>
               )
@@ -1240,7 +1241,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                   <span style={{ fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' }}>{sheetOwedToChip('team')}</span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.sheets.length} {p.sheets.length === 1 ? 'sheet' : 'sheets'}</span>
                   <button type="button" aria-expanded={isOpen} onClick={() => setOwedOpenKey((prev) => (prev === p.key ? null : p.key))} style={{ marginLeft: 'auto', font: 'inherit', fontWeight: 700, fontVariantNumeric: 'tabular-nums', border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: v.open > 0 ? 'var(--text-link)' : 'var(--text-muted)', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>
-                    {v.open > 0 ? owedMoney(v.open) : 'paid up'} {isOpen ? '▾' : '▸'}
+                    {v.open > 0 ? <MoneyText text={owedMoney(v.open)} /> : 'paid up'} {isOpen ? '▾' : '▸'}
                   </button>
                 </div>
                 {isOpen && !narrow && p.personId ? renderOwedBlock(p.personId, p.name, null) : null}

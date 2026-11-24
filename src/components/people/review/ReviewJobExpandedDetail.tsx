@@ -4,6 +4,7 @@ import type { ReviewOverheadRates } from '../../../lib/people/loadReviewOverhead
 import type { ReviewCrewJob, ReviewLaborJob } from '../../../lib/people/reviewPersonTypes'
 import { fmtMoney } from '../teamSummary/formatters'
 import { signedCurrency } from './reviewFormat'
+import { Money, MoneyText } from '../../Money'
 
 /**
  * People → Review → Jobs Worked: the detail row under an expanded job (punch list #46 row 8, the
@@ -67,7 +68,7 @@ export function ReviewJobExpandedDetail({
           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Gross Revenue</span>
           <span style={{ color: 'var(--text-muted)' }}>Job Gross Revenue (total bill)</span>
-          <span>{j.totalBill > 0 ? `$${formatCurrency(j.totalBill)}` : '—'}</span>
+          <span>{j.totalBill > 0 ? <Money amount={j.totalBill} /> : '—'}</span>
           <span style={{ color: 'var(--text-muted)' }}>{(() => {
             const numFields = j as { job_number?: string | null; hcp_number?: string | null; click_number?: string | null }
             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
@@ -78,13 +79,13 @@ export function ReviewJobExpandedDetail({
           })()}</span>
           <span>{j.pctComplete != null ? `${j.pctComplete}%` : '100% (assumed)'}</span>
           <span style={{ color: 'var(--text-muted)' }}>Value Created (revenue * progress)</span>
-          <span>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</span>
+          <span>{j.valueCreated > 0 ? <Money amount={j.valueCreated} /> : '—'}</span>
           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${personName ?? 'User'}'s % of Value Created`}</span>
           <span style={{ paddingLeft: '1rem' }}>{j.valueCreated > 0 && j.userTotalContributionToBill > 0 ? `${Math.round((j.userTotalContributionToBill / j.valueCreated) * 100)}%` : '—'}</span>
           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${personName ?? 'User'}'s share of Value Created`}</span>
-          <span style={{ paddingLeft: '1rem' }}>{j.userTotalContributionToBill > 0 ? `$${formatCurrency(j.userTotalContributionToBill)}` : '—'}</span>
+          <span style={{ paddingLeft: '1rem' }}>{j.userTotalContributionToBill > 0 ? <Money amount={j.userTotalContributionToBill} /> : '—'}</span>
           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${personName ?? 'User'}'s Value Created this day`}</span>
-          <span style={{ textDecoration: 'underline', paddingLeft: '1rem' }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</span>
+          <span style={{ textDecoration: 'underline', paddingLeft: '1rem' }}>{j.allocatedTotalBill > 0 ? <Money amount={j.allocatedTotalBill} /> : '—'}</span>
           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Costs</span>
           <span style={{ color: 'var(--text-muted)' }}>{(() => {
@@ -139,7 +140,7 @@ export function ReviewJobExpandedDetail({
           })()}</span>
           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }} title="Hourly wage only — drive cost (mileage + drive-time pay) is excluded from this rate.">{`${personName ?? 'User'}'s Labor Rate`}</span>
-          <span style={{ paddingLeft: '1rem' }}>{j.hours > 0 ? `$${formatCurrency(Math.max(0, j.laborCost - j.driveCost) / j.hours)}` : '—'}</span>
+          <span style={{ paddingLeft: '1rem' }}>{j.hours > 0 ? <Money amount={Math.max(0, j.laborCost - j.driveCost) / j.hours} /> : '—'}</span>
           <span style={{ color: 'var(--text-muted)' }} title="Average hourly wage of everyone else on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Teammates Avg Labor Rate</span>
           <span>{(() => {
             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
@@ -147,20 +148,20 @@ export function ReviewJobExpandedDetail({
             return teammatesHours > 0 ? `$${formatCurrency(Math.max(0, teammatesLabor) / teammatesHours)}` : '—'
           })()}</span>
           <span style={{ color: 'var(--text-muted)' }} title="Average hourly wage across everyone on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Job Avg Labor Rate</span>
-          <span>{j.totalJobHours > 0 ? `$${formatCurrency(Math.max(0, j.totalLaborOnJob - j.totalDriveCostOnJob) / j.totalJobHours)}` : '—'}</span>
+          <span>{j.totalJobHours > 0 ? <Money amount={Math.max(0, j.totalLaborOnJob - j.totalDriveCostOnJob) / j.totalJobHours} /> : '—'}</span>
           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
           <span style={{ color: 'var(--text-muted)' }}>Parts:</span>
-          <span>{j.partsCost > 0 ? `$${formatCurrency(j.partsCost)}` : '—'}</span>
+          <span>{j.partsCost > 0 ? <Money amount={j.partsCost} /> : '—'}</span>
           <span style={{ color: 'var(--text-muted)' }}>Subs:</span>
-          <span>{j.subLaborCost > 0 ? `$${formatCurrency(j.subLaborCost)}` : '—'}</span>
+          <span>{j.subLaborCost > 0 ? <Money amount={j.subLaborCost} /> : '—'}</span>
           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Net Revenue</span>
           <span style={{ color: 'var(--text-muted)' }}>Net Revenue (before overhead)</span>
-          <span style={{ color: j.revenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)' }}>{j.revenueBeforeOverhead !== 0 ? `$${formatCurrency(j.revenueBeforeOverhead)}` : '—'}</span>
+          <span style={{ color: j.revenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)' }}>{j.revenueBeforeOverhead !== 0 ? <Money amount={j.revenueBeforeOverhead} /> : '—'}</span>
           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${personName ?? 'User'}'s Net Revenue on Job`}</span>
-          <span style={{ color: j.userTotalContributionToRevenue >= 0 ? undefined : 'var(--text-red-700)', paddingLeft: '1rem' }}>{j.userTotalContributionToRevenue !== 0 ? `$${formatCurrency(j.userTotalContributionToRevenue)}` : '—'}</span>
+          <span style={{ color: j.userTotalContributionToRevenue >= 0 ? undefined : 'var(--text-red-700)', paddingLeft: '1rem' }}>{j.userTotalContributionToRevenue !== 0 ? <Money amount={j.userTotalContributionToRevenue} /> : '—'}</span>
           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${personName ?? 'User'}'s Net Revenue this Day`}</span>
-          <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)', paddingLeft: '1rem' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</span>
+          <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)', paddingLeft: '1rem' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? <MoneyText text={signedCurrency(j.allocatedRevenueBeforeOverhead)} /> : '—'}</span>
           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Profit</span>
           <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -192,7 +193,7 @@ export function ReviewJobExpandedDetail({
             const r = reviewOverheadRates.ratePerHour
             if (r == null || j.totalJobHours <= 0) return '—'
             const profit = j.revenueBeforeOverhead - (j.totalJobHours * r)
-            return <span style={{ color: profit < 0 ? 'var(--text-red-700)' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+            return <span style={{ color: profit < 0 ? 'var(--text-red-700)' : undefined }}><Money amount={profit} /></span>
           })()}</span>
           <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
             B. Overhead by revenue
@@ -223,7 +224,7 @@ export function ReviewJobExpandedDetail({
             const r = reviewOverheadRates.ratePerRevenueDecimal
             if (r == null || j.valueCreated <= 0) return '—'
             const profit = j.revenueBeforeOverhead - (j.valueCreated * r)
-            return <span style={{ color: profit < 0 ? 'var(--text-red-700)' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+            return <span style={{ color: profit < 0 ? 'var(--text-red-700)' : undefined }}><Money amount={profit} /></span>
           })()}</span>
           <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
             C. Overhead by direct labor cost
@@ -254,7 +255,7 @@ export function ReviewJobExpandedDetail({
             const r = reviewOverheadRates.ratePerLaborDollar
             if (r == null || j.totalLaborOnJob <= 0) return '—'
             const profit = j.revenueBeforeOverhead - (j.totalLaborOnJob * r)
-            return <span style={{ color: profit < 0 ? 'var(--text-red-700)' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+            return <span style={{ color: profit < 0 ? 'var(--text-red-700)' : undefined }}><Money amount={profit} /></span>
           })()}</span>
         </div>
       </td>
