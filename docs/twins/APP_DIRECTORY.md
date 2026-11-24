@@ -11,7 +11,7 @@ authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts
 
 Deep links are real: navigate by URL. Tab params are load-bearing (`/bids?tab=pricing`).
 A page your role can't see redirects you away — that means "not your role", not "broken". A sign-in the office archived with an Away note on draws one screen at every path, the Away page (v2.6587): nothing else opens for it, and that is the note, not a redirect.
-Help guides open at `/help?g=<slug>`; they are the *how* — this file is only the *where*.
+Help guides open at `/help?g=<slug>`, and `/help/<slug>` typed or pasted opens the same guide; they are the *how* — this file is only the *where*.
 
 ## Go here when… (task → URL)
 
