@@ -25,22 +25,24 @@ function page(tops: Record<string, number>, screen = 800, scrollTakesMs = 0) {
   })
   const log: string[] = []
   const gone = new Set<Element>()
+  /** How far down the page a place is. A place the page does not know is one that cannot be shown. */
+  const topOf = (el: Element) => tops[el.id] ?? -1
   const deps: TypedTourDeps = {
     fields: () => els.filter((el) => !gone.has(el)),
-    canShow: (el) => !gone.has(el) && tops[el.id] >= 0,
+    canShow: (el) => !gone.has(el) && topOf(el) >= 0,
     inView: (el) => {
       settle()
-      return tops[el.id] >= scrolled && tops[el.id] + 40 <= scrolled + screen
+      return topOf(el) >= scrolled && topOf(el) + 40 <= scrolled + screen
     },
     bring: (el) => {
       settle()
-      move = { from: scrolled, to: Math.max(0, tops[el.id] - screen / 2), at: Date.now() }
+      move = { from: scrolled, to: Math.max(0, topOf(el) - screen / 2), at: Date.now() }
       settle()
       log.push(`bring ${el.id}`)
     },
     top: (el) => {
       settle()
-      return Math.round(tops[el.id] - scrolled)
+      return Math.round(topOf(el) - scrolled)
     },
     ring: (el, on) => {
       if (on) el.setAttribute(TYPED_SHOWN_ATTR, '')
