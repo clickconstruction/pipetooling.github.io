@@ -437,6 +437,27 @@ describe('SupplyHousesTab — the aging windows', () => {
     expect(await screen.findByTestId('record-supply-payment')).toBeTruthy()
   })
 
+  it('the arrow on a row with a PDF opens the bill over the cell’s window, and a row with none offers no arrow (punch list #431)', async () => {
+    const late = fake.state.db.supply_house_invoices!.find((r) => r.id === 'late')!
+    late.link = 'https://drive.example/file/d/abc/view'
+    await renderTab()
+    fireEvent.click(agingCell('Ridge Supply', 'past60_90'))
+    const cell = await screen.findByRole('dialog', { name: `Ridge Supply, ${agingCellTitle('past60_90')}` })
+    press('See invoice S-late', cell)
+    const viewer = await screen.findByRole('dialog', { name: 'Invoice S-late' })
+    await settle()
+    // Closing the bill leaves the cell's window where it was.
+    press('Close', viewer)
+    expect(screen.queryByRole('dialog', { name: 'Invoice S-late' })).toBeNull()
+    expect(screen.getByRole('dialog', { name: `Ridge Supply, ${agingCellTitle('past60_90')}` })).toBeTruthy()
+    // A bill with no link has no paper to show.
+    press('Close', screen.getByRole('dialog', { name: `Ridge Supply, ${agingCellTitle('past60_90')}` }))
+    fireEvent.click(agingCell('Ridge Supply', 'current'))
+    const current = await screen.findByRole('dialog', { name: `Ridge Supply, ${agingCellTitle('current')}` })
+    await within(current).findByText('S-part')
+    expect(within(current).queryByRole('button', { name: 'See invoice S-part' })).toBeNull()
+  })
+
   it('the move window’s strip counts the still-current charge on one job, and Work the list opens it', async () => {
     await renderTab()
     press(/Work the list/)
