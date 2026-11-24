@@ -52,7 +52,7 @@ An answer belongs to its question. When a card asks a new question, the card com
 
 The pills over the list show whose questions you see. **Me** is yours. **Everyone** is every question. This device remembers the pill.
 
-A card's own row carries the same question and the same answer. That holds in **By group** and in **By number**.
+A card's own row carries the same question and the same answer. The row carries both in **By group** and in **By number**.
 
 ## Work the cards by number
 
