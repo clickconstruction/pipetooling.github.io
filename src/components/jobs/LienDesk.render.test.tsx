@@ -4349,8 +4349,10 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
     expect(document.querySelector('[data-lien-pane-head="months"]')!.textContent).not.toContain('no months')
   })
 
+  // April's own affidavit day, Aug 17, is past: the lien right is gone on the pane and on its path. Until punch list #415 this row was
+  // May, whose day (Sep 15) was still ahead, and the pane said gone over a path that said to send the notice late.
   it('on a missed notice with no month still due, Record it… opens the step where the closed-window line stood (v2.8026)', async () => {
-    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data([row('j650', '2026-05', '2026-09-10', { has_owner: true })], [], true)} initialKind="notice" initialJobId="j650" initialPile="missed" />)
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data([row('j650', '2026-04', '2026-07-15', { has_owner: true })], [], true)} initialKind="notice" initialJobId="j650" initialPile="missed" />)
     await settle()
     await waitFor(() => expect(document.body.textContent).toContain('with no notice — the lien right on that work is gone.'))
     fireEvent.click(monthsDoor())
@@ -4429,6 +4431,26 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
     expect((document.querySelector('[data-lien-pane-head="sign"]') as HTMLElement).textContent).toBe('Window closedNothing to sign')
     fireEvent.click(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door="notice:2026-05"]') as HTMLButtonElement)
     expect(screen.getByTestId('lien-stop-paper').textContent).toContain('The window closed with nothing sent. The lien right on that work is gone; the money is still owed.')
+  })
+
+  // The affidavit windows' list holds a job only within thirty days of its day (`lienDeskKeepRows`). For a day or two after the
+  // last notice window closes the day can be 31 or 32 days off, when the affidavit's 15th falls on a weekend and moves to Monday,
+  // and the list is silent. The pane read the day off that list, so it said the lien right was gone over its own path, which
+  // dates the affidavit from the last month of work and said to send the notice late (punch list #415). Made-up rows: the list
+  // is empty here, as the desk's read leaves it on such a day, and May's own filing day is Sep 15.
+  it('a missed notice the affidavit windows do not list: the pane takes the affidavit’s day from its own path, so the card, the footer and the path all say a late notice can still go (punch list #415)', async () => {
+    const d = data([row('j650', '2026-05', '2026-08-15', { has_owner: true, property_kind: 'non_residential' })], [], true)
+    expect(d.affidavits.entries).toEqual([])
+    expect(d.queue.entries.find((e) => e.jobId === 'j650')).toMatchObject({ pile: 'missed', dueMonths: [], missedMonths: ['2026-05'] })
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="notice" initialJobId="j650" initialPile="missed" />)
+    await settle()
+    expect((document.querySelector('[data-lien-desk-timeline]') as HTMLElement).textContent).toContain('Send the May notice late, then file the affidavit')
+    const card = document.querySelector('[data-lien-desk-months]') as HTMLElement
+    expect(card.textContent).toContain('a late notice can still go · the affidavit by Sep 15')
+    expect(card.textContent).not.toContain('lien right gone')
+    expect((document.querySelector('[data-lien-pane-head="sign"]') as HTMLElement).textContent).toBe('Sign and sendNot signed yet')
+    expect(screen.getByRole('button', { name: /Ask the leader to approve/ })).toBeTruthy()
+    expect(document.body.textContent).not.toContain('lien right on that work is gone')
   })
 
   // A missed notice that can no longer go judged a notice nobody could send (v2.8206, punch list #361, Taunya's pick of 2026-11-21): the

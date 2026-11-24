@@ -132,7 +132,7 @@ import { lienSupplierLetterParagraphFor, lienSupplierMark, type LienSupplierMark
 import { conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
 import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseDraft, type NoticeReleaseDraftInput } from '../../lib/jobs/lienNoticeReleaseIo'
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
-import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienMissedNoticeStillGoes, lienNoticeFootHead, lienPaneHeadsOverPages, lienPaneSections } from '../../lib/jobs/lienPaneSections'
+import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienLateNoticeUntil, lienMissedNoticeStillGoes, lienNoticeFootHead, lienPaneHeadsOverPages, lienPaneSections } from '../../lib/jobs/lienPaneSections'
 import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen, type LienPhoneFootProof } from '../../lib/jobs/lienPhonePane'
 import { lienApplyMonthsOffered, lienApplyStartsBlank } from '../../lib/jobs/lienNoticeApply'
@@ -1295,14 +1295,34 @@ export default function LienDesk({
 
   // Months a new notice names: the draft's, else every open month, minus what the user unticked.
   const monthChoices = useMemo(() => (selected ? selected.months.map((m) => ({ ...m, closed: m.daysLeft < 0 })) : []), [selected])
+  const openBalance = selected?.openBalance ?? 0
+  // The job's lien timeline (v2.3761): every Chapter 53 step in order, from what the desk already loaded. Built here, above the late window, which reads its affidavit day (punch list #415).
+  const timeline =
+    selected && data
+      ? buildLienTimelineFromDesk(selected.jobId, {
+          rows: data.rows,
+          items: data.items,
+          filings: data.filingsByJob[selected.jobId] ?? [],
+          servePrinted,
+          entry: selected,
+          affidavit: data.affidavits.entries.find((e) => e.jobId === selected.jobId) ?? null,
+          retainage: lienRetainageClockFromDesk(data, selected.jobId),
+          isSub: Boolean(selected.gcCustomerId),
+          propertyKind: property.propertyKind,
+          lastWorkDate: job?.last_work_date ?? null,
+          job: job ?? null,
+          openBalance,
+          todayYmd,
+          demandLetters: data.demandLettersByJob?.[selected.jobId] ?? null,
+        })
+      : null
   // v2.4708: every window closed unsent while the affidavit's own window is still open — the new notice names the closed months, late.
-  const lateUntil = useMemo(() => {
-    if (!selected || !data) return null
-    const aff = data.affidavits.entries.find((e) => e.jobId === selected.jobId)
-    if (!aff || aff.pile === 'filed' || !aff.deadline || aff.deadline < todayYmd) return null
-    if (selected.dueMonths.length > 0 || selected.months.some((m) => m.noticed) || selected.missedMonths.length === 0) return null
-    return aff.deadline
-  }, [selected, data, todayYmd])
+  // The day is the path's own (v2.8454, punch list #415): the affidavit windows' list holds a job only within thirty days of its day, and read
+  // alone it said the lien right was gone for a day or two over a path that said to send the notice late (`lienLateNoticeUntil`).
+  const pathAffidavitDay = timeline?.affidavitDay ?? ''
+  // Filed, by the windows' own word: the pile, or the kept row's flag, since a paper filed with no desk item is on no pile. The path says so too from the job's filings.
+  const affidavitFiled = Boolean(selected && data && (data.affidavits.entries.find((e) => e.jobId === selected.jobId)?.pile === 'filed' || data.affidavitRows.some((r) => r.job_id === selected.jobId && r.filed)))
+  const lateUntil = useMemo(() => lienLateNoticeUntil({ entry: selected, affidavitDay: pathAffidavitDay, affidavitFiled, todayYmd }), [selected, pathAffidavitDay, affidavitFiled, todayYmd])
   const defaultMonths = useMemo(() => new Set(item?.months.length ? item.months : selected?.dueMonths.length ? selected.dueMonths : lateUntil && selected ? selected.missedMonths : []), [item, selected, lateUntil])
   useEffect(() => {
     setCheckedMonths(null)
@@ -1342,7 +1362,6 @@ export default function LienDesk({
   const months = checkedMonths ?? defaultMonths
   const monthsList = [...months].sort()
 
-  const openBalance = selected?.openBalance ?? 0
   // The job's master by name (v2.4856): the word row, the record and the queue row say *on Malachi's word*.
   const leaderName = leaderNameFor?.(job?.master_user_id ?? null) ?? ''
   // Someone else's screen (v2.5791, punch list #150): the job has a master and he is not the one signed in here. The
@@ -2217,27 +2236,6 @@ export default function LienDesk({
       onOpenLienInstruments(row.jobId)
     }
   }
-
-  // The job's lien timeline (v2.3761): every Chapter 53 step in order, from what the desk already loaded.
-  const timeline =
-    selected && data
-      ? buildLienTimelineFromDesk(selected.jobId, {
-          rows: data.rows,
-          items: data.items,
-          filings: data.filingsByJob[selected.jobId] ?? [],
-          servePrinted,
-          entry: selected,
-          affidavit: data.affidavits.entries.find((e) => e.jobId === selected.jobId) ?? null,
-          retainage: lienRetainageClockFromDesk(data, selected.jobId),
-          isSub: Boolean(selected.gcCustomerId),
-          propertyKind: property.propertyKind,
-          lastWorkDate: job?.last_work_date ?? null,
-          job: job ?? null,
-          openBalance,
-          todayYmd,
-          demandLetters: data.demandLettersByJob?.[selected.jobId] ?? null,
-        })
-      : null
 
   // The press on a recipient's card in a stop's window (`lienMailProofDoor.ts`): how this desk opens each place a copy's lack is
   // entered. The office alone does those acts, so anyone else has no opener and no press. The copies window is offered for a lien in it.

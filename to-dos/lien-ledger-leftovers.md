@@ -2,19 +2,18 @@
 name: "Lien desk: what the ledger (#361) left, to do later"
 number: 415
 group: residual
-status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya
+status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454
 summary: >
   Punch list #361 rebuilt the Lien desk's Months on this job as one card, the ledger, and closed on
   2026-11-21 once every choice made with it was built and live. Its last night left a handful of
-  small things. Five are builds: the claim's dropped cents, an empty card with no next press, a late
-  window the desk and the timeline read from two sources, strip chips too small on a phone, and a
-  strip chip too long for its strip. One is five things Grace has not been told. Six are walks: five
+  small things. Four are builds still to do: the claim's dropped cents, an empty card with no next
+  press, strip chips too small on a phone, and a strip chip too long for its strip. A fifth, the late
+  window the desk and the timeline read from two sources, shipped as v2.8454. One is five things Grace has not been told. Six are walks: five
   screens seen only on made-up rows because no live notice is in that state yet, and one affidavit
   reading never walked. The look at the three fixes of 2026-11-21 in both themes was walked on
-  2026-11-24. Only the late window has a date: the desk and the timeline next part on 2027-04-16.
-  Taunya wants every one of them done, later.
-next: Taunya says which piece to build first. Tell Grace the five things in loose end 5 first, since that costs no code. Walk 7 can be done any time on a ZZ Test job. Walks 2 to 6 wait on a live notice in that state. Loose end 3 is real and is the one with a date, so build it before 2027-04-16. Loose ends 2 and 6 can be built in a quiet hour. Loose ends 1 and 4 change how a screen looks: their labeled pictures at 730 px and 380 px went to Taunya on 2026-11-24, and each waits on its caller's pick.
-size: five small builds (1 S · 2 XS · 3 XS · 4 S · 6 XS), one word to Grace, six walks (XS each; five wait on live cases)
+  2026-11-24. Nothing left here has a date. Taunya wants every one of them done, later.
+next: Taunya says which piece to build next. Tell Grace the five things in loose end 5 first, since that costs no code. Walk 7 can be done any time on a ZZ Test job. Walks 2 to 6 wait on a live notice in that state. Loose ends 2 and 6 can be built in a quiet hour. Loose ends 1 and 4 change how a screen looks: their labeled pictures at 730 px and 380 px went to Taunya on 2026-11-24, and each waits on its caller's pick.
+size: four small builds (1 S · 2 XS · 4 S · 6 XS), one word to Grace, six walks (XS each; five wait on live cases)
 blocker: None for the builds. The walks wait on live notices in the states they name.
 ---
 
@@ -63,41 +62,14 @@ the desk's files. Nothing was built that day.
    state says what fills it and offers the press (`EmptyState` with `next`). The next step is the row above it, the
    last day of work and its Change ›. **No one's call**: a rule the card breaks. Still so on 2026-11-24:
    `LienDeskMonths.tsx:238` is `<EmptyState compact main="No months on this job yet." />`, with no `next`.
-3. **The late window is read from two sources (XS, checked: it is real).** The desk's `lateUntil` (`LienDesk.tsx`) is the
-   affidavit's day from the affidavit windows' list. #9215 (v2.8170) made the missed notice's footer depend on it.
-   The timeline's `late_notice` (`lienTimeline.ts`, #4717, v2.4708) uses its own filing deadline. That list leaves
-   out a job whose day is more than the lead window ahead. There, the card and the footer say the lien right
-   is gone while the timeline says to send the late notice. The gap is one or two days wide, and it was built in a
-   scratch unit test on 2026-11-24. **No one's call**: both should read one source.
-   - **Why they part.** `lateUntil` (`LienDesk.tsx:1299`) finds the job in `data.affidavits.entries`. The desk keeps
-     a windows row only when its day is 30 days off or nearer, or the job has a started affidavit paper
-     (`lienDeskKeepRows`, `lienDeskStarted.ts:63`). The timeline falls back to the last month's own filing day
-     (`lienTimeline.ts:509`), so it never loses the job. The last notice day is a 15th and the affidavit's day is
-     the next month's 15th, each moved to Monday off a weekend. So the day after the notice window closes, the
-     affidavit is up to 32 days off. When it is 31 or 32 the list has no row, `lateUntil` is null, and the desk
-     says gone. That takes an affidavit 15th on a weekend.
-   - **The smallest example.** A commercial sub job last worked in January 2027, nothing sent, no affidavit drafted.
-     The notice day is Thursday Apr 15, 2027. May 15 is a Saturday, so the affidavit's day is Monday May 17. On
-     Friday Apr 16 that is 31 days off. The months card says *lien right gone · the money still rides*. The footer
-     says *Window closed · Nothing to sign* and offers no send. The gates fold to *Window closed Apr 15*. On the
-     same pane the path says *Send the Jan notice late, then file the affidavit — 31 days*, and the billed row and
-     the Deadlines board say to send it late too. On Saturday Apr 17 the day is 30 off, and the desk says *a late notice can
-     still go · the affidavit by May 17* again.
-   - **How often.** The test ran every work month from 2025 to 2030 on the three clocks (commercial, residential,
-     kind not set), every day from the notice day to two days past the affidavit's: 7,005 days. The two parted on
-     69 of them, in 48 of the 216 pairs of month and clock, never for more than two days running, and always the same way: the desk says
-     gone, the timeline says send it late. Never the reverse. The days ahead: 2027-04-16, 2027-07-16, 2027-12-16
-     and 17, 2028-03-16 and 17, 2028-06-16. In 2026 it was Jan 16, Jul 16 and 17, and Oct 16. A job with a started
-     affidavit paper stays on the list and never parts.
-   - **Where the one source already is.** The notice's own entry carries `affidavitDay` (`lienDesk.ts:346`,
-     v2.7273): the windows' day when they list the job, else the last month's filing day. `lateUntil` does not read it.
-   - **How sure.** Sure of the gap and its width for a job dated by one clock. The kernels ran as they are
-     (`buildLienDeskQueue`, `buildLienAffidavitQueue`, `lienDeskKeepRows`, `buildLienTimelineFromDesk`,
-     `lienNoticeFootHead`, `buildLienPayRunway`). Three things were not run. `lateUntil` is written inside
-     `LienDesk.tsx`, so its five lines were copied into the test. The two readers' day filters were written from
-     their SQL (`20261118230000_lien_closed_days.sql`), not run on a database. And it was never seen live: no
-     notice has been in the late window on a parted day since v2.8170. The test was a scratch file and is not in
-     the repo.
+3. ~~**The late window is read from two sources (XS).**~~ **Shipped v2.8454**, on Taunya's go of 2026-11-24. It was
+   real. The desk's `lateUntil` read the affidavit's day off the affidavit windows' list, which holds a job only
+   within thirty days of its day. For a day or two after the last notice window closed, with the affidavit's 15th
+   moved off a weekend to a Monday 31 or 32 days off, the months card and the footer said the lien right was gone
+   over a path that said to send the notice late. The next such day was 2027-04-16. The pane now takes the day from
+   the path it draws (`lienLateNoticeUntil`, `LienTimeline.affidavitDay`), under the desk's unchanged rule. The
+   example, the sweep and what was run are in `docs/recent-features/v2.8454.md`. It was never seen live: walk 2
+   is its look, on a live notice in the late window.
 4. **The strip's chips are 18 px tall on a phone (S).** The line that pins to the top of a notice pane holds chips
    that are presses (`lienStripChips`, `.lienStripChip`, #8177, v2.7318). At 390 px each is 18 px tall. The owner's
    answer 5 of 2026-11-20 (#9133) grew every press on the months card to 44 px, not the strip's. **The owner's

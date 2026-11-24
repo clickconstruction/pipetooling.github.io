@@ -99,6 +99,34 @@ export function lienPaneSections(i: LienPaneSectionsInput): LienPaneSection[] {
 export type LienNoticeFootPile = 'needs_owner' | 'to_draft' | 'awaiting' | 'ready' | 'printed' | 'held' | 'sent' | 'missed'
 
 /**
+ * The affidavit's last day while a late notice can still go on a job whose every window closed unsent, else null: the
+ * `lateUntil` that `lienMissedNoticeStillGoes`, the months card and the gates' fold read. The rule is the desk's own, as
+ * `LienDesk.tsx` wrote it inline since v2.4708: no month still due, no month a notice names, a closed month to claim, no
+ * affidavit filed, and the affidavit's day not passed.
+ *
+ * The day is the path's (`LienTimeline.affidavitDay`), one source with the strip the pane draws beside it (v2.8454,
+ * punch list #415). Until then the desk looked the job up in the affidavit windows' list, which holds a job only within thirty days
+ * of its day (`lienDeskKeepRows`). For a day or two after the last notice window closes that day can be 31 or 32 days
+ * off, when the affidavit's 15th falls on a weekend and moves to Monday. On those days the list was silent, this read no
+ * day, and the pane said the lien right was gone over a path that said to send the notice late. Pure.
+ */
+export function lienLateNoticeUntil(i: {
+  /** The notice's entry on the desk; null when no job is picked. */
+  entry: { dueMonths: ReadonlyArray<string>; missedMonths: ReadonlyArray<string>; months: ReadonlyArray<{ noticed: boolean }> } | null | undefined
+  /** The path's affidavit day (`LienTimeline.affidavitDay`): '' or absent when it has none, or once an affidavit is filed. */
+  affidavitDay: string | null | undefined
+  /** The affidavit windows list the job as filed. The path says so too when it holds the filing; the list's word is kept beside it. */
+  affidavitFiled?: boolean
+  todayYmd: string
+}): string | null {
+  const e = i.entry
+  const day = (i.affidavitDay ?? '').slice(0, 10)
+  if (!e || !day || i.affidavitFiled || day < i.todayYmd) return null
+  if (e.dueMonths.length > 0 || e.months.some((m) => m.noticed) || e.missedMonths.length === 0) return null
+  return day
+}
+
+/**
  * Whether a notice in the Missed pile is still a notice to send (v2.8170, the live walk of punch list #361). It is while
  * a month is still due. It is too while every window closed unsent and the affidavit's own window is open: v2.4708's
  * rule is that a late notice can then go and the affidavit follow it, and `lateUntil` is that window's last day. Its

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienMissedNoticeStillGoes, lienNoticeFootHead, lienPaneHeadFactWords, lienPaneHeadOffsets, lienPaneHeadsOverPages, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection } from './lienPaneSections'
+import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienLateNoticeUntil, lienMissedNoticeStillGoes, lienNoticeFootHead, lienPaneHeadFactWords, lienPaneHeadOffsets, lienPaneHeadsOverPages, lienPaneSectionScrollTop, lienPaneSections, litLienPaneSection } from './lienPaneSections'
 
 const monthShort = (k: string) => ({ '2026-07': 'Jul', '2026-08': 'Aug' })[k] ?? k
 const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
@@ -141,6 +141,25 @@ describe('the footer’s section at the pane’s end (v2.7422, Taunya’s ask of
     expect(lienMissedNoticeStillGoes({ dueMonths: 0, lateUntil: null })).toBe(false)
     expect(lienMissedNoticeStillGoes({ dueMonths: 0 })).toBe(false)
     expect(lienMissedNoticeStillGoes({ dueMonths: 0, lateUntil: '' })).toBe(false)
+  })
+
+  it('reads the late window’s last day off the path’s affidavit day, under the desk’s own rule (punch list #415)', () => {
+    const entry = { dueMonths: [] as string[], missedMonths: ['2027-01'], months: [{ noticed: false }] }
+    // Every window closed unsent, nothing filed, the day ahead: the day itself, whatever list does or does not hold the job.
+    expect(lienLateNoticeUntil({ entry, affidavitDay: '2027-05-17', todayYmd: '2027-04-16' })).toBe('2027-05-17')
+    // The day itself still counts; the day after it does not.
+    expect(lienLateNoticeUntil({ entry, affidavitDay: '2027-05-17', todayYmd: '2027-05-17' })).toBe('2027-05-17')
+    expect(lienLateNoticeUntil({ entry, affidavitDay: '2027-05-17', todayYmd: '2027-05-18' })).toBeNull()
+    // No day (the path has none, or an affidavit is filed), or the windows list the job as filed: no late window.
+    expect(lienLateNoticeUntil({ entry, affidavitDay: '', todayYmd: '2027-04-16' })).toBeNull()
+    expect(lienLateNoticeUntil({ entry, affidavitDay: null, todayYmd: '2027-04-16' })).toBeNull()
+    expect(lienLateNoticeUntil({ entry, affidavitDay: '2027-05-17', affidavitFiled: true, todayYmd: '2027-04-16' })).toBeNull()
+    // A month still due, a month a notice names, or no closed month to claim: the notice is not a late one.
+    expect(lienLateNoticeUntil({ entry: { ...entry, dueMonths: ['2027-02'] }, affidavitDay: '2027-05-17', todayYmd: '2027-04-16' })).toBeNull()
+    expect(lienLateNoticeUntil({ entry: { ...entry, months: [{ noticed: false }, { noticed: true }] }, affidavitDay: '2027-05-17', todayYmd: '2027-04-16' })).toBeNull()
+    expect(lienLateNoticeUntil({ entry: { ...entry, missedMonths: [] }, affidavitDay: '2027-05-17', todayYmd: '2027-04-16' })).toBeNull()
+    // No job picked.
+    expect(lienLateNoticeUntil({ entry: null, affidavitDay: '2027-05-17', todayYmd: '2027-04-16' })).toBeNull()
   })
 
   it('says where the signature stands, by the pile the notice is in', () => {

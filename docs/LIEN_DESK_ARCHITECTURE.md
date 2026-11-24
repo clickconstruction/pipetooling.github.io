@@ -358,6 +358,7 @@ last_updated: 2026-11-21
 > Since **v2.7422** (Taunya's ask of 2026-11-15) a monthly notice's footer is not that bar on a computer: it is the pane's last section, `sign`, under the one blue head (`lienNoticeFootHead`, `LienPaneSection.foot` in [`lienPaneSections.ts`](../src/lib/jobs/lienPaneSections.ts)), portalled into `data-lien-pane-body="sign"`, so the paper has the whole pane and the reader scrolls through it to sign.
 > The affidavit's and the retainage notice's footers are still the bar.
 > Since **v2.8170** a notice in the Missed pile draws the draft's footer, and its head reads *Sign and send*, while `lienMissedNoticeStillGoes` (`lienPaneSections.ts`) holds: a month is still due, or `lateUntil` is set, the affidavit's last day while every window closed unsent (v2.4708).
+> Since **v2.8454** (punch list #415) `lateUntil` is `lienLateNoticeUntil` (`lienPaneSections.ts`) under the same rule, and its day is the path's own, `LienTimeline.affidavitDay`: the affidavit windows' list holds a job only within thirty days of its day, and read alone it called the lien right gone for a day or two over a path that said to send the notice late.
 > Past both, the footer keeps *The window closed on … with no notice — the lien right on that work is gone* under *Window closed · Nothing to sign*.
 > A closed notice stop's note is `lienClosedNoticeStopNote` (`lienStopPaper.ts`) in the three stop windows: *A late notice can still go, and the affidavit can follow it* while the timeline's next step is `late_notice`, else that the lien right on that work is gone.
 
