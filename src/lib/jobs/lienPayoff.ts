@@ -11,7 +11,8 @@
  *
  * A release belongs to its affidavit by the link it saves (`fields.releasesFilingId`), then by the instrument
  * number an older release copied from its affidavit, then, on a job with one filed lien, by being the job's only
- * release. The county's day is the release row's `filed_at`, which nothing set before piece 2.
+ * release. The county's day is the release row's `filed_at`, set on the Release of record tab since piece 2
+ * (`lienReleaseOfRecord.ts`).
  *
  * A check still clearing only warns here (`checkClearing.ts`, seven days). Whether a release waits for a check to
  * clear is the owner's call and the card's first question. The app counts the days and does not judge the law.
@@ -192,7 +193,7 @@ export function lienPayoffStep(input: LienPayoffStepInput): LienPayoffStep {
       say: `The release was made ${made}. Sign it before a notary. Then record it at the county.`,
       warn: owes ? stillOpen : null,
       warnTone: owes ? 'red' : null,
-      press: { label: 'Open the release ›', door: 'release' },
+      press: { label: 'Record the county’s stamp ›', door: 'release' },
       releaseId: release.id,
     }
   }

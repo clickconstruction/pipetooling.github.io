@@ -6775,8 +6775,10 @@ The line says how many filed liens are paid and still on record, and its press r
 The window lists every live filed affidavit under its **place**, the jobs at one property whatever customer each sits under, with the amount that pays the place's liens off.
 A lien stands on one of three steps: **money** (the job's sent bills still owe), **release** (the bills read paid and no release of record is saved) and **county** (a release is saved and the county has not recorded it).
 Past the three it is **released**.
-Each row has one sentence and the one press for its step: *Record the payment ›*, *Make the release ›*, *Open the release ›*.
+Each row has one sentence and the one press for its step: *Record the payment ›*, *Make the release ›*, *Record the county's stamp ›* (*Open the release ›* in v2.8504 alone, before the tab could take the stamp).
 The rule is `lienPayoff.ts`, the screen `LienPayoffs.tsx`.
+Since **v2.8508** (piece 2) the Release of record tab is the other half: **the county's stamp** is the day the clerk recorded a release (the release row's `filed_at`) and the release's own instrument number (`fields.releaseInstrument`), each changed where it sits.
+A saved release names its affidavit (`fields.releasesFilingId`), and **the money hold** keeps the tab's print and save dead while the job's sent bills still owe, until a reason is typed under *Release it anyway…* (`lienReleaseOfRecord.ts`).
 
 ### Property card (Lien desk)
 Every job at one property record on one window (**v2.7488**): the address, the owner of record, two lines that count the property, each kind of paper apart (*4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail*, then *6 lien affidavits ready to file*) and a row per job with where its notice and its affidavit stand.

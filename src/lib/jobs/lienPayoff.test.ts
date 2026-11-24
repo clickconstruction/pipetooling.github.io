@@ -64,7 +64,7 @@ describe('lienPayoffStep', () => {
     const s = step({ releases: [rel()], payments: [check()] })
     expect(s.step).toBe('county')
     expect(plainSentence(s.say)).toBe('The release was made Nov 24. Sign it before a notary. Then record it at the county.')
-    expect(s.press).toEqual({ label: 'Open the release ›', door: 'release' })
+    expect(s.press).toEqual({ label: 'Record the county’s stamp ›', door: 'release' })
     expect(s.releaseId).toBe('r1')
     const owes = step({ releases: [rel()], open: 300 })
     expect(owes.warnTone).toBe('red')

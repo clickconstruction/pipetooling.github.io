@@ -29,15 +29,29 @@ One check may pay several jobs. Record it on each job in turn. Close the job whe
 
 ## Step 2, make the release
 
-The row reads *Paid*, with the day and how the money came. Press {{button:blue|Make the release ›}}. The job's Lien window opens on **Release of record**. Set the payment date. Press **Print for notarization**. Then press **Save release record**.
+The row reads *Paid*, with the day and how the money came. Press {{button:blue|Make the release ›}}. The job's Lien window opens on **Release of record**.
+
+A line at the top says what the money says. Green means the bills read paid. Amber names the day a check clears. Red means money is still open, and the buttons wait.
+
+The payment date is already the day of the last payment. Press **Print for notarization**. Then press **Save release record**. A lien takes one release, so the save press goes away once it is saved.
 
 The leader signs the paper before a notary.
 
-A check takes about seven days to clear. While it clears, the row names the day in amber. Ask a leader before a release leaves the office on a check that has not cleared.
+A job with two filed liens asks **Which lien** first. Pick the one that was paid.
+
+A check takes about seven days to clear. Ask a leader before a release leaves the office on a check that has not cleared.
+
+## Release a lien with money still open
+
+Sometimes a lien is settled for less than the bills. The red line holds the buttons. Press **Release it anyway…** and type why. The buttons wake, and the reason is saved with the release.
 
 ## Step 3, record it at the county
 
-Take the notarized release to the county clerk. The clerk records it and stamps it. Until then the row stays on step 3.
+Take the notarized release to the county clerk. The clerk records it and stamps it.
+
+Back on the Lien desk, press {{button:blue|Record the county’s stamp ›}} on the row. The tab shows **The county's stamp**. Press the value beside **Recorded on**, set the day and press **Keep**. Do the same beside **Instrument number**. The row then reads *Released*.
+
+The stamped copy goes on the release's line under **Filings on this job**. Press *link the saved copy* there and paste its Drive link.
 
 ## What the window does not do
 
