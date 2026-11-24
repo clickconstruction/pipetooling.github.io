@@ -12,6 +12,7 @@ import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 import type { LienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 import { LAST_DAY_BY_HAND_LATER_HOURS_WORDS, LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
 import { workMonthShort } from './forecastWorkMonths'
+import { lienApprovalWaitWords, type LienApprover } from './lienApprovalWait'
 
 /**
  * The lien timeline (v2.3761, punch list #37): one job's Chapter 53 path as
@@ -249,6 +250,8 @@ export interface LienTimelineInput {
   demandLetters?: ReadonlyArray<LienTimelineDemandLetter>
   /** The courtesy notices sent on the job (punch list #231, v2.6269), from the sent notice's record; absent when the caller has not loaded them. */
   courtesy?: ReadonlyArray<LienTimelineCourtesy>
+  /** The leader a paper sent for approval waits on (punch list #335, `lienApprovalWait.ts`): the *Waiting on* line names him as the row does. Absent reads *the leader*. */
+  approver?: LienApprover | null
 }
 
 /** One courtesy notice as the timeline reads it: when it went, how, and the lien's day it named. */
@@ -808,12 +811,12 @@ function moveFor(s: LienTimelineStep, paid: boolean, paidBy: LienTimelineMove): 
   }
 }
 
-function noticeWaitWords(state: LienTimelineNoticeState): string {
+function noticeWaitWords(state: LienTimelineNoticeState, approver?: LienApprover | null): string {
   switch (state) {
     case 'needs_owner':
       return 'the owner’s name for the notice'
     case 'awaiting':
-      return 'the leader’s approval of the notice'
+      return lienApprovalWaitWords('notice', approver)
     case 'ready':
       return 'the notice to be mailed'
     case 'printed':
@@ -826,12 +829,12 @@ function noticeWaitWords(state: LienTimelineNoticeState): string {
 }
 
 /** What an affidavit that is the next paper waits on, step by step (v2.7187, punch list #335, row 2). Every one is our move. */
-function affidavitWaitWords(a: LienTimelineInput['affidavit']): string {
+function affidavitWaitWords(a: LienTimelineInput['affidavit'], approver?: LienApprover | null): string {
   switch (a?.state ?? '') {
     case 'to_draft':
       return 'the affidavit to be drafted'
     case 'awaiting':
-      return 'the leader’s approval of the affidavit'
+      return lienApprovalWaitWords('affidavit', approver)
     case 'held':
       return 'the hold to lift'
     case 'needs_property': {
@@ -870,13 +873,13 @@ function waitingOnFor(steps: ReadonlyArray<LienTimelineStep>, next: Omit<LienTim
   }
   switch (next.kind) {
     case 'notice':
-      return { who: 'ours', words: noticeWaitWords(input.noticeState) }
+      return { who: 'ours', words: noticeWaitWords(input.noticeState, input.approver) }
     case 'late_notice':
       return { who: 'ours', words: `the late notice, then the affidavit by ${next.date ? lienDateWords(next.date, todayYmd) : 'its last day'}` }
     case 'retainage':
       return { who: 'ours', words: 'the § 53.057 retainage notice to be sent' }
     case 'affidavit':
-      return { who: 'ours', words: affidavitWaitWords(input.affidavit) }
+      return { who: 'ours', words: affidavitWaitWords(input.affidavit, input.approver) }
     case 'serve':
       return { who: 'ours', words: 'the filed affidavit to be served' }
     case 'release':

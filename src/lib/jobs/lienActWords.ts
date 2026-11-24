@@ -21,6 +21,7 @@ import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 import type { LienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 import type { LienNextUpAction } from './lienNextUp'
 import { LIEN_RUN_ACT } from './lienRunWords'
+import { lienLeaderWords } from './lienApprovalWait'
 
 export type LienActPaper = 'notice' | 'affidavit' | 'retainage'
 
@@ -75,7 +76,7 @@ export const LIEN_LATE_NOTICE_ACT: LienAct = act('Send the late notice', 'The no
  */
 function noticeFirstAct(f: Pick<LienActInput, 'noticeStanding' | 'waitingOn'>): LienAct {
   const waits = 'The affidavit waits on its notice.'
-  const who = f.waitingOn?.trim() || 'the leader'
+  const who = lienLeaderWords(f.waitingOn)
   switch (f.noticeStanding) {
     case 'approved':
       return act('Print and mail the notice', `${waits} The notice is approved and not mailed yet.`)
@@ -112,7 +113,7 @@ export function lienActFor(input: LienActInput): LienAct | null {
       return noticeFirstAct(input)
     case 'approve': {
       if (input.yours) return act(`Approve the ${name}`, `${The} is drafted and waits on your approval.`)
-      const who = input.waitingOn?.trim() || 'the leader'
+      const who = lienLeaderWords(input.waitingOn)
       return act(`Waiting on ${who}`, `${The} is drafted and waits on ${who} to approve it.`)
     }
     case 'sign':
