@@ -1,8 +1,8 @@
 ---
 name: "Supply house invoices: flip through them in place, share one by a link, search them"
 number: 431
-group: ready
-status: asked 2026-11-23 · researched in the code and in prod the same day · the mock-up drawn and the owner said build it all the same day · all of it built the same day as a train of ten PRs · PR 1 (#9521), the bill door (#9522), the search function (#9537) and the sweep's words (#9542) are open and armed · the viewer (#9546) is open and waits on #9521 and #9522 · the lines search, the other lists, the search box and the header search are built on branches stacked behind it · left: each PR's merge, the drive-link and bill-lines-sweep deploys, the migration's push, and a walk on the live app
+group: close
+status: asked 2026-11-23 · built the same day as a train of ten PRs · nine are on main, the last (#9569, bills in the header search) is armed · the migration is pushed, the three functions and the dev seat are deployed, the sweep is keeping each bill's words · walked on real bills on a local server on 2026-11-24 · left: the owner's own look on the live app
 mockup: to-dos/supply-invoice-viewer/mockup.html
 summary: >
   The Job Summary lists every supply house invoice on a job, and each invoice number opens its PDF
@@ -12,10 +12,10 @@ summary: >
   a share icon left of the invoice number that copies an app link, a search box on the list, and
   bills joining the search the app already has: the lines read from each bill, the file index, the
   search by meaning and the header search.
-next: land the train in order (see Where it stands), deploying `drive-link` after #9522 and pushing the migration after #9537, then walk the list, the viewer, the link and both searches on the live app with a ZZ test bill.
-size: L as a train of ten (the seven of the plan, with the bill door and the search function each ahead of its screen, and the card); left: the merges and a live walk (S)
-blocker: The merge queue, and nothing else. Each stacked PR is armed once the one under it is on main.
-opinion: build — the PDF canvas, the Drive read, the lasting file link, the toast and the lines read from every bill all exist; this joins them
+next: The owner looks at a job's Invoices from Supply Houses, opens a bill, copies its link and tries Search every bill on the live app, then says whether the card closes. The seven calls built on a default are listed under Where it stands.
+size: L as a train of ten, built; left: a look (XS)
+blocker: A look by the owner. Nothing in the code.
+opinion: your call — it is built and walked on real bills; the look and the seven default calls are yours
 ---
 
 # Supply house invoices: flip through, share, search (#431)
@@ -186,38 +186,59 @@ calls it: the bill door ahead of the viewer, and the search function ahead of th
 
 ## Where it stands
 
-**All of it is built (2026-11-23). What is left is landing it and walking it live.**
+**All of it is built and landed (2026-11-24). What is left is the owner's own look.**
 
-| Piece | PR | State on 2026-11-23 |
+| Piece | PR | State on 2026-11-24 |
 | --- | --- | --- |
 | This card and its mock-up | #9505 | merged |
-| PR 1: the list's search box, share icon, small cents, short date | #9521 | armed, in the merge queue |
-| The bill door, `drive-link` → `read_bill` | #9522 | armed, in the merge queue. Deploy `drive-link` after it merges |
-| The search function and `supply_papers.page_text` | #9537 | armed, in checks. `supabase db push` after it merges, then the types |
-| PR 6: the sweep keeps each paper's words | #9542 | armed, in checks. Deploy `bill-lines-sweep` after it merges and the migration is pushed |
-| PR 2: the viewer and the bill's page | #9546 | open, not armed: waits on #9521 and #9522 |
-| PR 3: the list's search reaches the paper's lines | branch `claude/supply-invoice-lines-search` | built, pushed, no PR yet |
-| PR 4: the viewer on the supply house's bills, the aging window and Link invoices | branch `claude/supply-invoice-viewer-other-lists` | built, pushed, no PR yet |
-| PR 5, the screen: **Search every bill** | branch `claude/supply-bill-search-box` | built, pushed, no PR yet. Its migration must be pushed first |
-| PR 7: bills in the header search | branch `claude/supply-bill-header-search` | built, pushed, no PR yet |
+| PR 1: the list's search box, share icon, small cents, short date | #9521, v2.8391 | merged |
+| The bill door, `drive-link` → `read_bill` | #9522, v2.8396 | merged, `drive-link` deployed |
+| The search function and `supply_papers.page_text` | #9537, v2.8406 | merged, migration `20261123193100` pushed |
+| PR 6: the sweep keeps each paper's words | #9542, v2.8412 | merged, `bill-lines-sweep` deployed |
+| PR 2: the viewer and the bill's page | #9546, v2.8399 | merged |
+| PR 3: the list's search reaches the paper's lines | #9555, v2.8401 | merged |
+| PR 4: the viewer on the supply house's bills, the aging window and Link invoices | #9565, v2.8403 | merged |
+| The types and the dev seat's catalog | #9566 | merged, `dev-mcp` redeployed |
+| PR 5, the screen: **Search every bill** | #9567, v2.8409 | merged |
+| PR 7: bills in the header search | #9569, v2.8414 | armed, the last of the train |
 
-**The stack.** PRs 2, 3, 4, 5's screen and 7 are one stack in that order, each branch on the one
-before. The queue squashes, so a child edits files its parent added and conflicts once the parent
-lands. Open and arm one at a time: when the PR under it is on main, merge `origin/main` into the
-branch, take the branch's side in the parent's files, push, then arm.
+**By hand, done.** `drive-link` and `bill-lines-sweep` deployed from main. The migration pushed and
+the ledger checked against the repo. Ten more functions bundle `_shared/driveLink.ts`, which the
+bill door's PR changed, so each was redeployed from main and probed.
 
-**What was looked at.** The list, the viewer, the search by a part and **Search every bill** were
-each driven in a headless browser on a throwaway page, with the real components, a stand-in for the
-reads and the repo's made-up fixture PDFs, at desk and phone widths in both themes. The search
-function ran its 36 assertions against a stub of the tables on a local Postgres 15.
+**What the walk found (2026-11-24).** A headless browser on a local server running the last branch
+of the train, signed in as the dev account, reading real bills. Counts and kinds only were written
+down.
 
-**What was not checked, and is the live walk.**
+- **The bill door on the real Drive.** 39 of 40 bills came back as PDFs. The one refusal was a file
+  Drive does not share with the app. The `_Bills` name rule holds, so no secret was needed.
+- **The viewer.** Eight bills flipped with the arrow key and each drew its pages. Three sit inside a
+  longer file and showed their own pages with **See the whole file**. The lines read from the
+  paper were listed beside each.
+- **The Job Summary.** A job with twelve invoices had the search box, a chip per supply house, a
+  share icon on every row and no year on this year's dates. A part word left seven rows, each
+  with *On the paper* and the word marked. A month word left that month's rows.
+- **The link.** The press showed *Link copied to clipboard*. The link opened the bill's own page
+  with the job's list for the dev. Signed out it asked for a sign-in. An estimator read *This
+  file is not one you can open.*
+- **Search every bill.** A part word listed the first sixty bills, 59 with the line that found
+  them. Nothing found offered **Clear the search**. On prod the function found five of five bills
+  by their own number and refused a signed-out caller.
+- **The whole text of a bill.** The sweep's first run with the column kept 19 papers' words. Ten of
+  ten of those bills were then found by a word only their page holds. About 500 papers were left
+  to fill, a few files every ten minutes.
+- **The header search.** A part word listed five bills after the jobs, and a press opened the
+  bill's page.
+- **A phone.** At 393 px the search and the viewer filled the screen, nothing scrolled sideways and
+  the share press was 44 px.
 
-- The bill door against the real Drive. The first bill a dev opens in the viewer says whether the
-  bills folder is found by its name; a refusal tells a dev the folders it saw.
-- The search function's bed on the real schema (CI's run is the first), and the function on real rows.
-- The sweep's fill of `page_text`: its answer's `pageText` after the first run.
-- The live Job Summary, the bill's link opened three ways, and both searches.
+**Not walked.** The aging window's arrow and **See the bill ›** in Link invoices are held by render
+tests and were not pressed on real rows. Nothing was pressed on the live site itself: the look
+ran the same code against the same data from a local server.
+
+**Seen and left.** A person with *Tell the dev* switched on has its floating press over the
+viewer's bottom left corner, where the line about the arrow keys and Esc sits. The viewer still
+works. The press floats over every window by design.
 
 **Calls built on a default, for the owner.**
 
