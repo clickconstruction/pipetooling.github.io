@@ -74,6 +74,8 @@ An email line says what the mail service last reported.
 
 Delivered does not mean someone read the email. Opened is the stronger word.
 
+Opened is still a guess. Some mail apps open an email by themselves, so a line can read *Opened* seconds after the send. Other mail apps hide an open, so a line can stay at *Delivered* after someone read it. An email sent before November 24, 2026 never reads *Opened*.
+
 A red tile at the top reads **Did not arrive** with a count. The tile shows only when a send did not arrive.
 
 The tile counts sends that did not arrive on a bill that is still open.
