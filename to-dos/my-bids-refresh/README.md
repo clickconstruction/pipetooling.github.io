@@ -2,7 +2,7 @@
 name: "My Bids and Recent Reports on the Dashboard: one swipe to put a row away"
 number: 426
 group: ready
-status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · the walk's two small presses and the frame's lost page mended in v2.8464 · Recent Reports and a real phone not walked
+status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · the walk's two small presses and the frame's lost page mended in v2.8464, the bid window's own small presses in v2.8496 · Recent Reports' swipe walked on clicktooling.com as a sample account 2026-11-24, and it held · a real phone and a hide on a second device not walked
 summary: >
   The owner wants the eye icon on each My Bids row replaced by a swipe and the bids grouped by state.
   He wants Recent Reports' heading back on one row, its presses moved to the foot, and the same swipe
@@ -25,7 +25,8 @@ and the one-press bid, is the PR after it. Step 3, Recent Reports' heading and f
 the shared swipe on My Bids, is the fourth. Step 5, the swipe on Recent Reports, is the fifth. Step 6 is two
 PRs: the migration, #9494, merged and pushed on 2026-11-23, and the client that reads and writes it, #9495.
 All six are merged and live. My Bids was walked on clicktooling.com on 2026-11-24, in the lens frame, and what
-was seen is under *The walk in the lens frame* below. The swipe has not been tried on a real phone.
+was seen is under *The walk in the lens frame* below. Recent Reports' swipe was walked the same day as a sample
+account, under *Recent Reports, walked as a sample account*. The swipe has not been tried on a real phone.
 
 The mock-up is [`mockup.html`](mockup.html). For each card it draws the card as it is beside the card as
 planned at 430 px and at 320 px, the swipe in three frames, and the desk. Two frames work under a finger or
@@ -166,14 +167,62 @@ missing on the Dashboard: `my_customer_words` and `my_week`. On the pass that al
 **Not looked at.**
 
 - **Recent Reports.** The frame's Recent Reports is empty, so its swipe, **Opened** and **Mark unread** were not
-  walked.
+  walked in the frame. They were walked later the same day as a sample account, in the next section.
 - **A real phone.** A thumb, a real scroll that drifts and the phone's own Back swipe are still the owner's try.
-- **Hidden on a second device.** The frame keeps nothing between two windows, so step 6 was not walked.
+- **Hidden on a second device.** The frame keeps nothing between two windows, so step 6 was not walked. A sample
+  account cannot walk it either: in View as the card keeps a hide in the browser and sends nothing, by design
+  (`isImpersonationSessionActive` in `DashboardMyBidsSection.tsx`). It takes a sign-in that is not View as. The card
+  reads a hide only when it loads, so a second device shows it after the page is opened again, not while it sits open.
 - **A bid with unread updates, a past due date, more than one trade, or 320 px.** The frame's bids have none of
   them, and 320 px was not in the recipe.
 - **A real person's bids.** Nobody signed in.
 
 No screenshot is in the repo.
+
+### Recent Reports, walked as a sample account, 2026-11-24
+
+Walked on clicktooling.com, 21:47Z to 22:03Z, in headless Chromium at 430 by 932 with touch, light. The walker
+was the **Sample superintendent**, through **View as**. It reads only the reports of jobs it is on, so every
+row on its card was a `ZZ Test` record.
+
+**The report.** The card was empty, so the **Sample assistant** filed one **Status** report on
+*ZZ Test Walk Project 2026-11-08* (J1113) through **Job report**. The walk held both report senders and the
+job's percent in the browser, so no email, no push and no change to the job left it. The report stood for five
+and a half minutes and was deleted at Jobs → Reports with the typed **DELETE**.
+
+**What held.**
+
+- **The heading is one row**, 380 by 44, with *1 new report* beside the name. The card opened by itself.
+- **The foot.** *Swipe a report left to mark it opened.* and **Mark 1 opened** (120 by 44), then **View all ›**
+  (62 by 44). **Email reports** is not drawn for a superintendent, as planned.
+- **The row** is 380 by 56 with a press 342 by 44, a blue dot, and a strip under it that reads **Mark opened**.
+- **A short swipe springs back.** At 108 px the strip was grey, `rgb(107, 114, 128)`. Let go, the row went back
+  and nothing was written.
+- **Right and down do nothing to the row.** A 120 px drag right moved it 0 px. A finger moved 200 px along the
+  page scrolled the page and left the row still.
+- **The swipe.** At 112 px the strip read *armed* and had begun to turn blue. Let go, the report left the list.
+  The card read *Nothing new to read. A report lands here when the crew files one.*, the badge went, and a
+  toast read *Marked opened: ZZ Test Walk Project 2026-11-08.* with **Undo**, 55 by 44. One row was written to
+  `report_reads`.
+- **Undo** put the report back as new and took the row out again. Left alone, the toast was gone by 11 seconds.
+- **Opened** sits at the foot, folded, 380 by 44. Opened, it reads *You marked these opened. Mark unread puts
+  one back.* **Mark unread** is 107 by 44 and put the report back as new.
+- **A press on the row opens the report in place.** The address stayed `/dashboard` and no window opened. The
+  row dimmed with a green tick and stayed in the list. Inside were the report's answers, **Job detail** and
+  **Mark unread**. A second press shut it.
+- **A swipe clears an opened row too.** It went to **Opened** and wrote nothing, since its mark was there.
+- **Mark 1 opened** sent the report to **Opened** with one **Undo**, and **Undo** brought it back.
+- **No sideways scroll.** The page was 430 wide in a 430 window throughout.
+
+The marks were the walker's own: four rows written and the same four taken out. The walk ended with the report
+new again and no mark on it.
+
+**Not walked here.** A desk and its **Mark opened** word press. Dark. More than one new report, so **Mark N
+opened** with several and the next row coming up. The 14-day window. The pictures icon. A primary's line. A
+real phone.
+
+**What the walk left on prod.** Three View as records. The deleted report, in Recently deleted. One
+`field_presses` row for the filing, the Sample assistant's. Nothing else.
 
 ## The asks
 
