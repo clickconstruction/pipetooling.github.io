@@ -7,12 +7,16 @@
  * Evidence list with the entry a file sits on, and the Narrative with the summary's stale banner.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, fireEvent, within } from '@testing-library/react'
+import { cleanup, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import PeopleHrTab from './PeopleHrTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { useLocation } from 'react-router-dom'
 
-/** Draws the address, so a test can read what the tab wrote to it. */
+/**
+ * Draws the address, so a test can read what the tab wrote to it. The router writes the address
+ * as a transition, a commit after the state set beside it. A press is flushed whole by
+ * `fireEvent`. A write an effect makes is not, so a case reads it inside `waitFor`.
+ */
 function AddressProbe() {
   const { search } = useLocation()
   return <output data-testid="address">{search}</output>
@@ -190,9 +194,14 @@ describe('PeopleHrTab · the link to one file', () => {
 
   it('an id that matches no one lands on the roster with one plain line', async () => {
     renderWithProviders(<><PeopleHrTab /><AddressProbe /></>, { route: '/people?tab=hr&person=p-nobody' })
-    expect(await screen.findByText('No one you can see matches that link. Pick a person from the list.')).toBeTruthy()
+    const line = 'No one you can see matches that link. Pick a person from the list.'
+    expect(await screen.findByText(line)).toBeTruthy()
     expect(screen.getByText(/Pick a person to open their file/)).toBeTruthy()
     expect(screen.queryByRole('tab', { name: /Timeline \(/ })).toBeNull()
-    expect(screen.getByTestId('address').textContent).toBe('?tab=hr')
+    // The line is drawn one commit before the person leaves the address, so the address is waited for.
+    // A loaded runner read it between the two and turned an unrelated PR red (2026-11-24).
+    await waitFor(() => expect(screen.getByTestId('address').textContent).toBe('?tab=hr'))
+    // The line stays once the address no longer names anyone.
+    expect(screen.getByText(line)).toBeTruthy()
   })
 })
