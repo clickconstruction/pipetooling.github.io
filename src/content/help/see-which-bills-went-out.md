@@ -91,6 +91,7 @@ Each bill's line has a stamp under the amount. The stamp says where the bill sta
 Small words under the stamp say how the bill was paid.
 
 - *Card · Stripe* is a payment the customer made through the pay link.
+- *Bank debit · Stripe* is a payment the customer made through the pay link from a bank account.
 - *Check 4417 · bank deposit* is a check the office matched to a deposit at the bank.
 - *Cash · typed by hand* is a payment someone typed in.
 
@@ -293,7 +294,9 @@ A Stripe payment shows the time the customer paid.
 
 Stripe's own list of payments holds more rows than this chip counts. A bill the office marked paid by check shows there as *Paid out of band*. Leave those rows out when you compare a day with Stripe.
 
-A payment from a bank account takes days to clear. This page puts it on the day it cleared. Stripe's list dates it the day the customer started it. Its words here read *Card · Stripe* too.
+A payment from a bank account takes days to clear. This page puts it on the day it cleared. Stripe's list dates it the day the customer started it.
+
+Its words read *Bank debit · Stripe*. An older payment from a bank account reads *Card · Stripe*.
 
 A day may have no Stripe money. The box says so and offers **Show every way that day**.
 

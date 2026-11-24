@@ -13,6 +13,7 @@ import { parseOobPaymentMetadataFromStripe } from '../_shared/pipetoolingStripeO
 import { lienOfferWriteDown, type LienOfferRow } from '../_shared/lienPayOffer.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { debitFailedCaseArgs, disputeCaseArgs, type StripeCaseArgs } from '../_shared/stripeArCase.ts'
+import { stripePaidMethodArgs } from '../_shared/stripePaidMethod.ts'
 import { loadOpenReturnCases, sendReturnCaseNotice } from '../_shared/arReturnCaseNotify.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 
@@ -167,6 +168,28 @@ async function recordLienOfferWriteDown(admin: SupabaseClient, row: LienOfferWeb
   if (upErr) webhookLog('warn', eventForLog, 'lien offer: taken_at not stored', upErr)
 }
 
+/**
+ * The method the bill was paid by, off the charge that paid it: `card`, `us_bank_account`, and so on. Null when the
+ * invoice names no charge (a bill marked paid outside Stripe has none), the mode has no key, or Stripe does not
+ * answer. Best effort: with no answer the payment is recorded as it always was, and never held up.
+ */
+async function stripePaidMethodType(inv: Stripe.Invoice, eventMode: StripeBillingMode, eventForLog: Pick<Stripe.Event, 'id' | 'type'>): Promise<string | null> {
+  const chargeId = typeof inv.charge === 'string' ? inv.charge : inv.charge?.id
+  const intentId = typeof inv.payment_intent === 'string' ? inv.payment_intent : inv.payment_intent?.id
+  const key = stripeApiKeyForMode(eventMode)
+  if (!key || (!chargeId && !intentId)) return null
+  try {
+    const stripe = new Stripe(key, { apiVersion: '2024-06-20' })
+    if (chargeId) return (await stripe.charges.retrieve(chargeId)).payment_method_details?.type ?? null
+    const intent = await stripe.paymentIntents.retrieve(intentId!, { expand: ['latest_charge'] })
+    const charge = intent.latest_charge
+    return charge && typeof charge === 'object' ? (charge.payment_method_details?.type ?? null) : null
+  } catch (e) {
+    webhookLog('warn', eventForLog, 'paid method not read; the payment is recorded without it', e)
+    return null
+  }
+}
+
 /** `invoice.paid` (classic) and `invoice.payment_succeeded` (newer API / dashboard) — same PipeTooling handling. */
 async function handleStripeInvoicePaidEvent(
   admin: SupabaseClient,
@@ -232,6 +255,15 @@ async function handleStripeInvoicePaidEvent(
     if (oob.p_internal_note) rpcArgs.p_internal_note = oob.p_internal_note
     // v2.4289: who pressed Mark Paid, carried on the invoice's metadata → jobs_ledger_payments.created_by.
     if (oob.p_recorded_by) rpcArgs.p_recorded_by = oob.p_recorded_by
+    // A bill the customer paid from a bank account says so (v2.8428). Asked only when the office did not mark the
+    // bill paid itself, and a card is told as nothing, so a card's row is written exactly as before.
+    if (!oob.p_payment_type && !oob.p_reference_number && !oob.p_internal_note) {
+      const method = stripePaidMethodArgs(await stripePaidMethodType(inv, eventMode, eventForLog), oob)
+      if (method) {
+        rpcArgs.p_payment_type = method.p_payment_type
+        rpcArgs.p_internal_note = method.p_internal_note
+      }
+    }
     const { data: rpcData, error: rpcErr } = await admin.rpc('mark_invoice_paid_from_stripe', rpcArgs)
 
     if (rpcErr) {

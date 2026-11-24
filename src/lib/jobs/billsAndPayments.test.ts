@@ -56,6 +56,12 @@ describe('instrumentWord — the eight spellings of three things', () => {
     expect(instrumentWord('other')).toBeNull()
     expect(instrumentWord(null)).toBeNull()
   })
+  it('reads the type the webhook writes for a bank debit through Stripe, and no office spelling as one', () => {
+    expect(instrumentWord('Bank debit')).toBe('bank debit')
+    expect(instrumentWord(' bank debit ')).toBe('bank debit')
+    // The office's ACH is still ACH, and a deposit's kind is still its own.
+    expect(instrumentWord('ACH')).toBe('ach')
+  })
 })
 
 describe('paymentSource — the chip comes from where the row came from', () => {
@@ -210,6 +216,7 @@ describe('sourceWords — the line in a sentence', () => {
     expect(sourceWords(paymentSource(payment({ mercury_transaction_id: 'mt1' }), null, bankCheck), bankCheck)).toBe('check from Lowbeck Contracting')
     expect(sourceWords(paymentSource(payment({ mercury_transaction_id: 'mt1' }), null, { ...bankCheck, counterparty: null }), { ...bankCheck, counterparty: null })).toBe('check · bank deposit')
     expect(sourceWords(paymentSource(payment({ note: 'Stripe' }), stripeJob))).toBe('card through Stripe')
+    expect(sourceWords(paymentSource(payment({ note: 'Stripe', payment_type: 'Bank debit' }), stripeJob))).toBe('bank debit through Stripe')
     expect(sourceWords(paymentSource(payment({ payment_type: 'check' }), stripeJob))).toBe('check recorded in Stripe')
     expect(sourceWords(paymentSource(payment({ payment_type: 'Cheque' }), null))).toBe('check · typed by hand')
     expect(sourceWords(paymentSource(payment(), null))).toBe('typed by hand')

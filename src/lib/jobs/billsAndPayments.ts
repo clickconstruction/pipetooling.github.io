@@ -46,10 +46,18 @@ const BANK_KIND_WORDS: Record<string, string> = {
   internalTransfer: 'transfer',
 }
 
-/** "Cheque", "Check", "checkDeposit", "Card (external)", "ACH", "In kind" (v2.6816), "other" → one lower-case word, or null. */
+/**
+ * `payment_type` on a bank debit the customer made through Stripe (v2.8428). `stripe-webhook` writes it, from the
+ * paying charge's method, with the note *Stripe*. Before it, such a row had no type and read as a card. The edge
+ * side's `STRIPE_BANK_DEBIT_PAYMENT_TYPE` is the same word; `stripePaidMethod.test.ts` holds the two equal.
+ */
+export const STRIPE_BANK_DEBIT_PAYMENT_TYPE = 'Bank debit'
+
+/** "Cheque", "Check", "checkDeposit", "Card (external)", "ACH", "Bank debit", "In kind" (v2.6816), "other" → one lower-case word, or null. */
 export function instrumentWord(paymentType: string | null | undefined): string | null {
   const t = (paymentType ?? '').trim().toLowerCase()
   if (!t) return null
+  if (t === STRIPE_BANK_DEBIT_PAYMENT_TYPE.toLowerCase()) return 'bank debit'
   if (/che(ck|que)/.test(t)) return 'check'
   if (/card/.test(t)) return 'card'
   if (/wire/.test(t)) return 'wire'
@@ -103,6 +111,8 @@ export function paymentSourceFromFacts(facts: PaymentSourceFacts, bank?: Mercury
   // clears sits on a Stripe bill as a hand-typed row.
   if (facts.stripeOwned) {
     const word = instrumentWord(facts.paymentType)
+    // The customer paid through the pay link from a bank account: Stripe's own payment, like a card, and no card.
+    if (word === 'bank debit') return { kind: 'stripe-card', chip: 'Bank debit · Stripe', instrument: word }
     if (word && word !== 'card') return { kind: 'stripe-recorded', chip: `${cap(word)} · recorded in Stripe`, instrument: word }
     return { kind: 'stripe-card', chip: 'Card · Stripe', instrument: 'card' }
   }
@@ -126,7 +136,7 @@ export function sourceWords(source: PaymentSource, bank?: MercuryDepositFacts | 
     case 'bank':
       return counterparty ? `${source.instrument} from ${counterparty}` : source.chip.toLowerCase()
     case 'stripe-card':
-      return 'card through Stripe'
+      return `${source.instrument} through Stripe`
     case 'stripe-recorded':
       return `${source.instrument} recorded in Stripe`
     default:

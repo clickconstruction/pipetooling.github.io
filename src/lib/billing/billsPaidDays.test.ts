@@ -99,6 +99,8 @@ const lines = billsPaidLines(month)
 describe('billsPaidHowOf', () => {
   it('sorts a payment by how the money came', () => {
     expect(billsPaidHowOf({ note: 'Stripe', paymentType: null, bankTransactionId: null })).toBe('stripe')
+    // A bank debit through Stripe is Stripe's still: the chip counts it, whatever its type says.
+    expect(billsPaidHowOf({ note: 'Stripe', paymentType: 'Bank debit', bankTransactionId: null })).toBe('stripe')
     expect(billsPaidHowOf({ note: null, paymentType: 'checkDeposit', bankTransactionId: 'm1' })).toBe('check')
     expect(billsPaidHowOf({ note: null, paymentType: 'Cheque', bankTransactionId: null })).toBe('check')
     expect(billsPaidHowOf({ note: null, paymentType: 'Cash', bankTransactionId: null })).toBe('cash')
