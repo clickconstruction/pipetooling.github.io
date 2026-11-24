@@ -2,7 +2,7 @@
 name: "Before we start: what has to be true before a stage begins, who said so, and who decided to go"
 number: 382
 group: close
-status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · audited 2026-11-20, six fixes from it (v2.8136 to v2.8178) and six more on Taunya's word (v2.8237, v2.8238, v2.8243, v2.8245, v2.8247, v2.8248) · the faults seen and not fixed are being built on the owner's word of 2026-11-23 (v2.8360 the Schedule look's reading line and the failed push's word, v2.8366 every arrival's No line, v2.8367 Not as told clears on a new yes, v2.8368 the card sends the list it showed, whose migration waits for a go) · left: a live walk on the ZZ job, the dev seat's verb
+status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · audited 2026-11-20, six fixes from it (v2.8136 to v2.8178) and six more on Taunya's word (v2.8237, v2.8238, v2.8243, v2.8245, v2.8247, v2.8248) · the faults seen and not fixed are being built on the owner's word of 2026-11-23 (v2.8360 the Schedule look's reading line and the failed push's word, v2.8366 every arrival's No line, v2.8367 Not as told clears on a new yes, v2.8368 the card sends the list it showed, whose migration waits for a go) · the three live walks were walked on the ZZ job on 2026-11-23 and 2026-11-24, and each holds · left: the dev seat's verb
 summary: >
   For each stage the office writes a short list of things that must be true before the crew goes. It is a
   checklist, and the same checklist in every seat: the office ticks what the customer told it, the GC ticks
@@ -11,9 +11,9 @@ summary: >
   their word, their photo, or we saw it. The decision to send the crew is a press, Go or Hold, with a name
   on it. Every day the customer gives for ready is kept and the days they moved are added up. The owner
   approved the design as a working spike, and named one of its ideas for the whole app: values in place.
-next: Walk Is it as told? on production as two people on the ZZ job, at phone width. The steps and what to see are under Left to do and to walk, in the Audited section.
+next: The dev seat's verb, once the seat has room and the owner says what it reads. The three live walks are done, and what each saw is under Left to do and to walk, in the Audited section.
 size: L as a train of eleven (S · S · S · M · M · S · S · S · M · S · S)
-blocker: none for the walk. The dev seat's verb waits for room under the seat's upload limit and the owner's word on what it reads. The calls left each have a default.
+blocker: the dev seat's verb waits for room under the seat's upload limit and the owner's word on what it reads. The calls left each have a default.
 opinion: build — the owner used it and said he likes all of it; the windows, the GC's page and the stage checklist's editor already exist, and the one thing none of them holds is whether the site will be ready and who said so
 ---
 
@@ -421,8 +421,8 @@ all eleven PRs were on main by 2026-11-21.
   - Two jobs on one part of a site read alike on the Schedule look, since a card names the part and not the job.
   - The Needs you line takes its contact job by job. A site whose GC is named only on the development reads *The
     customer owes us…* there, while the Schedule look names the GC.
-- **Next:** the live walk under *Left to do and to walk*, in the Audited section below. Then the dev seat's verb, once
-  the seat has room and the owner says what it reads.
+- **Next:** the dev seat's verb, once the seat has room and the owner says what it reads. The live walks under
+  *Left to do and to walk*, in the Audited section below, are done.
 - **Built on the defaults.** Each of the nine calls above is built on its default until the owner flips it.
 
 ## Audited 2026-11-20
@@ -465,7 +465,7 @@ and its findings 6 and 8.
 
 ### Left to do and to walk (2026-11-22)
 
-**Walks owed.** None of these has been done on the live site.
+**Walks owed.** All three have been walked on the live site. What each saw is under its item, and what the setup really took is under *Walks 1 and 2 walked*.
 
 1. **Two people on arrival.**
    - Where: `/dashboard` with Job Mode on, on the job *ZZ Test Stages Walk 2026-11-18*. It is the only job on
@@ -488,12 +488,37 @@ and its findings 6 and 8.
    - Why not yet: it needs two sign-ins at once on production. Until 06:14 UTC on 2026-11-22 a No on a ZZ job also
      rang every dispatcher's phone.
    - After: delete every row the walk made, the arrivals, their marks and the Dispatch lines, and name them here.
+   - **Walked on clicktooling.com on 2026-11-24, at 390 px: holds, with four notes.** Three sign-ins at once, each its own headless browser on the live site: the dev as the office, the Sample helper as the first person, the Sample superintendent as the second.
+     The stage was Top Out, with days of Nov 24 and two bullets from them. The helper's phone was light and the superintendent's dark. The office's list was read in both.
+     - **The first No.** The helper pressed **No** on the first bullet and **Tell Dispatch: 1 thing not as told**. His card read *Dispatch has it: 1 thing not as told.*
+       On Documents, Top Out's bar took a red cross and read 50% ready. The line under the bullet read *Sample helper said No on site, Nov 24. It was not as told.*, with the name and the day in red bold, in light and in dark.
+       The other bullet moved under **Has a yes** as *Sample helper, on arrival, Nov 24.*
+     - **Dispatch.** The inbox had one line for the stage. Its window read *Sample helper · Tuesday 12:50 AM · Today · sent on arrival*.
+       No phone rang: `notify-dispatch-request` answered *ZZ test job: nothing sent*, with no push and nobody to send to.
+     - **The second Yes.** The superintendent's card had been open since before the first answer. He pressed **Yes, all as told**. It was refused: *Failed to keep what you found: Sample helper already answered for this stage.* His card then read the list again and left.
+     - **The second No.** He pressed **No** on the bullet the helper saw as a yes, and it was kept as an arrival of its own. His card read *Dispatch has it: 1 thing not as told.*
+       Dispatch had a second line, its window read *Sample superintendent · Tuesday 12:54 AM · Today · sent on arrival*, and again no phone rang.
+       The office then read both bullets open, each with its own red line and its own name.
+     - **The new yes.** The office ticked the first bullet, which read *the customer, told us, Nov 24.* Both people's cards came back and asked about that bullet alone.
+       The helper pressed **Yes, all as told**. It was kept: *Saved: all as told.*, as a third arrival with no line to Dispatch.
+     - Note: the stage was red before the first No, since its day to decide had passed with two bullets open. So the walk saw the red cross and the red line, and did not see the colour turn.
+     - Note: the second No cannot be pressed on the card that was refused, because that card leaves. It was pressed on a second tab of his that had also been open since before the first answer.
+     - Note: the cards came back after a reload. A headless browser never comes back to the front, so a card reading again by itself was not seen.
+     - Note: the two on the card were the two sample accounts and the dev was the office, so nothing was put on the dev's own day.
+     - Seen in passing, not looked into: Jobs → Subs lists JP9309's stage windows under *Unlinked*, each named *Line item*, with no job and no stage name.
+       The job form's Team row drew the two sample accounts by name on one load and by id on the next.
+       For about two minutes near 06:47 UTC all three sign-ins read *Could not reach the app* or *The app is slow right now*. The database had no lock wait and 29 of 160 connections, and a reload cleared it.
 2. **The short Job Mode page as a real superintendent.**
    - Where: `/dashboard` on the Short view with Job Mode on, View as a superintendent on the ZZ job's team.
    - Widths: 390 px, light and dark.
    - What to see: **Is it as told?** above **Open this job**, and one card, not two, with the row open.
    - Why not yet: the dev login never gets the Short page. It was seen on the dev server with the role answered in
      the browser alone.
+   - **Walked on clicktooling.com on 2026-11-24, as the Sample superintendent under View as: holds.** His role and his Short view were both real, and JP9309 was on his day with two bullets to look at on Top Out.
+     At 390 px, in light and in dark, the short page drew one **Is it as told?** card, above **Open this job**. The card ended 741 px down the page and the row began at 755.
+     With the row open, where it reads **This job**, there was still one card, in the same place. Nothing scrolled sideways.
+     The card's heading and its **Yes, all as told** press were both on the first screen of a phone 844 px tall.
+     Each **No** press was 68 by 44 px and **Yes, all as told** was 312 by 48 px.
 3. **The Schedule look on a narrow phone.**
    - Where: the Development page of the ZZ job's site, the Schedule look, as a dev.
    - Widths: 320 and 360 px, then 1280 px, light and dark.
@@ -509,18 +534,34 @@ and its findings 6 and 8.
      - Note: each press is 20 px tall, under the 44 px the app gives most presses.
      - Seen in passing, not looked into: on the line of time, the four rows of JP9309's stages read *JP9309 · ZZ Test Walk Project 2026-11-08*, which is JP1113's name, not JP9309's. The pane blocked the print window, since the click was not a person's tap, and the page said nothing about it.
 
-**Walks 1 and 2 held on 2026-11-23.** Both need a second account on the ZZ job's crew, and the job's crew is the dev alone.
-Nobody else is on its team or has clocked in on it in the last 14 days, which is what `start_checks_crew` reads.
-Putting the Sample helper and the Sample superintendent on its team, and taking them off after, is a write this card does not name, so it waits for a yes.
-Walk 1 also needs two sign-ins at once: the dev on clicktooling.com, and View as on a second origin, a dev server on `main`'s code.
+**Walks 1 and 2 walked on 2026-11-24**, on Diane's yes of that day. They were held on 2026-11-23, since the job's crew was the dev alone.
+The setup the items above name could not work, so this is what it took.
+
+- **Being on the team shows no card.** Job Mode draws **Is it as told?** for the job a person is clocked in on, or the first job on their day. Nobody had ever been either on JP9309.
+- **The job form cannot add a sample account.** Its Team picker lists no sample account, though it can take one off.
+- **The door used.** Under View as, each sample account pressed **+ Add job** on its own My Schedule, for JP9309, today. That one press put the job on their day and put them on its team.
+  No clock-in was used, since a clock-in counts as the job's crew for 14 days.
+- **The Short view.** The Sample superintendent set **Dashboard view** to **Short** in his own Settings for walk 2, and back to **Full** after.
+- **No second origin.** View as signs in on the page it is pressed on. Three headless browsers on clicktooling.com held three sign-ins, with no dev server.
+- **Put back, by the app's own presses.** Each sample account took the job off its day in My Schedule. The dev took both off the team in the job form.
+  The office closed both Dispatch lines with **Reply and close**, took both bullets off the list, and cleared Top Out's days with **Remove the window** on Jobs → Subs.
+- **Read back from the database after.** The job's team is the dev alone. No block is on JP9309 for either sample account, today or later. The Sample superintendent's Dashboard view reads Full.
+  Top Out has no days and reads *No list yet*, and the card asks nothing on the job.
+- **What the app cannot delete** is named by id under *Loose ends*.
 
 Not walkable on purpose: a first read the app refuses, and call C's 14 days. Their render tests and the SQL bed are
 the proof.
 
 **Loose ends.**
 
-- **One test row on production.** Arrival `b23b0b4a-5623-4b01-b6b5-99b6ee37192d` on the ZZ job, from the build's walk
-  on 2026-11-20. It has no Dispatch line. A dev deletes it when the ZZ job is done with.
+- **Test rows on production**, all on the ZZ job. The app has no press that deletes them. A dev deletes them when the ZZ job is done with.
+  - From the build's walk on 2026-11-20: arrival `b23b0b4a-5623-4b01-b6b5-99b6ee37192d` on Rough In. It has no Dispatch line.
+  - From walk 1 on 2026-11-24, on Top Out:
+    - Arrivals `4d0129d7-0a62-4683-a386-984b7f9ed1c5`, `773349f0-c648-45a4-9ede-e74be2e8b0be` and `12a386e4-8e90-419b-a602-8d40e39dfbbf`.
+    - Yeses `5454ff91-8b89-4592-8995-6530ea2290e1` and `502fbf81-ac25-4b54-970c-399662863abe`, both taken back, and `7a538633-98f2-4895-8476-8dfae885a2ac`.
+    - Bullets `37615c17-d6f8-4e91-ad03-7b3460e03e96` and `f7da1c5b-6a4e-4c1a-bc56-d9c333759973`, both taken off the list.
+    - Dispatch lines `eefced07-70cc-4bb9-9bb4-9dd6abf5f3ee` and `db2bef91-b5bb-4ffb-834d-fc76d0ed7ce6`, both closed. Each close kept a reply and one notice for its sender, a sample account with push off, so no phone rang.
+    - Four lines in the schedule's own ledger, `schedule_block_events` 1467 to 1470: each sample account's block added and removed.
 - **Faults seen and not fixed.**
   - ~~The card does not send the list it showed. An answer to what is asked again marks every bullet asked about. A
     card left open while the office adds a bullet, or a new yes, can mark one it never showed.~~ The pick: a third
