@@ -18,6 +18,7 @@ summary: >
   and one count says whether any of it turns into bids. The first build is eight small PRs, all
   built, then two weeks of use before more.
 next: Two weeks of use, then a look at the count on Permits and the pass reasons before anything held is built. The owner's six calls stand on the picks drawn until he overturns one; call 4's pick (a general contractor's lead on the Customers deck) was built last, as v2.6907.
+ask: owner · look · Look at the count on Permits and the pass reasons.
 size: XL as a train of eight (S · M · S · M · S · M · M · S); shipped: PR 1 to 8; left: two weeks of use, then the look at the count
 blocker: None. The owner said build it all on the picks drawn.
 opinion: build the skim small and measure it — PR 2 needs no migration, since Keep and Pass are two of the four verdicts the table already holds, and the count in PR 8 says after a month whether permits become bids or the skim is busywork

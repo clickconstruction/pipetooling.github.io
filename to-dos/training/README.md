@@ -14,6 +14,7 @@ summary: >
   paperwork ones. The first course is the OSHA 30 refresher, 30 lessons plus a final check,
   built from the owner's capture of the ClickSafety course.
 next: The owner reads § Read-through and decides each of the 34 rows, the three ★ first; the switch already stands On for all three courses (a dev's press, 2026-10-18), so the only press left is his, Off if the course is not meant to be live before his correction pass, otherwise none; then the first crew member through a lesson, a week of use and the seven calls at the mock-up's foot; delete this folder once nothing comes up.
+ask: owner · read · Decide each of the 34 doubted facts in the OSHA 30 refresher, the three starred first.
 size: L (six PRs, each S or M; the lesson rewrite into plain words is the biggest single piece)
 blocker: none; the seven calls are built to the drawn leans and each is one constant or one Settings number.
 opinion: build it as drawn; the Dashboard section and the course page are the feature, the rest is wiring the three states into places that already show paperwork state.

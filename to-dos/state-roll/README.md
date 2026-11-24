@@ -13,6 +13,7 @@ summary: >
   the office by hand.
 next: >
   Merge v2.8380 (PR #9511), push its migration, regenerate the types, then arm v2.8390 and walk Everyone and the sheet on the live site. Walk the Our own view too. Then step four: Call this week.
+ask: office · decide · Say whether to press Use the state's date on the real license cards.
 size: L as a train of five (M · M · M · M · S)
 ver: v2.8159 · 8164 · 8198 · 8202 · 8233 · 8317 · 8380 · 8390
 blocker: None. A lawyer's answer is wanted before the first call from the list, which is step four.

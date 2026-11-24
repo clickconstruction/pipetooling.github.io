@@ -14,6 +14,7 @@ summary: >
   for a period. It names them for what they are, marks six sentences for counsel, and stands on
   the hours statement's way of making a PDF. It builds on card #347's ledger and payment window.
 next: counsel's words for sentence 2, then the confirm's switch (`SUB_PAPER_CONFIRM_LIVE`) and a walk on the test sub's page · a walk of the To line's save and of a send in two emails, on the test sub with the mail service's test address
+ask: counsel · decide · Give the words for sentence 2, on a confirmed work statement.
 size: L as a train of seven (S · S · M · S · M · M · M)
 blocker: a real door for a sub with no email waits on Grace's word about the function, since it means a redeploy; PR 7 waits on counsel's words
 opinion: build PR 1 now, it is the paper he asked for and reads rows the Pay view already holds; settle the names before PR 3 prints a number under one; do not let a paper say invoice, receipt or owed until counsel has read the six marked sentences

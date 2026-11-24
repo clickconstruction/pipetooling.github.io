@@ -12,6 +12,7 @@ summary: >
   and task notes alike: the names show as big presses above the keyboard while you type, the tag is marked
   in your words, and one Backspace takes it off. A tag is still only a tap or Enter, never a typed name.
 next: The same walk on a phone: the box on an iPhone and an Android keyboard, and a notice seen to arrive. A job tag's tagged side on a ZZ Test job. Then retire the card.
+ask: anyone · walk · Walk a task note tag on a real phone, with a second person for the notice.
 size: L as a train of six (M · M · M · M · S · S), all six done
 blocker: None. The phone walk needs a real phone, and a second person for the notice.
 opinion: build — a task note reaches nobody today, and #363 already proved the rules on jobs; one new table, the rest reused

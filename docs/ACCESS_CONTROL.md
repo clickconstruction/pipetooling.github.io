@@ -870,6 +870,8 @@ It is `SECURITY DEFINER` over `email_send_log`, a dev's and since v2.6762 the ow
 `punch_list_picks` (one row per to-do slug: pick, note, `updated_by` / `updated_at` stamped by trigger from `auth.uid()`): select / insert / update for `is_master_or_dev()` — the same pair `canOpenPunchList` admits to `/punch-list`;
 no delete policy (a cleared pick is `''`).
 Read-only training mode and the twin write fence apply.
+Since v2.8519 (`20261124191500_punch_list_answers.sql`, punch list #438) `pick` may also be `change` and the row keeps `answers_ask`, the card's question as it read when the pick was made.
+That migration left the policies unchanged.
 
 ### Punch list ticks — a person's claim on a card (v2.8196, `20261121193000_punch_list_ticks.sql`; read by all since v2.8224, `20261122000500_punch_list_claims.sql`)
 

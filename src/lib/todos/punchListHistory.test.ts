@@ -48,7 +48,7 @@ describe('pointsForSize', () => {
   })
 
   it('leaves a pointer card out of the open cards', () => {
-    const doc = (number: number, pointer: boolean) => ({ meta: { name: 'n', number, group: 'ready' as const, status: 's', summary: 's', next: 'n', size: 'M', blocker: 'b', ver: '', opinion: '', pointer, flagged: false, mockupNotRequired: '' } })
+    const doc = (number: number, pointer: boolean) => ({ meta: { name: 'n', number, group: 'ready' as const, status: 's', summary: 's', next: 'n', size: 'M', blocker: 'b', ver: '', opinion: '', pointer, flagged: false, mockupNotRequired: '', ask: null } })
     expect(cardsFromDocs([doc(1, false), doc(2, true)])).toEqual([{ n: 1, g: 'ready', p: 4 }])
   })
 })
