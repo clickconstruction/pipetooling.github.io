@@ -4,7 +4,8 @@ import type { CSSProperties } from 'react'
 export const CONFIRM_PRESS_PHONE_MIN_PX = 44
 
 /**
- * The size of the shared confirm window's two presses (`ConfirmDialogContext`): Cancel and the act.
+ * The size of a confirm window's two presses, Cancel and the act: the shared one
+ * (`ConfirmDialogContext`) and the older `ConfirmDialog` component's plain window.
  * At a desk they keep the look they always had, 35.5 px from their padding and words. At a phone's
  * width (640 px and under) they stand 44 px tall, the words centred, so a thumb lands on them. The
  * colours are the window's own and stay there. Pure.

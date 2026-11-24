@@ -1,4 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
+import { confirmPressSize } from '../lib/confirmDialogPress'
 
 /**
  * Small in-app confirm dialog (v2.1021) — replaces `window.confirm` where a
@@ -9,6 +11,9 @@ import { useEffect, useId, useRef } from 'react'
  * `keep` (v2.7690) is a second way to go ahead that loses nothing, for a question with two ways
  * out: it is drawn in blue over the red press, and the three presses stack, each the width of
  * the window, so no label is cut on a phone.
+ *
+ * The plain window's two presses take the shared confirm's size (`confirmPressSize`, v2.8429): 44 px
+ * tall at a phone's width, the desk look unchanged. The `keep` window keeps its own 44 px at both.
  */
 export default function ConfirmDialog({
   title,
@@ -32,6 +37,9 @@ export default function ConfirmDialog({
 }) {
   const titleId = useId()
   const cancelRef = useRef<HTMLButtonElement>(null)
+  const narrow = useNarrowViewport640()
+  /** 44 px presses at a phone's width, the desk look unchanged (`confirmPressSize`). */
+  const pressSize = confirmPressSize(narrow)
 
   useEffect(() => {
     cancelRef.current?.focus()
@@ -88,14 +96,14 @@ export default function ConfirmDialog({
             ref={cancelRef}
             type="button"
             onClick={onCancel}
-            style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer', ...(keep ? { order: 3, minHeight: 44 } : null) }}
+            style={{ ...pressSize, border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer', ...(keep ? { order: 3, minHeight: 44 } : null) }}
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            style={{ padding: '0.5rem 1rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', ...(keep ? { order: 2, minHeight: 44 } : null) }}
+            style={{ ...pressSize, background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', ...(keep ? { order: 2, minHeight: 44 } : null) }}
           >
             {confirmLabel}
           </button>
