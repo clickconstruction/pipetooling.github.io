@@ -464,7 +464,8 @@ describe('BillsSentLedger', () => {
     expect(printed[0]).toContain('<b>Statement</b> · 12 jobs · Ridgeway Builders')
     expect(printed[0]).not.toContain('Bill 1412-0002')
     fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }))
-    expect(io.saved).toEqual([{ name: expect.stringMatching(/^bills-sent-\d{4}-\d\d-\d\d\.csv$/), type: 'text/csv;charset=utf-8' }])
+    // The file is named for the chip it was saved under.
+    expect(io.saved).toEqual([{ name: expect.stringMatching(/^bills-sent-\d{4}-\d\d-\d\d-statement\.csv$/), type: 'text/csv;charset=utf-8' }])
     fireEvent.change(screen.getByLabelText('Find a bill'), { target: { value: 'nobody here' } })
     expect(screen.queryByRole('button', { name: 'Print' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Download CSV' })).toBeNull()
