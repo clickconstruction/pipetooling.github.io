@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
-import { ABOUT_ALL_JOBS, SEND_LIST_FIRST_ROWS, aboutChoices, aboutJobId, pressName, resendPress, resendTo, shownParties, sendBatch, sendBatchOutcome, sendBox, sendChips, sendStanding, unreadGateWords, type SendParty, type SendRecord } from './send'
+import { ABOUT_ALL_JOBS, SEND_LIST_FIRST_ROWS, aboutChoices, aboutJobId, pressName, resendPress, resendTo, shownParties, sendBatch, sendBatchOutcome, sendBox, sendChips, sendStanding, sentWords, unreadGateWords, type SendParty, type SendRecord } from './send'
 
 /** Made-up trades on a made-up job. */
 const send = (over: Partial<SendRecord> = {}): SendRecord => ({ id: 's1', contactName: 'Ana Pruitt', contactEmail: 'ana@cedarfork.test', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 1, openedOn: null, openedRevision: null, ...over })
@@ -135,6 +135,18 @@ describe('the chips on a row', () => {
       { tone: 'wait', words: 'Sent Nov 12 to Ana Pruitt' },
       { tone: 'ok', words: 'Opened Nov 14' },
     ])
+  })
+
+  it('say how many times it went once it went more than once, with the last day', () => {
+    expect(sentWords(send())).toBe('Sent Nov 12 to Ana Pruitt')
+    // Sent again on the day of the first send: the day is the same, and the row still changes.
+    expect(sentWords(send({ timesSent: 2 }))).toBe('Sent 2 times, last Nov 12 to Ana Pruitt')
+    expect(sentWords(send({ timesSent: 3, sentOn: '2026-11-24' }))).toBe('Sent 3 times, last Nov 24 to Ana Pruitt')
+    expect(sendChips(party({ send: send({ timesSent: 2 }) }), 1, { showAbout: false })).toEqual([
+      { tone: 'wait', words: 'Sent 2 times, last Nov 12 to Ana Pruitt' },
+      { tone: 'warn', words: 'Not opened yet' },
+    ])
+    expect(plainWordsFailures(sentWords(send({ timesSent: 2 })))).toEqual([])
   })
 
   it('say it changed since they opened it, and for a GC what it is about', () => {

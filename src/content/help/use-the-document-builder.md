@@ -140,6 +140,7 @@ One button under the list sends to every GC whose page is on. The button asks fi
 ## Read where a GC's send stands
 
 - {{chip:gray|Sent Nov 20 to Dana Whitlock}} names the day and the person.
+- {{chip:gray|Sent 2 times, last Nov 22 to Dana Whitlock}} shows once it went more than once. The day is the last send's.
 - {{chip:yellow|Not opened yet}} means they have not opened this revision.
 - {{chip:green|Opened Nov 21}} names the day they opened it.
 - {{chip:gray|All their jobs}} or a job's name says what the send is about.

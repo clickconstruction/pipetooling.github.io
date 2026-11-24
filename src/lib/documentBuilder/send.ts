@@ -100,6 +100,16 @@ export function sendStanding(send: SendRecord | null, revision: number): SendSta
   return send.sentRevision >= revision ? 'sent' : 'changed'
 }
 
+/**
+ * The row's first chip: the day it went and who to. A send that went more than once says how many times, and the day
+ * is then the last send's, since the row keeps the last day alone. So *Send it again* on the day of the first send
+ * changes the row: *Sent Nov 23 to Dana Whitlock* becomes *Sent 2 times, last Nov 23 to Dana Whitlock*.
+ */
+export function sentWords(send: SendRecord): string {
+  const day = formatWorkDateYmdMonthDayShort(send.sentOn)
+  return send.timesSent > 1 ? `Sent ${send.timesSent} times, last ${day} to ${send.contactName}` : `Sent ${day} to ${send.contactName}`
+}
+
 /** The chips on a party's row. */
 export function sendChips(party: SendParty, revision: number, opts: { showAbout: boolean }): BuilderChip[] {
   const { send, page } = party
@@ -109,7 +119,7 @@ export function sendChips(party: SendParty, revision: number, opts: { showAbout:
     return []
   }
   const standing = sendStanding(send, revision)
-  const chips: BuilderChip[] = [{ tone: 'wait', words: `Sent ${formatWorkDateYmdMonthDayShort(send.sentOn)} to ${send.contactName}` }]
+  const chips: BuilderChip[] = [{ tone: 'wait', words: sentWords(send) }]
   if (standing === 'sent') chips.push({ tone: 'warn', words: 'Not opened yet' })
   else if (send.openedOn) chips.push({ tone: 'ok', words: `Opened ${formatWorkDateYmdMonthDayShort(send.openedOn)}` })
   if (opts.showAbout) chips.push({ tone: 'wait', words: send.about ?? 'All their jobs' })
