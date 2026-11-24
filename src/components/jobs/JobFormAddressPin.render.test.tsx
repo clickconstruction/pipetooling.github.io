@@ -24,7 +24,7 @@ afterEach(() => {
 
 describe('JobFormAddressPin (v2.4783)', () => {
   it('a whole address pins itself after the pause and says its county and source; Google is one chip away', async () => {
-    db.invoke.mockResolvedValue({ data: { ok: true, address_normalized: 'x', lat: 29.5, lng: -97.9, fromCache: false, source: 'nominatim', county: 'Guadalupe' }, error: null })
+    db.invoke.mockResolvedValue({ data: { ok: true, address_normalized: 'x', lat: 29.5, lng: -97.9, fromCache: false, source: 'google', county: 'Guadalupe' }, error: null })
     db.refresh.mockResolvedValue({ ok: true, address_normalized: 'x', lat: 29.5, lng: -97.9, fromCache: false, source: 'google', county: 'Guadalupe', refreshed: true })
     render(<JobFormAddressPin address="410 TX-123, Seguin, TX 78155" />)
     await waitFor(() => expect(document.querySelector('[data-pin-state="unplaced"]')).not.toBeNull())
@@ -32,7 +32,7 @@ describe('JobFormAddressPin (v2.4783)', () => {
     await waitFor(() => expect(document.querySelector('[data-pin-state="placed"]')).not.toBeNull())
     const line = document.querySelector('[data-job-address-pin]')!
     expect(line.textContent).toContain('Guadalupe County')
-    expect(line.textContent).toContain('pinned from the street map')
+    expect(line.textContent).toContain('pinned by Google')
     fireEvent.click(screen.getByRole('button', { name: 'Not right? Pin from Google' }))
     await waitFor(() => expect(db.refresh).toHaveBeenCalledWith('410 TX-123, Seguin, TX 78155'))
     await waitFor(() => expect(document.querySelector('[data-job-address-pin]')!.textContent).toContain('pinned by Google'))
@@ -78,7 +78,7 @@ describe('JobFormAddressPin (v2.4783)', () => {
 describe('JobFormAddressPin shows to whoever may open /map (v2.4974)', () => {
   it('a controller sees the line and the address is placed through geocode-one', async () => {
     db.role = 'controller'
-    db.invoke.mockResolvedValue({ data: { ok: true, address_normalized: 'x', lat: 29.5, lng: -97.9, fromCache: false, source: 'nominatim', county: 'Guadalupe' }, error: null })
+    db.invoke.mockResolvedValue({ data: { ok: true, address_normalized: 'x', lat: 29.5, lng: -97.9, fromCache: false, source: 'google', county: 'Guadalupe' }, error: null })
     render(<JobFormAddressPin address="410 TX-123, Seguin, TX 78155" />)
     await waitFor(() => expect(db.invoke).toHaveBeenCalledWith('geocode-one', { body: { address: '410 TX-123, Seguin, TX 78155' } }), { timeout: 3000 })
     await waitFor(() => expect(document.querySelector('[data-pin-state="placed"]')).not.toBeNull())

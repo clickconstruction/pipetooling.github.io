@@ -2,7 +2,7 @@
  * US Census Bureau Geocoder (free, no API key, US addresses only).
  * https://geocoding.geo.census.gov/geocoder/
  *
- * Third-tier fallback after Nominatim and Google. Conservative matcher: wants a
+ * The second ask, after Google. Conservative matcher: wants a
  * structured street address (street + city/state or ZIP) and declines rather
  * than guessing, so `not_found` here is common and non-fatal.
  */

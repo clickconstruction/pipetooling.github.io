@@ -2,7 +2,7 @@
  * The memory of an address no map service could place (punch list #408). Pure: no database, no network.
  *
  * `address_geocodes` keeps a point, so it cannot hold an address nobody placed, and every screen that
- * listed such a record asked OpenStreetMap, Google and the Census again on every open. A miss is now
+ * listed such a record asked every map service again on every open. A miss is now
  * kept in `address_geocode_misses` with the day it was checked. `geocode-address-batch` and
  * `geocode-one` read it before they ask and write it when Google and the Census both said *not found*; the screens
  * read it beside the saved points and send only an address that is in neither. This file is the rule
@@ -31,17 +31,15 @@ export type GeocodeMissRow = {
  */
 export type GeocodeServiceSaid = 'not_found' | 'failed' | 'not_asked'
 
-export type GeocodeServicesSaid = { nominatim: GeocodeServiceSaid; google: GeocodeServiceSaid; census: GeocodeServiceSaid }
+export type GeocodeServicesSaid = { google: GeocodeServiceSaid; census: GeocodeServiceSaid }
 
 /**
  * True when Google and the Census each answered and neither found the address: the case worth
  * remembering. Either of them down, refused, over its limit or never asked leaves the address to be
  * asked again on the next open, so an outage cannot mark good addresses for weeks.
  *
- * OpenStreetMap is asked first and is not part of the rule (v2.8484). It is a free service that turns
- * a busy caller away, and on the live site it gave the function no plain answer on 2026-11-24, so the
- * first rule, which waited for all three to say *not found*, kept nothing. When this is reached
- * OpenStreetMap did not place the address either way: it said *not found*, or it did not answer.
+ * These two are the only services asked (punch list #436). OpenStreetMap's lookup was asked first until
+ * then, and was never part of the rule after v2.8484: it turned every call from the functions away.
  */
 export function isSettledGeocodeMiss(said: GeocodeServicesSaid): boolean {
   return said.google === 'not_found' && said.census === 'not_found'

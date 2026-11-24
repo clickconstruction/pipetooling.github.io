@@ -1,7 +1,7 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 
-/** Pacing between Google-only refresh calls (no Nominatim; light throttle). */
+/** Pacing between Google-only refresh calls (a light throttle). */
 export const GOOGLE_ONLY_REFRESH_PACING_MS = 200
 
 export type GeocodeOneOk = {
@@ -10,14 +10,14 @@ export type GeocodeOneOk = {
   lat: number
   lng: number
   fromCache: boolean
-  source?: 'cache' | 'nominatim' | 'google' | 'census'
+  source?: 'cache' | 'google' | 'census'
   refreshed?: true
 }
 export type GeocodeOneFail = { ok: false; address_normalized: string; error: string; detail?: string }
 export type GeocodeOneResponse = GeocodeOneOk | GeocodeOneFail
 
 /**
- * Rerun only Google (skip DB cache and Nominatim). Dev, master, or assistant; same auth as `geocode-one` default.
+ * Rerun only Google (skip the DB cache and the Census). Dev, master, or assistant; same auth as `geocode-one` default.
  * Edge may return 200 with `{ ok: false, ... }` in the body; that is still `data` from invoke (no throw).
  */
 export async function invokeGeocodeOneRefreshGoogleOnly(address: string): Promise<GeocodeOneResponse> {
