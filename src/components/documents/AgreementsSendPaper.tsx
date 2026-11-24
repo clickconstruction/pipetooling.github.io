@@ -1,5 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { paperPressFloor } from '../../lib/documents/agreementsPhonePress'
 import { useToastContext } from '../../contexts/ToastContext'
 import { SEND_A_PAPER_LABEL, papersMatching, sendablePapers } from '../../lib/documents/agreementsSend'
 import { readAgreementsSendBook, type AgreementsSendBook } from '../../lib/documents/agreementsSendIo'
@@ -64,6 +66,8 @@ export function AgreementsSendPaper({
   onOpenLibrary: () => void
 }) {
   const { user } = useAuth()
+  /** A phone: Send a paper stands a fingertip tall. A desk adds nothing. */
+  const pressFloor = paperPressFloor(useNarrowViewport640())
   const { showToast } = useToastContext()
   const [data, setData] = useState<AgreementsSendBook | null>(null)
   const [step, setStep] = useState<Step | null>(null)
@@ -218,7 +222,7 @@ export function AgreementsSendPaper({
 
   return (
     <>
-      <button type="button" style={busy === 'open' ? primaryBusy : primary} disabled={busy != null} onClick={() => void open()}>
+      <button type="button" style={{ ...(busy === 'open' ? primaryBusy : primary), ...pressFloor }} disabled={busy != null} onClick={() => void open()}>
         {busy === 'open' ? 'Opening…' : SEND_A_PAPER_LABEL}
       </button>
       {step?.at === 'paper' ? (

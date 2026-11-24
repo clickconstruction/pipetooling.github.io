@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { AgreementRow, AgreementsQuery } from '../../lib/documents/agreementsLedger'
+import { stubPhoneWidth } from '../../test/phoneWidth'
 import { DocumentsAgreementsTab } from './DocumentsAgreementsTab'
 
 const io = vi.hoisted(() => ({
@@ -194,6 +195,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  stubPhoneWidth(false)
   vi.useRealTimers()
   vi.restoreAllMocks()
 })
@@ -722,5 +724,52 @@ describe('DocumentsAgreementsTab', () => {
     expect((await screen.findByTestId('contract-library')).textContent).toContain('open')
     fireEvent.click(screen.getByRole('button', { name: 'fake close' }))
     await waitFor(() => expect(screen.queryByTestId('contract-library')).toBeNull())
+  })
+})
+
+describe('DocumentsAgreementsTab · the presses on a phone', () => {
+  const off = { job_id: null, job_name: null, job_hcp_number: null, job_click_number: null, job_address: null }
+  /** A signed contract (its name a press, its job a link), a waiting partner paper (its name a link, two acts), and a supply house's paper a dev can take back. */
+  const rows = () => [
+    row({}),
+    row({ id: 'partner_agreement:d2', kind: 'partner_agreement', source_id: 'd2', state: 'waiting', paper_name: 'Referral partner agreement', with_name: 'Bryce Tolland', ...off, facts: { status: 'sent' } }),
+    row({ id: 'supply_house_agreement:p1', kind: 'supply_house_agreement', source_id: 'p1', state: 'waiting', paper_name: 'Mutual secrecy agreement', with_name: 'Tallgrass Supply Co.', ...off, facts: { status: 'sent', party_kind: 'supply_house', signer_name: 'Lena Park' } }),
+  ]
+  /** Every press the tab draws itself: Send a paper is its own file's, and is faked here. */
+  const presses = () => {
+    const tab = screen.getByRole('region', { name: 'Agreements' })
+    const buttons = Array.from(tab.querySelectorAll('button')).filter((b) => b.textContent !== 'Send a paper')
+    return [...buttons, screen.getByRole('link', { name: 'Referral partner agreement' }), screen.getByLabelText('Find an agreement')]
+  }
+
+  it('stands every press 44 px tall at a phone width: a name, an act, a chip, the find box, Contract library and Show more', async () => {
+    stubPhoneWidth(true)
+    io.role = 'dev'
+    io.more = true
+    io.rows = rows()
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    const all = presses()
+    expect(all.map((el) => el.textContent || el.getAttribute('aria-label'))).toEqual(
+      expect.arrayContaining(['Contract library', 'All', 'Sent and signed', 'Residential plumbing contract', 'Referral partner agreement', 'Send again', 'Copy the signing link', 'Take back', 'Show more', 'Find an agreement']),
+    )
+    for (const el of all) expect(`${el.textContent || el.getAttribute('aria-label')}: ${el.style.minHeight}`).toMatch(/: 44px$/)
+    // A name's words sit in the middle of the press, as a button's and as a link's.
+    expect(screen.getByRole('button', { name: 'Residential plumbing contract' }).style.display).toBe('inline-flex')
+    expect(screen.getByRole('link', { name: 'Referral partner agreement' }).style.display).toBe('inline-flex')
+    // A job's name inside the sentence stays the height of its words: growing it is a layout call (v2.8430's fragment).
+    expect(screen.getByRole('link', { name: /^J2418/ }).style.minHeight).toBe('')
+  })
+
+  it('adds no floor at a desk width: the look there is as it was', async () => {
+    stubPhoneWidth(false)
+    io.role = 'dev'
+    io.more = true
+    io.rows = rows()
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    for (const el of presses()) expect(`${el.textContent || el.getAttribute('aria-label')}: ${el.style.minHeight}`).toMatch(/: $/)
+    expect(screen.getByRole('button', { name: 'Residential plumbing contract' }).style.display).toBe('')
+    expect(screen.getByRole('link', { name: 'Referral partner agreement' }).style.display).toBe('inline')
   })
 })

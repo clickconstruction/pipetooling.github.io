@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { AgreementRow, AgreementsQuery } from '../../lib/documents/agreementsLedger'
+import { stubPhoneWidth } from '../../test/phoneWidth'
 import { DocumentsAgreementsTab } from './DocumentsAgreementsTab'
 
 const io = vi.hoisted(() => ({
@@ -119,7 +120,10 @@ beforeEach(() => {
   io.notSent = 0
   io.mounted = []
 })
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  stubPhoneWidth(false)
+})
 
 describe('DocumentsAgreementsTab · an estimator', () => {
   it('draws the chips for the kinds an estimator reads, and leaves the rest out', async () => {
@@ -241,5 +245,32 @@ describe('DocumentsAgreementsTab · an estimator', () => {
     expect(screen.getByRole('button', { name: 'Site secrecy agreement' })).toBeTruthy()
     expect(screen.getAllByRole('link', { name: /J1042/ }).length).toBeGreaterThan(0)
     expect(io.asks[0]).toEqual({ kind: 'all', reader: 'office' })
+  })
+})
+
+describe('DocumentsAgreementsTab · an estimator on a phone', () => {
+  it('stands a signed line’s name and every chip 44 px tall at a phone width (the press measured 24 on 2026-11-24)', async () => {
+    stubPhoneWidth(true)
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await screen.findAllByTestId('documents-agreements-row')
+    const name = screen.getByRole('button', { name: 'Site secrecy agreement' })
+    expect(name.style.minHeight).toBe('44px')
+    expect(name.style.display).toBe('inline-flex')
+    const buttons = Array.from(screen.getByRole('region', { name: 'Agreements' }).querySelectorAll('button'))
+    // Three kind chips, four state chips and the one signed name: an estimator's tab has no other press.
+    expect(buttons).toHaveLength(8)
+    for (const b of buttons) expect(`${b.textContent}: ${b.style.minHeight}`).toMatch(/: 44px$/)
+    // The press still opens the signed record.
+    fireEvent.click(name)
+    await screen.findByTestId('signed-record-window')
+    expect(io.signedRecord).toEqual([{ documentId: 'd2', addToList: false }])
+  })
+
+  it('adds no floor at a desk width', async () => {
+    stubPhoneWidth(false)
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await screen.findAllByTestId('documents-agreements-row')
+    for (const b of Array.from(screen.getByRole('region', { name: 'Agreements' }).querySelectorAll('button'))) expect(`${b.textContent}: ${b.style.minHeight}`).toMatch(/: $/)
+    expect(screen.getByRole('button', { name: 'Site secrecy agreement' }).style.display).toBe('')
   })
 })

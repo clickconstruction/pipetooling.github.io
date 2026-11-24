@@ -3,6 +3,8 @@ import { PARTY_CHIPS, partyFindAsksCustomers, partyFindHint, partyRows, type Par
 import { readPartyShortLists, searchPartyCustomers, type PartyShortLists } from '../../lib/documents/paperPartyIo'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { paperChipFloor, partyPickerClosePress } from '../../lib/documents/agreementsPhonePress'
 
 /**
  * Send a paper's second window: **Who is it with?** (punch list #403, step 3). It finds a person or a company: the
@@ -11,6 +13,8 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
  *
  * The short lists are read once when the window opens. A customer is asked of the database as the office types, once
  * the typing rests. Nothing is written here. People → Contracts keeps its own roster picker.
+ *
+ * On a phone the × is a thumb's square and each chip stands a fingertip tall (`lib/documents/agreementsPhonePress.ts`).
  */
 
 const TAG: Record<PartyRow['tone'], CSSProperties> = {
@@ -37,6 +41,8 @@ export function PaperPartyPicker({
   onPick: (pick: PartyPick) => void
   onClose: () => void
 }) {
+  const narrow = useNarrowViewport640()
+  const chipFloor = paperChipFloor(narrow)
   const [typed, setTyped] = useState('')
   const [chip, setChip] = useState<PartyChip>('all')
   const [short, setShort] = useState<PartyShortLists | null>(null)
@@ -114,7 +120,7 @@ export function PaperPartyPicker({
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
           <h3 style={{ margin: 0, fontSize: '1rem', lineHeight: 1.35 }}>Send {documentName}</h3>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ padding: '0.1rem 0.3rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.15rem', lineHeight: 1, color: 'var(--text-muted)', flexShrink: 0 }}>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ padding: '0.1rem 0.3rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.15rem', lineHeight: 1, color: 'var(--text-muted)', flexShrink: 0, ...partyPickerClosePress(narrow) }}>
             ×
           </button>
         </div>
@@ -130,7 +136,7 @@ export function PaperPartyPicker({
         />
         <div role="group" aria-label="Who to list" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', margin: '0.5rem 0 0.35rem' }}>
           {PARTY_CHIPS.map((c) => (
-            <button key={c.key} type="button" aria-pressed={chip === c.key} style={chip === c.key ? chipOn : chipBase} onClick={() => setChip(c.key)}>
+            <button key={c.key} type="button" aria-pressed={chip === c.key} style={{ ...(chip === c.key ? chipOn : chipBase), ...chipFloor }} onClick={() => setChip(c.key)}>
               {c.label}
             </button>
           ))}
