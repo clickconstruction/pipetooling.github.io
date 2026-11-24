@@ -917,6 +917,10 @@ verify_jwt = false
 [functions.open-test-report-pdf]
 verify_jwt = false
 
+# A job's paper as a sample (punch list #389, step 5): the portal token + a required paper's id → the paper for that job's settings as a PDF, with made-up names and SAMPLE across each page. No auth; the link is the capability, and only for the GC on that job.
+[functions.open-job-paper-sample]
+verify_jwt = false
+
 # Dial B (v2.3316): pg_cron every 10 minutes → sends hydrostatic PASS drafts whose job has a Stripe bill and a GC email; X-Cron-Secret in the function.
 [functions.auto-send-test-reports]
 verify_jwt = false

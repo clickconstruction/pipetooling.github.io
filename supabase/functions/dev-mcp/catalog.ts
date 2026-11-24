@@ -2268,6 +2268,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "notify-note-tag",
   "notify-team-lead-clock",
   "open-contract-form-pdf",
+  "open-job-paper-sample",
   "open-submittal-pdf",
   "open-test-report-pdf",
   "owner-confirm-nightly",

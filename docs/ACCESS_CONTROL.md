@@ -2125,6 +2125,8 @@ A locked job is found by its number and never by its name, its address or its de
 **What a GC reads about a job's papers** (v2.8503, `20261124160000_job_papers_gc_page.sql`): `job_papers_gc_page(job ids)` runs for the service role alone, for the `customer-portal` function, and only for the jobs a link's customer is the GC on.
 It answers a count over the office's own roster and each sub business by name, and never a helper's, a crew member's or an office person's name.
 The roster's body is `job_papers_roster_now`, granted to nobody, and `job_papers_roster` stays the office's alone.
+**A job's sample** (v2.8506, `open-job-paper-sample`) opens with no login for the GC on that job alone: the portal link must show their GC jobs, and the paper must be one that job requires now.
+It carries a made-up job and signer, and every other paper answers one refusal.
 The edge functions that read a job with the service key ask them through `_shared/jobPapersLock.ts`: `plan-set-files`, `drive-link`, the four push functions and `schedule-share-dispatch`.
 A person locked out of a job gets no push that names it, and their schedule email shows its number and time only.
 The guard fails open: a read that fails reads as not locked, so a notice on a job that requires nothing is never stopped.
