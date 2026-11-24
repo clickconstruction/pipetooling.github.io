@@ -72,6 +72,10 @@ Under the map, each changed page has two presses.
 
 1. Read the list of what changed.
 2. Press the blue button on the bar. It names the revision, like {{button:blue|Publish revision 3}}.
+3. Read the window that opens. The window says who sees the new revision.
+4. Press **Publish revision 3** in the window to publish. Press **Not yet** to keep the draft as a draft.
+
+A publish cannot be taken back. A later revision can only replace it.
 
 A list **Before this can be published** shows while something is missing. Fix each line and the button wakes.
 

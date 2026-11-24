@@ -2,7 +2,7 @@
  * A walked builder, open in the Document builder tab (punch list #404, step 7): the Sub NDA. Two sides. On the right,
  * what a GC sees: the flow, where every piece of words is a field a dev presses and types over. On the left, the map
  * (a row a topic, a column a level), the pages changed since the published revision with the way back, and the press
- * that publishes the draft as the next revision. Under them, the builder's link (step 8): switched on, anyone who holds
+ * that publishes the draft as the next revision, which asks first since a publish cannot be taken back. Under them, the builder's link (step 8): switched on, anyone who holds
  * it walks the published revision at `/d/<code>`, look only.
  *
  * A change is to the draft, saved a moment after the typing rests. Nobody outside sees a draft. No clause wording is
@@ -10,6 +10,7 @@
  * `lib/documentBuilder/paperEdit.ts`.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import type { BuilderChip, BuilderChipTone, DocumentBuilderEntry } from '../../lib/documentBuilder/builders'
 import { DOCUMENT_BUILDER_WORDS as WORDS } from '../../lib/documentBuilder/builders'
@@ -18,7 +19,7 @@ import type { PaperDef } from '../../lib/documentBuilder/documentBuilder'
 import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
 import { walkedLinkCardWords } from '../../lib/documentBuilder/linkPage'
 import { movedOnWords } from '../../lib/documentBuilder/movedOn'
-import { changedPages, isPathChanged, mapRows, pageName, pageOpens, revertPage, walkedNote, walkedPublishPress, withPaperLine, withPaperWords, withoutPaperLine } from '../../lib/documentBuilder/paperEdit'
+import { changedPages, isPathChanged, mapRows, pageName, pageOpens, revertPage, walkedNote, walkedPublishConfirm, walkedPublishPress, withPaperLine, withPaperWords, withoutPaperLine } from '../../lib/documentBuilder/paperEdit'
 import { readPress } from '../../lib/documentBuilder/sheetScreen'
 import * as defaultIo from '../../lib/documentBuilder/sheetsIo'
 import type { BuilderRecord } from '../../lib/documentBuilder/standing'
@@ -80,6 +81,7 @@ function Chip({ chip }: { chip: BuilderChip }) {
 }
 
 export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = defaultIo, linkIo = BUILDER_LINK_CARD_IO }: Props) {
+  const confirmDialog = useConfirmDialog()
   const [draft, setDraft] = useState<PaperDef>(def)
   const draftRef = useRef(draft)
   draftRef.current = draft
@@ -183,6 +185,10 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
   }
   const publish = async () => {
     if (busy || holdRef.current) return
+    // A dead press opens no window. A live one asks first: a publish cannot be taken back.
+    if (walkedPublishPress(draftRef.current, rec).dead) return
+    if (!(await confirmDialog(walkedPublishConfirm(rec)))) return
+    if (holdRef.current) return
     setBusy(true)
     setRefusal(null)
     await flush()

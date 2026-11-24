@@ -6,7 +6,7 @@
  * the made-up paper's.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { ConfirmDialogProvider } from '../../contexts/ConfirmDialogContext'
 import { DOCUMENT_BUILDERS } from '../../lib/documentBuilder/builders'
 import type { PaperDef } from '../../lib/documentBuilder/documentBuilder'
@@ -118,6 +118,7 @@ describe('WalkedBuilder, when the builder moved on somewhere else', () => {
     draw({ publishBuilder })
     type('A title typed on this page')
     fireEvent.click(screen.getByRole('button', { name: 'Publish revision 3' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Publish revision 3' })).getByRole('button', { name: 'Publish revision 3' }))
     expect(await screen.findByText(PANEL, undefined, { timeout: 3000 })).toBeTruthy()
     expect(screen.getByText('Revision 3 was published after this page read it.')).toBeTruthy()
     // The draft was saved first, naming the number it read, and the publish named the number that save left.
