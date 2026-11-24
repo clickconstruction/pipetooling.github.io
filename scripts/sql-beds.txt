@@ -18,6 +18,7 @@ gc-change-orders-from-messages
 gc-award
 pay-applications
 gc-back-charges
+gc-take-award-back
 lien-claim
 lien-hand-day
 lien-bill-months
@@ -172,4 +173,3 @@ working-hours
 stripe-paid-day
 license-roll-notes
 people-hours-recorded
-gc-take-award-back
