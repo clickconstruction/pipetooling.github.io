@@ -160,6 +160,7 @@ import {
   BILL_CUSTOMER_PHYSICAL_DATE_LINK_BUTTON_STYLE,
   BILL_CUSTOMER_TEXTAREA_STYLE,
 } from './billCustomerStyles'
+import { MoneyText } from '../Money'
 
 export type { JobBillingContext }
 export type { SendRecordInvoicePayload }
@@ -2338,9 +2339,9 @@ export default function SendRecordInvoiceModal({
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} · {job.job_name ?? '—'}
               {invoice
-                ? ` · RTB $${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                ? <MoneyText text={` · RTB $${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
                 : kind === 'job' && ensuredInvoice && !ensureLoading && !ensureError
-                  ? ` · RTB $${Number(ensuredInvoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                  ? <MoneyText text={` · RTB $${Number(ensuredInvoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
                   : ''}
             </p>
           </div>
@@ -3052,11 +3053,10 @@ export default function SendRecordInvoiceModal({
                     {foldedFeeLines.length > 0 ? (
                       <p style={{ margin: '0 0 0.5rem' }}>
                         <strong>
-                          ☣ This bill includes {foldedFeeLines.length === 1 ? 'a hazmat fee' : 'hazmat fees'} ($
-                          {hazmatRollInTotalDollars(foldedFeeLines).toLocaleString('en-US', {
+                          ☣ This bill includes {foldedFeeLines.length === 1 ? 'a hazmat fee' : 'hazmat fees'} (<MoneyText text={`$${hazmatRollInTotalDollars(foldedFeeLines).toLocaleString('en-US', {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
-                          })}
+                          })}`} />
                           )
                         </strong>{' '}
                         — already part of the amount above.{' '}
@@ -3111,11 +3111,10 @@ export default function SendRecordInvoiceModal({
                     />
                     <span>
                       <strong>
-                        ☣ Include hazmat fee ($
-                        {hazmatRollInTotalDollars(hazmatRollInLines).toLocaleString('en-US', {
+                        ☣ Include hazmat fee (<MoneyText text={`$${hazmatRollInTotalDollars(hazmatRollInLines).toLocaleString('en-US', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
-                        })}
+                        })}`} />
                         ) as a line item
                       </strong>{' '}
                       — the unsent biohazard fee bill folds into this invoice as its own labeled line and the
@@ -3125,11 +3124,10 @@ export default function SendRecordInvoiceModal({
                           {' '}
                           Invoice total becomes{' '}
                           <strong>
-                            $
-                            {(Number(billAmountStr) + hazmatRollInTotalDollars(hazmatRollInLines)).toLocaleString(
+                            <MoneyText text={`$${(Number(billAmountStr) + hazmatRollInTotalDollars(hazmatRollInLines)).toLocaleString(
                               'en-US',
                               { minimumFractionDigits: 2, maximumFractionDigits: 2 },
-                            )}
+                            )}`} />
                           </strong>
                           .
                         </>

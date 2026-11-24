@@ -7,7 +7,6 @@ import {
   type BilledBreakdownBill,
 } from '../../lib/jobs/billedByCustomerBreakdown'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { formatCurrency } from '../../lib/format'
 import { stripTrailingZip } from '../../lib/displayAddress'
 import ViewBillWithPdfTail from './ViewBillWithPdfTail'
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
@@ -17,6 +16,7 @@ import { addPaymentChaseTouch } from '../../lib/jobs/paymentChaseIo'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { UserRole } from '../../hooks/useAuth'
 import { EmptyState } from '../EmptyState'
+import { Money } from '../Money'
 
 /**
  * WAITING ON CUSTOMERS → "Who owes what" (v2.1929): the Billed Awaiting
@@ -295,7 +295,7 @@ function BillCard({
             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-700)' }}>
               {/* Wrap, don't ellipsize: nowrap min-content widens the host table past the modal. */}
               <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{l.label}</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>${formatCurrency(l.amount)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}><Money amount={l.amount} /></span>
             </div>
           ))}
         </div>

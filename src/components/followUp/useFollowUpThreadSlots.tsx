@@ -12,7 +12,7 @@
  * Since v2.8255 a day they said in their own text or voicemail is drawn beside the press, and the sheet opens with it
  * filled in (`heardDayOnLine`).
  */
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { Contact } from '../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../lib/messages/thread'
 import { useOptionalToastContext } from '../../contexts/ToastContext'
@@ -52,6 +52,25 @@ import {
   type WordLanding,
 } from '../../lib/messages/wordFromLine'
 import { loadCustomerMoneyLines } from '../../lib/messages/wordFromLineIo'
+import {
+  ANOTHER_DAY_TIP,
+  ANOTHER_DAY_TYPED,
+  defaultWrites,
+  heardChoiceOnLine,
+  heardChoiceWords,
+  heardLineState,
+  heardMarkWords,
+  heardWrittenToast,
+  JUST_TALK_PRESS,
+  JUST_TALK_TIP,
+  JUST_TALK_TOAST,
+  lineTakesChoice,
+  type HeardChoice,
+  type HeardChoiceLine,
+  type HeardMark,
+} from '../../lib/messages/heardChoice'
+import type { PromisePerson } from '../../lib/messages/promises'
+import { ANOTHER_DAY } from '../../lib/messages/voicemailRead'
 import type { BidMoneyLine } from '../../lib/bids/bidMoneyLine'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import SetPromisedPayDateModal, { type PromiseSheetWord } from '../jobs/SetPromisedPayDateModal'
@@ -60,6 +79,7 @@ import { Chip } from '../gc/gcUi'
 import type { ThreadMenuRow, ThreadSlots } from '../gc/messages/threadSlots'
 import { useMessagesReread } from '../gc/messages/useMessagesReread'
 import { useThreadWindow } from '../gc/messages/useThreadWindow'
+import { DayPicker } from './DayPicker'
 import { OwedStrip } from './OwedStrip'
 import { WhoHasItPill } from './WhoHasItPill'
 
@@ -84,6 +104,11 @@ export function prefersStanding(prefers: string | null | undefined): 'text' | 'e
 export type FollowUpThreadSlots = Pick<ThreadSlots, 'headerRight' | 'statusRow' | 'menuRows' | 'aboveBox' | 'underLine' | 'court'>
 
 const quiet = { border: '1px solid var(--border)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', padding: '0.1rem 0.55rem' } as const
+
+/** A contact as the choice reads them: their kind, their names, their company and trade. */
+function personOf(c: Contact): PromisePerson {
+  return { kind: c.kind, name: c.name, goesBy: c.goesBy, company: c.company || null, trade: c.trade ?? null }
+}
 
 /** For a smoke: the customer's jobs as money lines, in place of the read. */
 export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLines: (customerId: string) => Promise<BidMoneyLine[]> = loadCustomerMoneyLines): FollowUpThreadSlots {
@@ -110,6 +135,8 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
   const asked = useRef<string | null>(null)
   // The word from a line (v2.5649): the line pressed, where it lands, and the sheet once a job is picked.
   const [word, setWord] = useState<{ messageId: string; landing: WordLanding; sheet: BidMoneyLine | null } | null>(null)
+  // A voicemail's Another day (punch list #421): the line, the day the office picked, and whether the picker is open.
+  const [another, setAnother] = useState<{ messageId: string; ymd: string | null; picking: boolean } | null>(null)
 
   const load = useCallback(async () => {
     asked.current = on ? contactId : null
@@ -129,6 +156,7 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
   useEffect(() => {
     setOwedOpen(false)
     setWord(null)
+    setAnother(null)
     return () => {
       owedStore.cancel(contactId)
       owedStore.unpublish(contactId)
@@ -165,6 +193,9 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
   }, [rows, contactId, owed])
   // Whose move it is, from the same read (punch list #140 PR 7): what we owe and a written promise's day, for the chip.
   const court = useMemo(() => (rows && contactId ? (courtFactsFromRows(rows.owed, rows.promises, todayYmdInAppTz()).get(contactId) ?? null) : null), [rows, contactId])
+
+  // What each of their lines' days was said to be (punch list #421), by line.
+  const marks = new Map<string, HeardMark>((rows?.heard ?? []).map((r) => [r.message_id, { kind: r.kind, state: r.state, day: r.day, writes: r.writes }]))
 
   if (!on || !rows || !toasts) return {}
   const { showToast } = toasts
@@ -227,77 +258,151 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
         ]
       : []
 
+  /** The word from a line (v2.5649): the customer's jobs read, then the sheet on one, a pick, or the words for none. */
+  const wordPress = async (m: ThreadMessage, c: Contact) => {
+    if (!c.customerId) return
+    setPressing(`word ${m.id}`)
+    try {
+      const landing = wordLanding(await loadLines(c.customerId), m.jobId ?? null)
+      if (landing.kind === 'none') showToast(landing.words, 'info')
+      else setWord({ messageId: m.id, landing, sheet: landing.kind === 'job' ? landing.line : null })
+    } finally {
+      setPressing(null)
+    }
+  }
+  /** Under a customer's line: the pick among their jobs while one is asked, else `face`, and the sheet once a job is picked. */
+  const wordArea = (m: ThreadMessage, c: Contact, offer: { ymd: string; label: string; from: 'text' | 'voicemail' } | null, face: ReactNode) => {
+    const open = word?.messageId === m.id ? word : null
+    return (
+      <span key={`word-${m.id}`} data-word-from-line={m.id} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+        {open?.landing.kind === 'pick' && !open.sheet ? (
+          <>
+            {WORD_PICK_WORDS}
+            {open.landing.lines.map((l) => (
+              <button key={l.job.id} type="button" style={quiet} onClick={() => setWord({ ...open, sheet: l })}>
+                {jobLabelOf(l)}
+              </button>
+            ))}
+            <button type="button" style={{ ...quiet, border: 'none' }} onClick={() => setWord(null)}>
+              Never mind
+            </button>
+          </>
+        ) : (
+          face
+        )}
+        {open?.sheet ? (
+          <SetPromisedPayDateModal
+            jobId={open.sheet.job.id}
+            jobLabel={jobLabelOf(open.sheet)}
+            initialYmd={open.sheet.promise && open.sheet.promise.kind !== 'paid_claim' ? open.sheet.promise.promisedYmd : null}
+            heardYmd={offer?.ymd ?? null}
+            contextLine={offer ? heardDaySheetLine(offer) : null}
+            initialSaidBy={c.name}
+            initialChannel={wordChannel(m.channel)}
+            onClose={() => setWord(null)}
+            onSaved={() => reread()}
+            onWord={(said) => void markLine(m.id, said, c.customerId ?? null)}
+          />
+        ) : null}
+      </span>
+    )
+  }
+  /** A heard day written as a kind, or as just talk with no choice, in one press (punch list #421). */
+  const writeHeard = (m: ThreadMessage, choice: HeardChoice | null, ymd: string) => {
+    const write = io.writeDownHeard
+    if (!write) return
+    const writes = choice ? defaultWrites(choice.kind) : null
+    void press(`heard ${m.id}`, () => write(m.id, choice?.kind ?? null, ymd, writes), choice ? heardWrittenToast(choice.kind, writes, ymd) : JUST_TALK_TOAST).then(() => setAnother(null))
+  }
+  /** The choice under a line: the day, a press for each kind by who they are, just talk, and a voicemail's Another day. */
+  const choiceFace = (m: ThreadMessage, c: Contact, heard: HeardChoiceLine, picking: boolean) => {
+    const busy = pressing === `heard ${m.id}` || pressing === `word ${m.id}`
+    return (
+      <span key={`heard-${m.id}`} data-heard-choice={heard.ymd} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+        <span>
+          <ValueSentence text={heardChoiceWords(heard.label)} />
+        </span>
+        {heard.choices.map((h) => (
+          <button key={h.kind} type="button" style={quiet} disabled={busy} title={h.tip} onClick={() => (h.opens === 'sheet' ? void wordPress(m, c) : writeHeard(m, h, heard.ymd))}>
+            {h.label}
+          </button>
+        ))}
+        <button type="button" style={{ ...quiet, borderStyle: 'dashed' }} disabled={busy} title={JUST_TALK_TIP} onClick={() => writeHeard(m, null, heard.ymd)}>
+          {JUST_TALK_PRESS}
+        </button>
+        {heard.anotherDay ? (
+          <button type="button" style={{ ...quiet, border: 'none', textDecoration: 'underline' }} aria-expanded={picking} title={ANOTHER_DAY_TIP} onClick={() => setAnother({ messageId: m.id, ymd: another?.messageId === m.id ? another.ymd : null, picking: !picking })}>
+            {ANOTHER_DAY}
+          </button>
+        ) : null}
+        {picking ? (
+          <span data-heard-another-day style={{ flexBasis: '100%' }}>
+            <DayPicker
+              todayYmd={todayYmd}
+              chosen={{ ymd: heard.ymd, words: null }}
+              onPick={(d) => {
+                if (d.ymd) setAnother({ messageId: m.id, ymd: d.ymd, picking: false })
+              }}
+              typedLabel={ANOTHER_DAY_TYPED}
+            />
+          </span>
+        ) : null}
+      </span>
+    )
+  }
+
   return {
     // The move line reads the state too (v2.7029): a Done conversation whose last word is theirs waits on nobody.
     court: (c) => (mine(c.id) ? { ...(court ?? {}), closed: stateToday(followUpContactOf(c, rows.contact, userNames), todayYmd) === 'done' } : null),
     // Calls (v2.5596): under a text we sent a customer today, the quiet ask, until a call to them waits.
     underLine: (m, c) => {
       if (!mine(c.id)) return null
+      // A day was heard (punch list #421): under their own text or voicemail naming a day still ahead, one press says what
+      // the day is a promise of. A line already said draws its words instead; just talk draws nothing of its own.
+      const mark = lineTakesChoice(m, c) ? (marks.get(m.id) ?? null) : null
+      const lineState = heardLineState(mark)
+      if (lineState === 'written' && mark) {
+        const words = heardMarkWords(mark)
+        return words ? (
+          <span key={`heard-${m.id}`} data-heard-written={m.id} style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            <ValueSentence text={words} />
+          </span>
+        ) : null
+      }
+      const picked = another?.messageId === m.id ? another : null
+      const heard = io.writeDownHeard && lineState === 'choice' ? heardChoiceOnLine(m, personOf(c), null, new Date(), picked?.ymd ?? null) : null
+      const choice = heard ? choiceFace(m, c, heard, picked?.picking ?? false) : null
       // The word from their line (v2.5649): under a customer's own call, voicemail, text or email.
       if (lineTakesWord(m, c)) {
-        const open = word?.messageId === m.id ? word : null
         // The day they said (v2.8255): read from their own text or voicemail, offered to the sheet, never written here.
-        const heard = heardDayOnLine(m, c, new Date())
-        const press = async () => {
-          if (!c.customerId) return
-          setPressing(`word ${m.id}`)
-          try {
-            const landing = wordLanding(await loadLines(c.customerId), m.jobId ?? null)
-            if (landing.kind === 'none') showToast(landing.words, 'info')
-            else setWord({ messageId: m.id, landing, sheet: landing.kind === 'job' ? landing.line : null })
-          } finally {
-            setPressing(null)
-          }
-        }
-        return (
-          <span key={`word-${m.id}`} data-word-from-line={m.id} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            {open?.landing.kind === 'pick' && !open.sheet ? (
-              <>
-                {WORD_PICK_WORDS}
-                {open.landing.lines.map((l) => (
-                  <button key={l.job.id} type="button" style={quiet} onClick={() => setWord({ ...open, sheet: l })}>
-                    {jobLabelOf(l)}
-                  </button>
-                ))}
-                <button type="button" style={{ ...quiet, border: 'none' }} onClick={() => setWord(null)}>
-                  Never mind
-                </button>
-              </>
-            ) : (
-              <>
-                {heard ? (
-                  <span data-heard-day={heard.ymd}>
-                    <ValueSentence text={heardDayWords(heard)} />
-                  </span>
-                ) : null}
-                <button
-                  type="button"
-                  style={quiet}
-                  disabled={pressing === `word ${m.id}`}
-                  onClick={() => void press()}
-                  title={heard ? heardDayTip(heard) : 'A day they will pay by, or that they say they paid, written on the job'}
-                >
-                  {WORD_PRESS}
-                </button>
-              </>
-            )}
-            {open?.sheet ? (
-              <SetPromisedPayDateModal
-                jobId={open.sheet.job.id}
-                jobLabel={jobLabelOf(open.sheet)}
-                initialYmd={open.sheet.promise && open.sheet.promise.kind !== 'paid_claim' ? open.sheet.promise.promisedYmd : null}
-                heardYmd={heard?.ymd ?? null}
-                contextLine={heard ? heardDaySheetLine(heard) : null}
-                initialSaidBy={c.name}
-                initialChannel={wordChannel(m.channel)}
-                onClose={() => setWord(null)}
-                onSaved={() => reread()}
-                onWord={(said) => void markLine(m.id, said, c.customerId ?? null)}
-              />
-            ) : null}
-          </span>
+        // With the choice drawn, A payment is the press, and the day the office picked is the one the sheet opens on.
+        const said = heardDayOnLine(m, c, new Date())
+        const offer = heard ? { ymd: heard.ymd, label: heard.label, from: heard.from } : said
+        return wordArea(
+          m,
+          c,
+          offer,
+          choice ?? (
+            <>
+              {said ? (
+                <span data-heard-day={said.ymd}>
+                  <ValueSentence text={heardDayWords(said)} />
+                </span>
+              ) : null}
+              <button
+                type="button"
+                style={quiet}
+                disabled={pressing === `word ${m.id}`}
+                onClick={() => void wordPress(m, c)}
+                title={said ? heardDayTip(said) : 'A day they will pay by, or that they say they paid, written on the job'}
+              >
+                {WORD_PRESS}
+              </button>
+            </>
+          ),
         )
       }
+      if (choice) return choice
       if (c.kind !== 'customer' || m.direction !== 'out' || m.channel !== 'text') return null
       if (todayYmdInAppTz(new Date(m.at)) !== todayYmd || (rows.calls ?? []).length > 0) return null
       const first = callFirst(c)

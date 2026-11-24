@@ -1,5 +1,6 @@
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { claimWords, promiseSaidLine, type PaymentPromise } from '../../lib/jobs/paymentPromises'
+import { MoneyText } from '../Money'
 
 /**
  * The words on record for one bill, under "Write down their word": the day named,
@@ -37,7 +38,7 @@ export default function PromiseRecordList({
             <li key={p.id} data-testid="promise-record-row" style={{ fontSize: '0.8125rem' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem' }}>
                 <span style={{ flex: 1, fontWeight: 600, color: onBoard ? 'var(--text-green-800)' : 'inherit' }}>
-                  {claim ? `Says paid ${formatYmdMonthDay(p.promisedYmd)} \u00b7 ${claimWords(p)}` : formatYmdMonthDay(p.promisedYmd)}
+                  {claim ? <MoneyText text={`Says paid ${formatYmdMonthDay(p.promisedYmd)} \u00b7 ${claimWords(p)}`} /> : formatYmdMonthDay(p.promisedYmd)}
                   {onBoard ? <span style={{ fontWeight: 400, fontSize: '0.72rem' }}> · on the board</span> : null}
                 </span>
                 <button

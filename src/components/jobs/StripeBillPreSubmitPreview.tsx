@@ -4,6 +4,7 @@ import { anyLineSegmentsStartWithLowercase } from '../../lib/invoiceLineDescript
 import type { StripeInvoiceLineSource, StripeInvoicePreviewSuccess } from '../../lib/stripeInvoicePreview'
 import { formatStripeCents } from '../../lib/stripeInvoicePreview'
 import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
+import { MoneyText } from '../Money'
 
 export type StripeBillPreSubmitPreviewProps = {
   customerName: string | null
@@ -235,7 +236,7 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
             }}
           >
             <div style={{ ...stripeHeroAmountText, marginBottom: '0.25rem' }}>
-              {formatStripeCents(amountRemaining, view.currency)}
+              <MoneyText text={formatStripeCents(amountRemaining, view.currency)} />
             </div>
             <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.65rem' }}>
               {p.onEditDueDate ? (
@@ -366,7 +367,7 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
                       color: 'var(--text-strong)',
                     }}
                   >
-                    {formatStripeCents(line.amount, view.currency)}
+                    <MoneyText text={formatStripeCents(line.amount, view.currency)} />
                   </div>
                 </div>
                 )
@@ -390,16 +391,16 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
                 }}
               >
                 <span style={{ color: 'var(--text-700)' }}>Total due</span>
-                <span style={{ fontWeight: 600 }}>{formatStripeCents(view.total, view.currency)}</span>
+                <span style={{ fontWeight: 600 }}><MoneyText text={formatStripeCents(view.total, view.currency)} /></span>
               </div>
               <div style={{ display: 'grid', gap: '0.35rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <span style={{ color: 'var(--text-700)' }}>Amount paid</span>
-                  <span style={{ fontWeight: 600 }}>{formatStripeCents(amountPaid, view.currency)}</span>
+                  <span style={{ fontWeight: 600 }}><MoneyText text={formatStripeCents(amountPaid, view.currency)} /></span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <span style={{ color: 'var(--text-700)' }}>Amount remaining</span>
-                  <span style={{ fontWeight: 600 }}>{formatStripeCents(amountRemaining, view.currency)}</span>
+                  <span style={{ fontWeight: 600 }}><MoneyText text={formatStripeCents(amountRemaining, view.currency)} /></span>
                 </div>
               </div>
             </div>

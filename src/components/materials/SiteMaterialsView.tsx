@@ -38,6 +38,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { jobMaterialsSummaryFor } from '../../lib/materials/onSiteSummary'
 import { readSiteView, writeSiteView, type SiteView } from '../../lib/materials/siteMaterialsViewPrefs'
 import { filterPartRows, lastRecordedWords, QUIET_DAYS, sameWordsKey, searchPartRows, shownTotalWords, siteGlance, sitePartRows, sitePlaceSections, siteWeekFlow, spellingsWords, type SiteFilter, type SitePartRow, type SiteRollupJob } from '../../lib/materials/siteRollup'
+import { MoneyText } from '../Money'
 
 type Props = {
   site: { id: string; name: string }
@@ -473,7 +474,7 @@ function PartRow({ row, open, onToggle, boxHref, now, ask, joined, canTie, busy,
             <span style={chipDim} data-row-left-out>left out · not a part</span>
           ) : worth && worth.pricedLines > 0 ? (
             <span style={worth.staleLines > 0 ? chipAmber : chipDim} title={worth.pick ? priceTitle(worth.pick, today) : 'The price typed off the invoice that landed the part.'} data-row-worth>
-              ${worth.money.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{worth.pick ? ` · ${priceWords(worth.pick, today)}` : ' · invoice price'}
+              <MoneyText text={`$${worth.money.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />{worth.pick ? ` · ${priceWords(worth.pick, today)}` : ' · invoice price'}
             </span>
           ) : worth && unpriced ? <span style={chipDim}>no price</span> : null}
         </span>

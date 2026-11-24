@@ -6,7 +6,6 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { addDaysYmd } from '../../lib/emailSchedule/emailScheduleWeek'
 import { chicagoYmdOf } from '../../lib/gcStatementStandingCopies'
 import { salaryZonedWallClockToUtcMs } from '../../lib/salaryZonedWallClock'
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import {
   cancelWeeklyMovementSend,
@@ -24,6 +23,7 @@ import {
   type WeeklyMovementData,
 } from '../../lib/jobs/stagesWeeklyMovement'
 import { EmptyState } from '../EmptyState'
+import { Money } from '../Money'
 
 /**
  * Weekly movement (v2.1436): every job that entered a stage in a chosen
@@ -341,7 +341,7 @@ export function JobsWeeklyMovementModal({ open, onClose, users, showToast, canSc
                 <p style={{ margin: '0 0 0.25rem', padding: '0.3rem 0.5rem', background: 'var(--bg-subtle)', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600 }}>
                   Moved to {s.label}
                   <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
-                    {' '}· {s.jobCount} job{s.jobCount === 1 ? '' : 's'} · ${formatCurrency(s.total)}
+                    {' '}· {s.jobCount} job{s.jobCount === 1 ? '' : 's'} · <Money amount={s.total} />
                   </span>
                 </p>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
@@ -356,7 +356,7 @@ export function JobsWeeklyMovementModal({ open, onClose, users, showToast, canSc
                         </td>
                         <td style={{ padding: '0.25rem 0.4rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', width: 46 }}>{e.weekday}</td>
                         <td style={{ padding: '0.25rem 0.4rem', color: 'var(--text-muted)', width: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.moverName}</td>
-                        <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', width: 90 }}>${formatCurrency(e.revenue)}</td>
+                        <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', width: 90 }}><Money amount={e.revenue} /></td>
                       </tr>
                     ))}
                   </tbody>

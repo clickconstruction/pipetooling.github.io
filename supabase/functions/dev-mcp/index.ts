@@ -56,7 +56,8 @@ import { COUNTS_INSERT_ACTION, bidCountsAppliedWords, bidCountsDryRun, readBidCo
 import { bidUpdateAppliedWords, bidUpdateDryRun, bidUpdateLanded, bidUpdateWritePatch, outcomeNoteRow, readBidUpdateWorld, type BidChange, type BidReads, type BidUpdatePayload } from '../_shared/devMcpBidUpdate.ts'
 import { COMBINE_JOB_COLS, COMBINE_RPC, combineBoxPhotos, combineRpcBody, jobCombineAppliedWords, jobCombineDryRun, readJobCombineWorld, type CombineStop, type JobCombinePayload, type JobCombineReads } from '../_shared/devMcpJobCombine.ts'
 import { SHEET_COLS, SHEET_PAYMENT_REMOVE_RPC, SHEET_PAY_COLS, SHEET_SENDING_RPC, SUB_STATEMENT_FUNCTION, laborJobLabel, laborPersonFacts, readSubLaborPaymentWorld, readSubLaborWorld, sheetBalance, sheetInsertRow, sheetItemRows, sheetOwedCents, sheetPayHowWords, sheetSendingArgs, subLaborAppliedWords, subLaborCommitment, subLaborDryRun, subLaborNoteJobId, subLaborPaymentAppliedWords, subLaborPaymentDryRun, type JobMoney, type SheetPayRow, type SheetRow, type SubLaborPayload, type SubLaborPaymentPayload, type SubStatementPayload, type SubLaborReads } from '../_shared/devMcpSubLabor.ts'
-import { EVIDENCE_FILE_MAX_BYTES, evidenceLinkProblem, evidenceMime, evidenceStoragePath } from '../_shared/personEvidence.ts'
+import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_STAGED_MAX_BYTES, evidenceLinkProblem, evidenceMime, evidenceStoragePath } from '../_shared/personEvidence.ts'
+import { type DeclaredFile, type UploadSlot, alreadyThere, declaredFileInput, evidenceUploadIds, signUploadEndpoint, stagedObjectEndpoint, stagedProblem, uploadAddress, uploadPlanWords } from '../_shared/devMcpEvidenceUpload.ts'
 import { getHoursStatement, hoursStatementClockLabel, prepareHoursStatementWrite, sendHoursStatementAsDev, type HoursStatementPrepared } from '../_shared/devMcpHoursStatement.ts'
 import { hoursStatementLongDate } from '../_shared/hoursStatement.ts'
 import { TDLR_TIMEOUT_MS, TDLR_TIMEOUT_REASON, cleanLicenseNumber, isTimeoutError, tdlrAnswer, tdlrNumberFor, tdlrQueryUrl, tradeCheckedByTdlr, type LicenseLevel, type LicenseTrade, type TdlrRow } from '../_shared/gcKernels/lib/logbook/licenseText.ts'
@@ -145,7 +146,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // The note each server version carries (what it added and why, in the words of the day) lives in
 // docs/dev-mcp/SERVER_NOTES.md, oldest first, and a new version adds its note there. They were comments here until
 // they weighed 44 KB of this function's upload, which the deploy refuses past 5 MB (npm run check:edge-bundles).
-const SERVER_VERSION = '0.131.0'
+const SERVER_VERSION = '0.132.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 /** v2.7987 (punch list #315, upgrade 3a): what a person-file plan takes for the approvals list, and what its description says of it. */
@@ -366,12 +367,12 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_person_evidence',
-    description: "Dry-run a piece of evidence on a person's HR file (docs/HR_FILES.md → Evidence): a record — the day it is about, a title, a memo on what it shows and why it matters — and its files, sent as content_base64 (a photo, a PDF, an email as .eml, a screenshot; each under 10 MB, at most 20 files a record) or, for a file already in Drive — a recording over the cap, a file the office filed by hand — as { name, drive_url }, which is linked and never staged (v2.6541). The server turns each sent file into its name, mime, size and sha256 before the dry run, so the plan commits to the files themselves; replies with the person, the record as it would be written, where it lands in Drive (People › the person › the day · the title), whether the People folder is set, and a plan_hash. Nothing is written or stored. You are named as the author. Since 0.118.0 the reply's exhibit names the number the file would give the record (would_take, Ev #N), read and never taken: leave the number out of the title.",
-    inputSchema: { type: 'object', properties: { evidence: { type: 'object', description: "{ person_id (a people.id — get_person_file resolves a login or a name), dated_on (YYYY-MM-DD, not ahead of today), title (under 160), memo (under 4,000), entry_id? (the person_file_entries.id it proves), files: [{ name (with its extension), content_base64, mime? } | { name, drive_url (a file already in Drive) }] }" } }, required: ['evidence'] },
+    description: "Dry-run a piece of evidence on a person's HR file (docs/HR_FILES.md → Evidence): a record — the day it is about, a title, a memo on what it shows and why it matters — and its files, sent as content_base64 (a photo, a PDF, an email as .eml, a screenshot; each under 10 MB, at most 20 files a record) or, for a file already in Drive — a file the office filed by hand — as { name, drive_url }, which is linked and never staged (v2.6541). Since 0.132.0 a file may be declared instead of sent, the way for anything of size, a recording or a long PDF, up to 50 MB: { name, staged: true, size_bytes, sha256, mime? } (wc -c and shasum -a 256 say them). The plan then answers upload: one address a declared file, good for two hours and one upload, with the curl line that sends the file from your machine straight to the private bucket, so its bytes never ride through a tool call. Send each, then apply. The server turns each sent file into its name, mime, size and sha256 before the dry run, so the plan commits to the files themselves; replies with the person, the record as it would be written, where it lands in Drive (People › the person › the day · the title), whether the People folder is set, and a plan_hash. Nothing is written or stored by the plan. You are named as the author. Since 0.118.0 the reply's exhibit names the number the file would give the record (would_take, Ev #N), read and never taken: leave the number out of the title.",
+    inputSchema: { type: 'object', properties: { evidence: { type: 'object', description: "{ person_id (a people.id — get_person_file resolves a login or a name), dated_on (YYYY-MM-DD, not ahead of today), title (under 160), memo (under 4,000), entry_id? (the person_file_entries.id it proves), counsel_only? (true keeps the record here only, never filed in Drive), files: [{ name (with its extension), content_base64, mime? } | { name, staged: true, size_bytes, sha256, mime? (declared; the plan answers where its bytes go) } | { name, drive_url (a file already in Drive) }] }" } }, required: ['evidence'] },
   },
   {
     name: 'apply_person_evidence',
-    description: 'Keep the evidence you planned: the same evidence plus the plan_hash from plan_person_evidence. Runs the dry run again first and writes only when it still matches. Stages each sent file in the private hr-files bucket as you, writes the record and its file rows as you (a linked file as its address alone; append-only: a correction is a new record), then asks hr-evidence-drive to file the staged ones into the People Shared Drive — fail-soft: a refusal leaves the record standing as not in Drive, and the sweep tries again every ten minutes while a file waits. A record of linked files alone never asks Drive. One apply per plan. The reply names the number the file gave the record (exhibit_no, Ev #N).',
+    description: 'Keep the evidence you planned: the same evidence plus the plan_hash from plan_person_evidence. Runs the dry run again first and writes only when it still matches. Stages each sent file in the private hr-files bucket as you, reads each declared file back from the address the plan gave (0.132.0) and holds its size and sha256 to the plan — a file not sent yet, or not the planned one, refuses the apply in words and writes nothing, and a wrong file is taken out of the bucket — then writes the record and its file rows as you (a linked file as its address alone; append-only: a correction is a new record), then asks hr-evidence-drive to file the staged ones into the People Shared Drive — fail-soft: a refusal leaves the record standing as not in Drive, and the sweep tries again every ten minutes while a file waits. A record of linked files alone never asks Drive. One apply per plan. The reply names the number the file gave the record (exhibit_no, Ev #N).',
     inputSchema: { type: 'object', properties: { evidence: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['evidence', 'plan_hash'] },
   },
   {
@@ -1475,13 +1476,14 @@ const HR_FILES_BUCKET = 'hr-files'
 
 /** An evidence verb's files (v2.6426): each decoded, checked against the panel's caps, digested. `args` is the input with every content_base64 replaced by mime, size_bytes and sha256. */
 /** A file to stage (bytes), or a linked one (v2.6541: already in Drive, sent as its address alone) in the plan's order. */
-type EvidenceFiles = { args: Record<string, unknown>; files: Array<{ bytes: Uint8Array; mime: string; name: string; sha256: string } | { name: string; driveUrl: string }> }
+/** Or, since 0.132.0, a declared one: named by its size and sha256, its bytes sent by the agent straight to the bucket (devMcpEvidenceUpload.ts). */
+type EvidenceFiles = { args: Record<string, unknown>; files: Array<{ bytes: Uint8Array; mime: string; name: string; sha256: string } | { name: string; driveUrl: string } | { name: string; declared: DeclaredFile }> }
 
 async function evidenceBytes(args: Record<string, unknown>): Promise<EvidenceFiles | { error: string }> {
   const ev = args.evidence && typeof args.evidence === 'object' && !Array.isArray(args.evidence) ? (args.evidence as Record<string, unknown>) : null
-  if (!ev) return { error: 'plan_person_evidence needs evidence — { person_id, dated_on, title, memo, entry_id?, files: [{ name, content_base64, mime? } | { name, drive_url }] }.' }
+  if (!ev) return { error: 'plan_person_evidence needs evidence — { person_id, dated_on, title, memo, entry_id?, files: [{ name, content_base64, mime? } | { name, staged: true, size_bytes, sha256, mime? } | { name, drive_url }] }.' }
   const raw = Array.isArray(ev.files) ? ev.files : []
-  if (raw.length < 1) return { error: 'evidence.files needs at least one file — a photo, a PDF, an email as .eml, a screenshot — each { name, content_base64, mime? }, or one already in Drive as { name, drive_url }.' }
+  if (raw.length < 1) return { error: 'evidence.files needs at least one file — a photo, a PDF, an email as .eml, a screenshot, a recording — each { name, content_base64, mime? }, or declared as { name, staged: true, size_bytes, sha256 } and sent to the address the plan answers, or one already in Drive as { name, drive_url }.' }
   if (raw.length > EVIDENCE_MAX_FILES) return { error: `evidence.files holds ${raw.length} files; a record takes at most ${EVIDENCE_MAX_FILES} — plan a second record for the rest.` }
   const files: EvidenceFiles['files'] = []
   const facts: Record<string, unknown>[] = []
@@ -1499,20 +1501,92 @@ async function evidenceBytes(args: Record<string, unknown>): Promise<EvidenceFil
       facts.push({ name, drive_url: driveUrl })
       continue
     }
-    if (!b64) return { error: `${name}: content_base64 is required — the file, base64-encoded — or drive_url for a file already in Drive.` }
+    if (f && f.staged === true) {
+      // A declared file (0.132.0): no bytes travel here. Its facts ride as a sent file's do, so the plan commits to
+      // them; the apply reads the object the agent sent and holds it to these before any row is written.
+      if (b64) return { error: `${name}: send content_base64 (the file itself) or staged: true (the file declared), not both.` }
+      const declared = declaredFileInput(name, f.size_bytes, f.sha256, EVIDENCE_STAGED_MAX_BYTES)
+      if (!declared.ok) return { error: declared.error }
+      const fact: DeclaredFile = { name, mime: evidenceMime({ type: typeof f.mime === 'string' ? f.mime : '', name }), size_bytes: declared.sizeBytes, sha256: declared.sha256 }
+      files.push({ name, declared: fact })
+      facts.push({ ...fact })
+      continue
+    }
+    if (!b64) return { error: `${name}: content_base64 is required — the file, base64-encoded — or staged: true with size_bytes and sha256 for a file you send to the plan's address, or drive_url for a file already in Drive.` }
     let bytes: Uint8Array
     try {
       bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
     } catch {
       return { error: `${name}: content_base64 is not valid base64.` }
     }
-    if (bytes.length < 1 || bytes.length > EVIDENCE_FILE_MAX_BYTES) return { error: `${name} must be between 1 byte and ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB; it is ${bytes.length} bytes. Put a larger file in the person's Drive folder by hand and send it as { name, drive_url }.` }
+    if (bytes.length < 1 || bytes.length > EVIDENCE_FILE_MAX_BYTES) return { error: `${name} must be between 1 byte and ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB; it is ${bytes.length} bytes. Declare a larger file as { name, staged: true, size_bytes, sha256 } and send it to the address the plan answers, up to ${EVIDENCE_STAGED_MAX_BYTES / 1024 / 1024} MB.` }
     const mime = evidenceMime({ type: typeof f.mime === 'string' ? f.mime : '', name })
     const sha256 = await sha256HexOf(bytes)
     files.push({ bytes, mime, name, sha256 })
     facts.push({ name, mime, size_bytes: bytes.length, sha256 })
   }
   return { args: { ...args, evidence: { ...ev, files: facts } }, files }
+}
+
+/**
+ * 0.132.0: where each declared file of an evidence plan goes (devMcpEvidenceUpload.ts). The record's id and the files'
+ * ids come from the plan's hash, so the plan and its apply name the same paths with nothing kept in between. Storage
+ * is asked, as the dev, for an address that takes one upload of that one path; a path that already holds its object
+ * reads as in place. Nothing is stored by asking.
+ */
+async function evidenceUploadSlots(jwt: string, personId: string, hash: string, files: EvidenceFiles['files']): Promise<UploadSlot[]> {
+  const ids = await evidenceUploadIds(hash, files.length)
+  const slots: UploadSlot[] = []
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i]!
+    if (!('declared' in f)) continue
+    const path = evidenceStoragePath(personId, ids.evidenceId, ids.fileIds[i]!, f.name)
+    try {
+      const res = await fetch(signUploadEndpoint(env('SUPABASE_URL'), HR_FILES_BUCKET, path), {
+        method: 'POST',
+        headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp', 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+      const text = await res.text()
+      let answer: unknown = text
+      try {
+        answer = JSON.parse(text)
+      } catch {
+        answer = text
+      }
+      const address = res.ok ? uploadAddress(env('SUPABASE_URL'), HR_FILES_BUCKET, path, answer) : null
+      if (address) slots.push({ ...f.declared, path, state: 'waiting', address })
+      else if (!res.ok && alreadyThere(res.status, answer)) slots.push({ ...f.declared, path, state: 'in_place' })
+      else slots.push({ ...f.declared, path, state: 'no_address', why: `Storage answered ${res.status}: ${text.slice(0, 200)}` })
+    } catch (e) {
+      slots.push({ ...f.declared, path, state: 'no_address', why: `Storage could not be reached: ${e instanceof Error ? e.message : String(e)}` })
+    }
+  }
+  return slots
+}
+
+/**
+ * 0.132.0: a declared file as it sits in the bucket, read back as the dev: its size and its sha256, null when nothing
+ * is at the path. A size that already differs from the plan's is answered without reading the bytes.
+ */
+async function stagedEvidenceFacts(jwt: string, path: string, plannedSize: number): Promise<{ size: number; sha256: string } | null | { error: string }> {
+  try {
+    const res = await fetch(stagedObjectEndpoint(env('SUPABASE_URL'), HR_FILES_BUCKET, path), { headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'X-Dev-Seat': 'dev-mcp' } })
+    if (res.status === 404 || res.status === 400) {
+      await res.body?.cancel()
+      return null
+    }
+    if (!res.ok) return { error: `The file could not be read back (${res.status}): ${(await res.text()).slice(0, 200)}` }
+    const said = Number(res.headers.get('content-length') ?? '')
+    if (Number.isFinite(said) && said > 0 && said !== plannedSize) {
+      await res.body?.cancel()
+      return { size: said, sha256: '' }
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    return { size: bytes.length, sha256: await sha256HexOf(bytes) }
+  } catch (e) {
+    return { error: `The file could not be read back: ${e instanceof Error ? e.message : String(e)}` }
+  }
 }
 
 /** Drive for one evidence record, as the panel asks it after the rows (personEvidenceIo.ts): fail-soft, the record stands either way. */
@@ -6199,7 +6273,12 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         }
         // v2.7976 (punch list #315, upgrade 2): the number the file would give the record, read and never taken, beside
         // the plan. Outside the hash: the plan already commits to the person's record count, which moves when it does.
-        if (isEvidence) return ok({ ...planned, exhibit: exhibitPlanWords(await nextExhibitNo(session, String(built.target))) }, { target: built.target })
+        if (isEvidence) {
+          // 0.132.0: a declared file's address rides beside the plan, outside the hash: the paths come from the hash itself.
+          const declares = evidence && !('error' in evidence) && evidence.files.some((f) => 'declared' in f)
+          const upload = declares && evidence && !('error' in evidence) ? { upload: uploadPlanWords(await evidenceUploadSlots(session, String(built.target), String(planned.plan_hash), evidence.files)) } : {}
+          return ok({ ...planned, exhibit: exhibitPlanWords(await nextExhibitNo(session, String(built.target))), ...upload }, { target: built.target })
+        }
         if (keep?.ok) {
           // v2.7987: the plan as shown is what is kept, beside the verb's own arguments and the plan's own hash.
           const shown = (driveDoc ? { ...planned, ...driveDocPlanExtra(driveDoc.facts) } : docEdit ? docEditPlanReply(planned, docEdit) : planned) as Record<string, unknown>
@@ -6239,13 +6318,34 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         }
         if (evidence && !('error' in evidence)) {
           // The files first, as the dev, under the record's folder in hr-files; the RPC refuses the rows unless every one is there.
-          const evidenceId = crypto.randomUUID()
+          // 0.132.0: with a declared file the record's id and the files' ids are the ones the plan's addresses were made
+          // for, worked out from the plan's hash; without one they are made here, as before.
+          const uploadIds = evidence.files.some((f) => 'declared' in f) ? await evidenceUploadIds(String(built.planHash), evidence.files.length) : null
+          const evidenceId = uploadIds ? uploadIds.evidenceId : crypto.randomUUID()
           const rows: Array<{ id: string; storage_path: string } | { id: string; drive_url: string }> = []
-          for (const f of evidence.files) {
-            const id = crypto.randomUUID()
+          for (let i = 0; i < evidence.files.length; i++) {
+            const f = evidence.files[i]!
+            const id = uploadIds ? uploadIds.fileIds[i]! : crypto.randomUUID()
             if ('driveUrl' in f) {
               // A linked file (v2.6541): nothing to stage; the RPC writes the row with its address alone.
               rows.push({ id, drive_url: f.driveUrl })
+              continue
+            }
+            if ('declared' in f) {
+              // A declared file: the agent sent its bytes to the plan's address. Read it back and hold it to the plan
+              // before any row is written. A file that is not the planned one is taken out, so nothing unread stays.
+              const path = evidenceStoragePath(String(built.target), evidenceId, id, f.name)
+              const got = await stagedEvidenceFacts(session, path, f.declared.size_bytes)
+              const unread = got !== null && 'error' in got ? got.error : null
+              const problem = unread ?? stagedProblem(f.declared, got !== null && 'error' in got ? null : got)
+              if (problem) {
+                const wrongFile = got !== null && !('error' in got)
+                if (wrongFile) await storageRemove(session, HR_FILES_BUCKET, path)
+                for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)
+                const words = `${problem}${wrongFile ? ' It was taken out of the bucket. Plan again for a fresh address and send the planned file.' : ''} Nothing was written.`
+                return { log: { status: 'error', target: built.target, error: words }, text: words, isError: true }
+              }
+              rows.push({ id, storage_path: path })
               continue
             }
             const path = evidenceStoragePath(String(built.target), evidenceId, id, f.name)

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsLedgerInvoiceRow, PaymentRow } from './jobFormTypes'
-import { billPaidBar, billSentYmd, daysAfterBill, instrumentWord, orderMoneyByDate, paymentLineWords, paymentSource, sourceWords, splitBillsAndPayments } from './billsAndPayments'
+import { billPaidBar, billSentYmd, checkNumberOf, daysAfterBill, instrumentWord, orderMoneyByDate, paymentLineWords, paymentSource, sourceWords, splitBillsAndPayments } from './billsAndPayments'
 
 function payment(over: Partial<PaymentRow> = {}): PaymentRow {
   return {
@@ -27,6 +27,24 @@ function job(invoices: JobsLedgerInvoiceRow[]): JobWithDetails {
 }
 
 const bankCheck = { postedYmd: '2026-09-14', counterparty: 'Lowbeck Contracting', kind: 'checkDeposit', status: 'sent', failureReason: null }
+
+describe('checkNumberOf — a check\'s number, or nothing', () => {
+  it('reads a number however it was typed', () => {
+    expect(checkNumberOf('4417')).toBe('4417')
+    expect(checkNumberOf(' #4417 ')).toBe('4417')
+    expect(checkNumberOf('ck# 3045')).toBe('3045')
+    expect(checkNumberOf('Check No. 118')).toBe('118')
+    expect(checkNumberOf('chk 2291-A')).toBe('2291-A')
+  })
+  it('reads no number out of a bank match\'s id, a note or nothing', () => {
+    // Made-up ids in the shape a matched deposit leaves, one starting with a digit and one with a letter.
+    expect(checkNumberOf('0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d')).toBe('')
+    expect(checkNumberOf('fa1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d')).toBe('')
+    expect(checkNumberOf('drawer')).toBe('')
+    expect(checkNumberOf('')).toBe('')
+    expect(checkNumberOf(null)).toBe('')
+  })
+})
 
 describe('instrumentWord — the eight spellings of three things', () => {
   it('reads check, cheque and checkDeposit as check; Card (external) as card; ACH as ach; nothing as null', () => {

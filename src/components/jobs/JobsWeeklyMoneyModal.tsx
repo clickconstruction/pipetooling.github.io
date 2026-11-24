@@ -32,6 +32,7 @@ import {
   type WeeklyMoneyPayload,
 } from '../../lib/jobs/weeklyMoneyMovement'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 /**
  * Weekly Money Movement (v2.1443 — WEEKLY_MONEY_PLAN.md Phase 2): per-job
@@ -119,19 +120,19 @@ function JobRows({ rows, lens }: { rows: WeeklyMoneyJobRow[]; lens: WeeklyMoneyL
                 {pctCell(r)}
               </td>
               <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.valueCreated != null ? 'inherit' : 'var(--text-muted)' }}>
-                {r.valueCreated != null ? formatWeeklyMoneyPlain(r.valueCreated) : '—'}
+                {r.valueCreated != null ? <MoneyText text={formatWeeklyMoneyPlain(r.valueCreated)} /> : '—'}
               </td>
               <td
                 style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-red-700)', fontWeight: 600 }}
                 title={`Labor ${formatWeeklyMoneyPlain(r.outLabor)} · Subs ${formatWeeklyMoneyPlain(r.outSubs)} · Materials ${formatWeeklyMoneyPlain(r.outMaterials)}`}
               >
-                {formatWeeklyMoneyPlain(r.moneyOut)}
+                <MoneyText text={formatWeeklyMoneyPlain(r.moneyOut)} />
               </td>
               <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.moneyIn > 0 ? 'var(--text-green-700)' : 'var(--text-muted)', fontWeight: r.moneyIn > 0 ? 600 : 400 }}>
-                {r.moneyIn > 0 ? formatWeeklyMoneyPlain(r.moneyIn) : '—'}
+                {r.moneyIn > 0 ? <MoneyText text={formatWeeklyMoneyPlain(r.moneyIn)} /> : '—'}
               </td>
               <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: net == null ? 'var(--text-amber-700)' : net >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
-                {net != null ? formatWeeklyMoneySigned(net) : '?'}
+                {net != null ? <MoneyText text={formatWeeklyMoneySigned(net)} /> : '?'}
               </td>
             </tr>
           )
@@ -454,9 +455,9 @@ export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToas
             })()}
             <p style={{ margin: 0, padding: '0.4rem 0.5rem', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               <b style={{ color: 'var(--text-700)' }}>Not on jobs:</b>{' '}
-              Office + bid labor {formatWeeklyMoneyPlain(view.overhead.office_labor_cost + view.overhead.bid_labor_cost)}
+              Office + bid labor <MoneyText text={formatWeeklyMoneyPlain(view.overhead.office_labor_cost + view.overhead.bid_labor_cost)} />
               {' '}({(view.overhead.office_labor_hours + view.overhead.bid_labor_hours).toFixed(1)} h)
-              {' '}· Office job charges {formatWeeklyMoneyPlain(view.overhead.office_job_charges)}
+              {' '}· Office job charges <MoneyText text={formatWeeklyMoneyPlain(view.overhead.office_job_charges)} />
             </p>
           </>
         ) : null}

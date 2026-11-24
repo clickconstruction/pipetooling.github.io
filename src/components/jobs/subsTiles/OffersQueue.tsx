@@ -23,6 +23,7 @@ import { acts, btn, chip, expandedRow, handledRow, money, muted, shortDay, spanL
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { EmptyState } from '../../EmptyState'
 import { emptyWords } from '../../../lib/emptyWords'
+import { MoneyText } from '../../Money'
 
 export type OffersQueueProps = {
   board: WorkOrderBoardRow[]
@@ -204,7 +205,7 @@ export function OffersQueue({ board, ordersById, stageByOrderId, jobs, contacts,
                   <td style={{ ...td, ...noBottom, whiteSpace: 'nowrap' }}>
                     {r.goodThrough ? <span style={chip(r.expired ? 'red' : r.daysLeft != null && r.daysLeft <= 2 ? 'amber' : 'green')}>{r.expired ? `expired ${shortDay(r.goodThrough)}` : `${shortDay(r.goodThrough)} · ${r.daysLeft} day${r.daysLeft === 1 ? '' : 's'} left`}</span> : <span style={muted}>no end date</span>}
                   </td>
-                  <td style={{ ...tdNum, ...noBottom }}>{money(amount)}</td>
+                  <td style={{ ...tdNum, ...noBottom }}><MoneyText text={money(amount)} /></td>
                   <td style={{ ...tdAct, ...noBottom }} onClick={(e) => e.stopPropagation()}>
                     <span style={acts}>
                       {order ? (
@@ -272,7 +273,7 @@ export function OffersQueue({ board, ordersById, stageByOrderId, jobs, contacts,
               </td>
               <td style={td}>{r.sentOn ? shortDay(r.sentOn) : '—'}</td>
               <td style={td} />
-              <td style={tdNum}>{money(r.row.coverage.kind === 'sent' ? r.row.coverage.amount : r.row.agreed)}</td>
+              <td style={tdNum}><MoneyText text={money(r.row.coverage.kind === 'sent' ? r.row.coverage.amount : r.row.agreed)} /></td>
               <td style={tdAct}>
                 <HandledCell label={mark.label} onUndo={mark.undo ? () => void mark.undo!() : null} action={mark.action ? { label: mark.action.label, danger: mark.action.danger, run: () => void mark.action!.run() } : null} />
               </td>

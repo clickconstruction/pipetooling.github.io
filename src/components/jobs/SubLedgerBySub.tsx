@@ -11,11 +11,12 @@ import { ledgerDayWords, ledgerHowPaidWords, ledgerSpanWords, overPaidWords, STA
 import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { jobLink, pill, td, th } from './subLedgerStyles'
+import { MoneyText } from '../Money'
 
 /** What we owe, as a cell: an amount, `settled`, or `over by …` in green. */
 function Owed({ value }: { value: number }) {
   if (value === 0) return <span style={pill('green')}>settled</span>
-  if (value < 0) return <span style={{ color: 'var(--text-green-700)' }}>{weOweWords(value)}</span>
+  if (value < 0) return <span style={{ color: 'var(--text-green-700)' }}><MoneyText text={weOweWords(value)} /></span>
   return (
     <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>
       <AmountSmallCents value={value} />
@@ -87,12 +88,12 @@ export function SubLedgerPeople({ rows, totals, periodLabel, narrow, withYear, o
                 )}
                 {creditNoteWords(r.credit) ? (
                   <div data-ledger-credit={r.key} title="Sent past what their sheets needed. The next payment to them offers it first." style={{ fontSize: '0.75rem', color: 'var(--text-green-700)' }}>
-                    {creditNoteWords(r.credit)}
+                    <MoneyText text={creditNoteWords(r.credit)} />
                   </div>
                 ) : null}
                 {r.over ? (
                   <div data-ledger-over={r.key} title="A sheet of theirs was paid past its total. It is not taken off what another sheet is owed." style={{ fontSize: '0.75rem', color: 'var(--text-green-700)' }}>
-                    {overPaidWords(r.over)}
+                    <MoneyText text={overPaidWords(r.over)} />
                   </div>
                 ) : null}
               </td>
@@ -153,7 +154,7 @@ export function SubLedgerStatement({ statement: st, check, narrow, withYear, onO
         <div style={{ display: 'grid', gap: 6 }}>
           {st.from ? (
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0.3rem 0.6rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8 }}>
-              Brought forward · {weOweWords(st.opening)}
+              Brought forward · <MoneyText text={weOweWords(st.opening)} />
             </div>
           ) : null}
           {st.entries.map((e) => (
@@ -166,13 +167,13 @@ export function SubLedgerStatement({ statement: st, check, narrow, withYear, onO
                 {e.kind === 'credit-used' ? null : <AmountSmallCents value={e.amount} />}
               </span>
               <span style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: 0 }}>
-                {e.job} · we owe {weOweWords(e.owed)}
+                {e.job} · we owe <MoneyText text={weOweWords(e.owed)} />
               </span>
             </button>
           ))}
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '0.5rem 0.7rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, fontWeight: 700, color: 'var(--text-strong)' }}>
             <span>{endWords}</span>
-            <span>{weOweWords(st.closing)}</span>
+            <span><MoneyText text={weOweWords(st.closing)} /></span>
           </div>
         </div>
         {checkLine}
@@ -234,7 +235,7 @@ export function SubLedgerStatement({ statement: st, check, narrow, withYear, onO
               <td style={{ ...footCell, textAlign: 'right', whiteSpace: 'nowrap' }}>
                 <AmountSmallCents value={Math.round((st.paid + st.backcharged) * 100) / 100} />
               </td>
-              <td style={{ ...footCell, textAlign: 'right', whiteSpace: 'nowrap' }}>{weOweWords(st.closing)}</td>
+              <td style={{ ...footCell, textAlign: 'right', whiteSpace: 'nowrap' }}><MoneyText text={weOweWords(st.closing)} /></td>
             </tr>
           </tfoot>
         </table>

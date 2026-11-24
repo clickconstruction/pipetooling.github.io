@@ -20,6 +20,7 @@ import {
 import { EmptyState } from '../EmptyState'
 import { JOB_ACCOUNT_LINE_TITLE } from '../../lib/materials/agingCellByJob'
 import { SUPPLY_HOUSE_AGING_EMPTY } from '../../lib/materials/materialsEmptyWords'
+import { Money, MoneyText } from '../Money'
 
 
 /** The teal "of which on a job account" line under an aging cell (B). Saturated status colour, kept literal like the Job acct chip. */
@@ -119,7 +120,7 @@ export function SupplyHouseAgingMap({ narrowAging, agingMatrix, agingHasCredits,
                   <span key={j} style={{ display: 'block', height: '100%', width: `${row.total > 0.005 ? Math.max(3, (x.v / row.total) * 100) : 0}%`, background: x.c }} />
                 ))}
               </span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>${formatCurrency(row.total)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap' }}><Money amount={row.total} /></span>
             </button>
           )
         })
@@ -176,9 +177,9 @@ export function SupplyHouseAgingMap({ narrowAging, agingMatrix, agingHasCredits,
                     ...(has ? { ...AGING_CELL_STYLES[b.key], cursor: 'pointer' } : { color: 'var(--text-faint)' }),
                   }}
                 >
-                  {has ? `$${formatCurrency(amount)}` : '—'}
+                  {has ? <Money amount={amount} /> : '—'}
                   {markJobAccountInvoices && row.jobAccount[b.key] > 0.005 ? (
-                    <span title={JOB_ACCOUNT_LINE_TITLE} style={JOB_ACCOUNT_LINE_STYLE}>${formatCurrency(row.jobAccount[b.key])} job acct</span>
+                    <span title={JOB_ACCOUNT_LINE_TITLE} style={JOB_ACCOUNT_LINE_STYLE}><Money amount={row.jobAccount[b.key]} /> job acct</span>
                   ) : null}
                 </td>
               )
@@ -188,16 +189,16 @@ export function SupplyHouseAgingMap({ narrowAging, agingMatrix, agingHasCredits,
                 {...(row.creditsOpen < -0.005 ? agingCellDoorProps(row.supplyHouseId, 'credits', `${row.name} — open credits: see the memos`) : {})}
                 style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(row.creditsOpen < -0.005 ? { color: 'var(--text-green-700)', cursor: 'pointer' } : { color: 'var(--text-faint)' }) }}
               >
-                {row.creditsOpen < -0.005 ? `−$${formatCurrency(Math.abs(row.creditsOpen))}` : '—'}
+                {row.creditsOpen < -0.005 ? <MoneyText text={`−$${formatCurrency(Math.abs(row.creditsOpen))}`} /> : '—'}
               </td>
             ) : null}
             <td
               {...(row.total > 0.005 ? agingCellDoorProps(row.supplyHouseId, 'owed', `${row.name} — every unpaid invoice`) : {})}
               style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(row.total > 0.005 ? { cursor: 'pointer' } : {}) }}
             >
-              ${formatCurrency(row.total)}
+              <Money amount={row.total} />
               {markJobAccountInvoices && row.jobAccountTotal > 0.005 ? (
-                <span title={JOB_ACCOUNT_LINE_TITLE} style={JOB_ACCOUNT_LINE_STYLE}>${formatCurrency(row.jobAccountTotal)} job acct</span>
+                <span title={JOB_ACCOUNT_LINE_TITLE} style={JOB_ACCOUNT_LINE_STYLE}><Money amount={row.jobAccountTotal} /> job acct</span>
               ) : null}
             </td>
           </tr>
@@ -216,7 +217,7 @@ export function SupplyHouseAgingMap({ narrowAging, agingMatrix, agingHasCredits,
               {...(has ? agingCellDoorProps(null, b.key, `Every house — ${agingCellTitle(b.key)}: see the invoices`) : {})}
               style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: has ? undefined : 'var(--text-faint)', ...(has ? { cursor: 'pointer' } : {}) }}
             >
-              {has ? `$${formatCurrency(amount)}` : '—'}
+              {has ? <Money amount={amount} /> : '—'}
             </td>
           )
         })}
@@ -225,14 +226,14 @@ export function SupplyHouseAgingMap({ narrowAging, agingMatrix, agingHasCredits,
             {...agingCellDoorProps(null, 'credits', 'Every house — open credits: see the memos')}
             style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: 'var(--text-green-700)', cursor: 'pointer' }}
           >
-            −${formatCurrency(Math.abs(agingMatrix.creditsTotal))}
+            −<Money amount={Math.abs(agingMatrix.creditsTotal)} />
           </td>
         ) : null}
         <td
           {...(agingMatrix.grandTotal > 0.005 ? agingCellDoorProps(null, 'owed', 'Every house — every unpaid invoice') : {})}
           style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(agingMatrix.grandTotal > 0.005 ? { cursor: 'pointer' } : {}) }}
         >
-          ${formatCurrency(agingMatrix.grandTotal)}
+          <Money amount={agingMatrix.grandTotal} />
         </td>
       </tr>
     </tfoot>

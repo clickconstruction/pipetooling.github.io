@@ -20,6 +20,7 @@ import {
   mercuryTxPipeLineAriaLabel,
   mercuryTxCombinedNoteInlineText,
 } from './MercuryTxNotesDisclosure'
+import { MoneyText } from '../Money'
 
 export { mercuryTxPipeLineAriaLabel, mercuryTxCombinedNoteInlineText }
 
@@ -229,7 +230,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
       </td>
       <td style={{ padding: ledgerPad, verticalAlign: 'top' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-          <span>{formatUsd(Number(row.amount))}</span>
+          <span><MoneyText text={formatUsd(Number(row.amount))} /></span>
           <button
             type="button"
             id={mercuryTxNotesToggleDomId(row.id)}
