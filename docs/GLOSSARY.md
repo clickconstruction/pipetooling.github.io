@@ -1355,6 +1355,11 @@ unknown assignees never warn;
 never a refusal).
 Kernel: [`blockGroupCoverage.ts`](../src/lib/schedule/blockGroupCoverage.ts).
 
+### Addresses that look alike
+Pipeline → the tools menu → **Addresses that look alike…** pairs the addresses on file that may be one place written two ways, and a person answers each pair **Same place** or **Not the same**, kept in `address_place_answers` (punch list #439, v2.8529).
+An answer changes no job's address.
+The job form's address box lists the addresses **Already on file** above Google's, so a new job takes the spelling its place already has (v2.8520).
+
 ### Combine (jobs)
 Two job cards for one piece of work become one: Pipeline → the tools menu → **Combine / Separate…** → **Combine** picks the source (the card that goes away) and the target (the card that stays), and `migrate_job_ledger_costs_and_delete(p_from, p_to, p_allow_billed)` (latest `20261104130000_combine_moves_soft_job_links.sql`, v2.6492;
 before it 20261103170000 v2.6460, 20261103160000 v2.6458, 20261103054522 v2.6423;

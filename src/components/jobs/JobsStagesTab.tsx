@@ -146,6 +146,8 @@ import { buildFirmActivity } from '../../lib/legal/legalMatters'
 import { uncollectibleFirmWarning } from '../../lib/legal/uncollectibleFirmWarning'
 import { payerForJob } from '../../lib/legal/legalPacket'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
+import AddressLookAlikesWindow from './AddressLookAlikesWindow'
+import { useLookAlikeCount } from '../../hooks/useAddressLookAlikes'
 import StagesNoCustomerJobsModal from './StagesNoCustomerJobsModal'
 import OwnerConfirmListModal from './OwnerConfirmListModal'
 import StagesAlertJobListModal from './StagesAlertJobListModal'
@@ -730,6 +732,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [stagesNoJobPicturesModalOpen, setStagesNoJobPicturesModalOpen] = useState(false)
   const [jobBookModalOpen, setJobBookModalOpen] = useState(false)
   const [combineSeparateModalOpen, setCombineSeparateModalOpen] = useState(false)
+  // Addresses that look alike (punch list #439): the window, and the count on the tools button for the office.
+  const [lookAlikesOpen, setLookAlikesOpen] = useState(false)
+  const lookAlikeCount = useLookAlikeCount(stagesGates.canUseStagesOfficeTools(authRole, myRole))
   // "⋯" tools menu right of the Stages search (v2.1049) — home of every
   // toolbar control that is not New Job or search.
   const [stagesToolsMenuOpen, setStagesToolsMenuOpen] = useState(false)
@@ -3236,6 +3241,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       onOpenJobBook={() => setJobBookModalOpen(true)}
                       onOpenTotalByName={() => setBilledTotalByNameModalOpen(true)}
                       onOpenCombineSeparate={() => setCombineSeparateModalOpen(true)}
+                      lookAlikeCount={lookAlikeCount}
+                      onOpenLookAlikes={() => setLookAlikesOpen(true)}
                       toggles={{
                         includeScheduleTimeInSearch: stagesIncludeScheduleTimeInSearch,
                         followMoves: stagesFollowMoves,
@@ -4574,6 +4581,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setCombineSeparateModalOpen(false)}
         onAfterSuccess={() => void runJobsStagesSerializedPipeline(() => Promise.resolve(loadJobs()))}
       />
+      {lookAlikesOpen ? <AddressLookAlikesWindow onClose={() => setLookAlikesOpen(false)} /> : null}
       <BilledBillViewModal
         invoice={viewBillInvoice}
         onClose={() => {

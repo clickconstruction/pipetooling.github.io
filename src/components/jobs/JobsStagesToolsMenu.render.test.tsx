@@ -156,3 +156,43 @@ describe('JobsStagesToolsMenu', () => {
     expect(screen.getAllByText('Off').length).toBe(4)
   })
 })
+
+describe('JobsStagesToolsMenu: addresses that look alike (punch list #439)', () => {
+  it('offers the item under Combine / Separate with its count, and the count on the tools button', () => {
+    const onOpenLookAlikes = vi.fn()
+    const p = props({ lookAlikeCount: 51, onOpenLookAlikes })
+    render(<JobsStagesToolsMenu {...p} />)
+    const items = screen.getAllByRole('menuitem').map((el) => el.textContent ?? '')
+    const combine = items.findIndex((t) => t.startsWith('Combine / Separate'))
+    expect(items[combine + 1]).toBe('Addresses that look alike…51')
+    expect(screen.getByTestId('stages-tools-look-alike-count').textContent).toBe('51')
+    expect(screen.getByTestId('stages-tools-look-alike-count').getAttribute('title')).toBe('51 pairs of addresses look alike')
+    fireEvent.click(screen.getByRole('menuitem', { name: /Addresses that look alike/ }))
+    expect(p.onOpenChange).toHaveBeenCalledWith(false)
+    expect(onOpenLookAlikes).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the item and drops both counts when no pair waits, or before the count is known', () => {
+    for (const lookAlikeCount of [0, null]) {
+      const { unmount } = render(<JobsStagesToolsMenu {...props({ lookAlikeCount, onOpenLookAlikes: vi.fn() })} />)
+      expect(screen.getByRole('menuitem', { name: /Addresses that look alike/ }).textContent).toBe('Addresses that look alike…')
+      expect(screen.queryByTestId('stages-tools-look-alike-count')).toBeNull()
+      unmount()
+    }
+  })
+
+  it('says one pair in the singular', () => {
+    render(<JobsStagesToolsMenu {...props({ lookAlikeCount: 1, onOpenLookAlikes: vi.fn() })} />)
+    expect(screen.getByTestId('stages-tools-look-alike-count').getAttribute('title')).toBe('1 pair of addresses looks alike')
+  })
+
+  it('is the office\'s: no item and no count without the office tools gate, or with no door handed in', () => {
+    const gates = { lienDesk: true, legalDesk: true, jobContracts: true, officeTools: false, powerToggles: true }
+    const { unmount } = render(<JobsStagesToolsMenu {...props({ gates, lookAlikeCount: 9, onOpenLookAlikes: vi.fn() })} />)
+    expect(screen.queryByRole('menuitem', { name: /Addresses that look alike/ })).toBeNull()
+    expect(screen.queryByTestId('stages-tools-look-alike-count')).toBeNull()
+    unmount()
+    render(<JobsStagesToolsMenu {...props({ lookAlikeCount: 9 })} />)
+    expect(screen.queryByRole('menuitem', { name: /Addresses that look alike/ })).toBeNull()
+  })
+})

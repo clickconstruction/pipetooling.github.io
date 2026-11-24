@@ -14,6 +14,7 @@ import { jobMaterialsSummaryFor } from '../../lib/materials/onSiteSummary'
 import { Link } from 'react-router-dom'
 import { useCloseOnOutsideClick } from '../../hooks/useCloseOnOutsideClick'
 import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
+import { LOOK_ALIKE_WORDS } from '../../lib/addresses/lookAlikes'
 import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
@@ -106,6 +107,10 @@ export type JobsStagesToolsMenuProps = {
   onOpenJobBook: () => void
   onOpenTotalByName: () => void
   onOpenCombineSeparate: () => void
+  /** Pairs of addresses on file still waiting for an answer (punch list #439). Null until it is known. */
+  lookAlikeCount?: number | null
+  /** Opens *Addresses that look alike*. Absent, the item is not offered. */
+  onOpenLookAlikes?: () => void
   toggles: StagesToolsToggles
   onToggleIncludeScheduleTimeInSearch: () => void
   onToggleFollowMoves: () => void
@@ -164,6 +169,8 @@ export function JobsStagesToolsMenu({
   onOpenJobBook,
   onOpenTotalByName,
   onOpenCombineSeparate,
+  lookAlikeCount = null,
+  onOpenLookAlikes,
   toggles,
   onToggleIncludeScheduleTimeInSearch,
   onToggleFollowMoves,
@@ -211,6 +218,17 @@ export function JobsStagesToolsMenu({
       }}
     >
       ⋯
+      {/* Pairs of look-alike addresses still to answer (punch list #439): the count is here too, so the list is
+          not hidden behind a closed menu. It goes when no pair waits. */}
+      {gates.officeTools && onOpenLookAlikes && typeof lookAlikeCount === 'number' && lookAlikeCount > 0 ? (
+        <span
+          data-testid="stages-tools-look-alike-count"
+          title={`${lookAlikeCount} ${lookAlikeCount === 1 ? 'pair of addresses looks' : 'pairs of addresses look'} alike`}
+          style={{ position: 'absolute', top: -6, right: -8, minWidth: 16, padding: '0 4px', borderRadius: 999, background: '#b45309', color: '#fff', fontSize: '0.625rem', fontWeight: 700, lineHeight: '16px', textAlign: 'center' }}
+        >
+          {lookAlikeCount}
+        </span>
+      ) : null}
     </button>
     {open ? (
         <div
@@ -520,6 +538,21 @@ export function JobsStagesToolsMenu({
               style={stagesToolsMenuItemStyle}
             >
               <span>Combine / Separate…</span>
+            </button>
+          ) : null}
+          {gates.officeTools && onOpenLookAlikes ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onOpenChange(false)
+                onOpenLookAlikes()
+              }}
+              title="Addresses on file that may be one place written two ways"
+              style={stagesToolsMenuItemStyle}
+            >
+              <span>{LOOK_ALIKE_WORDS.door}</span>
+              {typeof lookAlikeCount === 'number' && lookAlikeCount > 0 ? <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lookAlikeCount}</span> : null}
             </button>
           ) : null}
           <div style={{ height: 1, background: 'var(--border)', margin: '0.2rem 0.3rem' }} />

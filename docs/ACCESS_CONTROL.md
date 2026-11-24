@@ -2668,6 +2668,7 @@ A training-mode account cannot sign, since starting a paper is a write.
 - View people they created and people shared with their master (via master_shares)
 - Jobs page — Stages tab: Billed Awaiting Payment, Total by Name modal;
   **Combine / Separate** (toolbar **right**) — same **dev** / **master_technician** / **assistant** gate as **Job Book** (**v2.516**)
+  **Addresses that look alike** (tools menu, under **Combine / Separate**) — the same office gate, with its answers in `address_place_answers` written by the office (`is_office_staff`) and read by the estimator beside them (**v2.8529**)
 - Jobs page — Labor tab: Add labor jobs per person
 - Jobs page — Sub Sheet Ledger tab: View labor jobs (own and shared);
   Edit/Delete own jobs;
