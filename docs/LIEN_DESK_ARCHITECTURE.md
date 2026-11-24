@@ -1339,6 +1339,10 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
 - **Both prints built with no window** (punch list #362 step 6, the kernels): [`lienRunPacket.ts`](../src/lib/jobs/lienRunPacket.ts) builds the notices' packet as the run window prints it when it has just opened, from the run's notices and the enclosures [`useLienRunEnclosures.ts`](../src/components/jobs/useLienRunEnclosures.ts) reads, a hook lifted whole out of `LienDeskRunModal`.
   `LienDeskRunModal.packetParity.render.test.tsx` prints the same notices from the window and from the kernel and compares the two documents whole, with the filing and the printed stamps, so the two builds of a legal paper cannot part.
   `useLienDeskAffidavits` answers `readyAffidavitsRun`, the affidavits' batch document and each job's copy, and its press prints what that builds.
+- **The run's one print** (v2.8536, punch list #362 step 6): [`useLienRunPrint.ts`](../src/components/jobs/useLienRunPrint.ts) takes the checklist, the desk's monthly notices as a thunk and the affidavit hook's `readyAffidavitsRun` and `runAffidavitCount`, and answers the card's state and its press.
+  It builds no document on a render: the count comes from `lienRunReadyNotices` and the affidavit papers, and the press builds the packet and the batch, merges them with `lienRunStackHtml`, prints, files each paper's own copy and stamps the notices.
+  `lienRunStack.ts` puts two print documents in one job by moving each `body` rule onto a wrapper and naming the affidavits' page, and refuses a document whose shape it does not know.
+  The notices' bills are read while the checklist is open, by job, on a list that keeps its identity: the desk rebuilds the notices on every render.
 - **Why the router stays:** it turns a row's target into 23 of the desk's setters across every view.
 - **Next:** `actOnNextUp` as a kernel that names the target and a thin switch that calls the setters.
 

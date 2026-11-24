@@ -2,7 +2,7 @@
 title: read the Board on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: board, lien desk, to do, bins, run, this run, get it right, checklist, leave out, left out, put it back, leave out again, off the lien path, not lienable, put it back, chips, hover, point at, card, address, customer, job name, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, row, dollars, notice sent, no notice needed, homestead question, print affidavits, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, hold mark, dashed, missed, retainage, reminders, ladder, step
+keywords: board, lien desk, to do, bins, run, this run, get it right, checklist, leave out, left out, put it back, leave out again, off the lien path, not lienable, put it back, chips, hover, point at, card, address, customer, job name, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, row, dollars, notice sent, no notice needed, homestead question, print affidavits, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, hold mark, dashed, missed, retainage, reminders, ladder, step, print the run, one stack, divider page
 where: /lien-desk
 ---
 The Lien desk opens on its To do view. The Board sits across the top of that view. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
@@ -189,7 +189,7 @@ Three steps sit across the top of the checklist. They are **Get it right**, **Pr
 
 Under **Get it right** each line is one paper that cannot print as it stands. The line says the job, the paper's bin and the one thing it waits on. Its blue press settles it, like {{button:blue|Find the owner}}. It is the same press the paper's row has on the list. A paper that waits on the leader has no blue press. The papers with the red mark come first.
 
-Press **papers are right** under the questions to read the papers that are ready. When nothing is left to settle, the checklist says every paper in the run is right. It then offers the two prints from the Board. One print for the whole run is not built yet.
+Press **papers are right** under the questions to read the papers that are ready. When nothing is left to settle, the checklist says every paper in the run is right. The run's print sits under the questions. Read [Print the run](#print-the-run) below.
 
 ## Leave a paper out of the run
 
@@ -197,11 +197,31 @@ One stuck paper must not hold the rest. Press {{button:outline|Leave out}} on it
 
 The paper moves to **left out of this run** at the foot of the checklist. Its line says who left it out, when and why. Everyone in the office sees the same line. Press {{button:outline|Put it back}} there to take the paper into the run again.
 
-Leaving a paper out changes nothing on the paper. It stays in its bin with its own day. The Board still counts it. If its question is answered later, its line says so. The Board's prints take a paper that is ready, left out or not. To keep a ready paper from going, hold it on its own pane.
+Leaving a paper out changes nothing on the paper. It stays in its bin with its own day. The Board still counts it. If its question is answered later, its line says so. **Print the run** never prints a paper you left out. The Board's own two prints take a paper that is ready, left out or not. To keep a ready paper from going, hold it on its own pane.
 
 The next run does not take a left-out paper by itself. It does not drop it either. The paper comes first on the new checklist, under **Left out of an earlier run**. Its line says which run, who left it out and why. Press {{button:blue|Put it back}} or {{button:outline|Leave out again}}. Until you answer, the run does not count that paper as right.
 
 Only the lien office can leave a paper out or put one back. Anyone else who opens the desk reads the checklist.
+
+## Print the run
+
+**Print the run** sits under the questions. It is the run's second step. One press prints every paper of the run that is right.
+
+The press says how many papers it prints. With every question settled it reads {{button:blue|Print the run · 16 papers}}. With questions still open it prints the papers that are right. It holds the rest. It then reads like {{button:blue|Print 12 papers · 4 wait on step 1 ▸}}. A line under the press says how many papers it held. Settle those papers above, or leave them out.
+
+The papers come out as one stack. The notices come first, in envelope order, behind their mail sheet. A divider page follows. The affidavits come last, by county clerk, behind their help sheet. Each paper prints the way its own press prints it.
+
+A paper you left out of the run does not print. The affidavits' help sheet names it with your reason. A paper an earlier run left out does not print until someone answers for it.
+
+After the print the notices are marked printed. They move to {{chip:gray|Approved · to mail}} on the Board. The affidavits go to the notary. Each job keeps its own copy of what printed.
+
+The press waits while the notices' unpaid bills are read. It then reads *Print the run · reading the bills…*. That takes a moment.
+
+Some browsers cannot put both kinds of paper in one print. The card then shows two presses, {{button:blue|Print 6 notices}} and {{button:blue|Print 10 affidavits}}. Each one prints its own stack.
+
+The two prints on the Board work as before. They print every ready paper on the desk.
+
+Only the lien office sees **Print the run**.
 
 ## Held papers and retainage
 

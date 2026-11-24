@@ -15,7 +15,10 @@ import type { LienLeftOutRow } from '../../lib/jobs/lienLeftOut'
 import { buildLienNextUp } from '../../lib/jobs/lienNextUp'
 import { lienFieldsHash } from '../../lib/jobs/lienNoticeSignature'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { lienRunPrintedWords, lienRunPrintPress } from '../../lib/jobs/lienRunPrint'
+import { lienStackOrderWords } from '../../lib/jobs/lienRunStack'
 import LienGetItRightHost from './LienGetItRightHost'
+import type { LienRunPrintState } from './useLienRunPrint'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -54,7 +57,7 @@ const AFTER = {
   affidavits: [] as LienAffidavitEntry[],
 }
 
-function mount(desk: { notices: LienDeskEntry[]; affidavits: LienAffidavitEntry[] }, over: { leftOut?: LienLeftOutRow[]; open?: boolean; office?: boolean; isMobile?: boolean; failure?: boolean; noRun?: boolean; onLeaveOut?: (line: LienRunLine, reason: string, note: string) => Promise<void>; onPutBack?: (line: LienRunLine) => Promise<void> } = {}) {
+function mount(desk: { notices: LienDeskEntry[]; affidavits: LienAffidavitEntry[] }, over: { leftOut?: LienLeftOutRow[]; open?: boolean; office?: boolean; isMobile?: boolean; failure?: boolean; noRun?: boolean; print?: LienRunPrintState; onLeaveOut?: (line: LienRunLine, reason: string, note: string) => Promise<void>; onPutBack?: (line: LienRunLine) => Promise<void> } = {}) {
   const board = buildLienBoard({ ...desk, retainage: [], todayYmd: TODAY, jobNumber: (id) => `ZZ-${id}`, jobName: (id) => `ZZ ${id}`, gcName: () => 'ZZ Builders', leaderName: 'Sam' })
   const rows = buildLienNextUp({ ...desk, retainage: [], letterTwoByJob: {}, role: 'assistant', todayYmd: TODAY, jobTitle: (id) => `ZZ ${id}`, gcName: () => 'ZZ Builders', leaderName: () => 'Sam' })
   const run = over.noRun || over.failure ? null : buildLienGetItRight({ board, rows, leftOut: over.leftOut ?? [], todayYmd: TODAY, jobTitle: (id) => `ZZ ${id}`, leaderName: () => 'Sam' })
@@ -75,6 +78,7 @@ function mount(desk: { notices: LienDeskEntry[]; affidavits: LienAffidavitEntry[
       onOpenLine={spies.onOpenLine}
       onLeaveOut={spies.onLeaveOut}
       onPutBack={spies.onPutBack}
+      print={over.print}
       prints={[{ key: 'notice', label: 'Print and mail 1 notice', left: null, dead: false, onPress: spies.onPrint }, { key: 'affidavit', label: 'Print 1 for notarization', left: '1 held', dead: false, onPress: spies.onPrint }]}
     >
       <div data-the-list>the list</div>
@@ -279,5 +283,93 @@ describe('on a phone', () => {
     fireEvent.click(q('[data-lien-run-leave-out="affidavit:locks"]')!)
     const short = all('[data-lien-run="view"] button').filter((b) => !b.hasAttribute('data-lien-run-open') && b.style.minHeight !== '44px')
     expect(short.map((b) => b.textContent)).toEqual([])
+  })
+})
+
+/** The one print as `useLienRunPrint` hands it over, with its press watched. */
+function printState(over: { notices: number; affidavits: number; held: number; reading?: boolean; mode?: 'one' | 'two'; printed?: boolean }): LienRunPrintState & { print: ReturnType<typeof vi.fn> } {
+  return {
+    press: lienRunPrintPress({ notices: over.notices, affidavits: over.affidavits, held: over.held, reading: over.reading ?? false }),
+    order: lienStackOrderWords(over.notices, over.affidavits),
+    mode: over.mode ?? 'one',
+    twoWhy: over.mode === 'two' ? 'This browser cannot print both kinds as one stack. Print each with its own press.' : null,
+    parts: { notices: `Print ${over.notices} notices`, affidavits: `Print ${over.affidavits} affidavits` },
+    notices: over.notices,
+    affidavits: over.affidavits,
+    printed: over.printed ? { words: lienRunPrintedWords({ notices: over.notices, affidavits: over.affidavits, atWords: '10:02 AM' }), next: 'The notices are marked printed. The affidavits go to the notary.' } : null,
+    print: vi.fn(),
+  }
+}
+
+describe('step 2: the one print (punch list #362, step 6)', () => {
+  it('with questions open the press is live for what is right, says its count and names what it held', () => {
+    const print = printState({ notices: 0, affidavits: 1, held: 3 })
+    mount(BEFORE, { print })
+    expect(all('[data-lien-run-card="print"] h3 > span').map((el) => el.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['2 · Print the run', '1 paper'])
+    const press = q('[data-lien-run-print="run"]') as HTMLButtonElement
+    expect(press.textContent).toBe('Print 1 paper · 3 wait on step 1 ▸')
+    expect(press.disabled).toBe(false)
+    expect(text('[data-lien-run-print-foot]')).toBe('3 papers are not right yet. Settle each above, or leave it out. The 1 that is right prints now.')
+    fireEvent.click(press)
+    expect(print.print).toHaveBeenCalledTimes(1)
+    expect(print.print.mock.calls[0]).toEqual([])
+    // The card stands under the questions, so the lines it points at are above it.
+    const cards = all('[data-lien-run-card]').map((el) => el.getAttribute('data-lien-run-card'))
+    expect(cards.indexOf('settle')).toBeLessThan(cards.indexOf('print'))
+  })
+
+  it('with every question settled it is the run, with the stack’s order, and the Board’s prints give way to it', () => {
+    const print = printState({ notices: 1, affidavits: 1, held: 0 })
+    mount(READY, { leftOut: [left()], print })
+    expect(q('[data-lien-run-print="run"]')!.textContent).toBe('Print the run · 2 papers')
+    expect(text('[data-lien-run-card="print"] p')).toBe('One stack, in this order: 1 notice by envelope, a divider page, then 1 affidavit by county clerk.')
+    expect(q('[data-lien-run-print-foot]')).toBeNull()
+    expect(all('[data-lien-run-print]').map((el) => el.getAttribute('data-lien-run-print'))).toEqual(['run'])
+    // What a person left out does not print, and the card says so.
+    expect(q('[data-lien-run-card="print"]')!.textContent).toContain('1 left out of this run does not print. It is listed below.')
+  })
+
+  it('is dead while the notices’ bills are read, and dead with nothing right', () => {
+    mount(READY, { print: printState({ notices: 1, affidavits: 1, held: 0, reading: true }) })
+    const press = q('[data-lien-run-print="run"]') as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    expect(press.textContent).toBe('Print the run · reading the bills…')
+    cleanup()
+    mount(BEFORE, { print: printState({ notices: 0, affidavits: 0, held: 4 }) })
+    const none = q('[data-lien-run-print="run"]') as HTMLButtonElement
+    expect(none.disabled).toBe(true)
+    expect(text('[data-lien-run-card="print"] p')).toBe('Nothing waits to print.')
+    expect(text('[data-lien-run-print-foot]')).toBe('No paper is right yet. Settle the 4 above, or leave each out.')
+  })
+
+  it('where one print job cannot hold both papers, each kind has its own press and the card says why', () => {
+    const print = printState({ notices: 6, affidavits: 10, held: 0, mode: 'two' })
+    mount(READY, { print })
+    expect(q('[data-lien-run-print="run"]')).toBeNull()
+    expect(q('[data-lien-run-card="print"]')!.textContent).toContain('This browser cannot print both kinds as one stack. Print each with its own press.')
+    fireEvent.click(q('[data-lien-run-print="notices"]')!)
+    fireEvent.click(q('[data-lien-run-print="affidavits"]')!)
+    expect(print.print.mock.calls).toEqual([['notices'], ['affidavits']])
+  })
+
+  it('after the press it says when it printed and what comes next', () => {
+    mount(READY, { print: printState({ notices: 1, affidavits: 1, held: 0, printed: true }) })
+    const said = q('[data-lien-run-printed]')!
+    expect(said.getAttribute('role')).toBe('status')
+    expect(said.textContent!.replace(/\s+/g, ' ').trim()).toBe('Printed at 10:02 AM: 1 notice and 1 affidavit. The notices are marked printed. The affidavits go to the notary.')
+  })
+
+  it('a viewer with no one print still gets the Board’s two, and no print card', () => {
+    mount(READY, { leftOut: [left()] })
+    expect(q('[data-lien-run-card="print"]')).toBeNull()
+    expect(all('[data-lien-run-print]').map((el) => el.getAttribute('data-lien-run-print'))).toEqual(['notice', 'affidavit'])
+  })
+
+  it('on a phone every press of the card is 44 px tall', () => {
+    mount(READY, { isMobile: true, print: printState({ notices: 6, affidavits: 10, held: 0, mode: 'two' }) })
+    expect(all('[data-lien-run-card="print"] button').map((b) => b.style.minHeight)).toEqual(['44px', '44px'])
+    cleanup()
+    mount(READY, { isMobile: true, print: printState({ notices: 1, affidavits: 1, held: 0 }) })
+    expect(all('[data-lien-run-card="print"] button').map((b) => b.style.minHeight)).toEqual(['44px'])
   })
 })

@@ -1082,6 +1082,9 @@ and `sign_lien_desk_item_with_code` stamps the signer's full name since `2026111
 `job_lien_desk_items_guard` no longer reads that move as a new approval: for an affidavit paper, and for a notice since v2.7911 (`20261119050000`), `sent` back to `approved` passes for any office role while the filing it was tied to is voided and `approved_at`, `approved_by` and `approval_mode` are untouched.
 A `sent` paper with a live filing, and a move that changes who approved, when or how, are still a new approval, so a `leader` approval is still a master's or a dev's alone.
 The copies window's writes add none either (v2.7846): a *Mailed* tick is one UPDATE of `served_at` and `sends`, and a changed document number is one UPDATE of `recording_number`, each on the filing's own `job_lien_filings` row under that table's update policy, for the office set that already records a mailing.
+**Print the run** (v2.8536): the run's one print on the checklist is drawn for the lien office alone (`isOffice`), as the Board's two prints are;
+every other viewer reads the checklist with the Board's prints.
+It writes what those prints write: the printed stamp on `job_lien_desk_items` and each job's filed copy in `sent_documents`.
 
 **Certified mail pieces** (v2.5379, `20261013120000_mail_pieces.sql`, the Docsmit train — [`DOCSMIT_LIEN_RUN_PLAN.md`](./DOCSMIT_LIEN_RUN_PLAN.md)): `mail_pieces` — **read / insert / update** the office (`is_office_staff() OR is_dev() OR is_assistant()`) or the master of the piece's job (`jobs_ledger.master_user_id`);
 **delete** nobody signed in (revoked from `authenticated`);

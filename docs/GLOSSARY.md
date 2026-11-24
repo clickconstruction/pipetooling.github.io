@@ -6735,6 +6735,8 @@ Since v2.7908 (the owner's yes of 2026-11-19) either red line ends in *Show ever
 The reminder covers everything that waits on him: a retainage notice since v2.7478, the approved notices that lack his signature since v2.7491, and since v2.7495 a text with the link goes beside the push or the email (`notify-lien-approval`).
 Since v2.7456 a computer's list under the Board is one group a bin, under the bin's own name and in the Board's order, papers that share one act folded into one row with the press that takes them all, and everything not due inside the week under **Later** (`lienNextUpByBin.ts`).
 Since v2.8474 (punch list #362, step 5) one line over that list is the door to **the run**: every paper the first tile counts, written out as the checklist **Get it right** (`lienGetItRight.ts`, `LienGetItRight.tsx`), which takes the list's place under the Board while it is open.
+Since v2.8536 (punch list #362, step 6) the checklist's second card is **Print the run**: one press prints every paper of the run that is right as **one stack**, the notices by envelope, a divider page, then the affidavits by county clerk (`lienRunPrint.ts`, `lienRunStack.ts`, `useLienRunPrint.ts`).
+A paper left out of the run never prints from that press, and the Board's own two prints are unchanged.
 A line of the checklist is one paper that cannot print as it stands, with its bin in the Board's words, the one thing it waits on and its To do row's own press;
 a paper that can print or is printed is **right**.
 **Leave out** takes one paper out of this run with a reason a person picks or types, kept in `lien_run_left_out` with who and when (`lienLeftOut.ts`), and **Put it back** takes it in again.

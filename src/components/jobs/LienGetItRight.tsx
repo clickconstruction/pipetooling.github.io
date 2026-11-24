@@ -9,7 +9,9 @@ import { EmptyState } from '../EmptyState'
 import { Money } from '../Money'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { LIEN_RUN_PRINT_WORDS as PRINT } from '../../lib/jobs/lienRunPrint'
 import { lienKindTagStyle } from './LienDeskNextUp'
+import type { LienRunPrintState } from './useLienRunPrint'
 
 /**
  * The run's first step, drawn (punch list #362, step 5): the checklist of `lienGetItRight.ts` under the Board, in the
@@ -38,8 +40,10 @@ export type LienGetItRightProps = {
   /** Leave the paper out of this run. Rejects with the reason when the write is refused. */
   onLeaveOut: (line: LienRunLine, reason: LienLeaveOutReason, note: string) => Promise<void>
   onPutBack: (line: LienRunLine) => Promise<void>
-  /** The Board's two prints, offered once nothing is left to settle. */
+  /** The Board's two prints, offered once nothing is left to settle, to a viewer with no one print. */
   prints?: ReadonlyArray<LienRunPrint>
+  /** The run's one print (step 6, `useLienRunPrint`): the lien office's. Absent, the Board's prints stand in. */
+  print?: LienRunPrintState | null
 }
 
 const blueBtn: CSSProperties = { padding: '5px 12px', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '0.8125rem', fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }
@@ -185,7 +189,7 @@ function Question({ line }: { line: LienRunLine }) {
   )
 }
 
-export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, userName, onBack, onAct, onOpenLine, onLeaveOut, onPutBack, prints }: LienGetItRightProps) {
+export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, userName, onBack, onAct, onOpenLine, onLeaveOut, onPutBack, prints, print }: LienGetItRightProps) {
   const [formFor, setFormFor] = useState<string | null>(null)
   const [putting, setPutting] = useState<string | null>(null)
   const [putWhy, setPutWhy] = useState<{ key: string; why: string } | null>(null)
@@ -319,7 +323,7 @@ export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, us
             {WORDS.allRight}
             {run.counts.leftOut > 0 ? <> <WorkedOutValue>{String(run.counts.leftOut)}</WorkedOutValue> left out.</> : null}
           </h3>
-          {prints && prints.length > 0 ? (
+          {!print && prints && prints.length > 0 ? (
             <>
               <p style={{ ...small, margin: '4px 0 8px' }}>{WORDS.printsLead}</p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -331,6 +335,52 @@ export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, us
                 ))}
               </div>
             </>
+          ) : null}
+        </section>
+      ) : null}
+
+      {print ? (
+        <section data-lien-run-card="print" style={{ ...card, ...(print.press.dead ? null : { border: '1px solid var(--border-blue)' }) }}>
+          <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-strong)', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>
+            <span>2 · {PRINT.head}</span>
+            {print.press.papers > 0 ? (
+              <span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                <WorkedOutValue>{String(print.press.papers)}</WorkedOutValue> {print.press.papers === 1 ? 'paper' : 'papers'}
+              </span>
+            ) : null}
+          </h3>
+          <p style={{ ...small, margin: '4px 0 8px' }}>{print.order ? <ValueSentence text={print.order} /> : PRINT.nothing}</p>
+          {print.mode === 'two' ? (
+            <>
+              <p style={{ ...small, margin: '0 0 8px', color: 'var(--text-700)' }}>{print.twoWhy}</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" data-lien-run-print="notices" disabled={print.press.dead} onClick={() => print.print('notices')} style={{ ...blueBtn, ...tall(isMobile), ...(print.press.dead ? deadBtn : null) }}>
+                  {print.press.dead ? print.press.label : print.parts.notices}
+                </button>
+                <button type="button" data-lien-run-print="affidavits" onClick={() => print.print('affidavits')} style={{ ...blueBtn, ...tall(isMobile) }}>
+                  {print.parts.affidavits}
+                </button>
+              </div>
+            </>
+          ) : (
+            <button type="button" data-lien-run-print="run" disabled={print.press.dead} onClick={() => print.print()} style={{ ...blueBtn, ...tall(isMobile), ...(print.press.dead ? deadBtn : null), whiteSpace: 'normal', textAlign: 'left' }}>
+              {print.press.label}
+            </button>
+          )}
+          {print.press.foot ? (
+            <p data-lien-run-print-foot style={{ ...small, margin: '8px 0 0' }}>
+              <ValueSentence text={print.press.foot} />
+            </p>
+          ) : null}
+          {run.counts.leftOut > 0 ? (
+            <p style={{ ...small, margin: '6px 0 0' }}>
+              <WorkedOutValue>{String(run.counts.leftOut)}</WorkedOutValue> left out of this run {run.counts.leftOut === 1 ? 'does' : 'do'} not print. {run.counts.leftOut === 1 ? 'It is' : 'They are'} listed below.
+            </p>
+          ) : null}
+          {print.printed ? (
+            <p role="status" data-lien-run-printed style={{ fontSize: '0.8125rem', color: 'var(--text-green-700)', margin: '8px 0 0' }}>
+              <ValueSentence text={print.printed.words} /> {print.printed.next}
+            </p>
           ) : null}
         </section>
       ) : null}
