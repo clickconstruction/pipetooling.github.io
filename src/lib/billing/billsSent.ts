@@ -1087,9 +1087,32 @@ export function billsSentRecord(billId: string, lines: ReadonlyArray<BillsSentLi
   }
 }
 
-/** The record's address: the list's own, with the bill in it. */
-export function billsSentRecordPath(billId: string): string {
-  return `${BILLS_SENT_PATH}?bill=${encodeURIComponent(billId)}`
+const DAY_YMD = /^\d{4}-\d{2}-\d{2}$/
+/** A chip of By day paid as it rides in an address: a plain word. *all* is the address with no chip. */
+const paidChipOf = (how: string | null | undefined): string => (how && how !== 'all' && /^[a-z]+$/.test(how) ? how : '')
+
+/** The address of a day of By day paid, with its chip. */
+const paidDayPath = (day: string, how: string | null | undefined): string => `${BILLS_SENT_PATH}?view=paid&day=${day}${paidChipOf(how) ? `&how=${paidChipOf(how)}` : ''}`
+
+/**
+ * The record's address: the list's own, with the bill in it. `from` is the day of By day paid the record was opened
+ * from, and its chip. The address then keeps both, so the record's way back is that day (`billsSentRecordBack`) and
+ * a reload or a pasted link keeps it too.
+ */
+export function billsSentRecordPath(billId: string, from?: { day: string; how?: string | null }): string {
+  const path = `${BILLS_SENT_PATH}?bill=${encodeURIComponent(billId)}`
+  if (!from || !DAY_YMD.test(from.day)) return path
+  return `${path}&view=paid&day=${from.day}${paidChipOf(from.how) ? `&how=${paidChipOf(from.how)}` : ''}`
+}
+
+/**
+ * Where a record's back press goes, from what its address holds. A record opened from a day of By day paid goes
+ * back to that day under its chip, and the press names the day. Any other record goes back to the list. The press
+ * once went to the list from everywhere, so a leader reading one day's payments lost the day at each bill.
+ */
+export function billsSentRecordBack(at: { view: string | null; day: string | null; how: string | null }): { to: string; label: string } {
+  if (at.view === 'paid' && at.day && DAY_YMD.test(at.day)) return { to: paidDayPath(at.day, at.how), label: `← What came in ${formatWorkDateYmdWeekdayShortFriendly(at.day)}` }
+  return { to: BILLS_SENT_PATH, label: '← All bills sent' }
 }
 
 const esc = (v: string): string => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

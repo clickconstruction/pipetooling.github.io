@@ -24,6 +24,7 @@ import {
   billsSentPayWords,
   billsSentPhoneWords,
   billsSentRecord,
+  billsSentRecordBack,
   billsSentRecordHtml,
   billsSentRecordPath,
   billsSentTiles,
@@ -833,11 +834,13 @@ export function BillsSentLedger() {
   }
 
   if (billParam) {
+    // The way back is where the record was opened from: the list, or the day of By day paid its address keeps.
+    const back = billsSentRecordBack({ view: params.get('view'), day: params.get('day'), how: params.get('how') })
     return (
       <section aria-label="One bill's record" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
         <div>
-          <Link to={BILLS_SENT_PATH} style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none', ...(phone ? { display: 'inline-flex', alignItems: 'center', minHeight: THUMB } : {}) }}>
-            ← All bills sent
+          <Link to={back.to} style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none', ...(phone ? { display: 'inline-flex', alignItems: 'center', minHeight: THUMB } : {}) }}>
+            {back.label}
           </Link>
         </div>
         {failure ? <OfflineRetryPanel failure={failure} onRetry={retry} surface="bills-sent" idempotent busy={reading} /> : null}

@@ -115,7 +115,8 @@ describe('BillsPaidByDay', () => {
     expect(cellOf(`${OLD}-20`).textContent).toBe('20')
     const day = screen.getByTestId('bills-paid-day')
     expect(within(day).getByTestId('bills-paid-line').textContent).toMatch(/^Bill 1420-0001 · J1420 · Marlow kitchen rough · Elena Marlow\$2,480\.00Card · StripePaid \d{1,2}:\d\d [AP]MSent Mon, Mar 162 days after it went$/)
-    expect(within(day).getByRole('link', { name: 'Bill 1420-0001' }).getAttribute('href')).toBe(`/bills-sent?bill=${B(1)}`)
+    // The record's address keeps the day and the chip it was opened from, so the record can lead back to them.
+    expect(within(day).getByRole('link', { name: 'Bill 1420-0001' }).getAttribute('href')).toBe(`/bills-sent?bill=${B(1)}&view=paid&day=${OLD}-18&how=stripe`)
     // Pick the day the check came: nothing from Stripe, and the press shows every way.
     fireEvent.click(cellOf(`${OLD}-20`))
     expect(screen.getByTestId('bills-paid-day').textContent).toContain('Nothing came in from Stripe on Fri, Mar 20.')
