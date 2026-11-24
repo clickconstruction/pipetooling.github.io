@@ -1,22 +1,20 @@
 ---
 name: "OpenStreetMap refuses the geocode functions"
 number: 436
-group: gated
-status: found 2026-11-24 by the live check of #408 · read the same day from the code, the function logs, OpenStreetMap's usage policy and one request from a Mac · nothing built, no function changed · waits on the owner's pick of four options
+group: close
+status: found 2026-11-24 by the live check of #408 · read the same day · option 3 picked on Diane's go of 2026-11-24 and built as v2.8512 (#9686) · both functions deployed the same day at 21:30 UTC · left: one call on Google's 30 days, and the first new address to read in the log
 summary: >
-  OpenStreetMap's address lookup, Nominatim, answers the edge functions geocode-address-batch and
-  geocode-one with HTTP 403 on every call. So on the live site it places nothing, and every address
-  with no saved point goes on to Google and then the US Census. Nothing is broken for a person: the
-  address is still placed. The cost is one refused request and up to a second of waiting for each
-  such address. The same request sent from a Mac with the function's own name is answered, so the
-  refusal is on where the functions call from or on what they sent for weeks, not on the name. The
-  card holds what was found, four options with what each costs, and a pick: take OpenStreetMap out
-  of the two functions and ask Google first.
-next: The owner's pick of an option below. The pick here is option 3, built as one small PR and a deploy of the two functions.
-size: S
-blocker: The owner's call. Nothing waits on it: every address is placed by Google or the Census today.
-ver: v2.8484
-opinion: build option 3 — the refusal cannot be mended from our side, our use is the kind the policy discourages, and Google's count stays where it is today, far under its free count
+  OpenStreetMap's address lookup, Nominatim, answered the edge functions geocode-address-batch and
+  geocode-one with HTTP 403 on every call. The same request sent from a Mac with the function's own
+  name was answered, so the refusal was on where the functions call from or on what they sent for
+  weeks, not on the name. Of four options the pick was to take OpenStreetMap's lookup out and ask
+  Google first, then the US Census. That is built and deployed. The map drawn when Google Maps
+  cannot load is a different OpenStreetMap service and was not touched.
+next: The owner's word on Google's 30 days on kept points, below, and then retire the card. The first new address typed after the deploy will show in the function log with no OpenStreetMap line.
+size: S; left: nothing to build, one call
+blocker: None. The one open call stood before this work and changes nothing built here.
+ver: v2.8512
+opinion: close it — the functions no longer call OpenStreetMap, and the 30 day question is its own card if anyone wants it
 mockup: not required — no screen changes; two edge functions and their docs
 ---
 
@@ -31,8 +29,31 @@ their log. The log then read:
 
 > geocode-address-batch: OpenStreetMap gave no plain answer: OpenStreetMap (Nominatim) HTTP 403
 
-The owner has made no call on it yet. This card is a read and a report. No function was changed and
-nothing was deployed.
+The first read was a report alone. Diane's go came the same day, and option 3 was then built.
+
+## Where it stands
+
+- **Built**: [v2.8512](../docs/recent-features/v2.8512.md), PR #9686. Both functions ask Google
+  first, then the US Census, and nobody else. The OpenStreetMap request, its `User-Agent` and the
+  1.1 second wait are gone.
+- **Deployed**: `geocode-address-batch` and `geocode-one` on 2026-11-24 at 21:30 UTC, from main.
+  Both boot, and `check:edge-drift` reads them as current. `court-precinct-nightly`,
+  `owner-confirm-nightly` and `property-lookup` share the edited files and were redeployed with
+  them. `dev-mcp` shares two of them, for a comment and a narrower type, and was left for its next
+  deploy.
+- **Not walked live**: no new address was sent through the deployed functions. The Map page's list
+  held five remembered misses, none of them a ZZ test record, and pressing **Try again** on a real
+  record was left alone. The functions' run tests prove the order, and the deployed code is main's.
+- **Left**: call 4 below.
+
+## Two OpenStreetMap services, and only one was taken out
+
+- **The map picture.** When Google's map cannot load, the app draws the map from OpenStreetMap's
+  tile server, with the saved points as its pins. That works, is not refused, and is untouched.
+- **The address lookup, Nominatim.** It turns a new address into a point. Only the two geocode
+  functions used it, it refused every call, and it is what option 3 removed.
+
+So a Google Maps failure still falls back to an OpenStreetMap map with every saved pin on it.
 
 ## What the functions send
 
@@ -88,8 +109,9 @@ page by page.
   with the service's name. From 2026-10-08 to 2026-11-24 the logs hold four such lines, all
   Google's, and none of OpenStreetMap's. That proves nothing either way.
 
-So the start is not known. The refusal is proven from 15:37 UTC on 2026-11-24, and it may be weeks
-old. Whether it has lasted longer than the hours a rate block lasts cannot be shown.
+So the start is not known. The refusal is proven from 15:37 UTC on 2026-11-24. The live check of
+#408 had already found OpenStreetMap giving no plain answer at 14:02 UTC that day, by what the
+answer's words left out. It may be weeks old. Whether it has lasted longer than the hours a rate block lasts cannot be shown.
 
 ## The one request from a Mac
 
@@ -181,9 +203,17 @@ terms. Their prices and free counts were not read for this card. Running our own
 pay for and keep updated. Either way the gain is the same under 100 free Google requests a month,
 and Google would stay as the second ask.
 
+### 3b. Keep OpenStreetMap, asked last
+
+A variant raised with Diane on 2026-11-24 and not built. OpenStreetMap would be asked after Google
+and the Census, so no normal lookup waits on it. It is a second fallback for the lookup only if the
+block lifts, so it needs option 1 and likely option 2 first. Without it, a new address typed while
+Google is down or over its count is placed by the Census alone, which misses streets newer than its
+files.
+
 ## The pick
 
-**Option 3, Google first and the Census second.** The block cannot be mended from our side, since
+**Option 3, Google first and the Census second.** Diane agreed on 2026-11-24, and it is built. The block cannot be mended from our side, since
 the name already passes. Asking for a lift costs the owner a letter for a gain of about one percent
 of a free count. And the way the screens ask, by themselves and from shared addresses, is the use
 the policy asks apps to keep off its public server. Taking it out costs Google nothing more than
@@ -193,12 +223,12 @@ Nothing is urgent. Until the owner picks, every address is still placed.
 
 ## The owner's calls
 
-1. **Which option.** The pick is 3.
-2. **If 3: Google first, or the Census first.** The pick is Google first, for new streets.
-3. **A word to OpenStreetMap anyway.** Not needed if the functions stop calling it.
-4. **Google's 30 days on kept points.** It stands under every option. A card of its own if wanted.
+1. **Which option.** Option 3, on Diane's go of 2026-11-24. Built.
+2. **If 3: Google first, or the Census first.** Built Google first, for new streets. Open to flip.
+3. **A word to OpenStreetMap anyway.** Not needed now that the functions do not call it.
+4. **Google's 30 days on kept points.** Open. It stood before this work. A card of its own if wanted.
 
-## How to verify, once built
+## How to verify
 
 - Change the address on a ZZ test job to a made-up street address and open the Pipeline. The
   function log shows one `geocode-address-batch` call and no *OpenStreetMap gave no plain answer*
@@ -212,4 +242,4 @@ Nothing is urgent. Until the owner picks, every address is still placed.
   and `function_edge_logs` for the calls, as `scripts/pg-logs.sh` reads `postgres_logs`. Counts and
   times only. No address was printed.
 - OpenStreetMap was asked once, by hand, for a public landmark. It was not asked in a loop.
-- No real record was read or changed.
+- No real record was read or changed, by the read or by the build.
