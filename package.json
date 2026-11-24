@@ -133,6 +133,7 @@
     "test:pg:gc-difficulty-raters": "bash scripts/pgtest-gc-difficulty-raters.sh",
     "test:pg:lien-bill-months": "bash scripts/pgtest-lien-bill-months.sh",
     "test:pg:lien-closed-days": "bash scripts/pgtest-lien-closed-days.sh",
+    "test:pg:lien-run-left-out": "bash scripts/pgtest-lien-run-left-out.sh",
     "test:pg:customer-sends-trail": "bash scripts/pgtest-customer-sends-trail.sh",
     "test:pg:lien-closed-paid-activity": "bash scripts/pgtest-lien-closed-paid-activity.sh",
     "test:pg:sub-sheet-stamps": "bash scripts/pgtest-sub-sheet-stamps.sh",
