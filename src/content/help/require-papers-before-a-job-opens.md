@@ -88,6 +88,7 @@ The GC on the job reads about a paper built from settings on their own page. The
 - They see each sub business with the day it finished signing. They see no worker's name.
 - A sub's business is the company on their file. A sub with no company shows under their own name.
 - After you change the settings, their count starts again, as yours does.
+- **Download a sample** gives them the job's paper with made-up names and SAMPLE across each page.
 
 A paper written in prose does not show there. What their page looks like is in [see what a customer sees on their portal](/help/see-what-a-customer-sees-on-their-portal#a-paper-a-job-requires).
 

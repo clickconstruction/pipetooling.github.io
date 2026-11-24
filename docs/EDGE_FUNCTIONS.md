@@ -241,6 +241,7 @@ when_to_read:
    - [sub-statement](#sub-statement)
    - [send-test-report](#send-test-report)
    - [open-test-report-pdf](#open-test-report-pdf)
+   - [open-job-paper-sample](#open-job-paper-sample)
    - [auto-send-test-reports](#auto-send-test-reports)
    - [send-lien-filing-email](#send-lien-filing-email)
    - [send-lien-desk-summary](#send-lien-desk-summary)
@@ -5369,6 +5370,18 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 **Authentication**: none (`verify_jwt = false`) — the portal link is the capability, resolved exactly as `customer-portal` does (raw token, then the v1 sha256 hash; revoked → 404 text). Guards: the report must be `status = 'sent'` with a `pdf_path`, on a job the link's company pays for (`customer_id` for a customer link, `gc_customer_id` for a GC link, either for `all`); sample tokens get a plain 404 line. Errors are short `text/plain` sentences (the tab the customer opened shows them). **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 **Used by**: the statement's inline *Test report* line and the *Test reports* card in [`CustomerPortal.tsx`](../src/pages/CustomerPortal.tsx) (`portalTestReportUrl`). `customer-portal`'s payload carries `testReports[]` (v2.3304) — the sent reports across the link's jobs, never drafts. **Deploy**: `supabase functions deploy open-test-report-pdf` (and redeploy `customer-portal`).
+
+---
+
+### open-job-paper-sample
+
+**Purpose** (v2.8506, punch list #389 step 5): the GC's **Download a sample** door on the customer portal. `GET /functions/v1/open-job-paper-sample?t=<portal token>&p=<required paper id>` answers the PDF itself (`application/pdf`, inline, named *Sample - <paper>.pdf*, `no-store`): the paper for that job's settings, with a made-up job and signer and SAMPLE across each page. The words are the database's own assembly for the job's picks, read through `clausePaperFor` ([`_shared/clausePaper.ts`](../supabase/functions/_shared/clausePaper.ts), `job_paper_clauses`), the one a signer reads, so a sample and a signed copy cannot disagree. The stamp's level is read as the GC's page reads it (`job_papers_gc_page`). The drawer is [`_shared/jobPaperSamplePdf.ts`](../supabase/functions/_shared/jobPaperSamplePdf.ts) (`buildJobPaperSamplePdf`), which imports nothing and takes pdf-lib as a parameter. Nothing is written, stored or sent, and nobody is told.
+
+**Authentication**: none (`verify_jwt = false`). The portal link is the capability, resolved as `customer-portal` resolves it (the raw token, then its sha256; revoked answers 404 text). Guards, in `sampleRefusal`: the link must show the jobs its customer is the GC on (`gc` or `all`), the paper must be one the job requires now and built from settings, and the job's `gc_customer_id` must be the link's customer. Every other case answers the same *This sample is not available.*, so the door says nothing about a paper that is not theirs. A paper the database will not put together answers 409 text. The sample statement's made-up tokens answer 404.
+
+**What it shows of the job**: the job's typed blanks are in the words, as a signer reads them. The job's number, its address, the company's people and every signer are not: the facts under the title are *Job J0000, a sample* and *Jordan Sample, Sample Sub LLC*.
+
+**Used by**: [`PortalJobPapers.tsx`](../src/components/portal/PortalJobPapers.tsx), a plain link that opens a tab of its own (`gcPaperSampleUrl`). **Deploy**: `supabase functions deploy open-job-paper-sample` after the merge, then `dev-mcp`, whose catalog names it.
 
 ---
 

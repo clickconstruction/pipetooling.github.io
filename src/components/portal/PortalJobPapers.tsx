@@ -2,16 +2,19 @@
  * What a GC reads about the papers a job requires (punch list #389, step 5): one block under each job's name that
  * requires a paper built from settings. It says what the paper asks in the list's own plain words, the level that
  * comes to, how many of the people who can open the job have signed, and each sub business with its day. No worker
- * is named. Read only: nothing here is a press, and nothing a GC does changes the paper.
+ * is named. Read only: its one press downloads a sample, and nothing a GC does changes the paper.
  *
  * The words are `lib/portal/gcJobPapers.ts`. Its title is its own: the Document builder's block on this page reads
  * *Secrecy on this job* and shows a builder the office sent, which is another thing. Light always, as their page is.
  */
-import { GC_PAPER_TITLE, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSigned, type GcJobPaper, type GcJobPapers } from '../../lib/portal/gcJobPapers'
-import { CARD, HAIR, INK, MUTED, PAPER_GREEN } from '../../lib/portal/portalTheme'
+import { sampleStateFromToken } from '../../lib/customerSampleMode'
+import { GC_PAPER_SAMPLE, GC_PAPER_TITLE, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSampleUrl, gcPaperSigned, type GcJobPaper, type GcJobPapers } from '../../lib/portal/gcJobPapers'
+import { CARD, HAIR, INK, MUTED, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
 import { Chip } from '../gc/gcUi'
 
-function PaperBlock({ paper, company }: { paper: GcJobPaper; company: string }) {
+const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1`
+
+function PaperBlock({ paper, company, sampleUrl }: { paper: GcJobPaper; company: string; sampleUrl: string | null }) {
   const level = gcPaperLevel(paper)
   const signed = gcPaperSigned(paper)
   const revision = gcPaperRevisionLine(paper)
@@ -61,21 +64,41 @@ function PaperBlock({ paper, company }: { paper: GcJobPaper; company: string }) 
         })}
       </div>
 
+      {sampleUrl ? (
+        <div style={{ display: 'grid', gap: '0.35rem', justifyItems: 'start' }}>
+          {/* A link, not a fetch: the function answers the PDF itself, and it opens in a tab of its own. A finger tall. */}
+          <a
+            href={sampleUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-portal-job-paper-sample=""
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, boxSizing: 'border-box', border: `1px solid ${INK}`, background: INK, color: PAPER, borderRadius: 6, padding: '10px 18px', fontSize: '0.92rem', fontWeight: 600, textDecoration: 'none' }}
+          >
+            {GC_PAPER_SAMPLE.press}
+          </a>
+          <div style={{ fontSize: '0.8rem', color: MUTED }}>{GC_PAPER_SAMPLE.fine}</div>
+        </div>
+      ) : null}
+
       <div style={{ fontSize: '0.8rem', color: MUTED }}>{gcPaperFine(company)}</div>
     </div>
   )
 }
 
-/** Every job's papers on the page, each under its job's name. Draws nothing for a customer whose jobs require none. */
-export function PortalJobPapers({ jobs, company }: { jobs: GcJobPapers[]; company: string }) {
+/**
+ * Every job's papers on the page, each under its job's name. Draws nothing for a customer whose jobs require none.
+ * `token` is the page's own link: with it each paper offers its sample. The sample statement's made-up tokens offer none.
+ */
+export function PortalJobPapers({ jobs, company, token = '' }: { jobs: GcJobPapers[]; company: string; token?: string }) {
   if (jobs.length === 0) return null
+  const real = token && !sampleStateFromToken(token) ? token : ''
   return (
     <div data-screen-only data-portal-job-papers="" style={{ margin: '1.4rem 0 0', display: 'grid', gap: '0.8rem' }}>
       {jobs.map((job) => (
         <div key={job.jobId} data-portal-job-papers-job={job.jobId} style={{ display: 'grid', gap: '0.4rem' }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MUTED, borderBottom: `1px solid ${HAIR}`, paddingBottom: 4 }}>{job.jobLabel || 'Job'}</div>
           {job.papers.map((paper) => (
-            <PaperBlock key={paper.id} paper={paper} company={company} />
+            <PaperBlock key={paper.id} paper={paper} company={company} sampleUrl={real ? gcPaperSampleUrl(FUNCTIONS_URL, real, paper.id) : null} />
           ))}
         </div>
       ))}

@@ -48,6 +48,18 @@ export function gcPaperFine(company: string): string {
   return `This is ${co}’s paper for the people it brings onto your job. It does not change the agreement between ${co} and you.`
 }
 
+/** The press that downloads the sample, and the line under it. */
+export const GC_PAPER_SAMPLE = {
+  press: 'Download a sample',
+  fine: 'The sample is this job’s paper with made-up names. Have your own attorney read it.',
+} as const
+
+/** Where the sample opens: the function that draws it, with the page's own token and the paper's id. Null with either missing. */
+export function gcPaperSampleUrl(functionsUrl: string, token: string, paperId: string): string | null {
+  if (!functionsUrl.trim() || !token.trim() || !paperId.trim()) return null
+  return `${functionsUrl.replace(/\/+$/, '')}/open-job-paper-sample?t=${encodeURIComponent(token)}&p=${encodeURIComponent(paperId)}`
+}
+
 /** The line under the title that says a change started the count again. Null on a paper nobody has changed. */
 export function gcPaperRevisionLine(paper: Pick<GcJobPaper, 'settingsRevision'>): string | null {
   return paper.settingsRevision > 1 ? `These settings are revision ${paper.settingsRevision} on this job. Everyone signs each revision.` : null
