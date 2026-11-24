@@ -178,6 +178,10 @@ On a ZZ test job alone, its address changed to made-up words and put back after.
   with six rows, each with its *Checked Nov 24. The app asks again by itself on Dec 24.* line and
   **Try again**. One press on the ZZ row's **Try again** made one call with `retry: true`, moved
   the day from 15:38Z to 15:42Z and said *Still no match*. No press was made on a real record's row.
+- **Step 3 on the built live site, 15:51Z, read only.** The Pipeline's line is a link, and a press
+  opened the Map page's list with five rows, each with its day and **Try again**. The open made no
+  call. The Dashboard's line was not seen there: the account the walk signs in as has no unplaced
+  job of its own.
 - **What the check left.** The five real addresses are each remembered now, kept when the Pipeline
   and the Map page were opened, as any person's open would keep them. The check's made-up words
   stay as a row in `address_geocode_misses`, and most likely the first try's words as a second.
