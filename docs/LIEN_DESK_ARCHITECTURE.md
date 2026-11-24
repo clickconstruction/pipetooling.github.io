@@ -270,6 +270,7 @@ last_updated: 2026-11-21
 > Since v2.8116 (the owner's pick of 2026-11-20) the column of this notice is pinned to the frame's right edge in a wider card (`position: sticky; right: 0`), so earlier papers slide under it, and the frame carries `data-slides` while the grid is wider than it, which draws the column's edge.
 > Since v2.8125 the column of this notice is drawn only where a month can be ticked or one is ticked already (`thisShown` in `LienDeskMonths`), so a missed notice with nothing due has none, as a sent notice has none since v2.8064.
 > The empty card goes through `EmptyState`.
+> Since **v2.8535** (punch list #415) the empty card says what gives the job a month (`LIEN_MONTHS_EMPTY`, `lienMonthGrid.ts`), and the office's press there, *Set the last day of work ›*, opens `LienLastWorkDayWindow` as the path's LAST WORK stop does.
 > `LienDeskMonths.render.test.tsx` holds the order, the words, the hooks and the doors.
 > A width observer fires only when a frame is drawn, so a measurement in a hidden browser pane reloads at each width.
 

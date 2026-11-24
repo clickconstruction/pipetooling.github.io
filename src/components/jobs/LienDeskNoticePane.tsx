@@ -604,6 +604,7 @@ export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
         headless
         grid={monthGrid!}
         lastWork={<LienLastWorkDayLine flat jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={lastWorkSaved} {...lastWorkFacts} />}
+        onSetLastWork={lienLastWorkDoorOffered({ office, hasJob: Boolean(job) }) ? () => setLastWorkOpen(true) : undefined}
         claimNode={(foot) => (
           <LienClaimBox
             foot={foot}

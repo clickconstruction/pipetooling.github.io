@@ -251,13 +251,24 @@ describe('LienDeskMonths, the ledger (#361)', () => {
     expect((sent.querySelector('[data-lien-ledger-lead]') as HTMLElement).textContent).toBe('A check is a paper that already names the month.')
   })
 
-  it('a job with no months says so through EmptyState, with no grid and no lead line', () => {
+  it('a job with no months says so through EmptyState, with no grid and no lead line, and says what gives it one', () => {
     const { card } = mount({ papers: [thisPaper('A', [])], rows: [], earliestOpen: null, lateUntil: null })
-    expect((card.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No months on this job yet.')
+    // A reader who cannot set the day gets the words alone: what gives the job a month.
+    expect((card.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No months on this job yet. Approved hours, a sent bill or a last day of work gives the job its first month.')
+    expect(card.querySelector('[data-empty-state] button')).toBeNull()
     expect(card.querySelector('table')).toBeNull()
     expect(card.querySelector('[data-lien-ledger-lead]')).toBeNull()
     // The row above the empty words is the next step: the last day of work and the press that sets it.
     expect(card.firstElementChild?.matches('[data-lien-ledger-last-work]')).toBe(true)
     expect(screen.getByRole('button', { name: 'Set by hand, last day of work' })).toBeTruthy()
+  })
+
+  it('the office gets the press that fills an empty card: Set the last day of work opens the day\u2019s window (punch list #415)', () => {
+    const onSetLastWork = vi.fn()
+    const { card } = mount({ papers: [thisPaper('A', [])], rows: [], earliestOpen: null, lateUntil: null }, { onSetLastWork })
+    const empty = card.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No months on this job yet. Set the last day of work \u203a gives the job its first month.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Set the last day of work \u203a' }))
+    expect(onSetLastWork).toHaveBeenCalledTimes(1)
   })
 })
