@@ -5,7 +5,7 @@ import { ReloadOverWordsBar } from './ReloadOverWordsBar'
 import { __resetReloadAskForTests, askReloadOverWords, currentReloadAsk } from '../lib/reloadOverWords'
 import { __forgetTypedTextForTests } from '../lib/typedText'
 import { TYPED_SHOWN_ATTR, TYPED_TOUR_SETTLE_MS, TYPED_TOUR_SHOWN_MS } from '../lib/typedTextTour'
-import { UPDATE_PILL_DOUBLE_PRESS_MS, UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT } from '../lib/updatePillWarn'
+import { UPDATE_PILL_DOUBLE_PRESS_MS, UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT, UPDATE_PILL_WARNED_TOP } from '../lib/updatePillWarn'
 
 describe('ReloadOverWordsBar: Hard Reload and the could-not-load Reload, over typed words', () => {
   /** jsdom lays nothing out: each place is given its height down the page, and the page a scroll. */
@@ -142,7 +142,7 @@ describe('ReloadOverWordsBar: Hard Reload and the could-not-load Reload, over ty
     const foot = leaveAMessage('We can start Monday.', null)
     foot.getBoundingClientRect = () => ({ top: window.innerHeight - 80, bottom: window.innerHeight - 20, left: 10, right: 310, width: 300, height: 60, x: 10, y: window.innerHeight - 80, toJSON: () => ({}) })
     pressReload()
-    expect(screen.getByRole('status').style.top).toBe('1rem')
+    expect(screen.getByRole('status').style.top).toBe(UPDATE_PILL_WARNED_TOP)
     expect(screen.getByRole('status').style.bottom).toBe('')
   })
 

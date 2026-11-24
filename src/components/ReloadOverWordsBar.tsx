@@ -6,6 +6,7 @@ import {
   UPDATE_PILL_CONFIRM,
   UPDATE_PILL_TYPED_WORDS,
   UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT,
+  UPDATE_PILL_WARNED_TOP,
   updatePillIgnoresPress,
   updatePillSide,
   type UpdatePillSide,
@@ -94,7 +95,7 @@ export function ReloadOverWordsBar() {
       role="status"
       style={{
         position: 'fixed',
-        ...(side === 'top' ? { top: '1rem' } : { bottom: '1rem' }),
+        ...(side === 'top' ? { top: UPDATE_PILL_WARNED_TOP } : { bottom: '1rem' }),
         left: '50%',
         transform: 'translateX(-50%)',
         // Over the update pill, which sits in the same spot.
