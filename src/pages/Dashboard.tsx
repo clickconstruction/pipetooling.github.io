@@ -1387,6 +1387,9 @@ export default function Dashboard() {
           needsYouDoorTo={needsYouJobModeDoorTo ?? undefined}
         />
         {jobModeTop}
+        {/* Write someone up (punch list #410): the same press as the full Dashboard's. Above the job card since
+            v2.8507: under it, a job in progress or a leader's quick buttons pushed it beneath the Clock In strip. */}
+        <WriteSomeoneUpDoor userId={authUser.id} role={role} surface="job-mode" style={{ marginBottom: '0.75rem' }} />
         <DashboardJobModeCard
           userId={authUser.id}
           onLeaveReport={(j) => setLeaveReportJob(j)}
@@ -1394,8 +1397,6 @@ export default function Dashboard() {
           canClockOut={!dashboardSelfIsSalary}
           knownJobs={jobsForVisitLabels}
         />
-        {/* Write someone up (punch list #410): the same press as the full Dashboard's, under the job card. */}
-        <WriteSomeoneUpDoor userId={authUser.id} role={role} surface="job-mode" style={{ marginTop: '0.75rem' }} />
         {/* Your week (v2.6589, punch list #255): the one progress signal the office picked for this person, and how far it moved this week. */}
         <DashboardYourWeekCard userId={authUser.id} />
         {/* Your record (v2.3368): the three things only this person can put right, no money on it. */}
@@ -1451,13 +1452,12 @@ export default function Dashboard() {
               <DashboardTrialVerdictSection authUserId={authUser.id} role={role} />
             </Suspense>
           }
-          schedule={
-            <>
-              {myScheduleSection}
-              {/* Write someone up (punch list #410): Taunya's pick, the short pages show the press. */}
-              <WriteSomeoneUpDoor userId={authUser.id} role={role} surface="short-dashboard" style={{ margin: '0.25rem 0 0.75rem' }} />
-            </>
+          underGreeting={
+            // Write someone up (punch list #410): Taunya's pick, the short pages show the press. Under the greeting
+            // since v2.8507: under the list, every line that waited pushed it further down the page.
+            <WriteSomeoneUpDoor userId={authUser.id} role={role} surface="short-dashboard" style={{ margin: '0 0 0.9rem' }} />
           }
+          schedule={myScheduleSection}
           foot={<DashboardTrainingSection userId={authUser.id} role={role} />}
           onEverythingElse={() => {
             setShortShowFullDashboard(true)

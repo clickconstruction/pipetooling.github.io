@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useLocation } from 'react-router-dom'
 import { shouldResurfaceUpdatePill } from '../lib/updatePillResurface'
+import { isPhoneSheetOpen, subscribePhoneSheetOpen, updatePillPlace } from '../lib/phoneSheetOpen'
 import {
   IDLE_HIDDEN_MIN_MS,
   decideAutoReload,
@@ -98,6 +99,8 @@ export function UpdatePrompt() {
   /** The new worker controls this page: a reload from here on needs no wait. */
   const workerTookOverRef = useRef(false)
   const { pathname, search } = useLocation()
+  // A phone sheet keeps its last press at the bottom of the screen, so the pill moves to the top while one is open (v2.8507).
+  const sheetOpen = useSyncExternalStore(subscribePhoneSheetOpen, isPhoneSheetOpen, () => false)
   /** v2.4214: a move is a new page or a new `?tab=` — a tab switch is a quiet moment too. */
   const moveKey = routeMoveKey(pathname, search)
 
@@ -337,9 +340,10 @@ export function UpdatePrompt() {
   return (
     <div
       role="status"
+      data-update-pill={sheetOpen ? 'top' : 'bottom'}
       style={{
         position: 'fixed',
-        bottom: '1rem',
+        ...updatePillPlace(sheetOpen),
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 9998,

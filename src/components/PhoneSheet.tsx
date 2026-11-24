@@ -4,6 +4,7 @@ import { useModalStackEntry } from '../hooks/useModalStackEntry'
 import { useVisualViewportBox } from '../hooks/useVisualViewportBox'
 import { visibleBand } from '../lib/visibleBand'
 import { PHONE_PRESS_MIN_HEIGHT, thumbInLine } from '../lib/phonePress'
+import { markPhoneSheetOpen } from '../lib/phoneSheetOpen'
 
 /** Where a window becomes a sheet: the phone width the thread window fills the screen at (`ThreadWindow.tsx`). */
 export const PHONE_SHEET_QUERY = '(max-width: 760px)'
@@ -60,6 +61,8 @@ export function PhoneSheet({
   const phone = useMatchMedia(PHONE_SHEET_QUERY)
   const shows = visibleBand(useVisualViewportBox())
   const isTopmost = useModalStackEntry()
+  // Drawn as a sheet, it holds the bottom of the screen: the app's version pill moves to the top meanwhile (`phoneSheetOpen.ts`).
+  useEffect(() => (phone ? markPhoneSheetOpen() : undefined), [phone])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
