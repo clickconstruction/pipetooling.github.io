@@ -10,7 +10,7 @@ summary: >
   loose ends: PRs not merged, a migration not pushed, the test rows the walks left. Then the builds
   that are ready now, a way to see that the same person opened a link twice, and the builds that
   wait on one of Taunya's calls.
-next: Part 1, the walks left. 1a and 1c wait on presses that take an award and an ask back, which another session is building. 1f waits on a way to set a billing job on a test project, since no screen does. 1k needs a real phone. Then remove the two test certificates and their two Drive files, named under the 2026-11-24 notes. Part 3 can start beside the walks. Parts 4 and 5 wait on Taunya's calls.
+next: Part 1, the walks left. 1a and 1c wait on presses that take an award and an ask back, which another session is building. 1f waits on a person to set a billing job on the test project by hand, on Diane's yes of 2026-11-24, since no screen does and the session was refused. 1k needs a real phone. Then remove the two test certificates and their two Drive files, named under the 2026-11-24 notes. Part 3 can start beside the walks. Parts 4 and 5 wait on Taunya's calls.
 size: L as five parts (M · S · M · M · L), each alone
 blocker: Walks 1a and 1c wait on a way to undo an award and an ask. Walk 1f waits on a way to set and clear a billing job. None for 1k. The Sub NDA was published as revision 1 on 2026-11-23, on the owner's go. Parts 4 and 5 wait on Taunya's calls, each named on its line. An attorney's read of the Sub NDA and an insurance agent's read of the sheet come before anything goes to a real GC or a real trade.
 opinion: build — the walks first, since each one proves code that is already live
@@ -178,11 +178,14 @@ puts its rows back after, and its line on #404 names what it could not delete.
 - **1f held.** No screen sets a billing job on a GC project or clears one.
   `gc_projects.billing_job_id` is written by a sent pay application, a sent interest bill and a job combine, and by nothing else.
   So the walk's first step is a row written by hand, and that is the owner's call.
+  Diane allowed that one write on 2026-11-24, for that row and that column and no wider.
+  The session's auto mode refused it at about 07:14 UTC, and no other door was tried, so nothing was written and the column reads empty.
+  1f waits for a person to set the column and clear it after, or for a press that does.
   Seen without it: today's two copies are under Sent copies, *Contracts and estimates*, as *Insurance sheet email* to the test trade company, and they name no job.
 - **Left on production.**
   - The test sheet at revision 7, reading as it did at revision 2.
   - One send, `986a6039-aed2-41b6-ad3f-8be1b1d4eb10`, sent twice and taken off. Its two email log rows, `001a2aa4-faf4-4d7a-aa5e-44f799d4a648` and `2b1e1d20-e6e3-44fe-89b3-2abdd0a88afd`, and its two Sent copies, `886b9867-3364-4bda-960c-49c984d73022` and `a407f609-26b6-4602-858b-4d9551e564e4`.
-  - The ZZ person `1841fe2f-c4e9-4f96-9814-17cf916f4d11`, removed from the trade's page.
+  - Two ZZ people, `1841fe2f-c4e9-4f96-9814-17cf916f4d11` and `c01c7426-2184-484d-bb28-17fdde576da6`, both removed from the trade's page. The second was added for 1f and sent nothing.
   - Two certificates on the test trade company, `5d7385db-814a-4535-8ea1-3c33c1a7d59a` and `bd8d0d89-1041-46dd-af78-4c3e0f5baac1`, and their file rows in `gc_trade_files`, `b0fea0f6-1947-43b8-b421-8504e19c4841` and `6f899892-6805-4898-a35e-4b8ff0f1d544`. The database lets a dev delete a certificate, but no screen found offers the press for a trade company's, so they stay.
   - Two Drive files in PipeTooling Jobs → Jobs → GC trade partners → GC test trade company, delete me: `2026-11-24 0044 - ZZ Test certificate 416.pdf` and `2026-11-24 0100 - ZZ Test certificate 416.pdf`. The Drive account this session reaches may read them and may not trash them, so they are a person's to remove.
   - The trade's portal link of 2026-11-23 reads *Opened 20 times*, from the signed-out looks.
