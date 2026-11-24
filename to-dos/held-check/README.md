@@ -2,7 +2,7 @@
 name: "A held check: recorded the day it comes, counted the day the bank makes it good"
 number: 437
 group: gated
-status: asked 2026-11-24 by Diane, with a payer's check deposited and not yet good at the bank · every place a typed check counts was read in the code, and everything the app knows about a check clearing · a first draw, a critique and a second draw the same day · the same day she asked for a badge on the Pipeline card and for the path when a check fails, both added · piece 1 is built as v2.8525, no release before the bank clears the check, and it found that the bank posts a check days before the day it names · pieces 2 to 7 are not built · waiting on the owner's six calls
+status: asked 2026-11-24 by Diane, with a payer's check deposited and not yet good at the bank · every place a typed check counts was read in the code, and everything the app knows about a check clearing · a first draw, a critique and a second draw the same day · the same day she asked for a badge on the Pipeline card and for the path when a check fails, both added · piece 1 is built as v2.8525, no release before the bank clears the check, and it found that the bank posts a check days before the day it names · call 1 answered the same day: cleared is the bank's named day · pieces 2 to 7 are not built · waiting on the owner's other five calls
 summary: >
   A paper check typed on a bill counts everywhere the moment it is saved: the bill reads Paid, the
   customer's page says all paid up, chasing stops, the job leaves the lien lists. Only three things
@@ -11,9 +11,9 @@ summary: >
   and the day the bank expects it. The card proposes a held check: the Dashboard says a check is at
   the bank and what it fits, one press holds it for those bills, nothing counts while it is held,
   and the bank's posting counts it and tells the office which liens to release.
-next: The owner answers the six calls, call 1 first. Piece 1 is built on the bank's named day, which comes about a week after the day it posts.
+next: The owner answers calls 2 to 6. Then the screens of pieces 3 to 7, drawn on the day the bank posts, are redrawn on the bank's named day before piece 3 is built.
 size: L as a train of seven (S · S · M · M · S · S · M)
-blocker: The owner's calls, the first two above all. Counsel's three questions gate nothing in the build.
+blocker: The owner's calls 2 to 6, the second above all. Counsel's three questions gate nothing in the build.
 opinion: build — one rule for every check, made from what the bank already tells the app; piece 1 closes a hole in #435 as built
 ---
 
@@ -39,7 +39,7 @@ It builds on [#76, returned checks](../ar-returned-checks.md) and on the Dashboa
 
 1. **The door is the bank's own row.** When a check is deposited, the Dashboard says so and names the bills it fits. One press holds it for those bills. Nobody types the check.
 2. **A held check counts nowhere.** Its bills stay open, each marked with the check and the day the bank expects it. Chasing stops for those bills. The lien clocks keep running.
-3. **The bank's answer does the rest.** When the bank posts it, the app counts it and tells the office which liens to release. When the bank fails it, nothing has to be undone.
+3. **The bank's answer does the rest.** When the bank has posted it and the bank's named day has come, the app counts it and tells the office which liens to release. When the bank fails it, nothing has to be undone.
 
 ## What happens today
 
@@ -80,7 +80,7 @@ Two faults sit in that:
 |---|---|---|
 | In the drawer | The office has the paper. It is not deposited. | Holds it for its bills. Asks for the deposit after three days. |
 | At the bank | It is deposited. The bank shows it as pending and names the day it expects it. | Holds it for its bills. Shows the bank's day. Counts nothing. |
-| Cleared | The bank posted it. | Counts it on its bills that day. Tells the office what to release. |
+| Cleared | The bank posted it, and the day the bank named has come. | Counts it on its bills that day. Tells the office what to release. |
 | Came back | The paying bank refused it, before or after posting. | Ends the hold. The bills chase again. After posting, the returned-check case takes over. |
 
 ## The badge on the Pipeline card
@@ -199,7 +199,7 @@ A Stripe bill paid whole by check is a ledger row, and Stripe closes it seven da
 
 **For the company's owner**
 
-1. What does cleared mean? The bank does two things on two days. It posts a check within a day or three, and it names a later day, about a week out. Piece 1 is built on the later day: the bank posted it and the bank's day has come. Pick: keep that, since the checks that came back after posting did so within six days. The other answer is the day the bank posts it, with a caution for the days after that does not block. Under it, a release is offered about a week sooner.
+1. What does cleared mean? Answered 2026-11-24 by Diane: the bank's day. The bank does two things on two days. It posts a check within a day or three, and it names a later day, about a week out. A check has cleared when the bank posted it and the bank's day has come, as piece 1 is built. The answer set aside was the day the bank posts it, about a week sooner, with a caution for the days after.
 2. Does the count need a press? Pick: no. The office chose the bills on day one. The bank's posting counts the check, and the Dashboard says it did.
 3. Every check, or only where a lien waits? Pick: every check. One rule is easier to keep than two. A leader keeps *Count it now* with a reason, for a cashier's check or a payer who is always good.
 4. Who may release before the bank clears it? Pick: a leader only, with a typed reason. As built in piece 1, anyone who can open the release tab may, with a typed reason.
