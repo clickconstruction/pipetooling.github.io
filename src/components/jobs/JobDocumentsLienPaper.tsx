@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { type JobLienPaper, type JobLienPaperRow, type LienPaperTab, jobLienPaperRows } from '../../lib/jobs/jobLienPaperRows'
 import { loadJobLienPaper } from '../../lib/jobs/jobLienPaperIo'
@@ -12,6 +13,8 @@ import { formatAiaMoney } from '../../lib/aiaG702G703Preview'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { useAuth } from '../../hooks/useAuth'
 import { useTakenDown } from '../../hooks/useTakenDown'
+import { useJobLienDeskEntry } from '../../hooks/useJobLienDeskEntry'
+import { lienWindowDeskDoorHref } from '../../lib/lien/lienWindowDeskDoor'
 import { useToastContext } from '../../contexts/ToastContext'
 import LienInstrumentsModal from './LienInstrumentsModal'
 import { documentsChip, documentsHeading, documentsLinkButton, documentsNum, documentsQuietButton, documentsTd } from './jobDocumentsStyles'
@@ -24,12 +27,19 @@ const dayOf = (v: string): string => (/^\d{4}-\d{2}-\d{2}$/.test(v) ? v : calend
  * The Documents tab's lien paper (v2.4496): the notices and filings recorded on the job, its
  * demand letters and its releases of lien. A release opens the page as signed; a letter or a
  * filing opens the Lien window on the tab that holds it, where it can be viewed and tracked.
+ *
+ * The window is handed the job's place on the Lien desk (punch list #335): this section holds no desk, so the
+ * window's header read *Draft the notice* at every step, over a notice already drafted, sent for approval or
+ * printed. The desk is read for this job while the window is open (`useJobLienDeskEntry`), and the header's
+ * button for a step worked on the desk leaves the job window for the desk's page, on the job (`onLeave`).
  */
-export function JobDocumentsLienPaper({ job, onOverlayOpenChange }: { job: JobWithDetails; onOverlayOpenChange?: (open: boolean) => void }) {
+export function JobDocumentsLienPaper({ job, onOverlayOpenChange, onLeave }: { job: JobWithDetails; onOverlayOpenChange?: (open: boolean) => void; /** Called before the window's door leaves for the Lien desk's page: the job window closes itself. */ onLeave?: () => void }) {
+  const navigate = useNavigate()
   const { showToast } = useToastContext()
   const { user, profileName } = useAuth()
   const [paper, setPaper] = useState<JobLienPaper | null>(null)
   const [lienTab, setLienTab] = useState<LienPaperTab | null>(null)
+  const deskEntry = useJobLienDeskEntry(job, lienTab != null)
   // Recording in the Lien window reads again and keeps nothing to stop that read: one that lands after the section is
   // taken down sets nothing (v2.7771).
   const takenDown = useTakenDown()
@@ -120,7 +130,21 @@ export function JobDocumentsLienPaper({ job, onOverlayOpenChange }: { job: JobWi
         initialTab={lienTab ?? undefined}
         signerNameFallback={(profileName ?? '').trim()}
         authEmail={user?.email?.trim() ?? ''}
-        onRecorded={() => void reload()}
+        // Punch list #335: where the job's notice and affidavit stand on the Lien desk, and the leader a paper sent for approval waits on.
+        deskNotice={deskEntry.deskNotice}
+        deskAffidavit={deskEntry.deskAffidavit}
+        deskLeader={deskEntry.deskLeader}
+        // The header's door for a step worked on the desk: this window and the job window close, and the desk's page opens on the job.
+        onOpenLienDesk={(jobId, deskKind) => {
+          openLienWindow(null)
+          onLeave?.()
+          navigate(lienWindowDeskDoorHref(jobId, deskKind))
+        }}
+        onLastWorkSaved={() => deskEntry.refetch()}
+        onRecorded={() => {
+          void reload()
+          deskEntry.refetch()
+        }}
       />
     </section>
   )
