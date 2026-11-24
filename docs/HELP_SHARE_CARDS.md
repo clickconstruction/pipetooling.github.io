@@ -2,7 +2,7 @@
 
 > What happens when someone texts or posts a guide's link, what a guide's author has to get right for it, and how to check it. Nothing is built per guide by hand: the build draws every guide's page and card from the guide file itself.
 
-last_updated: 2026-11-12
+last_updated: 2026-11-24
 
 ## What a shared link shows
 
@@ -30,7 +30,7 @@ That is all. There is no per-guide image to make, no tag to write, no list to ad
 
 ## How to check
 
-- **Locally**: `npm run build` → open `dist/g/<slug>/index.html` and `dist/g/<slug>/card.png`. `HELP_SHARE_CARDS=0 npm run build` skips the cards (faster; the pages carry the site card).
+- **Locally**: `npm run build` → open `dist/g/<slug>/index.html` and `dist/g/<slug>/card.png`. `HELP_SHARE_CARDS=0 npm run build` skips the cards (faster; the pages carry the site card). Only the build writes them: a `vitest` run and the dev server leave `dist/` alone (`buildOnlyCloseBundle` in `vite.config.ts`).
 - **Live, after the deploy**: `curl -s https://clicktooling.com/g/<slug>/ | grep og:` shows the guide's title, line and `…/g/<slug>/card.png`; `curl -sI https://clicktooling.com/g/<slug>/card.png` is `200 image/png`.
 - **As a preview agent** (what Messages does): load the live URL in Playwright's Chromium with the user agent `facebookexternalhit/1.1 Facebot Twitterbot/1.0`, wait three seconds — the URL must still be the `/g/` page and `meta[property="og:image"]` must be the guide's card. A plain browser must be in the app (`/help/?g=…`, then sign-in when signed out) after about two seconds.
 - **For real**: text the link from an iPhone. The bubble shows the card and the question; tapping it opens the guide.
