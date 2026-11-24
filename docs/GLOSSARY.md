@@ -1300,6 +1300,7 @@ Two readings of the same `clock_sessions` rows.
 pay stubs, Draft Payroll, the People → Overhead pool, the Moneyfill week close and the unallocated-time queue read it.
 **Recorded time** is every session that is not rejected or revoked — closed sessions approved *or* awaiting approval (and, for the day split only, the session open right now).
 **Job costing reads recorded time** since migration `20260909022534`: `sync_crew_jobs_from_clock` / `sync_crew_bids_from_clock` split the day over recorded sessions (resynced by the row trigger `clock_sessions_sync_crew_recorded_tr`), and `teamLabor.ts` + `get_man_hours_by_job()` read hours from the view **`people_hours_recorded`** (`people_hours` + closed-unapproved hours, columns `hours` / `approved_hours` / `pending_hours`).
+Since v2.8392 the view finds each pay row by a `CASE` on the name, never an equality onto a `COALESCE`, which Postgres does not use as an index condition on a table with row policies, and the SQL bed `people-hours-recorded` holds the plan.
 Consumers: the job window's **Team labor** row and Bill-tab line, the Cost Timeline's 👷 markers, Job Summary's **Labor** column, the Pipeline man-hours, Crew P&L. Since v2.3261 the **overhead pool and the job day ledger read recorded time too** (`isRecordedClockSession` in `overheadDailyLabor.ts`: closed, not rejected/revoked): People → Overhead's day table, 90-day KPIs, three lenses, pool trend and people table, the Dashboard overhead card, Job Summary's Hours · days / overhead / Days / Timeline / Capacity, and the Burn projection.
 Still approved-only: `jobs_ledger.last_work_date`, the History day grid, and People → Review's Team Summary (`people_hours` on both of its sides — candidates for a later sweep).
 
@@ -2003,6 +2004,7 @@ A person with **working hours** (a `set` row on `person_available_hours`, v2.834
 The office draws a person's week from the row (**Set hours** / **Change**, `AvailableHoursModal` with `WeekAvailabilityPainter`);
 a person draws their own from the quiet line at the foot of My Time's picture (`MyTimeCanWorkLine`, v2.8338), on the full Dashboard or on the **My Time** card under Your record in Job Mode (`DashboardMyTimeCard`, v2.8347;
 guide *draw the hours you can work each week*).
+A salaried person with working hours reads them on that line with no press, then *The office sets these hours*, on the Dashboard and since v2.8405 on Job Mode's card too (`asks={!isSalary}`).
 My Time's own picture counts the person's time by day and by week and measures nothing against the answer (`DashboardMyTimePicture` over `myTimeWeeks.ts`, v2.8338, guide *see the time I have added up*).
 Gate `canOpenHoursTab` (the clock's readers).
 Kernels: [`utilization.ts`](../src/lib/people/utilization.ts), [`weekAvailability.ts`](../src/lib/people/weekAvailability.ts);
@@ -6261,6 +6263,8 @@ A place that cannot draw a span keeps the plain words (`moneyWords`): a tooltip,
 `AmountSmallCents`, `MoneyWithSmallCents` and the charges surfaces' `Money` are older names that draw through the door.
 A screen is moved to the door by `node scripts/codemods/small-cents-sweep.mjs`, never by hand, and the surfaces moved so far are the files in `scripts/codemods/small-cents-swept/`, one a sweep.
 `check:small-cents` reads those files and refuses a PR that writes `$` and `formatCurrency` into a swept screen (v2.8376).
+The sweeps of 2026-11-23 moved Banking and Pay (v2.8404), Materials (v2.8407), Bids (v2.8408), People (v2.8410), the job window and the job form (v2.8413), the Lien desk and the Legal desk (v2.8415), the rest of Jobs (v2.8417) and the remaining folders and pages (v2.8418).
+The script enters no `data-theme="light"` wrapper, skips the papers in its `SKIP_FILES` and the public pages in `SKIP_PUBLIC`, and leaves alone and lists a line that also holds an older bare empty sentence, which `check:empty-words` would count as newly written (v2.8410).
 A customer's screen, a print and anything inside a `data-theme="light"` wrapper keep the look they have, the owner's call of 2026-11-23.
 A test finds an amount drawn through the door with `moneyText` ([`moneyText.ts`](../src/test/moneyText.ts)), since the figure is two spans.
 
@@ -6877,15 +6881,22 @@ The form opens on the day the bill was made, with **Today** one press away (`byH
 it lists the same customer's other bills with no send on record to tick, files one record a bill and counts them on its button, *Record how 3 bills went*, a refused bill staying in the strip with its reason while the rest save (`byHandOthers`, `byHandRecordLabel`, `byHandOutcome`, v2.7350);
 and it reads the record back above the button before the press, *The record will read:* (`byHandReadBack`, v2.7351), since a record cannot be changed once saved.
 **Did not arrive** (v2.7053) is a send the mail service bounced, or a text that failed, on a bill not paid with no later send that arrived.
+An email the mail service has only called *sent* counts the days once `BILLS_SENT_NO_ANSWER_DAYS` (2) have passed, *No answer from their mail server in 14 days*, with *Check the address* on a bill still open, and it never joins **Did not arrive** (v2.8424).
+A send whose bill is no longer on the job carries the note `BILLS_SENT_GONE_NOTE`, that the bill was taken back or replaced after it went, and counts in no total (v2.8427).
 **No send on record** (v2.7052) is a bill the app made that has no email, text or print on any record: it sits in a strip above the days, never on a day.
 **Paid, Part paid, Not paid** (v2.8333, punch list #422) is where a bill stands, drawn as a stamp under its amount on every send of it, from the bill's own payment rows (`billPaidState`, `src/lib/billing/billsPaid.ts`).
+Since v2.8423 a billed bill whose payments on record leave nothing out reads **Paid**, its status unchanged, and a bill a cent short is still part paid.
 A paid bill's stamp carries the newest payment's day and, under it, the way in the job window's words (*Card · Stripe*, *Check 4417 · bank deposit*) and the days the money took from the bill's first send.
+Since v2.8422 a check shows its number alone (`checkNumberOf`, `src/lib/jobs/billsAndPayments.ts`: at most 12 characters that start with a digit, a leading *ck#* dropped), so a deposit's id is never drawn and a check with no readable number reads *Check · bank deposit*.
 **Still out** is an open bill's amount or a part-paid bill's remainder;
 a day's band counts it over the bills that first went that day (*1 of 3 paid · $6,820.00 still out*), and the **Not paid** tile over every bill on the list.
 **By day paid** (v2.8343) is the page's second view, behind the switch at its top and at `/bills-sent?view=paid`: a month of days, each with what came in, and behind a picked day its total and its payments (`src/lib/billing/billsPaidDays.ts`).
 **A day's figure** is each payment at what it took off its bill, on the payment's own day: a Stripe payment the day the customer paid, a matched deposit the day it posted at the bank, a typed payment the day the person named;
 Stripe's fee is not taken off, a refund made in Stripe is not seen, a credit in kind is listed and never added, and a test-mode bill's payment is left out.
 The chips narrow the month to one way of paying, **Stripe** first, and **one deposit** that paid several bills is drawn once with its bills under it.
+A payment is named by who its bill was sent to, and by the job's customer only when no send names one, so both views say one name (v2.8425).
+The tile *Next Stripe payout to the bank* is drawn on any answer, *None on its way* or *Stripe did not answer* standing where the amount would (`billsPaidPayoutOf`), and a day with a credit in kind and no money reads *1 credit* in its cell (v2.8426).
+Each month step names the month it opens, *‹ Oct* and *Dec ›* (`billsPaidStepLabel`), and the printed month opens with the month's grid, a paid day boxed with its figure to the cent (`billsPaidMonthGridHtml`, v2.8416).
 Readers are the sent copies' own: dev, master, assistant, controller.
 
 ### Document builder (Documents → Document builder)
