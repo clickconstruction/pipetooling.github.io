@@ -74,7 +74,9 @@ An email line says what the mail service last reported.
 
 Delivered does not mean someone read the email. Opened is the stronger word.
 
-A red tile at the top reads **Did not arrive** with a count. The tile counts sends that did not arrive on a bill that is still open.
+A red tile at the top reads **Did not arrive** with a count. The tile shows only when a send did not arrive.
+
+The tile counts sends that did not arrive on a bill that is still open.
 
 Press {{chip:gray|Did not arrive}} to see only those sends. Fix the address on the bill and send the bill again.
 
@@ -117,7 +119,11 @@ Every send is its own line. A second send reads *Email, sent again*.
 
 A second send also says which send it is and the day of the first one. The words read like *2nd send. First sent Tue, Nov 3.*
 
-A line may have no amount. The line then reads *This bill is no longer on the job.* The bill was taken back or replaced after it went.
+A line may have no amount. A paper that is not one job's bill has none.
+
+A pay application, a certified bill and a reminder to a general contractor are such papers. A text whose pay link names no bill is another.
+
+A line whose bill is gone says so. The line reads *This bill is no longer on the job.* The bill was taken back or replaced after it went.
 
 ## See every send of one bill
 
@@ -284,9 +290,15 @@ A month of days shows. A green day has a figure. The figure is what came in that
 
 Press a day. A box shows that day's total and its payments.
 
-Tiles above the month add up the money. This month shows **Today**, **This week** and the month. An older month shows the month alone.
+Tiles above the month add up the money. This month shows **Today**, **This week** and the month. An older month shows the month.
+
+Every month also shows the **Next Stripe payout to the bank** tile.
 
 This week starts on Sunday here. The Dashboard's **Money in** week starts on Monday. A Sunday payment can make the two differ.
+
+A day can differ too. **Money in** counts a bank deposit as soon as it posts. This page counts it once it is put on a bill or a job.
+
+**Money in** marks such a deposit *Landed · not applied yet*.
 
 Each payment names the bill, the job and who paid. A pill says how the money came.
 
