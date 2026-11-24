@@ -50,8 +50,8 @@ import {
   signingLinkByHandPrompt,
   signingLinkCopiedWords,
 } from '../../lib/documents/agreementsActs'
-import { TAKE_BACK_LABEL, canTakeBackPapers, takeBackConfirm, takeBackOutcomeWords, takeBackVerdict } from '../../lib/documents/paperTakeBack'
-import { takeBackPartyPaper } from '../../lib/documents/paperTakeBackIo'
+import { TAKE_BACK_LABEL, canTakeBackPapers, takeBackConfirm, takeBackHolder, takeBackOutcomeWords, takeBackVerdict } from '../../lib/documents/paperTakeBack'
+import { takeBackCompanyPaper, takeBackPartyPaper } from '../../lib/documents/paperTakeBackIo'
 import { canOpenSignedRecord } from '../../lib/contracts/partyPapers'
 import { paperChipFloor, paperNamePress, paperPressFloor } from '../../lib/documents/agreementsPhonePress'
 import { readPersonPaperSendFacts, sendPersonPaperForSignature, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
@@ -398,7 +398,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   }
 
   // Take back: the paper is deleted and its signing link ends with it. The confirm says so first. The delete itself
-  // asks for an unsigned paper, so one signed a moment ago is kept, and the office is told which it was.
+  // asks for an unsigned paper, so one signed a moment ago is kept, and the office is told which it was. A trade
+  // company's own paper goes through its function, which refuses in words a paper GC mode is waiting on.
   const takeBack = async (row: AgreementRow) => {
     if (busyAct || !mayTakeBack) return
     const verdict = takeBackVerdict(row)
@@ -406,7 +407,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     if (!(await confirmDialog(takeBackConfirm(row, verdict.sent)))) return
     setBusyAct(`back:${row.id}`)
     try {
-      const told = takeBackOutcomeWords(await takeBackPartyPaper(row.source_id), row, verdict.sent)
+      const outcome = takeBackHolder(row.kind) === 'company' ? await takeBackCompanyPaper(row.source_id) : await takeBackPartyPaper(row.source_id)
+      const told = takeBackOutcomeWords(outcome, row, verdict.sent)
       showToast(told.words, told.tone)
       retry()
     } catch (e) {

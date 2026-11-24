@@ -72,6 +72,14 @@ describe('ShortDashboardBody', () => {
     expect(props.onEverythingElse).toHaveBeenCalledTimes(1)
   })
 
+  it('draws what is handed in under the greeting above the list, so the lines that wait never push it down (v2.8507)', () => {
+    const { container } = draw({ underGreeting: <button type="button" data-write-someone-up>Write someone up</button>, schedule: <div data-testid="his-day">8:00 Alder Creek Lofts</div> })
+    const order = [...container.querySelectorAll('[data-short-greeting], [data-write-someone-up], [data-short-row], [data-testid="his-day"], [data-short-door]')].map((el) =>
+      el.hasAttribute('data-short-greeting') ? 'greeting' : el.hasAttribute('data-write-someone-up') ? 'write someone up' : el.hasAttribute('data-short-row') ? 'a line that waits' : el.hasAttribute('data-short-door') ? 'everything else' : 'his day',
+    )
+    expect(order).toEqual(['greeting', 'write someone up', 'a line that waits', 'a line that waits', 'a line that waits', 'his day', 'everything else'])
+  })
+
   it('a superintendent’s door names what is behind it for him (punch list #384)', () => {
     const { container } = draw({ firstName: 'Sam', role: 'superintendent', waiting: [], office: 0 })
     expect(container.querySelector('[data-short-door-note]')?.textContent).toBe('Clock In, your hours, your crew and the full Dashboard.')

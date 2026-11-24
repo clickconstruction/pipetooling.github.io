@@ -2,19 +2,19 @@
 name: "Lien desk gate marks: the spike's record and what it left"
 number: 364
 group: residual
-status: spike 2026-11-15 · shape G shipped v2.7335 the same day · the row press that lands on its open gate built v2.8472 · left: a look on the live desk
+status: spike 2026-11-15 · shape G shipped v2.7335 the same day · the row press that lands on its open gate built v2.8472 · walked live 2026-11-24, Safari's ring mended v2.8509 · left: a look on a real phone
 summary: >
   The owner asked on 2026-11-15 whether the affidavit pane's five gates should show on each row of the
   Lien affidavits list. A design spike measured eight shapes, and shape G shipped the same day: five small
   marks after the row's last work month, in the pane's order, on the two piles where a hold is still
   possible. This card is the way back to the spike's note, its measurements and its flags. The one piece the
   spike left, a row press that lands on its open gate, is built in v2.8472.
-next: Once v2.8472 is live, press a held row on the Lien affidavits list on a real phone and on a computer, and say whether the landing reads right. Then this card can go.
+next: Once v2.8509 is live, press a held row on the Lien affidavits list on a real iPhone, and say whether the landing reads right and the gate shows no blue ring. Then this card can go.
 size: S (a look, no build)
-blocker: v2.8472 has to be live first.
+blocker: v2.8509 has to be live first.
 mockup: not required — the marks shipped in v2.7335, and the piece left changes only where a press lands
 opinion: look at it on a phone first — that is where the gates open a whole screen under the job's path
-ver: v2.7313 · 7335 · 8472
+ver: v2.7313 · 7335 · 8472 · 8509
 ---
 
 # Lien desk gate marks: the spike's record and what it left (#364)
@@ -75,12 +75,29 @@ The code had moved since this card was written. The list is `LienDeskAffidavitLi
 own scrolling box with its own pinned heads, so the desk's `scrollPaneTo` was not the tool. The pane does its own
 landing.
 
-## Left: a look on the live desk
+## Walked live, and one mend (2026-11-24, v2.8509)
 
-The build was seen on a harness page over made-up rows, in headless Chromium, at 730 and 380 px wide, light and dark.
-Not seen: a real phone, Safari, a real job, and a screen reader's words when the keyboard lands on the gate. Once
-v2.8472 is live, press a held row on a phone and on a computer. If the keyboard moving to the pane gets in the way of
-working down the list with the keys, say so: the focus is one line in `useLienGateLanding.ts`.
+Diane asked for the live walk. It was read-only: row presses on the live desk, nothing written.
+
+- **Headless Chromium, the live desk:** a row held on its notice gate and one held on its homestead gate landed as
+  built at 1400, 730 and 380 px wide, light and dark, with less motion and by Enter. The gate's row was whole on the
+  screen, under no head, lit, with the keyboard on it. The page did not move. A clear row opened at the top.
+- **The iPhone simulator's Safari, the live desk:** the pane landed the same way. It is a simulator, not a real phone.
+- **The fault it found:** in Safari the first press after a page load left the keyboard's blue ring and underlined
+  words on the gate, and they stayed after the amber light had gone. v2.8509 mends it: a gate landed on by a tap or a
+  mouse press takes the keyboard without the ring. The mend was seen in the simulator's Safari on the harness page,
+  not yet on the live desk.
+- **A second fault, with less motion:** the pane jumped, the job's path then grew, and the landing stood 47 px short
+  with two heads pinned. v2.8509 follows a pane it has moved while it settles, so the jump ends where the glide does.
+  Seen in the simulator's Safari with Reduce Motion on.
+
+The fragment `docs/recent-features/v2.8509.md` has the measures.
+
+## Left: a look on a real phone
+
+Not seen: a real iPhone in a hand, Safari on a Mac, and a screen reader's words when the keyboard lands on the gate.
+Once v2.8509 is live, press a held row on a real iPhone. If the keyboard moving to the pane gets in the way of working
+down the list with the keys, say so: the focus is one line in `useLienGateLanding.ts`.
 
 ## Where it plugs in
 

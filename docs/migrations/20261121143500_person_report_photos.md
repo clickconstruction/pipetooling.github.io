@@ -1,6 +1,6 @@
 # 20261121143500_person_report_photos.sql (2026-11-21, v2.8172)
 
-Write someone up, the photos (punch list #410, PR 5; `to-dos/write-someone-up/`). One table, one private bucket and one small function. It ships alone, ahead of the screens that take and show the photos.
+Write someone up, the photos (punch list #410, PR 5; the card closed 2026-11-24, see `to-dos/README.md`). One table, one private bucket and one small function. It ships alone, ahead of the screens that take and show the photos.
 
 ## What it does
 

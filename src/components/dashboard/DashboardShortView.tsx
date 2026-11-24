@@ -14,9 +14,9 @@ import { useNeedsYouPress } from '../needsYou/useNeedsYouPress'
 import LienLeaderSignCardView from './LienLeaderSignCardView'
 
 /**
- * The short Dashboard: what a leader on the Short view sees in place of the page's forty cards. One list of the
- * lines that wait on him alone, each with one press, then his day, then one line for what the office is carrying
- * and one door to everything else. `shortDashboard.ts` decides which lines are his and every word; this draws them.
+ * The short Dashboard: what a leader on the Short view sees in place of the page's forty cards. Write someone up
+ * under the greeting, then one list of the lines that wait on him alone, each with one press, then his day, then one
+ * line for what the office is carrying and one door to everything else. `shortDashboard.ts` decides which lines are his and every word; this draws them.
  *
  * `ShortDashboardBody` takes everything as props, so a test and a look can mount it with sample rows.
  * `DashboardShortHome` is the page's part: it reads Needs you once, as the full Dashboard's card would, and opens
@@ -53,6 +53,8 @@ export type ShortDashboardBodyProps = {
   onRateCrew?: () => void
   /** Above the greeting: a trial helper's verdict, which shows itself only when one is owed. */
   top?: ReactNode
+  /** Between the greeting and the list: Write someone up, which the list must never push off the first screen. */
+  underGreeting?: ReactNode
   /** His day: My Schedule as the full Dashboard draws it. */
   schedule?: ReactNode
   /** Under the door: required training, which shows itself only when something is required. */
@@ -60,7 +62,7 @@ export type ShortDashboardBodyProps = {
   onEverythingElse: () => void
 }
 
-export function ShortDashboardBody({ firstName, hour, waiting, alsoYours, role, office, read, phone, onAct, onOpenLien, onOpenLienDesk, onRateCrew, top, schedule, foot, onEverythingElse }: ShortDashboardBodyProps) {
+export function ShortDashboardBody({ firstName, hour, waiting, alsoYours, role, office, read, phone, onAct, onOpenLien, onOpenLienDesk, onRateCrew, top, underGreeting, schedule, foot, onEverythingElse }: ShortDashboardBodyProps) {
   const w = SHORT_DASHBOARD_WORDS
   const rows = waiting.length + (onRateCrew ? 1 : 0)
   // The count is a promise that the list is whole, so it waits for a read that is in.
@@ -79,6 +81,7 @@ export function ShortDashboardBody({ firstName, hour, waiting, alsoYours, role, 
           </div>
         ) : null}
       </div>
+      {underGreeting}
 
       <section aria-label={w.title} style={CARD}>
         <h2 style={HEAD}>
@@ -165,6 +168,7 @@ export default function DashboardShortHome({
   dispatchAged = null,
   onRateCrew,
   top,
+  underGreeting,
   schedule,
   foot,
   onEverythingElse,
@@ -175,6 +179,7 @@ export default function DashboardShortHome({
   dispatchAged?: DispatchAgingSummary | null
   onRateCrew?: () => void
   top?: ReactNode
+  underGreeting?: ReactNode
   schedule?: ReactNode
   foot?: ReactNode
   onEverythingElse: () => void
@@ -226,6 +231,7 @@ export default function DashboardShortHome({
         onOpenLienDesk={() => navigate(LIEN_DESK_PATH)}
         onRateCrew={onRateCrew}
         top={top}
+        underGreeting={underGreeting}
         schedule={schedule}
         foot={foot}
         onEverythingElse={() => {

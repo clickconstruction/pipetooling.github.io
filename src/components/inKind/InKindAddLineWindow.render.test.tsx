@@ -34,6 +34,14 @@ function makeIo(over: Partial<InKindAddLineIo> = {}): InKindAddLineIo {
 
 const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } })
 
+/**
+ * The saves alone, in order. The window also asks a dry run 350 ms after the amount or the date settles, with no job and
+ * the memo it had then. On a slow machine that timer comes due between the press and the read, so the last call is the
+ * dry run and not the save: a CI run on 2026-11-24 read `costJobId: null, memo: 'Preview'` with `true` where the save
+ * stood one call before it. What a test holds is the save, whatever dry run lands around it.
+ */
+const saves = (io: InKindAddLineIo) => vi.mocked(io.addLine).mock.calls.filter(([, dryRun]) => dryRun === false)
+
 describe('InKindAddLineWindow', () => {
   it('keeps the press dead until the amount and the memo are in, then names the amount', async () => {
     renderWithProviders(<InKindAddLineWindow data={concreteDeal()} onClose={() => undefined} onAdded={() => undefined} io={makeIo()} />)
@@ -70,7 +78,7 @@ describe('InKindAddLineWindow', () => {
     type('What was given instead of money', '  6 yards of 3000 psi  ')
     fireEvent.click(screen.getByTestId('in-kind-add-line-save'))
     await settle()
-    expect(io.addLine).toHaveBeenLastCalledWith({ arrangementId: 'a2', givenOn: '2026-11-04', amount: 885, memo: '6 yards of 3000 psi', costJobId: null, forMonth: null }, false)
+    expect(saves(io)).toEqual([[{ arrangementId: 'a2', givenOn: '2026-11-04', amount: 885, memo: '6 yards of 3000 psi', costJobId: null, forMonth: null }, false]])
     expect(onAdded).toHaveBeenCalledTimes(1)
     expect(await screen.findByText('The line for $885.00 is added.')).toBeTruthy()
   })
@@ -89,7 +97,26 @@ describe('InKindAddLineWindow', () => {
     expect(press.disabled).toBe(false)
     fireEvent.click(press)
     await settle()
-    expect(io.addLine).toHaveBeenLastCalledWith(expect.objectContaining({ costJobId: 'oak', amount: 1475 }), false)
+    expect(saves(io)).toEqual([[expect.objectContaining({ costJobId: 'oak', amount: 1475 }), false]])
+  })
+
+  // The press lands just before the dry run's 350 ms and the read just after: a search this slow put the dry run last on
+  // every run, which is the order a loaded CI runner hit once. The save is still the one save, with its job.
+  it('holds the save when the dry run lands after the press', async () => {
+    const slowSearch = vi.fn(() => new Promise<Array<{ id: string; hcp_number: string; click_number: null; job_name: string; job_address: string }>>((res) => setTimeout(() => res([{ id: 'oak', hcp_number: '1158', click_number: null, job_name: 'Oak Hollow Building C', job_address: '12 Oak Hollow Rd' }]), 90)))
+    const io = makeIo({ searchJobs: slowSearch })
+    renderWithProviders(<InKindAddLineWindow data={concreteDeal()} onClose={() => undefined} onAdded={() => undefined} io={io} />)
+    await settle()
+    type('Amount', '1475')
+    type('What was given instead of money', '10 yards, the slab patch')
+    fireEvent.click(screen.getByText('A job'))
+    type('Find the job by its number, name or address', 'oak')
+    fireEvent.click(await screen.findByText('1158 Oak Hollow Building C', {}, { timeout: 2000 }))
+    fireEvent.click(screen.getByTestId('in-kind-add-line-save'))
+    // Past the dry run's timer, whichever side of the press it fell on.
+    await waitFor(() => expect(vi.mocked(io.addLine).mock.calls.some(([, dryRun]) => dryRun === true)).toBe(true), { timeout: 2000 })
+    await settle()
+    expect(saves(io)).toEqual([[expect.objectContaining({ costJobId: 'oak', amount: 1475, memo: '10 yards, the slab patch' }), false]])
   })
 
   it('shows the reason when the save is refused, and keeps what was typed', async () => {

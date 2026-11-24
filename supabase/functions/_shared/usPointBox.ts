@@ -25,8 +25,8 @@ const RAW_MAX = 2000
  * A point refused for falling outside the box: logs the geocoder's raw answer and returns the
  * detail the miss carries (*Google placed it outside the lower 48 (26.7813, 91.9274)*).
  */
-export function refusePointOutsideUs(source: 'google' | 'census' | 'nominatim', address: string, lat: number, lng: number, raw?: unknown): string {
-  const name = source === 'google' ? 'Google' : source === 'census' ? 'The Census' : 'OpenStreetMap'
+export function refusePointOutsideUs(source: 'google' | 'census', address: string, lat: number, lng: number, raw?: unknown): string {
+  const name = source === 'google' ? 'Google' : 'The Census'
   const detail = `${name} placed it outside the lower 48 (${lat.toFixed(4)}, ${lng.toFixed(4)})`
   let rawText = ''
   try {

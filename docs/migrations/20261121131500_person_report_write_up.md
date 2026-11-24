@@ -1,6 +1,6 @@
 # 20261121131500_person_report_write_up.sql (2026-11-21, v2.8157)
 
-Write someone up: the ground under the phone sheet a leader or a superintendent opens from the Dashboard (punch list #410, PR 1; `to-dos/write-someone-up/`). Twelve columns on `person_reports` and three functions. It ships alone, ahead of the screens that call it. No table is created, so no fence call closes the file.
+Write someone up: the ground under the phone sheet a leader or a superintendent opens from the Dashboard (punch list #410, PR 1; the card closed 2026-11-24, see `to-dos/README.md`). Twelve columns on `person_reports` and three functions. It ships alone, ahead of the screens that call it. No table is created, so no fence call closes the file.
 
 ## What it does
 

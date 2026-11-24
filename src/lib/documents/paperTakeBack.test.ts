@@ -2,7 +2,21 @@ import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { PARTY_AGREEMENT_KINDS } from '../contracts/paperParty'
 import type { AgreementRow } from './agreementsLedger'
-import { TAKE_BACK_LABEL, TAKE_BACK_STATUSES, agreementCanBeTakenBack, canTakeBackPapers, takeBackConfirm, takeBackOutcome, takeBackOutcomeWords, takeBackVerdict } from './paperTakeBack'
+import {
+  COMPANY_AGREEMENT_KIND,
+  TAKE_BACK_LABEL,
+  TAKE_BACK_STATUSES,
+  agreementCanBeTakenBack,
+  canTakeBackPapers,
+  companyPaperCanBeTakenBack,
+  companyPaperTakeBackRow,
+  companyTakeBackOutcome,
+  takeBackConfirm,
+  takeBackHolder,
+  takeBackOutcome,
+  takeBackOutcomeWords,
+  takeBackVerdict,
+} from './paperTakeBack'
 
 /** A supply house's paper that is out and not signed. Every name here is made up. */
 function row(over: Partial<AgreementRow> = {}): AgreementRow {
@@ -85,8 +99,22 @@ describe('takeBackVerdict: which papers can be taken back', () => {
     expect(takeBackVerdict(row({ job_id: 'j1' }))).toEqual({ ok: false, why: 'job-paper' })
   })
 
-  it('a paper that is not an outside party’s carries no Take back', () => {
-    for (const kind of ['person_agreement', 'partner_agreement', 'company_agreement', 'job_contract', 'job_warranty', 'their_paper', 'work_order', 'owner_contract', 'sow', 'something_new']) {
+  it('a trade company’s own paper that is out can be, by the same rules as a party’s', () => {
+    const own = (over: Partial<AgreementRow> = {}) => row({ id: 'company_agreement:g1', kind: COMPANY_AGREEMENT_KIND, source_id: 'g1', with_name: 'Juniper Mechanical LLC', facts: { status: 'sent', signer_name: 'Pat Sample' }, ...over })
+    expect(takeBackVerdict(own())).toEqual({ ok: true, sent: true })
+    expect(takeBackVerdict(own({ state: 'signed', facts: { status: 'signed' } }))).toEqual({ ok: false, why: 'signed' })
+    expect(takeBackVerdict(own({ state: 'ended', facts: { status: 'sent', replaced: true } }))).toEqual({ ok: false, why: 'replaced' })
+    expect(takeBackVerdict(own({ job_id: 'j1' }))).toEqual({ ok: false, why: 'job-paper' })
+  })
+
+  it('each paper takes its own door: a party’s the plain delete, a trade company’s own its function', () => {
+    for (const kind of PARTY_AGREEMENT_KINDS) expect(takeBackHolder(kind)).toBe('party')
+    expect(takeBackHolder('company_agreement')).toBe('company')
+    for (const kind of ['person_agreement', 'partner_agreement', 'job_contract', 'work_order', 'sow', '', null, undefined]) expect(takeBackHolder(kind)).toBeNull()
+  })
+
+  it('a paper that is not an outside party’s or a trade company’s own carries no Take back', () => {
+    for (const kind of ['person_agreement', 'partner_agreement', 'job_contract', 'job_warranty', 'their_paper', 'work_order', 'owner_contract', 'sow', 'something_new']) {
       expect(takeBackVerdict(row({ kind }))).toEqual({ ok: false, why: 'not-a-party' })
       expect(agreementCanBeTakenBack(row({ kind }))).toBe(false)
     }
@@ -167,6 +195,30 @@ describe('takeBackOutcome: what the database’s answer means', () => {
   it('nothing removed and the paper is still out: the account may not delete it', () => {
     expect(takeBackOutcome(0, 'sent')).toEqual({ kind: 'refused' })
     expect(takeBackOutcome(0, 'unsent')).toEqual({ kind: 'refused' })
+  })
+})
+
+describe('a trade company’s own paper: the function’s answer, and the words on People → Contracts', () => {
+  it('reads the function’s three answers, and takes nothing else for a paper taken back', () => {
+    expect(companyTakeBackOutcome('taken')).toEqual({ kind: 'taken' })
+    expect(companyTakeBackOutcome('signed')).toEqual({ kind: 'signed-since' })
+    expect(companyTakeBackOutcome('gone')).toEqual({ kind: 'gone' })
+    for (const answer of [null, undefined, '', 'ok', true, 1, { taken: true }]) expect(companyTakeBackOutcome(answer)).toBeNull()
+  })
+
+  it('a paper that is out or was never sent carries the press, and a signed or received one does not', () => {
+    expect(companyPaperCanBeTakenBack('sent')).toBe(true)
+    expect(companyPaperCanBeTakenBack('unsent')).toBe(true)
+    for (const status of ['signed', 'received', 'archived', '']) expect(companyPaperCanBeTakenBack(status)).toBe(false)
+  })
+
+  it('the confirm names the paper, the company and who holds the link', () => {
+    const paper = companyPaperTakeBackRow({ document_name: 'W-9', signer_name: 'Pat Sample' }, 'Juniper Mechanical LLC')
+    expect(takeBackConfirm(paper, true).message).toBe('This deletes the copy of W-9 that is with Juniper Mechanical LLC. The signing link sent to Pat Sample stops working. Nobody is emailed. It cannot be undone.')
+    // A paper that kept no signer names the company as who holds the link.
+    const bare = companyPaperTakeBackRow({ document_name: 'W-9', signer_name: null }, 'Juniper Mechanical LLC')
+    expect(takeBackConfirm(bare, true).message).toContain('The signing link sent to Juniper Mechanical LLC stops working.')
+    expect(takeBackOutcomeWords({ kind: 'taken' }, paper, true).words).toBe('W-9 was taken back from Juniper Mechanical LLC. Its signing link no longer works.')
   })
 })
 

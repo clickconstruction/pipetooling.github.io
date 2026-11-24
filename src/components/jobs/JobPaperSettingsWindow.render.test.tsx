@@ -5,7 +5,10 @@
  * with its picks, its basis and the tick. A required paper opens on one page: the press says what it will do, saves in
  * place while nobody has signed, and names who signs again once someone has. A list with no levels is set on the one
  * page. A job that is not a ZZ Test job is told why it cannot take an unread paper. Every word is a placeholder.
+ * Under StrictMode, where a development build runs every effect twice, the window still leaves Loading: its
+ * still-here flag was once only ever cleared, so the read's answer was dropped on every dev server.
  */
+import { StrictMode } from 'react'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseSettingsDef, type SettingsDef } from '../../lib/contracts/paperSettings'
@@ -16,6 +19,11 @@ import { JobPaperSettingsWindow } from './JobPaperSettingsWindow'
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
+})
+// The failed read draws the retry panel, which reads who is signed in.
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock()
 })
 
 const RAW = {
@@ -138,6 +146,37 @@ describe('JobPaperSettingsWindow, the first time', () => {
     fireEvent.change(screen.getByLabelText('Photos and video'), { target: { value: 'none' } })
     fireEvent.click(require())
     await waitFor(() => expect(io.requireWithSettings).toHaveBeenCalledWith('job-1', 'book-1', { picks: { photos: 'none', term: 'short' }, typed: null, basis: null, noticeRead: true }))
+  })
+})
+
+describe('JobPaperSettingsWindow, when its effects run twice', () => {
+  it('leaves Loading and draws the paper’s settings under StrictMode', async () => {
+    const io = fakeIo()
+    renderWithProviders(
+      <StrictMode>
+        <JobPaperSettingsWindow job={{ id: 'job-1' }} target={{ kind: 'change', paper: required(), paperName: 'Sample secrecy paper' }} io={io} onClose={() => {}} onDone={() => {}} />
+      </StrictMode>,
+    )
+    await screen.findByText('Nothing is changed yet.')
+    expect(screen.queryByText('Loading…')).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Sample secrecy paper, job J900' })).toBeTruthy()
+    expect((screen.getByLabelText('The basis') as HTMLSelectElement).value).toBe('standard')
+    expect((screen.getByLabelText('The protected party') as HTMLInputElement).value).toBe('Ridgeway Sample Holdings')
+  })
+
+  it('draws a failed read’s reason under StrictMode', async () => {
+    const io = fakeIo({
+      readJob: vi.fn(async () => {
+        throw new Error('permission denied for table jobs')
+      }),
+    })
+    renderWithProviders(
+      <StrictMode>
+        <JobPaperSettingsWindow job={{ id: 'job-1' }} target={{ kind: 'change', paper: required(), paperName: 'Sample secrecy paper' }} io={io} onClose={() => {}} onDone={() => {}} />
+      </StrictMode>,
+    )
+    await screen.findByText(/permission denied for table jobs/)
+    expect(screen.queryByText('Loading…')).toBeNull()
   })
 })
 

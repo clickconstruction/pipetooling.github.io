@@ -1,0 +1,26 @@
+const { open, done } = require('../lib.cjs')
+const R = require('./rows329.cjs')
+;(async () => {
+  let p = await open({ as: 'assistant', theme: 'light', width: 1280, height: 1000, extra: R.reserved })
+  await p.go('/jobs?tab=materials')
+  await p.getByRole('button', { name: /1321 · Cedar Bend/ }).click()
+  await p.waitForTimeout(2500)
+  await p.getByRole('button', { name: /These are on boxes/ }).first().click()
+  await p.waitForTimeout(1200)
+  await p.getByLabel('Names').fill('G78-150')
+  await p.getByRole('button', { name: 'Laydown yard', exact: true }).click()
+  await p.waitForTimeout(800)
+  await p.shot('329-these-are-on-boxes-desk-light.png', { clip: { x: 360, y: 160, width: 560, height: 700 } })
+  await p.close2()
+  // The first scan on a phone: sticker G78, reserved and on no box.
+  const st = R.stickers[0]
+  const facts = { id: st.id, number: st.number, code: st.code, state: 'blank', container_id: null, container_label: null, container_kind: null, container_retired_at: null, job_id: null, placed_by_name: null, placed_at: null, lost_at: null, run_id: R.RUN, run_job_id: R.JOB, box_name: 'G78' }
+  p = await open({ as: 'superintendent', theme: 'light', width: 390, height: 844, phone: true, scale: 2, extra: { ...R.reserved, rpc: { sticker_by_code: facts } } })
+  await p.go(`/tally?tab=on-site&job=${R.JOB}&sticker=${st.code}`)
+  await p.waitForTimeout(1500)
+  console.log((await p.asks(/sticker|container|place_|on_site/)).join('\n'))
+  console.log(JSON.stringify(await p.errs()).slice(0, 800))
+  await p.shot('E-tmp-329-scan.png')
+  console.log((await p.locator('body').innerText()).slice(0, 2500))
+  await p.close2(); await done()
+})().catch((e) => { console.error(e); process.exit(1) })

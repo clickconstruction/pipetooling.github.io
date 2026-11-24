@@ -58,6 +58,14 @@ describe('CustomerContactsSection, removing a contact', () => {
     expect(screen.getByText('Lee Okafor')).toBeTruthy()
   })
 
+  it('opens with the focus on Keep them, so Enter does not remove', async () => {
+    const ask = await openDana()
+    const keep = ask.getByRole('button', { name: 'Keep them' })
+    await waitFor(() => expect(document.activeElement).toBe(keep))
+    expect(document.activeElement).not.toBe(ask.getByRole('button', { name: 'Remove Dana Whitlock' }))
+    expect(db.deleted).toEqual([])
+  })
+
   it('removes the contact on the press that names them, then reads the list again', async () => {
     const ask = await openDana()
     fireEvent.click(ask.getByRole('button', { name: 'Remove Dana Whitlock' }))

@@ -73,6 +73,9 @@ import { loadSubCompanies } from '../../lib/people/subCompaniesIo'
 import { SubCompanyFootRow, SubCompanyHeadRow, SubCompanyLines } from './SubCompanyLines'
 import { COMPANY_PAPER_WORDS, companyPaperLines, type CompanyPaperRow } from '../../lib/people/subCompanyPapers'
 import { loadCompanyPapers } from '../../lib/people/subCompanyPapersIo'
+import { companyPaperTakeBackRow, takeBackConfirm, takeBackOutcomeWords } from '../../lib/documents/paperTakeBack'
+import { takeBackCompanyPaper } from '../../lib/documents/paperTakeBackIo'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { SubCompanyPaperWindow } from './SubCompanyPaperWindow'
 
 /** Small tinted pill for a document signing state; anything unknown renders as unsent. */
@@ -228,6 +231,9 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
   /** The linked companies' own papers (PR 2), and the window open on one company, if any. */
   const [companyPapers, setCompanyPapers] = useState<CompanyPaperRow[]>([])
   const [companyPaperWindow, setCompanyPaperWindow] = useState<{ kind: 'send' | 'enter'; companyId: string } | null>(null)
+  /** The company's paper being taken back right now. */
+  const [takingBackCompanyPaperId, setTakingBackCompanyPaperId] = useState<string | null>(null)
+  const confirmDialog = useConfirmDialog()
   const [selectedContractsPersonName, setSelectedContractsPersonName] = useState<string | null>(null)
   /** Contract library (v2.1411): merged Documents/Packets modal replacing Contract Book + Manage templates. */
   const [contractLibraryModalOpen, setContractLibraryModalOpen] = useState(false)
@@ -1758,6 +1764,25 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
     }
   }, [])
 
+  // Take back on a company's paper: the confirm says what goes and that the link stops, then the function deletes
+  // the paper. A paper GC mode is waiting on is refused by the function in words, which the toast says.
+  const takeBackCompanyPaperPress = async (paper: CompanyPaperRow, companyName: string) => {
+    if (!canDeletePeopleContracts || takingBackCompanyPaperId) return
+    const row = companyPaperTakeBackRow(paper, companyName)
+    const sent = paper.status === 'sent'
+    if (!(await confirmDialog(takeBackConfirm(row, sent)))) return
+    setTakingBackCompanyPaperId(paper.id)
+    try {
+      const told = takeBackOutcomeWords(await takeBackCompanyPaper(paper.id), row, sent)
+      showToast(told.words, told.tone)
+      await reloadSubCompanies()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The paper was not taken back.'), 'error')
+    } finally {
+      setTakingBackCompanyPaperId(null)
+    }
+  }
+
   useEffect(() => {
     if (!officeKeepsCompanies) return
     void reloadSubCompanies()
@@ -2309,6 +2334,8 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                                   markedPaperId={contractsMarkedDocId}
                                   onSend={() => setCompanyPaperWindow({ kind: 'send', companyId: piece.group.company.id })}
                                   onEnter={() => setCompanyPaperWindow({ kind: 'enter', companyId: piece.group.company.id })}
+                                  onTakeBack={canDeletePeopleContracts ? (paper) => void takeBackCompanyPaperPress(paper, piece.group.company.name) : undefined}
+                                  takingBackId={takingBackCompanyPaperId}
                                 />
                                 {piece.group.workers.map((w) => renderRosterRow(w.name, false, true))}
                                 <SubCompanyFootRow companyId={piece.group.company.id} />
