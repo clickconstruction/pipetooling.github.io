@@ -131,6 +131,8 @@ The GC gets an email with a link to their own page. The builder is on that page.
 
 A GC can look only. The GC walks the builder and reads each level. Nothing they pick comes back to you.
 
+To see both before you send, open [What customers see](/settings?tab=settings-what-customers-see) and find the general contractor strip. *Secrecy on their jobs: the email* is the email. *Secrecy on their jobs: on their portal* is their page. Both are samples with made-up names, and nothing pressed there is sent.
+
 - {{chip:gray|No page yet}} means the GC never had a page. Sending to that GC alone makes one.
 - {{chip:yellow|Their page is off}} means someone turned the page off. A send never turns a page back on.
 - A revision no attorney has read goes only after you tick **Send it anyway**.
