@@ -9,11 +9,19 @@
  *
  * `readStripePayout` asks Stripe for the next payout through `get-stripe-payouts`, the edge function the
  * Dashboard's Money in bar asks, which answers the same four roles. Best effort, and it says which of three answers it got.
+ *
+ * `readDepositsOnNoBill` reads the bank deposits that landed and are on no bill yet, through the Money in bar's
+ * own reads and rule (`moneyInDepositsLoad.ts`, `moneyInDeposits.ts`). Best effort: it answers *unread* and
+ * never throws, so a bank that does not read never hides a day and is never drawn as no deposits.
  */
 import { supabase } from '../supabase'
 import { chunkIds } from '../supabasePaging'
 import { billNumberFromTitle } from './billsSent'
-import { billsPaidPayoutOf, type BillsPaidBill, type BillsPaidInput, type BillsPaidJob, type BillsPaidPayment, type BillsPaidPayoutAnswer } from './billsPaidDays'
+import { ymdAddDays } from '../../utils/dateUtils'
+import { fetchBankPaymentsSortingConfigFromAppSettings } from '../bankingSortingConfig'
+import { MATCH_LOOKBACK_DAYS, moneyInDepositsFromRows, moneyInDepositsSince, moneyInUnlinkedFromRows, returnedPaymentIdsOfCases } from '../moneyInDeposits'
+import { moneyInDepositFilterOf, readOpenReturnCaseRows, readPendingDepositRows, readPostedDepositRows, readUnlinkedPaymentRows } from '../moneyInDepositsLoad'
+import { billsPaidNoBillAnswer, billsPaidPayoutOf, type BillsPaidBill, type BillsPaidInput, type BillsPaidJob, type BillsPaidNoBillAnswer, type BillsPaidPayment, type BillsPaidPayoutAnswer } from './billsPaidDays'
 
 /** Ids per `in.(…)` list: a longer list makes an address some networks refuse. */
 const IN_CHUNK = 80
@@ -133,5 +141,38 @@ export async function readStripePayout(): Promise<BillsPaidPayoutAnswer> {
     return billsPaidPayoutOf(data, !!error)
   } catch {
     return billsPaidPayoutOf(null, true)
+  }
+}
+
+/**
+ * The bank deposits that landed from `span.from` on and are on no bill yet, by day. It never throws.
+ *
+ * The rows are the ones the Dashboard's Money in bar reads, from no later than where that bar starts, so a day
+ * both screens show is decided over the same deposits. Two reads must answer: the posted deposits, and the
+ * typed-in payments that say which deposit a payment already carries. Without either the answer is *unread*,
+ * since a count from half of them could name a deposit whose money is already in the day. The pending deposits
+ * and the open return cases only sharpen which payment carries which deposit, so each fails soft.
+ */
+export async function readDepositsOnNoBill(span: { from: string }, todayYmd: string): Promise<BillsPaidNoBillAnswer> {
+  try {
+    const sorting = await fetchBankPaymentsSortingConfigFromAppSettings()
+    const cfg = sorting.outcome === 'error' ? null : sorting.config
+    const moneyInSince = moneyInDepositsSince(todayYmd)
+    const since = span.from < moneyInSince ? span.from : moneyInSince
+    const [posted, unlinked, pending, cases] = await Promise.all([
+      readPostedDepositRows(supabase, cfg, since),
+      readUnlinkedPaymentRows(supabase, ymdAddDays(since, -MATCH_LOOKBACK_DAYS)),
+      readPendingDepositRows(supabase).catch(() => []),
+      readOpenReturnCaseRows(supabase).catch(() => []),
+    ])
+    return billsPaidNoBillAnswer({
+      deposits: moneyInDepositsFromRows(pending, posted, moneyInDepositFilterOf(cfg)),
+      // This view names no payer on the line, so the typed-in payments carry none.
+      unlinked: moneyInUnlinkedFromRows(unlinked, () => ''),
+      returnedPaymentIds: returnedPaymentIdsOfCases(cases),
+      todayYmd,
+    })
+  } catch {
+    return { state: 'unread' }
   }
 }

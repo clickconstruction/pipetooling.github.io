@@ -2,21 +2,21 @@
 /**
  * Bills sent, By day paid (punch list #422, PR 3): a month of days with what came in on each, a picked day with
  * its total and its payments, a chip that narrows the month to one way, one deposit drawn once, an empty day that
- * offers a press, the next Stripe payout, and a read that fails saying so with Retry. Every name and number is
- * made up.
+ * offers a press, the next Stripe payout, a read that fails saying so with Retry, and the bank deposits on no
+ * bill named under their day and never added. Every name and number is made up.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { billsPaidMonthLabel, billsPaidStepLabel, type BillsPaidBill, type BillsPaidPayment } from '../../lib/billing/billsPaidDays'
+import { billsPaidMonthLabel, billsPaidStepLabel, type BillsPaidBill, type BillsPaidNoBillAnswer, type BillsPaidPayment } from '../../lib/billing/billsPaidDays'
 import type { BillsPaidRead } from '../../lib/billing/billsPaidIo'
 import { BillsPaidByDay } from './BillsPaidByDay'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 
-const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ from: string; to: string }>, payout: null as unknown, fail: null as unknown, phone: false, saved: [] as Array<{ name: string; type: string }> }))
+const io = vi.hoisted(() => ({ data: null as unknown, asks: [] as Array<{ from: string; to: string }>, payout: null as unknown, fail: null as unknown, phone: false, saved: [] as Array<{ name: string; type: string }>, role: 'master_technician', noBill: null as unknown, noBillAsks: [] as Array<{ from: string; today: string }> }))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => io.phone }))
 vi.mock('../../hooks/useAuth', () => {
-  const auth = () => ({ role: 'master_technician', user: { id: 'u1' }, profileName: 'Priya' })
+  const auth = () => ({ role: io.role, user: { id: 'u1' }, profileName: 'Priya' })
   return { useAuth: auth, useOptionalAuth: auth }
 })
 vi.mock('../../lib/billing/billsPaidIo', () => ({
@@ -26,6 +26,10 @@ vi.mock('../../lib/billing/billsPaidIo', () => ({
     return io.data
   },
   readStripePayout: async () => io.payout,
+  readDepositsOnNoBill: async (span: { from: string }, today: string) => {
+    io.noBillAsks.push({ from: span.from, today })
+    return io.noBill
+  },
 }))
 vi.mock('../../lib/storageSave', () => ({
   saveBlobAs: (blob: Blob, name: string) => void io.saved.push({ name, type: blob.type }),
@@ -61,6 +65,8 @@ const march = read([
   payment({ id: 'c1', billId: B(2), jobId: J(2), amount: 4410, paidOn: `${OLD}-20`, paymentType: 'checkDeposit', referenceNumber: '4417', bankTransactionId: 'dep-f' }),
   payment({ id: 'c2', billId: B(3), jobId: J(3), amount: 2260, paidOn: `${OLD}-20`, paymentType: 'checkDeposit', referenceNumber: '4417', bankTransactionId: 'dep-f' }),
 ])
+// The bank's answer: the deposits that landed on a day and are on no bill yet.
+const noBill = (days: Record<string, { deposits: number; usd: number }>): BillsPaidNoBillAnswer => ({ state: 'read', days: new Map(Object.entries(days)) })
 const cellOf = (day: string) => screen.getAllByTestId('bills-paid-cell').find((c) => c.getAttribute('data-day') === day)!
 
 beforeEach(() => {
@@ -70,6 +76,9 @@ beforeEach(() => {
   io.fail = null
   io.phone = false
   io.saved = []
+  io.role = 'master_technician'
+  io.noBill = noBill({})
+  io.noBillAsks = []
 })
 afterEach(() => cleanup())
 
@@ -103,7 +112,9 @@ describe('BillsPaidByDay', () => {
     expect(cents.textContent).toBe('.00')
     expect(screen.getByTestId('bills-paid-foot').textContent).toContain('Stripe’s fee is not taken off.')
     // The foot says why a day here can be less than the Dashboard's Money in for the same day.
-    expect(screen.getByTestId('bills-paid-foot').textContent).toContain('A bank deposit counts once it is put on a bill or a job. Until then the Dashboard’s Money in shows it and this page does not.')
+    expect(screen.getByTestId('bills-paid-foot').textContent).toContain('A bank deposit counts once it is put on a bill or a job. Until then the Dashboard’s Money in counts it. This page names it under its day and does not add it.')
+    // A day with no deposit on no bill draws no line for them.
+    expect(screen.queryByTestId('bills-paid-no-bill')).toBeNull()
   })
 
   it('narrows the month to Stripe, and a day the chip emptied offers every way', async () => {
@@ -299,5 +310,86 @@ describe('BillsPaidByDay', () => {
     const day = await screen.findByTestId('bills-paid-day')
     expect(screen.getByRole('button', { name: 'Stripe' }).style.minHeight).toBe('')
     expect(within(day).getByRole('link', { name: 'Bill 1420-0001' }).style.minHeight).toBe('')
+  })
+
+  describe('deposits on no bill', () => {
+    it('names the deposits that landed on the picked day and are on no bill, with the press, and adds them to nothing', async () => {
+      io.data = march
+      io.noBill = noBill({ [`${OLD}-20`]: { deposits: 2, usd: 1840.75 } })
+      renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-20` })
+      const day = await screen.findByTestId('bills-paid-day')
+      const line = await within(day).findByTestId('bills-paid-no-bill')
+      expect(line.textContent).toBe('2 deposits landed that are on no bill yet.$1,840.75Not added to the day. Open deposits')
+      // The count is drawn apart from its words, and the cents are smaller than the dollars.
+      expect(line.querySelector('b, strong')?.textContent).toBe('2')
+      expect((line.querySelector('span[style*="0.7em"]') as HTMLElement).textContent).toBe('.75')
+      expect(within(line).getByRole('link', { name: 'Open deposits' }).getAttribute('href')).toBe('/accounts-receivable')
+      // The bank is asked for the month that is read, as of today.
+      expect(io.noBillAsks[0]).toEqual({ from: `${OLD}-01`, today })
+      // Nothing takes the deposits in: the day's figure, its cell and the month's tile are the payments alone.
+      expect(day.querySelector('[data-value-lines]')?.textContent).toBe('Came in$6,670.00Payments2')
+      expect(cellOf(`${OLD}-20`).textContent).toBe('20$6,6702 paid')
+      expect(cellOf(`${OLD}-20`).getAttribute('aria-label')).toBe('Fri, Mar 20, $6,670.00, 2 payments')
+      expect(screen.getByTestId('bills-paid-tile-month').textContent).toBe('March3 payments $9,150.00')
+      // Another day of the month holds none, so it draws no line.
+      fireEvent.click(cellOf(`${OLD}-18`))
+      expect(screen.queryByTestId('bills-paid-no-bill')).toBeNull()
+    })
+
+    it('names them on a day no payment came, under the empty day’s own words', async () => {
+      io.data = march
+      io.noBill = noBill({ [`${OLD}-19`]: { deposits: 1, usd: 300 } })
+      renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-19` })
+      const day = await screen.findByTestId('bills-paid-day')
+      expect(day.textContent).toContain('Nothing came in on Thu, Mar 19.')
+      expect((await within(day).findByTestId('bills-paid-no-bill')).textContent).toBe('1 deposit landed that is on no bill yet.$300.00Not added to the day. Open deposits')
+      // The cell stays a bare day: a deposit on no bill is no payment.
+      expect(cellOf(`${OLD}-19`).textContent).toBe('19')
+    })
+
+    it('draws the line under All alone: a chip narrows to a way of paying, and the deposit has none yet', async () => {
+      io.data = march
+      io.noBill = noBill({ [`${OLD}-18`]: { deposits: 2, usd: 1840.75 } })
+      renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-18` })
+      const day = await screen.findByTestId('bills-paid-day')
+      await within(day).findByTestId('bills-paid-no-bill')
+      fireEvent.click(screen.getByRole('button', { name: 'Stripe' }))
+      expect(screen.queryByTestId('bills-paid-no-bill')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'All' }))
+      expect(screen.getByTestId('bills-paid-no-bill').textContent).toContain('2 deposits landed that are on no bill yet.')
+    })
+
+    it('leaves the press off for a role that cannot open the deposits, and still says the line', async () => {
+      io.data = march
+      io.role = 'estimator'
+      io.noBill = noBill({ [`${OLD}-20`]: { deposits: 2, usd: 1840.75 } })
+      renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-20` })
+      const line = await screen.findByTestId('bills-paid-no-bill')
+      expect(line.textContent).toBe('2 deposits landed that are on no bill yet.$1,840.75Not added to the day.')
+      expect(within(line).queryByRole('link')).toBeNull()
+    })
+
+    it('says the bank did not read, keeps the day, and never calls the count zero', async () => {
+      io.data = march
+      io.noBill = { state: 'unread' }
+      renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-20` })
+      const day = await screen.findByTestId('bills-paid-day')
+      const line = await within(day).findByTestId('bills-paid-no-bill')
+      expect(line.textContent).toBe('The bank deposits did not read. A deposit that is on no bill yet is not shown.')
+      expect(line.textContent).not.toMatch(/\b0 deposits\b/)
+      // The day is whole: its figure and its payments still draw, and no failure panel takes the page.
+      expect(day.querySelector('[data-value-lines]')?.textContent).toBe('Came in$6,670.00Payments2')
+      expect(within(day).getAllByTestId('bills-paid-line')).toHaveLength(2)
+      expect(screen.queryByText('The payments did not read.')).toBeNull()
+    })
+
+    it('gives the press a fingertip of height on a phone', async () => {
+      io.data = march
+      io.phone = true
+      io.noBill = noBill({ [`${OLD}-20`]: { deposits: 1, usd: 300 } })
+      renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-20` })
+      const link = within(await screen.findByTestId('bills-paid-no-bill')).getByRole('link', { name: 'Open deposits' })
+      expect(parseFloat(link.style.minHeight)).toBeGreaterThanOrEqual(44)
+    })
   })
 })
