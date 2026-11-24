@@ -276,7 +276,11 @@ export function JobPaperSettingsWindow({
   const [jobRow, setJobRow] = useState<JobForSettings | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const live = useRef(true)
-  useEffect(() => () => void (live.current = false), [])
+  // Set on every mount, not only cleared on the way out: a development build mounts, unmounts and mounts again.
+  useEffect(() => {
+    live.current = true
+    return () => void (live.current = false)
+  }, [])
 
   const load = useCallback(async () => {
     setFailure(null)
