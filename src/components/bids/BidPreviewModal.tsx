@@ -17,6 +17,8 @@ import { toAppTzYmd } from '../../utils/datetimeLocal'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { bidDevelopmentName } from '../../lib/bids/bidBoardDevelopment'
 import { RecordQuestions } from '../developments/RecordQuestions'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { bidWindowClosePress, bidWindowHeadPress } from '../../lib/bids/bidWindowPhonePress'
 
 export type BidPreviewTabUrl =
   | 'bid-board'
@@ -269,6 +271,8 @@ export function BidPreviewModal({
   const [gcBuilderSnapshotOpen, setGcBuilderSnapshotOpen] = useState(false)
   const [showAllFields, setShowAllFields] = useState(false)
   const tabGroups = buildTabActionGroups(role)
+  // A phone's width: the window's top presses stand a fingertip tall there (punch list #426).
+  const narrow = useNarrowViewport640()
 
   useEffect(() => {
     setNotesTab('all')
@@ -446,7 +450,7 @@ export function BidPreviewModal({
                     }
                   })()
                 }}
-                style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer', color: 'var(--text-strong)' }}
+                style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer', color: 'var(--text-strong)', ...bidWindowHeadPress(narrow) }}
               >
                 Copy for text
               </button>
@@ -455,7 +459,7 @@ export function BidPreviewModal({
               <button
                 type="button"
                 onClick={() => onRequestEditBid(bid.id)}
-                style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', background: '#2563eb', color: 'white', border: '1px solid #2563eb', borderRadius: 5, cursor: 'pointer' }}
+                style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', background: '#2563eb', color: 'white', border: '1px solid #2563eb', borderRadius: 5, cursor: 'pointer', ...bidWindowHeadPress(narrow) }}
               >
                 Edit bid
               </button>
@@ -466,7 +470,7 @@ export function BidPreviewModal({
                 onClick={onClose}
                 aria-label="Close"
                 title="Close"
-                style={{ padding: '0.45rem 0.55rem', fontSize: '0.85rem', lineHeight: 1, background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer', color: 'var(--text-strong)' }}
+                style={{ padding: '0.45rem 0.55rem', fontSize: '0.85rem', lineHeight: 1, background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer', color: 'var(--text-strong)', ...bidWindowClosePress(narrow) }}
               >
                 ✕
               </button>
