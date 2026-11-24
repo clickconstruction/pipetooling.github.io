@@ -2,7 +2,7 @@
 name: "Site NDA for vendors: a paper names a job site, vendors sign before anything is sent, and the client is shown who signed"
 number: 439
 group: ready
-status: asked 2026-11-24 · thought through with the owner the same day, each call settled as it came up · drawn as a canvas of sixteen artboards and reviewed as a whole · a door audit added eight doors to the plan · the word to build the whole train, testing along the way, with screenshots at several widths as each piece goes live · nothing is built yet
+status: asked 2026-11-24 · thought through with the owner the same day, each call settled as it came up · drawn as a canvas of sixteen artboards and reviewed as a whole · a door audit added eight doors to the plan · the word to build the whole train, testing along the way, with screenshots at several widths as each piece goes live · piece 1 built and seen live, v2.8520 · piece 2's first part open as a PR
 summary: >
   The company works for a client on a site whose details are secret. Vendors must sign the company's own
   NDA before anything about the site reaches them, and the client must be shown who signed. Today the app
@@ -13,7 +13,7 @@ summary: >
   site asks the company's own people to sign before a job there opens, and holds every send to an outside
   company until it signs. A packet, and later the client's own page, list everyone bound. Outside
   companies see a code name until they sign.
-next: PR 1, the job form's address box shows addresses already on file. Then the train in order, one PR at a time, each tested and seen live at phone and desk width before the next.
+next: Piece 2, the site match. Its first part, the list and its answers, is PR #9740 and is not armed: its migration is pushed right after the merge, so it waits for the owner's yes. Then the rest of piece 2 and the train in order, one PR at a time, each tested and seen live at phone and desk width before the next.
 size: L as a train of seven pieces, about fifteen PRs (S to M · M · M · M · S to M · M to L · M)
 blocker: None for the build. An attorney's read of the vendor NDA's wording comes before it is sent to a real vendor.
 opinion: build — the signing, the gate and the Contract Book already exist; this ties them to a place and adds the hold and the proof
@@ -120,7 +120,7 @@ and desk width before the next is cut.
 
 | # | Piece | What a person can do after it | Size | Touches |
 |---|---|---|---|---|
-| 1 | Addresses already on file | On a new job or an edit, the address box lists addresses on file above Google's, with how many jobs are there. Leaving the box with an address close to one on file asks once. | S to M | One kernel for *same address*, the job form's box |
+| 1 | Addresses already on file (built, v2.8520) | On a new job or an edit, the address box lists addresses on file above Google's, with how many jobs are there. Leaving the box with an address close to one on file asks once. | S to M | One kernel for *same address*, the job form's box |
 | 2 | The site match | **Addresses that look alike** from the Pipeline's tools menu: pairs to answer, **Fix the spelling…**, and jobs with no street number. Answers are kept. | M | A table of answers, the window, the tools menu |
 | 3 | A paper names a site | **Send a paper** asks which site. The site's papers show on a job's Documents tab, on Agreements with a site filter, on the development's page and on a company's own record. | M | A site on the paper's row, four lists |
 | 4 | Secrecy on a site | **Turn on secrecy for this site** from three doors. The company's own people sign before a job there opens. **Turn it off…** too. | M | A site's settings, the gate across a site's jobs |
@@ -154,8 +154,11 @@ and the held state at every other send (piece 6).
 - **Every piece.** Kernels first, each pure with its tests. Made-up names in every test, fixture and
   capture. A live look after the deploy at 375 px and 1200 px, in light and in dark where the screen has
   a dark side, with the captures kept for the owner.
-- **Piece 1.** On the live site as a dev, on a ZZ Test job's Edit tab: type the start of an address a ZZ
-  job already has. The row shows above Google's. Pick it and the line under the box says how many jobs
-  are there. Type it one letter off, leave the box, and the form asks once. Save nothing.
+- **Piece 1.** Seen live on 2026-11-24 at 375 px and 1200 px, as a dev, on a ZZ Test job's Edit tab, with
+  the cursor in the address box and nothing typed. The row under **Already on file** shows above Google's
+  with its count, and the line under the box says how many jobs and bids are there. Do not type there: the
+  Edit tab saves the address by itself a moment after a keystroke, and leaving the box with an address the
+  map does not hold looks it up and keeps the answer. The question about an address one letter off is held
+  by the form's render tests and was not seen live.
 - **Pieces 3 to 7.** ZZ Test jobs, a ZZ Test supply house with a sink address, and a ZZ Test paper only.
   Nothing goes to a real vendor before an attorney has read the wording.
