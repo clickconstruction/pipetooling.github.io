@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { UpdatePrompt } from './UpdatePrompt'
 import { AUTO_RELOAD_KEY } from '../lib/autoReload'
 import { __resetUnsavedWorkForTests, holdUnsavedWork, wrapFetchCountingWrites } from '../lib/unsavedWork'
 import { __forgetTypedTextForTests, noteTypedInto } from '../lib/typedText'
+import { TYPED_SHOWN_ATTR, TYPED_TOUR_SETTLE_MS, TYPED_TOUR_SHOWN_MS } from '../lib/typedTextTour'
 
 type SWOpts = { onNeedRefresh?: () => void; onRegisteredSW?: (url: string, reg: unknown) => void }
 const swOpts: { current: SWOpts | null } = { current: null }
@@ -302,16 +303,154 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
       expect(box.value).toBe('Draft: the stack is roughed in.')
     })
 
-    it('the pill’s own Reload is the person’s press: it goes through', () => {
-      mount()
-      fireEvent.pointerDown(window)
-      act(() => swOpts.current?.onNeedRefresh?.())
-      leaveAMessage()
-      fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
-      act(() => {
-        workerTakesOver()
+    describe('the pill’s own Reload over typed words warns first, and shows each place', () => {
+      /** jsdom lays nothing out: each place is given its height down the page, and the page a scroll. */
+      let scrolled = 0
+      const place = (el: HTMLElement, top: number) => {
+        el.getBoundingClientRect = () => ({ top: top - scrolled, bottom: top - scrolled + 60, left: 10, right: 310, width: 300, height: 60, x: 10, y: top - scrolled, toJSON: () => ({}) })
+        el.scrollIntoView = () => {
+          scrolled = Math.max(0, top - window.innerHeight / 2)
+        }
+      }
+      const ringed = (el: Element) => el.hasAttribute(TYPED_SHOWN_ATTR)
+      const pass = (ms: number) =>
+        act(async () => {
+          await vi.advanceTimersByTimeAsync(ms)
+        })
+      beforeEach(() => {
+        scrolled = 0
       })
-      expect(reload).toHaveBeenCalledTimes(1)
+      const pillWaiting = () => {
+        mount()
+        fireEvent.pointerDown(window)
+        act(() => swOpts.current?.onNeedRefresh?.())
+      }
+
+      it('Reload reloads nothing: the place is ringed, the pill says what goes, and Reload anyway is dead until it was shown', async () => {
+        pillWaiting()
+        const note = leaveAMessage()
+        place(note, 200)
+        fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+        expect(updateSW).not.toHaveBeenCalled()
+        expect(screen.getByText('Reloading clears what you typed.')).toBeTruthy()
+        expect(screen.queryByText('A new version is ready.')).toBeNull()
+        const press = screen.getByRole('button', { name: 'Reload anyway' })
+        expect(press.getAttribute('aria-disabled')).toBe('true')
+        expect(ringed(note)).toBe(true)
+        // The double press: a second press lands on the same spot at once, and does nothing.
+        fireEvent.click(press)
+        fireEvent.click(press)
+        expect(updateSW).not.toHaveBeenCalled()
+        await pass(TYPED_TOUR_SHOWN_MS)
+        expect(ringed(note)).toBe(false)
+        expect(screen.getByRole('button', { name: 'Reload anyway' }).getAttribute('aria-disabled')).toBeNull()
+        expect(reload).not.toHaveBeenCalled()
+        expect(note.value).toBe('We can start Monday. Call me first.')
+        // Not now is there the whole time.
+        expect(screen.getByRole('button', { name: /Dismiss update notice/ })).toBeTruthy()
+      })
+
+      it('Reload anyway, once the place was shown, reloads: the person saw what goes and said yes', async () => {
+        pillWaiting()
+        place(leaveAMessage(), 200)
+        fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+        await pass(TYPED_TOUR_SHOWN_MS)
+        fireEvent.click(screen.getByRole('button', { name: 'Reload anyway' }))
+        expect(updateSW).toHaveBeenCalledTimes(1)
+        act(() => {
+          workerTakesOver()
+        })
+        expect(reload).toHaveBeenCalledTimes(1)
+        // A press is not an automatic reload: the loop guard keeps no stamp of it.
+        expect(sessionStorage.getItem(AUTO_RELOAD_KEY)).toBeNull()
+      })
+
+      it('two places a screen apart: the page goes to each in turn, and the confirm waits for the last', async () => {
+        pillWaiting()
+        const note = leaveAMessage('Call before you come.')
+        const message = leaveAMessage('We can start Monday.')
+        place(note, 200)
+        place(message, 4000)
+        fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+        expect([ringed(note), ringed(message)]).toEqual([true, false])
+        await pass(TYPED_TOUR_SHOWN_MS)
+        // The page moved to the second place and the ring went with it.
+        expect([ringed(note), ringed(message)]).toEqual([false, true])
+        expect(scrolled).toBeGreaterThan(3000)
+        expect(screen.getByRole('button', { name: 'Reload anyway' }).getAttribute('aria-disabled')).toBe('true')
+        await pass(TYPED_TOUR_SETTLE_MS + TYPED_TOUR_SHOWN_MS)
+        expect([ringed(note), ringed(message)]).toEqual([false, false])
+        expect(screen.getByRole('button', { name: 'Reload anyway' }).getAttribute('aria-disabled')).toBeNull()
+        expect(updateSW).not.toHaveBeenCalled()
+      })
+
+      it('Not now keeps the words: the pill goes, the ring lifts, and nothing reloads', async () => {
+        pillWaiting()
+        const note = leaveAMessage()
+        place(note, 200)
+        fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+        expect(ringed(note)).toBe(true)
+        fireEvent.click(screen.getByRole('button', { name: /Dismiss update notice/ }))
+        expect(ringed(note)).toBe(false)
+        expect(screen.queryByRole('status')).toBeNull()
+        await pass(60_000)
+        expect(updateSW).not.toHaveBeenCalled()
+        expect(note.value).toBe('We can start Monday. Call me first.')
+      })
+
+      it('a touch off the pill ends the warning: the person went back to their words, and the next Reload looks again', async () => {
+        pillWaiting()
+        const note = leaveAMessage()
+        place(note, 200)
+        fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+        // Mid-walk: the ring lifts with the touch.
+        fireEvent.pointerDown(note)
+        expect(ringed(note)).toBe(false)
+        expect(screen.getByText('A new version is ready.')).toBeTruthy()
+        expect(screen.getByRole('button', { name: 'Reload' }).getAttribute('aria-disabled')).toBeNull()
+        await pass(10_000)
+        expect(screen.getByText('A new version is ready.')).toBeTruthy()
+        // Still words: Reload warns again. Sent: Reload reloads.
+        fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+        expect(screen.getByRole('button', { name: 'Reload anyway' })).toBeTruthy()
+        await pass(TYPED_TOUR_SHOWN_MS)
+        fireEvent.pointerDown(note)
+        note.value = ''
+        fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+        expect(updateSW).toHaveBeenCalledTimes(1)
+      })
+
+      it('a touch on the pill itself does not end the warning', async () => {
+        pillWaiting()
+        place(leaveAMessage(), 200)
+        fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+        await pass(TYPED_TOUR_SHOWN_MS)
+        fireEvent.pointerDown(screen.getByRole('button', { name: 'Reload anyway' }))
+        expect(screen.getByRole('button', { name: 'Reload anyway' })).toBeTruthy()
+      })
+
+      it('words in a place that cannot be shown: it still warns, and the confirm still waits a second', async () => {
+        pillWaiting()
+        // No box at all, as a field in a folded section has none.
+        leaveAMessage()
+        fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+        expect(screen.getByText('Reloading clears what you typed.')).toBeTruthy()
+        expect(screen.getByRole('button', { name: 'Reload anyway' }).getAttribute('aria-disabled')).toBe('true')
+        await pass(TYPED_TOUR_SHOWN_MS)
+        expect(screen.getByRole('button', { name: 'Reload anyway' }).getAttribute('aria-disabled')).toBeNull()
+        expect(updateSW).not.toHaveBeenCalled()
+      })
+
+      it('the pill leaves the page mid-walk: no ring is left behind', () => {
+        pillWaiting()
+        const note = leaveAMessage()
+        place(note, 200)
+        const view = screen.getByRole('button', { name: 'Reload' })
+        fireEvent.click(view)
+        expect(ringed(note)).toBe(true)
+        cleanup()
+        expect(ringed(note)).toBe(false)
+      })
     })
   })
 

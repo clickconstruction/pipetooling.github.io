@@ -8382,3 +8382,12 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
     opacity: 1;
   }
 }
+
+/* A place that holds typed words, ringed for a second by the update pill before it reloads over them
+   (v2.8499, src/lib/typedTextTour.ts). The ring is the pill's own orange. It sits inside the box, so a
+   parent that clips its children cannot hide it, with a glow outside where there is room. */
+[data-typed-words-shown] {
+  outline: 3px solid #f97316 !important;
+  outline-offset: -3px !important;
+  box-shadow: 0 0 0 5px rgba(249, 115, 22, 0.3) !important;
+}
