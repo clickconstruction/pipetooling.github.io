@@ -70,6 +70,7 @@ An email line says what the mail service last reported.
 - *Opened* and a time means someone opened the email after it was delivered.
 - *Bounced. It did not arrive.* means their mail server refused the email. The line has a red border.
 - *Sent. Their mail server has not answered yet.* means the answer is still to come.
+- *Sent. No answer from their mail server in 3 days.* means no answer came. On an open bill the line adds *Check the address.*
 
 Delivered does not mean someone read the email. Opened is the stronger word.
 
