@@ -1533,7 +1533,7 @@ describe('LienDesk', () => {
     expect(strip).toBeTruthy()
     const chips = Array.from(strip.querySelectorAll<HTMLElement>('[data-lien-strip-chip]'))
     // The blocker is red, the unknown kind an amber check; the months and the claim are quiet presses.
-    expect(chips.map((c) => c.textContent)).toEqual(['Owner of record missing \u203a', 'Property kind unknown \u203a', 'Jun + Jul + Aug \u203a', 'Claim $33,500 \u203a'])
+    expect(chips.map((c) => c.textContent)).toEqual(['Owner of record missing \u203a', 'Property kind unknown \u203a', 'Jun + Jul + Aug \u203a', 'Claim $33,500.00 \u203a'])
     expect(chips.map((c) => c.getAttribute('data-tone'))).toEqual(['red', 'amber', 'quiet', 'quiet'])
     expect(chips.every((c) => c.tagName === 'BUTTON')).toBe(true)
     expect(strip.textContent).not.toContain("Can't go out yet")
@@ -3749,7 +3749,7 @@ describe('LienDesk · wording and the preview (v2.3522)', () => {
     expect((screen.getByRole('checkbox', { name: 'May 2026' }) as HTMLInputElement).disabled).toBe(true)
     // This notice is the last column, lettered after the papers (none here). Its head is the name with the claim small under it (v2.8234).
     expect((box.querySelector('[data-lien-grid-paper="this"] .lienLedgerThisTop') as HTMLElement).textContent).toBe('AThis notice')
-    expect((box.querySelector('[data-lien-grid-paper="this"] [data-lien-grid-head-figure]') as HTMLElement).textContent).toMatch(/^\$[\d,]+$/)
+    expect((box.querySelector('[data-lien-grid-paper="this"] [data-lien-grid-head-figure]') as HTMLElement).textContent).toMatch(/^\$[\d,]+\.\d\d$/)
     // The total sits at the foot of that column (Taunya's ask of 2026-11-15): since punch list #361 it is the claim's own
     // line, the figure said once, with the months this notice names under it.
     const foot = box.querySelector('[data-lien-grid-foot]') as HTMLElement
@@ -5088,7 +5088,7 @@ describe('LienDesk the owner’s call and the piles (v2.3767)', () => {
     expect(heads.map((h) => h.querySelector('.lienPaneHeadLabel')?.textContent)).toEqual(['Where this notice is', 'The four gates', 'Supply houses', 'Months on this job', 'In the envelope', 'Sign and send'])
     expect(heads[1]!.textContent).toContain('✓ Ready to go out · All 4 clear')
     expect(heads[2]!.textContent).toBe('Supply houses1 house owed · $9,612 · from our books · Sep 14')
-    expect(heads[3]!.textContent).toBe('Months on this jobJun + Jul + Aug · $33,500')
+    expect(heads[3]!.textContent).toBe('Months on this jobJun + Jul + Aug · $33,500.00')
     expect(heads[4]!.textContent).toBe('In the envelope2 pages · owner + GC · courtesy PDF to the GC')
     // Stacked: passed heads at the top, coming ones at the bottom; the first is lit at the top of the pane.
     // 24 px a head since v2.7323 (30 before): the owner's ask that the bars sit closer with the words as they are.
@@ -5395,7 +5395,7 @@ describe('LienDesk — find on the list (v2.4721)', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true, open_balance: 25_000 })), [], true)} onChanged={onChanged} />)
     await settle()
     // The claim is what the sent bills owe, and the pane's Months row counts them.
-    expect((document.querySelector('[data-lien-pane-head="months"]') as HTMLElement | null)?.textContent ?? document.body.textContent).toContain('$25,000 · 2 bills')
+    expect((document.querySelector('[data-lien-pane-head="months"]') as HTMLElement | null)?.textContent ?? document.body.textContent).toContain('$25,000.00 · 2 bills')
     const list = document.querySelector('[data-lien-claim-bills]') as HTMLElement
     expect(list).toBeTruthy()
     const rows = within(list).getAllByText(/Owed/).map((el) => el.parentElement!.textContent)
@@ -5403,7 +5403,7 @@ describe('LienDesk — find on the list (v2.4721)', () => {
     expect((list.querySelector('[data-lien-claim-bill="inv-top"]') as HTMLElement).textContent).toContain('#650-2609301442 · Top Out')
     expect((list.querySelector('[data-lien-claim-bill="inv-top"]') as HTMLElement).textContent).toContain('Paid$2,000.00')
     const unbilled = list.querySelector('[data-lien-claim-unbilled]') as HTMLElement
-    expect(unbilled.textContent).toContain('$8,500 of the job’s $33,500 · not claimed until it is billed')
+    expect(unbilled.textContent).toContain('$8,500.00 of the job’s $33,500.00 · not claimed until it is billed')
     // No fifth gate while the sent bills still owe money.
     expect(document.querySelector('[data-gate="billed"]')).toBeNull()
     expect((screen.getByRole('button', { name: /to approve ▸/ }) as HTMLButtonElement).disabled).toBe(false)

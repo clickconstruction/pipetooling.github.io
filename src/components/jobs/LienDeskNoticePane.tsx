@@ -10,6 +10,8 @@ import { lienNothingBilledWords, type LienClaimBill } from '../../lib/jobs/lienC
 import { claimDeltaWords, correctionNeedsLook, correctionSetWords, type CorrectedClaim, type LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
 import { clearLienClaimCorrection, lookLienClaimCorrection, saveLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { LIEN_NOTICE_POLICIES, type LienDeskEntry, type LienDeskPile, type LienNoticePolicy } from '../../lib/jobs/lienDesk'
+import { moneyWords } from '../../lib/moneyParts'
+import { Money, MoneyText } from '../Money'
 import { lienGcNoticePress } from '../../lib/jobs/lienDeskGcPicker'
 import { LIEN_APPROVE_NO_MAIL_BY, LIEN_GC_GATE_NO_ADDRESS, lienFootBlockedSentence, lienGateMonthLine, lienGateShortWords, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey, type LienGateVerdict, type LienSentGatesFold } from '../../lib/jobs/lienDeskGates'
 import { shortDay as footShortDay } from '../../lib/jobs/lienFootChip'
@@ -248,7 +250,8 @@ export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
               onClick={() => pressStripChip(c.act)}
               style={stripChipStyle(c.tone)}
             >
-              {c.words}
+              {/* The cents take no line of their own, so a chip with an amount is as tall as its neighbours. */}
+              <MoneyText text={c.words} centsStyle={{ lineHeight: 0 }} />
             </button>
           ))}
           <span style={{ flex: 1 }} />
@@ -621,7 +624,7 @@ export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
           // Retainage inside the claim (v2.3753, counsel): named on the form so the owner traps it now; the figure lives on the job.
           retainageInsideClaim(claimed.claim, job?.lien_retainage_held) > 0 ? (
             <span data-lien-claim-retainage="yes">
-              Includes <strong style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(retainageInsideClaim(claimed.claim, job?.lien_retainage_held))}</strong> unpaid retainage {gc?.name ?? 'the GC'} holds — named on the form.
+              Includes <strong style={{ color: 'var(--text-700)' }}><Money amount={retainageInsideClaim(claimed.claim, job?.lien_retainage_held)} /></strong> unpaid retainage {gc?.name ?? 'the GC'} holds — named on the form.
               {office ? <button type="button" onClick={() => onOpenEditJob(selected.jobId, 'lien-contract')} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 600, padding: '0 0 0 4px' }}>Change ›</button> : null}
             </span>
           ) : job?.lien_retainage_held == null && office ? (
@@ -634,7 +637,7 @@ export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
         bills={<LienClaimBills bills={claimBills} unbilled={unbilled} revenue={job?.revenue} loading={payPage.loading} onBill={office ? billFromHere : undefined} billWhy={billWhy} />}
         onNoteMissed={office ? (month) => void noteMissed([month]) : undefined}
         onRecordByHand={office ? () => setByHandOpen(true) : undefined}
-        claim={formatUsdNoCents(claimed.claim)}
+        claim={moneyWords(claimed.claim)}
         onToggle={(key, on) => {
           const next = new Set(months)
           if (on) next.add(key)

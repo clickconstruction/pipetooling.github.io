@@ -100,6 +100,8 @@ describe('lienClaimBills (v2.4969)', () => {
     expect(lienBillsCountWords(0, 2)).toBe('2 bills paid')
     expect(lienBillsCountWords(0, 1)).toBe('1 bill paid')
     expect(lienUnbilledWords(1000, 5000)).toBe('$1,000 of the job’s $5,000 · not claimed until it is billed')
+    // The Months card hands its own money, with cents, as its bills show theirs (punch list #415).
+    expect(lienUnbilledWords(8500.5, 21200.5, (n) => 'USD ' + n.toFixed(2))).toBe('USD 8500.50 of the job’s USD 21200.50 · not claimed until it is billed')
     expect(lienNothingBilledWords(0)).toMatch(/^Nothing is billed on this job yet\./)
     expect(lienNothingBilledWords(2)).toMatch(/^The sent bills are paid\./)
     expect(LIEN_BILL_FROM_HERE_LABEL).toBe('Bill it from here ›')

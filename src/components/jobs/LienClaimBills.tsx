@@ -1,4 +1,5 @@
-import { demandMoney } from '../../lib/jobsDocuments/demandLetter'
+import { Money, MoneyText } from '../Money'
+import { moneyWords } from '../../lib/moneyParts'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { LIEN_BILL_FROM_HERE_HINT, LIEN_BILL_FROM_HERE_LABEL, lienUnbilledWords, type LienClaimBill } from '../../lib/jobs/lienClaimBills'
 
@@ -24,7 +25,8 @@ export default function LienClaimBills({
   /** Why the door is off right now (the job's bills still reading); '' when it is on. */
   billWhy?: string
 }) {
-  const money = (n: number) => demandMoney(String(n))
+  // The cents small, as the claim over them draws its own (v2.8537, punch list #415).
+  const money = (n: number) => <Money amount={n} />
   return (
     <div className="lienClaimBills" data-lien-claim-bills data-loading={loading ? 'yes' : 'no'}>
       <div className="lienClaimBillsHead">
@@ -59,7 +61,7 @@ export default function LienClaimBills({
         <div className="lienClaimBill" data-lien-claim-unbilled data-tone="amber">
           <span className="lienClaimBillName">
             <strong>Not billed yet</strong>
-            <small>{lienUnbilledWords(unbilled, revenue)}</small>
+            <small><MoneyText text={lienUnbilledWords(unbilled, revenue, moneyWords)} /></small>
           </span>
           <span className="lienClaimBillNum" data-col="door">
             {onBill ? (

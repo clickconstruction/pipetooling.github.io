@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { workMonthLabel } from '../../lib/jobs/forecastWorkMonths'
 import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctionSetWords, type LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
-import { MoneyText } from '../Money'
+import { Money, MoneyText } from '../Money'
 
 /**
  * The claim box on the Lien desk's Months card (v2.3682): the figure the notice claims,
@@ -72,7 +71,8 @@ export default function LienClaimBox({ balance, correction, months, office, busy
       <div className="lienLedgerClaim" data-lien-claim-box data-corrected={current.corrected ? 'yes' : 'no'} data-over={current.over ? 'yes' : 'no'}>
         <span>Claim amount on the notice</span>
         <strong>
-          {formatUsdNoCents(current.claim)} {current.corrected ? <span style={chipStyle(current.over)}>set by hand</span> : null}
+          {/* Cents, drawn small (v2.8537, punch list #415): the figure the notice prints, where the box read it rounded to the dollar. */}
+          <Money amount={current.claim} /> {current.corrected ? <span style={chipStyle(current.over)}>set by hand</span> : null}
         </strong>
         {current.corrected && correction ? (
           <>

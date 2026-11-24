@@ -206,6 +206,7 @@ import { propertyKindWords, type PropertyKind } from '../../lib/jobs/propertyKin
 import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
 import { LIEN_AFFIDAVIT_PILES, lienOwnerIsPublic, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 import { MoneyText } from '../Money'
+import { moneyWords } from '../../lib/moneyParts'
 
 /**
  * The Lien desk: the queue of § 53.056 notices the law says are due per
@@ -2327,7 +2328,7 @@ export default function LienDesk({
         months: monthsList,
         // A notice that went names its own months (v2.8167): the pane picks none on it, so the head read *no months* over a paper sent for two.
         sentMonths: gatesFold?.monthsHead ?? null,
-        claimWords: claimBills.length ? `${formatUsdNoCents(claimed.claim)} · ${lienBillsCountWords(claimBills.filter((b) => b.owed > 0).length, claimBills.length)}` : formatUsdNoCents(claimed.claim),
+        claimWords: claimBills.length ? `${moneyWords(claimed.claim)} · ${lienBillsCountWords(claimBills.filter((b) => b.owed > 0).length, claimBills.length)}` : moneyWords(claimed.claim),
         pages: pageTotal,
         gcEmail: Boolean(gc?.email),
         monthShort: workMonthShort,
@@ -2379,7 +2380,7 @@ export default function LienDesk({
         gates,
         monthWords: monthsList.map(workMonthShort).join(' + '),
         next: timeline ? { kind: timeline.next.kind, words: timeline.next.words, tone: timeline.next.tone } : null,
-        claimWords: formatUsdNoCents(claimed.claim),
+        claimWords: moneyWords(claimed.claim),
         claimByHand: claimed.corrected,
         wordingWords: wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : '',
         fold: gatesFold,
