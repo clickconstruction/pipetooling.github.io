@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BILLS_SENT_GONE_NOTE,
   billNumberFromTitle,
   billsSentGapFilter,
   billsSentGapHeading,
@@ -294,6 +295,21 @@ describe('billsSent — sends that kept no copy (PR 2)', () => {
     expect(lines[0]!.note).toBe('The pay link in this text no longer names a bill.')
     expect(billsSentFilter(lines, 'text', '').map((l) => l.id)).toEqual(['text:t2', 'text:t1'])
     expect(billsSentFilter(lines, 'gap', '')).toEqual([])
+  })
+})
+
+describe('billsSent — a send whose bill is gone', () => {
+  const GONE = 'dddddddd-4444-4444-8444-444444444444'
+  it('says the bill was taken back or replaced, where the line has no amount and no word on payment', () => {
+    const lines = billsSentLines(input([copy({ id: 'g1', sourceId: GONE }), copy({ id: 'k1' })]))
+    const gone = lines.find((l) => l.id === 'g1')!
+    expect(gone).toMatchObject({ amount: null, pay: null, counts: false, note: BILLS_SENT_GONE_NOTE })
+    // A send whose bill is on record says nothing of the kind.
+    expect(lines.find((l) => l.id === 'k1')!.note).toBe('')
+  })
+  it('says nothing when no bill read at all: that is a read that failed, not a bill that is gone', () => {
+    const lines = billsSentLines(input([copy({ id: 'g1' })], { bills: new Map() }))
+    expect(lines[0]!.note).toBe('')
   })
 })
 

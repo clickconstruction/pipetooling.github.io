@@ -311,6 +311,9 @@ function noteOf(copy: BillsSentCopy, route: BillsSentRoute): string {
   return ''
 }
 
+/** What a send says when its bill is no longer on record. */
+export const BILLS_SENT_GONE_NOTE = 'This bill is no longer on the job. It was taken back or replaced after it went.'
+
 const billIdOf = (copy: BillsSentCopy): string | null => (copy.sourceTable === BILL_SOURCE && copy.sourceId ? copy.sourceId : null)
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
@@ -414,6 +417,10 @@ export function billsSentLines(input: BillsSentInput, opts: { todayYmd?: string 
   const lineOf = (copy: BillsSentCopy, rode: BillsSentCopy[]): BillsSentLine => {
     const billId = billIdOf(copy)
     const bill = billId ? input.bills.get(billId) : undefined
+    // The copy names a bill the read did not find: the bill was taken back or replaced after it went. The copy is
+    // kept, so the line stays, and it says why it has no amount and no word on payment. Never said when no bill
+    // read at all, which is a read that failed and not a bill that is gone.
+    const gone = !!billId && !bill && input.bills.size > 0
     const route = routeOf(copy)
     const times = billId ? (timesByBill.get(billId) ?? []) : []
     const at = ms(copy.sentAt)
@@ -464,7 +471,7 @@ export function billsSentLines(input: BillsSentInput, opts: { todayYmd?: string 
       by: copy.sentByName,
       nth,
       firstAtIso: firstAt != null ? new Date(firstAt).toISOString() : null,
-      note: noteOf(copy, route),
+      note: [noteOf(copy, route), gone ? BILLS_SENT_GONE_NOTE : ''].filter(Boolean).join(' '),
       copy,
       copies: rode,
       haystack: [what, jobWords, payer, copy.recipientName, ...copy.recipientEmails, ...copyTo, (job?.job_address ?? '').trim(), (job?.customer_name ?? '').trim(), copy.sentByName, copy.title]
