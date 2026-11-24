@@ -2798,7 +2798,8 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
       expect(scroll).not.toHaveBeenCalled()
       expect(document.querySelector('[data-landed]')).toBeNull()
 
-      fireEvent.click(heldRow())
+      // A tap or a mouse press: the click carries a press count.
+      fireEvent.click(heldRow(), { detail: 1 })
       await settle()
       // The gates section lands under its own head (the path's head and its own, 24 px each), which puts the third gate's row on the screen.
       expect(scroll).toHaveBeenCalledTimes(1)
@@ -2806,16 +2807,21 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
       expect(gate().getAttribute('data-lien-gate-ok')).toBe('no')
       expect(gate().getAttribute('data-landed')).toBe('yes')
       expect(document.activeElement).toBe(gate())
+      // The row took the keyboard quietly: no keyboard ring after a tap (v2.8509, Safari drew one).
+      expect(gate().getAttribute('data-quiet-focus')).toBe('yes')
       // The first two gates are clear and wear no light.
       expect(document.querySelectorAll('[data-landed]').length).toBe(1)
 
       // The same row pressed with its gate already on the screen: the pane stays put, and the row is lit again.
       rowTop = 300
       gate().removeAttribute('data-landed')
+      // Enter on the row this time: a click with no press count, so the gate keeps the keyboard's ring.
       fireEvent.click(heldRow())
       await settle()
       expect(scroll).toHaveBeenCalledTimes(1)
       expect(gate().getAttribute('data-landed')).toBe('yes')
+      expect(document.activeElement).toBe(gate())
+      expect(gate().hasAttribute('data-quiet-focus')).toBe(false)
 
       // A row with every gate clear opens its pane as it always did.
       fireEvent.click(clearRow())
