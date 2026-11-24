@@ -95,14 +95,15 @@ import board from 'virtual:punch-list'
  * Since v2.8226 a tick is a claim (her ask of the same day): everyone who opens the board sees who
  * is working on a card, on a line under its name. A claim goes quiet 12 hours after the newest of
  * the tick, a **Still on it** press and the card file's last change on main, which the build ships
- * in the history (`history.touched`). A quiet card reads as free to pick up to everyone else; its
- * claimer keeps their own tick, marked as gone quiet (`lib/todos/punchListClaims.ts`).
+ * in the history (`history.touched`). A quiet card reads as free to pick up to everyone else, and
+ * its claimer's own tick is wiped: their box is clear and the card says why for that visit
+ * (Taunya's answer of 2026-11-24, `lib/todos/punchListClaims.ts`).
  */
 /** The board's history as the build replayed it from git; the burndown reads it. */
 const history = unpackHistory(packedHistory)
 
 export default function PunchList() {
-  const { user: authUser, role, profileName, loading: authLoading } = useAuth()
+  const { user: authUser, role, profileName, readOnly, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const { bounce } = useRoleGate(role, authUser?.id)
@@ -126,15 +127,16 @@ export default function PunchList() {
       window.removeEventListener('focus', tick)
     }
   }, [])
-  // Every person's ticks, each a claim. The person's own stale row is deleted with no press only on the built site
-  // (a branch's board on a dev server can be behind main) and never under View as, where a look writes nothing by itself.
+  // Every person's ticks, each a claim. The person's own stale or quiet row is deleted with no press only on the built site
+  // (a branch's board on a dev server can be behind main), never under View as, where a look writes nothing by itself,
+  // and never in training mode, where the database refuses every write.
   const ticks = usePunchListTicks({
     enabled: allowed,
     userId: authUser?.id,
     userName: profileName,
     cards: board.items,
     boardVersion: board.validated.version,
-    mayClear: import.meta.env.PROD && !isImpersonationSessionActive(),
+    mayClear: import.meta.env.PROD && !isImpersonationSessionActive() && !readOnly,
     touched: history.touched,
     nowMs,
   })

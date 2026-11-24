@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { plainSentence, sentenceParts } from '../valuesInPlace'
 import {
+  OWN_TICK_AFTER_QUIET,
   QUIET_AFTER_MS,
+  TICK_CLEARED_WORDS,
   agoWords,
   claimFreshAt,
   claimLines,
@@ -98,11 +100,51 @@ describe('who sees what', () => {
     expect(said(rows, BEN)).toEqual(['Free to pick up. ZZ Ana had it and went quiet 3 h ago.'])
   })
 
-  it('the claimer’s own tick stays after 12 quiet hours, marked as gone quiet with Still on it', () => {
+  it('the claimer’s own tick is wiped after 12 quiet hours, and the card says so and why', () => {
+    // The default, on Taunya's answer of 2026-11-24: with no reading named, a quiet tick is wiped.
+    expect(OWN_TICK_AFTER_QUIET).toBe('wiped')
     const rows = [tick({ tickedAt: ago(15) })]
     const mine = read(rows, ANA)
+    expect(mine.ticked.size).toBe(0)
+    expect(mine.wiped).toEqual([412])
+    expect(mine.byCard.get(412)?.mine).toBeNull()
+    expect(mine.byCard.get(412)?.cleared?.quiet).toBe(true)
+    const lines = claimLines(mine.byCard.get(412), NOW)
+    expect(lines).toHaveLength(1)
+    expect(lines[0]!.stillOn).toBe(false)
+    expect(lines[0]!.tone).toBe('quiet')
+    expect(plainSentence(lines[0]!.text)).toBe('Your tick was cleared after 12 quiet hours. Tick the card again if you are still on it.')
+    expect(lines[0]!.text).toBe(TICK_CLEARED_WORDS)
+    // Naming the reading says the same as naming none.
+    expect(read(rows, ANA, { ownTickAfterQuiet: 'wiped' })).toEqual(mine)
+  })
+
+  it('a fresh tick is never wiped, and nobody else’s row is ever in the list', () => {
+    const rows = [tick({ tickedAt: ago(15) }), tick({ userId: BEN, claimerName: 'ZZ Ben', tickedAt: ago(1) })]
+    expect(read([tick()], ANA).wiped).toEqual([])
+    expect(read([tick({ tickedAt: ago(11) })], ANA).ticked.has(412)).toBe(true)
+    expect(read(rows, CAL).wiped).toEqual([])
+    expect(read(rows, BEN).wiped).toEqual([])
+    // To the person whose tick was wiped, the other person's claim comes first and their own line second.
+    expect(said(rows, ANA)).toEqual(['ZZ Ben is working on this. Last update 1 h ago.', 'Your tick was cleared after 12 quiet hours. Tick the card again if you are still on it.'])
+    // To everyone else the wiped person had nothing to say: the card is the other person's.
+    expect(said(rows, CAL)).toEqual(['ZZ Ben is working on this. Last update 1 h ago.'])
+  })
+
+  it('a card kept fresh by a change of its file is not wiped, however old the tick', () => {
+    const old = [tick({ tickedAt: ago(40) })]
+    expect(read(old, ANA).wiped).toEqual([412])
+    const kept = read(old, ANA, { touched: { 'a-card': Math.floor((NOW - 3 * HOUR) / 1000) } })
+    expect(kept.wiped).toEqual([])
+    expect(kept.ticked.has(412)).toBe(true)
+  })
+
+  it('the other reading, built first: the claimer’s own tick stays, marked as gone quiet with Still on it', () => {
+    const rows = [tick({ tickedAt: ago(15) })]
+    const mine = read(rows, ANA, { ownTickAfterQuiet: 'stays' })
     expect(mine.ticked.has(412)).toBe(true)
     expect(mine.wiped).toEqual([])
+    expect(mine.byCard.get(412)?.cleared).toBeNull()
     const lines = claimLines(mine.byCard.get(412), NOW)
     expect(lines).toHaveLength(1)
     expect(lines[0]!.stillOn).toBe(true)
@@ -110,24 +152,16 @@ describe('who sees what', () => {
     expect(plainSentence(lines[0]!.text)).toBe('Your claim went quiet 3 h ago. Others see this card as free to pick up.')
   })
 
-  it('the one word that flips it: a quiet tick is wiped for its claimer too', () => {
-    const rows = [tick({ tickedAt: ago(15) }), tick({ cardNumber: 412, userId: BEN, claimerName: 'ZZ Ben', tickedAt: ago(1) })]
-    const mine = read(rows, ANA, { ownTickAfterQuiet: 'wiped' })
-    expect(mine.ticked.size).toBe(0)
-    expect(mine.wiped).toEqual([412])
-    expect(mine.byCard.get(412)?.mine).toBeNull()
-    // A fresh tick is never wiped, and nobody else's row is ever in the list.
-    expect(read([tick()], ANA, { ownTickAfterQuiet: 'wiped' }).wiped).toEqual([])
-    expect(read(rows, CAL, { ownTickAfterQuiet: 'wiped' }).wiped).toEqual([])
-  })
-
   it('a second person may take over a card whose claim has gone quiet', () => {
     const rows = [tick({ tickedAt: ago(15) }), tick({ userId: BEN, claimerName: 'ZZ Ben', tickedAt: ago(0) })]
     // A third person sees the new claimer, and not the one who went quiet.
     expect(said(rows, CAL)).toEqual(['ZZ Ben is working on this. Last update just now.'])
-    // The first person still sees their own quiet tick, under the new claimer's line, and the card is not called free.
-    expect(said(rows, ANA)).toEqual(['ZZ Ben is working on this. Last update just now.', 'Your claim went quiet 3 h ago.'])
-    expect(read(rows, ANA).ticked.has(412)).toBe(true)
+    // The first person's own tick is wiped: the new claimer's line, then what became of theirs.
+    expect(said(rows, ANA)).toEqual(['ZZ Ben is working on this. Last update just now.', 'Your tick was cleared after 12 quiet hours. Tick the card again if you are still on it.'])
+    expect(read(rows, ANA).ticked.size).toBe(0)
+    // Where a quiet tick stays, they still see their own under the new claimer's line, and the card is not called free.
+    expect(said(rows, ANA, { ownTickAfterQuiet: 'stays' })).toEqual(['ZZ Ben is working on this. Last update just now.', 'Your claim went quiet 3 h ago.'])
+    expect(read(rows, ANA, { ownTickAfterQuiet: 'stays' }).ticked.has(412)).toBe(true)
     // The new claimer sees their own.
     expect(said(rows, BEN)).toEqual(['You are working on this. Last update just now.'])
   })
