@@ -2,7 +2,7 @@
 name: "Two more views join through a COALESCE onto a table with row policies: agreements_on_file and people_hours_recorded"
 number: 430
 group: ready
-status: found 2026-11-21 by the #306 thread while fixing the Photos tab's statement timeout (v2.8301) · the card written 2026-11-23 on the owner's word of 2026-11-23 · 2026-11-23 no read-only path to a plan on prod, so both mended on the plan's shape: v2.8389 (agreements_on_file) and 20261123190100_people_hours_recorded_pay_join_by_key.sql (people_hours_recorded), each a migration PR left for the parent session to merge and push
+status: found 2026-11-21 by the #306 thread while fixing the Photos tab's statement timeout (v2.8301) · the card written 2026-11-23 on the owner's word of 2026-11-23 · 2026-11-23 no read-only path to a plan on prod, so both mended on the plan's shape: v2.8389 (agreements_on_file) and 20261123193000_people_hours_recorded_pay_join_by_key.sql (people_hours_recorded), each a migration PR left for the parent session to merge and push
 summary: >
   Documents → Photos timed out because its view found a job with a join written as an equality
   onto a COALESCE. Postgres will not use such a clause as an index condition on a table with row
@@ -124,7 +124,7 @@ The shape, on a local Postgres 15 as a role under a policy that reads a column, 
 - `agreements_on_file`: `20261123190000_agreements_party_join_by_key.sql` (v2.8389), the three joins as a `CASE`. The
   `paper-party` bed rebuilds the view as it stood and asserts five roles read the same lines from both, and that the
   plan finds the customer and the supply house by key; the trade company's lookup is logged, not held.
-- `people_hours_recorded`: `20261123190100_people_hours_recorded_pay_join_by_key.sql` (its own PR), the pay config join as
+- `people_hours_recorded`: `20261123193000_people_hours_recorded_pay_join_by_key.sql` (its own PR), the pay config join as
   a `CASE`. A new bed, `people-hours-recorded`, does the same over each side of the full join.
 
 **Left:** the push of each after its merge, and the plan read on prod with the two statements above once a read-only
