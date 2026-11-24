@@ -71,11 +71,11 @@ function timeOf(lines: readonly string[], label: string): number | null {
 export function walkedRelations(lines: readonly string[]): { relation: string; scans: number }[] {
   const seen: { relation: string; scans: number }[] = []
   for (const line of lines) {
-    const m = /\bSeq Scan on ([A-Za-z_][A-Za-z0-9_.]*)/.exec(line)
-    if (!m) continue
-    const had = seen.find((s) => s.relation === m[1])
+    const relation = /\bSeq Scan on ([A-Za-z_][A-Za-z0-9_.]*)/.exec(line)?.[1]
+    if (!relation) continue
+    const had = seen.find((s) => s.relation === relation)
     if (had) had.scans += 1
-    else seen.push({ relation: m[1], scans: 1 })
+    else seen.push({ relation, scans: 1 })
   }
   return seen
 }
@@ -89,50 +89,52 @@ const opensNode = (line: string, i: number) => i === 0 || /^\s*(->\s|SubPlan \d|
  */
 export function findInPlan(lines: readonly string[], text: string): { indices: number[]; matches: number } {
   const needle = text.toLowerCase()
+  const line = (i: number) => lines[i] ?? ''
   // Each line's node: itself when it opens one, else the nearest opener above. A trailer line (`Planning:`, the times)
   // belongs to no node.
   // Every line of the tree after its first is indented, so the first flush-left line below it opens the trailer.
   let firstTrailer = lines.length
   for (let j = 1; j < lines.length; j += 1) {
-    if (indentOf(lines[j]) === 0) {
+    if (indentOf(line(j)) === 0) {
       firstTrailer = j
       break
     }
   }
   const owner: number[] = []
+  const nodeOf = (i: number) => owner[i] ?? -1
   let open = 0
   for (let i = 0; i < lines.length; i += 1) {
     if (i >= firstTrailer) owner.push(-1)
     else {
-      if (opensNode(lines[i], i)) open = i
+      if (opensNode(line(i), i)) open = i
       owner.push(open)
     }
   }
   const keep = new Set<number>()
   const keepNode = (node: number) => {
-    for (let i = node; i < firstTrailer && (i === node || owner[i] === node); i += 1) keep.add(i)
+    for (let i = node; i < firstTrailer && (i === node || nodeOf(i) === node); i += 1) keep.add(i)
   }
   let matches = 0
   const done = new Set<number>()
   for (let i = 0; i < lines.length; i += 1) {
-    if (!lines[i].toLowerCase().includes(needle)) continue
+    if (!line(i).toLowerCase().includes(needle)) continue
     matches += 1
-    const node = owner[i]
+    const node = nodeOf(i)
     if (node < 0) {
       keep.add(i)
       continue
     }
     // The node, then each opener above it with a smaller indent: its path to the top.
     let at = node
-    let indent = indentOf(lines[at])
+    let indent = indentOf(line(at))
     while (!done.has(at)) {
       done.add(at)
       keepNode(at)
       let up = at - 1
-      while (up >= 0 && !(owner[up] === up && indentOf(lines[up]) < indent)) up -= 1
+      while (up >= 0 && !(nodeOf(up) === up && indentOf(line(up)) < indent)) up -= 1
       if (up < 0) break
       at = up
-      indent = indentOf(lines[at])
+      indent = indentOf(line(at))
     }
   }
   return { indices: [...keep].sort((a, b) => a - b), matches }
@@ -160,10 +162,11 @@ export function fitPlan(lines: readonly string[], ask: { find: string | null; fr
     let shown = 0
     let last = -1
     for (const i of indices) {
-      const cost = lines[i].length + 1 + (last >= 0 && i !== last + 1 ? 2 : 0)
+      const line = lines[i] ?? ''
+      const cost = line.length + 1 + (last >= 0 && i !== last + 1 ? 2 : 0)
       if (shown > 0 && chars + cost > budget) break
       if (shown === 0 ? i > 0 : i !== last + 1) out.push(QUERY_PLAN_GAP)
-      out.push(lines[i])
+      out.push(line)
       chars += cost
       shown += 1
       last = i
@@ -176,9 +179,10 @@ export function fitPlan(lines: readonly string[], ask: { find: string | null; fr
   let chars = 0
   let i = start - 1
   for (; i < lines.length; i += 1) {
-    const cost = lines[i].length + 1
+    const line = lines[i] ?? ''
+    const cost = line.length + 1
     if (out.length > 0 && chars + cost > budget) break
-    out.push(lines[i])
+    out.push(line)
     chars += cost
   }
   return { lines: out, from: start, to: start + out.length - 1, next_from: i < lines.length ? i + 1 : null }

@@ -105,7 +105,7 @@ describe('check_query_plan — reading a plan', () => {
     const { indices, matches } = findInPlan(PLAN, 'SHOPS')
     // `shops` is in the top join's filter (line 2) and on the scan (line 14).
     expect(matches).toBe(2)
-    expect(indices.map((i) => PLAN[i].trim().split('  ')[0])).toEqual([
+    expect(indices.map((i) => (PLAN[i] ?? '').trim().split('  ')[0])).toEqual([
       'Nested Loop Left Join', 'Join Filter: (shops.id = papers.shop_id)', 'Buffers: shared hit=40',
       '->', '->', 'Filter: (owner_id = auth.uid())',
     ])
