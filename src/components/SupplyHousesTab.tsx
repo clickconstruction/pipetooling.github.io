@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { supabasePaperIo, type PaperIo } from '../lib/materials/lines/paperIo'
 import type { PaperRow } from '../lib/materials/lines/paperRows'
 import { PaperLookModal } from './materials/PaperLookModal'
+import { BillSearch } from './materials/BillSearch'
 import { BillLinesHeld } from './materials/BillLinesHeld'
 import { supabaseHeldBillsIo, type HeldBillsIo } from '../lib/materials/lines/heldBillsIo'
 import { billsToRecordWords } from '../lib/materials/bills/billWords'
@@ -484,6 +485,8 @@ export function SupplyHousesTab({
         ) : null}
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>invoices, aging and balances — office only</span>
       </div>
+      {/* One search across every bill (punch list #431): a number, a house, a PO, an amount or a part on the paper. */}
+      <BillSearch />
       <BillLinesHeld io={heldIo} paperIo={paperIo} onOpenBill={(bill) => void openBillFromLines(bill)} loadPaperBytes={paperBytesOf} refreshKey={linesRefresh} />
       <section style={{ marginBottom: '2rem' }}>
         {supplyHouseSummaryLoading ? (
