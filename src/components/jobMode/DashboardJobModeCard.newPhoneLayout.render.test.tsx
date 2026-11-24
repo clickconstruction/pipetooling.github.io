@@ -167,12 +167,26 @@ const nameOf = (el: Element) =>
 /** Every press on the card, the bar's too. */
 const presses = () => Array.from(card().querySelectorAll('button, a[href], [role="tab"]')).map(nameOf).filter(Boolean)
 
+/**
+ * The clock every test here reads: the middle of today. The notes are written minutes and hours "ago", and in the
+ * first minutes after the app's midnight "six minutes ago" was yesterday, so the row named the weekday and not
+ * *today* and wore no New mark (a merge queue build failed on it at 06:01 UTC on 2026-11-24). Only the date is
+ * held, so every wait and timer runs as it did.
+ */
+const MIDDAY = (() => {
+  const d = new Date()
+  d.setUTCHours(18, 0, 0, 0)
+  return d
+})()
+
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'], now: MIDDAY })
   localStorage.clear()
   for (const fn of Object.values(doors)) fn.mockClear()
   vi.mocked(recordNavClick).mockClear()
 })
 afterEach(() => {
+  vi.useRealTimers()
   cleanup()
   localStorage.clear()
   onLeaveReport.mockReset()
