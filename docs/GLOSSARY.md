@@ -6932,6 +6932,7 @@ A job's sheet is **behind** when the usual was published again since it went out
 Publishing the usual brings up each job that is ready and **holds** a job with no sheet yet, with changes of its own waiting, that changed somewhere else, or that was lost or is closed (v2.8192, `usualPublishPlan`).
 The publish reads every job's sheet first and publishes nothing when other jobs would get it than the press showed (v2.8155, `sameJobsGetIt`).
 The **Job** list leaves out a lost or closed job unless its sheet was published (v2.8192, `listedJobs`).
+Since v2.8449 the insurance builder's row on the tab's list says *A sheet on N of M jobs*: of the jobs that list holds, the ones whose sheet is published (`sheetCounts`, [`sheetScreen.ts`](../src/lib/documentBuilder/sheetScreen.ts)).
 The insurance builder's read mark is **checked**, by an insurance agent, where the Sub NDA's is read, by an attorney.
 Every amount in the insurance builder's first draft is the placeholder *An amount*: the app sets and suggests none.
 A **sheet's link** (v2.8008) opens a job's published sheet at `/d/<code>` with no sign-in, one live link a sheet, kept only as its hash ([`documentBuilderLink.ts`](../supabase/functions/_shared/documentBuilderLink.ts)).

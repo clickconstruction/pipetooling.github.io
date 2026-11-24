@@ -31,17 +31,24 @@ import {
 import { parsePaperDef } from '../../lib/documentBuilder/definition'
 import { loadFirstDraft, readDocumentBuilders } from '../../lib/documentBuilder/documentBuildersIo'
 import { firstDraftOf } from '../../lib/documentBuilder/firstDrafts'
-import { filledRowChips } from '../../lib/documentBuilder/sheetScreen'
+import { filledRowChips, type SheetCounts } from '../../lib/documentBuilder/sheetScreen'
+import { readSheetCounts } from '../../lib/documentBuilder/sheetsIo'
 import { builderRowPress, builderStandingChips, builderUnreadWords, type BuilderRecord } from '../../lib/documentBuilder/standing'
 import { GC_COMPANY } from '../../lib/gc/company'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type Props = {
   /** Every builder the reader can read, by its name. For a smoke. */
   read?: typeof readDocumentBuilders
   /** Writes a builder's first draft. For a smoke. */
   load?: typeof loadFirstDraft
+  /** How many of a filled builder's jobs have a published sheet, for its row. For a smoke. */
+  readCounts?: typeof readSheetCounts
 }
+
+/** A filled builder's count on its row: the numbers once read, or why they were not. Absent while the read is out. */
+type RowCounts = { counts: SheetCounts } | { why: string }
 
 const CARD: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 10, minWidth: 0 }
 const CARD_TITLE: CSSProperties = { margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-strong)', lineHeight: 1.25 }
@@ -174,7 +181,7 @@ export default function DocumentsBuilderTab(props: Props) {
   )
 }
 
-function BuilderTab({ read = readDocumentBuilders, load = loadFirstDraft }: Props) {
+function BuilderTab({ read = readDocumentBuilders, load = loadFirstDraft, readCounts = readSheetCounts }: Props) {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const open = openBuilderFromSearch(location.search)
@@ -207,6 +214,28 @@ function BuilderTab({ read = readDocumentBuilders, load = loadFirstDraft }: Prop
       cancelled = true
     }
   }, [read, tries])
+
+  // The list's count for each filled builder that has a row: read each time the list is shown, so a sheet published
+  // inside a builder is counted on the way back. A count that does not read leaves the row as it is, with the reason.
+  const [counts, setCounts] = useState<Record<string, RowCounts>>({})
+  const listShown = open == null && records != null
+  useEffect(() => {
+    if (!listShown || !records) return
+    let cancelled = false
+    for (const b of DOCUMENT_BUILDERS) {
+      if (b.kind !== 'filled' || !records.get(b.id)) continue
+      void readCounts(b.id)
+        .then((got) => {
+          if (!cancelled) setCounts((was) => ({ ...was, [b.id]: { counts: got } }))
+        })
+        .catch((e: unknown) => {
+          if (!cancelled) setCounts((was) => ({ ...was, [b.id]: { why: formatErrorMessage(e, 'The read failed.') } }))
+        })
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [listShown, records, readCounts])
 
   // A load that lands after the tab is taken down sets nothing: there is no screen left to draw on.
   const here = useRef(true)
@@ -272,12 +301,14 @@ function BuilderTab({ read = readDocumentBuilders, load = loadFirstDraft }: Prop
       <div>
         {DOCUMENT_BUILDERS.map((b, i) => {
           const rec = records.get(b.id) ?? null
+          const count = counts[b.id]
           return (
             <div key={b.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '6px 12px', alignItems: 'center', padding: i === 0 ? '0 0 10px' : '10px 0', borderTop: i === 0 ? 0 : '1px solid var(--border)' }}>
               <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-strong)' }}>{b.name}</div>
                 <div style={MUTED}>{b.says}</div>
-                <Chips chips={b.kind === 'filled' ? filledRowChips(b, rec, null) : builderStandingChips(b, rec)} />
+                <Chips chips={b.kind === 'filled' ? filledRowChips(b, rec, count && 'counts' in count ? count.counts : null) : builderStandingChips(b, rec)} />
+                {b.kind === 'filled' && rec && count && 'why' in count ? <p role="status" style={FINE}>{`Its jobs were not counted. ${count.why}`}</p> : null}
               </div>
               {builderRowPress(rec) === 'open' ? (
                 <button type="button" aria-label={`${WORDS.open} ${b.name}`} style={mainPress(false)} onClick={() => setOpen(b.id)}>

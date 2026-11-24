@@ -28,7 +28,9 @@ vi.mock('../../hooks/useAuth', () => {
 
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { loadFirstDraft, readDocumentBuilders } from '../../lib/documentBuilder/documentBuildersIo'
+import { INSURANCE_SHEET_FIXTURE } from '../../lib/documentBuilder/insuranceSheet.fixture'
 import { SECRECY_PAPER_FIXTURE } from '../../lib/documentBuilder/secrecyPaper.fixture'
+import type { readSheetCounts } from '../../lib/documentBuilder/sheetsIo'
 import { builderRecordFromRow, type BuilderRecord } from '../../lib/documentBuilder/standing'
 import DocumentsBuilderTab from './DocumentsBuilderTab'
 
@@ -62,15 +64,32 @@ const subNda = (over: Record<string, unknown> = {}): BuilderRecord =>
 
 type Read = typeof readDocumentBuilders
 type Load = typeof loadFirstDraft
+type ReadCounts = typeof readSheetCounts
+
+/** The insurance sheet's builder as the table holds it: a filled builder, its usual published. */
+const insurance = (over: Record<string, unknown> = {}): BuilderRecord =>
+  builderRecordFromRow({
+    key: 'insurance',
+    kind: 'filled',
+    draft: JSON.parse(JSON.stringify(INSURANCE_SHEET_FIXTURE)),
+    published: JSON.parse(JSON.stringify(INSURANCE_SHEET_FIXTURE)),
+    revision: 1,
+    published_at: '2026-11-20T15:00:00.000Z',
+    read_revision: null,
+    read_by_name: '',
+    read_on: null,
+    updated_at: '2026-11-20T15:00:00.000Z',
+    ...over,
+  }) as BuilderRecord
 
 const holding = (...recs: BuilderRecord[]): Read => vi.fn(async () => new Map(recs.map((r) => [r.key, r])))
 
-function open(opts: { route?: string; read?: Read; load?: Load } = {}) {
+function open(opts: { route?: string; read?: Read; load?: Load; readCounts?: ReadCounts } = {}) {
   const read = opts.read ?? holding(subNda())
   const load: Load = opts.load ?? vi.fn(async () => ({ ok: false as const, error: 'Not handed in.' }))
   renderWithProviders(
     <>
-      <DocumentsBuilderTab read={read} load={load} />
+      <DocumentsBuilderTab read={read} load={load} readCounts={opts.readCounts} />
       <Where />
     </>,
     { route: opts.route ?? '/documents?tab=builder' },
@@ -119,6 +138,46 @@ describe('DocumentsBuilderTab', () => {
     expect(await screen.findByText('Published, revision 2')).toBeTruthy()
     expect(screen.getByText('Read by Avery Stone, Nov 20')).toBeTruthy()
     expect(screen.queryByText('Changes not published')).toBeNull()
+  })
+
+  it('says on the insurance row how many jobs have a sheet, once the jobs are read (punch list #416)', async () => {
+    const readCounts: ReadCounts = vi.fn(async () => ({ jobs: 4, withSheet: 2 }))
+    open({ read: holding(subNda(), insurance()), readCounts })
+    expect(await screen.findByText('A sheet on 2 of 4 jobs')).toBeTruthy()
+    expect(screen.getByText('Your usual, revision 1')).toBeTruthy()
+    // One read, for the one filled builder that has a row. The Sub NDA's row counts no jobs.
+    expect(readCounts).toHaveBeenCalledTimes(1)
+    expect(readCounts).toHaveBeenCalledWith('insurance')
+  })
+
+  it('counts nothing for a builder with no row, and says so when no job is run as the GC', async () => {
+    const none: ReadCounts = vi.fn(async () => ({ jobs: 0, withSheet: 0 }))
+    open({ readCounts: none })
+    expect(await screen.findByText('Not loaded yet')).toBeTruthy()
+    expect(none).not.toHaveBeenCalled()
+    cleanup()
+
+    open({ read: holding(insurance()), readCounts: none })
+    expect(await screen.findByText('No job you run as the GC yet')).toBeTruthy()
+    expect(screen.queryByText(/A sheet on/)).toBeNull()
+  })
+
+  it('keeps the row and names the reason when the jobs do not read', async () => {
+    open({ read: holding(insurance()), readCounts: vi.fn(async () => Promise.reject(new Error('permission denied for table gc_projects'))) })
+    expect(await screen.findByText('Its jobs were not counted. permission denied for table gc_projects')).toBeTruthy()
+    expect(screen.getByText('Your usual, revision 1')).toBeTruthy()
+    expect(screen.queryByText(/A sheet on/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Open Insurance requirements for subs' })).toBeTruthy()
+  })
+
+  it('reads the count again on the way back from an open builder', async () => {
+    let n = 0
+    const readCounts: ReadCounts = vi.fn(async () => ({ jobs: 3, withSheet: (n += 1) }))
+    open({ read: holding(subNda(), insurance()), readCounts })
+    expect(await screen.findByText('A sheet on 1 of 3 jobs')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Open Sub NDA' }))
+    fireEvent.click(await screen.findByRole('button', { name: '‹ Document builder' }))
+    expect(await screen.findByText('A sheet on 2 of 3 jobs')).toBeTruthy()
   })
 
   it('offers Load the first draft for a builder with no row, and Open once it has landed', async () => {
