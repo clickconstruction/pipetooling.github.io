@@ -162,8 +162,8 @@ describe('typecheckHeap: the wiring', () => {
     for (const [name, script] of Object.entries(pkg.scripts)) {
       expect(script, `package.json's ${name} runs tsc -b or tsc -p tsconfig.json by its own heap`).not.toMatch(/max-old-space-size=\d+ node_modules\/typescript\/bin\/tsc (-b|-p tsconfig\.json)/)
     }
-    expect(read('scripts', 'tsc-build.mjs')).toContain("runTsc('build', ['-b', ...process.argv.slice(2)])")
-    expect(read('scripts', 'typecheck-queued.mjs')).toContain("runTscUnderHeap('typecheck', [...TSC_ARGS, ...process.argv.slice(2)])")
+    expect(read('scripts', 'tsc-build.mjs')).toContain("runTsc('build', ['-b', BUILD_PART.config, ...process.argv.slice(2)])")
+    expect(read('scripts', 'typecheck-queued.mjs')).toContain("runTscUnderHeap('typecheck', ['-p', part.config, ...process.argv.slice(2)])")
   })
 
   it('the runner sizes the heap from the machine, watches stderr and prints the death line last', () => {

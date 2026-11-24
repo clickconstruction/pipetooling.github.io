@@ -63,7 +63,8 @@ jobs:
       # merge-queue build restores the newest one it can see (a branch sees main's caches and its own). tsc then
       # re-checks only the files that changed since that main, and eslint only the files whose content changed,
       # instead of every file under src on every run (2026-10-27: Typecheck 5.5 and Lint 2 of the checks job's
-      # 27 minutes). The key carries the lockfile, tsconfig and eslint config hashes, so a TypeScript or rule
+      # 27 minutes). The key carries the lockfile, tsconfig (the whole program's and the three parts' the check
+      # reads, scripts/lib/typecheckParts.mjs) and eslint config hashes, so a TypeScript or rule
       # change starts a fresh cache instead of trusting a stale one; check-workflow-parity.mjs holds it to the
       # key warm-caches.yml saves by. The typecheck script runs tsc without -b: build mode trusts timestamps,
       # and with a restored build info newer than the checkout it skipped a changed file holding a type error
@@ -72,9 +73,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .cache
-          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-${{ github.sha }}
+          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.tests-lib.json', 'tsconfig.tests-rest.json', 'eslint.config.js') }}-${{ github.sha }}
           restore-keys: |
-            checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-
+            checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.tests-lib.json', 'tsconfig.tests-rest.json', 'eslint.config.js') }}-
 
       # TYPECHECK_NO_LOCK: the script queues typechecks across a machine's worktrees (scripts/typecheck-queued.mjs);
       # a runner is its own machine, so it runs tsc at once.

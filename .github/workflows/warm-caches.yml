@@ -1,10 +1,11 @@
 name: Warm the typecheck and lint caches
 
 # Runs once per merge to main and saves the .cache that every pull request and merge-queue build restores
-# (ci.yml): a warm typecheck takes seconds, a cold one five minutes. It runs no check the queue did not just
+# (ci.yml): a warm typecheck takes 40 seconds, a cold one twelve minutes (three programs since 2026-11-24,
+# scripts/lib/typecheckParts.mjs). It runs no check the queue did not just
 # run on this exact content, and nothing waits on it: it is not a gate, and deploy.yml does not need it. A
 # cache saved on a branch is visible to that branch alone, which is why the save lives on main and not in
-# ci.yml's checks job. Budget (2026-10-27): about a minute warm, seven cold.
+# ci.yml's checks job. Budget (2026-11-24): about a minute warm, fourteen cold.
 on:
   push:
     branches:
@@ -22,7 +23,9 @@ concurrency:
 jobs:
   warm:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # A cold run is the install, twelve minutes of typecheck and a cold lint: over the fifteen minutes this had
+    # until 2026-11-24. A warm-up that is killed saves nothing, so every run after it would be cold too.
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,9 +45,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .cache
-          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-${{ github.sha }}
+          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.tests-lib.json', 'tsconfig.tests-rest.json', 'eslint.config.js') }}-${{ github.sha }}
           restore-keys: |
-            checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-
+            checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.tests-lib.json', 'tsconfig.tests-rest.json', 'eslint.config.js') }}-
 
       # TYPECHECK_NO_LOCK: the script queues typechecks across a machine's worktrees (scripts/typecheck-queued.mjs);
       # a runner is its own machine, so it runs tsc at once.
@@ -60,4 +63,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .cache
-          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-${{ github.sha }}
+          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.tests-lib.json', 'tsconfig.tests-rest.json', 'eslint.config.js') }}-${{ github.sha }}

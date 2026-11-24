@@ -204,12 +204,12 @@ describe('typecheckLock: where the lock lives', () => {
 
 describe('typecheckLock: the wiring', () => {
   const repo = join(__dirname, '..', '..')
-  it('npm run typecheck goes through the wrapper, which checks the one tsconfig and skips the lock for CI', () => {
+  it('npm run typecheck goes through the wrapper, which names no heap of its own and skips the lock for CI', () => {
     const pkg = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')) as { scripts: Record<string, string> }
     expect(pkg.scripts.typecheck).toBe('node scripts/typecheck-queued.mjs')
     const wrapper = readFileSync(join(repo, 'scripts', 'typecheck-queued.mjs'), 'utf8')
     // The heap is no longer written here: scripts/lib/typecheckHeap.mjs sizes it from the machine (typecheckHeap.test.ts).
-    expect(wrapper).toContain("const TSC_ARGS = ['-p', 'tsconfig.json']")
+    // Nor is one tsconfig: the wrapper runs the three parts of scripts/lib/typecheckParts.mjs (typecheckParts.test.ts).
     expect(wrapper).not.toContain('max-old-space-size')
     expect(wrapper).toContain("process.env.TYPECHECK_NO_LOCK === '1'")
   })
