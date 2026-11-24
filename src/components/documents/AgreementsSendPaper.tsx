@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { paperPressFloor } from '../../lib/documents/agreementsPhonePress'
 import { useToastContext } from '../../contexts/ToastContext'
 import { SEND_A_PAPER_LABEL, papersMatching, sendablePapers } from '../../lib/documents/agreementsSend'
@@ -9,7 +10,7 @@ import { quickSendNoContentWords, quickSendPickPlan, quickSendPlan, quickSendPla
 import { materializeQuickSendRow, readPersonSendFactsByName, readSenderFacts, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
 import { partyPaperName } from '../../lib/contracts/paperParty'
 import { partyNameToKeep, sendWindowPartyOfPick, type PartyPick, type PartyRecordTable, type PartySendInput, type SendWindowParty } from '../../lib/documents/paperPartyPick'
-import { findPartyContact, keepSignerWithBusiness, makeContactForAddress, readCopiesOut, readPartyContact } from '../../lib/documents/paperPartyIo'
+import { findPartyContacts, keepSignerWithBusiness, makeContactForAddress, readCopiesOut, readPartyContact } from '../../lib/documents/paperPartyIo'
 import { SECOND_COPY_HINT, SECOND_COPY_LABEL, SEND_AGAIN_HINT, copiesOutLead, copiesOutTitle, copyOutSentence, partyPapersOut, sendAgainLabel, type PartyCopyOut } from '../../lib/documents/partyPaperOut'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -134,10 +135,11 @@ export function AgreementsSendPaper({
       const sender = await readSenderFacts(user?.id)
       const signer = pick.kind === 'record' ? pick.signer : null
       // A company that already has this paper out: say who has it, and ask before anything is written (the owner's
-      // third decision of 2026-11-22). The look is a read alone, and a record with no contact has no paper.
+      // third decision of 2026-11-22). The look is a read alone, and a record with no contact has no paper. A company
+      // is looked at on every contact that points at it: its own, and each person named under it by Add to a list.
       if (pick.kind === 'record') {
-        const contactId = await findPartyContact(pick.record)
-        const copies = await readCopiesOut(partyPapersOut(data.personDocuments, contactId, documentName).map((d) => d.id))
+        const contactIds = await findPartyContacts(pick.record)
+        const copies = await readCopiesOut(partyPapersOut(data.personDocuments, contactIds, documentName).map((d) => d.id))
         if (copies.length > 0) {
           setStep({ at: 'party-out', documentName, pick, party: sendWindowPartyOfPick(pick), sender, copies })
           return
@@ -191,6 +193,23 @@ export function AgreementsSendPaper({
   }
 
   const close = () => setStep(null)
+
+  // Escape closes the three windows this press draws itself: the paper list, Who is it with? and the one that says a
+  // paper is already out. Nothing is written in any of them. The Send window keeps its own keys: it holds an address
+  // and a message someone typed.
+  const stepAt = step?.at ?? null
+  const escapeCloses = stepAt === 'paper' || stepAt === 'person' || stepAt === 'party-out'
+  const isTopmost = useModalStackEntry(escapeCloses)
+  useEffect(() => {
+    if (!escapeCloses) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || busy != null || !isTopmost()) return
+      e.preventDefault()
+      setStep(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [escapeCloses, busy, isTopmost])
 
   // Another door named the paper: read what the pick needs, then ask for the person.
   useEffect(() => {
