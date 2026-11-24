@@ -15,6 +15,7 @@ summary: >
   and adds one thing to it, an offered state so a course can be open to every role and required
   for some. The owner, a master plumber, co-writes and corrects every lesson.
 next: The read is done (§ Read-through 2026-11-08). The owner's correction pass over its 25 rows, each correction as one commit with the lesson's `from:` line naming it, stays his; the course has been On since 2026-10-18, so no press to On is left; #111's switch proof (`to-dos/training/README.md` § Pick up) can run now; delete this folder once the first crew member has been through it.
+ask: owner · read · Correct the 25 doubted facts in Intro to plumbing, and say which code the numbers follow.
 size: L (PR 1 is M; each part is an M PR of eight to ten drawings; the owner's corrections ride each one)
 blocker: none; the six calls are built to the drawn leans and each is one row in Settings or one line in a lesson.
 opinion: build it as outlined once the owner has corrected it; the drawings are the course, the mechanism is one column and one row on the card.

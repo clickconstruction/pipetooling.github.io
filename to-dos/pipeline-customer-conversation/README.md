@@ -13,6 +13,7 @@ summary: >
   recorded and the answer goes to that person's phone. Texting through Quo has been live since
   2026-10-16, so every send can go from the company number now.
 next: The owner's look. The owner texts the company number from the test phone on the ZZ Test customer's thread and looks: the row's box draws the bar and *Nobody has answered.* on her line, Reply on it in Job activity opens the box under *Replying to …*, and a line of hers on no job shows Tie to this job (How to verify, PRs 2 and 4). A look at the phone row's new third line (v2.6692) on that text, and whether the notes should join it there. Then the three doors on a ZZ Test customer (How to verify, PRs 5 to 7).
+ask: owner · look · Text the company number from the test phone, then look at the Pipeline row.
 size: S (the read) + S (the box) + XS (the filter) + S (Reply and Tie) + 3 × S (the doors)
 blocker: The owner's look, and the text from the test phone that unlocks PRs 2 and 4's draws.
 ver: v2.6683 · 6689 · 6690 · 6691 · 6700 · 6710 · 6717

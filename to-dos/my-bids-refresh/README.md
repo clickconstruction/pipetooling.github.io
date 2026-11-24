@@ -10,6 +10,7 @@ summary: >
   cards: left, a strip that names the act, Undo, and a folded group at the foot that holds what was
   put away. The reading also found things neither ask named, listed below for each card.
 next: The owner tries the swipe on his phone. Then retire the card.
+ask: owner · look · Try the swipe on My Bids, on your phone.
 size: L as a train of six (S · M · M · M · S · S); left: the owner's try
 blocker: None.
 opinion: build — the owner said go on every recommendation

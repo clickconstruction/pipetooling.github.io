@@ -14,6 +14,7 @@ summary: >
   the numbers with it, and My finish date, his own word on when the job finishes, which the card
   also asks for two days before the plan's day and when the job falls behind.
 next: The owner's walk with one real superintendent on his own phone, on a real project of his. That walk also carries the three questions punch list #384 left when it was retired.
+ask: owner · walk · Walk the pace card with one superintendent, on his own phone.
 size: M as a train of five (M · S · S · M · S)
 blocker: None. The migration is pushed and every PR is live.
 opinion: build — the card's numbers do not change, only how they are shown, and each new press rides something the app already does or one small table

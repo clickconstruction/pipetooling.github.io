@@ -15,6 +15,7 @@ summary: >
   under the status bar on every screen and #164's gallery under the address. The position on
   native: stay a home screen web app, with three named triggers for revisiting it.
 next: PR 6 ran live on 2026-11-08 (below) and its finding shipped as v2.6738; PR 7 shipped as v2.6265 with #229's PR 6 on 2026-11-01, so every PR of the train is built, live and run; nothing is left but the owner's read of the run.
+ask: owner · read · Read the run of the five phone screens.
 size: L as a train of nine (S · XS · S · M · M · S · S · S, and the Leaving PR at XS), all nine built; two migrations, the report photos table and the answer's report photo column; the live run of PR 6 done 2026-11-08; nothing left
 blocker: None.
 ver: v2.5905 · 5910 · 6076 · 6083 · 6089 · 6091 · 6092 · 6126 · 6219 · 6265 · 6738

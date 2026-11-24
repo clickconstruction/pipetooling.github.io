@@ -11,6 +11,7 @@ summary: >
   #129 built the one kind the office uses, a customer's promise to pay, by another road. This card
   keeps the rest so it is not lost, with what exists, what is missing and what it would take.
 next: Walk it on a ZZ Test thread as the card's verify recipe says, then delete the card. A start or delivery writes a start and Insurance or W-9 writes insurance, so the walk also says whether the office needs to pick the second.
+ask: anyone · walk · Be at hand while a session walks a heard day on a ZZ Test thread.
 size: M as a train of five (S · XS · M · M · XS)
 blocker: none. The walk writes prod, so it waits on a person at hand.
 opinion: build — the owner's call of 2026-11-23
