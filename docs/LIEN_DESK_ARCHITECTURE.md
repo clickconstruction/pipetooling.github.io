@@ -673,6 +673,18 @@ last_updated: 2026-11-21
 > Since v2.8478 the effect keys on `lienDeskReaimKey` (the job, the paper list it is named on, the press count), so the same job named on another list re-aims too, and the Lien window's button sends the job on every list (`lienWindowDeskDoorHref` in [`lib/lien/lienWindowDeskDoor.ts`](../src/lib/lien/lienWindowDeskDoor.ts)).
 > Since v2.8498 the Legal desk's Paper tab reads the same helper for its two notice doors, each on its own list (`legalPaperNextDoorHref` in [`lib/legal/legalPaperNextDoor.ts`](../src/lib/legal/legalPaperNextDoor.ts)).
 
+> **v2.8504 (Payoffs, punch list #435 piece 1):** `LienDeskPage`'s grid has two rows, `auto minmax(0, 1fr)`, and the first holds [`LienPayoffs`](../src/components/jobs/LienPayoffs.tsx), whose wrapper is always drawn so the desk keeps the second row.
+> It draws one line, *Payoffs*, with what waits on a release and **Someone paid ›**, and the window that press opens: every live filed affidavit under its place, each with three step rounds, one sentence and one press.
+> The rule is [`lienPayoff.ts`](../src/lib/jobs/lienPayoff.ts), whose `lienPayoffStep`, `releaseForAffidavit`, `lienPlaceKey`, `lienPayoffPlaces` and `lienPayoffStrip` are held by 22 tests.
+> The reads are [`lienPayoffIo.ts`](../src/lib/jobs/lienPayoffIo.ts), which start from the filings because the desk's list functions drop a job paid to zero.
+> The presses are the page's: `onOpenBill` is `openEditJob(jobId, 'bill')` and `onOpenRelease` opens the Lien window with `initialTab: 'release_record'`.
+> It reads again whenever the desk's `data` changes, and `?payoffs=1` opens the window at once.
+> It writes nothing.
+> **v2.8508 (the release knows its lien, piece 2):** [`lienReleaseOfRecord.ts`](../src/lib/jobs/lienReleaseOfRecord.ts) (12 tests) gives `LienFilingTabs`'s `release_record` tab `releaseTargets` and `pickReleaseTarget` (each filed affidavit with its own release, the picker *Which lien*), `releaseMoneyGate` (the hold and its reason), `releasePaymentDay`, `releaseSaveFields` and `releaseStampPatch`.
+> The stamp is two `ChangeableValue`s, and each Keep is one update of the release row through `keepReleaseStamp`.
+> A saved release prints from its own saved fields, and a lien with a release draws no save press.
+> The tab's six render tests are `LienFilingTabs.release.render.test.tsx`.
+
 > **v2.6777 · v2.6780 (the desk is a page, punch list #182):** `/lien-desk` ([`pages/LienDeskPage.tsx`](../src/pages/LienDeskPage.tsx), the address in [`lib/lien/lienDeskRoute.ts`](../src/lib/lien/lienDeskRoute.ts): `?tab=deadlines|notices|affidavits|retainage|timeline`, `&job=`, `&pile=`, the one-shot `&records=`).
 > `LienDeskModal` takes `frame: 'page' | 'window'` — on the page no overlay, no ✕, no `useModalFullScreen` key, the page's `backDoor` before the title, `data-lien-desk-panel="page"`, a named region, and `onAddressChange` told every change of `kind`, the Notices selection and `pile` once `data` is in (the job a door named counts before the selection catches up);
 > the address is the truth there (`initialKind` re-applies on change).

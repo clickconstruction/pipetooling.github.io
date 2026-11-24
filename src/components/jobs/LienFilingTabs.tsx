@@ -81,6 +81,8 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import type { JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { lienTradeWords } from '../../lib/jobs/lienTradeWords'
 import { MoneyText } from '../Money'
+import { ChangeableValue, ValueLine, ValueLines, ValueSentence } from '../valuesInPlace/ValuesInPlace'
+import { RELEASE_OF_RECORD_WORDS, pickReleaseTarget, releaseMoneyGate, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from '../../lib/jobs/lienReleaseOfRecord'
 
 /**
  * The statutory filing tabs of the Lien instruments modal (v2.2645, phase 3):
@@ -217,7 +219,12 @@ export default function LienFilingTabs({
   // The proof each mailed copy carries (punch list #314): a certified mail number and a photo of its receipt. Neither holds the day.
   const [ownerProof, setOwnerProof] = useState<ServiceCopyDraft>({ ...EMPTY_SERVICE_COPY })
   const [ocProof, setOcProof] = useState<ServiceCopyDraft>({ ...EMPTY_SERVICE_COPY })
-  const [releasePaymentDate, setReleasePaymentDate] = useState(todayYmd())
+  // The release of record (punch list #435, piece 2): its payment date starts on the last payment's day, not on today.
+  const [releasePaymentDate, setReleasePaymentDate] = useState(() => releasePaymentDay(job.payments ?? [], todayYmd()))
+  /** The filed lien the release tab is on, when the job holds more than one and one was picked. */
+  const [releaseTargetId, setReleaseTargetId] = useState<string | null>(null)
+  /** The reason a release goes out with money still open: null while the box is shut. */
+  const [releaseAnyway, setReleaseAnyway] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const property = useMemo(() => resolveLienProperty(linkedAddress, jobOwnerRow), [linkedAddress, jobOwnerRow])
@@ -236,6 +243,16 @@ export default function LienFilingTabs({
   }, [job.id, filings])
   const liveNotices = live.filter((f) => f.kind === 'notice_53_056')
   const filedAffidavit = live.find((f) => f.kind === 'affidavit' && f.filed_at) ?? null
+  // Each filed lien with its own release of record (`lienReleaseOfRecord.ts`), and the one the release tab is on: never just the first one found.
+  const releaseTargetList = useMemo(
+    () =>
+      releaseTargets(
+        live.filter((f) => f.kind === 'affidavit'),
+        live.filter((f) => f.kind === 'release_of_record'),
+      ),
+    [live],
+  )
+  const releaseTarget = pickReleaseTarget(releaseTargetList, releaseTargetId)
   /** Open the service step on what the filing already holds, so a day recorded alone can take its receipts later. */
   const openServiceStep = () => {
     if (!filedAffidavit) return
@@ -267,6 +284,8 @@ export default function LienFilingTabs({
   const claim = useMemo(() => lienWindowClaim(job, claimCorrection), [job, claimCorrection])
   const claimNotes = useMemo(() => lienWindowClaimNotes(claim, job, claimCorrection, formatYmdMonthDay, { correctionUnread: claimCorrectionUnread }), [claim, job, claimCorrection, claimCorrectionUnread])
   const claimedAmount = claim.claimed.claim
+  // Money holds the release: while the sent bills still owe, the tab holds its print and its save, unless a reason is typed.
+  const releaseGate = useMemo(() => releaseMoneyGate({ open: claim.openBalance, payments: job.payments ?? [], todayYmd: todayYmd(), anywayReason: releaseAnyway ?? '' }), [claim.openBalance, job.payments, releaseAnyway])
   // Under the claim on both tabs: where the figure came from, so nobody prints it blind.
   const claimNoteLines = claimNotes.map((n) => (
     <span key={n.key} data-lien-window-claim-note={n.key} style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: n.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-amber-700)' }}>
@@ -398,20 +417,23 @@ export default function LienFilingTabs({
     })
   }, [property, signerNameFallback, affidavitIssuer, job, tradeName, isSub, originalContractorName, originalContractorAddress, ownerName, claim.openBalance, claimCorrection, liveNotices.length, workDays, workMonths, affidavitForm, live, monthsByHand])
 
-  const releaseFields: ReleaseOfRecordFields = useMemo(
-    () => ({
-      county: filedAffidavit?.county || property.county,
+  const releaseFields: ReleaseOfRecordFields = useMemo(() => {
+    const lienRow = releaseTarget?.affidavit ?? null
+    const drawn: ReleaseOfRecordFields = {
+      county: lienRow?.county || property.county,
       claimantCompany: (issuer?.companyName ?? '').trim() || 'Click Plumbing and Electrical',
       claimantPersonName: signerNameFallback,
-      recordingNumber: filedAffidavit?.recording_number ?? '',
-      filedDate: filedAffidavit?.filed_at ?? '',
+      recordingNumber: lienRow?.recording_number ?? '',
+      filedDate: lienRow?.filed_at ?? '',
       legalDescription: property.legalDescription,
       propertyAddress: cleanStoredAddress(job.job_address),
       ownerName,
       paymentDate: releasePaymentDate,
-    }),
-    [filedAffidavit, property, issuer, signerNameFallback, job, ownerName, releasePaymentDate],
-  )
+    }
+    // A release already saved prints as it was saved: its fields are the paper.
+    const saved = releaseTarget?.release?.fields
+    return saved && typeof saved === 'object' && !Array.isArray(saved) ? { ...drawn, ...(saved as Partial<ReleaseOfRecordFields>) } : drawn
+  }, [releaseTarget, property, issuer, signerNameFallback, job, ownerName, releasePaymentDate])
 
   // Letterhead + reference strip (v2.2663): the same issuer block invoices use.
   const docExtras: FilingDocExtras = useMemo(
@@ -469,9 +491,9 @@ export default function LienFilingTabs({
   const currentDoc: { blocks: FilingDocBlock[]; title: string; kind: 'notice_53_056' | 'affidavit' | 'release_of_record' } | null = useMemo(() => {
     if (activeTab === 'notice') return { blocks: buildLienNoticeBlocks(noticeFields, docExtras), title: `§ 53.056 Notice — Job ${jobNumber}`, kind: 'notice_53_056' }
     if (activeTab === 'affidavit') return { blocks: buildLienAffidavitBlocks(affidavitFields, docExtras), title: `Lien Affidavit — Job ${jobNumber}`, kind: 'affidavit' }
-    if (activeTab === 'release_record' && filedAffidavit) return { blocks: buildReleaseOfRecordBlocks(releaseFields, docExtras), title: `Release of Recorded Lien — Job ${jobNumber}`, kind: 'release_of_record' }
+    if (activeTab === 'release_record' && releaseTarget) return { blocks: buildReleaseOfRecordBlocks(releaseFields, docExtras), title: `Release of Recorded Lien — Job ${jobNumber}`, kind: 'release_of_record' }
     return null
-  }, [activeTab, noticeFields, affidavitFields, releaseFields, filedAffidavit, jobNumber, docExtras])
+  }, [activeTab, noticeFields, affidavitFields, releaseFields, releaseTarget, jobNumber, docExtras])
 
   // ---------- gates ----------
 
@@ -869,17 +891,29 @@ export default function LienFilingTabs({
     }
   }, [filedAffidavit, busy, serviceDate, ownerProof, ocProof, isSub, showToast, onChanged])
 
-  const recordRelease = () =>
-    insertFiling(
+  /** Save the release of the lien the tab is on. It names its affidavit, and a lien that has a release takes no second one. */
+  const recordRelease = () => {
+    if (!releaseTarget || releaseTarget.release || releaseGate.hold) return
+    return insertFiling(
       {
         kind: 'release_of_record',
         amount: 0,
-        fields: JSON.parse(JSON.stringify(releaseFields)),
+        fields: releaseSaveFields(JSON.parse(JSON.stringify(releaseFields)) as Record<string, unknown>, releaseTarget.affidavit.id, releaseAnyway ?? ''),
         county: releaseFields.county,
+        // The affidavit's number, as every older release row holds it. The release's own is `fields.releaseInstrument`.
         recording_number: releaseFields.recordingNumber,
       },
-      'Release of the recorded lien saved — file it with the County Clerk.',
+      'Release saved. Sign it before a notary, then record it at the county.',
     )
+  }
+  /** The county's stamp on a saved release: its own instrument number, or the day the clerk recorded it. A failure is thrown, so the open field says why. */
+  const keepReleaseStamp = async (change: { instrument?: string; day?: string }) => {
+    const release = releaseTarget?.release
+    if (!release) return
+    await withSupabaseRetry(() => supabase.from('job_lien_filings').update(releaseStampPatch(release, change) as never).eq('id', release.id), 'record the release’s stamp')
+    showToast(RELEASE_OF_RECORD_WORDS.stampKept, 'success')
+    onChanged()
+  }
 
   /** The saved-copy inputs on every record step (v2.3763): a Drive link and a line, both optional. */
   const savedCopyRow = (
@@ -1628,41 +1662,124 @@ export default function LienFilingTabs({
 
   // release_record
   const releasePhoneButton: CSSProperties = isMobile ? { minHeight: 44, padding: '0.35rem 0.5rem', lineHeight: 1.25 } : {}
+  const releaseLien = releaseTarget?.affidavit ?? null
+  const savedRelease = releaseTarget?.release ?? null
+  const releaseInstrument = savedRelease && savedRelease.fields && typeof savedRelease.fields === 'object' && !Array.isArray(savedRelease.fields) ? String((savedRelease.fields as Record<string, unknown>).releaseInstrument ?? '') : ''
+  const releasedWords = savedRelease ? releaseRecordedSentence(savedRelease) : null
+  const releaseHeld: CSSProperties = releaseGate.hold ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, border: '1px solid transparent', cursor: 'default' } : {}
+  const releaseTone = { red: 'var(--text-red-700)', amber: 'var(--text-amber-800)', green: 'var(--text-green-700)' }[releaseGate.tone]
+  const releaseOutline: CSSProperties = { padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer', ...releasePhoneButton }
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', overflowY: 'auto', flex: 1 }}>
       <div style={{ flex: '1 1 20rem', minWidth: '18rem', padding: '1rem 1.25rem' }}>
         {historyBox}
-        {!filedAffidavit ? (
+        {!releaseLien ? (
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             No recorded lien on this job — this release becomes available once an affidavit filing is recorded.
           </p>
         ) : (
           <>
+            {releaseTargetList.length > 1 ? (
+              <fieldset data-lien-release-which style={{ margin: '0 0 0.7rem', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.8125rem', display: 'grid', gap: '0.3rem' }}>
+                <legend style={{ padding: '0 0.3rem', fontWeight: 600 }}>{RELEASE_OF_RECORD_WORDS.which}</legend>
+                {releaseTargetList.map((t) => (
+                  <label key={t.affidavit.id} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minHeight: isMobile ? 44 : undefined, cursor: 'pointer' }}>
+                    <input type="radio" name="lien-release-which" checked={t.affidavit.id === releaseLien.id} onChange={() => setReleaseTargetId(t.affidavit.id)} />
+                    <span>
+                      instrument #{t.affidavit.recording_number || '—'}, filed {demandDate(t.affidavit.filed_at ?? '')}
+                      {t.state === 'recorded' ? ', released' : t.state === 'made' ? ', release saved' : ''}
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+            ) : null}
             <div style={{ fontSize: '0.8125rem', marginBottom: '0.6rem' }}>
-              <b>Releasing:</b> instrument #{filedAffidavit.recording_number || '—'} · filed {demandDate(filedAffidavit.filed_at ?? '')} · {filedAffidavit.county || property.county} County
+              <b>Releasing:</b> instrument #{releaseLien.recording_number || '—'} · filed {demandDate(releaseLien.filed_at ?? '')} · {releaseLien.county || property.county} County
             </div>
-            {/* Nothing opens here, so there is no sheet: on a phone (v2.4423) the same fields are full width in place and the three buttons are a grid. */}
-            <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: '0.7rem' }}>
-              <span style={isMobile ? recordSheetLabel : { display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>Payment / satisfaction date</span>
-              <input type="date" value={releasePaymentDate} onChange={(e) => setReleasePaymentDate(e.target.value)} style={isMobile ? recordSheetField : { padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }} />
-            </label>
-            {isMobile ? <div style={{ marginBottom: '0.8rem' }}>{sheetSavedCopy}</div> : savedCopyRow}
-            <div data-lien-release-actions style={isMobile ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.5rem' } : { display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <button type="button" onClick={printDoc} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer', ...releasePhoneButton }}>
-                Print for notarization
-              </button>
-              <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...releasePhoneButton }}>
-                {pdfBusy ? 'Building…' : 'Download PDF'}
-              </button>
-              <button type="button" onClick={() => void recordRelease()} disabled={busy} style={{ padding: '0.45rem 1rem', fontSize: '0.8125rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer', fontWeight: 600, ...releasePhoneButton, ...(isMobile ? { gridColumn: '1 / -1' } : {}) }}>
-                {busy ? 'Saving…' : 'Save release record'}
-              </button>
-            </div>
-            {sheetNote}
+            {savedRelease ? (
+              <>
+                <p data-lien-release-saved={savedRelease.filed_at ? 'recorded' : 'made'} style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', lineHeight: 1.45, color: releasedWords ? 'var(--text-green-700)' : undefined }}>
+                  {releasedWords ? <ValueSentence text={releasedWords} /> : RELEASE_OF_RECORD_WORDS.saved}
+                </p>
+                {/* The county's stamp, as two values changed where they sit (values in place): each Keep writes at once. */}
+                <div data-lien-release-stamp style={{ margin: '0 0 0.8rem', padding: '0.55rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-subtle)', fontSize: '0.8125rem' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '0.3rem' }}>{RELEASE_OF_RECORD_WORDS.stampHead}</div>
+                  <ValueLines>
+                    <ValueLine label="Recorded on">
+                      <ChangeableValue
+                        text={savedRelease.filed_at ? demandDate(savedRelease.filed_at) : RELEASE_OF_RECORD_WORDS.notYet}
+                        label={RELEASE_OF_RECORD_WORDS.dayLabel}
+                        type="date"
+                        value={savedRelease.filed_at ?? ''}
+                        canClear
+                        max={todayYmd()}
+                        check={(draft) => releaseStampDayCheck(draft, releaseLien.filed_at ?? '', todayYmd())}
+                        onKeep={(value) => keepReleaseStamp({ day: value })}
+                      />
+                    </ValueLine>
+                    <ValueLine label="Instrument number">
+                      <ChangeableValue text={releaseInstrument || RELEASE_OF_RECORD_WORDS.notYet} label={RELEASE_OF_RECORD_WORDS.instrumentLabel} type="text" value={releaseInstrument} canClear onKeep={(value) => keepReleaseStamp({ instrument: value })} />
+                    </ValueLine>
+                  </ValueLines>
+                  <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>The stamped copy is saved on the release’s line, under Filings on this job.</p>
+                </div>
+                <div data-lien-release-actions style={isMobile ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.5rem' } : { display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={printDoc} style={releaseOutline}>
+                    Print for notarization
+                  </button>
+                  <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ ...releaseOutline, cursor: pdfBusy ? 'wait' : 'pointer' }}>
+                    {pdfBusy ? 'Building…' : 'Download PDF'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Money holds the release: what the bills say, and the reason that lets it go anyway. */}
+                <div data-lien-release-money={releaseGate.tone} role={releaseGate.hold ? 'alert' : undefined} style={{ margin: '0 0 0.7rem', padding: '0.5rem 0.7rem', border: `1px solid ${releaseTone}`, borderRadius: 8, fontSize: '0.8125rem', lineHeight: 1.45, display: 'grid', gap: '0.4rem' }}>
+                  <span style={{ color: releaseTone }}>
+                    <ValueSentence text={releaseGate.say} />
+                  </span>
+                  {releaseAnyway == null && releaseGate.hold ? (
+                    <button type="button" data-lien-release-anyway onClick={() => setReleaseAnyway('')} style={{ justifySelf: 'start', border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', minHeight: isMobile ? 44 : undefined }}>
+                      {RELEASE_OF_RECORD_WORDS.anyway}
+                    </button>
+                  ) : null}
+                  {releaseAnyway != null ? (
+                    <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.78rem' }}>
+                      <span style={{ fontWeight: 600 }}>{RELEASE_OF_RECORD_WORDS.anywayLabel}</span>
+                      <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <input type="text" data-lien-release-anyway-reason value={releaseAnyway} onChange={(e) => setReleaseAnyway(e.target.value)} placeholder={RELEASE_OF_RECORD_WORDS.anywayExample} autoComplete="off" style={{ flex: 1, minWidth: 0, padding: '0.35rem 0.5rem', fontFamily: 'inherit', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)' }} />
+                        <button type="button" onClick={() => setReleaseAnyway(null)} style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: '0.78rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                          Cancel
+                        </button>
+                      </span>
+                    </label>
+                  ) : null}
+                </div>
+                {/* Nothing opens here, so there is no sheet: on a phone (v2.4423) the same fields are full width in place and the three buttons are a grid. */}
+                <label style={{ fontSize: '0.8125rem', display: 'block', marginBottom: '0.7rem' }}>
+                  <span style={isMobile ? recordSheetLabel : { display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>Payment / satisfaction date</span>
+                  <input type="date" value={releasePaymentDate} onChange={(e) => setReleasePaymentDate(e.target.value)} style={isMobile ? recordSheetField : { padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }} />
+                </label>
+                {isMobile ? <div style={{ marginBottom: '0.8rem' }}>{sheetSavedCopy}</div> : savedCopyRow}
+                <div data-lien-release-actions style={isMobile ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.5rem' } : { display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button type="button" onClick={printDoc} disabled={releaseGate.hold} style={{ ...releaseOutline, ...releaseHeld }}>
+                    Print for notarization
+                  </button>
+                  <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy || releaseGate.hold} style={{ ...releaseOutline, cursor: pdfBusy ? 'wait' : 'pointer', ...releaseHeld }}>
+                    {pdfBusy ? 'Building…' : 'Download PDF'}
+                  </button>
+                  <button type="button" onClick={() => void recordRelease()} disabled={busy || releaseGate.hold} style={{ padding: '0.45rem 1rem', fontSize: '0.8125rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer', fontWeight: 600, ...releasePhoneButton, ...(isMobile ? { gridColumn: '1 / -1' } : {}), ...releaseHeld }}>
+                    {busy ? 'Saving…' : 'Save release record'}
+                  </button>
+                </div>
+                {sheetNote}
+              </>
+            )}
           </>
         )}
       </div>
-      {filedAffidavit ? preview : null}
+      {releaseLien ? preview : null}
     </div>
   )
 }
