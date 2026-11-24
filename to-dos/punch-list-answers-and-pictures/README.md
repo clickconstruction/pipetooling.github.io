@@ -1,8 +1,8 @@
 ---
 name: "Punch list: what is still to answer and what it looks like, on every card"
 number: 438
-group: gated
-status: asked 2026-11-24 by Diane · the same day fifteen built cards that waited on a person were drawn in the lens frame with invented data, and each got a pictures page beside it with what it waits on and what to say · the kit that drew them is in this folder · the board's own view drawn the same day on Diane's word, as a canvas of seven frames with a refined cut D and a static copy here · seven calls wait on the owner · nothing of the view is built
+group: ready
+status: asked 2026-11-24 by Diane · the same day fifteen built cards that waited on a person were drawn in the lens frame with invented data, and each got a pictures page beside it with what it waits on and what to say · the kit that drew them is in this folder · the board's own view drawn the same day on Diane's word, as a canvas of seven frames with a refined cut D and a static copy here · her word on it the same day, *Build D*, on the seven picks · PR 1, the question on the card, is open as #9706 · PR 2, Waiting on me, is being built
 summary: >
   Diane wants the Punch list page to make two things easy for a person. First, the questions that
   person still has to answer. Second, what a card looks like before and after it is built. Today the
@@ -11,9 +11,9 @@ summary: >
   invented data and wrote, for each, what it waits on and the one or two answers that would move it.
   Those pages now sit beside their cards, so the board links to them. What is left is the board
   itself: a view of every card that waits on a person, each with its question and its pictures.
-next: The owner answers the seven calls at the mock-up's foot, or says build D as drawn. Then PR 1, the question on the card.
+next: Merge PR 1 (#9706) and push its migration. Then PR 2, the Waiting on me view as D draws it, and a look at it on the live site.
 size: M as a train of three (S · M · S)
-blocker: The owner's word on the seven calls, or on D as drawn.
+blocker: None. Diane said Build D on 2026-11-24.
 opinion: build — the pictures and the answers exist for fifteen cards and the board already links to them, so the view is mostly reading what is there
 ---
 
@@ -91,7 +91,7 @@ card that is not built yet.
 
 ## The mock-up
 
-Drawn 2026-11-24 on Diane's word (*Yes, draw it*).
+Drawn 2026-11-24 on Diane's word (*Yes, draw it*). Her word on it the same day: *Build D*.
 
 - The canvas, where each frame also has a dark theme: *Punch list: answers and pictures* —
   https://claude.ai/artifact/JAcnxSYRzuYqpenkf9bTbN (private to Diane's account).
@@ -141,7 +141,7 @@ Seven frames:
 
 ## The plan
 
-Three PRs, to be re-cut once the calls are answered:
+Three PRs, on the seven picks as they stand:
 
 1. **The question on the card (S).** The front-matter list, read by `npm run check:todos`. The
    fifteen cards take theirs from their pictures pages. No screen changes.
@@ -153,7 +153,7 @@ Three PRs, to be re-cut once the calls are answered:
 
 ## The calls, each with a pick
 
-These picks are the session's, not the owner's.
+These picks are the session's. Diane said *Build D* on them on 2026-11-24, so they are the build's until someone overturns one.
 
 | Call | Pick |
 |---|---|
