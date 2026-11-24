@@ -49,9 +49,10 @@ export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' |
   /**
    * The mark a payment word leaves on its line (v2.8271, punch list #129, `write_down_payment`): with a day, the
    * line's promise is a payment by that day; with none, a payment mark comes back off as just talk. Rejects with the
-   * database's own words on a refusal.
+   * database's own words on a refusal. With a job (punch list #421 PR 5) the mark names it, so a customer's other job
+   * does not read it as its own.
    */
-  writeDownPayment?(messageId: string, ymd: string | null): Promise<void>
+  writeDownPayment?(messageId: string, ymd: string | null, jobId?: string | null): Promise<void>
   /**
    * A heard day said in one press (punch list #421, `write_down_heard`): the line's day written as a kind, or with no
    * kind as just talk. A double kind writes `writes`. Rejects with the database's own words on a refusal.
@@ -65,7 +66,7 @@ export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' |
 }
 
 /** A promise's columns with its line inner-joined, so a filter on the line's person keeps only theirs. */
-const THREAD_PROMISE_COLUMNS = 'id, message_id, kind, state, day, day_words, writes, decided_by, decided_at, message:messages!inner(contact_id, at)'
+const THREAD_PROMISE_COLUMNS = 'id, message_id, kind, state, day, day_words, writes, job_id, decided_by, decided_at, message:messages!inner(contact_id, at)'
 
 export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpThreadIo {
   // The cut 1 and cut 2 tables join the generated types with the lead's types PR; until then the client is untyped.
@@ -103,9 +104,9 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
       const result = await db.rpc('contact_set_prefers', { p_contact: contactId, p_prefers: prefers })
       checkSupabaseError(result, 'set how they hear from us')
     },
-    async writeDownPayment(messageId, ymd) {
-      // No day is left off the call, and the function's own default (NULL) takes the mark off.
-      const result = await db.rpc('write_down_payment', ymd ? { p_message_id: messageId, p_day: ymd } : { p_message_id: messageId })
+    async writeDownPayment(messageId, ymd, jobId) {
+      // No day is left off the call, and the function's own default (NULL) takes the mark off; a job only with a day.
+      const result = await db.rpc('write_down_payment', ymd ? { p_message_id: messageId, p_day: ymd, ...(jobId ? { p_job_id: jobId } : {}) } : { p_message_id: messageId })
       checkSupabaseError(result, 'mark the line with their promise')
     },
     async writeDownHeard(messageId, kind, ymd, writes) {

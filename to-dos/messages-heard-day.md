@@ -2,7 +2,7 @@
 name: "Messages: a day was heard, say what it is"
 number: 421
 group: ready
-status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 merged · PR 2 #9514 the migration merged and pushed · PR 3 #9526 the choice merged · PR 4 #9533 the write-throughs armed
+status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 merged · PR 2 #9514 the migration merged and pushed · PR 3 #9526 the choice merged · PR 4 #9533 the write-throughs merged · PR 5 #9536 the mark's job armed
 summary: >
   When a person names a day in a text or a voicemail, Messages was planned to lift the day out,
   ask the office what it is a promise of, and write it where that kind of date lives. The table, the
@@ -10,9 +10,9 @@ summary: >
   voicemail's Keep the day, the row that offers a heard day, and the choice under the line. Card
   #129 built the one kind the office uses, a customer's promise to pay, by another road. This card
   keeps the rest so it is not lost, with what exists, what is missing and what it would take.
-next: The migration (PR 2, `write_down_heard`), then the choice under a line (PR 3), the write-throughs' hands (PR 4) and the payment mark's job (PR 5).
+next: The types PR and the dev seat's deploy for #9514, then walk it on a ZZ Test thread as the card's verify recipe says.
 size: M as a train of five (S · XS · M · M · XS)
-blocker: Nothing. PR 3 to 5 wait on PR 2's push.
+blocker: none. #9514 is pushed, and PRs 3 to 5 are armed.
 opinion: build — the owner's call of 2026-11-23
 ---
 
@@ -35,8 +35,11 @@ customer's payment opens #129's sheet. The screens he approved are the *after* o
 4. **PR 4, v2.8385**: the write-throughs' hands (`messages/promiseWritesIo.ts`): the read that fills `PromiseAt` (the
    line's job by name and kind, the company's open ask, the person's standing holds) and the writers through the Board's
    own verbs, the bid's contact log and `nudge_hold_until`; the toast names where it went, every skip and a refusal.
-   Open, armed after PR 3.
-5. **PR 5, v2.8386**: a payment mark carries its job. Not yet open.
+   PR #9533, merged.
+5. **PR 5, v2.8386**: a payment mark carries its job, the small extra below. The sheet's job goes with the mark, the
+   job's *They promised* reads its own marks, and *Never said that* leaves another job's. The press also finds the
+   line's own job from its key (`tiedJobId`), a fault found on the way: the whole key was compared with a job's id, so
+   a line's own job never matched. PR #9536, armed.
 
 ## Where this comes from
 
@@ -149,7 +152,7 @@ A train of five, smallest first. A mock-up of PR 3 comes before any of it.
 customer's thread, so a customer with two jobs sees each job's row name the other's day. PR #9419
 stopped the wrong removal. Giving the mark its job takes a column on `message_promises` and an
 argument on `write_down_payment` (XS to S, with its types). It matters only when one customer has
-two jobs promised at once.
+two jobs promised at once. Built by PR 5 (v2.8386), with the column and the argument in PR 2's migration.
 
 ## How to verify, when built
 

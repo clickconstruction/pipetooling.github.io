@@ -66,6 +66,8 @@ export interface MessagePromiseRow {
   day: string | null
   day_words: string | null
   writes: string | null
+  /** The Pipeline job a payment mark is for (punch list #421 PR 5); absent from a read that does not ask for it. */
+  job_id?: string | null
   decided_by: string | null
   decided_at: string | null
   message: { contact_id: string; at: string } | null

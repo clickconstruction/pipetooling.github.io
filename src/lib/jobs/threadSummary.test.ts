@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import type { ContactOwedRow, MessagePromiseRow } from '../followUp/followUpRows'
 import type { JobActivityMessage } from './jobActivityMessages'
-import { SUMMARY_WORDS, buildThreadSummary, customerContactIds, keepFolded, lastWordLine, readFolded, summaryName, type ThreadSummaryInputs } from './threadSummary'
+import { SUMMARY_WORDS, buildThreadSummary, customerContactIds, keepFolded, promisesForJob, lastWordLine, readFolded, summaryName, type ThreadSummaryInputs } from './threadSummary'
 
 /** Dana and job 1104 are the mock-up's made-up people. Now is Mon 2026-10-26 8:10 AM Chicago. */
 const NOW = '2026-10-26T13:10:00.000Z'
@@ -166,5 +166,13 @@ describe('the helpers', () => {
     const refusing = { getItem: () => { throw new Error('no') }, setItem: () => { throw new Error('no') } }
     expect(readFolded(refusing)).toBe(false)
     expect(() => keepFolded(true, refusing)).not.toThrow()
+  })
+})
+
+describe('promisesForJob (punch list #421 PR 5)', () => {
+  it('a mark naming another of the customer’s jobs is that job’s; one naming this job or none speaks here', () => {
+    const rows = [{ id: 'mine', job_id: 'j2' }, { id: 'old', job_id: null }, { id: 'unread' }, { id: 'other', job_id: 'j1' }]
+    expect(promisesForJob(rows, 'j2').map((r) => r.id)).toEqual(['mine', 'old', 'unread'])
+    expect(promisesForJob(rows, 'j1').map((r) => r.id)).toEqual(['old', 'unread', 'other'])
   })
 })
