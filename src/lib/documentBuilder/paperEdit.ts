@@ -260,6 +260,22 @@ export function walkedPublishPress(draft: PaperDef, rec: Pick<BuilderRecord, 're
   return { label: `Publish revision ${rec.revision + 1}`, dead: why.length > 0, why }
 }
 
+/** The question before a publish, for the shared confirm window. Cancel is the safe answer and takes the focus. */
+export type WalkedPublishConfirm = { title: string; message: string; confirmLabel: string; cancelLabel: string; cancelIsSafe: true }
+
+/**
+ * What the confirm window asks before the draft is published as the next revision (Diane, 2026-11-24). A publish
+ * cannot be taken back: the next change is a later revision, never the old one again. From the second revision on,
+ * everyone outside sees the new one at once, so the words say who that is. The first has nobody reading yet, so the
+ * words say what it becomes. The press carries the revision's number, as the bar's press does.
+ */
+export function walkedPublishConfirm(rec: Pick<BuilderRecord, 'revision'>): WalkedPublishConfirm {
+  const next = rec.revision + 1
+  const lasts = 'A publish cannot be taken back. A later revision can only replace it.'
+  const reach = rec.revision === 0 ? `Revision ${next} is what a GC sees once you send it, and what the link opens.` : `Everyone outside sees revision ${next} from now on. That is each GC you sent it to and anyone with the link.`
+  return { title: `Publish revision ${next}`, message: `${reach} ${lasts}`, confirmLabel: `Publish revision ${next}`, cancelLabel: 'Not yet', cancelIsSafe: true }
+}
+
 /** The line under the bar: what a person outside sees now. */
 export function walkedNote(rec: Pick<BuilderRecord, 'revision'>, changed: number): string {
   if (rec.revision === 0) return 'Nobody outside sees this until you publish.'
