@@ -54,7 +54,8 @@ describe('buildOnlyCloseBundle', () => {
   it('keeps the plugin’s other hooks and still calls its own configResolved', () => {
     const configResolved = vi.fn()
     const configureServer = vi.fn()
-    const plugin = buildOnlyCloseBundle({ name: 'writes-dist', closeBundle: vi.fn(), configResolved, configureServer })
+    const source = { name: 'writes-dist', closeBundle: () => {}, configResolved, configureServer }
+    const plugin = buildOnlyCloseBundle(source)
     plugin.configResolved({ command: 'serve' })
     expect(plugin.name).toBe('writes-dist')
     expect(plugin.configureServer).toBe(configureServer)
