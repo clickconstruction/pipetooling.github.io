@@ -4,6 +4,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { MoneyText } from '../Money'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialTemplate = Database['public']['Tables']['material_templates']['Row']
@@ -131,7 +132,7 @@ export function TemplatePricesManager({
                         <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>lowest</span>
                       ) : null}
                     </td>
-                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${Number(p.price).toFixed(2)}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}><MoneyText text={`$${Number(p.price).toFixed(2)}`} /></td>
                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <button type="button" onClick={() => openEdit(p)} style={{ background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', marginRight: '0.5rem' }}>Edit</button>
                       <button type="button" onClick={() => void deletePrice(p.id)} style={{ background: 'none', border: 'none', color: 'var(--text-red-600)', cursor: 'pointer' }}>Delete</button>

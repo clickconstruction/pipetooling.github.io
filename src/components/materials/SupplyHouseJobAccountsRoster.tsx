@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
-import { formatCurrency } from '../../lib/format'
 import {
   buildHouseJobAccountRoster,
   countHouseRoster,
@@ -21,6 +20,7 @@ import { telHrefFor } from '../../lib/phoneContact'
 import { useToastContext } from '../../contexts/ToastContext'
 import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { Money } from '../Money'
 
 type JobDetails = Record<string, { hcp_number: string; click_number?: string; job_name: string }>
 
@@ -242,8 +242,8 @@ export function SupplyHouseJobAccountsRoster({
                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                       {r.invoiceCount > 0 ? (
                         <>
-                          {r.invoiceCount} · ${formatCurrency(r.allocatedTotal)}
-                          {r.unpaidTotal > 0 ? <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}> · ${formatCurrency(r.unpaidTotal)} unpaid</span> : null}
+                          {r.invoiceCount} · <Money amount={r.allocatedTotal} />
+                          {r.unpaidTotal > 0 ? <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}> · <Money amount={r.unpaidTotal} /> unpaid</span> : null}
                         </>
                       ) : '—'}
                     </td>

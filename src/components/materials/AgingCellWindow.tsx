@@ -33,6 +33,7 @@ import { EmptyState } from '../EmptyState'
 import type { SupplyHouseAgingWindows } from './useSupplyHouseAgingWindows'
 import type { AgingInvoiceRow, SupplyHouseSummaryRow } from './useSupplyHouseAccountsPayable'
 import type { SupplyHouse } from './useSupplyHouseInvoiceForm'
+import { Money, MoneyText } from '../Money'
 
 export interface AgingCellWindowProps {
   /** The aging windows' engine, whole. */
@@ -155,7 +156,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
             due {Number(inv.due_date.slice(5, 7))}/{Number(inv.due_date.slice(8, 10))}
           </span>
         )}
-        <span className={`aging-win-amt${credit ? ' aging-win-amt--credit' : ''}`}>{money(Number(inv.amount ?? 0))}</span>
+        <span className={`aging-win-amt${credit ? ' aging-win-amt--credit' : ''}`}><MoneyText text={money(Number(inv.amount ?? 0))} /></span>
         <span className="aging-win-rowstate">
           <AgingRowDoors
             doors={agingCellRowDoors(inv, agingCellAccountsLoaded ? allocationsOf(inv.id).length : null)}
@@ -253,7 +254,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
             ) : null}
           </div>
           <div className="aging-win-job-meta">
-            {n} {n === 1 ? 'invoice' : 'invoices'} · {money(job.total)}
+            {n} {n === 1 ? 'invoice' : 'invoices'} · <MoneyText text={money(job.total)} />
             {job.onCount > 0 && job.offCount > 0 ? ` · ${job.onCount} of ${n} on it` : ''}
           </div>
         </div>
@@ -290,11 +291,11 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
           <div className="aging-win-split">
             <div className="aging-win-split-row">
               <div className="aging-win-fig aging-win-fig--on">
-                <b>{money(accountSplit.onAmount)}</b>
+                <b><MoneyText text={money(accountSplit.onAmount)} /></b>
                 <span>on job accounts · {accountSplit.onCount} of {accountSplit.onCount + accountSplit.offCount} · the owners' debt</span>
               </div>
               <div className="aging-win-fig aging-win-fig--off">
-                <b>{money(accountSplit.offAmount)}</b>
+                <b><MoneyText text={money(accountSplit.offAmount)} /></b>
                 <span>not on one · {accountSplit.offCount} of {accountSplit.onCount + accountSplit.offCount} · Click's debt</span>
               </div>
             </div>
@@ -314,7 +315,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
             <Fragment key={g.key}>
               {g.name ? (
                 <div className="aging-win-house">
-                  {g.name} · {money(g.rows.reduce((acc, r) => acc + Number(r.amount ?? 0), 0))}
+                  {g.name} · <MoneyText text={money(g.rows.reduce((acc, r) => acc + Number(r.amount ?? 0), 0))} />
                   {isMovableList ? (() => {
                     const rep = (agingCellReps[g.key] ?? []).find((r) => typeof r.email === 'string' && r.email.includes('@')) ?? (agingCellReps[g.key] ?? [])[0]
                     const unasked = g.rows.filter((r) => !agingMoveData.asks[r.id])
@@ -383,12 +384,12 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
           <div style={{ fontWeight: 600 }}>
             {isMovableList ? (
               <>
-                {cellRows.length === 0 ? 'All moved or marked.' : `${movableToAsk} to ask · ${cellRows.length - movableToAsk} asked, awaiting the house · $${formatCurrency(total)}`}
+                {cellRows.length === 0 ? 'All moved or marked.' : <MoneyText text={`${movableToAsk} to ask · ${cellRows.length - movableToAsk} asked, awaiting the house · $${formatCurrency(total)}`} />}
                 {agingMoveError ? <span style={{ display: 'block', fontWeight: 500, color: 'var(--text-red-700)' }}>{agingMoveError}</span> : null}
               </>
             ) : (
               <>
-            {isCredits ? 'Open credits' : 'Cell total'}: {money(total)}
+            {isCredits ? 'Open credits' : 'Cell total'}: <MoneyText text={money(total)} />
               </>
             )}
           </div>
@@ -442,7 +443,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
                   <div>
                     <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Move {inv.invoice_number} onto the job account</h3>
                     <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                      {thisHouse} · {jobLabel} · ${formatCurrency(inv.amount)}{inv.due_date ? <> · due {formatYmdLocal(inv.due_date)} — <strong style={{ color: 'var(--text-amber-800)' }}>{daysLeft} day{daysLeft === 1 ? '' : 's'} left in the window</strong></> : null}
+                      {thisHouse} · {jobLabel} · <Money amount={inv.amount} />{inv.due_date ? <> · due {formatYmdLocal(inv.due_date)} — <strong style={{ color: 'var(--text-amber-800)' }}>{daysLeft} day{daysLeft === 1 ? '' : 's'} left in the window</strong></> : null}
                     </p>
                   </div>
                   <button type="button" onClick={closeMove} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
@@ -499,7 +500,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
                           <div><strong style={{ color: 'var(--text-base)' }}>To:</strong> {(rep!.name ?? '').trim() || 'Job accounts'} · {rep!.email}</div>
                           <div><strong style={{ color: 'var(--text-base)' }}>Subject:</strong> Move invoice {inv.invoice_number} to the {jobLabel.split(' ·')[0]} job account</div>
                           <div style={{ marginTop: '0.3rem', borderTop: '1px dashed var(--border)', paddingTop: '0.3rem' }}>
-                            Please move this charge onto the job account for {jobLabel}: {inv.invoice_number} · {formatYmdLocal(inv.invoice_date)} · ${formatCurrency(inv.amount)}{inv.purchase_order_number?.trim() ? ` · PO ${inv.purchase_order_number}` : ''}.{' '}
+                            Please move this charge onto the job account for {jobLabel}: {inv.invoice_number} · {formatYmdLocal(inv.invoice_date)} · <Money amount={inv.amount} />{inv.purchase_order_number?.trim() ? ` · PO ${inv.purchase_order_number}` : ''}.{' '}
                             {account?.status === 'open' && account.account_ref ? `Account ref ${account.account_ref}.` : AGING_MOVE_EMAIL_NO_ACCOUNT} We'll call to confirm. Replies come to you.
                           </div>
                         </div>

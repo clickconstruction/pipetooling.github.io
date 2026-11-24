@@ -30,6 +30,7 @@ import { offerWords, rowOffers, type BillOffer, type BookOffer, type PriceOffer 
 import { answerWalk, currentKey, skipWalk, startWalk, undoWalk, walkEndWords, walkWords, type Walk } from '../../lib/materials/pricingWalk'
 import type { SitePartRow } from '../../lib/materials/siteRollup'
 import type { PriceOffersState } from '../../hooks/usePriceOffers'
+import { MoneyText } from '../Money'
 
 /** The two keys of the tie an answer wrote, so Undo can find it. */
 export type TiePair = { aKey: string; bKey: string }
@@ -242,7 +243,7 @@ export function SitePricingWindow({ siteName, mode = 'none', rows, nowPick, offe
 
             {now ? (
               <span style={{ justifySelf: 'start', display: 'inline-flex', alignItems: 'center', padding: '0.15rem 0.55rem', borderRadius: 999, fontSize: '0.78rem', fontWeight: 600, borderWidth: 1, borderStyle: 'solid', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderColor: 'var(--text-amber-800)' }} data-testid="pricing-now">
-                Now: ${now.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for one · {priceWords(now, today)}
+                Now: <MoneyText text={`$${now.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} /> for one · {priceWords(now, today)}
               </span>
             ) : null}
 
@@ -303,7 +304,7 @@ export function SitePricingWindow({ siteName, mode = 'none', rows, nowPick, offe
                   $
                   <input type="text" inputMode="decimal" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="a price for one, as counted" aria-label="A price for one, as counted" style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text-strong)', font: 'inherit', fontVariantNumeric: 'tabular-nums' }} />
                 </label>
-                {typed != null ? <button type="submit" disabled={busy} style={btnPrimary}>Save ${typed.toFixed(2)} for one</button> : null}
+                {typed != null ? <button type="submit" disabled={busy} style={btnPrimary}>Save <MoneyText text={`$${typed.toFixed(2)}`} /> for one</button> : null}
                 {draft.trim() && typed == null ? <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>Type a price as a number, such as 3.12.</span> : null}
               </form>
             ) : null}

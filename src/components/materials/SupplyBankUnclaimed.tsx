@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { billDateWords } from '../../lib/materials/supplyBillGroups'
 import { supplyPayMethodLabel, usd } from '../../lib/materials/payments/supplyPayment'
 import { unclaimedHeading, type UnclaimedHouseLine } from '../../lib/materials/payments/supplyPaymentBank'
+import { MoneyText } from '../Money'
 
 /**
  * Bank lines to a supply house that no payment claims, under Accounts payable (the owner's ask of 2026-11-16, the
@@ -25,7 +26,7 @@ export function SupplyBankUnclaimed({ lines, todayYmd, onSay }: { lines: Readonl
         <span>
           {unclaimedHeading(lines.length)} {open ? '▾' : '▸'}
         </span>
-        <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{usd(total)}</span>
+        <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={usd(total)} /></span>
       </button>
       {open ? (
         <div>
@@ -38,7 +39,7 @@ export function SupplyBankUnclaimed({ lines, todayYmd, onSay }: { lines: Readonl
                 </div>
                 <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{u.line.payee || 'no payee named'}</div>
               </div>
-              <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{usd(u.line.amount)}</div>
+              <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={usd(u.line.amount)} /></div>
               <button type="button" onClick={() => onSay(u)} aria-label={`Say what the ${usd(u.line.amount)} to ${u.houseName} paid`} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.25rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 Say what it paid
               </button>

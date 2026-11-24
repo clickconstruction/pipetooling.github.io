@@ -5,6 +5,7 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SupplyPaymentWindow } from './SupplyPaymentWindow'
 import type { SupplyPayment, SupplyPaymentLine } from '../../lib/materials/payments/supplyPayment'
 import type { MoveBill, SupplyPaymentEvent } from '../../lib/materials/payments/supplyPaymentMove'
+import { moneyText } from '../../test/moneyText'
 
 // A made-up payment at a made-up house.
 const payment: SupplyPayment = { id: 'p1', supply_house_id: 'h1', paid_on: '2026-11-12', amount: 5000, method: 'ach', method_ref: '88213', receipt_link: 'https://example.test/receipt', source: 'recorded', removed_at: null, created_by_name: 'Dana Whitfield' }
@@ -37,7 +38,7 @@ describe('SupplyPaymentWindow', () => {
     const rows = screen.getAllByTestId('supply-payment-window-line').map((r) => r.textContent)
     expect(rows).toEqual(['S4391877 · 201 · Maple Loftspaid in full$2,900.00Move…', 'S4393015 · 188 · Juniper Ridge Bldg Cpaid in full$1,000.00Move…', 'S4390044 · 214 · Hollis Street Clinicpaid in full$612.60Move…', 'S4402277 · 201 · Maple Loftspart payment · $512.40 left on the bill$300.00Move…'])
     expect(screen.getByTestId('supply-payment-window-account').textContent).toBe('On account with Pecan Supplynot on a bill yet$187.40Put on a bill…')
-    expect(screen.getByText('$4,812.60 is on bills and $187.40 is on account.')).toBeTruthy()
+    expect(screen.getByText(moneyText('$4,812.60 is on bills and $187.40 is on account.'))).toBeTruthy()
     expect(screen.queryByTestId('supply-payment-window-history')).toBeNull()
   })
 
@@ -89,7 +90,7 @@ describe('SupplyPaymentWindow', () => {
   it('removes the payment with a reason, only after the window that says what it does', async () => {
     const { onRemove } = open()
     fireEvent.click(screen.getByRole('button', { name: 'Remove this payment…' }))
-    expect(await screen.findByText(/The \$5,000\.00 ACH 88213 payment of 11\/12 comes off the books\. Its 4 bills read unpaid again/)).toBeTruthy()
+    expect(await screen.findByText(moneyText(/The \$5,000\.00 ACH 88213 payment of 11\/12 comes off the books\. Its 4 bills read unpaid again/))).toBeTruthy()
     expect(onRemove).not.toHaveBeenCalled()
     fireEvent.change(screen.getByPlaceholderText(/Typed twice/), { target: { value: ' typed twice ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Remove payment' }))

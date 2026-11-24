@@ -1,6 +1,5 @@
 import { type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import type { Database } from '../../types/database'
-import { formatCurrency } from '../../lib/format'
 import { filterPartsByQuery, filterTemplatesByQuery } from '../../lib/materials/materialsFilters'
 import type { AssemblyType, PartType, PartWithPrices } from '../../hooks/useMaterialsCatalog'
 import type { MaterialTemplate, TemplateItemWithDetails } from '../../hooks/useMaterialsAssemblies'
@@ -8,6 +7,7 @@ import { TemplatePricesManager } from './TemplatePricesManager'
 import { EmptyState } from '../EmptyState'
 import { assemblyListEmptyWords } from '../../lib/materials/materialsEmptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money } from '../Money'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
@@ -366,7 +366,7 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                           </span>
                           {costData.total > 0 && (
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-green-600)', fontWeight: 600 }}>
-                              ${formatCurrency(costData.total)}
+                              <Money amount={costData.total} />
                             </span>
                           )}
                         </div>
@@ -440,9 +440,9 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                               <div style={{ textAlign: 'right', marginLeft: '1rem' }}>
                                 {hasPrice ? (
                                   <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-green-600)' }}>
-                                    ${formatCurrency(lowestPrice * item.quantity)}
+                                    <Money amount={lowestPrice * item.quantity} />
                                     <div style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>
-                                      ${formatCurrency(lowestPrice)} ea
+                                      <Money amount={lowestPrice} /> ea
                                     </div>
                                   </div>
                                 ) : (
@@ -591,7 +591,7 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                                               )}
                                             </span>
                                             <span style={{ fontWeight: 600, color: isLowest ? 'var(--text-green-600)' : 'var(--text-muted)' }}>
-                                              ${formatCurrency(price.price)}
+                                              <Money amount={price.price} />
                                             </span>
                                           </div>
                                         )
@@ -642,7 +642,7 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                             <div style={{ textAlign: 'right', marginLeft: '1rem' }}>
                               {nestedCost.total > 0 ? (
                                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0284c7' }}>
-                                  ${formatCurrency(nestedCost.total)}
+                                  <Money amount={nestedCost.total} />
                                 </div>
                               ) : (
                                 <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-red-600)' }}>
@@ -677,17 +677,17 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ color: 'var(--text-muted)' }}>Direct Parts:</span>
-                          <span style={{ fontWeight: 500 }}>${formatCurrency(partsOnly)}</span>
+                          <span style={{ fontWeight: 500 }}><Money amount={partsOnly} /></span>
                         </div>
                         {nestedOnly > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span style={{ color: 'var(--text-muted)' }}>Nested Assemblies:</span>
-                            <span style={{ fontWeight: 500 }}>${formatCurrency(nestedOnly)}</span>
+                            <span style={{ fontWeight: 500 }}><Money amount={nestedOnly} /></span>
                           </div>
                         )}
                         <div style={{ borderTop: '1px solid var(--border-strong)', paddingTop: '0.5rem', marginTop: '0.25rem', display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ fontWeight: 600 }}>Total Estimated Cost:</span>
-                          <span style={{ fontWeight: 700, color: 'var(--text-green-600)', fontSize: '1rem' }}>${formatCurrency(costData.total)}</span>
+                          <span style={{ fontWeight: 700, color: 'var(--text-green-600)', fontSize: '1rem' }}><Money amount={costData.total} /></span>
                         </div>
                         {costData.missingPrices > 0 && (
                           <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'var(--bg-amber-100)', borderRadius: 4, color: 'var(--text-amber-800)', fontSize: '0.75rem' }}>

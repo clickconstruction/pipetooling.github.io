@@ -18,6 +18,7 @@ import {
   type LineDraft,
   type PaperRow,
 } from '../../lib/materials/lines/paperRows'
+import { MoneyText } from '../Money'
 
 /**
  * Look (punch list #298 PR 1b, v2.6819): a supply house bill's paper beside the lines read from it. The strip at the
@@ -123,7 +124,7 @@ export function PaperLookModal({ paper, invoice, io, fileBytes, acceptedByName, 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.0625rem', color: 'var(--text-strong)' }}>
-              {invoice.invoice_number} · {invoice.invoice_date} · {moneyWords(rowAmountCents)}
+              {invoice.invoice_number} · {invoice.invoice_date} · <MoneyText text={moneyWords(rowAmountCents)} />
             </h2>
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               {paper.poText ? `PO ${paper.poText} · ` : ''}read {paper.readAt ? new Date(paper.readAt).toLocaleDateString() : ''} from {paper.filePath ? 'our copy of the PDF' : 'the PDF on the row'}
@@ -213,8 +214,8 @@ export function PaperLookModal({ paper, invoice, io, fileBytes, acceptedByName, 
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan={7} style={{ ...cell, borderBottom: 0, textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{counted.length} {counted.length === 1 ? 'line' : 'lines'} · the paper's subtotal {paper.subtotalCents == null ? 'is not printed' : moneyWords(paper.subtotalCents)}</td>
-                    <td style={{ ...cell, borderBottom: 0, textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{moneyWords(check.sumCents)}</td>
+                    <td colSpan={7} style={{ ...cell, borderBottom: 0, textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{counted.length} {counted.length === 1 ? 'line' : 'lines'} · the paper's subtotal {paper.subtotalCents == null ? 'is not printed' : <MoneyText text={moneyWords(paper.subtotalCents)} />}</td>
+                    <td style={{ ...cell, borderBottom: 0, textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={moneyWords(check.sumCents)} /></td>
                     <td style={{ ...cell, borderBottom: 0 }}></td>
                   </tr>
                 </tfoot>
