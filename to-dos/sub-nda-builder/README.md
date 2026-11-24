@@ -672,18 +672,10 @@ What the walks found, written down on the day and looked at again after:
 - **No press archives an account alone.** The Person desk's **Archive…** opens End employment, which sets an end date on the roster row and archives the roster row with the account. The ZZ sub's account was archived alone before the walk. The owner said yes to End employment on 2026-11-24, with the note to the HR file off. It wrote the roster row's end date, the account's archive mark and the roster row's archive mark, and its trigger closed their one stint. It sent nothing and wrote no HR line. So the person ends more archived than before the walk: the roster row too, with an end date of 2026-11-24. A later walk brings them back with **Bring back…**, not **Restore**. Looked at again and left: it is the design since v2.3700, where End employment is the one door, so a person never ends half archived. The walk needed the older state only to put a test person back as it found them.
 - **The live site answered 429 for six minutes**, from about 06:50 to 06:56 UTC, to every request from the Mac's address. GitHub Pages limits requests by address. Several sessions on one Mac were walking the live site, each with a fresh browser that fetched every file again. The walks here moved to one kept browser profile, so the app's own cache serves the files, and no walk was cut off with a paper required.
 
-Left to walk, each a person's, with a paper required:
-
-- **A person's own Read and sign.** The Papers to sign window, then **Read and sign**, as a ZZ login linked to a ZZ person on the job's roster, at 375 px. It opens the paper put together from the job's settings, signs at the seal it shows, and the job opens. No ZZ login exists to sign in with. `ZZ Test Hand` has no login, and the two ZZ papers accounts have none and are archived. A person attaches a login to a ZZ person, puts them on the job's team and signs in on a phone.
-- **A finger on a real phone.** The sliders on the flow and the one page, dragged with a finger. The browser pane sends a mouse, so this one is a person's.
-- **Neither is walked.** Both were tried in the iPhone simulator on 2026-11-24, at the owner's yes of that day.
-  That simulator takes no typed text in a page's field: no keys are drawn, and a letter sent to a box does not land.
-  The sign-in for a ZZ login is found by a typed name, and the signature needs the signer's name typed in a box.
-  So neither could be done there, and the sliders were not started alone, since that would shut the job a second time later.
-  Both were set aside the same day on the owner's word.
-  Nothing was written for them: no login was made, nobody was put on the job and no paper was required.
-  Read back after: `ZZ Test Hand` has no login, the job's team holds the dev alone, and its seven paper rows are all taken off.
-  They stay listed here as not walked. A person with a real phone can still take them.
+The two walks that were left were taken off on 2026-11-24, on Diane's word: a person's own Read and sign, and a finger on the sliders.
+They are not owed, and neither was walked.
+Both were tried in the iPhone simulator that day. It takes no typed text in a page's field, and the sign-in and the signature's name box each need a typed name.
+Nothing was written for them: no login was made, nobody was put on the job and no paper was required.
 
 Loose ends:
 
