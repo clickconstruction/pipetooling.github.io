@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import type { BankCheck } from '../../lib/jobs/checkCleared'
 import type { LienPayoffFacts } from '../../lib/jobs/lienPayoff'
 import LienPayoffs from './LienPayoffs'
 
@@ -16,6 +17,8 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 // Every name, address, job, instrument and amount here is made up.
+const CLEARED: BankCheck = { id: 'b1', amount: 7420, status: 'sent', depositedYmd: '2026-11-14', postedYmd: '2026-11-15', bankDayYmd: '2026-11-21', checkNumber: '1184', failureReason: null }
+const AT_BANK: BankCheck = { ...CLEARED, status: 'pending', depositedYmd: '2026-11-24', postedYmd: null, bankDayYmd: '2026-12-02' }
 const facts = (over: Partial<LienPayoffFacts> = {}): LienPayoffFacts => ({
   affidavits: [
     { id: 'a1', job_id: 'j1', amount: 7420, county: 'Travis', recording_number: '2026-0412207', filed_at: '2026-11-09' },
@@ -30,6 +33,8 @@ const facts = (over: Partial<LienPayoffFacts> = {}): LienPayoffFacts => ({
   ],
   openByJob: { j1: 0, j2: 5160.5, j3: 0 },
   paymentsByJob: { j1: [{ amount: 7420, paid_on: '2026-11-24', payment_type: 'Check', reference_number: '1184' }] },
+  // The bank cleared check 1184: deposited Nov 14, posted Nov 15, the bank's own day Nov 21.
+  bank: [CLEARED],
   todayYmd: '2026-11-24',
   ...over,
 })
@@ -77,7 +82,7 @@ describe('LienPayoffs', () => {
     const paid = rowOf('a1')
     expect(paid.dataset.step).toBe('release')
     expect(paid.querySelector('[data-lien-payoff-say]')!.textContent).toBe('Paid Nov 24 by check 1184. The release is owed.')
-    expect(paid.querySelector('[data-lien-payoff-warn]')!.textContent).toBe('The check clears about Dec 1.')
+    expect(paid.querySelector('[data-lien-payoff-warn]')).toBeNull()
     expect([...paid.querySelectorAll<HTMLElement>('[data-lien-payoff-steps] [data-step]')].map((s) => s.dataset.state)).toEqual(['done', 'now', 'later'])
     fireEvent.click(paid.querySelector<HTMLElement>('[data-lien-payoff-press="release"]')!)
     expect(onOpenRelease).toHaveBeenCalledWith('j1')
@@ -89,6 +94,39 @@ describe('LienPayoffs', () => {
     expect(onOpenBill).toHaveBeenCalledWith('j2')
     // The window stays open under the door it sent the office through.
     expect(document.querySelector('[data-lien-payoffs-window]')).not.toBeNull()
+  })
+
+  it('offers no release while the bank has not cleared the check', async () => {
+    const { onOpenRelease } = draw({ read: () => Promise.resolve(facts({ bank: [AT_BANK] })), initiallyOpen: true })
+    const strip = await found('[data-lien-payoffs-strip]')
+    await waitFor(() => expect(strip.textContent).toContain('1 paid lien waits for the bank to clear a check.'))
+    expect(strip.dataset.tone).toBe('plain')
+    const paid = rowOf('a1')
+    expect(paid.dataset.step).toBe('bank')
+    expect(paid.querySelector('[data-lien-payoff-say]')!.textContent).toBe('Paid Nov 24 by check 1184.')
+    expect(paid.querySelector<HTMLElement>('[data-lien-payoff-warn]')!.textContent).toBe('Check 1184 is at the bank. The bank says it clears Dec 2. The release waits until then.')
+    expect(paid.querySelector<HTMLElement>('[data-lien-payoff-warn]')!.dataset.lienPayoffWarn).toBe('amber')
+    // The payment is recorded and no release is next: the first round is ticked and none is lit.
+    expect([...paid.querySelectorAll<HTMLElement>('[data-lien-payoff-steps] [data-step]')].map((s) => s.dataset.state)).toEqual(['done', 'later', 'later'])
+    expect(paid.querySelector('[data-lien-payoff-press]')).toBeNull()
+    expect(paid.querySelector('[data-lien-payoff-released]')).toBeNull()
+    expect(paid.querySelector('[data-lien-payoff-waiting]')!.textContent).toBe('Waits for the bank')
+    expect(onOpenRelease).not.toHaveBeenCalled()
+  })
+
+  it('says on the place when a check for exactly what pays its liens off is at the bank, and when it clears', async () => {
+    const forPlace: BankCheck = { ...AT_BANK, id: 'b2', amount: 5160.5, checkNumber: '2290' }
+    let today = '2026-11-24'
+    let rows = [CLEARED, forPlace]
+    const { rerender } = draw({ read: () => Promise.resolve(facts({ bank: rows, todayYmd: today })), initiallyOpen: true })
+    const line = await found('[data-lien-payoff-bank]')
+    expect(line.dataset.lienPayoffBank).toBe('at_bank')
+    expect(line.textContent).toBe('Check 2290 for $5,160.50 is at the bank. The bank says it clears Dec 2. Nothing is recorded until then.')
+    today = '2026-12-02'
+    rows = [CLEARED, { ...forPlace, status: 'sent', postedYmd: '2026-11-25' }]
+    rerender(2)
+    await waitFor(() => expect(document.querySelector<HTMLElement>('[data-lien-payoff-bank]')!.dataset.lienPayoffBank).toBe('cleared'))
+    expect(document.querySelector('[data-lien-payoff-bank]')!.textContent).toBe('The bank cleared check 2290 for $5,160.50 on Dec 2. It is ready to record.')
   })
 
   it('keeps a released lien behind a fold, with no press', async () => {

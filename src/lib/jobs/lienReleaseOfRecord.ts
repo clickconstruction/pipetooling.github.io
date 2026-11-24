@@ -9,8 +9,9 @@
  *     (`fields.releasesFilingId`, read by `lienPayoff.ts`).
  *   - `releaseMoneyGate`: money holds the release. While the job's sent bills still owe, the tab holds its print and
  *     its save, and says what is open. A reason typed under *Release it anyway* lifts the hold and is saved on the
- *     release: a lien settled for less is a real case, and the app does not judge it. A check still clearing only
- *     warns. Whether a release waits for a check to clear is the owner's call, not yet made.
+ *     release: a lien settled for less is a real case, and the app does not judge it. Since punch list #437,
+ *     piece 1, a check the bank has not cleared holds the tab the same way (`checkCleared.ts`), and the same
+ *     typed reason lifts it. The owner's rule of 2026-11-24: a release waits until the check clears.
  *   - `releasePaymentDay`: the paper's payment date starts on the day of the last payment, not on today.
  *   - `releaseStampPatch`: the county's stamp. The day the clerk recorded the release is the row's `filed_at`,
  *     which nothing set before, and the release's own instrument number is `fields.releaseInstrument`. The row's
@@ -23,7 +24,8 @@ import { moneyWords } from '../moneyParts'
 import { val } from '../valuesInPlace'
 import { ymdAddDays } from '../../utils/dateUtils'
 import { formatYmdMonthDay } from './billedExpectedPay'
-import { CHECK_CLEAR_DAYS, isCheckPayment } from './checkClearing'
+import { BANK_CHECK_WINDOW_DAYS, checkAnswerWords, checkName, paymentCheckAnswer, type BankCheck } from './checkCleared'
+import { isCheckPayment } from './checkClearing'
 import { lastPayment, payWayWords, releaseForAffidavit, releaseOwnInstrument, type LienPayoffAffidavit, type LienPayoffPayment, type LienPayoffRelease } from './lienPayoff'
 
 export const RELEASE_OF_RECORD_WORDS = {
@@ -31,6 +33,10 @@ export const RELEASE_OF_RECORD_WORDS = {
   anyway: 'Release it anyway…',
   anywayLabel: 'Why it is released with money still open',
   anywayExample: 'settled for less on Nov 24, per the owner',
+  anywayCheckLabel: 'Why it is released before the check clears',
+  anywayCheckExample: 'a cashier’s check, per the owner',
+  asking: 'Asking the bank about it.',
+  bankUnread: 'The bank’s record could not be read. Open this tab again.',
   saved: 'This release is saved. Sign it before a notary. Then record it at the county.',
   stampHead: 'The county’s stamp',
   instrumentLabel: 'the release’s instrument number',
@@ -71,30 +77,53 @@ export type ReleaseMoneyGate = {
   tone: 'red' | 'amber' | 'green'
   /** What the money says, with its values marked. */
   say: string
+  /** What holds it or held it: money still open, or a check that has not cleared. Null when nothing does. */
+  why: 'open' | 'check' | null
 }
 
-/** Whether money holds the release, and what the tab says about it. */
-export function releaseMoneyGate(input: { open: number; payments: ReadonlyArray<LienPayoffPayment>; todayYmd: string; anywayReason: string }): ReleaseMoneyGate {
+/** True when the tab needs the bank's check deposits: the bills read paid, last by a check of the last sixty days. */
+export function releaseNeedsBank(open: number, payments: ReadonlyArray<LienPayoffPayment>, todayYmd: string): boolean {
+  if (Math.round((Number(open) || 0) * 100) / 100 > 0.004) return false
+  const paid = lastPayment(payments)
+  return Boolean(paid && isCheckPayment(paid) && (paid.paid_on ?? '').slice(0, 10) >= ymdAddDays(todayYmd, -BANK_CHECK_WINDOW_DAYS))
+}
+
+/**
+ * Whether money holds the release, and what the tab says about it. `bank` is the bank's check deposits: `undefined`
+ * while they are being read and `null` when the read failed. Either holds a release that rests on a recent check,
+ * so a slow or a failed read never lets one out early.
+ */
+export function releaseMoneyGate(input: { open: number; payments: ReadonlyArray<LienPayoffPayment>; todayYmd: string; anywayReason: string; bank?: ReadonlyArray<BankCheck> | null }): ReleaseMoneyGate {
   const open = Math.round((Number(input.open) || 0) * 100) / 100
+  const anyway = input.anywayReason.trim().length > 0
   if (open > 0.004) {
     const money = val('money', moneyWords(open))
-    return input.anywayReason.trim()
-      ? { hold: false, tone: 'amber', say: `${money} is still open on this job’s bills. The release goes out anyway.` }
-      : { hold: true, tone: 'red', say: `${money} is still open on this job’s bills. Record the payment first.` }
+    return anyway
+      ? { hold: false, tone: 'amber', say: `${money} is still open on this job’s bills. The release goes out anyway.`, why: 'open' }
+      : { hold: true, tone: 'red', say: `${money} is still open on this job’s bills. Record the payment first.`, why: 'open' }
   }
   const paid = lastPayment(input.payments)
-  if (!paid) return { hold: false, tone: 'green', say: 'The bills read paid.' }
+  if (!paid) return { hold: false, tone: 'green', say: 'The bills read paid.', why: null }
   const ymd = (paid.paid_on ?? '').slice(0, 10)
   const way = payWayWords(paid)
   const said = `Paid ${val('day', formatYmdMonthDay(ymd))}${way ? ` by ${val('way', way)}` : ''}.`
-  const clears = isCheckPayment(paid) ? ymdAddDays(ymd, CHECK_CLEAR_DAYS) : null
-  return clears && clears > input.todayYmd ? { hold: false, tone: 'amber', say: `${said} The check clears about ${val('day', formatYmdMonthDay(clears))}.` } : { hold: false, tone: 'green', say: said }
+  const held = (words: string, waits: string, tone: 'red' | 'amber'): ReleaseMoneyGate =>
+    anyway ? { hold: false, tone: 'amber', say: `${said} ${words} The release goes out anyway.`, why: 'check' } : { hold: true, tone, say: [said, words, waits].filter(Boolean).join(' '), why: 'check' }
+  if (!input.bank && releaseNeedsBank(open, input.payments, input.todayYmd)) return held(input.bank === null ? RELEASE_OF_RECORD_WORDS.bankUnread : RELEASE_OF_RECORD_WORDS.asking, '', 'amber')
+  const answer = paymentCheckAnswer(paid, input.bank ?? [], input.todayYmd)
+  if (answer.cleared) return { hold: false, tone: 'green', say: said, why: null }
+  const words = checkAnswerWords(answer, checkName(paid.reference_number))
+  return held(words.say, `The release waits ${words.wait}.`, words.tone === 'red' ? 'red' : 'amber')
 }
 
-/** The fields a release saves: the paper's own, the affidavit it releases, and the reason it went out unpaid. */
-export function releaseSaveFields(paper: Record<string, unknown>, affidavitId: string, anywayReason: string): Record<string, unknown> {
+/**
+ * The fields a release saves: the paper's own, the affidavit it releases, and the reason it went out anyway. The
+ * reason is `releasedUnpaidReason` when money was still open, and `releasedBeforeClearedReason` when the bills read
+ * paid by a check the bank had not cleared.
+ */
+export function releaseSaveFields(paper: Record<string, unknown>, affidavitId: string, anywayReason: string, why: 'open' | 'check' | null = 'open'): Record<string, unknown> {
   const reason = anywayReason.trim()
-  return { ...paper, releasesFilingId: affidavitId, ...(reason ? { releasedUnpaidReason: reason } : {}) }
+  return { ...paper, releasesFilingId: affidavitId, ...(reason && why ? { [why === 'check' ? 'releasedBeforeClearedReason' : 'releasedUnpaidReason']: reason } : {}) }
 }
 
 /** Why a recorded day cannot be kept, or null. */

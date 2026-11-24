@@ -8,7 +8,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import type { BankCheck } from '../../lib/jobs/checkCleared'
 import LienFilingTabs from './LienFilingTabs'
+
+/** What the bank answers (#437, piece 1): its check deposits, `undefined` while asked, `null` when unread. */
+const bank = vi.hoisted(() => ({ checks: [] as ReadonlyArray<unknown> | null | undefined, asked: [] as boolean[] }))
+vi.mock('../../hooks/useBankChecks', () => ({
+  useBankChecks: (enabled: boolean) => {
+    bank.asked.push(enabled)
+    return enabled ? bank.checks : []
+  },
+}))
 
 const writes = vi.hoisted(() => ({ inserts: [] as Array<Record<string, unknown>>, updates: [] as Array<{ patch: Record<string, unknown>; id: string }> }))
 
@@ -45,8 +55,11 @@ vi.mock('../../lib/supabase', async () => {
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   writes.inserts.length = 0
   writes.updates.length = 0
+  bank.checks = []
+  bank.asked.length = 0
 })
 
 // Every job, name, instrument and amount here is made up.
@@ -126,6 +139,72 @@ describe('Release of record: money holds the release', () => {
     await waitFor(() => expect(writes.inserts).toHaveLength(1))
     expect(writes.inserts[0]!.fields).toMatchObject({ releasesFilingId: 'a1', paymentDate: '2026-11-20' })
     expect((writes.inserts[0]!.fields as Record<string, unknown>).releasedUnpaidReason).toBeUndefined()
+  })
+})
+
+describe('Release of record: a check holds the release until the bank clears it', () => {
+  const AT_BANK: BankCheck = { id: 'k1', amount: 7420, status: 'pending', depositedYmd: '2026-11-24', postedYmd: null, bankDayYmd: '2026-12-02', checkNumber: '1184', failureReason: null }
+  const byCheck = () =>
+    makeJob({ id: 'job-2041', hcp_number: '2041', job_name: 'Okafor main house', job_address: '212 Larkspur Court, Austin, TX', status: 'billed', revenue: 7420, payments_made: 7420, payments: [{ id: 'p1', job_id: 'job-2041', invoice_id: null, amount: 7420, paid_on: '2026-11-24', payment_type: 'Check', reference_number: '1184' }] })
+  const on = (isoNow: string) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(isoNow))
+  }
+
+  it('holds the print and the save while the check is at the bank, and says the bank’s day', () => {
+    on('2026-11-24T18:00:00Z')
+    bank.checks = [AT_BANK]
+    draw({ job: byCheck() })
+    expect(bank.asked[bank.asked.length - 1]).toBe(true)
+    expect(money().dataset.lienReleaseMoney).toBe('amber')
+    expect(money().getAttribute('role')).toBe('alert')
+    expect(money().textContent).toContain('Paid Nov 24 by check 1184. Check 1184 is at the bank. The bank says it clears Dec 2. The release waits until then.')
+    expect(actions().every((b) => b.disabled)).toBe(true)
+    fireEvent.click(actions()[2]!)
+    expect(writes.inserts).toEqual([])
+  })
+
+  it('holds while the bank is being asked, and when the bank could not be read', () => {
+    on('2026-11-24T18:00:00Z')
+    bank.checks = undefined
+    draw({ job: byCheck() })
+    expect(money().textContent).toContain('Asking the bank about it.')
+    expect(actions().every((b) => b.disabled)).toBe(true)
+    cleanup()
+    bank.checks = null
+    draw({ job: byCheck() })
+    expect(money().textContent).toContain('The bank’s record could not be read. Open this tab again.')
+    expect(actions().every((b) => b.disabled)).toBe(true)
+  })
+
+  it('lets it go before the check clears once a reason is typed, and saves that reason under its own name', async () => {
+    on('2026-11-24T18:00:00Z')
+    bank.checks = [AT_BANK]
+    draw({ job: byCheck() })
+    fireEvent.click(screen.getByRole('button', { name: 'Release it anyway…' }))
+    expect(screen.getByText('Why it is released before the check clears')).toBeTruthy()
+    fireEvent.change(document.querySelector<HTMLInputElement>('[data-lien-release-anyway-reason]')!, { target: { value: 'a cashier’s check, per the owner' } })
+    expect(money().textContent).toContain('The release goes out anyway.')
+    expect(actions().every((b) => !b.disabled)).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Save release record' }))
+    await waitFor(() => expect(writes.inserts).toHaveLength(1))
+    const fields = writes.inserts[0]!.fields as Record<string, unknown>
+    expect(fields.releasedBeforeClearedReason).toBe('a cashier’s check, per the owner')
+    expect(fields.releasedUnpaidReason).toBeUndefined()
+  })
+
+  it('is open the day the bank clears the check', () => {
+    on('2026-12-02T18:00:00Z')
+    bank.checks = [{ ...AT_BANK, status: 'sent', postedYmd: '2026-11-25' }]
+    draw({ job: byCheck() })
+    expect(money().dataset.lienReleaseMoney).toBe('green')
+    expect(money().textContent).toBe('Paid Nov 24 by check 1184.')
+    expect(actions().every((b) => !b.disabled)).toBe(true)
+  })
+
+  it('does not ask the bank about cash', () => {
+    draw({ job: paid() })
+    expect(bank.asked.every((asked) => asked === false)).toBe(true)
   })
 })
 

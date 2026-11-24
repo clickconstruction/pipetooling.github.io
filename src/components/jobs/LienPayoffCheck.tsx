@@ -5,8 +5,9 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import type { BankCheck } from '../../lib/jobs/checkCleared'
 import type { LienPayoffBill, LienPayoffPlace } from '../../lib/jobs/lienPayoff'
-import { PAYOFF_CHECK_WORDS, checkBills, checkPlan, liensPayoffAmount, parseCheckAmount, payoffCheckNote, spreadCheck, type CheckLine } from '../../lib/jobs/lienPayoffCheck'
+import { PAYOFF_CHECK_WORDS, checkBills, checkPlan, liensPayoffAmount, parseCheckAmount, payoffCheckBank, payoffCheckNote, spreadCheck, type CheckLine } from '../../lib/jobs/lienPayoffCheck'
 import { recordPayoffCheck, type PayoffCheckOutcome } from '../../lib/jobs/lienPayoffCheckIo'
 import { moneyWords } from '../../lib/moneyParts'
 
@@ -19,11 +20,17 @@ import { moneyWords } from '../../lib/moneyParts'
  * what is placed and what is left. A value under *this check pays* can be changed where it sits, and the rest of
  * the check is spread again around it. One press records a payment on every ready bill and holds the rest with
  * the reason and a door. A line that fails stays on the screen with its reason.
+ *
+ * Since punch list #437, piece 1, the pane asks the bank (`bankChecks`): a check the bank holds and has not cleared
+ * is not recorded, and the pane says the day it may be. When the place's own check is at the bank
+ * (`place.bank`), the pane opens on what the bank read off it, so nobody types the check.
  */
 
 type Props = {
   place: LienPayoffPlace
   billsByJob: Readonly<Record<string, ReadonlyArray<LienPayoffBill>>>
+  /** The bank's check deposits. With none, every check is recorded as before. */
+  bankChecks?: ReadonlyArray<BankCheck>
   todayYmd: string
   isMobile: boolean
   onBack: () => void
@@ -39,13 +46,16 @@ const small: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
 const box: CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.4rem 0.55rem', fontFamily: 'inherit', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)' }
 const linkPress: CSSProperties = { border: 'none', background: 'none', padding: 0, margin: 0, fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }
 const TONE = { red: 'var(--text-red-700)', amber: 'var(--text-amber-800)', green: 'var(--text-green-700)' } as const
+const NO_CHECKS: ReadonlyArray<BankCheck> = []
 
-export default function LienPayoffCheck({ place, billsByJob, todayYmd, isMobile, onBack, onRecorded, onOpenBill, record = recordPayoffCheck }: Props) {
+export default function LienPayoffCheck({ place, billsByJob, bankChecks = NO_CHECKS, todayYmd, isMobile, onBack, onRecorded, onOpenBill, record = recordPayoffCheck }: Props) {
   const { showToast } = useToastContext()
   const bills = useMemo(() => checkBills(place, billsByJob), [place, billsByJob])
-  const [amountText, setAmountText] = useState(() => moneyWords(liensPayoffAmount(checkBills(place, billsByJob))).replace('$', ''))
-  const [number, setNumber] = useState('')
-  const [received, setReceived] = useState(todayYmd)
+  /** The place's own check at the bank, when there is one: the pane opens on what the bank read off it. */
+  const atBank = place.bank?.check ?? null
+  const [amountText, setAmountText] = useState(() => moneyWords(atBank?.amount ?? liensPayoffAmount(checkBills(place, billsByJob))).replace('$', ''))
+  const [number, setNumber] = useState(atBank?.checkNumber ?? '')
+  const [received, setReceived] = useState(atBank?.depositedYmd && atBank.depositedYmd <= todayYmd ? atBank.depositedYmd : todayYmd)
   /** What a person set by hand, by bill. The rest of the check is spread around these. */
   const [kept, setKept] = useState<Record<string, number>>({})
   const [busy, setBusy] = useState(false)
@@ -53,7 +63,8 @@ export default function LienPayoffCheck({ place, billsByJob, todayYmd, isMobile,
   const [ran, setRan] = useState<Array<{ line: CheckLine; outcome: PayoffCheckOutcome }> | null>(null)
 
   const check = parseCheckAmount(amountText)
-  const plan = useMemo(() => checkPlan({ check, number, bills, pays: spreadCheck(check ?? 0, bills, kept) }), [check, number, bills, kept])
+  const bank = useMemo(() => payoffCheckBank({ check, number }, bankChecks, todayYmd), [check, number, bankChecks, todayYmd])
+  const plan = useMemo(() => checkPlan({ check, number, bills, pays: spreadCheck(check ?? 0, bills, kept), bank }), [check, number, bills, kept, bank])
   const jobs = useMemo(() => {
     const order: string[] = []
     for (const l of plan.lines) if (!order.includes(l.bill.jobId)) order.push(l.bill.jobId)
@@ -152,6 +163,11 @@ export default function LienPayoffCheck({ place, billsByJob, todayYmd, isMobile,
           <input type="date" data-lien-payoff-check-received value={received} max={todayYmd} onChange={(e) => setReceived(e.target.value || todayYmd)} style={box} />
         </label>
         <p style={{ ...small, margin: 0, gridColumn: '1 / -1' }}>{PAYOFF_CHECK_WORDS.amountHint}</p>
+        {bank.note ? (
+          <p data-lien-payoff-check-bank={bank.tone} style={{ margin: 0, gridColumn: '1 / -1', fontSize: '0.78rem', color: TONE[bank.tone] }}>
+            <ValueSentence text={bank.note} />
+          </p>
+        ) : null}
       </section>
 
       <section style={{ display: 'grid', gap: '0.45rem' }}>

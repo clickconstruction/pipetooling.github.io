@@ -690,6 +690,13 @@ last_updated: 2026-11-21
 > The write is [`lienPayoffCheckIo.ts`](../src/lib/jobs/lienPayoffCheckIo.ts), one `mark_invoice_paid` a ready line, tried once, the run going on past a failure.
 > `lienPayoffIo.ts` also reads the same customers' other billed jobs and every job's open bills (`lienPayoffBills`), and `LienPayoffs` takes `onChanged`, which the page hands `refetch`.
 > The pane's seven render tests are `LienPayoffCheck.render.test.tsx`.
+> **v2.8525 (no release before the bank, punch list #437 piece 1):** [`checkCleared.ts`](../src/lib/jobs/checkCleared.ts) (18 tests) answers whether a check has cleared from the bank's own row: posted, and the day the bank names (`raw.estimatedDeliveryDate`) has come.
+> A payment finds its deposit by `mercury_transaction_id`, else by the check's number, and a check with no deposit waits seven days from the day typed.
+> The read is [`checkClearedIo.ts`](../src/lib/jobs/checkClearedIo.ts): sixty days of `checkDeposit` rows, read by `lienPayoffIo.ts` into `LienPayoffFacts.bank` and by the hook `useBankChecks` on the Release of record tab.
+> `lienPayoffStep` gains the step `bank`, with no press, and `releaseMoneyGate` holds on it with `why: 'check'`, also while the bank is being asked and when its read failed.
+> A reason typed there is saved as `fields.releasedBeforeClearedReason`.
+> `lienPlaceCheck` gives a place the bank's deposit for exactly what its liens' open bills come to (`LienPayoffPlace.bank`), and `payoffCheckBank` makes the check pane's press dead for a check the bank has not cleared.
+> No migration and no new write.
 
 > **v2.6777 · v2.6780 (the desk is a page, punch list #182):** `/lien-desk` ([`pages/LienDeskPage.tsx`](../src/pages/LienDeskPage.tsx), the address in [`lib/lien/lienDeskRoute.ts`](../src/lib/lien/lienDeskRoute.ts): `?tab=deadlines|notices|affidavits|retainage|timeline`, `&job=`, `&pile=`, the one-shot `&records=`).
 > `LienDeskModal` takes `frame: 'page' | 'window'` — on the page no overlay, no ✕, no `useModalFullScreen` key, the page's `backDoor` before the title, `data-lien-desk-panel="page"`, a named region, and `onAddressChange` told every change of `kind`, the Notices selection and `pile` once `data` is in (the job a door named counts before the selection catches up);

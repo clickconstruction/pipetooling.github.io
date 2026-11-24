@@ -162,6 +162,7 @@ Amounts draw through `Money`, changeable values through `ChangeableValue`, worke
 | 7 | **No final waiver wider than the money.** The unconditional prompt waits where other bills stay open at the place. Built on counsel's word. | S | `pickLienWaiverForBill` gains the place's open bills. Tests beside it. | None | Kernel tests |
 
 Pieces 1 to 3 are built and carry the door.
+Since v2.8525 (piece 1 of [#437](../held-check/README.md)) Payoffs, the release tab and the check pane wait for the bank to clear a check, where pieces 1 to 3 only warned.
 The guide shipped with them: `release-a-filed-lien-after-it-is-paid`.
 Each piece has its release note and fragment.
 

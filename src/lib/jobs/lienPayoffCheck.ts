@@ -19,11 +19,16 @@
  * Every payment the pane records is a Check with the same number and the same day, and a note that names the
  * check's whole amount, so the rows of one check can be told from any other. No migration.
  *
+ * Since punch list #437, piece 1, the pane asks the bank about the check typed (`payoffCheckBank`, over
+ * `checkCleared.ts`): a check the bank holds and has not cleared is not recorded, and the pane says the day it may
+ * be. A check the bank shows no deposit of is recorded as before, and its release waits seven days.
+ *
  * Money is worked in cents. Pure; tested beside it. The writes are `lienPayoffCheckIo.ts`.
  */
 import { batchWords, type BatchWords } from '../batchWords'
 import { moneyWords } from '../moneyParts'
 import { val } from '../valuesInPlace'
+import { bankCheckAnswer, bankCheckTyped, checkAnswerWords, checkName, type BankCheck } from './checkCleared'
 import type { LienPayoffBill, LienPayoffPlace } from './lienPayoff'
 
 export const PAYOFF_CHECK_WORDS = {
@@ -43,6 +48,7 @@ export const PAYOFF_CHECK_WORDS = {
   heldLine: 'Part of a Stripe bill is recorded on the bill itself.',
   overLine: 'This is more than the bill owes.',
   failed: 'The payment was not recorded.',
+  noDeposit: 'The bank shows no deposit of this check. A release then waits seven days.',
 } as const
 
 const cents = (dollars: number | string | null | undefined): number => Math.round((Number(dollars) || 0) * 100)
@@ -106,6 +112,31 @@ export function spreadCheck(check: number, bills: ReadonlyArray<CheckBill>, kept
   return pays
 }
 
+export type PayoffCheckBank = {
+  /** Why the check is not recorded yet, with its values marked. Null when it may be. */
+  hold: string | null
+  /** What the bank says when it does not hold the check. Null when there is nothing to say. */
+  note: string | null
+  tone: 'red' | 'amber' | 'green'
+  /** The bank's deposit of this check, or null. */
+  check: BankCheck | null
+}
+
+/**
+ * What the bank says about the check typed in the pane. The bank's deposit is the one with the same number and
+ * the same amount to the cent. A check the bank has not cleared holds the press.
+ */
+export function payoffCheckBank(typed: { check: number | null; number: string }, checks: ReadonlyArray<BankCheck>, todayYmd: string): PayoffCheckBank {
+  if (!(Number(typed.check) > 0) || !typed.number.trim()) return { hold: null, note: null, tone: 'green', check: null }
+  const check = bankCheckTyped({ number: typed.number, amount: typed.check }, checks)
+  if (!check) return { hold: null, note: PAYOFF_CHECK_WORDS.noDeposit, tone: 'amber', check: null }
+  const answer = bankCheckAnswer(check, todayYmd)
+  const words = checkAnswerWords(answer, checkName(check.checkNumber))
+  if (answer.cleared) return { hold: null, note: words.say, tone: 'green', check }
+  const tail = answer.state === 'unread' ? '' : answer.state === 'came_back' ? 'Do not record it.' : words.wait === 'until then' ? 'Record it then.' : 'Record it once the bank clears it.'
+  return { hold: [words.say, tail].filter(Boolean).join(' '), note: null, tone: words.tone, check }
+}
+
 export type CheckLineState = 'none' | 'ready' | 'held' | 'over'
 
 export type CheckLine = { bill: CheckBill; pays: number; state: CheckLineState; why: string | null }
@@ -126,7 +157,7 @@ export type CheckPlan = {
 }
 
 /** The whole pane worked out: each line's state, the three totals, what the check does and the button's words. */
-export function checkPlan(input: { check: number | null; number: string; bills: ReadonlyArray<CheckBill>; pays: Readonly<Record<string, number>> }): CheckPlan {
+export function checkPlan(input: { check: number | null; number: string; bills: ReadonlyArray<CheckBill>; pays: Readonly<Record<string, number>>; bank?: Pick<PayoffCheckBank, 'hold' | 'tone'> | null }): CheckPlan {
   const check = input.check ?? 0
   const lines: CheckLine[] = input.bills.map((bill) => {
     const pays = Math.max(0, input.pays[bill.invoiceId] ?? 0)
@@ -142,11 +173,13 @@ export function checkPlan(input: { check: number | null; number: string; bills: 
   const ready = lines.filter((l) => l.state === 'ready').length
   const held = lines.filter((l) => l.state === 'held' || l.state === 'over').length
   const base = { lines, check, placed: dollars(placedC), left: dollars(leftC), ready, held }
-  const dead = (say: string): CheckPlan => ({ ...base, words: { ...batchWords({ verb: 'Record', ready: 0, held: 0, noun: 'payment' }), dead: true }, say, tone: 'red' })
+  const dead = (say: string, tone: CheckPlan['tone'] = 'red'): CheckPlan => ({ ...base, words: { ...batchWords({ verb: 'Record', ready: 0, held: 0, noun: 'payment' }), dead: true }, say, tone })
 
   if (!(check > 0)) return dead(PAYOFF_CHECK_WORDS.noAmount)
   if (leftC < 0) return dead(`The lines add up to ${val('money', moneyWords(dollars(-leftC)))} more than the check.`)
   if (!input.number.trim()) return dead(PAYOFF_CHECK_WORDS.noNumber)
+  // The bank holds this check and has not cleared it (#437, piece 1): nothing is recorded yet.
+  if (input.bank?.hold) return dead(input.bank.hold, input.bank.tone)
 
   // What the check does to the liens: a liened job is paid in full when every one of its open bills is.
   const lienedJobs = [...new Set(lines.filter((l) => l.bill.liened).map((l) => l.bill.jobId))]

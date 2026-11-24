@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
 import type { LienPayoffAffidavit, LienPayoffPayment, LienPayoffRelease } from './lienPayoff'
-import { RELEASE_OF_RECORD_WORDS, pickReleaseTarget, releaseMoneyGate, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from './lienReleaseOfRecord'
+import type { BankCheck } from './checkCleared'
+import { RELEASE_OF_RECORD_WORDS, pickReleaseTarget, releaseMoneyGate, releaseNeedsBank, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from './lienReleaseOfRecord'
 
 // Every job, instrument and amount here is made up.
 const TODAY = '2026-11-24'
 const aff = (over: Partial<LienPayoffAffidavit> = {}): LienPayoffAffidavit => ({ id: 'a1', job_id: 'j1', amount: 7420, county: 'Travis', recording_number: '2026-0412207', filed_at: '2026-11-09', ...over })
 const rel = (over: Partial<LienPayoffRelease> = {}): LienPayoffRelease => ({ id: 'r1', job_id: 'j1', created_at: '2026-11-24T18:00:00Z', filed_at: null, recording_number: '2026-0412207', fields: {}, ...over })
+const bank = (over: Partial<BankCheck> = {}): BankCheck => ({ id: 'b1', amount: 16455.5, status: 'pending', depositedYmd: '2026-11-24', postedYmd: null, bankDayYmd: '2026-12-02', checkNumber: '01184', failureReason: null, ...over })
 const check = (over: Partial<LienPayoffPayment> = {}): LienPayoffPayment => ({ amount: 7420, paid_on: '2026-11-24', payment_type: 'Check', reference_number: '1184', ...over })
 
 describe('releaseTargets and the pick', () => {
@@ -37,7 +39,7 @@ describe('releaseTargets and the pick', () => {
 })
 
 describe('releaseMoneyGate', () => {
-  const gate = (over: Partial<Parameters<typeof releaseMoneyGate>[0]> = {}) => releaseMoneyGate({ open: 0, payments: [], todayYmd: TODAY, anywayReason: '', ...over })
+  const gate = (over: Partial<Parameters<typeof releaseMoneyGate>[0]> = {}) => releaseMoneyGate({ open: 0, payments: [], todayYmd: TODAY, anywayReason: '', bank: [], ...over })
 
   it('holds the release while the bills still owe', () => {
     const g = gate({ open: 1455.5 })
@@ -52,19 +54,62 @@ describe('releaseMoneyGate', () => {
     expect(gate({ open: 1455.5, anywayReason: '   ' }).hold).toBe(true)
   })
 
-  it('only warns while a check clears, and is green once it has', () => {
-    const clearing = gate({ payments: [check()] })
-    expect(clearing).toMatchObject({ hold: false, tone: 'amber' })
-    expect(plainSentence(clearing.say)).toBe('Paid Nov 24 by check 1184. The check clears about Dec 1.')
-    const cleared = gate({ payments: [check()], todayYmd: '2026-12-01' })
-    expect(cleared).toMatchObject({ hold: false, tone: 'green' })
-    expect(plainSentence(cleared.say)).toBe('Paid Nov 24 by check 1184.')
+  it('is green for money that needs no bank', () => {
+    expect(gate({ payments: [check({ payment_type: 'Cash', reference_number: null })] })).toMatchObject({ hold: false, tone: 'green', why: null })
     expect(plainSentence(gate({ payments: [check({ payment_type: 'Cash', reference_number: null })] }).say)).toBe('Paid Nov 24 by cash.')
     expect(plainSentence(gate().say)).toBe('The bills read paid.')
   })
 
+  it('holds the release while the bank has not cleared the check', () => {
+    const atBank = gate({ payments: [check()], bank: [bank()] })
+    expect(atBank).toMatchObject({ hold: true, tone: 'amber', why: 'check' })
+    expect(plainSentence(atBank.say)).toBe('Paid Nov 24 by check 1184. Check 1184 is at the bank. The bank says it clears Dec 2. The release waits until then.')
+    // Posted is not cleared.
+    const posted = gate({ payments: [check()], bank: [bank({ status: 'sent', postedYmd: '2026-11-25' })], todayYmd: '2026-12-01' })
+    expect(posted.hold).toBe(true)
+    expect(plainSentence(posted.say)).toBe('Paid Nov 24 by check 1184. The bank posted check 1184 on Nov 25. It can still come back until Dec 2. The release waits until then.')
+    const back = gate({ payments: [check()], bank: [bank({ status: 'failed', failureReason: 'Insufficient funds' })] })
+    expect(back).toMatchObject({ hold: true, tone: 'red', why: 'check' })
+  })
+
+  it('is green the day the bank clears the check', () => {
+    const cleared = gate({ payments: [check()], bank: [bank({ status: 'sent', postedYmd: '2026-11-25' })], todayYmd: '2026-12-02' })
+    expect(cleared).toMatchObject({ hold: false, tone: 'green', why: null })
+    expect(plainSentence(cleared.say)).toBe('Paid Nov 24 by check 1184.')
+  })
+
+  it('waits seven days from the day typed when the bank shows no deposit', () => {
+    const waiting = gate({ payments: [check()] })
+    expect(waiting).toMatchObject({ hold: true, tone: 'amber', why: 'check' })
+    expect(plainSentence(waiting.say)).toBe('Paid Nov 24 by check 1184. The bank shows no deposit of check 1184. Without one it counts as cleared Dec 1. The release waits until then.')
+    expect(gate({ payments: [check()], todayYmd: '2026-12-01' })).toMatchObject({ hold: false, tone: 'green' })
+  })
+
+  it('lets a release go before the check clears with a typed reason, and says so', () => {
+    const g = gate({ payments: [check()], bank: [bank()], anywayReason: 'a cashier’s check' })
+    expect(g).toMatchObject({ hold: false, tone: 'amber', why: 'check' })
+    expect(plainSentence(g.say)).toBe('Paid Nov 24 by check 1184. Check 1184 is at the bank. The bank says it clears Dec 2. The release goes out anyway.')
+  })
+
+  it('holds while the bank is being asked, and when the bank could not be read', () => {
+    const asking = gate({ payments: [check()], bank: undefined })
+    expect(asking).toMatchObject({ hold: true, tone: 'amber', why: 'check' })
+    expect(plainSentence(asking.say)).toBe('Paid Nov 24 by check 1184. Asking the bank about it.')
+    const unread = gate({ payments: [check()], bank: null })
+    expect(unread.hold).toBe(true)
+    expect(plainSentence(unread.say)).toBe('Paid Nov 24 by check 1184. The bank’s record could not be read. Open this tab again.')
+    // Money that needs no bank, an old check, or bills still open: the bank is not asked.
+    expect(gate({ payments: [check({ payment_type: 'Cash' })], bank: undefined }).hold).toBe(false)
+    expect(gate({ payments: [check({ paid_on: '2026-08-01' })], bank: undefined }).hold).toBe(false)
+    expect(releaseNeedsBank(0, [check()], TODAY)).toBe(true)
+    expect(releaseNeedsBank(0, [check({ payment_type: 'Cash' })], TODAY)).toBe(false)
+    expect(releaseNeedsBank(0, [check({ paid_on: '2026-08-01' })], TODAY)).toBe(false)
+    expect(releaseNeedsBank(300, [check()], TODAY)).toBe(false)
+    expect(releaseNeedsBank(0, [], TODAY)).toBe(false)
+  })
+
   it('keeps every sentence to plain words', () => {
-    for (const g of [gate({ open: 9 }), gate({ open: 9, anywayReason: 'x' }), gate({ payments: [check()] }), gate()]) expect(plainWordsFailures(plainSentence(g.say))).toEqual([])
+    for (const g of [gate({ open: 9 }), gate({ open: 9, anywayReason: 'x' }), gate({ payments: [check()] }), gate({ payments: [check()], bank: [bank()] }), gate({ payments: [check()], bank: [bank()], anywayReason: 'x' }), gate({ payments: [check()], bank: undefined }), gate({ payments: [check()], bank: null }), gate()]) expect(plainWordsFailures(plainSentence(g.say))).toEqual([])
     expect(plainWordsFailures(RELEASE_OF_RECORD_WORDS.saved)).toEqual([])
   })
 })
@@ -78,6 +123,9 @@ describe('the paper’s date, its saved fields and the county’s stamp', () => 
   it('saves the affidavit the release names, and the reason only when one was typed', () => {
     expect(releaseSaveFields({ county: 'Travis' }, 'a1', '')).toEqual({ county: 'Travis', releasesFilingId: 'a1' })
     expect(releaseSaveFields({ county: 'Travis' }, 'a1', ' settled ')).toEqual({ county: 'Travis', releasesFilingId: 'a1', releasedUnpaidReason: 'settled' })
+    // Released before the check cleared: the reason is kept under its own name.
+    expect(releaseSaveFields({}, 'a1', ' a cashier’s check ', 'check')).toEqual({ releasesFilingId: 'a1', releasedBeforeClearedReason: 'a cashier’s check' })
+    expect(releaseSaveFields({}, 'a1', 'stale', null)).toEqual({ releasesFilingId: 'a1' })
   })
 
   it('patches the day and the instrument apart, and keeps the paper’s other fields', () => {

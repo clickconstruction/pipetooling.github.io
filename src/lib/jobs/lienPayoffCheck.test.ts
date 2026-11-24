@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
+import type { BankCheck } from './checkCleared'
 import type { LienPayoffBill, LienPayoffPlace, LienPayoffRow } from './lienPayoff'
-import { PAYOFF_CHECK_WORDS, checkBills, checkPlan, liensPayoffAmount, parseCheckAmount, payoffCheckNote, spreadCheck, type CheckBill } from './lienPayoffCheck'
+import { PAYOFF_CHECK_WORDS, checkBills, checkPlan, liensPayoffAmount, parseCheckAmount, payoffCheckBank, payoffCheckNote, spreadCheck, type CheckBill } from './lienPayoffCheck'
 
 // Every job, bill, instrument and amount here is made up.
 const bill = (invoiceId: string, jobId: string, open: number, billedYmd: string, stripe = false): LienPayoffBill => ({ invoiceId, jobId, open, billedYmd, stripe })
@@ -104,6 +105,54 @@ describe('checkPlan', () => {
   it('keeps every sentence to plain words', () => {
     for (const p of [plan(16455.5), plan(15000), plan(20640.5), plan(null), plan(1000, { b1: 4420 })]) expect(plainWordsFailures(plainSentence(p.say))).toEqual([])
     for (const w of [PAYOFF_CHECK_WORDS.heldLine, PAYOFF_CHECK_WORDS.overLine, PAYOFF_CHECK_WORDS.amountHint]) expect(plainWordsFailures(w)).toEqual([])
+  })
+})
+
+describe('payoffCheckBank', () => {
+  const TODAY = '2026-11-24'
+  const bank = (over: Partial<BankCheck> = {}): BankCheck => ({ id: 'k1', amount: 16455.5, status: 'pending', depositedYmd: '2026-11-24', postedYmd: null, bankDayYmd: '2026-12-02', checkNumber: '01184', failureReason: null, ...over })
+  const ask = (checks: BankCheck[], today = TODAY, typed: { check: number | null; number: string } = { check: 16455.5, number: '1184' }) => payoffCheckBank(typed, checks, today)
+
+  it('holds a check the bank has not cleared, and says the day it may be recorded', () => {
+    const b = ask([bank()])
+    expect(plainSentence(b.hold ?? '')).toBe('Check 01184 is at the bank. The bank says it clears Dec 2. Record it then.')
+    expect(b).toMatchObject({ note: null, tone: 'amber' })
+    expect(plainSentence(ask([bank({ status: 'sent', postedYmd: '2026-11-25' })], '2026-11-26').hold ?? '')).toBe('The bank posted check 01184 on Nov 25. It can still come back until Dec 2. Record it then.')
+    expect(plainSentence(ask([bank()], '2026-12-03').hold ?? '')).toBe('The bank named Dec 2 for check 01184. It has not posted it. Record it once the bank clears it.')
+    expect(plainSentence(ask([bank({ status: 'failed', failureReason: 'There was an issue with this transaction' })]).hold ?? '')).toBe('The bank could not read check 01184. Deposit it again.')
+    const back = ask([bank({ status: 'failed', failureReason: 'Insufficient funds' })])
+    expect(plainSentence(back.hold ?? '')).toBe('Check 01184 came back. The bank said insufficient funds. Do not record it.')
+    expect(back.tone).toBe('red')
+  })
+
+  it('lets a cleared check through and says the bank cleared it', () => {
+    const b = ask([bank({ status: 'sent', postedYmd: '2026-11-25' })], '2026-12-02')
+    expect(b.hold).toBeNull()
+    expect(plainSentence(b.note ?? '')).toBe('The bank cleared check 01184 on Dec 2.')
+    expect(b.tone).toBe('green')
+  })
+
+  it('lets a check through when the bank shows no deposit of it, and says what that means', () => {
+    expect(ask([])).toMatchObject({ hold: null, note: PAYOFF_CHECK_WORDS.noDeposit, tone: 'amber' })
+    // Another amount is another check.
+    expect(ask([bank()], TODAY, { check: 16455, number: '1184' }).hold).toBeNull()
+    // Nothing to ask until the check is typed whole.
+    expect(ask([bank()], TODAY, { check: 16455.5, number: '' })).toMatchObject({ hold: null, note: null })
+    expect(ask([bank()], TODAY, { check: null, number: '1184' })).toMatchObject({ hold: null, note: null })
+  })
+
+  it('makes the press dead with the bank’s words', () => {
+    const held = checkPlan({ check: 16455.5, number: '1184', bills: bills(), pays: spreadCheck(16455.5, bills()), bank: ask([bank()]) })
+    expect(held.words.dead).toBe(true)
+    expect(held.tone).toBe('amber')
+    expect(plainSentence(held.say)).toBe('Check 01184 is at the bank. The bank says it clears Dec 2. Record it then.')
+    const cleared = checkPlan({ check: 16455.5, number: '1184', bills: bills(), pays: spreadCheck(16455.5, bills()), bank: ask([bank({ status: 'sent', postedYmd: '2026-11-25' })], '2026-12-02') })
+    expect(cleared.words.dead).toBe(false)
+  })
+
+  it('keeps every sentence to plain words', () => {
+    const all = [ask([bank()]), ask([bank()], '2026-12-03'), ask([bank({ status: 'sent', postedYmd: '2026-11-25' })], '2026-11-26'), ask([bank({ status: 'sent', postedYmd: '2026-11-25' })], '2026-12-02'), ask([bank({ status: 'failed', failureReason: 'Insufficient funds' })]), ask([])]
+    for (const b of all) for (const line of [b.hold, b.note]) if (line) expect(plainWordsFailures(plainSentence(line))).toEqual([])
   })
 })
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainSentence } from '../valuesInPlace'
 import { plainWordsFailures } from '../plainWords'
+import type { BankCheck } from './checkCleared'
 import {
   LIEN_PAYOFF_STEPS,
   lastPayment,
@@ -25,6 +26,8 @@ const TODAY = '2026-11-24'
 const aff = (over: Partial<LienPayoffAffidavit> = {}): LienPayoffAffidavit => ({ id: 'a1', job_id: 'j1', amount: 7420, county: 'Travis', recording_number: '2026-0412207', filed_at: '2026-11-09', ...over })
 const rel = (over: Partial<LienPayoffRelease> = {}): LienPayoffRelease => ({ id: 'r1', job_id: 'j1', created_at: '2026-11-24T18:00:00Z', filed_at: null, recording_number: '2026-0412207', fields: {}, ...over })
 const check = (over: Partial<LienPayoffPayment> = {}): LienPayoffPayment => ({ amount: 7420, paid_on: '2026-11-24', payment_type: 'Check', reference_number: '1184', ...over })
+/** The bank's deposit of check 1184: $16,455.50, deposited Nov 24, the bank's day Dec 2. */
+const bank = (over: Partial<BankCheck> = {}): BankCheck => ({ id: 'b1', amount: 16455.5, status: 'pending', depositedYmd: '2026-11-24', postedYmd: null, bankDayYmd: '2026-12-02', checkNumber: '01184', failureReason: null, ...over })
 const step = (over: Partial<Parameters<typeof lienPayoffStep>[0]> = {}) => lienPayoffStep({ affidavit: aff(), releases: [], affidavitsOnJob: 1, open: 0, payments: [], todayYmd: TODAY, ...over })
 
 describe('lienPayoffStep', () => {
@@ -42,20 +45,48 @@ describe('lienPayoffStep', () => {
     expect(plainSentence(s.say)).toBe('Part paid. $1,455.50 is still open on this job’s bills.')
   })
 
-  it('owes the release once the bills read paid, and warns while the check clears', () => {
-    const s = step({ payments: [check()] })
+  it('owes the release once the bills read paid by money that needs no bank', () => {
+    const card = step({ payments: [check({ payment_type: 'Card (external)', reference_number: null })] })
+    expect(card.step).toBe('release')
+    expect(plainSentence(card.say)).toBe('Paid Nov 24 by card. The release is owed.')
+    expect(card.warn).toBeNull()
+    expect(card.press).toEqual({ label: 'Make the release ›', door: 'release' })
+  })
+
+  it('offers no release while the bank has not cleared the check', () => {
+    const s = step({ payments: [check()], bank: [bank()] })
+    expect(s.step).toBe('bank')
+    expect(plainSentence(s.say)).toBe('Paid Nov 24 by check 1184.')
+    expect(plainSentence(s.warn ?? '')).toBe('Check 1184 is at the bank. The bank says it clears Dec 2. The release waits until then.')
+    expect(s.warnTone).toBe('amber')
+    expect(s.press).toBeNull()
+    // Posted is not cleared: the bank's own day still rules.
+    const posted = step({ payments: [check()], bank: [bank({ status: 'sent', postedYmd: '2026-11-25' })], todayYmd: '2026-12-01' })
+    expect(posted.step).toBe('bank')
+    expect(plainSentence(posted.warn ?? '')).toBe('The bank posted check 1184 on Nov 25. It can still come back until Dec 2. The release waits until then.')
+  })
+
+  it('owes the release the day the bank clears the check', () => {
+    const s = step({ payments: [check()], bank: [bank({ status: 'sent', postedYmd: '2026-11-25' })], todayYmd: '2026-12-02' })
     expect(s.step).toBe('release')
     expect(plainSentence(s.say)).toBe('Paid Nov 24 by check 1184. The release is owed.')
-    expect(plainSentence(s.warn ?? '')).toBe('The check clears about Dec 1.')
-    expect(s.warnTone).toBe('amber')
+    expect(s.warn).toBeNull()
     expect(s.press).toEqual({ label: 'Make the release ›', door: 'release' })
   })
 
-  it('does not warn once the check has had its seven days, or for money that is not a check', () => {
-    expect(step({ payments: [check()], todayYmd: '2026-12-01' }).warn).toBeNull()
-    const card = step({ payments: [check({ payment_type: 'Card (external)', reference_number: null })] })
-    expect(plainSentence(card.say)).toBe('Paid Nov 24 by card. The release is owed.')
-    expect(card.warn).toBeNull()
+  it('waits seven days from the day typed when the bank shows no deposit of the check', () => {
+    const s = step({ payments: [check()] })
+    expect(s.step).toBe('bank')
+    expect(plainSentence(s.warn ?? '')).toBe('The bank shows no deposit of check 1184. Without one it counts as cleared Dec 1. The release waits until then.')
+    expect(step({ payments: [check()], todayYmd: '2026-12-01' }).step).toBe('release')
+  })
+
+  it('opens the bills in red when the check came back', () => {
+    const s = step({ payments: [check()], bank: [bank({ status: 'failed', failureReason: 'Insufficient funds' })] })
+    expect(s.step).toBe('bank')
+    expect(plainSentence(s.warn ?? '')).toBe('Check 1184 came back. The bank said insufficient funds. The release waits for a payment that holds.')
+    expect(s.warnTone).toBe('red')
+    expect(s.press).toEqual({ label: 'Open the bills ›', door: 'bill' })
   })
 
   it('reads paid bills with no payment row', () => {
@@ -86,6 +117,12 @@ describe('lienPayoffStep', () => {
       step({ open: 7420 }),
       step({ open: 1455.5, payments: [check({ amount: 5964.5 })] }),
       step({ payments: [check()] }),
+      step({ payments: [check()], bank: [bank()] }),
+      step({ payments: [check()], bank: [bank({ status: 'sent', postedYmd: '2026-11-25' })] }),
+      step({ payments: [check()], bank: [bank()], todayYmd: '2026-12-03' }),
+      step({ payments: [check()], bank: [bank({ status: 'failed', failureReason: 'There was an issue with this transaction' })] }),
+      step({ payments: [check()], bank: [bank({ status: 'failed', failureReason: 'Insufficient funds' })] }),
+      step({ payments: [check({ payment_type: 'Cash', reference_number: null })] }),
       step(),
       step({ releases: [rel()], open: 300 }),
       step({ releases: [rel({ filed_at: '2026-12-03', fields: { releaseInstrument: '2026-0431955' } })] }),
@@ -180,7 +217,7 @@ describe('lienPayoffPlaces and the strip', () => {
 
   it('lifts a paid place to the top and counts its releases owed', () => {
     const places = lienPayoffPlaces(
-      facts({ openByJob: { j1: 0, j2: 0, j3: 1455.5, j4: 900 }, paymentsByJob: { j1: [check()], j2: [check({ amount: 5160.5 })], j3: [check({ amount: 2419.5 })] } }),
+      facts({ openByJob: { j1: 0, j2: 0, j3: 1455.5, j4: 900 }, paymentsByJob: { j1: [check({ paid_on: '2026-11-10' })], j2: [check({ amount: 5160.5, paid_on: '2026-11-10' })], j3: [check({ amount: 2419.5 })] } }),
     )
     expect(places[0]!.payer).toBe('Marisol Okafor')
     expect(places[0]!.rows.map((r) => r.step.step)).toEqual(['release', 'release', 'money'])
@@ -224,6 +261,59 @@ describe('lienPayoffPlaces and the strip', () => {
     expect(plainSentence(lienPayoffOtherLine(here.other) ?? '')).toBe('$640.00 more is open here on 2071. It is not liened.')
     expect(lienPayoffOtherLine([])).toBeNull()
     expect(places.find((p) => p.payer === 'Calloway Homes')!.other).toEqual([])
+  })
+
+  it('holds a place paid by a check the bank has not cleared, and counts it on the strip', () => {
+    const paidByCheck = { openByJob: { j1: 0, j2: 0, j3: 0, j4: 900 }, paymentsByJob: { j1: [check()], j2: [check({ amount: 5160.5 })], j3: [check({ amount: 3875 })] }, bank: [bank()] }
+    const places = lienPayoffPlaces(facts(paidByCheck))
+    const here = places.find((p) => p.payer === 'Marisol Okafor')!
+    expect(here.rows.map((r) => r.step.step)).toEqual(['bank', 'bank', 'bank'])
+    expect(plainSentence(here.headline)).toBe('Paid by a check that has not cleared. 3 releases wait for the bank.')
+    expect(places[0]).toBe(here)
+    const strip = lienPayoffStrip(places)
+    expect(strip).toMatchObject({ owed: 0, bank: 3, onRecord: 1, tone: 'plain' })
+    expect(plainSentence(strip.say ?? '')).toBe('3 paid liens wait for the bank to clear a check.')
+    // The day the bank clears it, the three releases are owed.
+    const cleared = lienPayoffPlaces(facts({ ...paidByCheck, bank: [bank({ status: 'sent', postedYmd: '2026-11-25' })], todayYmd: '2026-12-02' }))
+    expect(cleared[0]!.rows.map((r) => r.step.step)).toEqual(['release', 'release', 'release'])
+    expect(plainSentence(lienPayoffStrip(cleared).say ?? '')).toBe('3 liens are paid and still on record.')
+  })
+
+  it('says a check for exactly what pays a place’s liens off is at the bank, before anything is recorded', () => {
+    const places = lienPayoffPlaces(facts({ bank: [bank(), bank({ id: 'b2', amount: 16455.51, checkNumber: '9' })] }))
+    const here = places.find((p) => p.payer === 'Marisol Okafor')!
+    expect(here.bank?.check.id).toBe('b1')
+    expect(plainSentence(here.bank?.say ?? '')).toBe('Check 01184 for $16,455.50 is at the bank. The bank says it clears Dec 2. Nothing is recorded until then.')
+    expect(here.bank?.tone).toBe('amber')
+    expect(here.rows.every((r) => r.step.step === 'money')).toBe(true)
+    expect(places[0]).toBe(here)
+    expect(places.find((p) => p.payer === 'Calloway Homes')!.bank).toBeNull()
+    const strip = lienPayoffStrip(places)
+    expect(strip).toMatchObject({ atBank: 1, toRecord: 0, tone: 'plain' })
+    expect(plainSentence(strip.say ?? '')).toBe('1 check for liens on record is at the bank.')
+  })
+
+  it('says the check is ready to record the day the bank clears it, and lifts the strip to amber', () => {
+    const places = lienPayoffPlaces(facts({ bank: [bank({ status: 'sent', postedYmd: '2026-11-25' })], todayYmd: '2026-12-02' }))
+    const here = places[0]!
+    expect(here.payer).toBe('Marisol Okafor')
+    expect(plainSentence(here.bank?.say ?? '')).toBe('The bank cleared check 01184 for $16,455.50 on Dec 2. It is ready to record.')
+    expect(here.bank?.tone).toBe('green')
+    const strip = lienPayoffStrip(places)
+    expect(strip).toMatchObject({ toRecord: 1, tone: 'amber' })
+    expect(plainSentence(strip.say ?? '')).toBe('1 check has cleared for liens on record. Record it.')
+  })
+
+  it('reads a check as the place’s own when it also covers the money open there with no lien, and drops an old one', () => {
+    const f = facts()
+    const trip = { id: 'j9', hcp_number: null, click_number: '2071', job_name: 'Okafor trip charge', job_address: '212 Larkspur Ct, Austin', customer_id: 'c1', customer_name: 'Marisol Okafor' }
+    const withTrip = { ...f, otherJobs: [trip], openByJob: { ...f.openByJob, j9: 640 } }
+    expect(lienPayoffPlaces({ ...withTrip, bank: [bank({ amount: 17095.5 })] })[0]!.bank?.check.amount).toBe(17095.5)
+    expect(lienPayoffPlaces({ ...withTrip, bank: [bank({ amount: 640 })] }).every((p) => p.bank === null)).toBe(true)
+    expect(lienPayoffPlaces({ ...f, bank: [bank({ depositedYmd: '2026-10-20' })] }).every((p) => p.bank === null)).toBe(true)
+    // The bank could not read it, or sent it back: said, with nothing to record.
+    expect(plainSentence(lienPayoffPlaces({ ...f, bank: [bank({ status: 'failed', failureReason: 'Insufficient funds' })] })[0]!.bank?.say ?? '')).toBe('Check 01184 for $16,455.50 came back. The bank said insufficient funds. Nothing was recorded.')
+    expect(plainSentence(lienPayoffPlaces({ ...f, bank: [bank({ status: 'failed', failureReason: 'There was an issue with this transaction' })] })[0]!.bank?.say ?? '')).toBe('The bank could not read check 01184 for $16,455.50. Deposit it again.')
   })
 
   it('says nothing when no lien is filed', () => {
