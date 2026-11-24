@@ -4,7 +4,7 @@
  * Layout's chunk boundary above it, as fifteen routes in `App.tsx` stand. Each test forces a rejected lazy import.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { lazy, Suspense, type ComponentType } from 'react'
 import { CHUNK_RECOVERY_KEY, forgetChunkRecoveryReload } from '../lib/chunkLoadRecovery'
 import { __resetUnsavedWorkForTests } from '../lib/unsavedWork'
@@ -39,6 +39,7 @@ describe('RoutePageBoundary', () => {
   afterEach(() => {
     cleanup()
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('draws its page while nothing throws', () => {
@@ -79,8 +80,10 @@ describe('RoutePageBoundary', () => {
     expect(await screen.findByText(/This page could not load/)).toBeTruthy()
     expect(screen.queryByText(RED_WORDS)).toBeNull()
     expect(hardReloadFromRoot).not.toHaveBeenCalled()
+    // Reload asks the network first (`routeReload.ts`), and reloads on its answer.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<svg/>', { headers: { 'content-type': 'image/svg+xml' } })))
     fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
-    expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(hardReloadFromRoot).toHaveBeenCalledTimes(1))
   })
 
   it('offline: no reload by itself, the words and the Reload press', async () => {
