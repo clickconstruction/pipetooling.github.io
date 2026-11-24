@@ -27628,6 +27628,67 @@ export type Database = {
           },
         ]
       }
+      lien_run_left_out: {
+        Row: {
+          id: string
+          job_id: string
+          left_out_at: string
+          left_out_by: string
+          note: string
+          paper: string
+          put_back_at: string | null
+          put_back_by: string | null
+          reason: string
+          run_day: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          left_out_at?: string
+          left_out_by: string
+          note?: string
+          paper: string
+          put_back_at?: string | null
+          put_back_by?: string | null
+          reason: string
+          run_day: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          left_out_at?: string
+          left_out_by?: string
+          note?: string
+          paper?: string
+          put_back_at?: string | null
+          put_back_by?: string | null
+          reason?: string
+          run_day?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lien_run_left_out_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lien_run_left_out_left_out_by_fkey"
+            columns: ["left_out_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lien_run_left_out_put_back_by_fkey"
+            columns: ["put_back_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       logbook_shares: {
         Row: {
           shown_at: string
@@ -53395,6 +53456,17 @@ export type Database = {
       }
       set_job_uncollectible: {
         Args: { p_flagged: boolean; p_job_id: string; p_reason?: string }
+        Returns: Json
+      }
+      set_lien_run_left_out: {
+        Args: {
+          p_job_id: string
+          p_left_out: boolean
+          p_note?: string
+          p_paper: string
+          p_reason?: string
+          p_run_day: string
+        }
         Returns: Json
       }
       set_lien_sign_code: { Args: { p_code: string }; Returns: undefined }
