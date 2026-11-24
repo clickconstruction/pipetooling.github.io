@@ -11,6 +11,9 @@
  * a fault of ours and not of the site, so the card says so with the reason, and offers no Retry (the owner's call D).
  * A later read that fails keeps the card that is up, with the Nos pressed on it.
  *
+ * A send carries the bullets the card showed, and the door marks those alone: a card left open while the office added
+ * a bullet, or gave a No a new yes, never marks one it did not show. What it did not show is left to the office.
+ *
  * A send that is refused reads again. The card was read before the answer, so a refusal means it is older than the
  * list: one of the crew answered first, or the office changed a bullet. The words say which, and the card then shows
  * what is true now, or leaves. Without that read a second person on the crew kept a card no press could answer.
@@ -110,7 +113,12 @@ export function JobModeArrivalCheck({ jobId, io = supabaseStartChecksIo }: { job
     if (!ask) return
     setBusy(true)
     try {
-      const kept = await io.arrive(ask.fixtureId, nos)
+      // The card sends the list it showed, so an answer marks those bullets and no other (v2.8368).
+      const kept = await io.arrive(
+        ask.fixtureId,
+        nos,
+        ask.bullets.map((b) => b.id),
+      )
       gen.current += 1
       setSaid({ no: nos.length, pushed: kept.pushed })
       setNo({})

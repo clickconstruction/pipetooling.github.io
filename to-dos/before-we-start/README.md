@@ -2,7 +2,7 @@
 name: "Before we start: what has to be true before a stage begins, who said so, and who decided to go"
 number: 382
 group: close
-status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · audited 2026-11-20, six fixes from it (v2.8136 to v2.8178) and six more on Taunya's word (v2.8237, v2.8238, v2.8243, v2.8245, v2.8247, v2.8248) · the faults seen and not fixed are being built on the owner's word of 2026-11-23 (v2.8360 the Schedule look's reading line and the failed push's word, v2.8366 every arrival's No line, v2.8367 Not as told clears on a new yes) · left: a live walk on the ZZ job, the dev seat's verb
+status: asked 2026-11-17 · drawn twice, then built as a working spike the owner clicked through and shaped the same day · he approved all of it and asked for it to be built in another session · the build began 2026-11-19 on Grace's word · the train of eleven is built: PR 1, values in place (v2.7985), PR 2, the rules (v2.7992), PR 3, the table (v2.7997), PR 4, the list on a stage (v2.8003), PR 5, the Schedule look (v2.8006), PR 6, Ask them (v2.8010), PR 7, Go or hold (v2.8012), PR 8, our bullets read the app (v2.8015), PR 9, the GC's page (v2.8018), PR 10, on arrival (v2.8110) and PR 11, the line of time (v2.8111) · audited 2026-11-20, six fixes from it (v2.8136 to v2.8178) and six more on Taunya's word (v2.8237, v2.8238, v2.8243, v2.8245, v2.8247, v2.8248) · the faults seen and not fixed are being built on the owner's word of 2026-11-23 (v2.8360 the Schedule look's reading line and the failed push's word, v2.8366 every arrival's No line, v2.8367 Not as told clears on a new yes, v2.8368 the card sends the list it showed, whose migration waits for a go) · left: a live walk on the ZZ job, the dev seat's verb
 summary: >
   For each stage the office writes a short list of things that must be true before the crew goes. It is a
   checklist, and the same checklist in every seat: the office ticks what the customer told it, the GC ticks
@@ -500,6 +500,19 @@ and its findings 6 and 8.
    - What to see: **Show it on a line of time** and **Print the days they gave** on two lines, each tap opening its
      own. At 1280 px the line of time's rows have air between them.
    - Why not yet: it was measured on a page that loads the app's stylesheet, not in the app.
+   - **Walked on clicktooling.com on 2026-11-23, as a dev: holds, with two notes.** The Browser pane was hidden, so the two presses were sent by an in-page click and the layout was read, with no screenshot.
+     At 320 px and at 360 px the two presses sit on two lines, about 45 px apart, with no sideways scroll.
+     **Show it on a line of time** drew five rows, and the red *moved 2 days* words stayed inside their row at 320 and 360 px, in light and in dark.
+     At 1280 px the rows have 4 px of air between them, in light and in dark.
+     **Print the days they gave** opened its own window and left the line of time as it was.
+     - Note: once the line shows, the shorter **Hide the line of time** and **Print the days they gave** share one line at 360 px, 20 px apart. They do not share a tap.
+     - Note: each press is 20 px tall, under the 44 px the app gives most presses.
+     - Seen in passing, not looked into: on the line of time, the four rows of JP9309's stages read *JP9309 · ZZ Test Walk Project 2026-11-08*, which is JP1113's name, not JP9309's. The pane blocked the print window, since the click was not a person's tap, and the page said nothing about it.
+
+**Walks 1 and 2 held on 2026-11-23.** Both need a second account on the ZZ job's crew, and the job's crew is the dev alone.
+Nobody else is on its team or has clocked in on it in the last 14 days, which is what `start_checks_crew` reads.
+Putting the Sample helper and the Sample superintendent on its team, and taking them off after, is a write this card does not name, so it waits for a yes.
+Walk 1 also needs two sign-ins at once: the dev on clicktooling.com, and View as on a second origin, a dev server on `main`'s code.
 
 Not walkable on purpose: a first read the app refuses, and call C's 14 days. Their render tests and the SQL bed are
 the proof.
@@ -509,9 +522,10 @@ the proof.
 - **One test row on production.** Arrival `b23b0b4a-5623-4b01-b6b5-99b6ee37192d` on the ZZ job, from the build's walk
   on 2026-11-20. It has no Dispatch line. A dev deletes it when the ZZ job is done with.
 - **Faults seen and not fixed.**
-  - The card does not send the list it showed. An answer to what is asked again marks every bullet asked about. A
-    card left open while the office adds a bullet, or a new yes, can mark one it never showed. The pick: a third
-    argument on `start_check_arrive` and a change to the card. Not built.
+  - ~~The card does not send the list it showed. An answer to what is asked again marks every bullet asked about. A
+    card left open while the office adds a bullet, or a new yes, can mark one it never showed.~~ The pick: a third
+    argument on `start_check_arrive` and a change to the card. Built as v2.8368, migration
+    `20261123100000_start_check_arrive_shown.sql`, pushed only on a go that names it and right after its merge.
   - ~~The office reads a stage's newest arrival. With two arrivals the earlier one's *said No on site* line is not
     drawn, though its bullet stays open.~~ Built as v2.8366: a stage holds every arrival, and each bullet's line names
     the arrival that said No on it.
