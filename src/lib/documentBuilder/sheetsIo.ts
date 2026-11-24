@@ -17,7 +17,7 @@ import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { MOVED_ON_PUBLISH, MOVED_ON_SAVE, WRITE_GONE, guardedWrite, type Landed } from './documentBuildersIo'
 import { layOver, parseJobSheet, pruneJobSheet, usualHeldWords, type JobSheet, type ResolvedSheet, type SheetDef, type UsualPublishRow } from './sheet'
-import { gcJobOver, usualPlanFor, type GcJobOver } from './sheetScreen'
+import { gcJobOver, sheetCounts, usualPlanFor, type GcJobOver, type SheetCounts } from './sheetScreen'
 import { DOCUMENT_BUILDERS_TABLE, DOCUMENT_BUILDER_SELECT, builderRecordFromRow, sameContents, type BuilderRecord } from './standing'
 
 const db = supabase as unknown as SupabaseClient
@@ -103,6 +103,12 @@ export async function readBuilderSheets(builderKey: string): Promise<Map<string,
     if (rec) out.set(rec.projectId, rec)
   }
   return out
+}
+
+/** How many of a builder's listed jobs have a published sheet, for its row on the tab's list. Throws with the reason. */
+export async function readSheetCounts(builderKey: string): Promise<SheetCounts> {
+  const [jobs, sheets] = await Promise.all([readGcJobs(), readBuilderSheets(builderKey)])
+  return sheetCounts(jobs, (projectId) => sheets.get(projectId)?.revision ?? 0)
 }
 
 const fail = <T>(e: unknown, fallback: string): Landed<T> => ({ ok: false, error: formatErrorMessage(e, fallback) })

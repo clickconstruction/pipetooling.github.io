@@ -17,6 +17,8 @@ Only a dev sees the builder for now. Every word and every amount on the sheet is
 4. Press {{button:blue|Load the first draft}} when the row reads {{chip:gray|Not loaded yet}}.
 5. Press {{button:blue|Open}}.
 
+The row on the list also counts your jobs, like {{chip:green|A sheet on 2 of 4 jobs}}. A job is counted as having a sheet once its sheet is published.
+
 The sheet is on the right. The cards on the left say what you are changing.
 
 ## Set up your usual sheet
