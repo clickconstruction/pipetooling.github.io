@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('./supabase', () => ({ supabase: {} }))
 
-import { leaveViewAs, VIEW_AS_SIGN_IN_PATH, type ViewAsExitIo } from './impersonationExit'
+import { leaveViewAs, VIEW_AS_SIGN_IN_PATH, VIEW_AS_SIGNED_OUT_WORDS, type ViewAsExitIo } from './impersonationExit'
 
 const ORIGIN = 'https://app.example'
 const TOKENS = { access_token: 'a', refresh_token: 'r' }
@@ -28,6 +28,7 @@ function rig(over: Partial<ViewAsExitIo> = {}) {
     },
     forgetSessionHere: () => calls.push('forgetSessionHere'),
     clearStash: () => calls.push('clearStash'),
+    leaveReason: () => calls.push('leaveReason'),
     go: (path) => calls.push(`go ${path}`),
     ...over,
   }
@@ -66,7 +67,7 @@ describe('leaveViewAs', () => {
     })
     expect(await leaveViewAs(io)).toEqual({ kind: 'signed_out' })
     // Never the page left: the session there would still be the person's.
-    expect(calls).toEqual(['signOutHere', 'forgetSessionHere', 'clearStash', `go ${VIEW_AS_SIGN_IN_PATH}`])
+    expect(calls).toEqual(['signOutHere', 'forgetSessionHere', 'clearStash', 'leaveReason', `go ${VIEW_AS_SIGN_IN_PATH}`])
   })
 
   it('signs this browser out when the swap throws', async () => {
@@ -76,7 +77,7 @@ describe('leaveViewAs', () => {
       },
     })
     expect(await leaveViewAs(io)).toEqual({ kind: 'signed_out' })
-    expect(calls).toEqual(['signOutHere', 'forgetSessionHere', 'clearStash', `go ${VIEW_AS_SIGN_IN_PATH}`])
+    expect(calls).toEqual(['signOutHere', 'forgetSessionHere', 'clearStash', 'leaveReason', `go ${VIEW_AS_SIGN_IN_PATH}`])
   })
 
   it('signs this browser out when the stash holds no session to put back', async () => {
@@ -84,11 +85,35 @@ describe('leaveViewAs', () => {
     const { io, calls } = rig({ raw: JSON.stringify({ returnTo: `${ORIGIN}/jobs` }), setSession })
     expect(await leaveViewAs(io)).toEqual({ kind: 'signed_out' })
     expect(setSession).not.toHaveBeenCalled()
-    expect(calls).toEqual(['signOutHere', 'forgetSessionHere', 'clearStash', `go ${VIEW_AS_SIGN_IN_PATH}`])
+    expect(calls).toEqual(['signOutHere', 'forgetSessionHere', 'clearStash', 'leaveReason', `go ${VIEW_AS_SIGN_IN_PATH}`])
   })
 
   it('signs this browser out when the stash cannot be read', async () => {
     const { io, calls } = rig({ raw: '{not json' })
+    expect(await leaveViewAs(io)).toEqual({ kind: 'signed_out' })
+    expect(calls).toEqual(['signOutHere', 'forgetSessionHere', 'clearStash', 'leaveReason', `go ${VIEW_AS_SIGN_IN_PATH}`])
+  })
+
+  it('leaves the sign-in page its reason on a sign-out, and none when the dev is back', async () => {
+    const leaveReason = vi.fn()
+    const out = rig({ setSession: async () => ({ error: new Error('refused') }), leaveReason })
+    await leaveViewAs(out.io)
+    expect(leaveReason).toHaveBeenCalledWith(VIEW_AS_SIGNED_OUT_WORDS)
+    expect(VIEW_AS_SIGNED_OUT_WORDS).toContain('Sign in again.')
+
+    const kept = vi.fn()
+    const back = rig({ leaveReason: kept })
+    await leaveViewAs(back.io)
+    expect(kept).not.toHaveBeenCalled()
+  })
+
+  it('still loads the sign-in page when the reason cannot be left', async () => {
+    const { io, calls } = rig({
+      setSession: async () => ({ error: new Error('refused') }),
+      leaveReason: () => {
+        throw new Error('QuotaExceededError')
+      },
+    })
     expect(await leaveViewAs(io)).toEqual({ kind: 'signed_out' })
     expect(calls).toEqual(['signOutHere', 'forgetSessionHere', 'clearStash', `go ${VIEW_AS_SIGN_IN_PATH}`])
   })
@@ -102,7 +127,7 @@ describe('leaveViewAs', () => {
       },
     })
     expect(await leaveViewAs(refused.io)).toEqual({ kind: 'signed_out' })
-    expect(refused.calls).toEqual(['signOutHere', 'forgetSessionHere', 'clearStash', `go ${VIEW_AS_SIGN_IN_PATH}`])
+    expect(refused.calls).toEqual(['signOutHere', 'forgetSessionHere', 'clearStash', 'leaveReason', `go ${VIEW_AS_SIGN_IN_PATH}`])
 
     const thrown = rig({
       setSession: async () => ({ error: new Error('refused') }),
@@ -112,6 +137,6 @@ describe('leaveViewAs', () => {
       },
     })
     expect(await leaveViewAs(thrown.io)).toEqual({ kind: 'signed_out' })
-    expect(thrown.calls).toEqual(['signOutHere', 'forgetSessionHere', 'clearStash', `go ${VIEW_AS_SIGN_IN_PATH}`])
+    expect(thrown.calls).toEqual(['signOutHere', 'forgetSessionHere', 'clearStash', 'leaveReason', `go ${VIEW_AS_SIGN_IN_PATH}`])
   })
 })

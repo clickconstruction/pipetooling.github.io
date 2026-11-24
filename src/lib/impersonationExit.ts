@@ -5,14 +5,21 @@
  * Exit puts the dev's own stashed session back. When that swap is refused, the page is still signed
  * in as the person. Before this kernel, Exit took the flag off and moved on anyway: the banner was
  * gone, what is held while View as is on ran again, and every press saved under the person's name.
- * Now a swap that does not answer clean signs this browser out and lands on the sign-in page.
+ * Now a swap that does not answer clean signs this browser out and lands on the sign-in page, which
+ * says why (`VIEW_AS_SIGNED_OUT_WORDS`): a dev who pressed Exit and met a bare sign-in form read it
+ * as a fault.
  *
  * The flag (the stash) comes off last on every path, only once the session is no longer the person's.
  */
 import { supabase } from './supabase'
 import { IMPERSONATION_ORIGINAL_STORAGE_KEY, impersonationReturnPath, readImpersonationStash } from './impersonationSession'
+import { leaveSignInNotice } from './signInNotice'
 
 export const VIEW_AS_SIGN_IN_PATH = '/sign-in'
+
+/** What the sign-in page says after an Exit that had to sign this browser out. */
+export const VIEW_AS_SIGNED_OUT_WORDS =
+  'View as ended, but your own sign-in could not be put back. This browser was signed out so nothing saves as the other person. Sign in again.'
 
 export type ViewAsExitOutcome =
   /** Nobody was being viewed as: there is no stash, so there is nothing to leave. */
@@ -32,6 +39,8 @@ export type ViewAsExitIo = {
   /** Drop this browser's stored sign-in, whatever the server answered. */
   forgetSessionHere: () => void
   clearStash: () => void
+  /** Leave the sign-in page its one line of why, before the load that opens it. */
+  leaveReason: (words: string) => void
   /** A full load, so every loader reads again as whoever is signed in now. */
   go: (path: string) => void
 }
@@ -65,6 +74,11 @@ export async function leaveViewAs(io: ViewAsExitIo): Promise<ViewAsExitOutcome> 
   }
   io.forgetSessionHere()
   io.clearStash()
+  try {
+    io.leaveReason(VIEW_AS_SIGNED_OUT_WORDS)
+  } catch {
+    /* the reason is a courtesy: the sign-out and the load must not wait on it */
+  }
   io.go(VIEW_AS_SIGN_IN_PATH)
   return { kind: 'signed_out' }
 }
@@ -83,6 +97,7 @@ export function leaveViewAsHere(): Promise<ViewAsExitOutcome> {
         .forEach((key) => localStorage.removeItem(key))
     },
     clearStash: () => localStorage.removeItem(IMPERSONATION_ORIGINAL_STORAGE_KEY),
+    leaveReason: (words) => leaveSignInNotice(words),
     go: (path) => window.location.assign(path),
   })
 }
