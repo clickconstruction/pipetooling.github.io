@@ -54,14 +54,18 @@ describe('how long a miss stands', () => {
 })
 
 describe('which answers are kept', () => {
-  it('only an address all three services answered and none found', () => {
+  it('an address Google and the Census both answered and neither found', () => {
     expect(isSettledGeocodeMiss({ nominatim: 'not_found', google: 'not_found', census: 'not_found' })).toBe(true)
   })
 
-  it('nothing when a service was down, refused the key or was over its limit', () => {
-    expect(isSettledGeocodeMiss({ nominatim: 'failed', google: 'not_found', census: 'not_found' })).toBe(false)
+  it('whatever OpenStreetMap did: it often gives the function no answer at all (v2.8484)', () => {
+    expect(isSettledGeocodeMiss({ nominatim: 'failed', google: 'not_found', census: 'not_found' })).toBe(true)
+  })
+
+  it('nothing when Google or the Census was down, refused the key or was over its limit', () => {
     expect(isSettledGeocodeMiss({ nominatim: 'not_found', google: 'failed', census: 'not_found' })).toBe(false)
     expect(isSettledGeocodeMiss({ nominatim: 'not_found', google: 'not_found', census: 'failed' })).toBe(false)
+    expect(isSettledGeocodeMiss({ nominatim: 'failed', google: 'failed', census: 'failed' })).toBe(false)
   })
 
   it('nothing when a service was never asked: Google with no key set', () => {

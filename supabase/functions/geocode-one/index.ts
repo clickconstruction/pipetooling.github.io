@@ -46,7 +46,7 @@ type OkGeocode = {
   /** Present when `refresh_google_only` was used. */
   refreshed?: true
 }
-/** `remembered` and `checked_at` (punch list #408): the miss was answered from memory, and no service was asked. */
+/** `remembered` and `checked_at` (punch list #408): the miss was answered from memory, and no service was asked. `checked_at` alone: a fresh miss that was just kept (v2.8484). */
 type Fail = { ok: false; address_normalized: string; error: string; detail?: string; remembered?: true; checked_at?: string }
 
 /**
@@ -209,7 +209,7 @@ serve(async (req) => {
     return await answer(out)
   }
 
-  // A miss that still stands (punch list #408): every service missed this address in the last
+  // A miss that still stands (punch list #408): Google and the Census both missed this address in the last
   // GEOCODE_MISS_STANDS_DAYS days, so it is answered from memory and none is asked. `retry: true`,
   // a person's press, asks past it. Best effort: a failed read asks as before.
   if (body.retry !== true) {
@@ -235,7 +235,7 @@ serve(async (req) => {
 
   const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY')?.trim() ?? ''
 
-  // What each service said, so a miss is kept only when all three said *not found* (punch list #408).
+  // What each service said. A miss is kept when Google and the Census both said *not found* (punch list #408).
   let nominatimSaid: GeocodeServiceSaid = 'failed'
   let googleSaid: GeocodeServiceSaid = 'not_asked'
 
@@ -319,27 +319,37 @@ serve(async (req) => {
     return await answer(out)
   }
   const censusNote = c.error === 'census_upstream' ? `US Census: ${c.detail ?? 'service error'}` : (c.detail ?? 'no match from US Census')
-  // The street map's refusal leads, so the answer says why its point was not taken (v2.4975).
-  const missNote = nominatimRefused ? `${nominatimRefused}; ${censusNote}` : censusNote
 
-  // Every service answered and none found it: keep the miss, so the next ask is answered from memory
-  // (punch list #408). A service that was down, refused the key or was over its limit keeps nothing.
-  // The keeping is best effort: a refused or failed write never changes the answer.
+  // OpenStreetMap gave no plain answer: say so in the function's log and in the answer (v2.8484).
+  if (!r.ok) console.warn(`geocode-one: OpenStreetMap gave no plain answer: HTTP ${r.status}`)
+  const nominatimNote = !r.ok ? `OpenStreetMap (Nominatim) HTTP ${r.status}` : ''
+  // The street map's refusal leads, so the answer says why its point was not taken (v2.4975).
+  const missNote = [nominatimRefused || nominatimNote, censusNote].filter((x) => x).join('; ')
+
+  // Google and the Census both answered and neither found it: keep the miss, so the next ask is answered
+  // from memory (punch list #408). Either of them down, refused or over its limit keeps nothing.
+  // OpenStreetMap is not part of the rule (v2.8484): it often gives the function no answer at all.
+  // The keeping is best effort: a refused or failed write never changes the answer, and a miss that
+  // was kept answers with the day.
+  let keptAt: string | null = null
   if (isSettledGeocodeMiss({ nominatim: nominatimSaid, google: googleSaid, census: geocodeServiceSaid(c.error) })) {
     const kept = googleFail?.detail ? `${googleFail.detail}; ${missNote}` : missNote
     const { error: missWriteErr } = await supabase
       .from('address_geocode_misses')
       .upsert({ address_normalized: key, error_code: 'not_found', detail: geocodeMissDetail(kept) }, { onConflict: 'address_normalized' })
-    if (missWriteErr && missWriteErr.code !== '42501' && !/row-level security|read-only \(training\) mode/i.test(missWriteErr.message ?? '')) {
+    if (!missWriteErr) keptAt = new Date().toISOString()
+    else if (missWriteErr.code !== '42501' && !/row-level security|read-only \(training\) mode/i.test(missWriteErr.message ?? '')) {
       console.warn(`geocode-one: the miss could not be kept: ${missWriteErr.message}`)
     }
   }
+  const keptDay = keptAt ? { checked_at: keptAt } : {}
 
   // Keep the more actionable Google failure as the primary error; note the Census outcome in the detail.
   if (googleFail) {
     const out: Fail = {
       ...googleFail,
       detail: googleFail.detail ? `${googleFail.detail}; ${missNote}` : missNote,
+      ...keptDay,
     }
     return await answer(out)
   }

@@ -4,7 +4,7 @@
  * `address_geocodes` keeps a point, so it cannot hold an address nobody placed, and every screen that
  * listed such a record asked OpenStreetMap, Google and the Census again on every open. A miss is now
  * kept in `address_geocode_misses` with the day it was checked. `geocode-address-batch` and
- * `geocode-one` read it before they ask and write it when every service said *not found*; the screens
+ * `geocode-one` read it before they ask and write it when Google and the Census both said *not found*; the screens
  * read it beside the saved points and send only an address that is in neither. This file is the rule
  * both sides share, so the edge functions and `src` import the same one.
  */
@@ -34,12 +34,17 @@ export type GeocodeServiceSaid = 'not_found' | 'failed' | 'not_asked'
 export type GeocodeServicesSaid = { nominatim: GeocodeServiceSaid; google: GeocodeServiceSaid; census: GeocodeServiceSaid }
 
 /**
- * True only when all three services answered and none found the address: the one case worth
- * remembering. A service that was down, or was never asked, leaves the address to be asked again on
- * the next open, so an outage cannot mark good addresses for weeks.
+ * True when Google and the Census each answered and neither found the address: the case worth
+ * remembering. Either of them down, refused, over its limit or never asked leaves the address to be
+ * asked again on the next open, so an outage cannot mark good addresses for weeks.
+ *
+ * OpenStreetMap is asked first and is not part of the rule (v2.8484). It is a free service that turns
+ * a busy caller away, and on the live site it gave the function no plain answer on 2026-11-24, so the
+ * first rule, which waited for all three to say *not found*, kept nothing. When this is reached
+ * OpenStreetMap did not place the address either way: it said *not found*, or it did not answer.
  */
 export function isSettledGeocodeMiss(said: GeocodeServicesSaid): boolean {
-  return said.nominatim === 'not_found' && said.google === 'not_found' && said.census === 'not_found'
+  return said.google === 'not_found' && said.census === 'not_found'
 }
 
 /** A geocoder's error code as one of the three words: its own `not_found`, else `failed`. */
@@ -83,7 +88,9 @@ export function geocodeMissDetail(detail: string | null | undefined): string | n
 /**
  * The failure a function answers for a remembered miss, in the shape it already answers a fresh one,
  * with two more fields: `remembered` says nothing was asked, and `checked_at` says when it last was.
- * A client that predates them reads the code and the detail as it always did.
+ * A client that predates them reads the code and the detail as it always did. A fresh failure whose
+ * miss was just kept carries `checked_at` too, without `remembered` (v2.8484): that is how a caller
+ * tells a miss that was kept from one that was not.
  */
 export function rememberedGeocodeFailure(row: GeocodeMissRow): {
   address_normalized: string

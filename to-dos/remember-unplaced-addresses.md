@@ -116,6 +116,10 @@ headroom and a faster screen, not a bill.
    miss away on a hit. The readers read the misses after the saved points, for the addresses with no
    point alone, so an open with every address placed makes no extra request. The 30 days are one
    constant, `GEOCODE_MISS_STANDS_DAYS`, in a file the functions and the screens share.
+   **Mended as v2.8484** ([the fragment](../docs/recent-features/v2.8484.md)). The first live check
+   found that no miss was kept: OpenStreetMap gave the function no plain answer, and the rule waited
+   for all three services. A miss is now kept when Google and the Census both say *not found*.
+   That is a fourth call for the owner, written in the fragment.
 3. **The press (XS).** *N jobs have no map location yet* on the Dashboard, Pipeline and Bid Board
    cards becomes a press that opens the Map page's list: each record, why it could not be placed and
    the day it was checked, **Open the job** to fix the address, and **Try again**, which asks past

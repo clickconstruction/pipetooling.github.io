@@ -128,8 +128,23 @@ describe('geocode-address-batch remembers an address no service could place (pun
     expect(out.failures).toHaveLength(1)
     expect(out.failures[0]).toMatchObject({ address_normalized: KEY, error_code: 'not_found' })
     expect(out.failures[0]!.remembered).toBeUndefined()
+    // A miss that was kept answers with the day, and one that was not does not (v2.8484).
+    expect(Number.isFinite(Date.parse(String(out.failures[0]!.checked_at)))).toBe(true)
     expect(db.missUpserts).toEqual([{ address_normalized: KEY, error_code: 'not_found', detail: 'No match from OpenStreetMap or Google; no match from US Census' }])
     expect(db.pointUpserts).toEqual([])
+  })
+
+  it('OpenStreetMap gives no answer, Google and the Census say not found: the miss is kept all the same (v2.8484)', async () => {
+    net.nominatim = 403
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const out = await post({ addresses: [WORDS, `${WORDS} two`] })
+    expect(out.failures).toHaveLength(2)
+    expect(out.failures[0]).toMatchObject({ address_normalized: KEY, error_code: 'not_found', detail: 'OpenStreetMap (Nominatim) HTTP 403; no match from Google; no match from US Census' })
+    expect(Number.isFinite(Date.parse(String(out.failures[0]!.checked_at)))).toBe(true)
+    expect(db.missUpserts.map((m) => m.address_normalized)).toEqual([KEY, `${KEY} two`])
+    // Said once a call in the function's log, not once an address.
+    expect(warn.mock.calls.filter((c) => String(c[0]).includes('OpenStreetMap gave no plain answer'))).toHaveLength(1)
+    warn.mockRestore()
   })
 
   it('a miss that stands: no service is asked, and the answer says so with the day it was checked', async () => {
@@ -180,6 +195,7 @@ describe('an outage keeps nothing, so good addresses are not marked for weeks', 
     net.google = 'OVER_QUERY_LIMIT'
     const out = await post({ addresses: [WORDS] })
     expect(out.failures[0]).toMatchObject({ error_code: 'google_over_query' })
+    expect(out.failures[0]!.checked_at).toBeUndefined()
     expect(db.missUpserts).toEqual([])
   })
 
@@ -187,12 +203,6 @@ describe('an outage keeps nothing, so good addresses are not marked for weeks', 
     net.google = 'REQUEST_DENIED'
     const out = await post({ addresses: [WORDS] })
     expect(out.failures[0]).toMatchObject({ error_code: 'google_denied' })
-    expect(db.missUpserts).toEqual([])
-  })
-
-  it('the street map down', async () => {
-    net.nominatim = 503
-    await post({ addresses: [WORDS] })
     expect(db.missUpserts).toEqual([])
   })
 

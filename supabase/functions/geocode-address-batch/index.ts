@@ -124,10 +124,11 @@ serve(async (req) => {
   const results: { address_normalized: string; lat: number; lng: number }[] = []
   // Per-address failure reasons; error_code values match mapGeocodeErrorMessage on the client.
   // `remembered` and `checked_at` (punch list #408) mark a miss answered from memory, with nothing asked.
+  // `checked_at` alone marks a fresh miss that was just kept (v2.8484).
   const failures: { address_normalized: string; error_code: string; detail?: string; remembered?: true; checked_at?: string }[] = []
   const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY')?.trim() ?? ''
 
-  // The misses that still stand (punch list #408): an address every service missed in the last
+  // The misses that still stand (punch list #408): an address Google and the Census both missed in the last
   // GEOCODE_MISS_STANDS_DAYS days is answered from here, and no service is asked. `retry: true`,
   // a person's Try again, asks past it. Best effort: a failed read asks as before.
   const retry = body.retry === true
@@ -145,12 +146,16 @@ serve(async (req) => {
   }
   // Nominatim asks for a second between requests: the wait is owed only once one has been sent.
   let askedNominatim = false
+  // OpenStreetMap turning the function away is said once a call, in the function's log (v2.8484).
+  let warnedNominatim = false
 
   for (let i = 0; i < uniqueInput.length; i++) {
     const { key, display } = uniqueInput[i]!
     let failure: { error_code: string; detail?: string } | null = null
-    // What each service said, so a miss is kept only when all three said *not found*.
+    // What each service said. A miss is kept when Google and the Census both said *not found*.
     let nominatimSaid: GeocodeServiceSaid = 'not_asked'
+    // Set when OpenStreetMap gave no plain answer, so the failure's words can say so.
+    let nominatimNote = ''
     let googleSaid: GeocodeServiceSaid = 'not_asked'
 
     const { data: existing, error: exErr } = await supabase
@@ -209,6 +214,13 @@ serve(async (req) => {
       failure = { error_code: 'upstream', detail: 'OpenStreetMap (Nominatim) request failed' }
     }
     nominatimSaid = failure ? geocodeServiceSaid(failure.error_code) : 'not_asked'
+    if (failure && nominatimSaid === 'failed') {
+      nominatimNote = failure.detail ?? 'OpenStreetMap did not answer'
+      if (!warnedNominatim) {
+        warnedNominatim = true
+        console.warn(`geocode-address-batch: OpenStreetMap gave no plain answer: ${nominatimNote}`)
+      }
+    }
 
     if (lat !== null && lng !== null) {
       const { error: upErr } = await supabase.from('address_geocodes').upsert(
@@ -255,7 +267,7 @@ serve(async (req) => {
       googleSaid = geocodeServiceSaid(g.error)
       failure =
         g.error === 'not_found' && !g.detail
-          ? { error_code: 'not_found', detail: 'No match from OpenStreetMap or Google' }
+          ? { error_code: 'not_found', detail: nominatimNote ? `${nominatimNote}; no match from Google` : 'No match from OpenStreetMap or Google' }
           : { error_code: g.error, detail: g.detail }
     } else if (failure) {
       failure = {
@@ -304,19 +316,23 @@ serve(async (req) => {
           : { error_code: 'not_found', detail: c.detail ?? 'No match from US Census' }
     }
 
-    // Every service answered and none found it: keep the miss, so the next open does not ask again
-    // (punch list #408). A service that was down, refused the key or was over its limit keeps nothing.
-    // The keeping is best effort: a refused or failed write never fails the batch.
+    // Google and the Census both answered and neither found it: keep the miss, so the next open does not
+    // ask again (punch list #408). Either of them down, refused or over its limit keeps nothing.
+    // OpenStreetMap is not part of the rule (v2.8484): it often gives the function no answer at all.
+    // The keeping is best effort: a refused or failed write never fails the batch. A miss that was
+    // kept answers with the day, so the caller can tell it from one that was not.
+    let keptAt: string | null = null
     if (isSettledGeocodeMiss({ nominatim: nominatimSaid, google: googleSaid, census: geocodeServiceSaid(c.error) })) {
       const { error: missWriteErr } = await supabase
         .from('address_geocode_misses')
         .upsert({ address_normalized: key, error_code: 'not_found', detail: geocodeMissDetail(failure.detail) }, { onConflict: 'address_normalized' })
-      if (missWriteErr && !isRlsRefusal(missWriteErr)) {
+      if (!missWriteErr) keptAt = new Date().toISOString()
+      else if (!isRlsRefusal(missWriteErr)) {
         console.warn(`geocode-address-batch: the miss could not be kept: ${missWriteErr.message}`)
       }
     }
 
-    failures.push({ address_normalized: key, ...failure })
+    failures.push({ address_normalized: key, ...failure, ...(keptAt ? { checked_at: keptAt } : {}) })
   }
 
   return new Response(JSON.stringify({ results, failures }), {
