@@ -41,12 +41,17 @@
  *
  * A test bill's send (`billTestRows.ts`, the rule By day paid reads too) is listed, says it is a test and is in
  * none of those: no day's total, no paid count, no tile, neither payment chip.
+ *
+ * The **Not paid** tile is everything still out (`billsSentOut`): the bills on the list that are not paid in full
+ * and the open bills with no send on record, as one count and one amount, with the two parts under it and the age
+ * of the oldest. A leader quotes that tile as what the company is owed, and it once left the second part out.
  */
 import { appTzWallTimeMs, companyWeekStartSundayContaining, calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
 import { batchOutcomeWords, countedLabel, type BatchOutcome } from '../batchWords'
 import { escapeCsvField } from '../domTableToCsv'
 import { formatCurrency } from '../format'
 import { canReadSentCopies, sentKindWords, type SentCopy, type SentFiling } from '../sent/sentCopies'
+import { plainSentence, val } from '../valuesInPlace'
 import { sentCopyJobLabel, type SentCopyAboutJob } from '../sent/sentCopyAbout'
 import { BILL_HAND_WAYS_BUILT_IN, liveBillHandWays, type BillHandWay } from './billHandWays'
 import { BILLS_TEST_NOTE, BILLS_TEST_STATE, isBillsTestRow } from './billTestRows'
@@ -758,6 +763,8 @@ export interface BillsSentGap {
   payer: string
   amount: number | null
   paid: boolean
+  /** What is still out on it: the bill's amount, or what is left of a part-paid one. 0 on a paid bill and on a bill with no amount on record. */
+  out: number
   /** *Billed Mon, Nov 9 at 3:26 PM.* */
   billedWords: string
   /** The day the bill was made, YYYY-MM-DD in the company's time; '' when the stamp does not read. */
@@ -770,8 +777,11 @@ export interface BillsSentGap {
  * the ones to look at; the paid ones are told apart, since a bill paid at the door needed no send. A bill with a
  * line on the list is never a gap, whatever its stamp says. A bill on a ZZ test job is never one either: it is a
  * test (`isBillsTestRow`), and the read already leaves out a bill made in Stripe's test mode.
+ *
+ * A bill is paid here as it is on the list: by its status, or by payments on record that leave nothing out
+ * (`billPaidState`). A check typed in and held leaves the bill billed, and the box once called that bill not paid.
  */
-export function billsSentGaps(input: Pick<BillsSentInput, 'unsent' | 'jobs'>, lines: ReadonlyArray<Pick<BillsSentLine, 'billId'>>): { open: BillsSentGap[]; paid: BillsSentGap[] } {
+export function billsSentGaps(input: Pick<BillsSentInput, 'unsent' | 'jobs' | 'paid'>, lines: ReadonlyArray<Pick<BillsSentLine, 'billId'>>): { open: BillsSentGap[]; paid: BillsSentGap[] } {
   const sent = new Set(lines.map((l) => l.billId).filter((id): id is string => !!id))
   const gaps = (input.unsent ?? [])
     .filter((u) => !sent.has(u.billId) && !isBillsTestRow(null, u.jobId ? input.jobs.get(u.jobId) : undefined))
@@ -783,6 +793,8 @@ export function billsSentGaps(input: Pick<BillsSentInput, 'unsent' | 'jobs'>, li
       const payer = (job?.customer_name ?? '').trim()
       const ymd = Number.isFinite(Date.parse(u.billedAtIso)) ? calendarYmdInAppTzFromIso(u.billedAtIso) : ''
       const billedWords = ymd ? `Billed ${formatWorkDateYmdWeekdayShortFriendly(ymd)} at ${billsSentTime(u.billedAtIso)}.` : 'Billed.'
+      const state = input.paid?.get(u.billId)
+      const paid = u.status === 'paid' || state?.kind === 'paid'
       return {
         billId: u.billId,
         jobId: u.jobId,
@@ -790,13 +802,24 @@ export function billsSentGaps(input: Pick<BillsSentInput, 'unsent' | 'jobs'>, li
         jobTo: u.jobId ? `/jobs?edit=${encodeURIComponent(u.jobId)}` : null,
         payer,
         amount: u.amount,
-        paid: u.status === 'paid',
+        paid,
+        out: paid ? 0 : state ? state.outAmount : (u.amount ?? 0),
         billedWords,
         billedYmd: ymd,
         haystack: [jobWords, payer, (job?.job_address ?? '').trim()].filter(Boolean).join(' ').toLowerCase(),
       }
     })
   return { open: gaps.filter((g) => !g.paid), paid: gaps.filter((g) => g.paid) }
+}
+
+/**
+ * Where a bill with no send stands, as its row and the print say it: *Not paid.*, *Paid since.*, or *Part paid,
+ * $700.00 still out.* for a bill some money has come on. The **Not paid** tile adds what is left of that bill,
+ * so its row says the same figure.
+ */
+export function billsSentGapStands(gap: Pick<BillsSentGap, 'paid' | 'amount' | 'out'>): string {
+  if (gap.paid) return 'Paid since.'
+  return gap.amount != null && gap.out > 0 && gap.out < gap.amount ? `Part paid, ${billsSentMoney(gap.out)} still out.` : 'Not paid.'
 }
 
 /** The gaps the search box leaves. */
@@ -944,20 +967,118 @@ export function billsSentSumWords(sum: BillsSentSum): string {
 
 /**
  * The tiles: the bills that first went today, since the Sunday that began this week, and the bills on the list
- * that are not paid in full, with what is still out on them (a part-paid bill counts for its remainder).
+ * that are not paid in full, with what is still out on them (a part-paid bill counts for its remainder). That
+ * last figure is the sent part of the **Not paid** tile, which `billsSentOut` adds the bills with no send to.
  */
 export function billsSentTiles(lines: ReadonlyArray<BillsSentLine>, todayYmd: string): { today: BillsSentSum; week: BillsSentSum; unpaid: BillsSentSum } {
   const weekStart = companyWeekStartSundayContaining(todayYmd) ?? todayYmd
   const dayOf = (l: BillsSentLine) => (Number.isFinite(Date.parse(l.atIso)) ? calendarYmdInAppTzFromIso(l.atIso) : '')
-  // Every bill on the list that is not paid in full, counted once whichever of its sends is on the page, so the
-  // tile counts the bills its chip shows.
-  const open = new Map<string, number>()
-  for (const l of lines) if (l.billId && l.pay && l.pay.kind !== 'paid') open.set(l.billId, l.pay.outAmount)
+  const open = openOnList(lines)
   return {
     today: sumOf(lines.filter((l) => dayOf(l) === todayYmd)),
     week: sumOf(lines.filter((l) => dayOf(l) >= weekStart && dayOf(l) <= todayYmd)),
-    unpaid: { bills: open.size, total: Math.round([...open.values()].reduce((s, n) => s + n, 0) * 100) / 100 },
+    unpaid: { bills: open.size, total: centsOf([...open.values()].reduce((s, b) => s + b.out, 0)) },
   }
+}
+
+const centsOf = (n: number): number => Math.round(n * 100) / 100
+
+/**
+ * Every bill on the list that is not paid in full, counted once whichever of its sends is on the page, so a figure
+ * counts the bills the **Not paid** chip shows. Each with what is still out, whether it has an amount on record,
+ * and the day it first went.
+ */
+function openOnList(lines: ReadonlyArray<BillsSentLine>): Map<string, { out: number; noAmount: boolean; firstYmd: string }> {
+  const open = new Map<string, { out: number; noAmount: boolean; firstYmd: string }>()
+  for (const l of lines) if (l.billId && l.pay && l.pay.kind !== 'paid') open.set(l.billId, { out: l.pay.outAmount, noAmount: l.amount == null, firstYmd: l.firstYmd })
+  return open
+}
+
+/** How old the oldest bill still out is, and what day its days are counted from: its first send, or the day it was billed when it has no send. */
+export interface BillsSentOldest {
+  days: number
+  from: 'sent' | 'billed'
+}
+
+/** Everything still out: the whole, its two parts, the bills among them with no amount on record, and the oldest. */
+export interface BillsSentOut {
+  /** Every bill not paid in full, sent or not. The two parts add to it. */
+  all: BillsSentSum
+  /** The bills on the list: what the **Not paid** chip shows. */
+  sent: BillsSentSum
+  /** The open bills with no send on record: what the **No send on record** chip shows. */
+  noSend: BillsSentSum
+  /** The bills counted that have no amount on record. Each is in the count and adds nothing to the amount. */
+  noAmount: number
+  /** Null when nothing is out, or no bill's day reads. */
+  oldest: BillsSentOldest | null
+}
+
+/**
+ * What the **Not paid** tile says (the live test of 2026-11-24, idea 2): every bill not paid in full, as one count
+ * and one amount. Two parts make it: the bills on the list (`billsSentTiles`' own figure, bill for bill) and the
+ * open bills with no send on record (`billsSentGaps`' open ones). A part-paid bill adds what is left of it.
+ *
+ * - A test bill is in neither part: its line carries no payment state, and it is never a gap.
+ * - A bill with no amount on record is counted and adds nothing. `noAmount` says how many, so the tile can say so.
+ * - A bill in both parts is counted once, as sent. The gaps already leave out a bill with a line.
+ * - The oldest is counted as the list counts *days out*: from a sent bill's first send. A bill with no send has no
+ *   first send, so it is counted from the day it was billed, and `from` says which. A tie goes to the sent bill.
+ */
+export function billsSentOut(lines: ReadonlyArray<BillsSentLine>, openGaps: ReadonlyArray<Pick<BillsSentGap, 'billId' | 'amount' | 'out' | 'billedYmd'>>, todayYmd: string): BillsSentOut {
+  const sent = openOnList(lines)
+  const noSend = openGaps.filter((g, i) => !sent.has(g.billId) && openGaps.findIndex((o) => o.billId === g.billId) === i)
+  const sentSum: BillsSentSum = { bills: sent.size, total: centsOf([...sent.values()].reduce((s, b) => s + b.out, 0)) }
+  const noSendSum: BillsSentSum = { bills: noSend.length, total: centsOf(noSend.reduce((s, g) => s + g.out, 0)) }
+  let oldest: BillsSentOldest | null = null
+  const consider = (ymd: string, from: BillsSentOldest['from']) => {
+    const days = ymd ? daysFrom(ymd, todayYmd) : null
+    if (days != null && (!oldest || days > oldest.days)) oldest = { days, from }
+  }
+  for (const b of sent.values()) consider(b.firstYmd, 'sent')
+  for (const g of noSend) consider(g.billedYmd, 'billed')
+  return {
+    all: { bills: sentSum.bills + noSendSum.bills, total: centsOf(sentSum.total + noSendSum.total) },
+    sent: sentSum,
+    noSend: noSendSum,
+    noAmount: [...sent.values()].filter((b) => b.noAmount).length + noSend.filter((g) => g.amount == null).length,
+    oldest,
+  }
+}
+
+/**
+ * The tile's phrase for the oldest bill still out, its age marked as a value (`val`): *Oldest is 62 days out* for
+ * a sent bill, *Oldest was billed 62 days ago* for a bill with no send, which says the day its days are counted
+ * from. '' with no oldest.
+ */
+export function billsSentOldestWords(oldest: BillsSentOldest | null): string {
+  if (!oldest) return ''
+  const age = val('age', oldest.days === 0 ? 'today' : plural(oldest.days, 'day'))
+  if (oldest.from === 'sent') return oldest.days === 0 ? `Oldest went ${age}` : `Oldest is ${age} out`
+  return oldest.days === 0 ? `Oldest was billed ${age}` : `Oldest was billed ${age} ago`
+}
+
+/** Under the tile's figure when a counted bill has no amount on record: *1 bill has no amount*. '' with none. */
+export function billsSentNoAmountWords(n: number): string {
+  return n <= 0 ? '' : n === 1 ? '1 bill has no amount' : `${n} bills have no amount`
+}
+
+/**
+ * The tile as one run of plain words, for the print's heading: what **Not paid** counts, the figure, its two
+ * parts, the oldest, and the bills the amount leaves out. '' when nothing is out.
+ */
+export function billsSentOutPlain(out: BillsSentOut): string {
+  if (out.all.bills === 0) return ''
+  const oldest = plainSentence(billsSentOldestWords(out.oldest))
+  const noAmount = billsSentNoAmountWords(out.noAmount)
+  return [
+    `Not paid counts every bill that is not paid in full: ${plural(out.all.bills, 'bill')}, ${billsSentMoney(out.all.total)}.`,
+    `${out.sent.bills} sent, ${out.noSend.bills} with no send on record.`,
+    oldest ? `The ${oldest.charAt(0).toLowerCase()}${oldest.slice(1)}.` : '',
+    noAmount ? `${noAmount}, so the amount leaves ${out.noAmount === 1 ? 'it' : 'them'} out.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 }
 
 /** The lines a route chip and the search box leave. Every typed word must be found. */
@@ -1243,8 +1364,10 @@ export function billsSentCsvFileName(todayYmd: string, route: BillsSentChip = 'a
 /**
  * The list as a page to print: what is shown, under its days, with each day's count and total, then the open bills
  * with no send on record. `shownWords` says what the page holds when the list was narrowed (*Email · "larkfield"*).
+ * `outWords` is the **Not paid** tile in plain words (`billsSentOutPlain`): the heading says it, since the tile is
+ * not on the paper. It is the whole of what is out, whatever the list was narrowed to.
  */
-export function billsSentListHtml(days: ReadonlyArray<BillsSentDay>, gaps: ReadonlyArray<BillsSentGap>, opts: { printedAtIso: string; shownWords: string; todayYmd?: string }): string {
+export function billsSentListHtml(days: ReadonlyArray<BillsSentDay>, gaps: ReadonlyArray<BillsSentGap>, opts: { printedAtIso: string; shownWords: string; todayYmd?: string; outWords?: string }): string {
   // The page's day, which the days out are counted to. A caller that names none gets the day of the print.
   const today = opts.todayYmd ?? calendarYmdInAppTzFromIso(opts.printedAtIso)
   const lineRow = (l: BillsSentLine): string => {
@@ -1257,7 +1380,7 @@ export function billsSentListHtml(days: ReadonlyArray<BillsSentDay>, gaps: Reado
     return `<tr class="day"><td colspan="3"><b>${esc(d.label)}</b> <span>${esc(billsSentSumWords(d.sum))}${extras ? ` · ${esc(extras)}` : ''}</span></td></tr>${d.lines.map(lineRow).join('')}`
   }
   const gapBlock = gaps.length
-    ? `<h2>${esc(billsSentGapHeading(gaps.length))}</h2><table>${gaps.map((g) => `<tr><td><b>Bill</b>${g.jobWords ? ` · ${esc(g.jobWords)}` : ''}${g.payer ? ` · ${esc(g.payer)}` : ''}<br>${esc(g.billedWords)} Not paid.</td><td class="amt">${g.amount != null ? esc(billsSentMoney(g.amount)) : ''}</td></tr>`).join('')}</table>`
+    ? `<h2>${esc(billsSentGapHeading(gaps.length))}</h2><table>${gaps.map((g) => `<tr><td><b>Bill</b>${g.jobWords ? ` · ${esc(g.jobWords)}` : ''}${g.payer ? ` · ${esc(g.payer)}` : ''}<br>${esc(g.billedWords)} ${esc(billsSentGapStands(g))}</td><td class="amt">${g.amount != null ? esc(billsSentMoney(g.amount)) : ''}</td></tr>`).join('')}</table>`
     : ''
   return `<!doctype html><html><head><meta charset="utf-8"><title>Bills sent</title><style>
 body{font:12px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#111;margin:28px}
@@ -1268,7 +1391,7 @@ tr.day td{border-top:2px solid #111;padding-top:9px}tr.day span{color:#444;margi
 tr{break-inside:avoid}
 </style></head><body>
 <h1>Bills sent</h1>
-<p>${esc(opts.shownWords)} Newest first. All times are Central. A day’s total counts each bill once, on the day it first went.</p>
+<p>${esc(opts.shownWords)} Newest first. All times are Central. A day’s total counts each bill once, on the day it first went.${opts.outWords ? ` ${esc(opts.outWords)}` : ''}</p>
 ${gapBlock}
 ${days.length ? `<table>${days.map(dayBlock).join('')}</table>` : ''}
 <p style="margin-top:14px">Delivered means their mail server took the email. It does not mean someone read it. Printed ${esc(dayAndTime(opts.printedAtIso, false))}.</p>

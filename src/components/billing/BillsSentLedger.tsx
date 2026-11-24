@@ -18,9 +18,14 @@ import {
   billsSentFilter,
   billsSentGapFilter,
   billsSentGapHeading,
+  billsSentGapStands,
   billsSentGaps,
   billsSentLines,
   billsSentListHtml,
+  billsSentNoAmountWords,
+  billsSentOldestWords,
+  billsSentOut,
+  billsSentOutPlain,
   billsSentPaidWords,
   billsSentPayWords,
   billsSentPhoneWords,
@@ -46,6 +51,7 @@ import {
   type BillsSentGap,
   type BillsSentInput,
   type BillsSentLine,
+  type BillsSentOut,
   type BillsSentPayWords,
   type BillsSentRecord,
   type BillsSentRoute,
@@ -65,13 +71,13 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { AmountSmallCents } from '../AmountSmallCents'
-import { THUMB, billLink, chipStyle, jobLink, linePress, money, phoneButton, strong, tile, tileRow, tileSmall } from './billsSentLook'
+import { THUMB, billLink, chipStyle, jobLink, linePress, money, phoneButton, strong, tile, tileBeside, tilePart, tileRow, tileRowWide, tileSmall, wideTile, wideTileFigure, wideTileHead, wideTileParts } from './billsSentLook'
 import { BillsPaidByDay } from './BillsPaidByDay'
 import { billsPaidLines, billsPaidSum, type BillsPaidSum } from '../../lib/billing/billsPaidDays'
 import { readBillsPaid } from '../../lib/billing/billsPaidIo'
 import { companyWeekStartSundayContaining } from '../../utils/dateUtils'
-import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
-import { MoneyText } from '../Money'
+import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { Money, MoneyText } from '../Money'
 
 /**
  * Bills sent (punch list #327, PR 1): every bill that left the company, newest first under a band per day, one line
@@ -101,6 +107,11 @@ import { MoneyText } from '../Money'
  * On a phone (v2.7130): the list comes first. The tiles sit in one row, the chips in one row that slides, the strip
  * folds to one line that opens it, and Print and Download CSV move under the list. A line is three rows and the
  * whole line is the press that opens the bill's record, where the copies and the print have room for a thumb.
+ *
+ * The **Not paid** tile is everything still out (`billsSentOut`): one count and one amount over the bills on the
+ * list and the open bills with no send on record, the age of the oldest, and the two parts under it. Each part is
+ * a press that turns on its own chip. The yellow *No send on record* tile is gone into it, so no bill is counted
+ * in two tiles. The yellow box and its chip are as they were.
  */
 
 /** Sends read per step; *Show older sends* reads the next step. */
@@ -140,14 +151,72 @@ const ROUTE_COLORS: Readonly<Record<BillsSentRoute, { background: string; color:
 
 
 
-function Tile({ label, sum, testId, stacked = false }: { label: string; sum: BillsSentSum; testId: string; stacked?: boolean }) {
+function Tile({ label, sum, testId, stacked = false, box = tile }: { label: string; sum: BillsSentSum; testId: string; stacked?: boolean; box?: CSSProperties }) {
   return (
-    <div style={tile} data-testid={testId}>
+    <div style={box} data-testid={testId}>
       <span style={tileSmall}>{label}</span>
       <b style={{ color: 'var(--text-strong)', fontSize: '0.9375rem' }}>
         {sum.bills} {sum.bills === 1 ? 'bill' : 'bills'}
       </b>{' '}
       <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', ...(stacked ? { display: 'block' } : {}) }}><AmountSmallCents value={sum.total} /></span>
+    </div>
+  )
+}
+
+/** One part of the Not paid tile: its name, its count and what it has out. The press turns on the part's chip. */
+function OutPart({ name, sum, amber = false, phone, testId, title, onPress }: { name: string; sum: BillsSentSum; amber?: boolean; phone: boolean; testId: string; title: string; onPress: () => void }) {
+  return (
+    <button type="button" onClick={onPress} style={tilePart(phone, amber)} data-testid={testId} title={title}>
+      <span style={amber ? { ...tileSmall, color: 'var(--text-amber-800)' } : tileSmall}>{name}</span>
+      <WorkedOutValue>{plural(sum.bills, 'bill')}</WorkedOutValue>
+      {sum.bills > 0 ? (
+        <>
+          {' '}
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }}>
+            <Money amount={sum.total} />
+          </span>
+        </>
+      ) : null}
+    </button>
+  )
+}
+
+/**
+ * The Not paid tile: every bill not paid in full as one count and one amount, how old the oldest is, and the two
+ * parts: under the figure on a phone, beside it where there is room. The figure is no press, since no one chip
+ * shows both parts. Each part is.
+ */
+function OutTile({ out, phone, onSent, onNoSend }: { out: BillsSentOut; phone: boolean; onSent: () => void; onNoSend: () => void }) {
+  const oldest = billsSentOldestWords(out.oldest)
+  const noAmount = billsSentNoAmountWords(out.noAmount)
+  const under: CSSProperties = { fontSize: '0.6875rem', color: 'var(--text-muted)' }
+  return (
+    <div style={wideTile} data-testid="bills-sent-tile-unpaid">
+      <div style={wideTileHead}>
+        <span style={tileSmall}>Not paid</span>
+        <div style={wideTileFigure}>
+          <span>
+            <b style={{ color: 'var(--text-strong)', fontSize: '0.9375rem' }}>{plural(out.all.bills, 'bill')}</b>{' '}
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }}>
+              <Money amount={out.all.total} />
+            </span>
+          </span>
+          {oldest ? (
+            <span style={under} data-testid="bills-sent-out-oldest">
+              <ValueSentence text={oldest} />
+            </span>
+          ) : null}
+          {noAmount ? (
+            <span style={under} data-testid="bills-sent-out-no-amount" title="A bill with no amount on record is counted, and adds nothing to the amount.">
+              {noAmount}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <div role="group" aria-label="The two parts of Not paid" style={wideTileParts}>
+        <OutPart name="Sent" sum={out.sent} phone={phone} testId="bills-sent-out-sent" title="Show the bills on this list that are not paid in full" onPress={onSent} />
+        <OutPart name={BILLS_SENT_GAP_LABEL} sum={out.noSend} amber phone={phone} testId="bills-sent-out-no-send" title="Show the bills with no send on record" onPress={onNoSend} />
+      </div>
     </div>
   )
 }
@@ -571,7 +640,7 @@ function GapRow({ gap, others, why, waysCtl, onSaved, onRan }: { gap: BillsSentG
       </div>
       <div style={money}>{gap.amount != null ? <AmountSmallCents value={gap.amount} /> : ''}</div>
       <div style={{ gridColumn: '1 / -1', color: 'var(--text-700)' }}>
-        {gap.billedWords} {gap.paid ? 'Paid since. The app sent nothing for this bill.' : 'Not paid. The app has no email, text or print for this bill.'}{' '}
+        {gap.billedWords} <MoneyText text={billsSentGapStands(gap)} /> {gap.paid ? 'The app sent nothing for this bill.' : 'The app has no email, text or print for this bill.'}{' '}
         {saying ? null : (
           <button type="button" style={phone ? { ...phoneButton, display: 'block', marginTop: '0.4rem' } : press} onClick={() => setSaying(true)}>
             Say how it went…
@@ -810,6 +879,8 @@ export function BillsSentLedger() {
   const days = useMemo(() => billsSentDays(shown, today), [shown, today])
   const missed = useMemo(() => lines.filter((l) => l.stillMissed).length, [lines])
   const gaps = useMemo(() => (data ? billsSentGaps(data, lines) : { open: [], paid: [] }), [data, lines])
+  // Everything still out, sent or not: the Not paid tile. Its sent part is the old tile's figure, bill for bill.
+  const out = useMemo(() => billsSentOut(lines, gaps.open, today), [lines, gaps, today])
   // Every bill with no send, whatever the search leaves: the form offers a person's other bills from all of them.
   const everyGap = useMemo(() => [...gaps.open, ...gaps.paid], [gaps])
   const gapsShown = useMemo(() => ({ open: billsSentGapFilter(gaps.open, typed), paid: billsSentGapFilter(gaps.paid, typed) }), [gaps, typed])
@@ -890,7 +961,7 @@ export function BillsSentLedger() {
   const outGaps = stripVisible ? gapsShown.open : []
   const shownWords = [BILLS_SENT_ROUTE_CHIPS.find((c) => c.key === route)?.label ?? 'All', typed.trim() ? `“${typed.trim()}”` : ''].filter(Boolean).join(' · ') + '.'
   const printList = () => {
-    if (!openHtmlPrintWindow(billsSentListHtml(days, outGaps, { printedAtIso: new Date().toISOString(), shownWords, todayYmd: today }))) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
+    if (!openHtmlPrintWindow(billsSentListHtml(days, outGaps, { printedAtIso: new Date().toISOString(), shownWords, todayYmd: today, outWords: billsSentOutPlain(out) }))) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
   }
   const saveCsv = () => {
     // The byte order mark lets a spreadsheet read the file's accents and dots as written.
@@ -910,10 +981,15 @@ export function BillsSentLedger() {
         </button>
       </div>
     ) : null
+  // The Not paid tile is the wide one. It is drawn when a bill is out, sent or not.
+  const hasOut = out.all.bills > 0
+  // A small tile's own box: beside the wide tile a desk's row wraps, and the tile keeps the grid's least width.
+  const box = hasOut ? tileBeside(phone) : tile
   // A tile that counts something to look at is the press that shows it.
-  const tilePress: CSSProperties = { ...tile, font: 'inherit', textAlign: 'left', cursor: 'pointer' }
-  // On a phone an even count of tiles sits two to a row, so no tile is left alone on a row of its own.
-  const tileCount = 2 + (tiles.unpaid.bills > 0 ? 1 : 0) + (paidWeek && paidWeek.payments > 0 ? 1 : 0) + (missed > 0 ? 1 : 0) + (gaps.open.length > 0 ? 1 : 0)
+  const tilePress: CSSProperties = { ...box, font: 'inherit', textAlign: 'left', cursor: 'pointer' }
+  // The small tiles. On a phone an even count sits two to a row, so no tile is left alone on a row of its own.
+  const tileCount = 2 + (paidWeek && paidWeek.payments > 0 ? 1 : 0) + (missed > 0 ? 1 : 0)
+  const outTile = hasOut ? <OutTile out={out} phone={phone} onSent={() => setRoute('unpaid')} onNoSend={() => setRoute('gap')} /> : null
   // On a phone the strip is one line until it is asked for, so the list is on the first screen.
   const stripFolded = phone && route === 'all'
 
@@ -921,20 +997,9 @@ export function BillsSentLedger() {
     <section aria-label="Bills sent" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
       {viewSwitch}
       {phone ? null : outRow}
-      <div data-testid="bills-sent-tiles" style={tileRow(phone, tileCount)}>
-        <Tile label="Today" sum={tiles.today} testId="bills-sent-tile-today" stacked={phone} />
-        <Tile label="This week" sum={tiles.week} testId="bills-sent-tile-week" stacked={phone} />
-        {tiles.unpaid.bills > 0 ? (
-          <button type="button" onClick={() => setRoute('unpaid')} style={tilePress} data-testid="bills-sent-tile-unpaid" title="Show the bills on this list that are not paid in full">
-            <span style={tileSmall}>Not paid</span>
-            <b style={{ color: 'var(--text-strong)', fontSize: '0.9375rem' }}>
-              {tiles.unpaid.bills} {tiles.unpaid.bills === 1 ? 'bill' : 'bills'}
-            </b>{' '}
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', ...(phone ? { display: 'block' } : {}) }}>
-              <AmountSmallCents value={tiles.unpaid.total} />
-            </span>
-          </button>
-        ) : null}
+      <div data-testid="bills-sent-tiles" style={hasOut ? tileRowWide(phone, tileCount) : tileRow(phone, tileCount)}>
+        <Tile label="Today" sum={tiles.today} testId="bills-sent-tile-today" stacked={phone} box={box} />
+        <Tile label="This week" sum={tiles.week} testId="bills-sent-tile-week" stacked={phone} box={box} />
         {paidWeek && paidWeek.payments > 0 ? (
           <button type="button" onClick={() => setView('paid')} style={{ ...tilePress, background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)' }} data-testid="bills-sent-tile-paid-week" title="See what came in, a day at a time">
             <span style={{ ...tileSmall, color: 'var(--text-green-800)' }}>Paid this week</span>
@@ -952,12 +1017,8 @@ export function BillsSentLedger() {
             <b style={{ color: 'var(--text-red-700)', fontSize: '0.9375rem' }}>{missed}</b>
           </button>
         ) : null}
-        {gaps.open.length > 0 ? (
-          <button type="button" onClick={() => setRoute('gap')} style={{ ...tilePress, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber, var(--border-strong))' }} data-testid="bills-sent-tile-gaps">
-            <span style={{ ...tileSmall, color: 'var(--text-amber-800)' }}>{BILLS_SENT_GAP_LABEL}</span>
-            <b style={{ color: 'var(--text-amber-800)', fontSize: '0.9375rem' }}>{gaps.open.length}</b>
-          </button>
-        ) : null}
+        {/* The wide tile comes after the small ones, a row of its own at every width. */}
+        {outTile}
       </div>
       <input type="search" value={typed} onChange={(ev) => setTyped(ev.target.value)} placeholder={phone ? 'Find a bill' : 'Find a bill: a job, a customer, an address, a bill number'} aria-label="Find a bill" style={phone ? { ...input, fontSize: '1rem', minHeight: THUMB } : input} />
       <div role="group" aria-label="How it went" style={phone ? { display: 'flex', gap: '0.35rem', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '0.15rem', WebkitOverflowScrolling: 'touch' } : { display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
@@ -1045,7 +1106,7 @@ export function BillsSentLedger() {
       {phone ? outRow : null}
       {data != null ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.75rem' }} data-testid="bills-sent-foot">
-          All times are Central. A day’s total counts each bill once, on the day it first went. Paid and still out count those same bills. Not paid counts every bill on this list that is not paid in full. A send before Oct 5, 2026 has its time and no address, because the app kept no copy then. Delivered means their mail server took it. It does not mean someone read it.
+          All times are Central. A day’s total counts each bill once, on the day it first went. Paid and still out count those same bills. Not paid counts every bill that is not paid in full, sent or not. Its two parts are the bills on this list and the open bills with no send on record. The oldest is counted from its first send. A bill with no send is counted from the day it was billed. A bill with no amount on record is counted, and adds nothing to the amount. A send before Oct 5, 2026 has its time and no address, because the app kept no copy then. Delivered means their mail server took it. It does not mean someone read it.
         </p>
       ) : null}
     </section>

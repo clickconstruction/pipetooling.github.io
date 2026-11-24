@@ -50,6 +50,12 @@ vi.mock('../../lib/documents/paperTakeBackIo', () => ({
     if (io.takeBackFail) throw io.takeBackFail
     return io.takeBackOutcome
   },
+  // A trade company's own paper goes through its function, never the plain delete.
+  takeBackCompanyPaper: async (documentId: string) => {
+    io.takeBacks.push(`company:${documentId}`)
+    if (io.takeBackFail) throw io.takeBackFail
+    return io.takeBackOutcome
+  },
 }))
 vi.mock('../../lib/contracts/personPaperReminderIo', () => ({
   NO_PAPER_REMINDERS: { switchOn: false, byId: new Map() },
@@ -565,7 +571,28 @@ describe('DocumentsAgreementsTab', () => {
     expect(await screen.findByText('Mutual secrecy agreement was not taken back. Your account cannot delete a paper.')).toBeTruthy()
   })
 
-  it('only an outside party’s unsigned paper carries Take back: not a signed one, a job’s, a teammate’s or a trade company’s GC paper', async () => {
+  it('a trade company’s own paper is taken back through its function, and a paper GC mode is waiting on says so', async () => {
+    const off = { job_id: null, job_name: null, job_hcp_number: null, job_click_number: null, job_address: null }
+    io.role = 'master_technician'
+    io.rows = [row({ id: 'company_agreement:g1', kind: 'company_agreement', source_id: 'g1', state: 'waiting', paper_name: 'Trade agreement', with_name: 'Juniper Mechanical LLC', ...off, facts: { status: 'sent', signer_name: 'Pat Sample' } })]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    fireEvent.click(screen.getByRole('button', { name: 'Take back' }))
+    expect(
+      await screen.findByText('This deletes the copy of Trade agreement that is with Juniper Mechanical LLC. The signing link sent to Pat Sample stops working. Nobody is emailed. It cannot be undone.'),
+    ).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Take back the paper' }))
+    expect(await screen.findByText('Trade agreement was taken back from Juniper Mechanical LLC. Its signing link no longer works.')).toBeTruthy()
+    expect(io.takeBacks).toEqual(['company:g1'])
+
+    // The function's refusal is the office's to read, in its own words.
+    io.takeBackFail = new Error('Trade agreement stays with Juniper Mechanical LLC, since GC mode asked for it by Nov 30. It is GC mode’s paper to chase.')
+    fireEvent.click(screen.getByRole('button', { name: 'Take back' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Take back the paper' }))
+    expect(await screen.findByText('Trade agreement stays with Juniper Mechanical LLC, since GC mode asked for it by Nov 30. It is GC mode’s paper to chase.')).toBeTruthy()
+  })
+
+  it('only an unsigned paper of an outside party or a trade company carries Take back: not a signed one, a job’s or a teammate’s', async () => {
     const off = { job_id: null, job_name: null, job_hcp_number: null, job_click_number: null, job_address: null }
     io.role = 'dev'
     io.rows = [
@@ -578,7 +605,7 @@ describe('DocumentsAgreementsTab', () => {
     renderWithProviders(<DocumentsAgreementsTab />)
     const rows = await lines()
     const hasTakeBack = rows.map((r) => within(r).queryByRole('button', { name: 'Take back' }) != null)
-    expect(hasTakeBack).toEqual([true, false, false, false, false])
+    expect(hasTakeBack).toEqual([true, false, false, false, true])
   })
 
   it('Take back is the leader’s and a dev’s: an assistant and the controller send again and copy a link, and delete nothing', async () => {

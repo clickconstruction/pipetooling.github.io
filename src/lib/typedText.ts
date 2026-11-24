@@ -69,6 +69,23 @@ export function watchTypedText(doc: Document | undefined = typeof document === '
   return () => doc.removeEventListener('input', onInput, true)
 }
 
+/** The fields that hold typed words now, in no order. Throws what the page throws. */
+function fieldsHoldingWords(doc: Document): FieldLike[] {
+  const found = new Set<FieldLike>()
+  for (const el of typedInto) {
+    if (!el.isConnected) {
+      typedInto.delete(el)
+      continue
+    }
+    if (el.ownerDocument === doc && !cannotBeTyped(el) && wordsIn(el) !== '') found.add(el)
+  }
+  for (const el of Array.from(doc.querySelectorAll(FREE_WORDS_SELECTOR)) as FieldLike[]) {
+    if (cannotBeTyped(el) || isSearchField(el)) continue
+    if (wordsIn(el) !== '') found.add(el)
+  }
+  return [...found]
+}
+
 /**
  * True while the page holds words a reload would lose: see the two things that count, above. It never throws,
  * since a reload decision waits on it, and a page it cannot read counts as holding words: the reload waits.
@@ -76,21 +93,25 @@ export function watchTypedText(doc: Document | undefined = typeof document === '
 export function pageHoldsTypedText(doc: Document | undefined = typeof document === 'undefined' ? undefined : document): boolean {
   if (!doc) return false
   try {
-    for (const el of typedInto) {
-      if (!el.isConnected) {
-        typedInto.delete(el)
-        continue
-      }
-      if (el.ownerDocument === doc && !cannotBeTyped(el) && wordsIn(el) !== '') return true
-    }
-    for (const el of Array.from(doc.querySelectorAll(FREE_WORDS_SELECTOR)) as FieldLike[]) {
-      if (cannotBeTyped(el) || isSearchField(el)) continue
-      if (wordsIn(el) !== '') return true
-    }
+    return fieldsHoldingWords(doc).length > 0
   } catch {
     return true
   }
-  return false
+}
+
+/**
+ * The fields that hold typed words, top of the page first: the places the update pill walks a person through
+ * before it reloads over them (`typedTextTour.ts`). It never throws. A page it cannot read gives none, and
+ * `pageHoldsTypedText` still says the page holds words, so the warning shows with nothing to walk.
+ */
+export function typedTextFields(doc: Document | undefined = typeof document === 'undefined' ? undefined : document): Element[] {
+  if (!doc) return []
+  try {
+    // 4 is Node.DOCUMENT_POSITION_FOLLOWING: `b` comes after `a`.
+    return fieldsHoldingWords(doc).sort((a, b) => (a === b ? 0 : a.compareDocumentPosition(b) & 4 ? -1 : 1))
+  } catch {
+    return []
+  }
 }
 
 /** Tests only: forget every field typed into. */

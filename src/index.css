@@ -8165,6 +8165,16 @@ button.developmentCountChip:focus-visible {
 .lienGateWords { flex: 1 1 auto; min-width: 0; }
 .lienGateRow:not(:disabled):hover .lienGateWords, .lienGateRow:focus-visible .lienGateWords { text-decoration: underline; text-underline-offset: 3px; }
 .lienGateRow:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+/* v2.8509: a gate a list row's tap or mouse press landed on takes the keyboard without the keyboard's ring. Safari draws
+   :focus-visible on the first scripted focus after a page load, so the ring and the underline stayed on the gate after
+   the landing light had gone. Under reduced motion the landing light is an outline, so it keeps its own colour. */
+.lienGateRow[data-quiet-focus='yes']:focus-visible { outline-color: transparent; }
+.lienGateRow[data-quiet-focus='yes']:focus-visible:not(:hover) .lienGateWords { text-decoration: none; }
+@media (prefers-reduced-motion: reduce) {
+  .lienGateRow[data-quiet-focus='yes'][data-landed='yes']:focus-visible { outline-color: var(--border-amber); }
+  /* The row's own `background: none` comes later in this sheet than the landing light, so the light's tint is said again here. */
+  .lienGateRow[data-landed='yes'] { background-color: var(--bg-amber-tint); }
+}
 .lienGateDoor { flex: none; font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
 .lienGateDoor[data-open='no'] { padding: 1px 8px; border: 1px solid var(--border-strong); border-radius: 4px; color: var(--text-700); background: var(--surface); }
 @media (hover: hover) { .lienGateDoor[data-open='yes'] { opacity: 0.55; } .lienGateRow:hover .lienGateDoor[data-open='yes'], .lienGateRow:focus-visible .lienGateDoor[data-open='yes'] { opacity: 1; } }
@@ -8392,4 +8402,13 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
   to {
     opacity: 1;
   }
+}
+
+/* A place that holds typed words, ringed for a second by the update pill before it reloads over them
+   (v2.8499, src/lib/typedTextTour.ts). The ring is the pill's own orange. It sits inside the box, so a
+   parent that clips its children cannot hide it, with a glow outside where there is room. */
+[data-typed-words-shown] {
+  outline: 3px solid #f97316 !important;
+  outline-offset: -3px !important;
+  box-shadow: 0 0 0 5px rgba(249, 115, 22, 0.3) !important;
 }

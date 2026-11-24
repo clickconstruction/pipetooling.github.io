@@ -337,11 +337,14 @@ last_updated: 2026-11-21
 > What the spike left, a row press that lands on its open gate, is built in v2.8472 (punch list #364).
 > [`lienGateLanding.ts`](../src/lib/jobs/lienGateLanding.ts) `lienGateLanding(rows)` answers the gate a row press lands on: the first not clear, in the pane's order, which is the order of the marks, with `focus` false for a row that has no door.
 > `lienGateLandingScrollTop(view)` answers how far the pane scrolls: null when the row is already clear of the pinned heads, else the scroll that lands the gates section under its own head, else the row itself under the head when the section is taller than the pane.
-> The list row's press says so (`onPick(jobId, 'row')` in `LienDeskAffidavitList.tsx`), the desk keeps one ask per press (`useLienGateAsk`), and the pane answers it once (`useLienGateLanding` in [`useLienGateLanding.ts`](../src/components/jobs/useLienGateLanding.ts)), so a pane the Board or the address opens lands nowhere.
+> The list row's press says so (`onPick(jobId, 'row')` in `LienDeskAffidavitList.tsx`, `'row-keys'` when Enter or the space bar made it, v2.8509), the desk keeps one ask per press (`useLienGateAsk`), and the pane answers it once (`useLienGateLanding` in [`useLienGateLanding.ts`](../src/components/jobs/useLienGateLanding.ts)), so a pane the Board or the address opens lands nowhere.
 > `landOnLienGate` scrolls the pane's own box and never the page, puts the keyboard on the row with `preventScroll`, and lights it with the app's landing light (`lightLanded` in [`landOn.ts`](../src/lib/landOn.ts), `[data-landed]`).
 > While the light holds, a `ResizeObserver` on the pane's sections places the row again, because the job's path re-lays itself a frame or two after the pane opens.
 > Under reduced motion the pane jumps with no glide and the light stands still.
-> 10 cases in `lienGateLanding.test.ts`, 8 in `useLienGateLanding.test.ts` and one render smoke in `LienDesk.render.test.tsx`.
+> A pane the landing has moved is followed while it settles (`moved` on `lienGateLandingScrollTop`, v2.8509), so a jump ends where a glide does.
+> A pane the landing left alone stays left alone.
+> A gate landed on by a tap or a mouse press takes the keyboard wearing `data-quiet-focus`, which keeps the ring and the underline off it until it loses the keyboard or a key is pressed on it (v2.8509): Safari matched `:focus-visible` on the first scripted focus after a page load and left the ring on the gate.
+> 12 cases in `lienGateLanding.test.ts`, 13 in `useLienGateLanding.test.ts` and one render smoke in `LienDesk.render.test.tsx`.
 
 > **v2.7378 · v2.7392 (the phone train's leftovers, punch list #352):** phone only, every branch behind `isMobile`.
 > The notary's print box over the Affidavits list folds behind one 44 px bar (`data-lien-affidavit-print-fold`, its words `lienPhonePrintBoxFold` in [`lienPhonePane.ts`](../src/lib/jobs/lienPhonePane.ts), opening folded;
@@ -684,6 +687,12 @@ last_updated: 2026-11-21
 > The stamp is two `ChangeableValue`s, and each Keep is one update of the release row through `keepReleaseStamp`.
 > A saved release prints from its own saved fields, and a lien with a release draws no save press.
 > The tab's six render tests are `LienFilingTabs.release.render.test.tsx`.
+> **v2.8510 (one check over many bills, piece 3):** `PayoffsWindow` holds `checkKey`, and a place whose liened jobs still have an open bill hands `PlaceCard` an `onCheck`, the press *One check for this place ›*.
+> [`LienPayoffCheck`](../src/components/jobs/LienPayoffCheck.tsx) then stands in for the list, with three inputs for the check, a `ChangeableValue` for what each bill gets, three totals, the sentence and the batch press.
+> Its rule is [`lienPayoffCheck.ts`](../src/lib/jobs/lienPayoffCheck.ts), whose `checkBills`, `spreadCheck` and `checkPlan` are held by 14 tests.
+> The write is [`lienPayoffCheckIo.ts`](../src/lib/jobs/lienPayoffCheckIo.ts), one `mark_invoice_paid` a ready line, tried once, the run going on past a failure.
+> `lienPayoffIo.ts` also reads the same customers' other billed jobs and every job's open bills (`lienPayoffBills`), and `LienPayoffs` takes `onChanged`, which the page hands `refetch`.
+> The pane's seven render tests are `LienPayoffCheck.render.test.tsx`.
 
 > **v2.6777 · v2.6780 (the desk is a page, punch list #182):** `/lien-desk` ([`pages/LienDeskPage.tsx`](../src/pages/LienDeskPage.tsx), the address in [`lib/lien/lienDeskRoute.ts`](../src/lib/lien/lienDeskRoute.ts): `?tab=deadlines|notices|affidavits|retainage|timeline`, `&job=`, `&pile=`, the one-shot `&records=`).
 > `LienDeskModal` takes `frame: 'page' | 'window'` — on the page no overlay, no ✕, no `useModalFullScreen` key, the page's `backDoor` before the title, `data-lien-desk-panel="page"`, a named region, and `onAddressChange` told every change of `kind`, the Notices selection and `pile` once `data` is in (the job a door named counts before the selection catches up);

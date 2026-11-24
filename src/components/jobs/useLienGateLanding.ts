@@ -9,13 +9,13 @@ import { lienPaneHeadOffsets, lienPaneSectionScrollTop } from '../../lib/jobs/li
  * mounts again later (the Board opens the same job) must open as it always did.
  */
 
-/** One press on a list row. A new object per press, so pressing the picked row again asks again. */
-export type LienGateAsk = { jobId: string }
+/** One press on a list row. A new object per press, so pressing the picked row again asks again. `byKeyboard` is whether Enter or the space bar made it. */
+export type LienGateAsk = { jobId: string; byKeyboard?: boolean }
 
 /** The desk's side: the ask the last row press left, and the press that leaves it. Any other way of picking a job clears it. */
-export function useLienGateAsk(): { ask: LienGateAsk | null; askFor: (jobId: string | null) => void } {
+export function useLienGateAsk(): { ask: LienGateAsk | null; askFor: (jobId: string | null, byKeyboard?: boolean) => void } {
   const [ask, setAsk] = useState<LienGateAsk | null>(null)
-  return { ask, askFor: (jobId) => setAsk(jobId ? { jobId } : null) }
+  return { ask, askFor: (jobId, byKeyboard = false) => setAsk(jobId ? { jobId, byKeyboard } : null) }
 }
 
 // The asks already answered. An ask is an object the desk made for one press; it is answered once, by whichever pane is on the page for its job.
@@ -28,13 +28,19 @@ export type LienGateLandingAt = {
   phone: boolean
   /** A test's stand-in for the reader's reduced-motion setting. */
   reducedMotion?: boolean
+  /** The press was a tap or a mouse press: the row takes the keyboard without the keyboard's ring (v2.8509). */
+  quietFocus?: boolean
 }
+
+/** The mark a quietly focused gate row wears; `index.css` keeps the ring and the underline off it. */
+export const LIEN_GATE_QUIET_FOCUS = 'data-quiet-focus'
 
 /**
  * Bring the gate's row into view inside the pane, put the keyboard on it when it is a live press, and light it for
  * a moment (`[data-landed]`, the app's one landing light). Only the pane scrolls, never the page around it. Under
- * reduced motion the pane jumps with no glide and the light stands still. Answers the undo, or null when the row is
- * not on the page.
+ * reduced motion the pane jumps with no glide and the light stands still. After a tap or a mouse press the row wears
+ * `data-quiet-focus` until it loses the keyboard or a key is pressed on it. Answers the undo, or null when the row
+ * is not on the page.
  */
 export function landOnLienGate(pane: HTMLElement | null, landing: LienGateLanding, at: LienGateLandingAt): (() => void) | null {
   const row = pane?.querySelector<HTMLElement>(`[data-lien-gate-row="${landing.key}"]`)
@@ -56,6 +62,8 @@ export function landOnLienGate(pane: HTMLElement | null, landing: LienGateLandin
       topInset: head.top + head.height,
       bottomInset: typeof head.bottom === 'number' ? head.bottom : 0,
       sectionTop: lienPaneSectionScrollTop(body ? inPane(body) : rowTop, at.index, 0, at.phone),
+      // A pane this landing has moved is followed to its place as it settles; one it left alone stays left alone.
+      moved: placedAt != null,
     })
     if (top == null || top === placedAt) return
     placedAt = top
@@ -63,13 +71,27 @@ export function landOnLienGate(pane: HTMLElement | null, landing: LienGateLandin
     else host.scrollTop = top
   }
   place()
+  // Safari draws the keyboard's ring on the first scripted focus after a page load, whatever made the press, and the
+  // ring and the underline stayed on the gate after the light had gone. A row landed on by a tap or a mouse press says so.
+  const quietOff = () => {
+    row.removeAttribute(LIEN_GATE_QUIET_FOCUS)
+    row.removeEventListener('blur', quietOff)
+    row.removeEventListener('keydown', quietOff)
+  }
   if (landing.focus) {
+    if (at.quietFocus) {
+      row.setAttribute(LIEN_GATE_QUIET_FOCUS, 'yes')
+      row.addEventListener('blur', quietOff)
+      row.addEventListener('keydown', quietOff)
+    }
     try {
       // preventScroll: the pane has done the scrolling, and the page around the desk must not move with the keyboard.
       row.focus({ preventScroll: true })
     } catch {
       // A row that cannot take the keyboard is still brought into view.
     }
+    // A row that did not take the keyboard has no ring to keep off.
+    if (at.quietFocus && document.activeElement !== row) quietOff()
   }
   const lightOff = lightLanded(row, reduced)
   // A pane just opened is still settling: the job's path over the gates measures its own width and re-lays itself a frame
@@ -85,6 +107,7 @@ export function landOnLienGate(pane: HTMLElement | null, landing: LienGateLandin
     window.clearTimeout(watchOff)
     watch?.disconnect()
     lightOff()
+    quietOff()
   }
 }
 
@@ -100,7 +123,7 @@ export function useLienGateLanding({ ask, jobId, paneRef, landing, at }: { ask: 
     const to = landing()
     if (!to) return
     undo.current?.()
-    undo.current = landOnLienGate(paneRef.current, to, at)
+    undo.current = landOnLienGate(paneRef.current, to, { ...at, quietFocus: !ask.byKeyboard })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the ask is the signal; the gates and the heads are read as they stand when it arrives
   }, [ask])
   useEffect(

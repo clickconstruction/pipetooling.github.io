@@ -122,6 +122,7 @@ The seen marks a page makes with no press are held the same way (v2.8246), so wh
 The flag is dev-set only (`users_guard_privileged_columns`).
 Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there.
 A session swap that Exit finds refused signs that browser out and lands on the sign-in page, never on the page left while still the person (v2.8241, `leaveViewAs` in `impersonationExit.ts`).
+The sign-in page then says why in one line above its form, taken from this tab's storage once (v2.8522, `signInNotice.ts`).
 Every imitation is on record before its link exists (v2.6290, `20261101175329_user_imitations.sql`, punch list #230): `login-as-user` writes `user_imitations` (who imitated, whom, when) as the service role and opens no imitation it cannot record, since the session it opens carries the person's own JWT;
 a dev alone reads the table (`USING (public.is_dev())`), nobody signed in writes it, `anon` holds nothing, and the three fences cover it.
 `gmail-mine` reads it to refuse such a session (*Messages, My email* below).
@@ -958,6 +959,7 @@ No policy changed for it, and nobody reads a paper through it that they could no
 Since v2.7932 a waiting staff, sub or partner line carries **Send again** and **Copy the signing link**: both call `send-contract-for-signature` as the reader, which reads the paper under the caller's own policy and refuses one it cannot read.
 Since v2.8101 that function also says who may send before it reads the paper: the four roles that write one, never a training account or a digital twin.
 Since v2.8348 (punch list #403, the owner's first decision) an outside party's line that is not signed carries **Take back**: one delete of the paper's row as the caller, asking for a party's paper with no job that is unsent or sent, so a signed paper is never removed and the signing link ends with the row.
+Since v2.8488 a trade company's own paper that is not signed is taken back through `take_back_company_paper` (`20261124103000`), a definer whose door is the leader and a dev (`is_master_or_dev()`), with a training account, a digital twin and an archived caller refused first: it refuses a paper a job requires, one a newer copy replaced and one GC mode is waiting on (an open `gc_trade_promises` row of the paper's kind), and the press is drawn for the same two roles on Documents → Agreements and on People → Contracts.
 The press is drawn for the two roles the library lets delete a paper (`canTakeBackPapers` is `canDeleteFromContractLibrary`, below), which is the app's own rule: `person_contract_documents`' delete policy has answered the office's four roles since `20260714200000_dissolve_assistant_pay_linkage.sql`, and no policy changed.
 The training-mode blocks, the twin fence and the archived seal hold on it as on every write, and an estimator's delete removes nothing.
 Since v2.8352 a party's line that was never sent carries **Send**, the window and the function **Send again** uses, so it is the four roles' under the same rule.
@@ -2127,6 +2129,8 @@ A locked job is found by its number and never by its name, its address or its de
 **What a GC reads about a job's papers** (v2.8503, `20261124160000_job_papers_gc_page.sql`): `job_papers_gc_page(job ids)` runs for the service role alone, for the `customer-portal` function, and only for the jobs a link's customer is the GC on.
 It answers a count over the office's own roster and each sub business by name, and never a helper's, a crew member's or an office person's name.
 The roster's body is `job_papers_roster_now`, granted to nobody, and `job_papers_roster` stays the office's alone.
+**A job's sample** (v2.8506, `open-job-paper-sample`) opens with no login for the GC on that job alone: the portal link must show their GC jobs, and the paper must be one that job requires now.
+It carries a made-up job and signer, and every other paper answers one refusal.
 The edge functions that read a job with the service key ask them through `_shared/jobPapersLock.ts`: `plan-set-files`, `drive-link`, the four push functions and `schedule-share-dispatch`.
 A person locked out of a job gets no push that names it, and their schedule email shows its number and time only.
 The guard fails open: a read that fails reads as not locked, so a notice on a job that requires nothing is never stopped.

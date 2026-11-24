@@ -1072,6 +1072,8 @@ It says the level, each topic's choice in the list's plain words, how many on th
 A **sub business** there is the trade company a sub works for, or the sub's own roster name with none on file.
 A helper and an office person count in the total and are never named.
 The Document builder's block on the same page, *Secrecy on your jobs*, is another thing: a builder the office sent to look at, tied to no job's paper.
+A job's **sample** (v2.8506) is the paper for that job's settings as a PDF, with a made-up job and signer and SAMPLE across each page, drawn by `open-job-paper-sample` from the same assembly a signer reads.
+It is the GC's to download from that block, and it is never for signing.
 The **read-revision rule**: a job that is not a ZZ Test job takes such a paper only at the revision an attorney read, where it is required, where its settings change and where it is read or signed (`job_paper_read_problem`).
 A signed copy keeps the picks, their plain words (`said`) and a **seal**, a SHA-256 of its settings, blanks and clauses with their versions (`contract_paper_seal`), and is signed only when all of it matches what `job_paper_clauses` reads at that moment.
 Since v2.8154 the sign page sends the seal it showed, the signed record draws **The job's settings when this was signed** with a line that says whether the seal still holds ([`jobPaperSettings.ts`](../src/lib/contracts/jobPaperSettings.ts), `SignedJobSettings`), and the job's **Add a paper** list holds such a paper until the page that sets a job's settings is built.
@@ -6791,6 +6793,8 @@ Each row has one sentence and the one press for its step: *Record the payment �
 The rule is `lienPayoff.ts`, the screen `LienPayoffs.tsx`.
 Since **v2.8508** (piece 2) the Release of record tab is the other half: **the county's stamp** is the day the clerk recorded a release (the release row's `filed_at`) and the release's own instrument number (`fields.releaseInstrument`), each changed where it sits.
 A saved release names its affidavit (`fields.releasesFilingId`), and **the money hold** keeps the tab's print and save dead while the job's sent bills still owe, until a reason is typed under *Release it anyway…* (`lienReleaseOfRecord.ts`).
+Since **v2.8510** (piece 3) a place has **One check for this place ›**, the **check pane**: one check's amount, number and day typed once, placed on the liened bills first and oldest first, with three totals, *The check*, *Placed* and *Left to place*.
+A **held line** there pays part of a Stripe bill and goes through the bill's own window, and **money open with no lien** is a job at the place with open bills and no filed lien, shown under the place and never part of what pays the liens off (`lienPayoffCheck.ts`).
 
 ### Property card (Lien desk)
 Every job at one property record on one window (**v2.7488**): the address, the owner of record, two lines that count the property, each kind of paper apart (*4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail*, then *6 lien affidavits ready to file*) and a row per job with where its notice and its affidavit stand.
@@ -6943,7 +6947,11 @@ Since v2.8423 a billed bill whose payments on record leave nothing out reads **P
 A paid bill's stamp carries the newest payment's day and, under it, the way in the job window's words (*Card · Stripe*, *Check 4417 · bank deposit*) and the days the money took from the bill's first send.
 Since v2.8422 a check shows its number alone (`checkNumberOf`, `src/lib/jobs/billsAndPayments.ts`: at most 12 characters that start with a digit, a leading *ck#* dropped), so a deposit's id is never drawn and a check with no readable number reads *Check · bank deposit*.
 **Still out** is an open bill's amount or a part-paid bill's remainder;
-a day's band counts it over the bills that first went that day (*1 of 3 paid · $6,820.00 still out*), and the **Not paid** tile over every bill on the list.
+a day's band counts it over the bills that first went that day (*1 of 3 paid · $6,820.00 still out*), and the **Not paid** tile over every bill not paid in full, sent or not.
+Since v2.8492 the **Not paid** tile is everything still out (`billsSentOut`): the bills on the list and the open bills with no send on record as one count and one amount, with the two parts under it as presses (**Sent** turns on the **Not paid** chip, **No send on record** its own) and the age of the oldest.
+The oldest is counted from a sent bill's first send, and from the day it was billed for a bill with no send, which the tile's words say (*Oldest was billed 62 days ago*).
+A bill with no amount on record is counted and adds nothing, and the tile says how many there are.
+A bill with no send whose payments leave nothing out sits with the paid ones in the yellow box, and a part-paid one's row says what is still out.
 **By day paid** (v2.8343) is the page's second view, behind the switch at its top and at `/bills-sent?view=paid`: a month of days, each with what came in, and behind a picked day its total and its payments (`src/lib/billing/billsPaidDays.ts`).
 Since v2.8493 a picked day names the bank deposits that landed that day and are on no bill yet, in one quiet line with **Open deposits**, under **All** alone (`billsPaidNoBillLine` over `src/lib/moneyInDeposits.ts`, the Money in bar's own rule);
 they are never added to a figure, a cell, a tile, the print or the CSV.
@@ -7033,6 +7041,7 @@ Since v2.8244 a line whose paper names another business than the party beside it
 Since v2.7998 a line tagged *Not on a list* carries **Add to a list**, signed or not, and so does its signed record: the window says what they are, a new customer, a new supply house or vendor, or someone at a company the app keeps, and the paper comes with them ([`PaperPartyAddToList.tsx`](../src/components/documents/PaperPartyAddToList.tsx), [`paperPartyList.ts`](../src/lib/documents/paperPartyList.ts)).
 Since v2.8419 the window also offers **A new trade company**, made with the trade Plumbing and the person kept there as someone who gets its contracts, and *someone at a company the app keeps* finds trade companies too ([`paperPartyList.ts`](../src/lib/documents/paperPartyList.ts)).
 Since v2.8348 (punch list #403, the owner's first decision and his answer of 2026-11-23) an outside party's paper that is not signed carries **Take back** on its line, for the leader and a dev: after a confirm the paper is deleted and its signing link stops working, nobody is emailed, and a signed paper is kept ([`paperTakeBack.ts`](../src/lib/documents/paperTakeBack.ts)).
+Since v2.8488 (punch list #403, the walks of 2026-11-24) a trade company's own paper that is not signed carries **Take back** too, on its line here and under the company's row on People → Contracts, through `take_back_company_paper`, which refuses in words a paper GC mode is waiting on.
 Since v2.8128 a press after a failed write goes on from where it stopped and makes nothing twice while the window is open (`listMadeKey`, `writeOnce`);
 a window closed and opened again starts over.
 Since v2.8240 **Send email** on the Send for signature window waits for the look-up of an address typed under **Someone not in any list** (`addressLookUpVerdict`, [`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts), drawn by [`ContractSendWindow.tsx`](../src/components/contracts/ContractSendWindow.tsx)): someone on the roster is refused, someone the app already keeps is named first and the next press sends to their record, nobody sends at once, and a look-up that failed sends nothing and says why.

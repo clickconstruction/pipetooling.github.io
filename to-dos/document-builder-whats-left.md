@@ -199,7 +199,7 @@ puts its rows back after, and its line on #404 names what it could not delete.
   - After a send-back the trade's page reads *good to Nov 24 · Click is checking it*, and its *Needs you* no longer asks for a certificate. The company's record still offers **Mark it good**.
   - A certificate marked good and then sent back keeps `status` `signed`, which is why the company's record still reads it as good.
   - No group email reaches the test trade company, since its main contact is at `example.com`. A walk that needs one needs that contact at a sink address first.
-  - Publishing a job's sheet asks nothing first. The Sub NDA's publish asks since v2.8439 (below). The sheet's two publish presses in `FilledBuilder`, a job's sheet and the usual to every job, still ask nothing, and nobody has made that call.
+  - ~~Publishing a job's sheet asks nothing first.~~ Fixed by v2.8511 (PR #9688), on Diane's yes of 2026-11-24: a job's publish and the usual's publish each open a window first, which says who sees the new revision and that a publish cannot be taken back, and **Not yet** publishes nothing. The Sub NDA's publish asks since v2.8439 (below). Held by tests, and not yet seen in a browser.
 - **For the next headless walk.** A new browser for every look pulls every file again, and GitHub Pages answered *Rate limit exceeded* after about forty loads in half an hour. The app then read *The app is slow right now.* A browser profile kept on disk stopped it.
   A first visit to `/gc` in a new profile draws a walkthrough over the page, and Escape closes it.
 
@@ -237,11 +237,11 @@ puts its rows back after, and its line on #404 names what it could not delete.
   - No award and no statement of work. All five trades read not awarded, read back through the dev seat.
 - **What it changes on the test rows.** The test sheet's send card now lists two trades, since the second company's ask on HVAC stays.
 - **Seen, not fixed.**
-  - The one press sends to each company's first contact and names nobody before it goes.
-  - The ask window says *1 email goes out, each with the company's own portal link* while **Email the invitations now** is unticked and no email goes.
-  - **Remove from the bench…** first says the company has *no contact logged*, then refuses because *they wrote to us from their portal*. The company wrote nothing. What holds it is the sheet we emailed.
+  - ~~The one press sends to each company's first contact and names nobody before it goes.~~ Fixed by v2.8487 (PR #9659): above the one press a line for each company says who its email goes to, by name and address. More than three lines fold under *See who the N emails go to*. The press still sends to each company's first contact. Held by its tests and carried by a deploy of 2026-11-24. Not walked on the live site.
+  - ~~The ask window says *1 email goes out, each with the company's own portal link* while **Email the invitations now** is unticked and no email goes.~~ Fixed by v2.8487 (PR #9659): with the tick off the window reads *1 company is asked.* and names no email. With it on, one company reads *1 email goes out, with the company's own portal link.* Held by its tests and carried by a deploy of 2026-11-24. Not walked on the live site.
+  - ~~**Remove from the bench…** first says the company has *no contact logged*, then refuses because *they wrote to us from their portal*. The company wrote nothing. What holds it is the sheet we emailed.~~ The refusal's words are fixed by v2.8491 (PR #9661), whose migration was pushed on 2026-11-24: it reads *stays on the bench, since we emailed them*. The rule is the same and the company stays. Seen live on 2026-11-24 on *ZZ Test trade no page, delete me*. Still so: the row offers the press on a company we emailed and says *no contact logged* first, since the office cannot read the emails we sent.
   - The ask-back window says the company has not heard from us about it, after the sheet for that job was emailed to it.
-  - The Concrete quote ran out on Nov 7 and was awarded with no word about it.
+  - ~~The Concrete quote ran out on Nov 7 and was awarded with no word about it.~~ Fixed by v2.8487 (PR #9659): under the award press a line reads *Their number ran out Nov 7. Ask them whether it still holds.* The press then asks first, and its yes reads **Award on this number**. The award is asked about, not blocked. Held by its tests and carried by a deploy of 2026-11-24. Not walked on the live site.
   - The awarded Concrete trade read *Insured to Nov 24*, from walk 1j's test certificate, with no year.
 
 **1g. The Sub NDA's Publish and its attorney's mark** (v2.8024)
@@ -313,7 +313,7 @@ puts its rows back after, and its line on #404 names what it could not delete.
 - **Left on production.** One `document_builder_sends` row, taken off. Two emails to the sink address, with their log rows and Sent copies, which no press deletes. One portal link on the ZZ TEST GC, made and turned off again. The contact *ZZ Test Walk Sink*, removed and in Recently deleted. The Sub NDA is as it was.
 - **Seen, not fixed.**
   - A contact cannot be put back alone. Recently deleted groups a customer's deletions as one bundle, so a restore brings back every contact and project deleted under that customer. The confirm's words are true, but the restore is wider than they say.
-  - The remove window opens with the focus on **Remove …**, so Enter removes. The Publish window puts the focus on **Not yet**.
+  - ~~The remove window opens with the focus on **Remove …**, so Enter removes.~~ Fixed by v2.8515 (PR #9689): the window opens with the focus on **Keep them**, as the Publish window opens on **Not yet**. Held by tests, and not yet seen in a browser.
   - In the Publish window **Not yet** and **Publish revision 2** are drawn alike, both filled blue.
 
 **1j. Step 6, a certificate checked against the sheet** (v2.8253, PR #9337)

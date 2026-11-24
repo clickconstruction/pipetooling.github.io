@@ -2,7 +2,7 @@
 /**
  * Render smokes for what a GC reads about a job's papers (punch list #389, step 5), against a fixture: the block sits
  * under its job's name, says the level and the picks in plain words, counts who has signed, and lists each sub
- * business with its day. It names no worker and holds no press. Every name and word is made up.
+ * business with its day. It names no worker, and its one press downloads the sample. Every name and word is made up.
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, within } from '@testing-library/react'
@@ -74,11 +74,28 @@ describe('PortalJobPapers', () => {
     expect(job('job-2').querySelector('[data-portal-job-paper-said]')).toBeNull()
   })
 
-  it('holds no press, and stays off paper', () => {
+  it('holds no press without the page’s link, and stays off paper', () => {
     render(<PortalJobPapers jobs={JOBS} company="Made-up Plumbing" />)
     const block = document.querySelector('[data-portal-job-papers]') as HTMLElement
     expect(block.querySelectorAll('button, a, input').length).toBe(0)
     expect(block.hasAttribute('data-screen-only')).toBe(true)
     expect(block.textContent).toContain('This is Made-up Plumbing’s paper for the people it brings onto your job.')
+  })
+
+  it('with the page’s link, each paper offers its own sample, a finger tall, in a tab of its own', () => {
+    render(<PortalJobPapers jobs={JOBS} company="Made-up Plumbing" token="tok-zz-0123456789abcdef" />)
+    const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-portal-job-paper-sample]')]
+    expect(links.map((a) => a.textContent)).toEqual(['Download a sample', 'Download a sample'])
+    expect(links.map((a) => new URL(a.href).search)).toEqual(['?t=tok-zz-0123456789abcdef&p=row-1', '?t=tok-zz-0123456789abcdef&p=row-2'])
+    expect(new URL(links[0]!.href).pathname).toBe('/functions/v1/open-job-paper-sample')
+    expect(links[0]!.target).toBe('_blank')
+    expect(links[0]!.rel).toBe('noopener noreferrer')
+    expect(links[0]!.style.minHeight).toBe('44px')
+    expect(document.querySelector('[data-portal-job-papers]')!.querySelectorAll('button, input').length).toBe(0)
+  })
+
+  it('the sample statement, whose jobs are made up, offers no sample', () => {
+    render(<PortalJobPapers jobs={JOBS} company="Made-up Plumbing" token="sample-gc" />)
+    expect(document.querySelectorAll('[data-portal-job-paper-sample]').length).toBe(0)
   })
 })

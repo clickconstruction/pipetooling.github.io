@@ -24,6 +24,8 @@ import {
 } from '../../lib/people/subCompanies'
 import { keepPersonCompany, keepPersonCompanyTitle } from '../../lib/people/subCompaniesIo'
 import { COMPANY_PAPER_WORDS, companyPaperDetail, companyPaperStateWords, companyPressHeight, type CompanyPaperRow } from '../../lib/people/subCompanyPapers'
+import { TAKE_BACK_LABEL, companyPaperCanBeTakenBack } from '../../lib/documents/paperTakeBack'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** The state chip on a company's paper, in the tab's own colours. */
 function PaperStateChip({ status }: { status: string }) {
@@ -45,7 +47,8 @@ const pressLook = { padding: '0.35rem 0.7rem', boxSizing: 'border-box', fontSize
 
 /**
  * The company's row: its name, its tag, its workers, and its own papers once with **Send for signature** and
- * **Enter from paper** (PR 2). With no `papers` handed in, the row names the company and its workers alone.
+ * **Enter from paper** (PR 2). With no `papers` handed in, the row names the company and its workers alone. With
+ * `onTakeBack`, a paper that is not signed carries **Take back** on its own line (the walks of 2026-11-24).
  */
 export function SubCompanyHeadRow({
   group,
@@ -53,6 +56,8 @@ export function SubCompanyHeadRow({
   markedPaperId,
   onSend,
   onEnter,
+  onTakeBack,
+  takingBackId,
 }: {
   group: CompanyGroup
   papers?: readonly CompanyPaperRow[]
@@ -60,6 +65,10 @@ export function SubCompanyHeadRow({
   markedPaperId?: string | null
   onSend?: () => void
   onEnter?: () => void
+  /** Whoever may delete a paper is handed this: the press on a paper that is out or was never sent. */
+  onTakeBack?: (paper: CompanyPaperRow) => void
+  /** The paper being taken back right now: its press says so, and every Take back waits. */
+  takingBackId?: string | null
 }) {
   /** A phone: the two presses stand a fingertip tall. A desk keeps its own height. */
   const pressHeight = { minHeight: companyPressHeight(useNarrowViewport640()) }
@@ -95,15 +104,32 @@ export function SubCompanyHeadRow({
                   key={p.id}
                   data-sub-company-paper={p.id}
                   aria-current={p.id === markedPaperId ? 'true' : undefined}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', padding: '0.5rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', ...(p.id === markedPaperId ? PAPER_MARK : null) }}
+                  style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', padding: '0.5rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', ...(p.id === markedPaperId ? PAPER_MARK : null) }}
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
                     <div style={{ fontWeight: 500, overflowWrap: 'anywhere' }}>{p.document_name}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
                       <ValueSentence text={companyPaperDetail(p)} />
                     </div>
                   </div>
                   <PaperStateChip status={p.status} />
+                  {onTakeBack && companyPaperCanBeTakenBack(p.status) ? (
+                    <button
+                      type="button"
+                      data-sub-company-paper-take-back={p.id}
+                      disabled={takingBackId != null}
+                      aria-busy={takingBackId === p.id || undefined}
+                      onClick={() => onTakeBack(p)}
+                      style={{
+                        ...pressLook,
+                        ...pressHeight,
+                        border: '1px solid var(--border-strong)',
+                        ...(takingBackId != null ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'wait' } : { background: 'var(--surface)', color: 'var(--text-red-700)' }),
+                      }}
+                    >
+                      {takingBackId === p.id ? 'Taking it back…' : TAKE_BACK_LABEL}
+                    </button>
+                  ) : null}
                 </div>
               ))
             )}

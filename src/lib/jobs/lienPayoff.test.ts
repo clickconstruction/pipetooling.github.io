@@ -4,6 +4,8 @@ import { plainWordsFailures } from '../plainWords'
 import {
   LIEN_PAYOFF_STEPS,
   lastPayment,
+  lienPayoffBills,
+  lienPayoffOtherLine,
   lienPayoffPlaces,
   lienPayoffStep,
   lienPayoffStepState,
@@ -210,6 +212,20 @@ describe('lienPayoffPlaces and the strip', () => {
     ])
   })
 
+  it('shows money open at a liened place on a job with no lien, and keeps it out of what pays the liens off', () => {
+    const f = facts()
+    const trip = { id: 'j9', hcp_number: null, click_number: '2071', job_name: 'Okafor trip charge', job_address: '212 Larkspur Ct, Austin', customer_id: 'c1', customer_name: 'Marisol Okafor' }
+    const elsewhere = { ...trip, id: 'j8', click_number: '2099', job_address: '9 Other Road, Austin' }
+    const paidUp = { ...trip, id: 'j7', click_number: '2100' }
+    const places = lienPayoffPlaces({ ...f, otherJobs: [trip, elsewhere, paidUp, f.jobs[0]!], openByJob: { ...f.openByJob, j9: 640, j8: 500, j7: 0 } })
+    const here = places.find((p) => p.payer === 'Marisol Okafor')!
+    expect(here.other).toEqual([{ jobId: 'j9', jobNumber: '2071', jobName: 'Okafor trip charge', open: 640 }])
+    expect(plainSentence(here.headline)).toBe('3 liens on record here. $16,455.50 pays them off.')
+    expect(plainSentence(lienPayoffOtherLine(here.other) ?? '')).toBe('$640.00 more is open here on 2071. It is not liened.')
+    expect(lienPayoffOtherLine([])).toBeNull()
+    expect(places.find((p) => p.payer === 'Calloway Homes')!.other).toEqual([])
+  })
+
   it('says nothing when no lien is filed', () => {
     expect(lienPayoffStrip(lienPayoffPlaces(facts({ affidavits: [] }))).say).toBeNull()
   })
@@ -218,5 +234,22 @@ describe('lienPayoffPlaces and the strip', () => {
     const places = lienPayoffPlaces(facts({ jobs: [] }))
     expect(places).toHaveLength(4)
     expect(places[0]!.place).toBe('A job with no address')
+  })
+})
+
+describe('lienPayoffBills', () => {
+  const inv = (id: string, amount: number, status = 'billed', billed_at = '2026-11-09T12:00:00Z', stripe_invoice_id: string | null = null) => ({ id, amount, status, billed_at, sequence_order: 0, stripe_invoice_id })
+
+  it('lists the sent bills that still owe, oldest first, net of what each was paid', () => {
+    const out = lienPayoffBills('j1', [inv('late', 3000, 'billed', '2026-11-10T12:00:00Z', 'in_made_up'), inv('early', 4420, 'billed', '2026-11-02T12:00:00Z'), inv('done', 900, 'paid'), inv('draft', 50, 'ready_to_bill')], [{ invoice_id: 'early', amount: 420 }], 8370)
+    expect(out).toEqual([
+      { invoiceId: 'early', jobId: 'j1', open: 4000, billedYmd: '2026-11-02', stripe: false },
+      { invoiceId: 'late', jobId: 'j1', open: 3000, billedYmd: '2026-11-10', stripe: true },
+    ])
+  })
+
+  it('drops a bill paid in full, and gives a payment with no bill picked to the oldest bill', () => {
+    expect(lienPayoffBills('j1', [inv('a', 100)], [{ invoice_id: 'a', amount: 100 }], 100)).toEqual([])
+    expect(lienPayoffBills('j1', [inv('a', 100, 'billed', '2026-11-01T12:00:00Z'), inv('b', 100, 'billed', '2026-11-05T12:00:00Z')], [{ invoice_id: null, amount: 100 }], 200).map((b) => b.invoiceId)).toEqual(['b'])
   })
 })

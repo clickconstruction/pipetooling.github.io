@@ -153,7 +153,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;bac
 </head>
 <body>
 <div class="wrap">
-<p class="eyebrow">Punch list #435 · proposal · pieces 1 and 2 built 2026-11-24</p>
+<p class="eyebrow">Punch list #435 · proposal · pieces 1 to 3 built 2026-11-24</p>
 <h1>A lien payoff: one check in, every lien at the place released</h1>
 <p class="lede">A property owner pays off every lien the company filed at one place with one check. Today that is about fifty presses across three jobs, and nothing ties the releases to the money. This page says what exists, what to build, and what must never happen. Every name and number on it is made up.</p>
 
@@ -164,8 +164,8 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;bac
 </ol>
 
 <h2 id="door">Where the door is</h2>
-<p><b>On the Lien desk, above the lists.</b> A line named <b>Payoffs</b> says what waits on a release and has one press, <b>Someone paid ›</b>. The press opens every filed lien under its place. Each lien says where it stands in one sentence and offers the one press that comes next: <b>Record the payment ›</b>, then <b>Make the release ›</b>, then <b>Record the county’s stamp ›</b>. The app works out the step from the bills, the payments and the release on record.</p>
-<p class="note">The first cut of this page put the door in piece 4 of the build. That was a fault. A person holding a check starts from the lien, so the door ships first. It is built, as pieces 1 and 2 below.</p>
+<p><b>On the Lien desk, above the lists.</b> A line named <b>Payoffs</b> says what waits on a release and has one press, <b>Someone paid ›</b>. The press opens every filed lien under its place. Each lien says where it stands in one sentence and offers the one press that comes next: <b>Record the payment ›</b>, then <b>Make the release ›</b>, then <b>Record the county’s stamp ›</b>. The app works out the step from the bills, the payments and the release on record. A place also has <b>One check for this place ›</b>, which takes one check and places it on every bill it pays.</p>
+<p class="note">The first cut of this page put the door in piece 4 of the build. That was a fault. A person holding a check starts from the lien, so the door ships first. It is built, as pieces 1 to 3 below.</p>
 
 <h2 id="today">What existed before today</h2>
 <p>The papers exist. The path between them does not. A payoff of three liens at one place runs through three jobs, one bill and one tab at a time.</p>
@@ -253,7 +253,7 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;bac
   var LOOSE = { job: 'J2071', name: 'Okafor trip charge', bills: [{ n: 'Bill 1', open: 640.00 }] };
   var CHECK = { full: 16455.50, short: 15000.00, back: 16455.50 };
   var STOPS = [
-    ['The desk', 'Built: the line Payoffs with its one press. It opens the filed liens under their place, each with the press that comes next. The check pane on the next stop is piece 3 and 4.'],
+    ['The desk', 'Built: the line Payoffs with its one press. It opens the filed liens under their place, each with the press that comes next. The check pane on the next stop is built too, as One check for this place.'],
     ['The check', 'One check, typed once. The app places it on the liened bills first, oldest first, and checks the total against the check.'],
     ['Waiting', 'The payoff is a card that stays on the desk. It needs nothing today, so it says so and gets out of the way.'],
     ['Releases', 'The releases ride the desk’s one run with the day’s other papers. The run prints what is ready and names what it held.'],
@@ -430,13 +430,13 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;bac
 <tbody>
 <tr><td class="k">1</td><td><b>The door, and each lien’s next press.</b> The line <i>Payoffs</i> with <i>Someone paid ›</i>, and the window of every filed lien under its place, each with one sentence and one press. <span class="pick">built · v2.8504</span></td><td>S</td><td><code>lienPayoff.ts</code>: the step, the sentence and the press from the bills, the payments and the release on record. 22 tests, 6 render tests.</td><td>None</td><td>Its tests, and a read-only look at the live desk</td></tr>
 <tr><td class="k">2</td><td><b>The release waits for the money and takes the county’s stamp.</b> The tab is on one filed lien, holds its print and save while the bills still owe unless a reason is typed, starts the payment date on the last payment, saves one release a lien, and takes the day recorded and the release’s own instrument number in place. <span class="pick">built · v2.8508</span></td><td>M</td><td><code>lienReleaseOfRecord.ts</code>: the targets, the money hold, the stamp. 12 tests, 6 render tests.</td><td>None after all. The link and the number live on the row a release already saves.</td><td>Its tests, and a read-only look at the hold on a live job</td></tr>
-<tr><td class="k">3</td><td><b>One check over many bills.</b> One typed check becomes a payment on each bill in one write, each carrying the same check mark.</td><td>M</td><td><code>checkSpread.ts</code>: liened first, oldest first, to the cent, the three totals, changes by hand. Tests for short, over, rounding and a bill at zero.</td><td>A check mark column on payments and one function that writes the rows through the guards <i>Record payment</i> uses</td><td>Kernel tests, a database bed for the function, a walk on two test jobs</td></tr>
+<tr><td class="k">3</td><td><b>One check over many bills.</b> <i>One check for this place ›</i>: the check typed once, placed on the liened bills first and oldest first, three totals, one press that records each ready bill and holds a part payment on a Stripe bill. <span class="pick">built · v2.8510</span></td><td>M</td><td><code>lienPayoffCheck.ts</code>: the order, the spread to the cent, the plan and the button’s words. 14 tests, 7 render tests.</td><td>None after all. Each bill is one write through the function <i>Record payment</i> uses, and the check’s number, day and note are its mark.</td><td>Its tests, and a read-only look at the pane on the live desk</td></tr>
 <tr><td class="k">4</td><td><b>The payoff door and card.</b> The place’s press, the check pane, the card with its five stops, the written request’s day and the leader’s funds press. The guide ships here.</td><td>M</td><td><code>lienPayoff.ts</code>: the stops, the next act, the due day, the held reasons. Render smokes for the pane and the card.</td><td>One small table for a payoff: the place, the check, the day asked, who confirmed funds</td><td>Kernel tests, smokes, a walk from check to card on test jobs</td></tr>
 <tr><td class="k">5</td><td><b>The releases ride the run.</b> Print for the notary, mark notarized, record at the county, record the copies, each with its count and what it held.</td><td>M</td><td>The run’s checklist kernel takes releases. <code>batchWords</code> gives the labels.</td><td>None</td><td>Checklist tests, a full run on test jobs with one release held</td></tr>
 <tr><td class="k">6</td><td><b>A check that comes back knows its releases.</b> The case reads the check mark, holds what has not left and marks what has.</td><td>S</td><td><code>payoffReturned.ts</code>: none printed, printed, recorded. Tests for each.</td><td>None</td><td>Kernel tests, a played-back returned check on a test job</td></tr>
 <tr><td class="k">7</td><td><b>No final waiver wider than the money.</b> The unconditional prompt waits where other bills stay open at the place. Built on counsel’s word.</td><td>S</td><td>The waiver pick kernel gains the place’s open bills. Tests beside it.</td><td>None</td><td>Kernel tests</td></tr>
 </tbody></table></div>
-<p class="note">Pieces 1 and 2 are built and carry the door. Pieces 3 to 7 wait on the picks below. Until piece 3, one check over several bills is recorded bill by bill, or in Accounts Receivable once the bank shows the deposit.</p>
+<p class="note">Pieces 1 to 3 are built and carry the door. Pieces 4 to 7 wait on the picks below. None of the three has been walked with a real write yet.</p>
 
 <h2 id="calls">The calls</h2>
 <div class="cols">
