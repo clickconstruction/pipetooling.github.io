@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
-import { ABOUT_ALL_JOBS, HELD_NAMED_AT_MOST, SEND_LIST_FIRST_ROWS, aboutChoices, aboutJobId, heldLines, heldReason, pressName, resendPress, resendTo, shownParties, sendBatch, sendBatchOutcome, sendBox, sendChips, sendStanding, sentWords, unreadGateWords, type SendParty, type SendRecord } from './send'
+import { ABOUT_ALL_JOBS, HELD_NAMED_AT_MOST, SEND_LIST_FIRST_ROWS, aboutChoices, aboutJobId, batchGoesTo, heldLines, heldReason, pressName, resendPress, resendTo, shownParties, sendBatch, sendBatchOutcome, sendBox, sendChips, sendStanding, sentWords, unreadGateWords, type SendParty, type SendRecord } from './send'
 
 /** Made-up trades on a made-up job. */
 const send = (over: Partial<SendRecord> = {}): SendRecord => ({ id: 's1', contactName: 'Ana Pruitt', contactEmail: 'ana@cedarfork.test', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 1, openedOn: null, openedRevision: null, ...over })
@@ -211,6 +211,28 @@ describe('the one press for everyone who is ready', () => {
     expect(batch.ready.map((p) => p.id)).toEqual(['lonemesa', 'pecos'])
     expect(batch.press).toEqual({ label: 'Send to 2 trades who are ready', dead: false })
     expect(batch.held.map((h) => h.why)).toEqual(['Held: Hilltop Electric has no page yet. Send to them alone to make one.', 'Held: Tollgate Mechanical. Their page is off.', 'Held: Quiet Glass has nobody with an email to send to.'])
+  })
+
+  it('names who each email goes to before the press, the first person on each ready party', () => {
+    const batch = sendBatch(parties, 'trade', { published: true, unread: '', anyway: false })
+    const goes = batchGoesTo(batch.ready)
+    expect(goes.summary).toBeNull()
+    expect(goes.lines.map((l) => plainSentence(l.words))).toEqual(['Lone Mesa Excavation: it goes to Ben Winters at ben@lonemesa.test.', 'Pecos Insulation: it goes to Gil Marsh at gil@pecos.test.'])
+    // The one press sends to the first person on the record, whoever else is on it.
+    const two = party({ id: 'two', name: 'Two Desk Supply', contacts: [{ name: 'Accounts Payable', email: 'ap@twodesk.test' }, { name: 'Ida Roe', email: 'ida@twodesk.test' }] })
+    expect(plainSentence(batchGoesTo([two]).lines[0]!.words)).toBe('Two Desk Supply: it goes to Accounts Payable at ap@twodesk.test.')
+    // A record that keeps no name, or the address as the name, says the address once.
+    const bare = party({ id: 'bare', name: 'Bare Hands Tile', contacts: [{ name: 'office@barehands.test', email: 'office@barehands.test' }] })
+    expect(plainSentence(batchGoesTo([bare]).lines[0]!.words)).toBe('Bare Hands Tile: it goes to office@barehands.test.')
+    expect(batchGoesTo([])).toEqual({ summary: null, lines: [] })
+  })
+
+  it('folds who the emails go to under one line once many are ready', () => {
+    const many = Array.from({ length: HELD_NAMED_AT_MOST + 1 }, (_, i) => party({ id: `gc${i}`, name: `Made-up Builders ${i + 1}` }))
+    const goes = batchGoesTo(many)
+    expect(goes.summary).toBe('See who the 4 emails go to')
+    expect(goes.lines).toHaveLength(4)
+    expect(batchGoesTo(many.slice(0, HELD_NAMED_AT_MOST)).summary).toBeNull()
   })
 
   it('leaves a trade that was asked and not awarded out of the one press, and says to send to them alone', () => {

@@ -182,6 +182,8 @@ The check is read on the revision of your usual that the job's sheet went out on
 
 One press under the list sends to every trade that is ready. The button says how many.
 
+Read the lines above the button first. Each ready trade has one, and it says who the email goes to. That is the first person on the company's record. To send to someone else there, use the trade's own row. Press {{button:outline-blue|Send it to them}} and pick the person in **To**.
+
 A trade is ready when it was awarded, its page is on and someone there has an email. The rest are listed under the button, each with its reason.
 
 A trade that was asked for a price and not awarded is held from the one press. Press {{button:outline-blue|Send it to them}} on its own row to send to that trade alone. A trade that fails is named afterwards, and the others still go.

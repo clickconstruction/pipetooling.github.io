@@ -92,7 +92,8 @@ export function GcAskCompanies({
   // The invitation as it would read once asked today: a draft ask, nothing written.
   const draftInvite: Invite | null = showing ? { id: 'draft', partnerId: showing.partner.id, status: 'invited', invitedOn: state.today, bid: null, seenRev: null } : null
   const draft = showing && draftInvite ? inviteMessage(project, pkg, draftInvite, showing.partner, lang) : null
-  const standing = askStanding(state, projectId, packageId, asking.length)
+  // The line counts emails only when this press sends them: a dev, with the tick on.
+  const standing = askStanding(state, projectId, packageId, asking.length, emails && emailNow)
   const due = project.ourBidSentOn === null ? portalQuoteDue(project) : null
   const dueDays = due ? daysUntil(due, state.today) : null
   const toggle = (id: string) =>
