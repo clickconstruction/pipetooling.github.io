@@ -1,6 +1,6 @@
 import { orderRoundingTitle } from '../../lib/bids/takeoffOrderRounding'
 import { TakeoffOrderListPanel } from './TakeoffOrderListPanel'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import type { TakeoffCoverageSummary } from '../../lib/bids/takeoffCoverage'
 import { sumByAlternate } from '../../lib/bids/alternateScope'
 import { isAlternateRow } from '../../lib/bids/countSheet'
@@ -16,6 +16,8 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { Money } from '../Money'
 import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
 import { TAKEOFF_RAIL_PX, railFitsBeside } from '../../lib/bids/takeoffSheetFit'
+import { RAIL_FOLD_WORDS, railMode, railPressOutcome, railStorage, readStoredRailChoice, writeStoredRailChoice, type RailChoice } from '../../lib/bids/takeoffRailFold'
+import { TakeoffRailStrip } from './TakeoffRailStrip'
 
 /**
  * New 2 — "Cost rail" (v2.2781, docs/TAKEOFFS_REFRESH_PLAN.md; mockup C):
@@ -99,10 +101,38 @@ export function TakeoffCostRailView({
   const [pickedBid, setPickedBid] = useState<string | null>(null)
   const [copying, setCopying] = useState(false)
   const [showUnitCosts, setShowUnitCosts] = useState(false)
-  // v2.8476: the rail sits beside the list only where both fit. Narrower, it goes under the list, so the
-  // line table keeps the whole width and no row press ends up under the rail.
+  // v2.8476: the rail sits beside the list only where both fit, so no row press ends up under it.
+  // v2.8480: anywhere else, and wherever the person hid it, it folds to a strip across the top of the sheet
+  // (`lib/bids/takeoffRailFold.ts`). A narrow window always starts folded; there Show opens the rail over the
+  // list, and Hide, Esc or any press on the list puts it away. Only a wide window's choice is kept.
   const [sheetRef, sheetWidth] = useMeasuredWidth<HTMLDivElement>()
-  const railBeside = railFitsBeside(sheetWidth)
+  const railFits = railFitsBeside(sheetWidth)
+  const [railChoice, setRailChoice] = useState<RailChoice | null>(() => readStoredRailChoice(railStorage()))
+  const [railPanelOpen, setRailPanelOpen] = useState(false)
+  const railIs = railMode({ fits: railFits, choice: railChoice, panelOpen: railPanelOpen })
+  const railPanelId = useId()
+  const pressRail = (press: 'show' | 'hide') => {
+    const out = railPressOutcome(press, railFits)
+    setRailPanelOpen(out.panelOpen)
+    if (out.choice) {
+      setRailChoice(out.choice)
+      writeStoredRailChoice(railStorage(), out.choice)
+    }
+  }
+  // A window dragged wide again has the rail beside the list: the panel over the list is done with.
+  useEffect(() => {
+    if (railFits) setRailPanelOpen(false)
+  }, [railFits])
+  // Esc puts the open rail away, unless a window is open on top of it: then Esc is that window's.
+  useEffect(() => {
+    if (railIs !== 'over') return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || document.querySelector('[role="dialog"], [role="alertdialog"]')) return
+      setRailPanelOpen(false)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [railIs])
   useEffect(() => {
     if (focusRequest) setFilter('all')
   }, [focusRequest?.nonce, focusRequest])
@@ -165,48 +195,21 @@ export function TakeoffCostRailView({
     </button>
   )
 
-  return (
-    <div data-testid="takeoff-cost-rail-view" ref={sheetRef} data-rail={railBeside ? 'beside' : 'under'}>
-      <TakeoffCoverageStrip coverage={coverage} onClickUncosted={() => setFilter('uncosted')} onClickZeroPrice={() => setFilter('zero')}>
-        <button type="button" onClick={onFillAll} disabled={fillButton.disabled} title={fillButton.title || undefined} style={{ padding: '0.4rem 0.8rem', background: fillButton.disabled ? DEAD_PRESS_FILL : '#2563eb', color: fillButton.disabled ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 4, cursor: fillButton.disabled ? 'default' : 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
-          {fillButton.label}
-        </button>
-        <button type="button" onClick={onFocusView} style={{ padding: '0.4rem 0.8rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }} title="Walk the fixtures one at a time, with the book and your last bids">
-          One at a time
-        </button>
-      </TakeoffCoverageStrip>
-
-      <div style={{ display: 'grid', gridTemplateColumns: railBeside ? `minmax(0, 1fr) ${TAKEOFF_RAIL_PX}px` : 'minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
-        <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Takeoff book</label>
-            <select
-              value={selectedBookVersionId ?? ''}
-              onChange={(e) => onSelectBook(e.target.value || null)}
-              style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '10rem', background: 'var(--surface)', color: 'inherit' }}
-            >
-              <option value="">— Select a book —</option>
-              {bookVersions.map((v) => (
-                <option key={v.id} value={v.id}>{v.name}</option>
-              ))}
-            </select>
-            <span style={{ flex: 1 }} />
-            {chip('all', 'All', countRows.length)}
-            {chip('uncosted', 'Uncosted', coverage.uncostedIds.length)}
-            {chip('zero', '$0 price', zeroRows.size)}
-          </div>
-          {countRows.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Add fixtures in the Counts tab first.</p>
-          ) : visibleRows.length === 0 ? (
-            <EmptyState compact main={filter === 'uncosted' ? 'Every fixture has lines.' : 'No $0 lines.'} next={{ label: 'All', onPress: () => setFilter('all') }} tail="shows every fixture." />
-          ) : (
-            renderLinesTable(visibleRows, { suggestionFor })
-          )}
-        </div>
-
-        <div data-testid="takeoff-rail" style={railBeside ? { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, position: 'sticky', top: 8 } : { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'start', gap: 12, minWidth: 0 }}>
+  // The rail's panels, drawn once: beside the list, or hung under the strip over it.
+  const railPanels = (
+    <>
           <div style={{ ...panel, boxShadow: '0 4px 14px rgba(0,0,0,0.08)' }}>
-            <span style={panelK}>What Pricing sees</span>
+            <span style={{ ...panelK, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              {RAIL_FOLD_WORDS.name}
+              {railIs === 'beside' ? (
+                <button type="button" className="takeoffRailHide" onClick={() => pressRail('hide')} aria-label={RAIL_FOLD_WORDS.hideName}>
+                  {RAIL_FOLD_WORDS.hide}
+                  <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M6 15l6-6 6 6" />
+                  </svg>
+                </button>
+              ) : null}
+            </span>
             <div style={kv}>
               <span>Materials on this bid</span>
               <span style={{ fontSize: '1.25rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><Money amount={coverage.materialsTotal} /></span>
@@ -336,7 +339,73 @@ export function TakeoffCostRailView({
             </div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Finish a fixture in One at a time and tick Remember, and the next bid starts filled in.</span>
           </div>
+    </>
+  )
+
+  return (
+    <div data-testid="takeoff-cost-rail-view" ref={sheetRef} data-rail={railIs}>
+      <TakeoffCoverageStrip coverage={coverage} onClickUncosted={() => setFilter('uncosted')} onClickZeroPrice={() => setFilter('zero')}>
+        <button type="button" onClick={onFillAll} disabled={fillButton.disabled} title={fillButton.title || undefined} style={{ padding: '0.4rem 0.8rem', background: fillButton.disabled ? DEAD_PRESS_FILL : '#2563eb', color: fillButton.disabled ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 4, cursor: fillButton.disabled ? 'default' : 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
+          {fillButton.label}
+        </button>
+        <button type="button" onClick={onFocusView} style={{ padding: '0.4rem 0.8rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }} title="Walk the fixtures one at a time, with the book and your last bids">
+          One at a time
+        </button>
+      </TakeoffCoverageStrip>
+
+      {railIs === 'beside' ? null : (
+        <TakeoffRailStrip
+          materialsTotal={coverage.materialsTotal}
+          costed={coverage.costed}
+          fixtures={coverage.fixtures}
+          uncosted={coverage.uncostedIds.length}
+          noCost={noCostCount}
+          open={railIs === 'over'}
+          onPress={() => pressRail(railIs === 'over' ? 'hide' : 'show')}
+          panelId={railPanelId}
+        >
+          {railIs === 'over' ? (
+            <div id={railPanelId} className="takeoffRailOver" role="region" aria-label={RAIL_FOLD_WORDS.name} data-testid="takeoff-rail">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{railPanels}</div>
+            </div>
+          ) : null}
+        </TakeoffRailStrip>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: railIs === 'beside' ? `minmax(0, 1fr) ${TAKEOFF_RAIL_PX}px` : 'minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
+        {/* While the rail is open over the list, any press on the list puts it away; the press still lands. */}
+        <div data-testid="takeoff-sheet-list" onPointerDownCapture={railIs === 'over' ? () => setRailPanelOpen(false) : undefined} style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Takeoff book</label>
+            <select
+              value={selectedBookVersionId ?? ''}
+              onChange={(e) => onSelectBook(e.target.value || null)}
+              style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '10rem', background: 'var(--surface)', color: 'inherit' }}
+            >
+              <option value="">— Select a book —</option>
+              {bookVersions.map((v) => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+            <span style={{ flex: 1 }} />
+            {chip('all', 'All', countRows.length)}
+            {chip('uncosted', 'Uncosted', coverage.uncostedIds.length)}
+            {chip('zero', '$0 price', zeroRows.size)}
+          </div>
+          {countRows.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Add fixtures in the Counts tab first.</p>
+          ) : visibleRows.length === 0 ? (
+            <EmptyState compact main={filter === 'uncosted' ? 'Every fixture has lines.' : 'No $0 lines.'} next={{ label: 'All', onPress: () => setFilter('all') }} tail="shows every fixture." />
+          ) : (
+            renderLinesTable(visibleRows, { suggestionFor })
+          )}
         </div>
+
+        {railIs === 'beside' ? (
+          <div data-testid="takeoff-rail" style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, position: 'sticky', top: 8 }}>
+            {railPanels}
+          </div>
+        ) : null}
       </div>
     </div>
   )
