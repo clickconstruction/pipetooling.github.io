@@ -20,7 +20,7 @@ No session, a token with no `amr`, an `amr` that is not a list, an entry with no
 ## What it leaves alone
 
 - **The salary sync** (`sync_salary_clock_sessions_for_user_day`). The server cannot tell the clock button's own sync from the sync after a pressed save, which can be for another day. A press in View as saves as that person by design, and the rows the sync writes are the ones the server's own schedule writes. The client holds the two syncs nobody presses for (v2.8176, v2.8246).
-- **The "seen" marks.** The client holds them (v2.8246). Four of them are RPCs that could take the same one line later (`job_note_tags_seen`, `task_note_tags_seen`, `bid_mark_requests_seen`, `legal_firm_intake_seen`).
+- **The "seen" marks.** The client holds them (v2.8246). Four of them are RPCs (`job_note_tags_seen`, `task_note_tags_seen`, `bid_mark_requests_seen`, `legal_firm_intake_seen`), and they took the same one line in v2.8459 (`20261124084500_imitated_session_holds_seen_marks.sql`).
 - **Rows already written.** It repairs nothing.
 
 ## Safety
