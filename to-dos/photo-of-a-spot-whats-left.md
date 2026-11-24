@@ -11,7 +11,7 @@ summary: >
 next: A crew member or Taunya walks 1 to 6 below on a phone, on the ZZ Test job JP1113 as the superintendent. Taunya answers the five calls when she has looked.
 size: S as six phone walks and five word calls, each alone
 blocker: A real phone on a real site, and Taunya's calls. No session has a camera, a reading or a signal to cut.
-ver: v2.8186 · 8188 · 8191 · 8193 · 8195 · 8200 · 8201 · 8203 · 8204 · 8205 · 8276
+ver: v2.8186 · 8188 · 8191 · 8193 · 8195 · 8200 · 8201 · 8203 · 8204 · 8205 · 8276 · 8495
 opinion: your call — the build is done and the session walks hold; what is left is a phone in a yard and her words
 mockup: not required — walks and word calls on screens that are built; #413's mock-up lives in git history at the commit that closed it
 ---
@@ -121,8 +121,8 @@ Walks 2 and 3 were not tried: a simulator has no rough reading and no airplane m
      **Throw this map away** asked first, and after it the row offered the two line presses again.
    - **Open the line is 44 px in dark.** It is a link with no box drawn, so the measure is its line's height, read from the lines around it.
      A press 17 px above the words opened the line.
-   - **Fault seen: the line is orange.** A walked water line and its swatch drew in the paint's orange, where the guide says blue.
-     It is the first of the loose ends below.
+   - **Fault seen, and mended in v2.8495: the line was orange.** A walked water line drew in the paint's orange, where the guide says blue.
+     It is the first of the loose ends below. Look for a blue line on this walk.
    - **Still owed:** a real walk under a real sky, and Android Chrome.
 
 ## Taunya's calls
@@ -140,11 +140,12 @@ A row opens the list's own map instead.
 
 ## Loose ends
 
-- **A buried line draws orange in the place windows.** Seen in the simulator on 2026-11-24: a water line walked from its place drew in the paint's orange on **Look it over**, on its saved map and from **Open the line**.
+- **A buried line drew orange in the place windows. Mended in v2.8495.** Seen in the simulator on 2026-11-24: a water line walked from its place drew in the paint's orange from **Open the line**.
   v2.8203 says it draws in the color of what is buried, and water is blue.
-  The place windows draw on Google since v2.8235, and the Google map strokes every line in the one paint color (`PaintedMapGoogleCanvas.tsx`).
-  The older map does read a line's own color, so the office's **Map** tab may be right. It was not looked at.
-  Not fixed.
+  The place windows draw on Google since v2.8235, and the Google map stroked every line in the one paint color.
+  It now reads a line's own color, and draws a kept line again when its color comes.
+  Held by tests alone. A look at a real buried line on the live site is still owed, and walk 6 gives it.
+  On **Look it over** and on the map just saved the line is still orange, and that is as built: it is tied to its place only once its map closes.
 - **Seen in the simulator, not looked into.** After **Remove** on a report's photo the tile went, and for half a minute the line above and the **Save** press still counted one photo.
   It could be the simulator painting late.
   A link that opens a map, `?paintedMap=`, lost its key once when the app reloaded itself for a new build.
