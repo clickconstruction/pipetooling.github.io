@@ -3500,7 +3500,8 @@ The week runs Monday–Sunday (`weekMondayContaining`), not the Sun–Sat pay we
 **Pace · a guess** is an open bill with no promise placed on its payer's expected day, a hosted Stripe invoice included, and it and **Their word** take the pen, *Write down their word*;
 the bank days are weekdays (`addBusinessDays` knows no holidays).
 Kernel `src/lib/moneyInWeek.ts`;
-reads `moneyInWeekLoad.ts`;
+the deposit rule (which deposit is a customer paying, which typed-in payment carries it, which is on no bill yet) is `src/lib/moneyInDeposits.ts`, read by Bills sent's By day paid too since v2.8493;
+reads `moneyInWeekLoad.ts`, the deposit reads `moneyInDepositsLoad.ts`;
 payouts `get-stripe-payouts`.
 
 **See**: `docs/recent-features/` v2.5926, v2.5937, v2.5955;
@@ -6921,6 +6922,8 @@ Since v2.8422 a check shows its number alone (`checkNumberOf`, `src/lib/jobs/bil
 **Still out** is an open bill's amount or a part-paid bill's remainder;
 a day's band counts it over the bills that first went that day (*1 of 3 paid · $6,820.00 still out*), and the **Not paid** tile over every bill on the list.
 **By day paid** (v2.8343) is the page's second view, behind the switch at its top and at `/bills-sent?view=paid`: a month of days, each with what came in, and behind a picked day its total and its payments (`src/lib/billing/billsPaidDays.ts`).
+Since v2.8493 a picked day names the bank deposits that landed that day and are on no bill yet, in one quiet line with **Open deposits**, under **All** alone (`billsPaidNoBillLine` over `src/lib/moneyInDeposits.ts`, the Money in bar's own rule);
+they are never added to a figure, a cell, a tile, the print or the CSV.
 **A day's figure** is each payment at what it took off its bill, on the payment's own day: a Stripe payment the day the customer paid, a matched deposit the day it posted at the bank, a typed payment the day the person named;
 Stripe's fee is not taken off, a refund made in Stripe is not seen, a credit in kind is listed and never added, and a test-mode bill's payment is left out.
 The chips narrow the month to one way of paying, **Stripe** first, and **one deposit** that paid several bills is drawn once with its bills under it.
