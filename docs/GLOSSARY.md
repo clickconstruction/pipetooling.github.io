@@ -6124,6 +6124,7 @@ Pipetooling deploys here via GitHub Actions.
 **SPA note**: Deep links (e.g. `/dashboard`) have no static file;
 the host may return **HTTP 404** for the document while still serving **`404.html`** (copy of `index.html`).
 **Hard Reload** in the app loads **`/`** first then restores the path in the browser ([`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) SPA document-404 note, [`src/lib/hardReload.ts`](../src/lib/hardReload.ts)).
+A sealed lens frame's hard reload asks for the frame's own page with the same mark on its address, and the seal takes the mark off as it starts ([`src/lib/lens/reloadPlace.ts`](../src/lib/lens/reloadPlace.ts), v2.8464), since the frame's `sessionStorage` is memory and keeps no page to restore.
 
 ### GitHub Actions
 CI/CD automation running workflows on GitHub events.
