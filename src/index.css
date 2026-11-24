@@ -6156,6 +6156,141 @@ button.gcStep:hover > em { text-decoration: underline; }
   padding-bottom: 232px;
 }
 
+/* The Sheet's rail folded to a strip (v2.8480, `TakeoffRailStrip`): a bar across the top of the sheet, pinned as
+   the list scrolls, as the rail beside the list is. It sits above the part search list (z-index 50) that can
+   scroll under it. The open rail hangs under it, over the list, 320 px wide and never taller than the window. */
+.takeoffRailStripWrap {
+  position: sticky;
+  top: 8px;
+  z-index: 60;
+  margin-bottom: 12px;
+}
+.takeoffRailStrip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  min-height: 44px;
+  padding: 5px 6px 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+.takeoffRailStripName {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.takeoffRailStripFact {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.takeoffRailStripFact .vipWorked {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+.takeoffRailStripFact[data-costed='some'] .vipWorked {
+  color: var(--text-amber-700);
+}
+.takeoffRailStripNoCost {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--bg-red-tint);
+  color: var(--text-red-700);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.takeoffRailStripHint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.takeoffRailStripPress,
+.takeoffRailHide {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.takeoffRailStripPress {
+  margin-left: auto;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-strong);
+}
+.takeoffRailHide {
+  min-height: 24px;
+  margin: -4px -6px -4px 0;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-blue-700);
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.takeoffRailHide:hover {
+  border-color: var(--border);
+}
+.takeoffRailOver {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  max-width: 100%;
+  max-height: calc(100vh - 5.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg-page);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+  animation: takeoffRailOverIn 140ms ease-out;
+}
+@keyframes takeoffRailOverIn {
+  from {
+    opacity: 0.4;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .takeoffRailOver {
+    animation: none;
+  }
+}
+/* A phone's width: both presses are 44 px tall. */
+@media (max-width: 640px) {
+  .takeoffRailStripPress,
+  .takeoffRailHide {
+    min-height: 44px;
+  }
+  .takeoffRailHide {
+    margin: -12px -6px -12px 0;
+    padding: 0 10px;
+  }
+}
+
 /* Takeoff part search (v2.4055): the magnifier at the end of every part name — faint at rest,
    blue on hover or focus; the takeoff's own print pages never carry it. */
 .takeoff-part-search {

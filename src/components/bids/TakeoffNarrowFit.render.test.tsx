@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 /**
- * Render smokes for the Takeoffs tab in a narrow window (v2.8476): the Sheet's
- * rail beside the list or under it, One at a time's fixtures list beside the
- * fixture or above it, and the line table's box drawn roomy, snug or scrolling.
+ * Render smokes for the Takeoffs tab in a narrow window (v2.8476): One at a
+ * time's fixtures list beside the fixture or above it, and the line table's box
+ * drawn roomy, snug or scrolling. The Sheet's rail is `TakeoffRailFold.render.test.tsx`.
  * jsdom lays nothing out, so each test says how wide the measured box is.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
-import { TakeoffCostRailView } from './TakeoffCostRailView'
 import { TakeoffFocusView } from './TakeoffFocusView'
 import { TakeoffLinesBox } from './TakeoffLinesBox'
 import { summarizeTakeoffCoverage } from '../../lib/bids/takeoffCoverage'
@@ -28,34 +27,8 @@ const rows = [row('r1', 'Water closet', 12), row('r2', 'Lavatory', 8), row('r3',
 const line = (id: string, countRowId: string, partId: string, unitPrice: number): TakeoffRoughPartLineRow => ({ id, countRowId, partId, quantity: 1, unitPrice, sourceMaterialPartPriceId: null, sourceTemplateId: null, sequenceOrder: 1, isSaved: true })
 const lines = [line('l1', 'r1', 'p1', 14.25), line('l2', 'r2', 'p2', 0)]
 const coverage = summarizeTakeoffCoverage(rows, lines)
-const names = new Map([['p1', 'ZZ closet flange'], ['p2', 'ZZ mixing valve']])
 const fillButton = { label: 'Fill from book · 0 matches', disabled: true, title: '' }
 const linesTable = () => <table data-testid="lines-table" />
-
-function sheet() {
-  return renderWithProviders(
-    <TakeoffCostRailView
-      countRows={rows}
-      lines={lines}
-      coverage={coverage}
-      bookPlan={null}
-      bookVersions={[]}
-      selectedBookVersionId={null}
-      onSelectBook={vi.fn()}
-      materialTemplates={[]}
-      partNameById={names}
-      history={new Map()}
-      renderLinesTable={linesTable}
-      fillButton={fillButton}
-      onFillAll={vi.fn()}
-      onApplyBook={vi.fn(async () => {})}
-      onCopyFromBid={vi.fn(async () => {})}
-      onRequestQuotes={vi.fn()}
-      onFocusView={vi.fn()}
-      stagesPanel={<button type="button">Fill from rules &amp; book</button>}
-    />,
-  )
-}
 
 function focus() {
   return renderWithProviders(
@@ -79,43 +52,6 @@ function focus() {
     />,
   )
 }
-
-describe('the Sheet in a wide and a narrow window', () => {
-  it('keeps the rail pinned beside the list where both fit (a 1,400 px window: the sheet is 1,222)', async () => {
-    measuredAt(1222)
-    sheet()
-    await settle()
-    expect(screen.getByTestId('takeoff-cost-rail-view').dataset.rail).toBe('beside')
-    const rail = screen.getByTestId('takeoff-rail')
-    expect(rail.style.position).toBe('sticky')
-    expect((rail.parentElement as HTMLElement).style.gridTemplateColumns).toBe('minmax(0, 1fr) 320px')
-  })
-
-  it('puts the rail under the list where they do not (a 900 px window: 722), with every panel and press still there', async () => {
-    measuredAt(722)
-    sheet()
-    await settle()
-    expect(screen.getByTestId('takeoff-cost-rail-view').dataset.rail).toBe('under')
-    const rail = screen.getByTestId('takeoff-rail')
-    expect(rail.style.position).toBe('')
-    // Under the list the panels sit in as many columns as fit, not one stretched across the sheet.
-    expect(rail.style.gridTemplateColumns).toBe('repeat(auto-fit, minmax(280px, 1fr))')
-    expect((rail.parentElement as HTMLElement).style.gridTemplateColumns).toBe('minmax(0, 1fr)')
-    // The list comes first, so the rail is under it.
-    expect(screen.getByTestId('lines-table').compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(rail.textContent).toContain('What Pricing sees')
-    expect(rail.textContent).toContain('Materials on this bid')
-    expect(screen.getByRole('button', { name: 'Fill from rules & book' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Request quotes · 1 part' })).toBeTruthy()
-    expect(rail.textContent).toContain('Copy fixtures from a previous bid')
-  })
-
-  it('draws as it always did before anything is measured', async () => {
-    sheet()
-    await settle()
-    expect(screen.getByTestId('takeoff-cost-rail-view').dataset.rail).toBe('beside')
-  })
-})
 
 describe('One at a time in a wide and a narrow window', () => {
   it('keeps the fixtures list pinned beside the fixture where both fit', async () => {
