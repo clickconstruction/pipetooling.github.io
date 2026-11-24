@@ -19,6 +19,7 @@ gc-award
 gc-take-ask-back
 pay-applications
 gc-back-charges
+gc-take-award-back
 lien-claim
 lien-hand-day
 lien-bill-months

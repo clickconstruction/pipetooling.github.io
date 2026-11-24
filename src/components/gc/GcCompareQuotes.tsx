@@ -7,6 +7,8 @@ import { travelFor, travelWords } from '../../lib/gc/map'
 import { alternateWords, bidGoodUntil, bidRanOut } from '../../lib/gc/portal'
 import type { GcState, Includes, Invite, TradePackage } from '../../lib/gc/types'
 import { awardGate } from '../../lib/gc/vetting'
+import { AWARD_BACK_FAILED, AWARD_BACK_PRESS, AWARD_BACK_PRESS_TITLE, awardBackConfirmWords, awardBackHold, showsAwardBack } from '../../lib/gc/awardBack'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { money, shortDate } from '../../lib/gc/words'
 import { PartnerName } from './GcPartnerName'
 import { Btn, Chip, PlusUnknown, input, num, td, th, type Tone } from './gcUi'
@@ -20,8 +22,10 @@ import { formatErrorMessage } from '../../utils/errorHandling'
  * makes a quote the trade's number in our price; **Carry our budget** carries ours instead. The
  * office's numbers sit on the ask (B1), never on the quote. Once the job is won, **Award and draft the
  * statement of work** takes Carry's place (B6-a-ii, from the spike's `LevelPanel` and `AwardButton`): `gc_award`
- * re-checks the gate, and a company the gate stops shows `canAward`'s words. Nudges and a quote typed in from an
- * email come in later steps.
+ * re-checks the gate, and a company the gate stops shows `canAward`'s words. Beside **Awarded**, **Take the award
+ * back…** (v2.8434) undoes it behind a confirm while the statement of work is still a draft: `gc_take_award_back`
+ * deletes the draft with the award and refuses in words anything that went out or stands on it. Nudges and a quote
+ * typed in from an email come in later steps.
  */
 
 /** What Compare quotes writes: the office's numbers on an ask, and what the trade carries. */
@@ -32,6 +36,8 @@ export interface CompareWrites {
   carry: (packageId: string, carry: { inviteId: string } | 'budget' | null) => Promise<void>
   /** Award the trade to an ask's quote, with who decided (B6-a-ii). Unset: the reader cannot award, and no Award shows. */
   award?: (inviteId: string, estimatorId: string | null) => Promise<void>
+  /** Take the trade's award back (v2.8434). Unset: the reader cannot, and no press shows. */
+  takeAwardBack?: (packageId: string) => Promise<void>
 }
 
 /** Who may be named as deciding an award: our team, and the one pressing first. */
@@ -117,6 +123,7 @@ export function GcCompareQuotes({
 }) {
   const [problem, setProblem] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const confirmDialog = useConfirmDialog()
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -143,6 +150,23 @@ export function GcCompareQuotes({
     run()
       .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
       .finally(() => setBusy(false))
+  }
+
+  // Take the award back (v2.8434): behind a confirm that says what goes. The server's refusal draws as the problem.
+  const takeBack = writes.takeAwardBack
+  const backHold = awardBackHold(pkg)
+  const takeAwardBack = async (company: string) => {
+    if (!takeBack) return
+    if (!(await confirmDialog({ ...awardBackConfirmWords(pkg.trade, company, pkg), danger: true }))) return
+    setBusy(true)
+    setProblem(null)
+    try {
+      await takeBack(pkg.id)
+    } catch (e) {
+      setProblem(formatErrorMessage(e, AWARD_BACK_FAILED))
+    } finally {
+      setBusy(false)
+    }
   }
 
   return createPortal(
@@ -396,7 +420,17 @@ export function GcCompareQuotes({
                           return (
                             <td key={inv.id} data-gc-award={inv.id} style={{ ...td, borderBottom: 'none' }}>
                               {pkg.awardedInviteId === inv.id ? (
-                                <Chip tone="green">Awarded</Chip>
+                                <span style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                  <Chip tone="green">Awarded</Chip>
+                                  {takeBack && showsAwardBack(pkg, canAward) && (
+                                    <span data-gc-award-back={pkg.id} style={{ display: 'inline-grid', gap: '0.2rem' }}>
+                                      <Btn disabled={busy || backHold !== null} title={backHold ?? AWARD_BACK_PRESS_TITLE} onClick={() => void takeAwardBack(partnerById(state, inv.partnerId)?.company ?? 'them')}>
+                                        {AWARD_BACK_PRESS}
+                                      </Btn>
+                                      {backHold && <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{backHold}</span>}
+                                    </span>
+                                  )}
+                                </span>
                               ) : canAward && award ? (
                                 <>
                                   <AwardButton team={team} disabled={busy || pkg.awardedInviteId !== null || !gate.ok} title={gate.why ?? undefined} onAward={(by) => act(() => award(inv.id, by))}>

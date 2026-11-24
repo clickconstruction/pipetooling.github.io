@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { GcCompareQuotes, type CompareWrites } from './GcCompareQuotes'
 import { boardStateFromRows, type BoardRows } from '../../lib/gc/boardRows'
-import { clinicBoardRows } from '../../lib/gc/boardTestRows'
-import { installDomShims } from '../../test/renderSmokeMocks'
+import { awardedClinicBoardRows, clinicBoardRows } from '../../lib/gc/boardTestRows'
+import { installDomShims, renderWithProviders as render } from '../../test/renderSmokeMocks'
 
 installDomShims()
 
@@ -108,6 +108,72 @@ describe('GcCompareQuotes', () => {
     const { dialog } = open(awarded, { ...writes(), award: vi.fn(() => Promise.resolve()) })
     expect(within(dialog.querySelector('[data-gc-award="i1"]') as HTMLElement).getByText('Awarded')).toBeTruthy()
     expect((within(dialog.querySelector('[data-gc-award="i2"]') as HTMLElement).getByRole('button', { name: 'Award and draft the statement of work' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  // v2.8434: Take the award back… beside Awarded, behind a confirm whose button names the act.
+  /** The clinic's sitework awarded to Lonestar, with its statement of work at this step. Both companies quoted. */
+  function awardedRows(status: 'draft' | 'sent' | 'signed'): BoardRows {
+    const base = awardedClinicBoardRows()
+    const quoted = rows()
+    return {
+      ...base,
+      invites: quoted.invites,
+      quotes: quoted.quotes,
+      sows: (base.sows ?? []).map((w) => ({ ...w, status, sent_on: status === 'draft' ? null : '2026-10-09', signed_on: status === 'signed' ? '2026-10-12' : null })),
+    }
+  }
+  function awardWrites() {
+    return { ...writes(), award: vi.fn(() => Promise.resolve()), takeAwardBack: vi.fn(() => Promise.resolve()) }
+  }
+
+  it('v2.8434 · Take the award back… asks first in its words, and takes it back on the press', async () => {
+    const w = awardWrites()
+    const { dialog } = open(boardStateFromRows(awardedRows('draft')), w)
+    const cell = dialog.querySelector('[data-gc-award="i1"]') as HTMLElement
+    expect(within(cell).getByText('Awarded')).toBeTruthy()
+    // The other quote holds no take-back: only the award itself does.
+    expect(within(dialog.querySelector('[data-gc-award="i2"]') as HTMLElement).queryByRole('button', { name: 'Take the award back…' })).toBeNull()
+    fireEvent.click(within(cell).getByRole('button', { name: 'Take the award back…' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Take the Sitework award back from Lonestar Earthworks?' })
+    expect(within(ask).getByText(/^The award comes off, and the drafted statement of work for \$66,500 is deleted\./)).toBeTruthy()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(w.takeAwardBack).not.toHaveBeenCalled()
+
+    fireEvent.click(within(cell).getByRole('button', { name: 'Take the award back…' }))
+    const again = await screen.findByRole('alertdialog', { name: 'Take the Sitework award back from Lonestar Earthworks?' })
+    fireEvent.click(within(again).getByRole('button', { name: 'Take the award back' }))
+    await waitFor(() => expect(w.takeAwardBack).toHaveBeenCalledWith('k1'))
+  })
+
+  it('v2.8434 · the press is dead once the statement of work was sent or signed, and says why', () => {
+    const sent = open(boardStateFromRows(awardedRows('sent')), awardWrites())
+    const press = within(sent.dialog.querySelector('[data-gc-award-back="k1"]') as HTMLElement).getByRole('button', { name: 'Take the award back…' }) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    expect(within(sent.dialog).getByText('The statement of work went to them to sign. Nothing takes a sent one back yet.')).toBeTruthy()
+  })
+
+  it('v2.8434 · a signed statement of work points at Change orders, and a refusal from the server draws its reason', async () => {
+    const signed = open(boardStateFromRows(awardedRows('signed')), awardWrites())
+    expect(within(signed.dialog).getByText('They signed the statement of work. A signed one changes through Change orders.')).toBeTruthy()
+    signed.dialog.remove()
+
+    const w = awardWrites()
+    // A Supabase refusal is a plain object, never an Error: the window must still read its reason.
+    vi.mocked(w.takeAwardBack).mockRejectedValueOnce({ message: 'Sitework stays awarded to Lonestar Earthworks, since the trade has submittals. Open Submittals on the job’s card.', code: 'P0001' })
+    render(<GcCompareQuotes state={boardStateFromRows(awardedRows('draft'))} projectId="p1" packageId="k1" writes={w} onClose={() => undefined} />)
+    const dialogs = screen.getAllByRole('dialog', { name: 'Compare Sitework quotes' })
+    const dialog = dialogs[dialogs.length - 1] as HTMLElement
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Take the award back…' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Take the Sitework award back from Lonestar Earthworks?' })
+    fireEvent.click(within(ask).getByRole('button', { name: 'Take the award back' }))
+    await within(dialog).findByText('The award did not come back: Sitework stays awarded to Lonestar Earthworks, since the trade has submittals. Open Submittals on the job’s card.')
+  })
+
+  it('v2.8434 · offers no take-back to a reader without the write', () => {
+    const { dialog } = open(boardStateFromRows(awardedRows('draft')), { ...writes(), award: vi.fn(() => Promise.resolve()) })
+    expect(within(dialog).getByText('Awarded')).toBeTruthy()
+    expect(within(dialog).queryByRole('button', { name: 'Take the award back…' })).toBeNull()
   })
 
   it('offers no Award while we bid, nor to a reader who cannot award', () => {

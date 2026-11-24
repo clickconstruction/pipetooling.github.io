@@ -249,6 +249,7 @@ import {
   sendOwnerPayApp,
   setOwnerRetainage,
   sendGcSow,
+  takeGcAwardBack,
   takeBillOffCard,
   loadGcStartTold,
   setGcProjectStartItem,
@@ -562,6 +563,12 @@ export default function GcProjects() {
       ? {
           award: async (inviteId: string, estimatorId: string | null) => {
             await awardGcTrade(inviteId, estimatorId)
+            await reloadProjects()
+          },
+          // Take it back (v2.8434): the same door as award, as `gc_take_award_back` says. It writes the trade too, and
+          // the projects' reload reads the board again, with the statement of work gone and the ask's new line.
+          takeAwardBack: async (packageId: string) => {
+            await takeGcAwardBack(packageId)
             await reloadProjects()
           },
         }

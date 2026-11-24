@@ -2,7 +2,7 @@
 title: award a trade on a GC project
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, award, awarded, statement of work, sow, trade partner, estimator, vetting, approved limit, buyout, won, send to sign, retainage, schedule of values, exclusions
+keywords: gc mode, award, awarded, take the award back, undo an award, unaward, statement of work, sow, trade partner, estimator, vetting, approved limit, buyout, won, send to sign, retainage, schedule of values, exclusions
 where: /gc
 order: 99
 ---
@@ -31,6 +31,32 @@ The app checks the company before it awards. The words under the button say what
 - A company approved up to an amount cannot take a bigger award.
 
 The app measures the award by the quote's **All in** number.
+
+## Take an award back
+
+An award made on the wrong company can come back. The award comes back only while the statement of work is still a draft.
+
+1. Open **Compare quotes** on the trade.
+2. Press {{button:outline|Take the award back…}} beside {{chip:green|Awarded}}.
+3. Read the window. The window says what goes.
+4. Press {{button:red|Take the award back}}.
+
+The award comes off. The drafted statement of work is deleted with it. The quote and the ask stay. You can award the trade again.
+
+The company may have opened its portal after the award. If so, it read that it got the job. Call them when that matters.
+
+The company's **Activity** keeps a note. The note says who took the award back and when.
+
+## When the award stays
+
+The button is off once the statement of work was sent or signed. The words under it say why.
+
+The app also refuses when a record already stands on the award. The words say what it found and where it is.
+
+- A pay application, a back charge or a report of work.
+- A change order, or a change they asked for.
+- A paper sent for the trade.
+- A submittal, their RFI, or a day they gave us.
 
 ## Read the statement of work
 
