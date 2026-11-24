@@ -661,6 +661,7 @@ last_updated: 2026-11-21
 > Its presses are the list that holds the job, when one does, and the job's Lien window.
 > The address keeps `job` on any of the three lists while the note stands (`lienDeskAimAddressJob`), and the aim is forgotten once its list holds the job, the reader picks another row or leaves the list (`lienDeskAimSpent`).
 > The re-aim effect hands the named job to all three selections, so a row picked before never stays open under an address that names another job.
+> Since v2.8478 the effect keys on `lienDeskReaimKey` (the job, the paper list it is named on, the press count), so the same job named on another list re-aims too, and the Lien window's button sends the job on every list (`lienWindowDeskDoorHref` in [`lib/lien/lienWindowDeskDoor.ts`](../src/lib/lien/lienWindowDeskDoor.ts)).
 
 > **v2.6777 · v2.6780 (the desk is a page, punch list #182):** `/lien-desk` ([`pages/LienDeskPage.tsx`](../src/pages/LienDeskPage.tsx), the address in [`lib/lien/lienDeskRoute.ts`](../src/lib/lien/lienDeskRoute.ts): `?tab=deadlines|notices|affidavits|retainage|timeline`, `&job=`, `&pile=`, the one-shot `&records=`).
 > `LienDeskModal` takes `frame: 'page' | 'window'` — on the page no overlay, no ✕, no `useModalFullScreen` key, the page's `backDoor` before the title, `data-lien-desk-panel="page"`, a named region, and `onAddressChange` told every change of `kind`, the Notices selection and `pile` once `data` is in (the job a door named counts before the selection catches up);
