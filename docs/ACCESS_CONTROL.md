@@ -4159,6 +4159,7 @@ links to the page since v2.5936, punch list #182), the ⋯ tools menu's row unde
 the same pool `set_job_collections_flag` and, since v2.4782, `set_job_uncollectible` gate — the Uncollectible mark on a Collections job, punch list #94).
 The `legal_*` tables are office-read through `legal_office_can_read()` (the same four roles) and never readable by anon;
 the firm's portal (PR 3) reads them through the service role.
+Since v2.8481 a referred job reaches the firm with its last day of work set by hand and the reason it was saved with, never who set it (`MATTER_JOB_COLUMNS`).
 **A matter on a person** (v2.6543, `legal_matters.kind = 'person'`, the HR file's Matter view) is a dev's alone: restrictive `_person_dev_only` policies on `legal_matters`, `legal_matter_jobs`, `legal_matter_entries`, `legal_matter_documents` and `legal_matter_gap_answers`, and since v2.6966 `_person_matter_dev_only` on `documents` and `document_revisions`, where the words of a matter's text document and its prior versions are kept (all through `legal_matter_is_person`), refuse its rows to the other three roles on every verb, and `legal_person_matter_open` is `is_dev()`-gated;
 the portal still serves it to a firm only once released.
 The desk's *Probably a subcontract* note (v2.5840, punch list #166) writes `jobs_ledger` through the same four roles' existing update policy: **Set the GC** sets `gc_customer_id` and lets the `jobs_ledger_customer_gc_distinct` trigger clear the customer slot;

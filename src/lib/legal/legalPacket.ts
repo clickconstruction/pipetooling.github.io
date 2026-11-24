@@ -434,7 +434,7 @@ export function legalLienClockWords(c: { status: LegalLienClockStatus; noticeLef
 export type LegalLienClockLine = {
   jobId: string
   jobLabel: string
-  /** `legalLastWorkBasis`: the last approved session, else the job's last work date, else its creation day. */
+  /** `legalLastWorkBasis`: the day set by hand, else the last approved session, else the job's last work date, else its bill's day, else its creation day. */
   lastWorkYmd: string | null
   lastWorkSource: LegalLastWorkSource
   /** '' for original contractors (no monthly notice) or when unknown. */
@@ -810,8 +810,9 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     }
   })
   const evidenceByJob = new Map(evidence.map((e) => [e.jobId, e] as const))
-  // One fallback chain for the lien clock and the Paper tab (item 25), the timeline kernel's own:
-  // the last approved session, else the job's last work date, else its creation day.
+  // One fallback chain for the lien clock and the Paper tab (item 25), the timeline kernel's own: the day set by hand
+  // (punch list #335, as the Lien window reads it), else the last approved session, else the job's last work date,
+  // else its bill's day, else its creation day.
   const lastWorkByJob = new Map(jobs.map((j) => {
     const days = input.clockSessions.filter((s) => s.jobId === j.id && !s.disqualified && s.approved).map((s) => s.workDate)
     return [j.id, legalLastWorkBasis(days, j)] as const
@@ -973,6 +974,10 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     openBalanceOf: (id) => { const j = jobs.find((x) => x.id === id); return j ? jobOpenBalance(j) : 0 },
     lastWorkOf: (id) => lastWorkByJob.get(id)?.ymd ?? null,
     lastWorkSourceOf: (id) => lastWorkByJob.get(id)?.source ?? 'none',
+    lastWorkHandOf: (id) => {
+      const b = lastWorkByJob.get(id)
+      return b?.source === 'hand' ? { note: b.note ?? '', laterHoursDay: b.laterHoursDay ?? '' } : undefined
+    },
     sessions: input.clockSessions,
     filings: lienFilingsLive,
     propertyKind: '',

@@ -29,9 +29,11 @@ type Row = Record<string, unknown>
 /**
  * `jobs_ledger`: the job's identity, money, dates, lien facts and collections note. `customer_address_id`
  * stays for item 6 (the property per job); `contract_not_needed_at` / `_reason` feed the coverage kernel's
- * *not needed* reading (item 4, v2.4634). Never the Drive or photo links, or the job's status.
+ * *not needed* reading (item 4, v2.4634). `lien_last_work_on` / `lien_last_work_note` are the last day of work set by
+ * hand and the reason it was saved with (punch list #335): the lien clock counts from that day on the job's Lien
+ * window, so counsel's page has to read it too. Never who set it, the Drive or photo links, or the job's status.
  */
-export const MATTER_JOB_COLUMNS = ['id', 'hcp_number', 'click_number', 'job_name', 'job_address', 'customer_id', 'customer_name', 'customer_email', 'customer_phone', 'gc_customer_id', 'customer_address_id', 'revenue', 'payments_made', 'last_bill_date', 'last_work_date', 'created_at', 'lien_contract_ended_on', 'lien_retainage_held', 'lien_payment_bond', 'collections_at', 'collections_by', 'collections_note', 'contract_not_needed_at', 'contract_not_needed_reason'] as const
+export const MATTER_JOB_COLUMNS = ['id', 'hcp_number', 'click_number', 'job_name', 'job_address', 'customer_id', 'customer_name', 'customer_email', 'customer_phone', 'gc_customer_id', 'customer_address_id', 'revenue', 'payments_made', 'last_bill_date', 'last_work_date', 'lien_last_work_on', 'lien_last_work_note', 'created_at', 'lien_contract_ended_on', 'lien_retainage_held', 'lien_payment_bond', 'collections_at', 'collections_by', 'collections_note', 'contract_not_needed_at', 'contract_not_needed_reason'] as const
 /** What the function adds to each job: its bills, its payments, the GC's name, the name of who flagged it. */
 const MATTER_JOB_ADDED = ['invoices', 'payments', 'gcCustomer', 'collections_by_name'] as const
 /**
