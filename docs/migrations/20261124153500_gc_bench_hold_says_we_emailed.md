@@ -12,3 +12,5 @@ No table is created, so no fence call is owed. `CREATE OR REPLACE`, idempotent.
 **Order**: push right after the merge. The client already calls this function, so `check:calls-ahead` labels the PR *push right after the merge*. The deploy does not hold: a replaced function is a warning there, and only a created name holds it. Nothing breaks in between: the client sends what it always sent, and until the push the press refuses in the old words. No types regen is owed: the signature is the same.
 
 **Held by**: `src/lib/gc/benchRemove.test.ts` reads the newest migration that defines the function and fails if the old words come back or the email's check loses its reason.
+
+**Applied** to prod by 2026-11-24: the dev seat's `check_migration_ledger` read 1,485 versions applied against 1,485 local files, this version among the newest it listed (read in the docs pass after #9574).

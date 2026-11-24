@@ -30,3 +30,5 @@ The table is open to every signed-in user. A day the caller could send would let
 ## Applying it
 
 `supabase db push`, once the file is on `main`, then regenerate `src/types/database.ts`. Nothing reads or writes the table until step 2 ships. The trigger on `address_geocodes` takes a short lock on that table, under the three-second lock timeout.
+
+**Applied** to prod by 2026-11-24: the dev seat's `check_migration_ledger` read 1,485 versions applied against 1,485 local files, this version among the newest it listed (read in the docs pass after #9574).

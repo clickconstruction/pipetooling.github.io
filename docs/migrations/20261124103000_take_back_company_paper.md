@@ -19,3 +19,5 @@ Idempotent: one `CREATE OR REPLACE`. No table is made, so no fence call closes t
 **The bed**: `supabase/tests/take_back_company_paper/20_scenario.sql` (`scripts/pgtest-take-back-company-paper.sh`, in `scripts/sql-beds.txt`): every role's gate, each refusal with its words, a signed paper and a received certificate kept, the papers taken back with the companies and GC mode's ask untouched, a second press reading *gone*, the same W-9 taken back once the ask is kept, and who may execute the function.
 
 **Order**: push right after the merge. The client calls a function only this migration creates, so `check:calls-ahead` labels the PR *push right after the merge* and the deploy holds until the push. The types regen (`database.ts`, the dev-mcp catalog) follows the push as usual.
+
+**Applied** to prod by 2026-11-24: the dev seat's `check_migration_ledger` read 1,485 versions applied against 1,485 local files, this version among the newest it listed (read in the docs pass after #9574).

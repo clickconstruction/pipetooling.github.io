@@ -42,3 +42,5 @@ A magic-link session costs one read of `user_imitations` by its `(target_id, cre
 ## Test
 
 `scripts/pgtest-imitated-session.sh` now applies this file a second time too, and runs `supabase/tests/imitated_session/30_seen_marks.sql` after the first scenario (`npm run test:pg:imitated-session`, on the SQL beds list). One thing of each kind is new for an office person. Her own password session marks all four and answers one of each. A dev's look, by `otp` and by `magiclink`, answers `0 0 0` and marks nothing. Done pressed in the look still closes the bid request. A person who is not the office is refused the firm's answers in words, looked as or not. Her own emailed link ten minutes after a look marks all four. The settings and the grants of the four are read back.
+
+**Applied** to prod by 2026-11-24: the dev seat's `check_migration_ledger` read 1,485 versions applied against 1,485 local files, this version among the newest it listed (read in the docs pass after #9574).
