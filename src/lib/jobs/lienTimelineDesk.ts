@@ -14,6 +14,7 @@ import { daysBetweenYmd } from './billedExpectedPay'
 import { lienClockMonths, lienHoursAfterHandDay } from './lienLastWorkDay'
 import type { JobWorkMonths } from './forecastWorkMonths'
 import { noticeDeadlineForMonth } from './lienDeadlines'
+import type { LienApprover } from './lienApprovalWait'
 
 /**
  * The Lien desk's view of a job, folded into the timeline kernel's input
@@ -51,6 +52,8 @@ export interface LienTimelineDeskSource {
   todayYmd: string
   /** The job's demand letters (v2.3877), when the caller loaded them; the strip draws none otherwise. */
   demandLetters?: ReadonlyArray<JobDemandLetterRow> | null
+  /** The leader a paper sent for approval waits on (punch list #335, `lienApprovalWait.ts`), when the caller knows him; absent reads *the leader*. */
+  approver?: LienApprover | null
 }
 
 /**
@@ -242,6 +245,7 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
     paid: src.openBalance <= 0,
     demandLetters: lienDemandLettersFromRows(src.demandLetters, src.openBalance),
     courtesy: lienCourtesyFromItems(src.items.filter((i) => i.job_id === jobId)),
+    approver: src.approver ?? null,
   })
 }
 
@@ -336,6 +340,8 @@ export function buildLienTimelineFromWindow(src: {
   deskNotice?: LienWindowDeskNotice | null
   /** Where the job's affidavit stands on the desk (v2.7187, punch list #335, row 2), from the same opener; absent, the header reads *File the affidavit*. */
   deskAffidavit?: LienWindowDeskAffidavit | null
+  /** The leader a paper sent for approval waits on (punch list #335, `lienApprovalWait.ts`), from the same opener; absent, the header reads *the leader*. */
+  approver?: LienApprover | null
 }): LienTimeline {
   const live = src.filings.filter((f) => f.job_id === src.job.id && f.voided_at == null)
   const sentMonths = new Map<string, string>()
@@ -389,5 +395,6 @@ export function buildLienTimelineFromWindow(src: {
     paid: src.openBalance <= 0,
     demandLetters: lienDemandLettersFromRows(src.demandLetters, src.openBalance),
     courtesy: src.courtesy ?? undefined,
+    approver: src.approver ?? null,
   })
 }

@@ -12,6 +12,7 @@ import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/job
 import { workMonthLabel, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
+import { lienApproverFor } from '../../lib/jobs/lienApprovalWait'
 import { LienLastWorkDayWindow } from './LienLastWorkDayWindow'
 import LienTimelineStrip, { LienTimelineViewSwitch } from './LienTimelineStrip'
 import { lienLastWorkDoorOffered } from '../../lib/jobs/lienLastWorkDoor'
@@ -228,6 +229,8 @@ export default function LienDeskAffidavitPane({
     openBalance: entry.openBalance,
     todayYmd,
     demandLetters: data.demandLettersByJob?.[entry.jobId] ?? null,
+    // The path names the leader a paper sent for approval waits on, as the row does (punch list #335).
+    approver: lienApproverFor({ leaderName: leaderNameFor?.(job?.master_user_id ?? null), masterUserId: job?.master_user_id, viewerUserId: authUserId, role: authRole }),
   })
   const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
   const property = useMemo(() => resolveLienProperty(address ?? null, data.ownerByJob[entry.jobId] ?? null), [address, data.ownerByJob, entry.jobId])

@@ -325,6 +325,7 @@ last_updated: 2026-11-21
 > Edit Job for a role without the window), the GC's customer record, Monthly notices, the Retainage tab (the pane's `onShowRetainage`), the Lien window's affidavit tab for the copy and the release, the Legal desk.
 > `footer` runs the footer's main press when it is one clear press and otherwise brings the footer up (`bringLienFooterUp` in [`lienFooterFocus.ts`](../src/components/jobs/lienFooterFocus.ts));
 > each pane hands the strip its own `act` in the viewer's words (the leader's *Sign and approve ›*, the office's *Waiting on <leader>* tag with no press, *Go to gate N ›* for a send the gates hold).
+> Since v2.8475 the band's *Waiting on* line names the leader a paper sent for approval waits on (`lienApprovalWait.ts`: `lienApprovalWaitWords` for the path, `lienLeaderWords` for the act table, `lienApproverFor` for whose approval it is), handed to both builders as `approver`.
 > The retainage pane draws no strip;
 > the History tab, the Lien window, the Legal desk's packet tab and the law firm's page hand no `onAct` and draw the band with no press.
 
