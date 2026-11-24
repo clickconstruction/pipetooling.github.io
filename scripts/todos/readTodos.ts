@@ -15,6 +15,7 @@ import {
   dirForFile,
   findTodoProblems,
   isParseError,
+  picturesFilesFor,
   readTodoDoc,
   renderBoardData,
   renderBoardModule,
@@ -118,7 +119,10 @@ export function loadTodos(root: string): TodoSources {
   const docs: TodoDoc[] = []
   const errors: TodoParseError[] = []
   for (const file of todoPaths(root)) {
-    const parsed = readTodoDoc(file, readFileSync(join(root, file), 'utf8'), siblingsOf(root, file))
+    const siblings = siblingsOf(root, file)
+    // The card's pictures page, when it has one: the row reads its count and its day off the page itself.
+    const page = picturesFilesFor(file, siblings).page
+    const parsed = readTodoDoc(file, readFileSync(join(root, file), 'utf8'), siblings, page ? readFileSync(join(root, page), 'utf8') : null)
     if (isParseError(parsed)) errors.push(parsed)
     else docs.push(parsed)
   }

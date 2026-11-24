@@ -36096,6 +36096,7 @@ export type Database = {
       }
       punch_list_picks: {
         Row: {
+          answers_ask: string
           note: string
           pick: string
           slug: string
@@ -36103,6 +36104,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          answers_ask?: string
           note?: string
           pick?: string
           slug: string
@@ -36110,6 +36112,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          answers_ask?: string
           note?: string
           pick?: string
           slug?: string

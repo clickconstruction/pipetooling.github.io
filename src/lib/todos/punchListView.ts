@@ -18,10 +18,17 @@ import {
 
 export type PunchPick = 'do' | 'later' | 'drop'
 export type PunchFilter = 'all' | 'unsorted' | PunchPick
+/**
+ * What a row's pick can hold. `change` is an answer to a card's question (punch list #438): on a card
+ * with a question the control reads Go ahead (`do`), Change, Not now (`later`). See `punchListWaiting.ts`.
+ */
+export type StoredPick = PunchPick | 'change'
 
 export interface PickRecord {
-  pick: PunchPick | ''
+  pick: StoredPick | ''
   note: string
+  /** The card's question as it read when the pick was made; '' for a pick on a card with no question. */
+  answersAsk: string
   /** ISO timestamp of the last change. */
   at: string
   /** Who last changed it — a user id for a shared pick; '' for a device-local one. */
@@ -37,15 +44,20 @@ export interface PunchPickRow {
   note: string
   updated_at: string
   updated_by: string | null
+  /** Absent on a row read before the column was there. */
+  answers_ask?: string | null
   users?: { name: string | null } | null
+}
+
+function storedPick(value: unknown): StoredPick | '' {
+  return value === 'do' || value === 'later' || value === 'drop' || value === 'change' ? value : ''
 }
 
 /** Rows → the map the page renders; an unknown pick value reads as none. */
 export function picksFromRows(rows: readonly PunchPickRow[]): PickMap {
   const out: PickMap = {}
   for (const r of rows) {
-    const pick = r.pick === 'do' || r.pick === 'later' || r.pick === 'drop' ? r.pick : ''
-    out[r.slug] = { pick, note: r.note ?? '', at: r.updated_at ?? '', by: r.updated_by ?? '', byName: r.users?.name ?? '' }
+    out[r.slug] = { pick: storedPick(r.pick), note: r.note ?? '', answersAsk: r.answers_ask ?? '', at: r.updated_at ?? '', by: r.updated_by ?? '', byName: r.users?.name ?? '' }
   }
   return out
 }
@@ -77,8 +89,10 @@ export function isOpenItem(item: Pick<BoardItem, 'pointer'>): boolean {
   return !item.pointer
 }
 
+/** The row's Do, Later or Drop. A Change answer is no sorting pick: it reads as none here. */
 export function pickOf(picks: PickMap, slug: string): PunchPick | '' {
-  return picks[slug]?.pick ?? ''
+  const pick = picks[slug]?.pick ?? ''
+  return pick === 'change' ? '' : pick
 }
 
 export interface PickCounts {
@@ -162,12 +176,12 @@ export function nextPick(current: PunchPick | '', clicked: PunchPick): PunchPick
 /** A pick record updated in place, stamped now. */
 export function withPick(
   prior: PickRecord | undefined,
-  patch: Partial<Pick<PickRecord, 'pick' | 'note'>>,
+  patch: Partial<Pick<PickRecord, 'pick' | 'note' | 'answersAsk'>>,
   nowIso: string,
   by = '',
   byName = '',
 ): PickRecord {
-  return { pick: '', note: '', ...prior, ...patch, at: nowIso, by, byName }
+  return { pick: '', note: '', answersAsk: '', ...prior, ...patch, at: nowIso, by, byName }
 }
 
 // ---- links --------------------------------------------------------------------------------
@@ -244,8 +258,7 @@ export function parseLocalPicks(raw: string | null): PickMap {
     for (const [slug, rec] of Object.entries(parsed as Record<string, unknown>)) {
       if (!rec || typeof rec !== 'object') continue
       const r = rec as Partial<PickRecord>
-      const pick = r.pick === 'do' || r.pick === 'later' || r.pick === 'drop' ? r.pick : ''
-      out[slug] = { pick, note: typeof r.note === 'string' ? r.note : '', at: typeof r.at === 'string' ? r.at : '', by: typeof r.by === 'string' ? r.by : '', byName: '' }
+      out[slug] = { pick: storedPick(r.pick), note: typeof r.note === 'string' ? r.note : '', answersAsk: typeof r.answersAsk === 'string' ? r.answersAsk : '', at: typeof r.at === 'string' ? r.at : '', by: typeof r.by === 'string' ? r.by : '', byName: '' }
     }
     return out
   } catch {

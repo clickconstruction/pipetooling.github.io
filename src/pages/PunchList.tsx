@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useRoleGate } from '../hooks/useRoleGate'
-import { usePunchListPicks } from '../hooks/usePunchListPicks'
+import { usePunchListPicks, type PickPatch } from '../hooks/usePunchListPicks'
 import { usePunchListTicks } from '../hooks/usePunchListTicks'
 import { isImpersonationSessionActive } from '../lib/impersonationSession'
 import { canOpenPunchList } from '../lib/todos/punchListAccess'
@@ -34,6 +34,9 @@ import { parseOpinion, type BoardGroup, type BoardItem, type OpinionVerdict } fr
 import { PunchListBurndown } from '../components/punchList/PunchListBurndown'
 import { PunchListByNumber } from '../components/punchList/PunchListByNumber'
 import { PunchListShortlist } from '../components/punchList/PunchListShortlist'
+import { PunchListAnswer } from '../components/punchList/PunchListAnswer'
+import { PunchListWaiting } from '../components/punchList/PunchListWaiting'
+import { isAsked, mineFor, waitingCounts, waitingViewLabel } from '../lib/todos/punchListWaiting'
 import { PunchListTick } from '../components/punchList/PunchListTick'
 import { PunchListClaim } from '../components/punchList/PunchListClaim'
 import type { CardClaims } from '../lib/todos/punchListClaims'
@@ -147,10 +150,16 @@ export default function PunchList() {
   // The view and the sort: the address first, then the last press on this device, then the groups.
   const [remembered, setRemembered] = useState(() => ({ view: readChoice(VIEW_KEY), order: readChoice(ORDER_KEY) }))
   const params = new URLSearchParams(location.search)
-  const view = viewFrom(params.get(VIEW_PARAM), remembered.view)
+  // The questions that wait on a person (punch list #438). A reader with a question of their own lands on that view
+  // until they choose another; the count of cards that ask them, answered or not, decides it, so an answer given on
+  // this visit does not move the page under them. With no card asking anything the view is not offered.
+  const waiting = useMemo(() => waitingCounts(board.items, picks, mineFor(role)), [picks, role])
+  const wanted = viewFrom(params.get(VIEW_PARAM), remembered.view, waiting.mineAsked > 0 ? 'waiting' : 'group')
+  const view: PunchView = wanted === 'waiting' && waiting.asked === 0 ? 'group' : wanted
   const order = orderFrom(params.get(ORDER_PARAM), remembered.order)
   const choose = (nextView: PunchView, nextOrder: NumberOrder) => {
-    writeChoice(VIEW_KEY, nextView === 'number' ? nextView : null)
+    // Every view is remembered by name since the waiting view can be where a bare address lands.
+    writeChoice(VIEW_KEY, nextView)
     writeChoice(ORDER_KEY, nextOrder === 'oldest' ? nextOrder : null)
     setRemembered({ view: nextView, order: nextOrder })
     navigate({ pathname: location.pathname, search: searchFor(location.search, nextView, nextOrder), hash: location.hash }, { replace: true })
@@ -284,9 +293,9 @@ export default function PunchList() {
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.25rem', alignItems: 'center' }}>
         <span style={eyebrow}>View</span>
-        {PUNCH_VIEWS.map((v) => (
-          <button key={v} type="button" onClick={() => choose(v, order)} aria-pressed={view === v} style={pillStyle(view === v)}>
-            {VIEW_LABEL[v]}
+        {PUNCH_VIEWS.filter((v) => v !== 'waiting' || waiting.asked > 0).map((v) => (
+          <button key={v} type="button" onClick={() => choose(v, order)} aria-pressed={view === v} data-testid={`punch-view-${v}`} style={pillStyle(view === v)}>
+            {v === 'waiting' ? waitingViewLabel(waiting) : VIEW_LABEL[v]}
           </button>
         ))}
         <div className="punch-search">
@@ -342,6 +351,9 @@ export default function PunchList() {
             </button>
           ) : null}
         </div>
+        {/* The sorting filters narrow the cards to build. The waiting view lists questions, so it shows the search alone. */}
+        {view === 'waiting' ? null : (
+        <>
         <span className="punch-divider" style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 0.25rem' }} aria-hidden />
         <span style={eyebrow}>Show</span>
         {PUNCH_FILTERS.map((f) => {
@@ -393,10 +405,22 @@ export default function PunchList() {
             {ticks.ticked.size}
           </b>
         </button>
+        </>
+        )}
       </div>
 
-      {/* By number: every card in one list, the highest number first. It stands in for the Shortlist and the groups. */}
-      {view === 'number' ? (
+      {/* Waiting on me: the cards that carry a question, each with its answer. It stands in for the Shortlist and the groups. */}
+      {view === 'waiting' ? (
+        <PunchListWaiting
+          items={board.items}
+          visible={(it) => cardMatchesSearch(it, query)}
+          picks={picks}
+          onSave={save}
+          role={role}
+          firstName={(profileName ?? '').trim().split(/\s+/)[0] ?? ''}
+        />
+      ) : /* By number: every card in one list, the highest number first. It stands in for the Shortlist and the groups. */
+      view === 'number' ? (
         <PunchListByNumber
           items={board.items}
           visible={visible}
@@ -502,7 +526,7 @@ function Row({
   item: BoardItem
   group: BoardGroup
   picks: PickMap
-  onSave: (slug: string, patch: Partial<{ pick: PunchPick | ''; note: string }>) => void | Promise<void>
+  onSave: (slug: string, patch: PickPatch) => void | Promise<void>
   first: boolean
   /** False under a By number row, which carries the `#n<N>` anchor itself. */
   anchor?: boolean
@@ -634,7 +658,10 @@ function Row({
         </dl>
       </div>
       <div className="punch-act" style={{ padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {open ? (
+        {open && isAsked(item) ? (
+          // A card that carries a question takes its answer here too, the same control as the waiting view.
+          <PunchListAnswer item={item} rec={picks[item.slug]} onSave={onSave} />
+        ) : open ? (
           <>
             <div role="group" aria-label={`Pick for ${item.name}`} style={{ display: 'flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
               {(['do', 'later', 'drop'] as const).map((p, i) => {
