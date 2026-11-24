@@ -25,6 +25,7 @@ import { HandshakeQueue } from './HandshakeQueue'
 import { StagesQueue } from './StagesQueue'
 import { OffersQueue } from './OffersQueue'
 import { SignedQueue } from './SignedQueue'
+import { moneyText } from '../../../test/moneyText'
 
 const TODAY = '2026-09-06'
 
@@ -90,7 +91,7 @@ describe('HandshakeQueue', () => {
     renderWithProviders(<HandshakeQueue board={board} jobs={jobs} contacts={new Map([['p-tx', { email: null, phone: '(512) 555-0142' }]])} authUserId="u-1" todayYmd={TODAY} actions={actions()} onClose={vi.fn()} />)
     await settle()
     expect(screen.getByText('Get it in writing')).toBeTruthy()
-    expect(screen.getByText('$44,200.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$44,200.00'))).toBeTruthy()
     // The $40,000 row is first and open; it needs a job before it can go.
     expect(screen.getByText('Pick the job first')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Link and send' })).toBeTruthy()
@@ -175,7 +176,7 @@ describe('SignedQueue', () => {
     renderWithProviders(<SignedQueue board={board} ordersById={orders} stageByOrderId={new Map()} jobs={jobs} month="2026-09" currentMonth="2026-09" onMonthChange={vi.fn()} actions={a} onClose={vi.fn()} />)
     await settle()
     expect(screen.getByText("Signed in September · what's next")).toBeTruthy()
-    expect(screen.getByText('$4,000.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$4,000.00'))).toBeTruthy()
     expect(screen.getByText(/3 needs? the office|3 need the office/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Passed → bill' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Schedule inspection…' })).toBeTruthy()

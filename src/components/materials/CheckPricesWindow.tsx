@@ -10,6 +10,7 @@ import { isBigJump, parsePriceInput, type CheckItem } from '../../lib/materials/
 import type { PriceCheckResult } from '../../lib/materials/priceCheckIo'
 import { formatCurrency } from '../../lib/format'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { Money, MoneyText } from '../Money'
 
 type RowState =
   | { kind: 'open'; draft: string; message?: string }
@@ -92,13 +93,13 @@ export function CheckPricesWindow({
                 <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
                   <div style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{item.partName}</div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {item.houseName} · ${formatCurrency(item.price)} · {item.lastCheckedDay ? `last checked ${formatWorkDateYmdMonthDayShort(item.lastCheckedDay)}` : 'no check on record'}
+                    {item.houseName} · <Money amount={item.price} /> · {item.lastCheckedDay ? `last checked ${formatWorkDateYmdMonthDayShort(item.lastCheckedDay)}` : 'no check on record'}
                   </div>
                 </div>
                 {row.kind === 'same' ? (
                   <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-green-700)' }}>✓ Same as before</span>
                 ) : row.kind === 'saved' ? (
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-green-700)' }}>✓ Saved at ${formatCurrency(row.price)}</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-green-700)' }}>✓ Saved at <Money amount={row.price} /></span>
                 ) : (
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <input
@@ -124,10 +125,10 @@ export function CheckPricesWindow({
                     {bad ? <span style={{ color: 'var(--text-red-700)' }}>Type a price like 12.50.</span> : null}
                     {change != null && !big ? (
                       <span style={{ color: change > 0 ? 'var(--text-orange-700)' : change < 0 ? 'var(--text-blue-700)' : 'var(--text-muted)' }}>
-                        {change === 0 ? 'The same as the book.' : `${change > 0 ? 'Up' : 'Down'} ${(Math.abs(change) * 100).toFixed(1)}% from $${formatCurrency(item.price)}.`}
+                        {change === 0 ? 'The same as the book.' : <MoneyText text={`${change > 0 ? 'Up' : 'Down'} ${(Math.abs(change) * 100).toFixed(1)}% from $${formatCurrency(item.price)}.`} />}
                       </span>
                     ) : null}
-                    {big ? <span style={{ color: 'var(--text-amber-800)' }}>That is a big change from ${formatCurrency(item.price)}. Check the size and the pack before you save.</span> : null}
+                    {big ? <span style={{ color: 'var(--text-amber-800)' }}>That is a big change from <Money amount={item.price} />. Check the size and the pack before you save.</span> : null}
                     {row.message ? <span style={{ color: 'var(--text-red-700)', display: 'block' }}>{row.message}</span> : null}
                   </div>
                 ) : null}

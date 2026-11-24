@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { StagesCreatePartialInvoiceModal } from './StagesCreatePartialInvoiceModal'
 import { makeJob } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 const job = makeJob({ hcp_number: '878', job_name: 'Acme Plaza', status: 'ready_to_bill', revenue: 10000, payments_made: 3000, invoices: [] })
 
@@ -20,7 +21,7 @@ describe('StagesCreatePartialInvoiceModal', () => {
     const { rerender } = render(<StagesCreatePartialInvoiceModal job={job} amount="" onAmountChange={onAmountChange} onAmountBlur={onAmountBlur} error={null} creating={false} onCancel={onCancel} onCreate={onCreate} />)
     expect(screen.getByText('Create partial invoice')).toBeTruthy()
     expect(screen.getByText('878 · Acme Plaza')).toBeTruthy()
-    expect(screen.getByText('Remaining: $7,000.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('Remaining: $7,000.00'))).toBeTruthy()
     const input = screen.getByPlaceholderText('0') as HTMLInputElement
     fireEvent.change(input, { target: { value: '2500' } })
     expect(onAmountChange).toHaveBeenCalledWith('2500')

@@ -3,6 +3,7 @@ import type { Database } from '../../types/database'
 import type { AccountingRuleOverlapReport } from '../../lib/accountingRuleOverlap'
 import { formatBankingDate, formatUsd } from './bankingMercuryDragSortLedger'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
 type RuleRow = Database['public']['Tables']['mercury_accounting_label_rules']['Row']
@@ -213,7 +214,7 @@ export function BankingMercuryAccountingOverlapsModal({
                   >
                     <div>
                       {tx
-                        ? `${formatUsd(Number(tx.amount))} · ${tx.counterparty_name ?? '—'} · ${formatBankingDate(tx.posted_at)}`
+                        ? <MoneyText text={`${formatUsd(Number(tx.amount))} · ${tx.counterparty_name ?? '—'} · ${formatBankingDate(tx.posted_at)}`} />
                         : row.txId.slice(0, 8)}
                     </div>
                     <div style={{ marginTop: 2, color: 'var(--text-slate-600)' }}>

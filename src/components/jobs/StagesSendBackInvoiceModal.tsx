@@ -12,6 +12,7 @@ import type { InvoiceWithJob } from '../../lib/jobsStagesBoard'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { invoiceNeedsStripeVoidForRevert } from '../../lib/voidStripeInvoiceForRevert'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { MoneyText } from '../Money'
 
 export type StagesSendBackInvoiceTarget = { inv: InvoiceWithJob; action: 'delete' | 'revert' }
 
@@ -38,7 +39,7 @@ export function StagesSendBackInvoiceModal({
         <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(480px, calc(100vw - 2rem))', maxWidth: 480 }}>
           <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{target.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</h2>
           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            {`Job ${effectiveJobLedgerNumber(target.inv.job.hcp_number, target.inv.job.click_number) || '—'} · ${target.inv.job.job_name || '—'} · $${Number(target.inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+            <MoneyText text={`Job ${effectiveJobLedgerNumber(target.inv.job.hcp_number, target.inv.job.click_number) || '—'} · ${target.inv.job.job_name || '—'} · $${Number(target.inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`} />
           </p>
           {target.action === 'delete' && (
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>This will remove the invoice from Ready to Bill.</p>

@@ -41,6 +41,7 @@ import {
   type PayWindowState,
 } from '../../lib/materials/payments/supplyPaymentWindow'
 import type { HousePayments, RecordSupplyPaymentResult, SupplyPaymentsIo } from '../../lib/materials/payments/supplyPaymentsIo'
+import { MoneyText } from '../Money'
 
 /**
  * Record a payment to a supply house (the owner's ask of 2026-11-16): the People pay window's pieces, with the
@@ -283,7 +284,7 @@ export function RecordSupplyPaymentModal({
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.5rem 0.75rem', background: 'var(--bg-muted)', fontSize: '0.875rem' }} data-testid="record-supply-payment-account">
                   <input type="checkbox" checked={state.useAccount} disabled={saving} onChange={(e) => setState((s) => setUseAccount(s, e.target.checked, ctx))} />
                   <span>
-                    <b>Use {usd(accountTotal)} on account first</b>
+                    <b>Use <MoneyText text={usd(accountTotal)} /> on account first</b>
                     <span style={{ ...quiet, display: 'block' }}>An earlier payment sent more than its bills. It goes on the oldest bills ticked.</span>
                   </span>
                 </label>
@@ -302,7 +303,7 @@ export function RecordSupplyPaymentModal({
                         {late > 0 ? <span style={{ marginLeft: 6, padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: late >= 60 ? 'var(--bg-red-100)' : 'var(--bg-amber-100)', color: late >= 60 ? 'var(--text-red-800)' : 'var(--text-amber-800)' }}>{late}d past due</span> : null}
                       </span>
                       <span style={{ ...quiet, display: 'block', fontVariantNumeric: 'tabular-nums' }}>
-                        {b.number} · {b.dueYmd ? `due ${billDateWords(b.dueYmd, todayYmd)}` : 'no due date'} · {usd(b.open)} open
+                        {b.number} · {b.dueYmd ? `due ${billDateWords(b.dueYmd, todayYmd)}` : 'no due date'} · <MoneyText text={usd(b.open)} /> open
                       </span>
                     </label>
                     {parts ? (
@@ -317,7 +318,7 @@ export function RecordSupplyPaymentModal({
                         style={{ width: 110, padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
                       />
                     ) : (
-                      <span style={{ minWidth: 96, textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: on ? 'var(--text-strong)' : 'var(--text-muted)' }}>{usd(b.open)}</span>
+                      <span style={{ minWidth: 96, textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: on ? 'var(--text-strong)' : 'var(--text-muted)' }}><MoneyText text={usd(b.open)} /></span>
                     )}
                     {note && (parts || note.tone === 'bad') ? <span style={{ flexBasis: '100%', paddingLeft: 26, fontSize: '0.78rem', color: note.tone === 'bad' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>{note.words}</span> : null}
                   </div>
@@ -331,8 +332,8 @@ export function RecordSupplyPaymentModal({
                     <label htmlFor={`pay-credit-${c.id}`} style={{ flex: '1 1 220px', minWidth: 0, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>
                       Credit memo {c.number}
                     </label>
-                    <span style={{ minWidth: 96, textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-green-700)' }}>− {usd(c.open)}</span>
-                    {on ? <span style={{ flexBasis: '100%', paddingLeft: 26, fontSize: '0.78rem', color: 'var(--text-muted)' }}>Covers {usd(c.open)} of the bills ticked. The credit memo will read used by this payment.</span> : null}
+                    <span style={{ minWidth: 96, textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-green-700)' }}>− <MoneyText text={usd(c.open)} /></span>
+                    {on ? <span style={{ flexBasis: '100%', paddingLeft: 26, fontSize: '0.78rem', color: 'var(--text-muted)' }}>Covers <MoneyText text={usd(c.open)} /> of the bills ticked. The credit memo will read used by this payment.</span> : null}
                   </div>
                 )
               })}
@@ -385,7 +386,7 @@ export function RecordSupplyPaymentModal({
             {parts && plan.left > 0 ? (
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 0.5rem', fontSize: '0.875rem' }} data-testid="record-supply-payment-keep">
                 <input type="checkbox" checked={state.keepOnAccount} disabled={saving} onChange={(e) => setState((s) => ({ ...s, keepOnAccount: e.target.checked }))} />
-                Keep {usd(plan.left)} on account with {houseName}
+                Keep <MoneyText text={usd(plan.left)} /> on account with {houseName}
               </label>
             ) : null}
             <p style={{ ...quiet, margin: '0 0 0.9rem', minHeight: '1.2em' }} data-testid="record-supply-payment-why">

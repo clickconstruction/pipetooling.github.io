@@ -1,6 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { findOrCreateFolder, googleAccessToken, putResumablePiece, resumableStatus, startResumableUpload, uploadBytes } from '../_shared/driveUpload.ts'
+import { copyInPieces } from '../_shared/driveCopyInPieces.ts'
+import { DRIVE_WHOLE_MAX_BYTES } from '../_shared/firstLookDrive.ts'
 import { freeName } from '../_shared/driveJobFolder.ts'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
 import { NO_PEOPLE_FOLDER_WORDS, driveSafeName } from '../_shared/whereFilesGo.ts'
@@ -45,9 +47,11 @@ function json(body: unknown, status = 200): Response {
 
 const HR_FILES_BUCKET = 'hr-files'
 const SWEEP_BATCH = 20
+/** How long one large file may take on its way to Drive before the run gives it back to the sweep (v2.8375). */
+const LARGE_FILE_BUDGET_MS = 100_000
 
 type EvidenceRow = { id: string; person_id: string; dated_on: string; title: string; drive_folder_id: string | null; drive_folder_url: string | null; filed_at: string | null; fail_why: string | null; counsel_only?: boolean | null }
-type FileRow = { id: string; evidence_id: string; filename: string; mime_type: string | null; storage_path: string | null; drive_file_id: string | null; drive_url: string | null }
+type FileRow = { id: string; evidence_id: string; filename: string; mime_type: string | null; size_bytes: number | null; storage_path: string | null; drive_file_id: string | null; drive_url: string | null }
 
 const folderUrl = (id: string) => `https://drive.google.com/drive/folders/${id}`
 const fileUrl = (id: string) => `https://drive.google.com/file/d/${id}/view`
@@ -60,7 +64,7 @@ function recordFolderName(r: Pick<EvidenceRow, 'dated_on' | 'title'>): string {
 async function fileRecord(admin: SupabaseClient, google: string, peopleRoot: string, record: EvidenceRow, personName: string): Promise<{ filed: number; remaining: number; failWhy: string | null; folderUrl: string | null }> {
   // v2.6554: a counsel-only record is kept here only — never filed, never touched; the bucket copy is the only copy in the app.
   if (record.counsel_only) return { filed: 0, remaining: 0, failWhy: null, folderUrl: null }
-  const { data: files } = await admin.from('person_file_attachments').select('id, evidence_id, filename, mime_type, storage_path, drive_file_id, drive_url').eq('evidence_id', record.id)
+  const { data: files } = await admin.from('person_file_attachments').select('id, evidence_id, filename, mime_type, size_bytes, storage_path, drive_file_id, drive_url').eq('evidence_id', record.id)
   const rows = (files ?? []) as FileRow[]
   let folderId = record.drive_folder_id
   let filed = 0
@@ -90,21 +94,59 @@ async function fileRecord(admin: SupabaseClient, google: string, peopleRoot: str
         await admin.from('person_file_attachments').update({ fail_why: 'No staged copy to file.' }).eq('id', f.id)
         continue
       }
-      const dl = await admin.storage.from(HR_FILES_BUCKET).download(f.storage_path)
-      if (dl.error || !dl.data) {
-        await admin.from('person_file_attachments').update({ fail_why: `The staged copy did not read: ${dl.error?.message ?? 'empty'}` }).eq('id', f.id)
-        continue
-      }
-      const bytes = new Uint8Array(await dl.data.arrayBuffer())
       const base = driveSafeName(f.filename) || 'file'
-      const name = await freeName(google, folderId, (taken) => {
-        if (!taken.has(base)) return base
-        const dot = base.lastIndexOf('.')
-        const stem = dot > 0 ? base.slice(0, dot) : base
-        const ext = dot > 0 ? base.slice(dot) : ''
-        return `${stem} (${taken.size + 1})${ext}`
-      })
-      const up = await uploadBytes(google, folderId, bytes, name, f.mime_type || 'application/octet-stream')
+      const freeNameIn = (folder: string) =>
+        freeName(google, folder, (taken) => {
+          if (!taken.has(base)) return base
+          const dot = base.lastIndexOf('.')
+          const stem = dot > 0 ? base.slice(0, dot) : base
+          const ext = dot > 0 ? base.slice(dot) : ''
+          return `${stem} (${taken.size + 1})${ext}`
+        })
+      const mime = f.mime_type || 'application/octet-stream'
+      const total = Number(f.size_bytes ?? 0)
+      let up: { id: string }
+      if (total > DRIVE_WHOLE_MAX_BYTES) {
+        // v2.8375: a file over 8 MiB (the dev seat's declared files reach 50 MB) goes in pieces read from storage one
+        // range at a time, as a customer's video does (photo-save), so the function never holds more than a piece.
+        // Nothing is kept between runs: a copy that runs out of time is left to the sweep, which starts it again.
+        const signed = await admin.storage.from(HR_FILES_BUCKET).createSignedUrl(f.storage_path, 900)
+        if (signed.error || !signed.data?.signedUrl) {
+          await admin.from('person_file_attachments').update({ fail_why: `The staged copy did not read: ${signed.error?.message ?? 'no address'}` }).eq('id', f.id)
+          continue
+        }
+        const from = signed.data.signedUrl
+        const folder = folderId
+        const name = await freeNameIn(folder)
+        const done = await copyInPieces(
+          total,
+          null,
+          {
+            start: () => startResumableUpload(google, folder, name, mime, total),
+            status: (uri) => resumableStatus(google, uri, total),
+            put: (uri, bytes, contentRange) => putResumablePiece(google, uri, bytes, contentRange),
+            read: async (start, end) => {
+              const got = await fetch(from, { headers: { Range: `bytes=${start}-${end}` } })
+              if (!got.ok) throw new Error('The staged copy did not read.')
+              return new Uint8Array(await got.arrayBuffer())
+            },
+            save: async () => {},
+          },
+          Date.now() + LARGE_FILE_BUDGET_MS,
+        )
+        if ('paused' in done) {
+          await admin.from('person_file_attachments').update({ fail_why: 'The copy to Drive ran out of time. The sweep tries it again.' }).eq('id', f.id)
+          continue
+        }
+        up = done
+      } else {
+        const dl = await admin.storage.from(HR_FILES_BUCKET).download(f.storage_path)
+        if (dl.error || !dl.data) {
+          await admin.from('person_file_attachments').update({ fail_why: `The staged copy did not read: ${dl.error?.message ?? 'empty'}` }).eq('id', f.id)
+          continue
+        }
+        up = await uploadBytes(google, folderId, new Uint8Array(await dl.data.arrayBuffer()), await freeNameIn(folderId), mime)
+      }
       await admin.from('person_file_attachments').update({ drive_file_id: up.id, drive_url: fileUrl(up.id), filed_at: new Date().toISOString(), fail_why: null }).eq('id', f.id)
       filed += 1
     }

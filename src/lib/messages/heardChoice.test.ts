@@ -3,6 +3,7 @@ import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
 import {
   ANOTHER_DAY_TIP,
+  defaultWrites,
   heardChoiceOnLine,
   heardChoiceWords,
   heardChoices,
@@ -113,14 +114,24 @@ describe('the words', () => {
   })
 
   it('the toast after a press says what and by when', () => {
-    const [quote, start] = heardChoices(trade, 'Elm Street', 'Wed Nov 25')
-    expect(heardWrittenToast(quote!.choice, '2026-11-25')).toBe('Written down. ZZ Test Tile Co’s Tile quote for Elm Street by Wed Nov 25.')
-    expect(heardWrittenToast(start!.choice, '2026-11-25')).toBe('Written down. ZZ Test Tile Co’s start on Elm Street by Wed Nov 25.')
+    expect(heardWrittenToast('quote', null, '2026-11-25')).toBe('Written down. Their quote by Wed Nov 25.')
+    expect(heardWrittenToast('start', 'start', '2026-11-25')).toBe('Written down. Their start by Wed Nov 25.')
+    expect(heardWrittenToast('papers', 'insurance', '2026-11-25')).toBe('Written down. Their insurance by Wed Nov 25.')
+    expect(heardWrittenToast('decision', null, '2026-11-25')).toBe('Written down. Their answer on our bid by Wed Nov 25.')
+    expect(heardWrittenToast('access', null, '2026-11-25')).toBe('Written down. We can be on site Wed Nov 25.')
+    expect(heardWrittenToast('cert', null, '2026-11-25')).toBe('Written down. The certificate by Wed Nov 25.')
+  })
+
+  it('a double kind writes its first by default', () => {
+    expect(defaultWrites('start')).toBe('start')
+    expect(defaultWrites('papers')).toBe('insurance')
+    expect(defaultWrites('quote')).toBeNull()
   })
 
   it('under a written line, what it was written as and its day', () => {
     expect(plainSentence(heardMarkWords({ kind: 'quote', state: 'written', day: '2026-11-25' })!)).toBe('Written down as their quote by Wed Nov 25.')
     expect(plainSentence(heardMarkWords({ kind: 'papers', state: 'written', day: '2026-11-25', writes: 'w9' })!)).toBe('Written down as their W-9 by Wed Nov 25.')
+    expect(plainSentence(heardMarkWords({ kind: 'access', state: 'written', day: '2026-11-25' })!)).toBe('Written down. We can be on site Wed Nov 25.')
     expect(heardMarkWords({ kind: null, state: 'no', day: '2026-11-25' })).toBeNull()
     expect(heardMarkWords({ kind: null, state: 'offered', day: '2026-11-25' })).toBeNull()
   })
@@ -134,13 +145,13 @@ describe('the words', () => {
   })
 
   it('every sentence a first-timer reads passes the plain words rules', () => {
-    const [quote] = heardChoices(trade, 'Elm Street', 'Wed Nov 25')
     const sentences = [
       JUST_TALK_TIP,
       JUST_TALK_TOAST,
       ANOTHER_DAY_TIP,
       paymentChoiceTip('Fri Nov 27'),
-      heardWrittenToast(quote!.choice, '2026-11-25'),
+      heardWrittenToast('quote', null, '2026-11-25'),
+      heardWrittenToast('access', null, '2026-11-25'),
       plainSentence(heardMarkWords({ kind: 'decision', state: 'written', day: '2026-11-25' })!),
     ]
     for (const s of sentences) expect(plainWordsFailures(s), s).toEqual([])

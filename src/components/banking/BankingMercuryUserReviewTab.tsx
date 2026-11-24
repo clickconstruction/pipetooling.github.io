@@ -35,6 +35,7 @@ import { EmptyState } from '../EmptyState'
 import { fetchMercuryTransactionRawById } from '../../lib/fetchMercuryTransactionRaws'
 import type { SearchableSelectOption } from '../SearchableSelect'
 import { bankingAttributionValueForSource } from '../../lib/bankingAttributionOptions'
+import { MoneyText } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -812,7 +813,7 @@ export function BankingMercuryUserReviewTab({
                             aria-label={`Open ${row.displayName} · ${col.displayName} · ${cell.count} transactions · ${formatUsd(cell.totalAmount)}`}
                           >
                             <span style={{ fontVariantNumeric: 'tabular-nums', color: amountColor(cell.totalAmount), fontWeight: 500 }}>
-                              {formatUsd(cell.totalAmount)}
+                              <MoneyText text={formatUsd(cell.totalAmount)} />
                             </span>
                             <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                               {cell.count.toLocaleString()} tx
@@ -832,7 +833,7 @@ export function BankingMercuryUserReviewTab({
                       }}
                     >
                       <div style={{ color: amountColor(rowTotal.totalAmount), fontWeight: 500 }}>
-                        {formatUsd(rowTotal.totalAmount)}
+                        <MoneyText text={formatUsd(rowTotal.totalAmount)} />
                       </div>
                       <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                         {rowTotal.count.toLocaleString()} tx
@@ -870,7 +871,7 @@ export function BankingMercuryUserReviewTab({
                       }}
                     >
                       <div style={{ color: amountColor(ct.totalAmount), fontWeight: 500 }}>
-                        {formatUsd(ct.totalAmount)}
+                        <MoneyText text={formatUsd(ct.totalAmount)} />
                       </div>
                       <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                         {ct.count.toLocaleString()} tx
@@ -888,7 +889,7 @@ export function BankingMercuryUserReviewTab({
                   }}
                 >
                   <div style={{ color: amountColor(pivot.grandTotal.totalAmount), fontWeight: 600 }}>
-                    {formatUsd(pivot.grandTotal.totalAmount)}
+                    <MoneyText text={formatUsd(pivot.grandTotal.totalAmount)} />
                   </div>
                   <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                     {pivot.grandTotal.count.toLocaleString()} tx
@@ -930,7 +931,7 @@ export function BankingMercuryUserReviewTab({
                 {selectedUserDetailCategories.length === 1 ? 'y' : 'ies'} ·{' '}
                 {selectedRowTotals.count.toLocaleString()} transactions ·{' '}
                 <span style={{ color: amountColor(selectedRowTotals.totalAmount), fontWeight: 500 }}>
-                  {formatUsd(selectedRowTotals.totalAmount)}
+                  <MoneyText text={formatUsd(selectedRowTotals.totalAmount)} />
                 </span>
                 {windowedRangeLabel ? <span> · {windowedRangeLabel}</span> : null}
               </div>
@@ -1015,7 +1016,7 @@ export function BankingMercuryUserReviewTab({
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {formatUsd(entry.totalAmount)}
+                        <MoneyText text={formatUsd(entry.totalAmount)} />
                       </span>
                     </button>
                     {isExpanded ? (
@@ -1051,7 +1052,7 @@ export function BankingMercuryUserReviewTab({
                                     whiteSpace: 'nowrap',
                                   }}
                                 >
-                                  {formatUsd(r.amount ?? 0)}
+                                  <MoneyText text={formatUsd(r.amount ?? 0)} />
                                 </td>
                               </tr>
                             ))}

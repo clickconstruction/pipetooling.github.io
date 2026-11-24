@@ -79,7 +79,7 @@ function rollClassesFor(cls: string | null): RollClass[] {
 }
 
 /** `SMITH-JONES` as *Smith-Jones*. The state writes every name in capitals. */
-function nameCase(text: string): string {
+export function nameCase(text: string): string {
   return text.toLowerCase().replace(/(^|[\s'-])([a-z])/g, (_m, lead: string, ch: string) => lead + ch.toUpperCase())
 }
 

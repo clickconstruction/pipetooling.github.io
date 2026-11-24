@@ -30,6 +30,11 @@ export interface FollowUpThreadRows {
   promises: MessagePromiseRow[]
   /** Their open calls to make (v2.5596); none before the push. */
   calls?: CallTaskDbRow[]
+  /**
+   * What each of their lines' days was said to be (punch list #421): every day row on their lines, offered, written or
+   * just talk, any day, so a line already said draws its words in place of the choice. Plans questions are left out.
+   */
+  heard?: MessagePromiseRow[]
 }
 
 export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' | 'setState' | 'noReplyNeeded' | 'backDone' | 'markOwed' | 'callAdd' | 'setPrefers'> {
@@ -46,6 +51,11 @@ export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' |
    * database's own words on a refusal.
    */
   writeDownPayment?(messageId: string, ymd: string | null): Promise<void>
+  /**
+   * A heard day said in one press (punch list #421, `write_down_heard`): the line's day written as a kind, or with no
+   * kind as just talk. A double kind writes `writes`. Rejects with the database's own words on a refusal.
+   */
+  writeDownHeard?(messageId: string, kind: string | null, ymd: string, writes: string | null): Promise<void>
 }
 
 /** A promise's columns with its line inner-joined, so a filter on the line's person keeps only theirs. */
@@ -57,13 +67,15 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
   const presses = supabaseFollowUpIo(client)
   return {
     async loadThread(contactId, todayYmd) {
-      const [contact, notes, holders, owed, promises, calls] = await Promise.all([
+      const [contact, notes, holders, owed, promises, calls, heard] = await Promise.all([
         db.from('contacts').select('state, snoozed_until, has_user_id, has_since, has_how, prefers').eq('id', contactId).maybeSingle(),
         db.from('messages').select(MESSAGE_COLUMNS).eq('contact_id', contactId).eq('channel', 'note').or('back_on.not.is.null,back_words.not.is.null'),
         db.from('contacts').select('id, state, snoozed_until, has_user_id').not('has_user_id', 'is', null).neq('state', 'done'),
         db.from('contact_owed').select(OWED_COLUMNS).eq('contact_id', contactId).is('done_at', null),
         db.from('message_promises').select(THREAD_PROMISE_COLUMNS).eq('message.contact_id', contactId).eq('state', 'written').gte('day', todayYmd),
         loadOpenCallTasks(db, contactId),
+        // A soft read: a line with no word on its day draws the choice, as before any was written.
+        db.from('message_promises').select(THREAD_PROMISE_COLUMNS).eq('message.contact_id', contactId),
       ])
       checkSupabaseError(contact, 'load who has the conversation')
       checkSupabaseError(notes, 'load the notes with a day')
@@ -77,6 +89,7 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
         owed: (owed.data ?? []) as unknown as ContactOwedRow[],
         promises: (promises.data ?? []) as unknown as MessagePromiseRow[],
         calls,
+        heard: heard.error ? [] : ((heard.data ?? []) as unknown as MessagePromiseRow[]).filter((r) => r.kind !== 'question'),
       }
     },
     callAdd: (input) => supabaseCallTasksIo(db).add(input),
@@ -88,6 +101,10 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
       // No day is left off the call, and the function's own default (NULL) takes the mark off.
       const result = await db.rpc('write_down_payment', ymd ? { p_message_id: messageId, p_day: ymd } : { p_message_id: messageId })
       checkSupabaseError(result, 'mark the line with their promise')
+    },
+    async writeDownHeard(messageId, kind, ymd, writes) {
+      const result = await db.rpc('write_down_heard', { p_message_id: messageId, p_kind: kind, p_day: ymd, ...(writes ? { p_writes: writes } : {}) })
+      checkSupabaseError(result, 'write down what the day is')
     },
     async loadTeam() {
       const result = await db.from('users').select('id, name, role').in('role', [...GC_OFFICE_TEAM]).is('archived_at', null).eq('is_digital_twin', false).eq('is_sample', false).eq('is_walk_tester', false)

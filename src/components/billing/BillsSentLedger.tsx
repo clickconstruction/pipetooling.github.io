@@ -795,7 +795,7 @@ export function BillsSentLedger() {
       cancelled = true
     }
   }, [view, billParam, today, tries])
-  const lines = useMemo(() => (data ? billsSentLines(data) : []), [data])
+  const lines = useMemo(() => (data ? billsSentLines(data, { todayYmd: today }) : []), [data, today])
   const tiles = useMemo(() => billsSentTiles(lines, today), [lines, today])
   const shown = useMemo(() => billsSentFilter(lines, route, typed), [lines, route, typed])
   const days = useMemo(() => billsSentDays(shown, today), [shown, today])

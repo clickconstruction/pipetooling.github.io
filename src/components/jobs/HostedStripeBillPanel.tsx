@@ -30,6 +30,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { SplitBillModal } from './SplitBillModal'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { BILL_TEXT_OFFER_WORDS } from '../../lib/jobs/billTextOffer'
+import { MoneyText } from '../Money'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -428,7 +429,7 @@ export function HostedStripeBillPanel({
               </button>
               {/* v2.4318: only the amount and due lines make room for the pay-page button; the To / Memo / Footer rows take the full width (on a phone the email no longer breaks mid-word). */}
               <div style={{ ...stripeHeroAmountText, marginBottom: '0.25rem', paddingRight: '9.5rem' }}>
-                {formatStripeCents(stripeDetail.amount_remaining, stripeDetail.currency)}
+                <MoneyText text={formatStripeCents(stripeDetail.amount_remaining, stripeDetail.currency)} />
               </div>
               {stripeDetail.due_date != null ? (
                 <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.65rem', paddingRight: '9.5rem' }}>
@@ -565,7 +566,7 @@ export function HostedStripeBillPanel({
                         color: 'var(--text-strong)',
                       }}
                     >
-                      {formatStripeCents(line.amount, stripeDetail.currency)}
+                      <MoneyText text={formatStripeCents(line.amount, stripeDetail.currency)} />
                     </div>
                   </div>
                 ))
@@ -588,7 +589,7 @@ export function HostedStripeBillPanel({
                   }}
                 >
                   <span style={{ color: 'var(--text-700)' }}>Total due</span>
-                  <span style={{ fontWeight: 600 }}>{formatStripeCents(stripeDetail.total, stripeDetail.currency)}</span>
+                  <span style={{ fontWeight: 600 }}><MoneyText text={formatStripeCents(stripeDetail.total, stripeDetail.currency)} /></span>
                 </div>
                 <div style={{ display: 'grid', gap: '0.35rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
@@ -623,13 +624,13 @@ export function HostedStripeBillPanel({
                       })()}
                     </span>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontWeight: 600 }}>{formatStripeCents(stripeDetail.amount_paid, stripeDetail.currency)}</div>
+                      <div style={{ fontWeight: 600 }}><MoneyText text={formatStripeCents(stripeDetail.amount_paid, stripeDetail.currency)} /></div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <span style={{ color: 'var(--text-700)' }}>Amount remaining</span>
                     <span style={{ fontWeight: 600 }}>
-                      {formatStripeCents(stripeDetail.amount_remaining, stripeDetail.currency)}
+                      <MoneyText text={formatStripeCents(stripeDetail.amount_remaining, stripeDetail.currency)} />
                     </span>
                   </div>
                 </div>

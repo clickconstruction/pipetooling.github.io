@@ -83,6 +83,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money, MoneyText } from '../Money'
 
 /**
  * The sheet form's overlay stands where the app's modal shell stands (1100), above the phone
@@ -1287,8 +1288,8 @@ function JobsSubLaborFormModalInner(
                 // v2.2142: which sheet is open, at a glance. The Save button
                 // already spells out anything missing (same as New).
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: '-0.35rem 0 0.75rem' }}>
-                  {editSummary.contractor || 'No contractor'} · ${formatCurrency(editSummary.total)} ·{' '}
-                  {editSummary.due > 0 ? `$${formatCurrency(editSummary.due)} due` : 'Paid'}
+                  {editSummary.contractor || 'No contractor'} · <Money amount={editSummary.total} /> ·{' '}
+                  {editSummary.due > 0 ? <MoneyText text={`$${formatCurrency(editSummary.due)} due`} /> : 'Paid'}
                 </p>
               ) : (
                 <div style={{ marginBottom: '0.75rem' }}>
@@ -1727,7 +1728,7 @@ function JobsSubLaborFormModalInner(
                               ))}
                               <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
                                 {itemizeTotalsFirstCell}
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(laborModalLinesSubtotal)}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}><Money amount={laborModalLinesSubtotal} /></td>
                                 {editingLaborJob ? <td style={{ padding: '0.5rem' }} /> : null}
                               </tr>
                             </tbody>
@@ -1817,7 +1818,7 @@ function JobsSubLaborFormModalInner(
                                     </button>
                                     <span style={{ marginLeft: 'auto', textAlign: 'right' }}>
                                       <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{laborHrs.toFixed(2)} hrs</span>
-                                      <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>${formatCurrency(lineLaborCost(row, laborModalLineFallbackRate))}</span>
+                                      <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}><Money amount={lineLaborCost(row, laborModalLineFallbackRate)} /></span>
                                     </span>
                                     {editingLaborJob ? (
                                       <button
@@ -1837,7 +1838,7 @@ function JobsSubLaborFormModalInner(
                               {itemizeToggleLabel}
                               <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
                                 <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{laborFixtureRows.length} {laborFixtureRows.length === 1 ? 'item' : 'items'} · {laborModalTotalHrs.toFixed(2)} hrs · </span>
-                                ${formatCurrency(laborModalLinesSubtotal)}
+                                <Money amount={laborModalLinesSubtotal} />
                               </span>
                             </div>
                           </div>
@@ -2062,7 +2063,7 @@ function JobsSubLaborFormModalInner(
                     const balance = totalCost - paid - backcharges
                     return (
                       <>
-                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>Total cost: ${formatCurrency(totalCost)} · Paid: ${formatCurrency(paid)} · Backcharges: ${formatCurrency(backcharges)} · {balance > 0 ? `$${formatCurrency(balance)} due` : balance < 0 ? `Over $${formatCurrency(-balance)}` : '$0.00 due'}</p>
+                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>Total cost: <Money amount={totalCost} /> · Paid: <Money amount={paid} /> · Backcharges: <Money amount={backcharges} /> · {balance > 0 ? <MoneyText text={`$${formatCurrency(balance)} due`} /> : balance < 0 ? <MoneyText text={`Over $${formatCurrency(-balance)}`} /> : '$0.00 due'}</p>
                         {/* v2.3625: the form is 400px wide at most, so a row is two lines — date · type · amount, then the memo with its actions — and nothing is clipped. `overflow: visible` lets the phone's ⋯ menu drop past the last row. */}
                         <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'visible', marginBottom: '0.5rem' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -2079,7 +2080,7 @@ function JobsSubLaborFormModalInner(
                                 <tr data-testid="sub-payment-row">
                                   <td style={{ padding: '0.5rem 0.75rem 0.15rem' }}>{p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString() : new Date(p.created_at).toLocaleDateString()}</td>
                                   <td style={{ padding: '0.5rem 0.75rem 0.15rem', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}{subPayMethodWords(p) ? <span data-sub-payment-method style={{ color: 'var(--text-muted)' }}> · {subPayMethodWords(p)}</span> : null}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', textAlign: 'right', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>${formatCurrency(Number(p.amount))}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', textAlign: 'right', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}><Money amount={Number(p.amount)} /></td>
                                 </tr>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td colSpan={3} style={{ padding: '0.15rem 0.75rem 0.5rem' }}>
@@ -2138,7 +2139,7 @@ function JobsSubLaborFormModalInner(
                                 <tr data-testid="sub-payment-trace-row" style={{ background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
                                   <td style={{ padding: '0.5rem 0.75rem 0.15rem' }}>{new Date(line.date + 'T00:00:00').toLocaleDateString()}</td>
                                   <td style={{ padding: '0.5rem 0.75rem 0.15rem' }}>{line.kind === 'removed' ? 'Removed' : 'Moved'}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', textAlign: 'right', textDecoration: line.kind === 'moved_in' ? undefined : 'line-through' }}>${formatCurrency(Math.abs(line.amount))}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', textAlign: 'right', textDecoration: line.kind === 'moved_in' ? undefined : 'line-through' }}><Money amount={Math.abs(line.amount)} /></td>
                                 </tr>
                                 <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
                                   <td colSpan={3} style={{ padding: '0.15rem 0.75rem 0.5rem' }}>

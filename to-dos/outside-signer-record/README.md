@@ -310,6 +310,17 @@ Each step is one PR with its release note and fragment. The word to build came o
    mock-up draws: the company's papers once, and each person's own papers on their row. **Send a paper**
    finds a worker by their name or the company's. No sub has a business on file today, so the office
    enters each one. There are 24 living subs.
+   **The company rows built 2026-11-23 as v2.8381** (#9517, `docs/recent-features/v2.8381.md`). The card drew no
+   control to enter a company. It is *Their company*, a value in place on a sub's opened row: it offers the trade
+   companies we have, takes a new name with the trade Plumbing, and has **Same as their name**. The tab is a table of
+   people, not the mock-up's cards, so a company is a row above its workers' rows.
+   **The company's papers built 2026-11-23 as v2.8394** (#9527, `docs/recent-features/v2.8394.md`). Two things the card
+   did not foresee. The company branch of the send mails the people at the company who get its contracts, and a
+   company entered from People has none, so the send first keeps the signer there. The paper entry function files a
+   person's form and the table refuses a company's name there, so **Enter from paper** keeps a company's paper as
+   signed with a link to the scan and keys no boxes.
+   **Send a paper by company, the chip's move and Add to a list** wait on decision 2's screens (#9523), whose files
+   they share. Papers already filed under a person stay where they are, on the owner's default.
 
 After the train: reminders by email and the signer's copy (#376's leftovers), the company's own signature
 (#389's wider call 4), and the company's own secrecy paper to a vendor (#389's step 8).
