@@ -92,8 +92,8 @@ import { impersonationExitDisplayLabel, impersonationExitPlacement, impersonatio
 import { ViewAsExitStrip } from './layout/ViewAsExitStrip'
 import { AppTopBanner } from './layout/AppTopBanner'
 import { GearModeList } from './layout/GearModeList'
-import { ModeRow } from './layout/ModeRow'
-import { modeRowDrawnHere, modeRowLandingPath, modeRowPressWrites, modeRowThirdOn, type ModeRowThird } from '../lib/modeRow'
+import { ModeRow, ThreeThirdsIcon } from './layout/ModeRow'
+import { MODE_ROW_HOME_ATTR, modeRowDrawnHere, modeRowLandingPath, modeRowPressWrites, modeRowThirdOn, type ModeRowThird } from '../lib/modeRow'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import {
   DISPATCH_MODE_PO_CHANGED_EVENT,
@@ -111,12 +111,13 @@ import { leaveViewAsHere } from '../lib/impersonationExit'
 import { useIsPartner } from '../hooks/useIsPartner'
 import { useOwnLogbookShown } from '../hooks/useOwnLogbookShown'
 import { BookOpen, Smartphone, Wrench } from 'lucide-react'
+import { useModeRowAtOpen } from '../hooks/useModeRowAtOpen'
 import { useNewPhoneLayout } from '../hooks/useNewPhoneLayout'
 import { NEW_PHONE_LAYOUT_SWITCH_ARIA, NEW_PHONE_LAYOUT_SWITCH_LABEL, newPhoneLayoutSwitchTip, newPhoneLayoutTickShown } from '../lib/phoneLayout/newPhoneLayout'
 import { PHONE_BAR_PAD_Y_PX, PHONE_BAR_PRESS_PX, phoneBarPageName, phoneBarPlan, type PhoneBarPress } from '../lib/phoneLayout/phoneBar'
 import { PhoneBarPageNameContext } from '../contexts/PhoneBarPageNameContext'
 import { PhoneBarGearRows } from './layout/PhoneBarGearRows'
-import { PIN_BAR_SWITCH_LABEL, TELL_THE_DEV_SWITCH_LABEL, switchRowAriaLabel, switchRowTip } from '../lib/gearSwitchWords'
+import { MODE_ROW_SWITCH_LABEL, PIN_BAR_SWITCH_LABEL, TELL_THE_DEV_SWITCH_LABEL, switchRowAriaLabel, switchRowTip } from '../lib/gearSwitchWords'
 import { GEAR_MODE_PRESS_CONTROL, GEAR_SECTION_LABELS, gearModesRows, gearPagesInOrder } from '../lib/gearMenuSections'
 import { GearSectionLabel } from './layout/GearSectionLabel'
 import { TellTheDevHeaderButton, TellTheDevRoot } from './tellTheDev/TellTheDevRoot'
@@ -294,11 +295,13 @@ export default function Layout() {
   const [viewportNarrow, setViewportNarrow] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
   )
-  // The Modes rows this person's gear menu holds. A phone with the mode row above the header switches Job Mode
-  // and Task Mode there, so the menu lists neither. Wherever the row is not drawn (a desk, a tablet, the
-  // estimator at any width) the menu holds the three as a list with one dot (`gearModesRows`).
+  // The Modes rows this person's gear menu holds: the three as a list with one dot, at every width
+  // (`gearModesRows`). On a phone the mode row shows only when the app opens, then shrinks into the gear
+  // (punch list #433), so the list is the door from then on. The row's own switch, Modes at open, is the
+  // phone's, and the Show group draws it where the row is drawn.
   const modeRowHere = modeRowDrawnHere(role, viewportNarrow)
-  const gearModes = gearModesRows({ modeRow: modeRowHere, jobEligible: jobModeMenuEligible, dispatchEligible: dispatchModeMenuEligible })
+  const gearModes = gearModesRows({ jobEligible: jobModeMenuEligible, dispatchEligible: dispatchModeMenuEligible })
+  const [modeRowAtOpen, setModeRowAtOpen] = useModeRowAtOpen()
   // The desktop header's width varies by role (dev shows far more items than a
   // sub), so above the 640px floor we collapse based on whether the row
   // actually fits rather than a second fixed breakpoint.
@@ -400,6 +403,10 @@ export default function Layout() {
         // Not modes: each shows or hides one thing, so the sheet lists them under Show and each wears its thing's icon.
         { key: 'pin', label: PIN_BAR_SWITCH_LABEL, group: 'show', icon: <PinIcon filled={false} size={18} />, on: pinModeEnabled, onToggle: () => setPinModeEnabled(!pinModeEnabled) },
         { key: 'fix', label: TELL_THE_DEV_SWITCH_LABEL, group: 'show', icon: <Wrench size={18} strokeWidth={2.25} aria-hidden />, on: fixModeEnabled, onToggle: () => setFixModeEnabled(!fixModeEnabled) },
+        // The mode row's switch, where the row is drawn: the dock has no gear, so the sheet holds it.
+        ...(modeRowHere
+          ? [{ key: 'modes-at-open', label: MODE_ROW_SWITCH_LABEL, group: 'show' as const, icon: <ThreeThirdsIcon size={18} />, on: modeRowAtOpen, onToggle: () => setModeRowAtOpen(!modeRowAtOpen) }]
+          : []),
         // The new phone layout's tick: the dock has no gear, so the sheet is where a phone with it on switches it off.
         ...(newPhoneLayoutTick
           ? [{ key: 'phone-layout', label: NEW_PHONE_LAYOUT_SWITCH_LABEL, group: 'show' as const, icon: <Smartphone size={18} strokeWidth={2.25} aria-hidden />, on: newPhoneLayout.stored, onToggle: () => newPhoneLayout.setStored(!newPhoneLayout.stored) }]
@@ -1033,16 +1040,15 @@ export default function Layout() {
       {/* The lines above the header (v2.8053): each is an `AppTopBanner`, a direct child here. The first one showing
           pays the phone's status bar, and the lines, the View-as strip and the header under it pay none.
           Under the new phone layout the Add Task offer is a quiet row of the Dashboard instead, mounted in <main> below. */}
-      {/* The mode row (punch list #425): Task Mode, Dashboard and Job Mode, the first line of all. On a phone's Dashboard the line is its handle, and the row is drawn over it for five seconds a visit (#433). */}
+      {/* The mode row (punch list #425): Task Mode, Dashboard and Job Mode, the first line of all. On a phone's Dashboard it takes no room: it is drawn over the top for five seconds when the app opens, then shrinks into the gear (#433). */}
       <ModeRow
         userId={authUser?.id ?? null}
         role={role}
         pathname={location.pathname}
-        search={location.search + location.hash}
-        locationKey={location.key}
         mode={pageMode.mode}
         setMode={setPageMode}
         onLand={(to) => navigate(to)}
+        atOpen={modeRowAtOpen}
       />
       {phoneBars ? null : <AddTaskShortcutBanner role={role} />}
       {isDigitalTwin && (
@@ -1525,10 +1531,12 @@ export default function Layout() {
           )}
             {!phoneDockActive && (
             <div ref={gearRef} style={{ position: 'relative' }}>
+            {/* The mode row shrinks into this press when it leaves (`MODE_ROW_HOME_ATTR`), so a person sees where the modes are kept. */}
             <button
               type="button"
               onClick={() => setGearOpen((o) => !o)}
               title="Settings"
+              {...{ [MODE_ROW_HOME_ATTR]: '' }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1583,7 +1591,7 @@ export default function Layout() {
                 <TellTheDevMenuRow inMenu={navRow.inMenu} onClose={() => setGearOpen(false)} />
                 {/* The menu reads in groups, each under its label (`gearMenuSections.ts`). Modes change the page. */}
                 {authUser?.id && gearModes.label && <GearSectionLabel label={GEAR_SECTION_LABELS.modes} />}
-                {/* Wherever the mode row above the header is not drawn, the three modes are a list with one dot (`GearModeList`). */}
+                {/* The three modes as a list with one dot (`GearModeList`), at every width. */}
                 {authUser?.id ? <GearModeList rows={gearModes.list} on={modeRowThirdOn(pageMode.mode)} onPick={pickGearMode} /> : null}
                 {dispatchModeMenuEligible && authUser?.id && (
                   <button
@@ -1786,6 +1794,60 @@ export default function Layout() {
                       }}
                     >
                       {fixModeEnabled ? '✓' : ''}
+                    </span>
+                  </button>
+                )}
+                {/* The mode row's switch (punch list #433): the phone's, ticked until someone unticks it, drawn where the row is.
+                    Ticked from the Dashboard, the row shows there and then, and shrinks back into the gear. */}
+                {authUser?.id && modeRowHere && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModeRowAtOpen(!modeRowAtOpen)
+                      setGearOpen(false)
+                    }}
+                    title={switchRowTip('modes', modeRowAtOpen)}
+                    aria-label={switchRowAriaLabel('modes')}
+                    aria-pressed={modeRowAtOpen}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      padding: '0.5rem 1rem',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 'inherit',
+                      color: 'inherit',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                      fontWeight: modeRowAtOpen ? 600 : 400,
+                    }}
+                  >
+                    <span style={SWITCH_ROW_NAME}>
+                      <ThreeThirdsIcon size={20} />
+                      {MODE_ROW_SWITCH_LABEL}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        display: 'inline-flex',
+                        width: 16,
+                        height: 16,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 3,
+                        border: '1px solid var(--border-400)',
+                        background: modeRowAtOpen ? '#15803d' : 'var(--surface)',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {modeRowAtOpen ? '✓' : ''}
                     </span>
                   </button>
                 )}

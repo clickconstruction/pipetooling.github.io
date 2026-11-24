@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  MODE_ROW_PULL_PX,
+  MODE_ROW_AT_OPEN_OFF_STORAGE_KEY,
   MODE_ROW_THIRDS,
   MODE_ROW_WORDS,
   modeRowDraw,
@@ -10,8 +10,9 @@ import {
   modeRowOfferedToRole,
   modeRowOnPage,
   modeRowPressWrites,
-  modeRowPull,
   modeRowThirdOn,
+  readModeRowAtOpen,
+  writeModeRowAtOpen,
   type ModeRowThird,
 } from './modeRow'
 import { applyPageModeWrites, pageModeWrites, resolvePageMode, type PageMode, type PageModeWants } from './pageMode'
@@ -88,7 +89,7 @@ describe('the thirds', () => {
 })
 
 describe('when the row shows', () => {
-  const leader = { role: 'master_technician', pathname: '/dashboard', mode: 'dispatch' as PageMode, phone: true }
+  const leader = { role: 'master_technician', pathname: '/dashboard', mode: 'dispatch' as PageMode, phone: true, atOpen: true }
 
   it('is not drawn for the estimator or on another page', () => {
     expect(modeRowDraw({ ...leader, role: 'estimator' })).toBe('none')
@@ -100,13 +101,13 @@ describe('when the row shows', () => {
       expect(modeRowDrawnHere(role, false), role).toBe(false)
       for (const mode of ['full', 'dispatch', 'job', 'task'] as PageMode[]) {
         for (const pathname of ['/dashboard', '/checklist']) {
-          expect(modeRowDraw({ role, pathname, mode, phone: false }), `${role} ${mode} ${pathname}`).toBe('none')
+          expect(modeRowDraw({ role, pathname, mode, phone: false, atOpen: true }), `${role} ${mode} ${pathname}`).toBe('none')
         }
       }
     }
   })
 
-  it('on a phone it is the door for every role it is offered to', () => {
+  it('on a phone it is drawn for every role it is offered to', () => {
     for (const role of ALL_ROLES) expect(modeRowDrawnHere(role, true), role).toBe(modeRowOfferedToRole(role))
     expect(modeRowDrawnHere('estimator', true)).toBe(false)
     expect(modeRowDrawnHere(null, true)).toBe(false)
@@ -115,7 +116,7 @@ describe('when the row shows', () => {
   it('is counted on the Dashboard, for every role with the row, in every mode drawn there', () => {
     for (const role of ROW_ROLES) {
       for (const mode of ['full', 'dispatch', 'job'] as PageMode[]) {
-        expect(modeRowDraw({ role, pathname: '/dashboard', mode, phone: true }), `${role} ${mode}`).toBe('counted')
+        expect(modeRowDraw({ role, pathname: '/dashboard', mode, phone: true, atOpen: true }), `${role} ${mode}`).toBe('counted')
       }
     }
   })
@@ -123,36 +124,78 @@ describe('when the row shows', () => {
   it('is held in Task Mode, where it is the way out, on the checklist and on the Dashboard', () => {
     expect(modeRowHeldOpen('task')).toBe(true)
     for (const role of ROW_ROLES) {
-      expect(modeRowDraw({ role, pathname: '/checklist', mode: 'task', phone: true }), role).toBe('held')
-      expect(modeRowDraw({ role, pathname: '/dashboard', mode: 'task', phone: true }), role).toBe('held')
+      expect(modeRowDraw({ role, pathname: '/checklist', mode: 'task', phone: true, atOpen: true }), role).toBe('held')
+      expect(modeRowDraw({ role, pathname: '/dashboard', mode: 'task', phone: true, atOpen: true }), role).toBe('held')
     }
   })
 
   it('holds for nobody else: a sub or a helper off Job Mode gets the same five seconds as everyone', () => {
     for (const mode of ['full', 'dispatch', 'job'] as PageMode[]) expect(modeRowHeldOpen(mode), mode).toBe(false)
     for (const role of ['subcontractor', 'helpers']) {
-      expect(modeRowDraw({ role, pathname: '/dashboard', mode: 'full', phone: true }), role).toBe('counted')
-      expect(modeRowDraw({ role, pathname: '/dashboard', mode: 'job', phone: true }), role).toBe('counted')
+      expect(modeRowDraw({ role, pathname: '/dashboard', mode: 'full', phone: true, atOpen: true }), role).toBe('counted')
+      expect(modeRowDraw({ role, pathname: '/dashboard', mode: 'job', phone: true, atOpen: true }), role).toBe('counted')
     }
   })
 })
 
-describe('the pull', () => {
-  const start = { startX: 100, startY: 200 }
+describe('the switch: Modes at open', () => {
+  /** A phone's storage, as a plain map. */
+  function phoneStorage(start: Record<string, string> = {}) {
+    const kept = new Map(Object.entries(start))
+    return {
+      kept,
+      getItem: (k: string) => kept.get(k) ?? null,
+      setItem: (k: string, v: string) => void kept.set(k, v),
+      removeItem: (k: string) => void kept.delete(k),
+    }
+  }
 
-  it('brings the row down once the finger has gone far enough at the top of the page', () => {
-    expect(modeRowPull({ ...start, x: 100, y: 200 + MODE_ROW_PULL_PX - 1, scrollTop: 0 })).toBe('wait')
-    expect(modeRowPull({ ...start, x: 104, y: 200 + MODE_ROW_PULL_PX, scrollTop: 0 })).toBe('pull')
+  it('is on until someone unticks it, and a phone that never touched it stores nothing', () => {
+    const phone = phoneStorage()
+    expect(readModeRowAtOpen(phone)).toBe(true)
+    writeModeRowAtOpen(phone, true)
+    expect(phone.kept.size).toBe(0)
   })
 
-  it('is not a pull when the page is not at its top', () => {
-    expect(modeRowPull({ ...start, x: 100, y: 300, scrollTop: 1 })).toBe('cancel')
+  it('unticked is kept on the phone, with no person in the key, and ticking it again clears it', () => {
+    const phone = phoneStorage()
+    writeModeRowAtOpen(phone, false)
+    expect(readModeRowAtOpen(phone)).toBe(false)
+    expect([...phone.kept.keys()]).toEqual([MODE_ROW_AT_OPEN_OFF_STORAGE_KEY])
+    writeModeRowAtOpen(phone, true)
+    expect(readModeRowAtOpen(phone)).toBe(true)
+    expect(phone.kept.size).toBe(0)
   })
 
-  it('is not a pull when the finger goes up or sideways', () => {
-    expect(modeRowPull({ ...start, x: 100, y: 180, scrollTop: 0 })).toBe('cancel')
-    expect(modeRowPull({ ...start, x: 160, y: 210, scrollTop: 0 })).toBe('cancel')
-    // A little sideways drift on the way down is still a pull.
-    expect(modeRowPull({ ...start, x: 115, y: 240, scrollTop: 0 })).toBe('pull')
+  it('a phone whose storage cannot be read keeps the row at open', () => {
+    const broken = {
+      getItem: () => {
+        throw new Error('no storage')
+      },
+      setItem: () => {
+        throw new Error('no storage')
+      },
+      removeItem: () => {
+        throw new Error('no storage')
+      },
+    }
+    expect(readModeRowAtOpen(broken)).toBe(true)
+    expect(() => writeModeRowAtOpen(broken, false)).not.toThrow()
+    expect(readModeRowAtOpen(null)).toBe(true)
+  })
+
+  it('unticked, the Dashboard opens with no row for anyone, in every mode drawn there', () => {
+    for (const role of ROW_ROLES) {
+      for (const mode of ['full', 'dispatch', 'job'] as PageMode[]) {
+        expect(modeRowDraw({ role, pathname: '/dashboard', mode, phone: true, atOpen: false }), `${role} ${mode}`).toBe('none')
+      }
+    }
+  })
+
+  it('Task Mode’s row does not read the switch: it is the way out', () => {
+    for (const role of ROW_ROLES) {
+      expect(modeRowDraw({ role, pathname: '/checklist', mode: 'task', phone: true, atOpen: false }), role).toBe('held')
+      expect(modeRowDraw({ role, pathname: '/dashboard', mode: 'task', phone: true, atOpen: false }), role).toBe('held')
+    }
   })
 })

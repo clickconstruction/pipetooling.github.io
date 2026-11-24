@@ -1,39 +1,43 @@
 /**
  * The mode row's five seconds (punch list #433).
  *
- * On a phone's Dashboard the row shows on each visit, a bar on its lower edge runs out, and the row
- * slides up and away. This file is that count and nothing else: one state and one step function. It
- * is pure. `ModeRow` holds the state, feeds it what happened with the time it happened, and sets one
- * timer for the next moment the state names (`modeRowCountDeadline`).
+ * When the app opens on a phone the row shows over the top of the Dashboard, a bar on its lower edge
+ * runs out, and the row shrinks into the gear, where the same three modes are listed from then on.
+ * This file is that count and nothing else: one state and one step function. It is pure. `ModeRow`
+ * holds the state, feeds it what happened with the time it happened, and sets one timer for the next
+ * moment the state names (`modeRowCountDeadline`).
  *
- * The rules, in the owner's order (2026-11-24):
+ * The rules, in the owner's order (2026-11-24, and the look on a real phone the same day):
  *
- * - **Five seconds.** A visit shows the row for `MODE_ROW_SHOW_MS`.
+ * - **Five seconds.** An opening shows the row for `MODE_ROW_SHOW_MS`.
  * - **A finger holds it.** While a finger rests on the row, or a keyboard's focus is inside it, the
  *   count waits. When the last hold lifts the count starts whole again, never where it stopped: a row
  *   that leaves a moment after a thumb let go is the fault this guards.
- * - **A press gets a fresh five seconds**, so the way back is under the thumb.
- * - **A swipe up sends it away at once.**
- * - **The strip it uncovers is dead for a moment.** `leaving` lasts the slide and then
- *   `MODE_ROW_DEAD_MS` more. The row's place keeps taking presses for that long and does nothing with
- *   them, so a thumb aimed at a third does not land on the header that was under it.
+ * - **A press closes it.** A third was pressed, the lit one too: the choice is made, so the row
+ *   shrinks into the gear at once. A press on the row Task Mode holds, which is a line of the page,
+ *   draws the row for that way out alone.
+ * - **A swipe up sends it away at once**, the same way.
+ * - **The strip it uncovers is dead for a moment.** `leaving` lasts the way out and then
+ *   `MODE_ROW_DEAD_MS` more, while the gear answers. The row's place keeps taking presses for that
+ *   long and does nothing with them, so a thumb aimed at a third does not land on the header that
+ *   was under it.
  *
- * What counts as a visit is at the foot. The page becoming the Dashboard is one, and `ModeRow` sees
- * that by itself. The two it cannot see that way are here: a press on the Dashboard's own link while
- * already there, and coming back to the app after a while away.
+ * What counts as an opening is at the foot. The row's first draw after the app loads is one, and
+ * `ModeRow` sees that by itself. The one it cannot see that way is here: coming back to the app
+ * after a while away.
  */
 
 /** How long a visit shows the row. */
 export const MODE_ROW_SHOW_MS = 5000
-/** The slide down, when a pull, the handle or a change of page brought the row. */
+/** The slide down, when coming back to the app brought the row. */
 export const MODE_ROW_IN_MS = 180
-/** The slide up and out. */
-export const MODE_ROW_OUT_MS = 240
-/** How long the uncovered strip takes no press, once the row is out of sight. */
+/** The way out: the row shrinking into the gear. Long enough for an eye to follow it there. */
+export const MODE_ROW_OUT_MS = 380
+/** How long the uncovered strip takes no press, once the row is out of sight. The gear answers for as long. */
 export const MODE_ROW_DEAD_MS = 300
 /** How far up a finger travels on the row before the row is sent away. */
 export const MODE_ROW_SWIPE_PX = 16
-/** How long the app is out of sight before coming back to it is a visit. A glance at a text is not one. */
+/** How long the app is out of sight before coming back to it is an opening. A glance at a text is not one. */
 export const MODE_ROW_AWAY_MS = 60_000
 
 /** What is holding the row: a finger on it, or a keyboard's focus inside it. */
@@ -52,11 +56,11 @@ export type ModeRowCount =
 export const MODE_ROW_GONE: ModeRowCount = { phase: 'gone', showing: 0 }
 
 export type ModeRowCountEvent =
-  /** A visit, the handle or a pull. `slideIn` is whether the row should slide down or be drawn in place. */
+  /** The app opened, or came back after a while away. `slideIn` is whether the row should slide down or be drawn in place. */
   | { type: 'arrive'; now: number; slideIn: boolean }
   | { type: 'touch'; now: number; hold: ModeRowHold }
   | { type: 'release'; now: number; hold: ModeRowHold }
-  /** A third was pressed and the page switched. */
+  /** A third was pressed: the choice is made and the row closes. */
   | { type: 'press'; now: number }
   | { type: 'swipe'; now: number }
   /** The timer rang. */
@@ -90,8 +94,8 @@ export function modeRowCountStep(state: ModeRowCount, event: ModeRowCountEvent):
       return holds.length > 0 ? { ...state, holds } : whole(state.showing, state.slideIn, event.now)
     }
     case 'press':
-      // Under a hold the release starts the count. A row on its way out takes no press.
-      return state.phase === 'showing' ? whole(state.showing, state.slideIn, event.now) : state
+      // The choice is made. From `gone` it is a press on the row Task Mode holds: the row is drawn for its way out alone.
+      return state.phase === 'leaving' ? state : leaving(state.showing, event.now)
     case 'swipe':
       return state.phase === 'showing' || state.phase === 'held' ? leaving(state.showing, event.now) : state
     case 'time':
@@ -120,28 +124,35 @@ export function modeRowTakesPress(state: ModeRowCount): boolean {
   return state.phase === 'showing' || state.phase === 'held'
 }
 
-/* ------------------------------------------------------------------ what counts as a visit */
+/* ------------------------------------------------------------------ what counts as an opening */
 
-/** Where the app is: the page, what follows the page in the address, and the key the router gives each move. */
-export interface ModeRowPlace {
-  pathname: string
-  /** The query and the hash, as one string. */
-  search: string
-  key: string
+/** Coming back to the app is an opening once it was out of sight for `MODE_ROW_AWAY_MS`. `hiddenAt` is null when it never left. */
+export function modeRowBackIsVisit(hiddenAt: number | null, now: number): boolean {
+  return hiddenAt !== null && now - hiddenAt >= MODE_ROW_AWAY_MS
+}
+
+/* ------------------------------------------------------------------ the way out, into the gear */
+
+/** A box on the screen, as `getBoundingClientRect` gives it. */
+export interface ModeRowBox {
+  left: number
+  top: number
+  width: number
+  height: number
 }
 
 /**
- * A press on the Dashboard's own link while already on the Dashboard: the router moved, and the
- * address is what it was. That is a person asking for the top of the page again, so the row comes
- * with it. A move that changes the query is a window or a tab of the page opening, not a visit. A
- * move from another page is a visit `ModeRow` already sees, by the row's place changing.
+ * How the row gets from where it lies to the gear: how far its middle travels, and how small it ends,
+ * across and down, so that it ends the gear's own size on the gear. None when there is no gear on the
+ * screen, or either box has no size: the row then slides up as it did before.
  */
-export function modeRowSamePlaceVisit(before: ModeRowPlace | null, after: ModeRowPlace): boolean {
-  if (!before) return false
-  return before.key !== after.key && before.pathname === after.pathname && before.search === after.search
-}
-
-/** Coming back to the app is a visit once it was out of sight for `MODE_ROW_AWAY_MS`. `hiddenAt` is null when it never left. */
-export function modeRowBackIsVisit(hiddenAt: number | null, now: number): boolean {
-  return hiddenAt !== null && now - hiddenAt >= MODE_ROW_AWAY_MS
+export function modeRowFlight(row: ModeRowBox, gear: ModeRowBox | null): { x: number; y: number; sx: number; sy: number } | null {
+  if (!gear || !(row.width > 0) || !(row.height > 0) || !(gear.width > 0) || !(gear.height > 0)) return null
+  const round = (n: number) => Math.round(n * 1000) / 1000
+  return {
+    x: round(gear.left + gear.width / 2 - (row.left + row.width / 2)),
+    y: round(gear.top + gear.height / 2 - (row.top + row.height / 2)),
+    sx: round(Math.min(1, gear.width / row.width)),
+    sy: round(Math.min(1, gear.height / row.height)),
+  }
 }
