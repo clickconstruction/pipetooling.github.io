@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "tsBuildInfoFile": ".cache/typecheck/tests-lib.tsbuildinfo" },
+  "include": ["src/lib/**/*.test.ts", "src/lib/**/*.test.tsx", "src/**/*.d.ts"]
+}

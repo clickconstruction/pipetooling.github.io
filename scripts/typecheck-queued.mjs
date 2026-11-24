@@ -1,25 +1,29 @@
 #!/usr/bin/env node
 /**
- * `npm run typecheck`: the full tsc under one machine-wide lock, so two worktrees' typechecks run one after
- * the other instead of holding 9.5 GB each at the same moment (scripts/lib/typecheckLock.mjs has the story).
+ * `npm run typecheck`: the full type check under one machine-wide lock, so two worktrees' typechecks run one
+ * after the other instead of holding 9.5 GB each at the same moment (scripts/lib/typecheckLock.mjs has the story).
  *
  *   npm run typecheck                 # waits for the lock, prints who holds it every 30 s, then runs tsc
  *   TYPECHECK_NO_LOCK=1 npm run typecheck   # CI: no lock, each job is its own machine
  *   TYPECHECK_LOCK_DIR=/some/dir npm run typecheck   # the lock somewhere else
  *   TYPECHECK_HEAP_MB=20480 npm run typecheck   # this heap, whatever the machine has
  *
- * Extra arguments go to tsc. The exit code is tsc's, or 128 + n when a signal ended it (134 for a heap death).
- * The heap is sized from the machine's memory since 2026-11-24 (scripts/lib/typecheckHeap.mjs: 85% of it, from
- * 12,288 MB to 16,384 MB), when the whole program's check needed all of the fixed 12 GB it had had since
- * 2026-11-13; the build's `tsc -b` (scripts/tsc-build.mjs) takes the same heap through scripts/lib/runTsc.mjs,
- * which also says in one line when tsc died of its heap and gave no verdict.
+ * `src` is checked in three parts, one tsc after the other under the one lock (scripts/lib/typecheckParts.mjs,
+ * punch list #434): the app without its tests, the tests under src/lib, the tests elsewhere. One program over
+ * all of `src` needed 12.3 GB on 2026-11-24, more than a runner would soon have; the largest part needs 8.6.
+ * A part that fails does not stop the next, so every part's errors print, and the last line says which parts
+ * were clean. Extra arguments go to every tsc. The exit code is the worst part's: tsc's own, or 128 + n when a
+ * signal ended a part (134 for a heap death).
+ *
+ * Each tsc takes its heap from the machine's memory (scripts/lib/typecheckHeap.mjs: 85% of it, from 12,288 MB
+ * to 16,384 MB) through scripts/lib/runTsc.mjs, which also says in one line when tsc died of its heap and gave
+ * no verdict. The build's `tsc -b` (scripts/tsc-build.mjs) goes through the same runner.
  */
 import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
 import { runTsc as runTscUnderHeap } from './lib/runTsc.mjs'
 import { acquire, holderRecord, lockRoot, LOCK_DIR_NAME } from './lib/typecheckLock.mjs'
-
-const TSC_ARGS = ['-p', 'tsconfig.json']
+import { outcomeWords, partWords, PARTS, stoppedByHand, worstExit } from './lib/typecheckParts.mjs'
 
 function gitCommonDir() {
   try {
@@ -29,12 +33,21 @@ function gitCommonDir() {
   }
 }
 
-function runTsc() {
-  return runTscUnderHeap('typecheck', [...TSC_ARGS, ...process.argv.slice(2)])
+/** Every part in order, each its own tsc. A part with errors or a heap death does not stop the next; a Ctrl-C does. */
+async function runParts() {
+  const results = []
+  for (const [index, part] of PARTS.entries()) {
+    console.error(partWords({ index, part }))
+    const code = await runTscUnderHeap('typecheck', ['-p', part.config, ...process.argv.slice(2)])
+    results.push({ part, code })
+    if (stoppedByHand(code)) break
+  }
+  console.error(outcomeWords(results))
+  return worstExit(results.map((r) => r.code))
 }
 
 async function main() {
-  if (process.env.TYPECHECK_NO_LOCK === '1') return runTsc()
+  if (process.env.TYPECHECK_NO_LOCK === '1') return runParts()
 
   const lockDir = join(lockRoot({ env: process.env, gitCommonDir: gitCommonDir() }), LOCK_DIR_NAME)
   const record = holderRecord({ pid: process.pid, cwd: process.cwd(), startedAt: Date.now() })
@@ -42,7 +55,7 @@ async function main() {
   // A signal while tsc runs is forwarded to tsc (scripts/lib/runTsc.mjs); its exit comes back here and the lock is released.
   // A kill -9 leaves the directory with a dead pid, and the next waiter takes it over.
   try {
-    return await runTsc()
+    return await runParts()
   } finally {
     release()
   }

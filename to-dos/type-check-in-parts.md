@@ -1,20 +1,20 @@
 ---
-name: "The type check in parts: three programs that each fit a runner, before the whole one outgrows it"
+name: "The type check in parts: three programs are built; left, the peak on every CI run and the app program itself"
 number: 434
 group: ready
-flagged: true
-status: measured 2026-11-24 on a GitHub runner and a dev Mac · the whole program needs 12.0 to 12.3 GB and grows about 190 MB a day · v2.8482 sized the heap from the machine, which buys a runner five to seven days · nothing of the cut is built
+status: measured 2026-11-24 on a GitHub runner and a dev Mac · the whole program needs 12.0 to 12.3 GB and grows about 190 MB a day · v2.8482 sized the heap from the machine · PR 1 built the same day (v2.8505): npm run typecheck runs three programs, the largest 8.6 GB, and the build checks the app part alone · left: PR 2 and PR 3
 summary: >
-  The whole-program TypeScript check is one tsc over all of src, and it needs 12.3 GB of heap today.
-  A GitHub runner can give it about 13.3 GB, and the program grows about 190 MB a day, so the bigger
-  heap of v2.8482 lasts about a week there. Measured on a runner, the same code checked as three
-  programs by plain include lists needs 8.1, 6.5 and 8.6 GB, with no project references. This card
-  holds the numbers, the plan and the measuring script.
-next: Build PR 1 below, the three programs behind npm run typecheck and the build, within the week. Then PR 2, the peak printed on every CI run, so the next wall shows weeks ahead.
-size: M as a train of three (M · S · L)
+  One tsc over all of src needed 12.3 GB of heap on 2026-11-24 and grew about 190 MB a day, and a
+  GitHub runner can give about 13.3 GB. Since v2.8505 the check runs the same files as three
+  programs by plain include lists, which need 8.1, 6.5 and 8.6 GB, with no project references.
+  That leaves a runner about 4.7 GB over the largest part, four to five weeks at today's pace.
+  Left: print the peak on every CI run so the next wall is seen coming, and cut the app program
+  itself. This card holds the numbers, the plan and the measuring script.
+next: Build PR 2 below, the peak printed on every CI run with a warning near the cap, so the next wall shows weeks ahead. Then measure the app program with a trace before choosing PR 3's way.
+size: M as a train of three (M · S · L); left: PR 2 (S) and PR 3 (L)
 blocker: none
-ver: v2.8482
-opinion: build — the deploy stops the day the whole program passes 13.3 GB, about a week out at today's pace, and the cut is measured to fit
+ver: v2.8482 · 8505
+opinion: build — PR 2 is small and turns the next wall from a surprise into a line in the log; PR 3 can wait for its numbers
 mockup: not required — build tooling, no screen
 ---
 
@@ -28,7 +28,8 @@ room.* And for a real cut in what one tsc holds: *do not build it in this sessio
 and the plan into a punch-list card.*
 
 The smallest change shipped as v2.8482. Its fragment, `docs/recent-features/v2.8482.md`, has every
-run. This card is the real cut.
+run. This card is the real cut. Its first PR shipped as v2.8505, and
+`docs/recent-features/v2.8505.md` has what the three programs measured once built.
 
 ## Where it stands
 
@@ -37,15 +38,21 @@ run. This card is the real cut.
   the end it holds 12,334 MB.
 - **Under the old fixed 12,288 MB it had no room.** A cold `tsc -p` died of heap on a runner and on a
   48 GB Mac. The deploy's cold `tsc -b` passed with 12,060 MB live, collecting back to back.
-- **v2.8482 gives a 15,700 MB runner 13,312 MB** and a big Mac 16,384 MB. That is about 1.0 to 1.3 GB
-  of room on a runner.
+- **v2.8482 gives a 15,700 MB runner 13,312 MB** and a big Mac 16,384 MB. For one program that was
+  about 1.0 to 1.3 GB of room on a runner.
 - **A runner has little more to give.** Its other processes hold 1,000 to 1,250 MB and tsc holds about
   265 MB over its cap, so about 14,100 MB is the most a cap could ever be there.
 - **It grows about 190 MB a day.** About 10,050 MB on 2026-11-13, about 12,200 MB on 2026-11-24. Six
   days added 881 merges and about 222,000 lines under `src`. Each line costs about 4.7 KB of heap.
-- **So a runner's room lasts five to seven days.** After that the deploy's cold `tsc -b` dies, and so
-  does the check of any pull request that changes the lockfile, `tsconfig.json` or the eslint config.
-  A pull request with a warm cache needs only 4.2 GB and 23 seconds, so those keep passing longer.
+- **As one program, a runner's room lasted five to seven days.** After that the deploy's cold
+  `tsc -b` would have died, and so would the check of any pull request that changes the lockfile,
+  a tsconfig or the eslint config.
+- **PR 1 is built (v2.8505).** `npm run typecheck` runs three programs. On a runner the three took
+  11:42 cold and 0:38 warm and peaked at 9,482 MB resident, all clean. The largest part holds
+  8,607 MB at the end, which leaves a 13,312 MB cap about 4.7 GB. The build's `tsc -b` checks the
+  app part alone: 5:05 cold and 8,813 MB resident, against about 10 minutes and 12,536 MB.
+- **That is four to five weeks, not a year.** The largest part is 70% of the whole, so it grows
+  perhaps 130 MB a day. PR 2 and PR 3 are what is left.
 
 ## What was measured for the cut
 
@@ -74,14 +81,18 @@ What this says:
 - **The weight is in the app, not the tests.** The app without tests is 29.5 of the 31.4 million
   instantiations. The `src/lib` tests and what they import are 12.4 million and check in 68 seconds.
   The tests outside `src/lib` pull in the components and pages and take 372 seconds.
-- **The tests-outside-lib program printed two `error TS` lines** the whole program does not. The
-  measuring script kept only the count. Most likely an ambient declaration the narrow `include`
-  misses. PR 1 finds them first.
+- **The tests-outside-lib program printed `error TS` lines** the whole program does not. PR 1 found
+  them: `window.__lens` was declared with a `declare global` inside `src/lib/lens/seal.ts`, a module
+  that program did not load. It moved to `src/lib/lens/lensWindow.d.ts`, each test program takes
+  every `.d.ts` under `src`, and a test refuses the next one.
+- **A two-program split was measured and not taken.** The app and the tests outside `src/lib` as one
+  program, beside the `src/lib` tests, is two minutes quicker cold (7:50 and 1:52 against 11:42 in
+  all) but its larger program holds 9,384 MB, 0.8 GB more than the largest of three.
 
 ## The plan
 
-**PR 1 (M): three programs behind the same two commands.** What CI checks does not change: every
-file under `src` is still checked, by `npm run typecheck`.
+**PR 1 (M): three programs behind the same two commands. Built, v2.8505.** What CI checks did not
+change: every file under `src` is still checked, by `npm run typecheck`. As built:
 
 - Three configs that extend `tsconfig.json`, each with its own `tsBuildInfoFile` under
   `.cache/typecheck/`: the app (`src` without tests), the tests under `src/lib`, the tests elsewhere.
@@ -93,11 +104,11 @@ file under `src` is still checked, by `npm run typecheck`.
   `include` sets, so a new folder cannot fall outside the check.
 - The build's `scripts/tsc-build.mjs` checks the app program alone. The tests do not ship, and the
   merge queue's `checks` job has already checked them.
-- `warm-caches.yml` and `ci.yml` cache `.cache` whole, so the three build-info files ride the
-  existing key. `scripts/check-workflow-parity.mjs` and the key's `hashFiles` list take the three new
-  config files.
+- `warm-caches.yml` and `ci.yml` cache `.cache` whole, so the three build-info files ride the one
+  cache. The key's `hashFiles` list in both takes the three config files, and
+  `scripts/check-workflow-parity.mjs` holds the two keys equal.
 - `npm run typecheck:config` and the lint of the config files (#9621) are untouched.
-- Verify with the script below on a throwaway branch: each part's peak, cold and warm.
+- Measured with the script below on a throwaway branch: each part's peak, cold and warm.
 
 **PR 2 (S): the peak on every CI run.** The owner's decision 3 of v2.7134, still open in
 `to-dos/owner-decisions-pending.md`. `runTsc.mjs` already prints the cap. Add `--extendedDiagnostics`'

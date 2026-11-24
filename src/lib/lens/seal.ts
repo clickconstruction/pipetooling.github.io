@@ -42,11 +42,7 @@ export type LensFrameState = {
   errors: string[]
 }
 
-declare global {
-  interface Window {
-    __lens?: LensFrameState
-  }
-}
+// `window.__lens` is declared in lensWindow.d.ts, which every part of the type check loads.
 
 /** Kyle, Texas: where the sample homeowner lives. */
 const LENS_POSITION = { latitude: 29.9891, longitude: -97.8772 }
