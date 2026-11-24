@@ -2703,6 +2703,7 @@ export default function JobFormModal({
             setJobName={setJobName}
             jobAddress={jobAddress}
             setJobAddress={setJobAddress}
+            editingJobId={editing?.id ?? null}
             formServiceTypeId={formServiceTypeId}
             setFormServiceTypeId={setFormServiceTypeId}
             serviceTypeOptions={jobFormServiceTypeSelectOptions}

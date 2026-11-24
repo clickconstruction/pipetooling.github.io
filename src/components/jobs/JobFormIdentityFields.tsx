@@ -1,12 +1,15 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 import JobFormAddressNudge from './JobFormAddressNudge'
+import JobFormAddressOnFile from './JobFormAddressOnFile'
 import JobFormAddressPin from './JobFormAddressPin'
 import JobAddressSuggestions from './JobAddressSuggestions'
 import { titleCaseAddress } from '../../lib/addressTitleCase'
 import { suggestionSavedAddress, type AddressSuggestion } from '../../lib/addressAutocomplete'
 import { prewarmAddressGeocode, useAddressSuggestions } from '../../hooks/useAddressSuggestions'
+import { useAddressesOnFile } from '../../hooks/useAddressesOnFile'
+import { onFileMatches, type OnFileMatch } from '../../lib/addresses/addressesOnFile'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { JOB_KINDS, JOB_KIND_CONTROL_HELP, JOB_KIND_WORDS, type JobKind, type JobKindRead } from '../../lib/jobs/jobKind'
 
@@ -72,6 +75,8 @@ type JobFormIdentityFieldsProps = {
   setJobName: (v: string) => void
   jobAddress: string
   setJobAddress: (v: string) => void
+  /** The job being edited, so it is not counted among the jobs already at its own address (punch list #439). Absent on a new job. */
+  editingJobId?: string | null
   formServiceTypeId: string
   setFormServiceTypeId: (v: string) => void
   /** Shell's `jobFormServiceTypeSelectOptions` memo (role-filtered + current type injected in edit mode). */
@@ -112,6 +117,7 @@ export function JobFormIdentityFields({
   setJobName,
   jobAddress,
   setJobAddress,
+  editingJobId = null,
   formServiceTypeId,
   setFormServiceTypeId,
   serviceTypeOptions,
@@ -136,7 +142,17 @@ export function JobFormIdentityFields({
     jobAddress,
     addressFocused && !suggestionsSuppressed,
   )
-  const suggestionsOpen = addressFocused && !suggestionsSuppressed && suggestions.length > 0
+  // Addresses the company already has (punch list #439, piece 1): read once the box is first focused, listed
+  // above Google's rows while typing, and named under the box once the address is one of them.
+  const [addressEverFocused, setAddressEverFocused] = useState(false)
+  const onFileList = useAddressesOnFile(addressEverFocused, editingJobId ? { kind: 'job', id: editingJobId } : null)
+  const onFile = useMemo<OnFileMatch[]>(
+    () => (addressFocused && !suggestionsSuppressed ? onFileMatches(onFileList, jobAddress) : []),
+    [addressFocused, suggestionsSuppressed, onFileList, jobAddress],
+  )
+  const optionCount = onFile.length + suggestions.length
+  const suggestionsOpen = addressFocused && !suggestionsSuppressed && optionCount > 0
+  const activeOption = Math.min(activeSuggestion, Math.max(0, optionCount - 1))
 
   function takeSuggestion(s: AddressSuggestion) {
     const saved = titleCaseAddress(suggestionSavedAddress(s))
@@ -146,6 +162,13 @@ export function JobFormIdentityFields({
     // Pre-warm the geocode cache so the Map / travel hints already know this
     // address (fire-and-forget; role-gate refusals are fine).
     prewarmAddressGeocode(saved)
+  }
+
+  /** An address already on file is taken as it is written there, so this job matches the others at that place. */
+  function takeOnFile(match: OnFileMatch) {
+    setJobAddress(match.address)
+    setSuggestionsSuppressed(true)
+    clearSuggestions()
   }
 
   return (
@@ -323,7 +346,10 @@ export function JobFormIdentityFields({
                 setSuggestionsSuppressed(false)
                 setActiveSuggestion(0)
               }}
-              onFocus={() => setAddressFocused(true)}
+              onFocus={() => {
+                setAddressFocused(true)
+                setAddressEverFocused(true)
+              }}
               // Casing policy (v2.2328): the field normalizes to Title Case on
               // blur — the same shape the save path stores — so what you see
               // is what the statement prints.
@@ -337,14 +363,16 @@ export function JobFormIdentityFields({
                 if (!suggestionsOpen) return
                 if (e.key === 'ArrowDown') {
                   e.preventDefault()
-                  setActiveSuggestion((i) => (i + 1) % suggestions.length)
+                  setActiveSuggestion((activeOption + 1) % optionCount)
                 } else if (e.key === 'ArrowUp') {
                   e.preventDefault()
-                  setActiveSuggestion((i) => (i - 1 + suggestions.length) % suggestions.length)
+                  setActiveSuggestion((activeOption - 1 + optionCount) % optionCount)
                 } else if (e.key === 'Enter') {
                   e.preventDefault()
-                  const s = suggestions[activeSuggestion]
-                  if (s) takeSuggestion(s)
+                  const match = onFile[activeOption]
+                  const s = suggestions[activeOption - onFile.length]
+                  if (match) takeOnFile(match)
+                  else if (s) takeSuggestion(s)
                 } else if (e.key === 'Escape') {
                   e.preventDefault()
                   setSuggestionsSuppressed(true)
@@ -357,9 +385,11 @@ export function JobFormIdentityFields({
             {suggestionsOpen && (
               <JobAddressSuggestions
                 suggestions={suggestions}
-                activeIndex={activeSuggestion}
+                activeIndex={activeOption}
                 onPick={takeSuggestion}
                 onHover={setActiveSuggestion}
+                onFile={onFile}
+                onPickOnFile={takeOnFile}
               />
             )}
             <button
@@ -388,6 +418,8 @@ export function JobFormIdentityFields({
               typing and to the paste button alike, since both go through
               setJobAddress. */}
           <JobFormAddressNudge address={jobAddress} onApply={setJobAddress} />
+          {/* On file already, or a slip away from an address that is (punch list #439). */}
+          <JobFormAddressOnFile address={jobAddress} list={onFileList} focused={addressFocused} onUse={setJobAddress} />
           {/* The address pins itself (v2.4783): the cache, else a lookup on blur or after a pause. */}
           <JobFormAddressPin address={jobAddress} blurSignal={pinBlur} />
         </div>
