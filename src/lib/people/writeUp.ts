@@ -358,6 +358,17 @@ export function additionDraft(parent: { id: string; kind: string | null }, perso
 }
 
 /**
+ * Whether the writer has put anything into a draft: a kind they picked, words, a photo, a witness, an answer about
+ * talking, or that they were told and did not see it. A person picked and nothing more is not a write-up begun: the
+ * sheet drops such a draft when it is left, so the press never says *1 not finished* over a stray pick (v2.8531).
+ * An addition starts with its parent's kind, so the kind alone does not count there.
+ */
+export function writeUpDraftStarted(draft: Pick<WriteUpDraft, 'kind' | 'words' | 'photos' | 'seenBy' | 'talked' | 'sawIt' | 'addsTo'>): boolean {
+  if (draft.words.trim() !== '' || draft.photos.length > 0 || draft.seenBy.length > 0 || draft.talked != null || !draft.sawIt) return true
+  return draft.kind != null && draft.addsTo == null
+}
+
+/**
  * A draft as the tab keeps it across a reload (the app's own *A new version is ready* toast offers one mid-form): the
  * words and the picks, without the photos, whose bytes cannot be kept this way.
  */

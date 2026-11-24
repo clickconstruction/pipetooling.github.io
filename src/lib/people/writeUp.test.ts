@@ -27,6 +27,7 @@ import {
   toggleSeen,
   witnessChoices,
   writeUpDayWords,
+  writeUpDraftStarted,
   writeUpFields,
   writeUpJobLabel,
   writeUpKindLabel,
@@ -223,6 +224,31 @@ describe('the draft', () => {
   it('an addition keeps the person and the kind and names what it adds to', () => {
     expect(additionDraft({ id: 'r-1', kind: 'safety' }, dana, list, NOW)).toMatchObject({ kind: 'safety', addsTo: 'r-1', person: dana })
     expect(additionDraft({ id: 'r-2', kind: null }, dana, list, NOW).kind).toBe('other')
+  })
+})
+
+describe('a draft with nothing in it', () => {
+  const fresh = newWriteUpDraft(person({ person_id: 'p-1', name: 'Dana Pruitt' }), list, { ymd: list.today, hhmm: '12:41' })
+
+  it('is not begun by a pick alone, whatever the day, the time and the job read', () => {
+    expect(writeUpDraftStarted(fresh)).toBe(false)
+    expect(writeUpDraftStarted({ ...fresh, words: '   ' })).toBe(false)
+  })
+
+  it('is begun by a kind, words, a photo, a witness, an answer about talking, or being told', () => {
+    expect(writeUpDraftStarted({ ...fresh, kind: 'safety' })).toBe(true)
+    expect(writeUpDraftStarted({ ...fresh, words: 'Open trench at lunch.' })).toBe(true)
+    expect(writeUpDraftStarted({ ...fresh, photos: [{ id: 'ph-1', blob: new Blob(['x']), url: '', takenAt: '2026-11-20T18:41:00Z', originalBytes: 1, width: 1, height: 1 }] })).toBe(true)
+    expect(writeUpDraftStarted({ ...fresh, seenBy: [{ name: 'the plumber next door' }] })).toBe(true)
+    expect(writeUpDraftStarted({ ...fresh, talked: false })).toBe(true)
+    expect(writeUpDraftStarted({ ...fresh, sawIt: false })).toBe(true)
+  })
+
+  it('an addition carries its parent’s kind, so the kind alone does not begin it', () => {
+    const adding = additionDraft({ id: 'r-1', kind: 'safety' }, fresh.person, list, { ymd: list.today, hhmm: '12:41' })
+    expect(adding.kind).toBe('safety')
+    expect(writeUpDraftStarted(adding)).toBe(false)
+    expect(writeUpDraftStarted({ ...adding, words: 'It happened again at 2.' })).toBe(true)
   })
 })
 

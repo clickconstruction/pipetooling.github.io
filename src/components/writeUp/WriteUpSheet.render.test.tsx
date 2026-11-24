@@ -54,8 +54,8 @@ function makeIo(over: Partial<WriteUpIo> = {}) {
 
 const press = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }))
 
-async function openOn(io: WriteUpIo, onDraft: (d: WriteUpDraft | null) => void = () => {}) {
-  renderWithProviders(<WriteUpSheet userId="u-leader" initialDraft={null} onDraft={onDraft} onClose={() => {}} io={io} now={() => NOW} voiceWindow={null} />)
+async function openOn(io: WriteUpIo, onDraft: (d: WriteUpDraft | null) => void = () => {}, onClose: () => void = () => {}) {
+  renderWithProviders(<WriteUpSheet userId="u-leader" initialDraft={null} onDraft={onDraft} onClose={onClose} io={io} now={() => NOW} voiceWindow={null} />)
   await settle()
 }
 
@@ -130,6 +130,38 @@ describe('the sheet', () => {
     expect(screen.getByText(/No people match/)).toBeTruthy()
     press('Clear the search')
     expect(screen.getByRole('button', { name: /Dana Pruitt/ })).toBeTruthy()
+  })
+
+  it('a person picked and nothing more is not kept as a write-up left unfinished (v2.8531)', async () => {
+    const onDraft = vi.fn()
+    const onClose = vi.fn()
+    await openOn(makeIo(), onDraft, onClose)
+    press(/Dana Pruitt/)
+    expect(onDraft).toHaveBeenLastCalledWith(expect.objectContaining({ kind: null, words: '' }))
+    // Back to the list: the stray pick is gone, so the press will not say 1 not finished.
+    press('Back')
+    expect(onDraft).toHaveBeenLastCalledWith(null)
+    expect(screen.getByLabelText('Search everyone')).toBeTruthy()
+    // The same on Close.
+    press(/Dana Pruitt/)
+    press('Close')
+    expect(onDraft).toHaveBeenLastCalledWith(null)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('a write-up with anything in it is kept when the sheet is left', async () => {
+    const onDraft = vi.fn()
+    const onClose = vi.fn()
+    await openOn(makeIo(), onDraft, onClose)
+    press(/Dana Pruitt/)
+    press('Safety')
+    press('Back')
+    expect(onDraft).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'safety' }))
+    press(/Dana Pruitt/)
+    fireEvent.change(screen.getByLabelText('What did you see?'), { target: { value: 'Open trench at lunch.' } })
+    press('Close')
+    expect(onDraft).toHaveBeenLastCalledWith(expect.objectContaining({ words: 'Open trench at lunch.' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('a pick fills who, when and the job, and the button says what is missing', async () => {
