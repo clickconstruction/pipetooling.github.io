@@ -4084,7 +4084,7 @@ The Dev doors card (`src/lib/settings/devDoors.ts`) lists each with its link.
 | 94 | Settings → Company → **Defaults for everyone**, **Bank transfer details** | owner or dev | already the owner's; the remittance details are what customers pay to |
 | 95 | Settings → Jobs & billing → **Save owners from the appraisal roll**, **GC pay by card**, **the office's notices**, **the customer's notice before a bill is due** | owner or dev | already the owner's switches |
 | 96 | Settings → Your account → **Your signing code** · `/settings#settings-lien-sign-code` | owner or dev | the code signs lien notices on anyone's screen |
-| 97 | Gear menu → **Global reload** | dev | forces every open copy of the app to reload |
+| 97 | Settings → Advanced → **Global Reload** (the gear menu until v2.8527) | dev | makes every other open copy of the app reload, after a window that asks first |
 | 98 | Settings → Your dashboard → **Ignored task types** | dev | a dev's own dashboard filter, nobody else's |
 | 99 | **Partnerships** · `/partnerships`; Job window → **Partner split panel** | dev | partner deal terms and profit-share posts; nobody in the office runs them |
 | 100 | **Punch list** · `/punch-list` | owner or dev | already the owner's; the board names unbuilt work and open decisions |

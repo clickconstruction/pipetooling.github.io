@@ -1,14 +1,15 @@
 /** Settings → Advanced tab: collapsible "Fix app" help + admin claim-code form
- * + dev-only email-monitoring links (v2.2497).
+ * + dev-only email-monitoring links (v2.2497) + a dev's Global Reload (v2.8527).
  * Self-contained (v2.856): owns its section-open + claim-code state and the
  * claim-dev edge-fn call; on success it invokes onRoleMaybeChanged so the parent
  * reloads (the user's role may have just changed).
  * The role gate (non-subcontractor) stays in the parent; isDev gates the
- * DMARC links only. */
+ * DMARC links and Global Reload. */
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
+import GlobalReloadSettingsCard from './GlobalReloadSettingsCard'
 
 /**
  * The two Cloudflare DMARC Management dashboards (enabled 2026-08-29, see
@@ -30,11 +31,12 @@ export default function SettingsAdvancedTab({
   onRoleMaybeChanged: () => void
 }) {
   const [advancedSectionOpen, setAdvancedSectionOpen] = useState(false)
-  // `#settings-claim-code` (Needs You "Someone tried to become a dev", Tier-2 #17):
-  // the code form sits inside this collapsed group, so the deep link opens it.
+  // `#settings-claim-code` (Needs You "Someone tried to become a dev", Tier-2 #17) and
+  // `#settings-global-reload` (the dev doors list): both sit inside this collapsed group, so the deep link opens it.
   useEffect(() => {
     if (!active) return
-    if (typeof window !== 'undefined' && window.location.hash === '#settings-claim-code') setAdvancedSectionOpen(true)
+    const hash = typeof window !== 'undefined' ? window.location.hash : ''
+    if (hash === '#settings-claim-code' || hash === '#settings-global-reload') setAdvancedSectionOpen(true)
   }, [active])
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
@@ -109,6 +111,7 @@ export default function SettingsAdvancedTab({
               to clear cached files and reload. Bookmark this link to use when the app won&apos;t load.
             </p>
           </div>
+          {isDev && <GlobalReloadSettingsCard />}
           {isDev && (
             <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
               <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Email domain monitoring</h2>
