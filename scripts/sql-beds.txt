@@ -16,6 +16,7 @@ gc-owner-billing
 portal-customer-lines
 gc-change-orders-from-messages
 gc-award
+gc-take-ask-back
 pay-applications
 gc-back-charges
 lien-claim

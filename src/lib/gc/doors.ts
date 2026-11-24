@@ -60,6 +60,8 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_invites: office('Board'),
   gc_quotes: office('Board'),
   gc_company_contacts: office('Board'),
+  // v2.8440: the asks taken back. The office team reads; only gc_take_ask_back writes.
+  gc_asks_taken_back: office('Board'),
   // A customer's call log (B2b-v-i), the office team's as the trades' is.
   gc_customer_contacts: office('Board'),
   gc_trade_promises: office('Board'),

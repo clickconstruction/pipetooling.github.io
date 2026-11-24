@@ -248,6 +248,7 @@ import {
   sendOwnerPayApp,
   setOwnerRetainage,
   sendGcSow,
+  takeGcAskBack,
   takeBillOffCard,
   loadGcStartTold,
   setGcProjectStartItem,
@@ -862,6 +863,11 @@ export default function GcProjects() {
     },
     decline: async (inviteId, why, reason, note) => {
       await declineGcAsk(inviteId, why, reason, note)
+      await refreshBoard()
+    },
+    // Take the ask back (v2.8440): whoever may ask, as `gc_take_ask_back` says. The ask leaves the board's rows.
+    takeBack: async (inviteId) => {
+      await takeGcAskBack(inviteId)
       await refreshBoard()
     },
   }

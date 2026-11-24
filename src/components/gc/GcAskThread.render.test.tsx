@@ -7,7 +7,7 @@ import { clinicBoardRows } from '../../lib/gc/boardTestRows'
 import { GC_WAITING_ON_THEM_ID } from '../../lib/gc/links'
 import { allPeople } from '../../lib/gc/projectPeople'
 import { initialGcState } from '../../lib/gc/schedule/testState'
-import { installDomShims } from '../../test/renderSmokeMocks'
+import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
 
 installDomShims()
 
@@ -179,5 +179,59 @@ describe('GcTradeAsks', () => {
     expect(screen.getByText('No company asked yet.')).toBeTruthy()
     rerender(<GcTradeAsks state={boardStateFromRows(clinicBoardRows())} projectId="p1" packageId="k3" writes={writes()} />)
     expect(container.textContent).toBe('')
+  })
+})
+
+// v2.8440: Take the ask back… on an ask the company has not heard about, behind a confirm whose button names the act.
+describe('GcTradeAsks · Take the ask back… (v2.8440)', () => {
+  /** The clinic's sitework with one more company asked a minute ago: no email sent, nothing opened, no contact. */
+  function withFreshAsk() {
+    const base = clinicBoardRows()
+    return clinicBoardRows({
+      companies: [...base.companies, { ...base.companies[0]!, id: 'zz', name: 'ZZ Test trade no page, delete me', trades: ['Sitework'] }],
+      invites: [...base.invites, { ...base.invites[1]!, id: 'i9', company_id: 'zz', status: 'invited', seen_rev: null }],
+    })
+  }
+  function backWrites() {
+    return { ...writes(), takeBack: vi.fn(() => Promise.resolve()) }
+  }
+
+  it('shows on the ask they have not heard about alone, asks first in its words, and takes it back on the press', async () => {
+    const w = backWrites()
+    renderWithProviders(<GcTradeAsks state={boardStateFromRows(withFreshAsk())} projectId="p1" packageId="k1" writes={w} />)
+    // Lonestar quoted and Hillside opened it: neither ask offers the press, and each keeps its own two.
+    expect(document.querySelector('[data-gc-ask-back="i1"]')).toBeNull()
+    expect(document.querySelector('[data-gc-ask-back="i2"]')).toBeNull()
+    const cell = document.querySelector('[data-gc-ask-back="i9"]') as HTMLElement
+    fireEvent.click(within(cell).getByRole('button', { name: 'Take the ask back…' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Take the Sitework ask back from ZZ Test trade no page, delete me?' })
+    expect(within(ask).getByText(/has not opened this ask, sent a quote or heard from us about it\. The ask is deleted/)).toBeTruthy()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(w.takeBack).not.toHaveBeenCalled()
+
+    fireEvent.click(within(cell).getByRole('button', { name: 'Take the ask back…' }))
+    const again = await screen.findByRole('alertdialog', { name: 'Take the Sitework ask back from ZZ Test trade no page, delete me?' })
+    fireEvent.click(within(again).getByRole('button', { name: 'Take the ask back' }))
+    await waitFor(() => expect(w.takeBack).toHaveBeenCalledWith('i9'))
+  })
+
+  it('a refusal from the server draws its reason beside the press', async () => {
+    const w = backWrites()
+    // A Supabase refusal is a plain object, never an Error: the row must still read its reason.
+    vi.mocked(w.takeBack).mockRejectedValueOnce({ message: 'ZZ Test trade no page, delete me stays asked on Sitework, since we emailed them about it. Close an ask they heard about with Will not do it or Cannot do it.', code: 'P0001' })
+    renderWithProviders(<GcTradeAsks state={boardStateFromRows(withFreshAsk())} projectId="p1" packageId="k1" writes={w} />)
+    const cell = document.querySelector('[data-gc-ask-back="i9"]') as HTMLElement
+    fireEvent.click(within(cell).getByRole('button', { name: 'Take the ask back…' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Take the Sitework ask back from ZZ Test trade no page, delete me?' })
+    fireEvent.click(within(ask).getByRole('button', { name: 'Take the ask back' }))
+    await within(cell).findByText('The ask did not come back: ZZ Test trade no page, delete me stays asked on Sitework, since we emailed them about it. Close an ask they heard about with Will not do it or Cannot do it.')
+    expect((within(cell).getByRole('button', { name: 'Take the ask back…' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('offers no press to a reader without the write', () => {
+    render(<GcTradeAsks state={boardStateFromRows(withFreshAsk())} projectId="p1" packageId="k1" writes={writes()} />)
+    expect(screen.queryByRole('button', { name: 'Take the ask back…' })).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Will not do it' }).length).toBeGreaterThan(0)
   })
 })

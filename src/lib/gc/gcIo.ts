@@ -1005,6 +1005,16 @@ export async function declineGcAsk(inviteId: string, why: 'wont' | 'cant', reaso
 }
 
 /**
+ * Take back an ask the company never heard about (v2.8440, `gc_take_ask_back`): the database deletes the ask with the
+ * office's notes on it and keeps who asked and who took it back in `gc_asks_taken_back`. It refuses in words an ask
+ * with an award, a statement of work or a quote on it, one the company passed on, and one they opened, were emailed
+ * about or were called on. The function's name goes through `as never` until the types regen after the push.
+ */
+export async function takeGcAskBack(inviteId: string): Promise<void> {
+  taken(await supabase.rpc('gc_take_ask_back' as never, { p_invite_id: inviteId } as never), 'take the ask back')
+}
+
+/**
  * Ask companies to quote a trade (the Board's B4-a): `gc_invite_companies` records each ask, skipping a
  * company already asked. With `send` (a dev, `canSendGcTradeEmail`), each new ask's invitation goes out through
  * `gc-trade-email` and the ask reads *Invitation emailed.* or the refusal's words; without it each ask carries

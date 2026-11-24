@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { GC_WAITING_ON_THEM_ID } from '../../lib/gc/links'
 import { bidsIn } from '../../lib/gc/bids'
+import { ASK_BACK_FAILED, ASK_BACK_PRESS, ASK_BACK_PRESS_TITLE, askBackConfirmWords, canTakeAskBack } from '../../lib/gc/askBack'
 import { declinedTitle, declinedWords } from '../../lib/gc/decline'
 import { askPromise, followUps, promiseWords, wordRecord, type FollowUp, type FollowUpWhy, type PromiseState } from '../../lib/gc/followUp'
 import { telHref } from '../../lib/gc/followUpSheet'
@@ -13,6 +14,7 @@ import { PartnerName } from './GcPartnerName'
 import { PeopleRows } from './GcPeopleRows'
 import { Btn, Card, Chip, input, type Tone } from './gcUi'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 
 /**
  * GC mode, the real build (the Board's B4-b): keeping up with a company on one ask, from the design
@@ -24,12 +26,16 @@ import { formatErrorMessage } from '../../utils/errorHandling'
  * too; the badge now counts the people waiting on us); each person has Call. Since B2b-viii-a, with
  * `onFollowUp`, **Work the list · N people** and each person's Follow up open the Follow up sheet, and By urgency ends with
  * **More to follow up on**: everyone we wait on for something other than a quote. Log a contact stays on each card.
+ * Since v2.8440 an ask the company has not heard about has **Take the ask back…** beside the two (`askBack.ts`):
+ * behind a confirm, `gc_take_ask_back` deletes the ask, and refuses in words one they opened, quoted or heard of.
  */
 
 /** What the asks write, through the company record (B1). */
 export interface AskWrites {
   logContact: (ask: { companyId: string; inviteId: string }, how: 'call' | 'text' | 'email', note: string, promisedBy: string | null) => Promise<void>
   decline: (inviteId: string, why: 'wont' | 'cant', reason: DeclineReason, note: string) => Promise<void>
+  /** Take back an ask the company has not heard about (v2.8440). Unset: the reader cannot, and no press shows. */
+  takeBack?: (inviteId: string) => Promise<void>
 }
 
 const PROMISE_TONE: Record<PromiseState, Tone> = {
@@ -162,6 +168,35 @@ function ContactLine({ line, sayDay }: { line: AskContact; sayDay: boolean }) {
   )
 }
 
+/**
+ * Take the ask back… (v2.8440), on an ask the company has not heard about. A component of its own, mounted only
+ * where the write is given, so the confirm's provider is asked for nowhere else. A refusal draws its reason beside it.
+ */
+function TakeAskBackButton({ pkg, invite, partner, takeBack }: { pkg: TradePackage; invite: Invite; partner: Partner; takeBack: (inviteId: string) => Promise<void> }) {
+  const confirmDialog = useConfirmDialog()
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const press = async () => {
+    if (!(await confirmDialog({ ...askBackConfirmWords(partner.company, pkg.trade), danger: true }))) return
+    setBusy(true)
+    setProblem(null)
+    try {
+      await takeBack(invite.id)
+    } catch (e) {
+      setProblem(formatErrorMessage(e, ASK_BACK_FAILED))
+      setBusy(false)
+    }
+  }
+  return (
+    <span data-gc-ask-back={invite.id} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <Btn kind="quiet" disabled={busy} title={ASK_BACK_PRESS_TITLE} onClick={() => void press()}>
+        {busy ? 'Taking it back…' : ASK_BACK_PRESS}
+      </Btn>
+      {problem && <span style={{ color: 'var(--text-red-700)', fontSize: '0.8rem' }}>{problem}</span>}
+    </span>
+  )
+}
+
 /** Will not do it and Cannot do it, with the window that asks why. Only on an ask still open. */
 function DeclineButtons({ project, pkg, invite, partner, writes }: { project: GcProject; pkg: TradePackage; invite: Invite; partner: Partner; writes: AskWrites }) {
   // Will not do it / Cannot do it ask why first (the owner, 2026-10-04): the reason stays with the job and the company.
@@ -170,6 +205,7 @@ function DeclineButtons({ project, pkg, invite, partner, writes }: { project: Gc
     <>
       <Btn onClick={() => setDeclining('wont')}>Will not do it</Btn>
       <Btn onClick={() => setDeclining('cant')}>Cannot do it</Btn>
+      {writes.takeBack && canTakeAskBack(invite, pkg) && <TakeAskBackButton pkg={pkg} invite={invite} partner={partner} takeBack={writes.takeBack} />}
       {declining && (
         <GcDeclineForm
           company={partner.company}
