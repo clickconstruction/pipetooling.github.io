@@ -42,8 +42,8 @@ export type PublicPageLostView = {
 /**
  * What the page says once its code did not come, and what **Try again** does. `online` is the browser's own
  * word (`navigator.onLine`): only a plain `false` counts as offline, since a browser that cannot say is
- * treated as online. `pressedOffline` is true once someone pressed while offline, so the press visibly answers.
- * `checking` is true while a later press's ask is out (`probeForSignal`).
+ * treated as online. `pressedOffline` is true once someone pressed while offline, so a press whose ask came
+ * back with no still visibly answers. `checking` is true while a press's ask is out (`probeForSignal`).
  */
 export function publicPageLostView(online: boolean | undefined, pressedOffline: boolean, checking = false): PublicPageLostView {
   if (online === false) {
@@ -53,21 +53,22 @@ export function publicPageLostView(online: boolean | undefined, pressedOffline: 
   return { words: PUBLIC_PAGE_LOST_WORDS, reload: true, checking: false }
 }
 
-/** What one press on **Try again** does: reload, answer in words, or ask the network first. */
-export type PublicPageTryAgainAct = 'reload' | 'answer' | 'ask'
+/** What one press on **Try again** does: reload, or ask the network first. */
+export type PublicPageTryAgainAct = 'reload' | 'ask'
 
 /**
- * What a press on **Try again** does (the owner, 2026-11-23). Online, it reloads. On a phone that says it is
- * offline the first press answers in words, as it always has. A phone can say so wrongly, and then the customer
- * was held on this page for as long as it did. So the second press, and each one after it, asks the network
- * itself (`probeForSignal`), and the page reloads only when the network answers.
+ * What a press on **Try again** does. Online, it reloads. On a phone that says it is offline every press, the
+ * first one too, asks the network itself (`probeForSignal`), and the page reloads only when the network
+ * answers. A phone can say it is offline wrongly, and the customer was then held on this page for as long as
+ * it did. The second press has asked since 2026-11-23 and the first since 2026-11-24, both on the owner's yes:
+ * a wrongly offline customer is through in one press, and the count of presses decides nothing any more.
  *
- * It never reloads on the browser's word alone, nor on the count of presses alone. A reload with no network
- * empties the caches and lands on the browser's own error page, which is worse than this one.
+ * It never reloads on the browser's word alone. A reload with no network empties the caches and lands on the
+ * browser's own error page, which is worse than this one. The ask is what makes every press safe: no cache
+ * can answer it, only the site's own answer counts, and it is a plain no after `PUBLIC_PAGE_PROBE_TIMEOUT_MS`.
  */
-export function publicPageTryAgainAct(online: boolean | undefined, pressedOffline: boolean): PublicPageTryAgainAct {
-  if (online !== false) return 'reload'
-  return pressedOffline ? 'ask' : 'answer'
+export function publicPageTryAgainAct(online: boolean | undefined): PublicPageTryAgainAct {
+  return online === false ? 'ask' : 'reload'
 }
 
 /**
