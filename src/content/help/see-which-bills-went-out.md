@@ -85,7 +85,7 @@ Green on this page means money. The word about the email is plain, and a bounce 
 Each bill's line has a stamp under the amount. The stamp says where the bill stands.
 
 - {{chip:green|✓ Paid Fri, Nov 20}} means the bill is paid. The day is the day the money came.
-- {{chip:yellow|Part paid}} and an amount means some money came. The bill is still open.
+- {{chip:yellow|Part paid}} and an amount means some money came. The amount is what was paid so far. The bill is still open.
 - *Not paid* in a dashed box means no money has come.
 
 Small words under the stamp say how the bill was paid.
@@ -271,6 +271,10 @@ A month of days shows. A green day has a figure. The figure is what came in that
 
 Press a day. A box shows that day's total and its payments.
 
+Tiles above the month add up the money. This month shows **Today**, **This week** and the month. An older month shows the month alone.
+
+This week starts on Sunday here. The Dashboard's **Money in** week starts on Monday. A Sunday payment can make the two differ.
+
 Each payment names the bill, the job and who paid. A pill says how the money came.
 
 The words after the pill say when the bill went and how long the money took.
@@ -286,6 +290,10 @@ A green tile on the list reads **Paid this week**. Press the tile to open the se
 Press {{chip:gray|Stripe}} above the month. The month, the tiles and the day now count Stripe payments alone.
 
 A Stripe payment shows the time the customer paid.
+
+Stripe's own list of payments holds more rows than this chip counts. A bill the office marked paid by check shows there as *Paid out of band*. Leave those rows out when you compare a day with Stripe.
+
+A payment from a bank account takes days to clear. This page puts it on the day it cleared. Stripe's list dates it the day the customer started it. Its words here read *Card · Stripe* too.
 
 A day may have no Stripe money. The box says so and offers **Show every way that day**.
 
