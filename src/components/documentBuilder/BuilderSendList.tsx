@@ -4,7 +4,7 @@
  * job's sheet to its trades and a builder to GCs.
  *
  * The one press acts on whoever has a page that is on, lists who it held with the reason, and keeps going past one
- * that fails. A send to one party alone makes a page for someone who never had one. A send never turns a page back
+ * that fails. A reason that holds many reads as one line with its count, and their names fold under it. A send to one party alone makes a page for someone who never had one. A send never turns a page back
  * on: that is its own press. A revision nobody has read goes only once the box *Send it anyway* is ticked.
  *
  * Every rule is `lib/documentBuilder/send.ts`. This file draws, and hands each press to its caller.
@@ -14,7 +14,7 @@ import type { BatchNoun } from '../../lib/batchWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import type { BuilderChip, BuilderChipTone } from '../../lib/documentBuilder/builders'
 import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
-import { ABOUT_ALL_JOBS, aboutChoices, aboutJobId, resendPress, resendTo, sendBatch, sendBatchOutcome, sendBox, sendChips, shownParties, unreadGateWords, type PartyContact, type ResendWhy, type SendParty } from '../../lib/documentBuilder/send'
+import { ABOUT_ALL_JOBS, aboutChoices, aboutJobId, heldLines, resendPress, resendTo, sendBatch, sendBatchOutcome, sendBox, sendChips, shownParties, unreadGateWords, type PartyContact, type ResendWhy, type SendParty } from '../../lib/documentBuilder/send'
 import { EmptyState } from '../EmptyState'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 
@@ -284,11 +284,23 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
             </div>
           ) : null}
           {!published ? <p style={MUTED}>{unpublishedWords}</p> : null}
-          {batch.held.map((h) => (
-            <p key={h.party.id} style={MUTED}>
-              {h.why}
-            </p>
-          ))}
+          {heldLines(batch.held, noun).map((line) =>
+            line.names.length === 0 ? (
+              <p key={line.key} style={MUTED}>
+                {line.words}
+              </p>
+            ) : (
+              // One reason that holds many: the line counts them, and a press on it opens their names.
+              <details key={line.key} data-held={line.key} style={MUTED}>
+                <summary style={{ cursor: 'pointer' }}>{line.words}</summary>
+                <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                  {line.names.map((name, i) => (
+                    <li key={`${name}-${i}`}>{name}</li>
+                  ))}
+                </ul>
+              </details>
+            ),
+          )}
           {refusal?.partyId == null && refusal ? (
             <p role="alert" style={REFUSAL}>
               {refusal.words}
