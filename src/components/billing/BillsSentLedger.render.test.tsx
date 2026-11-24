@@ -654,6 +654,25 @@ describe('BillsSentLedger', () => {
     expect(['All', 'Not paid', 'Email', 'Did not arrive'].map((name) => screen.getByRole('button', { name }).style.minHeight)).toEqual(['44px', '44px', '44px', '44px'])
   })
 
+  it('on a phone, wraps an odd count of tiles so the last row is full, and sits an even count two to a row', async () => {
+    io.phone = true
+    // Two tiles: Today and This week. The one bill is paid, so no tile counts it as not paid.
+    io.data = { ...data([copy({})]), bills: new Map([[BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'paid' }]]) }
+    const { unmount } = renderWithProviders(<BillsSentLedger />)
+    await screen.findAllByTestId('bills-sent-line')
+    expect(screen.queryByTestId('bills-sent-tile-unpaid')).toBeNull()
+    // The test DOM keeps a grid's display and drops its columns: the columns are held by the look's own test.
+    expect(screen.getByTestId('bills-sent-tiles').style.display).toBe('grid')
+    unmount()
+    // Three tiles: Not paid joins them. The row wraps, and each tile grows to fill its row.
+    io.data = data([copy({})])
+    renderWithProviders(<BillsSentLedger />)
+    await screen.findByTestId('bills-sent-tile-unpaid')
+    const row = screen.getByTestId('bills-sent-tiles')
+    expect([row.style.display, row.style.flexWrap]).toEqual(['flex', 'wrap'])
+    expect(screen.getByTestId('bills-sent-tile-unpaid').style.flex).toBe('1 1 5.2rem')
+  })
+
   it('on a phone, puts the list first: a folded strip, a three-row line that opens the record, the file presses last', async () => {
     io.phone = true
     const GAP = 'dddddddd-4444-4444-8444-444444444444'

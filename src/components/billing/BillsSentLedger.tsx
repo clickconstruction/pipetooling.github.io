@@ -63,7 +63,7 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { AmountSmallCents } from '../AmountSmallCents'
-import { THUMB, billLink, chipStyle, jobLink, linePress, money, phoneButton, strong, tile, tileSmall } from './billsSentLook'
+import { THUMB, billLink, chipStyle, jobLink, linePress, money, phoneButton, strong, tile, tileRow, tileSmall } from './billsSentLook'
 import { BillsPaidByDay } from './BillsPaidByDay'
 import { billsPaidLines, billsPaidSum, type BillsPaidSum } from '../../lib/billing/billsPaidDays'
 import { readBillsPaid } from '../../lib/billing/billsPaidIo'
@@ -916,7 +916,7 @@ export function BillsSentLedger() {
     <section aria-label="Bills sent" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
       {viewSwitch}
       {phone ? null : outRow}
-      <div style={{ display: 'grid', gridTemplateColumns: phone ? (tileCount % 2 === 0 ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(5.2rem, 1fr))') : 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' }}>
+      <div data-testid="bills-sent-tiles" style={tileRow(phone, tileCount)}>
         <Tile label="Today" sum={tiles.today} testId="bills-sent-tile-today" stacked={phone} />
         <Tile label="This week" sum={tiles.week} testId="bills-sent-tile-week" stacked={phone} />
         {tiles.unpaid.bills > 0 ? (
