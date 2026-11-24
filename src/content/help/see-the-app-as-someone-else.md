@@ -24,7 +24,7 @@ Then you go to the page you wanted to check. That role may not be able to open i
 
 The amber {{button:gray|Exit (Sample assistant)}} in the header returns you to your own account **and to the page you left**. On a phone it is a thin amber bar across the top of the screen. A press anywhere along the bar works. Settings → *Back to my account* does the same.
 
-Sometimes the app cannot put your own sign-in back. Then the app signs this browser out and shows the sign-in page. You sign in again as yourself.
+Sometimes the app cannot put your own sign-in back. Then the app signs this browser out and shows the sign-in page. A line above the form says why. You sign in again as yourself.
 
 ## Sample accounts
 

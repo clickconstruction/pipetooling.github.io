@@ -105,7 +105,9 @@ A job can require a paper built from settings before anyone opens it. The GC on 
 
 No worker is named. A helper or an office person counts in the total and has no line. A sub with no company on file shows under their own name.
 
-The GC can read only. Nothing on the block is a press. Setting the paper up is in [require papers before a job opens](/help/require-papers-before-a-job-opens#what-the-gc-sees).
+**Download a sample** opens the job's paper with made-up names. SAMPLE is printed across each page. It shows the words a signer reads, and no signer.
+
+The GC can read only. Nothing they press changes the paper. Setting the paper up is in [require papers before a job opens](/help/require-papers-before-a-job-opens#what-the-gc-sees).
 
 ## More on the portal
 

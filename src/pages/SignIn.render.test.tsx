@@ -20,6 +20,8 @@ import { MemoryRouter } from 'react-router-dom'
 import SignIn from './SignIn'
 import { supabase } from '../lib/supabase'
 import { settle } from '../test/renderSmokeMocks'
+import { VIEW_AS_SIGNED_OUT_WORDS } from '../lib/impersonationExit'
+import { SIGN_IN_NOTICE_STORAGE_KEY, leaveSignInNotice } from '../lib/signInNotice'
 
 vi.mock('../lib/supabase', () => ({
   supabase: {
@@ -60,6 +62,24 @@ afterEach(() => {
   vi.clearAllMocks()
   window.localStorage.clear()
   window.sessionStorage.clear()
+})
+
+describe('SignIn after a forced sign-out', () => {
+  it('says why an Exit from View as signed this browser out, once', async () => {
+    leaveSignInNotice(VIEW_AS_SIGNED_OUT_WORDS)
+    renderSignIn()
+    const line = await screen.findByRole('alert')
+    expect(line.textContent).toContain('your own sign-in could not be put back')
+    expect(line.textContent).toContain('Sign in again.')
+    // Taken once: a reload of the sign-in page shows the bare form.
+    expect(window.sessionStorage.getItem(SIGN_IN_NOTICE_STORAGE_KEY)).toBeNull()
+  })
+
+  it('shows no line when nobody left one', async () => {
+    renderSignIn()
+    await settle()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
 })
 
 describe('SignIn Enter-to-submit', () => {

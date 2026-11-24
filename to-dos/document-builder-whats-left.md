@@ -199,7 +199,7 @@ puts its rows back after, and its line on #404 names what it could not delete.
   - After a send-back the trade's page reads *good to Nov 24 · Click is checking it*, and its *Needs you* no longer asks for a certificate. The company's record still offers **Mark it good**.
   - A certificate marked good and then sent back keeps `status` `signed`, which is why the company's record still reads it as good.
   - No group email reaches the test trade company, since its main contact is at `example.com`. A walk that needs one needs that contact at a sink address first.
-  - Publishing a job's sheet asks nothing first. The Sub NDA's publish asks since v2.8439 (below). The sheet's two publish presses in `FilledBuilder`, a job's sheet and the usual to every job, still ask nothing, and nobody has made that call.
+  - ~~Publishing a job's sheet asks nothing first.~~ Fixed by v2.8511 (PR #9688), on Diane's yes of 2026-11-24: a job's publish and the usual's publish each open a window first, which says who sees the new revision and that a publish cannot be taken back, and **Not yet** publishes nothing. The Sub NDA's publish asks since v2.8439 (below). Held by tests, and not yet seen in a browser.
 - **For the next headless walk.** A new browser for every look pulls every file again, and GitHub Pages answered *Rate limit exceeded* after about forty loads in half an hour. The app then read *The app is slow right now.* A browser profile kept on disk stopped it.
   A first visit to `/gc` in a new profile draws a walkthrough over the page, and Escape closes it.
 
@@ -313,7 +313,7 @@ puts its rows back after, and its line on #404 names what it could not delete.
 - **Left on production.** One `document_builder_sends` row, taken off. Two emails to the sink address, with their log rows and Sent copies, which no press deletes. One portal link on the ZZ TEST GC, made and turned off again. The contact *ZZ Test Walk Sink*, removed and in Recently deleted. The Sub NDA is as it was.
 - **Seen, not fixed.**
   - A contact cannot be put back alone. Recently deleted groups a customer's deletions as one bundle, so a restore brings back every contact and project deleted under that customer. The confirm's words are true, but the restore is wider than they say.
-  - The remove window opens with the focus on **Remove …**, so Enter removes. The Publish window puts the focus on **Not yet**.
+  - ~~The remove window opens with the focus on **Remove …**, so Enter removes.~~ Fixed by v2.8515 (PR #9689): the window opens with the focus on **Keep them**, as the Publish window opens on **Not yet**. Held by tests, and not yet seen in a browser.
   - In the Publish window **Not yet** and **Publish revision 2** are drawn alike, both filled blue.
 
 **1j. Step 6, a certificate checked against the sheet** (v2.8253, PR #9337)

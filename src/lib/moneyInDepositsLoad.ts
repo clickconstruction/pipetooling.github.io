@@ -12,7 +12,7 @@ import type { Database } from '../types/database'
  */
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { BANKING_SORTING_CONFIG_VERSION, type BankingSortingConfigV1 } from './bankingSortingConfig'
-import type { MoneyInDepositFilter, MoneyInPendingDepositRow, MoneyInPostedDepositRow, MoneyInUnlinkedRow } from './moneyInDeposits'
+import { moneyInDepositsReadFrom, type MoneyInDepositFilter, type MoneyInPendingDepositRow, type MoneyInPostedDepositRow, type MoneyInUnlinkedRow } from './moneyInDeposits'
 import type { ArReturnCaseRow } from './jobs/arReturnCase'
 
 export async function rpcRows<T>(db: SupabaseClient<Database>, fn: string, args?: Record<string, unknown>): Promise<T[]> {
@@ -35,7 +35,12 @@ export async function readPendingDepositRows(db: SupabaseClient<Database>): Prom
   return (rows ?? []) as MoneyInPendingDepositRow[]
 }
 
-/** Posted deposits from a day on that still hold money not applied, by Accounts Receivable's own list and the org's filter. */
+/**
+ * Posted deposits from a day on that still hold money not applied, by Accounts Receivable's own list and the
+ * org's filter. The read never starts before the day that list itself starts (`moneyInDepositsReadFrom`): By day
+ * paid opens any month, and a month from before the office began matching in the app holds deposits Accounts
+ * Receivable does not list.
+ */
 export async function readPostedDepositRows(db: SupabaseClient<Database>, cfg: BankingSortingConfigV1 | null, sinceYmd: string): Promise<MoneyInPostedDepositRow[]> {
   return rpcRows<MoneyInPostedDepositRow>(db, 'list_mercury_transactions_for_bank_payments', {
     p_filter: cfg
@@ -44,7 +49,7 @@ export async function readPostedDepositRows(db: SupabaseClient<Database>, cfg: B
           kinds: cfg.kinds,
           accountIds: cfg.accountIds,
           debitCardIds: cfg.debitCardIds,
-          startDateYmd: sinceYmd,
+          startDateYmd: moneyInDepositsReadFrom(sinceYmd, cfg.startDateYmd),
           excludeCounterpartyContains: cfg.excludeCounterpartyContains,
           excludeNoteContains: cfg.excludeNoteContains,
         }

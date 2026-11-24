@@ -47,6 +47,7 @@ const META: TodoMeta = {
   opinion: '',
   pointer: false,
   mockupNotRequired: '',
+  ask: null,
 }
 
 const DOC: TodoDoc = {
@@ -523,5 +524,43 @@ describe('parseOpinion', () => {
     expect(doc.meta.opinion).toBe('later — nothing is wrong today')
     expect(renderFrontMatter(doc.meta)).toContain('opinion: later — nothing is wrong today')
     expect(renderBoardData([doc], { date: '2026-09-17', version: 'v2.1' }).items[0]!.opinion).toBe('later — nothing is wrong today')
+  })
+})
+
+describe('the ask a card waits on (punch list #438)', () => {
+  const ASKED: TodoMeta = { ...META, ask: { who: 'owner', kind: 'walk', question: 'Walk the pace card with one superintendent, on his own phone.' } }
+
+  it('reads the ask out of the front matter and writes it back', () => {
+    const md = fileWith(ASKED)
+    expect(md).toContain('ask: owner · walk · Walk the pace card with one superintendent, on his own phone.')
+    const doc = readTodoDoc('to-dos/x.md', md)
+    if (isParseError(doc)) throw new Error(doc.problem)
+    expect(doc.meta.ask).toEqual(ASKED.ask)
+  })
+
+  it('reads a card with no ask as waiting on nobody', () => {
+    const doc = readTodoDoc('to-dos/x.md', fileWith(META))
+    if (isParseError(doc)) throw new Error(doc.problem)
+    expect(doc.meta.ask).toBeNull()
+  })
+
+  it('reads a long ask back whole after it wraps', () => {
+    const long = { who: 'office', kind: 'use', question: 'Press Match 105 offered codes, then work the first forty rows of Codes with no part in the Parts Book.' } as const
+    const doc = readTodoDoc('to-dos/x.md', fileWith({ ...META, ask: long }))
+    if (isParseError(doc)) throw new Error(doc.problem)
+    expect(doc.meta.ask).toEqual(long)
+  })
+
+  it('refuses a card whose ask does not read, in words that name the fault', () => {
+    const md = fileWith(META).replace('size: XS', 'ask: grace · look · Look at it.\nsize: XS')
+    const doc = readTodoDoc('to-dos/x.md', md)
+    expect(isParseError(doc) && doc.problem).toContain('"grace"')
+  })
+
+  it('carries the ask onto the board row, in plain text', () => {
+    const doc: TodoDoc = { ...DOC, meta: { ...META, ask: { who: 'owner', kind: 'look', question: 'Look at the `Pipeline` row.' } } }
+    const [row] = renderBoardData([doc], { date: '2026-11-24', version: 'v2.8519' }).items
+    expect(row!.ask).toEqual({ who: 'owner', kind: 'look', question: 'Look at the Pipeline row.' })
+    expect(renderBoardData([DOC], { date: '2026-11-24', version: 'v2.8519' }).items[0]!.ask).toBeNull()
   })
 })

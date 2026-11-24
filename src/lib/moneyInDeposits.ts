@@ -140,6 +140,17 @@ export function moneyInDepositsSince(todayYmd: string): string {
   return ymdAddDays(todayYmd, -(DRAWER_DAYS + 4))
 }
 
+/**
+ * The first day to ask the bank's posted deposits from: the day asked for, or the day the org's Accounts
+ * Receivable list starts (`startDateYmd` of its deposit filter) when that is later. Accounts Receivable lists no
+ * deposit from before its start, so no screen names one: the deposits from before the office began matching in
+ * the app are not money waiting on a bill. A start date that is missing or is no day leaves the asked day.
+ */
+export function moneyInDepositsReadFrom(sinceYmd: string, orgStartYmd: string | null | undefined): string {
+  const start = (orgStartYmd ?? '').trim()
+  return /^\d{4}-\d{2}-\d{2}$/.test(start) && start > sinceYmd ? start : sinceYmd
+}
+
 // ---------- Deposits meet the payments that carry them ----------
 
 /** A deposit, the day it counts on, and the typed-in payment that carries it, if one does. */

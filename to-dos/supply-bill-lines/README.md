@@ -15,6 +15,7 @@ summary: >
   buy by month, price over time, and what to stock. Deliveries on a job and the order log join in
   later stages.
 next: someone who keeps the Parts Book presses *Match 105 offered codes* and works the first forty rows of *Codes with no part*, about a third of the dollars. Then PR 2b, the price offered from a bill, which the card holds to an offer for its first month. The owner's two open calls are in *The calls the measure raises*.
+ask: office · use · Press Match 105 offered codes, then work the first forty rows of Codes with no part.
 size: XL as a train of about nine (PR 1 M · PR 2 M · then measure · 1b M · 2a M · 2b S · 4a M · 4b M · 4c S), the parsers optional and the joins of stage 5 apart
 blocker: None. The sweep runs every ten minutes and reads a new bill within minutes of Save.
 opinion: the reader is good enough to build on (nine bills of nine matched their PDFs, no part code was misread, no parser is needed) and the tail of codes is long, so draw What we buy on the house's own code first and teach the crosswalk the top two hundred codes after

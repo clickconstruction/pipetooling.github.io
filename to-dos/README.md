@@ -99,6 +99,7 @@ status: built 2026-09-15 · left: the first real run on a TEST GC
 summary: >                        # one paragraph: what this is
   One modal that sends the § 53.056 notice to every owner on every job with a failing GC…
 next: The first real run on a TEST GC, then delete the folder.
+ask: owner · look · Press Send on the TEST GC's notice, then look at what the owner got.   # optional — who the card waits on · the kind · the question
 size: XS
 blocker: A live run.
 ver: v2.3469 · 3470 · 3482 · 3479
@@ -107,6 +108,15 @@ pointer: true                     # optional — a standing list, not an open it
 mockup: not required — a live test   # optional — the board says this instead of "waiting on a mock-up"
 ---
 ```
+
+**`ask:` is the question a card waits on** (punch list #438): one line, `who · kind · question`.
+*Who* is `owner`, `office`, `anyone` (a person at hand), `counsel`, `time` or `dev`. *Kind* is what is
+asked of them: `look` (open a screen and say), `read` (read a text through), `walk` (be there for a
+walk), `decide` (pick among answers) or `use` (use it for a while). The *question* is one sentence that
+person can act on, ending in a full stop or a question mark, at most 160 characters. `next:` stays the
+next act of the work; `ask:` is what a person must say or do first. Leave the line out when the card
+waits on nobody, and change it when the question changes: the board treats an answer as the answer
+only to the question it was given. `npm run check:todos` refuses a line it cannot read.
 
 Everything else in the file stays prose: the ask in the owner's words, the decision, the mock-up,
 where it plugs in, the PR train, the verify recipe, and a `## Where it stands` section where the
@@ -124,6 +134,10 @@ shared file would rebuild the parallel-session conflict that the release-notes a
 
 The open to-dos, grouped and ordered by readiness, are the board itself: Settings → *Punch list* (the chip under the rail's search)
 (`/punch-list`). On GitHub, this folder's listing is the index.
+
+Closed 2026-11-24 (folder deleted; the mock-up lives in git history at the deleting commit), on the owner's word *Retire both now* of the same day, with its second build live and looked at on the live app: `mode-row-five-seconds` (#433) — **The mode row shows for five seconds, then leaves**, the owner's ask of 2026-11-24 after a look at the row on a phone. Drawn twice and built twice in one day. v2.8461 (#9629) took the green *New* mark off Job Mode and showed the row over the top of a phone's Dashboard for five seconds a visit, with a grey bar that runs out, over a small handle. The owner tried that on a real phone: it worked, and the handle took too much room. v2.8497 (#9673) answers that look: no handle and no pull, the row is the first thing a person sees when the app opens, a press on a third or five seconds shrinks it into the header's gear, a phone's gear menu lists Dashboard, Job Mode and Task Mode, and **Modes at open** under Show stops the row showing on that phone. He was shown the gear window with that tick and without it and said *Keep the tick*. Looked at on clicktooling.com at a phone's width the same day: the row left for the gear at 4.9 s, nothing was left in its place, and the header did not move. What the close leaves untried: v2.8497 on a real phone, an iPhone on its Home Screen above all, where the row should start under the camera bar. Three things were built that his words did not name, told to him and left as they are: a return after a minute away shows the row again (`MODE_ROW_AWAY_MS`), a tap on the lit third closes the row, and **Show full dashboard** is back under the Job Mode card on a phone. `docs/recent-features/v2.8461.md` and `v2.8497.md` are the record.
+
+Closed 2026-11-24 (folder deleted; the two mock-ups live in git history at the deleting commit), on the owner's word *Retire both now* of the same day, with #433: `job-mode-offer` (#425) — **The Job Mode offer becomes a mode row tucked above the page**, the owner's ask of 2026-11-23. The Dashboard's Job Mode offer card, whose small grey text nobody read, became one row of Task Mode, Dashboard and Job Mode above the header for every role but the estimator (v2.8332), and past a phone's width a list with one dot in the gear menu (v2.8373). Its tuck, its handle and its pull were replaced by #433 the next day, which also settled its calls on when the row tucks and on the handle. Three defaults of the gear menu's list stand as built, and the owner asked for none to change: a tablet has the list and not the row, Dispatch Mode keeps its own tick apart from the list, and a press from another page lands on the Dashboard. `docs/recent-features/v2.8332.md` and `v2.8373.md` are the record.
 
 Closed 2026-11-24 (file deleted; it lives in git history at the deleting commit), on Diane's word *Retire it* of the same day: `openstreetmap-refuses-the-geocode-functions` (#436) — **OpenStreetMap refuses the geocode functions**, found the same day by the live check of #408 and written as a card with four options (#9681). OpenStreetMap's address lookup, Nominatim, answered `geocode-address-batch` and `geocode-one` with HTTP 403 on every call, while the same request from a Mac with the function's own `User-Agent` was answered, so the refusal was on where the functions call from or on the repeated queries they sent before #408. On Diane's go the lookup was taken out and both functions ask Google first, then the US Census (v2.8512, #9686), deployed from main on 2026-11-24 with the three other functions that share the edited files. The map drawn when Google Maps cannot load is OpenStreetMap's tile server, a different service, and was not touched. **Not walked live**: no new address was sent through the deployed functions, since the Map page's list held no ZZ test record to press **Try again** on; the functions' run tests hold the order and the deployed code is main's. **Not built**: OpenStreetMap asked last, after Google and the Census, as a second fallback for the lookup, which would need its block lifted first. **Left open, a card of its own if anyone wants it**: Google's Geocoding policy page lets a point be kept for 30 days and `address_geocodes` keeps points without end, which stood before this work. **Left for its next deploy**: `dev-mcp`, behind by a comment and a narrower type in two shared files.
 

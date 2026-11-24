@@ -122,6 +122,7 @@ The seen marks a page makes with no press are held the same way (v2.8246), so wh
 The flag is dev-set only (`users_guard_privileged_columns`).
 Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there.
 A session swap that Exit finds refused signs that browser out and lands on the sign-in page, never on the page left while still the person (v2.8241, `leaveViewAs` in `impersonationExit.ts`).
+The sign-in page then says why in one line above its form, taken from this tab's storage once (v2.8522, `signInNotice.ts`).
 Every imitation is on record before its link exists (v2.6290, `20261101175329_user_imitations.sql`, punch list #230): `login-as-user` writes `user_imitations` (who imitated, whom, when) as the service role and opens no imitation it cannot record, since the session it opens carries the person's own JWT;
 a dev alone reads the table (`USING (public.is_dev())`), nobody signed in writes it, `anon` holds nothing, and the three fences cover it.
 `gmail-mine` reads it to refuse such a session (*Messages, My email* below).
@@ -870,6 +871,8 @@ It is `SECURITY DEFINER` over `email_send_log`, a dev's and since v2.6762 the ow
 `punch_list_picks` (one row per to-do slug: pick, note, `updated_by` / `updated_at` stamped by trigger from `auth.uid()`): select / insert / update for `is_master_or_dev()` — the same pair `canOpenPunchList` admits to `/punch-list`;
 no delete policy (a cleared pick is `''`).
 Read-only training mode and the twin write fence apply.
+Since v2.8519 (`20261124191500_punch_list_answers.sql`, punch list #438) `pick` may also be `change` and the row keeps `answers_ask`, the card's question as it read when the pick was made.
+That migration left the policies unchanged.
 
 ### Punch list ticks — a person's claim on a card (v2.8196, `20261121193000_punch_list_ticks.sql`; read by all since v2.8224, `20261122000500_punch_list_claims.sql`)
 
@@ -2126,6 +2129,8 @@ A locked job is found by its number and never by its name, its address or its de
 **What a GC reads about a job's papers** (v2.8503, `20261124160000_job_papers_gc_page.sql`): `job_papers_gc_page(job ids)` runs for the service role alone, for the `customer-portal` function, and only for the jobs a link's customer is the GC on.
 It answers a count over the office's own roster and each sub business by name, and never a helper's, a crew member's or an office person's name.
 The roster's body is `job_papers_roster_now`, granted to nobody, and `job_papers_roster` stays the office's alone.
+**A job's sample** (v2.8506, `open-job-paper-sample`) opens with no login for the GC on that job alone: the portal link must show their GC jobs, and the paper must be one that job requires now.
+It carries a made-up job and signer, and every other paper answers one refusal.
 The edge functions that read a job with the service key ask them through `_shared/jobPapersLock.ts`: `plan-set-files`, `drive-link`, the four push functions and `schedule-share-dispatch`.
 A person locked out of a job gets no push that names it, and their schedule email shows its number and time only.
 The guard fails open: a read that fails reads as not locked, so a notice on a job that requires nothing is never stopped.
@@ -4085,7 +4090,7 @@ The Dev doors card (`src/lib/settings/devDoors.ts`) lists each with its link.
 | 94 | Settings → Company → **Defaults for everyone**, **Bank transfer details** | owner or dev | already the owner's; the remittance details are what customers pay to |
 | 95 | Settings → Jobs & billing → **Save owners from the appraisal roll**, **GC pay by card**, **the office's notices**, **the customer's notice before a bill is due** | owner or dev | already the owner's switches |
 | 96 | Settings → Your account → **Your signing code** · `/settings#settings-lien-sign-code` | owner or dev | the code signs lien notices on anyone's screen |
-| 97 | Gear menu → **Global reload** | dev | forces every open copy of the app to reload |
+| 97 | Settings → Advanced → **Global Reload** (the gear menu until v2.8527) | dev | makes every other open copy of the app reload, after a window that asks first |
 | 98 | Settings → Your dashboard → **Ignored task types** | dev | a dev's own dashboard filter, nobody else's |
 | 99 | **Partnerships** · `/partnerships`; Job window → **Partner split panel** | dev | partner deal terms and profit-share posts; nobody in the office runs them |
 | 100 | **Punch list** · `/punch-list` | owner or dev | already the owner's; the board names unbuilt work and open decisions |

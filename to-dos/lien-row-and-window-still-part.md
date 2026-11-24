@@ -2,7 +2,7 @@
 name: "Lien: where a billed row and the Lien window still part"
 number: 335
 group: residual
-status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 4, 5 and 6 shipped v2.7193, v2.7187, v2.7198 + v2.7273, v2.7184 and v2.7181 · row 1's migration pushed 2026-11-13 on the owner's yes · row 4 finished with the Dashboard card 2026-11-14 · an earlier hand day allowed, v2.7447 (the owner's call of 2026-11-16: any past day, with a second look) · an approved affidavit moves to Held when a gate closes, v2.7449 (his call of 2026-11-16: the approval stands) · the three Also seen fixes Diane asked for on 2026-11-24 shipped: the header names the leader, v2.8475; the header's affidavit button lands on the job, v2.8478; the Legal desk and the firm's page read the last day set by hand, v2.8481, with `legal-portal` deployed the same day
+status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 4, 5 and 6 shipped v2.7193, v2.7187, v2.7198 + v2.7273, v2.7184 and v2.7181 · row 1's migration pushed 2026-11-13 on the owner's yes · row 4 finished with the Dashboard card 2026-11-14 · an earlier hand day allowed, v2.7447 (the owner's call of 2026-11-16: any past day, with a second look) · an approved affidavit moves to Held when a gate closes, v2.7449 (his call of 2026-11-16: the approval stands) · the three Also seen fixes Diane asked for on 2026-11-24 shipped: the header names the leader, v2.8475; the header's affidavit button lands on the job, v2.8478; the Legal desk and the firm's page read the last day set by hand, v2.8481, with `legal-portal` deployed the same day · the Lien window opened from a job's Documents tab reads the desk's step, v2.8523 · the last two Also seen notes settled the same day: one is no longer on the live desk, one is carried by #435 · a read-only look at the live site the same day saw v2.8478 and v2.8481 on one job each, and found no live paper to show v2.8475 or v2.8498
 summary: >
   Punch list #325 made a billed row's lien line say one thing, in the words of the next act, and
   open the Lien window on the right paper. A read-only walk of the finished train on the live board
@@ -10,11 +10,11 @@ summary: >
   not a wording: a last day of work set by hand that is earlier than later clock hours. The row
   counts from the hand day and says Lien gone. The window counts from the later hours and gives the
   affidavit 95 more days. The rest are small wordings.
-next: Nothing that was asked for is left. The three Also seen fixes asked for on 2026-11-24 are shipped. Three notes stay on that list and nobody has asked to build them: the Lien window opened from the Documents tab, one live job that is a question for the office, and the release of record on a job paid in full. Retiring the card is the owner's.
-size: M as six small pieces (S · S · XS · M · S · XS), five shipped, and the five Also seen fixes (S · S · XS · S · S), all shipped; left: three Also seen notes, unsized
+next: Nothing is left on this card. Every row and every Also seen note is shipped, settled or carried by another card. Retire it on the owner's word.
+size: M as six small pieces (S · S · XS · M · S · XS), five shipped, and the six Also seen fixes (S · S · XS · S · S · S), all shipped; left: nothing
 blocker: none
 mockup: not required — words on screens that exist, and one rule in a clock
-ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193 · 7198 · 7273 · 7447 · 7449 · 8475 · 8478 · 8481
+ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193 · 7198 · 7273 · 7447 · 7449 · 8475 · 8478 · 8481 · 8523
 ---
 
 # Lien: where a billed row and the Lien window still part
@@ -122,14 +122,39 @@ what still differed. Counts only are given here, since the repo is public.
   moves; the stored status stays approved. The row, the chip, the Board and the header ask the gate's
   question, and the batch print still leaves the paper out. The walk of 2026-11-13 found three live
   jobs this way.
-- The Lien window opened from a job's Documents tab has no desk queue to read, so its header keeps
-  *Draft the notice* at every step. `JobDocumentsLienPaper` would need the job's desk entry.
-- One live job has a notice drafted and waiting on approval on the Lien desk, while its window says
+- ~~The Lien window opened from a job's Documents tab has no desk queue to read, so its header keeps
+  *Draft the notice* at every step. `JobDocumentsLienPaper` would need the job's desk entry.~~
+  **Shipped v2.8523.** The section reads the desk for its job while the window is open
+  (`useJobLienDeskEntry`, the light read the Pipeline makes, office roles only) and hands the window
+  the job's notice, its affidavit and its leader. A step worked on the desk has its button there
+  too, and it opens the desk's page on the job.
+- ~~One live job has a notice drafted and waiting on approval on the Lien desk, while its window says
   no notice is required because the job is contracted with the owner. The row reads *Approve the
   notice* with the affidavit's day. It is on the desk's awaiting pile. A question for the office:
-  void the draft, or correct the job's GC.
-- A job paid in full with a lien on file owes a release of record. It has left the billed stages,
-  so no row says so. The Lien desk does.
+  void the draft, or correct the job's GC.~~ **Settled, seen 2026-11-24.** The live desk's
+  awaiting pile for notices is empty, and every notice on the desk names a general contractor. No
+  paper on the desk reads this way now. Nothing was built for it.
+- ~~A job paid in full with a lien on file owes a release of record. It has left the billed stages,
+  so no row says so. The Lien desk does.~~ **Carried by punch list #435** (`to-dos/lien-payoff/`).
+  Since v2.8504 the Lien desk's **Payoffs** line lists every filed lien with what waits on its
+  release and the press that makes it, and v2.8508 holds the release for the money.
+
+## The live look, 2026-11-24
+
+Read only, signed in as a dev on the live site, after the deploy that carries v2.8475, v2.8478,
+v2.8481 and v2.8498. No write was made. Counts only are given here, since the repo is public.
+
+- **v2.8481, seen on one job.** The Legal desk's Paper tab reads *last day of work set by hand*
+  with its day and its reason, and the Lien desk reads *last day set by hand* on the same job, in
+  the same month. The firm's own page was not opened: it needs the firm's link.
+- **v2.8478, seen on one job.** From the job's Lien window on the Pipeline, *Open it on the Lien
+  desk ›* for an affidavit to draft landed on the Affidavits list with that job's paper open. The
+  list's first row is another job.
+- **v2.8475, not seen.** No notice and no affidavit is waiting on approval on the live desk, so no
+  header had a leader to name. Tests alone hold it.
+- **v2.8498, not seen.** No job on the Legal desk has the retainage notice as its next step. Its
+  two doors on the desk open the Lien window, as before. Tests alone hold it.
+- **v2.8523, not seen.** It was not deployed when the look was made.
 
 ## Where it plugs in
 
