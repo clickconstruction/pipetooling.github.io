@@ -19,6 +19,9 @@
  *
  * Every sentence keeps to `plainWords.ts` and marks its values with `val`, so the screen draws them apart
  * (`ValueSentence`). Pure; tested beside it. The reads are `lienPayoffIo.ts`, the screen `LienPayoffs.tsx`.
+ *
+ * Since piece 3 it also gives each job's sent bills that still owe (`lienPayoffBills`) and the jobs at a place with
+ * money open and no filed lien (`LienPayoffPlace.other`), for the check pane in `lienPayoffCheck.ts`.
  */
 import { calendarYmdInAppTzFromIso, ymdAddDays } from '../../utils/dateUtils'
 import { moneyWords } from '../moneyParts'
@@ -26,6 +29,7 @@ import { val } from '../valuesInPlace'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { CHECK_CLEAR_DAYS, isCheckPayment } from './checkClearing'
 import { lienDeskJobNumber } from './lienJobLabel'
+import { attributeJobPayments } from './paymentAttribution'
 
 export type LienPayoffStepKey = 'money' | 'release' | 'county' | 'done'
 
@@ -49,6 +53,40 @@ export type LienPayoffJob = {
   job_address: string | null
   customer_id: string | null
   customer_name: string | null
+}
+
+/** A sent bill that still owes, as the check pane places money on it (`lienPayoffCheck.ts`). */
+export type LienPayoffBill = {
+  invoiceId: string
+  jobId: string
+  /** What the bill still owes. */
+  open: number
+  /** The day it was sent. '' when the bill carries none. */
+  billedYmd: string
+  /** The bill is a Stripe invoice: a part payment on it is a credit note, made in the bill's own window. */
+  stripe: boolean
+}
+
+/** A job's sent bills that still owe, oldest first, each net of what it has been paid under the one payment rule. */
+export function lienPayoffBills(
+  jobId: string,
+  invoices: ReadonlyArray<{ id: string; status: string | null; amount: number | string | null; sequence_order?: number | null; billed_at?: string | null; stripe_invoice_id?: string | null }>,
+  payments: ReadonlyArray<{ invoice_id: string | null; amount: number | string | null }>,
+  revenue: number | string | null,
+): LienPayoffBill[] {
+  const sent = invoices.filter((i) => i.status === 'billed' || i.status === 'paid')
+  const paid = attributeJobPayments(sent, payments, revenue).byBill
+  return sent
+    .filter((i) => i.status === 'billed')
+    .map((i) => ({
+      invoiceId: i.id,
+      jobId,
+      open: Math.max(0, Math.round((num(i.amount) - (paid.get(i.id)?.applied ?? 0)) * 100) / 100),
+      billedYmd: (i.billed_at ?? '').slice(0, 10),
+      stripe: (i.stripe_invoice_id ?? '').trim().length > 0,
+    }))
+    .filter((b) => b.open > 0.004)
+    .sort((a, b) => a.billedYmd.localeCompare(b.billedYmd) || a.invoiceId.localeCompare(b.invoiceId))
 }
 
 export type LienPayoffStep = {
@@ -252,6 +290,19 @@ export type LienPayoffPlace = {
   /** What the office is told about the place, with its values marked. */
   headline: string
   rows: LienPayoffRow[]
+  /** Jobs at the place with money open and no filed lien: a release must not be read as covering them. */
+  other: LienPayoffOther[]
+}
+
+/** A job at a place with bills still open and no filed lien. */
+export type LienPayoffOther = { jobId: string; jobNumber: string; jobName: string; open: number }
+
+/** The line under a place's liens for money open there with no lien: *$640.00 more is open here on 2071. It is not liened.* */
+export function lienPayoffOtherLine(other: ReadonlyArray<LienPayoffOther>): string | null {
+  if (other.length === 0) return null
+  const sum = other.reduce((s, o) => s + o.open, 0)
+  const jobs = other.map((o) => o.jobNumber).join(', ')
+  return `${val('money', moneyWords(sum))} more is open here on ${jobs}. It is not liened.`
 }
 
 /**
@@ -299,6 +350,10 @@ export type LienPayoffFacts = {
   /** What each job's sent bills still owe, by job id. */
   openByJob: Readonly<Record<string, number>>
   paymentsByJob: Readonly<Record<string, ReadonlyArray<LienPayoffPayment>>>
+  /** Each job's sent bills that still owe (piece 3), for the check pane. */
+  billsByJob?: Readonly<Record<string, ReadonlyArray<LienPayoffBill>>>
+  /** Billed jobs of the same customers with no filed lien (piece 3): those at a liened place show under it. */
+  otherJobs?: ReadonlyArray<LienPayoffJob>
   todayYmd: string
 }
 
@@ -325,14 +380,23 @@ export function lienPayoffPlaces(facts: LienPayoffFacts): LienPayoffPlace[] {
       step: lienPayoffStep({ affidavit: a, releases: facts.releases, affidavitsOnJob: onJob.get(a.job_id) ?? 1, open, payments: facts.paymentsByJob[a.job_id] ?? [], todayYmd: facts.todayYmd }),
     }
     const key = (job && lienPlaceKey(job.job_address)) || `job|${a.job_id}`
-    const place = byPlace.get(key) ?? { key, place: (job?.job_address ?? '').trim() || 'A job with no address', payer: '', headline: '', rows: [] }
+    const place = byPlace.get(key) ?? { key, place: (job?.job_address ?? '').trim() || 'A job with no address', payer: '', headline: '', rows: [], other: [] }
     const name = (job?.customer_name ?? '').trim()
     if (name && !place.payer.split(', ').includes(name)) place.payer = place.payer ? `${place.payer}, ${name}` : name
     place.rows.push(row)
     byPlace.set(key, place)
   }
+  // Money open at a liened place on a job with no filed lien: shown, never folded into what pays the liens off.
+  const liened = new Set(filed.map((a) => a.job_id))
+  for (const job of facts.otherJobs ?? []) {
+    if (liened.has(job.id)) continue
+    const open = facts.openByJob[job.id] ?? 0
+    const place = open > 0.004 ? byPlace.get(lienPlaceKey(job.job_address)) : undefined
+    if (place && !place.other.some((o) => o.jobId === job.id)) place.other.push({ jobId: job.id, jobNumber: lienDeskJobNumber(job, job.id), jobName: (job.job_name ?? '').trim(), open })
+  }
   const places = [...byPlace.values()]
   for (const p of places) {
+    p.other.sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }))
     p.rows.sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }) || a.instrument.localeCompare(b.instrument))
     p.headline = lienPayoffPlaceHeadline(p.rows)
   }
