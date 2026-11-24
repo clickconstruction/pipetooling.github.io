@@ -172,3 +172,4 @@ working-hours
 stripe-paid-day
 license-roll-notes
 people-hours-recorded
+gc-take-award-back
