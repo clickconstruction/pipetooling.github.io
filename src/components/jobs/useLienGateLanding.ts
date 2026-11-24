@@ -62,6 +62,8 @@ export function landOnLienGate(pane: HTMLElement | null, landing: LienGateLandin
       topInset: head.top + head.height,
       bottomInset: typeof head.bottom === 'number' ? head.bottom : 0,
       sectionTop: lienPaneSectionScrollTop(body ? inPane(body) : rowTop, at.index, 0, at.phone),
+      // A pane this landing has moved is followed to its place as it settles; one it left alone stays left alone.
+      moved: placedAt != null,
     })
     if (top == null || top === placedAt) return
     placedAt = top

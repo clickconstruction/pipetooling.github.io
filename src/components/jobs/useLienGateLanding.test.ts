@@ -119,6 +119,45 @@ describe('landing on a gate row inside the affidavit pane', () => {
     expect(shut.row.hasAttribute(LIEN_GATE_QUIET_FOCUS)).toBe(false)
   })
 
+  // v2.8509: in Safari under reduced motion the pane jumped, the job's path then grew 38 px, and the pane stayed short.
+  it('follows a pane it has moved while it settles, and leaves alone one it never moved', () => {
+    let settle: (() => void) | null = null
+    vi.stubGlobal('ResizeObserver', class { constructor(cb: () => void) { settle = cb } observe() {} disconnect() { settle = null } })
+    try {
+      const o = { viewHeight: 400, scrollTop: 0, bodyTop: 600, rowTop: 640 }
+      const { host, scroll } = pane(o)
+      landOnLienGate(host, { key: 'legal', focus: true }, { index: 1, count: 5, phone: false, reducedMotion: true })
+      expect(scroll).toHaveBeenLastCalledWith({ top: 552, behavior: 'auto' })
+      // The pane is where the jump put it, the row on the screen. The path over the gates grows 38 px.
+      o.scrollTop = 552
+      host.scrollTop = 552
+      o.bodyTop = 638
+      o.rowTop = 678
+      settle!()
+      expect(scroll).toHaveBeenCalledTimes(2)
+      expect(scroll).toHaveBeenLastCalledWith({ top: 590, behavior: 'auto' })
+      // The same size again asks for nothing.
+      o.scrollTop = 590
+      host.scrollTop = 590
+      settle!()
+      expect(scroll).toHaveBeenCalledTimes(2)
+      // After the hold the pane is the reader's again.
+      vi.advanceTimersByTime(LAND_ON_HOLD_MS)
+      expect(settle).toBeNull()
+
+      // A pane whose gate was on the screen at the press is never moved, however its sections settle.
+      const still = { viewHeight: 600, scrollTop: 0, bodyTop: 200, rowTop: 240 }
+      const quiet = pane(still)
+      landOnLienGate(quiet.host, { key: 'legal', focus: true }, { index: 1, count: 5, phone: false, reducedMotion: true })
+      still.bodyTop = 238
+      still.rowTop = 278
+      settle!()
+      expect(quiet.scroll).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('the undo takes the quiet mark off with the light', () => {
     const { host, row } = pane({ viewHeight: 600, bodyTop: 200, rowTop: 240 })
     const undo = landOnLienGate(host, { key: 'legal', focus: true }, { index: 1, count: 5, phone: false, reducedMotion: false, quietFocus: true })

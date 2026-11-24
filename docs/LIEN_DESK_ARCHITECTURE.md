@@ -341,8 +341,10 @@ last_updated: 2026-11-21
 > `landOnLienGate` scrolls the pane's own box and never the page, puts the keyboard on the row with `preventScroll`, and lights it with the app's landing light (`lightLanded` in [`landOn.ts`](../src/lib/landOn.ts), `[data-landed]`).
 > While the light holds, a `ResizeObserver` on the pane's sections places the row again, because the job's path re-lays itself a frame or two after the pane opens.
 > Under reduced motion the pane jumps with no glide and the light stands still.
+> A pane the landing has moved is followed while it settles (`moved` on `lienGateLandingScrollTop`, v2.8509), so a jump ends where a glide does.
+> A pane the landing left alone stays left alone.
 > A gate landed on by a tap or a mouse press takes the keyboard wearing `data-quiet-focus`, which keeps the ring and the underline off it until it loses the keyboard or a key is pressed on it (v2.8509): Safari matched `:focus-visible` on the first scripted focus after a page load and left the ring on the gate.
-> 11 cases in `lienGateLanding.test.ts`, 12 in `useLienGateLanding.test.ts` and one render smoke in `LienDesk.render.test.tsx`.
+> 12 cases in `lienGateLanding.test.ts`, 13 in `useLienGateLanding.test.ts` and one render smoke in `LienDesk.render.test.tsx`.
 
 > **v2.7378 · v2.7392 (the phone train's leftovers, punch list #352):** phone only, every branch behind `isMobile`.
 > The notary's print box over the Affidavits list folds behind one 44 px bar (`data-lien-affidavit-print-fold`, its words `lienPhonePrintBoxFold` in [`lienPhonePane.ts`](../src/lib/jobs/lienPhonePane.ts), opening folded;

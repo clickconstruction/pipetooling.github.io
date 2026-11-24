@@ -87,6 +87,9 @@ Diane asked for the live walk. It was read-only: row presses on the live desk, n
   words on the gate, and they stayed after the amber light had gone. v2.8509 mends it: a gate landed on by a tap or a
   mouse press takes the keyboard without the ring. The mend was seen in the simulator's Safari on the harness page,
   not yet on the live desk.
+- **A second fault, with less motion:** the pane jumped, the job's path then grew, and the landing stood 47 px short
+  with two heads pinned. v2.8509 follows a pane it has moved while it settles, so the jump ends where the glide does.
+  Seen in the simulator's Safari with Reduce Motion on.
 
 The fragment `docs/recent-features/v2.8509.md` has the measures.
 

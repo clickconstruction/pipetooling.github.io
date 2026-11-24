@@ -8,6 +8,7 @@ const note: ReleaseNote = {
   highlights: [
     'On an iPhone or in Safari, the first press on a held row of the Lien affidavits list left a blue ring and underlined words on the gate it landed on. They stayed after the amber light had gone. The gate now shows the amber light alone.',
     'Press Enter on a held row and the gate still shows the ring, since the keyboard is the one working. The ring also comes back as soon as a key is pressed on the gate.',
+    'If you asked your device for less motion, the pane could stop a little short, with a second heading still pinned over the gates. It now ends in the same place as the glide, and the gate keeps its amber tint.',
   ],
 }
 

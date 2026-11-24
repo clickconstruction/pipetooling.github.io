@@ -68,6 +68,15 @@ describe('how far the pane scrolls to show the gate (punch list #364)', () => {
     expect(lienGateLandingScrollTop(tall)).toBe(900 - 40 - LIEN_GATE_LANDING_BREATH_PX)
   })
 
+  // v2.8509: under reduced motion the pane jumped, the job's path then grew, and the row on the screen held the pane 47 px short.
+  it('follows a pane it has already moved: a row on the screen goes back under the section’s head', () => {
+    const settled = { ...desk, scrollTop: 152, sectionTop: 200 }
+    expect(lienGateLandingScrollTop(settled)).toBeNull()
+    expect(lienGateLandingScrollTop({ ...settled, moved: true })).toBe(200)
+    // A section too tall for the window still lands the row itself.
+    expect(lienGateLandingScrollTop({ rowTop: 900, rowHeight: 44, scrollTop: 852, viewHeight: 300, topInset: 40, bottomInset: 0, sectionTop: 520, moved: true })).toBe(900 - 40 - LIEN_GATE_LANDING_BREATH_PX)
+  })
+
   it('moves nothing on a page with no layout', () => {
     expect(lienGateLandingScrollTop({ ...desk, viewHeight: 0, rowTop: 5000 })).toBeNull()
   })
