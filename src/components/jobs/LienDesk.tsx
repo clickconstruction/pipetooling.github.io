@@ -95,7 +95,7 @@ import { lienServeCodeLanding, lienServeStage, lienServeStageCounts, lienServeSt
 import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
 import { LienOffPathBinView } from './LienOffPathBoardParts'
 import { EmptyState } from '../EmptyState'
-import { lienDeskAimAddressJob, lienDeskAimFrom, lienDeskAimSpent, lienDeskOffListWords, readLienDeskAim, type LienDeskAim } from '../../lib/lien/lienDeskAim'
+import { lienDeskAimAddressJob, lienDeskAimFrom, lienDeskAimSpent, lienDeskOffListWords, lienDeskReaimKey, readLienDeskAim, type LienDeskAim } from '../../lib/lien/lienDeskAim'
 import { lienDeskJobLabel as jobLabel, lienDeskJobNumber as jobNumberOf, splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
 import { lienStepCard, lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { lienJobScreen, lienJobScreenClosesOnAct } from '../../lib/jobs/lienPhoneJobScreen'
@@ -531,10 +531,11 @@ export default function LienDesk({
   }, [initialKind])
   // A door can re-aim the desk (punch list #82: the job's Lien window sends its next step back here through the address).
   // The job it names is new, so its list is applied as on a fresh open. v2.4612: `aimKey` says the door was pressed again,
-  // so the same job re-aims too.
-  const aimedRef = useRef(`${initialJobId ?? ''}|${aimKey ?? 0}`)
+  // so the same job re-aims too. Punch list #335: so does the same job named on another list (`lienDeskReaimKey`): the Lien
+  // window's button sends a job open on Monthly notices to its affidavit, and the Affidavits list opened on its own first row.
+  const aimedRef = useRef(lienDeskReaimKey(initialKind, initialJobId, aimKey))
   useEffect(() => {
-    const next = `${initialJobId ?? ''}|${aimKey ?? 0}`
+    const next = lienDeskReaimKey(initialKind, initialJobId, aimKey)
     const prev = aimedRef.current
     aimedRef.current = next
     if (initialJobId && next !== prev) {

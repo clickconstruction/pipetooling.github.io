@@ -259,6 +259,7 @@ import { JobsStagesCommandBar } from './JobsStagesCommandBar'
 import { JobsStagesJumpStrip, StagesLegalDeskShortcut, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
 import { LEGAL_DESK_PATH } from '../../lib/legal/legalDeskRoute'
 import { LIEN_DESK_PATH, lienDeskHref } from '../../lib/lien/lienDeskRoute'
+import { lienWindowDeskDoorHref } from '../../lib/lien/lienWindowDeskDoor'
 import { BILLS_SENT_PATH, canOpenBillsSent } from '../../lib/billing/billsSent'
 import { stageColorVar } from '../../lib/jobs/stagesStageBar'
 import { readJobsMapHidden, writeJobsMapHidden } from '../../lib/jobs/jobsMap'
@@ -4647,10 +4648,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         }}
         signerNameFallback={lienDeskSignerFor(lienInstrumentsModal?.job?.master_user_id ?? null)}
         authEmail={authUser?.email?.trim() ?? ''}
-        // The next step's door (punch list #82): this window closes and the desk's page opens on the job (punch list #182).
+        // The next step's door (punch list #82): this window closes and the desk's page opens on the job (punch list #182),
+        // for an affidavit and a retainage notice as for a notice (punch list #335, `lienWindowDeskDoor.ts`).
         onOpenLienDesk={(jobId, deskKind) => {
           setLienInstrumentsModal(null)
-          navigate(lienDeskHref({ kind: deskKind, job: deskKind === 'notice' ? jobId : null }))
+          navigate(lienWindowDeskDoorHref(jobId, deskKind))
         }}
         onOpenRelease={openLienReleaseFromRow ? (job) => openLienReleaseFromRow({ job, invoice: null }) : undefined}
         onRecorded={() => {

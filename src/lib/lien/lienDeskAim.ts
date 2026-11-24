@@ -42,6 +42,16 @@ export function lienDeskAimFrom(kind: LienDeskKind | null | undefined, jobId: st
   return { kind, jobId: id }
 }
 
+/**
+ * What tells the desk a door named something new (punch list #335): the job, the paper list it is named on, and the
+ * count of presses on the door. The list is part of it only for a job on a paper list, so the desk's own view
+ * presses, which carry no job off Monthly notices, re-aim nothing.
+ */
+export function lienDeskReaimKey(kind: LienDeskKind | null | undefined, jobId: string | null | undefined, aimKey: number | null | undefined): string {
+  const aim = lienDeskAimFrom(kind ?? 'notice', jobId)
+  return `${aim ? aim.kind : ''}|${jobId ?? ''}|${aimKey ?? 0}`
+}
+
 export type LienDeskAimRead =
   /** No aim, the reader is on another view, or the reader picked another row: the list goes on by its own rules. */
   | { state: 'none' }
