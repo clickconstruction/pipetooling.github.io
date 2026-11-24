@@ -6791,6 +6791,8 @@ Each row has one sentence and the one press for its step: *Record the payment �
 The rule is `lienPayoff.ts`, the screen `LienPayoffs.tsx`.
 Since **v2.8508** (piece 2) the Release of record tab is the other half: **the county's stamp** is the day the clerk recorded a release (the release row's `filed_at`) and the release's own instrument number (`fields.releaseInstrument`), each changed where it sits.
 A saved release names its affidavit (`fields.releasesFilingId`), and **the money hold** keeps the tab's print and save dead while the job's sent bills still owe, until a reason is typed under *Release it anyway…* (`lienReleaseOfRecord.ts`).
+Since **v2.8510** (piece 3) a place has **One check for this place ›**, the **check pane**: one check's amount, number and day typed once, placed on the liened bills first and oldest first, with three totals, *The check*, *Placed* and *Left to place*.
+A **held line** there pays part of a Stripe bill and goes through the bill's own window, and **money open with no lien** is a job at the place with open bills and no filed lien, shown under the place and never part of what pays the liens off (`lienPayoffCheck.ts`).
 
 ### Property card (Lien desk)
 Every job at one property record on one window (**v2.7488**): the address, the owner of record, two lines that count the property, each kind of paper apart (*4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail*, then *6 lien affidavits ready to file*) and a row per job with where its notice and its affidavit stand.

@@ -2,7 +2,7 @@
 title: release a filed lien after it is paid
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: payoff, payoffs, paid, someone paid, paid off, release, release of record, filed lien, lien paid, county, clerk, notary, instrument, stamp, check, clears, lien desk
+keywords: payoff, payoffs, paid, someone paid, paid off, one check, several bills, several jobs, spread, check number, release, release of record, filed lien, lien paid, county, clerk, notary, instrument, stamp, check, clears, lien desk
 where: /lien-desk
 ---
 When someone pays off a filed lien, the Lien desk tells you what to do next. You press one button at a time.
@@ -25,7 +25,21 @@ One sentence says where the lien stands. One button says what to do next.
 
 The row says how much is still open on the job's bills. Press {{button:blue|Record the payment ›}}. The job opens on its Bill tab. Record the payment there on each bill it pays.
 
-One check may pay several jobs. Record it on each job in turn. Close the job when you are done. The row moves to step 2 by itself.
+Close the job when you are done. The row moves to step 2 by itself.
+
+## Record one check that pays several bills
+
+One check may pay several bills on several jobs. Type it once. Press {{button:outline|One check for this place ›}} beside the place's name.
+
+Type the **Check amount**, the **Check number** and the day it was **Received**. The amount starts on what pays the liens off. Change it to what the check says.
+
+The app places the check on the bills with a lien first, oldest first. Three totals show the check, what is placed and what is left to place. To change what a bill gets, press its amount, type the new one and press **Keep**. Press **Spread it again** to undo that.
+
+Then press the green button. It reads like {{button:green|Record 4 payments}}. Each bill gets a payment with the same check number and day.
+
+A line may read *Part of a Stripe bill is recorded on the bill itself.* That line is held. Press *Record it on the bill ›* beside it and record that part on the bill.
+
+A line under the place may say more money is open there on a job with no lien. The check does not pay it unless you place money on it. A release does not cover it.
 
 ## Step 2, make the release
 

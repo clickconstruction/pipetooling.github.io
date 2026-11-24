@@ -338,6 +338,7 @@ export default function LienDeskPage() {
         isMobile={isMobile}
         initiallyOpen={searchParams.get('payoffs') === '1'}
         onOpenBill={(jobId) => openEditJob(jobId, 'bill')}
+        onChanged={refetch}
         onOpenRelease={(jobId) => withJob(jobId, (job) => setLienWindow({ job, initialTab: 'release_record' }))}
       />
       <LienDesk

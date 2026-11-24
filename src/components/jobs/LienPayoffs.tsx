@@ -8,9 +8,11 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
   LIEN_PAYOFF_STEPS,
   LIEN_PAYOFF_WORDS,
+  lienPayoffOtherLine,
   lienPayoffPlaces,
   lienPayoffStepState,
   lienPayoffStrip,
+  type LienPayoffBill,
   type LienPayoffDoor,
   type LienPayoffFacts,
   type LienPayoffPlace,
@@ -19,6 +21,8 @@ import {
 } from '../../lib/jobs/lienPayoff'
 import { readLienPayoffFacts } from '../../lib/jobs/lienPayoffIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { PAYOFF_CHECK_WORDS, checkBills, liensPayoffAmount } from '../../lib/jobs/lienPayoffCheck'
+import LienPayoffCheck from './LienPayoffCheck'
 
 /**
  * Payoffs on the Lien desk (punch list #435, piece 1; the rule is `lienPayoff.ts`, the reads `lienPayoffIo.ts`).
@@ -29,7 +33,9 @@ import { formatErrorMessage } from '../../utils/errorHandling'
  * under the door it sends the office through, and reads again when the desk does, so the next step is there on the
  * way back.
  *
- * It writes nothing. The Bill tab records the money and the Lien window's Release of record tab makes the paper.
+ * The window itself writes one thing, since piece 3: *One check for this place ›* on a place opens the check pane
+ * (`LienPayoffCheck.tsx`), which records one check over the place's bills. Everything else is a door: the Bill tab
+ * records a single payment and the Lien window's Release of record tab makes the paper.
  */
 
 type Props = {
@@ -41,8 +47,12 @@ type Props = {
   /** The job's Lien window on its Release of record tab. */
   onOpenRelease: (jobId: string) => void
   isMobile?: boolean
+  /** Told once the check pane recorded a payment, so the desk reads again. */
+  onChanged?: () => void
   /** Tests hand the facts in and skip the read. */
   read?: (todayYmd: string) => Promise<LienPayoffFacts>
+  /** Tests hand the check pane's write in. */
+  record?: Parameters<typeof LienPayoffCheck>[0]['record']
   /** Open the window at once: the address's `?payoffs=1`. */
   initiallyOpen?: boolean
 }
@@ -132,16 +142,30 @@ function LienRow({ row, isMobile, onDoor }: { row: LienPayoffRow; isMobile: bool
   )
 }
 
-function PlaceCard({ place, isMobile, onDoor }: { place: LienPayoffPlace; isMobile: boolean; onDoor: (door: LienPayoffDoor, jobId: string) => void }) {
+function PlaceCard({ place, isMobile, onDoor, onCheck }: { place: LienPayoffPlace; isMobile: boolean; onDoor: (door: LienPayoffDoor, jobId: string) => void; onCheck?: () => void }) {
+  const other = lienPayoffOtherLine(place.other)
   return (
     <section data-lien-payoff-place={place.key} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.85rem 0.15rem', background: 'var(--surface)' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.1rem 0.6rem' }}>
         <b style={{ fontSize: '0.875rem' }}>{place.place}</b>
         {place.payer ? <span style={small}>{place.payer}</span> : null}
       </div>
-      <p data-lien-payoff-headline style={{ margin: '0.15rem 0 0.45rem', fontSize: '0.8125rem', lineHeight: 1.45 }}>
-        <ValueSentence<LienPayoffValueKind> text={place.headline} values={VALUES} />
-      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.9rem', margin: '0.15rem 0 0.45rem' }}>
+        <p data-lien-payoff-headline style={{ margin: 0, flex: '1 1 14rem', minWidth: 0, fontSize: '0.8125rem', lineHeight: 1.45 }}>
+          <ValueSentence<LienPayoffValueKind> text={place.headline} values={VALUES} />
+        </p>
+        {/* One check that pays several bills here (piece 3): typed once, placed by the app. */}
+        {onCheck ? (
+          <button type="button" data-lien-payoff-check-open onClick={onCheck} style={{ ...plainPress, color: 'var(--text-link)', ...(isMobile ? { minHeight: 44 } : {}) }}>
+            {PAYOFF_CHECK_WORDS.open}
+          </button>
+        ) : null}
+      </div>
+      {other ? (
+        <p data-lien-payoff-other style={{ margin: '-0.2rem 0 0.45rem', fontSize: '0.78rem', color: 'var(--text-amber-800)' }}>
+          <ValueSentence<LienPayoffValueKind> text={other} values={VALUES} />
+        </p>
+      ) : null}
       {place.rows.map((row) => (
         <LienRow key={row.affidavitId} row={row} isMobile={isMobile} onDoor={onDoor} />
       ))}
@@ -149,7 +173,7 @@ function PlaceCard({ place, isMobile, onDoor }: { place: LienPayoffPlace; isMobi
   )
 }
 
-function PayoffsWindow({ places, failure, loading, isMobile, onRetry, onClose, onDoor }: { places: LienPayoffPlace[]; failure: string | null; loading: boolean; isMobile: boolean; onRetry: () => void; onClose: () => void; onDoor: (door: LienPayoffDoor, jobId: string) => void }) {
+function PayoffsWindow({ places, billsByJob, todayYmd, failure, loading, isMobile, onRetry, onClose, onDoor, onRecorded, record }: { places: LienPayoffPlace[]; billsByJob: Readonly<Record<string, ReadonlyArray<LienPayoffBill>>>; todayYmd: string; failure: string | null; loading: boolean; isMobile: boolean; onRetry: () => void; onClose: () => void; onDoor: (door: LienPayoffDoor, jobId: string) => void; onRecorded: () => void; record?: Parameters<typeof LienPayoffCheck>[0]['record'] }) {
   useModalStackEntry()
   const closeRef = useRef(onClose)
   closeRef.current = onClose
@@ -166,6 +190,11 @@ function PayoffsWindow({ places, failure, loading, isMobile, onRetry, onClose, o
   const open = places.filter((p) => p.rows.some((r) => r.step.step !== 'done'))
   const released = places.filter((p) => p.rows.every((r) => r.step.step === 'done'))
   const [showReleased, setShowReleased] = useState(false)
+  /** The place whose check pane is open, by key. The pane stands in for the list until it is closed. */
+  const [checkKey, setCheckKey] = useState<string | null>(null)
+  const checkPlace = places.find((p) => p.key === checkKey) ?? null
+  /** A place offers the check pane while a job with a lien on record still has an open bill. */
+  const checkDoor = (p: LienPayoffPlace) => (liensPayoffAmount(checkBills(p, billsByJob)) > 0 ? () => setCheckKey(p.key) : undefined)
   return (
     <div
       role="dialog"
@@ -187,6 +216,11 @@ function PayoffsWindow({ places, failure, loading, isMobile, onRetry, onClose, o
             ✕
           </button>
         </div>
+        {checkPlace ? (
+          <div style={{ overflow: 'auto', minHeight: 0, padding: '0.75rem 1rem 1rem' }}>
+            <LienPayoffCheck place={checkPlace} billsByJob={billsByJob} todayYmd={todayYmd} isMobile={isMobile} onBack={() => setCheckKey(null)} onRecorded={onRecorded} onOpenBill={(jobId) => onDoor('bill', jobId)} record={record} />
+          </div>
+        ) : (
         <div style={{ overflow: 'auto', minHeight: 0, padding: '0.75rem 1rem 1rem', display: 'grid', gap: '0.7rem', alignContent: 'start' }}>
           <section style={{ display: 'grid', gap: '0.25rem' }}>
             <h3 style={head}>What you do when someone pays</h3>
@@ -208,7 +242,7 @@ function PayoffsWindow({ places, failure, loading, isMobile, onRetry, onClose, o
           {!failure && loading && places.length === 0 ? <p style={{ ...small, margin: 0 }}>Reading the filed liens…</p> : null}
           {!failure && !loading && places.length === 0 ? <EmptyState main={emptyWords({ kind: 'waiting', who: 'a release' }).main} compact /> : null}
           {open.map((p) => (
-            <PlaceCard key={p.key} place={p} isMobile={isMobile} onDoor={onDoor} />
+            <PlaceCard key={p.key} place={p} isMobile={isMobile} onDoor={onDoor} onCheck={checkDoor(p)} />
           ))}
           {released.length ? (
             <section style={{ display: 'grid', gap: '0.5rem' }}>
@@ -219,12 +253,13 @@ function PayoffsWindow({ places, failure, loading, isMobile, onRetry, onClose, o
             </section>
           ) : null}
         </div>
+        )}
       </div>
     </div>
   )
 }
 
-export default function LienPayoffs({ todayYmd, refreshKey, onOpenBill, onOpenRelease, isMobile = false, read = readLienPayoffFacts, initiallyOpen = false }: Props) {
+export default function LienPayoffs({ todayYmd, refreshKey, onOpenBill, onOpenRelease, onChanged, isMobile = false, read = readLienPayoffFacts, record, initiallyOpen = false }: Props) {
   const [facts, setFacts] = useState<LienPayoffFacts | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -270,7 +305,24 @@ export default function LienPayoffs({ todayYmd, refreshKey, onOpenBill, onOpenRe
           </button>
         </div>
       ) : null}
-      {open ? <PayoffsWindow places={places} failure={failure} loading={loading} isMobile={isMobile} onRetry={() => setAgain((n) => n + 1)} onClose={() => setOpen(false)} onDoor={onDoor} /> : null}
+      {open ? (
+        <PayoffsWindow
+          places={places}
+          billsByJob={facts?.billsByJob ?? {}}
+          todayYmd={todayYmd}
+          failure={failure}
+          loading={loading}
+          isMobile={isMobile}
+          onRetry={() => setAgain((n) => n + 1)}
+          onClose={() => setOpen(false)}
+          onDoor={onDoor}
+          onRecorded={() => {
+            setAgain((n) => n + 1)
+            onChanged?.()
+          }}
+          record={record}
+        />
+      ) : null}
     </div>
   )
 }
