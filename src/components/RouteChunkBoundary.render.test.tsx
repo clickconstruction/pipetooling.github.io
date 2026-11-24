@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { CHUNK_RECOVERY_KEY, forgetChunkRecoveryReload, startChunkRecoveryReload } from '../lib/chunkLoadRecovery'
+import { ROUTE_RELOAD_CHECKING_WORDS, ROUTE_RELOAD_NO_SIGNAL_WORDS } from '../lib/routeReload'
 import { __resetUnsavedWorkForTests, wrapFetchCountingWrites } from '../lib/unsavedWork'
 import { RouteChunkBoundary } from './RouteChunkBoundary'
 
@@ -28,6 +29,7 @@ describe('RouteChunkBoundary', () => {
   afterEach(() => {
     cleanup()
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('draws its page while nothing throws', () => {
@@ -89,9 +91,105 @@ describe('RouteChunkBoundary', () => {
     )
     expect(screen.getByText(/This page could not load/)).toBeTruthy()
     expect(hardReloadFromRoot).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
-    expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Fix app' }).getAttribute('href')).toBe('/fix-cache.html')
+  })
+
+  /** The fallback, drawn: a lost chunk inside a minute of a recovery reload. */
+  const drawFallback = () => {
+    sessionStorage.setItem(CHUNK_RECOVERY_KEY, String(Date.now()))
+    render(
+      <RouteChunkBoundary>
+        <Throws error={lostChunk()} />
+      </RouteChunkBoundary>,
+    )
+    return screen.getByRole('button', { name: 'Reload' }) as HTMLButtonElement
+  }
+  const icon = () => new Response('<svg/>', { headers: { 'content-type': 'image/svg+xml' } })
+
+  it('Reload asks the network first, past every cache, and reloads on its answer', async () => {
+    let answer: (r: Response) => void = () => undefined
+    const fetcher = vi.fn(() => new Promise<Response>((r) => (answer = r)))
+    vi.stubGlobal('fetch', fetcher)
+    const press = drawFallback()
+    expect(press.style.minHeight).toBe('44px')
+    fireEvent.click(press)
+    expect(hardReloadFromRoot).not.toHaveBeenCalled()
+    expect(screen.getByRole('status').textContent).toBe(ROUTE_RELOAD_CHECKING_WORDS)
+    expect(press.disabled).toBe(true)
+    // A press on the dead press sends no second ask.
+    fireEvent.click(press)
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toMatch(/^\/favicon\.svg\?signal=\d+$/)
+    expect(init.cache).toBe('no-store')
+    await act(async () => {
+      answer(icon())
+    })
+    await waitFor(() => expect(hardReloadFromRoot).toHaveBeenCalledTimes(1))
+    // The press stays dead while the page leaves.
+    expect(press.disabled).toBe(true)
+  })
+
+  it('Reload with no network reloads nothing, says so, and gives the press back', async () => {
+    const fetcher = vi.fn(async (): Promise<Response> => {
+      throw new TypeError('Failed to fetch')
+    })
+    vi.stubGlobal('fetch', fetcher)
+    const press = drawFallback()
+    fireEvent.click(press)
+    expect(await screen.findByText(ROUTE_RELOAD_NO_SIGNAL_WORDS)).toBeTruthy()
+    expect(press.disabled).toBe(false)
+    expect(hardReloadFromRoot).not.toHaveBeenCalled()
+    // Three more presses ask three more times and still reload nothing.
+    for (let n = 2; n <= 4; n++) {
+      fireEvent.click(press)
+      await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(n))
+      await waitFor(() => expect(press.disabled).toBe(false))
+    }
+    expect(hardReloadFromRoot).not.toHaveBeenCalled()
+    expect(screen.getByText(/This page could not load/)).toBeTruthy()
+  })
+
+  it('a sign-in wall that answers every address with its own page reloads nothing', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>Sign in to the Wi-Fi</html>', { headers: { 'content-type': 'text/html' } })))
+    const press = drawFallback()
+    fireEvent.click(press)
+    expect(await screen.findByText(ROUTE_RELOAD_NO_SIGNAL_WORDS)).toBeTruthy()
+    expect(hardReloadFromRoot).not.toHaveBeenCalled()
+  })
+
+  it('an answer that comes after the route has changed does nothing', async () => {
+    let answer: (r: Response) => void = () => undefined
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((r) => (answer = r))))
+    sessionStorage.setItem(CHUNK_RECOVERY_KEY, String(Date.now()))
+    const { rerender } = render(
+      <RouteChunkBoundary resetKey="/bills-sent">
+        <Throws error={lostChunk()} />
+      </RouteChunkBoundary>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+    rerender(
+      <RouteChunkBoundary resetKey="/jobs">
+        <p>Jobs</p>
+      </RouteChunkBoundary>,
+    )
+    expect(screen.getByText('Jobs')).toBeTruthy()
+    await act(async () => {
+      answer(icon())
+    })
+    expect(hardReloadFromRoot).not.toHaveBeenCalled()
+  })
+
+  it('the Reload on an error that is not a lost chunk asks first too', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => icon()))
+    render(
+      <RouteChunkBoundary>
+        <Throws error={new Error('boom')} />
+      </RouteChunkBoundary>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+    await waitFor(() => expect(hardReloadFromRoot).toHaveBeenCalledTimes(1))
   })
 
   it('offers Reload for an error that is not a lost chunk, and never reloads by itself', () => {

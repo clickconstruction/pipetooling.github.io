@@ -38,6 +38,9 @@
  * from the bill's own payment rows): paid with the day and the way, part paid with what is still out, or not paid
  * with the days since it first went (`billsSentPayWords`). A day band says how many of its bills are paid and what
  * is still out (`billsSentDayPaidWords`), a tile adds up what is not paid, and two chips narrow the list.
+ *
+ * A test bill's send (`billTestRows.ts`, the rule By day paid reads too) is listed, says it is a test and is in
+ * none of those: no day's total, no paid count, no tile, neither payment chip.
  */
 import { appTzWallTimeMs, companyWeekStartSundayContaining, calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
 import { batchOutcomeWords, countedLabel, type BatchOutcome } from '../batchWords'
@@ -46,6 +49,7 @@ import { formatCurrency } from '../format'
 import { canReadSentCopies, sentKindWords, type SentCopy, type SentFiling } from '../sent/sentCopies'
 import { sentCopyJobLabel, type SentCopyAboutJob } from '../sent/sentCopyAbout'
 import { BILL_HAND_WAYS_BUILT_IN, liveBillHandWays, type BillHandWay } from './billHandWays'
+import { BILLS_TEST_NOTE, BILLS_TEST_STATE, isBillsTestRow } from './billTestRows'
 // By type alone: `billsPaid.ts` and the job kernels it leans on stay out of the first bundle, where this file rides.
 import type { BillPaidState } from './billsPaid'
 
@@ -79,6 +83,8 @@ export interface BillsSentBill {
   stripeInvoiceId?: string | null
   stripeInvoiceStatus?: string | null
   externalSendChannel?: string | null
+  /** *test* for a bill made in Stripe's test mode: its send is listed and it is in no total (`billTestRows.ts`). */
+  stripeMode?: string | null
 }
 
 /** A job's words and what the search box can find it by. */
@@ -216,6 +222,8 @@ export interface BillsSentLine {
   counts: boolean
   /** True when the bill is paid today. */
   paid: boolean
+  /** True for a send of a test bill (`isBillsTestRow`): listed and marked, in no total, with no payment state. */
+  test: boolean
   toName: string
   toAddresses: string[]
   copyTo: string[]
@@ -440,9 +448,11 @@ export function billsSentLines(input: BillsSentInput, opts: { todayYmd?: string 
     const copyTo = [...new Set(rode.flatMap((r) => r.recipientEmails))].filter((a) => !copy.recipientEmails.includes(a))
     const what = whatOf(copy)
     const mark = input.marks?.get(copy.id)
+    // A test bill's send is listed and counted nowhere: no total, no payment state, no open bill to chase.
+    const test = !!billId && isBillsTestRow(bill, job)
     // A statement and a pay application are no one bill's: they carry no payment.
-    const pay = route === 'statement' || copy.kind === 'pay_application' ? null : payOf(bill, mark?.paidOn ?? null)
-    const open = pay ? pay.kind !== 'paid' : bill?.status === 'billed'
+    const pay = test || route === 'statement' || copy.kind === 'pay_application' ? null : payOf(bill, mark?.paidOn ?? null)
+    const open = test ? false : pay ? pay.kind !== 'paid' : bill?.status === 'billed'
     const arrival = arrivalOf(mark, copy.sentAt, { todayYmd: opts.todayYmd, open })
     return {
       id: copy.id,
@@ -451,7 +461,7 @@ export function billsSentLines(input: BillsSentInput, opts: { todayYmd?: string 
       delivery: arrival.words,
       deliveryTone: arrival.tone,
       stillMissed: false,
-      paidOn: pay?.paidOn ?? mark?.paidOn ?? null,
+      paidOn: test ? null : (pay?.paidOn ?? mark?.paidOn ?? null),
       pay,
       firstYmd: ymdOf(times.length ? times[0]! : at),
       bySchedule: mark?.emailType === 'gc_statement_scheduled',
@@ -463,15 +473,16 @@ export function billsSentLines(input: BillsSentInput, opts: { todayYmd?: string 
       jobTo: jobId ? `/jobs?edit=${encodeURIComponent(jobId)}` : null,
       payer,
       amount,
-      counts: !!billId && nth === 1 && amount != null && route !== 'statement',
-      paid: pay ? pay.kind === 'paid' : bill?.status === 'paid',
+      counts: !test && !!billId && nth === 1 && amount != null && route !== 'statement',
+      paid: test ? false : pay ? pay.kind === 'paid' : bill?.status === 'paid',
+      test,
       toName: copy.recipientName,
       toAddresses: copy.recipientEmails,
       copyTo,
       by: copy.sentByName,
       nth,
       firstAtIso: firstAt != null ? new Date(firstAt).toISOString() : null,
-      note: [noteOf(copy, route), gone ? BILLS_SENT_GONE_NOTE : ''].filter(Boolean).join(' '),
+      note: [noteOf(copy, route), gone ? BILLS_SENT_GONE_NOTE : '', test ? BILLS_TEST_NOTE : ''].filter(Boolean).join(' '),
       copy,
       copies: rode,
       haystack: [what, jobWords, payer, copy.recipientName, ...copy.recipientEmails, ...copyTo, (job?.job_address ?? '').trim(), (job?.customer_name ?? '').trim(), copy.sentByName, copy.title]
@@ -512,7 +523,8 @@ export function billsSentLines(input: BillsSentInput, opts: { todayYmd?: string 
     const toAddresses = o.toAddresses ?? []
     const copyTo = o.copyTo ?? []
     const by = (o.by ?? '').trim()
-    const pay = payOf(bill, null)
+    const test = !!o.billId && isBillsTestRow(bill, job)
+    const pay = test ? null : payOf(bill, null)
     return {
       id: o.id,
       atIso: o.atIso,
@@ -532,15 +544,16 @@ export function billsSentLines(input: BillsSentInput, opts: { todayYmd?: string 
       jobTo: jobId ? `/jobs?edit=${encodeURIComponent(jobId)}` : null,
       payer,
       amount,
-      counts: !!o.billId && nth === 1 && amount != null,
-      paid: pay ? pay.kind === 'paid' : bill?.status === 'paid',
+      counts: !test && !!o.billId && nth === 1 && amount != null,
+      paid: test ? false : pay ? pay.kind === 'paid' : bill?.status === 'paid',
+      test,
       toName,
       toAddresses,
       copyTo,
       by,
       nth,
       firstAtIso: firstAt != null ? new Date(firstAt).toISOString() : null,
-      note: o.note,
+      note: [o.note, test ? BILLS_TEST_NOTE : ''].filter(Boolean).join(' '),
       copy: null,
       copies: [],
       haystack: [what, jobWords, payer, toName, ...toAddresses, ...copyTo, (job?.job_address ?? '').trim(), by, o.routeWords(nth)].filter(Boolean).join(' ').toLowerCase(),
@@ -610,7 +623,7 @@ export function billsSentLines(input: BillsSentInput, opts: { todayYmd?: string 
   const lines = [...sends.map((s) => lineOf(s, ridersBySend.get(s.id) ?? [])), ...alone.map((r) => lineOf(r, [])), ...rowLines, ...stampLines, ...textLines, ...byHandLines].sort((a, b) => ms(b.atIso) - ms(a.atIso))
   // A send that did not arrive still wants someone when its bill is open and nothing sent after it arrived.
   for (const line of lines) {
-    if (line.deliveryTone !== 'bad' || line.paid) continue
+    if (line.deliveryTone !== 'bad' || line.paid || line.test) continue
     line.stillMissed = !lines.some((other) => other !== line && !!line.billId && other.billId === line.billId && other.deliveryTone === 'ok' && ms(other.atIso) > ms(line.atIso))
   }
   return lines
@@ -738,12 +751,13 @@ export interface BillsSentGap {
 /**
  * The bills that were made and have no send of any kind on record: no email, no text, no print. The open ones are
  * the ones to look at; the paid ones are told apart, since a bill paid at the door needed no send. A bill with a
- * line on the list is never a gap, whatever its stamp says.
+ * line on the list is never a gap, whatever its stamp says. A bill on a ZZ test job is never one either: it is a
+ * test (`isBillsTestRow`), and the read already leaves out a bill made in Stripe's test mode.
  */
 export function billsSentGaps(input: Pick<BillsSentInput, 'unsent' | 'jobs'>, lines: ReadonlyArray<Pick<BillsSentLine, 'billId'>>): { open: BillsSentGap[]; paid: BillsSentGap[] } {
   const sent = new Set(lines.map((l) => l.billId).filter((id): id is string => !!id))
   const gaps = (input.unsent ?? [])
-    .filter((u) => !sent.has(u.billId))
+    .filter((u) => !sent.has(u.billId) && !isBillsTestRow(null, u.jobId ? input.jobs.get(u.jobId) : undefined))
     .slice()
     .sort((a, b) => (a.billedAtIso < b.billedAtIso ? 1 : a.billedAtIso > b.billedAtIso ? -1 : 0))
     .map((u): BillsSentGap => {
@@ -981,7 +995,7 @@ export interface BillsSentRecord {
   jobTo: string | null
   payer: string
   amount: number | null
-  /** *Not paid*, *Paid Fri, Nov 20*, *Part paid, $1,620.00 still out*, *Paid*. */
+  /** *Not paid*, *Paid Fri, Nov 20*, *Part paid, $1,620.00 still out*, *Paid*, or *Test bill*. */
   stateWords: string
   /** Each payment on the bill, oldest first. Empty when none is on record, or the payments did not read. */
   payments: BillsSentRecordPayment[]
@@ -1040,8 +1054,11 @@ export function billsSentRecord(billId: string, lines: ReadonlyArray<BillsSentLi
   const paid = bill?.status === 'paid' || own.some((l) => l.paid)
   // A bill with no line (a gap) still has its payments, read by bill.
   const pay = own.find((l) => l.pay)?.pay ?? input.paid?.get(billId) ?? null
-  const stateWords =
-    pay?.kind === 'part'
+  // A test bill says so where a real one says whether it is paid.
+  const test = own.some((l) => l.test) || isBillsTestRow(bill, job)
+  const stateWords = test
+    ? BILLS_TEST_STATE
+    : pay?.kind === 'part'
       ? `Part paid, ${billsSentMoney(pay.outAmount)} still out`
       : paid
         ? pay?.paidOn

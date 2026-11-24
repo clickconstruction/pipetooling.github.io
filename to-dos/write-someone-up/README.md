@@ -2,7 +2,7 @@
 name: "Write someone up, from the Dashboard, on a phone"
 number: 410
 group: close
-status: asked by Taunya 2026-11-20 · assessed, drawn twice and put to her the same night · her go 2026-11-21, *build it all and let me know when it's live*, with every pick kept · the database half v2.8157, pushed 2026-11-21 · the press, the sheet, the short pages, no signal, the office's card, Add to it and Take it back v2.8160, walked on a ZZ Test person the same day · photos v2.8172 and v2.8174, with the old HR Report card retired, walked live on a ZZ Test person 2026-11-21: taken, sent, shown to the office and filed with its evidence record · walked again at an iPhone's size as a leader, as a superintendent and with the signal cut · the person's side dropped on Taunya's word 2026-11-21 · the kept note that stayed after a no-signal send fixed in v2.8250 and walked live 2026-11-22 · Job Mode and its Short view walked live 2026-11-24, nothing written · left: a look on real phones in real hands and four smaller walks, see *Left to do and to walk*
+status: asked by Taunya 2026-11-20 · assessed, drawn twice and put to her the same night · her go 2026-11-21, *build it all and let me know when it's live*, with every pick kept · the database half v2.8157, pushed 2026-11-21 · the press, the sheet, the short pages, no signal, the office's card, Add to it and Take it back v2.8160, walked on a ZZ Test person the same day · photos v2.8172 and v2.8174, with the old HR Report card retired, walked live on a ZZ Test person 2026-11-21: taken, sent, shown to the office and filed with its evidence record · walked again at an iPhone's size as a leader, as a superintendent and with the signal cut · the person's side dropped on Taunya's word 2026-11-21 · the kept note that stayed after a no-signal send fixed in v2.8250 and walked live 2026-11-22 · Job Mode and its Short view walked live 2026-11-24, nothing written · photos on a weak signal, a kept write-up after the app is closed, the short Dashboard and Add to it walked live the same day, each write-up taken back · left: a look on real phones in real hands, see *Left to do and to walk*
 summary: >
   Taunya said writing someone up was not made easy enough for a leader or a superintendent from
   their Dashboard. A leader's only door was the HR Report card, 8.7 phone screens down the full
@@ -11,7 +11,7 @@ summary: >
   kind, what was seen, photos, who saw it, then a read-back and one press that sends. It lands in
   the Pending reports the office already reads, with the job, the time and the facts the record
   lacked. Seven PRs, built on the HR report queue and not on the Writeups forms.
-next: A leader and a superintendent each write one up about ZZ Test Hand on their own phone, with a photo and a few spoken words, once with no signal. Then the card closes on Taunya's word. The smaller walks are listed under *Left to do and to walk*.
+next: A leader and a superintendent each write one up about ZZ Test Hand on their own phone, with a photo and a few spoken words, once with no signal. Then the card closes on Taunya's word. The smaller walks are walked, see *Left to do and to walk*.
 size: L as a train of seven (S · M · S · M · M · S · S); left: a look on a real phone (XS)
 ver: v2.8157, v2.8160, v2.8172, v2.8174, v2.8250
 blocker: A leader's and a superintendent's own phone. A kept voice recording is set aside and the person's side is dropped, see *Set aside*.
@@ -192,6 +192,43 @@ Nothing was filled in and nothing was sent. Read back after: the same seven test
   a press count for each press on **Write someone up** and for switching Job Mode on. The walk held those at the
   browser, with the page's activity stamp, so none landed.
 
+### Walked 2026-11-24: the four walks that write
+
+Diane's go, 2026-11-24: *Yes, all four*. Before the first send the send path was read in the code. A send is one
+row, and one file and one row for each photo. No trigger, email, push or text hangs off it. The dev seats see a
+line for it, and nobody else is told. Every write-up was about `ZZ Test Hand`, began *TEST. Not a real event.* and
+was taken back at the end of its walk. The script read the name on the read-back before each send. Nothing was
+filed and nothing was deleted. All four ran at 375 by 667 px, by a script on clicktooling.com.
+
+- **The short Dashboard.** As the leader's sample account by View as. In his own Settings, **Your dashboard**,
+  **Dashboard view**, a press on **Short** saved. The Dashboard then opened as the short page, in light and in
+  dark. The press sits under the *Waiting on you* list and above the line about the office. The sample leader has no
+  schedule, so none drew above it. It is 359 px wide and 52 px tall and opened the same sheet. As the page opened
+  it sat from 600 to 652 px down, and the phone's bottom bar starts at 607 px. So the bar covered it, and a press
+  there did not reach it. One scroll shows it. Two lines waited on him, and the mode row and a new browser's *Add
+  Task* line were open at the top. **Full** was then pressed in the same place. The view reads `full` now. It was
+  empty before, which reads the same. View as keeps nothing on the phone, and that changed nothing here: this walk
+  sends nothing.
+- **Add to it.** As the leader's sample account. A new write-up was sent and read **Waiting on HR**. On its row
+  **Add to it**, 44 px tall, opened the form as *Write up · adding to one you sent about ZZ*, with the kind kept.
+  That one was sent too, and its row points at the first. As a dev seat, People, HR, **Pending reports** drew the
+  two cards one after the other, the addition second, with its *Adds to* line. Nothing was pressed there. Both
+  were then taken back and read **Taken back**. The row kept for Taunya was not pressed and still waits.
+- **A kept write-up after the app is closed.** As a dev seat, with one small made-up picture. With the signal cut,
+  **Send write-up to HR** answered *Kept on this phone*, and the row read **Waiting for signal**. The browser was
+  closed with no signal and opened again 15 seconds later with signal, on the Dashboard, with nothing pressed. The
+  picture went first, then the write-up, about one second after the page loaded. The row's press time is 21
+  seconds before the time it landed. **Your write-ups** then showed it as **Waiting on HR** with no kept line. It
+  showed no *Sent to HR at* line: that line is drawn in the sitting that sends. The walk ran with the service
+  worker off, so the app opened as a fresh page load and not from its saved copy.
+- **Photos on a weak signal.** As a dev seat. The picture was made up, 4,000 by 3,000 px and 3.7 MB. The sheet
+  shrank it to 1,600 by 1,200 px and 123 KB in about a second. A made-up picture shrinks further than a real
+  photo. For the send the link was held weak and not cut: 600 ms of delay, 150 kbit/s up and 400 kbit/s down.
+  **Sending…** showed for 9.7 seconds, 7.4 for the picture and 0.7 for the write-up. It ended in *Sent to HR* and
+  was never kept on the phone. The link was weak for the send alone. The app was opened on a full link.
+- **What these walks left** is listed by id under *Test rows on prod*. Each press count the page saves was held at
+  the browser. The two View as sittings each left a row in the View as record.
+
 ### Walks still owed
 
 - **A real phone in a crew lead's hand.** `/dashboard`, **Write someone up**. A real leader and a real
@@ -199,19 +236,6 @@ Nothing was filled in and nothing was sent. Read back after: the same seven test
   in. They should see the camera open on **Take a photo**, the phone type their words on **Talk it through**, the
   read-back and *Sent to HR*. Not walked because it needs those people and their phones. This is the card's
   `next`.
-- **Photos on a weak signal.** The same press, as a dev seat, at 375 px, with a full-size phone photo of 3 to
-  5 MB on a slow or flaky link rather than none. It should end in *Sent to HR*, or in *Kept on this phone* and
-  then send by itself. Not walked because the walks cut the signal cleanly and used a small test picture. As a
-  dev seat because the app keeps nothing on the phone while View as is on.
-- **A kept write-up after the app is closed.** Send with no signal as a dev seat, close the tab, open the app
-  again with signal. The write-up should send by itself and **Your write-ups** should say so. Not walked
-  because every walk kept the page open.
-- **The short Dashboard.** A leader whose Dashboard is set to Short, at 375 px. The press should sit under the
-  schedule and open the same sheet. Not walked because no sample account is set to Short. The setting is
-  `users.dashboard_view`, so the walk sets it on the sample leader and sets it back after. The Job Mode walk of
-  2026-11-24 held Short in the browser and changed no row, and this walk can do the same.
-- **Add to it.** On a write-up still **Waiting on HR**, as a leader, press **Add to it**, write more and send.
-  The office's card should show it as written after the first. Not walked live. It has smoke tests.
 - **A kept write-up that is refused.** Only smoke tests cover the case where the server refuses a write-up that
   waited on the phone. It is hard to make happen live, and is listed for completeness.
 
@@ -229,7 +253,8 @@ Nothing was filled in and nothing was sent. Read back after: the same seven test
   The walk of 2026-11-24 did not meet the toast. In the code the toast is drawn on a layer above the sheet's, 1rem
   from the bottom of the screen, which is where the sheet's bottom button sits.
 - **A second fault seen and not fixed.** At 375 by 667 px a leader's press in Job Mode opens partly under Job
-  Mode's own **Clock In** strip, see *Walked 2026-11-24*. A superintendent's does not.
+  Mode's own **Clock In** strip, see *Walked 2026-11-24*. A superintendent's does not. On the short Dashboard the
+  sample leader's press opened under the phone's bottom bar on the same screen, one scroll away.
 - **Test rows on prod**, all about `ZZ Test Hand`, all saying they are tests. Each id below is a
   `person_reports` row.
   - `281fd830-3872-4561-bd23-2e12ae99baed` is **Waiting on HR**, written by the leader's sample account. It is
@@ -243,6 +268,16 @@ Nothing was filled in and nothing was sent. Read back after: the same seven test
     unless Taunya says otherwise.
   - Five test pictures sit in the private `person-report-photos` bucket, one row each in
     `person_report_photos`.
+  - Four more are taken back, from the walks of 2026-11-24. `81d0b2ed-1aca-4a98-ad55-95a88d1670e6` is the weak
+    signal walk's. `ed3a9823-6232-4a03-8653-fb637b8b65c2` is the kept one's. `5e8e87e0-f89b-46ad-8002-2008e968d27b`
+    is the first of Add to it, and `c0eb054c-3bff-4604-90c0-c25294b3075d` is its addition. They wait on Taunya's
+    word like the five above.
+  - Two more test pictures sit in the same bucket, one row each, and wait on her word too:
+    `47f58a4e-3c6f-43b5-af75-b16520051ccb` from the weak signal walk and `34c22864-c3cd-4a16-9c83-d408efea6cd0` from
+    the kept one. The writer cannot remove a picture once its write-up has landed.
+  - The leader's sample account has `users.dashboard_view` at `full`. It was empty before the short Dashboard walk.
+  - Read back on 2026-11-24 after the walks: eleven rows about `ZZ Test Hand`, one waiting, one filed and nine
+    taken back, and seven pictures.
 
 ### Set aside and Taunya's calls
 

@@ -175,6 +175,17 @@ describe('BillsPaidByDay', () => {
     expect(within(cellOf(`${OLD}-18`)).queryByTestId('bills-paid-cell-credit')).toBeNull()
   })
 
+  it('on a phone, marks a credit’s day with the word alone, which the narrow cell holds whole', async () => {
+    io.phone = true
+    io.data = read([payment({ id: 'k1', paymentType: 'In kind', note: 'Rent credit', amount: 900, paidOn: `${OLD}-10` }), payment({ id: 's1', note: 'Stripe' })])
+    renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&month=${OLD}` })
+    await screen.findByTestId('bills-paid-day')
+    const cell = cellOf(`${OLD}-10`)
+    expect(within(cell).getByTestId('bills-paid-cell-credit').textContent).toBe('credit')
+    // The count stays for a screen reader, and under the day once it is pressed.
+    expect(cell.getAttribute('aria-label')).toBe('Tue, Mar 10, 1 credit in kind, not added')
+  })
+
   it('steps to the month before and reads it', async () => {
     io.data = march
     renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&month=${OLD}` })
@@ -242,5 +253,25 @@ describe('BillsPaidByDay', () => {
     // A refusal draws no month: there is nothing to show, and a blank month would read as no money.
     expect(screen.queryByTestId('bills-paid-day')).toBeNull()
     expect(io.asks).toHaveLength(1)
+  })
+  it('on a phone, stands the chips and a payment’s bill and job names a fingertip tall', async () => {
+    io.phone = true
+    io.data = march
+    renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-18` })
+    const day = await screen.findByTestId('bills-paid-day')
+    // The chips were 38 px and the two names in the day box 16 px, on the live page at 375 px.
+    expect(screen.getByRole('button', { name: 'Stripe' }).style.minHeight).toBe('44px')
+    expect(screen.getByRole('button', { name: 'All' }).style.minHeight).toBe('44px')
+    const bill = within(day).getByRole('link', { name: 'Bill 1420-0001' })
+    const job = within(day).getByRole('link', { name: 'J1420 · Marlow kitchen rough' })
+    expect([bill.style.minHeight, bill.style.display, job.style.minHeight, job.style.display]).toEqual(['44px', 'inline-flex', '44px', 'inline-flex'])
+  })
+
+  it('at a desk, leaves the chips and the names at the office’s size', async () => {
+    io.data = march
+    renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-18` })
+    const day = await screen.findByTestId('bills-paid-day')
+    expect(screen.getByRole('button', { name: 'Stripe' }).style.minHeight).toBe('')
+    expect(within(day).getByRole('link', { name: 'Bill 1420-0001' }).style.minHeight).toBe('')
   })
 })

@@ -553,6 +553,9 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
     steps['gc-weekly-report-email'] = na('GC mode: read on the GC project')
     steps['gc-schedule-email'] = na('GC mode: read on the GC project')
     steps['gc-contract-email'] = na('GC mode: read on the GC project')
+    // The Document builder (punch list #416): a send of the Sub NDA to a GC is read on the builder's own send card.
+    steps['gc-secrecy-email'] = na('Read on Documents → Document builder → Sub NDA, under Send it to a GC')
+    steps['gc-portal-secrecy'] = na('Read on Documents → Document builder → Sub NDA, under Send it to a GC')
     // Messages (cut 3): an email from the reply box is a line in the person's thread.
     steps['gc-reply-email'] = na('Messages: read in their thread')
     // GC mode (O7c): their change order answer and their acceptance, pressed in their portal.

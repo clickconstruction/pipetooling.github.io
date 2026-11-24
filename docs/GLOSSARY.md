@@ -6932,6 +6932,7 @@ A job's sheet is **behind** when the usual was published again since it went out
 Publishing the usual brings up each job that is ready and **holds** a job with no sheet yet, with changes of its own waiting, that changed somewhere else, or that was lost or is closed (v2.8192, `usualPublishPlan`).
 The publish reads every job's sheet first and publishes nothing when other jobs would get it than the press showed (v2.8155, `sameJobsGetIt`).
 The **Job** list leaves out a lost or closed job unless its sheet was published (v2.8192, `listedJobs`).
+Since v2.8449 the insurance builder's row on the tab's list says *A sheet on N of M jobs*: of the jobs that list holds, the ones whose sheet is published (`sheetCounts`, [`sheetScreen.ts`](../src/lib/documentBuilder/sheetScreen.ts)).
 The insurance builder's read mark is **checked**, by an insurance agent, where the Sub NDA's is read, by an attorney.
 Every amount in the insurance builder's first draft is the placeholder *An amount*: the app sets and suggests none.
 A **sheet's link** (v2.8008) opens a job's published sheet at `/d/<code>` with no sign-in, one live link a sheet, kept only as its hash ([`documentBuilderLink.ts`](../supabase/functions/_shared/documentBuilderLink.ts)).
@@ -6940,6 +6941,7 @@ Taking a sheet off the last trade's page ends its link too (v2.8187, `document_b
 A **builder's link** (v2.8150) opens the published Sub NDA at `/d/<code>` as a flow to walk, **look only**: no field, no press on the last step, and nothing picked is saved or sent ([`linkPage.ts`](../src/lib/documentBuilder/linkPage.ts)).
 Someone outside reads the Sub NDA as **Secrecy on your jobs**: *Sub NDA* is the office's word for it.
 A **send to a GC** (v2.8151) puts the published Sub NDA on the customer portal of a customer who is the GC on a job with us, **about** one job or all their jobs, with the day it went and the day they opened it ([`send.ts`](../src/lib/documentBuilder/send.ts), [`customerPageBuilders.ts`](../src/lib/documentBuilder/customerPageBuilders.ts)).
+Since v2.8444 Settings → What customers see draws that send for a made-up GC, the email and the block on their page, both made in the browser with no function read ([`gcSendSample.ts`](../src/lib/documentBuilder/gcSendSample.ts)).
 A **send** (`document_builder_sends`, v2.8009) is a job's published sheet put on one trade's own page, with an email to one person there: it keeps the revision that went and the revision they opened ([`send.ts`](../src/lib/documentBuilder/send.ts)).
 A send reads **changed** when they opened an older revision and have not been told of the new one.
 A send never turns a page back on, a trade with no page gets one only from a send to that trade alone, and a send **taken off** leaves the trade's page.

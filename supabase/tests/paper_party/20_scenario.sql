@@ -764,7 +764,8 @@ CREATE FUNCTION pp.differ() RETURNS text LANGUAGE sql AS $$ SELECT regexp_replac
 -- How a view reaches each record, read off its plan with the walks priced out: the lines that find a record by its key.
 -- The read is one paper's line, as paperParty.ts reads it: over the whole list the planner may still choose one walk
 -- of a small table for every line, whichever join it can use, so only one outer row says which join it can use. The
--- settings are put back before the function returns.
+-- settings are put back before the function returns. The records come back in one order whatever order the plan joins
+-- them in.
 CREATE FUNCTION pp.by_key(p_view text) RETURNS text LANGUAGE plpgsql AS $$
 DECLARE
   line text;
@@ -781,7 +782,7 @@ BEGIN
   PERFORM set_config('enable_seqscan', 'on', true);
   PERFORM set_config('enable_hashjoin', 'on', true);
   PERFORM set_config('enable_mergejoin', 'on', true);
-  RETURN coalesce(array_to_string(found, ','), '');
+  RETURN coalesce((SELECT string_agg(DISTINCT f, ',' ORDER BY f) FROM unnest(found) f), '');
 END $$;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pp TO authenticated;
 -- The bed's supply houses and trade companies are a handful, few enough that one walk of the table costs less than a
@@ -791,6 +792,14 @@ INSERT INTO public.supply_houses (name, vendor_kind) SELECT 'Bed Supply ' || g, 
 INSERT INTO public.gc_companies (name, trades) SELECT 'Bed Trade ' || g, '{Plumbing}' FROM generate_series(1, 2000) g;
 ANALYZE public.supply_houses;
 ANALYZE public.gc_companies;
+-- And one table measured, which is what lets the plan say it of the trade company. A person reads a supply house a PO
+-- code of theirs names (supply_houses_select_by_my_po_code), and that policy reads material_po_generator_entries, which
+-- this bed leaves empty and nothing has measured. Postgres takes a table it has never measured for ten pages of rows,
+-- so it priced one supply house's lookup at about 70,000, and at tens of trillions with the walks priced out. The trade
+-- company is joined after the supply house, and finding it by its key saves a few hundred at most: far inside the one
+-- part in a hundred by which the planner calls two plans the same price, and of two such plans it kept the walk.
+-- Measured, the table is empty and the policy is priced as what it is.
+ANALYZE public.material_po_generator_entries;
 -- The office's four roles and the estimator, whose read is the narrowest of those who read a party's paper.
 SELECT pp.as_user('00000000-0000-0000-0000-0000000403d1');
 SET LOCAL ROLE authenticated;
@@ -815,11 +824,11 @@ SELECT pp.same('a paper with a person at a record is named by the record found t
   (SELECT string_agg(concat_ws('|', right(source_id::text, 3), kind, with_name, facts->>'party_kind'), ',' ORDER BY source_id) FROM public.agreements_on_file
    WHERE source_id IN ('00000000-0000-0000-0000-000004030190', '00000000-0000-0000-0000-000004030191', '00000000-0000-0000-0000-000004030192')),
   '190|trade_agreement|Juniper Mechanical LLC|trade,191|supply_house_agreement|Cedar Mutual Insurance|supply_house,192|customer_agreement|Ridgeway Builders|customer');
--- The customer and the supply house are held. The trade company is read out and not held: the bed's handful of people
--- at trade companies is walked whole as a plain join filter too, a sizing choice the planner makes over any join form.
-SELECT pp.same('the view finds the customer and the supply house by their keys', (pp.by_key('public.agreements_on_file') ~ '^customer,house')::text, 'true');
-DO $$ BEGIN RAISE NOTICE 'ok: read out, not held: the view finds these by their keys: %', pp.by_key('public.agreements_on_file'); END $$;
-SELECT pp.same('the view before walked the customers instead', (pp.by_key('pp.agreements_before') ~ 'customer')::text, 'false');
+-- All three are held. The trade company's holds on the measured table above and not on how many people are at trade
+-- companies: two thousand of them changed nothing in the plan, and the same join cut down to four tables found the
+-- company by its key with the handful this bed has. The view before finds none of the three so, whatever the prices.
+SELECT pp.same('the view finds the customer, the supply house and the trade company by their keys', pp.by_key('public.agreements_on_file'), 'customer,house,trade');
+SELECT pp.same('the view before found none of the three by its key', pp.by_key('pp.agreements_before'), '');
 RESET ROLE;
 
 DO $$ BEGIN RAISE NOTICE 'paper_party PASSED'; END $$;

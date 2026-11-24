@@ -11,7 +11,8 @@
  *     matched deposit the day it posted at the bank, for a payment typed by hand the day the person named;
  *   - the amount is what the payment took off the bill. Stripe's fee is not taken off: the app does not keep it;
  *   - a credit in kind is listed and never added: it is not money;
- *   - a payment on a test-mode bill is left out;
+ *   - a payment on a test bill is left out: a bill made in Stripe's test mode, or any payment on a ZZ test job
+ *     (`billTestRows.ts`, the rule By day sent reads too);
  *   - a refund made in Stripe is not seen, so it lowers no day.
  * One deposit that paid several bills is drawn once, with its bills under it (`billsPaidDayGroups`).
  *
@@ -24,6 +25,7 @@ import { checkNumberOf, instrumentWord, isStripePayment } from '../jobs/billsAnd
 import { sentCopyJobLabel, type SentCopyAboutJob } from '../sent/sentCopyAbout'
 import { isInKindPaymentType } from '../../../supabase/functions/_shared/inKindPayment'
 import { billPaymentWayWords, billPaymentYmd, type BillPaidBill, type BillPayment } from './billsPaid'
+import { isBillsTestRow } from './billTestRows'
 
 /** A payment as this view reads it: on a bill, or on a job with no bill named. */
 export type BillsPaidPayment = Omit<BillPayment, 'billId'> & { billId: string | null; jobId: string | null }
@@ -124,18 +126,18 @@ const dayGap = (fromYmd: string, toYmd: string): number | null => {
 
 /**
  * The payments as lines, newest day first. Within a day a Stripe payment comes first, newest first, then the
- * rest with one deposit's payments together. A payment with no day, no amount to add, or on a test-mode bill is
- * left out.
+ * rest with one deposit's payments together. A payment with no day, no amount to add, or that is a test
+ * (`isBillsTestRow`: a test-mode bill, a ZZ test job) is left out.
  */
 export function billsPaidLines(input: BillsPaidInput): BillsPaidLine[] {
   const lines: BillsPaidLine[] = []
   for (const p of input.payments) {
     const bill = p.billId ? input.bills.get(p.billId) : undefined
-    if ((bill?.stripeMode ?? '').trim() === 'test') continue
-    const ymd = billPaymentYmd(p)
-    if (!ymd || !(p.amount > 0)) continue
     const jobId = p.jobId ?? bill?.jobId ?? null
     const job = jobId ? input.jobs.get(jobId) : undefined
+    if (isBillsTestRow(bill, job)) continue
+    const ymd = billPaymentYmd(p)
+    if (!ymd || !(p.amount > 0)) continue
     const number = p.billId ? (input.numbers?.get(p.billId) ?? '') : ''
     const sentIso = (p.billId ? input.firstSent?.get(p.billId) : undefined) ?? bill?.sentAtIso ?? bill?.billedAtIso ?? ''
     const sentYmd = sentIso ? calendarYmdInAppTzFromIso(sentIso) : ''
@@ -313,10 +315,15 @@ export function billsPaidCellCount(sum: Pick<BillsPaidSum, 'payments'>): string 
  * A grid cell's small line on a day that holds a credit in kind and no money: *1 credit*. '' on any other day. The
  * credit is listed under the day and never added, so without the mark the month gave no sign the day held anything,
  * and the chip that narrows to it opened a month with nothing to press.
+ *
+ * A phone's cell says the word alone, *credit*. It holds about 33 px of words, *1 credit* needs 37, and the live
+ * test of 2026-11-24 read *1 credi* at 375 px. The word alone needs 29. The count is left off as a paid day's
+ * *3 paid* is on a phone: the day says it once pressed, and a screen reader hears it (`billsPaidCellLabel`).
  */
-export function billsPaidCellCredit(cell: Pick<BillsPaidCell, 'sum'> & { credits?: number }): string {
+export function billsPaidCellCredit(cell: Pick<BillsPaidCell, 'sum'> & { credits?: number }, phone = false): string {
   const n = cell.credits ?? 0
-  return cell.sum.payments === 0 && n > 0 ? plural(n, 'credit') : ''
+  if (cell.sum.payments > 0 || n <= 0) return ''
+  return phone ? 'credit' : plural(n, 'credit')
 }
 
 /** What a screen reader hears on a day: *Wed, Nov 18, $7,935.00, 3 payments*, a credit in kind alone, or that nothing came in. */

@@ -665,6 +665,14 @@ Left to walk, each a person's, with a paper required:
 
 - **A person's own Read and sign.** The Papers to sign window, then **Read and sign**, as a ZZ login linked to a ZZ person on the job's roster, at 375 px. It opens the paper put together from the job's settings, signs at the seal it shows, and the job opens. No ZZ login exists to sign in with. `ZZ Test Hand` has no login, and the two ZZ papers accounts have none and are archived. A person attaches a login to a ZZ person, puts them on the job's team and signs in on a phone.
 - **A finger on a real phone.** The sliders on the flow and the one page, dragged with a finger. The browser pane sends a mouse, so this one is a person's.
+- **Neither is walked.** Both were tried in the iPhone simulator on 2026-11-24, at the owner's yes of that day.
+  That simulator takes no typed text in a page's field: no keys are drawn, and a letter sent to a box does not land.
+  The sign-in for a ZZ login is found by a typed name, and the signature needs the signer's name typed in a box.
+  So neither could be done there, and the sliders were not started alone, since that would shut the job a second time later.
+  Both were set aside the same day on the owner's word.
+  Nothing was written for them: no login was made, nobody was put on the job and no paper was required.
+  Read back after: `ZZ Test Hand` has no login, the job's team holds the dev alone, and its seven paper rows are all taken off.
+  They stay listed here as not walked. A person with a real phone can still take them.
 
 Loose ends:
 

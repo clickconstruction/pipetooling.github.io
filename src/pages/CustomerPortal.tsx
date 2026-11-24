@@ -149,12 +149,16 @@ export default function CustomerPortal() {
           }
           return 'failed'
         }
+        // What customers see (punch list #416): the sample GC's page shows a builder the office sent. It is made up
+        // here, since the function answers none for a sample. The fixture loads only for that sample.
+        const shown = sample === 'gc' ? (await import('../lib/documentBuilder/gcSendSample')).withSampleBuilders(payload) : payload
+        if (gen !== genRef.current) return 'failed'
         const after = snapshotPortalBills(payload)
         const before = snapshotRef.current ?? (sample ? null : readPortalSnapshot(storageKey))
         const flipped = paidFlipDetected(before, after)
         snapshotRef.current = after
         if (!sample) writePortalSnapshot(storageKey, after)
-        setState({ kind: 'ready', payload })
+        setState({ kind: 'ready', payload: shown })
         if (flipped) {
           setPaymentLanded(true)
           payClickedRef.current = false

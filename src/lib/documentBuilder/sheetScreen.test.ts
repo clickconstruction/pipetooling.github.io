@@ -8,6 +8,8 @@ import { sheetPrintHtml, sheetPrintTitle, SHEET_SENT_KIND } from './sheetPrint'
 import { layOver } from './sheet'
 import {
   filledRowChips,
+  sheetCountChip,
+  sheetCounts,
   jobHasOwnChanges,
   jobHasSomethingToPublish,
   gcJobOver,
@@ -228,6 +230,32 @@ describe('the chips and the read mark', () => {
       { tone: 'ok', words: 'A sheet on 1 of 3 jobs' },
       { tone: 'ok', words: 'Checked by Jo Ferris, Nov 20' },
     ])
+  })
+
+  it('counts the jobs the Job box lists, and of them the ones with a published sheet (punch list #416)', () => {
+    const jobs = [
+      { projectId: 'built', over: null },
+      { projectId: 'bid', over: null },
+      { projectId: 'draft', over: null },
+      { projectId: 'lost-with-sheet', over: 'lost' as const },
+      { projectId: 'lost', over: 'lost' as const },
+      { projectId: 'closed', over: 'closed' as const },
+    ]
+    // A draft never published is revision 0: nobody outside reads it, so it is not counted as a sheet.
+    const revisions: Record<string, number> = { built: 3, draft: 0, 'lost-with-sheet': 1 }
+    const rev = (id: string) => revisions[id] ?? 0
+    expect(sheetCounts(jobs, rev)).toEqual({ jobs: 4, withSheet: 2 })
+    expect(sheetCounts([], rev)).toEqual({ jobs: 0, withSheet: 0 })
+    expect(sheetCounts([{ projectId: 'lost', over: 'lost' }], rev)).toEqual({ jobs: 0, withSheet: 0 })
+  })
+
+  it('says the count on the row, and says so when there is no job to count', () => {
+    expect(sheetCountChip({ jobs: 4, withSheet: 2 })).toEqual({ tone: 'ok', words: 'A sheet on 2 of 4 jobs' })
+    expect(sheetCountChip({ jobs: 1, withSheet: 1 })).toEqual({ tone: 'ok', words: 'A sheet on 1 of 1 job' })
+    expect(sheetCountChip({ jobs: 3, withSheet: 0 })).toEqual({ tone: 'wait', words: 'A sheet on 0 of 3 jobs' })
+    expect(sheetCountChip({ jobs: 0, withSheet: 0 })).toEqual({ tone: 'wait', words: 'No job you run as the GC yet' })
+    expect(filledRowChips(INSURANCE, published(1), { jobs: 0, withSheet: 0 }).map((c) => c.words)).toEqual(['Your usual, revision 1', 'No job you run as the GC yet', 'Not checked by your insurance agent'])
+    expect(['A sheet on 2 of 4 jobs', 'No job you run as the GC yet'].flatMap((t) => plainWordsFailures(t))).toEqual([])
   })
 
   it('reads in plain words', () => {
