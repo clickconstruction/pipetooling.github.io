@@ -198,10 +198,28 @@ export function sendBox(party: SendParty, to: PartyContact | null, gate: { publi
   return { note: { tone: 'quiet', words: 'They get an email with a link to their page. No login.' }, press: { label, dead: blocked } }
 }
 
+/** Why the one press held a party: sent to alone, no page yet, a page turned off, or nobody with an email. */
+export type HeldReason = 'alone' | 'no-page' | 'page-off' | 'nobody'
+
 export type SendBatch = {
   ready: SendParty[]
-  held: Array<{ party: SendParty; why: string }>
+  held: Array<{ party: SendParty; reason: HeldReason; why: string }>
   press: { label: string; dead: boolean }
+}
+
+/** Why the one press holds a party that was not sent to and is not ready. The first reason that fits is the one said. */
+export function heldReason(party: SendParty): HeldReason {
+  if (party.alone) return 'alone'
+  if (party.page.state === 'none') return 'no-page'
+  if (party.page.state === 'off') return 'page-off'
+  return 'nobody'
+}
+
+const HELD_WHY: Record<HeldReason, (name: string) => string> = {
+  alone: (name) => `Held: ${name} was asked and not awarded. Send to them alone.`,
+  'no-page': (name) => `Held: ${name} has no page yet. Send to them alone to make one.`,
+  'page-off': (name) => `Held: ${name}. Their page is off.`,
+  nobody: (name) => `Held: ${name} has nobody with an email to send to.`,
 }
 
 /**
@@ -214,13 +232,41 @@ export function sendBatch(parties: ReadonlyArray<SendParty>, noun: BatchNoun, ga
   const ready = waiting.filter((p) => !p.alone && p.page.state === 'on' && p.contacts.length > 0)
   const held = waiting
     .filter((p) => !ready.includes(p))
-    .map((party) => ({
-      party,
-      why: party.alone ? `Held: ${party.name} was asked and not awarded. Send to them alone.` : party.page.state === 'none' ? `Held: ${party.name} has no page yet. Send to them alone to make one.` : party.page.state === 'off' ? `Held: ${party.name}. Their page is off.` : `Held: ${party.name} has nobody with an email to send to.`,
-    }))
+    .map((party) => {
+      const reason = heldReason(party)
+      return { party, reason, why: HELD_WHY[reason](party.name) }
+    })
   const n = ready.length
   const label = n > 0 ? `Send to ${n} ${pluralNoun(noun, n)} who ${n === 1 ? 'is' : 'are'} ready` : 'Nothing to send'
   return { ready, held, press: { label, dead: n === 0 || !gate.published || (gate.unread !== '' && !gate.anyway) } }
+}
+
+/** How many parties one reason names a line each. Past it, the reason reads as one line with its count. */
+export const HELD_NAMED_AT_MOST = 3
+
+/** A line of the held list. With `names`, it is one reason counted, and the names sit folded under it. */
+export type HeldLine = { key: string; words: string; names: string[] }
+
+const HELD_COUNTED: Record<HeldReason, (count: string) => string> = {
+  alone: (count) => `Held: ${count} were asked and not awarded. Send to each alone.`,
+  'no-page': (count) => `Held: ${count} have no page yet. Send to one alone to make its page.`,
+  'page-off': (count) => `Held: ${count}. Their pages are off.`,
+  nobody: (count) => `Held: ${count} have nobody with an email to send to.`,
+}
+
+/**
+ * The held list under the one press. A reason that holds a few parties names each on its own line, as `sendBatch`
+ * wrote it. A reason that holds more than `HELD_NAMED_AT_MOST` reads as one line with its count, and its names fold
+ * under that line: most GCs have no page yet, and a line for each ran longer than the list above it. The reasons keep
+ * the order they first come in.
+ */
+export function heldLines(held: SendBatch['held'], noun: BatchNoun): HeldLine[] {
+  const reasons = [...new Set(held.map((h) => h.reason))]
+  return reasons.flatMap((reason): HeldLine[] => {
+    const group = held.filter((h) => h.reason === reason)
+    if (group.length <= HELD_NAMED_AT_MOST) return group.map((h) => ({ key: h.party.id, words: h.why, names: [] }))
+    return [{ key: reason, words: HELD_COUNTED[reason](`${group.length} ${pluralNoun(noun, group.length)}`), names: group.map((h) => h.party.name) }]
+  })
 }
 
 /** After the one press: what went, what was held, and what did not go. */

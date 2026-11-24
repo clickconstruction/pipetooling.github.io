@@ -220,6 +220,21 @@ describe('BuilderSendList', () => {
     expect(screen.getByRole('button', { name: 'Send to 16 trades who are ready' })).toBeTruthy()
   })
 
+  it('counts a reason that holds many on one line, and opens their names on a press', () => {
+    // Most GCs have no page yet: fifteen made-up ones, one whose page is off, and one who is ready.
+    const noPage = Array.from({ length: 15 }, (_, i) => party(`gc${i}`, `Made-up Builders ${i + 1}`, { page: { state: 'none' } }))
+    draw({ parties: [party('northgate', 'Northgate Builders'), party('alder', 'Alder Homes', { page: { state: 'off', offOn: '2026-10-03' } }), ...noPage], noun: ['GC', 'GCs'], findWords: 'Find a GC' })
+    expect(screen.getByRole('button', { name: 'Send to 1 GC who is ready' })).toBeTruthy()
+    // One line for the fifteen, where there were fifteen lines. The one whose page is off keeps its own line.
+    expect(screen.getByText('Held: Alder Homes. Their page is off.')).toBeTruthy()
+    const fold = document.querySelector('[data-held="no-page"]') as HTMLDetailsElement
+    expect(fold.querySelector('summary')?.textContent).toBe('Held: 15 GCs have no page yet. Send to one alone to make its page.')
+    expect(screen.queryByText(/^Held: Made-up Builders/)).toBeNull()
+    expect(fold.open).toBe(false)
+    expect([...fold.querySelectorAll('li')].map((li) => li.textContent)).toHaveLength(15)
+    expect(within(fold).getByText('Made-up Builders 15')).toBeTruthy()
+  })
+
   it('asks before the one press when its caller wants that, and sends nothing on a no', async () => {
     const beforeBatch = vi.fn(async (_ready: SendParty[]) => false)
     const props = draw({ beforeBatch })
