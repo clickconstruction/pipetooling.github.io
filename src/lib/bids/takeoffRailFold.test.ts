@@ -4,12 +4,16 @@ import { railFitsBeside } from './takeoffSheetFit'
 import {
   RAIL_FOLD_STORAGE_KEY,
   RAIL_FOLD_WORDS,
+  RAIL_FOLD_HINT_KEY,
   parseRailChoice,
+  railFoldHint,
   railMode,
   railPressOutcome,
   railStartsFolded,
   railStripFacts,
+  readRailHintDone,
   readStoredRailChoice,
+  writeRailHintDone,
   writeStoredRailChoice,
 } from './takeoffRailFold'
 
@@ -136,5 +140,43 @@ describe('railStripFacts', () => {
     expect(RAIL_FOLD_WORDS.hide).toBe('Hide')
     expect(RAIL_FOLD_WORDS.showName).toBe('Show What Pricing sees')
     expect(RAIL_FOLD_WORDS.hideName).toBe('Hide What Pricing sees')
+  })
+})
+
+describe('railFoldHint', () => {
+  it('says where the rail went when the window folded it, until the person has opened it once', () => {
+    expect(railFoldHint({ mode: 'folded', fits: false, hintDone: false })).toBe('Folded to fit this window. Show opens it.')
+    expect(railFoldHint({ mode: 'folded', fits: false, hintDone: true })).toBeNull()
+  })
+
+  it('says nothing where the person folded it, or while the rail is open', () => {
+    expect(railFoldHint({ mode: 'folded', fits: true, hintDone: false })).toBeNull()
+    expect(railFoldHint({ mode: 'over', fits: false, hintDone: false })).toBeNull()
+    expect(railFoldHint({ mode: 'beside', fits: true, hintDone: false })).toBeNull()
+  })
+
+  it('is written in plain words and names the press as the strip prints it', () => {
+    expect(plainWordsFailures(RAIL_FOLD_WORDS.foldedByItself)).toEqual([])
+    expect(RAIL_FOLD_WORDS.foldedByItself).toContain(RAIL_FOLD_WORDS.show)
+  })
+
+  it('is kept as done under its own key, and a browser that refuses says it again', () => {
+    const m = new Map<string, string>()
+    const s = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) }
+    expect(readRailHintDone(s)).toBe(false)
+    writeRailHintDone(s)
+    expect(m.get(RAIL_FOLD_HINT_KEY)).toBe('seen')
+    expect(readRailHintDone(s)).toBe(true)
+    const refuses = {
+      getItem: () => {
+        throw new Error('blocked')
+      },
+      setItem: () => {
+        throw new Error('blocked')
+      },
+    }
+    expect(readRailHintDone(refuses)).toBe(false)
+    expect(() => writeRailHintDone(refuses)).not.toThrow()
+    expect(readRailHintDone(null)).toBe(false)
   })
 })

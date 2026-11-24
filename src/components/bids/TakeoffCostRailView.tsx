@@ -1,6 +1,6 @@
 import { orderRoundingTitle } from '../../lib/bids/takeoffOrderRounding'
 import { TakeoffOrderListPanel } from './TakeoffOrderListPanel'
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { TakeoffCoverageSummary } from '../../lib/bids/takeoffCoverage'
 import { sumByAlternate } from '../../lib/bids/alternateScope'
 import { isAlternateRow } from '../../lib/bids/countSheet'
@@ -16,7 +16,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { Money } from '../Money'
 import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
 import { TAKEOFF_RAIL_PX, railFitsBeside } from '../../lib/bids/takeoffSheetFit'
-import { RAIL_FOLD_WORDS, railMode, railPressOutcome, railStorage, readStoredRailChoice, writeStoredRailChoice, type RailChoice } from '../../lib/bids/takeoffRailFold'
+import { RAIL_FOLD_WORDS, railFoldHint, railMode, railPressOutcome, railStorage, readRailHintDone, readStoredRailChoice, writeRailHintDone, writeStoredRailChoice, type RailChoice } from '../../lib/bids/takeoffRailFold'
 import { TakeoffRailStrip } from './TakeoffRailStrip'
 
 /**
@@ -111,14 +111,28 @@ export function TakeoffCostRailView({
   const [railPanelOpen, setRailPanelOpen] = useState(false)
   const railIs = railMode({ fits: railFits, choice: railChoice, panelOpen: railPanelOpen })
   const railPanelId = useId()
+  // The line that says where the rail went, until the person has opened it once in a narrow window.
+  const [railHintDone, setRailHintDone] = useState(() => readRailHintDone(railStorage()))
+  // Show and Hide are different buttons in a wide window, and Esc can close the rail from inside it:
+  // the focus goes to the press that is left, never to nowhere.
+  const railFocusPress = useRef(false)
   const pressRail = (press: 'show' | 'hide') => {
     const out = railPressOutcome(press, railFits)
     setRailPanelOpen(out.panelOpen)
+    railFocusPress.current = true
     if (out.choice) {
       setRailChoice(out.choice)
       writeStoredRailChoice(railStorage(), out.choice)
+    } else if (press === 'show' && !railHintDone) {
+      setRailHintDone(true)
+      writeRailHintDone(railStorage())
     }
   }
+  useEffect(() => {
+    if (!railFocusPress.current) return
+    railFocusPress.current = false
+    sheetRef.current?.querySelector<HTMLElement>('[data-rail-press]')?.focus()
+  }, [railIs, sheetRef])
   // A window dragged wide again has the rail beside the list: the panel over the list is done with.
   useEffect(() => {
     if (railFits) setRailPanelOpen(false)
@@ -128,6 +142,7 @@ export function TakeoffCostRailView({
     if (railIs !== 'over') return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || document.querySelector('[role="dialog"], [role="alertdialog"]')) return
+      railFocusPress.current = document.activeElement?.closest('.takeoffRailOver') != null
       setRailPanelOpen(false)
     }
     window.addEventListener('keydown', onKey, true)
@@ -202,7 +217,7 @@ export function TakeoffCostRailView({
             <span style={{ ...panelK, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
               {RAIL_FOLD_WORDS.name}
               {railIs === 'beside' ? (
-                <button type="button" className="takeoffRailHide" onClick={() => pressRail('hide')} aria-label={RAIL_FOLD_WORDS.hideName}>
+                <button type="button" className="takeoffRailHide" data-rail-press onClick={() => pressRail('hide')} aria-label={RAIL_FOLD_WORDS.hideName} title={RAIL_FOLD_WORDS.hideName} aria-expanded>
                   {RAIL_FOLD_WORDS.hide}
                   <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="M6 15l6-6 6 6" />
@@ -363,6 +378,7 @@ export function TakeoffCostRailView({
           open={railIs === 'over'}
           onPress={() => pressRail(railIs === 'over' ? 'hide' : 'show')}
           panelId={railPanelId}
+          hint={railFoldHint({ mode: railIs, fits: railFits, hintDone: railHintDone })}
         >
           {railIs === 'over' ? (
             <div id={railPanelId} className="takeoffRailOver" role="region" aria-label={RAIL_FOLD_WORDS.name} data-testid="takeoff-rail">
@@ -373,8 +389,9 @@ export function TakeoffCostRailView({
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: railIs === 'beside' ? `minmax(0, 1fr) ${TAKEOFF_RAIL_PX}px` : 'minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
-        {/* While the rail is open over the list, any press on the list puts it away; the press still lands. */}
-        <div data-testid="takeoff-sheet-list" onPointerDownCapture={railIs === 'over' ? () => setRailPanelOpen(false) : undefined} style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* While the rail is open over the list, any press on the list puts it away, and the press still lands.
+            So does the Tab key walking out of the rail into the list: a focused field is never under the rail. */}
+        <div data-testid="takeoff-sheet-list" onPointerDownCapture={railIs === 'over' ? () => setRailPanelOpen(false) : undefined} onFocusCapture={railIs === 'over' ? () => setRailPanelOpen(false) : undefined} style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Takeoff book</label>
             <select

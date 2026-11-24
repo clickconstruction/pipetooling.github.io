@@ -8,7 +8,8 @@ import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
  * pinned as the list scrolls. It keeps the rail's headline — the materials total,
  * costed fixtures as N of M, and the red no-cost count when there is one — and one
  * press. The press says **Show**, and **Hide** in the same place while the rail is
- * open over the list. The rail itself hangs under the strip as `children`.
+ * open over the list. The rail itself hangs under the strip as `children`, so it is
+ * the next stop after the press for the Tab key and a screen reader.
  *
  * The look is `.takeoffRailStrip` in `index.css`; the words and the count are
  * `lib/bids/takeoffRailFold.ts`.
@@ -22,6 +23,7 @@ export function TakeoffRailStrip({
   open,
   onPress,
   panelId,
+  hint = null,
   children,
 }: {
   materialsTotal: number
@@ -33,6 +35,8 @@ export function TakeoffRailStrip({
   open: boolean
   onPress: () => void
   panelId: string
+  /** The line that says where the rail went, the first times a narrow window folds it. */
+  hint?: string | null
   /** The open rail, hung under the strip. */
   children?: ReactNode
 }) {
@@ -54,10 +58,17 @@ export function TakeoffRailStrip({
             <WorkedOutValue tone="red">{String(facts.noCost)}</WorkedOutValue> {facts.noCostWords}
           </span>
         ) : null}
+        {hint ? (
+          <span className="takeoffRailStripHint" role="status" data-testid="takeoff-rail-strip-hint">
+            {hint}
+          </span>
+        ) : null}
         <button
           type="button"
           className="takeoffRailStripPress"
+          data-rail-press
           onClick={onPress}
+          title={open ? RAIL_FOLD_WORDS.hideName : RAIL_FOLD_WORDS.showName}
           aria-expanded={open}
           aria-controls={open ? panelId : undefined}
           aria-label={open ? RAIL_FOLD_WORDS.hideName : RAIL_FOLD_WORDS.showName}

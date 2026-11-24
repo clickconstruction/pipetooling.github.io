@@ -8,10 +8,10 @@
  * measured sheet is.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import { TakeoffCostRailView } from './TakeoffCostRailView'
 import { summarizeTakeoffCoverage } from '../../lib/bids/takeoffCoverage'
-import { RAIL_FOLD_STORAGE_KEY } from '../../lib/bids/takeoffRailFold'
+import { RAIL_FOLD_HINT_KEY, RAIL_FOLD_STORAGE_KEY } from '../../lib/bids/takeoffRailFold'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { BidCountRow } from '../../types/bids'
 import type { TakeoffRoughPartLineRow } from '../../lib/bids/bidPricingEngineTypes'
@@ -25,6 +25,7 @@ const NARROW = 722 // a 900 px window
 
 beforeEach(() => {
   window.localStorage.removeItem(RAIL_FOLD_STORAGE_KEY)
+  window.localStorage.removeItem(RAIL_FOLD_HINT_KEY)
 })
 afterEach(() => {
   vi.restoreAllMocks()
@@ -93,7 +94,26 @@ describe('the Sheet in a wide window', () => {
     const rail = screen.getByTestId('takeoff-rail')
     expect(rail.style.position).toBe('sticky')
     expect((rail.parentElement as HTMLElement).style.gridTemplateColumns).toBe('minmax(0, 1fr) 320px')
-    expect(within(rail).getByRole('button', { name: 'Hide What Pricing sees' }).textContent).toBe('Hide')
+    const hide = within(rail).getByRole('button', { name: 'Hide What Pricing sees' })
+    expect(hide.textContent).toBe('Hide')
+    // The press has a name and a state: the rail is open.
+    expect(hide.getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('never leaves the focus nowhere: Hide hands it to Show, and Show hands it back to Hide', async () => {
+    measuredAt(WIDE)
+    sheet()
+    await settle()
+    const hide = screen.getByRole('button', { name: 'Hide What Pricing sees' })
+    hide.focus()
+    fireEvent.click(hide)
+    const show = screen.getByRole('button', { name: 'Show What Pricing sees' })
+    expect(document.activeElement).toBe(show)
+    expect(show.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(show)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Hide What Pricing sees' }))
+    // A person who folded it is not told where it went.
+    expect(screen.queryByTestId('takeoff-rail-strip-hint')).toBeNull()
   })
 
   it('folds to the strip on Hide and keeps that choice; Show opens it beside the list again and keeps that', async () => {
@@ -104,6 +124,7 @@ describe('the Sheet in a wide window', () => {
     expect(view().dataset.rail).toBe('folded')
     expect(screen.queryByTestId('takeoff-rail')).toBeNull()
     expect(window.localStorage.getItem(RAIL_FOLD_STORAGE_KEY)).toBe('folded')
+    expect(screen.queryByTestId('takeoff-rail-strip-hint')).toBeNull()
 
     // The next visit opens folded.
     first.unmount()
@@ -146,6 +167,24 @@ describe('the Sheet in a narrow window', () => {
     expect((screen.getByTestId('takeoff-sheet-list').parentElement as HTMLElement).style.gridTemplateColumns).toBe('minmax(0, 1fr)')
     // The strip comes before the list.
     expect(s.compareDocumentPosition(screen.getByTestId('lines-table')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('says where the rail went until the person has opened it once, on this visit and the next', async () => {
+    measuredAt(NARROW)
+    const first = sheet()
+    await settle()
+    const hint = screen.getByTestId('takeoff-rail-strip-hint')
+    expect(hint.textContent).toBe('Folded to fit this window. Show opens it.')
+    expect(hint.getAttribute('role')).toBe('status')
+    fireEvent.click(screen.getByRole('button', { name: 'Show What Pricing sees' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hide What Pricing sees' }))
+    expect(screen.queryByTestId('takeoff-rail-strip-hint')).toBeNull()
+    expect(window.localStorage.getItem(RAIL_FOLD_HINT_KEY)).toBe('seen')
+    first.unmount()
+    sheet()
+    await settle()
+    expect(view().dataset.rail).toBe('folded')
+    expect(screen.queryByTestId('takeoff-rail-strip-hint')).toBeNull()
   })
 
   it('starts folded even for the person who chose open in a wide window', async () => {
@@ -198,6 +237,35 @@ describe('the Sheet in a narrow window', () => {
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Remove part line' }))
     expect(view().dataset.rail).toBe('folded')
     expect(window.localStorage.getItem(RAIL_FOLD_STORAGE_KEY)).toBeNull()
+  })
+
+  it('keeps the focus on the press through Show and Hide, and brings it back there when Esc closes the rail from inside', async () => {
+    measuredAt(NARROW)
+    sheet()
+    await settle()
+    const press = () => within(strip()).getByRole('button', { name: /What Pricing sees$/ })
+    press().focus()
+    fireEvent.click(press())
+    expect(document.activeElement).toBe(press())
+    // The rail is the next stop after the press.
+    const inside = within(screen.getByRole('region', { name: 'What Pricing sees' })).getByRole('button', { name: 'Fill from rules & book' })
+    expect(press().compareDocumentPosition(inside) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    inside.focus()
+    fireEvent.keyDown(inside, { key: 'Escape' })
+    expect(view().dataset.rail).toBe('folded')
+    expect(document.activeElement).toBe(press())
+    expect(press().textContent).toBe('Show')
+  })
+
+  it('puts the rail away when the Tab key walks out of it into the list, so a focused field is never under it', async () => {
+    measuredAt(NARROW)
+    sheet()
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Show What Pricing sees' }))
+    const row = screen.getByRole('button', { name: 'Remove part line' })
+    act(() => row.focus())
+    expect(view().dataset.rail).toBe('folded')
+    expect(document.activeElement).toBe(row)
   })
 
   it('leaves Esc to a window that is open on top of the rail', async () => {

@@ -6211,6 +6211,10 @@ button.gcStep:hover > em { text-decoration: underline; }
   font-weight: 600;
   white-space: nowrap;
 }
+.takeoffRailStripHint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
 .takeoffRailStripPress,
 .takeoffRailHide {
   display: inline-flex;

@@ -43,7 +43,7 @@ Press {{button:outline|Show}} and the rail opens again, with every panel and but
 
 ## In a narrow window
 
-You can keep the plans in one window and the app in another beside it. A narrow window cannot hold the sheet and the rail side by side. The rail then starts folded to its strip, and the sheet has the whole width.
+You can keep the plans in one window and the app in another beside it. A narrow window cannot hold the sheet and the rail side by side. The rail then starts folded to its strip, and the sheet has the whole width. The first time, the strip says *Folded to fit this window. Show opens it.*
 
 Press {{button:outline|Show}} and the rail opens over the sheet. Every panel and button of the rail is there. Press **Hide**, press **Esc** or click anywhere on the sheet, and the rail folds away again. A narrow window always starts folded, whatever you chose in a wide one.
 

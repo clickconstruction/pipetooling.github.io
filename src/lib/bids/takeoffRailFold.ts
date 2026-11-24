@@ -18,6 +18,8 @@ export type RailChoice = 'open' | 'folded'
 export type RailMode = 'beside' | 'folded' | 'over'
 
 export const RAIL_FOLD_STORAGE_KEY = 'bids_takeoff_rail_fold_v1'
+/** Set once the person has opened the folded rail in a narrow window: the line that says where it went is done. */
+export const RAIL_FOLD_HINT_KEY = 'bids_takeoff_rail_fold_hint_v1'
 
 /** The strip's words. The press says what it will do, in the same place both ways. */
 export const RAIL_FOLD_WORDS = {
@@ -28,6 +30,8 @@ export const RAIL_FOLD_WORDS = {
   hideName: 'Hide What Pricing sees',
   materials: 'Materials',
   costed: 'Costed',
+  /** Said on the strip until the person first opens the rail in a narrow window. */
+  foldedByItself: 'Folded to fit this window. Show opens it.',
 } as const
 
 /** This browser's store, or null where reaching for it is refused. */
@@ -107,5 +111,30 @@ export function railStripFacts(input: { costed: number; fixtures: number; uncost
     noCost: n,
     noCostWords: 'no cost',
     noCostSentence: n === 0 ? '' : n === 1 ? '1 fixture carries no material cost. Pricing shows it as no cost.' : `${n} fixtures carry no material cost. Pricing shows them as no cost.`,
+  }
+}
+
+/**
+ * The line that tells a person where the rail went, the first times it folds by itself: a rail that
+ * was beside the list yesterday is a strip today, and nothing else says why. It is said only where
+ * the window folded the rail, never where the person did, and it stops once they have opened it.
+ */
+export function railFoldHint(input: { mode: RailMode; fits: boolean; hintDone: boolean }): string | null {
+  return input.mode === 'folded' && !input.fits && !input.hintDone ? RAIL_FOLD_WORDS.foldedByItself : null
+}
+
+export function readRailHintDone(storage: Pick<Storage, 'getItem'> | null | undefined): boolean {
+  try {
+    return storage?.getItem(RAIL_FOLD_HINT_KEY) === 'seen'
+  } catch {
+    return false
+  }
+}
+
+export function writeRailHintDone(storage: Pick<Storage, 'setItem'> | null | undefined): void {
+  try {
+    storage?.setItem(RAIL_FOLD_HINT_KEY, 'seen')
+  } catch {
+    /* a private window or a full store: the line is said again next visit */
   }
 }
