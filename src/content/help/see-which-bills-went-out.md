@@ -119,6 +119,18 @@ A second send also says which send it is and the day of the first one. The words
 
 A line may have no amount. The line then reads *This bill is no longer on the job.* The bill was taken back or replaced after it went.
 
+## A test bill
+
+A test bill is one made to try the app. Its job or its customer has a name that starts with ZZ.
+
+A bill made in Stripe's test mode is a test bill too.
+
+The send stays on the list. The line reads *A test bill. It is in no total.*
+
+A test bill has no stamp. It is in no day's total, no tile and neither payment chip.
+
+The second view, By day paid, leaves a test payment out.
+
 ## See every send of one bill
 
 Press the bill's name on a line. The name is underlined.
