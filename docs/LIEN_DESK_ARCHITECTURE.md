@@ -1336,6 +1336,9 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
   [`LienGetItRightHost.tsx`](../src/components/jobs/LienGetItRightHost.tsx) is the frame's third part: the run's door over `LienDeskNextUp` while the run is shut, and [`LienGetItRight.tsx`](../src/components/jobs/LienGetItRight.tsx) in the list's place while it is open.
   The desk keeps one hook call and the host's mount, and hands the host its own router (`actOnNextUp`), `zoomFor` and the Board's prints, so a line's press opens what its To do row opens.
   The first tile is not the run's door: its red line is a press of its own, and a tile that is a press cannot hold a second one.
+- **Both prints built with no window** (punch list #362 step 6, the kernels): [`lienRunPacket.ts`](../src/lib/jobs/lienRunPacket.ts) builds the notices' packet as the run window prints it when it has just opened, from the run's notices and the enclosures [`useLienRunEnclosures.ts`](../src/components/jobs/useLienRunEnclosures.ts) reads, a hook lifted whole out of `LienDeskRunModal`.
+  `LienDeskRunModal.packetParity.render.test.tsx` prints the same notices from the window and from the kernel and compares the two documents whole, with the filing and the printed stamps, so the two builds of a legal paper cannot part.
+  `useLienDeskAffidavits` answers `readyAffidavitsRun`, the affidavits' batch document and each job's copy, and its press prints what that builds.
 - **Why the router stays:** it turns a row's target into 23 of the desk's setters across every view.
 - **Next:** `actOnNextUp` as a kernel that names the target and a thin switch that calls the setters.
 

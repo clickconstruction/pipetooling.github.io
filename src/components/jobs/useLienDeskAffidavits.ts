@@ -211,8 +211,10 @@ export function useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, sign
   // Which of them take a second sheet (v2.6930): each paper as its own Lien window lays it out, read under the press.
   const affSheetPapers = useMemo(() => lienAffidavitSheetPapers(affPrintPapers), [affPrintPapers])
   const affNoticeCopyCount = useMemo(() => lienAffidavitBatchNoticeCopyCount(affPrintPapers), [affPrintPapers])
-  const printReadyAffidavits = () => {
-    if (!data || affPrintWords.dead) return
+  // The batch's print as the press prints it, built with no window: the one document and the copy each job files. Null
+  // when the press is dead. The checklist's one print stacks it behind the notices (punch list #362, step 6).
+  const readyAffidavitsRun = () => {
+    if (!data || affPrintWords.dead) return null
     // The help sheet prints first (punch list #314): the blanks, when to stop, and a row for each paper. It is in no job's filed copy.
     const helpSheet = affHelpSheet
       ? lienAffidavitBatchHelpSheet(
@@ -228,7 +230,11 @@ export function useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, sign
       : null
     // The notice records, then a copy of each notice when its box is ticked, print behind the help sheet and in front of the stack, never between two papers (punch list #322).
     const noticeCopies = affNoticeCopies ? lienAffidavitBatchNoticeCopies(affPrintPapers, filingLetterheadFromIssuer(issuer), todayYmd) : ''
-    const run = lienAffidavitPrintRun(affPrintPapers, helpSheet, affNoticeRecord ? lienAffidavitBatchNoticeRecords(affPrintPapers, demandDate(todayYmd), Boolean(noticeCopies)) : null, noticeCopies)
+    return lienAffidavitPrintRun(affPrintPapers, helpSheet, affNoticeRecord ? lienAffidavitBatchNoticeRecords(affPrintPapers, demandDate(todayYmd), Boolean(noticeCopies)) : null, noticeCopies)
+  }
+  const printReadyAffidavits = () => {
+    const run = readyAffidavitsRun()
+    if (!run) return
     if (!openHtmlPrintWindow(run.html)) {
       showToast('Popup blocked — allow popups to print.', 'error')
       return
@@ -273,6 +279,7 @@ export function useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, sign
     affSheetPapers,
     affNoticeCopyCount,
     printReadyAffidavits,
+    readyAffidavitsRun,
     affPrintFolded,
     toggleAffPrintFold,
   }
