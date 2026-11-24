@@ -275,7 +275,7 @@ Read in the code on 2026-11-17, and again on 2026-11-19 with prod read through t
 - **A sub's business is not a record.** `people` has no business column. Listing each sub business
   needs one line on the signature, *Signing for*. Card #403 has since put that line on a paper
   (`person_contract_documents.signing_for`, v2.7977 and v2.7986), kept at the send. Filling it from
-  a sub's own company is #403's step 5, not built.
+  a sub's own company is #403's step 5, built as v2.8313.
 - **PDFs.** Edge functions already draw PDFs with pdf-lib (`accept-contract`, `sign-job-contract`). The
   client prints through `src/lib/printRoot.ts`.
 
@@ -538,7 +538,7 @@ Sizes for this card's own steps are the train's above.
 | 5 | Send a paper and open the Contract library from Documents | S to M | **Done**, v2.7937 and v2.7938 |
 | 6 | Step 1 here, the Book takes settings | M | **Done**, v2.8014 and v2.8019 |
 | 7 | Step 2 here, the summary and the sample | S | **Done**, v2.8020 |
-| 8 | An outside party as a record, with the *Signing for* line of step 3 | Card #403's train | Its first four PRs are done, v2.7977 to v2.7998. Its steps 4 to 6 are left, and step 5 fills *signing for* from a sub's company. |
+| 8 | An outside party as a record, with the *Signing for* line of step 3 | Card #403's train | Every step is built and live, v2.7977 to v2.8530, and the card closed on 2026-11-24. Step 5 fills *signing for* from a sub's company (v2.8313). |
 | 9 | The signer's copy by email, and a PDF of a plain paper | S to M | Nothing |
 | 10 | Reminders by email for staff, sub and outside papers | S | Nothing |
 | 11 | Steps 3 to 7 here | M · M · M · M · S | Step 3 is **done**, v2.8145, v2.8154 and v2.8156. Step 4 is **done**, v2.8182, v2.8183 and v2.8184. The look for step 4. Counsel before a real job. |
@@ -552,8 +552,8 @@ Sizes for this card's own steps are the train's above.
 2. **Counsel.** Who reads the wording, and whether a fixed secrecy paper goes first so the gate is used
    before the builder exists.
 3. **Where an outside signer lives.** A vendor, a sub's business or a GC's contact has no record that
-   holds a paper today. Card #403 lays out the options, a pick and a mock-up
-   (`to-dos/outside-signer-record/README.md`). Settled there on 2026-11-19: the paper names a contact
+   holds a paper today. Card #403 laid out the options, a pick and a mock-up. It closed on 2026-11-24,
+   and its card lives in git history. Settled there on 2026-11-19: the paper names a contact
    the app already keeps.
 4. **Whether the company signs in the app.** A mutual paper needs the company's signature. Today it signs
    nowhere, save the office's half of a two-party form.
@@ -602,7 +602,7 @@ was still refused. Step 3 waits on no deploy.
 Step 2 (v2.8020) put **Summary** beside **Paper** in the Book's preview, with
 the level in words and **Print the sample**. The *Signing for*
 line step 3 names is on a paper since card #403's first two PRs (v2.7977, v2.7986), and #403's step 5,
-not built, fills it from a sub's own company. Step 1 (v2.8014, the migration and the kernel; v2.8019, the screens): A Book entry takes a
+built as v2.8313, fills it from a sub's own company. Step 1 (v2.8014, the migration and the kernel; v2.8019, the screens): A Book entry takes a
 settings list, a clause takes an *Only when* and a place, the preview puts the paper together for any
 mix, a revision can be marked as read by an attorney, and a paper built from settings was refused
 everywhere a copy could be made or signed until a job carried its settings. The clause screens are
