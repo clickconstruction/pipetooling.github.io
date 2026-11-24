@@ -20,8 +20,11 @@ concurrency:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    # Normally 26 to 39 minutes (2026-11-15, the tests 22 to 29 of them); a stalled check fails instead of hanging the queue.
-    timeout-minutes: 60
+    # Normally 26 to 41 minutes warm (2026-11-24, the tests 22 to 35 of them); a stalled check fails instead of
+    # hanging the queue. A cold run, the first after the cache key changes, adds 14 to 17 minutes of typecheck
+    # and 3 of lint: 57 and 61 minutes on 2026-11-24, when the limit was 60 and the queue's build of the change
+    # that made the key was cancelled inside its tests.
+    timeout-minutes: 90
     # pull-requests: write lets check:calls-ahead label a PR whose client calls ahead of its migration.
     permissions:
       contents: read
