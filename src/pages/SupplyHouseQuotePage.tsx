@@ -413,7 +413,7 @@ export default function SupplyHouseQuotePage() {
                 disabled={submitting || answered === 0}
                 style={{
                   padding: '0.8rem 1.4rem',
-                  background: answered === 0 ? 'var(--bg-200)' : '#16a34a',
+                  background: answered === 0 ? 'var(--bg-200)' : '#15803d',
                   color: answered === 0 ? 'var(--text-faint)' : 'white',
                   border: 'none',
                   borderRadius: 10,

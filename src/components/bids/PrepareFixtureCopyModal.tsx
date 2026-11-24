@@ -481,7 +481,7 @@ export function PrepareFixtureCopyModal({
             <button
               type="button"
               onClick={() => void copy(buildBidFixtureCountsText({ bidLabel, rows }), rows.filter((r) => Number.isFinite(r.count) && r.count > 0).length)}
-              style={{ padding: '0.35rem 0.8rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontWeight: 600 }}
+              style={{ padding: '0.35rem 0.8rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontWeight: 600 }}
             >
               Copy the flat list anyway
             </button>
@@ -519,7 +519,7 @@ export function PrepareFixtureCopyModal({
                       type="button"
                       disabled={!picked[name] || pinBusy === name}
                       onClick={() => void pin(name, picked[name] ?? null)}
-                      style={{ padding: '0.3rem 0.75rem', background: picked[name] ? '#16a34a' : 'var(--bg-200)', color: picked[name] ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: picked[name] ? 'pointer' : 'not-allowed', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+                      style={{ padding: '0.3rem 0.75rem', background: picked[name] ? '#15803d' : 'var(--bg-200)', color: picked[name] ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: picked[name] ? 'pointer' : 'not-allowed', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}
                     >
                       {pinBusy === name ? 'Pinning…' : 'Pin it'}
                     </button>
@@ -699,7 +699,7 @@ export function PrepareFixtureCopyModal({
                   autoFocus
                   disabled={selected.size === 0}
                   onClick={() => void copy(copyText, selected.size)}
-                  style={{ padding: '0.5rem 1.1rem', background: selected.size === 0 ? 'var(--bg-200)' : '#16a34a', color: selected.size === 0 ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: selected.size === 0 ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
+                  style={{ padding: '0.5rem 1.1rem', background: selected.size === 0 ? 'var(--bg-200)' : '#15803d', color: selected.size === 0 ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: selected.size === 0 ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
                 >
                   Copy {selected.size} item{selected.size === 1 ? '' : 's'}
                 </button>

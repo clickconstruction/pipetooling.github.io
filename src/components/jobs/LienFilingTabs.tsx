@@ -1654,7 +1654,7 @@ export default function LienFilingTabs({
               <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...releasePhoneButton }}>
                 {pdfBusy ? 'Building…' : 'Download PDF'}
               </button>
-              <button type="button" onClick={() => void recordRelease()} disabled={busy} style={{ padding: '0.45rem 1rem', fontSize: '0.8125rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer', fontWeight: 600, ...releasePhoneButton, ...(isMobile ? { gridColumn: '1 / -1' } : {}) }}>
+              <button type="button" onClick={() => void recordRelease()} disabled={busy} style={{ padding: '0.45rem 1rem', fontSize: '0.8125rem', background: '#15803d', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer', fontWeight: 600, ...releasePhoneButton, ...(isMobile ? { gridColumn: '1 / -1' } : {}) }}>
                 {busy ? 'Saving…' : 'Save release record'}
               </button>
             </div>

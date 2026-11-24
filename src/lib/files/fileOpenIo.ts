@@ -5,10 +5,12 @@
  * it. A link it carried goes to its own address. A file in a job's Drive folder (`drive`, cut 7d) is asked of
  * `drive-link`'s office door (`open`), which checks the reader is on the office team and the file is in that job's
  * folder, and answers Drive's own viewer. A bill dropped on the Add invoice window (`bills`, punch list #179) is read
- * from its invoice row under the office's policy on `supply_house_invoices`, and its copy signed the same way.
+ * from its invoice row under the office's policy on `supply_house_invoices`, and its copy signed the same way. A bill
+ * with no copy of ours goes to the Drive link pasted on its row (punch list #431), which Google opens for the office.
  */
 import { driveJobOf } from '../documents/jobFilesIo'
 import { supabase } from '../supabase'
+import { billLinkHref } from '../materials/bills/billLink'
 import { driveFileOfRouteId, type FileSource } from './fileRoute'
 
 export type FileTarget = { url: string } | { problem: 'notYours' | 'notHere' }
@@ -47,15 +49,19 @@ async function driveFileTarget(id: string): Promise<FileTarget> {
 }
 
 async function billFileTarget(invoiceId: string): Promise<FileTarget> {
-  const { data, error } = await supabase.from('supply_house_invoices' as never).select('bill_read').eq('id', invoiceId).maybeSingle()
+  const { data, error } = await supabase.from('supply_house_invoices' as never).select('bill_read, link').eq('id', invoiceId).maybeSingle()
   if (error) return { problem: 'notHere' }
-  const row = data as { bill_read?: { file?: { path?: unknown } } | null } | null
+  const row = data as { bill_read?: { file?: { path?: unknown } } | null; link?: string | null } | null
   // Under the policy, a row the reader may not open reads as no row.
   if (!row) return { problem: 'notYours' }
   const path = row.bill_read?.file?.path
-  if (typeof path !== 'string' || !path) return { problem: 'notHere' }
-  const signed = await supabase.storage.from('message-attachments').createSignedUrl(path, FILE_SIGNED_SECONDS)
-  return signed.error || !signed.data?.signedUrl ? { problem: 'notHere' } : { url: signed.data.signedUrl }
+  if (typeof path === 'string' && path) {
+    const signed = await supabase.storage.from('message-attachments').createSignedUrl(path, FILE_SIGNED_SECONDS)
+    return signed.error || !signed.data?.signedUrl ? { problem: 'notHere' } : { url: signed.data.signedUrl }
+  }
+  // No copy of our own: most bills are a Drive link pasted on the row (punch list #431), so the link goes there.
+  const linked = billLinkHref(row.link)
+  return linked ? { url: linked } : { problem: 'notHere' }
 }
 
 /** Where a kept file's lasting link goes for the reader, or why it does not. */

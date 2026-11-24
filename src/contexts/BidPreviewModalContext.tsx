@@ -1,8 +1,10 @@
 import { createContext, Suspense, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { BidPreviewTabUrl } from '../components/bids/BidPreviewModal'
+import { WindowLoadBoundary } from '../components/WindowLoadBoundary'
 import { WindowOpening } from '../components/WindowOpening'
 import { lazyWindow } from '../lib/lazyWindow'
+import { WINDOW_NAMES } from '../lib/windowLoad'
 import { fetchBidForPreview } from '../lib/fetchBidForPreview'
 import { isSubmissionBidStaleForThreshold } from '../lib/submissionFollowupStale'
 import type { Database } from '../types/database'
@@ -158,6 +160,7 @@ export function BidPreviewModalProvider({ children }: { children: ReactNode }) {
     <BidPreviewModalContext.Provider value={value}>
       {children}
       {openState.kind === 'open' ? (
+        <WindowLoadBoundary what={WINDOW_NAMES.bid} onGaveUp={closeBidPreview} resetKey={instanceKey}>
         <Suspense fallback={BID_OPENING}>
         <BidPreviewModal
           key={instanceKey}
@@ -172,6 +175,7 @@ export function BidPreviewModalProvider({ children }: { children: ReactNode }) {
           staleNoUpdateHighlight={staleNoUpdateHighlight}
         />
         </Suspense>
+        </WindowLoadBoundary>
       ) : null}
     </BidPreviewModalContext.Provider>
   )

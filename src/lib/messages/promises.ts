@@ -186,6 +186,25 @@ export interface RunningPromise {
 }
 
 /**
+ * The word after the day on the move line, by the kind written (punch list #421): short enough for a chip, and a
+ * customer's or an architect's kind read as words rather than the column's name. A double kind names the one written.
+ */
+const MOVE_WORD: Readonly<Record<string, string>> = {
+  quote: 'quote',
+  start: 'start',
+  delivery: 'delivery',
+  insurance: 'insurance',
+  w9: 'W-9',
+  papers: 'insurance',
+  payment: 'payment',
+  decision: 'their answer',
+  access: 'on site',
+  answer: 'answer',
+  cert: 'certificate',
+  said: 'their word',
+}
+
+/**
  * The written promise that still runs: the newest one whose day is today or later. The prototype kept it on the
  * contact for good (`c.promise`); a day that has passed no longer holds the move, so it is read, never stored.
  */
@@ -197,7 +216,7 @@ export function runningPromise(lines: ReadonlyArray<HeardLine>, contactId: strin
     if (!line.dayYmd || line.dayYmd < todayYmd || !line.kind) continue
     const at = Date.parse(line.at)
     if (best && at <= bestAt) continue
-    const word = line.writes ?? (line.kind === 'said' ? 'their word' : line.kind)
+    const word = MOVE_WORD[line.writes ?? line.kind] ?? line.kind
     const day = dayLabel(line.dayYmd)
     best = { messageId: line.messageId, dayYmd: line.dayYmd, pill: `promised ${day} · ${word}`, until: `until ${day} · ${word}` }
     bestAt = at
