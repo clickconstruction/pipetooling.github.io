@@ -7153,6 +7153,8 @@ The **open cell** is the map's cell for the page the flow shows on the right, ou
 In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
 Since v2.8468 a walked builder's left column has two **sides** behind a switch: **Edit**, the map and the changed pages, and **Share**, the builder's link and the send ([`builderSide.ts`](../src/lib/documentBuilder/builderSide.ts)).
 The side is in the address as `side=share`, both sides stay drawn so a half typed note survives a look at the map, and on a phone the Share side stands without what a GC sees under it.
+Since v2.8469 the paper's own **names**, its title, the job, the company and who it protects, are fields on a card of the Edit side, at paths under `paper.` on a page of their own that no step of the flow shows ([`paperNames.ts`](../src/lib/documentBuilder/paperNames.ts)).
+A name left empty holds the publish, and a name is not held to the plain-words rules.
 Since v2.8264 (step 6) a trade's **certificate is held against a job's sheet**, one certificate for each job: the card **Certificates for this job** says where each stands, and **Check it against the sheet** ticks one line for each name, the place, the certificate holder and each coverage with its amount (`certificates.ts`, `sheetAsks`).
 A certificate is **outdated** when one of those lines changes on the published sheet, and not when the sheet's other words do.
 

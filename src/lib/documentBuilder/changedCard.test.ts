@@ -70,7 +70,7 @@ describe('the rows of the card', () => {
   const nextName = DEF.levels.find((l) => l.id === NEXT)?.name
 
   it('says a topic’s name, then its level apart from the words', () => {
-    expect(changedRows(DEF, [levelPage])).toEqual([{ page: levelPage, label: TOPIC.label, level: { stop: NEXT, name: nextName }, part: null, open: false }])
+    expect(changedRows(DEF, [levelPage])).toEqual([{ page: levelPage, label: TOPIC.label, level: { stop: NEXT, name: nextName }, part: null, open: false, opens: true }])
     expect(changedRows(DEF, [offPage])[0]).toMatchObject({ label: TOPIC.label, level: { stop: PAPER_OFF, name: 'Off' }, part: null })
     expect(changedRows(DEF, [namePage])[0]).toMatchObject({ label: TOPIC.label, level: null, part: 'Its name' })
   })
@@ -82,6 +82,15 @@ describe('the rows of the card', () => {
       ['Match the paper to the site', null, null],
       ['Review', null, null],
     ])
+  })
+
+  it('lists the paper\u2019s own names as a row with nothing to open: no step of the flow shows them', () => {
+    const draft = withPaperWords(DEF, 'paper.title', 'A made-up title')
+    const changed = changedPages(draft, DEF)
+    expect(changed).toEqual(['paper'])
+    expect(changedRows(draft, changed, 'notice')).toEqual([{ page: 'paper', label: "The paper's names", level: null, part: null, open: false, opens: false }])
+    // Every other page opens on the right.
+    expect(changedRows(DEF, ['notice', 'basis', 'site', 'review', levelPage, offPage, namePage]).every((r) => r.opens)).toBe(true)
   })
 
   it('marks the page open on the right, and no other', () => {
