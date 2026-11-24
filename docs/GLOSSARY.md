@@ -1072,6 +1072,8 @@ It says the level, each topic's choice in the list's plain words, how many on th
 A **sub business** there is the trade company a sub works for, or the sub's own roster name with none on file.
 A helper and an office person count in the total and are never named.
 The Document builder's block on the same page, *Secrecy on your jobs*, is another thing: a builder the office sent to look at, tied to no job's paper.
+A job's **sample** (v2.8506) is the paper for that job's settings as a PDF, with a made-up job and signer and SAMPLE across each page, drawn by `open-job-paper-sample` from the same assembly a signer reads.
+It is the GC's to download from that block, and it is never for signing.
 The **read-revision rule**: a job that is not a ZZ Test job takes such a paper only at the revision an attorney read, where it is required, where its settings change and where it is read or signed (`job_paper_read_problem`).
 A signed copy keeps the picks, their plain words (`said`) and a **seal**, a SHA-256 of its settings, blanks and clauses with their versions (`contract_paper_seal`), and is signed only when all of it matches what `job_paper_clauses` reads at that moment.
 Since v2.8154 the sign page sends the seal it showed, the signed record draws **The job's settings when this was signed** with a line that says whether the seal still holds ([`jobPaperSettings.ts`](../src/lib/contracts/jobPaperSettings.ts), `SignedJobSettings`), and the job's **Add a paper** list holds such a paper until the page that sets a job's settings is built.

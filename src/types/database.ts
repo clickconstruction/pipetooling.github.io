@@ -49565,6 +49565,7 @@ export type Database = {
         Args: { p_job_id: string; p_person_id: string }
         Returns: Json
       }
+      job_papers_gc_page: { Args: { p_job_ids: string[] }; Returns: Json }
       job_papers_mine: { Args: { p_job_id: string }; Returns: Json }
       job_papers_needing_me: { Args: never; Returns: Json }
       job_papers_prompt_only: { Args: never; Returns: boolean }
@@ -49577,6 +49578,7 @@ export type Database = {
         Returns: number
       }
       job_papers_roster: { Args: { p_job_id: string }; Returns: Json }
+      job_papers_roster_now: { Args: { p_job_id: string }; Returns: Json }
       job_rider_fees: { Args: { p_job_id: string }; Returns: number }
       job_shut_to_me: { Args: { p_job_id: string }; Returns: boolean }
       job_shut_to_user: {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gcJobPapersFromSql, gcJobPapersOrNone, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSigned, parseGcJobPapers } from './gcJobPapers'
+import { GC_PAPER_SAMPLE, gcJobPapersFromSql, gcJobPapersOrNone, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSampleUrl, gcPaperSigned, parseGcJobPapers } from './gcJobPapers'
 
 // What the database answers for one job, with made-up words.
 const SQL = [
@@ -106,6 +106,13 @@ describe('gcJobPapers · what a GC reads about a job’s papers', () => {
     expect(gcPaperGate('Click Plumbing')).toBe('Nobody opens this job in Click Plumbing’s system until they sign.')
     expect(gcPaperGate('')).toBe('Nobody opens this job in our system until they sign.')
     expect(gcPaperFine('Click Plumbing')).toBe('This is Click Plumbing’s paper for the people it brings onto your job. It does not change the agreement between Click Plumbing and you.')
+  })
+
+  it('opens the sample at the function that draws it, with the page’s token and the paper’s id', () => {
+    expect(gcPaperSampleUrl('https://x.supabase.co/functions/v1/', 'tok en', 'row-1')).toBe('https://x.supabase.co/functions/v1/open-job-paper-sample?t=tok%20en&p=row-1')
+    expect(gcPaperSampleUrl('https://x.supabase.co/functions/v1', '', 'row-1')).toBeNull()
+    expect(gcPaperSampleUrl('https://x.supabase.co/functions/v1', 'tok', '')).toBeNull()
+    expect(GC_PAPER_SAMPLE.press).toBe('Download a sample')
   })
 
   it('says a later revision started the count again', () => {
