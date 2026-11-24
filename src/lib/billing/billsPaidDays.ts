@@ -50,6 +50,8 @@ export interface BillsPaidInput {
   numbers?: ReadonlyMap<string, string>
   /** The first send on record of each bill, by bill id. */
   firstSent?: ReadonlyMap<string, string>
+  /** Who each bill went to, by bill id, from its sent copy. A bill with none is named by its job's customer. */
+  sentTo?: ReadonlyMap<string, string>
 }
 
 /** How the money came, as the chips sort it. */
@@ -149,7 +151,8 @@ export function billsPaidLines(input: BillsPaidInput): BillsPaidLine[] {
       what: p.billId ? (number ? `Bill ${number}` : 'Bill') : 'Payment',
       jobWords: jobId ? sentCopyJobLabel(jobId, job) : '',
       jobTo: jobId ? `/jobs?edit=${encodeURIComponent(jobId)}` : null,
-      payer: (job?.customer_name ?? '').trim(),
+      // The one who was billed, as By day sent names them: a builder pays for a homeowner's job, and the two views once named one bill two ways.
+      payer: ((p.billId ? input.sentTo?.get(p.billId) : '') ?? '').trim() || (job?.customer_name ?? '').trim(),
       atIso: stripe ? p.createdAtIso : null,
       sentYmd,
       took: sentYmd ? dayGap(sentYmd, ymd) : null,
