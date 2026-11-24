@@ -319,8 +319,10 @@ Each step is one PR with its release note and fragment. The word to build came o
    company entered from People has none, so the send first keeps the signer there. The paper entry function files a
    person's form and the table refuses a company's name there, so **Enter from paper** keeps a company's paper as
    signed with a link to the scan and keys no boxes.
-   **Send a paper by company, the chip's move and Add to a list** wait on decision 2's screens (#9523), whose files
-   they share. Papers already filed under a person stay where they are, on the owner's default.
+   **Send a paper by company, the chip's move and Add to a list built 2026-11-23 as v2.8419** (#9564,
+   `docs/recent-features/v2.8419.md`), after decision 2's screens (#9523). **Who is it with?** lists a sub under
+   their own name with the company on the line under it, not the company as a row of its own. Papers already filed
+   under a person stay where they are, on the owner's default.
 
 After the train: reminders by email and the signer's copy (#376's leftovers), the company's own signature
 (#389's wider call 4), and the company's own secrecy paper to a vendor (#389's step 8).
