@@ -168,11 +168,11 @@ describe('the chips', () => {
     expect(kindsOfPick('jobs')).toEqual(['job_contract', 'their_paper'])
     expect(kindsOfPick('warranty')).toEqual(['job_warranty'])
     // A trade company that is a party sits with the subs; a customer, a supply house and a party on no list are outside.
-    expect(kindsOfPick('people')).toEqual(['person_agreement', 'trade_agreement'])
+    expect(kindsOfPick('people')).toEqual(['person_agreement', 'trade_agreement', 'company_agreement'])
     expect(kindsOfPick('outside')).toEqual(['customer_agreement', 'supply_house_agreement', 'outside_agreement'])
     expect(kindsOfPick('partners')).toEqual(['partner_agreement'])
     expect(kindsOfPick('orders')).toEqual(['work_order'])
-    expect(kindsOfPick('gc')).toEqual(['owner_contract', 'sow', 'company_agreement'])
+    expect(kindsOfPick('gc')).toEqual(['owner_contract', 'sow'])
   })
 
   it('no kind sits under two chips', () => {
@@ -199,7 +199,9 @@ describe('the chips', () => {
     expect(agreementGroup('person_agreement')).toBe('people')
     expect(agreementGroup('partner_agreement')).toBe('partners')
     expect(agreementGroup('work_order')).toBe('orders')
-    for (const kind of ['owner_contract', 'sow', 'company_agreement']) expect(agreementGroup(kind), kind).toBe('gc')
+    for (const kind of ['owner_contract', 'sow']) expect(agreementGroup(kind), kind).toBe('gc')
+    // A trade company's own paper sits with the subs since punch list #403, step 6.
+    expect(agreementGroup('company_agreement')).toBe('people')
     expect(agreementGroup('something_new')).toBe('jobs')
   })
 
@@ -300,7 +302,7 @@ describe('a line', () => {
     expect(agreementTag(row({ kind: 'work_order' }))).toEqual({ words: 'Work order', group: 'orders' })
     expect(agreementTag(row({ kind: 'owner_contract' }))).toEqual({ words: 'Owner contract', group: 'gc' })
     expect(agreementTag(row({ kind: 'sow' }))).toEqual({ words: 'Statement of work', group: 'gc' })
-    expect(agreementTag(row({ kind: 'company_agreement' }))).toEqual({ words: 'Trade company', group: 'gc' })
+    expect(agreementTag(row({ kind: 'company_agreement' }))).toEqual({ words: 'Trade company', group: 'people' })
     expect(agreementTag(row({ kind: 'something_new' }))).toEqual({ words: 'Agreement', group: 'jobs' })
   })
 

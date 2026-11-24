@@ -13,8 +13,11 @@ import { paperSaysLine, signingForOf, type PaperPartyKind } from '../contracts/p
 
 // ── What the window is handed ─────────────────────────────────────────────────────────────────────────────────────────
 
-/** A living person on the roster, by the name their papers are filed under. */
-export type PartyRosterPerson = { name: string; sub: boolean }
+/**
+ * A living person on the roster, by the name their papers are filed under. `company` is the trade company a sub works
+ * for (punch list #403, step 6), read by the office's four roles alone: the find box finds them by its name too.
+ */
+export type PartyRosterPerson = { name: string; sub: boolean; company?: string }
 export type PartyCustomer = { id: string; name: string }
 export type PartyCustomerPerson = { id: string; name: string; email: string | null; customerId: string; customerName: string }
 export type PartySupplyHouse = { id: string; name: string }
@@ -142,6 +145,12 @@ function businessRows(business: PartyBusiness, people: ReadonlyArray<{ id: strin
   return rows
 }
 
+/** The muted line under a roster person: who they sign for. Their paper says *signing for* their company when they have one. */
+export function rosterRowSub(company: string): string {
+  const named = company.trim()
+  return named ? `Signs for ${named}` : 'Signs for themselves'
+}
+
 /**
  * The window's rows for what is typed and the chip that is on: each supply house with its reps, each customer with the
  * people on file there, then the roster, then **Someone not in any list** last, always. With nothing typed the list is
@@ -183,8 +192,9 @@ export function partyRows(lists: PartyLists, typed: string, chip: PartyChip): Pa
     for (const person of [...lists.roster].sort(byName)) {
       if (chip === 'team' && person.sub) continue
       if (chip === 'subs' && !person.sub) continue
-      if (!holds(words, person.name)) continue
-      rows.push({ key: `roster:${person.name}`, title: person.name, sub: 'Signs for themselves', tag: person.sub ? 'Sub' : 'Staff', tone: 'people', pick: { kind: 'roster', personName: person.name } })
+      const company = (person.company ?? '').trim()
+      if (!holds(words, person.name, company)) continue
+      rows.push({ key: `roster:${person.name}`, title: person.name, sub: rosterRowSub(company), tag: person.sub ? 'Sub' : 'Staff', tone: 'people', pick: { kind: 'roster', personName: person.name } })
     }
   }
 
