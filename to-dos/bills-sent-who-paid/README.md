@@ -2,7 +2,7 @@
 name: "Bills sent: who paid, when, and what came in each day"
 number: 422
 group: close
-status: asked 2026-11-23 by the owner · the card and the mock-up the same day · the owner asked for two changes, the delivery word at the right edge and every amount's cents smaller, then said build it all · the list with payment made plain in v2.8333 · By day paid in v2.8343 · the Stripe paid day at its source in v2.8335, merged and its migration pushed on the owner's yes the same day · the six Stripe rows filed a day late before the fix moved back in v2.8371, pushed on the owner's yes the same day · the printed month with its calendar and the month buttons that name where they go in v2.8416, the owner's two asks after his own look · a day names the bank deposits on no bill in v2.8493 · left: the leader's look
+status: asked 2026-11-23 by the owner · the card and the mock-up the same day · the owner asked for two changes, the delivery word at the right edge and every amount's cents smaller, then said build it all · the list with payment made plain in v2.8333 · By day paid in v2.8343 · the Stripe paid day at its source in v2.8335, merged and its migration pushed on the owner's yes the same day · the six Stripe rows filed a day late before the fix moved back in v2.8371, pushed on the owner's yes the same day · the printed month with its calendar and the month buttons that name where they go in v2.8416, the owner's two asks after his own look · a day names the bank deposits on no bill in v2.8493 · a look-only live test on 2026-11-24 found twelve faults, and eleven fixes landed the same day in v2.8442 to v2.8457, walked on the live site and all held · the twelfth, no line ever reading *Opened*, was the mail service's setting, turned on at the owner's word that day, and a bill's line read *Opened* on the live page within hours · left: the leader's look
 summary: >
   The owner asked that Bills sent show more clearly who has paid and when, in a way that fits what
   the leader already reads there, and that he can see how much money comes in from Stripe on any
@@ -15,7 +15,7 @@ next: The leader opens the day he wanted to check. Then the card is retired.
 size: M as a train of three (M · S · M) and the older rows (S), all landed
 blocker: The leader's look.
 opinion: retire the card after the leader's look; the views and the Stripe day need nothing more
-ver: v2.8333 · v2.8335 · v2.8343 · v2.8371
+ver: v2.8333 · v2.8335 · v2.8343 · v2.8371 · v2.8442 to v2.8457
 ---
 
 # Bills sent: who paid, when, and what came in each day (#422)
@@ -295,6 +295,8 @@ The owner said go on 2026-11-23: *Let's build it all testing along the way, maki
 | 2 | The Stripe paid day at its source: `mark_invoice_paid_from_stripe` files the company's day. Migration `20261123074206`, with a SQL bed that ran green on the whole schema | v2.8335, merged and pushed on the owner's yes on 2026-11-23. The live function was read afterwards: it files the company's day, and the service role alone may call it. The older rows were a second step: v2.8371 moved the six back a day on the owner's yes, after their list was read, and was pushed the same day. Read afterwards, no Stripe row sat a day late and every job's paid total still matched its payments |
 | 3 | By day paid: the switch, the month, the picked day, the chips, the payout tile, the Paid this week tile, print and CSV | v2.8343 |
 | 4 | A picked day names the bank deposits that landed that day and are on no bill yet, with **Open deposits**. One rule with the Dashboard's Money in bar (`moneyInDeposits.ts`). Never added to a figure | v2.8493, not yet looked at on the live site |
+| 5 | The live test's faults, one PR a fault. A test bill is in no total in either view. A record opened from By day paid goes back to its day. A part-paid record draws its cents small. A credit's mark is whole on a phone. Chips and names stand 44 px on a phone. A paid line says *day not on record* or *before the first send on record*. An empty **Did not arrive** says nothing is waiting. By day paid opens on the newest day with money. The spreadsheet file is named for its chip. The tiles fill their rows on a phone. By day paid's foot says what a day leaves out. The guide matches the screen in four places | v2.8442, v2.8443, v2.8445 to v2.8448, v2.8450 to v2.8453 and v2.8457. Walked look-only on the live site on 2026-11-24 at 1400 and 375 px, light and dark. Every one held |
+| 6 | *Opened*. The app was ready for the word and the mail service never reported an open, because open tracking was off for the sending domain. The owner chose to turn it on. Open tracking is on and click tracking is off, with one DNS record for it (`docs/DOMAIN_CUTOVER.md`). No code changed | On since 2026-11-24. The mail log held its first opened mails within two hours, one of them a bill, and that bill's line read *Opened* with its time on the live page |
 
 What step 1 found while it was built:
 
@@ -310,3 +312,12 @@ What step 3 found while it was built:
 - A month's cell is too narrow for a five-figure day. From ten thousand dollars a cell writes thousands with one decimal, and the picked day says the figure whole.
 - Money on a job with no bill named is listed as *Payment*, so a day's total agrees with the Money in bar.
 - Not built: a red word on a disputed card payment, and a week's total at the end of each row of the month.
+
+What the live test left, none of it a build that waits:
+
+- A test send stays on the list, marked *A test bill. It is in no total.* The other way is to hide it from every role but a dev. It is the owner's to change.
+- Ten older Housecall Pro bills are marked paid with no payment on record, so each reads *day not on record*. Entering each payment on its job gives the line its day. That record is the office's to make.
+- An open is the mail app's word. Some mail apps fetch a mail's pictures by themselves and read as opened within seconds of the send, and some block pictures and never do. The guide says so.
+- Mail sent before 2026-11-24 carries no tracking and never reads *Opened*.
+- On a phone 320 px wide the word *credit* in a day's cell is cut by about 2 px. A day's cell cannot reach 44 px across with seven in a row.
+- By day paid's own lines show the sent day and no span. They do not say *before the first send on record*.
