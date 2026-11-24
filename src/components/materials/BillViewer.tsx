@@ -38,6 +38,8 @@ export interface BillViewerProps {
 
 const NO_WORDS: readonly string[] = []
 
+const NO_WORDS: readonly string[] = []
+
 const TONE_COLOR: Record<BillFacts['linesTone'], string> = { ok: 'var(--text-green-700)', accepted: 'var(--text-green-700)', off: 'var(--text-amber-800)', none: 'var(--text-muted)' }
 
 /**

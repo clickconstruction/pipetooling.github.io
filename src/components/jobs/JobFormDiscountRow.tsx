@@ -20,6 +20,7 @@ import {
   parseDiscountEntry,
   workLineDollars,
 } from '../../lib/jobs/discountLine'
+import { Money } from '../Money'
 
 /** Discount green stays literal (saturated status color, theme rules). */
 /** The discount's ink: green-700, `#15803d` in light and `#4ade80` in dark; the literal `#0f7a52` read 2.74:1 on the dark surface (punch list #194, v2.6075). */
@@ -470,7 +471,7 @@ export function JobFormDiscountRow({
                   <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                     <input type="checkbox" checked={on} onChange={() => toggleBasisRow(r.id)} />
                     <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(r.name ?? '').trim()}</span>
-                    <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(workLineDollars(r))}</span>
+                    <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}><Money amount={workLineDollars(r)} /></span>
                   </label>
                 )
               })}
@@ -482,7 +483,7 @@ export function JobFormDiscountRow({
               role="status"
               style={{ marginTop: 4, fontSize: '0.75rem', color: 'var(--text-amber-700)', background: 'var(--bg-amber-100)', border: '1px solid #f5d9a8', borderRadius: 6, padding: '3px 8px' }}
             >
-              Can&apos;t exceed ${formatCurrency(basisDollars)} — the work it applies to. Kept at ${formatCurrency(basisDollars)}.
+              Can&apos;t exceed <Money amount={basisDollars} /> — the work it applies to. Kept at <Money amount={basisDollars} />.
             </div>
           )}
           {dollars > 0 && billShares.length > 0 && !locked && (
@@ -490,7 +491,7 @@ export function JobFormDiscountRow({
               On the customer&apos;s bill: <em>{billLine}</em>{' '}
               {billShares.slice(0, 3).map((s, i) => (
                 <span key={s.name + i}>
-                  {i > 0 ? ', ' : ''}−${formatCurrency(s.cents / 100)} with {s.name}
+                  {i > 0 ? ', ' : ''}−<Money amount={s.cents / 100} /> with {s.name}
                 </span>
               ))}
               {billShares.length > 3 ? ', …' : ''}

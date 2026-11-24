@@ -4,6 +4,7 @@ import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
 import { buildFixtureStripeLineDescriptionForStripe } from '../../lib/stripeInvoiceLineDescription'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 export type JobFormStripeLinePreviewDialogProps = {
   open: boolean
@@ -94,7 +95,7 @@ export function JobFormStripeLinePreviewDialog({ open, rows, onClose, zIndex }: 
                 }}
               >
                 {isDiscountRow(f)
-                  ? `${discountBillDescription(f.name, f.discount_pct)}    −$${formatCurrency(derivedDiscountDollars(rows, f))}`
+                  ? <MoneyText text={`${discountBillDescription(f.name, f.discount_pct)}    −$${formatCurrency(derivedDiscountDollars(rows, f))}`} />
                   : buildFixtureStripeLineDescriptionForStripe(f.name, f.line_description)}
               </div>
             ))
