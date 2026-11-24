@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { UpdatePrompt } from './UpdatePrompt'
 import { AUTO_RELOAD_KEY } from '../lib/autoReload'
 import { __resetUnsavedWorkForTests, holdUnsavedWork, wrapFetchCountingWrites } from '../lib/unsavedWork'
+import { markPhoneSheetOpen, resetPhoneSheetOpenForTests, UPDATE_PILL_BOTTOM, UPDATE_PILL_TOP } from '../lib/phoneSheetOpen'
 
 type SWOpts = { onNeedRefresh?: () => void; onRegisteredSW?: (url: string, reg: unknown) => void }
 const swOpts: { current: SWOpts | null } = { current: null }
@@ -91,6 +92,32 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
     expect(screen.getByText('A new version is ready.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy()
     expect(updateSW).not.toHaveBeenCalled()
+  })
+
+  it('sits at the bottom of the screen, and moves to the top while a phone sheet is open (v2.8507)', () => {
+    resetPhoneSheetOpenForTests()
+    mount()
+    fireEvent.pointerDown(window)
+    act(() => swOpts.current?.onNeedRefresh?.())
+    const pill = screen.getByRole('status')
+    expect(pill.getAttribute('data-update-pill')).toBe('bottom')
+    expect(pill.style.bottom).toBe(UPDATE_PILL_BOTTOM)
+    expect(pill.style.top).toBe('')
+    // A sheet opens: its last press is at the bottom of the screen, so the pill leaves it.
+    let close = () => {}
+    act(() => {
+      close = markPhoneSheetOpen()
+    })
+    expect(pill.getAttribute('data-update-pill')).toBe('top')
+    expect(pill.style.top).toBe(UPDATE_PILL_TOP)
+    expect(pill.style.bottom).toBe('')
+    // Both presses still answer from up there.
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Dismiss update notice until the next deploy' })).toBeTruthy()
+    act(() => close())
+    expect(pill.getAttribute('data-update-pill')).toBe('bottom')
+    expect(pill.style.bottom).toBe(UPDATE_PILL_BOTTOM)
+    expect(pill.style.top).toBe('')
   })
 
   it('a route change with nothing open reloads; with a dialog open it only shows the pill', () => {

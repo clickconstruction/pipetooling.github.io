@@ -22,6 +22,8 @@ A new version is ready. {{button:blue|Reload}} Not now
 - **Reload** applies the update right away. The app refreshes once and brings you back where you were. Finish typing anything first. An unsaved form is lost on reload, just like a browser refresh.
 - **Not now** hides the pill so you can keep working. The app leaves you alone for ten minutes, then takes the next quiet moment. The pill also comes back on its own. Closing and reopening the app picks up the update automatically.
 
+The pill sits at the bottom of the screen. On a phone, a sheet that rises from the bottom keeps its last button there. While such a sheet is open, the pill sits at the top of the screen. So it never covers a button like **Send write-up to HR**.
+
 The app also checks for new versions on its own about once an hour. It checks again when you return to a tab that has been sitting in the background. So a phone left open overnight finds the morning's update by itself.
 
 ## If a page ever fails to load

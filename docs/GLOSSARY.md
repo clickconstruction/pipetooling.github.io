@@ -2507,6 +2507,8 @@ The row waits on People, HR, **Pending reports** as any field report does, and t
 **Add to it** sends a second report that names the first, and **Take it back** closes a waiting one with the writer's reason.
 Since v2.8174 a write-up carries up to four photos (`writeUpPhotos.ts`, the private `person-report-photos` bucket and `person_report_photos`, keyed to the press), sent ahead of it or kept on the phone with it, shown to the office on Pending reports, and saved as one evidence record on the file when the report is filed.
 Since v2.8250 the amber note on **Your write-ups** (*Kept on this phone at …*) goes once no kept write-up is waiting, a sent one reads *Sent to HR at* with the time it went, and a refused one shows no sent word while its row, **Not sent**, carries the reason.
+Since v2.8507 the press sits above the Job Mode card in Job Mode and under the greeting on the short Dashboard, where a tall job card or the lines that wait can no longer push it under the phone's bottom strip.
+Since v2.8507 the app's *A new version is ready* pill draws at the top of the screen while a phone sheet is open (`phoneSheetOpen.ts`, marked by `PhoneSheet`), so it no longer covers a sheet's bottom press.
 The press took the place of the Dashboard's **HR Report** card, retired in v2.8174.
 A formal **Writeup** on People, Paperwork is a different paper, built by the office from a template.
 → *HR files*
