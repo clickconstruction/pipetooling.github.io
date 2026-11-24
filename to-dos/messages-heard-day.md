@@ -2,7 +2,7 @@
 name: "Messages: a day was heard, say what it is"
 number: 421
 group: ready
-status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 merged · PR 2 #9514 the migration merged and pushed · PR 3 #9526 the choice merged · PR 4 #9533 the write-throughs merged · PR 5 #9536 the mark's job armed
+status: built 2026-11-23 on the owner's word, straight to the choice · all five merged: #9510, #9514 (pushed), #9526, #9533, #9536 · types #9566 · dev seat live · the walk is owed
 summary: >
   When a person names a day in a text or a voicemail, Messages was planned to lift the day out,
   ask the office what it is a promise of, and write it where that kind of date lives. The table, the
@@ -10,9 +10,9 @@ summary: >
   voicemail's Keep the day, the row that offers a heard day, and the choice under the line. Card
   #129 built the one kind the office uses, a customer's promise to pay, by another road. This card
   keeps the rest so it is not lost, with what exists, what is missing and what it would take.
-next: The types PR and the dev seat's deploy for #9514, then walk it on a ZZ Test thread as the card's verify recipe says.
+next: Walk it on a ZZ Test thread as the card's verify recipe says, then delete the card. A start or delivery writes a start and Insurance or W-9 writes insurance, so the walk also says whether the office needs to pick the second.
 size: M as a train of five (S · XS · M · M · XS)
-blocker: none. #9514 is pushed, and PRs 3 to 5 are armed.
+blocker: none. The walk writes prod, so it waits on a person at hand.
 opinion: build — the owner's call of 2026-11-23
 ---
 
@@ -39,7 +39,7 @@ customer's payment opens #129's sheet. The screens he approved are the *after* o
 5. **PR 5, v2.8386**: a payment mark carries its job, the small extra below. The sheet's job goes with the mark, the
    job's *They promised* reads its own marks, and *Never said that* leaves another job's. The press also finds the
    line's own job from its key (`tiedJobId`), a fault found on the way: the whole key was compared with a job's id, so
-   a line's own job never matched. PR #9536, armed.
+   a line's own job never matched. PR #9536, merged.
 
 ## Where this comes from
 
