@@ -21,6 +21,7 @@ import {
   billsSentPayWords,
   billsSentPhoneWords,
   billsSentRecord,
+  billsSentRecordBack,
   billsSentRecordHtml,
   billsSentRecordPath,
   byHandDayOffered,
@@ -441,6 +442,19 @@ describe('billsSentRecord (PR 4)', () => {
       ['Tue, Nov 3 · 4:41 PM', 'Emailed by Priya', 'To Sable Ridge Builders, hal@sableridge.example. Opened Wed, Nov 4 at 8:12 AM.'],
     ])
     expect(billsSentRecordPath(BILL_A)).toBe(`/bills-sent?bill=${BILL_A}`)
+    // Opened from a day of By day paid, the address keeps that day and its chip, so the record can lead back to it.
+    expect(billsSentRecordPath(BILL_A, { day: '2026-11-23' })).toBe(`/bills-sent?bill=${BILL_A}&view=paid&day=2026-11-23`)
+    expect(billsSentRecordPath(BILL_A, { day: '2026-11-23', how: 'stripe' })).toBe(`/bills-sent?bill=${BILL_A}&view=paid&day=2026-11-23&how=stripe`)
+    expect(billsSentRecordPath(BILL_A, { day: '2026-11-23', how: 'all' })).toBe(`/bills-sent?bill=${BILL_A}&view=paid&day=2026-11-23`)
+    expect(billsSentRecordPath(BILL_A, { day: 'soon' })).toBe(`/bills-sent?bill=${BILL_A}`)
+    // The record's way back: the list, or the day it was opened from, by name.
+    expect(billsSentRecordBack({ view: null, day: null, how: null })).toEqual({ to: '/bills-sent', label: '← All bills sent' })
+    expect(billsSentRecordBack({ view: 'paid', day: '2026-11-23', how: null })).toEqual({ to: '/bills-sent?view=paid&day=2026-11-23', label: '← What came in Mon, Nov 23' })
+    expect(billsSentRecordBack({ view: 'paid', day: '2026-11-23', how: 'stripe' })).toEqual({ to: '/bills-sent?view=paid&day=2026-11-23&how=stripe', label: '← What came in Mon, Nov 23' })
+    // A day that does not read, or a day with no view, goes to the list. A chip that is no word is dropped.
+    expect(billsSentRecordBack({ view: 'paid', day: 'soon', how: 'stripe' })).toEqual({ to: '/bills-sent', label: '← All bills sent' })
+    expect(billsSentRecordBack({ view: null, day: '2026-11-23', how: null })).toEqual({ to: '/bills-sent', label: '← All bills sent' })
+    expect(billsSentRecordBack({ view: 'paid', day: '2026-11-23', how: 'x&y=1' }).to).toBe('/bills-sent?view=paid&day=2026-11-23')
   })
 
   it('still has a record for a bill with no send, and none for a bill the page does not know', () => {

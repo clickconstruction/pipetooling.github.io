@@ -416,6 +416,15 @@ describe('BillsSentLedger', () => {
     opener.mockRestore()
   })
 
+  it('leads a record opened from a day of By day paid back to that day, by name', async () => {
+    io.data = data([copy({})])
+    renderWithProviders(<BillsSentLedger />, { route: `/bills-sent?bill=${BILL}&view=paid&day=2026-11-03&how=stripe` })
+    await screen.findByTestId('bills-sent-record')
+    // The live test pressed back from a record and lost the day it came from.
+    expect(screen.getByRole('link', { name: '← What came in Tue, Nov 3' }).getAttribute('href')).toBe('/bills-sent?view=paid&day=2026-11-03&how=stripe')
+    expect(screen.queryByRole('link', { name: '← All bills sent' })).toBeNull()
+  })
+
   it('makes a bill\u2019s name on a line the door to its record', async () => {
     io.data = data([copy({})])
     renderWithProviders(<BillsSentLedger />)

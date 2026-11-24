@@ -294,7 +294,9 @@ The words after the pill say when the bill went and how long the money took.
 
 One deposit can pay several bills. Those bills sit under one line that reads like *One deposit · Check 4417 · 2 bills*.
 
-Press a bill's name to open that bill's record. Press {{button:outline|By day sent}} to go back to the list.
+Press a bill's name to open that bill's record. The record's back link names the day you came from, like **← What came in Mon, Nov 23**.
+
+Press {{button:outline|By day sent}} to go back to the list.
 
 A green tile on the list reads **Paid this week**. Press the tile to open the second view.
 
