@@ -43,13 +43,15 @@ vi.mock('https://esm.sh/@supabase/supabase-js@2', () => ({
 const ENV: Record<string, string> = { SUPABASE_URL: 'http://127.0.0.1:9', SUPABASE_ANON_KEY: 'anon-key' }
 
 /** The map services: Nominatim's search, the Census county lookup by point, the Census address lookup. */
-const net: { nominatim: Array<{ lat: string; lon: string }>; county: string; google: string; asked: string[] } = { nominatim: [], county: 'Travis County', google: 'ZERO_RESULTS', asked: [] }
+const net: { nominatim: Array<{ lat: string; lon: string }> | number; county: string; google: string; asked: string[] } = { nominatim: [], county: 'Travis County', google: 'ZERO_RESULTS', asked: [] }
 const realFetch = globalThis.fetch
 function fakeFetch(input: string | URL | Request): Promise<Response> {
   const url = String(input instanceof Request ? input.url : input)
   const json = (body: unknown) => Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }))
   if (url.includes('nominatim.openstreetmap.org')) {
     net.asked.push('nominatim')
+    // A number is OpenStreetMap turning the function away with that status (v2.8484).
+    if (typeof net.nominatim === 'number') return Promise.resolve(new Response('refused', { status: net.nominatim }))
     return json(net.nominatim)
   }
   if (url.includes('/geographies/coordinates')) return json({ result: { geographies: { Counties: [{ NAME: net.county }] } } })
@@ -178,6 +180,19 @@ describe('geocode-one remembers an address no service could place (punch list #4
     expect(db.upserts).toEqual([])
   })
 
+  it('OpenStreetMap gives no answer, Google and the Census say not found: the miss is kept, and the answer carries the day (v2.8484)', async () => {
+    ENV.GOOGLE_MAPS_API_KEY = 'test-key'
+    net.nominatim = 403
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const out = await (await post(WORDS)).json()
+    expect(out).toMatchObject({ ok: false, error: 'not_found', detail: 'OpenStreetMap (Nominatim) HTTP 403; no match from US Census' })
+    expect(out.remembered).toBeUndefined()
+    expect(Number.isFinite(Date.parse(String(out.checked_at)))).toBe(true)
+    expect(db.missUpserts).toEqual([{ address_normalized: KEY, error_code: 'not_found', detail: 'OpenStreetMap (Nominatim) HTTP 403; no match from US Census' }])
+    expect(warn.mock.calls.some((c) => String(c[0]).includes('OpenStreetMap gave no plain answer: HTTP 403'))).toBe(true)
+    warn.mockRestore()
+  })
+
   it('a miss that stands: no service is asked, and the answer says so with the day it was checked', async () => {
     ENV.GOOGLE_MAPS_API_KEY = 'test-key'
     const checked = daysAgo(3)
@@ -216,7 +231,9 @@ describe('geocode-one remembers an address no service could place (punch list #4
   it('Google over its limit keeps nothing', async () => {
     ENV.GOOGLE_MAPS_API_KEY = 'test-key'
     net.google = 'OVER_QUERY_LIMIT'
-    expect(await (await post(WORDS)).json()).toMatchObject({ ok: false, error: 'google_over_query' })
+    const out = await (await post(WORDS)).json()
+    expect(out).toMatchObject({ ok: false, error: 'google_over_query' })
+    expect(out.checked_at).toBeUndefined()
     expect(db.missUpserts).toEqual([])
   })
 
