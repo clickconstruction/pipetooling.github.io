@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { formatCurrency } from '../../lib/format'
 import { STAGE_COLORS, STAGE_KEYS, STAGE_LABELS, STAGE_NUMBER, type MaterialsByStageSummary } from '../../lib/bids/materialsByStage'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money, MoneyText } from '../Money'
 
 /**
  * Materials by stage (v2.3672): the Stages panel in the Takeoffs rail — raw
@@ -76,8 +77,8 @@ export function TakeoffStagesPanel({ summary, factorDefault, factorOverride, onF
             {STAGE_NUMBER[k]} {STAGE_LABELS[k]}
           </span>
           <span style={num}>
-            <span style={{ ...muted, fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(summary.byStage[k])} → </span>
-            <span style={{ fontWeight: 700 }} data-testid={`stage-scaled-${k}`}>${formatCurrency(summary.scaled[k])}</span>
+            <span style={{ ...muted, fontVariantNumeric: 'tabular-nums' }}><Money amount={summary.byStage[k]} symbol="" /> → </span>
+            <span style={{ fontWeight: 700 }} data-testid={`stage-scaled-${k}`}><Money amount={summary.scaled[k]} /></span>
           </span>
         </div>
       ))}
@@ -108,7 +109,7 @@ export function TakeoffStagesPanel({ summary, factorDefault, factorOverride, onF
           />
           <span style={muted}>{factorOverride != null ? 'this bid' : 'company default'}</span>
         </span>
-        <span style={{ ...num, fontWeight: 700, fontSize: '1rem' }} data-testid="stage-scaled-total">${formatCurrency(summary.totalScaled)}</span>
+        <span style={{ ...num, fontWeight: 700, fontSize: '1rem' }} data-testid="stage-scaled-total"><Money amount={summary.totalScaled} /></span>
       </div>
       <span style={muted}>
         {costed === 0
@@ -121,7 +122,7 @@ export function TakeoffStagesPanel({ summary, factorDefault, factorOverride, onF
       {!nothingStaged ? (
         <span style={muted}>
           Shares {Math.round(summary.sharesPct.rough_in)} · {Math.round(summary.sharesPct.top_out)} · {Math.round(summary.sharesPct.trim_set)} %
-          {pct != null ? ` · ${pct}% of the $${formatCurrency(bidAmount ?? 0)} bid` : ''}
+          {pct != null ? <MoneyText text={` · ${pct}% of the $${formatCurrency(bidAmount ?? 0)} bid`} /> : ''}
         </span>
       ) : null}
       {fillNote ? (

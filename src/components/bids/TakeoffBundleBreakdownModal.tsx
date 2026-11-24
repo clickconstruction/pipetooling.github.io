@@ -2,8 +2,8 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
-import { formatCurrency } from '../../lib/format'
 import { loadBundleBreakdown, type BundleBreakdown } from '../../lib/bids/assemblyBundleBreakdown'
+import { Money } from '../Money'
 
 export type BundleBreakdownModalTarget = { templateId: string; lineId: string; assemblyName: string }
 
@@ -129,7 +129,7 @@ export function TakeoffBundleBreakdownModal({
                               </span>
                             )}
                           </td>
-                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>${formatCurrency(h.total)}</td>
+                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}><Money amount={h.total} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -150,7 +150,7 @@ export function TakeoffBundleBreakdownModal({
                       {bundleBreakdownData.bundleQuotes.map((q) => (
                         <tr key={q.priceId} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.4rem 0.5rem' }}>{q.supplyHouseName}</td>
-                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>${formatCurrency(q.price)}</td>
+                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}><Money amount={q.price} /></td>
                           <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>
                             <button
                               type="button"

@@ -15,6 +15,7 @@ import { countedLabel } from '../../../lib/batchWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
 import type { LegalFirmRow } from '../../../lib/legal/legalMatters'
+import { MoneyText } from '../../Money'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -153,7 +154,7 @@ export default function LegalFirmCoverage({ firm, firms, coverage: saved, cases,
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <h4 style={{ margin: 0, fontSize: '0.95rem' }}>Where {firm.name} covers</h4>
         <span data-legal-firm-coverage-counties style={chip}>{coverageCountyChip(coverage.counties)}</span>
-        <span data-legal-firm-coverage-cases style={chip}>{coverageCasesChip(coverage.cases, coverage.balance)}</span>
+        <span data-legal-firm-coverage-cases style={chip}><MoneyText text={coverageCasesChip(coverage.cases, coverage.balance)} /></span>
         {extending ? <span data-legal-firm-extending style={{ ...chip, borderColor: 'var(--border-blue)', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' }}>editing</span> : null}
       </div>
       {extending ? (
@@ -286,14 +287,14 @@ function CoverageTable({ coverage, county, added, nameOf, onHold, onTakeFirstCal
                 ) : null}
               </td>
               <td style={num}>{r.cases}</td>
-              <td style={{ ...num, color: r.cases ? undefined : 'var(--text-muted)' }}>{r.cases ? formatLegalMoney(r.balance) : '—'}</td>
+              <td style={{ ...num, color: r.cases ? undefined : 'var(--text-muted)' }}>{r.cases ? <MoneyText text={formatLegalMoney(r.balance)} /> : '—'}</td>
             </tr>
           )
         })}
         <tr data-legal-firm-coverage-sum style={{ fontWeight: 600 }}>
           <td style={{ ...td, borderBottom: 0 }}>{coverageSumWords(coverage)}</td>
           <td style={{ ...num, borderBottom: 0 }}>{coverage.cases}</td>
-          <td style={{ ...num, borderBottom: 0, color: coverage.cases ? undefined : 'var(--text-muted)' }}>{coverage.cases ? formatLegalMoney(coverage.balance) : '—'}</td>
+          <td style={{ ...num, borderBottom: 0, color: coverage.cases ? undefined : 'var(--text-muted)' }}>{coverage.cases ? <MoneyText text={formatLegalMoney(coverage.balance)} /> : '—'}</td>
         </tr>
       </tbody>
     </table>

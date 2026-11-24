@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { MUTED, pill } from './legalDeskShared'
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
 import type { SettlementPath, SettlementPathPart, SettlementPaths } from '../../../lib/legal/settlementPaths'
+import { MoneyText } from '../../Money'
 
 /**
  * What each path nets (v2.6176, punch list #218 PR 3): the cards `settlementPaths` returns, under the
@@ -51,15 +52,15 @@ function PathCard({ path }: { path: SettlementPath }) {
         <span aria-hidden style={{ flex: `${Math.max(0.001, 1 - path.parts.reduce((s, p) => s + p.fraction, 0))} 1 0`, minWidth: 0 }} />
       </div>
       <div style={{ fontSize: '1.05rem', fontWeight: 800, color: path.keep < -0.004 ? '#b42318' : 'var(--text-strong)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
-        {path.keep < -0.004 ? `${formatLegalMoney(-path.keep)} short` : formatLegalMoney(path.keep)}
+        {path.keep < -0.004 ? <MoneyText text={`${formatLegalMoney(-path.keep)} short`} /> : <MoneyText text={formatLegalMoney(path.keep)} />}
         <span style={{ ...MUTED, display: 'block', fontSize: '0.66rem', fontWeight: 600 }}>{path.keep < -0.004 ? 'the costs exceed the claim' : path.kind === 'trial' ? 'we keep at a full win' : 'we keep'}</span>
       </div>
       <div style={{ display: 'grid', gap: 1, fontSize: '0.7rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}><span style={MUTED}>{path.kind === 'trial' ? 'the claim' : path.title === 'Settle at their offer' ? 'their offer' : 'our counter'}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(path.gross)}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}><span style={MUTED}>{path.kind === 'trial' ? 'the claim' : path.title === 'Settle at their offer' ? 'their offer' : 'our counter'}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}><MoneyText text={formatLegalMoney(path.gross)} /></span></div>
         {path.parts.filter((p) => p.key !== 'keep').map((p) => (
           <div key={p.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
             <span style={MUTED}>{p.label.replace(/ · \$[\d,.]+$/, '')}</span>
-            <span style={{ color: p.key === 'letgo' ? 'var(--text-muted)' : '#b42318', fontVariantNumeric: 'tabular-nums' }}>{p.key === 'letgo' ? formatLegalMoney(p.amount) : `− ${formatLegalMoney(p.amount)}`}</span>
+            <span style={{ color: p.key === 'letgo' ? 'var(--text-muted)' : '#b42318', fontVariantNumeric: 'tabular-nums' }}>{p.key === 'letgo' ? <MoneyText text={formatLegalMoney(p.amount)} /> : <MoneyText text={`− ${formatLegalMoney(p.amount)}`} />}</span>
           </div>
         ))}
       </div>

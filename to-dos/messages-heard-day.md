@@ -2,7 +2,7 @@
 name: "Messages: a day was heard, say what it is"
 number: 421
 group: ready
-status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 merged · PR 2 #9514 the migration merged and pushed · PR 3 #9526 the choice merged · PR 4 #9533 the write-throughs armed · PR 5 #9536 the mark's job armed
+status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 merged · PR 2 #9514 the migration merged and pushed · PR 3 #9526 the choice merged · PR 4 #9533 the write-throughs merged · PR 5 #9536 the mark's job armed
 summary: >
   When a person names a day in a text or a voicemail, Messages was planned to lift the day out,
   ask the office what it is a promise of, and write it where that kind of date lives. The table, the
@@ -35,7 +35,7 @@ customer's payment opens #129's sheet. The screens he approved are the *after* o
 4. **PR 4, v2.8385**: the write-throughs' hands (`messages/promiseWritesIo.ts`): the read that fills `PromiseAt` (the
    line's job by name and kind, the company's open ask, the person's standing holds) and the writers through the Board's
    own verbs, the bid's contact log and `nudge_hold_until`; the toast names where it went, every skip and a refusal.
-   PR #9533, armed.
+   PR #9533, merged.
 5. **PR 5, v2.8386**: a payment mark carries its job, the small extra below. The sheet's job goes with the mark, the
    job's *They promised* reads its own marks, and *Never said that* leaves another job's. The press also finds the
    line's own job from its key (`tiedJobId`), a fault found on the way: the whole key was compared with a job's id, so

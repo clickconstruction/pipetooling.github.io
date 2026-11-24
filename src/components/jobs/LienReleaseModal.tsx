@@ -82,6 +82,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useNavigate } from 'react-router-dom'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { useAuth } from '../../hooks/useAuth'
+import { MoneyText } from '../Money'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -1478,7 +1479,7 @@ export default function LienReleaseModal({
                       >
                         <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
                           <span style={{ fontWeight: 700 }}>
-                            #{idx + 1} · {openRem <= 0.005 ? `$${face.toLocaleString('en-US')}` : `${lienWaiverMoney(String(openRem))} owed`}
+                            #{idx + 1} · {openRem <= 0.005 ? `$${face.toLocaleString('en-US')}` : <MoneyText text={`${lienWaiverMoney(String(openRem))} owed`} />}
                           </span>
                           <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 400 }}>
                             {sub}

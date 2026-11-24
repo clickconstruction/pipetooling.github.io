@@ -1,5 +1,5 @@
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money } from '../Money'
 
 /** What the confirm shows before a payment line leaves the job: the line, the job total, the remainder now and after. */
 export type PaymentRemovePreview = { rowAmt: number; jobTotal: number; currentRem: number; newRem: number }
@@ -55,7 +55,7 @@ export function JobFormPaymentRemoveConfirm({ open, preview, confirmsPersistedRp
             <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
               <p style={{ margin: '0 0 0.75rem' }}>
                 This removes a payment of{' '}
-                <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(preview.rowAmt)}</strong> from this job.
+                <strong style={{ fontVariantNumeric: 'tabular-nums' }}><Money amount={preview.rowAmt} /></strong> from this job.
               </p>
               <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)' }}>
                 {confirmsPersistedRpc ? (
@@ -73,19 +73,19 @@ export function JobFormPaymentRemoveConfirm({ open, preview, confirmsPersistedRp
                   <tr>
                     <td style={{ padding: '0.35rem 0', color: 'var(--text-muted)' }}>Job total</td>
                     <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                      ${formatCurrency(preview.jobTotal)}
+                      <Money amount={preview.jobTotal} />
                     </td>
                   </tr>
                   <tr>
                     <td style={{ padding: '0.35rem 0', color: 'var(--text-muted)' }}>Remaining ($) now</td>
                     <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                      ${formatCurrency(preview.currentRem)}
+                      <Money amount={preview.currentRem} />
                     </td>
                   </tr>
                   <tr style={{ borderTop: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.35rem 0', fontWeight: 600, color: 'var(--text-strong)' }}>Remaining ($) after removal</td>
                     <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>
-                      ${formatCurrency(preview.newRem)}
+                      <Money amount={preview.newRem} />
                     </td>
                   </tr>
                 </tbody>

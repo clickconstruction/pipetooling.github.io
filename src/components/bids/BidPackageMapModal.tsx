@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { formatCurrency } from '../../lib/format'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
 import { latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
 import { buildPackageMap, type PackageMap, type PackageMapPrice } from '../../lib/bids/bidPackageMap'
 import type { BidVersion, PriceBookVersion } from '../../lib/bids/bidPricingEngineTypes'
+import { Money } from '../Money'
 
 /**
  * Package map (v2.2374): a read-only tree of the whole bid — GC packets →
@@ -209,7 +209,7 @@ export function BidPackageMapModal({
             {map
               ? <>
                   {map.gcCount} GC{map.gcCount === 1 ? '' : 's'} · {map.versionCount} version{map.versionCount === 1 ? '' : 's'} · {map.priceCount} price{map.priceCount === 1 ? '' : 's'}
-                  {sharedCost != null ? <> · our cost <span style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(sharedCost)}</span> is shared by all of them</> : null}
+                  {sharedCost != null ? <> · our cost <span style={{ fontVariantNumeric: 'tabular-nums' }}><Money amount={sharedCost} /></span> is shared by all of them</> : null}
                 </>
               : 'Loading…'}
           </div>

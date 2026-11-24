@@ -12,6 +12,7 @@ import { JobFormFixturesSection } from './JobFormFixturesSection'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
 import { syncDiscountRows } from '../../lib/jobs/discountLine'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 beforeAll(() => {
   window.matchMedia = ((query: string) => ({
@@ -79,7 +80,7 @@ describe('JobFormDiscountRow', () => {
   it('shows the percent, its dollar twin, the readout, the bill line, and the footer equation', () => {
     renderSection([...work, discount()])
     expect((screen.getByLabelText('Discount amount') as HTMLInputElement).value).toBe('10')
-    expect(screen.getByText('−$3,774.50')).toBeTruthy()
+    expect(screen.getByText(moneyText('−$3,774.50'))).toBeTruthy()
     expect(screen.getByTestId('discount-readout').textContent).toContain('10% off')
     expect(screen.getByTestId('discount-readout').textContent).toContain('all 3 work lines')
     expect(screen.getByTestId('discount-bill-line').textContent).toContain('Negotiated discount (10%)')
@@ -101,7 +102,7 @@ describe('JobFormDiscountRow', () => {
 
   it('tapping the twin swaps a percent into dollars', () => {
     const { update } = renderSection([...work, discount()])
-    fireEvent.click(screen.getByText('−$3,774.50'))
+    fireEvent.click(screen.getByText(moneyText('−$3,774.50')))
     expect(update).toHaveBeenLastCalledWith('d', { discount_pct: null, line_unit_price: -3774.5 })
   })
 

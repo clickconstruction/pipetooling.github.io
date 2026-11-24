@@ -5,6 +5,7 @@ import { budgetStandsForJob, componentBurn, jobBudgetAwardOf, spendByComponent, 
 import { budgetWhySentence } from '../../lib/jobs/jobBudgetWhy'
 import type { JobBudgetState, SuggestedBid } from '../../hooks/useJobBudget'
 import type { JobChargesTimelineInputs } from '../../hooks/useJobChargesTimelineInputs'
+import { MoneyText } from '../Money'
 
 /**
  * The Budget card on the job's Costs tab (Burn against the bid, PR 2 — v2.3299).
@@ -278,7 +279,7 @@ export function JobBudgetCard(p: JobBudgetCardProps) {
         <label>
           subs $ <input type="number" min={0} step={100} value={subs} onChange={(e) => setSubs(e.target.value)} aria-label="Budget subs dollars" style={numInput} />
         </label>
-        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{p.companyRate != null ? `hours at the company rate $${formatCurrency(p.companyRate)}/h` : 'hours only — no company rate yet'}</span>
+        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{p.companyRate != null ? <MoneyText text={`hours at the company rate $${formatCurrency(p.companyRate)}/h`} /> : 'hours only — no company rate yet'}</span>
         <button type="button" onClick={() => void submitTyped()} disabled={p.budget.busy || !p.canWrite} style={btn(true)}>
           Use this budget
         </button>

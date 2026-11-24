@@ -10,6 +10,7 @@ import { useState, type CSSProperties, type ReactNode } from 'react'
 import { owedCheck, owedMoney, owedSettledWords, owedSheetMoneyWords, owedView, type OwedPerson, type OwedSheet } from '../../lib/people/subOwedBreakdown'
 import { rodeAlongWords } from '../../lib/subWorkOrders/teamSheetRule'
 import type { SheetPayWhen } from '../../lib/subWorkOrders/subLaborPayRun'
+import { MoneyText } from '../Money'
 
 export type SubOwedBlockProps = {
   person: OwedPerson | null
@@ -51,7 +52,7 @@ function Eq({ label, value, total }: { label: string; value: number; total?: boo
   return (
     <span style={{ display: 'grid', gap: 1 }}>
       <span style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)' }}>{label}</span>
-      <b style={{ fontVariantNumeric: 'tabular-nums', fontSize: total ? '1.02rem' : '0.92rem', color: 'var(--text-strong)' }}>{owedMoney(value)}</b>
+      <b style={{ fontVariantNumeric: 'tabular-nums', fontSize: total ? '1.02rem' : '0.92rem', color: 'var(--text-strong)' }}><MoneyText text={owedMoney(value)} /></b>
     </span>
   )
 }
@@ -79,14 +80,14 @@ export function SubOwedBlock({ person, name, balanceDue, narrow = false, onOpenJ
       {s.lines.map((l, i) => (
         <div key={`l${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
           <span>{l.label}</span>
-          <span style={num}>{owedMoney(l.amount)}</span>
+          <span style={num}><MoneyText text={owedMoney(l.amount)} /></span>
         </div>
       ))}
       {s.reconstructed ? <div style={{ color: 'var(--text-muted)' }}>No priced lines. The total is read back from the money moved.</div> : null}
       {s.money.map((m) => (
         <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, color: m.kind === 'backcharge' ? 'var(--text-red-700)' : 'var(--text-green-700)' }}>
           <span>{m.words}</span>
-          <span style={num}>−{owedMoney(m.amount)}</span>
+          <span style={num}>−<MoneyText text={owedMoney(m.amount)} /></span>
         </div>
       ))}
       {s.withNames.length > 0 ? <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>{rodeAlongWords(s.withNames, name)}</div> : null}
@@ -107,7 +108,7 @@ export function SubOwedBlock({ person, name, balanceDue, narrow = false, onOpenJ
 
   const standing = (s: OwedSheet) =>
     s.settled ? (
-      <span style={chip('green')}>{owedSettledWords(s)}</span>
+      <span style={chip('green')}><MoneyText text={owedSettledWords(s)} /></span>
     ) : s.payWhen ? (
       <span style={chip(s.payWhen.tone)} title={s.payWhen.detail}>
         {s.payWhen.label}
@@ -117,7 +118,7 @@ export function SubOwedBlock({ person, name, balanceDue, narrow = false, onOpenJ
   return (
     <div data-testid="sub-owed-block" style={{ margin: narrow ? 0 : '0.75rem 0', border: narrow ? 'none' : '1px solid var(--border)', borderRadius: 8, padding: narrow ? 0 : '0.7rem 0.9rem', background: 'var(--surface)' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem' }}>
-        <b style={{ fontSize: narrow ? '1rem' : '0.875rem' }}>{narrow ? name : `What makes up ${owedMoney(open.open)}`}</b>
+        <b style={{ fontSize: narrow ? '1rem' : '0.875rem' }}>{narrow ? name : <MoneyText text={`What makes up ${owedMoney(open.open)}`} />}</b>
         {!narrow ? (
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
             {name}
@@ -193,7 +194,7 @@ export function SubOwedBlock({ person, name, balanceDue, narrow = false, onOpenJ
                 Open the job ›
               </button>
             ) : null}
-            <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{show === 'open' ? `${owedMoney(j.open)} open` : `${owedMoney(j.agreed)} agreed`}</span>
+            <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{show === 'open' ? <MoneyText text={`${owedMoney(j.open)} open`} /> : <MoneyText text={`${owedMoney(j.agreed)} agreed`} />}</span>
           </div>
           {j.sheets.map((s) => {
             const isOpen = openSheets.has(s.id)
@@ -203,15 +204,15 @@ export function SubOwedBlock({ person, name, balanceDue, narrow = false, onOpenJ
                   <span>
                     {isOpen ? '▾' : '▸'} {s.title}
                   </span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{owedMoney(show === 'open' ? s.open : s.agreed)}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}><MoneyText text={owedMoney(show === 'open' ? s.open : s.agreed)} /></span>
                 </button>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{owedSheetMoneyWords(s)}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}><MoneyText text={owedSheetMoneyWords(s)} /></div>
                 {s.withNames.length > 0 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>with {s.withNames.join(', ')}</div> : null}
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 5 }}>
                   {standing(s)}
                   {!s.settled && s.payWhen?.kind === 'ready' && onPay ? (
                     <button type="button" style={press} onClick={() => onPay(s.id)}>
-                      Pay {owedMoney(s.open)}…
+                      Pay <MoneyText text={owedMoney(s.open)} />…
                     </button>
                   ) : null}
                   {onOpenSheet ? (
@@ -238,14 +239,14 @@ export function SubOwedBlock({ person, name, balanceDue, narrow = false, onOpenJ
                     ) : null}
                     {!s.settled && s.payWhen?.kind === 'ready' && onPay ? (
                       <button type="button" style={press} onClick={() => onPay(s.id)}>
-                        Pay {owedMoney(s.open)}…
+                        Pay <MoneyText text={owedMoney(s.open)} />…
                       </button>
                     ) : null}
                   </span>
-                  <span style={num}>{owedMoney(s.agreed)}</span>
-                  <span style={num}>{s.paid > 0 ? owedMoney(s.paid) : '—'}</span>
-                  <span style={num}>{s.backcharged > 0 ? owedMoney(s.backcharged) : '—'}</span>
-                  <b style={num}>{owedMoney(s.open)}</b>
+                  <span style={num}><MoneyText text={owedMoney(s.agreed)} /></span>
+                  <span style={num}>{s.paid > 0 ? <MoneyText text={owedMoney(s.paid)} /> : '—'}</span>
+                  <span style={num}>{s.backcharged > 0 ? <MoneyText text={owedMoney(s.backcharged)} /> : '—'}</span>
+                  <b style={num}><MoneyText text={owedMoney(s.open)} /></b>
                 </div>
                 {isOpen ? sheetDetail(s) : null}
               </div>

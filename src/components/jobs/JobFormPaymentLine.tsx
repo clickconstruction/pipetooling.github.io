@@ -34,6 +34,7 @@ import { paymentMoveBlock, paymentMoveBlockText } from '../../lib/jobs/jobPaymen
 import { autoApplyInvoiceId } from '../../lib/jobs/paymentInvoiceLinking'
 import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
+import { MoneyText } from '../Money'
 
 /** The host's doors a payment line opens — the same seven the ③ table always had. */
 export type PaymentLineActions = {
@@ -175,7 +176,7 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
     <div className="jobPaymentLine" data-testid="payment-line" data-payment-id={row.id} data-source={source.kind}>
       <div className="jobPaymentLineMain">
         <span className="amt" aria-label={`Payment amount ${formatCurrency(amount)} dollars`}>
-          {partial && sliceAmount != null ? `$${formatCurrency(sliceAmount)} of ${amountText}` : amountText}
+          {partial && sliceAmount != null ? <MoneyText text={`$${formatCurrency(sliceAmount)} of ${amountText}`} /> : amountText}
         </span>
         {/* v2.4300: one middle cell, so long words wrap inside it and the ⋯ stays on the first line. */}
         <span className="mid">

@@ -16,6 +16,7 @@ import {
   type ProfitConcentrationLike,
 } from '../../lib/bids/profitBarLegend'
 import type { PricingProfitBarState } from '../../hooks/usePricingProfitBar'
+import { Money } from '../Money'
 
 export function PricingProfitBar({
   bar,
@@ -109,7 +110,7 @@ export function PricingProfitBar({
               {hoverSeg.label}
             </div>
             <div style={{ opacity: 0.75, fontVariantNumeric: 'tabular-nums' }}>
-              ${formatCurrency(hoverSeg.profit)} profit · {formatProfitShare(hoverSeg.share)} of job
+              <Money amount={hoverSeg.profit} /> profit · {formatProfitShare(hoverSeg.share)} of job
             </div>
           </div>
         ) : null}

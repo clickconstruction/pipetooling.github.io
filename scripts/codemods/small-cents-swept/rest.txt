@@ -1,0 +1,5 @@
+# The rest: Bills sent, GC mode, the user review window and the pages themselves (v2.8418).
+src/components/billing
+src/components/gc
+src/components/userReview
+src/pages

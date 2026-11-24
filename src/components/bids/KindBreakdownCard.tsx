@@ -1,6 +1,7 @@
 import { buildPricingComposition, type CompositionBucketKind, type CompositionRowInput } from '../../lib/bids/pricingComposition'
 import { formatCurrency } from '../../lib/format'
 import { BreakdownCardShell, type BreakdownSlice } from './BreakdownCardShell'
+import { MoneyText } from '../Money'
 
 type Props = {
   /** The Workbench's effective rows with their kinds. */
@@ -61,17 +62,17 @@ export function KindBreakdownCard({ rows, marginColor, gripFor }: Props) {
                     {b.rows} row{b.rows === 1 ? '' : 's'} · {Math.round(b.count).toLocaleString('en-US')} {b.unit} · {pct(b.revenueShare)} of the price
                   </span>
                 </td>
-                <td style={num(b.cost > 0 ? {} : { color: 'var(--text-faint)' })}>{b.cost > 0 ? money(b.cost) : 'no cost'}</td>
-                <td style={num()}>{money(b.revenue)}</td>
-                <td style={num(b.margin == null ? { color: 'var(--text-faint)' } : b.profit < 0 ? { color: 'var(--text-red-700)' } : {})}>{b.margin == null ? '—' : money(b.profit)}</td>
+                <td style={num(b.cost > 0 ? {} : { color: 'var(--text-faint)' })}>{b.cost > 0 ? <MoneyText text={money(b.cost)} /> : 'no cost'}</td>
+                <td style={num()}><MoneyText text={money(b.revenue)} /></td>
+                <td style={num(b.margin == null ? { color: 'var(--text-faint)' } : b.profit < 0 ? { color: 'var(--text-red-700)' } : {})}>{b.margin == null ? '—' : <MoneyText text={money(b.profit)} />}</td>
                 <td style={num({ fontFamily: 'inherit', fontWeight: 700, color: b.margin == null ? 'var(--text-faint)' : marginColor(b.margin) })}>{pct(b.margin)}</td>
               </tr>
             ))}
             <tr>
               <td style={cell(totalTd())}>The bid</td>
-              <td style={num(totalTd())}>{money(comp.totalCost)}</td>
-              <td style={num(totalTd())}>{money(comp.totalRevenue)}</td>
-              <td style={num(totalTd())}>{money(totalProfit)}</td>
+              <td style={num(totalTd())}><MoneyText text={money(comp.totalCost)} /></td>
+              <td style={num(totalTd())}><MoneyText text={money(comp.totalRevenue)} /></td>
+              <td style={num(totalTd())}><MoneyText text={money(totalProfit)} /></td>
               <td style={num(totalTd({ fontFamily: 'inherit', color: comp.totalCost > 0 ? marginColor(totalProfit / comp.totalRevenue) : 'var(--text-faint)' }))}>{comp.totalCost > 0 ? pct(totalProfit / comp.totalRevenue) : '—'}</td>
             </tr>
           </tbody>

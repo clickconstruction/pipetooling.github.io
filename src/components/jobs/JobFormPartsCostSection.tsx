@@ -28,6 +28,7 @@ import type { CategoryTagRow } from '../../lib/banking/categoryTags'
 import type { CardChargeExclusions } from '../../lib/jobs/cardChargeAllocationFilter'
 import type { MaterialsAccordionKey } from './useJobCostSnapshot'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
+import { Money } from '../Money'
 
 type JobFormPartsCostSectionProps = {
   editing: JobWithDetails | null
@@ -197,7 +198,7 @@ export function JobFormPartsCostSection({
                     <tr key={r.key} onClick={rowOpens(r) ? () => openRow(r) : undefined} style={{ cursor: rowOpens(r) ? 'pointer' : 'default', ...(r.key === 'total' ? { background: 'var(--bg-subtle)', fontWeight: 600 } : {}) }} data-testid={`money-row-${r.key}`}>
                       <td style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid var(--border)' }}>{r.label}{r.sub ? <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}> {r.sub}</span> : null}</td>
                       <td style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.hours != null ? `${r.hours.toLocaleString('en-US', { maximumFractionDigits: 0 })} h` : '—'}</td>
-                      <td style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.state === 'loading' ? 'Loading…' : r.state === 'failed' ? 'Couldn’t load' : `$${formatCurrency(r.usd)}`}</td>
+                      <td style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.state === 'loading' ? 'Loading…' : r.state === 'failed' ? 'Couldn’t load' : <Money amount={r.usd} />}</td>
                       <td style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                         {r.sharePct != null ? <><i style={{ display: 'inline-block', height: 6, width: Math.max(2, Math.round(r.sharePct)), background: '#2563eb', opacity: 0.7, borderRadius: 3, verticalAlign: 'middle', marginRight: 6 }} />{Math.round(r.sharePct)}%</> : r.key === 'total' ? '100%' : '—'}
                       </td>
@@ -243,7 +244,7 @@ export function JobFormPartsCostSection({
                               <td style={{ padding: '0.5rem 0.625rem' }}>{ln.supplyHouseName ?? '—'}</td>
                               <td style={{ padding: '0.5rem 0.625rem' }}>{ln.invoiceNumber}</td>
                               <td style={{ padding: '0.5rem 0.625rem' }}>{ln.invoiceDate || '—'}</td>
-                              <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(ln.allocatedAmount)}</td>
+                              <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><Money amount={ln.allocatedAmount} symbol="" /></td>
                             </tr>
                           ))}
                         </tbody>
@@ -331,7 +332,7 @@ export function JobFormPartsCostSection({
                                 {[ln.fixtureName, ln.partName].filter(Boolean).join(' · ') || '—'}
                               </td>
                               <td style={{ padding: '0.5rem 0.625rem', textAlign: 'center' }}>{ln.quantity}</td>
-                              <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(ln.lineTotal)}</td>
+                              <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><Money amount={ln.lineTotal} symbol="" /></td>
                             </tr>
                           ))}
                         </tbody>

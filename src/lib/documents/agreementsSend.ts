@@ -8,6 +8,7 @@
  */
 import { pickablePapers, type BookPaperRow, type PickablePaper } from '../jobs/jobPapers'
 import type { RosterPerson } from '../people/rosterPeople'
+import { companyByPersonName, type PersonCompanyLink, type SubCompany } from '../people/subCompanies'
 
 export const SEND_A_PAPER_LABEL = 'Send a paper'
 
@@ -38,6 +39,29 @@ export function sendRoster(roster: ReadonlyArray<Pick<RosterPerson, 'account_kin
     if (name && !people.has(name.toLowerCase())) people.set(name.toLowerCase(), { name, sub: r.kind === 'sub' })
   }
   return [...people.values()].sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/**
+ * The send roster with each person's trade company (punch list #403, step 6), so **Who is it with?** finds a worker by
+ * the company's name. A name two roster rows share gets no company, as People draws it. With no links read (anyone but
+ * the office's four roles) the roster is as it was.
+ */
+export function sendRosterWithCompanies(
+  people: ReadonlyArray<{ name: string; sub: boolean }>,
+  roster: ReadonlyArray<Pick<RosterPerson, 'person_id' | 'account_kind' | 'is_archived' | 'roster_name' | 'account_name' | 'pay_name'>>,
+  links: readonly PersonCompanyLink[],
+  companies: readonly SubCompany[],
+): Array<{ name: string; sub: boolean; company?: string }> {
+  if (links.length === 0) return [...people]
+  const named = roster
+    .filter((r) => r.account_kind === 'person' && !r.is_archived && r.person_id)
+    .map((r) => ({ id: r.person_id as string, name: (r.roster_name ?? r.account_name ?? r.pay_name ?? '').trim() }))
+    .filter((r) => r.name !== '')
+  const places = companyByPersonName(named, links, companies)
+  return people.map((p) => {
+    const place = places.get(p.name)
+    return place ? { ...p, company: place.company.name } : p
+  })
 }
 
 /**

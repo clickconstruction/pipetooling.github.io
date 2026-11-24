@@ -75,6 +75,7 @@ import { BookLineSearch, OftenMissed, StartFromBook } from './GcNewProjectScopeB
 import { SetKindsInfo } from './GcNewProjectSetKinds'
 import { DriveLinkField } from './GcNewProjectDriveLink'
 import type { NewProjectSeed } from '../../lib/prospects/gcLeadLane'
+import { MoneyText } from '../Money'
 
 /**
  * GC mode, the real build, step 4: New project, moved from the prototype (branch spike/gc-mode,
@@ -194,13 +195,13 @@ function BudgetSummary({ picked, sqFt, narrow }: { picked: { trade: string; budg
                 {l.ours && <span style={muted}> · ours</span>}
               </td>
               <td style={cellNum}>{l.amount > 0 ? money(l.amount) : <span style={muted}>no budget yet</span>}</td>
-              {sqFt !== null && <td style={cellNum}>{l.amount > 0 && l.perSqFt !== null ? perSqFtWords(l.perSqFt) : ''}</td>}
+              {sqFt !== null && <td style={cellNum}>{l.amount > 0 && l.perSqFt !== null ? <MoneyText text={perSqFtWords(l.perSqFt)} /> : ''}</td>}
             </tr>
           ))}
           <tr>
             <td style={{ ...cell, fontWeight: 700, borderBottom: 'none' }}>Total</td>
             <td style={{ ...cellNum, fontWeight: 700, borderBottom: 'none' }}>{money(summary.total)}</td>
-            {sqFt !== null && <td style={{ ...cellNum, fontWeight: 700, borderBottom: 'none' }}>{perSqFtWords(summary.totalPerSqFt ?? 0)}</td>}
+            {sqFt !== null && <td style={{ ...cellNum, fontWeight: 700, borderBottom: 'none' }}><MoneyText text={perSqFtWords(summary.totalPerSqFt ?? 0)} /></td>}
           </tr>
         </tbody>
       </table>
@@ -852,7 +853,7 @@ export function GcNewProjectWindow({ customers: customerList, book, setsFor, tod
                           ) : (
                             sqFt !== null &&
                             budgetNumber(r.budget) > 0 && (
-                              <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{perSqFtWords(budgetNumber(r.budget) / sqFt)}</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}><MoneyText text={perSqFtWords(budgetNumber(r.budget) / sqFt)} /></span>
                             )
                           )}
                         </>

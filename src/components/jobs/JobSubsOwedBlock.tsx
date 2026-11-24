@@ -15,6 +15,7 @@ import { buildJobOwedBlock, owedMoney, owedSettledWords, type JobOwedBlock, type
 import type { SubLaborSheetAssignee } from '../../lib/subLaborOutstanding'
 import { sheetOwedToChip, TEAM_SHEET_RULE } from '../../lib/subWorkOrders/teamSheetRule'
 import type { LaborJob, LaborJobPayment } from '../../types/laborJob'
+import { MoneyText } from '../Money'
 
 /** The roles with a policy on sub payments: the ones who open Jobs → Subs → Pay. */
 const CAN_SEE = new Set(['dev', 'master_technician', 'assistant', 'controller'])
@@ -26,7 +27,7 @@ function Eq({ label, value, total }: { label: string; value: number; total?: boo
   return (
     <span style={{ display: 'grid', gap: 1 }}>
       <span style={{ fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)' }}>{label}</span>
-      <b style={{ ...num, fontSize: total ? '1.02rem' : '0.92rem', color: 'var(--text-strong)' }}>{owedMoney(value)}</b>
+      <b style={{ ...num, fontSize: total ? '1.02rem' : '0.92rem', color: 'var(--text-strong)' }}><MoneyText text={owedMoney(value)} /></b>
     </span>
   )
 }
@@ -38,7 +39,7 @@ export function JobSubsOwedView({ title, block, onOpenSheet, onOpenPerson, onSho
       <b>{s.title}</b>
       {s.withNames.length > 0 ? <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>with {s.withNames.join(', ')}</span> : null}
       {s.settled ? (
-        <span style={{ fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-green-tint)', color: 'var(--text-green-600)' }}>{owedSettledWords(s)}</span>
+        <span style={{ fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-green-tint)', color: 'var(--text-green-600)' }}><MoneyText text={owedSettledWords(s)} /></span>
       ) : s.payWhen ? (
         <span title={s.payWhen.detail} style={{ fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', background: s.payWhen.tone === 'green' ? 'var(--bg-green-tint)' : s.payWhen.tone === 'red' ? 'var(--bg-red-tint)' : s.payWhen.tone === 'amber' ? 'var(--bg-amber-tint)' : 'var(--bg-neutral-100)', color: s.payWhen.tone === 'green' ? 'var(--text-green-600)' : s.payWhen.tone === 'red' ? 'var(--text-red-700)' : s.payWhen.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
           {s.payWhen.label}
@@ -49,7 +50,7 @@ export function JobSubsOwedView({ title, block, onOpenSheet, onOpenPerson, onSho
           Open the sheet ›
         </button>
       ) : null}
-      <b style={{ ...num, marginLeft: 'auto' }}>{owedMoney(s.open)}</b>
+      <b style={{ ...num, marginLeft: 'auto' }}><MoneyText text={owedMoney(s.open)} /></b>
     </div>
   )
   return (
@@ -74,7 +75,7 @@ export function JobSubsOwedView({ title, block, onOpenSheet, onOpenPerson, onSho
                 What we owe {p.name.split(' ')[0]} ›
               </button>
             ) : null}
-            <span style={{ ...num, marginLeft: 'auto' }}>{p.open > 0 ? `${owedMoney(p.open)} open` : 'paid up'}</span>
+            <span style={{ ...num, marginLeft: 'auto' }}>{p.open > 0 ? <MoneyText text={`${owedMoney(p.open)} open`} /> : 'paid up'}</span>
           </div>
           {p.sheets.map(sheetRow)}
         </div>
@@ -93,7 +94,7 @@ export function JobSubsOwedView({ title, block, onOpenSheet, onOpenPerson, onSho
           <span style={{ fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' }}>{sheetOwedToChip('payroll')}</span>
           <span>{names}</span>
           <span style={{ color: 'var(--text-muted)' }}>{sheet.title}</span>
-          <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>{sheet.open > 0 ? `${owedMoney(sheet.open)} open, in no figure` : 'nothing open'}</span>
+          <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>{sheet.open > 0 ? <MoneyText text={`${owedMoney(sheet.open)} open, in no figure`} /> : 'nothing open'}</span>
         </div>
       ))}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.8rem', marginTop: '0.6rem', paddingTop: '0.45rem', borderTop: '1px solid var(--border)', fontSize: '0.8125rem' }}>

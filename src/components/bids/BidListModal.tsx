@@ -7,6 +7,7 @@ import type { CohortBucket } from '../../lib/bids/bidForecast'
 import { bidListText, filterDrillRows, rollupByEstimator, rollupByGc, sliceWords, type CohortDrill } from '../../lib/bids/bidDrill'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { MoneyText } from '../Money'
 
 /**
  * The list behind a number on Bids → Bid Costs → History & forecast
@@ -113,7 +114,7 @@ export function BidListModal({ open, onClose, title, sub, rows, cohort, onOpenBi
           <div style={{ minWidth: 0, flex: 1 }}>
             <h2 id={titleId} style={{ margin: 0, fontSize: '1rem', fontWeight: 600, lineHeight: 1.25 }}>{title}</h2>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>
-              {sub ?? `${rows.length} bid${rows.length === 1 ? '' : 's'} · ${formatUsdShort(rows.reduce((s, r) => s + (r.bidValue ?? 0), 0))}`}
+              {sub ?? <MoneyText text={`${rows.length} bid${rows.length === 1 ? '' : 's'} · ${formatUsdShort(rows.reduce((s, r) => s + (r.bidValue ?? 0), 0))}`} />}
               {d?.shareOfDecided != null ? ` · ${Math.round(d.shareOfDecided * 100)}% of what ${d.label} decided, by value` : ''}
             </div>
           </div>
@@ -182,7 +183,7 @@ export function BidListModal({ open, onClose, title, sub, rows, cohort, onOpenBi
                     <td style={{ ...cell, whiteSpace: 'normal', minWidth: 200 }}>{r.label}{r.gcName ? <span style={subLine}>{r.gcName}</span> : null}</td>
                     <td style={cell}>{r.estimatorName ?? '—'}</td>
                     <td style={cell}>{shortDate(r.sentYmd ?? r.dateYmd)}</td>
-                    <td style={num}>{r.bidValue != null ? usd(r.bidValue) : '—'}</td>
+                    <td style={num}>{r.bidValue != null ? <MoneyText text={usd(r.bidValue)} /> : '—'}</td>
                     <td style={cell}><span style={{ ...chip, cursor: 'default', borderWidth: 0, color: OUTCOME_COLORS[r.outcome].fg, background: OUTCOME_COLORS[r.outcome].bg, fontWeight: 500 }}>{PURSUIT_OUTCOME_LABELS[r.outcome]}</span></td>
                     <td style={cell}>{r.outcomeAtYmd ? shortDate(r.outcomeAtYmd) : r.outcome === 'won' || r.outcome === 'lost' ? <span style={{ color: 'var(--text-muted)' }}>no date</span> : '—'}</td>
                   </tr>
@@ -194,7 +195,7 @@ export function BidListModal({ open, onClose, title, sub, rows, cohort, onOpenBi
 
         <div style={{ padding: '0.6rem 1rem 0.85rem', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
           <button type="button" onClick={() => void copy()} disabled={shown.length === 0} style={{ ...chip, color: 'var(--text-link)', borderColor: 'var(--text-link)' }}>{copied ? 'Copied' : 'Copy list'}</button>
-          <span>{shown.length !== rows.length ? `${shown.length} of ${rows.length} bids · ${formatUsdShort(shownUsd)} · ` : ''}Click a bid to open it; this list stays behind it. Esc closes{d ? ', ← → step months' : ''}.</span>
+          <span>{shown.length !== rows.length ? <MoneyText text={`${shown.length} of ${rows.length} bids · ${formatUsdShort(shownUsd)} · `} /> : ''}Click a bid to open it; this list stays behind it. Esc closes{d ? ', ← → step months' : ''}.</span>
         </div>
       </div>
     </div>

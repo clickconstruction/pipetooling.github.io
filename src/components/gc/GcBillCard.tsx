@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { Btn, Chip } from './gcUi'
 import { cardLineWords, cardMoney } from '../../lib/gc/ownerBillingCard'
 import type { OwnerPayAppSent } from '../../lib/gc/types'
+import { MoneyText } from '../Money'
 
 export interface CardWrites {
   /** Back to a check bill (O8c): void its Stripe invoice and take the fee off. */
@@ -41,7 +42,7 @@ export function GcBillCard({ app, offerOn, writes, busy }: { app: OwnerPayAppSen
       </div>
       {card && !app.paidOn && asking && (
         <div role="group" aria-label="Back to a check bill" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span>{`This takes the card page down and the ${cardMoney(card.fee)} fee off. The bill goes back to ${cardMoney(card.base)}.`}</span>
+          <span><MoneyText text={`This takes the card page down and the ${cardMoney(card.fee)} fee off. The bill goes back to ${cardMoney(card.base)}.`} /></span>
           <Btn
             kind="primary"
             disabled={working}

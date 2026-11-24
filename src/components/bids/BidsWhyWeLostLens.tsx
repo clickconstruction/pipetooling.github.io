@@ -51,6 +51,7 @@ import { telHrefFor } from '../../lib/phoneContact'
 import { WHY_WE_LOST_EMPTY, whyWeLostEstimatorEmptyWords } from '../../lib/bids/bidsEmptyWords'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { EmptyState } from '../EmptyState'
+import { Money, MoneyText } from '../Money'
 
 export type BidsWhyWeLostLensProps = {
   bids: BidWithBuilder[]
@@ -481,7 +482,7 @@ export function BidsWhyWeLostLens({
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           {`of ${bidsAndPacketsLabel(bidCounts.lost, rollup.lostCount, 'lost')} · ${scopeLabel(sentScope)}`}
           {needRows !== needTotal ? ` · ${needRows} GC packets need a reason` : ''}
-          {` · $${formatCurrency(rollup.uncategorizedValue)} unexplained`}
+          <MoneyText text={` · $${formatCurrency(rollup.uncategorizedValue)} unexplained`} />
           {rollup.lossRatePct != null ? ` · loss rate ${rollup.lossRatePct}%` : ''}
           {rollup.lossRateExclGcLostPct != null ? `, excluding GC-lost ${rollup.lossRateExclGcLostPct}%` : ''}
         </span>
@@ -580,7 +581,7 @@ export function BidsWhyWeLostLens({
                   )}
                 </span>
                 <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  {g.needsCount === 0 ? 'all explained' : `$${formatCurrency(g.needsValue)} to explain`}
+                  {g.needsCount === 0 ? 'all explained' : <MoneyText text={`$${formatCurrency(g.needsValue)} to explain`} />}
                   {(pendingCountByBuilderKey.get(g.builderKey) ?? 0) > 0
                     ? ` · ${pendingCountByBuilderKey.get(g.builderKey)} pending`
                     : ''}
@@ -699,7 +700,7 @@ export function BidsWhyWeLostLens({
                 <p style={{ margin: '0.35rem 0 0.15rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No address on this bid.</p>
               )}
               <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                {selectedBid.value > 0 ? `$${formatCurrency(selectedBid.value)}` : 'no bid value'}
+                {selectedBid.value > 0 ? <Money amount={selectedBid.value} /> : 'no bid value'}
                 {selectedBid.estimatorName ? ` · est. ${selectedBid.estimatorName}` : ''}
               </div>
               {(() => {
@@ -748,7 +749,7 @@ export function BidsWhyWeLostLens({
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.55rem', alignItems: 'center', fontSize: '0.8rem', margin: '0.45rem 0 0', padding: '0.35rem 0.55rem', background: 'var(--bg-subtle)', border: '1px dashed var(--border-strong)', borderRadius: 6 }}>
                     <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{g.gcName}</span>
                     {outcomeChip(g.outcome)}
-                    <span style={{ color: 'var(--text-muted)' }}>{g.value > 0 ? `★ $${formatCurrency(g.value)}` : ''}{g.sentOn ? `${g.value > 0 ? ' · ' : ''}sent ${fmtSent(g.sentOn)}` : ''}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{g.value > 0 ? <MoneyText text={`★ $${formatCurrency(g.value)}`} /> : ''}{g.sentOn ? `${g.value > 0 ? ' · ' : ''}sent ${fmtSent(g.sentOn)}` : ''}</span>
                     <span style={{ color: 'var(--text-muted)' }}>·</span>
                     <span style={{ color: 'var(--text-muted)' }}>also went to</span>
                     {g.siblings.map((sb) => (
@@ -871,7 +872,7 @@ export function BidsWhyWeLostLens({
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
           <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Why we lost</span>
           <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            {rollup.lostCount} lost · ${formatCurrency(rollup.lostValue)}
+            {rollup.lostCount} lost · <Money amount={rollup.lostValue} />
             {rollup.lossRatePct != null ? ` · loss rate ${rollup.lossRatePct}%` : ''}
             {rollup.lossRateExclGcLostPct != null ? ` · excluding GC-lost ${rollup.lossRateExclGcLostPct}%` : ''}
           </span>
@@ -881,7 +882,7 @@ export function BidsWhyWeLostLens({
             <div key={l.key}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: 2 }}>
                 <span>{l.label}</span>
-                <span style={{ color: 'var(--text-muted)' }}>{l.count} · ${formatCurrency(l.value)}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{l.count} · <Money amount={l.value} /></span>
               </div>
               <div style={{ height: 7, borderRadius: 4, background: 'var(--bg-subtle)' }}>
                 <div
@@ -897,7 +898,7 @@ export function BidsWhyWeLostLens({
           ))}
           {rollup.uncategorizedCount > 0 ? (
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Not yet recorded: {rollup.uncategorizedCount} · ${formatCurrency(rollup.uncategorizedValue)} — that's the queue above.
+              Not yet recorded: {rollup.uncategorizedCount} · <Money amount={rollup.uncategorizedValue} /> — that's the queue above.
             </p>
           ) : null}
         </div>

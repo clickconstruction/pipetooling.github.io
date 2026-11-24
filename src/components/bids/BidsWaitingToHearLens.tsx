@@ -60,6 +60,7 @@ import { telHrefFor } from '../../lib/phoneContact'
 import { WAITING_TO_HEAR_EMPTY } from '../../lib/bids/bidsEmptyWords'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { EmptyState } from '../EmptyState'
+import { Money, MoneyText } from '../Money'
 
 export type BidsWaitingToHearLensProps = {
   bids: BidWithBuilder[]
@@ -562,7 +563,7 @@ export function BidsWaitingToHearLens({
             : 'All caught up — every open bid touched this week'}
         </span>
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {`of ${bidsAndPacketsLabel(rollup.pendingCount, lensBids.length, 'still open')} · ${scopeLabel(sentScope)} · $${formatCurrency(rollup.pendingValue)} waiting on an answer`}
+          <MoneyText text={`of ${bidsAndPacketsLabel(rollup.pendingCount, lensBids.length, 'still open')} · ${scopeLabel(sentScope)} · $${formatCurrency(rollup.pendingValue)} waiting on an answer`} />
           {rollup.untouchedCount > 0 ? ` · ${rollup.untouchedCount} never called` : ''}
           {rollup.oldestUntouchedDays != null ? `, oldest ${rollup.oldestUntouchedDays}d` : ''}
         </span>
@@ -647,7 +648,7 @@ export function BidsWaitingToHearLens({
                     )}
                   </span>
                   <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {g.needsCount === 0 ? 'all caught up' : `$${formatCurrency(g.needsValue)} waiting`}
+                    {g.needsCount === 0 ? 'all caught up' : <MoneyText text={`$${formatCurrency(g.needsValue)} waiting`} />}
                     {` · sent ${shortDate(g.newestSentIso)}`}
                   </span>
                 </button>
@@ -787,7 +788,7 @@ export function BidsWaitingToHearLens({
                   <p style={{ margin: '0.35rem 0 0.15rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No address on this bid.</p>
                 )}
                 <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                  {selectedBid.value > 0 ? `$${formatCurrency(selectedBid.value)}` : 'no bid value'}
+                  {selectedBid.value > 0 ? <Money amount={selectedBid.value} /> : 'no bid value'}
                   {` · sent ${shortDate(selectedBid.sentIso)} (${daysAgoLabel(Math.max(0, Math.floor((Date.parse(nowIso) - Date.parse(selectedBid.sentIso)) / 86_400_000)))})`}
                   {selectedBid.dueIso ? ` · was due ${shortDate(selectedBid.dueIso)}` : ''}
                   {selectedBid.estimatorName ? ` · est. ${selectedBid.estimatorName}` : ''}

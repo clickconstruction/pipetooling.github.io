@@ -12,6 +12,7 @@ import type { BidCountRow } from '../../types/bids'
 import type { MaterialTemplateWithAssemblyType, TakeoffRoughPartLineRow } from '../../lib/bids/bidPricingEngineTypes'
 import { TakeoffCoverageStrip } from './TakeoffCoverageStrip'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money, MoneyText } from '../Money'
 
 /**
  * New 1 — "One fixture at a time" (v2.2778, docs/TAKEOFFS_REFRESH_PLAN.md):
@@ -235,7 +236,7 @@ export function TakeoffFocusView({
                     ({row.count}) {row.fixture}
                   </span>
                   {item.status !== 'todo' ? (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(item.total)}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}><Money amount={item.total} /></span>
                   ) : item.bookMatch ? (
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-blue-700)', fontWeight: 700 }}>book</span>
                   ) : null}
@@ -250,7 +251,7 @@ export function TakeoffFocusView({
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
                   <span style={{ fontSize: '1.25rem', fontWeight: 700 }}>{focused.fixture}</span>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    count {focused.count} {effectiveCountUnit(focused)} · {focusedLines.length === 0 ? 'no lines yet' : `${focusedLines.length} line${focusedLines.length === 1 ? '' : 's'} · $${formatCurrency(focusedCoverage?.total ?? 0)}`}
+                    count {focused.count} {effectiveCountUnit(focused)} · {focusedLines.length === 0 ? 'no lines yet' : <MoneyText text={`${focusedLines.length} line${focusedLines.length === 1 ? '' : 's'} · $${formatCurrency(focusedCoverage?.total ?? 0)}`} />}
                   </span>
                 </div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -307,7 +308,7 @@ export function TakeoffFocusView({
                           B{h.bid_number ?? '?'} · {h.project_name ?? '—'}
                         </span>
                         <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                          {h.line_count} line{h.line_count === 1 ? '' : 's'} · ${formatCurrency(Number(h.per_unit_cost))} per {effectiveCountUnit(focused)}
+                          {h.line_count} line{h.line_count === 1 ? '' : 's'} · <Money amount={Number(h.per_unit_cost)} /> per {effectiveCountUnit(focused)}
                         </span>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {h.sent_on ? `sent ${sentLabel(h.sent_on)}` : 'not sent'}{h.outcome ? ` · ${h.outcome}` : ''}

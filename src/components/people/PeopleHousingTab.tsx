@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
-import { formatCurrency } from '../../lib/format'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { Money } from '../Money'
 
 type HousingUnit = {
   id: string
@@ -250,9 +250,9 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
                       onClick={() => setSelectedHousingId((prev) => (prev === hu.id ? null : hu.id))}
                     >
                       <td style={{ padding: '0.75rem' }}>{hu.address || '—'}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(hu.rent_per_week)}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(hu.utilities_per_week)}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(hu.insurance_per_week)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}><Money amount={hu.rent_per_week} /></td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}><Money amount={hu.utilities_per_week} /></td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}><Money amount={hu.insurance_per_week} /></td>
                       <td style={{ padding: '0.75rem' }}>{housingAssignees[hu.id] || '—'}</td>
                       <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
                         <button type="button" onClick={() => openHousingForm(hu)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>
@@ -323,13 +323,13 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
                   <tr>
                     <td style={{ padding: '0.75rem', borderTop: '1px solid var(--border)' }}>Total</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>
-                      ${formatCurrency(housingUnits.reduce((s, u) => s + (u.rent_per_week ?? 0), 0))}
+                      <Money amount={housingUnits.reduce((s, u) => s + (u.rent_per_week ?? 0), 0)} />
                     </td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>
-                      ${formatCurrency(housingUnits.reduce((s, u) => s + (u.utilities_per_week ?? 0), 0))}
+                      <Money amount={housingUnits.reduce((s, u) => s + (u.utilities_per_week ?? 0), 0)} />
                     </td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>
-                      ${formatCurrency(housingUnits.reduce((s, u) => s + (u.insurance_per_week ?? 0), 0))}
+                      <Money amount={housingUnits.reduce((s, u) => s + (u.insurance_per_week ?? 0), 0)} />
                     </td>
                     <td colSpan={2} style={{ padding: '0.75rem', borderTop: '1px solid var(--border)' }} />
                   </tr>
