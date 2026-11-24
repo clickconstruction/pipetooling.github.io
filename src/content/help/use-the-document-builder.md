@@ -51,6 +51,9 @@ The bar reads *Draft not saved* when a save fails. Type again to send the draft 
 - **Add a line** adds a line at the end of a list.
 - The small **×** beside a line takes it off.
 - A breach line that a stricter level keeps is one rule. Change it on the level that brings it.
+- A topic's section name is typed on the topic's page, beside *The core clause*.
+- The names of the facts above the slider are typed on *The basis*.
+- The words on the last blue button are typed just above it, on *Review*. The line under the button is typed in place.
 
 Nobody outside sees a draft. No clause wording is typed here. A clause stays grey bars.
 

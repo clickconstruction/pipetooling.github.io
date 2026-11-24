@@ -6971,6 +6971,8 @@ A send reads **changed** when they opened an older revision and have not been to
 A send never turns a page back on, a trade with no page gets one only from a send to that trade alone, and a send **taken off** leaves the trade's page.
 The one press for every trade that is ready reaches only a trade awarded on the job, and a trade asked and not awarded is sent to from its own row (v2.8192).
 Since v2.8024 a walked builder is typed on **what a GC sees**: each piece of words on the flow is a field named by a **path** into the paper, and a **page** is the flow's own, a topic at a level among them ([`paperEdit.ts`](../src/lib/documentBuilder/paperEdit.ts)).
+Since v2.8460 a topic's section name, the names of the facts above the basis slider, the basis page's line while the paper is Off and the last step's press with the line under it are fields too, each at the path [`flowFields.ts`](../src/lib/documentBuilder/flowFields.ts) names.
+The levels' names, and the paper's title, job, company and party, are not fields.
 The **map** is a row a topic and a column a level, each cell opening its page, and nobody types in it.
 A page is **changed** while it differs from the published revision, with **Back to revision N** to put it back, and **Publish revision N** makes the draft what everyone outside sees.
 In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
