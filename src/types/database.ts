@@ -47521,6 +47521,10 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_query_plan: {
+        Args: { p_analyze?: boolean; p_key: string; p_max_chars?: number }
+        Returns: Json
+      }
       dev_theme_marks_write: {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
