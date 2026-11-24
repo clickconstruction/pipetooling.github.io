@@ -2,7 +2,7 @@
 name: "Document builder, what is left: the walks owed on prod, the builds left, and a way to tell one visitor from another"
 number: 416
 group: ready
-status: written 2026-11-21 on Taunya's word, *save everything we should build, everything we didn't build and all of the walks we should do to a punch list card so another user on a different computer can pick up where we left off* · 2026-11-22 each walk given its page, its role, its test rows and its widths, and the loose ends named by PR, migration and row, on her word to record what is still owed on every card · the one home for the Document builder's leftovers · 2026-11-23 walks 1d, 1e and 1g to 1i walked on prod · 2026-11-24 walks 1b and 1j walked on prod, 1f held, 1k walked in the iPhone simulator, 1a and 1c walked on prod with the two undo presses · no build on this card is started
+status: written 2026-11-21 on Taunya's word, *save everything we should build, everything we didn't build and all of the walks we should do to a punch list card so another user on a different computer can pick up where we left off* · 2026-11-22 each walk given its page, its role, its test rows and its widths, and the loose ends named by PR, migration and row, on her word to record what is still owed on every card · the one home for the Document builder's leftovers · 2026-11-23 walks 1d, 1e and 1g to 1i walked on prod · 2026-11-24 walks 1b and 1j walked on prod, 1f held, 1k walked in the iPhone simulator, 1a and 1c walked on prod with the two undo presses · 2026-11-24 the calls of parts 4 and 5 answered by Diane for Taunya, each on its line · 2026-11-24 on Diane's word, *save it all as approved to build for an additional user on a different computer to pick up where we left off*, everything left is approved and listed under *Pick up here*
 summary: >
   The Document builder (#404) is built but for steps 6 and 10, and live for a dev. This card is the
   one list of what is left, in the order to do it. First the walks on prod that no one has done yet,
@@ -10,9 +10,9 @@ summary: >
   loose ends: PRs not merged, a migration not pushed, the test rows the walks left. Then the builds
   that are ready now, a way to see that the same person opened a link twice, and the builds that
   wait on one of Taunya's calls.
-next: Part 1, the walks left. 1f waits on a person to set a billing job on the test project by hand, on Diane's yes of 2026-11-24, since no screen does and the session was refused. 1k holds in the iPhone simulator and still wants a real phone. Then remove the two test certificates and their two Drive files, named under the 2026-11-24 notes. Part 3 can start beside the walks. Parts 4 and 5 wait on Taunya's calls.
+next: Start at *Pick up here*. Everything left is approved to build since 2026-11-24 and no call is open. First see PR #9724 and the names branch to their merge. Then the live looks, the small faults, part 4 and part 5, in the order given there. Walk 1f, a real phone for 1k and the two test certificates wait on a person's hands.
 size: L as five parts (M · S · M · M · L), each alone
-blocker: Walk 1f waits on a way to set and clear a billing job. None for 1k. The Sub NDA was published as revision 1 on 2026-11-23, on the owner's go. Parts 4 and 5 wait on Taunya's calls, each named on its line. An attorney's read of the Sub NDA and an insurance agent's read of the sheet come before anything goes to a real GC or a real trade.
+blocker: Walk 1f waits on a way to set and clear a billing job. None for 1k. The Sub NDA was published as revision 1 on 2026-11-23, on the owner's go. Parts 4 and 5 wait on nothing: their calls were answered on 2026-11-24. An attorney's read of the Sub NDA and an insurance agent's read of the sheet come before anything goes to a real GC or a real trade.
 opinion: build — the walks first, since each one proves code that is already live
 mockup: not required — #404's mockup.html draws every screen here but the visitor lines in part 4, which are drawn first as that part's own step
 ---
@@ -26,6 +26,41 @@ than saying it twice.
 
 When a walk passes or a build merges, write its line on #404 under *Where it stands* and take it
 off this card. When this card's list is empty, delete the card.
+
+## Pick up here
+
+**Everything left is approved to build.** On 2026-11-24 Diane said to save all of it as approved, for
+someone on another computer. Taunya's calls in parts 4 and 5 were answered the same day, by Diane for
+her, and each answer is on its line. No call is open. Nothing below is started unless its line says so.
+
+Do it in this order. Each line is one PR or a few, cut from fresh `main`.
+
+1. **See what is in flight to its merge.** Another session built part 3 and has ended.
+   - PR #9724, the Sub NDA's Edit / Share switch (v2.8468), is open and armed.
+   - The Sub NDA's title, job, company and party as fields (v2.8469) is built on the pushed branch
+     `claude/builder-paper-names-fields`, with no PR. It sits on #9724's head. Once #9724 merges:
+     `git rebase --onto origin/main 0d95ac3e9c claude/builder-paper-names-fields`, run the checks,
+     open it and arm it. See part 3.
+   - PR #9718 marks v2.8511 and v2.8515 on this card.
+2. **The live looks owed**, in part 1 under *Fixes merged and not yet seen live*. No build.
+3. **The small faults**, in part 2 under *Faults seen and not fixed*. Each is small and alone.
+4. **Part 4, the same visitor twice.** A drawing first, then one column, then the page and the
+   function, then the card and the guide. The try at a closed link, in part 5, rides with its function.
+5. **Part 5**, smallest first: the reason beside a dead press, the tab for the office, a link for each
+   person, then step 10.
+6. **Close the card.** Write each passed walk and merged build on #404 under *Where it stands*, take
+   it off here, and delete this card when its list is empty.
+
+**Three things wait on a person's hands**, and no session can do them:
+
+- **Walk 1f.** Someone sets `gc_projects.billing_job_id` on the test project by hand and clears it
+  after, or a press that does it is built first. A session was refused that write.
+- **Walk 1k on a real phone.** The simulator held. See what it could not prove under 1k.
+- **The two test certificates and their two Drive files**, named under the 2026-11-24 notes of 1j.
+
+**One row would open two more walks.** The test trade company's main contact is at `example.com`,
+and the mail service refuses any email with that address on it. Move that contact to a sink address
+and the send-back email of 1j and the second row of 1a can be seen.
 
 ## Before you start
 
@@ -76,8 +111,19 @@ from its own row.
 
 ## Part 1: walks owed on prod
 
-Each of these is built, on main and held by tests. None has been seen on the live site. Each walk
-puts its rows back after, and its line on #404 names what it could not delete.
+Walked, with the notes of each under it: 1a to 1e and 1g to 1j. Still owed: 1f, and a real phone for
+1k. Each walk puts its rows back after, and its line on #404 names what it could not delete.
+
+**Fixes merged and not yet seen live.** Each is held by its tests. Look at each on clicktooling.com,
+on the test rows, and write what showed.
+
+- **v2.8487** (PR #9659). The line above the one press that says who each email goes to. The ask
+  window with **Email the invitations now** unticked. The award of a quote that ran out, answered
+  **Cancel**.
+- **v2.8511** (PR #9688). The window before a job's publish and before the usual's, answered **Not yet**.
+- **v2.8515** (PR #9689). The remove-a-contact window opens with the focus on **Keep them**.
+- **Part 3's builds**, each seen on a harness page only: v2.8444, v2.8449, v2.8456, v2.8460 and
+  v2.8466, then v2.8468 and v2.8469 once they merge.
 
 **1a. The one press with two trades** (v2.8009, v2.8192)
 
@@ -376,7 +422,9 @@ no such link when the secret was set, and the tests hold that path.
 - Every Document builder migration on main is pushed. The newest is step 6's `20261122021800`.
 - `document-builder-link` and `document-builder-send` (version 5) and `gc-trade-portal` (version 184)
   were deployed from main on 2026-11-21 at 23:44 UTC. `customer-portal` was deployed the same day for
-  step 9. No Document builder change on main has landed in a function since.
+  step 9. `document-builder-send` was deployed again on 2026-11-24 at about 21:35 UTC for v2.8466,
+  by the session that built it, as its notes say. No other Document builder change has landed in a
+  function since.
 - `DOCUMENT_BUILDER_LINK_SECRET` is set on prod.
 - `dev-mcp` ran 0.132.0 on 2026-11-24. Its 0.125.0, with v2.8257's paper-words verbs, was deployed on 2026-11-22 at 06:13 UTC.
 
@@ -402,6 +450,27 @@ A dev can delete the two Sent copies and the contact. Delete them on the next wa
 
 - ~~**Send it again on the same day changes nothing on the row.** It still reads *Sent* with the same day, and how many times it went is not shown.~~ Fixed by v2.8437: a row sent more than once reads *Sent 2 times, last Nov 22 to* the person, and the day is the last send's. Seen live on 2026-11-24, in the walk under 1g to 1i.
 - ~~**The GC card's held list runs long.** Under the one press it is one line for each GC with no page, which is most of them.~~ Fixed by v2.8435: a reason that holds more than three GCs reads as one line with its count, and a press on it opens the names. Three or fewer keep a line each. Seen live on 2026-11-24, in the walk under 1g to 1i.
+- **The faults the walks named**, each with its notes under its walk in part 1. All are open and
+  approved to build. A pick here is the session's suggestion, not the owner's word.
+  - **A sent row whose trade's page is off offers no *Turn their page on*** (1d). The press shows
+    only inside the send box, which a dead press cannot open.
+  - **A certificate's day reads with no year** (1j, 1a): *Certificate good to Nov 24* and *Insured to
+    Nov 24*, on the sheet's card, the trade's page and the company's record. The pick: say the year
+    when it is not this year.
+  - **A send-back whose email failed has no press to try again** (1j). The card says *Try again in a
+    minute*, and the function's own reason is not shown.
+  - **A certificate marked good and then sent back keeps `status` `signed`** (1j). So the trade's
+    page reads it as good and being checked, and the company's record still offers **Mark it good**.
+  - **The bench row offers *Remove from the bench…* on a company we emailed** (1c), and says *no
+    contact logged* first. The office cannot read the emails we sent, so only the function knows.
+  - **The ask-back window says the company has not heard from us about it** (1c), after the sheet
+    for that job was emailed to it.
+  - **A contact cannot be put back alone** (the five-fix walk). Recently deleted restores everything
+    deleted under that customer. The pick: say so in the remove window.
+  - **A confirm's two presses are drawn alike**, both filled blue, when the safe answer is the
+    other one (the five-fix walk). It is the shared window's look, on about a dozen confirms.
+- **Not builds.** Revision 1 of the Sub NDA names the company *Acme Plumbing*, the placeholder. Its
+  words are Taunya's and the attorney's, and v2.8469 makes the company a field but rewrites no line.
 - **Step 6 leaves four things**, as its own fragment will say:
   - a trade's own page does not say its certificate was sent back, or that the asks changed
     (`gc-trade-portal`);
@@ -424,16 +493,23 @@ A dev can delete the two Sent copies and the contact. Delete them on the next wa
 
 ## Part 3: builds ready now
 
-None of these waits on a call. The mock-up draws the first three.
+Another session built all six on 2026-11-24, as seven PRs, since the words as fields went in two.
+Five are on main. Each was seen on a harness page only, never on the live tab.
 
-- **The tab's row chip** *A sheet on N of M jobs*. See #404, *Against the mock-up*.
-- **The Sub NDA's Edit / Share switch.** Today the link's card and the GC send sit under the map.
-- **The card of changed pages**: its counts, its legend, and an outline on the open cell.
-- **The rest of the Sub NDA's words as fields.** Section names, fact labels, some of the flow's own
-  words, the title, the job, the company and the party are not fields yet. See #404, step 7.
-- **The GC send on Settings → What customers see**: a sample email and a sample page (v2.8151).
-- **A refusal key of its own for *sent, not recorded*** in `document-builder-send`, on that
-  function's next change. Keep the client's reader for the deployed function (v2.8096).
+- ~~**The tab's row chip** *A sheet on N of M jobs*.~~ Built, v2.8449 (PR #9606).
+- **The Sub NDA's Edit / Share switch.** Built, v2.8468. PR #9724 is open and armed.
+- ~~**The card of changed pages**: its counts, its legend, and an outline on the open cell.~~ Built,
+  v2.8456 (PR #9656). A count on the map's cell is left out on purpose: it would crowd the square.
+- **The rest of the Sub NDA's words as fields.** The words the flow already drew are fields since
+  v2.8460 (PR #9680). The title, the job, the company and the party are built as v2.8469 on the
+  pushed branch `claude/builder-paper-names-fields`, with no PR yet. The branch sits on #9724's
+  head, `0d95ac3e9c`. After #9724 merges, rebase it with `--onto origin/main 0d95ac3e9c`, run the
+  builder's tests, the release-note test and the help-guide tests, then open and arm it. It also
+  cuts the glossary's sentence that says those four names are not fields.
+- ~~**The GC send on Settings → What customers see**: a sample email and a sample page.~~ Built,
+  v2.8444 (PR #9601).
+- ~~**A refusal key of its own for *sent, not recorded*** in `document-builder-send`.~~ Built,
+  v2.8466 (PR #9657), and the function is deployed. See part 2.
 
 ## Part 4: who opened a link, the same person twice
 
@@ -455,7 +531,7 @@ put to her, with nothing built:
 The pick put to her is the first two together, and not the third. No device ties a phone to a
 laptop. Only a link for each person would, in part 5.
 
-The build, once she answers the three calls under it:
+The build, on her three calls under it:
 
 1. **A drawing first.** The link card's **Who opened it** grouped into visitors, such as *Someone with
    no account · opened 3 times · first Nov 21, last Nov 23*. A match by mark reads as the same
@@ -464,37 +540,44 @@ The build, once she answers the three calls under it:
    It ships alone and is pushed before any client sends it.
 3. **The page and the function.** `src/lib/documentBuilder/linkIo.ts` makes and keeps the mark and
    sends it with the open. `document-builder-link` keeps it, cut to its own length, and answers the
-   opens grouped. One deploy, on Taunya's go.
+   opens grouped. The public page gains its one plain line that opens are noted. The try at a
+   closed link, in part 5, is kept by the same function, so build it here. One deploy, on Taunya's go.
 4. **The card and the guide.** The grouped list on `BuilderLinkCard.tsx`, and a line in the
    Document builder's guide.
 
-Her three calls for it:
+Her three calls for it, answered on 2026-11-24 by Diane for Taunya:
 
 - **Across links or one link.** One mark for a browser shows the same visitor opening the sheets of
-  two jobs. One mark a link shows repeat opens of that sheet only. The pick put to her: across links.
-- **Telling the visitor.** The public page says that opens are noted. The pick: one plain line.
-- **How long it is kept.** The same call as the address in part 5. A mark makes it matter more.
+  two jobs. One mark a link shows repeat opens of that sheet only. **Decided: across links.**
+- **Telling the visitor.** The public page says that opens are noted. **Decided: one plain line.**
+- **How long it is kept.** The same call as the address in part 5. **Decided: kept, as today.**
 
-## Part 5: builds that wait on Taunya
+## Part 5: builds on Taunya's calls
 
-Each line names the call. None is started.
+Each line names the call and its answer. The answers are of 2026-11-24, by Diane for Taunya. None is started.
 
 - **Publishing the Sub NDA on prod, for walks 1g to 1i.** Its words are placeholders, and a publish
   cannot be taken back. It also wakes the one press to every GC with a page. The send session would
   wait for the attorney's read of the words first.
 - **Whether to ask her insurance agent** if one certificate can ever cover several jobs. Step 6 is
   built one for each job. See #404, *Calls still open*.
-- **How long an open is kept.** Nothing clears one today. Once she names a length, a daily clear or
-  a clear that many days after the link ends.
-- **An open of a link that is off is not kept.** Someone trying an old link leaves no trace. Keep it
-  as *tried a closed link*, or leave it as it is.
+- **How long an open is kept.** Nothing clears one today. **Decided: keep them, as today.** Nothing
+  is built.
+- **An open of a link that is off is not kept.** Someone trying an old link leaves no trace.
+  **Decided: keep it, as *tried a closed link*.**
 - **A link for each person.** Each contact's email carries its own code, so an open names the
   contact. It is the only way to tie one person's phone to their laptop. It changes how a send
-  makes links, so it is the biggest piece here.
-- **Step 10, a GC sends their picks.** It waits on her yes. See #404, *Calls still open*.
+  makes links, so it is the biggest piece here. **Decided: build it.**
+- **Step 10, a GC sends their picks.** **Decided: yes, build it.** See #404, *Calls still open*.
 - **The reason beside a dead press.** Today a dead second press says why on its row's chip or at the
-  foot of the box, not beside itself (v2.8099).
+  foot of the box, not beside itself (v2.8099). **Decided: beside the press.**
 - **Opening the tab to the office.** The tab is a dev's. See #404, *Who fills a job's sheet*.
+  **Decided: open it to the office.** With it, the GC send list takes `hidesZzTestJobs(role)`, and
+  *Send it anyway* becomes a hard stop for a real customer, as #404 says of both. The gate is in
+  three places today: `canUseDocumentBuilder` in `src/lib/documentBuilder/access.ts`, the tables'
+  `is_dev()` policies, and `documentBuilderCaller` in `supabase/functions/_shared`, which the send
+  and the link functions both call. `docs/ACCESS_CONTROL.md`
+  changes with it. The attorney's read and the agent's read still come before a real send.
 - **The calls #404 built on their defaults** stand until she flips one. See #404, *Calls still open*.
 - **Left out on purpose, build only if asked:** changing who a live send goes to in place (v2.8131),
   and keeping the agent's mark for every revision of the usual rather than the newest (v2.8142).

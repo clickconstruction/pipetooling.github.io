@@ -12,7 +12,7 @@ summary: >
   it on the page they already open, or opens it by link. The office sees the day it went and the day it
   was opened. When a trade's certificate comes in, the sheet's own lines are the check list. No attorney
   has read the Sub NDA's words and no insurance agent has set the sheet's amounts: every word is a placeholder.
-next: Step 10, a GC's picks, waits on Taunya's call. Steps 1 to 9 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009, v2.8024, v2.8150, v2.8151, and step 6 in v2.8253 and v2.8264). What is left, and every walk owed, is on #416.
+next: Step 10, a GC's picks, is a yes since 2026-11-24 and not started. Steps 1 to 9 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009, v2.8024, v2.8150, v2.8151, and step 6 in v2.8253 and v2.8264). What is left, and every walk owed, is on #416.
 size: L as a train of ten (S · M · M · S · M · M · M · S · S · M)
 blocker: None for the build. An attorney's read of the Sub NDA's words and an insurance agent's read of the sheet come before either is sent to a real GC or a real trade.
 ---
@@ -455,14 +455,14 @@ The build can start on the defaults. Each can be flipped.
 |---|---|---|
 | Which builder is built first | Insurance | Every job the company runs as the GC needs a sheet. The Sub NDA may be used once. |
 | A certificate for each job, or one for each company | One for each job | The additional insured changes with the job. The owner should ask his agent whether one certificate can cover several jobs. |
-| Who fills a job's sheet | A dev, while the tab is dev only | Making a sheet for each job is office work. Opening the tab to the office is the next call. |
+| Who fills a job's sheet | A dev, while the tab is dev only. Decided 2026-11-24, by Diane for Taunya: the office, once the tab opens to it (#416, part 5) | Making a sheet for each job is office work. |
 | Sending something nobody has read | A box to tick, *Send it anyway* | A hard stop would block a send to a test customer while the words are still being set. Make it a hard stop for a real customer once the office can send. |
 | What outdates a certificate | A change to a name, the place or an amount | A fix to the foot line would otherwise send every trade back to their agent. |
 | *Make this the usual*, pressed on a job | Keep it | It moves a job's own words onto the standing sheet. |
 | Which jobs get a sheet | Only jobs the company runs as the GC | That is where the company sets what its subs carry. |
 | The sheet in Spanish | English only | An insurance agent reads it. The words around it on a sub's page stay in both. |
 | What a send to a GC is about, when nobody picks | All their jobs | The builder is not about one job. |
-| What a GC can do with the Sub NDA at first | Look only | Sending picks is step 10. |
+| What a GC can do with the Sub NDA at first | Look only | Sending picks is step 10, decided 2026-11-24, by Diane for Taunya: build it (#416, part 5). |
 | What a GC reads as its name | *Secrecy on your jobs* | *Sub NDA* is the owner's word for it. |
 | What counts as secret, and what happens after a breach | The same in every paper, as #389 has them | #389's session suggests both could move with the level. Today everything about the job is secret, including that it exists, which is heavy for *Standard* and cannot hold on a public job. This is that session's suggestion and not the owner's call. Publicity, a sub's business answering for its people, and what the paper never stops stay the same in every paper, and the last must. |
 
