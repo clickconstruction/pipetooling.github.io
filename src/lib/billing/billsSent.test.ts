@@ -4,6 +4,7 @@ import {
   billNumberFromTitle,
   billsSentGapFilter,
   billsSentGapHeading,
+  billsSentGapStands,
   billsSentGaps,
   BILLS_SENT_CSV_HEAD,
   billsSentAgainWords,
@@ -37,6 +38,10 @@ import {
   byHandRecordLabel,
   billsSentSumWords,
   billsSentTiles,
+  billsSentOut,
+  billsSentOutPlain,
+  billsSentOldestWords,
+  billsSentNoAmountWords,
   canOpenBillsSent,
   isBillsSentKind,
   ordinal,
@@ -622,6 +627,126 @@ describe('billsSent — who paid, when and how (punch list #422)', () => {
     expect(billsSentTiles(lines, '2026-11-12').unpaid).toEqual({ bills: 2, total: 6480 })
     // A bill whose first send is off the page still counts, by the send that is on it.
     expect(billsSentTiles([by('a2')], '2026-11-12').unpaid).toEqual({ bills: 1, total: 4860 })
+  })
+
+  describe('billsSentOut: everything still out, sent or not', () => {
+    const BILL_D = 'dddddddd-4444-4444-8444-444444444444'
+    const BILL_E = 'eeeeeeee-5555-4555-8555-555555555555'
+    const BILL_F = 'ffffffff-6666-4666-8666-666666666666'
+    const BILL_G = '99999999-7777-4777-8777-777777777777'
+    const BILL_Z = '88888888-8888-4888-8888-888888888888'
+    const JOB_Z = 'cccccccc-9999-4999-8999-999999999993'
+    // Four bills the app made and never sent, and one on a test job.
+    const unsent = [
+      // D: billed Oct 1, nothing paid.
+      { billId: BILL_D, jobId: JOB_A, amount: 2000, status: 'billed', billedAtIso: '2026-10-01T15:00:00.000Z' },
+      // E: billed Nov 10, a check for part of it.
+      { billId: BILL_E, jobId: JOB_B, amount: 1200, status: 'billed', billedAtIso: '2026-11-10T15:00:00.000Z' },
+      // F: still billed, and a check on record covers it.
+      { billId: BILL_F, jobId: JOB_B, amount: 800, status: 'billed', billedAtIso: '2026-11-11T15:00:00.000Z' },
+      // G: billed Nov 11 with no amount on record.
+      { billId: BILL_G, jobId: JOB_A, amount: null, status: 'billed', billedAtIso: '2026-11-11T16:00:00.000Z' },
+      { billId: BILL_Z, jobId: JOB_Z, amount: 75, status: 'billed', billedAtIso: '2026-09-01T16:00:00.000Z' },
+    ]
+    const whole: BillsSentInput = {
+      ...data,
+      unsent,
+      jobs: new Map([...data.jobs, [JOB_Z, { id: JOB_Z, hcp_number: '1501', click_number: null, job_name: 'ZZ Test sink', customer_name: 'ZZ Test Customer' }]]),
+      paid: new Map([
+        ...data.paid!,
+        [BILL_D, pay({ kind: 'open', paidOn: null, paidAmount: 0, outAmount: 2000, wayWords: '' })],
+        [BILL_E, pay({ kind: 'part', paidOn: '2026-11-11', paidAmount: 500, outAmount: 700, wayWords: 'Check 88 · typed by hand' })],
+        [BILL_F, pay({ kind: 'paid', paidOn: '2026-11-11', paidAmount: 800, outAmount: 0 })],
+        [BILL_G, pay({ kind: 'open', paidOn: null, paidAmount: 0, outAmount: 0, wayWords: '' })],
+      ]),
+    }
+    const gaps = billsSentGaps(whole, lines)
+
+    it('calls a bill with no send paid when the payments on record cover it, and keeps what is left of a part-paid one', () => {
+      expect(gaps.open.map((g) => [g.billId, g.out])).toEqual([
+        [BILL_G, 0],
+        [BILL_E, 700],
+        [BILL_D, 2000],
+      ])
+      expect(gaps.paid.map((g) => g.billId)).toEqual([BILL_F])
+      // Each row says where its bill stands, with the figure the tile adds.
+      expect([...gaps.open, ...gaps.paid].map(billsSentGapStands)).toEqual(['Not paid.', 'Part paid, $700.00 still out.', 'Not paid.', 'Paid since.'])
+      expect(billsSentListHtml([], gaps.open, { printedAtIso: '2026-11-12T21:00:00.000Z', shownWords: 'All.' })).toContain('Billed Tue, Nov 10 at 9:00 AM. Part paid, $700.00 still out.</td>')
+      // With no payments read, a gap stands on the bill's status and its whole amount, as before.
+      const bare = billsSentGaps({ unsent, jobs: whole.jobs }, lines)
+      expect(bare.open.map((g) => [g.billId, g.out])).toEqual([
+        [BILL_G, 0],
+        [BILL_F, 800],
+        [BILL_E, 1200],
+        [BILL_D, 2000],
+      ])
+    })
+
+    it('adds the bills on the list to the open bills with no send, a part-paid bill for what is left of it', () => {
+      const out = billsSentOut(lines, gaps.open, '2026-11-12')
+      // On the list: A at 4,860 and C with 1,620 left. No send: D at 2,000, E with 700 left, G with no amount.
+      expect(out.sent).toEqual({ bills: 2, total: 6480 })
+      expect(out.noSend).toEqual({ bills: 3, total: 2700 })
+      expect(out.all).toEqual({ bills: 5, total: 9180 })
+      // The sent part is the Not paid tile's old figure, bill for bill.
+      expect(out.sent).toEqual(billsSentTiles(lines, '2026-11-12').unpaid)
+    })
+
+    it('counts a bill with no amount on record, adds nothing for it, and says how many there are', () => {
+      const out = billsSentOut(lines, gaps.open, '2026-11-12')
+      expect(out.noAmount).toBe(1)
+      expect(billsSentNoAmountWords(1)).toBe('1 bill has no amount')
+      expect(billsSentNoAmountWords(2)).toBe('2 bills have no amount')
+      expect(billsSentNoAmountWords(0)).toBe('')
+      // A sent bill with no amount on record is counted the same way.
+      const noFigure = billsSentLines({ ...data, bills: new Map([...data.bills, [BILL_A, { id: BILL_A, jobId: JOB_A, amount: null, status: 'billed' }]]), paid: new Map([...data.paid!, [BILL_A, pay({ kind: 'open', paidOn: null, paidAmount: 0, outAmount: 0, wayWords: '' })]]) })
+      expect(billsSentOut(noFigure, [], '2026-11-12')).toMatchObject({ sent: { bills: 2, total: 1620 }, noAmount: 1 })
+    })
+
+    it('leaves a test bill out, on the list and in the box', () => {
+      expect(gaps.open.some((g) => g.billId === BILL_Z)).toBe(false)
+      expect(billsSentOut(lines, gaps.open, '2026-11-12').all.bills).toBe(5)
+    })
+
+    it('counts a bill once when it is somehow both on the list and in the box', () => {
+      const twice = [...gaps.open, { billId: BILL_A, amount: 4860, out: 4860, billedYmd: '2026-01-01' }]
+      expect(billsSentOut(lines, twice, '2026-11-12').all).toEqual({ bills: 5, total: 9180 })
+    })
+
+    it('says how old the oldest is: a sent bill from its first send, a bill with no send from the day it was billed', () => {
+      // D was billed Oct 1, 42 days before Nov 12. The oldest sent bill first went Nov 3, 9 days before.
+      const out = billsSentOut(lines, gaps.open, '2026-11-12')
+      expect(out.oldest).toEqual({ days: 42, from: 'billed' })
+      expect(billsSentOldestWords(out.oldest)).toBe('Oldest was billed ⟪age|42 days⟫ ago')
+      const sentOnly = billsSentOut(lines, [], '2026-11-12')
+      expect(sentOnly.oldest).toEqual({ days: 9, from: 'sent' })
+      expect(billsSentOldestWords(sentOnly.oldest)).toBe('Oldest is ⟪age|9 days⟫ out')
+      // The same day reads as the day, and one day is one day.
+      expect(billsSentOldestWords({ days: 0, from: 'sent' })).toBe('Oldest went ⟪age|today⟫')
+      expect(billsSentOldestWords({ days: 0, from: 'billed' })).toBe('Oldest was billed ⟪age|today⟫')
+      expect(billsSentOldestWords({ days: 1, from: 'sent' })).toBe('Oldest is ⟪age|1 day⟫ out')
+      expect(billsSentOldestWords(null)).toBe('')
+      // A tie goes to the sent bill, whose days are the ones the list counts.
+      expect(billsSentOut(lines, [{ billId: BILL_D, amount: 2000, out: 2000, billedYmd: '2026-11-03' }], '2026-11-12').oldest).toEqual({ days: 9, from: 'sent' })
+      // A bill whose day does not read has no age, and nothing still out has none.
+      expect(billsSentOut([], [{ billId: BILL_D, amount: 2000, out: 2000, billedYmd: '' }], '2026-11-12').oldest).toBeNull()
+      expect(billsSentOut([], [], '2026-11-12')).toEqual({ all: { bills: 0, total: 0 }, sent: { bills: 0, total: 0 }, noSend: { bills: 0, total: 0 }, noAmount: 0, oldest: null })
+    })
+
+    it('says the whole of it in one run of plain words, for the print', () => {
+      expect(billsSentOutPlain(billsSentOut(lines, gaps.open, '2026-11-12'))).toBe(
+        'Not paid counts every bill that is not paid in full: 5 bills, $9,180.00. 2 sent, 3 with no send on record. The oldest was billed 42 days ago. 1 bill has no amount, so the amount leaves it out.',
+      )
+      expect(billsSentOutPlain(billsSentOut(lines, [], '2026-11-12'))).toBe('Not paid counts every bill that is not paid in full: 2 bills, $6,480.00. 2 sent, 0 with no send on record. The oldest is 9 days out.')
+      expect(billsSentOutPlain(billsSentOut([], [], '2026-11-12'))).toBe('')
+    })
+
+    it('puts that sentence in the print’s heading when the page hands it one', () => {
+      const days = billsSentDays(lines, '2026-11-12')
+      const said = billsSentOutPlain(billsSentOut(lines, gaps.open, '2026-11-12'))
+      expect(billsSentListHtml(days, gaps.open, { printedAtIso: '2026-11-12T21:00:00.000Z', shownWords: 'All.', outWords: said })).toContain(`A day’s total counts each bill once, on the day it first went. ${said}</p>`)
+      expect(billsSentListHtml(days, gaps.open, { printedAtIso: '2026-11-12T21:00:00.000Z', shownWords: 'All.' })).toContain('on the day it first went.</p>')
+    })
   })
 
   it('narrows the list to what is not paid, and to what is paid', () => {

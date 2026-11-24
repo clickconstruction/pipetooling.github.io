@@ -298,7 +298,7 @@ The owner said go on 2026-11-23: *Let's build it all testing along the way, maki
 What step 1 found while it was built:
 
 - A bill sent back to Ready to Bill owes nothing yet, so its line carries no stamp.
-- The **Not paid** tile counts the bills on the list, not every open bill the company has. The page reads the newest 300 sends at a time, and the foot of the page says so. **Show older sends** reads more.
+- The **Not paid** tile counts the bills on the list and, since v2.8492, the open bills with no send on record, as one figure with the two parts under it and the age of the oldest. It is still not every open bill the company has: the page reads the newest 300 sends at a time, and **Show older sends** reads more. The owner has not looked at the new tile on the live page yet.
 - **Paid this week** came with step 3. It reads the payments by day, so a payment on a bill older than the list is counted.
 - The screen was checked over made-up rows in a local harness that answers every database call itself. Nobody opened the live app.
 

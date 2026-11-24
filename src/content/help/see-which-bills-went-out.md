@@ -115,9 +115,17 @@ A part-paid bill says what is still out. A bill reads paid once its payments lea
 
 Every send of one bill carries the same stamp. A statement has no stamp, because a statement is not one bill.
 
-A tile at the top reads **Not paid**. The tile counts every bill on the list that is not paid in full. A part-paid bill counts for what is left of it.
+A tile at the top reads **Not paid**. The tile counts every bill that is not paid in full, sent or not. A part-paid bill counts for what is left of it.
 
-Press the **Not paid** tile to see only those bills. Press {{chip:gray|All}} to see every send again.
+The tile has two parts under its figure. **Sent** counts the bills on the list. **No send on record** counts the open bills in the yellow box.
+
+Press **Sent** to see only the sent bills that are not paid. Press **No send on record** to see the yellow box alone. Press {{chip:gray|All}} to see every send again.
+
+The tile also says how old the oldest bill is. The words read like *Oldest is 62 days out*. A sent bill is counted from its first send.
+
+A bill with no send has no first send. That bill is counted from the day it was billed. The words then read like *Oldest was billed 62 days ago*.
+
+A bill with no amount on record is counted. That bill adds nothing to the amount, and the tile says how many such bills there are.
 
 ## A bill sent more than once
 
@@ -203,17 +211,21 @@ The file also says who has paid. Four columns hold the paid day, the way, what i
 
 The bills with no send on record come along in both. Those bills are last in the file and first on the printed page.
 
+The printed page says what **Not paid** counts under its heading. That figure is the whole of it, whatever you narrowed the list to.
+
 ## Bills with no send on record
 
 A yellow box sits above the days when a bill was made and never sent from the app. The box reads like *3 bills are billed with no send on record*.
 
 Each row names the job, the customer and the amount. The row also says when the bill was made and that the bill is not paid.
 
+A bill with some money on it reads *Part paid* and says what is still out. A bill its payments cover sits with the paid bills.
+
 The app cannot see a bill handed over on site. The app cannot see a bill sent from a person's own mailbox either. Ask the office how a bill in the box went out.
 
 Press **Show all** to see every open bill in the box. Press **Show them** to see the bills that were paid with no send.
 
-Press {{chip:yellow|No send on record}} to see the box alone. The yellow tile at the top counts the open bills in the box.
+Press {{chip:yellow|No send on record}} to see the box alone. The **Not paid** tile at the top counts the open bills in the box as its second part.
 
 ## Say how a bill went
 

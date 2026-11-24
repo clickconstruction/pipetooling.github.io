@@ -188,15 +188,16 @@ describe('BillsSentLedger', () => {
     expect([cents.textContent, cents.style.fontSize]).toEqual(['.50', '0.7em'])
     // The band says how many of its bills are paid and what is still out: the open bill and the rest of the part-paid one.
     expect(screen.getByTestId('bills-sent-day-back').textContent).toBe('1 of 3 paid · $6,480.00 still out')
-    // The tile adds up what is not paid, and is the press that narrows the list to it.
+    // The tile adds up what is not paid and says how old the oldest is. Its sent part is the press that narrows the list.
     const tile = screen.getByTestId('bills-sent-tile-unpaid')
-    expect(tile.textContent).toBe('Not paid2 bills $6,480.00')
-    fireEvent.click(tile)
+    expect(tile.textContent).toMatch(/^Not paid2 bills \$6,480\.00Oldest is \d+ days outSent2 bills \$6,480\.00No send on record0 bills$/)
+    expect(tile.tagName).toBe('DIV')
+    fireEvent.click(screen.getByTestId('bills-sent-out-sent'))
     expect(screen.getAllByTestId('bills-sent-line').map((l) => within(l).getByTestId('bills-sent-stamp').textContent)).toEqual(['Not paid', 'Part paid · $1,500.00'])
     expect(screen.getByRole('button', { name: 'Not paid' }).getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Paid' }))
     expect(screen.getAllByTestId('bills-sent-line').map((l) => within(l).getByTestId('bills-sent-stamp').textContent)).toEqual(['✓ Paid today'])
-    expect(screen.getByTestId('bills-sent-foot').textContent).toContain('Not paid counts every bill on this list that is not paid in full.')
+    expect(screen.getByTestId('bills-sent-foot').textContent).toContain('Not paid counts every bill that is not paid in full, sent or not. Its two parts are the bills on this list and the open bills with no send on record.')
   })
 
   it('on a phone, puts who has paid in a bar across the foot of the card', async () => {
@@ -379,8 +380,9 @@ describe('BillsSentLedger', () => {
     expect(lines[0]?.textContent).toContain('Text with pay linkby Priya2nd send. First sent Tue, Nov 3.Delivered')
     expect(lines[2]?.textContent).toContain('Sent from Housecall Pro. The app has the day only.')
     expect(lines[2]?.querySelector('button')).toBeNull()
-    // The strip: the open bill, the paid one behind a press, and the tile.
-    expect(screen.getByTestId('bills-sent-tile-gaps').textContent).toBe('No send on record1')
+    // The strip: the open bill, the paid one behind a press, and its part of the Not paid tile. The yellow tile is gone into it.
+    expect(screen.getByTestId('bills-sent-out-no-send').textContent).toBe('No send on record1 bill $2,140.00')
+    expect(screen.queryByTestId('bills-sent-tile-gaps')).toBeNull()
     const strip = screen.getByTestId('bills-sent-gaps')
     expect(strip.textContent).toContain('1 bill is billed with no send on record')
     expect(screen.getAllByTestId('bills-sent-gap')).toHaveLength(1)
@@ -694,13 +696,113 @@ describe('BillsSentLedger', () => {
     // The test DOM keeps a grid's display and drops its columns: the columns are held by the look's own test.
     expect(screen.getByTestId('bills-sent-tiles').style.display).toBe('grid')
     unmount()
-    // Three tiles: Not paid joins them. The row wraps, and each tile grows to fill its row.
+    // Not paid joins them as the wide tile: a row of its own, after the two small ones, which keep their row of two.
     io.data = data([copy({})])
+    const second = renderWithProviders(<BillsSentLedger />)
+    const wide = await screen.findByTestId('bills-sent-tile-unpaid')
+    expect(screen.getByTestId('bills-sent-tiles').style.display).toBe('grid')
+    expect([wide.style.gridColumn, wide.style.flex]).toEqual(['1 / -1', '1 0 100%'])
+    expect([...screen.getByTestId('bills-sent-tiles').children].map((c) => c.getAttribute('data-testid'))).toEqual(['bills-sent-tile-today', 'bills-sent-tile-week', 'bills-sent-tile-unpaid'])
+    // Each part is a press a thumb can hit.
+    expect([screen.getByTestId('bills-sent-out-sent').style.minHeight, screen.getByTestId('bills-sent-out-no-send').style.minHeight]).toEqual(['44px', '44px'])
+    second.unmount()
+    // Three small tiles: Paid this week joins them. The row wraps, each grows to fill its row, and the wide tile still takes its own.
+    const today = todayYmdInAppTz()
+    io.paidWeek = {
+      payments: [{ id: 'p1', billId: BILL, jobId: JOB, amount: 1750, paidOn: today, createdAtIso: `${today}T18:21:00.000Z`, paymentType: null, note: 'Stripe', referenceNumber: null, bankTransactionId: null, stripeCreditNoteId: null }],
+      bills: new Map([[BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'billed' }]]),
+      jobs: new Map([[JOB, { id: JOB, hcp_number: '1412', click_number: null, job_name: 'Sable Ridge Lot 14', customer_name: 'Sable Ridge Builders' }]]),
+      numbers: new Map(),
+      firstSent: new Map(),
+      more: false,
+    }
     renderWithProviders(<BillsSentLedger />)
-    await screen.findByTestId('bills-sent-tile-unpaid')
+    await screen.findByTestId('bills-sent-tile-paid-week')
     const row = screen.getByTestId('bills-sent-tiles')
     expect([row.style.display, row.style.flexWrap]).toEqual(['flex', 'wrap'])
-    expect(screen.getByTestId('bills-sent-tile-unpaid').style.flex).toBe('1 1 5.2rem')
+    expect(screen.getByTestId('bills-sent-tile-paid-week').style.flex).toBe('1 1 5.2rem')
+    expect(screen.getByTestId('bills-sent-tile-unpaid').style.flex).toBe('1 0 100%')
+  })
+
+  it('says everything still out in one tile: the bills on the list and the bills with no send, with a press for each part', async () => {
+    const SENT_PART = 'cccccccc-3333-4333-8333-333333333333'
+    const NO_SEND = 'dddddddd-4444-4444-8444-444444444444'
+    const NO_SEND_PART = 'eeeeeeee-5555-4555-8555-555555555555'
+    const NO_AMOUNT = 'ffffffff-6666-4666-8666-666666666666'
+    const COVERED = '99999999-7777-4777-8777-777777777777'
+    const st = (over: Partial<BillPaidState>): BillPaidState => ({ kind: 'open', paidOn: null, paidAmount: 0, outAmount: 0, wayWords: '', paidAtIso: null, payments: [], ...over })
+    io.data = {
+      ...data([copy({ id: 'c1' }), copy({ id: 'c3', sentAt: '2026-11-03T20:00:00.000Z', sourceId: SENT_PART, title: 'Invoice #1431-0001 from Northgate Plumbing Co.' })]),
+      bills: new Map([
+        [BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'billed' }],
+        [SENT_PART, { id: SENT_PART, jobId: JOB, amount: 3120, status: 'billed' }],
+      ]),
+      unsent: [
+        { billId: NO_SEND, jobId: JOB, amount: 2140, status: 'billed', billedAtIso: '2026-10-01T21:26:00.000Z' },
+        { billId: NO_SEND_PART, jobId: JOB, amount: 1200, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' },
+        { billId: NO_AMOUNT, jobId: JOB, amount: null, status: 'billed', billedAtIso: '2026-11-10T21:26:00.000Z' },
+        // Still billed, and a check on record covers it: paid, so it is in no part.
+        { billId: COVERED, jobId: JOB, amount: 800, status: 'billed', billedAtIso: '2026-11-10T22:00:00.000Z' },
+      ],
+      paid: new Map([
+        [BILL, st({ outAmount: 4860 })],
+        [SENT_PART, st({ kind: 'part', paidOn: '2026-11-09', paidAmount: 1500, outAmount: 1620, wayWords: 'Check 2291 · typed by hand' })],
+        [NO_SEND, st({ outAmount: 2140 })],
+        [NO_SEND_PART, st({ kind: 'part', paidOn: '2026-11-10', paidAmount: 500.5, outAmount: 699.5, wayWords: 'Check 88 · typed by hand' })],
+        [NO_AMOUNT, st({})],
+        [COVERED, st({ kind: 'paid', paidOn: '2026-11-11', paidAmount: 800, outAmount: 0, wayWords: 'Check 91 · typed by hand' })],
+      ]),
+    }
+    renderWithProviders(<BillsSentLedger />)
+    await screen.findAllByTestId('bills-sent-line')
+    const tile = screen.getByTestId('bills-sent-tile-unpaid')
+    // One figure over both parts: 4,860 and 1,620 on the list, 2,140 and 699.50 with no send, and a bill with no amount.
+    expect(tile.textContent).toMatch(/^Not paid5 bills \$9,319\.50Oldest was billed \d+ days ago1 bill has no amountSent2 bills \$6,480\.00No send on record3 bills \$2,839\.50$/)
+    // The age is a value the app works out, drawn apart from its words, and every amount's cents are small.
+    expect(within(screen.getByTestId('bills-sent-out-oldest')).getByText(/^\d+ days$/).getAttribute('data-value')).toBe('worked-out')
+    expect([...tile.querySelectorAll('[data-cents]')].map((c) => [c.textContent, (c as HTMLElement).style.fontSize])).toEqual([
+      ['.50', '0.7em'],
+      ['.00', '0.7em'],
+      ['.50', '0.7em'],
+    ])
+    // No second tile counts the bills with no send, and the row at a desk wraps so no width leaves a hole.
+    expect(screen.queryByTestId('bills-sent-tile-gaps')).toBeNull()
+    expect([screen.getByTestId('bills-sent-tiles').style.display, screen.getByTestId('bills-sent-tiles').style.flexWrap, tile.style.flex, screen.getByTestId('bills-sent-tile-today').style.flex]).toEqual(['flex', 'wrap', '1 0 100%', '1 1 8rem'])
+    // The wide tile is the last of the row, a row of its own under the small ones.
+    expect(screen.getByTestId('bills-sent-tiles').lastElementChild).toBe(tile)
+    // The box agrees with its part: three open rows, the part-paid one with what is left, and the covered bill with the paid ones.
+    const strip = screen.getByTestId('bills-sent-gaps')
+    expect(strip.textContent).toContain('3 bills are billed with no send on record')
+    expect(strip.textContent).toContain('Part paid, $699.50 still out. The app has no email, text or print for this bill.')
+    expect(strip.textContent).toContain('1 more bill was paid with no send on record.')
+    // The sent part turns on Not paid, which shows what it showed: every send of a bill on the list not paid in full.
+    fireEvent.click(screen.getByTestId('bills-sent-out-sent'))
+    expect(screen.getByRole('button', { name: 'Not paid' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getAllByTestId('bills-sent-line')).toHaveLength(2)
+    expect(screen.queryByTestId('bills-sent-gaps')).toBeNull()
+    // The other part turns on No send on record, which shows the box alone.
+    fireEvent.click(screen.getByTestId('bills-sent-out-no-send'))
+    expect(screen.getByRole('button', { name: 'No send on record' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getAllByTestId('bills-sent-gap')).toHaveLength(3)
+    expect(screen.queryAllByTestId('bills-sent-line')).toHaveLength(0)
+    // The foot says what the tile counts, from what day, and what the amount leaves out.
+    const foot = screen.getByTestId('bills-sent-foot').textContent
+    expect(foot).toContain('The oldest is counted from its first send. A bill with no send is counted from the day it was billed.')
+    expect(foot).toContain('A bill with no amount on record is counted, and adds nothing to the amount.')
+  })
+
+  it('draws the Not paid tile for bills with no send alone, and hands the print the whole of it in words', async () => {
+    const NO_SEND = 'dddddddd-4444-4444-8444-444444444444'
+    io.data = { ...data([]), unsent: [{ billId: NO_SEND, jobId: JOB, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }] }
+    const printed: string[] = []
+    const opener = vi.spyOn(window, 'open').mockImplementation(() => ({ document: { write: (h: string) => printed.push(h), close: () => {}, images: [] }, focus: () => {}, print: () => {}, close: () => {} }) as unknown as Window)
+    renderWithProviders(<BillsSentLedger />)
+    const tile = await screen.findByTestId('bills-sent-tile-unpaid')
+    expect(tile.textContent).toMatch(/^Not paid1 bill \$2,140\.00Oldest was billed \d+ days agoSent0 billsNo send on record1 bill \$2,140\.00$/)
+    // The tile is not on the paper, so the print's heading says it.
+    fireEvent.click(screen.getByRole('button', { name: 'Print' }))
+    opener.mockRestore()
+    expect(printed[0]).toMatch(/Not paid counts every bill that is not paid in full: 1 bill, \$2,140\.00\. 0 sent, 1 with no send on record\. The oldest was billed \d+ days ago\./)
   })
 
   it('on a phone, puts the list first: a folded strip, a three-row line that opens the record, the file presses last', async () => {
@@ -738,7 +840,7 @@ describe('BillsSentLedger', () => {
     expect(screen.getAllByTestId('bills-sent-gap')).toHaveLength(1)
     expect(screen.queryAllByTestId('bills-sent-line')).toHaveLength(0)
     fireEvent.click(screen.getByRole('button', { name: 'All' }))
-    fireEvent.click(screen.getByTestId('bills-sent-tile-gaps'))
+    fireEvent.click(screen.getByTestId('bills-sent-out-no-send'))
     expect(screen.getAllByTestId('bills-sent-gap')).toHaveLength(1)
   })
 
