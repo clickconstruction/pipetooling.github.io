@@ -84,6 +84,16 @@ describe('buildContractSigningEmail', () => {
     expect(m.html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
     expect(m.html).not.toContain('<script>')
   })
+
+  it('lets the written-out link break inside itself, so the email is no wider than a phone', () => {
+    // A signing link is one unbroken run of about 100 characters. Left whole it held the email at 457 px in a
+    // 375 px window (punch list #376, measured in Chromium). The link itself and the button's link stay whole.
+    const url = `https://clicktooling.com/contract/accept?t=${'0123456789abcdef'.repeat(4)}`
+    const m = buildContractSigningEmail({ ...base, acceptUrl: url })
+    expect(m.html).toContain(`Or open <a href="${url}" style="color:#5a6b7e;word-break:break-all;overflow-wrap:anywhere">${url}</a>`)
+    expect(m.html.split(`href="${url}"`)).toHaveLength(3)
+    expect(m.text).toContain(`Read and sign:\n${url}`)
+  })
 })
 
 describe('helpers', () => {

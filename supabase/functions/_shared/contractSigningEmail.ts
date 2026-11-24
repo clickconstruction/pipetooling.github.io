@@ -184,7 +184,9 @@ export function buildContractSigningEmail(input: ContractSigningEmailInput): Con
     `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 8px"><tr>` +
     `<td bgcolor="${ink}" style="border-radius:6px"><a href="${e(input.acceptUrl)}" style="${font}display:inline-block;padding:13px 24px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border:1px solid ${ink};border-radius:6px">${e(buttonLabel)}</a></td>` +
     `</tr></table>` +
-    `<p style="${font}font-size:12px;color:${faint};margin:0 0 18px">Or open <a href="${e(input.acceptUrl)}" style="color:${muted}">${e(input.acceptUrl)}</a>${expiresLabel ? ` &middot; works until ${e(expiresLabel)}` : ''}</p>` +
+    // The link is written out whole and has no space in it, so it must break inside itself: left whole, it holds the
+    // email 80 px wider than a 375 px phone and the letterhead and the paper's name run off the edge (punch list #376).
+    `<p style="${font}font-size:12px;color:${faint};margin:0 0 18px">Or open <a href="${e(input.acceptUrl)}" style="color:${muted};word-break:break-all;overflow-wrap:anywhere">${e(input.acceptUrl)}</a>${expiresLabel ? ` &middot; works until ${e(expiresLabel)}` : ''}</p>` +
     `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${band}" style="background:${band};border-radius:8px"><tr>` +
     `<td style="${font}padding:11px 13px;font-size:13px;line-height:1.55;color:${ink}"><strong>${portalDisplay ? 'Once you have signed, it stays on your page.' : 'Once you have signed, we keep the copy on file.'}</strong> ${portalDisplay ? `${e(portalDisplay)} keeps your jobs, your pay, and your paperwork, so builders never hold up a check over a missing form.` : 'You never have to send it again.'}</td>` +
     `</tr></table>` +
