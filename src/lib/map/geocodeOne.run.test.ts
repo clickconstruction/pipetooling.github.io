@@ -42,27 +42,26 @@ vi.mock('https://esm.sh/@supabase/supabase-js@2', () => ({
 
 const ENV: Record<string, string> = { SUPABASE_URL: 'http://127.0.0.1:9', SUPABASE_ANON_KEY: 'anon-key' }
 
-/** The map services: Nominatim's search, the Census county lookup by point, the Census address lookup. */
-const net: { nominatim: Array<{ lat: string; lon: string }> | number; county: string; google: string; asked: string[] } = { nominatim: [], county: 'Travis County', google: 'ZERO_RESULTS', asked: [] }
+/**
+ * The map services: Google's lookup, the Census address lookup, the Census county lookup by point.
+ * OpenStreetMap's lookup is not among them (punch list #436): a request to it is an unexpected fetch,
+ * so a case that reached it would fail.
+ */
+type Point = { lat: number; lng: number }
+const net: { googlePoint: Point | null; censusPoint: Point | null; county: string; google: string; asked: string[] } = { googlePoint: null, censusPoint: null, county: 'Travis County', google: 'ZERO_RESULTS', asked: [] }
 const realFetch = globalThis.fetch
 function fakeFetch(input: string | URL | Request): Promise<Response> {
   const url = String(input instanceof Request ? input.url : input)
   const json = (body: unknown) => Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }))
-  if (url.includes('nominatim.openstreetmap.org')) {
-    net.asked.push('nominatim')
-    // A number is OpenStreetMap turning the function away with that status (v2.8484).
-    if (typeof net.nominatim === 'number') return Promise.resolve(new Response('refused', { status: net.nominatim }))
-    return json(net.nominatim)
-  }
   if (url.includes('/geographies/coordinates')) return json({ result: { geographies: { Counties: [{ NAME: net.county }] } } })
   if (url.includes('/locations/onelineaddress')) {
     net.asked.push('census')
-    return json({ result: { addressMatches: [] } })
+    return json({ result: { addressMatches: net.censusPoint ? [{ coordinates: { x: net.censusPoint.lng, y: net.censusPoint.lat } }] : [] } })
   }
   // Asked only by the cases that set a key (punch list #408).
   if (url.includes('maps.googleapis.com')) {
     net.asked.push('google')
-    return json({ status: net.google, results: [] })
+    return net.googlePoint ? json({ status: 'OK', results: [{ geometry: { location: net.googlePoint } }] }) : json({ status: net.google, results: [] })
   }
   return Promise.reject(new Error(`unexpected fetch ${url}`))
 }
@@ -84,7 +83,8 @@ beforeEach(() => {
   db.role = 'dev'
   db.miss = null
   db.missUpserts = []
-  net.nominatim = []
+  net.googlePoint = null
+  net.censusPoint = null
   net.county = 'Travis County'
   net.google = 'ZERO_RESULTS'
   net.asked = []
@@ -104,13 +104,25 @@ describe('geocode-one answers with a 200 the browser can read (v2.4878)', () => 
     expect(await res.json()).toMatchObject({ ok: true, fromCache: true, source: 'cache', lat: 30.2642, lng: -97.7437, county: 'Travis' })
   })
 
-  it('a new address: placed by the street map, kept in the cache, the county named', async () => {
-    net.nominatim = [{ lat: '29.5688', lon: '-97.9647' }]
+  it('a new address: placed by Google, asked first, kept in the cache, the county named', async () => {
+    ENV.GOOGLE_MAPS_API_KEY = 'test-key'
+    net.googlePoint = { lat: 29.5688, lng: -97.9647 }
     net.county = 'Guadalupe County'
     const res = await post('123 Main St, Seguin, TX 78155')
     expect(res.status).toBe(200)
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*')
-    expect(await res.json()).toMatchObject({ ok: true, fromCache: false, source: 'nominatim', county: 'Guadalupe' })
+    expect(await res.json()).toMatchObject({ ok: true, fromCache: false, source: 'google', county: 'Guadalupe' })
+    expect(net.asked).toEqual(['google'])
+    expect(db.upserts).toEqual(['123 main st, seguin, tx 78155'])
+  })
+
+  it('an address Google misses and the Census places: the Census is the second ask (punch list #436)', async () => {
+    ENV.GOOGLE_MAPS_API_KEY = 'test-key'
+    net.censusPoint = { lat: 29.5688, lng: -97.9647 }
+    net.county = 'Guadalupe County'
+    const res = await post('123 Main St, Seguin, TX 78155')
+    expect(await res.json()).toMatchObject({ ok: true, fromCache: false, source: 'census', county: 'Guadalupe' })
+    expect(net.asked).toEqual(['google', 'census'])
     expect(db.upserts).toEqual(['123 main st, seguin, tx 78155'])
   })
 
@@ -142,14 +154,15 @@ describe('geocode-one admits the roles that may open /map (v2.4974)', () => {
 })
 
 describe('geocode-one keeps only points in the lower 48 (v2.4975)', () => {
-  it("the street map's point in Assam is a miss: not stored, and the answer says why", async () => {
+  it("Google's point in Assam is a miss: not stored, and the answer says why", async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    net.nominatim = [{ lat: '26.7813', lon: '91.9274' }]
+    ENV.GOOGLE_MAPS_API_KEY = 'test-key'
+    net.googlePoint = { lat: 26.7813, lng: 91.9274 }
     const res = await post('1 Main Street')
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body).toMatchObject({ ok: false, error: 'not_found' })
-    expect(body.detail).toContain('OpenStreetMap placed it outside the lower 48 (26.7813, 91.9274)')
+    expect(body.detail).toContain('Google placed it outside the lower 48 (26.7813, 91.9274)')
     expect(db.upserts).toEqual([])
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
@@ -157,10 +170,11 @@ describe('geocode-one keeps only points in the lower 48 (v2.4975)', () => {
 
   it('a cached point in Assam is asked again, and the good answer replaces it', async () => {
     db.cached = { lat: 26.7813, lng: 91.9274 }
-    net.nominatim = [{ lat: '29.5688', lon: '-97.9647' }]
+    ENV.GOOGLE_MAPS_API_KEY = 'test-key'
+    net.googlePoint = { lat: 29.5688, lng: -97.9647 }
     net.county = 'Guadalupe County'
     const res = await post('123 Main St, Seguin, TX 78155')
-    expect(await res.json()).toMatchObject({ ok: true, fromCache: false, source: 'nominatim', lat: 29.5688, lng: -97.9647, county: 'Guadalupe' })
+    expect(await res.json()).toMatchObject({ ok: true, fromCache: false, source: 'google', lat: 29.5688, lng: -97.9647, county: 'Guadalupe' })
     expect(db.upserts).toEqual(['123 main st, seguin, tx 78155'])
   })
 })
@@ -170,27 +184,19 @@ describe('geocode-one remembers an address no service could place (punch list #4
   const KEY = 'zz the pasture behind the made up barn'
   const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString()
 
-  it('all three services say not found: the miss is kept, with what they said', async () => {
+  it('Google and the Census both say not found: the miss is kept with what they said, and the answer carries the day', async () => {
     ENV.GOOGLE_MAPS_API_KEY = 'test-key'
     const res = await post(WORDS)
     expect(res.status).toBe(200)
-    expect(await res.json()).toMatchObject({ ok: false, error: 'not_found' })
-    expect(net.asked).toEqual(['nominatim', 'google', 'census'])
+    const out = await res.json()
+    expect(out).toMatchObject({ ok: false, error: 'not_found', detail: 'no match from US Census' })
+    expect(out.remembered).toBeUndefined()
+    // A miss that was kept answers with the day, and one that was not does not (v2.8484).
+    expect(Number.isFinite(Date.parse(String(out.checked_at)))).toBe(true)
+    // Google first, then the Census, and nobody else (punch list #436).
+    expect(net.asked).toEqual(['google', 'census'])
     expect(db.missUpserts).toEqual([{ address_normalized: KEY, error_code: 'not_found', detail: 'no match from US Census' }])
     expect(db.upserts).toEqual([])
-  })
-
-  it('OpenStreetMap gives no answer, Google and the Census say not found: the miss is kept, and the answer carries the day (v2.8484)', async () => {
-    ENV.GOOGLE_MAPS_API_KEY = 'test-key'
-    net.nominatim = 403
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const out = await (await post(WORDS)).json()
-    expect(out).toMatchObject({ ok: false, error: 'not_found', detail: 'OpenStreetMap (Nominatim) HTTP 403; no match from US Census' })
-    expect(out.remembered).toBeUndefined()
-    expect(Number.isFinite(Date.parse(String(out.checked_at)))).toBe(true)
-    expect(db.missUpserts).toEqual([{ address_normalized: KEY, error_code: 'not_found', detail: 'OpenStreetMap (Nominatim) HTTP 403; no match from US Census' }])
-    expect(warn.mock.calls.some((c) => String(c[0]).includes('OpenStreetMap gave no plain answer: HTTP 403'))).toBe(true)
-    warn.mockRestore()
   })
 
   it('a miss that stands: no service is asked, and the answer says so with the day it was checked', async () => {
@@ -210,7 +216,7 @@ describe('geocode-one remembers an address no service could place (punch list #4
     db.miss = { address_normalized: KEY, error_code: 'not_found', detail: null, checked_at: daysAgo(31) }
     const body = await (await post(WORDS)).json()
     expect(body.remembered).toBeUndefined()
-    expect(net.asked).toEqual(['nominatim', 'google', 'census'])
+    expect(net.asked).toEqual(['google', 'census'])
     expect(db.missUpserts).toHaveLength(1)
   })
 
@@ -219,7 +225,7 @@ describe('geocode-one remembers an address no service could place (punch list #4
     db.miss = { address_normalized: KEY, error_code: 'not_found', detail: null, checked_at: daysAgo(1) }
     const body = await (await post(WORDS, { retry: true })).json()
     expect(body.remembered).toBeUndefined()
-    expect(net.asked).toEqual(['nominatim', 'google', 'census'])
+    expect(net.asked).toEqual(['google', 'census'])
   })
 
   it('a saved point answers first, whatever the memory holds', async () => {
@@ -237,9 +243,9 @@ describe('geocode-one remembers an address no service could place (punch list #4
     expect(db.missUpserts).toEqual([])
   })
 
-  it('Google never asked, with no key set, keeps nothing', async () => {
-    expect(await (await post(WORDS)).json()).toMatchObject({ ok: false, error: 'not_found' })
-    expect(net.asked).toEqual(['nominatim', 'census'])
+  it('Google never asked, with no key set, keeps nothing, and the answer says the Census alone was asked', async () => {
+    expect(await (await post(WORDS)).json()).toMatchObject({ ok: false, error: 'not_found', detail: 'no match from US Census; Google Geocoding is not configured' })
+    expect(net.asked).toEqual(['census'])
     expect(db.missUpserts).toEqual([])
   })
 

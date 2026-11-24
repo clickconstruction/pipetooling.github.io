@@ -19,7 +19,6 @@ import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLi
 import { usePageMode } from '../hooks/usePageMode'
 import { jobModeActiveSource, readJobModeStoredValue } from '../lib/jobModeToggle'
 import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
-import { modeRowDrawnHere } from '../lib/modeRow'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import { JobModeShortPage } from '../components/jobMode/JobModeShortPage'
 import { JobModeTopRow } from '../components/jobMode/JobModeTopRow'
@@ -1388,6 +1387,9 @@ export default function Dashboard() {
           needsYouDoorTo={needsYouJobModeDoorTo ?? undefined}
         />
         {jobModeTop}
+        {/* Write someone up (punch list #410): the same press as the full Dashboard's. Above the job card since
+            v2.8507: under it, a job in progress or a leader's quick buttons pushed it beneath the Clock In strip. */}
+        <WriteSomeoneUpDoor userId={authUser.id} role={role} surface="job-mode" style={{ marginBottom: '0.75rem' }} />
         <DashboardJobModeCard
           userId={authUser.id}
           onLeaveReport={(j) => setLeaveReportJob(j)}
@@ -1395,8 +1397,6 @@ export default function Dashboard() {
           canClockOut={!dashboardSelfIsSalary}
           knownJobs={jobsForVisitLabels}
         />
-        {/* Write someone up (punch list #410): the same press as the full Dashboard's, under the job card. */}
-        <WriteSomeoneUpDoor userId={authUser.id} role={role} surface="job-mode" style={{ marginTop: '0.75rem' }} />
         {/* Your week (v2.6589, punch list #255): the one progress signal the office picked for this person, and how far it moved this week. */}
         <DashboardYourWeekCard userId={authUser.id} />
         {/* Your record (v2.3368): the three things only this person can put right, no money on it. */}
@@ -1411,11 +1411,9 @@ export default function Dashboard() {
         <div style={{ marginTop: '0.75rem' }} data-job-mode-training>
           <DashboardTrainingSection userId={authUser.id} role={role} />
         </div>
-        {/* On a phone the mode row above the header (punch list #425) is the way to the full Dashboard for the
-            roles it is drawn for. Wherever the row is not drawn (a desk, a tablet, the estimator) the way back
-            is two presses into the gear menu's list, so this press stands at the foot of the page. `isMobile` is
-            the row's own 640 px line. */}
-        {modeRowDrawnHere(role, isMobile) ? null : (
+        {/* The way to the full Dashboard, at the foot of the page at every width. A phone hid it while the mode row
+            stood above the header (punch list #425). Since #433 the row shows only when the app opens, and the way
+            back is otherwise two presses into the gear menu's list, so this press stands here on a phone too. */}
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button
             type="button"
@@ -1434,7 +1432,6 @@ export default function Dashboard() {
             Show full dashboard
           </button>
         </div>
-        )}
         {jobModeWindows}
       </div>
     )
@@ -1455,13 +1452,12 @@ export default function Dashboard() {
               <DashboardTrialVerdictSection authUserId={authUser.id} role={role} />
             </Suspense>
           }
-          schedule={
-            <>
-              {myScheduleSection}
-              {/* Write someone up (punch list #410): Taunya's pick, the short pages show the press. */}
-              <WriteSomeoneUpDoor userId={authUser.id} role={role} surface="short-dashboard" style={{ margin: '0.25rem 0 0.75rem' }} />
-            </>
+          underGreeting={
+            // Write someone up (punch list #410): Taunya's pick, the short pages show the press. Under the greeting
+            // since v2.8507: under the list, every line that waited pushed it further down the page.
+            <WriteSomeoneUpDoor userId={authUser.id} role={role} surface="short-dashboard" style={{ margin: '0 0 0.9rem' }} />
           }
+          schedule={myScheduleSection}
           foot={<DashboardTrainingSection userId={authUser.id} role={role} />}
           onEverythingElse={() => {
             setShortShowFullDashboard(true)

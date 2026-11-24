@@ -18,7 +18,8 @@ import { sameContents, type BuilderRecord } from './standing'
 
 export { PAPER_NEW_LINE }
 
-const BASIS_WORDS = ['basisAsk', 'basisHow', 'levelsTitle', 'siteFact'] as const
+/** The paper's own words that the basis page reads. `offSays` is the line under its levels while the whole paper is Off. */
+const BASIS_WORDS = ['basisAsk', 'basisHow', 'levelsTitle', 'siteFact', 'offSays'] as const
 type WordKey = keyof PaperDef['words']
 const isBasisWord = (k: string): boolean => (BASIS_WORDS as readonly string[]).includes(k)
 

@@ -69,7 +69,7 @@ function withDetail(
 }
 
 /**
- * @param address Display address string (same as passed to Nominatim)
+ * @param address Display address string, as the person typed it
  * @param apiKey GOOGLE_MAPS_API_KEY
  */
 export async function geocodeWithGoogle(address: string, apiKey: string): Promise<GoogleGeocodeResult> {

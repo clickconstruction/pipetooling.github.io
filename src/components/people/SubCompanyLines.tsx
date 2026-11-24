@@ -9,6 +9,7 @@
  *
  * The rules and the words are `src/lib/people/subCompanies.ts`; the calls are `subCompaniesIo.ts`.
  */
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { ChangeableValue, ValueLine, ValueLines, ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import {
   SUB_COMPANY_WORDS,
@@ -22,7 +23,9 @@ import {
   type SubCompany,
 } from '../../lib/people/subCompanies'
 import { keepPersonCompany, keepPersonCompanyTitle } from '../../lib/people/subCompaniesIo'
-import { COMPANY_PAPER_WORDS, companyPaperDetail, companyPaperStateWords, type CompanyPaperRow } from '../../lib/people/subCompanyPapers'
+import { COMPANY_PAPER_WORDS, companyPaperDetail, companyPaperStateWords, companyPressHeight, type CompanyPaperRow } from '../../lib/people/subCompanyPapers'
+import { TAKE_BACK_LABEL, companyPaperCanBeTakenBack } from '../../lib/documents/paperTakeBack'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** The state chip on a company's paper, in the tab's own colours. */
 function PaperStateChip({ status }: { status: string }) {
@@ -40,11 +43,12 @@ function PaperStateChip({ status }: { status: string }) {
 /** The mark on the paper a deep link landed on: the tint and outline a person's linked paper carries on People → Contracts. */
 const PAPER_MARK = { background: 'var(--bg-blue-tint)', outline: '2px solid #2563eb', outlineOffset: -2 } as const
 
-const pressLook = { padding: '0.35rem 0.7rem', minHeight: 36, fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer' } as const
+const pressLook = { padding: '0.35rem 0.7rem', boxSizing: 'border-box', fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer' } as const
 
 /**
  * The company's row: its name, its tag, its workers, and its own papers once with **Send for signature** and
- * **Enter from paper** (PR 2). With no `papers` handed in, the row names the company and its workers alone.
+ * **Enter from paper** (PR 2). With no `papers` handed in, the row names the company and its workers alone. With
+ * `onTakeBack`, a paper that is not signed carries **Take back** on its own line (the walks of 2026-11-24).
  */
 export function SubCompanyHeadRow({
   group,
@@ -52,6 +56,8 @@ export function SubCompanyHeadRow({
   markedPaperId,
   onSend,
   onEnter,
+  onTakeBack,
+  takingBackId,
 }: {
   group: CompanyGroup
   papers?: readonly CompanyPaperRow[]
@@ -59,7 +65,13 @@ export function SubCompanyHeadRow({
   markedPaperId?: string | null
   onSend?: () => void
   onEnter?: () => void
+  /** Whoever may delete a paper is handed this: the press on a paper that is out or was never sent. */
+  onTakeBack?: (paper: CompanyPaperRow) => void
+  /** The paper being taken back right now: its press says so, and every Take back waits. */
+  takingBackId?: string | null
 }) {
+  /** A phone: the two presses stand a fingertip tall. A desk keeps its own height. */
+  const pressHeight = { minHeight: companyPressHeight(useNarrowViewport640()) }
   return (
     <tr data-sub-company-row={group.company.id} style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
       <td colSpan={2} style={{ padding: '0.75rem' }}>
@@ -92,27 +104,44 @@ export function SubCompanyHeadRow({
                   key={p.id}
                   data-sub-company-paper={p.id}
                   aria-current={p.id === markedPaperId ? 'true' : undefined}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', padding: '0.5rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', ...(p.id === markedPaperId ? PAPER_MARK : null) }}
+                  style={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', padding: '0.5rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', ...(p.id === markedPaperId ? PAPER_MARK : null) }}
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
                     <div style={{ fontWeight: 500, overflowWrap: 'anywhere' }}>{p.document_name}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
                       <ValueSentence text={companyPaperDetail(p)} />
                     </div>
                   </div>
                   <PaperStateChip status={p.status} />
+                  {onTakeBack && companyPaperCanBeTakenBack(p.status) ? (
+                    <button
+                      type="button"
+                      data-sub-company-paper-take-back={p.id}
+                      disabled={takingBackId != null}
+                      aria-busy={takingBackId === p.id || undefined}
+                      onClick={() => onTakeBack(p)}
+                      style={{
+                        ...pressLook,
+                        ...pressHeight,
+                        border: '1px solid var(--border-strong)',
+                        ...(takingBackId != null ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'wait' } : { background: 'var(--surface)', color: 'var(--text-red-700)' }),
+                      }}
+                    >
+                      {takingBackId === p.id ? 'Taking it back…' : TAKE_BACK_LABEL}
+                    </button>
+                  ) : null}
                 </div>
               ))
             )}
             {onSend || onEnter ? (
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {onSend ? (
-                  <button type="button" onClick={onSend} style={{ ...pressLook, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600 }}>
+                  <button type="button" onClick={onSend} style={{ ...pressLook, ...pressHeight, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600 }}>
                     {COMPANY_PAPER_WORDS.send}
                   </button>
                 ) : null}
                 {onEnter ? (
-                  <button type="button" onClick={onEnter} style={{ ...pressLook, border: '1px solid var(--border-strong)', background: 'var(--surface)' }}>
+                  <button type="button" onClick={onEnter} style={{ ...pressLook, ...pressHeight, border: '1px solid var(--border-strong)', background: 'var(--surface)' }}>
                     {COMPANY_PAPER_WORDS.enter}
                   </button>
                 ) : null}

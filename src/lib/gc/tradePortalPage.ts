@@ -10,6 +10,7 @@ import type { TradeFlowRows } from '../../../supabase/functions/_shared/gcTradeF
 import { parseTradeFlow } from '../portal/tradeFirstPage'
 import type { TradeSubmitErrorKey } from '../../../supabase/functions/_shared/gcTradeSubmit'
 import { GC_COMPANY } from './company'
+import { askTakenBack } from './decline'
 import { WAIVER_SIGN_LIVE } from './drawEmail'
 import { portalQuoteDue, portalTodos, type PortalAsk, type PortalTodo } from './portal'
 import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './portalI18n'
@@ -295,7 +296,8 @@ export function askChips(ask: PortalAsk, lang: PortalLang): { tone: AskChipTone;
 
 /** What an ask that ended says on the home's Before list. */
 export function pastWords(ask: PortalAsk, lang: PortalLang): string {
-  const key: PortalKey = ask.kind === 'closed' ? (ask.project.lostWhy === 'project_died' ? 'closedShortDied' : 'closedShortLost') : ask.kind === 'lost' ? 'wentOther' : 'youPassedShort'
+  const key: PortalKey =
+    ask.kind === 'closed' ? (ask.project.lostWhy === 'project_died' ? 'closedShortDied' : 'closedShortLost') : ask.kind === 'lost' ? 'wentOther' : askTakenBack(ask.invite) ? 'weTookItBackShort' : 'youPassedShort'
   return pt(lang, key, { gc: GC })
 }
 
@@ -311,6 +313,7 @@ export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
   notYours: 'errNotYours',
   projectLost: 'errProjectLost',
   youPassed: 'errYouPassed',
+  tookBack: 'errTookBack',
   openFirst: 'openFirst',
   alreadyQuoted: 'errAlreadyQuoted',
   noQuote: 'errNoQuote',

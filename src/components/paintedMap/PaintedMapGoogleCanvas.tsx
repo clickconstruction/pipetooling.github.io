@@ -164,15 +164,20 @@ function addMark(map: google.maps.Map, mark: Mark): google.maps.OverlayView {
   return view
 }
 
-/** One line as Google's own lines: a dark edge under the paint for each sure run, faint dots for each unsure one. */
+/**
+ * One line as Google's own lines: a dark edge under the paint for each sure run, faint dots for each unsure one.
+ * A line with a color of its own (#413, a buried line in the color a locator paints) wears it in place of the paint,
+ * as the Leaflet canvas draws it.
+ */
 function strokeLine(map: google.maps.Map, line: PaintedCanvasLine): google.maps.Polyline[] {
   const made: google.maps.Polyline[] = []
+  const look = line.color ? { ink: PAINT_INK, paint: line.color } : LOOK
   const stroke = (run: ReadonlyArray<PaintedPoint>, look: GoogleLineStroke) => {
     made.push(new google.maps.Polyline({ map, path: run.map((p) => ({ lat: p.lat, lng: p.lng })), clickable: false, ...look }))
   }
   const runs = lineRuns(line.points, line.poorParts)
-  for (const run of runs.sure) for (const look of sureRunStrokes(line.how, LOOK)) stroke(run, look)
-  for (const run of runs.poor) stroke(run, poorRunStroke(LOOK))
+  for (const run of runs.sure) for (const part of sureRunStrokes(line.how, look)) stroke(run, part)
+  for (const run of runs.poor) stroke(run, poorRunStroke(look))
   return made
 }
 
@@ -183,7 +188,8 @@ function sameItems<T>(a: ReadonlyArray<T>, b: ReadonlyArray<T>): boolean {
 
 /**
  * The lines. Each is drawn once and kept while it is the same line: a walk hands a new list on every reading, and only
- * the line that grew is drawn again. The saved lines beside it are left as they are.
+ * the line that grew is drawn again. The saved lines beside it are left as they are. A line's color is part of what
+ * it is: the job's places are read after the map, so a buried line is handed first with no color and then with one.
  */
 function Lines({ lines }: { lines: ReadonlyArray<PaintedCanvasLine> }) {
   const map = useMap()
@@ -195,7 +201,7 @@ function Lines({ lines }: { lines: ReadonlyArray<PaintedCanvasLine> }) {
     for (const line of lines) {
       now.add(line.id)
       const was = kept.get(line.id)
-      if (was && was.line.how === line.how && sameItems(was.line.points, line.points) && sameItems(was.line.poorParts, line.poorParts)) continue
+      if (was && was.line.how === line.how && was.line.color === line.color && sameItems(was.line.points, line.points) && sameItems(was.line.poorParts, line.poorParts)) continue
       was?.shapes.forEach((s) => s.setMap(null))
       kept.set(line.id, { line, shapes: strokeLine(map, line) })
     }
@@ -683,11 +689,11 @@ function Glass({ live, lines, places, draftPoints, mapTypeId, scheme, frame }: {
               {runs.sure.map((run, i) => (
                 <g key={`s${i}`}>
                   <polyline points={path(run)} fill="none" stroke={PAINT_INK} strokeOpacity={0.9} strokeWidth={8} strokeLinejoin="round" strokeLinecap="round" />
-                  <polyline points={path(run)} fill="none" stroke={PAINT_COLOR} strokeWidth={5} strokeLinejoin="round" strokeLinecap="round" strokeDasharray={line.how === 'drawn' ? '14 7' : undefined} />
+                  <polyline points={path(run)} fill="none" stroke={line.color ?? PAINT_COLOR} strokeWidth={5} strokeLinejoin="round" strokeLinecap="round" strokeDasharray={line.how === 'drawn' ? '14 7' : undefined} />
                 </g>
               ))}
               {runs.poor.map((run, i) => (
-                <polyline key={`p${i}`} points={path(run)} fill="none" stroke={PAINT_COLOR} strokeOpacity={0.85} strokeWidth={4} strokeLinecap="round" strokeDasharray="2 9" />
+                <polyline key={`p${i}`} points={path(run)} fill="none" stroke={line.color ?? PAINT_COLOR} strokeOpacity={0.85} strokeWidth={4} strokeLinecap="round" strokeDasharray="2 9" />
               ))}
             </g>
           )

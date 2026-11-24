@@ -13,7 +13,7 @@ describe('addressPinWords (v2.4783)', () => {
 
   it('words each state', () => {
     expect(addressPinWords({ kind: 'placing' })).toEqual({ main: 'placing…', note: '', tone: 'pulse' })
-    expect(addressPinWords({ kind: 'placed', county: 'Guadalupe', source: 'nominatim' })).toEqual({ main: 'Guadalupe County', note: 'pinned from the street map', tone: 'ok' })
+    expect(addressPinWords({ kind: 'placed', county: 'Guadalupe', source: 'census' })).toEqual({ main: 'Guadalupe County', note: 'pinned by the US Census', tone: 'ok' })
     expect(addressPinWords({ kind: 'placed', county: '', source: 'cache' })).toEqual({ main: 'placed', note: 'pinned earlier', tone: 'ok' })
     expect(addressPinWords({ kind: 'failed', reason: addressPinFailureReason('not_found') })).toEqual({ main: 'could not place it', note: 'it needs a street, a city or a ZIP; the night will try once more', tone: 'amber' })
     expect(addressPinWords({ kind: 'unplaced' }).main).toBe('not placed yet')

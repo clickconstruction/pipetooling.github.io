@@ -13,7 +13,8 @@
  *   - a credit in kind is listed and never added: it is not money;
  *   - a payment on a test bill is left out: a bill made in Stripe's test mode, or any payment on a ZZ test job
  *     (`billTestRows.ts`, the rule By day sent reads too);
- *   - a refund made in Stripe is not seen, so it lowers no day.
+ *   - a refund made in Stripe is not seen, so it lowers no day;
+ *   - a bank deposit that is on no bill yet is named under its day and never added (`billsPaidNoBillLine`).
  * One deposit that paid several bills is drawn once, with its bills under it (`billsPaidDayGroups`).
  *
  * The reads are `billsPaidIo.ts`, the screen `components/billing/BillsPaidByDay.tsx`.
@@ -22,7 +23,9 @@ import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, formatDenv
 import { escapeCsvField } from '../domTableToCsv'
 import { formatCurrency } from '../format'
 import { checkNumberOf, instrumentWord, isStripePayment } from '../jobs/billsAndPayments'
+import { depositsOnNoBillByDay, matchMoneyInDeposits, type DepositsOnNoBill, type MoneyInDeposit, type MoneyInUnlinkedPayment } from '../moneyInDeposits'
 import { sentCopyJobLabel, type SentCopyAboutJob } from '../sent/sentCopyAbout'
+import { val } from '../valuesInPlace'
 import { isInKindPaymentType } from '../../../supabase/functions/_shared/inKindPayment'
 import { billPaymentWayWords, billPaymentYmd, type BillPaidBill, type BillPayment } from './billsPaid'
 import { isBillsTestRow } from './billTestRows'
@@ -467,9 +470,55 @@ export function billsPaidTiles(lines: ReadonlyArray<BillsPaidLine>, month: strin
  * What a day's figure leaves out, said under the month. The view reads payment rows, and a bank deposit has none
  * until someone puts it on a bill or a job. The Dashboard's Money in bar counts that deposit the day it posts
  * (*Landed · not applied yet*), so the two can differ for a day. The live test of 2026-11-24 found Monday short
- * by two such deposits, and nothing on the page said why.
+ * by two such deposits, and nothing on the page said why. The day now names them (`billsPaidNoBillLine`).
  */
-export const BILLS_PAID_LEFT_OUT = 'A bank deposit counts once it is put on a bill or a job. Until then the Dashboard’s Money in shows it and this page does not.'
+export const BILLS_PAID_LEFT_OUT = 'A bank deposit counts once it is put on a bill or a job. Until then the Dashboard’s Money in counts it. This page names it under its day and does not add it.'
+
+// ---------- Deposits on no bill ----------
+
+/**
+ * What the bank said of the deposits that landed and are on no bill yet, by the day each posted. *unread* is no
+ * answer: the bank's deposits, or the typed-in payments that say which deposit a payment carries, did not read.
+ * It is never drawn as none.
+ */
+export type BillsPaidNoBillAnswer = { state: 'read'; days: ReadonlyMap<string, DepositsOnNoBill> } | { state: 'unread' }
+
+/**
+ * The answer from what the bank and the typed-in payments hold. The rule is the Dashboard's Money in bar's own
+ * (`moneyInDeposits.ts`): the deposits it draws *Landed · not applied yet* are the ones counted here.
+ */
+export function billsPaidNoBillAnswer(input: { deposits: ReadonlyArray<MoneyInDeposit>; unlinked: ReadonlyArray<MoneyInUnlinkedPayment>; returnedPaymentIds?: ReadonlySet<string>; todayYmd: string }): BillsPaidNoBillAnswer {
+  return { state: 'read', days: depositsOnNoBillByDay(matchMoneyInDeposits(input).matches, input.todayYmd) }
+}
+
+/** Said after the count, so nobody adds the deposits to the day a second time. A credit in kind says the same. */
+export const BILLS_PAID_NO_BILL_NOT_ADDED = 'Not added to the day.'
+/** Said in the line's place when the bank did not read. */
+export const BILLS_PAID_NO_BILL_UNREAD = 'The bank deposits did not read. A deposit that is on no bill yet is not shown.'
+/** The press, and where it leads: Accounts Receivable, where a deposit is put on a bill. Money in's own door. */
+export const BILLS_PAID_NO_BILL_PRESS = 'Open deposits'
+export const BILLS_PAID_NO_BILL_PATH = '/accounts-receivable'
+
+/** The quiet line under a picked day: the deposits on no bill, or that the bank did not read. */
+export type BillsPaidNoBillLine = { kind: 'deposits'; deposits: number; total: number; words: string } | { kind: 'unread'; words: string }
+
+/**
+ * The line under a picked day, or null for none. It names the bank deposits that landed that day and are on no
+ * bill yet, with what they add to. They are beside the day's figure and never in it: the figure, the cell, the
+ * tiles, the print and the CSV read the payment lines alone.
+ *
+ * It is drawn under **All** alone. A chip narrows the day to one way of paying, and the way is written on the
+ * payment a deposit does not have yet. No line while the bank is still being read (`answer` null), and none on
+ * a day that holds no such deposit. The count is marked as a value (`val`), so the screen draws it apart.
+ */
+export function billsPaidNoBillLine(opts: { answer: BillsPaidNoBillAnswer | null; ymd: string; how: BillsPaidChip }): BillsPaidNoBillLine | null {
+  if (!opts.answer || opts.how !== 'all') return null
+  if (opts.answer.state === 'unread') return { kind: 'unread', words: BILLS_PAID_NO_BILL_UNREAD }
+  const day = opts.answer.days.get(opts.ymd)
+  if (!day || !(day.deposits > 0)) return null
+  const one = day.deposits === 1
+  return { kind: 'deposits', deposits: day.deposits, total: day.usd, words: `${val('count', String(day.deposits))} ${one ? 'deposit' : 'deposits'} landed that ${one ? 'is' : 'are'} on no bill yet.` }
+}
 
 // ---------- Out of the app ----------
 

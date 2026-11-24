@@ -111,7 +111,8 @@ describe('railStripFacts', () => {
   it('says costed as N of M, amber until every fixture has lines', () => {
     expect(railStripFacts({ costed: 4, fixtures: 10, uncosted: 6, noCost: 6 })).toMatchObject({ costed: '4 of 10', allCosted: false, noCost: 6 })
     expect(railStripFacts({ costed: 10, fixtures: 10, uncosted: 0, noCost: 0 })).toMatchObject({ costed: '10 of 10', allCosted: true, noCost: 0 })
-    expect(railStripFacts({ costed: 0, fixtures: 0, uncosted: 0, noCost: 0 }).allCosted).toBe(false)
+    // An empty bid reads as the rail reads it: nothing is without lines, so green.
+    expect(railStripFacts({ costed: 0, fixtures: 0, uncosted: 0, noCost: 0 }).allCosted).toBe(true)
   })
 
   it('counts a fixture whose lines all price at $0 as no cost, though it is costed', () => {

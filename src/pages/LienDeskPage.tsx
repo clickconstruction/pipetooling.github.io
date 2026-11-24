@@ -39,6 +39,7 @@ import { isLienLeader } from '../lib/jobs/lienDesk'
 import { syncLienDeskAfterRecord } from '../lib/jobs/lienDeskIo'
 import { lienWindowDeskAffidavit, lienWindowDeskNotice } from '../lib/jobs/lienTimelineDesk'
 import { withJobLastWork, withJobsLastWork } from '../lib/jobs/lienLastWorkJobs'
+import LienPayoffs from '../components/jobs/LienPayoffs'
 import { ownerRecordsFromDesk } from '../lib/jobs/ownerRecordsDesk'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
@@ -329,7 +330,16 @@ export default function LienDeskPage() {
   )
 
   return (
-    <div ref={rootRef} data-lien-desk-page-root style={{ height: `calc(100dvh - ${top}px - var(--app-bottom-chrome, 0px) - ${PAGE_BOTTOM_GAP_PX}px)`, minHeight: 360, display: 'grid', gridTemplateRows: 'minmax(0, 1fr)' }}>
+    <div ref={rootRef} data-lien-desk-page-root style={{ height: `calc(100dvh - ${top}px - var(--app-bottom-chrome, 0px) - ${PAGE_BOTTOM_GAP_PX}px)`, minHeight: 360, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
+      {/* Payoffs (punch list #435): what waits on a release, and the door for a payer who just paid. Always drawn, so the desk keeps the second row. */}
+      <LienPayoffs
+        todayYmd={todayYmd}
+        refreshKey={data}
+        isMobile={isMobile}
+        initiallyOpen={searchParams.get('payoffs') === '1'}
+        onOpenBill={(jobId) => openEditJob(jobId, 'bill')}
+        onOpenRelease={(jobId) => withJob(jobId, (job) => setLienWindow({ job, initialTab: 'release_record' }))}
+      />
       <LienDesk
         layout={isMobile ? 'stacked' : 'columns'}
         onOpenNotice={onOpenNotice}

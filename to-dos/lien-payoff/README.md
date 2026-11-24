@@ -2,7 +2,7 @@
 name: "A lien payoff: one check in, every lien at the place released"
 number: 435
 group: gated
-status: asked 2026-11-24 by Diane, when a property owner paid off every lien at one place with one check · what exists read in the code, the law read in the published Code, a first draw, a critique as Grace would give it and a second draw, all the same day · nothing is built · waiting on the picks below
+status: asked 2026-11-24 by Diane, when a property owner paid off every lien at one place with one check · what exists read in the code, the law read in the published Code, a first draw, a critique as Grace would give it and a second draw, all the same day · the same day she asked where the door was and for the product to do the thinking, and said to build pieces 1 and 2 · the door and each lien's next press in v2.8504 · the release that waits for the money and takes the county's stamp in v2.8508, with no migration · pieces 3 to 7 wait on the picks below
 summary: >
   A payoff of the liens at one place runs today through three jobs, one bill and one tab at a time:
   about fifty presses for three liens, the check number typed four times, and nothing that ties a
@@ -11,16 +11,18 @@ summary: >
   against its total, one release for each filed lien the money covers, each held until the check
   clears and shown with the day it is due, printed in the desk's one run, and kept on the desk until
   the county has recorded it and the copies are out.
-next: The owner picks the shape and answers his four calls. Pieces 1 and 2 of the build wait on nothing else.
-size: L as a train of seven (S · M · M · M · M · S · S)
-blocker: The owner's go on the shape. Counsel's answers gate piece 7 and the words on the papers, not the first two pieces.
-opinion: build — pieces 1 and 2 make today's by-hand path safe and need no door; the door follows the picks
+next: The office walks a real payoff through Payoffs and says what still reads wrong. The owner answers his four calls, and piece 3, one check over many bills, is next.
+size: L as a train of seven (S · M · M · M · M · S · S); pieces 1 and 2 built; left: pieces 3 to 7 (M · M · M · S · S)
+blocker: The owner's four calls for pieces 3 to 6. Counsel's answers gate piece 7 and the words on the papers.
+opinion: build — the door and the safe release are live in pieces 1 and 2; piece 3 saves the most presses next
+ver: v2.8504 · v2.8508
 ---
 
 # A lien payoff: one check in, every lien at the place released (#435)
 
 The proposal and its mock-up are [`mockup.html`](./mockup.html), served at `/to-dos/lien-payoff/mockup.html`.
 The second draw can be pressed: five stops, and three things that can happen to the check.
+Its first stop shows the door as built; the check pane and the card with five stops are pieces 3 to 5.
 Every name, address, job, instrument number, check number and amount on it and in this card is made up.
 The repo is public, so nothing here is copied from the live app or from the matter that raised the question.
 
@@ -38,7 +40,19 @@ The repo is public, so nothing here is copied from the live app or from the matt
 2. It lines up one release for each filed lien the money covers. Each waits for the check to clear and shows the day it is due. The releases print in the desk's one run.
 3. The card stays until the county has recorded each release and the copies are out. A check that comes back holds every release that has not left.
 
-## What exists today
+## Where the door is
+
+On the Lien desk, above the lists.
+A line named **Payoffs** says what waits on a release and has one press, **Someone paid ›**.
+The press opens every filed lien under its place, with the amount that pays the place's liens off.
+Each lien says where it stands in one sentence and offers the one press that comes next: **Record the payment ›**, then **Make the release ›**, then **Record the county's stamp ›**.
+The app works out the step from the bills, the payments and the release on record, so the office chooses buttons.
+
+The first cut of this card put the door in piece 4 of the build, and pieces 1 and 2 only gave a pile that filled after money was recorded.
+That was a fault: a person holding a check starts from the lien.
+The door shipped first, in v2.8504.
+
+## What existed before pieces 1 and 2
 
 | Step | What the office presses today | What is missing |
 |---|---|---|
@@ -139,17 +153,25 @@ Amounts draw through `Money`, changeable values through `ChangeableValue`, worke
 
 | # | The piece | Size | Kernel and tests | Migration | What proves it |
 |---|---|---|---|---|---|
-| 1 | **Paid, lien still on record.** A Payoffs pile on the desk, read only: each filed lien whose bills read paid, with its press to the job's Release of record tab. **Helps soonest.** | S | `lienPayoffOwed.ts`: filed affidavits, live releases and what the bills still owe in, rows out. Tests for paid, part paid, released, voided, two liens on a job. | None | Kernel tests, a render smoke, the pile on a ZZ test job |
-| 2 | **The release knows its lien and its day at the county.** The tab releases the affidavit it was opened on, reads the payment day from the payment rows, warns when no money is recorded, and takes the county's instrument number, day and stamped scan (`LienFiledScanPress`). | M | `lienReleaseOfRecord.ts`: the gate and the states drawn, out for the notary, recorded. The timeline's *Released* reads the recorded day. | Two columns on `job_lien_filings`: the affidavit released and the release's own instrument number. Old rows filled by matching. | Kernel tests, the tab's render smoke, a walk on a ZZ test job with a made-up stamp |
+| 1 | **The door, and each lien's next press.** The line *Payoffs* with *Someone paid ›*, and the window of every filed lien under its place, each with one sentence and one press. **Built, v2.8504.** | S | `lienPayoff.ts`: the step, the sentence and the press from the bills, the payments and the release on record. 22 tests, 6 render tests. | None | Its tests, and a read-only look at the live desk |
+| 2 | **The release waits for the money and takes the county's stamp.** The tab is on one filed lien, holds its print and save while the bills still owe unless a reason is typed, starts the payment date on the last payment, saves one release a lien, and takes the day recorded and the release's own instrument number in place. **Built, v2.8508.** | M | `lienReleaseOfRecord.ts`: the targets, the money hold, the stamp. 12 tests, 6 render tests. | None after all: the link and the number live in the fields a release already saves | Its tests, and a read-only look at the hold on a live job |
 | 3 | **One check over many bills.** One typed check becomes a payment on each bill in one write, each carrying the same check mark. | M | `checkSpread.ts`: liened first, oldest first, to the cent, the three totals, changes by hand. Tests for short, over, rounding and a bill at zero. | A check mark column on `jobs_ledger_payments` and one function that writes the rows through the guards `mark_invoice_paid` uses | Kernel tests, a database bed for the function, a walk on two ZZ test jobs |
 | 4 | **The payoff door and card.** The place's press, the check pane, the card with its five stops, the written request's day and the leader's funds press. The guide ships here. | M | `lienPayoff.ts`: the stops, the next act, the due day, the held reasons. Render smokes for the pane and the card. | One small table for a payoff, with the four fence calls: the place, the check, the day asked, who confirmed funds | Kernel tests, smokes, a walk from check to card on ZZ test jobs |
 | 5 | **The releases ride the run.** Print for the notary, mark notarized, record at the county, record the copies, each with its count and what it held. | M | `lienRunChecklist.ts` takes releases. `batchWords` gives the labels. | None | Checklist tests, a full run on ZZ test jobs with one release held |
 | 6 | **A check that comes back knows its releases.** The case reads the check mark, holds what has not left and marks what has. | S | `payoffReturned.ts`: none printed, printed, recorded. Tests for each. | None | Kernel tests, a played-back returned check on a ZZ test job |
 | 7 | **No final waiver wider than the money.** The unconditional prompt waits where other bills stay open at the place. Built on counsel's word. | S | `pickLienWaiverForBill` gains the place's open bills. Tests beside it. | None | Kernel tests |
 
-Pieces 1 and 2 need no door and make today's by-hand path safe.
-Piece 2 should land before the first stamped release comes back from a clerk.
-Each piece is its own PR with its release note and fragment, and piece 4 carries the help guide.
+Pieces 1 and 2 are built and carry the door.
+The guide shipped with them: `release-a-filed-lien-after-it-is-paid`.
+Until piece 3, one check over several bills is recorded bill by bill, or in Accounts Receivable once the bank shows the deposit.
+Each piece is its own PR with its release note and fragment.
+
+Left from pieces 1 and 2, each small:
+
+- The stamped copy of a release is a Drive link on its line under *Filings on this job*; the scan press there is still for affidavits only.
+- The job's lien timeline reads *Released* from the moment a release is saved; only Payoffs and the tab tell a saved release from a recorded one.
+- Payoffs does not show a bill open at the place on a job with no filed lien.
+- Neither piece has been walked with a write: no test payment, release or stamp was saved on a ZZ job.
 
 ## The calls
 

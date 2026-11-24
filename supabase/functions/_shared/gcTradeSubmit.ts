@@ -102,6 +102,8 @@ export const TRADE_SQL_ERRORS = {
   notYours: 409,
   projectLost: 409,
   youPassed: 409,
+  // v2.8490: an ask we took back after the company heard about it (gc_trade_ask).
+  tookBack: 409,
   openFirst: 409,
   alreadyQuoted: 409,
   noQuote: 409,

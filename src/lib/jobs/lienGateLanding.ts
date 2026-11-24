@@ -31,6 +31,16 @@ export function lienGateLanding(rows: ReadonlyArray<LienGateLandingRow>): LienGa
   return first ? { key: first.key, focus: first.pressable } : null
 }
 
+/**
+ * Whether the keyboard made the press (v2.8509). A click from Enter or the space bar carries no press count; a tap
+ * or a mouse press counts at least one. A gate landed on by the keyboard shows the keyboard's ring; one landed on by
+ * a tap or a mouse press takes the keyboard without it, since Safari draws the ring on the first scripted focus after
+ * a page load and left it on the gate after the landing light had gone.
+ */
+export function lienGatePressByKeyboard(clickDetail: number): boolean {
+  return clickDetail === 0
+}
+
 /** The room left over a landed row, so it does not sit hard against the head. */
 export const LIEN_GATE_LANDING_BREATH_PX = 8
 
@@ -46,19 +56,25 @@ export type LienGateLandingView = {
   bottomInset: number
   /** The scroll that lands the gates section under its own head (`lienPaneSectionScrollTop`). */
   sectionTop: number
+  /**
+   * This landing has already scrolled the pane, and the pane is still settling (v2.8509). The row goes to its place
+   * again even when it is on the screen, so a pane that jumps under reduced motion ends where a gliding one does.
+   */
+  moved?: boolean
 }
 
 /**
  * Where the pane scrolls so the gate row is on the screen, or null to stay put. A row already clear of the pinned
  * heads moves nothing, which is the usual case beside the list on a computer. Otherwise the gates section lands
  * under its own head, as a press on the head lands it, so the row reads with its neighbours. A section too tall
- * for the window lands the row itself under the head.
+ * for the window lands the row itself under the head. Once the landing has moved the pane (`moved`), a row on the
+ * screen no longer holds it still: the section that changed size over the gates is followed to the same place.
  */
 export function lienGateLandingScrollTop(v: LienGateLandingView): number | null {
   // A page with no layout (a test's, a pane not drawn yet) has nothing to scroll to.
   if (!(v.viewHeight > 0)) return null
   const shows = (top: number) => v.rowTop >= top + v.topInset && v.rowTop + v.rowHeight <= top + v.viewHeight - v.bottomInset
-  if (shows(v.scrollTop)) return null
+  if (!v.moved && shows(v.scrollTop)) return null
   if (shows(v.sectionTop)) return Math.max(0, v.sectionTop)
   return Math.max(0, v.rowTop - v.topInset - LIEN_GATE_LANDING_BREATH_PX)
 }

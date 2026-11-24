@@ -59,6 +59,50 @@ export function usualPublishPress(draft: SheetDef, rec: BuilderRecord, plan: Rea
   return { label: ready > 0 ? countedLabel('Publish to', ready, 'job') : 'Publish your usual', dead: why.length > 0, why }
 }
 
+/** The question before a publish, for the shared confirm window. Cancel is the safe answer and takes the focus. */
+export type SheetPublishConfirm = { title: string; message: string; confirmLabel: string; cancelLabel: string; cancelIsSafe: true }
+
+const PUBLISH_LASTS = 'A publish cannot be taken back. A later revision can only replace it.'
+
+/**
+ * What the confirm window asks before one job's sheet is published (Diane, 2026-11-24). A publish cannot be taken
+ * back: the next change is a later revision, never the old one again. From the second revision on, every sub the
+ * sheet was sent to reads the new one at once, so the words say who that is. The first has nobody reading yet, so
+ * the words say what it becomes.
+ */
+export function jobPublishConfirm(jobName: string, job: Pick<JobSheetState, 'revision'>): SheetPublishConfirm {
+  const next = job.revision + 1
+  const name = jobName.trim().replace(/\s+/g, ' ') || 'this job'
+  const reach =
+    job.revision === 0
+      ? `Revision ${next} is what a sub sees once you send them this sheet, and what the link opens.`
+      : `Every sub you sent this sheet to sees revision ${next} from now on. So does anyone with the link.`
+  return { title: `Publish the sheet for ${name}`, message: `${reach} ${PUBLISH_LASTS}`, confirmLabel: `Publish revision ${next}`, cancelLabel: 'Not yet', cancelIsSafe: true }
+}
+
+/**
+ * What the confirm window asks before the usual is published. The usual's publish is a batch: it goes to every job
+ * that is ready, and each of those sheets is published again. So the words count the jobs that get it and the jobs
+ * held, from the same plan the press and the rows read. The window's press is the bar's own, with its count.
+ */
+export function usualPublishConfirm(rec: Pick<BuilderRecord, 'revision'>, plan: ReadonlyArray<UsualPublishRow>): SheetPublishConfirm {
+  const next = rec.revision + 1
+  const ready = plan.filter((r) => r.gets).length
+  const held = plan.length - ready
+  const goes =
+    ready > 0
+      ? `${plural(ready, 'job gets', 'jobs get')} it now, and each sub sent ${ready === 1 ? 'that sheet' : 'one of those sheets'} sees the change.`
+      : "No job gets it now. A job's sheet goes out on it when you publish that job."
+  const holds = held > 0 ? ` ${plural(held, 'job is', 'jobs are')} held. Each held job's row says why.` : ''
+  return {
+    title: 'Publish your usual',
+    message: `Your usual becomes revision ${next}. ${goes}${holds} ${PUBLISH_LASTS}`,
+    confirmLabel: ready > 0 ? countedLabel('Publish to', ready, 'job') : 'Publish your usual',
+    cancelLabel: 'Not yet',
+    cancelIsSafe: true,
+  }
+}
+
 /** Why a job is over for a sheet: it was lost before it was won, or it is closed. Null while it is chased or run. */
 export type GcJobOver = 'lost' | 'closed'
 

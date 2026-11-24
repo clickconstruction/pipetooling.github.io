@@ -2,7 +2,7 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: row at the top, five seconds, timer, row went away, row disappeared, swipe up, gear menu list, computer, tablet, switch, pull down, grey bar, dashboard, task mode, top row, squares, directions, job details, photo, my spend, paint a map, this week, tomorrow, on site, short job mode, short page, open this job, everything else, too much, overwhelmed, write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
+keywords: row at the top, five seconds, timer, row went away, row disappeared, swipe up, gear menu list, modes at open, shrinks into the gear, when the app opens, computer, tablet, switch, dashboard, task mode, top row, squares, directions, job details, photo, my spend, paint a map, this week, tomorrow, on site, short job mode, short page, open this job, everything else, too much, overwhelmed, write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
 where: /dashboard
 order: 10
 ---
@@ -11,50 +11,52 @@ Job Mode turns the Dashboard into one big card built for working in the field. I
 ## Is Job Mode on?
 
 - **Subs and helpers:** yes, already. Job Mode is on the first time you open the app on any phone. Nothing to set up.
-- **Everyone else on a phone:** you tap **Job Mode** on the row at the top of the Dashboard. See [the row at the top](#the-row-at-the-top).
+- **Everyone else on a phone:** you tap **Job Mode** on the row that shows when the app opens. After that you tap **Job Mode** in the {{icon:gear}} gear menu. See [the row at the top](#the-row-at-the-top).
 - **On a computer or a tablet:** you tap the {{icon:gear}} **gear menu** in the top-right of the header. You tap **Job Mode** under **Modes**. See [the list in the gear menu](#the-list-in-the-gear-menu).
 - **Estimators:** you use the gear menu's list on every screen.
 
 Turning it **off** is remembered on that phone even if your role has it on by default. With Job Mode on, the Dashboard shows the Job Mode card first.
 
-Where there is no row at the top, {{button:outline|Show full dashboard}} sits under the card. A tap shows the rest of the Dashboard for that visit. The next time the app opens, the card is back.
+{{button:outline|Show full dashboard}} sits under the card. A tap shows the rest of the Dashboard for that visit. The next time the app opens, the card is back.
 
 Job Mode, Dispatch Mode and Task Mode are [one at a time](/help/task-mode#one-mode-at-a-time). Turning Job Mode on takes you out of the other two. Turning it off puts you back in Dispatch Mode if you had that on.
 
 :::example A new phone
-Your helper gets a replacement phone and signs in. They land straight on the Job Mode card, with {{button:green|Clock In}} at the bottom of the screen. They need no gear menu and no guide. To see the whole Dashboard, they tap **Dashboard** on the row at the top.
+Your helper gets a replacement phone and signs in. They land straight on the Job Mode card, with {{button:green|Clock In}} at the bottom of the screen. They need no gear menu and no guide. To see the whole Dashboard, they tap {{button:outline|Show full dashboard}} under the card.
 :::
 
 ## The row at the top
 
-On a phone, every role but the estimator gets one row above the header. The row has three parts.
+On a phone, every role but the estimator sees one row when the app opens. The row lies over the top of the Dashboard. The row has three parts.
 
 :::example The row at the top of the Dashboard
 {{button:outline|Task Mode}} {{button:blue|Dashboard}} {{button:outline|Job Mode}}
 :::
 
 - The blue part is the page you are on.
-- You tap another part to switch. The row then stays five more seconds, so the way back is one tap.
+- You tap another part to switch.
 - **Dashboard** is the full Dashboard. Anyone with Dispatch Mode on keeps the Dispatch Mode bar there.
 - **Task Mode** shows only your checklist. See [use Task Mode](/help/task-mode).
 
-The row shows for five seconds each time you go to the Dashboard. A thin grey line under the row gets shorter as the time runs out. Then the row slides up and away. The page under the row does not move. The row also shows when you come back to the app after a minute away.
+The row shows for five seconds. A thin grey line under the row gets shorter as the time runs out. Then the row shrinks into the {{icon:gear}} gear at the top right, and the gear lights up for a moment. The gear menu holds the same three choices from then on. The page under the row does not move. The row leaves nothing in its place.
+
+A tap on any part closes the row the same way, at once. The blue part does this too. Tap the blue part when you want to stay on the page you are on.
 
 You can keep the row longer. Rest a finger on the row and the row waits. The row starts five fresh seconds when you lift the finger. You can also send the row away at once. Swipe up on the row.
 
-A small grey bar at the top of the page marks the row's place. Tap the grey bar to bring the row back. A pull down from the top of the page does the same. So does a tap on the **Dashboard** link in the header.
+The row shows once each time the app opens. The row also shows when you come back to the app after a minute away. At any other time you switch in the {{icon:gear}} gear menu. See [the list in the gear menu](#the-list-in-the-gear-menu).
 
-The row stays in sight while you are in Task Mode. There the row is the way out.
+You can stop the row from showing. Tap the {{icon:gear}} gear and untick **Modes at open**. The choice is kept on this phone. Tick **Modes at open** and the row shows again.
 
-On a phone the row is the one place to switch. The {{icon:gear}} gear menu there does not list **Job Mode** or **Task Mode**. **Dispatch Mode** is still in the gear menu for the roles that can use it.
+The row stays in sight while you are in Task Mode. There the row is the way out. A tap on **Dashboard** or **Job Mode** there sends the row into the gear.
 
 An estimator's first page is Bids, not the Dashboard. So an estimator has no row. An estimator uses [the list in the gear menu](#the-list-in-the-gear-menu) on every screen.
 
 ## The list in the gear menu
 
-A computer or a tablet has no row at the top. The same three choices sit in the {{icon:gear}} gear menu, under **Modes**.
+The three choices sit in the {{icon:gear}} gear menu, under **Modes**. The list is there on a phone, a tablet and a computer.
 
-:::example The gear menu on a computer
+:::example The gear menu
 **Dashboard** {{chip:blue|you are here}}
 
 Job Mode
@@ -66,10 +68,10 @@ Task Mode
 - You tap another line to switch. The menu closes and the app opens that page.
 - **Dashboard** is the full Dashboard. Anyone with Dispatch Mode on keeps the Dispatch Mode bar there.
 - **Job Mode** opens the Job Mode card on the Dashboard.
-- **Task Mode** shows only your checklist. A green strip at the top then says *☑ Task Mode · Exit*.
+- **Task Mode** shows only your checklist. On a computer a green strip at the top then says *☑ Task Mode · Exit*.
 - **Dispatch Mode** keeps its own tick under the list.
 
-The list does on a computer what the row does on a phone.
+The list does at any time what the row does when the app opens.
 
 The header also changes. The three task buttons become a **Contact:** row. It has a green phone button that calls the office. Then {{button:blue|dispatch}}, {{button:purple|estimating}}, and {{button:blue|teammate}} are spelled out. On a narrow phone screen they stay as the compact icon buttons, with the phone button on the left. The purple one is **Ask estimating**. It sends a question to the estimators. You are not opening anyone's inbox.
 
@@ -297,7 +299,7 @@ Salaried teammates do not clock out manually. Their hours are handled automatica
 
 The details section also shows for your **Ready to start** job before you clock in. That is the customer contact, Street View, and updates. You review the visit before you head out.
 
-Below the card, **My Schedule** shows your upcoming visits. That section is the same one the full Dashboard shows. So you can see what is next without leaving Job Mode. Where there is no row at the top, {{button:outline|Show full dashboard}} sits just under it.
+Below the card, **My Schedule** shows your upcoming visits. That section is the same one the full Dashboard shows. So you can see what is next without leaving Job Mode. {{button:outline|Show full dashboard}} sits just under it.
 
 ## The Job Mode tab bar
 

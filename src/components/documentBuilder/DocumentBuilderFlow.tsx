@@ -59,6 +59,7 @@ import {
   type PaperStop,
   type PaperTopic,
 } from '../../lib/documentBuilder/documentBuilder'
+import { basisNotePath, confirmPaths, factFieldLabel, factPath, sectionPath } from '../../lib/documentBuilder/flowFields'
 import { BuilderField, type BuilderFieldMark } from './BuilderField'
 import { levelInk, levelTone } from './levelTone'
 import { LevelBars, LevelChip, LevelTrack, DocumentBuilderSlider } from './DocumentBuilderSlider'
@@ -241,7 +242,10 @@ export type FlowHost = {
   reviewExtra?: ReactNode
 }
 
-export function DocumentBuilderFlow({ def, style, edit, open, look, host }: { def: PaperDef; style?: CSSProperties; edit?: FlowEdit; open?: FlowOpen; look?: FlowLook; host?: FlowHost }) {
+/** The page the flow shows, told to whoever draws a map beside it: its step, and for a topic the stop it stands on. */
+export type FlowShown = { step: string; stop?: PaperStop }
+
+export function DocumentBuilderFlow({ def, style, edit, open, look, host, onShown }: { def: PaperDef; style?: CSSProperties; edit?: FlowEdit; open?: FlowOpen; look?: FlowLook; host?: FlowHost; onShown?: (shown: FlowShown) => void }) {
   const [held, setHeld] = useState<Held>(() => {
     const settings = host?.start?.settings ?? startSettings(def)
     return { settings, flow: settleFlow(def, settings, { ...startFlow(), ackAt: host?.start?.ackAt ?? null, step: host?.start?.step ?? 0 }) }
@@ -264,6 +268,15 @@ export function DocumentBuilderFlow({ def, style, edit, open, look, host }: { de
   }, [flow.step])
 
   useGlide(body, step?.key ?? '')
+
+  // The page on show, said each time it changes: a step pressed, Next or Back, the slider moved, or the map's own press.
+  const shownStep = step?.key
+  const shownStop = step?.kind === 'topic' ? (settings.topics[step.key] ?? settings.basis) : undefined
+  useEffect(() => {
+    if (shownStep != null) onShown?.(shownStop != null ? { step: shownStep, stop: shownStop } : { step: shownStep })
+    // Whoever listens hears a change of the page, not a new function of its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownStep, shownStop])
 
   // The map opens a page: its step, at its stop. The box on the first page is ticked for the person who edits.
   const openAt = open?.at
@@ -297,6 +310,8 @@ export function DocumentBuilderFlow({ def, style, edit, open, look, host }: { de
   const at = topic ? (settings.topics[topic.key] ?? settings.basis) : PAPER_OFF
   const confirm = { ...confirmWords(def, settings, flow), ...host?.confirm }
   const nextShut = isStepShut(def, settings, flow, nextStep(def, settings, flow))
+  // The last step's own words are fields for the person who edits. A host's press and a look-only walk have none.
+  const lastWords = edit && !look && !host ? confirmPaths(settings, flow) : null
 
   return (
     <div
@@ -382,7 +397,7 @@ export function DocumentBuilderFlow({ def, style, edit, open, look, host }: { de
         ) : null}
         {step.kind === 'basis' ? (
           <>
-            <LevelFacts def={def} level={settings.off ? PAPER_OFF : settings.basis} />
+            <LevelFacts def={def} level={settings.off ? PAPER_OFF : settings.basis} edit={edit} />
             <DocumentBuilderSlider def={def} value={settings.off ? PAPER_OFF : settings.basis} label={step.name} onPick={pickBasis} />
           </>
         ) : null}
@@ -397,6 +412,12 @@ export function DocumentBuilderFlow({ def, style, edit, open, look, host }: { de
             basis={settings.basis}
             onPick={(stop) => setTopic(topic.key, stop)}
           />
+        ) : null}
+        {flow.step === last && lastWords && edit ? (
+          // A press cannot be typed in, so its words are a field above it, as the box's words are on the first step.
+          <p style={{ ...MEAN, fontWeight: 600 }}>
+            <W edit={edit} path={lastWords.label} text={confirm.label} label="The words on the last press" />
+          </p>
         ) : null}
         <div style={{ display: 'grid', gridTemplateColumns: flow.step > 0 && !(look && flow.step === last) ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 8 }}>
           {flow.step > 0 ? (
@@ -434,7 +455,9 @@ export function DocumentBuilderFlow({ def, style, edit, open, look, host }: { de
           </button>
         ) : flow.step === last ? (
           // A host's note can be a press 44 px tall. Its plain line keeps that room, so the press above does not move when a blank is typed.
-          <p style={host?.confirm && !look ? { ...MUTED, ...NOTE_ROOM } : MUTED}>{look ? look.lastStep : confirm.note}</p>
+          <p style={host?.confirm && !look ? { ...MUTED, ...NOTE_ROOM } : MUTED}>
+            {look ? look.lastStep : lastWords?.note && edit ? <W edit={edit} path={lastWords.note} text={confirm.note} label="The line under the last press" /> : confirm.note}
+          </p>
         ) : null}
       </div>
     </div>
@@ -467,6 +490,7 @@ function BasisPage({ def, settings, onPick, edit }: { def: PaperDef; settings: P
   useEffect(() => {
     if (typeof picked.current?.scrollIntoView === 'function') picked.current.scrollIntoView({ block: 'nearest' })
   }, [pickedId])
+  const offPath = basisNotePath(settings)
   return (
     <>
       <p style={MEAN}>
@@ -515,7 +539,8 @@ function BasisPage({ def, settings, onPick, edit }: { def: PaperDef; settings: P
           })}
         </div>
       </div>
-      <p style={MUTED}>{basisNote(def, settings)}</p>
+      {/* Off, the line is the paper's own words, and a field. On, it is a count the flow works out. */}
+      <p style={MUTED}>{offPath ? <W edit={edit} path={offPath} text={basisNote(def, settings)} label="What the basis page says when the paper is Off" /> : basisNote(def, settings)}</p>
       <p style={FINE}>
         <W edit={edit} path="words.basisHow" text={def.words.basisHow} label="How the basis works" />
         {' The numbers above the slider are placeholders.'}
@@ -528,14 +553,17 @@ function BasisPage({ def, settings, onPick, edit }: { def: PaperDef; settings: P
  * What a level does, as a gauge above the dial: the same few facts on every level, each in its own place, so the
  * numbers change where the thumb is as the basis slides. Nothing is drawn while the whole paper is Off.
  */
-function LevelFacts({ def, level }: { def: PaperDef; level: PaperStop }) {
+function LevelFacts({ def, level, edit }: { def: PaperDef; level: PaperStop; edit?: FlowEdit }) {
   const facts = levelFacts(def, level)
   if (facts.length === 0) return null
   return (
     <div data-level-facts="" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))', gap: '6px 10px' }}>
       {facts.map((fact) => (
         <div key={fact.key} style={{ display: 'grid', gap: 1, alignContent: 'start' }}>
-          <span style={{ ...GROUP_TITLE, fontSize: '0.62rem' }}>{fact.label}</span>
+          <span style={{ ...GROUP_TITLE, fontSize: '0.62rem' }}>
+            {/* A fact's name is the paper's own: a topic's fact name, or the name of the site's count. Its value is worked out. */}
+            <W edit={edit} path={factPath(def, fact.key)} text={fact.label} label={factFieldLabel(def, fact.key)} />
+          </span>
           {/* Named by its value, so a number that changes eases in and one that stays holds still. */}
           <b key={fact.value} className="documentBuilderIn" style={{ fontSize: '0.95rem', lineHeight: 1.2, color: levelInk(def, level) }}>
             {fact.value}
@@ -694,7 +722,9 @@ function TopicPage({ def, topic, settings, edit }: { def: PaperDef; topic: Paper
           <span style={GROUP_TITLE}>The core clause</span>
           {clause.kind === 'out' ? null : (
             <>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-strong)' }}>{topic.section}</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+                <W edit={edit} path={sectionPath(topic.key)} text={topic.section} label={`The section name of ${topic.label}`} />
+              </span>
               <span style={clause.kind === 'blank' ? FILLED_TAG : PICKED_TAG}>{clause.tag}</span>
             </>
           )}

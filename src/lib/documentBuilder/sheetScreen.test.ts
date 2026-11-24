@@ -18,6 +18,7 @@ import {
   listedJobs,
   jobIsOnUsual,
   jobsOnUsual,
+  jobPublishConfirm,
   jobPublishPress,
   readPress,
   sheetBarChips,
@@ -28,6 +29,7 @@ import {
   usualJobsHead,
   usualPlanChip,
   usualPlanFor,
+  usualPublishConfirm,
   usualPublishPress,
   type JobSheetState,
 } from './sheetScreen'
@@ -116,6 +118,43 @@ describe('the usual’s publish', () => {
     const press = usualPublishPress(INSURANCE_SHEET_FIXTURE, rec({ draft: INSURANCE_SHEET_FIXTURE }), [])
     expect(press.dead).toBe(true)
     expect(press.why[0]).toBe('Commercial general liability has no amount yet.')
+  })
+
+  it('asks before a job’s sheet is published: who sees it, that it lasts, and the revision on the press', () => {
+    const first = jobPublishConfirm('Cedar Park Medical Office', { revision: 0 })
+    expect(first).toEqual({
+      title: 'Publish the sheet for Cedar Park Medical Office',
+      message: 'Revision 1 is what a sub sees once you send them this sheet, and what the link opens. A publish cannot be taken back. A later revision can only replace it.',
+      confirmLabel: 'Publish revision 1',
+      cancelLabel: 'Not yet',
+      cancelIsSafe: true,
+    })
+    const later = jobPublishConfirm('  Cedar  Park ', { revision: 2 })
+    expect(later.title).toBe('Publish the sheet for Cedar Park')
+    expect(later.message).toBe('Every sub you sent this sheet to sees revision 3 from now on. So does anyone with the link. A publish cannot be taken back. A later revision can only replace it.')
+    expect(later.confirmLabel).toBe('Publish revision 3')
+    expect(jobPublishConfirm('', { revision: 0 }).title).toBe('Publish the sheet for this job')
+    expect([first.message, later.message].flatMap((t) => plainWordsFailures(t))).toEqual([])
+  })
+
+  it('asks before the usual is published: the jobs that get it and the jobs held, as the press counts them', () => {
+    const gets = (id: string) => ({ id, name: id, gets: true as const, asRevision: 2 })
+    const held = (id: string) => ({ id, name: id, gets: false as const, why: 'no-sheet' as const })
+    const one = usualPublishConfirm({ revision: 1 }, [gets('a'), held('b')])
+    expect(one).toEqual({
+      title: 'Publish your usual',
+      message: "Your usual becomes revision 2. 1 job gets it now, and each sub sent that sheet sees the change. 1 job is held. Each held job's row says why. A publish cannot be taken back. A later revision can only replace it.",
+      confirmLabel: 'Publish to 1 job',
+      cancelLabel: 'Not yet',
+      cancelIsSafe: true,
+    })
+    const many = usualPublishConfirm({ revision: 3 }, [gets('a'), gets('b'), gets('c'), held('d'), held('e')])
+    expect(many.message).toBe("Your usual becomes revision 4. 3 jobs get it now, and each sub sent one of those sheets sees the change. 2 jobs are held. Each held job's row says why. A publish cannot be taken back. A later revision can only replace it.")
+    expect(many.confirmLabel).toBe('Publish to 3 jobs')
+    const none = usualPublishConfirm({ revision: 0 }, [])
+    expect(none.message).toBe("Your usual becomes revision 1. No job gets it now. A job's sheet goes out on it when you publish that job. A publish cannot be taken back. A later revision can only replace it.")
+    expect(none.confirmLabel).toBe('Publish your usual')
+    expect([one.message, many.message, none.message].flatMap((t) => plainWordsFailures(t))).toEqual([])
   })
 
   it('says in plain words that the jobs moved and nothing was published', () => {

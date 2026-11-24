@@ -103,6 +103,13 @@ describe('the home’s words', () => {
     expect(pastWords(past[0]!, 'en')).toBe('you passed')
   })
 
+  it('an ask we took back says so in our words, never that they passed (v2.8490)', () => {
+    const ours = { ...past[0]!, invite: { ...past[0]!.invite, declinedWhy: 'withdrawn' as const } }
+    expect(pastWords(ours, 'en')).toMatch(/^\S.* took it back$/)
+    expect(pastWords(ours, 'en')).not.toMatch(/passed|[{}]/)
+    expect(pastWords(ours, 'es')).toMatch(/ la retiró$/)
+  })
+
   it('says when the quote is due and what needs a look', () => {
     const ask = bidding[0]!
     expect(askWhen(ask, TODAY, 'en')).toBe('Due Mon Oct 19, 11 days left.')

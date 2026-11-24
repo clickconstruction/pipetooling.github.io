@@ -1067,6 +1067,11 @@ Until v2.8182 such a change could only make the paper stricter.
 The row also keeps the **basis**, the level the office picked before walking the topics (`basis`, moved by `job_paper_set_basis`, never part of the paper), and who ticked the **notice**'s box and when (`notice_read_by`, `notice_read_at`), once for a paper on a job.
 A settings list may hold a choice's **breach lines** and **site lines** (`breach`, `site`), a `notice` and a `siteNote`: the words the office's settings page shows beside each choice.
 The **job's settings page** (v2.8184) is `JobPaperSettingsWindow` on a job's Documents tab: the Document builder's walked flow the first time, fed from the Book entry's settings list (`jobPaperFlow.ts`), and one page of sliders for a later change.
+What a **GC reads about a job's papers** (v2.8503) is the block *How we bind everyone we bring onto this job* on the customer portal, under each job that requires a paper built from settings ([`PortalJobPapers.tsx`](../src/components/portal/PortalJobPapers.tsx)).
+It says the level, each topic's choice in the list's plain words, how many on the office's own roster have signed, and each **sub business** with the day it finished signing.
+A **sub business** there is the trade company a sub works for, or the sub's own roster name with none on file.
+A helper and an office person count in the total and are never named.
+The Document builder's block on the same page, *Secrecy on your jobs*, is another thing: a builder the office sent to look at, tied to no job's paper.
 The **read-revision rule**: a job that is not a ZZ Test job takes such a paper only at the revision an attorney read, where it is required, where its settings change and where it is read or signed (`job_paper_read_problem`).
 A signed copy keeps the picks, their plain words (`said`) and a **seal**, a SHA-256 of its settings, blanks and clauses with their versions (`contract_paper_seal`), and is signed only when all of it matches what `job_paper_clauses` reads at that moment.
 Since v2.8154 the sign page sends the seal it showed, the signed record draws **The job's settings when this was signed** with a line that says whether the seal still holds ([`jobPaperSettings.ts`](../src/lib/contracts/jobPaperSettings.ts), `SignedJobSettings`), and the job's **Add a paper** list holds such a paper until the page that sets a job's settings is built.
@@ -1669,25 +1674,27 @@ Kernel **[`pageMode.ts`](../src/lib/pageMode.ts)**: `resolvePageMode` draws the 
 Job Mode is ahead of Dispatch Mode because Job Mode is a pick made on the device and Dispatch Mode follows the person and is on for assistant-like roles and master technicians before they choose.
 Nothing stored is rewritten: a device that held two or three values from before the rule reads by the same order.
 Hook **[`usePageMode(userId, role)`](../src/hooks/usePageMode.ts)** holds the three toggles' own hooks to the kernel and is the one door that switches a mode: the gear menu, the phone bar's Modes rows, the Task Mode strip's Exit and the mode row all go through its `set`.
-**Mode row** (v2.8332, punch list #425): **Task Mode · Dashboard · Job Mode** as three thirds, the first line above the header (**[`ModeRow`](../src/components/layout/ModeRow.tsx)**, an `AppTopBanner` mounted by `Layout`), for every role whose first page is the Dashboard (`modeRowOfferedToRole`: all nine but `estimator`, whose first page is Bids), on the Dashboard and on the Task Mode checklist, at a phone's width only since v2.8373 (`modeRowDrawnHere`).
-On a phone the gear menu lists neither **Job Mode** nor **Task Mode** for those eight roles (`gearModesRows`), and the window that shows another person's Task Mode draws the row with Task Mode filled where the strip was, whatever device that person is on.
+**Mode row** (v2.8332, punch list #425): **Task Mode · Dashboard · Job Mode** as three thirds (**[`ModeRow`](../src/components/layout/ModeRow.tsx)**, mounted by `Layout` before every line above the header), for every role whose first page is the Dashboard (`modeRowOfferedToRole`: all nine but `estimator`, whose first page is Bids), on the Dashboard and on the Task Mode checklist, at a phone's width only since v2.8373 (`modeRowDrawnHere`).
+The window that shows another person's Task Mode draws the row with Task Mode filled where the strip was, whatever device that person is on.
 The third of the mode drawn is filled, and Dispatch Mode reads as Dashboard, since the middle third switches Task Mode and Job Mode off and never writes Dispatch Mode.
-On the Dashboard the row is counted (v2.8461, punch list #433): it shows on each visit for five seconds with a grey bar on its lower edge that runs out, then slides up and away, and a press on a third gets five fresh seconds.
+On the Dashboard the row is counted (v2.8461 and v2.8497, punch list #433): it is the first thing a person sees when the app opens, it shows for five seconds with a grey bar on its lower edge that runs out, then it shrinks into the header's gear, and a press on a third, the lit one too, closes it the same way at once.
 A finger on the row, or a keyboard's focus inside it, holds the count, which starts whole when the hold lifts, and a swipe up on the row sends it away at once (**[`modeRowCount.ts`](../src/lib/modeRowCount.ts)**, `modeRowCountStep`).
-The counted row lies over the top of the page and never pushes it: the page's first line is the row's 24 px handle, the row is drawn over that line inside a clip that starts under the phone's status bar, and the strip it uncovers takes no press for 300 ms.
-A tap on the handle or a pull down at the top of the page brings the row back for five seconds more.
+The counted row lies over the top of the page and takes no room (v2.8497): its host is a line of no height that is not an `AppTopBanner`, so the header under it pays the status bar as it does on every page, the row's clip starts under that bar, the strip it uncovers takes no press for 300 ms, and nothing is left in its place.
+The way out reads where the gear is (`MODE_ROW_HOME_ATTR` on the press, `modeRowFlight`), ends the row the gear's own size on it, and the gear answers with a ring.
+With no gear on the screen, as under the role dock, the row slides up.
 In Task Mode the row is held: a line of the page, always in sight, with no count (`modeRowHeldOpen`).
-With `prefers-reduced-motion` the row does not slide, it fades out, and the bar is five blocks that go out one a second.
-A visit is the page becoming the Dashboard, a press on the Dashboard's own link while there (`modeRowSamePlaceVisit`: the router moved and the address did not), or a return to the app after a minute out of sight (`modeRowBackIsVisit`).
+With `prefers-reduced-motion` the row does not move, it fades out, the gear's answer is the ring alone, and the bar is five blocks that go out one a second.
+An opening is the row's first draw after the app loads, or a return to the app after a minute out of sight (`modeRowBackIsVisit`).
+Another page and back, the Dashboard's own link and a pull down bring nothing since v2.8497, and the handle and the pull are gone.
 The green *New* mark Job Mode wore until a first press is gone (v2.8461).
-Past a phone's width it is not drawn (v2.8373, the owner's second look of 2026-11-23): the gear menu holds **Dashboard**, **Job Mode** and **Task Mode** as a list with one dot under *Modes* (**[`GearModeList`](../src/components/layout/GearModeList.tsx)**, rows from `gearModesRows`), and the estimator has that list at every width in place of the two ticks.
+Past a phone's width it is not drawn (v2.8373, the owner's second look of 2026-11-23), and at every width since v2.8497 the gear menu holds **Dashboard**, **Job Mode** and **Task Mode** as a list with one dot under *Modes* (**[`GearModeList`](../src/components/layout/GearModeList.tsx)**, rows from `gearModesRows`), which is where the modes are changed once the row has gone into the gear.
 A press in the list goes through the row's own `modeRowPressWrites` and `modeRowLandingPath`, so the list and the row write the same values and land on the same page, and **Dispatch Mode** keeps its own tick under the list.
 A tablet is past a phone's width, so it has the list and not the row.
-The rule and every word are **[`modeRow.ts`](../src/lib/modeRow.ts)** (`modeRowDraw`, `modeRowPressWrites`, `modeRowPull`), and since v2.8461 nothing is kept on the phone: `mode_row_pressed_${userId}` and `mode_row_opens_${userId}` in `localStorage` are no longer read or written.
-Usage rows in `ui_nav_clicks`: control `mode_row` with target `#task` / `#full` / `#job` for a press, `mode_row_shown` with `#pull` / `#handle` for a row brought down by hand, and `mode_row_sent` with `#swipe` for a row sent away.
+The rule and every word are **[`modeRow.ts`](../src/lib/modeRow.ts)** (`modeRowDraw`, `modeRowPressWrites`), and the one thing kept on the phone is the row's switch (v2.8497): **Modes at open** in the gear menu's *Show* group and the phone dock's More sheet, ticked until someone unticks it, stored as `pt_mode_row_at_open_off` with no user id (`readModeRowAtOpen`, **[`useModeRowAtOpen`](../src/hooks/useModeRowAtOpen.ts)**), which Task Mode's row does not read.
+Usage rows in `ui_nav_clicks`: control `mode_row` with target `#task` / `#full` / `#job` for a press that switches, and `mode_row_sent` with `#swipe` or `#lit` for a row sent away by a swipe or by a press on its lit third (`mode_row_shown` is no longer written since v2.8497).
 A press in the gear menu's list records control `gear_mode` with the same three targets.
 The Task Mode strip is drawn wherever the row is not: past a phone's width, and for the estimator.
-On a phone the same roles have no **Job Mode** or **Task Mode** row in the gear menu or the phone dock's More sheet (`gearModesRows` in `gearMenuSections.ts`): the row is their one door there, a leader keeps **Dispatch Mode** there, and the *Modes* label is drawn only over a row.
+Since v2.8497 a phone has the **Job Mode** and **Task Mode** rows in the gear menu and the phone dock's More sheet again (`gearModesRows` in `gearMenuSections.ts` no longer reads the width), and **Show full dashboard** stands at the foot of the Job Mode page at every width.
 Each toggle keeps its storage and its same-tab event, so a screen that listens for one still follows.
 The pin bar's switch, Tell the dev's switch and Dark Mode are not page modes.
 
@@ -2507,6 +2514,8 @@ The row waits on People, HR, **Pending reports** as any field report does, and t
 **Add to it** sends a second report that names the first, and **Take it back** closes a waiting one with the writer's reason.
 Since v2.8174 a write-up carries up to four photos (`writeUpPhotos.ts`, the private `person-report-photos` bucket and `person_report_photos`, keyed to the press), sent ahead of it or kept on the phone with it, shown to the office on Pending reports, and saved as one evidence record on the file when the report is filed.
 Since v2.8250 the amber note on **Your write-ups** (*Kept on this phone at …*) goes once no kept write-up is waiting, a sent one reads *Sent to HR at* with the time it went, and a refused one shows no sent word while its row, **Not sent**, carries the reason.
+Since v2.8507 the press sits above the Job Mode card in Job Mode and under the greeting on the short Dashboard, where a tall job card or the lines that wait can no longer push it under the phone's bottom strip.
+Since v2.8507 the app's *A new version is ready* pill draws at the top of the screen while a phone sheet is open (`phoneSheetOpen.ts`, marked by `PhoneSheet`), so it no longer covers a sheet's bottom press.
 The press took the place of the Dashboard's **HR Report** card, retired in v2.8174.
 A formal **Writeup** on People, Paperwork is a different paper, built by the office from a template.
 → *HR files*
@@ -3500,7 +3509,8 @@ The week runs Monday–Sunday (`weekMondayContaining`), not the Sun–Sat pay we
 **Pace · a guess** is an open bill with no promise placed on its payer's expected day, a hosted Stripe invoice included, and it and **Their word** take the pen, *Write down their word*;
 the bank days are weekdays (`addBusinessDays` knows no holidays).
 Kernel `src/lib/moneyInWeek.ts`;
-reads `moneyInWeekLoad.ts`;
+the deposit rule (which deposit is a customer paying, which typed-in payment carries it, which is on no bill yet) is `src/lib/moneyInDeposits.ts`, read by Bills sent's By day paid too since v2.8493;
+reads `moneyInWeekLoad.ts`, the deposit reads `moneyInDepositsLoad.ts`;
 payouts `get-stripe-payouts`.
 
 **See**: `docs/recent-features/` v2.5926, v2.5937, v2.5955;
@@ -4639,9 +4649,11 @@ Every email to a company goes out through one sender, `gc-trade-email`, by kind:
 a recorded answer about the plans reaches the companies on its trade the same way (guide `ask-the-architect-about-the-plans`), and so does a new set of plans, to the companies asked to quote (guide `issue-a-new-set-of-plans`).
 **Follow up** beside them lists every ask still waiting on a quote, the ones to call first at the top;
 a call logged there, with the day they promised, is a line on the ask, and **Will not do it** / **Cannot do it** keep the reason with the job and the company (guide `follow-up-on-a-quote-from-a-trade-partner`).
-**Take the ask back…** (v2.8440, `gc_take_ask_back`) shows beside the two on an ask the company has not heard about, and deletes it: not opened, not emailed, no contact logged, no quote, not awarded.
-An ask they did hear about is refused in words and keeps its own two closes, so a company that was told never reads as never asked.
-Each take-back is a row in `gc_asks_taken_back` (the trade, the company by id and by its name that day, who asked and when, who took it back and when), since the ask itself is gone and the company may leave the bench after it.
+**Take the ask back…** (v2.8440, `gc_take_ask_back`) shows beside the two on every ask still open (no quote, not awarded, not closed), and what it does turns on what the company heard.
+An ask they have not heard about is deleted: not opened, not emailed, no contact logged.
+An ask they did hear about is kept and closes as **we took it back** (v2.8490, `gc_invites.declined_why = 'withdrawn'`, `askTakenBack` in `decline.ts`), so a company that was told never reads as never asked, and never reads as having passed.
+**We took it back** is the office's own close of an ask: out of every count of who is still asked as a pass is, left out of the bench's *passed* count and the company's *Times they passed*, said to the company in its portal as *‹we› took this invitation back*, and one line on the company's Activity says who took it back and what they had heard.
+Each deleted ask is a row in `gc_asks_taken_back` (the trade, the company by id and by its name that day, who asked and when, who took it back and when), since the ask itself is gone and the company may leave the bench after it.
 Its **By people** lists everyone we wait on, each once across their jobs: the number on Follow up's button and on a **GC projects** line on the Dashboard's Needs you, for the office team (v2.4941).
 Its **Work the list**, each person's **Follow up** and a board row's Who to call card open the **Follow up sheet** (v2.5215, guide `work-through-everyone-we-wait-on`): one person at a time, a draft that opens in the reader's own Messages or mail with **I sent it**, and **Call** with what they said, each logged on the ask, on the company, as a promise or in a customer's log.
 Since v2.5226 a dev can send it from Click instead, to a trade partner's people for the kinds ticked, after **Send a test to me**, logged as a nudge once it went.
@@ -6769,6 +6781,17 @@ the Dashboard's lien month card drew the zones through `useLienMonth` until v2.8
 the rule is `LIEN_MONTH_RULE` in `lib/jobs/lienMonthRhythm.ts` and reads under § Rules.
 A policy, not an app rule: the bar sends, files and moves nothing.
 
+### Payoffs (Lien desk)
+The line above the Lien desk's lists and the window it opens, since **v2.8504** (punch list #435, piece 1): what to do when someone pays off a filed lien.
+The line says how many filed liens are paid and still on record, and its press reads **Someone paid ›**.
+The window lists every live filed affidavit under its **place**, the jobs at one property whatever customer each sits under, with the amount that pays the place's liens off.
+A lien stands on one of three steps: **money** (the job's sent bills still owe), **release** (the bills read paid and no release of record is saved) and **county** (a release is saved and the county has not recorded it).
+Past the three it is **released**.
+Each row has one sentence and the one press for its step: *Record the payment ›*, *Make the release ›*, *Record the county's stamp ›* (*Open the release ›* in v2.8504 alone, before the tab could take the stamp).
+The rule is `lienPayoff.ts`, the screen `LienPayoffs.tsx`.
+Since **v2.8508** (piece 2) the Release of record tab is the other half: **the county's stamp** is the day the clerk recorded a release (the release row's `filed_at`) and the release's own instrument number (`fields.releaseInstrument`), each changed where it sits.
+A saved release names its affidavit (`fields.releasesFilingId`), and **the money hold** keeps the tab's print and save dead while the job's sent bills still owe, until a reason is typed under *Release it anyway…* (`lienReleaseOfRecord.ts`).
+
 ### Property card (Lien desk)
 Every job at one property record on one window (**v2.7488**): the address, the owner of record, two lines that count the property, each kind of paper apart (*4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail*, then *6 lien affidavits ready to file*) and a row per job with where its notice and its affidavit stand.
 Opened from a By job row's *N jobs here ›* line, from a property's head when By job is grouped (**Group** → *By property*, **v2.7493**) and from `/lien-desk?property=<property record id>`.
@@ -6922,6 +6945,8 @@ Since v2.8422 a check shows its number alone (`checkNumberOf`, `src/lib/jobs/bil
 **Still out** is an open bill's amount or a part-paid bill's remainder;
 a day's band counts it over the bills that first went that day (*1 of 3 paid · $6,820.00 still out*), and the **Not paid** tile over every bill on the list.
 **By day paid** (v2.8343) is the page's second view, behind the switch at its top and at `/bills-sent?view=paid`: a month of days, each with what came in, and behind a picked day its total and its payments (`src/lib/billing/billsPaidDays.ts`).
+Since v2.8493 a picked day names the bank deposits that landed that day and are on no bill yet, in one quiet line with **Open deposits**, under **All** alone (`billsPaidNoBillLine` over `src/lib/moneyInDeposits.ts`, the Money in bar's own rule);
+they are never added to a figure, a cell, a tile, the print or the CSV.
 **A day's figure** is each payment at what it took off its bill, on the payment's own day: a Stripe payment the day the customer paid, a matched deposit the day it posted at the bank, a typed payment the day the person named;
 Stripe's fee is not taken off, a refund made in Stripe is not seen, a credit in kind is listed and never added, and a test-mode bill's payment is left out.
 The chips narrow the month to one way of paying, **Stripe** first, and **one deposit** that paid several bills is drawn once with its bills under it.
@@ -6971,8 +6996,12 @@ A send reads **changed** when they opened an older revision and have not been to
 A send never turns a page back on, a trade with no page gets one only from a send to that trade alone, and a send **taken off** leaves the trade's page.
 The one press for every trade that is ready reaches only a trade awarded on the job, and a trade asked and not awarded is sent to from its own row (v2.8192).
 Since v2.8024 a walked builder is typed on **what a GC sees**: each piece of words on the flow is a field named by a **path** into the paper, and a **page** is the flow's own, a topic at a level among them ([`paperEdit.ts`](../src/lib/documentBuilder/paperEdit.ts)).
+Since v2.8460 a topic's section name, the names of the facts above the basis slider, the basis page's line while the paper is Off and the last step's press with the line under it are fields too, each at the path [`flowFields.ts`](../src/lib/documentBuilder/flowFields.ts) names.
+The levels' names, and the paper's title, job, company and party, are not fields.
 The **map** is a row a topic and a column a level, each cell opening its page, and nobody types in it.
 A page is **changed** while it differs from the published revision, with **Back to revision N** to put it back, and **Publish revision N** makes the draft what everyone outside sees.
+Since v2.8456 the card under the map counts the changed pages, shows the two marks a field wears, *As published* and *Changed, not published*, and lists each page with its level apart from its name ([`changedCard.ts`](../src/lib/documentBuilder/changedCard.ts)).
+The **open cell** is the map's cell for the page the flow shows on the right, outlined in its level's colour: the flow says where it is (`onShown`), so the outline follows **Next**, **Back** and the slider as well as a press on the map.
 In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
 Since v2.8264 (step 6) a trade's **certificate is held against a job's sheet**, one certificate for each job: the card **Certificates for this job** says where each stands, and **Check it against the sheet** ticks one line for each name, the place, the certificate holder and each coverage with its amount (`certificates.ts`, `sheetAsks`).
 A certificate is **outdated** when one of those lines changes on the published sheet, and not when the sheet's other words do.
@@ -7004,6 +7033,7 @@ Since v2.8244 a line whose paper names another business than the party beside it
 Since v2.7998 a line tagged *Not on a list* carries **Add to a list**, signed or not, and so does its signed record: the window says what they are, a new customer, a new supply house or vendor, or someone at a company the app keeps, and the paper comes with them ([`PaperPartyAddToList.tsx`](../src/components/documents/PaperPartyAddToList.tsx), [`paperPartyList.ts`](../src/lib/documents/paperPartyList.ts)).
 Since v2.8419 the window also offers **A new trade company**, made with the trade Plumbing and the person kept there as someone who gets its contracts, and *someone at a company the app keeps* finds trade companies too ([`paperPartyList.ts`](../src/lib/documents/paperPartyList.ts)).
 Since v2.8348 (punch list #403, the owner's first decision and his answer of 2026-11-23) an outside party's paper that is not signed carries **Take back** on its line, for the leader and a dev: after a confirm the paper is deleted and its signing link stops working, nobody is emailed, and a signed paper is kept ([`paperTakeBack.ts`](../src/lib/documents/paperTakeBack.ts)).
+Since v2.8488 (punch list #403, the walks of 2026-11-24) a trade company's own paper that is not signed carries **Take back** too, on its line here and under the company's row on People → Contracts, through `take_back_company_paper`, which refuses in words a paper GC mode is waiting on.
 Since v2.8128 a press after a failed write goes on from where it stopped and makes nothing twice while the window is open (`listMadeKey`, `writeOnce`);
 a window closed and opened again starts over.
 Since v2.8240 **Send email** on the Send for signature window waits for the look-up of an address typed under **Someone not in any list** (`addressLookUpVerdict`, [`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts), drawn by [`ContractSendWindow.tsx`](../src/components/contracts/ContractSendWindow.tsx)): someone on the roster is refused, someone the app already keeps is named first and the next press sends to their record, nobody sends at once, and a look-up that failed sends nothing and says why.
@@ -8152,6 +8182,7 @@ The Paper section's **Where each job stands** is the job's lien timeline (v2.378
 since v2.6102 a job with no GC names no § 53.056 notice as its next step, punch list #213;
 since v2.8481 it counts from the last day of work set by hand, with the reason it was saved with, as the job's Lien window does (`legalLastWorkBasis`, punch list #335);
 since v2.6104, punch list #214, it opens on the strip's Windows calendar under the desk's own remembered scope, with the next step's door at the verdict band's right — `legalPaperNextDoor.ts`: a notice to the Lien desk, the affidavit and the release to the Lien window's tab — and the two lien gaps read as chips, `LegalGap.chip` / `brief`, the sentence kept for the prints) and **The paper that went out** lists filings as envelopes, one row per packet, with a band under each § 53.056 notice (v2.3797) — the owner's call and counsel's pile, letter two's clock, the GC's written okay, a letter two named as one;
+since v2.8498 the retainage notice's door opens the Lien desk's Retainage notices on the job, where it opened Monthly notices before (`legalPaperNextDoorHref`, the one place a door becomes an address);
 the firm's portal adds **Start here** (v2.4820, `LegalPortalStartHere`: the first tab on a browser's first visit, a short intake in steps with live figures from the Lien grid's book and, since v2.4821, five questions whose answers land on the firm's row (`legal_firms.intake`), with a dot on the Legal desk's firm door until the office reads them in the firm's window;
 then a tour docked at the bottom that opens and rings each part of the portal;
 the Texas lien rules guide opens on the portal with no sign-in), the **Lien grid** (v2.3789, the desk's Timeline book live;

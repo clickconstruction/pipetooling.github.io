@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CALLS_AHEAD_LABEL_DESCRIPTION, GITHUB_LABEL_DESCRIPTION_MAX, callsAhead, callsAheadLabelCalls, ghFailureWords, labelAlreadyExists, namesCreatedIn, schemaCallsIn } from './callsAhead'
+import { CALLS_AHEAD_ADVICE, CALLS_AHEAD_LABEL_DESCRIPTION, CALLS_REPLACED_ADVICE, GITHUB_LABEL_DESCRIPTION_MAX, callsAhead, callsAheadAdvice, callsAheadLabelCalls, ghFailureWords, labelAlreadyExists, namesCreatedIn, schemaCallsIn } from './callsAhead'
 
 describe('schemaCallsIn', () => {
   it('reads a literal rpc name, through an `as never` cast or a template literal, with its line', () => {
@@ -146,7 +146,30 @@ describe('callsAhead', () => {
   })
 })
 
+describe('the advice', () => {
+  it('says the deploy holds only when a call reaches a name the migration creates', () => {
+    expect(callsAheadAdvice([{ why: 'missing' }])).toBe(CALLS_AHEAD_ADVICE)
+    expect(CALLS_AHEAD_ADVICE).toContain('the deploy holds until the push')
+  })
+
+  it('tells a change that only replaces functions that no deploy waits (#9324 was kept out of the queue on the old words)', () => {
+    const words = callsAheadAdvice([{ why: 'replaced' }, { why: 'replaced' }])
+    expect(words).toBe(CALLS_REPLACED_ADVICE)
+    expect(words).toContain('No deploy waits for this push')
+    expect(words).not.toMatch(/holds/)
+    expect(words).toContain('bash scripts/db-push.sh')
+  })
+
+  it('keeps the hold for a mixed change, since one created name holds the deploy for all of it', () => {
+    expect(callsAheadAdvice([{ why: 'replaced' }, { why: 'missing' }])).toBe(CALLS_AHEAD_ADVICE)
+  })
+})
+
 describe('the label', () => {
+  it('names both kinds of finding, since a change that only replaces functions is labelled too', () => {
+    expect(CALLS_AHEAD_LABEL_DESCRIPTION).toBe('Its client calls what its migration creates or replaces: push right after the merge')
+  })
+
   it('fits GitHub’s 100-character description cap, which refused the old 110-character one on every run', () => {
     expect(GITHUB_LABEL_DESCRIPTION_MAX).toBe(100)
     expect(CALLS_AHEAD_LABEL_DESCRIPTION.length).toBeLessThanOrEqual(GITHUB_LABEL_DESCRIPTION_MAX)

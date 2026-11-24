@@ -235,6 +235,28 @@ describe('BuilderSendList', () => {
     expect(within(fold).getByText('Made-up Builders 15')).toBeTruthy()
   })
 
+  it('says who each email of the one press goes to, before it is pressed', () => {
+    draw()
+    const goes = document.querySelector('[data-batch-goes-to]') as HTMLElement
+    // The first person on each ready trade. The second person at Lone Mesa is reached from its own row.
+    expect([...goes.querySelectorAll('p')].map((p) => p.textContent)).toEqual(['Lone Mesa Excavation: it goes to Ben Winters at ben@lonemesa.test.', 'Pecos Insulation: it goes to Gil Marsh at gil@pecos.test.'])
+    expect(goes.textContent).not.toContain('Cy Doyle')
+    expect(goes.textContent).not.toContain('Hilltop Electric')
+    cleanup()
+    // Nothing published: nothing would go, so nobody is named.
+    draw({ published: false })
+    expect(document.querySelector('[data-batch-goes-to]')).toBeNull()
+  })
+
+  it('folds who the emails go to once many are ready', () => {
+    const ready = Array.from({ length: 5 }, (_, i) => party(`gc${i}`, `Made-up Builders ${i + 1}`))
+    draw({ parties: ready, noun: ['GC', 'GCs'] })
+    const fold = document.querySelector('details[data-batch-goes-to]') as HTMLDetailsElement
+    expect(fold.querySelector('summary')?.textContent).toBe('See who the 5 emails go to')
+    expect(fold.open).toBe(false)
+    expect(within(fold).getByText('owner@gc4.test')).toBeTruthy()
+  })
+
   it('asks before the one press when its caller wants that, and sends nothing on a no', async () => {
     const beforeBatch = vi.fn(async (_ready: SendParty[]) => false)
     const props = draw({ beforeBatch })

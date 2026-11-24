@@ -92,7 +92,7 @@ export function railPressOutcome(
 export type RailStripFacts = {
   /** "4 of 10". */
   costed: string
-  /** Every fixture has lines: the count reads green, else amber. */
+  /** No fixture is without lines: the count reads green, else amber, as on the rail. */
   allCosted: boolean
   /** Fixtures Pricing will show as "no cost". 0 draws nothing. */
   noCost: number
@@ -107,7 +107,8 @@ export function railStripFacts(input: { costed: number; fixtures: number; uncost
   const n = Math.max(0, input.noCost)
   return {
     costed: `${input.costed} of ${input.fixtures}`,
-    allCosted: input.fixtures > 0 && input.uncosted === 0,
+    // The rail's own rule, an empty bid included: no fixture without lines reads green.
+    allCosted: input.uncosted === 0,
     noCost: n,
     noCostWords: 'no cost',
     noCostSentence: n === 0 ? '' : n === 1 ? '1 fixture carries no material cost. Pricing shows it as no cost.' : `${n} fixtures carry no material cost. Pricing shows them as no cost.`,

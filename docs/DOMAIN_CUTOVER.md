@@ -5,7 +5,7 @@ file: DOMAIN_CUTOVER.md
 type: Runbook
 purpose: The exact steps to make clicktooling.com this app's main URL, with pipetooling.com kept forever as a path-preserving redirect so no link in the wild breaks
 audience: Owner + AI agents
-last_updated: 2026-11-16
+last_updated: 2026-11-24
 key_sections:
   - name: "Decision & prep already done"
   - name: "Prerequisites (before cutover day)"
@@ -117,7 +117,15 @@ Prep merged in v2.2440 — all zero-behavior-change:
      sender); all 29 email functions redeployed.
   2. `noreply.clicktooling.com` verified in Resend (us-east-1); DKIM/SPF/MX
      records live in the clicktooling.com Cloudflare zone (mirrors the
-     pipetooling record set exactly).
+     pipetooling record set exactly). **Open tracking is on for this domain
+     since 2026-11-24** (the owner's call after the Bills sent live test,
+     punch list #422, so a sent line can read *Opened*): Resend → Domains →
+     Configuration shows open tracking on and click tracking off, and the
+     zone carries one more record for it, CNAME `links.noreply` →
+     `links2.resend-dns.com`, DNS only. Tracking stops if that record is
+     removed or proxied, and a new sending domain needs its own. The webhook
+     already listens for `email.opened`. The pipetooling domain has no
+     tracking.
   3. `EMAIL_FROM` secret set. Header-verified on a real receive
      (Outlook): `spf=pass` (send.noreply.clicktooling.com), `dkim=pass`
      (`header.d=noreply.clicktooling.com`), `dmarc=bestguesspass`.

@@ -1,0 +1,135 @@
+// @vitest-environment jsdom
+/**
+ * Payoffs on the Lien desk (punch list #435, piece 1): the strip's one line and press, the window's places, each
+ * lien's sentence and its one press, the released fold, a failed read with its reason, and a second read when the
+ * desk reads again. The facts are handed in; the rule is held by `lienPayoff.test.ts`.
+ */
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithProviders } from '../../test/renderSmokeMocks'
+import type { LienPayoffFacts } from '../../lib/jobs/lienPayoff'
+import LienPayoffs from './LienPayoffs'
+
+vi.mock('../../lib/supabase', async () => {
+  const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
+  return { supabase: makeSupabaseStub() }
+})
+
+// Every name, address, job, instrument and amount here is made up.
+const facts = (over: Partial<LienPayoffFacts> = {}): LienPayoffFacts => ({
+  affidavits: [
+    { id: 'a1', job_id: 'j1', amount: 7420, county: 'Travis', recording_number: '2026-0412207', filed_at: '2026-11-09' },
+    { id: 'a2', job_id: 'j2', amount: 5160.5, county: 'Travis', recording_number: '2026-0412208', filed_at: '2026-11-09' },
+    { id: 'a3', job_id: 'j3', amount: 900, county: 'Bastrop', recording_number: '2026-0500001', filed_at: '2026-10-02' },
+  ],
+  releases: [{ id: 'r3', job_id: 'j3', created_at: '2026-11-01T15:00:00Z', filed_at: '2026-11-05', recording_number: '2026-0500001', fields: { releasesFilingId: 'a3', releaseInstrument: '2026-0500990' } }],
+  jobs: [
+    { id: 'j1', hcp_number: null, click_number: '2041', job_name: 'Okafor main house', job_address: '212 Larkspur Court, Austin, TX', customer_id: 'c1', customer_name: 'Marisol Okafor' },
+    { id: 'j2', hcp_number: null, click_number: '2058', job_name: 'Okafor service visit', job_address: '212 Larkspur Ct Austin TX', customer_id: 'c1', customer_name: 'Marisol Okafor' },
+    { id: 'j3', hcp_number: null, click_number: '1987', job_name: 'Calloway gate', job_address: '40 Calloway Road, Bastrop', customer_id: 'c2', customer_name: 'Calloway Homes' },
+  ],
+  openByJob: { j1: 0, j2: 5160.5, j3: 0 },
+  paymentsByJob: { j1: [{ amount: 7420, paid_on: '2026-11-24', payment_type: 'Check', reference_number: '1184' }] },
+  todayYmd: '2026-11-24',
+  ...over,
+})
+
+const draw = (over: { read?: () => Promise<LienPayoffFacts>; refreshKey?: unknown; initiallyOpen?: boolean } = {}) => {
+  const onOpenBill = vi.fn()
+  const onOpenRelease = vi.fn()
+  const read = vi.fn(over.read ?? (() => Promise.resolve(facts())))
+  const ui = (key: unknown) => <LienPayoffs todayYmd="2026-11-24" refreshKey={key} onOpenBill={onOpenBill} onOpenRelease={onOpenRelease} read={read} initiallyOpen={over.initiallyOpen} />
+  const view = renderWithProviders(ui(over.refreshKey ?? 1))
+  return { onOpenBill, onOpenRelease, read, rerender: (key: unknown) => view.rerender(ui(key)) }
+}
+const rowOf = (id: string) => document.querySelector<HTMLElement>(`[data-lien-payoff-row="${id}"]`)!
+/** Wait for a node: `waitFor` only waits on a throw, and a null it is handed back is not one. */
+const found = (selector: string) =>
+  waitFor(() => {
+    const el = document.querySelector<HTMLElement>(selector)
+    if (!el) throw new Error(`${selector} is not drawn yet`)
+    return el
+  })
+
+afterEach(cleanup)
+
+describe('LienPayoffs', () => {
+  it('draws one line and one press over the desk, and always its own wrapper', async () => {
+    draw()
+    expect(document.querySelector('[data-lien-payoffs]')).not.toBeNull()
+    const strip = await found('[data-lien-payoffs-strip]')
+    await waitFor(() => expect(strip.textContent).toContain('1 lien is paid and still on record.'))
+    expect(strip.dataset.tone).toBe('amber')
+    expect(screen.getByRole('button', { name: 'Someone paid ›' })).toBeTruthy()
+    expect(document.querySelector('[data-lien-payoffs-window]')).toBeNull()
+  })
+
+  it('opens the window: the three steps, each place, each lien’s sentence and its one press', async () => {
+    const { onOpenBill, onOpenRelease } = draw()
+    fireEvent.click(await screen.findByRole('button', { name: 'Someone paid ›' }))
+    const win = await found('[data-lien-payoffs-window]')
+    expect(win.querySelector('[data-lien-payoff-legend]')!.textContent).toBe('Record the payment.Make the release and sign it before a notary.Record it at the county and save the stamp.')
+    const place = win.querySelector<HTMLElement>('[data-lien-payoff-place]')!
+    expect(place.textContent).toContain('212 Larkspur Court, Austin, TX')
+    expect(place.textContent).toContain('Marisol Okafor')
+    expect(place.querySelector('[data-lien-payoff-headline]')!.textContent).toBe('1 lien on record here. $5,160.50 pays it off. 1 more is paid.')
+
+    const paid = rowOf('a1')
+    expect(paid.dataset.step).toBe('release')
+    expect(paid.querySelector('[data-lien-payoff-say]')!.textContent).toBe('Paid Nov 24 by check 1184. The release is owed.')
+    expect(paid.querySelector('[data-lien-payoff-warn]')!.textContent).toBe('The check clears about Dec 1.')
+    expect([...paid.querySelectorAll<HTMLElement>('[data-lien-payoff-steps] [data-step]')].map((s) => s.dataset.state)).toEqual(['done', 'now', 'later'])
+    fireEvent.click(paid.querySelector<HTMLElement>('[data-lien-payoff-press="release"]')!)
+    expect(onOpenRelease).toHaveBeenCalledWith('j1')
+
+    const owes = rowOf('a2')
+    expect(owes.querySelector('[data-lien-payoff-say]')!.textContent).toBe('$5,160.50 is still open on this job’s bills.')
+    expect(owes.querySelector('[data-cents]')!.textContent).toBe('.50')
+    fireEvent.click(owes.querySelector<HTMLElement>('[data-lien-payoff-press="bill"]')!)
+    expect(onOpenBill).toHaveBeenCalledWith('j2')
+    // The window stays open under the door it sent the office through.
+    expect(document.querySelector('[data-lien-payoffs-window]')).not.toBeNull()
+  })
+
+  it('keeps a released lien behind a fold, with no press', async () => {
+    draw({ initiallyOpen: true })
+    const fold = await found('[data-lien-payoffs-released-fold]')
+    expect(fold.textContent).toContain('Released, 1')
+    expect(document.querySelector('[data-lien-payoff-row="a3"]')).toBeNull()
+    fireEvent.click(fold)
+    const done = rowOf('a3')
+    expect(done.querySelector('[data-lien-payoff-say]')!.textContent).toBe('Released. The county recorded it Nov 5 as 2026-0500990.')
+    expect(done.querySelector('[data-lien-payoff-press]')).toBeNull()
+    expect(done.querySelector('[data-lien-payoff-released]')!.textContent).toBe('Released')
+  })
+
+  it('reads again when the desk does, and closes on its ✕', async () => {
+    const { read, rerender } = draw({ initiallyOpen: true })
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(1))
+    rerender(2)
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2))
+    fireEvent.click(document.querySelector<HTMLElement>('[data-lien-payoffs-close]')!)
+    expect(document.querySelector('[data-lien-payoffs-window]')).toBeNull()
+  })
+
+  it('names the reason a read failed and offers to try again', async () => {
+    let fail = true
+    const { read } = draw({ read: () => (fail ? Promise.reject({ message: 'permission denied for table job_lien_filings', code: '42501' }) : Promise.resolve(facts())) })
+    const strip = await found('[data-lien-payoffs-strip]')
+    expect(strip.textContent).toContain('The filed liens could not be read. You don’t have access'.replace('’', "'"))
+    fireEvent.click(screen.getByRole('button', { name: 'Someone paid ›' }))
+    expect(document.querySelector('[data-lien-payoffs-failure]')!.textContent).toContain('The filed liens could not be read. You don’t have access'.replace('’', "'"))
+    fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(document.querySelector('[data-lien-payoffs-failure]')).toBeNull())
+    expect(rowOf('a1')).not.toBeNull()
+  })
+
+  it('draws no strip when no lien is filed, and says so in the window', async () => {
+    const { read } = draw({ read: () => Promise.resolve(facts({ affidavits: [], releases: [] })), initiallyOpen: true })
+    await waitFor(() => expect(read).toHaveBeenCalled())
+    await waitFor(() => expect(document.querySelector('[data-lien-payoffs-window]')!.textContent).toContain('Nothing waiting on a release.'))
+    expect(document.querySelector('[data-lien-payoffs-strip]')).toBeNull()
+  })
+})

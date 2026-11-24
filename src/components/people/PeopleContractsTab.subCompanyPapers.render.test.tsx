@@ -22,6 +22,8 @@ const seen = vi.hoisted(() => ({
   rpcs: [] as Array<{ fn: string; args: unknown }>,
   writes: [] as Array<{ table: string; how: string; payload: unknown }>,
   invokes: [] as Array<{ fn: string; body: unknown }>,
+  /** What take_back_company_paper answers. */
+  takeBack: { data: 'taken', error: null } as { data: unknown; error: unknown },
 }))
 
 vi.mock('../../hooks/useAuth', () => {
@@ -86,6 +88,7 @@ vi.mock('../../lib/supabase', () => {
       },
       rpc: (fn: string, args: unknown) => {
         seen.rpcs.push({ fn, args })
+        if (fn === 'take_back_company_paper') return Promise.resolve(seen.takeBack)
         return Promise.resolve({ data: fn === 'gc_company_paper' ? 'd-w9' : null, error: null })
       },
       functions: {
@@ -108,8 +111,8 @@ const people = [
 ]
 
 /** Opens the tab and waits for its first read of the papers, which it starts on a short timer and which redraws the table. */
-async function open() {
-  const view = renderWithProviders(<PeopleContractsTab people={people} users={[]} canDeletePeopleContracts={false} />)
+async function open(canDelete = false) {
+  const view = renderWithProviders(<PeopleContractsTab people={people} users={[]} canDeletePeopleContracts={canDelete} />)
   // contract_templates is read by the tab's own load alone, which starts on its timer and hides the table while it runs.
   await waitFor(() => expect(seen.tables).toContain('contract_templates'))
   await waitFor(() => {
@@ -119,7 +122,19 @@ async function open() {
   return view
 }
 
+const realMatchMedia = window.matchMedia
+const PAPERS_AT_START = [...TABLE_ROWS.person_contract_documents!]
+/** A W-9 that is out with the company, sent from People. */
+const W9_OUT = {
+  id: 'd-w9-out', person_name: 'gc-company:c-mech', company_id: 'c-mech', document_name: 'W-9', status: 'sent', signed_at: null, sent_at: '2026-11-18T15:00:00Z',
+  signer_last_viewed_at: null, lineage_version: 1, form_template_id: 'f-w9', signer_name: 'Pat Sample', signer_title: 'Owner',
+}
+
 beforeEach(() => {
+  TABLE_ROWS.gc_company_people = []
+  TABLE_ROWS.person_contract_documents = [...PAPERS_AT_START]
+  seen.takeBack = { data: 'taken', error: null }
+  window.matchMedia = realMatchMedia
   seen.role = 'dev'
   seen.tables = []
   seen.rpcs = []
@@ -197,6 +212,87 @@ describe('People → Contracts, a sub’s company’s own papers', () => {
       }),
     )
     expect(seen.invokes).toHaveLength(0)
+  })
+
+  it('the send window opens a signer’s address from the company’s own people when the roster has none, and keeps what the office types', async () => {
+    // Lee has no roster address. The company keeps one for Lee from an earlier send, its capitals as they were typed.
+    TABLE_ROWS.gc_company_people = [{ id: 'gp-lee', name: 'LEE Sample', email: 'lee@example.test', gets: ['contracts'] }]
+    const { container } = await open()
+    await waitFor(() => expect(container.querySelector('[data-sub-company-paper="d-agr"]')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Send for signature' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Send for signature' })
+    const box = within(dialog).getByLabelText('Their email') as HTMLInputElement
+    // The owner's address is the roster's, as before.
+    expect(box.value).toBe('pat@example.test')
+    fireEvent.change(within(dialog).getByLabelText('Who signs'), { target: { value: 'Lee Sample' } })
+    await waitFor(() => expect(box.value).toBe('lee@example.test'))
+    // An address the office types stays, an emptied box included.
+    fireEvent.change(box, { target: { value: '' } })
+    expect(box.value).toBe('')
+    fireEvent.change(box, { target: { value: 'other@example.test' } })
+    expect(box.value).toBe('other@example.test')
+    // Picking the worker again reads their kept address again.
+    fireEvent.change(within(dialog).getByLabelText('Who signs'), { target: { value: 'Pat Sample' } })
+    fireEvent.change(within(dialog).getByLabelText('Who signs'), { target: { value: 'Lee Sample' } })
+    expect(box.value).toBe('lee@example.test')
+    expect(seen.writes).toHaveLength(0)
+  })
+
+  it('on a phone the company’s two presses stand a fingertip tall, and at a desk they keep their own height', async () => {
+    const { container, unmount } = await open()
+    await waitFor(() => expect(container.querySelector('[data-sub-company-paper="d-agr"]')).toBeTruthy())
+    expect((screen.getByRole('button', { name: 'Send for signature' }) as HTMLElement).style.minHeight).toBe('36px')
+    expect((screen.getByRole('button', { name: 'Enter from paper' }) as HTMLElement).style.minHeight).toBe('36px')
+    unmount()
+
+    window.matchMedia = ((query: string) => ({ matches: query === '(max-width: 640px)', media: query, addEventListener: () => undefined, removeEventListener: () => undefined })) as unknown as typeof window.matchMedia
+    const phone = await open()
+    await waitFor(() => expect(phone.container.querySelector('[data-sub-company-paper="d-agr"]')).toBeTruthy())
+    expect((screen.getByRole('button', { name: 'Send for signature' }) as HTMLElement).style.minHeight).toBe('44px')
+    expect((screen.getByRole('button', { name: 'Enter from paper' }) as HTMLElement).style.minHeight).toBe('44px')
+  })
+
+  it('whoever may delete a paper takes a company’s waiting paper back on its line: the confirm, then the function, then a fresh read', async () => {
+    TABLE_ROWS.person_contract_documents = [...PAPERS_AT_START, W9_OUT]
+    const { container } = await open(true)
+    const line = await waitFor(() => {
+      const found = container.querySelector('[data-sub-company-paper="d-w9-out"]') as HTMLElement | null
+      expect(found).toBeTruthy()
+      return found!
+    })
+    // The signed agreement is the record of what was agreed: no press on it.
+    expect(container.querySelector('[data-sub-company-paper="d-agr"]')?.querySelector('button')).toBeNull()
+    fireEvent.click(within(line).getByRole('button', { name: 'Take back' }))
+    expect(
+      await screen.findByText('This deletes the copy of W-9 that is with ZZ Sample Mechanical LLC. The signing link sent to Pat Sample stops working. Nobody is emailed. It cannot be undone.'),
+    ).toBeTruthy()
+    expect(seen.rpcs).toEqual([])
+    const reads = seen.tables.filter((t) => t === 'person_trade_companies').length
+    fireEvent.click(screen.getByRole('button', { name: 'Take back the paper' }))
+    expect(await screen.findByText('W-9 was taken back from ZZ Sample Mechanical LLC. Its signing link no longer works.')).toBeTruthy()
+    expect(seen.rpcs).toEqual([{ fn: 'take_back_company_paper', args: { p_document_id: 'd-w9-out' } }])
+    // The company's rows are read again, so the line leaves the row.
+    await waitFor(() => expect(seen.tables.filter((t) => t === 'person_trade_companies').length).toBeGreaterThan(reads))
+    expect(seen.writes).toHaveLength(0)
+  })
+
+  it('a paper GC mode is waiting on stays, and the office reads why', async () => {
+    TABLE_ROWS.person_contract_documents = [...PAPERS_AT_START, W9_OUT]
+    seen.takeBack = { data: null, error: { code: 'P0001', message: 'W-9 stays with ZZ Sample Mechanical LLC, since GC mode asked for it by Nov 30. It is GC mode’s paper to chase.' } }
+    const { container } = await open(true)
+    await waitFor(() => expect(container.querySelector('[data-sub-company-paper="d-w9-out"]')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Take back' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Take back the paper' }))
+    // The function's own words, behind what the press was doing.
+    expect(await screen.findByText('Failed to take back the paper: W-9 stays with ZZ Sample Mechanical LLC, since GC mode asked for it by Nov 30. It is GC mode’s paper to chase.')).toBeTruthy()
+    expect(container.querySelector('[data-sub-company-paper="d-w9-out"]')).toBeTruthy()
+  })
+
+  it('someone who may not delete a paper sees no Take back on a company’s paper', async () => {
+    TABLE_ROWS.person_contract_documents = [...PAPERS_AT_START, W9_OUT]
+    const { container } = await open(false)
+    await waitFor(() => expect(container.querySelector('[data-sub-company-paper="d-w9-out"]')).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Take back' })).toBeNull()
   })
 
   it('a send to an address that is not one says so and writes nothing', async () => {

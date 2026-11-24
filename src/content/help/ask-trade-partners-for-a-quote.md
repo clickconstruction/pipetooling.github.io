@@ -49,7 +49,7 @@ From Click Construction. To Hector Luna. {{chip:yellow|not sent yet}}
 
 With the box ticked, each company gets the email with a link to its portal. The window closes. Each ask on the trade then reads *Invitation emailed*.
 
-Without the tick, the asks are saved and no email goes out.
+Without the tick, the asks are saved and no email goes out. The line at the bottom then counts the companies asked. It counts emails only while the box is ticked.
 
 Sometimes an email cannot go out. The window then says why before it closes, and the ask is saved anyway. A company with no email on file needs a call.
 

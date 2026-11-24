@@ -168,12 +168,12 @@ Someone on your roster is not sent a paper this way. Close the window and pick t
 
 The new line sits under **Outside companies**. It can be sent again or copied as a link from its line.
 
-**A company may already have the paper out.** The app checks when you pick the company. A window then says who has the paper and the day it went. It offers two presses.
+**A company may already have the paper out.** The app checks when you pick the company. The check covers each person you put under that company with **Add to a list**. A window then says who has the paper and the day it went. The window offers two presses.
 
 - **Send it to Lena Park again** sends the same copy to the same person. They get a new signing link. The link sent before stops working.
 - **Send a second copy to someone else** makes a new copy for another person there. The first copy stays as it is, with its own link. Each person signs their own copy.
 
-Each copy is its own line under **Outside companies**.
+Each copy is its own line under **Outside companies**. Escape closes the window with nothing sent.
 
 ## Add someone to a list
 
@@ -220,6 +220,8 @@ They may sign while the window is open. The paper is then kept, and the app tell
 Taking a paper back cannot be undone. To send the paper again, press **Send a paper** and start over.
 
 The leader and a dev have **Take back**. They are the two who can delete a paper anywhere in the app. Anyone else in the office asks one of them.
+
+A trade company's own paper carries **Take back** too, while it is not signed. A paper GC mode asked the company for stays. The app says so, with the day GC mode asked for it by.
 
 The email that went out stays under Sent copies. The record that they opened the paper goes with it.
 

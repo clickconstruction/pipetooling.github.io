@@ -178,7 +178,8 @@ async function send(req: Request, admin: Admin, supabaseUrl: string, body: Recor
     ? admin.from('document_builder_sends').update({ contact_name: contactName, contact_email: contact.email.trim(), note: m.note, sent_revision: sheet.revision, sent_at: nowIso, sent_by: caller.userId, sent_by_name: caller.name, times_sent: live.times_sent + 1 }).eq('id', live.id)
     : admin.from('document_builder_sends').insert({ builder_key: m.builderKey, sheet_id: sheet.id, company_id: m.companyId, contact_name: contactName, contact_email: contact.email.trim(), note: m.note, sent_revision: sheet.revision, sent_at: nowIso, sent_by: caller.userId, sent_by_name: caller.name })
   const { data: written, error: writeError } = await write.select(SEND_COLUMNS).single()
-  if (writeError || !written) return refuse('failed', `Sent, but not recorded: ${writeError?.message ?? 'no row'}`)
+  // It went, and its record did not land. Its own key, whose words never say to try again; the reason rides beside it.
+  if (writeError || !written) return refuse('sentNotRecorded', writeError?.message ?? 'The database answered no row.')
   const row = written as SendRow
 
   // The company's thread keeps the message, as it keeps every email to them.
@@ -298,7 +299,8 @@ async function sendBuilderToGc(req: Request, admin: Admin, supabaseUrl: string, 
     ? admin.from('document_builder_sends').update({ contact_name: contactName, contact_email: contact.email.trim(), about_job_id: aboutJobId, note: m.note, sent_revision: builder.revision, sent_at: nowIso, sent_by: caller.userId, sent_by_name: caller.name, times_sent: live.times_sent + 1 }).eq('id', live.id)
     : admin.from('document_builder_sends').insert({ builder_key: m.builderKey, customer_id: m.customerId, about_job_id: aboutJobId, contact_name: contactName, contact_email: contact.email.trim(), note: m.note, sent_revision: builder.revision, sent_at: nowIso, sent_by: caller.userId, sent_by_name: caller.name })
   const { data: written, error: writeError } = await write.select(BUILDER_SEND_COLUMNS).single()
-  if (writeError || !written) return refuse('failed', `Sent, but not recorded: ${writeError?.message ?? 'no row'}`)
+  // It went, and its record did not land. Its own key, whose words never say to try again; the reason rides beside it.
+  if (writeError || !written) return refuse('sentNotRecorded', writeError?.message ?? 'The database answered no row.')
   const row = written as BuilderSendRow
 
   // Sent copies (docs/SENT_COPIES.md): filed after the row, by its id. The email carries the customer's own page link,

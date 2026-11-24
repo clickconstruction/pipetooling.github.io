@@ -2,7 +2,7 @@
 title: follow up on a quote from a trade partner
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, follow up, quote, chase, call, promised, log a contact, will not do it, cannot do it, decline, reason, trade partner, by people, by urgency, take the ask back, undo an ask, asked the wrong company
+keywords: gc mode, follow up, quote, chase, call, promised, log a contact, will not do it, cannot do it, decline, reason, trade partner, by people, by urgency, take the ask back, undo an ask, asked the wrong company, we took it back, withdraw an ask, withdrawn
 where: /gc
 order: 97
 ---
@@ -80,22 +80,36 @@ For **something else**, type their words before you save. The reason stays with 
 
 ## Take an ask back
 
-An ask made on the wrong company can come back. The ask comes back only while the company has not heard about it.
+An ask made on the wrong company can come back. What happens turns on what the company heard.
 
 1. Find the ask under its trade on the project's card.
 2. Press {{button:outline|Take the ask back…}} beside {{button:outline|Cannot do it}}.
-3. Read the window, then press {{button:red|Take the ask back}}.
+3. Read the window. The window says what happens to this ask.
+4. Press {{button:red|Take the ask back}}.
+
+The button shows on every ask that is still open. An ask shows no button in each of these cases.
+
+- The company's quote is in.
+- The trade is awarded to the company.
+- The ask is closed already.
+
+An awarded trade comes back first. See [award a trade on a GC project](/help/award-a-trade-on-a-gc-project).
+
+## When the company heard nothing
+
+The company has not opened the ask. We sent no email about the ask. No call is logged on the ask.
 
 The ask is deleted. The company reads as never asked on that trade. You can ask them again.
 
-The button shows only on an ask the company has not heard about. An ask shows no button in each of these cases.
+## When the company heard about it
 
-- The company opened the ask in its portal.
-- We emailed them the invitation.
-- A call, a text or an email is logged on the ask.
-- The company's quote is in, or the trade is awarded to the company.
+The company opened the ask in its portal. Or we emailed them, called them or sent them a text about it.
 
-Close one of those with {{button:outline|Will not do it}} or {{button:outline|Cannot do it}}. An awarded trade comes back first. See [award a trade on a GC project](/help/award-a-trade-on-a-gc-project).
+The ask is kept, and the ask closes. Its chip reads {{chip:gray|we took it back}}. The close is ours. The close does not count as a pass on the company's record.
+
+The company's portal says we took the invitation back. No email goes to them. Call the company when they should know today.
+
+A closed ask does not open again. Use {{button:outline|Will not do it}} or {{button:outline|Cannot do it}} when the answer is the company's own.
 
 ## Find someone else
 
