@@ -145,7 +145,7 @@ import { LienDeskAffidavitList } from './LienDeskAffidavitList'
 import { useLienGateAsk } from './useLienGateLanding'
 import { LienDeskNoticeList } from './LienDeskNoticeList'
 import { LienDeskNoticePane, type LienNoticePaneContext } from './LienDeskNoticePane'
-import { LIEN_STRIP_COLLAPSE_PX as STRIP_COLLAPSE_PX } from './lienDeskPaneStyles'
+import { LIEN_STRIP_COLLAPSE_PX as STRIP_COLLAPSE_PX, lienStripChipFit } from './lienDeskPaneStyles'
 import { LienDeskRetainageList } from './LienDeskRetainageList'
 import { LIEN_HEAD_DOOR as headDoor, lienBtnStyle as btn } from './lienDeskButtonStyles'
 import { LienDeskGcPicker } from './LienDeskGcPicker'
@@ -2407,14 +2407,18 @@ export default function LienDesk({
     else if (act === 'wording') scrollPaneTo('[data-lien-desk-send-line]')
     else if (act === 'next') goToSection('path')
   }
-  const stripChipStyle = (tone: LienStripChipTone): React.CSSProperties =>
-    tone === 'red'
+  // A chip's colours by its tone, and how it fits its strip (`lienStripChipFit`, punch list #415): it wraps inside its
+  // shape at a desk, and keeps its one line on a phone's sliding line.
+  const stripChipStyle = (tone: LienStripChipTone): React.CSSProperties => ({
+    ...(tone === 'red'
       ? chip('var(--bg-red-tint)', 'var(--text-red-600)')
       : tone === 'amber'
         ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)')
         : tone === 'green'
           ? chip('var(--bg-green-tint)', 'var(--text-green-800)')
-          : chip('var(--bg-subtle)', 'var(--text-700)')
+          : chip('var(--bg-subtle)', 'var(--text-700)')),
+    ...lienStripChipFit(isMobile),
+  })
 
   // The pane (v2.3522): a strip — title, gates, months, wording — then the paper, which takes the rest and is the
   // pane's own scroll. Once the gates scroll away a one-line strip sticks to the top so the facts stay one glance away.

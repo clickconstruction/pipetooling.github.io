@@ -8157,6 +8157,13 @@ button.developmentCountChip:focus-visible {
 .lienStripChip:focus-visible {
   text-decoration: underline;
 }
+/* On a phone the strip is one line that slides sideways (v2.8538, punch list #415; `lienStripStyle`). Every press on it
+   keeps its look and takes a 44 px touch area: the line is 44 px tall and a press reaches 13 px over and under its
+   18 px. No scrollbar is drawn, and the line fades at its right edge, where a cut chip says there is more. */
+.lienDeskStrip[data-phone='yes'] { scrollbar-width: none; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.lienDeskStrip[data-phone='yes']::-webkit-scrollbar { display: none; }
+.lienDeskStrip[data-phone='yes'] > button { position: relative; }
+.lienDeskStrip[data-phone='yes'] > button::after { content: ''; position: absolute; left: -4px; right: -4px; top: -13px; bottom: -13px; }
 
 /* The affidavit pane's gate rows (v2.7313): every row is a press that opens the fact's own record; its words underline on hover and its door sits at the end. */
 .lienGateRow { display: flex; gap: 0.5rem; align-items: baseline; width: 100%; border: none; background: none; padding: 0.1rem 0; margin: 0; font: inherit; font-size: 0.8125rem; color: inherit; text-align: left; cursor: pointer; border-radius: 4px; }

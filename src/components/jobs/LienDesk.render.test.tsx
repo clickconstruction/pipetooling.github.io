@@ -1523,6 +1523,48 @@ describe('LienDesk', () => {
     expect(screen.getByRole('button', { name: /Approve on his word/ })).toBeTruthy()
   })
 
+  // The strip's two shapes (punch list #415): a wrapping strip at a desk whose chips may wrap inside themselves, and one
+  // sliding line on a phone. jsdom lays nothing out, so this holds the styles the pane hands the strip; the pixels were
+  // measured on a harness of the real pane.
+  it('the strip wraps at a desk with chips that can wrap, and is one sliding line on a phone (punch list #415)', async () => {
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} />)
+    await settle()
+    fireEvent.scroll(document.querySelector('[data-lien-desk-pane]') as HTMLElement, { target: { scrollTop: 300 } })
+    const wide = document.querySelector('[data-lien-desk-strip]') as HTMLElement
+    expect(wide.getAttribute('data-phone')).toBeNull()
+    expect(wide.style.flexWrap).toBe('wrap')
+    const wideChips = Array.from(wide.querySelectorAll<HTMLElement>('[data-lien-strip-chip]'))
+    expect(wideChips.length).toBeGreaterThan(1)
+    expect(wideChips.every((c) => c.style.whiteSpace === 'normal' && c.style.maxWidth === '100%')).toBe(true)
+    desk.unmount()
+
+    const phone = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia
+    const before = window.matchMedia
+    window.matchMedia = phone
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} layout="stacked" initialKind="notice" initialJobId="j650" onOpenNotice={() => {}} onShowList={() => {}} />)
+      await settle()
+      fireEvent.scroll(document.querySelector('[data-lien-desk-pane]') as HTMLElement, { target: { scrollTop: 300 } })
+      const line = document.querySelector('[data-lien-desk-strip]') as HTMLElement
+      expect(line.classList.contains('lienDeskStrip')).toBe(true)
+      expect(line.getAttribute('data-phone')).toBe('yes')
+      expect(line.style.flexWrap).toBe('nowrap')
+      expect(line.style.overflowX).toBe('auto')
+      expect(line.style.height).toBe('45px')
+      // A chip keeps one line there, and the job's name is cut so the first chip is on the screen.
+      const chips = Array.from(line.querySelectorAll<HTMLElement>('[data-lien-strip-chip]'))
+      expect(chips.length).toBeGreaterThan(1)
+      expect(chips.every((c) => c.style.whiteSpace === 'nowrap' && c.style.flex.startsWith('0 0'))).toBe(true)
+      const name = line.querySelector('strong') as HTMLElement
+      expect(name.style.maxWidth).toBe('40%')
+      expect(name.getAttribute('title')).toBe(name.textContent)
+      // Every press on the line is a direct child, which is what the touch area in `index.css` reaches.
+      expect(Array.from(line.querySelectorAll('button')).every((b) => b.parentElement === line)).toBe(true)
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
   it('the scrolled strip says only what is out of view and every chip is a press (v2.7318): one red owner chip opens the property record at the owner, no Can\u2019t go out yet, and no next chip while it repeats the blocker', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} />)
     await settle()

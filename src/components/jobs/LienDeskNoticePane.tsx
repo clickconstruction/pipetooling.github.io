@@ -54,7 +54,7 @@ import PropertyKindSwitch from './PropertyKindSwitch'
 import type { LienPaneSectionKey } from '../../lib/jobs/lienPaneSections'
 import { lienBtnStyle as btn } from './lienDeskButtonStyles'
 import { lienBoxHeadStyle as boxHead, lienRowChipStyle as chip } from './lienDeskRowStyles'
-import { LIEN_STRIP_COLLAPSE_PX as STRIP_COLLAPSE_PX, lienBoxStyle as boxStyle, lienLinkBtnStyle as linkBtn, lienPaperStyle as paperStyle } from './lienDeskPaneStyles'
+import { LIEN_STRIP_COLLAPSE_PX as STRIP_COLLAPSE_PX, lienBoxStyle as boxStyle, lienLinkBtnStyle as linkBtn, lienPaperStyle as paperStyle, lienStripLabelStyle, lienStripStyle } from './lienDeskPaneStyles'
 
 /**
  * What the notice pane reads from the Lien desk (v2.7619). The pane was one 557-line expression inside
@@ -230,10 +230,13 @@ export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
       {paneScrolled ? (
         <div
           ref={stripRef}
+          className="lienDeskStrip"
           data-lien-desk-strip
-          style={{ position: 'sticky', top: 0, zIndex: 2, margin: '0 -1.1rem', padding: '0.45rem 1.1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)', boxShadow: '0 8px 14px -12px rgba(0,0,0,0.35)', display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.7rem', alignItems: 'center', fontSize: '0.8125rem' }}
+          data-phone={isMobile ? 'yes' : undefined}
+          // One sliding line on a phone, a wrapping strip at a desk (`lienStripStyle`, punch list #415).
+          style={lienStripStyle(isMobile)}
         >
-          <strong>{jobLabel(job, selected.jobId)}</strong>
+          <strong style={lienStripLabelStyle(isMobile)} title={isMobile ? jobLabel(job, selected.jobId) : undefined}>{jobLabel(job, selected.jobId)}</strong>
           {/* Every chip is a press (v2.7318): a red one opens its gate's door, the green one goes to the send, the quiet ones to their sections; the Sent chip goes back up. */}
           {stripChips.map((c) => (
             <button
@@ -252,7 +255,7 @@ export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
             </button>
           ))}
           <span style={{ flex: 1 }} />
-          <button type="button" onClick={() => paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' })} style={linkBtn}>
+          <button type="button" onClick={() => paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' })} style={isMobile ? { ...linkBtn, flex: 'none' } : linkBtn}>
             Show gates ▴
           </button>
         </div>
