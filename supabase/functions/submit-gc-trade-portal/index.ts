@@ -167,10 +167,10 @@ async function fileHome(admin: SupabaseClient, companyId: string, f: TradeFileUp
     }
     return { projectId: k.project_id, packageId: k.id }
   }
-  const { data: ask } = await admin.from('gc_invites').select('id, company_id, package_id, status').eq('id', f.recordId ?? '').maybeSingle()
+  const { data: ask } = await admin.from('gc_invites').select('id, company_id, package_id, status, declined_why').eq('id', f.recordId ?? '').maybeSingle()
   if (!ask) return no('notFound', 404)
   if (ask.company_id !== companyId) return no('notYours', 409)
-  if (ask.status === 'declined') return no('youPassed', 409)
+  if (ask.status === 'declined') return no(ask.declined_why === 'withdrawn' ? 'tookBack' : 'youPassed', 409)
   const { data: k } = await admin.from('gc_trade_packages').select('project_id').eq('id', ask.package_id).maybeSingle()
   if (!k) return no('notFound', 404)
   const { data: g } = await admin.from('gc_projects').select('lost_on').eq('project_id', k.project_id).maybeSingle()

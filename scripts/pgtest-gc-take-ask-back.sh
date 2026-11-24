@@ -7,8 +7,8 @@
 # The same bed as scripts/pgtest-gc-award.sh: the Supabase Postgres image with every file in supabase/migrations
 # applied in order. The take-back's migration is then applied a second time, which must change nothing. The scenario
 # takes asks back as the office through RLS, inside one transaction that rolls back: who may, each refusal in its
-# words (an award, a statement of work, a quote, the company's own pass, and every way the company can have heard of
-# the ask), the ask and its notes gone, the row the undo leaves in gc_asks_taken_back and who reads it, the bench's
+# words (an award, a statement of work, a quote, the company's own pass), every way the company can have heard of the
+# ask closing it as ours instead (v2.8490), the ask and its notes gone, the row the undo leaves in gc_asks_taken_back and who reads it, the bench's
 # Remove letting the company go afterwards by its own rule, and the award guard still refusing a plain write. It
 # raises on its first failed assertion and ends with "gc_take_ask_back PASSED". PGTEST_KEEP=1 leaves the container
 # up. Needs docker; .github/workflows/sql-beds.yml runs it.
@@ -19,7 +19,8 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55932}"
 NAME="pgtest-gc-take-ask-back"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_gc_take_ask_back.sql)"
+# The first take-back, then the answer that restates its function (v2.8490): in that order, so the newer one stands.
+WRITES="$(ls supabase/migrations/*_gc_take_ask_back.sql) $(ls supabase/migrations/*_gc_ask_taken_back_answer.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

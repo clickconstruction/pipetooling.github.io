@@ -68,6 +68,8 @@ const S = {
   closedThanksQuote: { en: 'Thank you for your quote.', es: 'Gracias por su cotización.' },
   inviteTitle: { en: '{trade} · invitation', es: '{trade} · invitación' },
   youPassed: { en: 'You passed on this one.', es: 'Usted no cotizó este.' },
+  // v2.8490: an ask we took back after they heard about it. Our close, said in our words, never as their pass.
+  weTookItBack: { en: '{gc} took this invitation back. Nothing more is needed on it.', es: '{gc} retiró esta invitación. No se necesita nada más.' },
 
   // The bid form
   bidTitle: { en: '{trade} · invitation to quote', es: '{trade} · invitación a cotizar' },
@@ -226,6 +228,7 @@ const S = {
   closedShortLost: { en: '{gc} did not win it', es: '{gc} no lo ganó' },
   closedShortDied: { en: 'stopped or on hold', es: 'detenido o en pausa' },
   youPassedShort: { en: 'you passed', es: 'no cotizó' },
+  weTookItBackShort: { en: '{gc} took it back', es: '{gc} la retiró' },
   whenWon: { en: '{gc} won the job. {trade} is not picked yet.', es: '{gc} ganó el proyecto. Todavía no se elige a nadie para {trade}.' },
   whenSent: { en: '{gc} sent its bid {date}. The customer picks next.', es: '{gc} envió su propuesta el {date}. Ahora decide el cliente.' },
   noDueDay: { en: 'No due day yet.', es: 'Todavía no hay fecha límite.' },
@@ -1013,6 +1016,7 @@ const S = {
   errNotYours: { en: 'That belongs to another company. Reload the page.', es: 'Eso pertenece a otra empresa. Vuelva a cargar la página.' },
   errProjectLost: { en: '{gc} did not win this project, so nothing more is needed on it.', es: '{gc} no ganó este proyecto, así que no se necesita nada más.' },
   errYouPassed: { en: 'You passed on this one. Call us if you want back in.', es: 'Usted no cotizó este. Llámenos si quiere volver a participar.' },
+  errTookBack: { en: '{gc} took this invitation back, so nothing more is needed on it. Reload the page.', es: '{gc} retiró esta invitación, así que no se necesita nada más. Vuelva a cargar la página.' },
   errAlreadyQuoted: { en: 'Your quote is already in. Change it if you need to.', es: 'Su cotización ya llegó. Cámbiela si lo necesita.' },
   errNoQuote: { en: 'Send your quote first.', es: 'Primero envíe su cotización.' },
   errNothingToAnswer: { en: 'Nothing on your quote is waiting for an answer.', es: 'Nada de su cotización está esperando respuesta.' },

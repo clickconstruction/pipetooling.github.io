@@ -117,7 +117,7 @@ function inviteOf(slice: TradePortalSlice, companyId: string, i: Row): Invite {
     invitedOn: str(i.invited_on),
     seenRev: i.seen_rev === null || i.seen_rev === undefined ? null : num(i.seen_rev),
     bid: newest ? bidOf(newest) : null,
-    ...(i.declined_why === 'wont' || i.declined_why === 'cant' ? { declinedWhy: i.declined_why } : {}),
+    ...(i.declined_why === 'wont' || i.declined_why === 'cant' || i.declined_why === 'withdrawn' ? { declinedWhy: i.declined_why } : {}),
     contacts,
   }
 }
