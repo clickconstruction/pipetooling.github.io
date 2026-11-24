@@ -63,7 +63,7 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { AmountSmallCents } from '../AmountSmallCents'
-import { THUMB, billLink, chipStyle, jobLink, money, phoneButton, strong, tile, tileSmall } from './billsSentLook'
+import { THUMB, billLink, chipStyle, jobLink, linePress, money, phoneButton, strong, tile, tileSmall } from './billsSentLook'
 import { BillsPaidByDay } from './BillsPaidByDay'
 import { billsPaidLines, billsPaidSum, type BillsPaidSum } from '../../lib/billing/billsPaidDays'
 import { readBillsPaid } from '../../lib/billing/billsPaidIo'
@@ -392,7 +392,7 @@ function dayPick(picked: boolean, phone: boolean): CSSProperties {
     font: 'inherit',
     fontSize: phone ? '0.8125rem' : '0.75rem',
     padding: '0.15rem 0.6rem',
-    minHeight: phone ? 40 : undefined,
+    minHeight: phone ? THUMB : undefined,
     borderRadius: 999,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
@@ -550,14 +550,14 @@ function GapRow({ gap, others, why, waysCtl, onSaved, onRan }: { gap: BillsSentG
   return (
     <div style={gapRow} data-testid="bills-sent-gap">
       <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-        <Link to={billsSentRecordPath(gap.billId)} style={billLink} title="Open this bill's record">
+        <Link to={billsSentRecordPath(gap.billId)} style={{ ...billLink, ...linePress(phone) }} title="Open this bill's record">
           Bill
         </Link>
         {gap.jobWords ? (
           <>
             {' · '}
             {gap.jobTo ? (
-              <Link to={gap.jobTo} style={jobLink}>
+              <Link to={gap.jobTo} style={{ ...jobLink, ...linePress(phone) }}>
                 {gap.jobWords}
               </Link>
             ) : (
@@ -591,6 +591,9 @@ function GapRow({ gap, others, why, waysCtl, onSaved, onRan }: { gap: BillsSentG
  * have been handed over on site or sent from someone's own mailbox, and the strip says the app cannot know.
  */
 function GapStrip({ open, paid, every, expanded, waysCtl, onSaved }: { open: BillsSentGap[]; paid: BillsSentGap[]; every: BillsSentGap[]; expanded: boolean; waysCtl: BillHandWaysCtl; onSaved: () => void }) {
+  const phone = useIsMobile()
+  // The strip's own word presses (Show all, Show them) stand a fingertip tall on a phone.
+  const wordPress: CSSProperties = { ...press, ...linePress(phone) }
   const [all, setAll] = useState(false)
   const [showPaid, setShowPaid] = useState(false)
   // The bills a press of several did not record, each with its reason, until a later press records them.
@@ -624,7 +627,7 @@ function GapStrip({ open, paid, every, expanded, waysCtl, onSaved }: { open: Bil
       {shown.map(row)}
       {open.length > shown.length ? (
         <div style={{ marginTop: '0.4rem' }}>
-          <button type="button" style={press} onClick={() => setAll(true)}>
+          <button type="button" style={wordPress} onClick={() => setAll(true)}>
             Show all {open.length}
           </button>
         </div>
@@ -632,7 +635,7 @@ function GapStrip({ open, paid, every, expanded, waysCtl, onSaved }: { open: Bil
       {paid.length > 0 ? (
         <div style={{ marginTop: '0.4rem', color: 'var(--text-700)' }}>
           {paid.length === 1 ? '1 more bill was paid with no send on record.' : `${paid.length} more bills were paid with no send on record.`}{' '}
-          <button type="button" style={press} onClick={() => setShowPaid((v) => !v)} aria-expanded={showPaid}>
+          <button type="button" style={wordPress} onClick={() => setShowPaid((v) => !v)} aria-expanded={showPaid}>
             {showPaid ? 'Hide them' : 'Show them'}
           </button>
         </div>
@@ -654,7 +657,7 @@ function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onO
             <>
               {' · '}
               {record.jobTo ? (
-                <Link to={record.jobTo} style={jobLink}>
+                <Link to={record.jobTo} style={{ ...jobLink, ...linePress(phone) }}>
                   {record.jobWords}
                 </Link>
               ) : (

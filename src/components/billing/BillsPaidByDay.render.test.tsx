@@ -254,4 +254,24 @@ describe('BillsPaidByDay', () => {
     expect(screen.queryByTestId('bills-paid-day')).toBeNull()
     expect(io.asks).toHaveLength(1)
   })
+  it('on a phone, stands the chips and a payment’s bill and job names a fingertip tall', async () => {
+    io.phone = true
+    io.data = march
+    renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-18` })
+    const day = await screen.findByTestId('bills-paid-day')
+    // The chips were 38 px and the two names in the day box 16 px, on the live page at 375 px.
+    expect(screen.getByRole('button', { name: 'Stripe' }).style.minHeight).toBe('44px')
+    expect(screen.getByRole('button', { name: 'All' }).style.minHeight).toBe('44px')
+    const bill = within(day).getByRole('link', { name: 'Bill 1420-0001' })
+    const job = within(day).getByRole('link', { name: 'J1420 · Marlow kitchen rough' })
+    expect([bill.style.minHeight, bill.style.display, job.style.minHeight, job.style.display]).toEqual(['44px', 'inline-flex', '44px', 'inline-flex'])
+  })
+
+  it('at a desk, leaves the chips and the names at the office’s size', async () => {
+    io.data = march
+    renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-18` })
+    const day = await screen.findByTestId('bills-paid-day')
+    expect(screen.getByRole('button', { name: 'Stripe' }).style.minHeight).toBe('')
+    expect(within(day).getByRole('link', { name: 'Bill 1420-0001' }).style.minHeight).toBe('')
+  })
 })

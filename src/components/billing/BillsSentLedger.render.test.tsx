@@ -645,6 +645,15 @@ describe('BillsSentLedger', () => {
     expect(io.wayCalls).toHaveLength(calls)
   })
 
+  it('on a phone, stands the list’s chips a fingertip tall', async () => {
+    io.phone = true
+    io.data = data([copy({})])
+    renderWithProviders(<BillsSentLedger />)
+    await screen.findAllByTestId('bills-sent-line')
+    // The chips were 38 px on the live page at 375 px.
+    expect(['All', 'Not paid', 'Email', 'Did not arrive'].map((name) => screen.getByRole('button', { name }).style.minHeight)).toEqual(['44px', '44px', '44px', '44px'])
+  })
+
   it('on a phone, puts the list first: a folded strip, a three-row line that opens the record, the file presses last', async () => {
     io.phone = true
     const GAP = 'dddddddd-4444-4444-8444-444444444444'
