@@ -36,6 +36,7 @@ import { jobBoxOffered } from '../../lib/messages/jobBox'
 import { JobDocumentsAddFile } from './JobDocumentsAddFile'
 import { EmptyState } from '../EmptyState'
 import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
+import { MoneyText } from '../Money'
 
 /**
  * The job window's Documents tab (v2.4491): the job's pay applications, each with the workbooks
@@ -233,7 +234,7 @@ export function JobWindowDocumentsTab({
                             <span style={{ fontWeight: 400 }}> · deleted</span>
                           </td>
                           <td style={td}>{formatAiaDate(app.periodTo) || '—'}</td>
-                          <td style={{ ...td, ...num }}>{formatAiaMoney(app.currentPaymentDue)}</td>
+                          <td style={{ ...td, ...num }}><MoneyText text={formatAiaMoney(app.currentPaymentDue)} /></td>
                           <td style={td}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                               {wentOut.map((copy) => (
@@ -277,7 +278,7 @@ export function JobWindowDocumentsTab({
                         {app.name ? <span data-testid="job-documents-pay-app-name" style={{ fontWeight: 400, color: 'var(--text-600)' }}> · {app.name}</span> : null}
                       </td>
                       <td style={td}>{formatAiaDate(app.periodTo) || '—'}</td>
-                      <td style={{ ...td, ...num }}>{formatAiaMoney(app.currentPaymentDue)}</td>
+                      <td style={{ ...td, ...num }}><MoneyText text={formatAiaMoney(app.currentPaymentDue)} /></td>
                       <td style={td}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                           {wentOut.map((copy) => (
@@ -348,7 +349,7 @@ export function JobWindowDocumentsTab({
             ) : null}
             {apps.length > 0 ? (
               <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Retainage held as of application {apps[apps.length - 1]!.applicationNumber}: {formatAiaMoney(held)}
+                Retainage held as of application {apps[apps.length - 1]!.applicationNumber}: <MoneyText text={formatAiaMoney(held)} />
               </p>
             ) : null}
           </>

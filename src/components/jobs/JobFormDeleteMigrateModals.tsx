@@ -1,7 +1,6 @@
 import { useJobMigrate } from './useJobMigrate'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { TeamLaborRow } from '../../utils/teamLabor'
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { approxHoursLabel } from '../../lib/approxHoursLabel'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { useMemo } from 'react'
@@ -11,6 +10,7 @@ import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 import { JobCombineStatusNotice } from './JobCombineStatusNotice'
 import { useJobStatusPctPair } from './useJobStatusPctPair'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money } from '../Money'
 
 type JobFormDeleteMigrateModalsProps = {
   editing: JobWithDetails | null
@@ -185,13 +185,13 @@ export function JobFormDeleteMigrateModals({
                   </p>
                   <ul style={{ margin: '0 0 0.5rem', paddingLeft: '1.1rem' }}>
                     <li>
-                      Parts, card charges &amp; supply invoices: ${formatCurrency(partsCostStyleTotal)}
+                      Parts, card charges &amp; supply invoices: <Money amount={partsCostStyleTotal} />
                     </li>
-                    <li>Billed materials: ${formatCurrency(materialsBilledTotalForMigrate)}</li>
+                    <li>Billed materials: <Money amount={materialsBilledTotalForMigrate} /></li>
                     {editJobTeamLaborRow &&
                     (editJobTeamLaborRow.jobCost > 0 || editJobTeamLaborRow.manHours > 0) ? (
                       <li>
-                        Team labor (est.): ${formatCurrency(editJobTeamLaborRow.jobCost)} ·{' '}
+                        Team labor (est.): <Money amount={editJobTeamLaborRow.jobCost} /> ·{' '}
                         {approxHoursLabel(editJobTeamLaborRow.manHours)}
                       </li>
                     ) : null}
@@ -616,7 +616,7 @@ export function JobFormDeleteMigrateModals({
                       </p>
                       <ul style={{ margin: '0 0 0.4rem', paddingLeft: '1.1rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                         <li>
-                          Job total (revenue): <strong>${formatCurrency(Number(migrateBidDryRun.revenue_dropped ?? 0))}</strong>
+                          Job total (revenue): <strong><Money amount={Number(migrateBidDryRun.revenue_dropped ?? 0)} /></strong>
                         </li>
                         {dryRunDropped.map(([k, n]) => (
                           <li key={k}>
@@ -646,19 +646,19 @@ export function JobFormDeleteMigrateModals({
                 <tbody>
                   <tr>
                     <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>Parts-style costs</td>
-                    <td style={{ textAlign: 'right', padding: '4px 4px' }}>${formatCurrency(partsCostStyleTotal)}</td>
+                    <td style={{ textAlign: 'right', padding: '4px 4px' }}><Money amount={partsCostStyleTotal} /></td>
                     <td style={{ textAlign: 'right', padding: '4px 0 4px 4px' }}>
                       {migrateTargetPreviewLoading
                         ? '…'
                         : migrateTargetPreview
-                          ? `$${formatCurrency(migrateTargetPreview.supply + migrateTargetPreview.tally + migrateTargetPreview.mercury)}`
+                          ? <Money amount={migrateTargetPreview.supply + migrateTargetPreview.tally + migrateTargetPreview.mercury} />
                           : '—'}
                     </td>
                   </tr>
                   <tr>
                     <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>Billed materials</td>
                     <td style={{ textAlign: 'right', padding: '4px 4px' }}>
-                      ${formatCurrency(materialsBilledTotalForMigrate)}
+                      <Money amount={materialsBilledTotalForMigrate} />
                     </td>
                     <td style={{ textAlign: 'right', padding: '4px 0 4px 4px' }}>—</td>
                   </tr>
@@ -666,14 +666,14 @@ export function JobFormDeleteMigrateModals({
                     <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>Team labor (est.)</td>
                     <td style={{ textAlign: 'right', padding: '4px 4px' }}>
                       {editJobTeamLaborRow
-                        ? `$${formatCurrency(editJobTeamLaborRow.jobCost)}`
+                        ? <Money amount={editJobTeamLaborRow.jobCost} />
                         : '—'}
                     </td>
                     <td style={{ textAlign: 'right', padding: '4px 0 4px 4px' }}>
                       {migrateTargetPreviewLoading
                         ? '…'
                         : migrateTargetPreview
-                          ? `$${formatCurrency(migrateTargetPreview.teamCost)}`
+                          ? <Money amount={migrateTargetPreview.teamCost} />
                           : '—'}
                     </td>
                   </tr>
