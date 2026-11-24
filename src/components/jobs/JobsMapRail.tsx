@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { JOBS_MAP_COLLECTIONS_RING_COLOR, JOBS_MAP_SECTION_COLOR, type JobsMapPin } from '../../lib/jobs/jobsMap'
 import { JOBS_MAP_CREW_RING_COLOR } from '../../lib/jobs/jobsMapCrewDay'
+import { UnplacedDoorLine } from '../map/UnplacedDoorLine'
 import { bucketAskLine, jobsMapInKindLine, type DistanceBucketKey, type DistanceBucketVisibility, type JobsMapAskTone, type JobsMapRailModel } from '../../lib/jobs/jobsMapRail'
 
 type Props = {
@@ -13,7 +14,10 @@ type Props = {
   paidOff: number
   /** The crew layer's line (v2.3399) — `Crews today: 5 people on 4 jobs`; null while the layer is off. */
   crewLine: string | null
-  /** The "N jobs have no map location yet" line, or the placing line while the geocoder runs. */
+  /**
+   * The "N jobs have no map location yet" line, or the placing line while the geocoder runs. For a viewer
+   * who may open the Map page the line is a press to that page's list (`UnplacedDoorLine`, punch list #408).
+   */
   unmappedLine: string | null
   unmappedCount: number
   /** Unplaced jobs (≤ 3 are listed by number as row links). */
@@ -131,7 +135,7 @@ export function JobsMapRail({ rail, bucketsOn, onToggleBucket, onPickPin, paidOf
           <span>{unmappedCount === 1 ? 'Placing 1 more job…' : `Placing ${unmappedCount} more jobs…`}</span>
         ) : unmappedLine ? (
           <span>
-            {unmappedLine}
+            <UnplacedDoorLine line={unmappedLine} finger={isMobile} />
             {unmappedRows.length <= 3
               ? unmappedRows.map((j) => (
                   <span key={j.id}>

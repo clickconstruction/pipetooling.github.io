@@ -19,9 +19,10 @@ export type MapPageUnplaced = {
   addressLabel: string | null
 }
 
-export type GeocodeRowLike = { address_normalized: string; status: 'pending' | 'in_progress' | 'ok' | 'error'; errorMessage?: string }
+export type GeocodeRowLike = { address_normalized: string; status: 'pending' | 'in_progress' | 'ok' | 'error'; errorMessage?: string; checkedAt?: string }
 
-export type NotFoundGroup<T> = { addressKey: string; addressLabel: string; items: T[]; error: string }
+/** `checkedAt` (punch list #408): when the map services last missed the address; null for a miss nobody kept. */
+export type NotFoundGroup<T> = { addressKey: string; addressLabel: string; items: T[]; error: string; checkedAt: string | null }
 
 export const NOT_FOUND_DEFAULT = 'Could not place this address'
 
@@ -42,7 +43,7 @@ export function mapPageNotFound<T extends { addressKey: string; addressLabel: st
     }
     const got = groups.get(e.addressKey)
     if (got) got.items.push(e)
-    else groups.set(e.addressKey, { addressKey: e.addressKey, addressLabel: e.addressLabel, items: [e], error: row?.errorMessage ?? NOT_FOUND_DEFAULT })
+    else groups.set(e.addressKey, { addressKey: e.addressKey, addressLabel: e.addressLabel, items: [e], error: row?.errorMessage ?? NOT_FOUND_DEFAULT, checkedAt: row?.checkedAt ?? null })
   }
   return { notFound: [...groups.values()].sort((a, b) => a.addressLabel.localeCompare(b.addressLabel, undefined, { sensitivity: 'base' })), resolving: resolvingKeys.size }
 }

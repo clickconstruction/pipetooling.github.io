@@ -7608,6 +7608,8 @@ the first view is the **office** anchor with its 25 / 50 mile rings and the home
 the office cohort's **Court areas** mode draws the justice precincts (v2.4769, [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) §16) and a **Precincts** chip shows them to every viewer with the justice court on a place's card (v2.4807);
 cold addresses resolve in the background (**`useMapPageData`**, chunked **`geocode-address-batch`**) and a line under the map counts the records with no map location and the addresses far from the office and opens the **address sheet** (v2.4805: no address, not found with the geocoder's reason, far with **Re-check with Google** for the office cohort);
 **Review geocodes** (per-row **Google** refresh via **`geocode-one`** **`refresh_google_only`**) is reached from the sheet.
+Since v2.8479 (punch list #408) a not-found row on the sheet says the day the map services last missed the address and the day the app asks again by itself, and **Try again** asks them now past the memory of the miss (`unplacedMemory.ts`, `tryPlaceAgain`).
+`/map?unplaced=1` opens the sheet, and the Dashboard and Pipeline map cards' *N jobs have no map location yet* line is a link to it for a viewer who may open `/map` (`UnplacedDoorLine`).
 **The office** can set an org **default map center/zoom** in **Settings** (since v2.6753;
 a dev alone before) (`map_default_view_v1` in `app_settings`;
 see `MapDefaultViewSettingsBlock`, `mapDefaultViewSettings.ts`) — since v2.4796 the page reads it only as the office anchor's fallback (`resolveOfficeAnchor`), not as its own first view.

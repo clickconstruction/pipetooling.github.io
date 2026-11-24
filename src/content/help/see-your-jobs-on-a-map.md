@@ -51,3 +51,5 @@ Tap a pin, then tap **Time** to see that job site on earlier days. [See a place 
 ## A job with no map location yet
 
 A job whose address has not been placed on the map yet is listed under the map. The line reads *1 job has no map location yet*. The job's name is a link so you can still open it. The address is looked up in the background the first time anyone's Dashboard needs it. A job with no address at all stays in the list until someone adds one.
+
+The app remembers an address no map service could place. It asks again by itself after 30 days, or as soon as the address changes. For the office, the line itself is a link. Click it to open the Map page's list, with the reason for each address and **Try again**. See [an address no map service can place](/help/see-every-job-and-bid-on-one-map#an-address-no-map-service-can-place).

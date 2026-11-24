@@ -22,6 +22,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useOfficeAnchorState } from '../../hooks/useOfficeAnchor'
+import { UnplacedDoorLine } from '../map/UnplacedDoorLine'
 import type { UserRole } from '../../hooks/useAuth'
 import { useDashboardJobsMapPins } from '../../hooks/useDashboardJobsMapPins'
 import {
@@ -329,7 +330,7 @@ export function DashboardJobsMapCard({
             {!isMobile ? <span>Tap a pin to open the job. Only jobs you're assigned to.</span> : null}
             {unmappedLine ? (
               <span>
-                {unmappedLine}
+                <UnplacedDoorLine line={unmappedLine} finger={isMobile} />
                 {unmappedAll.length <= 3
                   ? unmappedAll.map((j) => (
                       <span key={j.id}>

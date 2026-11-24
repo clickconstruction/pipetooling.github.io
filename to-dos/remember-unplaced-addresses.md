@@ -1,8 +1,8 @@
 ---
 name: "Remember an address the map cannot place"
 number: 408
-group: ready
-status: asked 2026-11-20 as a loose end of v2.8049 · sized the same day from the code, the function logs and the dev seat · the owner's word to build it 2026-11-24, on the plan's three picks · steps 1 and 2 shipped as v2.8473 and v2.8477 · step 3 not built
+group: close
+status: asked 2026-11-20 as a loose end of v2.8049 · sized the same day from the code, the function logs and the dev seat · the owner's word to build it 2026-11-24, on the plan's three picks · steps 1, 2 and 3 shipped as v2.8473, v2.8477 and v2.8479 · a mend to step 2 is PR #9652
 summary: >
   When no map service can place an address, the app keeps nothing, so every screen that lists that
   record asks again on every open: OpenStreetMap, then Google, then the Census. Five addresses cause
@@ -10,7 +10,7 @@ summary: >
   they cost 80 to 250 calls a day, about 100 to 350 of them to Google. The card keeps a miss beside
   the saved points with the day it was checked, so a screen that reads it does not ask again, and
   gives each *no map location yet* line a press that opens the list and the fix.
-next: Deploy `geocode-address-batch` and `geocode-one` once v2.8477 is on the live site, then the check on a ZZ test job. Then step 3, the press. Step 0 needs no code and is a person's to do. The owner's three calls stay open to flip.
+next: Deploy `geocode-address-batch` and `geocode-one` once the mend to step 2, PR #9652, is merged, then the check on a ZZ test job, two opens of the Pipeline and one call, and **Try again** on the Map page's list. Step 0 needs no code and is a person's to do. The owner's calls stay open to flip, the three in the plan and a fourth in that mend's fragment.
 size: S as a train of three (XS · S · XS)
 blocker: None. The three calls are built to the plan's picks and listed for the owner to flip.
 opinion: build, small — it is under Google's free count today, so the gain is headroom and a faster Pipeline open, and fixing the five by hand is ten minutes either way
@@ -121,6 +121,9 @@ headroom and a faster screen, not a bill.
    the day it was checked, **Open the job** to fix the address, and **Try again**, which asks past
    the memory. The job form's *could not place it* line keeps its own **Try again**. A help guide
    and a release note go with it.
+   **Shipped as v2.8479 on 2026-11-24** ([the fragment](../docs/recent-features/v2.8479.md)). The
+   Bid Board keeps its own sheet, where a missing address is typed in place. The Dashboard and
+   Pipeline lines are the press, for a viewer who may open the Map page.
 
 ## What it saves
 
