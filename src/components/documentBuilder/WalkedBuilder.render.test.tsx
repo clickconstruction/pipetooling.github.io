@@ -329,6 +329,8 @@ describe('WalkedBuilder', () => {
 
   it('reads the builder’s own link, with no sheet, and switches it on to the page that walks revision 2', async () => {
     const { linkIo } = draw()
+    // The link is on the Share side of the left column.
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
     expect(screen.getByRole('heading', { level: 3, name: "This builder's link" })).toBeTruthy()
     expect(await screen.findByText('The link is off. Nobody can open this builder by link.')).toBeTruthy()
     expect(linkIo.read).toHaveBeenCalledWith('sub-nda', null)
@@ -342,6 +344,7 @@ describe('WalkedBuilder', () => {
 
   it('shows a link that is on, and asks before a new one stops it', async () => {
     const { linkIo } = draw(record(), LINK_ON)
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
     expect((await screen.findByTestId('builder-link-url')).textContent).toBe(`${window.location.origin}/d/abcdefgh23456789`)
     fireEvent.click(screen.getByRole('button', { name: 'Make a new link' }))
     expect(await screen.findByText('The link you have now stops working. Anyone you gave it to needs the new one.')).toBeTruthy()

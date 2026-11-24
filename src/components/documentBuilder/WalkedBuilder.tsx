@@ -31,6 +31,7 @@ import { levelTone } from './levelTone'
 import { MovedOnPanel } from './MovedOnPanel'
 import { CHANGED_LEGEND, changedCardEmpty, changedCardHead, changedRows, shownPageId, type ShownPage } from '../../lib/documentBuilder/changedCard'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
+import { BUILDER_SIDES, BUILDER_SIDE_SWITCH, builderSideHolds, type BuilderSide } from '../../lib/documentBuilder/builderSide'
 import { levelInk } from './levelTone'
 
 /** The writes the builder makes. A smoke hands its own in. */
@@ -43,8 +44,12 @@ type Props = {
   def: PaperDef
   onBack: () => void
   onRecord: (rec: BuilderRecord) => void
-  /** What sits under the link on the left: the send, as a later step adds it. */
+  /** What sits under the link on the Share side: the send, as a later step adds it. */
   share?: ReactNode
+  /** The side the left column shows. Absent, the builder opens on Edit and keeps the side itself. */
+  side?: BuilderSide
+  /** A press on the switch. Whoever keeps the side in the address hears it here. */
+  onSide?: (side: BuilderSide) => void
   io?: WalkedBuilderIo
   /** The link card's own reads and presses. A smoke hands its own in. */
   linkIo?: BuilderLinkCardIo
@@ -83,7 +88,7 @@ function Chip({ chip }: { chip: BuilderChip }) {
   return <span style={{ ...CHIP, ...CHIP_TONES[chip.tone] }}>{chip.words}</span>
 }
 
-export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = defaultIo, linkIo = BUILDER_LINK_CARD_IO }: Props) {
+export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, side: sideAsked, onSide, io = defaultIo, linkIo = BUILDER_LINK_CARD_IO }: Props) {
   const confirmDialog = useConfirmDialog()
   const [draft, setDraft] = useState<PaperDef>(def)
   const draftRef = useRef(draft)
@@ -105,6 +110,13 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
   }
   const [readOpen, setReadOpen] = useState(false)
   const [readName, setReadName] = useState('')
+  /** Edit or Share. The address's side wins when one is handed in, so Back and a reload land where the person was. */
+  const [sideHere, setSideHere] = useState<BuilderSide>(sideAsked ?? 'edit')
+  const side = sideAsked ?? sideHere
+  const pickSide = (next: BuilderSide) => {
+    setSideHere(next)
+    onSide?.(next)
+  }
   /** The page the flow shows on the right, as the flow says it. The map outlines its cell. */
   const [shown, setShown] = useState<ShownPage | null>(null)
 
@@ -325,8 +337,28 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
         </div>
       ) : null}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 14, alignItems: 'start' }}>
+      {/* `index.css` reads the side here: on a phone the Share side stands alone, without what a GC sees under it. */}
+      <div className="documentBuilderSplit" data-side={side} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 14, alignItems: 'start' }}>
         <div style={{ display: 'grid', gap: 12, minWidth: 0 }}>
+          <div style={{ ...BTNS, gap: '6px 10px' }}>
+            <div role="group" aria-label={BUILDER_SIDE_SWITCH} style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 9, overflow: 'hidden', background: 'var(--surface)' }}>
+              {BUILDER_SIDES.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  aria-pressed={side === s.id}
+                  title={s.holds}
+                  onClick={() => pickSide(s.id)}
+                  style={{ border: 0, background: side === s.id ? '#2563eb' : 'none', color: side === s.id ? 'white' : 'var(--text-700)', padding: '6px 16px', minHeight: 36, fontFamily: 'inherit', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <span style={MUTED}>{builderSideHolds(side)}</span>
+          </div>
+          {/* Both sides stay drawn and one is hidden: a note half typed in a send's box is still there after a look at the map. */}
+          <div data-builder-side="edit" style={{ display: side === 'edit' ? 'grid' : 'none', gap: 12, minWidth: 0 }}>
           <div style={CARD}>
             <h3 style={CARD_TITLE}>The map: a row a topic, a column a level</h3>
             {/* The grid's columns, a head's words or bars and a cell's shape are `index.css`'s: they differ on a phone. */}
@@ -400,12 +432,15 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
               </div>
             ))}
           </div>
-          {/* The builder's own link, with no sheet: it opens the published revision and never the draft on the right. */}
-          <BuilderLinkCard builderKey={entry.id} sheetId={null} published={rec.revision > 0} io={linkIo} words={walkedLinkCardWords(rec.revision)} />
-          {share}
+          </div>
+          <div data-builder-side="share" style={{ display: side === 'share' ? 'grid' : 'none', gap: 12, minWidth: 0 }}>
+            {/* The builder's own link, with no sheet: it opens the published revision and never the draft on the right. */}
+            <BuilderLinkCard builderKey={entry.id} sheetId={null} published={rec.revision > 0} io={linkIo} words={walkedLinkCardWords(rec.revision)} />
+            {share}
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
+        <div className="documentBuilderGcView" style={{ display: 'grid', gap: 6, minWidth: 0 }}>
           <div style={{ ...BTNS, justifyContent: 'space-between' }}>
             <div style={CAP}>{marks ? 'What a GC sees. Press any words to change them.' : 'What a GC sees'}</div>
             <button type="button" role="switch" aria-checked={marks} onClick={() => setMarks((m) => !m)} style={{ ...SMALL_PRESS, color: 'var(--text-strong)' }}>

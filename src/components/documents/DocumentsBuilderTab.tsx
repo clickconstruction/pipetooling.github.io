@@ -28,6 +28,7 @@ import {
   type BuilderChipTone,
   type DocumentBuilderEntry,
 } from '../../lib/documentBuilder/builders'
+import { BUILDER_SIDE_PARAM, builderSideFromSearch, withBuilderSide, type BuilderSide } from '../../lib/documentBuilder/builderSide'
 import { parsePaperDef } from '../../lib/documentBuilder/definition'
 import { loadFirstDraft, readDocumentBuilders } from '../../lib/documentBuilder/documentBuildersIo'
 import { firstDraftOf } from '../../lib/documentBuilder/firstDrafts'
@@ -128,13 +129,13 @@ function LoadFirstDraft({ entry, busy, refusal, onLoad }: { entry: DocumentBuild
  * A broken rule is the Publish press's to list (`walkedPublishPress`). A draft that is not shaped like a paper is
  * never half drawn: the page lists what is wrong with it instead.
  */
-function WalkedBuilder({ entry, rec, onBack, onRecord }: { entry: DocumentBuilderEntry; rec: BuilderRecord; onBack: () => void; onRecord: (rec: BuilderRecord) => void }) {
+function WalkedBuilder({ entry, rec, onBack, onRecord, side, onSide }: { entry: DocumentBuilderEntry; rec: BuilderRecord; onBack: () => void; onRecord: (rec: BuilderRecord) => void; side: BuilderSide; onSide: (side: BuilderSide) => void }) {
   const parsed = parsePaperDef(rec.draft)
   if (parsed.ok) {
     return (
       <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
-        {/* Step 9: under the map on the left, the send of the published builder to GCs. */}
-        <WalkedEditor entry={entry} rec={rec} def={parsed.def} onBack={onBack} onRecord={onRecord} share={<BuilderGcSendCard builderKey={entry.id} revision={rec.revision} unread={builderUnreadWords(rec)} />} />
+        {/* Step 9: on the Share side, under the link, the send of the published builder to GCs. */}
+        <WalkedEditor entry={entry} rec={rec} def={parsed.def} onBack={onBack} onRecord={onRecord} side={side} onSide={onSide} share={<BuilderGcSendCard builderKey={entry.id} revision={rec.revision} unread={builderUnreadWords(rec)} />} />
         <p style={FINE}>
           {`${parsed.def.title} on job ${parsed.def.job}, for ${parsed.def.protectedParty}. Nobody is asked to sign. The disclaimer, the breach lines, the site lines and the meanings are placeholders until an attorney has read them. No clause wording is on this page.`}
         </p>
@@ -270,8 +271,12 @@ function BuilderTab({ read = readDocumentBuilders, load = loadFirstDraft, readCo
     const next = new URLSearchParams(searchParams)
     if (id == null) next.delete(BUILDER_PARAM)
     else next.set(BUILDER_PARAM, id)
+    // The side belongs to the builder that was open: the list and a newly opened builder start without one.
+    next.delete(BUILDER_SIDE_PARAM)
     setSearchParams(next)
   }
+  /** Edit or Share on an open walked builder, each its own step in the browser's history. */
+  const setSide = (side: BuilderSide) => setSearchParams(withBuilderSide(searchParams, side))
 
   if (failure) return <OfflineRetryPanel failure={failure} onRetry={() => setTries((n) => n + 1)} surface="documents-builder" idempotent busy={reading} />
   if (!records) return <p style={MUTED}>{`${WORDS.reading}…`}</p>
@@ -279,7 +284,7 @@ function BuilderTab({ read = readDocumentBuilders, load = loadFirstDraft, readCo
   if (open) {
     const rec = records.get(open.id) ?? null
     if (rec && open.kind === 'filled') return <FilledBuilder entry={open} rec={rec} onBack={() => setOpen(null)} onRecord={(next) => setRecords((was) => new Map(was ?? []).set(open.id, next))} />
-    if (rec) return <WalkedBuilder entry={open} rec={rec} onBack={() => setOpen(null)} onRecord={(next) => setRecords((was) => new Map(was ?? []).set(open.id, next))} />
+    if (rec) return <WalkedBuilder entry={open} rec={rec} onBack={() => setOpen(null)} onRecord={(next) => setRecords((was) => new Map(was ?? []).set(open.id, next))} side={builderSideFromSearch(location.search)} onSide={setSide} />
     return (
       <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
         <BuilderBar entry={open} rec={null} onBack={() => setOpen(null)} />
