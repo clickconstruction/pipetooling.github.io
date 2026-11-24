@@ -17,6 +17,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../../utils/errorHandl
 import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
 import { accountBills, billRowWords, planAccountWriteDown, writeDownButtonWords, type AccountJob } from '../../../lib/legal/accountWriteDown'
 import { runAccountWriteDown, type WriteDownHeld } from '../../../lib/legal/accountWriteDownRun'
+import { MoneyText } from '../../Money'
 
 export type { WriteDownHeld }
 
@@ -121,7 +122,7 @@ export default function AccountWriteDownPanel({ jobs, lines, onDone, onCancel }:
     >
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>How much will we accept?</h3>
-        <span style={{ ...MUTED, fontSize: '0.8rem' }}>They owe {formatLegalMoney(openTotal)} on {bills.length} bill{bills.length === 1 ? '' : 's'}.</span>
+        <span style={{ ...MUTED, fontSize: '0.8rem' }}>They owe <MoneyText text={formatLegalMoney(openTotal)} /> on {bills.length} bill{bills.length === 1 ? '' : 's'}.</span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', margin: '10px 0 6px', fontSize: '0.84rem' }}>
@@ -132,7 +133,7 @@ export default function AccountWriteDownPanel({ jobs, lines, onDone, onCancel }:
         <input type="text" inputMode="numeric" value={pctText} onChange={(e) => typePct(e.target.value)} aria-label="We accept, percent of what they owe" style={{ ...(unit === 'pct' ? boxOn : box), width: 52 }} />
         <span style={{ fontWeight: 600 }}>%</span>
         <span style={MUTED}>of what they owe</span>
-        {plan.forgive > 0 ? <span style={{ fontWeight: 600, color: '#b42318' }}>· we forgive {formatLegalMoney(plan.forgive)}</span> : null}
+        {plan.forgive > 0 ? <span style={{ fontWeight: 600, color: '#b42318' }}>· we forgive <MoneyText text={formatLegalMoney(plan.forgive)} /></span> : null}
       </div>
       <input type="range" min={0} max={100} step={1} value={pct} onChange={(e) => fromPct(Number(e.target.value))} aria-label="We accept, slider" autoFocus style={{ width: '100%', accentColor: '#2563eb' }} />
       <div style={{ ...MUTED, display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem' }}><span>Forgive it all</span><span>Half</span><span>The full balance</span></div>
@@ -147,10 +148,10 @@ export default function AccountWriteDownPanel({ jobs, lines, onDone, onCancel }:
                   {(() => { const w = billRowWords(s, plan.shares.filter((x) => x.jobId === s.jobId).length, formatLegalMoney); return <>{w.job}{w.bill ? <span style={{ ...MUTED, fontSize: '0.72rem' }}> · {w.bill}</span> : null}</> })()}
                   {s.stripeHosted ? <span style={{ ...MUTED, fontSize: '0.7rem' }}> · Stripe</span> : null}
                 </td>
-                <td style={{ ...TD, ...NUM }}>{formatLegalMoney(s.open)}</td>
-                <td style={{ ...TD, ...NUM }}>{formatLegalMoney(s.accept)}</td>
-                <td style={{ ...TD, ...NUM, color: s.forgive > 0 ? '#b42318' : undefined }}>{s.forgive > 0 ? formatLegalMoney(s.forgive) : '—'}</td>
-                <td style={{ ...TD, ...NUM }}>{s.accept > 0 ? formatLegalMoney(s.accept) : 'nothing'}</td>
+                <td style={{ ...TD, ...NUM }}><MoneyText text={formatLegalMoney(s.open)} /></td>
+                <td style={{ ...TD, ...NUM }}><MoneyText text={formatLegalMoney(s.accept)} /></td>
+                <td style={{ ...TD, ...NUM, color: s.forgive > 0 ? '#b42318' : undefined }}>{s.forgive > 0 ? <MoneyText text={formatLegalMoney(s.forgive)} /> : '—'}</td>
+                <td style={{ ...TD, ...NUM }}>{s.accept > 0 ? <MoneyText text={formatLegalMoney(s.accept)} /> : 'nothing'}</td>
               </tr>
             ))}
           </tbody>

@@ -95,6 +95,7 @@ import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
+import { MoneyText } from '../Money'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -1312,7 +1313,7 @@ export default function LienInstrumentsModal({
             </>
           )}
           <p style={{ margin: isMobile ? 0 : '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            {(job.job_name ?? '').trim() || 'Job'} · {jobNumber} · {demandMoney(fields.outstanding)} open
+            {(job.job_name ?? '').trim() || 'Job'} · {jobNumber} · <MoneyText text={demandMoney(fields.outstanding)} /> open
             {propertyKind ? ` · ${propertyKind === 'residential' ? 'residential' : 'commercial'}` : ''}
           </p>
           {timeline ? (
@@ -1501,7 +1502,7 @@ export default function LienInstrumentsModal({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                   {liveHistory.map((r) => (
                     <div key={r.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.45rem', fontSize: '0.72rem' }}>
-                      <span style={{ fontWeight: 700, color: 'var(--text-amber-700)' }}>Demand · {demandMoney(String(r.amount ?? ''))}</span>
+                      <span style={{ fontWeight: 700, color: 'var(--text-amber-700)' }}>Demand · <MoneyText text={demandMoney(String(r.amount ?? ''))} /></span>
                       <span style={{ color: 'var(--text-muted)' }}>
                         {r.sent_method ? r.sent_method.replace(/_/g, ' ') : 'unsent'}
                         {r.tracking_number ? ` ${r.tracking_number.slice(0, 10)}…` : ''}

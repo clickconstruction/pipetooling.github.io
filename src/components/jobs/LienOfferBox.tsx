@@ -12,6 +12,7 @@ import {
   lienOfferSentence,
   type LienPayOffer,
 } from '../../lib/jobs/lienPayOffer'
+import { MoneyText } from '../Money'
 
 /**
  * The leader's pay offer box (v2.4713): on the notice he is about to approve, one switch —
@@ -103,7 +104,7 @@ export default function LienOfferBox({ offer, onChange, todayYmd, affidavitDueOn
             </span>
             {amounts.length ? (
               <span data-testid="lien-offer-cost" style={{ ...small, fontVariantNumeric: 'tabular-nums' }}>
-                Up to {demandMoney(String(cost))} if {amounts.length === 1 ? 'it is' : `all ${amounts.length} are`} paid in time
+                Up to <MoneyText text={demandMoney(String(cost))} /> if {amounts.length === 1 ? 'it is' : `all ${amounts.length} are`} paid in time
               </span>
             ) : null}
           </div>

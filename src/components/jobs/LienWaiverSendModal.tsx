@@ -25,6 +25,7 @@ import {
   type LienWaiverKind,
   type LienWaiverPaymentLike,
 } from '../../lib/subWorkOrders/lienWaiverPick'
+import { MoneyText } from '../Money'
 
 export type LienWaiverSendTarget = {
   /** people_labor_jobs.id */
@@ -246,7 +247,7 @@ export function LienWaiverSendModal({ target, onClose, onSent }: { target: LienW
             <input type="email" style={inp} value={email} placeholder="name@example.com" onChange={(e) => setEmail(e.target.value)} disabled={!emailLoaded} />
           </label>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-            Filled in for the sub: {target.project ?? '—'} · {target.clickNumber ?? target.jobNumber ?? '—'}{amount != null && !(form.final && !form.conditional) ? ` · ${lienWaiverMoney(amount)}` : ''} · owner {target.owner ?? '—'} · {target.location ?? '—'}. They can change any of it before signing.
+            Filled in for the sub: {target.project ?? '—'} · {target.clickNumber ?? target.jobNumber ?? '—'}{amount != null && !(form.final && !form.conditional) ? <MoneyText text={` · ${lienWaiverMoney(amount)}`} /> : ''} · owner {target.owner ?? '—'} · {target.location ?? '—'}. They can change any of it before signing.
           </div>
           {prior.length ? (
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>

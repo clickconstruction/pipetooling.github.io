@@ -21,6 +21,7 @@ import { clearSupplierWord, saveSupplierWord } from '../../lib/jobs/lienSupplier
 import { supplierPaidButtonWords, supplierPaidDraftProblem, supplierPaidInvoiceWords, supplierPaidPicked, supplierPaidSavedWords, supplierPaidSplitWarning, type LienSupplierPaidDraft } from '../../lib/jobs/lienSupplierPaid'
 import { markSupplierInvoicesPaid } from '../../lib/jobs/lienSupplierPaidIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { Money, MoneyText } from '../Money'
 
 const TEAL = 'var(--text-teal-700)'
 const money: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums' }
@@ -346,11 +347,11 @@ export function LienJobSuppliersCard({
             <div key={r.houseId} data-lien-supplier-house={r.name} data-lien-supplier-line="one" style={{ borderBottom: '1px solid var(--border)', padding: '0.35rem 0.8rem', display: 'grid', gap: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                 <span style={{ fontWeight: 600, minWidth: 0 }}>{r.name}</span>
-                <span style={{ ...money, color: 'var(--text-muted)' }}>${formatCurrency(r.owed)}</span>
+                <span style={{ ...money, color: 'var(--text-muted)' }}><Money amount={r.owed} /></span>
               </div>
               <div data-lien-supplier-quiet style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {quietWords(quiet.parts)}
-                {r.paid > 0.005 ? ` · paid $${formatCurrency(r.paid)}` : ''}
+                {r.paid > 0.005 ? <MoneyText text={` · paid $${formatCurrency(r.paid)}`} /> : ''}
               </div>
             </div>
           )
@@ -359,7 +360,7 @@ export function LienJobSuppliersCard({
           <div style={{ padding: '0.55rem 0.8rem', display: 'grid', gap: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
               <strong>{r.name}</strong>
-              <strong style={money}>${formatCurrency(r.owed)}</strong>
+              <strong style={money}><Money amount={r.owed} /></strong>
             </div>
             {r.theirBalanceWords ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>{r.theirBalanceWords}</div> : null}
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -373,7 +374,7 @@ export function LienJobSuppliersCard({
               </div>
             ) : null}
             {r.word?.note ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>“{r.word.note}”</div> : null}
-            {r.paid > 0.005 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>paid ${formatCurrency(r.paid)}</div> : null}
+            {r.paid > 0.005 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>paid <Money amount={r.paid} /></div> : null}
             {wordDoor(r)}
             {paidDoor(r)}
           </div>
@@ -384,9 +385,9 @@ export function LienJobSuppliersCard({
       })}
       <div style={{ padding: '0.55rem 0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
         <span style={{ color: 'var(--text-600)', fontSize: '0.8125rem' }}>
-          {card.housesWord} · paid ${formatCurrency(card.paid)}
+          {card.housesWord} · paid <Money amount={card.paid} />
         </span>
-        <strong style={{ ...money, color: allPaid ? undefined : 'var(--text-amber-800)' }}>${formatCurrency(card.owed)}</strong>
+        <strong style={{ ...money, color: allPaid ? undefined : 'var(--text-amber-800)' }}><Money amount={card.owed} /></strong>
       </div>
     </>
   ) : (
@@ -415,8 +416,8 @@ export function LienJobSuppliersCard({
                 <div role="cell" aria-colspan={2} data-lien-supplier-quiet title={quiet.title} style={{ ...oneLine, gridColumn: '2 / 4', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   {quietWords(quiet.parts)}
                 </div>
-                <div role="cell" style={money}>${formatCurrency(r.paid)}</div>
-                <div role="cell" style={{ ...money, color: 'var(--text-muted)' }}>${formatCurrency(r.owed)}</div>
+                <div role="cell" style={money}><Money amount={r.paid} /></div>
+                <div role="cell" style={{ ...money, color: 'var(--text-muted)' }}><Money amount={r.owed} /></div>
               </div>
             </div>
           )
@@ -446,9 +447,9 @@ export function LienJobSuppliersCard({
               {r.word?.note ? <div style={small}>“{r.word.note}”</div> : null}
               {wordDoor(r)}
             </div>
-            <div role="cell" style={money}>${formatCurrency(r.paid)}</div>
+            <div role="cell" style={money}><Money amount={r.paid} /></div>
             <div role="cell" style={{ minWidth: 0 }}>
-              <div style={{ ...money, fontWeight: 600 }}>${formatCurrency(r.owed)}</div>
+              <div style={{ ...money, fontWeight: 600 }}><Money amount={r.owed} /></div>
               {r.theirBalanceWords ? <div style={{ ...small, textAlign: 'right' }}>{r.theirBalanceWords}</div> : null}
               {paidDoor(r) ? <div style={{ textAlign: 'right' }}>{paidDoor(r)}</div> : null}
             </div>
@@ -462,8 +463,8 @@ export function LienJobSuppliersCard({
         <span role="cell" style={{ color: 'var(--text-600)' }}>{card.housesWord}</span>
         <span role="cell" />
         <span role="cell" />
-        <span role="cell" style={money}>${formatCurrency(card.paid)}</span>
-        <strong role="cell" style={{ ...money, color: allPaid ? undefined : 'var(--text-amber-800)' }}>${formatCurrency(card.owed)}</strong>
+        <span role="cell" style={money}><Money amount={card.paid} /></span>
+        <strong role="cell" style={{ ...money, color: allPaid ? undefined : 'var(--text-amber-800)' }}><Money amount={card.owed} /></strong>
       </div>
     </div>
   )

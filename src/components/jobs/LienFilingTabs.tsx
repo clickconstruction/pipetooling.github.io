@@ -80,6 +80,7 @@ import { lienMonthCheckedFor, lienMonthCheckedSheetRow, lienMonthCheckedWords, p
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import type { JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { lienTradeWords } from '../../lib/jobs/lienTradeWords'
+import { MoneyText } from '../Money'
 
 /**
  * The statutory filing tabs of the Lien instruments modal (v2.2645, phase 3):
@@ -1036,7 +1037,7 @@ export default function LienFilingTabs({
             <span style={{ color: 'var(--text-muted)' }}>
               {f.kind === 'notice_53_056' && (f.months_covered ?? []).length > 0 ? `covers ${(f.months_covered ?? []).join(', ')} · ` : ''}
               {f.kind === 'affidavit' && f.filed_at ? `filed ${demandDate(f.filed_at)} · #${f.recording_number || '—'} · ${f.served_at ? `served ${demandDate(f.served_at)}` : `serve by ${demandDate(f.serve_due ?? '')}`}` : ''}
-              {f.kind === 'notice_53_056' || f.kind === 'retainage_53_057' ? demandMoney(String(f.amount ?? '')) : ''}
+              {f.kind === 'notice_53_056' || f.kind === 'retainage_53_057' ? <MoneyText text={demandMoney(String(f.amount ?? ''))} /> : ''}
             </span>
             {isLienAppliedRow(f as unknown as LienAppliedRow) ? (
               <span style={{ color: 'var(--text-muted)' }} data-lien-applied-row title={(f as unknown as LienAppliedRow).applied_reason || undefined}>
@@ -1303,7 +1304,7 @@ export default function LienFilingTabs({
                 {clock.noticeDeadline ? ` — ${clock.workMonth} is due ${demandDate(clock.noticeDeadline)}` : ''}.
               </div>
               <div style={{ fontSize: '0.8125rem', marginBottom: '0.6rem' }}>
-                <b>Claim amount:</b> {demandMoney(noticeFields.claimAmount)} (what the sent bills still owe{claim.claimed.corrected ? ', with the claim set by hand' : ''})
+                <b>Claim amount:</b> <MoneyText text={demandMoney(noticeFields.claimAmount)} /> (what the sent bills still owe{claim.claimed.corrected ? ', with the claim set by hand' : ''})
                 {claimNoteLines}
 
                 <b>Owner of record:</b> {ownerName || '—'} {property.owner.mailingAddress ? `· ${property.owner.mailingAddress}` : '· mailing address missing'}
@@ -1520,11 +1521,11 @@ export default function LienFilingTabs({
               <div style={{ fontSize: '0.8125rem', marginBottom: '0.6rem' }}>
                 {affidavitFields.form === 'short' ? (
                   <>
-                    <b>The claim it swears:</b> <b>{demandMoney(affidavitFields.unpaidAmount)}</b>
+                    <b>The claim it swears:</b> <b><MoneyText text={demandMoney(affidavitFields.unpaidAmount)} /></b>
                   </>
                 ) : (
                   <>
-                    <b>Sworn amounts (¶8):</b> contract {demandMoney(affidavitFields.contractAmount)} · paid {demandMoney(affidavitFields.paidAmount)} · <b>unpaid {demandMoney(affidavitFields.unpaidAmount)}</b>
+                    <b>Sworn amounts (¶8):</b> contract <MoneyText text={demandMoney(affidavitFields.contractAmount)} /> · paid <MoneyText text={demandMoney(affidavitFields.paidAmount)} /> · <b>unpaid <MoneyText text={demandMoney(affidavitFields.unpaidAmount)} /></b>
                   </>
                 )}
                 {claimNoteLines}
