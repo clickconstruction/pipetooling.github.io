@@ -2058,6 +2058,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "sync_roadmap_to_checklist": [{"args":{"p_roadmap_id":"string"},"returns":"Json"}],
   "sync_salary_clock_sessions_for_day": [{"args":{"p_work_date?":"string"},"returns":"undefined"}],
   "sync_salary_clock_sessions_for_user_day": [{"args":{"p_user_id":"string","p_work_date":"string"},"returns":"undefined"}],
+  "take_back_company_paper": [{"args":{"p_document_id":"string"},"returns":"string"}],
   "take_it": [{"args":{"p_contact_id":"string"},"returns":"undefined"}],
   "take_returned_check_off_jobs": [{"args":{"p_mercury_transaction_id":"string"},"returns":"Json"}],
   "take_robot_fixtures": [{"args":{"p_bid_version_id?":"string","p_row_ids":"string[]","p_updates?":"Json"},"returns":"Json"}],

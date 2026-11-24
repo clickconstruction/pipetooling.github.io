@@ -53958,6 +53958,10 @@ export type Database = {
         Args: { p_user_id: string; p_work_date: string }
         Returns: undefined
       }
+      take_back_company_paper: {
+        Args: { p_document_id: string }
+        Returns: string
+      }
       take_it: { Args: { p_contact_id: string }; Returns: undefined }
       take_returned_check_off_jobs: {
         Args: { p_mercury_transaction_id: string }
