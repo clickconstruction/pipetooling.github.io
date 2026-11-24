@@ -7,10 +7,9 @@
  */
 import { appTzWallTimeMs } from '../../utils/dateUtils'
 
-/** Minutes from midnight on the company clock, end exclusive. */
-export type Segment = [start: number, end: number]
-/** Seven days, Sunday first. */
-export type WeekDays = Segment[][]
+import type { Segment, WeekDays } from './weekTypes'
+
+export type { Segment, WeekDays }
 
 export const SLOT_MINUTES = 30
 export const PAINT_START_HOUR = 5

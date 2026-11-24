@@ -336,6 +336,9 @@ export const ENTRIES = {
   'lib/bids/resolvePricingEntry.ts': { values: [], types: [] },
   // Before we start on the GC's page (punch list #382, PR 9): what the page may show and what it may send back.
   'lib/startChecks/gcPage.ts': { values: [], types: [] },
+  // Working hours (punch list #429): the dev seat's pay plan reads a person's set week and plans a new one with the
+  // row's own kernel, so the lines, the hours and the seven pay numbers on the seat are the sheet's.
+  'lib/people/workingHours.ts': { values: [], types: [] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */
