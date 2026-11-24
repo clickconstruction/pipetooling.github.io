@@ -61,9 +61,11 @@ The map has a row for each topic and a column for each level.
 1. Press a cell on the map.
 2. Read that topic at that level on the right side.
 
-A changed cell is marked. On a phone a cell is a small square. You do not type in the map.
+A changed cell is marked. The cell for the page open on the right has an outline in its level's colour. On a phone a cell is a small square. You do not type in the map.
 
-Under the map, each changed page has two presses.
+Under the map, a card counts the changed pages, like *2 pages changed since revision 2*. Two marks under the count show how words look on the right side. *As published* words are underlined. *Changed, not published* words are yellow.
+
+Each changed page is a row, with its level beside its name. A row has two presses.
 
 - {{button:outline-blue|Open it}} shows the page.
 - {{button:outline-blue|Back to revision 2}} puts the page back as it was published.

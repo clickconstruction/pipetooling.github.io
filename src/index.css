@@ -8332,6 +8332,12 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
   min-height: 28px;
   box-shadow: inset 0 3px 0 var(--tone);
 }
+/* The cell whose page is open on the right, outlined in its level's colour at every width. An outline sits outside
+   the cell's own border, so a changed cell keeps its amber edge inside it. */
+.documentBuilderMapCell[aria-pressed='true'] {
+  outline: 2px solid var(--tone);
+  outline-offset: 1px;
+}
 .documentBuilderMapWords {
   display: -webkit-box;
   -webkit-line-clamp: 3;

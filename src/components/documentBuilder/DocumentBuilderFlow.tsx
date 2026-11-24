@@ -241,7 +241,10 @@ export type FlowHost = {
   reviewExtra?: ReactNode
 }
 
-export function DocumentBuilderFlow({ def, style, edit, open, look, host }: { def: PaperDef; style?: CSSProperties; edit?: FlowEdit; open?: FlowOpen; look?: FlowLook; host?: FlowHost }) {
+/** The page the flow shows, told to whoever draws a map beside it: its step, and for a topic the stop it stands on. */
+export type FlowShown = { step: string; stop?: PaperStop }
+
+export function DocumentBuilderFlow({ def, style, edit, open, look, host, onShown }: { def: PaperDef; style?: CSSProperties; edit?: FlowEdit; open?: FlowOpen; look?: FlowLook; host?: FlowHost; onShown?: (shown: FlowShown) => void }) {
   const [held, setHeld] = useState<Held>(() => {
     const settings = host?.start?.settings ?? startSettings(def)
     return { settings, flow: settleFlow(def, settings, { ...startFlow(), ackAt: host?.start?.ackAt ?? null, step: host?.start?.step ?? 0 }) }
@@ -264,6 +267,15 @@ export function DocumentBuilderFlow({ def, style, edit, open, look, host }: { de
   }, [flow.step])
 
   useGlide(body, step?.key ?? '')
+
+  // The page on show, said each time it changes: a step pressed, Next or Back, the slider moved, or the map's own press.
+  const shownStep = step?.key
+  const shownStop = step?.kind === 'topic' ? (settings.topics[step.key] ?? settings.basis) : undefined
+  useEffect(() => {
+    if (shownStep != null) onShown?.(shownStop != null ? { step: shownStep, stop: shownStop } : { step: shownStep })
+    // Whoever listens hears a change of the page, not a new function of its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownStep, shownStop])
 
   // The map opens a page: its step, at its stop. The box on the first page is ticked for the person who edits.
   const openAt = open?.at

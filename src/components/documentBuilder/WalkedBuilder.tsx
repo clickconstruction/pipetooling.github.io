@@ -29,6 +29,9 @@ import { DocumentBuilderFlow, type FlowEdit, type FlowOpen } from './DocumentBui
 import { LevelBars } from './DocumentBuilderSlider'
 import { levelTone } from './levelTone'
 import { MovedOnPanel } from './MovedOnPanel'
+import { CHANGED_LEGEND, changedCardEmpty, changedCardHead, changedRows, shownPageId, type ShownPage } from '../../lib/documentBuilder/changedCard'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
+import { levelInk } from './levelTone'
 
 /** The writes the builder makes. A smoke hands its own in. */
 export type WalkedBuilderIo = Pick<typeof defaultIo, 'saveBuilderDraft' | 'publishBuilder' | 'markBuilderRead'>
@@ -102,6 +105,8 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
   }
   const [readOpen, setReadOpen] = useState(false)
   const [readName, setReadName] = useState('')
+  /** The page the flow shows on the right, as the flow says it. The map outlines its cell. */
+  const [shown, setShown] = useState<ShownPage | null>(null)
 
   /** The published revision as a paper. Null before the first publish. */
   const published = useMemo(() => {
@@ -253,6 +258,9 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
   const read = readPress(entry, rec)
   const rows = mapRows(draft, published)
   const show = (page: string) => setOpen({ ...pageOpens(page), at: Date.now() })
+  const openPage = shownPageId(draft, shown)
+  const changedList = changedRows(draft, changed, openPage)
+  const emptyLine = changedCardEmpty(rec.revision, changed.length)
 
   return (
     <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
@@ -341,6 +349,8 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
                       type="button"
                       className="documentBuilderMapCell"
                       data-changed={cell.changed ? '' : undefined}
+                      // The cell whose page is open on the right is pressed, and `index.css` outlines it in its level's colour.
+                      aria-pressed={cell.page === openPage}
                       aria-label={`${row.label}, ${cell.levelName}${cell.changed ? ', changed' : ''}`}
                       title={cell.says}
                       onClick={() => show(cell.page)}
@@ -355,19 +365,34 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
             <p style={FINE}>Press a cell to open that page at that level. Nobody types in the map.</p>
           </div>
 
-          <div style={CARD}>
-            <h3 style={CARD_TITLE}>{rec.revision > 0 ? `Changed since revision ${rec.revision}` : 'Not published yet'}</h3>
-            {rec.revision === 0 ? <p style={MUTED}>Every word here is a draft. Publish to make revision 1.</p> : null}
-            {rec.revision > 0 && changed.length === 0 ? <p style={MUTED}>{`Nothing waiting on a publish. This is revision ${rec.revision}.`}</p> : null}
-            {changed.map((page) => (
-              <div key={page} data-changed-page={page} style={{ display: 'grid', gap: 6, padding: '8px 0', borderTop: '1px solid var(--border)' }}>
-                <div style={{ fontWeight: 600, color: 'var(--text-strong)', fontSize: '0.84rem' }}>{pageName(draft, page)}</div>
+          <div style={CARD} data-changed-card="">
+            <h3 style={{ ...CARD_TITLE, fontWeight: 600 }}>
+              <ValueSentence text={changedCardHead(rec.revision, changed.length)} />
+            </h3>
+            {emptyLine ? <p style={MUTED}>{emptyLine}</p> : null}
+            {/* What each mark on the page means: the fields' own two looks. Before the first publish nothing is marked. */}
+            {rec.revision > 0 ? (
+              <div aria-label="What the marks mean" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px', fontSize: '0.75rem', color: 'var(--text-base)' }}>
+                {CHANGED_LEGEND.map((l) => (
+                  <span key={l.mark} className="documentBuilderField" data-mark={l.mark} style={{ cursor: 'default', padding: '1px 7px' }}>
+                    {l.words}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {changedList.map((row) => (
+              <div key={row.page} data-changed-page={row.page} aria-current={row.open ? 'true' : undefined} style={{ display: 'grid', gap: 6, padding: '8px 0 8px 8px', borderTop: '1px solid var(--border)', borderLeft: `3px solid ${row.open ? 'var(--text-link)' : 'transparent'}` }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 8px', alignItems: 'center', fontWeight: 600, color: 'var(--text-strong)', fontSize: '0.84rem' }}>
+                  <span>{row.label}</span>
+                  {row.level ? <span style={{ ...CHIP, background: 'var(--bg-muted)', color: levelInk(draft, row.level.stop), boxShadow: `inset 0 0 0 1px ${levelTone(draft, row.level.stop)}` }}>{row.level.name}</span> : null}
+                  {row.part ? <span style={{ ...CHIP, ...CHIP_TONES.wait }}>{row.part}</span> : null}
+                </div>
                 <div style={BTNS}>
-                  <button type="button" aria-label={`Open ${pageName(draft, page)}`} style={SMALL_PRESS} onClick={() => show(page)}>
+                  <button type="button" aria-label={`Open ${pageName(draft, row.page)}`} style={SMALL_PRESS} onClick={() => show(row.page)}>
                     Open it
                   </button>
                   {published ? (
-                    <button type="button" aria-label={`Put ${pageName(draft, page)} back to revision ${rec.revision}`} style={SMALL_PRESS} onClick={() => change(revertPage(draftRef.current, published, page))}>
+                    <button type="button" aria-label={`Put ${pageName(draft, row.page)} back to revision ${rec.revision}`} style={SMALL_PRESS} onClick={() => change(revertPage(draftRef.current, published, row.page))}>
                       {`Back to revision ${rec.revision}`}
                     </button>
                   ) : null}
@@ -387,7 +412,7 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = d
               {marks ? 'Marks are on' : 'Marks are off, as a GC sees it'}
             </button>
           </div>
-          <DocumentBuilderFlow def={draft} edit={marks ? edit : undefined} open={open} style={{ height: 'min(780px, calc(100dvh - 96px))' }} />
+          <DocumentBuilderFlow def={draft} edit={marks ? edit : undefined} open={open} onShown={setShown} style={{ height: 'min(780px, calc(100dvh - 96px))' }} />
           <p style={FINE}>Placeholder words. No attorney has read them. A clause is drawn as grey bars, and its wording is not typed here.</p>
         </div>
       </div>
