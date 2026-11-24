@@ -84,9 +84,13 @@ export const CALLS_AHEAD_LABEL = 'push right after the merge'
 /** GitHub refuses a label whose description runs past 100 characters (v2.6254: 110 kept the label off every PR). */
 export const GITHUB_LABEL_DESCRIPTION_MAX = 100
 
-/** The label's color, and the line GitHub's label list shows under it. */
+/**
+ * The label's color, and the line GitHub's label list shows under it. The check labels a change that
+ * only replaces functions too, so the line names both kinds. The check writes it only when it makes
+ * the label, so a change to these words is also made on GitHub by hand (`gh api -X PATCH`).
+ */
 export const CALLS_AHEAD_LABEL_COLOR = 'D93F0B'
-export const CALLS_AHEAD_LABEL_DESCRIPTION = 'Its client calls what only its migration creates: push right after the merge'
+export const CALLS_AHEAD_LABEL_DESCRIPTION = 'Its client calls what its migration creates or replaces: push right after the merge'
 
 /**
  * The `gh api` calls that put the label on pull request `number` of `repo` (`owner/name`): read the

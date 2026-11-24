@@ -166,6 +166,10 @@ describe('the advice', () => {
 })
 
 describe('the label', () => {
+  it('names both kinds of finding, since a change that only replaces functions is labelled too', () => {
+    expect(CALLS_AHEAD_LABEL_DESCRIPTION).toBe('Its client calls what its migration creates or replaces: push right after the merge')
+  })
+
   it('fits GitHub’s 100-character description cap, which refused the old 110-character one on every run', () => {
     expect(GITHUB_LABEL_DESCRIPTION_MAX).toBe(100)
     expect(CALLS_AHEAD_LABEL_DESCRIPTION.length).toBeLessThanOrEqual(GITHUB_LABEL_DESCRIPTION_MAX)
