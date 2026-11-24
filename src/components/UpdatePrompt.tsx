@@ -13,6 +13,7 @@ import {
   type AutoReloadMoment,
 } from '../lib/autoReload'
 import { inFlightWriteCount, subscribeUnsavedWork, unsavedHoldCount } from '../lib/unsavedWork'
+import { pageHoldsTypedText } from '../lib/typedText'
 import { registerSW } from 'virtual:pwa-register'
 
 /** Long-lived tabs poll for a new deploy this often. */
@@ -76,7 +77,9 @@ function ownWorkerChanges(): void {
  * version" pill; Reload posts SKIP_WAITING (listener in src/sw.ts) and this component reloads
  * the page once the new SW takes control. An automatic reload looks a second time at that
  * moment (`decideReloadLanding`): a write in flight is waited out, and a touch, a dialog, a
- * focused field or an unsaved hold hands it back to the pill. Also polls registration.update()
+ * focused field or an unsaved hold hands it back to the pill. Words someone typed and has not
+ * sent hold it at both looks (v2.8499, `pageHoldsTypedText`); the pill's own Reload is the
+ * person's press and goes through. Also polls registration.update()
  * so tabs left open discover deploys.
  */
 export function UpdatePrompt() {
@@ -116,6 +119,7 @@ export function UpdatePrompt() {
       workerTookOver: workerTookOverRef.current,
       msSinceDecision: now - pending.decidedAt,
       touchedSinceDecision: pending.touched,
+      typedText: pageHoldsTypedText(),
       editableFocused: isEditableFocused(document),
       dialogOpen: isDialogOpen(document),
       unsavedHolds: unsavedHoldCount(),
@@ -186,6 +190,7 @@ export function UpdatePrompt() {
         framed: typeof window !== 'undefined' && window.self !== window.top,
         interacted: interactedRef.current,
         msSinceLoad: now - loadedAtRef.current,
+        typedText: pageHoldsTypedText(),
         editableFocused: isEditableFocused(document),
         dialogOpen: isDialogOpen(document),
         unsavedHolds: unsavedHoldCount(),

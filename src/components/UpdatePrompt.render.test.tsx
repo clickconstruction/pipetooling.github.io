@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { UpdatePrompt } from './UpdatePrompt'
 import { AUTO_RELOAD_KEY } from '../lib/autoReload'
 import { __resetUnsavedWorkForTests, holdUnsavedWork, wrapFetchCountingWrites } from '../lib/unsavedWork'
+import { __forgetTypedTextForTests, noteTypedInto } from '../lib/typedText'
 
 type SWOpts = { onNeedRefresh?: () => void; onRegisteredSW?: (url: string, reg: unknown) => void }
 const swOpts: { current: SWOpts | null } = { current: null }
@@ -62,6 +63,7 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
     updateSW.mockClear()
     sessionStorage.clear()
     __resetUnsavedWorkForTests()
+    __forgetTypedTextForTests()
     Object.defineProperty(window, 'location', { value: { ...originalLocation, reload }, writable: true })
   })
   afterEach(() => {
@@ -198,6 +200,119 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
       vi.advanceTimersByTime(2 * 60_000)
     })
     expect(updateSW).toHaveBeenCalledTimes(1)
+  })
+
+  describe('v2.8499: words someone typed hold the update reload', () => {
+    const setVisibility = (v: 'hidden' | 'visible') => {
+      Object.defineProperty(document, 'visibilityState', { value: v, configurable: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+    }
+    /** A message box on the page with words in it and the cursor somewhere else. */
+    const leaveAMessage = (words = 'We can start Monday. Call me first.') => {
+      const box = document.createElement('textarea')
+      box.setAttribute('aria-label', 'Message to the customer')
+      box.value = words
+      document.body.appendChild(box)
+      return box
+    }
+    afterEach(() => setVisibility('visible'))
+
+    it('a message typed and left: an hour hidden reloads nothing, and the words are still there', () => {
+      mount()
+      fireEvent.pointerDown(window)
+      act(() => swOpts.current?.onNeedRefresh?.())
+      const box = leaveAMessage()
+      expect(document.activeElement).not.toBe(box)
+      act(() => setVisibility('hidden'))
+      act(() => {
+        vi.advanceTimersByTime(60 * 60_000)
+      })
+      act(() => setVisibility('visible'))
+      expect(updateSW).not.toHaveBeenCalled()
+      expect(reload).not.toHaveBeenCalled()
+      expect(box.value).toBe('We can start Monday. Call me first.')
+      // The pill is there for the person's own press.
+      expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy()
+    })
+
+    it('a visible tab untouched for a day reloads nothing over the words, and reloads once they are cleared', () => {
+      mount()
+      fireEvent.pointerDown(window)
+      act(() => swOpts.current?.onNeedRefresh?.())
+      const box = leaveAMessage()
+      act(() => {
+        vi.advanceTimersByTime(24 * 60 * 60_000)
+      })
+      expect(updateSW).not.toHaveBeenCalled()
+      // Sent: the box empties. The next minute check finds the tab idle and reloads.
+      box.value = ''
+      act(() => {
+        vi.advanceTimersByTime(61_000)
+      })
+      expect(updateSW).toHaveBeenCalledTimes(1)
+    })
+
+    it('a move to another page with the words still on it reloads nothing', () => {
+      mount()
+      fireEvent.pointerDown(window)
+      act(() => swOpts.current?.onNeedRefresh?.())
+      const box = leaveAMessage()
+      fireEvent.click(screen.getByText('go'))
+      expect(updateSW).not.toHaveBeenCalled()
+      // The box left with its page: the next move is a quiet moment again.
+      box.remove()
+      fireEvent.click(screen.getByText('tab'))
+      expect(updateSW).toHaveBeenCalledTimes(1)
+    })
+
+    it('a one-line field holds once someone typed into it; a search box and a field the app filled do not', () => {
+      mount()
+      fireEvent.pointerDown(window)
+      act(() => swOpts.current?.onNeedRefresh?.())
+      const search = document.createElement('input')
+      search.type = 'search'
+      search.value = 'smith'
+      const filled = document.createElement('input')
+      filled.value = '1200.00'
+      const subject = document.createElement('input')
+      subject.value = 'Your estimate'
+      document.body.append(search, filled, subject)
+      noteTypedInto(search)
+      noteTypedInto(subject)
+      fireEvent.click(screen.getByText('go'))
+      expect(updateSW).not.toHaveBeenCalled()
+      subject.value = ''
+      fireEvent.click(screen.getByText('tab'))
+      expect(updateSW).toHaveBeenCalledTimes(1)
+    })
+
+    it('a draft the app brings back after the decision stands the reload down: the pill, no reload, no stamp', () => {
+      mount()
+      act(() => swOpts.current?.onNeedRefresh?.())
+      expect(screen.getByText('Updating to the newest version…')).toBeTruthy()
+      // Nothing is pressed: the draft lands by itself.
+      const box = leaveAMessage('Draft: the stack is roughed in.')
+      act(() => {
+        workerTakesOver()
+        vi.advanceTimersByTime(10 * 60_000)
+      })
+      expect(reload).not.toHaveBeenCalled()
+      expect(sessionStorage.getItem(AUTO_RELOAD_KEY)).toBeNull()
+      expect(screen.getByText('A new version is ready.')).toBeTruthy()
+      expect(box.value).toBe('Draft: the stack is roughed in.')
+    })
+
+    it('the pill’s own Reload is the person’s press: it goes through', () => {
+      mount()
+      fireEvent.pointerDown(window)
+      act(() => swOpts.current?.onNeedRefresh?.())
+      leaveAMessage()
+      fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+      act(() => {
+        workerTakesOver()
+      })
+      expect(reload).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('loop guard: a tab that auto-reloaded a moment ago shows the pill instead', () => {

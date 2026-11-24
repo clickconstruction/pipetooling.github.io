@@ -10,6 +10,9 @@
  * The decision and the reload are two moments: the new worker takes a beat to take over, and
  * a press can land in between. `decideReloadLanding` is the second look, taken when the
  * reload would fire.
+ * v2.8499: words someone typed and has not sent hold it at every moment and at the second look
+ * (`typedText.ts`, Diane's rule of 2026-11-24). A field typed into and then left was held by
+ * nothing here: no cursor, no window, and no hold unless its form declared one.
  */
 export type AutoReloadMoment = 'first-paint' | 'route-change' | 'idle'
 
@@ -22,6 +25,8 @@ export type AutoReloadSnapshot = {
   /** Any pointerdown / keydown / touchstart / wheel since the page loaded. */
   interacted: boolean
   msSinceLoad: number
+  /** The page holds words someone typed and has not sent (`pageHoldsTypedText`). */
+  typedText: boolean
   /** document.activeElement is a text field, textarea, select or contenteditable. */
   editableFocused: boolean
   /** A [role=dialog] / [aria-modal] / <dialog open> is in the DOM. */
@@ -41,6 +46,9 @@ export type AutoReloadSnapshot = {
 }
 
 export type AutoReloadDecision = { reload: boolean; reason: string }
+
+/** The reason both looks give while typed words hold the reload. */
+export const AUTO_RELOAD_TYPED_REASON = 'words typed on the page'
 
 /** First paint means: the waiting worker was found this early, and nobody has touched the page. */
 export const FIRST_PAINT_WINDOW_MS = 15_000
@@ -62,6 +70,8 @@ export function decideAutoReload(s: AutoReloadSnapshot): AutoReloadDecision {
   if (s.msSinceDismissed != null && s.msSinceDismissed < AUTO_RELOAD_DISMISS_GRACE_MS) {
     return { reload: false, reason: 'they said "Not now" recently' }
   }
+  // Words first: they are the one thing a reload cannot give back.
+  if (s.typedText) return { reload: false, reason: AUTO_RELOAD_TYPED_REASON }
   if (s.unsavedHolds > 0) return { reload: false, reason: `${s.unsavedHolds} component(s) hold unsaved work` }
   if (s.inFlightWrites > 0) return { reload: false, reason: `${s.inFlightWrites} write(s) in flight` }
   if (s.editableFocused) return { reload: false, reason: 'a field is focused' }
@@ -90,7 +100,8 @@ export function decideAutoReload(s: AutoReloadSnapshot): AutoReloadDecision {
  * - `reload`: fire now.
  * - `wait`: not yet, look again in `lookAgainInMs` or on the next change, whichever is first.
  * - `stand-down`: the moment is no longer quiet. The pill takes over, and the next quiet
- *   moment starts again from `decideAutoReload`.
+ *   moment starts again from `decideAutoReload`. Typed words stand it down however long the
+ *   decision has waited: nothing here waits them out and then reloads.
  *
  * SKIP_WAITING cannot be taken back, so a stood-down page may run the old build under the new
  * worker. That is safe to sit in (a missing chunk has its own recovery) and the next quiet
@@ -105,6 +116,8 @@ export type ReloadLandingSnapshot = {
   msSinceDecision: number
   /** A pointerdown / keydown / touchstart / wheel after the decision. */
   touchedSinceDecision: boolean
+  /** Words on the page now. A draft the app brings back lands after the decision with no touch. */
+  typedText: boolean
   editableFocused: boolean
   dialogOpen: boolean
   unsavedHolds: number
@@ -133,6 +146,7 @@ export function decideReloadLanding(s: ReloadLandingSnapshot): ReloadLanding {
     return { act: 'wait', reason: 'the new worker has not taken over yet', lookAgainInMs: untilFallback }
   }
   if (s.touchedSinceDecision) return { act: 'stand-down', reason: 'they touched the page after the decision' }
+  if (s.typedText) return { act: 'stand-down', reason: AUTO_RELOAD_TYPED_REASON }
   if (s.unsavedHolds > 0) return { act: 'stand-down', reason: `${s.unsavedHolds} component(s) hold unsaved work` }
   if (s.editableFocused) return { act: 'stand-down', reason: 'a field is focused' }
   if (s.dialogOpen) return { act: 'stand-down', reason: 'a dialog is open' }
