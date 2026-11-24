@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { affidavitGates } from './lienDeskAffidavits'
 import { LIEN_GATE_MARK_SLOTS, lienGateMarks } from './lienGateMarks'
-import { LIEN_GATE_LANDING_BREATH_PX, lienGateLanding, lienGateLandingScrollTop, type LienGateLandingView } from './lienGateLanding'
+import { LIEN_GATE_LANDING_BREATH_PX, lienGateLanding, lienGateLandingScrollTop, lienGatePressByKeyboard, type LienGateLandingView } from './lienGateLanding'
 
 const row = (key: string, ok: boolean, pressable = true) => ({ key, ok, pressable })
 
@@ -28,6 +28,14 @@ describe('the gate a row press lands on (punch list #364)', () => {
     const landing = lienGateLanding(gates.map((g) => ({ key: g.key, ok: g.ok, pressable: true })))
     expect(firstRed?.slot).toBe('contractor')
     expect(landing?.key).toBe('contractor')
+  })
+})
+
+describe('what made the press (v2.8509)', () => {
+  it('reads a click with no press count as the keyboard’s, and a tap, a mouse press or a double press as not', () => {
+    expect(lienGatePressByKeyboard(0)).toBe(true)
+    expect(lienGatePressByKeyboard(1)).toBe(false)
+    expect(lienGatePressByKeyboard(2)).toBe(false)
   })
 })
 

@@ -337,11 +337,12 @@ last_updated: 2026-11-21
 > What the spike left, a row press that lands on its open gate, is built in v2.8472 (punch list #364).
 > [`lienGateLanding.ts`](../src/lib/jobs/lienGateLanding.ts) `lienGateLanding(rows)` answers the gate a row press lands on: the first not clear, in the pane's order, which is the order of the marks, with `focus` false for a row that has no door.
 > `lienGateLandingScrollTop(view)` answers how far the pane scrolls: null when the row is already clear of the pinned heads, else the scroll that lands the gates section under its own head, else the row itself under the head when the section is taller than the pane.
-> The list row's press says so (`onPick(jobId, 'row')` in `LienDeskAffidavitList.tsx`), the desk keeps one ask per press (`useLienGateAsk`), and the pane answers it once (`useLienGateLanding` in [`useLienGateLanding.ts`](../src/components/jobs/useLienGateLanding.ts)), so a pane the Board or the address opens lands nowhere.
+> The list row's press says so (`onPick(jobId, 'row')` in `LienDeskAffidavitList.tsx`, `'row-keys'` when Enter or the space bar made it, v2.8509), the desk keeps one ask per press (`useLienGateAsk`), and the pane answers it once (`useLienGateLanding` in [`useLienGateLanding.ts`](../src/components/jobs/useLienGateLanding.ts)), so a pane the Board or the address opens lands nowhere.
 > `landOnLienGate` scrolls the pane's own box and never the page, puts the keyboard on the row with `preventScroll`, and lights it with the app's landing light (`lightLanded` in [`landOn.ts`](../src/lib/landOn.ts), `[data-landed]`).
 > While the light holds, a `ResizeObserver` on the pane's sections places the row again, because the job's path re-lays itself a frame or two after the pane opens.
 > Under reduced motion the pane jumps with no glide and the light stands still.
-> 10 cases in `lienGateLanding.test.ts`, 8 in `useLienGateLanding.test.ts` and one render smoke in `LienDesk.render.test.tsx`.
+> A gate landed on by a tap or a mouse press takes the keyboard wearing `data-quiet-focus`, which keeps the ring and the underline off it until it loses the keyboard or a key is pressed on it (v2.8509): Safari matched `:focus-visible` on the first scripted focus after a page load and left the ring on the gate.
+> 11 cases in `lienGateLanding.test.ts`, 12 in `useLienGateLanding.test.ts` and one render smoke in `LienDesk.render.test.tsx`.
 
 > **v2.7378 · v2.7392 (the phone train's leftovers, punch list #352):** phone only, every branch behind `isMobile`.
 > The notary's print box over the Affidavits list folds behind one 44 px bar (`data-lien-affidavit-print-fold`, its words `lienPhonePrintBoxFold` in [`lienPhonePane.ts`](../src/lib/jobs/lienPhonePane.ts), opening folded;

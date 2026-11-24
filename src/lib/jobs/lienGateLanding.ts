@@ -31,6 +31,16 @@ export function lienGateLanding(rows: ReadonlyArray<LienGateLandingRow>): LienGa
   return first ? { key: first.key, focus: first.pressable } : null
 }
 
+/**
+ * Whether the keyboard made the press (v2.8509). A click from Enter or the space bar carries no press count; a tap
+ * or a mouse press counts at least one. A gate landed on by the keyboard shows the keyboard's ring; one landed on by
+ * a tap or a mouse press takes the keyboard without it, since Safari draws the ring on the first scripted focus after
+ * a page load and left it on the gate after the landing light had gone.
+ */
+export function lienGatePressByKeyboard(clickDetail: number): boolean {
+  return clickDetail === 0
+}
+
 /** The room left over a landed row, so it does not sit hard against the head. */
 export const LIEN_GATE_LANDING_BREATH_PX = 8
 

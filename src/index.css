@@ -8160,6 +8160,12 @@ button.developmentCountChip:focus-visible {
 .lienGateWords { flex: 1 1 auto; min-width: 0; }
 .lienGateRow:not(:disabled):hover .lienGateWords, .lienGateRow:focus-visible .lienGateWords { text-decoration: underline; text-underline-offset: 3px; }
 .lienGateRow:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+/* v2.8509: a gate a list row's tap or mouse press landed on takes the keyboard without the keyboard's ring. Safari draws
+   :focus-visible on the first scripted focus after a page load, so the ring and the underline stayed on the gate after
+   the landing light had gone. Under reduced motion the landing light is an outline, so it keeps its own colour. */
+.lienGateRow[data-quiet-focus='yes']:focus-visible { outline-color: transparent; }
+.lienGateRow[data-quiet-focus='yes']:focus-visible:not(:hover) .lienGateWords { text-decoration: none; }
+@media (prefers-reduced-motion: reduce) { .lienGateRow[data-quiet-focus='yes'][data-landed='yes']:focus-visible { outline-color: var(--border-amber); } }
 .lienGateDoor { flex: none; font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
 .lienGateDoor[data-open='no'] { padding: 1px 8px; border: 1px solid var(--border-strong); border-radius: 4px; color: var(--text-700); background: var(--surface); }
 @media (hover: hover) { .lienGateDoor[data-open='yes'] { opacity: 0.55; } .lienGateRow:hover .lienGateDoor[data-open='yes'], .lienGateRow:focus-visible .lienGateDoor[data-open='yes'] { opacity: 1; } }

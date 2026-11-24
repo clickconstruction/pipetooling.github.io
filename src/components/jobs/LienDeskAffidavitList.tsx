@@ -8,6 +8,7 @@ import { lienAffidavitRedrawOutcome } from '../../lib/jobs/lienAffidavitRedraw'
 import { affidavitGateMissingWord, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 import { lienAffidavitsEmptyWords, lienListFindEmptyWords, lienPileEmptyWords } from '../../lib/jobs/lienDeskEmptyWords'
 import { lienGateMarks, lienGateRowParts } from '../../lib/jobs/lienGateMarks'
+import { lienGatePressByKeyboard } from '../../lib/jobs/lienGateLanding'
 import { lienDeskJobLabel as jobLabel } from '../../lib/jobs/lienJobLabel'
 import type { LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { AFFIDAVIT_PILE_WORDS, affidavitPileFor } from '../../lib/jobs/lienOwnerCall'
@@ -70,7 +71,7 @@ export function LienDeskAffidavitList({
   /** A row's job label, with the number as the door to the job where the desk has one. */
   rowLabel: (jobId: string) => ReactNode
   /** A row's press, and the press on a paper a batch names: the desk opens that job's pane. A row's own press says so (`'row'`, v2.8472), and the pane then lands on the row's open gate. */
-  onPick: (jobId: string, from?: 'row') => void
+  onPick: (jobId: string, from?: 'row' | 'row-keys') => void
 }) {
   const { affVisible, affSelected, affHeldOnly, affPilesShown, redrawPlan, redrawWords, redrawReady, redrawBusy, redrawFailed, affSendPlan, affSendWords, sendDraftedAffidavits, affSendBusy, affSendFailed, affPrintPlan, affPrintStatus, affPrintWords, affPrintFolded, toggleAffPrintFold, printReadyAffidavits, affNoticeCopyCount, affHelpSheet, setAffHelpSheet, affNoticeRecord, setAffNoticeRecord, affNoticeCopies, setAffNoticeCopies, affSigning, affSheetPapers, affHeldStrip, showHeldAffidavits } = aff
   return (
@@ -219,7 +220,7 @@ export function LienDeskAffidavitList({
                 <button
                   key={e.jobId}
                   type="button"
-                  onClick={() => onPick(e.jobId, 'row')}
+                  onClick={(ev) => onPick(e.jobId, lienGatePressByKeyboard(ev.detail) ? 'row-keys' : 'row')}
                   aria-current={sel ? 'true' : undefined}
                   style={{ display: 'grid', gridTemplateColumns: '8px 1fr auto', gap: '0.2rem 0.6rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.9rem', border: 'none', borderTop: '1px solid var(--border)', background: sel ? 'var(--bg-blue-tint)' : 'transparent', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }}
                 >

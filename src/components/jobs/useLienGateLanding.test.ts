@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LAND_ON_HOLD_MS } from '../../lib/landOn'
-import { landOnLienGate } from './useLienGateLanding'
+import { LIEN_GATE_QUIET_FOCUS, landOnLienGate } from './useLienGateLanding'
 
 /**
  * The page side of a row press that lands on its open gate (punch list #364). jsdom lays nothing out, so each
@@ -85,5 +85,44 @@ describe('landing on a gate row inside the affidavit pane', () => {
     const undo = landOnLienGate(host, { key: 'legal', focus: true }, { index: 1, count: 5, phone: false, reducedMotion: false })
     undo?.()
     expect(row.hasAttribute('data-landed')).toBe(false)
+  })
+
+  // v2.8509: Safari drew the keyboard's ring on a gate a tap had landed on, and it stayed after the light had gone.
+  it('after a tap or a mouse press the row takes the keyboard quietly, until it loses the keyboard', () => {
+    const { host, row } = pane({ viewHeight: 600, bodyTop: 200, rowTop: 240 })
+    landOnLienGate(host, { key: 'legal', focus: true }, { index: 1, count: 5, phone: true, reducedMotion: false, quietFocus: true })
+    expect(document.activeElement).toBe(row)
+    expect(row.getAttribute(LIEN_GATE_QUIET_FOCUS)).toBe('yes')
+    // The light going off leaves the row quiet: the ring must not come up in its place.
+    vi.advanceTimersByTime(LAND_ON_HOLD_MS + 1000)
+    expect(row.hasAttribute('data-landed')).toBe(false)
+    expect(row.getAttribute(LIEN_GATE_QUIET_FOCUS)).toBe('yes')
+    row.blur()
+    expect(row.hasAttribute(LIEN_GATE_QUIET_FOCUS)).toBe(false)
+  })
+
+  it('a key pressed on a quietly focused row brings the ring back', () => {
+    const { host, row } = pane({ viewHeight: 600, bodyTop: 200, rowTop: 240 })
+    landOnLienGate(host, { key: 'legal', focus: true }, { index: 1, count: 5, phone: false, reducedMotion: false, quietFocus: true })
+    row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+    expect(row.hasAttribute(LIEN_GATE_QUIET_FOCUS)).toBe(false)
+    expect(document.activeElement).toBe(row)
+  })
+
+  it('a press the keyboard made keeps the ring, and a row with no door is never marked', () => {
+    const keys = pane({ viewHeight: 600, bodyTop: 200, rowTop: 240 })
+    landOnLienGate(keys.host, { key: 'legal', focus: true }, { index: 1, count: 5, phone: false, reducedMotion: false })
+    expect(document.activeElement).toBe(keys.row)
+    expect(keys.row.hasAttribute(LIEN_GATE_QUIET_FOCUS)).toBe(false)
+    const shut = pane({ viewHeight: 600, bodyTop: 200, rowTop: 240, disabled: true })
+    landOnLienGate(shut.host, { key: 'legal', focus: false }, { index: 1, count: 5, phone: false, reducedMotion: false, quietFocus: true })
+    expect(shut.row.hasAttribute(LIEN_GATE_QUIET_FOCUS)).toBe(false)
+  })
+
+  it('the undo takes the quiet mark off with the light', () => {
+    const { host, row } = pane({ viewHeight: 600, bodyTop: 200, rowTop: 240 })
+    const undo = landOnLienGate(host, { key: 'legal', focus: true }, { index: 1, count: 5, phone: false, reducedMotion: false, quietFocus: true })
+    undo?.()
+    expect(row.hasAttribute(LIEN_GATE_QUIET_FOCUS)).toBe(false)
   })
 })
