@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 /**
- * The Bid window's top presses on a phone (punch list #426, the live walk of 2026-11-24): **Copy for text**, **Edit
- * bid** and the ✕ stand 44 px tall at a phone's width, the ✕ as wide, and keep their drawn size at a desk.
+ * The Bid window's presses on a phone (punch list #426, the live walk of 2026-11-24 and the live look after it).
+ * **Copy for text**, **Edit bid** and the ✕ stand 44 px tall at a phone's width, the ✕ as wide. The *Open in Bids*
+ * tabs and the *Files & links* chips stand 44 px tall. **Map**, the development's door, the GC's name and **Show all
+ * fields** are padded to 44 px, with a margin that gives the same back. At a desk each keeps its drawn size.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, screen } from '@testing-library/react'
@@ -73,5 +75,60 @@ describe('BidPreviewModal · the top presses on a phone', () => {
     const close = screen.getByRole('button', { name: 'Close' })
     expect(close.style.minHeight).toBe('')
     expect(close.style.minWidth).toBe('')
+  })
+})
+
+/** A bid with every press the window can draw in its body: an address, a development, a GC and one file link. */
+const FULL_BID = {
+  ...BID,
+  address: '12 Cedar Bend',
+  customer_id: 'cust-1',
+  customers: { name: 'Sample Contracting' },
+  development: { id: 'dev-1', name: 'Cedar Bend' },
+  drive_link: 'https://drive.example.com/folder',
+} as unknown as BidWithBuilder
+
+const drawFull = () => renderWithProviders(<BidPreviewModal bid={FULL_BID} loading={false} error={null} onClose={() => {}} onNavigateToBidsTab={() => {}} onRequestEditBid={() => {}} />)
+
+describe('BidPreviewModal · the presses in the window’s body on a phone', () => {
+  it('at a phone’s width the tabs and the file chips stand 44 px tall', async () => {
+    stubPhoneWidth(true)
+    drawFull()
+    const tab = await screen.findByRole('button', { name: 'Bid Board' })
+    expect(tab.style.minHeight).toBe('44px')
+    expect(screen.getByRole('link', { name: 'Drive folder' }).style.minHeight).toBe('44px')
+    // A chip with no link is not a press, and stands as tall so the row stays even.
+    expect(screen.getByText('Plans — none').style.minHeight).toBe('44px')
+  })
+
+  it('at a phone’s width Map, the development’s door, the GC’s name and Show all fields are padded to 44 px', async () => {
+    stubPhoneWidth(true)
+    drawFull()
+    const map = await screen.findByRole('link', { name: 'Map' })
+    expect(map.style.padding).toBe('14px 8.5px')
+    expect(map.style.margin).toBe('-14px -8.5px')
+    const door = screen.getByTestId('bid-preview-development')
+    expect(door.style.padding).toBe('14.5px 0px')
+    expect(door.style.margin).toBe('-10.5px 0px -14.5px')
+    const gc = screen.getByRole('button', { name: 'Sample Contracting' })
+    expect(gc.style.padding).toBe('11px 0px')
+    expect(gc.style.margin).toBe('-11px 0px')
+    const all = screen.getByRole('button', { name: 'Show all fields' })
+    expect(all.style.padding).toBe('13px 0px')
+    expect(all.style.margin).toBe('-13px 0px')
+  })
+
+  it('at a desk each keeps the size it was drawn', async () => {
+    stubPhoneWidth(false)
+    drawFull()
+    const tab = await screen.findByRole('button', { name: 'Bid Board' })
+    expect(tab.style.minHeight).toBe('')
+    expect(screen.getByRole('link', { name: 'Drive folder' }).style.minHeight).toBe('')
+    const map = screen.getByRole('link', { name: 'Map' })
+    expect(map.style.padding).toBe('')
+    expect(map.style.margin).toBe('')
+    expect(screen.getByTestId('bid-preview-development').style.margin).toBe('4px 0px 0px')
+    expect(screen.getByRole('button', { name: 'Sample Contracting' }).style.padding).toBe('0px')
+    expect(screen.getByRole('button', { name: 'Show all fields' }).style.padding).toBe('0px')
   })
 })
