@@ -39,6 +39,11 @@ import {
   type JobSearchEvidence,
 } from '../lib/jobSearchEvidence'
 import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
+import { HeaderBillResultRow } from './search/HeaderBillResultRow'
+import { fileHref } from '../lib/files/fileRoute'
+import { canShareSupplyInvoice } from '../lib/jobs/supplyInvoiceList'
+import { billSearchArgs, headerBillResults, type BillSearchHit, type HeaderBillResult } from '../lib/materials/bills/billSearch'
+import { supabaseBillSearchIo } from '../lib/materials/bills/billSearchIo'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { buildFieldJobLookupCard, officeTelHref, type FieldJobLookupCard } from '../lib/fieldJobLookup'
@@ -75,6 +80,9 @@ import { headerSearchFailedRead, headerSearchReadKinds, type HeaderSearchFailedR
 import { HeaderSearchFailedReads } from './search/HeaderSearchFailedReads'
 import type { BoardItem } from '../lib/todos/todoBoard'
 
+/** A row of the header search: a job, a bid, an estimate or a customer, or a supply house bill. */
+type HeaderSearchResult = UnifiedSearchResult | HeaderBillResult
+
 const HEADER_ROW_MIN_HEIGHT = 'calc(1rem + 1.25em)'
 const MIN_HEADER_SEARCH_CHARS = 2
 
@@ -98,14 +106,14 @@ type HeaderGlobalSearchContextValue = {
   closeSearch: () => void
   query: string
   setQuery: (q: string) => void
-  results: UnifiedSearchResult[]
+  results: HeaderSearchResult[]
   /** Keyboard-highlighted result row (-1 = none); arrows move it, Enter selects it, typing resets it. */
   activeResultIndex: number
   setActiveResultIndex: (i: number) => void
   inputRef: RefObject<HTMLInputElement | null>
   stripButtonRef: RefObject<HTMLButtonElement | null>
   toolbarButtonRef: RefObject<HTMLButtonElement | null>
-  selectResult: (r: UnifiedSearchResult) => void
+  selectResult: (r: HeaderSearchResult) => void
   /** Field job lookup (helpers / subcontractor): jobs only, read-only card, no money evidence. */
   fieldLookup: boolean
   /** Go anywhere, PR 4: the estimator, the primary and the superintendent get the doors alone, no data search. */
@@ -186,7 +194,7 @@ export function HeaderGlobalSearchProvider({
   const { prefixMap } = useLedgerDisplayPrefixes()
   const [open, setOpen] = useState(false)
   const [query, setQueryState] = useState('')
-  const [results, setResults] = useState<UnifiedSearchResult[]>([])
+  const [results, setResults] = useState<HeaderSearchResult[]>([])
   const [failedReads, setFailedReads] = useState<HeaderSearchFailedRead[]>([])
   /** Bumped by Retry; the search effect reads it, so a bump runs the same words again. */
   const [searchAttempt, setSearchAttempt] = useState(0)
@@ -395,8 +403,10 @@ export function HeaderGlobalSearchProvider({
   }, [])
 
   const selectResult = useCallback(
-    (r: UnifiedSearchResult) => {
-      if (r.source === 'job' && fieldLookup) {
+    (r: HeaderSearchResult) => {
+      // A supply house bill opens in the bill viewer, on the page its own link goes to (punch list #431).
+      if (r.source === 'bill') navigate(fileHref('bills', r.id))
+      else if (r.source === 'job' && fieldLookup) {
         setLookupCard(buildFieldJobLookupCard(r, effectiveJobLedgerNumber(r.hcp_number, r.click_number)))
       } else if (r.source === 'job') {
         const h = effectiveJobLedgerNumber(r.hcp_number, r.click_number) || '—'
@@ -547,6 +557,15 @@ export function HeaderGlobalSearchProvider({
       )
         .then((r) => ({ data: (r.data ?? []) as CustomerSearchResult[], error: r.error as unknown }))
         .catch((e: unknown) => ({ data: [] as CustomerSearchResult[], error: e }))
+      // Supply house bills (punch list #431, PR 7), for the roles that read them. The function runs as the reader, so
+      // it decides again. A bill search that fails leaves the other rows as they are: bills are one kind among five.
+      const billArgs = canShareSupplyInvoice(role) ? billSearchArgs(q) : null
+      const billsPromise: Promise<BillSearchHit[]> = billArgs
+        ? supabaseBillSearchIo.search(billArgs).catch((e: unknown) => {
+            console.warn('header search: the bills did not read', e)
+            return [] as BillSearchHit[]
+          })
+        : Promise.resolve([] as BillSearchHit[])
       void Promise.all([
         // The office's search finds a GC job's billing job too; the field lookup above never does.
         supabase.rpc('search_jobs_ledger', { search_text: q, include_billing_only: true }),
@@ -554,8 +573,9 @@ export function HeaderGlobalSearchProvider({
         supabase.rpc('search_estimates_for_nav', { search_text: q }),
         customersPromise,
         zzIdsPromise,
+        billsPromise,
       ])
-        .then(([jobsRes, bidsRes, estRes, customersRes, zzIds]) => {
+        .then(([jobsRes, bidsRes, estRes, customersRes, zzIds, bills]) => {
         if (cancelled) return
         const jobs = shownJobs((jobsRes.data ?? []) as JobSearchResult[], zzIds)
         const customers = hideZz ? customersRes.data.filter((c) => !isZzTestName(c.name)) : customersRes.data
@@ -567,7 +587,7 @@ export function HeaderGlobalSearchProvider({
         if (bidsRes.error) failed.push(headerSearchFailedRead('bids', bidsRes.error, mode))
         if (estRes.error) failed.push(headerSearchFailedRead('estimates', estRes.error, mode))
         if (customersRes.error) failed.push(headerSearchFailedRead('customers', customersRes.error, mode))
-        const merged: UnifiedSearchResult[] = [
+        const merged: HeaderSearchResult[] = [
           ...jobs.map((j) => ({ source: 'job' as const, ...j })),
           ...bids.map((b) => ({ source: 'bid' as const, ...b })),
           ...estimates.map((e) => ({
@@ -585,6 +605,8 @@ export function HeaderGlobalSearchProvider({
             address: c.address,
             customer_type: c.customer_type,
           })),
+          // After the jobs, bids and customers, so each of those keeps the place it had.
+          ...headerBillResults(bills),
         ]
         setResults(merged)
         setFailedReads(failed)
@@ -597,7 +619,7 @@ export function HeaderGlobalSearchProvider({
       cancelled = true
       clearTimeout(t)
     }
-  }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds, fieldLookup, doorsOnly, hideZz, authUserId, searchAttempt])
+  }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds, fieldLookup, doorsOnly, hideZz, authUserId, searchAttempt, role])
 
   /** Rich-row evidence for job and bid results. `enabled` is already the office gate
    * (dev/master/assistant-like), so job evidence always uses money mode here. */
@@ -923,12 +945,16 @@ export function HeaderGlobalSearchNavLayer() {
                       borderBottom: '1px solid var(--border)',
                     }}
                   >
-                    <UnifiedSearchResultRow
-                      result={r}
-                      prefixMap={ctx.prefixMap}
-                      jobEvidence={r.source === 'job' ? ctx.jobEvidence.get(r.id) : null}
-                      bidEvidence={r.source === 'bid' ? ctx.bidEvidence.get(r.id) : null}
-                    />
+                    {r.source === 'bill' ? (
+                      <HeaderBillResultRow result={r} />
+                    ) : (
+                      <UnifiedSearchResultRow
+                        result={r}
+                        prefixMap={ctx.prefixMap}
+                        jobEvidence={r.source === 'job' ? ctx.jobEvidence.get(r.id) : null}
+                        bidEvidence={r.source === 'bid' ? ctx.bidEvidence.get(r.id) : null}
+                      />
+                    )}
                   </button>
                 </li>
               )

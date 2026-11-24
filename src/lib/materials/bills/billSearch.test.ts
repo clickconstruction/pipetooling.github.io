@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BILL_SEARCH_WORDS, billSearchArgs, billSearchJobsWords, billSearchViewerItems, type BillSearchHit } from './billSearch'
+import { BILL_SEARCH_WORDS, HEADER_BILL_MAX, billSearchArgs, billSearchJobsWords, billSearchViewerItems, headerBillResults, type BillSearchHit } from './billSearch'
 import { plainWordsFailures } from '../../plainWords'
 
 /** A made-up hit. */
@@ -73,6 +73,13 @@ describe('reading a hit', () => {
       { invoiceId: 'inv-1', number: 'BW 7602-01', house: 'Brightwater Pipe & Valve', dateYmd: '2026-10-15', amount: 1085.58 },
       { invoiceId: 'inv-2', number: 'HS-204418', house: 'Brightwater Pipe & Valve', dateYmd: '', amount: 560 },
     ])
+  })
+  it('hands the header search its first few bills, each as a row', () => {
+    const many = Array.from({ length: 9 }, (_, i) => hit({ invoice_id: `inv-${i}`, on_paper: i === 0 ? '2 in. ball valve' : null }))
+    const rows = headerBillResults(many)
+    expect(rows).toHaveLength(HEADER_BILL_MAX)
+    expect(rows[0]).toEqual({ source: 'bill', id: 'inv-0', invoice_number: 'BW 7602-01', supply_house_name: 'Brightwater Pipe & Valve', invoice_date: '2026-10-15', amount: 1085.58, on_paper: '2 in. ball valve' })
+    expect(headerBillResults([])).toEqual([])
   })
   it('counts in words, and says so when the search stopped at its limit', () => {
     expect(BILL_SEARCH_WORDS.count(1, false)).toBe('1 bill')
