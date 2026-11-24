@@ -18,7 +18,7 @@ import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { bidDevelopmentName } from '../../lib/bids/bidBoardDevelopment'
 import { RecordQuestions } from '../developments/RecordQuestions'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
-import { bidWindowClosePress, bidWindowHeadPress } from '../../lib/bids/bidWindowPhonePress'
+import { BID_WINDOW_LINE_DRAWN, bidWindowChipPress, bidWindowClosePress, bidWindowHeadPress, bidWindowLinePress } from '../../lib/bids/bidWindowPhonePress'
 
 export type BidPreviewTabUrl =
   | 'bid-board'
@@ -84,7 +84,7 @@ const SECTION_LABEL_STYLE: CSSProperties = {
   marginBottom: '0.45rem',
 }
 
-function ExternalLink({ href, children }: { href: string | null | undefined; children: ReactNode }) {
+function ExternalLink({ href, children, press }: { href: string | null | undefined; children: ReactNode; press?: CSSProperties }) {
   if (!href?.trim()) return <span style={{ color: 'var(--text-muted)' }}>—</span>
   return (
     <a
@@ -95,7 +95,7 @@ function ExternalLink({ href, children }: { href: string | null | undefined; chi
         e.preventDefault()
         openInExternalBrowser(href)
       }}
-      style={{ color: 'var(--text-link)', textDecoration: 'none' }}
+      style={{ color: 'var(--text-link)', textDecoration: 'none', ...press }}
     >
       {children}
     </a>
@@ -116,10 +116,10 @@ const LINK_CHIP_STYLE: CSSProperties = {
   cursor: 'pointer',
 }
 
-function LinkChip({ href, label }: { href: string | null | undefined; label: string }) {
+function LinkChip({ href, label, narrow }: { href: string | null | undefined; label: string; narrow: boolean }) {
   if (!href?.trim()) {
     return (
-      <span style={{ ...LINK_CHIP_STYLE, color: 'var(--text-muted)', borderStyle: 'dashed', cursor: 'default', opacity: 0.75 }}>
+      <span style={{ ...LINK_CHIP_STYLE, ...bidWindowChipPress(narrow), color: 'var(--text-muted)', borderStyle: 'dashed', cursor: 'default', opacity: 0.75 }}>
         {label} — none
       </span>
     )
@@ -133,7 +133,7 @@ function LinkChip({ href, label }: { href: string | null | undefined; label: str
         e.preventDefault()
         openInExternalBrowser(href)
       }}
-      style={LINK_CHIP_STYLE}
+      style={{ ...LINK_CHIP_STYLE, ...bidWindowChipPress(narrow) }}
     >
       {label}
     </a>
@@ -271,7 +271,7 @@ export function BidPreviewModal({
   const [gcBuilderSnapshotOpen, setGcBuilderSnapshotOpen] = useState(false)
   const [showAllFields, setShowAllFields] = useState(false)
   const tabGroups = buildTabActionGroups(role)
-  // A phone's width: the window's top presses stand a fingertip tall there (punch list #426).
+  // A phone's width: the window's presses stand a fingertip tall there (punch list #426).
   const narrow = useNarrowViewport640()
 
   useEffect(() => {
@@ -388,7 +388,7 @@ export function BidPreviewModal({
                     {' · '}
                     {bid.address}
                     {' · '}
-                    <ExternalLink href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(bid.address)}`}>Map</ExternalLink>
+                    <ExternalLink href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(bid.address)}`} press={bidWindowLinePress(narrow, BID_WINDOW_LINE_DRAWN.map)}>Map</ExternalLink>
                   </>
                 ) : null}
               </div>
@@ -409,7 +409,7 @@ export function BidPreviewModal({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.3rem',
-                  marginTop: 4,
+                  margin: '4px 0 0',
                   padding: 0,
                   border: 'none',
                   background: 'none',
@@ -418,6 +418,7 @@ export function BidPreviewModal({
                   color: 'var(--text-link)',
                   cursor: 'pointer',
                   maxWidth: '100%',
+                  ...bidWindowLinePress(narrow, BID_WINDOW_LINE_DRAWN.development),
                 }}
               >
                 <DevelopmentHouseIcon size={12} style={{ flexShrink: 0 }} />
@@ -526,6 +527,7 @@ export function BidPreviewModal({
                         cursor: 'pointer',
                         textAlign: 'left',
                         overflowWrap: 'break-word',
+                        ...bidWindowLinePress(narrow, BID_WINDOW_LINE_DRAWN.gcName),
                       }}
                     >
                       {gcName ?? '—'}
@@ -552,15 +554,15 @@ export function BidPreviewModal({
               <div>
                 <div style={SECTION_LABEL_STYLE}>Files &amp; links</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
-                  <LinkChip href={bid.drive_link} label="Drive folder" />
-                  <LinkChip href={bid.plans_link} label="Plans" />
-                  <LinkChip href={bid.count_tooling_plans_link} label="Takeoff" />
-                  <LinkChip href={bid.bid_submission_link} label="Submission" />
+                  <LinkChip href={bid.drive_link} label="Drive folder" narrow={narrow} />
+                  <LinkChip href={bid.plans_link} label="Plans" narrow={narrow} />
+                  <LinkChip href={bid.count_tooling_plans_link} label="Takeoff" narrow={narrow} />
+                  <LinkChip href={bid.bid_submission_link} label="Submission" narrow={narrow} />
                   {(() => {
                     const itbLinks = parseItbLinks((bid as { itb_links?: unknown }).itb_links)
-                    if (itbLinks.length === 0) return <LinkChip href={null} label="ITB" />
+                    if (itbLinks.length === 0) return <LinkChip href={null} label="ITB" narrow={narrow} />
                     const labels = itbLinkLabels(itbLinks)
-                    return itbLinks.map((url, i) => <LinkChip key={`${url}-${i}`} href={url} label={labels[i] ?? 'ITB'} />)
+                    return itbLinks.map((url, i) => <LinkChip key={`${url}-${i}`} href={url} label={labels[i] ?? 'ITB'} narrow={narrow} />)
                   })()}
                 </div>
               </div>
@@ -581,7 +583,7 @@ export function BidPreviewModal({
                     <button
                       type="button"
                       onClick={() => setShowAllFields((p) => !p)}
-                      style={{ font: 'inherit', color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                      style={{ font: 'inherit', color: 'var(--text-link)', background: 'none', border: 'none', margin: 0, padding: 0, cursor: 'pointer', ...bidWindowLinePress(narrow, BID_WINDOW_LINE_DRAWN.showAllFields) }}
                     >
                       {showAllFields ? 'Hide empty fields' : 'Show all fields'}
                     </button>
@@ -626,6 +628,7 @@ export function BidPreviewModal({
                             background: 'var(--bg-subtle)',
                             cursor: 'pointer',
                             color: 'var(--text-700)',
+                            ...bidWindowChipPress(narrow),
                           }}
                         >
                           {label}

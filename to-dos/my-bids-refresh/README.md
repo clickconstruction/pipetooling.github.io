@@ -144,7 +144,11 @@ recipe expected.
    **Close** on the bid's window was 30 by 33. Neither is this card's own piece: the toast is the shared one and
    the window is the bid's. Every press the card itself added measured 44 or more. Since v2.8464, at a phone's
    width, **Undo** and the toast's × stand 44 px tall with the toast no taller, and the window's **Copy for
-   text**, **Edit bid** and ✕ stand 44 px tall with the ✕ as wide. Held by render tests, not seen on a phone.
+   text**, **Edit bid** and ✕ stand 44 px tall with the ✕ as wide. Seen so on clicktooling.com in the lens frame
+   at 430 px the same day, not on a phone. That look found the window's *Open in Bids* tabs at 26.5 px,
+   **Show all fields** at 18.7, the GC's name at 22.8 and **Map** at 16. Since v2.8496 those, the *Files &
+   links* chips and the development's line take a thumb at a phone's width too. The window's questions and
+   notes, pieces it shares with other screens, still have presses of 21 to 30 px.
 5. **A desk has no strip to drag**, as said above. The recipe asked for the drag at both widths.
 6. **The bundle check from inside the page can pass on an old build.** `fetch('/index.html', { cache:
    'no-store' })` was answered with the worker's saved copy, which named the page's own old bundle, while `curl`
