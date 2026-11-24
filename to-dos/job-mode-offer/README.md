@@ -195,6 +195,9 @@ header, since the header measures its own links to decide when to fold them away
 
 Calls 2 and 3 are one line each in `src/lib/modeRow.ts`.
 
+The owner's third look, 2026-11-24, asks for the row to show for five seconds on each visit and then
+leave, which replaces calls 2 and 3. It is drawn and planned in [#433](../mode-row-five-seconds/README.md).
+
 ## How to verify
 
 1. View as a leader on a phone with nothing stored. The Dashboard opens with the row showing,
