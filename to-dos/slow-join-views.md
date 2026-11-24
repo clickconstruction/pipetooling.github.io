@@ -1,8 +1,8 @@
 ---
 name: "Two more views join through a COALESCE onto a table with row policies: agreements_on_file and people_hours_recorded"
 number: 430
-group: ready
-status: found 2026-11-21 by the #306 thread while fixing the Photos tab's statement timeout (v2.8301) · the card written 2026-11-23 on the owner's word of 2026-11-23 · 2026-11-23 no read-only path to a plan on prod, so both mended on the plan's shape: v2.8389 (agreements_on_file) and 20261123193000_people_hours_recorded_pay_join_by_key.sql (people_hours_recorded), each a migration PR left for the parent session to merge and push
+group: gated
+status: found 2026-11-21 by the #306 thread while fixing the Photos tab's statement timeout (v2.8301) · the card written 2026-11-23 on the owner's word of 2026-11-23 · 2026-11-23 no read-only path to a plan on prod, so both mended on the plan's shape: v2.8389 (agreements_on_file) and v2.8392 (people_hours_recorded) · both merged and both migrations on prod, the ledger holds 20261123190000 and 20261123193000 · 2026-11-24 each view read as a dev through the dev seat and answered · left: the plan read on prod, which waits on a read-only path to a plan
 summary: >
   Documents → Photos timed out because its view found a job with a join written as an equality
   onto a COALESCE. Postgres will not use such a clause as an index condition on a table with row
@@ -10,11 +10,14 @@ summary: >
   fixed. The thread that fixed it saw the same shape in two other security_invoker views and
   changed neither: agreements_on_file joins three party tables that way, and people_hours_recorded
   joins the pay config that way. No read-only path to a plan on prod was open on 2026-11-23, so
-  both are mended on the plan's shape, with beds that hold every row the same (v2.8389 and the people_hours_recorded migration).
-next: After each PR merges, supabase db push, then read both views' plans on prod with the two EXPLAIN statements below whenever a read-only path to a plan is open, and run npm run check:migration-drift.
-size: S · S, after the measure
-blocker: none
-opinion: measure first — a view that reads in a few hundred milliseconds today is not worth a migration, and a view that walks a table under its policies will time out the day the table is big enough, as the Photos tab did
+  both are mended on the plan's shape, with beds that hold every row the same (v2.8389 and v2.8392).
+  Both are merged and on prod, and each view answers a read. A read that answers is not a plan, so
+  the mend is proved on its shape and by its beds, and has not been measured on prod.
+next: Read both views' plans on prod with the two EXPLAIN statements below, once a read-only path to a plan is open. No session has one today, and whether to build one is the owner's call.
+size: S · S, both shipped; left: the plan read on prod (XS)
+blocker: A read-only path to a plan on prod. No session has one, and whether to build one has been put to the owner.
+ver: v2.8389 · 8392
+opinion: your call — both views are mended and held by their beds, and the plan read on prod is the one proof a bed cannot give
 ---
 
 # Two more views join through a COALESCE (#430)
@@ -96,9 +99,9 @@ release note names the screens that read faster and nothing else.
 
 ## How to verify
 
-Read the plan again after the push with the same two statements. The scan on the policy-bearing
+Read the plan on prod with the same two statements. The scan on the policy-bearing
 table is an index scan, and the Agreements tab and a job's Cost tab read in under a second on the
-busiest account. Then `npm run check:migration-drift`.
+busiest account. The push and `npm run check:migration-drift` are done (2026-11-24, clean).
 
 ## Where it stands
 
@@ -109,8 +112,10 @@ which hands back rows and no plan. Through the dev seat, as a dev, a one-line re
 
 The policies decide it, and they were read instead. `customers` has policies that read its own column
 (`master_user_id`), and `people_pay_config` has a self-read policy that reads `person_name`: on those two a `COALESCE`
-join cannot be an index condition. `supply_houses` has one policy, which reads no column of its own, so the walk may not
-happen there; the `CASE` costs nothing where it does not.
+join cannot be an index condition. `supply_houses` was read then as having one policy that reads no column of its
+own. The bed shows two read policies, and one of them (`supply_houses_select_by_my_po_code`,
+`20261109200000_po_code_read_by_its_person.sql`) reads the house's own `id`, so the walk happens there too: in the bed
+the view as it stood walks it.
 
 The shape, on a local Postgres 15 as a role under a policy that reads a column, with 5,000 records and 200 lines:
 
@@ -123,9 +128,26 @@ The shape, on a local Postgres 15 as a role under a policy that reads a column, 
 
 - `agreements_on_file`: `20261123190000_agreements_party_join_by_key.sql` (v2.8389), the three joins as a `CASE`. The
   `paper-party` bed rebuilds the view as it stood and asserts five roles read the same lines from both, and that the
-  plan finds the customer and the supply house by key; the trade company's lookup is logged, not held.
-- `people_hours_recorded`: `20261123193000_people_hours_recorded_pay_join_by_key.sql` (its own PR), the pay config join as
+  plan finds the customer, the supply house and the trade company by key, where the view as it stood finds none of
+  the three so. The trade company's lookup was logged and not held until 2026-11-24, on the guess that the bed had too
+  few people at trade companies. That was not it: two thousand people there changed nothing. A policy on
+  `supply_houses` reads `material_po_generator_entries`, which the bed leaves empty and had never measured, and Postgres
+  priced the unmeasured table so high that the trade company's lookup, joined after the supply house, saved too little
+  to tell from a walk. The bed measures that table now (`ANALYZE`), and the lookup holds.
+- `people_hours_recorded`: `20261123193000_people_hours_recorded_pay_join_by_key.sql` (v2.8392), the pay config join as
   a `CASE`. A new bed, `people-hours-recorded`, does the same over each side of the full join.
 
-**Left:** the push of each after its merge, and the plan read on prod with the two statements above once a read-only
-path to a plan is open.
+**Merged and on prod.** Both PRs are merged, and the prod ledger holds `20261123190000` and `20261123193000`
+(`npm run check:migration-drift` clean on 2026-11-24). On 2026-11-24 each view was read as a dev through the dev seat
+and answered: 49 lines of `agreements_on_file`, and 81 rows of `people_hours_recorded` for work dates from 2026-11-10
+on.
+
+**Left:** one thing, the plan read on prod with the two statements above. It waits on a read-only path to a plan, which
+no session has, and whether to build one is the owner's call. A read that answers is not a plan. So the mend is proved
+on its shape and by its beds, and has not been measured on prod.
+
+One thing the bed taught for that read. The planner calls two plans the same price when they are within one part in a
+hundred, and on prod the supply house's policy reads a table with real rows, so its price there is real. If that price
+is high enough, the trade company may still be walked on prod with the `CASE`, by price and not by the join's form.
+`gc_companies` has policies that read no column of its own, so such a walk is cheap. This is a reading of the bed, not
+a measure of prod.
