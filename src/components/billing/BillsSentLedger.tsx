@@ -69,6 +69,7 @@ import { billsPaidLines, billsPaidSum, type BillsPaidSum } from '../../lib/billi
 import { readBillsPaid } from '../../lib/billing/billsPaidIo'
 import { companyWeekStartSundayContaining } from '../../utils/dateUtils'
 import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { MoneyText } from '../Money'
 
 /**
  * Bills sent (punch list #327, PR 1): every bill that left the company, newest first under a band per day, one line
@@ -664,7 +665,10 @@ function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onO
         </h2>
         <span style={{ ...money, marginLeft: 'auto' }}>{record.amount != null ? <AmountSmallCents value={record.amount} /> : ''}</span>
       </div>
-      <p style={{ margin: '0.1rem 0 0.5rem', color: 'var(--text-muted)' }}>{[record.payer, record.stateWords].filter(Boolean).join(' · ')}</p>
+      <p data-testid="bills-sent-record-state" style={{ margin: '0.1rem 0 0.5rem', color: 'var(--text-muted)' }}>
+        {/* The words are the kernel's. An amount in them draws its cents smaller, as every other amount on the page does. */}
+        <MoneyText text={[record.payer, record.stateWords].filter(Boolean).join(' · ')} />
+      </p>
       {record.payments.length > 0 ? (
         <div data-testid="bills-sent-record-payments" style={{ margin: '0 0 0.5rem', padding: '0.4rem 0.6rem', borderRadius: 8, background: 'var(--bg-green-tint)', border: '1px solid var(--border-green)' }}>
           <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-green-800)' }}>{record.payments.length === 1 ? 'The payment on this bill' : 'The payments on this bill, oldest first'}</div>
