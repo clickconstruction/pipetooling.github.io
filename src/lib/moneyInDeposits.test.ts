@@ -4,6 +4,7 @@ import {
   depositsOnNoBillByDay,
   matchMoneyInDeposits,
   moneyInDepositsFromRows,
+  moneyInDepositsReadFrom,
   moneyInDepositsSince,
   moneyInUnlinkedFromRows,
   returnCaseLivePaymentIds,
@@ -68,6 +69,17 @@ describe('the rows beside the deposits', () => {
 
   it('reads posted deposits from far enough back to meet a drawer check', () => {
     expect(moneyInDepositsSince(TODAY) < TODAY).toBe(true)
+  })
+
+  it('never reads a deposit from before the day Accounts Receivable starts its own list', () => {
+    // A month before the office's start date: the read starts at the start date, so its old deposits are not named.
+    expect(moneyInDepositsReadFrom('2026-03-01', '2026-04-01')).toBe('2026-04-01')
+    // A day after it: the read starts where it was asked to.
+    expect(moneyInDepositsReadFrom('2026-11-10', '2026-04-01')).toBe('2026-11-10')
+    // No start date on record, or one that is no day: the asked day stands.
+    expect(moneyInDepositsReadFrom('2026-03-01', null)).toBe('2026-03-01')
+    expect(moneyInDepositsReadFrom('2026-03-01', ' ')).toBe('2026-03-01')
+    expect(moneyInDepositsReadFrom('2026-03-01', 'April')).toBe('2026-03-01')
   })
 })
 

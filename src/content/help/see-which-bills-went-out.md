@@ -318,6 +318,8 @@ The line shows under {{chip:gray|All}} only. A deposit has no way of paying unti
 
 A day with no such deposit has no line. When the bank deposits do not read, the line says so.
 
+The line names only deposits that **Accounts Receivable** lists. A deposit from before its start date is not named.
+
 Each payment names the bill, the job and who paid. A pill says how the money came.
 
 The words after the pill say when the bill went and how long the money took.

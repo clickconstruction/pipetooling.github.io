@@ -152,11 +152,15 @@ export async function readStripePayout(): Promise<BillsPaidPayoutAnswer> {
  * typed-in payments that say which deposit a payment already carries. Without either the answer is *unread*,
  * since a count from half of them could name a deposit whose money is already in the day. The pending deposits
  * and the open return cases only sharpen which payment carries which deposit, so each fails soft.
+ *
+ * The org's deposit setting must read too. It holds the filter and the day Accounts Receivable starts its list,
+ * and without them a count would name deposits that list hides, so the answer is *unread*.
  */
 export async function readDepositsOnNoBill(span: { from: string }, todayYmd: string): Promise<BillsPaidNoBillAnswer> {
   try {
     const sorting = await fetchBankPaymentsSortingConfigFromAppSettings()
-    const cfg = sorting.outcome === 'error' ? null : sorting.config
+    if (sorting.outcome === 'error') return { state: 'unread' }
+    const cfg = sorting.config
     const moneyInSince = moneyInDepositsSince(todayYmd)
     const since = span.from < moneyInSince ? span.from : moneyInSince
     const [posted, unlinked, pending, cases] = await Promise.all([
