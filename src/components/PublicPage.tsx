@@ -19,6 +19,7 @@ import {
   PUBLIC_PAGE_TRY_AGAIN,
   PUBLIC_PAGE_WORD_AFTER_MS,
   probeForSignal,
+  publicPageCheckingHoldMs,
   publicPageLostView,
   publicPageTryAgainAct,
   type PublicPageTone,
@@ -90,6 +91,9 @@ const press: CSSProperties = {
   fontSize: 16,
   fontWeight: 700,
   cursor: 'pointer',
+  // The app fades every button's fill over 0.12 s and not its words. The press goes dead and live again in
+  // one step, or its dark dead words would sit on the copper for the length of the fade.
+  transition: 'none',
 }
 
 /**
@@ -140,7 +144,8 @@ const deadPress: CSSProperties = { ...press, background: DEAD_PRESS_FILL, color:
  * from. Says so in a customer's words, with one press. Offline a reload would land on the browser's own
  * error page, and a phone can say it is offline when it is not. So an offline press, the first one too, asks
  * the network itself and reloads only when it answers (`publicPageTryAgainAct`). On a no the page stays here
- * and says so; it loads by itself when the signal is back.
+ * and says so; it loads by itself when the signal is back. A no that comes at once still shows the checking
+ * look for half a second (`publicPageCheckingHoldMs`), so every press visibly did something.
  */
 function PublicPageLost({ tone = 'paper', compact = false }: FrameProps) {
   const [offline, setOffline] = useState(browserSaysOffline)
@@ -148,10 +153,12 @@ function PublicPageLost({ tone = 'paper', compact = false }: FrameProps) {
   const [checking, setChecking] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const here = useRef(true)
+  const hold = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     here.current = true
     return () => {
       here.current = false
+      if (hold.current) clearTimeout(hold.current)
     }
   }, [])
   useEffect(() => {
@@ -184,10 +191,25 @@ function PublicPageLost({ tone = 'paper', compact = false }: FrameProps) {
     setOffline(true)
     setPressedOffline(true)
     setChecking(true)
+    const asked = Date.now()
     void probeForSignal().then((answered) => {
       if (!here.current) return
-      setChecking(false)
-      if (answered) reload()
+      if (answered) {
+        setChecking(false)
+        reload()
+        return
+      }
+      // With no network the no comes in a millisecond. The checking look stays its half second, or a press
+      // after the first would change nothing a person can see.
+      const wait = publicPageCheckingHoldMs(Date.now() - asked)
+      if (wait === 0) {
+        setChecking(false)
+        return
+      }
+      hold.current = setTimeout(() => {
+        hold.current = null
+        if (here.current) setChecking(false)
+      }, wait)
     })
   }
   return (
