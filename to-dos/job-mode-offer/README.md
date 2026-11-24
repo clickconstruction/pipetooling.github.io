@@ -2,7 +2,7 @@
 name: "The Job Mode offer becomes a mode row tucked above the page"
 number: 425
 group: close
-status: asked 2026-11-23 with a phone screenshot of the card · read and drawn four ways the same day · the owner picked C, the switch, and asked for it tucked above the page with Task Mode on its left · drawn as a playable phone, and he picked Tucked · built as v2.8332 the same day · the owner's second look the same day took the row off the desk and put the three in the gear menu as a list with one dot, v2.8373 · left: a real phone in a hand, three calls built on their drawn defaults, and the four calls of the desk's list
+status: asked 2026-11-23 with a phone screenshot of the card · read and drawn four ways the same day · the owner picked C, the switch, and asked for it tucked above the page with Task Mode on its left · drawn as a playable phone, and he picked Tucked · built as v2.8332 the same day · the owner's second look the same day took the row off the desk and put the three in the gear menu as a list with one dot, v2.8373 · the owner's third look, on a real phone, became #433: the tuck, the handle and the pull are gone since v2.8497, the row shows when the app opens and shrinks into the gear, and a phone's gear menu has the list too · left: #433's look on a real phone, and three calls of the desk's list built on their defaults
 summary: >
   The owner likes the Job Mode offer on top of the Dashboard. Nobody read its small grey text, and
   that text was the only place the card said how to get back. Four ways were drawn and he picked C,
@@ -11,11 +11,11 @@ summary: >
   and helpers. On a phone the row shows until its first press and after every switch, then tucks
   behind a small handle. The offer card is gone. Past a phone's width the row is not drawn: the gear
   menu lists Dashboard, Job Mode and Task Mode with one dot (v2.8373).
-next: Try the pull on a real phone, as a leader and as a sub, and on a Home Screen iPhone. Then answer the three calls and delete the card.
+next: Nothing of this card's own is left to try: the pull is gone. Retire it with #433, after that card's look on a real phone, unless one of the desk list's three defaults should change.
 size: M, built as one client-only PR; left: a look on a real phone (XS)
-blocker: A real phone in a hand.
+blocker: "#433's look on a real phone."
 ver: v2.8332, v2.8373
-opinion: close — built as picked, for everyone but the estimator; the two open calls are one line each in modeRow.ts
+opinion: close — built as picked, then reshaped by #433; calls 2 and 3 and the list's fourth are settled there, and the list's other three stand on their defaults
 ---
 
 # The Job Mode offer becomes a mode row tucked above the page (#425)
@@ -163,7 +163,8 @@ Four calls were built on a default, for the owner:
 3. **A press lands on the Dashboard.** Dashboard or Job Mode pressed from another page opens the
    Dashboard, as the row does. An estimator who leaves Task Mode from the list lands there too, where the
    old tick stayed on the checklist.
-4. **The green *New* mark** on Job Mode is not drawn in the list.
+4. **The green *New* mark** on Job Mode is not drawn in the list. Settled: the mark is gone
+   everywhere since v2.8461.
 
 ## Where the build left the drawing
 
@@ -195,8 +196,10 @@ header, since the header measures its own links to decide when to fold them away
 
 Calls 2 and 3 are one line each in `src/lib/modeRow.ts`.
 
-The owner's third look, 2026-11-24, asks for the row to show for five seconds on each visit and then
-leave, which replaces calls 2 and 3. It is drawn and planned in [#433](../mode-row-five-seconds/README.md).
+The owner's third look, 2026-11-24, asked for the row to show for five seconds and then leave, which
+replaced calls 2 and 3. [#433](../mode-row-five-seconds/README.md) built it twice: since v2.8497 there
+is no tuck, no handle and no pull, the row shows when the app opens and shrinks into the gear, and
+`MODE_ROW_FIRST_VISITS` and `MODE_ROW_HANDLE` are deleted.
 
 ## How to verify
 
@@ -227,9 +230,11 @@ leave, which replaces calls 2 and 3. It is drawn and planned in [#433](../mode-r
 
 Built and walked hard on the dev server through the lens frame, over invented data: a leader, a
 superintendent and a sub on a phone at 390 px and 320 px, a leader on a desk, and an assistant to see
-the office untouched. Not tried on a real phone: the pull under a thumb and the status bar on a Home
-Screen iPhone are what is left.
+the office untouched. The owner tried the row on a real phone on 2026-11-24, and what he asked for
+then is [#433](../mode-row-five-seconds/README.md). The pull is gone, so nothing of this card's own
+is left to try on a phone.
 
 The desk's list (v2.8373) was walked the same way: a leader at 800 px and 1280 px, an estimator at a
 phone's width and a desk's, a sub on a desk in the dark look, and a leader's phone to see the row
-untouched. Its four calls above wait on the owner.
+untouched. Since v2.8497 a phone has the list too. Its first three calls stand on their defaults,
+and the owner has asked for none to change.

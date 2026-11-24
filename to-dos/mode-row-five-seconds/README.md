@@ -2,7 +2,7 @@
 name: "The mode row shows for five seconds, then leaves"
 number: 433
 group: close
-status: asked 2026-11-24 after a look at the row on a phone · drawn twice and built whole as v2.8461 the same day · the owner tried it on a real phone: it works, the handle takes too much room, the row should shrink into the gear, open the app and then live in the gear menu · built as v2.8497: no handle, the row at the app's opening, the way out into the gear, the three modes in a phone's gear menu and a switch to hide the row · left: the owner's look at this second build on a real phone
+status: asked 2026-11-24 after a look at the row on a phone · drawn twice and built whole as v2.8461 the same day · the owner tried it on a real phone: it works, the handle takes too much room, the row should shrink into the gear, open the app and then live in the gear menu · built as v2.8497: no handle, the row at the app's opening, the way out into the gear, the three modes in a phone's gear menu and a switch to hide the row · the owner saw the gear window with the switch and without it and said *Keep the tick* · live and looked at on clicktooling.com the same day · left: the owner's look at this second build on a real phone
 summary: >
   The owner likes the idea of the mode row and not how it was built. The New mark came off Job Mode
   and the row showed for five seconds a visit over a small handle (v2.8461). On a real phone the
@@ -10,10 +10,10 @@ summary: >
   shows for five seconds with its grey bar, or until a third is pressed, then shrinks into the gear
   and leaves nothing behind. From then on the modes are changed in the gear menu, which lists the
   three on a phone too and holds a switch, Modes at open, that stops the row showing (v2.8497).
-next: Try v2.8497 on a real phone, an iPhone on its Home Screen first. Say whether Modes at open was meant, and whether a minute away should bring the row. Then delete the card.
+next: Try v2.8497 on a real phone, an iPhone on its Home Screen first. Then delete the card, and #425 with it.
 size: M, built as two client-only PRs; left: a look on a real phone (XS)
 blocker: A real phone in a hand.
-opinion: close — the second build follows the owner's words from a real phone; two readings of them are named in the card and each is a line to flip
+opinion: close — the second build follows the owner's words from a real phone, the switch is his pick, and it is live; one look on a real phone is all that is left
 ---
 
 # The mode row shows for five seconds, then leaves (#433)
@@ -210,12 +210,16 @@ a press.
 - **Show full dashboard** is back under the Job Mode card on a phone.
 - **Task Mode** keeps the row as a line of the page.
 
-Two readings, each a line to flip:
+*Hidden from the gear window* read two ways: a switch that hides the row, or only the row being put
+away into the gear. The owner was shown the gear window and the app's opening both ways, side by side,
+and said *Keep the tick* (2026-11-24). **Modes at open** stands.
 
-1. *Hidden from the gear window* was read as a switch that hides the row. If the words meant only
-   that the row is put away into the gear, the switch is one row of the menu to take out.
-2. A return after a minute away still counts as opening the app (`MODE_ROW_AWAY_MS`). A phone rarely
+Three things were built that the owner's words did not name. He was told each and changed none:
+
+1. A return after a minute away still counts as opening the app (`MODE_ROW_AWAY_MS`). A phone rarely
    loads the app afresh, so without it a person who never closes the app would seldom see the row.
+2. A tap on the lit third closes the row and changes nothing.
+3. **Show full dashboard** is back under the Job Mode card on a phone.
 
 ## How to verify
 
@@ -264,5 +268,10 @@ The lens frame cannot answer these. A Home Screen iPhone and an Android phone, i
 
 v2.8461 was tried by the owner on a real phone: it worked, and the handle took too much room.
 v2.8497 answers that look. It was walked headless at a phone's width through the lens frame, with
-real touch events, and not on a real phone. The mock-up beside this card draws v2.8461's handle and
+real touch events, and not on a real phone.
+
+It is live. On clicktooling.com, 2026-11-24, at 390 px as a sample superintendent: the row showed
+over the header, left for the gear at 4.9 s and was gone at 5.6 s, the gear answered, nothing was
+left in the row's place, and the header, the page and the gear did not move by a pixel. The gear
+window listed Dashboard, Job Mode and Task Mode, with **Modes at open** ticked. No page error. The mock-up beside this card draws v2.8461's handle and
 slide, and was not redrawn for the gear.
