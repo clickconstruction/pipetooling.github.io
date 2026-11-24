@@ -199,6 +199,9 @@ describe('ContractAccept · the way back after signing a job’s paper (papers b
     sign('Tall Pine Excavating')
     const back = await screen.findByRole('link', { name: 'Back to your page' })
     expect(back.getAttribute('href')).toBe('/sub?t=0123456789abcdef0123456789abcdef')
+    // The press takes a finger (v2.8462): it measured 40 px on a phone on the live site.
+    expect(back.style.minHeight).toBe('44px')
+    expect(back.style.display).toBe('inline-flex')
     expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull()
     expect(screen.queryByText('Checking for more contracts…')).toBeNull()
     fireEvent.click(back)
@@ -214,6 +217,7 @@ describe('ContractAccept · the way back after signing a job’s paper (papers b
     sign('Greg Paulk')
     const back = await screen.findByRole('link', { name: 'Back to the job' })
     expect(back.getAttribute('href')).toBe('/dashboard?tab=today')
+    expect(back.style.minHeight).toBe('44px')
     fireEvent.click(back)
     expect(window.sessionStorage.getItem('job-papers-back')).toBe('00000000-0000-4000-8000-000000002391')
   })

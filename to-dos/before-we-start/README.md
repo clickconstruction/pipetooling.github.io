@@ -502,7 +502,7 @@ and its findings 6 and 8.
      - **The new yes.** The office ticked the first bullet, which read *the customer, told us, Nov 24.* Both people's cards came back and asked about that bullet alone.
        The helper pressed **Yes, all as told**. It was kept: *Saved: all as told.*, as a third arrival with no line to Dispatch.
      - Note: the stage was red before the first No, since its day to decide had passed with two bullets open. So the walk saw the red cross and the red line, and did not see the colour turn.
-     - Note: the second No cannot be pressed on the card that was refused, because that card leaves. It was pressed on a second tab of his that had also been open since before the first answer.
+     - Note: the second No cannot be pressed on the card that was refused, because that card leaves. It was pressed on a second tab of his that had also been open since before the first answer. The fault behind it is under *Faults seen and not fixed*.
      - Note: the cards came back after a reload. A headless browser never comes back to the front, so a card reading again by itself was not seen.
      - Note: the two on the card were the two sample accounts and the dev was the office, so nothing was put on the dev's own day.
      - Seen in passing, not looked into: Jobs → Subs lists JP9309's stage windows under *Unlinked*, each named *Line item*, with no job and no stage name.
@@ -575,6 +575,12 @@ the proof.
   - ~~The Schedule look draws nothing while its reads are out. A push that fails after a No is dropped without a
     word.~~ Both were left as they are on the audit's pick, and built on the owner's word of 2026-11-23 as v2.8360: the
     look reads *Reading the schedule…* while its first read is out, and a No whose push failed says so on the card.
+  - **A later No has no card to be pressed on.** Seen on the walk of 2026-11-24, and not built.
+    The database keeps a No sent after someone else's yes (v2.8238, call B).
+    Once anyone has answered, a card opened fresh asks nothing, and a refused card reads again and leaves.
+    So the second person on site can send that No only from a card that was open before the first answer.
+    The owner's call. The default is to leave it as it is.
+    One other pick: after an answer, the card still lists each bullet one of ours saw as a yes, with its **No**.
 - **Call F is not built.** An arrival keeps a trip only when it is on the job's site, not a trip made on the job
   itself. The pick waits on #379's tie from a No to a wasted trip, which is not built.
 - **The four app-wide things the audit met** (a pale green, a toast over a heading, two small presses) are card

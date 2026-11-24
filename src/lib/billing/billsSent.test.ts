@@ -12,6 +12,7 @@ import {
   billsSentCsvFileName,
   billsSentDayExtras,
   billsSentDays,
+  billsSentEmptyGood,
   billsSentFilter,
   billsSentLines,
   billsSentListHtml,
@@ -21,6 +22,7 @@ import {
   billsSentPayWords,
   billsSentPhoneWords,
   billsSentRecord,
+  billsSentRecordBack,
   billsSentRecordHtml,
   billsSentRecordPath,
   byHandDayOffered,
@@ -441,6 +443,19 @@ describe('billsSentRecord (PR 4)', () => {
       ['Tue, Nov 3 · 4:41 PM', 'Emailed by Priya', 'To Sable Ridge Builders, hal@sableridge.example. Opened Wed, Nov 4 at 8:12 AM.'],
     ])
     expect(billsSentRecordPath(BILL_A)).toBe(`/bills-sent?bill=${BILL_A}`)
+    // Opened from a day of By day paid, the address keeps that day and its chip, so the record can lead back to it.
+    expect(billsSentRecordPath(BILL_A, { day: '2026-11-23' })).toBe(`/bills-sent?bill=${BILL_A}&view=paid&day=2026-11-23`)
+    expect(billsSentRecordPath(BILL_A, { day: '2026-11-23', how: 'stripe' })).toBe(`/bills-sent?bill=${BILL_A}&view=paid&day=2026-11-23&how=stripe`)
+    expect(billsSentRecordPath(BILL_A, { day: '2026-11-23', how: 'all' })).toBe(`/bills-sent?bill=${BILL_A}&view=paid&day=2026-11-23`)
+    expect(billsSentRecordPath(BILL_A, { day: 'soon' })).toBe(`/bills-sent?bill=${BILL_A}`)
+    // The record's way back: the list, or the day it was opened from, by name.
+    expect(billsSentRecordBack({ view: null, day: null, how: null })).toEqual({ to: '/bills-sent', label: '← All bills sent' })
+    expect(billsSentRecordBack({ view: 'paid', day: '2026-11-23', how: null })).toEqual({ to: '/bills-sent?view=paid&day=2026-11-23', label: '← What came in Mon, Nov 23' })
+    expect(billsSentRecordBack({ view: 'paid', day: '2026-11-23', how: 'stripe' })).toEqual({ to: '/bills-sent?view=paid&day=2026-11-23&how=stripe', label: '← What came in Mon, Nov 23' })
+    // A day that does not read, or a day with no view, goes to the list. A chip that is no word is dropped.
+    expect(billsSentRecordBack({ view: 'paid', day: 'soon', how: 'stripe' })).toEqual({ to: '/bills-sent', label: '← All bills sent' })
+    expect(billsSentRecordBack({ view: null, day: '2026-11-23', how: null })).toEqual({ to: '/bills-sent', label: '← All bills sent' })
+    expect(billsSentRecordBack({ view: 'paid', day: '2026-11-23', how: 'x&y=1' }).to).toBe('/bills-sent?view=paid&day=2026-11-23')
   })
 
   it('still has a record for a bill with no send, and none for a bill the page does not know', () => {
@@ -489,6 +504,14 @@ describe('billsSent — out of the app (PR 5)', () => {
     expect(rows[3]).toBe('2026-11-03,4:41 PM,Bill 1412-0002,J1412 · Sable Ridge Lot 14,Sable Ridge Builders,4860.00,yes,Sable Ridge Builders,hal@sableridge.example,,Email,Priya,1,,Not paid,,,4860.00,,')
     expect(rows[4]).toBe(',,Bill,J1398 · Larkfield Clinic,Larkfield Construction,2140.00,no,,,,No send on record,,,,Not paid,,,,,"Billed Mon, Nov 9 at 3:26 PM."')
     expect(billsSentCsvFileName('2026-11-12')).toBe('bills-sent-2026-11-12.csv')
+    // The file says what it holds: a chip is named, and so is a search, so a part of the list is never saved under the whole list's name.
+    expect(billsSentCsvFileName('2026-11-12', 'all', '  ')).toBe('bills-sent-2026-11-12.csv')
+    expect(billsSentCsvFileName('2026-11-12', 'unpaid')).toBe('bills-sent-2026-11-12-not-paid.csv')
+    expect(billsSentCsvFileName('2026-11-12', 'missed')).toBe('bills-sent-2026-11-12-did-not-arrive.csv')
+    expect(billsSentCsvFileName('2026-11-12', 'housecall_pro')).toBe('bills-sent-2026-11-12-housecall-pro.csv')
+    expect(billsSentCsvFileName('2026-11-12', 'gap')).toBe('bills-sent-2026-11-12-no-send-on-record.csv')
+    expect(billsSentCsvFileName('2026-11-12', 'email', 'larkfield')).toBe('bills-sent-2026-11-12-email-search.csv')
+    expect(billsSentCsvFileName('2026-11-12', 'all', 'larkfield')).toBe('bills-sent-2026-11-12-search.csv')
   })
 
   it('prints what the list shows under its days, with the gaps first', () => {
@@ -804,5 +827,18 @@ describe('billsSentPhoneWords — a line in three rows', () => {
     // A Housecall Pro day has nobody to name.
     const [stamp] = billsSentLines(input([], { stamps: [{ billId: BILL_B, atIso: '2026-11-11T18:00:00.000Z', channel: 'housecallpro' }] }))
     expect(billsSentPhoneWords(stamp!)).toEqual({ main: 'J1398 · Larkfield Clinic · Larkfield Construction', to: '', again: '' })
+  })
+})
+
+describe('billsSentEmptyGood — a chip that lists what still wants someone, with nothing under it', () => {
+  it('says the good news under Did not arrive, Not paid and No send on record', () => {
+    expect(billsSentEmptyGood('missed', '')).toEqual({ who: 'a resend', why: 'No send on an open bill bounced.' })
+    expect(billsSentEmptyGood('unpaid', '')).toEqual({ who: 'a payment', why: 'Every bill on this list is paid in full.' })
+    expect(billsSentEmptyGood('gap', '  ')).toEqual({ who: 'a send', why: 'Every bill the app made has a send on record.' })
+  })
+  it('leaves a chip that only sorts the sends, and any search, to the words for a filter', () => {
+    expect((['all', 'paid', 'email', 'text', 'printed', 'statement', 'housecall_pro', 'by_hand', 'other'] as const).map((c) => billsSentEmptyGood(c, ''))).toEqual(Array(9).fill(null))
+    // A search that finds nothing under the chip is a search that found nothing: the bill may be there under another word.
+    expect(billsSentEmptyGood('missed', 'juniper')).toBeNull()
   })
 })

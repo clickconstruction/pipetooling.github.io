@@ -186,6 +186,13 @@ describe('the seal', () => {
     expect(app.made[0]?.network).toBeNull()
   })
 
+  it('takes a hard reload\'s mark off the address, so the frame is on the page it reloaded from (punch list #426)', async () => {
+    const { win } = await frame(undefined, 'https://app.example.com/bids?tab=bid-board&nocache=1700#notes')
+    expect(win.location.pathname + win.location.search + win.location.hash).toBe('/bids?tab=bid-board#notes')
+    const plain = await frame(undefined, 'https://app.example.com/dashboard')
+    expect(plain.win.location.pathname + plain.win.location.search).toBe('/dashboard')
+  })
+
   it('marks the frame, so it is never taken for the real app', async () => {
     const { win } = await frame()
     if (win.document.readyState === 'loading') await new Promise((r) => win.document.addEventListener('DOMContentLoaded', r))

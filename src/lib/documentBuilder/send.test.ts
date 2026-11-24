@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
-import { ABOUT_ALL_JOBS, SEND_LIST_FIRST_ROWS, aboutChoices, aboutJobId, pressName, resendPress, resendTo, shownParties, sendBatch, sendBatchOutcome, sendBox, sendChips, sendStanding, unreadGateWords, type SendParty, type SendRecord } from './send'
+import { ABOUT_ALL_JOBS, HELD_NAMED_AT_MOST, SEND_LIST_FIRST_ROWS, aboutChoices, aboutJobId, heldLines, heldReason, pressName, resendPress, resendTo, shownParties, sendBatch, sendBatchOutcome, sendBox, sendChips, sendStanding, sentWords, unreadGateWords, type SendParty, type SendRecord } from './send'
 
 /** Made-up trades on a made-up job. */
 const send = (over: Partial<SendRecord> = {}): SendRecord => ({ id: 's1', contactName: 'Ana Pruitt', contactEmail: 'ana@cedarfork.test', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 1, openedOn: null, openedRevision: null, ...over })
@@ -137,6 +137,18 @@ describe('the chips on a row', () => {
     ])
   })
 
+  it('say how many times it went once it went more than once, with the last day', () => {
+    expect(sentWords(send())).toBe('Sent Nov 12 to Ana Pruitt')
+    // Sent again on the day of the first send: the day is the same, and the row still changes.
+    expect(sentWords(send({ timesSent: 2 }))).toBe('Sent 2 times, last Nov 12 to Ana Pruitt')
+    expect(sentWords(send({ timesSent: 3, sentOn: '2026-11-24' }))).toBe('Sent 3 times, last Nov 24 to Ana Pruitt')
+    expect(sendChips(party({ send: send({ timesSent: 2 }) }), 1, { showAbout: false })).toEqual([
+      { tone: 'wait', words: 'Sent 2 times, last Nov 12 to Ana Pruitt' },
+      { tone: 'warn', words: 'Not opened yet' },
+    ])
+    expect(plainWordsFailures(sentWords(send({ timesSent: 2 })))).toEqual([])
+  })
+
   it('say it changed since they opened it, and for a GC what it is about', () => {
     expect(sendChips(party({ send: send({ openedOn: '2026-11-14', openedRevision: 1, about: 'J1180 Pike Street clinic' }) }), 2, { showAbout: true })).toEqual([
       { tone: 'wait', words: 'Sent Nov 12 to Ana Pruitt' },
@@ -211,6 +223,43 @@ describe('the one press for everyone who is ready', () => {
     const bidding = sendBatch(asked.slice(-2), 'trade', { published: true, unread: '', anyway: false })
     expect(bidding.press).toEqual({ label: 'Nothing to send', dead: true })
     expect(sendBox(asked[asked.length - 2]!, asked[asked.length - 2]!.contacts[0]!, { published: true, unpublishedWords: '', unread: '', anyway: false }).press.dead).toBe(false)
+  })
+
+  it('names each held party on its own line while a reason holds a few', () => {
+    const batch = sendBatch(parties, 'trade', { published: true, unread: '', anyway: false })
+    expect(batch.held.map((h) => h.reason)).toEqual(['no-page', 'page-off', 'nobody'])
+    expect(heldLines(batch.held, 'trade')).toEqual([
+      { key: 'hilltop', words: 'Held: Hilltop Electric has no page yet. Send to them alone to make one.', names: [] },
+      { key: 'tollgate', words: 'Held: Tollgate Mechanical. Their page is off.', names: [] },
+      { key: 'quiet', words: 'Held: Quiet Glass has nobody with an email to send to.', names: [] },
+    ])
+    // The reason that fits first is the one said: a trade asked and not awarded reads so, whatever its page.
+    expect(heldReason(party({ alone: true, page: { state: 'none' } }))).toBe('alone')
+    expect(heldReason(party({ page: { state: 'off', offOn: null }, contacts: [] }))).toBe('page-off')
+  })
+
+  it('counts a reason that holds many on one line, with the names under it', () => {
+    // Most GCs have no page yet. Forty made-up ones, three whose page is off, and one who is ready.
+    const noPage = Array.from({ length: 40 }, (_, i) => party({ id: `gc${i}`, name: `Made-up Builders ${i + 1}`, page: { state: 'none' } }))
+    const off = ['Alder', 'Birch', 'Cypress'].map((n) => party({ id: n.toLowerCase(), name: `${n} Homes`, page: { state: 'off', offOn: '2026-10-03' } }))
+    const batch = sendBatch([party({ id: 'ready', name: 'Northgate Builders' }), ...off, ...noPage], ['GC', 'GCs'], { published: true, unread: '', anyway: false })
+    expect(batch.held).toHaveLength(43)
+    const lines = heldLines(batch.held, ['GC', 'GCs'])
+    expect(lines.map((l) => l.words)).toEqual(['Held: Alder Homes. Their page is off.', 'Held: Birch Homes. Their page is off.', 'Held: Cypress Homes. Their page is off.', 'Held: 40 GCs have no page yet. Send to one alone to make its page.'])
+    expect(lines[3]).toMatchObject({ key: 'no-page' })
+    expect(lines[3]?.names).toHaveLength(40)
+    expect(lines[3]?.names.slice(0, 2)).toEqual(['Made-up Builders 1', 'Made-up Builders 2'])
+    // One past the few: the line turns into a count.
+    expect(heldLines(batch.held.filter((h) => h.reason === 'no-page').slice(0, HELD_NAMED_AT_MOST), ['GC', 'GCs'])).toHaveLength(HELD_NAMED_AT_MOST)
+    expect(heldLines(batch.held.filter((h) => h.reason === 'no-page').slice(0, HELD_NAMED_AT_MOST + 1), ['GC', 'GCs']).map((l) => l.words)).toEqual(['Held: 4 GCs have no page yet. Send to one alone to make its page.'])
+  })
+
+  it('counts each reason in its own words, in plain words', () => {
+    const four = (over: Partial<SendParty>) => Array.from({ length: 4 }, (_, i) => party({ id: `p${i}`, name: `Made-up Trade ${i + 1}`, ...over }))
+    const words = (over: Partial<SendParty>) => heldLines(sendBatch(four(over), 'trade', { published: true, unread: '', anyway: false }).held, 'trade').map((l) => l.words)
+    const all = [...words({ alone: true }), ...words({ page: { state: 'none' } }), ...words({ page: { state: 'off', offOn: null } }), ...words({ contacts: [] })]
+    expect(all).toEqual(['Held: 4 trades were asked and not awarded. Send to each alone.', 'Held: 4 trades have no page yet. Send to one alone to make its page.', 'Held: 4 trades. Their pages are off.', 'Held: 4 trades have nobody with an email to send to.'])
+    expect(all.flatMap((t) => plainWordsFailures(t))).toEqual([])
   })
 
   it('reads in the singular for one, and is dead with nobody ready', () => {

@@ -17,6 +17,8 @@ Only a dev sees the builder for now. Every word and every amount on the sheet is
 4. Press {{button:blue|Load the first draft}} when the row reads {{chip:gray|Not loaded yet}}.
 5. Press {{button:blue|Open}}.
 
+The row on the list also counts your jobs, like {{chip:green|A sheet on 2 of 4 jobs}}. A job is counted as having a sheet once its sheet is published.
+
 The sheet is on the right. The cards on the left say what you are changing.
 
 ## Set up your usual sheet
@@ -187,6 +189,7 @@ A trade that was asked for a price and not awarded is held from the one press. P
 ## Read where a send stands
 
 - {{chip:gray|Sent Nov 20 to Dana Reyes}} names the day and the person.
+- {{chip:gray|Sent 2 times, last Nov 22 to Dana Reyes}} shows once it went more than once. The day is the last send's.
 - {{chip:yellow|Not opened yet}} means they have not opened this revision.
 - {{chip:green|Opened Nov 21}} names the day they opened it.
 - {{chip:yellow|Changed since they opened it}} means you published a newer revision since.

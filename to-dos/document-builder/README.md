@@ -2,7 +2,7 @@
 name: "Document builder: a tab on Documents where the Sub NDA and a job's insurance requirements are made, published and sent"
 number: 404
 group: ready
-status: asked 2026-11-19 · the Sub NDA's step-by-step flow was built as a working spike the owner shaped in four rounds · the tab, a second builder and the send were then drawn, looked at as one design and drawn again · he approved it and asked for it to be saved so another person on another computer can build all of it · 2026-11-20 six of the ten steps built and on main, each pushed and deployed: steps 1 to 5 and 7 · the same day a review of all six, with seven fixes sent and its other findings listed under Where it stands · step 8, the Sub NDA's link, built that night (v2.8150) · step 9, the send to a GC, built 2026-11-21 (v2.8151), its two functions deployed the same day, no GC sent to yet · 2026-11-21 the review's last three open lines fixed and its two questions answered by Taunya (v2.8187, v2.8189, v2.8190, v2.8192, v2.8194), the migration pushed, the functions deployed and each walked on prod with test rows · left: steps 6 and 10 · the tab is a dev's, no real trade or GC has been sent anything, and every word and amount is a placeholder
+status: asked 2026-11-19 · the Sub NDA's step-by-step flow was built as a working spike the owner shaped in four rounds · the tab, a second builder and the send were then drawn, looked at as one design and drawn again · he approved it and asked for it to be saved so another person on another computer can build all of it · 2026-11-20 six of the ten steps built and on main, each pushed and deployed: steps 1 to 5 and 7 · the same day a review of all six, with seven fixes sent and its other findings listed under Where it stands · step 8, the Sub NDA's link, built that night (v2.8150) · step 9, the send to a GC, built 2026-11-21 (v2.8151), its two functions deployed the same day, no GC sent to yet · 2026-11-21 the review's last three open lines fixed and its two questions answered by Taunya (v2.8187, v2.8189, v2.8190, v2.8192, v2.8194), the migration pushed, the functions deployed and each walked on prod with test rows · 2026-11-22 step 6 built (v2.8253, v2.8264) · left: step 10 · the tab is a dev's, no real trade or GC has been sent anything, and every word and amount is a placeholder
 summary: >
   One more tab on Documents, for a dev only for now. It holds builders. A builder makes one kind of paper.
   The first is the Sub NDA from #389: someone walks it and picks a level, page by page. The second is
@@ -12,7 +12,7 @@ summary: >
   it on the page they already open, or opens it by link. The office sees the day it went and the day it
   was opened. When a trade's certificate comes in, the sheet's own lines are the check list. No attorney
   has read the Sub NDA's words and no insurance agent has set the sheet's amounts: every word is a placeholder.
-next: Step 10, a GC's picks, waits on Taunya's call. Steps 1 to 9 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009, v2.8024, v2.8150, v2.8151, and step 6 in v2.8253 and v2.8264). Step 9's two functions, `document-builder-send` and `customer-portal`, were deployed on 2026-11-21, so its send reaches a GC. It is not walked on prod: no send to a GC is in `document_builder_sends`. Walked on prod with test rows: the sheet's send to a trade (2026-11-20 and 2026-11-21, each taken off after), the saving fixes (2026-11-21), the sheet's link under its own secret (2026-11-21), and who opened a link and where a link stands (v2.8194, 2026-11-21, its three functions deployed that day). The job list and the one press (v2.8192) and a copy's group on Sent copies (v2.8190) were read on the live site in the same walk. Not seen on prod: a lost or closed job, and a sent copy with a job. How long an open's address is kept waits on Taunya's call.
+next: Step 10, a GC's picks, waits on Taunya's call. Steps 1 to 9 are built (v2.7980, v2.7988, v2.8005, v2.8007, v2.8008, v2.8009, v2.8024, v2.8150, v2.8151, and step 6 in v2.8253 and v2.8264). What is left, and every walk owed, is on #416.
 size: L as a train of ten (S · M · M · S · M · M · M · S · S · M)
 blocker: None for the build. An attorney's read of the Sub NDA's words and an insurance agent's read of the sheet come before either is sent to a real GC or a real trade.
 ---
@@ -565,7 +565,7 @@ filed copy held the trade's page link, found while reading the send for step 9. 
 the jobs card under the usual said every job was on it while one was held, found on the walk below.
 
 The walks still owed on prod are #416's part 1, each with its page, its role and its test rows. On prod the Sub NDA
-is a draft that was never published, and the usual sheet is at revision 3 with no agent's check.
+is at revision 1 since 2026-11-23, not read by an attorney, and the usual sheet is at revision 3 with no agent's check.
 Revision 3 reads as revision 1 did. On 2026-11-21 the walk of the four saving fixes below published
 it twice: once with a test line at its foot, then again to take that line out.
 

@@ -19,6 +19,7 @@ import { lienLastWorkAffidavitMonths } from '../../lib/jobs/lienLastWorkDayPrevi
 import { bringLienFooterUp } from './lienFooterFocus'
 import type { LienNextAct, LienNextActDoor } from '../../lib/jobs/lienNextAct'
 import { useLienPaneHeads } from './useLienPaneHeads'
+import { useLienGateLanding, type LienGateAsk } from './useLienGateLanding'
 import { lienAffidavitPaneSections, lienAffidavitWindowWords } from '../../lib/jobs/lienAffidavitPaneSections'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
@@ -49,6 +50,7 @@ import { buildLienNoticeFieldsForJob, homesteadStatementApplies, lienAffidavitSw
 import { LIEN_NOTICE_CHECK_LEAD, lienAffidavitNoticeCheck, lienNoticeCheckLines } from '../../lib/jobs/lienAffidavitNoticeCheck'
 import { lienAffidavitOwnerSends, lienAffidavitWorkMonths } from '../../lib/jobs/lienAffidavitNotices'
 import { lienGateRow, type LienGateRowFacts } from '../../lib/jobs/lienGateRow'
+import { lienGateLanding } from '../../lib/jobs/lienGateLanding'
 import { lienAffidavitNoticeDueLine, lienLastMonthNoticeDue, lienNoticeNamedMonths } from '../../lib/jobs/lienNoticeOwed'
 import { clearLienAffidavitMonthsByHand, saveLienAffidavitMonthsByHand } from '../../lib/jobs/lienAffidavitMonthsByHandIo'
 import LienAffidavitMonthsByHandEditor from './LienAffidavitMonthsByHandEditor'
@@ -122,6 +124,7 @@ export default function LienDeskAffidavitPane({
   onOpenLastWork,
   onLastWorkChanged,
   footerEl,
+  landOnGate,
   ownerCall = null,
   bond = 'unknown',
   onOpenLienContract,
@@ -166,6 +169,8 @@ export default function LienDeskAffidavitPane({
   onLastWorkChanged?: () => void
   /** The desk's footer strip — the pane portals its footer there, so the desk keeps one strip and never re-renders for it (v2.3753). */
   footerEl: HTMLElement | null
+  /** A press on this job's list row (v2.8472, punch list #364): the pane brings its first open gate into view, once per press. Absent, or with every gate clear, the pane opens as it always did. */
+  landOnGate?: LienGateAsk | null
   /** The owner's answers on the sent notice (v2.3767) — counsel's pile comes from them. */
   ownerCall?: OwnerCall | null
   /** The payment bond on the project (v2.3767), from the job. */
@@ -529,6 +534,15 @@ export default function LienDeskAffidavitPane({
     monthLabel: workMonthLabel,
   })
   const heads = useLienPaneHeads({ paneRef, sections: paneHeads, phone: isMobile })
+  // A row press lands on the row's open gate (v2.8472, `lienGateLanding`): the first gate not clear, in this list's order, which is the order of the row's marks.
+  const gateDoors = { property: Boolean(onFixProperty), contractor: Boolean(contractorDoor) }
+  useLienGateLanding({
+    ask: landOnGate,
+    jobId: entry.jobId,
+    paneRef,
+    landing: () => lienGateLanding(entry.gates.map((g) => ({ key: g.key, ok: g.ok, pressable: lienGateRow(g, gateFacts, gateDoors).door != null }))),
+    at: { index: paneHeads.findIndex((h) => h.key === 'gates'), count: paneHeads.length, phone: isMobile },
+  })
 
   // ---------- footer ----------
   // Where this job's filed copies stand (`lienServeStage.ts`), for the name on the filed footer's door.
@@ -724,7 +738,7 @@ export default function LienDeskAffidavitPane({
         {/* Every row is a press (v2.7313, `lienGateRow`): it opens the fact's own home at the right line. A failed gate keeps its named door; a passed one shows its fact and ends in Change ›. */}
         <div style={{ display: 'grid', gap: '0.15rem' }}>
           {entry.gates.map((g) => {
-            const row = lienGateRow(g, gateFacts, { property: Boolean(onFixProperty), contractor: Boolean(contractorDoor) })
+            const row = lienGateRow(g, gateFacts, gateDoors)
             const open =
               row.door === 'property_owner' || row.door === 'property_legal' || row.door === 'property_homestead'
                 ? () => (onFixProperty ? onFixProperty(entry.jobId, row.door === 'property_owner' ? 'owner' : row.door === 'property_legal' ? 'legal' : 'homestead_answer') : onOpenEditJob(entry.jobId))

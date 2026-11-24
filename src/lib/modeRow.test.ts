@@ -1,28 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
-  MODE_ROW_FIRST_VISITS,
-  MODE_ROW_NO_MEMORY,
   MODE_ROW_PULL_PX,
   MODE_ROW_THIRDS,
   MODE_ROW_WORDS,
-  modeRowCountOpen,
   modeRowDraw,
   modeRowDrawnHere,
-  modeRowFirstVisits,
   modeRowHeldOpen,
   modeRowLandingPath,
-  modeRowNewMark,
   modeRowOfferedToRole,
   modeRowOnPage,
-  modeRowOpensKey,
   modeRowPressWrites,
-  modeRowPressedKey,
   modeRowPull,
   modeRowThirdOn,
-  parseModeRowMemory,
-  readModeRowMemory,
-  writeModeRowMemory,
-  type ModeRowMemory,
   type ModeRowThird,
 } from './modeRow'
 import { applyPageModeWrites, pageModeWrites, resolvePageMode, type PageMode, type PageModeWants } from './pageMode'
@@ -30,7 +19,6 @@ import { applyPageModeWrites, pageModeWrites, resolvePageMode, type PageMode, ty
 const ALL_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']
 /** The estimator's first page is Bids, so the row has no page of the estimator's to sit on. */
 const ROW_ROLES = ALL_ROLES.filter((role) => role !== 'estimator')
-const USED: ModeRowMemory = { pressed: true, opens: 2 }
 
 /** What the page mode's door does with a press of a third: each write goes through `pageModeWrites`, as `usePageMode.set` does. */
 function press(role: string, wants: PageModeWants, third: ModeRowThird): PageModeWants {
@@ -100,21 +88,19 @@ describe('the thirds', () => {
 })
 
 describe('when the row shows', () => {
-  const leader = { role: 'master_technician', pathname: '/dashboard', mode: 'dispatch' as PageMode, phone: true, shownNow: false }
+  const leader = { role: 'master_technician', pathname: '/dashboard', mode: 'dispatch' as PageMode, phone: true }
 
   it('is not drawn for the estimator or on another page', () => {
-    expect(modeRowDraw({ ...leader, role: 'estimator', memory: MODE_ROW_NO_MEMORY })).toBe('none')
-    expect(modeRowDraw({ ...leader, pathname: '/jobs', memory: MODE_ROW_NO_MEMORY })).toBe('none')
+    expect(modeRowDraw({ ...leader, role: 'estimator' })).toBe('none')
+    expect(modeRowDraw({ ...leader, pathname: '/jobs' })).toBe('none')
   })
 
-  it('is not drawn past a phone’s width for any role, in any mode, whatever the phone remembers', () => {
+  it('is not drawn past a phone’s width for any role, in any mode', () => {
     for (const role of ALL_ROLES) {
       expect(modeRowDrawnHere(role, false), role).toBe(false)
       for (const mode of ['full', 'dispatch', 'job', 'task'] as PageMode[]) {
         for (const pathname of ['/dashboard', '/checklist']) {
-          for (const memory of [MODE_ROW_NO_MEMORY, USED]) {
-            expect(modeRowDraw({ role, pathname, mode, phone: false, shownNow: true, memory }), `${role} ${mode} ${pathname}`).toBe('none')
-          }
+          expect(modeRowDraw({ role, pathname, mode, phone: false }), `${role} ${mode} ${pathname}`).toBe('none')
         }
       }
     }
@@ -126,46 +112,28 @@ describe('when the row shows', () => {
     expect(modeRowDrawnHere(null, true)).toBe(false)
   })
 
-  it('shows on the first visits, then tucks', () => {
-    for (let opens = 1; opens <= MODE_ROW_FIRST_VISITS; opens++) {
-      expect(modeRowDraw({ ...leader, memory: { pressed: false, opens } }), String(opens)).toBe('row')
-    }
-    expect(modeRowDraw({ ...leader, memory: { pressed: false, opens: MODE_ROW_FIRST_VISITS + 1 } })).toBe('tucked')
-  })
-
-  it('tucks from the first open after a third was pressed', () => {
-    expect(modeRowFirstVisits({ pressed: true, opens: 1 })).toBe(false)
-    expect(modeRowDraw({ ...leader, memory: { pressed: true, opens: 1 } })).toBe('tucked')
-  })
-
-  it('shows once it is brought down, whatever the memory', () => {
-    expect(modeRowDraw({ ...leader, shownNow: true, memory: USED })).toBe('row')
-  })
-
-  it('holds open in Task Mode, where it is the way out', () => {
+  it('is counted on the Dashboard, for every role with the row, in every mode drawn there', () => {
     for (const role of ROW_ROLES) {
-      expect(modeRowHeldOpen(role, 'task'), role).toBe(true)
-      expect(modeRowDraw({ role, pathname: '/checklist', mode: 'task', phone: true, shownNow: false, memory: USED }), role).toBe('row')
+      for (const mode of ['full', 'dispatch', 'job'] as PageMode[]) {
+        expect(modeRowDraw({ role, pathname: '/dashboard', mode, phone: true }), `${role} ${mode}`).toBe('counted')
+      }
     }
   })
 
-  it('holds open for a sub or a helper who is off Job Mode, and tucks once they are back on it', () => {
+  it('is held in Task Mode, where it is the way out, on the checklist and on the Dashboard', () => {
+    expect(modeRowHeldOpen('task')).toBe(true)
+    for (const role of ROW_ROLES) {
+      expect(modeRowDraw({ role, pathname: '/checklist', mode: 'task', phone: true }), role).toBe('held')
+      expect(modeRowDraw({ role, pathname: '/dashboard', mode: 'task', phone: true }), role).toBe('held')
+    }
+  })
+
+  it('holds for nobody else: a sub or a helper off Job Mode gets the same five seconds as everyone', () => {
+    for (const mode of ['full', 'dispatch', 'job'] as PageMode[]) expect(modeRowHeldOpen(mode), mode).toBe(false)
     for (const role of ['subcontractor', 'helpers']) {
-      expect(modeRowDraw({ role, pathname: '/dashboard', mode: 'full', phone: true, shownNow: false, memory: USED }), role).toBe('row')
-      expect(modeRowDraw({ role, pathname: '/dashboard', mode: 'job', phone: true, shownNow: false, memory: USED }), role).toBe('tucked')
+      expect(modeRowDraw({ role, pathname: '/dashboard', mode: 'full', phone: true }), role).toBe('counted')
+      expect(modeRowDraw({ role, pathname: '/dashboard', mode: 'job', phone: true }), role).toBe('counted')
     }
-    // A leader's Dashboard is their own first screen: nothing to hold.
-    expect(modeRowHeldOpen('master_technician', 'full')).toBe(false)
-    expect(modeRowHeldOpen('superintendent', 'dispatch')).toBe(false)
-  })
-
-  it('marks Job Mode as new until a third is pressed, and never once Job Mode is on', () => {
-    expect(modeRowNewMark('job', 'full', MODE_ROW_NO_MEMORY)).toBe(true)
-    expect(modeRowNewMark('job', 'dispatch', MODE_ROW_NO_MEMORY)).toBe(true)
-    expect(modeRowNewMark('job', 'job', MODE_ROW_NO_MEMORY)).toBe(false)
-    expect(modeRowNewMark('job', 'full', USED)).toBe(false)
-    expect(modeRowNewMark('task', 'full', MODE_ROW_NO_MEMORY)).toBe(false)
-    expect(modeRowNewMark('full', 'job', MODE_ROW_NO_MEMORY)).toBe(false)
   })
 })
 
@@ -186,48 +154,5 @@ describe('the pull', () => {
     expect(modeRowPull({ ...start, x: 160, y: 210, scrollTop: 0 })).toBe('cancel')
     // A little sideways drift on the way down is still a pull.
     expect(modeRowPull({ ...start, x: 115, y: 240, scrollTop: 0 })).toBe('pull')
-  })
-})
-
-describe("the phone's memory of the row", () => {
-  let store: Map<string, string>
-  let prev: unknown
-  beforeEach(() => {
-    store = new Map()
-    const fake = {
-      getItem: (k: string) => store.get(k) ?? null,
-      setItem: (k: string, v: string) => void store.set(k, v),
-      removeItem: (k: string) => void store.delete(k),
-    }
-    prev = (globalThis as Record<string, unknown>).localStorage
-    ;(globalThis as Record<string, unknown>).localStorage = fake
-  })
-  afterEach(() => {
-    ;(globalThis as Record<string, unknown>).localStorage = prev
-  })
-
-  it('reads nothing stored, and anything unreadable, as no memory', () => {
-    expect(parseModeRowMemory(null, null)).toEqual(MODE_ROW_NO_MEMORY)
-    expect(parseModeRowMemory('yes', 'many')).toEqual(MODE_ROW_NO_MEMORY)
-    expect(parseModeRowMemory('1', '-3')).toEqual({ pressed: true, opens: 0 })
-    expect(readModeRowMemory(null)).toEqual(MODE_ROW_NO_MEMORY)
-  })
-
-  it('counts an open, and stops one past the first visits', () => {
-    let memory = MODE_ROW_NO_MEMORY
-    for (let i = 0; i < MODE_ROW_FIRST_VISITS + 4; i++) memory = modeRowCountOpen(memory)
-    expect(memory).toEqual({ pressed: false, opens: MODE_ROW_FIRST_VISITS + 1 })
-  })
-
-  it('keeps one memory per person on a shared phone', () => {
-    writeModeRowMemory('u1', { pressed: true, opens: 3 })
-    writeModeRowMemory('u2', { pressed: false, opens: 1 })
-    expect(readModeRowMemory('u1')).toEqual({ pressed: true, opens: 3 })
-    expect(readModeRowMemory('u2')).toEqual({ pressed: false, opens: 1 })
-    expect(store.get(modeRowPressedKey('u1'))).toBe('1')
-    expect(store.has(modeRowPressedKey('u2'))).toBe(false)
-    expect(store.get(modeRowOpensKey('u2'))).toBe('1')
-    writeModeRowMemory(null, { pressed: true, opens: 9 })
-    expect(store.size).toBe(3)
   })
 })

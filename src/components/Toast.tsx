@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { footClearanceCss } from '../lib/bottomChrome'
 import { JOB_MODE_PRESS_BAR_VAR } from '../lib/jobMode/pressBar'
+import { toastActionPress, toastDismissPress } from '../lib/toastPress'
 
 type ToastType = 'info' | 'warning' | 'error' | 'success'
 
@@ -188,6 +189,8 @@ export function Toast({
             fontWeight: 600,
             cursor: 'pointer',
             whiteSpace: 'nowrap',
+            // A fingertip tall on a phone: Undo leaves with the toast, so it must be easy to hit.
+            ...toastActionPress(phone),
           }}
         >
           {action.label}
@@ -204,6 +207,7 @@ export function Toast({
           cursor: 'pointer',
           padding: 0,
           lineHeight: 1,
+          ...toastDismissPress(phone),
         }}
         aria-label="Dismiss"
       >

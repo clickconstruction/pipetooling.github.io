@@ -86,6 +86,19 @@ describe('BuilderGcSendCard', () => {
     expect((screen.getByRole('button', { name: 'Send to 2 GCs who are ready' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
+  it('shows a second send on the row, on the day of the first', async () => {
+    // The table keeps the last day and how many times it went. Sent again the same day, the day does not move.
+    const sentTo = (timesSent: number): SendParty[] => [{ ...GCS[0]!, send: { id: 's1', contactName: 'Dana Whitlock', contactEmail: 'dana@northgate.test', about: null, sentOn: '2026-11-23', sentRevision: 2, timesSent, openedOn: null, openedRevision: null } }]
+    const readParties = vi.fn(async () => sentTo(1))
+    const io = draw({ readParties })
+    expect(await screen.findByText('Sent Nov 23 to Dana Whitlock')).toBeTruthy()
+    readParties.mockResolvedValue(sentTo(2))
+    fireEvent.click(screen.getByRole('button', { name: 'Send it again, Northgate Builders' }))
+    await waitFor(() => expect(io.send).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('Sent 2 times, last Nov 23 to Dana Whitlock')).toBeTruthy()
+    expect(screen.queryByText('Sent Nov 23 to Dana Whitlock')).toBeNull()
+  })
+
   it('says why the GCs did not read', async () => {
     draw({ readParties: vi.fn(async () => Promise.reject(new Error('a made-up reason'))) })
     expect(await screen.findByText(/a made-up reason/)).toBeTruthy()

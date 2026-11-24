@@ -131,15 +131,20 @@ The GC gets an email with a link to their own page. The builder is on that page.
 
 A GC can look only. The GC walks the builder and reads each level. Nothing they pick comes back to you.
 
+To see both before you send, open [What customers see](/settings?tab=settings-what-customers-see) and find the general contractor strip. *Secrecy on their jobs: the email* is the email. *Secrecy on their jobs: on their portal* is their page. Both are samples with made-up names, and nothing pressed there is sent.
+
 - {{chip:gray|No page yet}} means the GC never had a page. Sending to that GC alone makes one.
 - {{chip:yellow|Their page is off}} means someone turned the page off. A send never turns a page back on.
 - A revision no attorney has read goes only after you tick **Send it anyway**.
 
 One button under the list sends to every GC whose page is on. The button asks first and says how many. Each of those sends is about all their jobs.
 
+Under the button, the card says who it held and why. Many GCs held for one reason read as one line with a count. Press that line to see their names.
+
 ## Read where a GC's send stands
 
 - {{chip:gray|Sent Nov 20 to Dana Whitlock}} names the day and the person.
+- {{chip:gray|Sent 2 times, last Nov 22 to Dana Whitlock}} shows once it went more than once. The day is the last send's.
 - {{chip:yellow|Not opened yet}} means they have not opened this revision.
 - {{chip:green|Opened Nov 21}} names the day they opened it.
 - {{chip:gray|All their jobs}} or a job's name says what the send is about.

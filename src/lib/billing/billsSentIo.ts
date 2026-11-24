@@ -79,7 +79,7 @@ export function payLinkRefInText(body: string): { kind: 'id' | 'code'; value: st
 }
 
 type BillRow = BillsSentBill & { payCode: string | null }
-const BILL_COLS = 'id, job_id, amount, status, pay_code, billed_at, created_at, stripe_invoice_id, stripe_invoice_status, external_send_channel'
+const BILL_COLS = 'id, job_id, amount, status, pay_code, billed_at, created_at, stripe_invoice_id, stripe_invoice_status, stripe_mode, external_send_channel'
 const billOf = (r: Record<string, unknown>): BillRow | null =>
   text(r.id)
     ? {
@@ -92,6 +92,7 @@ const billOf = (r: Record<string, unknown>): BillRow | null =>
         stripeInvoiceId: text(r.stripe_invoice_id) || null,
         stripeInvoiceStatus: text(r.stripe_invoice_status) || null,
         externalSendChannel: text(r.external_send_channel) || null,
+        stripeMode: text(r.stripe_mode) || null,
       }
     : null
 

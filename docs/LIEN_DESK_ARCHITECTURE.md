@@ -333,7 +333,14 @@ last_updated: 2026-11-21
 > `lienGateRowParts(pile, phone)` draws the strip in `needs_property` and `to_draft` only (`LIEN_GATE_STRIP_PILES`) and the *missing …* words where the strip is not drawn, and on a phone always.
 > [`LienGateMarkStrip.tsx`](../src/components/jobs/LienGateMarkStrip.tsx) is the drawing (`data-lien-gate-marks`, one `data-lien-gate-mark=<slot>` with `data-state` each), on the affidavit list row's chip line after *last work*;
 > it is not a press, since the row is the button.
-> What the spike left, a row press that lands on its open gate, is punch list #364.
+> What the spike left, a row press that lands on its open gate, is built in v2.8472 (punch list #364).
+> [`lienGateLanding.ts`](../src/lib/jobs/lienGateLanding.ts) `lienGateLanding(rows)` answers the gate a row press lands on: the first not clear, in the pane's order, which is the order of the marks, with `focus` false for a row that has no door.
+> `lienGateLandingScrollTop(view)` answers how far the pane scrolls: null when the row is already clear of the pinned heads, else the scroll that lands the gates section under its own head, else the row itself under the head when the section is taller than the pane.
+> The list row's press says so (`onPick(jobId, 'row')` in `LienDeskAffidavitList.tsx`), the desk keeps one ask per press (`useLienGateAsk`), and the pane answers it once (`useLienGateLanding` in [`useLienGateLanding.ts`](../src/components/jobs/useLienGateLanding.ts)), so a pane the Board or the address opens lands nowhere.
+> `landOnLienGate` scrolls the pane's own box and never the page, puts the keyboard on the row with `preventScroll`, and lights it with the app's landing light (`lightLanded` in [`landOn.ts`](../src/lib/landOn.ts), `[data-landed]`).
+> While the light holds, a `ResizeObserver` on the pane's sections places the row again, because the job's path re-lays itself a frame or two after the pane opens.
+> Under reduced motion the pane jumps with no glide and the light stands still.
+> 10 cases in `lienGateLanding.test.ts`, 8 in `useLienGateLanding.test.ts` and one render smoke in `LienDesk.render.test.tsx`.
 
 > **v2.7378 · v2.7392 (the phone train's leftovers, punch list #352):** phone only, every branch behind `isMobile`.
 > The notary's print box over the Affidavits list folds behind one 44 px bar (`data-lien-affidavit-print-fold`, its words `lienPhonePrintBoxFold` in [`lienPhonePane.ts`](../src/lib/jobs/lienPhonePane.ts), opening folded;
@@ -662,6 +669,7 @@ last_updated: 2026-11-21
 > Its presses are the list that holds the job, when one does, and the job's Lien window.
 > The address keeps `job` on any of the three lists while the note stands (`lienDeskAimAddressJob`), and the aim is forgotten once its list holds the job, the reader picks another row or leaves the list (`lienDeskAimSpent`).
 > The re-aim effect hands the named job to all three selections, so a row picked before never stays open under an address that names another job.
+> Since v2.8478 the effect keys on `lienDeskReaimKey` (the job, the paper list it is named on, the press count), so the same job named on another list re-aims too, and the Lien window's button sends the job on every list (`lienWindowDeskDoorHref` in [`lib/lien/lienWindowDeskDoor.ts`](../src/lib/lien/lienWindowDeskDoor.ts)).
 
 > **v2.6777 · v2.6780 (the desk is a page, punch list #182):** `/lien-desk` ([`pages/LienDeskPage.tsx`](../src/pages/LienDeskPage.tsx), the address in [`lib/lien/lienDeskRoute.ts`](../src/lib/lien/lienDeskRoute.ts): `?tab=deadlines|notices|affidavits|retainage|timeline`, `&job=`, `&pile=`, the one-shot `&records=`).
 > `LienDeskModal` takes `frame: 'page' | 'window'` — on the page no overlay, no ✕, no `useModalFullScreen` key, the page's `backDoor` before the title, `data-lien-desk-panel="page"`, a named region, and `onAddressChange` told every change of `kind`, the Notices selection and `pile` once `data` is in (the job a door named counts before the selection catches up);
@@ -928,6 +936,7 @@ last_updated: 2026-11-21
 > a billed job whose sent bills are paid off leaves the By date list while the desk keeps it under *Nothing billed*.
 > `LienLastWorkDayLine` (kernel `lib/jobs/lienLastWorkDay.ts`: where the day comes from, the words, what a typed day may be — never before the last approved session — and the patch) is the first row of the Months card (`LienDeskMonths` `lastWork`, `flat` since v2.7989, a box above the card until then) and sits in Edit Job's lien row;
 > the timeline's LAST WORK node reads *last day set by hand* (`lastMonthByHand`).
+> Since v2.8481 the Legal desk's packet and the firm's page read the hand day first too, with its reason (`legalLastWorkBasis` in `lib/legal/legalLienPaper.ts`, punch list #335), and `legal-portal` sends the day and the reason on each referred job.
 > The desk's clock-column read falls back to the four old columns until the migration lands.
 > **v2.4717 (what moves first):** before a typed day is saved, `LienLastWorkDayLine` opens `LienLastWorkDayConfirm` — how far the day moves from the clock hours, the dates the law hangs on it (the months the notice names, the § 53.056 window of the last month, the § 53.052 affidavit, the § 53.158 suit) with today beside the new day and the changed rows lit, the reason asked there;
 > kernel [`lienLastWorkDayPreview.ts`](../src/lib/jobs/lienLastWorkDayPreview.ts) (`refused` / `look` / `fine`, pure).

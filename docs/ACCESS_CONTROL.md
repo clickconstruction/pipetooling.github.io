@@ -126,6 +126,7 @@ Every imitation is on record before its link exists (v2.6290, `20261101175329_us
 a dev alone reads the table (`USING (public.is_dev())`), nobody signed in writes it, `anon` holds nothing, and the three fences cover it.
 `gmail-mine` reads it to refuse such a session (*Messages, My email* below).
 The app activity heartbeat reads it too (v2.8251, `20261122021600_imitated_session_holds_app_activity.sql`): `bump_user_app_activity()` writes nothing when `session_opened_by_imitation()` says the calling session's magic-link sign-in falls from 1 minute before an imitation of the same person to 2 minutes after it, a window of minutes where `gmail-mine` reads back a day, since a wrong hold here would cost a person their own activity.
+The four seen marks that are functions read it too (v2.8459, `20261124084500_imitated_session_holds_seen_marks.sql`): `job_note_tags_seen()`, `task_note_tags_seen()` and `bid_mark_requests_seen()` mark nothing and answer 0 for such a session, and `legal_firm_intake_seen()` stamps nothing after its own office check, while a press made in View as still saves as that person.
 The door (v2.3608;
 the Settings rail's chip and `/settings#view-as` since v2.4041, not the gear menu): **View as…** (dev only, `ViewAsPanel`) — the Roles list backed by the samples with their switch chips, and a People search;
 guide *see the app as a role or as a person*.
@@ -3288,6 +3289,8 @@ Checklist and Tally feature access still varies by role (see the feature matrice
 **narrow** hides pin → **Map** under **gear**;
 **`address_geocodes`** RLS: read / insert / update for every signed-in user since **`20260908035852`** (v2.3131 — the Dashboard **Your jobs on a map** card), delete for the five `/map` roles, dev / master_technician / assistant / controller / estimator (**`20270520120000_address_geocodes_estimator_map_access.sql`**;
 the controller since **`20260927220000_controller_policies_the_rest.sql`**, v2.3898);
+**`address_geocode_misses`** RLS (v2.8473, punch list #408): read / insert / update for every signed-in user, the same reach as `address_geocodes`, and no delete for anyone (**`20261124091500_address_geocode_misses.sql`**);
+a point saved to `address_geocodes` deletes its miss through the definer trigger `address_geocodes_clears_miss`, and the server stamps `checked_at` on every write;
 Edge **`geocode-address-batch`** (primary load chunks, every signed-in role) / **`geocode-one`** (**Review geocodes** Google refresh, Settings default-label, the Edit Job **On the map** line — the five `/map` roles, controller included since v2.4974;
 the line itself reads `isPathAllowedForRole(role, '/map')`).
 **`court_areas`** (v2.4768, `20261007110000`): read for every signed-in user (the **Precincts** chip, v2.4807), write `is_office_staff()` (dev · master · assistant-like);
@@ -4159,6 +4162,7 @@ links to the page since v2.5936, punch list #182), the ⋯ tools menu's row unde
 the same pool `set_job_collections_flag` and, since v2.4782, `set_job_uncollectible` gate — the Uncollectible mark on a Collections job, punch list #94).
 The `legal_*` tables are office-read through `legal_office_can_read()` (the same four roles) and never readable by anon;
 the firm's portal (PR 3) reads them through the service role.
+Since v2.8481 a referred job reaches the firm with its last day of work set by hand and the reason it was saved with, never who set it (`MATTER_JOB_COLUMNS`).
 **A matter on a person** (v2.6543, `legal_matters.kind = 'person'`, the HR file's Matter view) is a dev's alone: restrictive `_person_dev_only` policies on `legal_matters`, `legal_matter_jobs`, `legal_matter_entries`, `legal_matter_documents` and `legal_matter_gap_answers`, and since v2.6966 `_person_matter_dev_only` on `documents` and `document_revisions`, where the words of a matter's text document and its prior versions are kept (all through `legal_matter_is_person`), refuse its rows to the other three roles on every verb, and `legal_person_matter_open` is `is_dev()`-gated;
 the portal still serves it to a firm only once released.
 The desk's *Probably a subcontract* note (v2.5840, punch list #166) writes `jobs_ledger` through the same four roles' existing update policy: **Set the GC** sets `gc_customer_id` and lets the `jobs_ledger_customer_gc_distinct` trigger clear the customer slot;

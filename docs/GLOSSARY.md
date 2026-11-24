@@ -1672,12 +1672,19 @@ Hook **[`usePageMode(userId, role)`](../src/hooks/usePageMode.ts)** holds the th
 **Mode row** (v2.8332, punch list #425): **Task Mode · Dashboard · Job Mode** as three thirds, the first line above the header (**[`ModeRow`](../src/components/layout/ModeRow.tsx)**, an `AppTopBanner` mounted by `Layout`), for every role whose first page is the Dashboard (`modeRowOfferedToRole`: all nine but `estimator`, whose first page is Bids), on the Dashboard and on the Task Mode checklist, at a phone's width only since v2.8373 (`modeRowDrawnHere`).
 On a phone the gear menu lists neither **Job Mode** nor **Task Mode** for those eight roles (`gearModesRows`), and the window that shows another person's Task Mode draws the row with Task Mode filled where the strip was, whatever device that person is on.
 The third of the mode drawn is filled, and Dispatch Mode reads as Dashboard, since the middle third switches Task Mode and Job Mode off and never writes Dispatch Mode.
-On a phone the row is tucked: it shows on the first five opens or until a third is pressed, after every switch, in Task Mode, and for a sub-like role that is off Job Mode, and otherwise a pull down at the top of the page or a tap on its 24 px handle brings it down for that visit.
+On the Dashboard the row is counted (v2.8461, punch list #433): it shows on each visit for five seconds with a grey bar on its lower edge that runs out, then slides up and away, and a press on a third gets five fresh seconds.
+A finger on the row, or a keyboard's focus inside it, holds the count, which starts whole when the hold lifts, and a swipe up on the row sends it away at once (**[`modeRowCount.ts`](../src/lib/modeRowCount.ts)**, `modeRowCountStep`).
+The counted row lies over the top of the page and never pushes it: the page's first line is the row's 24 px handle, the row is drawn over that line inside a clip that starts under the phone's status bar, and the strip it uncovers takes no press for 300 ms.
+A tap on the handle or a pull down at the top of the page brings the row back for five seconds more.
+In Task Mode the row is held: a line of the page, always in sight, with no count (`modeRowHeldOpen`).
+With `prefers-reduced-motion` the row does not slide, it fades out, and the bar is five blocks that go out one a second.
+A visit is the page becoming the Dashboard, a press on the Dashboard's own link while there (`modeRowSamePlaceVisit`: the router moved and the address did not), or a return to the app after a minute out of sight (`modeRowBackIsVisit`).
+The green *New* mark Job Mode wore until a first press is gone (v2.8461).
 Past a phone's width it is not drawn (v2.8373, the owner's second look of 2026-11-23): the gear menu holds **Dashboard**, **Job Mode** and **Task Mode** as a list with one dot under *Modes* (**[`GearModeList`](../src/components/layout/GearModeList.tsx)**, rows from `gearModesRows`), and the estimator has that list at every width in place of the two ticks.
 A press in the list goes through the row's own `modeRowPressWrites` and `modeRowLandingPath`, so the list and the row write the same values and land on the same page, and **Dispatch Mode** keeps its own tick under the list.
 A tablet is past a phone's width, so it has the list and not the row.
-The rule and every word are **[`modeRow.ts`](../src/lib/modeRow.ts)** (`modeRowDraw`, `modeRowPressWrites`, `modeRowPull`), and the phone's memory is `mode_row_pressed_${userId}` and `mode_row_opens_${userId}` in `localStorage`.
-Usage rows in `ui_nav_clicks`: control `mode_row` with target `#task` / `#full` / `#job` for a press, and `mode_row_shown` with `#pull` / `#handle` for a tucked row brought down.
+The rule and every word are **[`modeRow.ts`](../src/lib/modeRow.ts)** (`modeRowDraw`, `modeRowPressWrites`, `modeRowPull`), and since v2.8461 nothing is kept on the phone: `mode_row_pressed_${userId}` and `mode_row_opens_${userId}` in `localStorage` are no longer read or written.
+Usage rows in `ui_nav_clicks`: control `mode_row` with target `#task` / `#full` / `#job` for a press, `mode_row_shown` with `#pull` / `#handle` for a row brought down by hand, and `mode_row_sent` with `#swipe` for a row sent away.
 A press in the gear menu's list records control `gear_mode` with the same three targets.
 The Task Mode strip is drawn wherever the row is not: past a phone's width, and for the estimator.
 On a phone the same roles have no **Job Mode** or **Task Mode** row in the gear menu or the phone dock's More sheet (`gearModesRows` in `gearMenuSections.ts`): the row is their one door there, a leader keeps **Dispatch Mode** there, and the *Modes* label is drawn only over a row.
@@ -5800,6 +5807,12 @@ Written by Edge Functions **`geocode-one`** and **`geocode-address-batch`** (see
 Client: [`useMapPageData.ts`](../src/hooks/useMapPageData.ts).
 See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) **Key Features** §16.
 
+### address_geocode_misses
+An address no map service could place, kept beside [`address_geocodes`](#address_geocodes) by the same **normalized address key**, with the reason (`error_code`, `detail`) and the day it was checked (`checked_at`, the server's clock on every write) (v2.8473, punch list #408).
+**RLS** — read, insert and update for every signed-in user, and no delete for anyone (`20261124091500`).
+A point saved to `address_geocodes` deletes its miss through the trigger `address_geocodes_clears_miss`.
+How long a miss stands before it is asked again is the geocode functions' rule, not the table's.
+
 ### Last work date (`jobs_ledger.last_work_date`)
 Cached calendar **`work_date`**: the latest among **approved**, non-rejected, non-revoked **`clock_sessions`** with **`job_ledger_id`** pointing at the job.
 Maintained by database triggers on **`clock_sessions`** (not edited in Job form).
@@ -6124,6 +6137,7 @@ Pipetooling deploys here via GitHub Actions.
 **SPA note**: Deep links (e.g. `/dashboard`) have no static file;
 the host may return **HTTP 404** for the document while still serving **`404.html`** (copy of `index.html`).
 **Hard Reload** in the app loads **`/`** first then restores the path in the browser ([`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) SPA document-404 note, [`src/lib/hardReload.ts`](../src/lib/hardReload.ts)).
+A sealed lens frame's hard reload asks for the frame's own page with the same mark on its address, and the seal takes the mark off as it starts ([`src/lib/lens/reloadPlace.ts`](../src/lib/lens/reloadPlace.ts), v2.8464), since the frame's `sessionStorage` is memory and keeps no page to restore.
 
 ### GitHub Actions
 CI/CD automation running workflows on GitHub events.
@@ -6352,6 +6366,7 @@ Since v2.4693 the band under the timeline is folded on a computer: the next step
 a phone keeps its own box.
 Called *Lien instruments* until v2.4585 (the component is still `LienInstrumentsModal`).
 Since v2.4585 a card under the timeline reads *Your next step* with the days left and one button: a notice or a retainage notice opens the Lien desk on the job, the affidavit, its service and the release of record switch this window's tab (`lienWindowNextStep.ts`).
+Since v2.8478 every button that opens the Lien desk names the job, so an affidavit to draft, approve or review and a retainage notice open on the job's row, as a notice did (`lienWindowDeskDoor.ts`).
 *Open Release of Lien ›* under it opens the waiver window over this one.
 Since v2.4835 the Lien affidavit tab (labelled *Mechanic's lien* until v2.7181;
 the label is `LIEN_WINDOW_TAB_LABEL` in `lienWindowNextStep.ts`) offers *Already filed — record it…* in front of the gate list while no affidavit is on file, for a lien filed by counsel or on paper;
@@ -6932,6 +6947,7 @@ A job's sheet is **behind** when the usual was published again since it went out
 Publishing the usual brings up each job that is ready and **holds** a job with no sheet yet, with changes of its own waiting, that changed somewhere else, or that was lost or is closed (v2.8192, `usualPublishPlan`).
 The publish reads every job's sheet first and publishes nothing when other jobs would get it than the press showed (v2.8155, `sameJobsGetIt`).
 The **Job** list leaves out a lost or closed job unless its sheet was published (v2.8192, `listedJobs`).
+Since v2.8449 the insurance builder's row on the tab's list says *A sheet on N of M jobs*: of the jobs that list holds, the ones whose sheet is published (`sheetCounts`, [`sheetScreen.ts`](../src/lib/documentBuilder/sheetScreen.ts)).
 The insurance builder's read mark is **checked**, by an insurance agent, where the Sub NDA's is read, by an attorney.
 Every amount in the insurance builder's first draft is the placeholder *An amount*: the app sets and suggests none.
 A **sheet's link** (v2.8008) opens a job's published sheet at `/d/<code>` with no sign-in, one live link a sheet, kept only as its hash ([`documentBuilderLink.ts`](../supabase/functions/_shared/documentBuilderLink.ts)).
@@ -6940,6 +6956,7 @@ Taking a sheet off the last trade's page ends its link too (v2.8187, `document_b
 A **builder's link** (v2.8150) opens the published Sub NDA at `/d/<code>` as a flow to walk, **look only**: no field, no press on the last step, and nothing picked is saved or sent ([`linkPage.ts`](../src/lib/documentBuilder/linkPage.ts)).
 Someone outside reads the Sub NDA as **Secrecy on your jobs**: *Sub NDA* is the office's word for it.
 A **send to a GC** (v2.8151) puts the published Sub NDA on the customer portal of a customer who is the GC on a job with us, **about** one job or all their jobs, with the day it went and the day they opened it ([`send.ts`](../src/lib/documentBuilder/send.ts), [`customerPageBuilders.ts`](../src/lib/documentBuilder/customerPageBuilders.ts)).
+Since v2.8444 Settings → What customers see draws that send for a made-up GC, the email and the block on their page, both made in the browser with no function read ([`gcSendSample.ts`](../src/lib/documentBuilder/gcSendSample.ts)).
 A **send** (`document_builder_sends`, v2.8009) is a job's published sheet put on one trade's own page, with an email to one person there: it keeps the revision that went and the revision they opened ([`send.ts`](../src/lib/documentBuilder/send.ts)).
 A send reads **changed** when they opened an older revision and have not been told of the new one.
 A send never turns a page back on, a trade with no page gets one only from a send to that trade alone, and a send **taken off** leaves the trade's page.
@@ -8122,6 +8139,7 @@ The firm sees how many were held, never what or why.
 Two exits: **attorney-ready** and **write down**.
 The Paper section's **Where each job stands** is the job's lien timeline (v2.3787, the Lien desk's own kernel;
 since v2.6102 a job with no GC names no § 53.056 notice as its next step, punch list #213;
+since v2.8481 it counts from the last day of work set by hand, with the reason it was saved with, as the job's Lien window does (`legalLastWorkBasis`, punch list #335);
 since v2.6104, punch list #214, it opens on the strip's Windows calendar under the desk's own remembered scope, with the next step's door at the verdict band's right — `legalPaperNextDoor.ts`: a notice to the Lien desk, the affidavit and the release to the Lien window's tab — and the two lien gaps read as chips, `LegalGap.chip` / `brief`, the sentence kept for the prints) and **The paper that went out** lists filings as envelopes, one row per packet, with a band under each § 53.056 notice (v2.3797) — the owner's call and counsel's pile, letter two's clock, the GC's written okay, a letter two named as one;
 the firm's portal adds **Start here** (v2.4820, `LegalPortalStartHere`: the first tab on a browser's first visit, a short intake in steps with live figures from the Lien grid's book and, since v2.4821, five questions whose answers land on the firm's row (`legal_firms.intake`), with a dot on the Legal desk's firm door until the office reads them in the firm's window;
 then a tour docked at the bottom that opens and rings each part of the portal;

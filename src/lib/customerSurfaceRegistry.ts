@@ -55,8 +55,8 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/estimate/terms', audience: 'homeowner', steps: [H('estimate-terms')] },
   { kind: 'route', ref: '/contract/sign', audience: 'homeowner', steps: [H('job-contract-page'), H('job-contract-signed')] },
   { kind: 'route', ref: '/hazmat-notice', audience: 'homeowner', steps: [H('hazmat-notice')] },
-  { kind: 'route', ref: '/portal', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-schedule'), G('gc-portal-sign-contract'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
-  { kind: 'route', ref: '/p/:slug', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-schedule'), G('gc-portal-sign-contract'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
+  { kind: 'route', ref: '/portal', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-secrecy'), G('gc-portal-schedule'), G('gc-portal-sign-contract'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
+  { kind: 'route', ref: '/p/:slug', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-secrecy'), G('gc-portal-schedule'), G('gc-portal-sign-contract'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
   { kind: 'route', ref: '/pay/:id', audience: 'homeowner', steps: [H('pay-code')] },
   // #294 (v2.6797): a cage or box label's QR, prts.co/b/<code>. Whoever stands at the box reads what is in it; no customer journey has it.
   { kind: 'route', ref: '/b/:code', audience: 'staff', exempt: 'The box label page: whose a cage or box on a job site is and how to reach the office, for whoever scans its QR; what is inside needs a sign-in. Not a customer surface.' },
@@ -116,8 +116,8 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'gc-architect-email', audience: 'owner', steps: [G('submittal-email'), G('rfi-email')] },
   // GC mode (P3-a): every email to a trade partner company, from one sender.
   { kind: 'sender', ref: 'gc-trade-email', audience: 'sub', steps: [S('gc-trade-email')] },
-  // #404: the Document builder's send. A job's insurance sheet goes to a trade as the same trade email, with the sheet's own link in it.
-  { kind: 'sender', ref: 'document-builder-send', audience: 'sub', steps: [S('gc-trade-email'), S('insurance-sheet-link')] },
+  // #404: the Document builder's send. A job's insurance sheet goes to a trade as the same trade email, with the sheet's own link in it. The Sub NDA goes to a GC as an email to their own page (#416).
+  { kind: 'sender', ref: 'document-builder-send', audience: 'sub', steps: [S('gc-trade-email'), S('insurance-sheet-link'), G('gc-secrecy-email')] },
   { kind: 'sender', ref: 'send-sub-paper-email', audience: 'sub', steps: [S('sub-papers-email')] },
   // GC mode (O4b): our emails to a GC project's customer and its architect, from one sender.
   { kind: 'sender', ref: 'gc-customer-email', audience: 'owner', steps: [G('gc-pay-app-email'), G('gc-certify-ask-email'), G('gc-certified-email'), G('gc-change-order-email'), G('gc-reminder-email'), G('gc-interest-bill-email'), G('gc-weekly-report-email'), G('gc-schedule-email'), G('gc-contract-email')] },

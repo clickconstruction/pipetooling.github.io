@@ -15,6 +15,7 @@
  *   hear the dev's real one;
  * - location, notifications and the online flag answer from the frame's state;
  * - a new tab opened from the frame carries the name, so it stays sealed;
+ * - a hard reload comes back to the frame's own page, where the app's goes to the root (`reloadPlace.ts`);
  * - a frame the screen opens inside the page (What customers see's previews) is named before it
  *   is inserted, so it boots sealed too; on a customer's sample page the edge-function calls alone go
  *   out, as the anonymous customer's on the sample token (punch list #202).
@@ -29,6 +30,7 @@ import { formatLensName, parseLensName, type LensConfig } from './lensName'
 import { LENS_PEOPLE } from './lensPeople'
 import { memoryStorage } from './memoryStorage'
 import { QuietSocket } from './quietSocket'
+import { placeWithoutReloadMark } from './reloadPlace'
 import { isSamplePage } from './samplePage'
 import type { LensAsk, LensEngine, LensNetwork } from './answer/lensEngine'
 
@@ -73,6 +75,15 @@ export function installSeal(win: Window & typeof globalThis, cfg: LensConfig, su
   const person = LENS_PEOPLE[cfg.as]
   const state: LensFrameState = { config: cfg, asks: [], errors: [] }
   win.__lens = state
+
+  // A frame's hard reload comes back to its own page with a mark on the address (`reloadPlace.ts`). Take the mark
+  // off before the app reads where it is.
+  try {
+    const place = placeWithoutReloadMark(win.location)
+    if (place != null) win.history.replaceState(win.history.state, '', place)
+  } catch {
+    /* an address the browser will not rewrite stays as it is */
+  }
 
   // What the frame's console and window catch, for the tab's audit. The real console still prints.
   const keep = (text: string) => {

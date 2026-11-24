@@ -192,12 +192,31 @@ export function readPress(entry: DocumentBuilderEntry, rec: BuilderRecord): Read
   }
 }
 
-/** The list row's chips for a filled builder: how many jobs have a sheet, and whether the usual is read. */
-export function filledRowChips(entry: DocumentBuilderEntry, rec: BuilderRecord | null, counts: { jobs: number; withSheet: number } | null): BuilderChip[] {
+/** How many jobs a filled builder lists, and how many of them have a published sheet. */
+export type SheetCounts = { jobs: number; withSheet: number }
+
+/**
+ * The list row's count (punch list #416): of the jobs the **Job** box lists, how many have a sheet a sub can read. A
+ * sheet counts once it is published, since a draft is seen by nobody outside. A lost or closed job is counted only
+ * when its sheet was published, as `listedJobs` lists it.
+ */
+export function sheetCounts(jobs: ReadonlyArray<{ projectId: string; over: GcJobOver | null }>, sheetRevision: (projectId: string) => number): SheetCounts {
+  const listed = listedJobs(jobs, sheetRevision)
+  return { jobs: listed.length, withSheet: listed.filter((j) => sheetRevision(j.projectId) > 0).length }
+}
+
+/** The chip that says the count. With no job to count it says so, and never *0 of 0*. */
+export function sheetCountChip(counts: SheetCounts): BuilderChip {
+  if (counts.jobs === 0) return { tone: 'wait', words: 'No job you run as the GC yet' }
+  return { tone: counts.withSheet > 0 ? 'ok' : 'wait', words: `A sheet on ${counts.withSheet} of ${plural(counts.jobs, 'job', 'jobs')}` }
+}
+
+/** The list row's chips for a filled builder: how many jobs have a sheet, and whether the usual is read. `counts` is null until the jobs are read. */
+export function filledRowChips(entry: DocumentBuilderEntry, rec: BuilderRecord | null, counts: SheetCounts | null): BuilderChip[] {
   if (!rec) return [{ tone: 'wait', words: 'Not loaded yet' }]
   const chips: BuilderChip[] = []
   chips.push(rec.revision > 0 ? { tone: 'ok', words: `Your usual, revision ${rec.revision}` } : { tone: 'wait', words: 'Your usual, not published' })
-  if (counts) chips.push({ tone: counts.withSheet > 0 ? 'ok' : 'wait', words: `A sheet on ${counts.withSheet} of ${plural(counts.jobs, 'job', 'jobs')}` })
+  if (counts) chips.push(sheetCountChip(counts))
   if (isBuilderRead(rec) && rec.read) chips.push({ tone: 'ok', words: `${entry.reader.readBy} ${rec.read.byName}, ${formatWorkDateYmdMonthDayShort(rec.read.on)}` })
   else chips.push({ tone: 'warn', words: entry.reader.unread })
   return chips

@@ -14,6 +14,7 @@ import {
   billsSentCsvFileName,
   billsSentDayExtras,
   billsSentDays,
+  billsSentEmptyGood,
   billsSentFilter,
   billsSentGapFilter,
   billsSentGapHeading,
@@ -24,6 +25,7 @@ import {
   billsSentPayWords,
   billsSentPhoneWords,
   billsSentRecord,
+  billsSentRecordBack,
   billsSentRecordHtml,
   billsSentRecordPath,
   billsSentTiles,
@@ -63,12 +65,13 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { AmountSmallCents } from '../AmountSmallCents'
-import { THUMB, billLink, chipStyle, jobLink, money, phoneButton, strong, tile, tileSmall } from './billsSentLook'
+import { THUMB, billLink, chipStyle, jobLink, linePress, money, phoneButton, strong, tile, tileSmall } from './billsSentLook'
 import { BillsPaidByDay } from './BillsPaidByDay'
 import { billsPaidLines, billsPaidSum, type BillsPaidSum } from '../../lib/billing/billsPaidDays'
 import { readBillsPaid } from '../../lib/billing/billsPaidIo'
 import { companyWeekStartSundayContaining } from '../../utils/dateUtils'
 import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { MoneyText } from '../Money'
 
 /**
  * Bills sent (punch list #327, PR 1): every bill that left the company, newest first under a band per day, one line
@@ -391,7 +394,7 @@ function dayPick(picked: boolean, phone: boolean): CSSProperties {
     font: 'inherit',
     fontSize: phone ? '0.8125rem' : '0.75rem',
     padding: '0.15rem 0.6rem',
-    minHeight: phone ? 40 : undefined,
+    minHeight: phone ? THUMB : undefined,
     borderRadius: 999,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
@@ -549,14 +552,14 @@ function GapRow({ gap, others, why, waysCtl, onSaved, onRan }: { gap: BillsSentG
   return (
     <div style={gapRow} data-testid="bills-sent-gap">
       <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-        <Link to={billsSentRecordPath(gap.billId)} style={billLink} title="Open this bill's record">
+        <Link to={billsSentRecordPath(gap.billId)} style={{ ...billLink, ...linePress(phone) }} title="Open this bill's record">
           Bill
         </Link>
         {gap.jobWords ? (
           <>
             {' · '}
             {gap.jobTo ? (
-              <Link to={gap.jobTo} style={jobLink}>
+              <Link to={gap.jobTo} style={{ ...jobLink, ...linePress(phone) }}>
                 {gap.jobWords}
               </Link>
             ) : (
@@ -590,6 +593,9 @@ function GapRow({ gap, others, why, waysCtl, onSaved, onRan }: { gap: BillsSentG
  * have been handed over on site or sent from someone's own mailbox, and the strip says the app cannot know.
  */
 function GapStrip({ open, paid, every, expanded, waysCtl, onSaved }: { open: BillsSentGap[]; paid: BillsSentGap[]; every: BillsSentGap[]; expanded: boolean; waysCtl: BillHandWaysCtl; onSaved: () => void }) {
+  const phone = useIsMobile()
+  // The strip's own word presses (Show all, Show them) stand a fingertip tall on a phone.
+  const wordPress: CSSProperties = { ...press, ...linePress(phone) }
   const [all, setAll] = useState(false)
   const [showPaid, setShowPaid] = useState(false)
   // The bills a press of several did not record, each with its reason, until a later press records them.
@@ -623,7 +629,7 @@ function GapStrip({ open, paid, every, expanded, waysCtl, onSaved }: { open: Bil
       {shown.map(row)}
       {open.length > shown.length ? (
         <div style={{ marginTop: '0.4rem' }}>
-          <button type="button" style={press} onClick={() => setAll(true)}>
+          <button type="button" style={wordPress} onClick={() => setAll(true)}>
             Show all {open.length}
           </button>
         </div>
@@ -631,7 +637,7 @@ function GapStrip({ open, paid, every, expanded, waysCtl, onSaved }: { open: Bil
       {paid.length > 0 ? (
         <div style={{ marginTop: '0.4rem', color: 'var(--text-700)' }}>
           {paid.length === 1 ? '1 more bill was paid with no send on record.' : `${paid.length} more bills were paid with no send on record.`}{' '}
-          <button type="button" style={press} onClick={() => setShowPaid((v) => !v)} aria-expanded={showPaid}>
+          <button type="button" style={wordPress} onClick={() => setShowPaid((v) => !v)} aria-expanded={showPaid}>
             {showPaid ? 'Hide them' : 'Show them'}
           </button>
         </div>
@@ -653,7 +659,7 @@ function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onO
             <>
               {' · '}
               {record.jobTo ? (
-                <Link to={record.jobTo} style={jobLink}>
+                <Link to={record.jobTo} style={{ ...jobLink, ...linePress(phone) }}>
                   {record.jobWords}
                 </Link>
               ) : (
@@ -664,7 +670,10 @@ function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onO
         </h2>
         <span style={{ ...money, marginLeft: 'auto' }}>{record.amount != null ? <AmountSmallCents value={record.amount} /> : ''}</span>
       </div>
-      <p style={{ margin: '0.1rem 0 0.5rem', color: 'var(--text-muted)' }}>{[record.payer, record.stateWords].filter(Boolean).join(' · ')}</p>
+      <p data-testid="bills-sent-record-state" style={{ margin: '0.1rem 0 0.5rem', color: 'var(--text-muted)' }}>
+        {/* The words are the kernel's. An amount in them draws its cents smaller, as every other amount on the page does. */}
+        <MoneyText text={[record.payer, record.stateWords].filter(Boolean).join(' · ')} />
+      </p>
       {record.payments.length > 0 ? (
         <div data-testid="bills-sent-record-payments" style={{ margin: '0 0 0.5rem', padding: '0.4rem 0.6rem', borderRadius: 8, background: 'var(--bg-green-tint)', border: '1px solid var(--border-green)' }}>
           <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-green-800)' }}>{record.payments.length === 1 ? 'The payment on this bill' : 'The payments on this bill, oldest first'}</div>
@@ -807,6 +816,7 @@ export function BillsSentLedger() {
   // The strip rides with every bill (All) and is the whole list under its own chip; a route chip shows that route alone.
   const stripVisible = (route === 'all' || route === 'gap') && gapsShown.open.length + gapsShown.paid.length > 0
   const narrowed = route !== 'all' || typed.trim() !== ''
+  const good = billsSentEmptyGood(route, typed)
   const clear = () => {
     setTyped('')
     setRoute('all')
@@ -826,11 +836,13 @@ export function BillsSentLedger() {
   }
 
   if (billParam) {
+    // The way back is where the record was opened from: the list, or the day of By day paid its address keeps.
+    const back = billsSentRecordBack({ view: params.get('view'), day: params.get('day'), how: params.get('how') })
     return (
       <section aria-label="One bill's record" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
         <div>
-          <Link to={BILLS_SENT_PATH} style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none', ...(phone ? { display: 'inline-flex', alignItems: 'center', minHeight: THUMB } : {}) }}>
-            ← All bills sent
+          <Link to={back.to} style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none', ...(phone ? { display: 'inline-flex', alignItems: 'center', minHeight: THUMB } : {}) }}>
+            {back.label}
           </Link>
         </div>
         {failure ? <OfflineRetryPanel failure={failure} onRetry={retry} surface="bills-sent" idempotent busy={reading} /> : null}
@@ -882,7 +894,7 @@ export function BillsSentLedger() {
   }
   const saveCsv = () => {
     // The byte order mark lets a spreadsheet read the file's accents and dots as written.
-    saveBlobAs(new Blob(['\ufeff', billsSentCsv(shown, outGaps)], { type: 'text/csv;charset=utf-8' }), billsSentCsvFileName(today))
+    saveBlobAs(new Blob(['\ufeff', billsSentCsv(shown, outGaps)], { type: 'text/csv;charset=utf-8' }), billsSentCsvFileName(today, route, typed))
   }
   const nothingShown = shown.length === 0 && outGaps.length === 0
   const outPress: CSSProperties = phone ? phoneButton : { ...chipStyle(false), borderRadius: 6, fontWeight: 700, color: 'var(--text-strong)' }
@@ -970,7 +982,10 @@ export function BillsSentLedger() {
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : route === 'gap' && stripVisible ? null : data != null && shown.length === 0 ? (
         <div data-testid="bills-sent-empty">
-          {narrowed ? (
+          {good ? (
+            // A chip that lists what still wants someone, with nothing under it: the good state, said as one.
+            <EmptyState main={`${emptyWords({ kind: 'waiting', who: good.who }).main} ${good.why}`} next={{ label: 'See every send', onPress: clear }} />
+          ) : narrowed ? (
             <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'sends', query: typed.trim() }), { onPress: clear })} />
           ) : (
             <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'data', noun: 'bills sent', page: { label: 'Open the Pipeline', tail: 'to send the first.' } }), { to: '/jobs?tab=stages' })} />
