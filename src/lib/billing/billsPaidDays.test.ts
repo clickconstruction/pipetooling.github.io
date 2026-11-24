@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BILLS_PAID_CSV_HEAD,
   billsPaidCellCount,
+  billsPaidCellCredit,
   billsPaidCellLabel,
   billsPaidCellMoney,
   billsPaidChips,
@@ -21,6 +22,8 @@ import {
   billsPaidMonthOf,
   billsPaidMonthSpan,
   billsPaidOpeningDay,
+  billsPaidPayoutOf,
+  billsPaidPayoutWords,
   billsPaidRange,
   billsPaidShiftMonth,
   billsPaidStepLabel,
@@ -225,7 +228,7 @@ describe('billsPaid — the month', () => {
     // Nov 1, 2026 is a Sunday.
     expect(grid.blanks).toBe(0)
     expect(grid.cells).toHaveLength(30)
-    expect(grid.cells[17]).toEqual({ ymd: '2026-11-18', day: 18, sum: { payments: 1, total: 2480 }, today: false, later: false })
+    expect(grid.cells[17]).toEqual({ ymd: '2026-11-18', day: 18, sum: { payments: 1, total: 2480 }, today: false, later: false, credits: 0 })
     expect(grid.cells[19]!.sum).toEqual({ payments: 2, total: 6670 })
     expect(grid.cells[22]).toMatchObject({ day: 23, today: true, later: false, sum: { payments: 1, total: 1500 } })
     expect(grid.cells[23]).toMatchObject({ day: 24, later: true })
@@ -246,6 +249,35 @@ describe('billsPaid — the month', () => {
     expect(billsPaidCellCount({ payments: 3 })).toBe('3 paid')
     expect(billsPaidCellLabel({ ymd: '2026-11-20', sum: { payments: 2, total: 6670 } })).toBe('Fri, Nov 20, $6,670.00, 2 payments')
     expect(billsPaidCellLabel({ ymd: '2026-11-19', sum: { payments: 0, total: 0 } })).toBe('Thu, Nov 19, nothing came in')
+    // A day with a credit in kind and no money is marked, in the cell and for a screen reader.
+    expect(billsPaidCellCredit({ sum: { payments: 0, total: 0 }, credits: 1 })).toBe('1 credit')
+    expect(billsPaidCellCredit({ sum: { payments: 0, total: 0 }, credits: 2 })).toBe('2 credits')
+    expect(billsPaidCellCredit({ sum: { payments: 1, total: 1500 }, credits: 1 })).toBe('')
+    expect(billsPaidCellCredit({ sum: { payments: 0, total: 0 } })).toBe('')
+    expect(billsPaidCellLabel({ ymd: '2026-11-19', sum: { payments: 0, total: 0 }, credits: 1 })).toBe('Thu, Nov 19, 1 credit in kind, not added')
+    // The month's own cells count them: the 23rd holds a check and a credit, and a day alone with a credit is marked.
+    expect(billsPaidMonthCells(lines, '2026-11', '2026-11-30').cells.find((c) => c.day === 23)).toMatchObject({ credits: 1, sum: { payments: 1 } })
+    const creditOnly = billsPaidMonthCells(lines.filter((l) => l.inKind), '2026-11', '2026-11-30').cells.find((c) => c.day === 23)!
+    expect([creditOnly.sum.payments, billsPaidCellCredit(creditOnly)]).toEqual([0, '1 credit'])
+  })
+})
+
+describe('billsPaid — the next payout', () => {
+  it('tells a payout on its way from none, and from no answer', () => {
+    expect(billsPaidPayoutOf({ nextPayout: { usd: 2980.37, arrivalYmd: '2026-11-25' } }, false)).toEqual({ state: 'coming', usd: 2980.37, arrivalYmd: '2026-11-25' })
+    expect(billsPaidPayoutOf({ nextPayout: { usd: 12 } }, false)).toEqual({ state: 'coming', usd: 12, arrivalYmd: null })
+    // Stripe answered, and nothing is on its way.
+    expect(billsPaidPayoutOf({ nextPayout: null }, false)).toEqual({ state: 'none' })
+    expect(billsPaidPayoutOf({ nextPayout: { usd: 0 } }, false)).toEqual({ state: 'none' })
+    // No answer: the call failed, the function refused, or the body is not one.
+    expect(billsPaidPayoutOf({ nextPayout: { usd: 50 } }, true)).toEqual({ state: 'unread' })
+    expect(billsPaidPayoutOf({ error: 'Forbidden' }, false)).toEqual({ state: 'unread' })
+    expect(billsPaidPayoutOf(null, false)).toEqual({ state: 'unread' })
+  })
+  it('words the tile when no payout is coming', () => {
+    expect(billsPaidPayoutWords({ state: 'none' })).toBe('None on its way')
+    expect(billsPaidPayoutWords({ state: 'unread' })).toBe('Stripe did not answer')
+    expect(billsPaidPayoutWords({ state: 'coming', usd: 5, arrivalYmd: null })).toBe('')
   })
 })
 
@@ -332,6 +364,9 @@ describe('billsPaid — out of the app', () => {
     // A day with nothing is a number alone, and a day after the print is marked as not come.
     expect(cal).toContain('<td class="none"><i>21</i></td>')
     expect(cal).toContain('<td class="later"><i>24</i></td>')
+    // A day that holds a credit and no money says so in its cell.
+    const credits = billsPaidMonthHtml(lines.filter((l) => l.inKind || l.ymd === '2026-11-18'), { month: '2026-11', how: 'all', printedAtIso: '2026-11-23T21:00:00.000Z' })
+    expect(credits).toContain('<td class="none"><i>23</i><span>1 credit</span></td>')
     const none = billsPaidMonthHtml(billsPaidFilter(lines, 'bank'), { month: '2026-11', how: 'bank', printedAtIso: '2026-11-23T21:00:00.000Z' })
     expect(none).toContain('Nothing came in by bank transfer in November 2026.')
     expect(none).not.toContain('<table class="cal">')

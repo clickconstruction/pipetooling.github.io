@@ -135,7 +135,7 @@ describe('BillsPaidByDay', () => {
 
   it('opens on this month and today, with today’s and the week’s tiles and the next Stripe payout', async () => {
     io.data = read([payment({ id: 's1', note: 'Stripe', paidOn: today, createdAtIso: `${today}T18:21:00.000Z` })])
-    io.payout = { usd: 2980.37, arrivalYmd: ymdAddDays(today, 2) }
+    io.payout = { state: 'coming', usd: 2980.37, arrivalYmd: ymdAddDays(today, 2) }
     renderWithProviders(<BillsPaidByDay />, { route: '/bills-sent?view=paid' })
     const day = await screen.findByTestId('bills-paid-day')
     expect(io.asks[0]!.to.slice(0, 7)).toBe(month)
@@ -150,6 +150,29 @@ describe('BillsPaidByDay', () => {
     expect(screen.queryByTestId('bills-paid-step-on')).toBeNull()
     // The step back names the month it opens.
     expect(screen.getByTestId('bills-paid-step-back').textContent).toBe(`‹${billsPaidStepLabel(month, -1)}`)
+  })
+
+  it('keeps the payout tile and says so when Stripe has none on its way, or gave no answer', async () => {
+    io.payout = { state: 'none' }
+    renderWithProviders(<BillsPaidByDay />, { route: '/bills-sent?view=paid' })
+    await screen.findByTestId('bills-paid-day')
+    await waitFor(() => expect(screen.getByTestId('bills-paid-tile-payout').textContent).toBe('Next Stripe payout to the bankNone on its way'))
+    cleanup()
+    io.payout = { state: 'unread' }
+    renderWithProviders(<BillsPaidByDay />, { route: '/bills-sent?view=paid' })
+    await screen.findByTestId('bills-paid-day')
+    await waitFor(() => expect(screen.getByTestId('bills-paid-tile-payout').textContent).toBe('Next Stripe payout to the bankStripe did not answer'))
+  })
+
+  it('marks a day that holds a credit in kind and no money, and leaves it white', async () => {
+    io.data = read([payment({ id: 'k1', paymentType: 'In kind', note: 'Rent credit', amount: 900, paidOn: `${OLD}-10` }), payment({ id: 's1', note: 'Stripe' })])
+    renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&month=${OLD}` })
+    await screen.findByTestId('bills-paid-day')
+    const cell = cellOf(`${OLD}-10`)
+    expect(within(cell).getByTestId('bills-paid-cell-credit').textContent).toBe('1 credit')
+    expect(cell.getAttribute('aria-label')).toBe('Tue, Mar 10, 1 credit in kind, not added')
+    // A day money came says its money, and no credit.
+    expect(within(cellOf(`${OLD}-18`)).queryByTestId('bills-paid-cell-credit')).toBeNull()
   })
 
   it('steps to the month before and reads it', async () => {

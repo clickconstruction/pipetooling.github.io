@@ -304,9 +304,13 @@ Stripe keeps a fee before the bank gets the money. The fee is not taken off on t
 
 A tile reads **Next Stripe payout to the bank**. The tile shows what Stripe sends next and the day the money arrives.
 
+The tile reads *None on its way* when Stripe has no payout coming. It reads *Stripe did not answer* when the app could not ask.
+
 The payout is after Stripe's fee. The payout is less than the Stripe payments it carries.
 
 A refund made in Stripe does not show on this page. A credit in kind is listed and not added.
+
+A day that holds a credit and no money reads *1 credit*. The day is not green, because no money came.
 
 ## Move between months
 

@@ -264,6 +264,8 @@ export interface BillsPaidCell {
   today: boolean
   /** A day that has not come: it is drawn and cannot be pressed. */
   later: boolean
+  /** The credits in kind listed on the day. They are never added, so a day can hold one and no money. */
+  credits: number
 }
 
 /** The month as a grid whose weeks begin on Sunday: the blanks before the 1st, then each day with what came in. */
@@ -274,7 +276,8 @@ export function billsPaidMonthCells(lines: ReadonlyArray<BillsPaidLine>, month: 
   for (const l of lines) byDay.set(l.ymd, [...(byDay.get(l.ymd) ?? []), l])
   const cells: BillsPaidCell[] = []
   for (let ymd = first; ymd <= last; ymd = ymdAddDays(ymd, 1)) {
-    cells.push({ ymd, day: Number(ymd.slice(8)), sum: billsPaidSum(byDay.get(ymd) ?? []), today: ymd === todayYmd, later: ymd > todayYmd })
+    const dayLines = byDay.get(ymd) ?? []
+    cells.push({ ymd, day: Number(ymd.slice(8)), sum: billsPaidSum(dayLines), today: ymd === todayYmd, later: ymd > todayYmd, credits: dayLines.filter((l) => l.inKind).length })
   }
   return { blanks: new Date(`${first}T12:00:00Z`).getUTCDay(), cells }
 }
@@ -305,10 +308,46 @@ export function billsPaidCellCount(sum: Pick<BillsPaidSum, 'payments'>): string 
   return `${sum.payments} paid`
 }
 
-/** What a screen reader hears on a day: *Wed, Nov 18, $7,935.00, 3 payments*, or that nothing came in. */
-export function billsPaidCellLabel(cell: Pick<BillsPaidCell, 'ymd' | 'sum'>): string {
+/**
+ * A grid cell's small line on a day that holds a credit in kind and no money: *1 credit*. '' on any other day. The
+ * credit is listed under the day and never added, so without the mark the month gave no sign the day held anything,
+ * and the chip that narrows to it opened a month with nothing to press.
+ */
+export function billsPaidCellCredit(cell: Pick<BillsPaidCell, 'sum'> & { credits?: number }): string {
+  const n = cell.credits ?? 0
+  return cell.sum.payments === 0 && n > 0 ? plural(n, 'credit') : ''
+}
+
+/** What a screen reader hears on a day: *Wed, Nov 18, $7,935.00, 3 payments*, a credit in kind alone, or that nothing came in. */
+export function billsPaidCellLabel(cell: Pick<BillsPaidCell, 'ymd' | 'sum'> & { credits?: number }): string {
   const day = formatWorkDateYmdWeekdayShortFriendly(cell.ymd)
-  return cell.sum.payments > 0 ? `${day}, ${billsPaidMoney(cell.sum.total)}, ${plural(cell.sum.payments, 'payment')}` : `${day}, nothing came in`
+  if (cell.sum.payments > 0) return `${day}, ${billsPaidMoney(cell.sum.total)}, ${plural(cell.sum.payments, 'payment')}`
+  const credit = billsPaidCellCredit(cell)
+  return credit ? `${day}, ${credit} in kind, not added` : `${day}, nothing came in`
+}
+
+// ---------- The next payout ----------
+
+/**
+ * What Stripe said of its next payout to the bank. *coming* carries what it adds to, after Stripe's fee, and the day
+ * it arrives. *none* is Stripe's own answer that nothing is on its way. *unread* is no answer: the ask failed or was
+ * refused. The three were once one null and the tile simply was not drawn, which read as a tile gone missing.
+ */
+export type BillsPaidPayoutAnswer = { state: 'coming'; usd: number; arrivalYmd: string | null } | { state: 'none' } | { state: 'unread' }
+
+/** Read `get-stripe-payouts`'s body. `failed` is the call itself failing. */
+export function billsPaidPayoutOf(body: unknown, failed: boolean): BillsPaidPayoutAnswer {
+  if (failed || body == null || typeof body !== 'object') return { state: 'unread' }
+  const b = body as { error?: unknown; nextPayout?: { usd?: unknown; arrivalYmd?: unknown } | null }
+  if (typeof b.error === 'string' && b.error) return { state: 'unread' }
+  const p = b.nextPayout
+  if (!p || typeof p.usd !== 'number' || !(p.usd > 0)) return { state: 'none' }
+  return { state: 'coming', usd: p.usd, arrivalYmd: typeof p.arrivalYmd === 'string' ? p.arrivalYmd : null }
+}
+
+/** The tile's words when no payout is coming: what stands where the amount would. */
+export function billsPaidPayoutWords(answer: BillsPaidPayoutAnswer): string {
+  return answer.state === 'none' ? 'None on its way' : answer.state === 'unread' ? 'Stripe did not answer' : ''
 }
 
 // ---------- A day ----------
@@ -437,7 +476,8 @@ function billsPaidMonthGridHtml(inMonth: ReadonlyArray<BillsPaidLine>, month: st
   if (cells.length === 0) return ''
   const cell = (c: BillsPaidCell): string => {
     const has = c.sum.payments > 0
-    const inside = has ? `<b>${esc(billsPaidMoney(c.sum.total))}</b><span>${esc(billsPaidCellCount(c.sum))}</span>` : ''
+    const credit = billsPaidCellCredit(c)
+    const inside = has ? `<b>${esc(billsPaidMoney(c.sum.total))}</b><span>${esc(billsPaidCellCount(c.sum))}</span>` : credit ? `<span>${esc(credit)}</span>` : ''
     return `<td class="${has ? 'in' : c.later ? 'later' : 'none'}"><i>${c.day}</i>${inside}</td>`
   }
   const slots: string[] = [...Array.from({ length: blanks }, () => '<td class="blank"></td>'), ...cells.map(cell)]

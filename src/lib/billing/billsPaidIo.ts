@@ -8,12 +8,12 @@
  * still draws with what its own row says.
  *
  * `readStripePayout` asks Stripe for the next payout through `get-stripe-payouts`, the edge function the
- * Dashboard's Money in bar asks, which answers the same four roles. Best effort: no answer, no tile.
+ * Dashboard's Money in bar asks, which answers the same four roles. Best effort, and it says which of three answers it got.
  */
 import { supabase } from '../supabase'
 import { chunkIds } from '../supabasePaging'
 import { billNumberFromTitle } from './billsSent'
-import type { BillsPaidBill, BillsPaidInput, BillsPaidJob, BillsPaidPayment } from './billsPaidDays'
+import { billsPaidPayoutOf, type BillsPaidBill, type BillsPaidInput, type BillsPaidJob, type BillsPaidPayment, type BillsPaidPayoutAnswer } from './billsPaidDays'
 
 /** Ids per `in.(…)` list: a longer list makes an address some networks refuse. */
 const IN_CHUNK = 80
@@ -126,22 +126,12 @@ export async function readBillsPaid(span: { from: string; to: string }): Promise
   return { payments, bills, jobs, numbers, firstSent, sentTo, more: payments.length >= BILLS_PAID_PAGE }
 }
 
-/** Stripe's next payout to the bank: what it adds to, after Stripe's fee, and the day it arrives. */
-export interface BillsPaidPayout {
-  usd: number
-  arrivalYmd: string | null
-}
-
-/** The next payout, or null when Stripe has none on its way, the caller may not ask, or the answer did not come. */
-export async function readStripePayout(): Promise<BillsPaidPayout | null> {
+/** What Stripe said of its next payout, in the three answers `billsPaidPayoutOf` tells apart. It never throws. */
+export async function readStripePayout(): Promise<BillsPaidPayoutAnswer> {
   try {
     const { data, error } = await supabase.functions.invoke('get-stripe-payouts', { body: {} })
-    if (error) return null
-    const b = (data ?? {}) as { error?: unknown; nextPayout?: { usd?: unknown; arrivalYmd?: unknown } | null }
-    const p = b.nextPayout
-    if ((typeof b.error === 'string' && b.error) || !p || typeof p.usd !== 'number' || !(p.usd > 0)) return null
-    return { usd: p.usd, arrivalYmd: typeof p.arrivalYmd === 'string' ? p.arrivalYmd : null }
+    return billsPaidPayoutOf(data, !!error)
   } catch {
-    return null
+    return billsPaidPayoutOf(null, true)
   }
 }
