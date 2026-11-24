@@ -10,6 +10,14 @@ import { renderSettled } from '../test/renderSmokeMocks'
 import MercuryTransactionInvoiceLinkModal from './MercuryTransactionInvoiceLinkModal'
 
 const calls = vi.hoisted(() => ({ saved: [] as string[][] }))
+// The bill viewer has its own smoke: here it is a stand-in that says what it was handed.
+vi.mock('./materials/BillViewer', () => ({
+  BillViewer: (p: { items: { invoiceId: string }[]; openId: string; onClose: () => void }) => (
+    <div data-testid="viewer" data-open={p.openId} data-items={p.items.map((i) => i.invoiceId).join(',')}>
+      <button type="button" onClick={p.onClose}>viewer closes</button>
+    </div>
+  ),
+}))
 
 vi.mock('../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../test/renderSmokeMocks')
@@ -43,6 +51,23 @@ vi.mock('../lib/supabase', async () => {
 const TX = { id: 'tx1', amount: -595.54, counterparty_name: 'The Home Depot' } as never
 
 describe('MercuryTransactionInvoiceLinkModal', () => {
+  it('the office sees a bill before linking it, and the press leaves the tick as it was', async () => {
+    await renderSettled(<MercuryTransactionInvoiceLinkModal open onClose={() => {}} transaction={TX} onSaved={() => {}} />, { loaded: () => screen.findByText(/#88231/) })
+    fireEvent.click(screen.getByRole('button', { name: 'See invoice 88240' }))
+    const viewer = screen.getByTestId('viewer')
+    expect(viewer.getAttribute('data-open')).toBe('i2')
+    expect(viewer.getAttribute('data-items')).toBe('i1,i2')
+    // Nothing was ticked by the press.
+    expect(screen.queryByTestId('invoice-link-chosen')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'viewer closes' }))
+    expect(screen.queryByTestId('viewer')).toBeNull()
+  })
+
+  it('a cardholder linking their own charge is offered no bill to see', async () => {
+    await renderSettled(<MercuryTransactionInvoiceLinkModal open onClose={() => {}} transaction={TX} tallySelfService onSaved={() => {}} />, { loaded: () => screen.findByText(/#88231/) })
+    expect(screen.queryByRole('button', { name: /^See invoice/ })).toBeNull()
+  })
+
   it('keeps a ticked invoice above the search, totals the two, and saves both', async () => {
     const onSaved = vi.fn()
     await renderSettled(

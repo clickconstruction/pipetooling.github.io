@@ -7,6 +7,9 @@ import { isSupplyCredit, SUPPLY_CREDIT_NOT_LINKABLE } from '../lib/supplyHouseDo
 import { invoiceTotalForCharge } from '../lib/teamPurchasesSorted'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 import { EmptyState } from './EmptyState'
+import { BillViewer } from './materials/BillViewer'
+import { useOptionalAuth } from '../hooks/useAuth'
+import { canShareSupplyInvoice, supplyInvoiceShareUrl } from '../lib/jobs/supplyInvoiceList'
 import { MoneyText } from './Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
@@ -54,6 +57,10 @@ export default function MercuryTransactionInvoiceLinkModal({
   // The ticked invoices, kept whole (not just their ids) so they stay in view while the search
   // below moves on to the next one (v2.4566).
   const [chosen, setChosen] = useState<Map<string, InvoiceLinkRow>>(new Map())
+  // See the bill (punch list #431): the office checks a bill against the charge before linking it. A cardholder
+  // linking their own charge cannot read a bill's row, so the press is the office's alone.
+  const canSeeBills = canShareSupplyInvoice(useOptionalAuth()?.role) && !tallySelfService
+  const [seeBillId, setSeeBillId] = useState<string | null>(null)
   const seededRef = useRef(false)
 
   const txId = transaction?.id ?? null
@@ -360,6 +367,24 @@ export default function MercuryTransactionInvoiceLinkModal({
                       {' · '}
                       {isCredit ? 'Credit memo — cannot be linked' : r.is_paid ? 'Paid' : 'Unpaid'}
                       {r.purchase_order_number ? ` · PO ${r.purchase_order_number}` : ''}
+                      {canSeeBills ? (
+                        <>
+                          {' · '}
+                          <button
+                            type="button"
+                            // Inside the row's label: the press opens the bill and leaves the tick as it was.
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setSeeBillId(r.invoice_id)
+                            }}
+                            aria-label={`See invoice ${r.invoice_number}`}
+                            style={{ margin: 0, padding: 0, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}
+                          >
+                            See the bill ›
+                          </button>
+                        </>
+                      ) : null}
                     </span>
                     {r.job_allocation_summary ? (
                       <span style={{ display: 'block', color: 'var(--text-faint)', marginTop: 2 }}>
@@ -421,6 +446,16 @@ export default function MercuryTransactionInvoiceLinkModal({
           </button>
         </div>
       </div>
+      {seeBillId ? (
+        <BillViewer
+          // The chosen bills, then what the search found: the bills this window lists.
+          items={[...chosenRows, ...searchRows].map((r) => ({ invoiceId: r.invoice_id, number: r.invoice_number, house: r.supply_house_name, dateYmd: (r.invoice_date ?? '').slice(0, 10), amount: Number(r.amount) || 0 }))}
+          openId={seeBillId}
+          onOpen={setSeeBillId}
+          onClose={() => setSeeBillId(null)}
+          shareUrlOf={(id) => supplyInvoiceShareUrl(id, null)}
+        />
+      ) : null}
     </div>
   )
 }

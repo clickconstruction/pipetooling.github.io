@@ -204,7 +204,7 @@ Tick **Show paid invoices** at the top of Accounts payable to list the paid bill
 
 ## What the two links are
 
-- **See the bill ›** opens the **invoice**. That is the scan or PDF saved on the bill when it was entered.
+- **See the bill ›** opens the **invoice** over the page. That is the scan or PDF saved on the bill when it was entered. The house's bills sit beside the paper, in the card's order. Press **Next** or the right arrow key to read the next one. The link icon beside it copies a link to the bill for a teammate. See [search and share a job's supply house invoices](/help/search-and-share-a-jobs-supply-house-invoices#flip-through-the-invoices).
 - **Receipt ›** opens the receipt link you pasted in Record a payment. It is saved **beside** the invoice, never over it. Leaving the box blank changes neither link.
 
 To fix a paid day, use the pencil on the bill's row. To unmark one bill, press {{button:outline|Mark unpaid}} on its row. A bill paid by a recorded payment keeps that payment's day, and its status is locked in the Edit window.
@@ -213,7 +213,7 @@ To fix a paid day, use the pencil on the bill's row. To unmark one bill, press {
 
 The aging table shows unpaid dollars by how late they are. Press any colored cell to see the bills inside it. The window opens with a strip. It shows how much of the cell is on job accounts and how much is not. A bar under it draws the same split.
 
-The bills sit under their job. Each job's heading says its job account state in words. Each bill shows its number, its PO and date, how late it is and its amount. A late bill carries a {{chip:red|116 d}} chip. A bill on the house's job account reads {{chip:green|On it ✓}}. The bottom line always matches the cell.
+The bills sit under their job. Each job's heading says its job account state in words. Each bill shows its number, its PO and date, how late it is and its amount. The **↗** at the end of a row opens that bill over the window. **Next** then moves through the cell's bills. A late bill carries a {{chip:red|116 d}} chip. A bill on the house's job account reads {{chip:green|On it ✓}}. The bottom line always matches the cell.
 
 :::example A cell's window
 **Moore Supply** and **90+ days past due** in the title. The strip reads **$0.00** on job accounts and **$7,199.38** not on one. Seven jobs follow, each with {{chip:yellow|No job account at Moore Supply}}.

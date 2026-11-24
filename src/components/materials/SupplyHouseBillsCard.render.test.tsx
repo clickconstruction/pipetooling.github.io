@@ -46,6 +46,25 @@ describe('SupplyHouseBillsCard', () => {
     expect(screen.getAllByTestId('supply-bill-amount').map((a) => a.textContent)).toEqual(['$40.00', '$250.60', '$100.00', '− $50.00credit'])
   })
 
+  it('with a viewer to open, See the bill is a press that hands over the bill and the card’s order, beside a share press', () => {
+    const seen: [string, readonly string[]][] = []
+    const shared: string[] = []
+    renderWithProviders(card({ onSeeBill: (id, listed) => seen.push([id, listed]), onShareBill: (id) => shared.push(id) }))
+    const second = screen.getAllByTestId('supply-bill-row')[1] as HTMLElement
+    const press = within(second).getByRole('button', { name: 'See the bill ›' })
+    // A press, and no longer a link that leaves the page.
+    expect(press.getAttribute('href')).toBeNull()
+    fireEvent.click(press)
+    // The bills in the order the card drew them: past due first, then the due day's, largest first.
+    expect(seen).toEqual([['2', ['3', '2', '1', '4']]])
+    fireEvent.click(within(second).getByRole('button', { name: /^Copy a link to invoice / }))
+    expect(shared).toEqual(['2'])
+    // A bill with no paper at all offers neither.
+    const first = screen.getAllByTestId('supply-bill-row')[0] as HTMLElement
+    expect(within(first).queryByRole('button', { name: 'See the bill ›' })).toBeNull()
+    expect(within(first).queryByRole('button', { name: /^Copy a link/ })).toBeNull()
+  })
+
   it('leads a row with what the bill is for, and flags a job’s charge that is not on a job account', () => {
     renderWithProviders(card())
     const titles = screen.getAllByTestId('supply-bill-title').map((t) => t.textContent?.replace(/\s+/g, ' ').trim())
