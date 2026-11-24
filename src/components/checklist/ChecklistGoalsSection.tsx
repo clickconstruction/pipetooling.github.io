@@ -390,7 +390,7 @@ export function ChecklistGoalsSection({
                                 </span>
                               ) : null}
                               {s.state === 'complete' ? (
-                                <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: '#16a34a', color: 'white' }}>✓ done</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: '#15803d', color: 'white' }}>✓ done</span>
                               ) : s.state === 'current' ? (
                                 <>
                                   <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }}>current</span>
@@ -466,7 +466,7 @@ export function ChecklistGoalsSection({
                                                 t.chip === 'in_review'
                                                   ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', borderColor: 'transparent' }
                                                   : t.chip === 'signed_off'
-                                                    ? { background: '#16a34a', color: 'white', borderColor: 'transparent' }
+                                                    ? { background: '#15803d', color: 'white', borderColor: 'transparent' }
                                                     : undefined
                                               }
                                             >

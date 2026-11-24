@@ -31,6 +31,16 @@ export function canReadPartyPapers(role: string | null | undefined): boolean {
   return canSendPartyPapers(role) || role === 'estimator'
 }
 
+/**
+ * Who opens a signed paper's record from its line: the four roles, and an estimator who is not in training (punch
+ * list #403, the owner's second decision of 2026-11-22). A training estimator reads the line and opens nothing: the
+ * record's form answers, its signature and its signed file are all closed to them, so the line carries no press.
+ */
+export function canOpenSignedRecord(role: string | null | undefined, readOnly: boolean): boolean {
+  if (canSendPartyPapers(role)) return true
+  return role === 'estimator' && !readOnly
+}
+
 // ── Which papers are a party's ────────────────────────────────────────────────────────────────────────────────────────
 
 /** The record a page is for. */

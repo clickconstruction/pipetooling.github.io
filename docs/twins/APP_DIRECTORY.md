@@ -523,7 +523,7 @@ What a file's **Open** goes to (Messages cut 6, `FileOpen.tsx`): `/files/message
 on an email's line. Signed in as the office team, it goes straight to the file through a link that lasts a minute; a
 link the email carried goes to its own address. `/files/drive/<job key>:<Drive file id>` (v2.5467, Messages cut 7d) is a
 file in a job's Drive folder: `drive-link`'s office door checks the file is in that job's folder and the page goes to
-Drive's own viewer. `/files/bills/<invoice id>` (v2.6095, punch list #179) is a supply-house bill dropped on the Add invoice window, our copy kept under `bills/<house>/…`, read as a thread file is. Signed out, it asks for a sign-in and comes back. Anyone else reads
+Drive's own viewer. `/files/bills/<invoice id>` (v2.6095, punch list #179) is a supply-house bill, and since v2.8399 (punch list #431) it does not go to the file: the page is the bill viewer, the PDF drawn in the app with the bill's facts beside it, and with `?job=<job id>` that job's list of bills beside the paper. It is read as the reader under the office's policy on bills, so an estimator reads the words below. Signed out, it asks for a sign-in and comes back. Anyone else reads
 *This file is not one you can open.* No page of its own to work on.
 Roles: dev, master, assistant, controller, estimator.
 

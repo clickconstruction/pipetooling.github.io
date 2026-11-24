@@ -16,6 +16,7 @@ import { signedClauseView, type ClausePaperView } from '../../lib/contracts/clau
 import { ClausePaper } from './ClausePaper'
 import { SignedJobSettings } from './SignedJobSettings'
 import { readKeptJobSettings, sealHolds, type KeptJobSettings } from '../../lib/contracts/jobPaperSettings'
+import { SIGNED_RECORD_LAYOUT_DID_NOT_READ, SIGNED_RECORD_PDF_RULE, SIGNED_RECORD_SIGNATURE_DID_NOT_OPEN } from '../../lib/contracts/signedRecordWords'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -74,9 +75,12 @@ export function PersonContractSignedRecordModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signatureSignedUrl, setSignatureSignedUrl] = useState<string | null>(null)
-  /** The signature's image was asked for and did not open (punch list #403): said in words, not as a wait. */
+  /**
+   * The signature's image was asked for and did not open (punch list #403): said in words, not as a wait. Since the
+   * owner's second decision an estimator reads it for an outside company's paper, so this is a failure, not a rule.
+   */
   const [signatureDidNotOpen, setSignatureDidNotOpen] = useState(false)
-  /** The form's layout was asked for. A reader it is closed to gets no layout, and reads that. */
+  /** The form's layout was asked for. A read that brings none back says so in words, and the PDF still holds the answers. */
   const [formSchemaAsked, setFormSchemaAsked] = useState(false)
   /** Two-party forms (v2.2802): the office-section modal. */
   const [officeOpen, setOfficeOpen] = useState(false)
@@ -186,7 +190,7 @@ export function PersonContractSignedRecordModal({
       } catch {
         if (!cancelled) {
           setSignatureSignedUrl(null)
-          // The image is the office's to open. A reader it is closed to reads that, never a wait that does not end.
+          // A reader the image did not open for reads that, never a wait that does not end.
           setSignatureDidNotOpen(true)
         }
       }
@@ -513,7 +517,7 @@ export function PersonContractSignedRecordModal({
                   ) : null}
                   {formSchemaAsked && !formSchema ? (
                     <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }} data-testid="signed-record-layout-closed">
-                      The form’s layout did not read, so its answers are not listed here. The PDF holds them.
+                      {SIGNED_RECORD_LAYOUT_DID_NOT_READ}
                     </p>
                   ) : facts.length === 0 ? (
                     <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formSchema ? (row.form_scan_storage_path ? 'The boxes were not keyed in; the scan is the record.' : 'No answers were stored on this row.') : 'Loading the form’s layout…'}</p>
@@ -531,7 +535,7 @@ export function PersonContractSignedRecordModal({
                     </dl>
                   )}
                   <p style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                    Sensitive answers are never stored on the row. Opening the signed PDF is limited to devs, controllers, and pay-approved masters, and each open is logged. An estimator opens an outside company’s.
+                    {SIGNED_RECORD_PDF_RULE}
                   </p>
                 </div>
               ) : null}
@@ -559,7 +563,7 @@ export function PersonContractSignedRecordModal({
                     />
                   ) : (
                     <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }} data-testid="signed-record-signature-wait">
-                      {signatureDidNotOpen ? 'The signature’s image did not open. It is kept for the office.' : 'Loading signature…'}
+                      {signatureDidNotOpen ? SIGNED_RECORD_SIGNATURE_DID_NOT_OPEN : 'Loading signature…'}
                     </p>
                   )
                 ) : row.signer_printed_name?.trim() ? (

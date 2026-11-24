@@ -61,7 +61,7 @@ import { LevelGaugeSheet } from './LevelGaugeSheet'
 const PICK_WORDS: Record<MachinePick, string> = { yes: 'Yes', no: 'No', not_here: 'Not here' }
 const chip: CSSProperties = { flex: 1, minHeight: 44, borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 700, fontSize: '0.9375rem', cursor: 'pointer' }
 const chipOn: Record<MachinePick, CSSProperties> = {
-  yes: { background: '#16a34a', color: '#fff', borderColor: '#16a34a' },
+  yes: { background: '#15803d', color: '#fff', borderColor: '#15803d' },
   no: { background: '#dc2626', color: '#fff', borderColor: '#dc2626' },
   not_here: { background: '#6b7280', color: '#fff', borderColor: '#6b7280' },
 }

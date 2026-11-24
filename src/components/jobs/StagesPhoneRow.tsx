@@ -129,7 +129,7 @@ export function StagesPhoneRow({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: '#16a34a',
+              background: '#15803d',
               color: '#fff',
               fontSize: '0.75rem',
               fontWeight: 700,
@@ -289,7 +289,7 @@ export function StagesPhoneRow({
                   setConfirmOpen(false)
                   advance.onConfirm()
                 }}
-                style={{ flex: 1, padding: '0.7rem', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 700, fontSize: '0.9375rem', cursor: 'pointer' }}
+                style={{ flex: 1, padding: '0.7rem', borderRadius: 8, border: 'none', background: '#15803d', color: '#fff', fontWeight: 700, fontSize: '0.9375rem', cursor: 'pointer' }}
               >
                 {advance.label}
               </button>

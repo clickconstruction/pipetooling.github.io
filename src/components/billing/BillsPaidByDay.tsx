@@ -23,6 +23,7 @@ import {
   billsPaidOpeningDay,
   billsPaidRange,
   billsPaidShiftMonth,
+  billsPaidStepLabel,
   billsPaidSum,
   billsPaidTiles,
   billsPaidTime,
@@ -288,7 +289,11 @@ export function BillsPaidByDay() {
     ) : null
 
   const empty = billsPaidEmptyDay({ ymd: day, how, everyWay: everySum.payments, todayYmd: today })
-  const step: CSSProperties = { fontFamily: 'inherit', width: phone ? THUMB : 30, height: phone ? THUMB : 30, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', flex: '0 0 auto' }
+  // A month step names the month it opens, and each sits at its own edge of the card, so neither moves as the month's name changes width.
+  const step: CSSProperties = { ...outPress, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', whiteSpace: 'nowrap', ...(phone ? { minWidth: THUMB, padding: '0 0.6rem' } : {}) }
+  const chevron: CSSProperties = { fontSize: '1.15em', lineHeight: 1, fontWeight: 400 }
+  const before = billsPaidShiftMonth(month, -1)
+  const after = billsPaidShiftMonth(month, 1)
   const atLatest = month >= thisMonth
   const tileCount = (tiles.today ? 2 : 0) + 1 + (payout ? 1 : 0)
 
@@ -323,20 +328,32 @@ export function BillsPaidByDay() {
         // The month and its day sit side by side only when each has room: a day's cell must hold four digits whole.
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 28rem), 1fr))', gap: '0.6rem', alignItems: 'start' }}>
           <div style={{ ...panel, padding: phone ? '0.4rem' : '0.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 0.1rem 0.4rem' }}>
-              <button type="button" onClick={() => go({ month: billsPaidShiftMonth(month, -1) })} aria-label={billsPaidMonthLabel(billsPaidShiftMonth(month, -1))} style={step}>
-                ‹
-              </button>
-              <b style={{ color: 'var(--text-strong)', fontSize: '0.875rem' }} data-testid="bills-paid-month">
-                {billsPaidMonthLabel(month)}
-              </b>
-              {atLatest ? null : (
-                <button type="button" onClick={() => go({ month: billsPaidShiftMonth(month, 1) })} aria-label={billsPaidMonthLabel(billsPaidShiftMonth(month, 1))} style={step}>
-                  ›
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', alignItems: 'center', gap: '0.5rem', padding: '0 0.1rem 0.4rem' }}>
+              <span style={{ justifySelf: 'start' }}>
+                <button type="button" data-testid="bills-paid-step-back" onClick={() => go({ month: before })} aria-label={billsPaidMonthLabel(before)} title={`Open ${billsPaidMonthLabel(before)}`} style={step}>
+                  <span aria-hidden="true" style={chevron}>
+                    ‹
+                  </span>
+                  {billsPaidStepLabel(month, -1)}
                 </button>
-              )}
-              <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
-                <AmountSmallCents value={tiles.month.total} />
+              </span>
+              <span style={{ display: 'grid', justifyItems: 'center', textAlign: 'center', minWidth: 0 }}>
+                <b style={{ color: 'var(--text-strong)', fontSize: '0.875rem' }} data-testid="bills-paid-month">
+                  {billsPaidMonthLabel(month)}
+                </b>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>
+                  <AmountSmallCents value={tiles.month.total} />
+                </span>
+              </span>
+              <span style={{ justifySelf: 'end' }}>
+                {atLatest ? null : (
+                  <button type="button" data-testid="bills-paid-step-on" onClick={() => go({ month: after })} aria-label={billsPaidMonthLabel(after)} title={`Open ${billsPaidMonthLabel(after)}`} style={step}>
+                    {billsPaidStepLabel(month, 1)}
+                    <span aria-hidden="true" style={chevron}>
+                      ›
+                    </span>
+                  </button>
+                )}
               </span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 3 }}>
