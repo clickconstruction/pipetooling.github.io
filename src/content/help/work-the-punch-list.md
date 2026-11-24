@@ -2,7 +2,7 @@
 title: work the punch list of unfinished projects
 category: Office
 roles: dev, master_technician
-keywords: punch list, working on it, tick a card, claim a card, who is working on it, taken, free to pick up, still on it, checkbox, my ticks, what am I working on, search the punch list, find a card, search cards, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
+keywords: punch list, working on it, tick a card, claim a card, who is working on it, taken, free to pick up, tick cleared, my tick is gone, 12 hours, checkbox, my ticks, what am I working on, search the punch list, find a card, search cards, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
 order: 95
 ---
 The **Punch list** is the board of every project that was designed or partly built but is not finished. The board is the same list that lives in the repo's `to-dos/` folder, rendered in the app.
@@ -98,8 +98,9 @@ Every card has a checkbox beside its number. You tick the box when you are worki
 A tick is a claim. Everyone who opens the board sees your name on the card.
 
 - A tick is kept with your account. The tick is there after a reload, and on your phone and your computer.
-- Only you can take your tick off.
+- Nobody else can take your tick off.
 - A tick stays while its card stays in the same group.
+- A tick is cleared after 12 hours with no update. [See who is working on a card](#see-who-is-working-on-a-card) says what an update is.
 - A card that moves to another group loses its tick. A card that leaves the board loses its tick too.
 - A flag does not move a card, so a flagged card keeps its tick.
 
@@ -117,13 +118,12 @@ A ticked card says who is on it, on a line under its name. The line has the name
 {{chip:yellow|● Sam is working on this. Last update 3 h ago.}}
 :::
 
-An update is any of three things.
+An update is either of two things.
 
 - The person ticks the card.
-- The person presses **Still on it**.
 - The card's file changes in the repo.
 
-A claim goes quiet after 12 hours with no update. The card then reads as free to pick up. The line says who had it and when it went quiet.
+A claim goes quiet after 12 hours with no update. The card then reads as free to pick up. The line says who had it and when it went quiet. That line goes when the person who had the card next opens the board.
 
 :::example A card whose claim went quiet
 {{chip:gray|○ Free to pick up. Sam had it and went quiet 2 h ago.}}
@@ -131,7 +131,15 @@ A claim goes quiet after 12 hours with no update. The card then reads as free to
 
 You can tick a card that is free to pick up. The card then reads as yours.
 
-Your own tick stays when your claim goes quiet. The card says your claim went quiet, and it shows {{button:gray|Still on it}}. You press **Still on it** and your claim is fresh again. You untick the card when you are done with it.
+Your own tick is cleared when your claim goes quiet. Your box is empty the next time you open the board. The card says why.
+
+:::example A card whose tick was cleared
+{{chip:gray|◌ Your tick was cleared after 12 quiet hours. Tick the card again if you are still on it.}}
+:::
+
+That line shows on the visit that clears the tick. You do not see it again after you leave the board. You tick the card again if you are still working on it.
+
+You can keep a claim fresh before the 12 hours pass. You untick the card and tick it again.
 
 Two people can tick the same card. The card then names both.
 

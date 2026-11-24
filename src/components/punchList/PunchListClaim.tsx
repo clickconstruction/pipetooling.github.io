@@ -6,9 +6,10 @@ import type { BoardItem } from '../../lib/todos/todoBoard'
 
 /**
  * What a punch list card says about who is on it (Taunya's ask of 2026-11-21): who is working on it and how long
- * ago that was last fresh, that it is free to pick up and who had it, or that the viewer's own claim has gone
- * quiet, with **Still on it** beside that line. The name and the time are drawn apart from the words (values in
- * place). A card nobody ticked draws nothing.
+ * ago that was last fresh, that it is free to pick up and who had it, or that the viewer's own tick was cleared
+ * after 12 quiet hours. Where a quiet tick stays instead, that line says the claim went quiet, with **Still on it**
+ * beside it. The name and the time are drawn apart from the words (values in place). A card nobody ticked draws
+ * nothing.
  *
  * The rules and the words are `lib/todos/punchListClaims.ts`; the page hands in the card's claims and the time.
  */

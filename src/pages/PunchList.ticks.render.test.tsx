@@ -57,6 +57,7 @@ vi.mock('../hooks/usePunchListPicks', () => ({
 }))
 
 import PunchList from './PunchList'
+import { PunchListClaim } from '../components/punchList/PunchListClaim'
 
 const BEN = 'user-ben'
 const HOUR = 3_600_000
@@ -214,17 +215,32 @@ describe('PunchList claims', () => {
     expect(db.fake.rows).toHaveLength(2)
   })
 
-  it('keeps the claimer’s own tick after 12 quiet hours, and Still on it makes the claim fresh again', async () => {
-    db.fake.rows = [tick(299, 'ready', { ticked_at: ago(15) })]
+  it('clears the claimer’s own tick after 12 quiet hours and says why, and a tick puts it back', async () => {
+    db.fake.rows = [tick(299, 'ready', { ticked_at: ago(15) }), tick(347, 'gated', { ticked_at: ago(11) })]
     renderWithProviders(<PunchList />, { route: '/punch-list' })
-    await waitFor(() => expect(claimOn(299)).toContain('Your claim went quiet 3 h ago. Others see this card as free to pick up.'))
-    expect(box(RECEIPT).checked).toBe(true)
+    await waitFor(() => expect(claimOn(299)).toBe('◌Your tick was cleared after 12 quiet hours. Tick the card again if you are still on it.'))
+    // The box is clear, Working on counts only the live tick, and no card offers Still on it.
+    expect(box(RECEIPT).checked).toBe(false)
+    expect(box(LEDGER).checked).toBe(true)
     expect(count()).toBe('1')
-    fireEvent.click(screen.getByRole('button', { name: 'Still on it, #299' }))
+    expect(screen.queryByRole('button', { name: /Still on it/ })).toBeNull()
+    // A test run is not the built site, so the page deleted nothing by itself.
+    expect(db.fake.log).toEqual([])
+    fireEvent.click(box(RECEIPT))
     await waitFor(() => expect(db.fake.log).toEqual(['upsert 299 ready v2.8200']))
     await waitFor(() => expect(claimOn(299)).toContain('You are working on this. Last update just now.'))
-    expect(screen.queryByRole('button', { name: 'Still on it, #299' })).toBeNull()
+    expect(claimOn(299)).not.toContain('cleared')
     expect(box(RECEIPT).checked).toBe(true)
+    expect(count()).toBe('2')
+  })
+
+  it('the other reading, drawn by the line alone: a quiet tick that stays offers Still on it', () => {
+    const onStillOn = vi.fn()
+    const quiet = { userId: SMOKE_AUTH_USER_ID, name: 'ZZ Ana', freshAt: Date.now() - 15 * HOUR, quiet: true }
+    renderWithProviders(<PunchListClaim item={{ number: 299, group: 'ready' }} claims={{ mine: quiet, cleared: null, held: [], wentQuiet: [] }} nowMs={Date.now()} onStillOn={onStillOn} />)
+    expect(screen.getByTestId('punch-claim').textContent).toContain('Your claim went quiet 3 h ago. Others see this card as free to pick up.')
+    fireEvent.click(screen.getByRole('button', { name: 'Still on it, #299' }))
+    expect(onStillOn).toHaveBeenCalledWith({ number: 299, group: 'ready' })
   })
 
   it('names both people when two hold one card', async () => {
@@ -249,14 +265,16 @@ describe('PunchList claims', () => {
     expect(claimOn(299)).toBe('')
   })
 
-  it('By number says who is on a card on a line of its own, with Still on it', async () => {
+  it('By number says who is on a card on a line of its own, and that a quiet tick was cleared', async () => {
     db.fake.rows = [tick(299, 'ready', { ticked_at: ago(15) }), tick(347, 'gated', { user_id: BEN, ticked_at: ago(1) })]
     renderWithProviders(<PunchList />, { route: '/punch-list?view=number' })
     const rowOf = (n: string) => screen.getAllByTestId('punch-number-row').find((li) => li.getAttribute('data-number') === n)!
     await waitFor(() => expect(rowOf('347').querySelector('[data-testid="punch-claim"]')?.textContent).toContain('ZZ Ben is working on this. Last update 1 h ago.'))
-    expect(rowOf('299').querySelector('[data-testid="punch-claim"]')?.textContent).toContain('Your claim went quiet 3 h ago.')
+    expect(rowOf('299').querySelector('[data-testid="punch-claim"]')?.textContent).toContain('Your tick was cleared after 12 quiet hours.')
+    expect((within(rowOf('299')).getByRole('checkbox') as HTMLInputElement).checked).toBe(false)
+    expect(within(rowOf('299')).queryByRole('button', { name: 'Still on it, #299' })).toBeNull()
     expect(rowOf('343').querySelector('[data-testid="punch-claim"]')).toBeNull()
-    fireEvent.click(within(rowOf('299')).getByRole('button', { name: 'Still on it, #299' }))
+    fireEvent.click(within(rowOf('299')).getByRole('checkbox'))
     await waitFor(() => expect(db.fake.log).toEqual(['upsert 299 ready v2.8200']))
   })
 })

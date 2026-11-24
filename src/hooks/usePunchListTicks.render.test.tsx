@@ -7,7 +7,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { TicksFake } from '../test/punchListTicksFake'
-import type { ClaimCard } from '../lib/todos/punchListClaims'
+import type { ClaimCard, OwnTickAfterQuiet } from '../lib/todos/punchListClaims'
 
 const db = vi.hoisted(() => ({ fake: null as unknown as TicksFake }))
 vi.mock('../lib/supabase', async () => {
@@ -34,7 +34,15 @@ const cards = (...pairs: Array<[number, ClaimCard['group']]>): ClaimCard[] => pa
 const shown = (set: ReadonlySet<number>) => [...set].sort((a, b) => a - b)
 
 /** The hook as the page calls it; a test changes `at` and rerenders to move the board, the clock or the card times. */
-function mount(at: { cards: ClaimCard[]; boardVersion?: string; mayClear?: boolean; enabled?: boolean; nowMs?: number; touched?: Record<string, number> }) {
+function mount(at: {
+  cards: ClaimCard[]
+  boardVersion?: string
+  mayClear?: boolean
+  enabled?: boolean
+  nowMs?: number
+  touched?: Record<string, number>
+  ownTickAfterQuiet?: OwnTickAfterQuiet
+}) {
   return renderHook(() =>
     usePunchListTicks({
       enabled: at.enabled ?? true,
@@ -45,6 +53,7 @@ function mount(at: { cards: ClaimCard[]; boardVersion?: string; mayClear?: boole
       mayClear: at.mayClear ?? true,
       touched: at.touched,
       nowMs: at.nowMs ?? NOW,
+      ownTickAfterQuiet: at.ownTickAfterQuiet,
     }),
   )
 }
@@ -136,9 +145,93 @@ describe('usePunchListTicks', () => {
     expect(db.fake.rows.map((r) => r.user_id)).toEqual([BEN])
   })
 
-  it('a claim goes quiet 12 hours after the tick, and Still on it makes it fresh again', async () => {
+  it('a quiet own tick is wiped: the row is deleted, a live one and another person’s are not, and the card says so for the visit', async () => {
+    db.fake.rows = [row(5, 'gated', { ticked_at: ago(15) }), row(6, 'gated', { ticked_at: ago(11) }), row(5, 'gated', { user_id: BEN, ticked_at: ago(15) })]
+    const { result } = mount({ cards: cards([5, 'gated'], [6, 'gated']) })
+    await waitFor(() => expect(db.fake.log).toEqual(['delete 5 quiet']))
+    // The live tick is left alone, and so is the other person's quiet row: theirs to clear.
+    expect(shown(result.current.ticked)).toEqual([6])
+    expect(db.fake.rows.filter((r) => r.user_id === ME).map((r) => r.card_number)).toEqual([6])
+    expect(db.fake.rows.filter((r) => r.user_id === BEN)).toHaveLength(1)
+    await waitFor(() => expect(result.current.claims.byCard.get(5)?.cleared).not.toBeNull())
+    expect(result.current.claims.byCard.get(5)?.mine).toBeNull()
+    expect(result.current.claims.byCard.get(5)?.wentQuiet.map((c) => c.name)).toEqual(['ZZ Ben'])
+    // The table no longer holds the row. The card goes on saying the tick was cleared, and nothing is asked twice.
+    await act(async () => {
+      await result.current.reload()
+    })
+    expect(result.current.claims.byCard.get(5)?.cleared).not.toBeNull()
+    expect(db.fake.log).toEqual(['delete 5 quiet'])
+    // Ticking the card again is the way back: the claim is theirs and fresh, and the cleared line is gone.
+    await act(async () => {
+      await result.current.toggle({ number: 5, group: 'gated' }, true)
+    })
+    expect(shown(result.current.ticked)).toEqual([5, 6])
+    expect(result.current.claims.byCard.get(5)?.cleared).toBeNull()
+    expect(result.current.claims.byCard.get(5)?.mine?.quiet).toBe(false)
+  })
+
+  it('the clock passing the twelfth hour on an open page wipes the tick, with no read', async () => {
     db.fake.rows = [row(5, 'gated', { ticked_at: ago(15) })]
-    const { result } = mount({ cards: cards([5, 'gated']) })
+    const at = { cards: cards([5, 'gated']), nowMs: NOW - 5 * HOUR }
+    const { result, rerender } = mount(at)
+    await waitFor(() => expect(shown(result.current.ticked)).toEqual([5]))
+    expect(db.fake.log).toEqual([])
+    at.nowMs = NOW
+    rerender()
+    await waitFor(() => expect(db.fake.log).toEqual(['delete 5 quiet']))
+    await waitFor(() => expect(db.fake.rows).toEqual([]))
+    expect(shown(result.current.ticked)).toEqual([])
+    expect(db.fake.reads).toBe(1)
+  })
+
+  it('deletes no quiet tick where the page may not clear: View as, a dev server and training mode', async () => {
+    db.fake.rows = [row(5, 'gated', { ticked_at: ago(15) })]
+    const { result } = mount({ cards: cards([5, 'gated']), mayClear: false })
+    await waitFor(() => expect(result.current.claims.byCard.get(5)?.cleared).not.toBeNull())
+    await act(async () => {})
+    // The look shows what the person will see: no tick, and the line that says why. The row is still theirs in the table.
+    expect(shown(result.current.ticked)).toEqual([])
+    expect(db.fake.log).toEqual([])
+    expect(db.fake.rows).toHaveLength(1)
+  })
+
+  it('a refused delete of a quiet tick is asked once, and the row stays', async () => {
+    db.fake.rows = [row(5, 'gated', { ticked_at: ago(15) })]
+    db.fake.failWrite = { code: '42501', message: 'new row violates row-level security policy' }
+    const at = { cards: cards([5, 'gated']), nowMs: NOW }
+    const { result, rerender } = mount(at)
+    await waitFor(() => expect(result.current.claims.byCard.get(5)?.cleared).not.toBeNull())
+    await act(async () => {})
+    db.fake.failWrite = null
+    at.nowMs = NOW + 60_000
+    rerender()
+    await act(async () => {})
+    expect(db.fake.log).toEqual([])
+    expect(db.fake.rows).toHaveLength(1)
+  })
+
+  it('a claim renewed on another device since this page read it is not wiped', async () => {
+    db.fake.rows = [row(5, 'gated', { ticked_at: ago(15) })]
+    const at = { cards: cards([5, 'gated']), nowMs: NOW - 5 * HOUR }
+    const { result, rerender } = mount(at)
+    await waitFor(() => expect(shown(result.current.ticked)).toEqual([5]))
+    // The person presses the box on their phone an hour before the twelfth: the table's row is newer than the one this page holds.
+    db.fake.rows = [row(5, 'gated', { ticked_at: ago(1) })]
+    at.nowMs = NOW
+    rerender()
+    await waitFor(() => expect(db.fake.log).toEqual(['delete 5 quiet, none']))
+    // The page reads again, and the card is theirs and fresh.
+    await waitFor(() => expect(result.current.claims.byCard.get(5)?.mine?.quiet).toBe(false))
+    expect(shown(result.current.ticked)).toEqual([5])
+    expect(result.current.claims.byCard.get(5)?.cleared).toBeNull()
+    expect(db.fake.rows).toHaveLength(1)
+    expect(db.fake.reads).toBe(2)
+  })
+
+  it('the other reading: a quiet tick that stays is marked as gone quiet, and Still on it makes it fresh again', async () => {
+    db.fake.rows = [row(5, 'gated', { ticked_at: ago(15) })]
+    const { result } = mount({ cards: cards([5, 'gated']), ownTickAfterQuiet: 'stays' })
     await waitFor(() => expect(shown(result.current.ticked)).toEqual([5]))
     // The person's own tick stays, marked as gone quiet.
     expect(result.current.claims.byCard.get(5)?.mine?.quiet).toBe(true)
@@ -178,7 +271,8 @@ describe('usePunchListTicks', () => {
 
   it('puts the box back when a save fails: a tick, an untick and a Still on it alike', async () => {
     db.fake.rows = [row(1, 'ready', { ticked_at: ago(15) })]
-    const { result } = mount({ cards: cards([1, 'ready'], [2, 'ready']) })
+    // Still on it is a press of the reading where a quiet tick stays.
+    const { result } = mount({ cards: cards([1, 'ready'], [2, 'ready']), ownTickAfterQuiet: 'stays' })
     await waitFor(() => expect(shown(result.current.ticked)).toEqual([1]))
     db.fake.failWrite = { code: '42501', message: 'new row violates row-level security policy' }
     await act(async () => {
