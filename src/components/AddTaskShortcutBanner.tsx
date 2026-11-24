@@ -109,7 +109,8 @@ export default function AddTaskShortcutBanner({ role, quiet = false }: { role: U
         gap: '0.6rem',
         background: 'var(--bg-orange-tint)',
         borderBottom: '1px solid var(--border-orange)',
-        color: '#7c2d12',
+        // A token, not a literal brown: the strip's tint turns dark at night and brown words on it could not be read (v2.8531).
+        color: 'var(--text-orange-800)',
         fontSize: '0.875rem',
       }}
     >

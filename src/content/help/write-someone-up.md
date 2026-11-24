@@ -47,7 +47,7 @@ The button at the bottom says what is still missing. When nothing is missing it 
 2. Press {{button:outline|Fix it}} to change something.
 3. Press {{button:blue|Send write-up to HR}} to send it.
 
-Nothing is saved until you press **Send write-up to HR**. A stray press outside the sheet closes it and keeps your words. The press on your Dashboard then says one is not finished. A reload of the page keeps your words too. A photo is not kept, so take that one again.
+Nothing is saved until you press **Send write-up to HR**. A stray press outside the sheet closes it and keeps your words. The press on your Dashboard then says one is not finished. A person picked with nothing else filled in is not kept. A reload of the page keeps your words too. A photo is not kept, so take that one again.
 
 ## What happens after
 

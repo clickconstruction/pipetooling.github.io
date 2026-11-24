@@ -2518,6 +2518,7 @@ Since v2.8174 a write-up carries up to four photos (`writeUpPhotos.ts`, the priv
 Since v2.8250 the amber note on **Your write-ups** (*Kept on this phone at …*) goes once no kept write-up is waiting, a sent one reads *Sent to HR at* with the time it went, and a refused one shows no sent word while its row, **Not sent**, carries the reason.
 Since v2.8507 the press sits above the Job Mode card in Job Mode and under the greeting on the short Dashboard, where a tall job card or the lines that wait can no longer push it under the phone's bottom strip.
 Since v2.8507 the app's *A new version is ready* pill draws at the top of the screen while a phone sheet is open (`phoneSheetOpen.ts`, marked by `PhoneSheet`), so it no longer covers a sheet's bottom press.
+Since v2.8531 a draft with a person picked and nothing else in it is dropped when the sheet is left (`writeUpDraftStarted`), so the press says *1 not finished* only over a write-up that was begun.
 The press took the place of the Dashboard's **HR Report** card, retired in v2.8174.
 A formal **Writeup** on People, Paperwork is a different paper, built by the office from a template.
 → *HR files*

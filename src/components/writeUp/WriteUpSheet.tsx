@@ -39,6 +39,7 @@ import {
   WRITE_UP_MAX_WORDS,
   WRITE_UP_WORDS,
   writeUpDayWords,
+  writeUpDraftStarted,
   writeUpJobLabel,
   writeUpFields,
   writeUpMissing,
@@ -157,6 +158,15 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
     },
     [onDraft],
   )
+  /** Leaving a draft with nothing in it drops it: a person picked by mistake is not a write-up left unfinished. */
+  const dropIfEmpty = useCallback(() => {
+    const current = draftRef.current
+    if (current && !writeUpDraftStarted(current)) setDraft(null)
+  }, [setDraft])
+  const leave = useCallback(() => {
+    dropIfEmpty()
+    onClose()
+  }, [dropIfEmpty, onClose])
   /** One change to the form, worked out from the newest draft. */
   const patch = useCallback(
     (change: (d: WriteUpDraft) => Partial<WriteUpDraft>) => {
@@ -317,7 +327,16 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
     setStep('what')
   }
 
-  const back = step === 'what' ? () => setStep(draft?.addsTo ? 'mine' : 'who') : step === 'read' ? () => setStep('what') : null
+  const back =
+    step === 'what'
+      ? () => {
+          const to = draft?.addsTo ? 'mine' : 'who'
+          dropIfEmpty()
+          setStep(to)
+        }
+      : step === 'read'
+        ? () => setStep('what')
+        : null
   const title = step === 'who' ? WRITE_UP_WORDS.whoTitle : step === 'what' ? WRITE_UP_WORDS.whatTitle : step === 'read' ? WRITE_UP_WORDS.readTitle : WRITE_UP_WORDS.mineTitle
 
   // ── who ──────────────────────────────────────────────────────────────────
@@ -670,7 +689,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
     if (step === 'mine') {
       return (
         <div style={{ display: 'flex', gap: '0.6rem', padding: '0.75rem 0.9rem' }}>
-          <button type="button" onClick={onClose} style={quietPress}>
+          <button type="button" onClick={leave} style={quietPress}>
             {WRITE_UP_WORDS.done}
           </button>
           <button type="button" onClick={() => { setSentAt(null); setKeptAt(null); setStep('who') }} style={{ ...quietPress, border: 'none', color: 'var(--text-link)' }}>
@@ -686,7 +705,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
   const body = step === 'who' ? whoBody() : step === 'what' && draft ? whatBody(draft) : step === 'read' && draft ? readBody(draft) : mineBody()
 
   return (
-    <PhoneSheet label={title} width={480} dataAttrs={{ 'data-write-up-sheet': step }} onClose={onClose}>
+    <PhoneSheet label={title} width={480} dataAttrs={{ 'data-write-up-sheet': step }} onClose={leave}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0 0.25rem 0 0.9rem', borderBottom: '1px solid var(--border)', flex: 'none' }}>
         {back ? (
           <button type="button" onClick={back} aria-label="Back" style={{ ...headPress, marginLeft: '-0.9rem', color: 'var(--text-link)' }}>
@@ -697,7 +716,7 @@ export function WriteUpSheet({ userId, initialDraft, onDraft, onClose, io = writ
           {title}
           {step === 'what' && draft?.addsTo ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · adding to one you sent about {firstName(draft.person.name)}</span> : null}
         </h2>
-        <button type="button" onClick={onClose} aria-label="Close" style={headPress}>
+        <button type="button" onClick={leave} aria-label="Close" style={headPress}>
           ×
         </button>
       </div>
