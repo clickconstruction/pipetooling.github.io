@@ -122,7 +122,7 @@ Walks 2 and 3 were not tried: a simulator has no rough reading and no airplane m
    - **Open the line is 44 px in dark.** It is a link with no box drawn, so the measure is its line's height, read from the lines around it.
      A press 17 px above the words opened the line.
    - **Fault seen, and mended in v2.8495: the line was orange.** A walked water line drew in the paint's orange, where the guide says blue.
-     It is the first of the loose ends below. Look for a blue line on this walk.
+     It is the first of the loose ends below, and a drawn line was seen blue on the live site the same day. Look for a blue walked line on this walk.
    - **Still owed:** a real walk under a real sky, and Android Chrome.
 
 ## Taunya's calls
@@ -144,7 +144,11 @@ A row opens the list's own map instead.
   v2.8203 says it draws in the color of what is buried, and water is blue.
   The place windows draw on Google since v2.8235, and the Google map stroked every line in the one paint color.
   It now reads a line's own color, and draws a kept line again when its color comes.
-  Held by tests alone. A look at a real buried line on the live site is still owed, and walk 6 gives it.
+  **Looked at on clicktooling.com on 2026-11-24, on the build stamped v2.8495: it holds.** As the dev, headless at 1200 px, on JP1113.
+  A buried water place was set by hand and a line of about 810 ft drawn from it. Closed and opened again from **Open the line**, the line drew blue, `#2563eb`, with no orange left on the map.
+  Google was asked for the line twice: once in the paint's orange, and 281 ms later in blue, when the job's places had been read. That is the second mend at work.
+  The line's map and the list were thrown away after, and the job read back with no painted map.
+  Not looked at: a walked line, the other five colors, the magnifying glass, and a phone.
   On **Look it over** and on the map just saved the line is still orange, and that is as built: it is tied to its place only once its map closes.
 - **Seen in the simulator, not looked into.** After **Remove** on a report's photo the tile went, and for half a minute the line above and the **Save** press still counted one photo.
   It could be the simulator painting late.
@@ -159,4 +163,5 @@ A row opens the list's own map instead.
   Every open of a list of places counts too.
   The 2026-11-23 walks made about ten loads, six place sheets and four list windows.
   The 2026-11-24 simulator walk made about a dozen windows: three place sheets, six list windows and three of a line's map.
+  The look at the mended line the same day made five more.
 - **Seen in passing, not looked into.** At 390 px the office's **Map** tab opened on the whole country, with and without a place, where 1100 px fit the place at street level.
