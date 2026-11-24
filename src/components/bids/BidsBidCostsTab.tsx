@@ -37,6 +37,7 @@ import { BidVsActualRowDetail } from './BidVsActualRowDetail'
 import { BidsForecastLens } from './BidsForecastLens'
 import { bidCostsTableEmptyWords, pursuitWindowEmptyWords } from '../../lib/bids/bidsEmptyWords'
 import { EmptyState, type EmptyStateWords } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 /**
  * Bids → Bid Costs — the Pursuit ledger (v2.3336). What it costs us to bid:
@@ -222,21 +223,21 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
       {lens === 'pursuit' && (<>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, marginBottom: 14 }}>
         <div style={tileStyle}>
-          <span style={tileN}>{showDollars ? formatUsdShort(summary.spendUsd) : `${Math.round(summary.hours)} h`}</span>
+          <span style={tileN}>{showDollars ? <MoneyText text={formatUsdShort(summary.spendUsd)} /> : `${Math.round(summary.hours)} h`}</span>
           <span style={tileL}>{showDollars ? `spent bidding · ${Math.round(summary.hours)} h` : 'clocked against bids'}</span>
           <span style={{ ...tileL, display: 'block' }}>{windowLabel} · {summary.bidsWithTime} bid{summary.bidsWithTime === 1 ? '' : 's'} with time</span>
         </div>
         <div style={tileStyle}>
-          <span style={tileN}>{summary.perBidUsd == null ? '—' : showDollars ? `${usd(summary.perBidUsd)} · ${summary.perBidHours!.toFixed(1)} h` : `${summary.perBidHours!.toFixed(1)} h`}</span>
+          <span style={tileN}>{summary.perBidUsd == null ? '—' : showDollars ? <MoneyText text={`${usd(summary.perBidUsd)} · ${summary.perBidHours!.toFixed(1)} h`} /> : `${summary.perBidHours!.toFixed(1)} h`}</span>
           <span style={tileL}>per bid with time</span>
         </div>
         <div style={tileStyle}>
-          <span style={tileN}>{formatUsdShort(summary.wonValue)} won</span>
-          <span style={tileL}>of {formatUsdShort(summary.wonValue + summary.lostValue)} decided · {pct(summary.hitRateByValue)} by value</span>
-          <span style={{ ...tileL, display: 'block' }}>{formatUsdShort(summary.openValue)} still open</span>
+          <span style={tileN}><MoneyText text={formatUsdShort(summary.wonValue)} /> won</span>
+          <span style={tileL}>of <MoneyText text={formatUsdShort(summary.wonValue + summary.lostValue)} /> decided · {pct(summary.hitRateByValue)} by value</span>
+          <span style={{ ...tileL, display: 'block' }}><MoneyText text={formatUsdShort(summary.openValue)} /> still open</span>
         </div>
         <div style={tileStyle}>
-          <span style={tileN}>{showDollars ? formatUsdShort(summary.lostSpendUsd) : `${Math.round(summary.lostHours)} h`}</span>
+          <span style={tileN}>{showDollars ? <MoneyText text={formatUsdShort(summary.lostSpendUsd)} /> : `${Math.round(summary.lostHours)} h`}</span>
           <span style={tileL}>{showDollars ? 'spent on bids we lost' : 'on bids we lost'}</span>
           <span style={{ ...tileL, display: 'block' }}>{showDollars ? `${Math.round(summary.lostHours)} h · ` : ''}{summary.lostBids} bid{summary.lostBids === 1 ? '' : 's'}{summary.lostSpendShare != null ? ` · ${pct(summary.lostSpendShare)} of spend` : ''}</span>
         </div>
@@ -299,10 +300,10 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
                   <td style={cellStyle}>{shown.length} bid{shown.length === 1 ? '' : 's'}</td>
                   <td style={cellStyle} />
                   <td style={numStyle}>{Math.round(totals.hours)} h</td>
-                  {showDollars && <td style={numStyle}>{usd(totals.usd)}</td>}
-                  {showDollars && anyCards && <td style={numStyle}>{usd(totals.card)}</td>}
-                  {showDollars && anyMaterials && <td style={numStyle}>{usd(totals.materials)}</td>}
-                  <td style={numStyle}>{totals.value > 0 ? formatUsdShort(totals.value) : '—'}</td>
+                  {showDollars && <td style={numStyle}><MoneyText text={usd(totals.usd)} /></td>}
+                  {showDollars && anyCards && <td style={numStyle}><MoneyText text={usd(totals.card)} /></td>}
+                  {showDollars && anyMaterials && <td style={numStyle}><MoneyText text={usd(totals.materials)} /></td>}
+                  <td style={numStyle}>{totals.value > 0 ? <MoneyText text={formatUsdShort(totals.value)} /> : '—'}</td>
                   {showDollars && <td style={numStyle}>{totals.value > 0 && totals.usd > 0 ? (totals.usd / (totals.value / 1000)).toFixed(2) : '—'}</td>}
                   <td style={cellStyle} />
                 </tr>
@@ -323,7 +324,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
                 <button key={e.key} type="button" aria-pressed={on} onClick={() => setFilter((f) => ({ ...f, estimator: on ? null : e.key }))} title={`Only ${e.label}'s bids`} style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: on ? 'var(--bg-subtle)' : 'none', color: 'inherit', padding: '5px 4px', cursor: 'pointer', borderRadius: 4 }}>
                   <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                     <span>{e.label}<span style={subStyle}>{e.bids} bid{e.bids === 1 ? '' : 's'} · {Math.round(e.hours)} h</span></span>
-                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{showDollars ? usd(e.usd) : `${Math.round(e.hours)} h`}</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{showDollars ? <MoneyText text={usd(e.usd)} /> : `${Math.round(e.hours)} h`}</span>
                   </span>
                   <span style={{ display: 'block', height: 4, background: 'var(--bg-subtle)', borderRadius: 2, marginTop: 4, overflow: 'hidden' }}>
                     <span style={{ display: 'block', height: '100%', width: `${Math.max(2, Math.round(share * 100))}%`, background: 'var(--text-link)' }} />
@@ -336,7 +337,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
           {PURSUIT_OUTCOMES.map((o) => (
             <div key={o} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '4px 4px', borderTop: '1px solid var(--border)' }}>
               <span><OutcomeChip outcome={o} /> <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{byOutcome[o].bids} bid{byOutcome[o].bids === 1 ? '' : 's'}</span></span>
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{showDollars ? usd(byOutcome[o].usd) : `${Math.round(byOutcome[o].hours)} h`}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{showDollars ? <MoneyText text={usd(byOutcome[o].usd)} /> : `${Math.round(byOutcome[o].hours)} h`}</span>
             </div>
           ))}
         </div>
@@ -365,14 +366,14 @@ function CostToWinView({ rows, total, group, onGroup, showDollars, windowSeg, ro
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, marginBottom: 14 }}>
         <div style={tileStyle}>
-          <span style={tileN}>{showDollars ? (total.usdPerThousandWon != null ? `$${total.usdPerThousandWon.toFixed(2)}` : '—') : (total.wonValue > 0 && total.hours > 0 ? `${(total.hours / (total.wonValue / 1000)).toFixed(2)} h` : '—')}</span>
+          <span style={tileN}>{showDollars ? (total.usdPerThousandWon != null ? <MoneyText text={`$${total.usdPerThousandWon.toFixed(2)}`} /> : '—') : (total.wonValue > 0 && total.hours > 0 ? `${(total.hours / (total.wonValue / 1000)).toFixed(2)} h` : '—')}</span>
           <span style={tileL}>{showDollars ? 'spent per $1k won' : 'clocked per $1k won'}</span>
-          <span style={{ ...tileL, display: 'block' }}>{showDollars ? costToWinWords(total) : `${Math.round(total.hours)} h · ${formatUsdShort(total.wonValue)} won`}</span>
+          <span style={{ ...tileL, display: 'block' }}>{showDollars ? <MoneyText text={costToWinWords(total)} /> : <MoneyText text={`${Math.round(total.hours)} h · ${formatUsdShort(total.wonValue)} won`} />}</span>
         </div>
         <div style={tileStyle}>
           <span style={tileN}>{pct(total.hitRateByValue)}</span>
           <span style={tileL}>won by value · {total.won} of {decided} decided by count</span>
-          <span style={{ ...tileL, display: 'block' }}>{formatUsdShort(total.wonValue)} won · {formatUsdShort(total.lostValue)} lost</span>
+          <span style={{ ...tileL, display: 'block' }}><MoneyText text={formatUsdShort(total.wonValue)} /> won · <MoneyText text={formatUsdShort(total.lostValue)} /> lost</span>
         </div>
         <div style={tileStyle}>
           <span style={tileN}>{total.bids}</span>
@@ -416,11 +417,11 @@ function CostToWinView({ rows, total, group, onGroup, showDollars, windowSeg, ro
                   <td style={numStyle}>{r.bids}</td>
                   <td style={numStyle}>{r.bidsWithTime || '—'}</td>
                   <td style={numStyle}>{r.hours > 0 ? Math.round(r.hours) : '—'}</td>
-                  {showDollars && <td style={numStyle}>{r.usd > 0 ? usd(r.usd) : '—'}</td>}
+                  {showDollars && <td style={numStyle}>{r.usd > 0 ? <MoneyText text={usd(r.usd)} /> : '—'}</td>}
                   <td style={numStyle}>{r.won || '—'}</td>
                   <td style={numStyle}>{r.lost || '—'}</td>
                   <td style={numStyle}>{r.open || '—'}</td>
-                  <td style={numStyle}>{r.wonValue > 0 ? formatUsdShort(r.wonValue) : '—'}</td>
+                  <td style={numStyle}>{r.wonValue > 0 ? <MoneyText text={formatUsdShort(r.wonValue)} /> : '—'}</td>
                   <td style={numStyle}>{pct(r.hitRateByValue)}</td>
                   {showDollars && <td style={numStyle}>{r.usdPerThousandWon != null ? r.usdPerThousandWon.toFixed(2) : '—'}</td>}
                 </tr>
@@ -432,11 +433,11 @@ function CostToWinView({ rows, total, group, onGroup, showDollars, windowSeg, ro
                 <td style={numStyle}>{total.bids}</td>
                 <td style={numStyle}>{total.bidsWithTime}</td>
                 <td style={numStyle}>{Math.round(total.hours)}</td>
-                {showDollars && <td style={numStyle}>{usd(total.usd)}</td>}
+                {showDollars && <td style={numStyle}><MoneyText text={usd(total.usd)} /></td>}
                 <td style={numStyle}>{total.won}</td>
                 <td style={numStyle}>{total.lost}</td>
                 <td style={numStyle}>{total.open}</td>
-                <td style={numStyle}>{formatUsdShort(total.wonValue)}</td>
+                <td style={numStyle}><MoneyText text={formatUsdShort(total.wonValue)} /></td>
                 <td style={numStyle}>{pct(total.hitRateByValue)}</td>
                 {showDollars && <td style={numStyle}>{total.usdPerThousandWon != null ? total.usdPerThousandWon.toFixed(2) : '—'}</td>}
               </tr>
@@ -460,10 +461,10 @@ function PursuitRowView({ row: r, showDollars, anyCards, anyMaterials, onClick }
         {r.hours > 0 ? formatPursuitHours(r.hours) : '—'}
         {r.people.length > 0 && (r.people.length > 1 || r.people[0]!.name !== r.estimatorName) && <span style={{ ...subStyle, textAlign: 'right' }}>{formatPursuitPeople(r.people)}</span>}
       </td>
-      {showDollars && <td style={numStyle}>{r.totalUsd > 0 ? usd(r.totalUsd) : '—'}</td>}
-      {showDollars && anyCards && <td style={numStyle}>{r.cardUsd > 0 ? usd(r.cardUsd) : '—'}</td>}
-      {showDollars && anyMaterials && <td style={numStyle}>{r.materialsUsd > 0 ? usd(r.materialsUsd) : '—'}</td>}
-      <td style={numStyle}>{r.bidValue != null ? usd(r.bidValue) : '—'}</td>
+      {showDollars && <td style={numStyle}>{r.totalUsd > 0 ? <MoneyText text={usd(r.totalUsd)} /> : '—'}</td>}
+      {showDollars && anyCards && <td style={numStyle}>{r.cardUsd > 0 ? <MoneyText text={usd(r.cardUsd)} /> : '—'}</td>}
+      {showDollars && anyMaterials && <td style={numStyle}>{r.materialsUsd > 0 ? <MoneyText text={usd(r.materialsUsd)} /> : '—'}</td>}
+      <td style={numStyle}>{r.bidValue != null ? <MoneyText text={usd(r.bidValue)} /> : '—'}</td>
       {showDollars && <td style={numStyle}>{r.usdPerThousandBid != null ? r.usdPerThousandBid.toFixed(2) : '—'}</td>}
       <td style={cellStyle}><OutcomeChip outcome={r.outcome} /></td>
     </tr>
@@ -559,8 +560,8 @@ function BidVsActualView({ rows, tiles, loading, showDollars, verdicts, burnLoad
                       <Link to={jobWindowHref(r.jobId)} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 500 }}>{r.jobLabel}</Link>
                       <span style={subStyle}>← {r.bidLabel}{r.estimatorName ? ` · ${r.estimatorName}` : ''}</span>
                     </td>
-                    <td style={numStyle}>{showDollars ? (r.pursuitUsd > 0 ? usd(r.pursuitUsd) : '—') : (r.pursuitHours > 0 ? formatPursuitHours(r.pursuitHours) : '—')}</td>
-                    <td style={numStyle}>{r.revenue > 0 ? usd(r.revenue) : '—'}</td>
+                    <td style={numStyle}>{showDollars ? (r.pursuitUsd > 0 ? <MoneyText text={usd(r.pursuitUsd)} /> : '—') : (r.pursuitHours > 0 ? formatPursuitHours(r.pursuitHours) : '—')}</td>
+                    <td style={numStyle}>{r.revenue > 0 ? <MoneyText text={usd(r.revenue)} /> : '—'}</td>
                     <td style={{ ...numStyle, whiteSpace: 'normal', minWidth: 120 }} data-testid="bva-priced">
                       {r.priced ? pricedMarginPctWords(r.priced) : '—'}
                       <span style={{ ...subStyle, textAlign: 'right' }}>{r.priced ? pricedMarginDetailWords(r.priced) : 'not priced on the Workbench'}</span>
@@ -581,7 +582,7 @@ function BidVsActualView({ rows, tiles, loading, showDollars, verdicts, burnLoad
                     )}
                     <td style={numStyle}>{r.predictedHours != null ? hrs(r.predictedHours) : '—'}</td>
                     <td style={numStyle}>{hrs(r.recordedHours)}</td>
-                    {showDollars && <td style={numStyle}>{r.predictedDirectUsd != null ? usd(r.predictedDirectUsd) : '—'}{r.materialsOnly && <span style={{ ...subStyle, textAlign: 'right' }}>materials only</span>}</td>}
+                    {showDollars && <td style={numStyle}>{r.predictedDirectUsd != null ? <MoneyText text={usd(r.predictedDirectUsd)} /> : '—'}{r.materialsOnly && <span style={{ ...subStyle, textAlign: 'right' }}>materials only</span>}</td>}
                     <td style={numStyle}>{r.pctDone != null ? `${Math.round(r.pctDone)}%` : '—'}</td>
                     <td style={{ ...cellStyle, whiteSpace: 'normal', minWidth: 190 }}>
                       <span style={{ ...chipBase, cursor: 'default', borderWidth: 0, color: c.fg, background: c.bg, fontWeight: 500 }}>{r.read === 'near' || r.read === 'over' || r.read === 'under' ? r.words : BID_VS_ACTUAL_READ_LABELS[r.read]}</span>

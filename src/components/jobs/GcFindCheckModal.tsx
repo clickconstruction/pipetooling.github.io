@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { buildGcChecksReport, checkAppliedSentence, checkHeadline, checkMoveWords, findChecks, formatYmdLong, formatYmdShort, type GcCheck } from '../../lib/jobs/gcChecksApplied'
 import { fetchDevelopmentChecksInputs, fetchGcChecksInputs, type GcChecksInputs } from '../../lib/jobs/gcChecksAppliedIo'
 import { addDaysYmd } from '../../lib/emailSchedule/emailScheduleWeek'
@@ -10,6 +9,7 @@ import { gcChecksSheetPdfBlob } from '../../lib/jobsDocuments/gcChecksAppliedPdf
 import { EmptyState } from '../EmptyState'
 import { emptyWords } from '../../lib/emptyWords'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { Money } from '../Money'
 
 type Props = {
   /** The GC, or under byDevelopment the development (GC Review's grouping fields hold either). */
@@ -122,7 +122,7 @@ export default function GcFindCheckModal({ gcId, gcName, byDevelopment = false, 
             <span style={{ fontSize: '1rem', fontWeight: 700 }}>Find a check — {gcName}</span>
             {report ? (
               <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                {report.checks.length} payment{report.checks.length === 1 ? '' : 's'} on record · ${formatCurrency(report.summary.received)}
+                {report.checks.length} payment{report.checks.length === 1 ? '' : 's'} on record · <Money amount={report.summary.received} />
               </span>
             ) : null}
             <button type="button" onClick={onClose} aria-label="Close Find a check" style={{ marginLeft: 'auto', border: 'none', background: 'none', fontSize: '1.1rem', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -145,7 +145,7 @@ export default function GcFindCheckModal({ gcId, gcName, byDevelopment = false, 
           {sheet ? (
             <div style={{ marginTop: '0.55rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               <span style={{ flex: '1 1 14rem', minWidth: 0 }}>
-                The sheet: {sheet.checks.length} payment{sheet.checks.length === 1 ? '' : 's'}{sheet.sinceYmd ? ` since ${formatYmdLong(sheet.sinceYmd)}` : ' on record'} · ${formatCurrency(sheet.summary.received)}
+                The sheet: {sheet.checks.length} payment{sheet.checks.length === 1 ? '' : 's'}{sheet.sinceYmd ? ` since ${formatYmdLong(sheet.sinceYmd)}` : ' on record'} · <Money amount={sheet.summary.received} />
                 {sheet.earlierCount > 0 ? (
                   <>
                     {' · '}

@@ -41,6 +41,11 @@ export type PromiseAt = {
     projectId: string | null
     /** The job's name, for the words. */
     jobName: string | null
+    /**
+     * The line is on a Pipeline job (punch list #421): the flow's holds are a GC job's, so a hold is skipped with words
+     * that say so, never as a line on no job.
+     */
+    pipelineJob?: boolean
   }
   /** Who said it, as `promiseChoices` reads them, with their ids. */
   person: PromisePerson & { contactId: string; companyId: string | null }
@@ -174,6 +179,7 @@ export function promiseWriteThrough(p: WrittenPromise, at: PromiseAt): PromiseWr
 
   /** A hold on a GC job's step: only for a day after today, never earlier than one already standing. */
   const hold = (stepId: string) => {
+    if (!job && at.line.pipelineJob) return void out.skips.push(PIPELINE_HOLD_WORDS)
     if (!job) return void out.skips.push(`The line is on no job, so the reminder was not held. Tie it to a job first.`)
     if (day <= at.todayYmd) return void out.skips.push(`${words} is not after today, so the reminder was not held.`)
     const standing = at.holds[`${stepId}|${job}`]
@@ -230,7 +236,7 @@ export function promiseWriteThrough(p: WrittenPromise, at: PromiseAt): PromiseWr
             next_followup_cleared: false,
           },
         })
-      } else if (job) hold(HOLD_STEP.decision!)
+      } else if (job || at.line.pipelineJob) hold(HOLD_STEP.decision!)
       else out.skips.push(`The line is on no bid or job. Tie it to the bid, then set its follow-up day.`)
       return out
     }
@@ -240,6 +246,40 @@ export function promiseWriteThrough(p: WrittenPromise, at: PromiseAt): PromiseWr
       hold(HOLD_STEP[p.kind]!)
       return out
   }
+}
+
+/** Said for a hold on a line tied to a Pipeline job: the flow's reminders are a GC job's. */
+export const PIPELINE_HOLD_WORDS = 'The flow keeps reminders on a GC job only. The day stays on their line.'
+
+/** Where a write went, as the sentence after *Written down* says it. */
+function wentWords(write: PromiseWrite): string {
+  switch (write.kind) {
+    case 'askDay':
+      return 'It went on their ask on the Board.'
+    case 'tradePromise':
+      return 'It went on the Board’s promises.'
+    case 'payment':
+      return 'It went on the Pipeline.'
+    case 'bidFollowup':
+      return 'It is the bid’s follow-up day.'
+    case 'hold':
+      return `The flow’s reminder waits until ${dayLabel(write.until)}.`
+  }
+}
+
+/**
+ * What the office reads after a heard day is written and its write-throughs run (punch list #421): the written words,
+ * then where each write went and every skip; a refusal alone, in its own words. A toast's tone with it.
+ */
+export function throughWords(
+  written: string,
+  run: { made: readonly PromiseWrite[]; refused: string | null },
+  skips: readonly string[],
+): { words: string; tone: 'success' | 'info' | 'error' } {
+  if (run.refused) return { words: run.refused, tone: 'error' }
+  const went = run.made.map(wentWords)
+  const words = [written, ...went, ...skips].join(' ')
+  return { words, tone: went.length > 0 || skips.length === 0 ? 'success' : 'info' }
 }
 
 /** Each write in main's own verbs. The press supplies them. */

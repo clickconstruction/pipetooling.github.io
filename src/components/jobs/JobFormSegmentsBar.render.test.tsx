@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { BillsViewSwitch, InvoicesSectionHeading } from './JobFormSegmentsBar'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 describe('InvoicesSectionHeading flow explainer (moved beside the ② heading, v2.1146)', () => {
   it('is collapsed by default and expands with the sample chips', () => {
@@ -19,7 +20,7 @@ describe('InvoicesSectionHeading flow explainer (moved beside the ② heading, v
     fireEvent.click(screen.getByText(/How invoices and jobs move/))
     expect(screen.getByText(/green card/)).toBeTruthy()
     expect(screen.getByText(/blue card/)).toBeTruthy()
-    expect(screen.getByText('$400.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$400.00'))).toBeTruthy()
     expect(screen.getByText('Job 742')).toBeTruthy()
     expect(screen.getByText(/Ready to Bill → Billed → Paid/)).toBeTruthy()
   })

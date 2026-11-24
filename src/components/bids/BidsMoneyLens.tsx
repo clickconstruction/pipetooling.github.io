@@ -14,6 +14,7 @@ import { todayYmd } from '../../lib/bids/bidMoneyLine'
 import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { BidMoneyLine } from './BidMoneyLine'
+import { MoneyText } from '../Money'
 
 type Props = {
   bids: BidWithBuilder[]
@@ -68,7 +69,7 @@ export function BidsMoneyLens({ bids, strips, ledgerPrefixMap, authUserId, narro
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
             Money on {onlyMine ? 'my' : 'our'} bids
-            {strips.loaded ? <span style={rollupPill} data-testid="money-lens-rollup">{moneyLensRollup(lens)}</span> : null}
+            {strips.loaded ? <span style={rollupPill} data-testid="money-lens-rollup"><MoneyText text={moneyLensRollup(lens)} /></span> : null}
             <span style={{ ...muted, fontWeight: 400 }}>of {wonBids.length} won or started · past their word first</span>
           </div>
           <label style={{ ...muted, display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>

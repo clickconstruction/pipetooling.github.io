@@ -38,6 +38,7 @@ import {
   projectsSecondaryLinkColor,
 } from '../lib/projectsPageStyles'
 import type { Database } from '../types/database'
+import { MoneyText } from '../components/Money'
 
 type Project = Database['public']['Tables']['projects']['Row']
 type ProjectWithCustomer = Project & { 
@@ -891,21 +892,21 @@ export default function Projects() {
                       <span>
                         Projected{' '}
                         <strong style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
-                          ${moneyByProject[p.id]!.projected.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <MoneyText text={`$${moneyByProject[p.id]!.projected.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                         </strong>
                       </span>
                       {moneyByProject[p.id]!.committed !== 0 && (
                         <span>
                           Committed{' '}
                           <strong style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
-                            ${moneyByProject[p.id]!.committed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            <MoneyText text={`$${moneyByProject[p.id]!.committed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                           </strong>
                         </span>
                       )}
                       <span>
                         Spent{' '}
                         <strong style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
-                          ${moneyByProject[p.id]!.spent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <MoneyText text={`$${moneyByProject[p.id]!.spent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                         </strong>
                       </span>
                     </div>

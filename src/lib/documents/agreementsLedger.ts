@@ -119,12 +119,13 @@ export type StateAsk = StatePick | 'any'
 export const AGREEMENT_GROUP_KINDS: Readonly<Record<AgreementGroup, ReadonlyArray<AgreementKind>>> = {
   jobs: ['job_contract', 'their_paper'],
   warranty: ['job_warranty'],
-  // A trade company that is a party sits with the subs, where the office looks for one (punch list #403).
-  people: ['person_agreement', 'trade_agreement'],
+  // A trade company sits with the subs, where the office looks for one (punch list #403): a trade party's paper, and
+  // since step 6 the company's own paper too, which People → Contracts shows under the company's row.
+  people: ['person_agreement', 'trade_agreement', 'company_agreement'],
   outside: ['customer_agreement', 'supply_house_agreement', 'outside_agreement'],
   partners: ['partner_agreement'],
   orders: ['work_order'],
-  gc: ['owner_contract', 'sow', 'company_agreement'],
+  gc: ['owner_contract', 'sow'],
 }
 
 export const AGREEMENT_KIND_CHIPS: ReadonlyArray<{ key: KindPick; label: string }> = [
@@ -137,7 +138,7 @@ export const AGREEMENT_KIND_CHIPS: ReadonlyArray<{ key: KindPick; label: string 
   { key: 'partners', label: 'Partners' },
   { key: 'orders', label: 'Work orders' },
   // GC mode's papers. The chip shows to everyone with the tab; the rows are each table's own to open, so an assistant
-  // sees a trade company's agreement under it and none of the owner contracts or statements of work.
+  // sees none of the owner contracts or statements of work. A trade company's own paper sits under Staff and subs.
   { key: 'gc', label: 'GC projects' },
 ]
 
@@ -163,7 +164,7 @@ export function agreementStateChips(notSent: number | null, picked: StatePick): 
 /**
  * The chips an estimator has (punch list #403, call 8): the kinds their role reads and no other. An outside company is
  * a customer, a supply house or a trade company, so a trade company's agreement sits under **Outside companies** for
- * them, where the office finds it under **Staff and subs** or **GC projects**. A party on no list is closed to them.
+ * them, where the office finds it under **Staff and subs**. A party on no list is closed to them.
  */
 export const ESTIMATOR_GROUP_KINDS: Readonly<Partial<Record<AgreementGroup, ReadonlyArray<AgreementKind>>>> = {
   outside: ['customer_agreement', 'supply_house_agreement', 'trade_agreement', 'company_agreement'],
@@ -259,9 +260,16 @@ export const AGREEMENTS_EMPTY_PAGE = { label: 'Pipeline', to: '/jobs?tab=stages'
 export const AGREEMENTS_READER_EMPTY_TAIL = 'The office sends a paper to an outside company from this tab.'
 
 /**
- * Where an estimator opens a signed paper: the tab is theirs to read, and the press is on the company's own page.
+ * What an estimator's list says at its foot (punch list #403, the owner's second decision). A signed line's name is a
+ * press that opens its record, and a paper that waits has none. A training account reads the lines and opens nothing.
  */
-export const AGREEMENTS_READER_DOORS = 'This list is for reading. A signed paper, a W-9 or a certificate opens from the company’s own page.'
+export const AGREEMENTS_READER_DOORS = 'Press a signed paper’s name to open its record. A paper that is not signed yet has nothing to open.'
+export const AGREEMENTS_TRAINING_DOORS = 'This list is for reading. A training account opens no signed paper.'
+
+/** The foot of an estimator's list: `opensRecords` is `canOpenSignedRecord` for the reader. */
+export function agreementsReaderDoorsWords(opensRecords: boolean): string {
+  return opensRecords ? AGREEMENTS_READER_DOORS : AGREEMENTS_TRAINING_DOORS
+}
 
 /**
  * The empty list's words: nothing matches the search (*Clear the search*), nothing matches the chips (*Clear the
@@ -590,4 +598,16 @@ export function agreementDoor(row: Pick<AgreementRow, 'kind' | 'source_id' | 'st
   if (isPartyAgreementKind(row.kind)) return str(fact(row, 'status')) === 'signed' ? { kind: 'person-signed', documentId: row.source_id } : { kind: 'none' }
   if (row.kind === 'owner_contract' || row.kind === 'sow' || row.kind === 'company_agreement') return { kind: 'gc', to: AGREEMENTS_GC_PAGE }
   return { kind: 'none' }
+}
+
+/**
+ * What a press opens for an estimator, who reads the tab and acts on nothing (punch list #403, the owner's second
+ * decision): a signed paper opens the signed record, the one window their role reads whole, and every other line is
+ * plain words. A waiting paper, a work order and a GC paper keep no press. `opensRecords` is `canOpenSignedRecord`:
+ * a training account opens nothing.
+ */
+export function agreementReaderDoor(row: Pick<AgreementRow, 'kind' | 'source_id' | 'state' | 'job_id' | 'facts'>, opensRecords: boolean): AgreementDoor {
+  if (!opensRecords) return { kind: 'none' }
+  const door = agreementDoor(row)
+  return door.kind === 'person-signed' ? door : { kind: 'none' }
 }

@@ -7,7 +7,7 @@
  */
 import type { CSSProperties } from 'react'
 import { marginFlag } from '../../lib/bids/bidFormatting'
-import { formatCurrency } from '../../lib/format'
+import { Money } from '../Money'
 
 export type PricingBreakdownRow = {
   /** The count row behind this line — the jump chips' landing key (v2.2400). */
@@ -176,9 +176,9 @@ export function PricingMarginBreakdownModal({
             <tr>
               <td style={labelStyle}>Sale Price{b.isFixedPrice ? ' (fixed)' : ''}</td>
               {showPerUnit && (
-                <td style={moneyStyle}>{b.isFixedPrice ? '—' : `$${formatCurrency(b.unitPrice)}`}</td>
+                <td style={moneyStyle}>{b.isFixedPrice ? '—' : <Money amount={b.unitPrice} />}</td>
               )}
-              <td style={{ ...moneyStyle, fontWeight: 600 }}>${formatCurrency(b.revenue)}</td>
+              <td style={{ ...moneyStyle, fontWeight: 600 }}><Money amount={b.revenue} /></td>
             </tr>
             {b.isFixedPrice && (
               <tr>
@@ -194,35 +194,35 @@ export function PricingMarginBreakdownModal({
               <td style={labelStyle}>
                 Materials {b.materialsFromTakeoff != null ? '(from Takeoffs)' : '(proportional)'}
               </td>
-              {showPerUnit && <td style={moneyStyle}>${formatCurrency(perUnit(b.materialsBeforeTax))}</td>}
-              <td style={moneyStyle}>${formatCurrency(b.materialsBeforeTax)}</td>
+              {showPerUnit && <td style={moneyStyle}><Money amount={perUnit(b.materialsBeforeTax)} /></td>}
+              <td style={moneyStyle}><Money amount={b.materialsBeforeTax} /></td>
             </tr>
             {b.taxAmount > 0 && (
               <tr>
                 <td style={labelStyle}>Tax ({b.taxPercent}%)</td>
-                {showPerUnit && <td style={moneyStyle}>${formatCurrency(perUnit(b.taxAmount))}</td>}
-                <td style={moneyStyle}>${formatCurrency(b.taxAmount)}</td>
+                {showPerUnit && <td style={moneyStyle}><Money amount={perUnit(b.taxAmount)} /></td>}
+                <td style={moneyStyle}><Money amount={b.taxAmount} /></td>
               </tr>
             )}
             <tr>
               <td style={{ ...labelStyle, paddingBottom: '0.45rem' }}>Labor</td>
               {showPerUnit && (
-                <td style={{ ...moneyStyle, paddingBottom: '0.45rem' }}>${formatCurrency(perUnit(b.laborCost))}</td>
+                <td style={{ ...moneyStyle, paddingBottom: '0.45rem' }}><Money amount={perUnit(b.laborCost)} /></td>
               )}
-              <td style={{ ...moneyStyle, paddingBottom: '0.45rem' }}>${formatCurrency(b.laborCost)}</td>
+              <td style={{ ...moneyStyle, paddingBottom: '0.45rem' }}><Money amount={b.laborCost} /></td>
             </tr>
             <tr>
               <td style={subtotalLabelStyle}>Our cost</td>
-              {showPerUnit && <td style={subtotalMoneyStyle}>${formatCurrency(perUnit(b.cost))}</td>}
-              <td style={{ ...subtotalMoneyStyle, fontWeight: 600 }}>${formatCurrency(b.cost)}</td>
+              {showPerUnit && <td style={subtotalMoneyStyle}><Money amount={perUnit(b.cost)} /></td>}
+              <td style={{ ...subtotalMoneyStyle, fontWeight: 600 }}><Money amount={b.cost} /></td>
             </tr>
             <tr>
               <td style={subtotalLabelStyle}>Profit</td>
               {showPerUnit && (
-                <td style={{ ...subtotalMoneyStyle, color: profitColor }}>${formatCurrency(perUnit(profit))}</td>
+                <td style={{ ...subtotalMoneyStyle, color: profitColor }}><Money amount={perUnit(profit)} /></td>
               )}
               <td style={{ ...subtotalMoneyStyle, fontWeight: 600, color: profitColor }}>
-                ${formatCurrency(profit)}
+                <Money amount={profit} />
               </td>
             </tr>
           </tbody>

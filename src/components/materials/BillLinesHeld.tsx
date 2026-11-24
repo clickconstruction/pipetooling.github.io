@@ -9,6 +9,7 @@ import type { PaperRow } from '../../lib/materials/lines/paperRows'
 import type { HeldBillsData, HeldBillsIo } from '../../lib/materials/lines/heldBillsIo'
 import { groupToggleLabel, HELD_PRESS_WORDS, heldBills, showHeldLabel, standingWords, toReadWords, type HeldBill, type HeldGroup, type HeldPress, type HeldReason } from '../../lib/materials/lines/heldBills'
 import { PaperLookModal } from './PaperLookModal'
+import { MoneyText } from '../Money'
 
 /**
  * Supply house bill lines, the bills that need a person (punch list #298 PR 3, v2.7110; frame F of the card's
@@ -131,7 +132,7 @@ export function BillLinesHeld({ io, paperIo, onOpenBill, loadPaperBytes, refresh
                   <td style={cell}>{b.houseName}</td>
                   <td style={{ ...cell, whiteSpace: 'nowrap' }}>{b.number || 'no number'}</td>
                   <td style={{ ...cell, whiteSpace: 'nowrap' }}>{b.dateYmd}</td>
-                  <td style={{ ...cell, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{moneyWords(b.amountCents)}</td>
+                  <td style={{ ...cell, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={moneyWords(b.amountCents)} /></td>
                   <td style={{ ...cell, color: 'var(--text-muted)' }}>{b.note}</td>
                   <td style={{ ...cell, whiteSpace: 'nowrap', textAlign: 'right' }}>
                     <span style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>

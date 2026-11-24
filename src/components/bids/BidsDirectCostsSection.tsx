@@ -3,6 +3,7 @@ import { formatCurrency } from '../../lib/format'
 import { LABOR_STAGE_LABELS, laborCellAriaLabel } from '../../lib/bids/laborCellSaveState'
 import { DIRECT_COST_KINDS, DIRECT_COST_KIND_LABELS, DIRECT_COST_KIND_WORDS, directCostKindWords, flattenDirectCostTables, sumDirectCosts, type DirectCostKind } from '../../lib/bids/costEstimateDirectCosts'
 import { EmptyState } from '../EmptyState'
+import { Money, MoneyText } from '../Money'
 
 /**
  * DIRECT COSTS as one list (the Labor refresh PR 4b, v2.3295). Five identical
@@ -102,10 +103,10 @@ export function BidsDirectCostsSection(p: BidsDirectCostsSectionProps) {
                     <span style={kindChip('other')} title="Computed from the labor hours, the hours-per-trip box, the $/mile box and the bid's distance to the office — edit those above">driving</span>
                   </td>
                   <td style={{ padding: '0.2rem 0.5rem', color: 'var(--text-700)' }}>
-                    {crewDays.toLocaleString('en-US', { maximumFractionDigits: 1 })} crew-days · {driving.numTrips.toLocaleString('en-US', { maximumFractionDigits: 1 })} trips ({driving.hrsPerTrip} h each) · {driving.distance.toLocaleString('en-US', { maximumFractionDigits: 0 })} mi · ${driving.ratePerMile.toFixed(2)}/mi
+                    {crewDays.toLocaleString('en-US', { maximumFractionDigits: 1 })} crew-days · {driving.numTrips.toLocaleString('en-US', { maximumFractionDigits: 1 })} trips ({driving.hrsPerTrip} h each) · {driving.distance.toLocaleString('en-US', { maximumFractionDigits: 0 })} mi · <MoneyText text={`$${driving.ratePerMile.toFixed(2)}`} />/mi
                   </td>
                   <td colSpan={3} style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                    ${formatCurrency(driving.drivingCost)} <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>computed · in the total</span>
+                    <Money amount={driving.drivingCost} /> <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>computed · in the total</span>
                   </td>
                   <td />
                 </tr>
@@ -118,7 +119,7 @@ export function BidsDirectCostsSection(p: BidsDirectCostsSectionProps) {
                   <td style={{ padding: '0.2rem 0.5rem', color: 'var(--text-700)' }}>{row.note ?? ''}</td>
                   {STAGES.map((stage) => (
                     <td key={stage} style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
-                      {row[stage] === 0 ? '' : `$${formatCurrency(row[stage])}`}
+                      {row[stage] === 0 ? '' : <Money amount={row[stage]} />}
                     </td>
                   ))}
                   <td />
@@ -166,7 +167,7 @@ export function BidsDirectCostsSection(p: BidsDirectCostsSectionProps) {
         )}
         {list.length > 0 ? (
           <p style={{ margin: '0.5rem 0 0', textAlign: 'right', fontWeight: 600, fontSize: '0.875rem' }} data-testid="direct-costs-total">
-            Other direct total: ${formatCurrency(totals.total)}
+            Other direct total: <Money amount={totals.total} />
             {totals.rowCount > 1 ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {directCostKindWords(totals, (n) => `$${formatCurrency(n)}`)}</span> : null}
           </p>
         ) : null}

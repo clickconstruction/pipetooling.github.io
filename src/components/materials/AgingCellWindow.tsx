@@ -6,7 +6,7 @@
  * (`useSupplyHouseAgingWindows`), handed in whole as `aging` and read under the names the tab used, and the doors out
  * of it (a bill's Edit window, the house's Record a payment, the house itself) are the tab's, lent as props.
  */
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { formatCurrency } from '../../lib/format'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
@@ -18,6 +18,8 @@ import {
   invoicesForAgingCell,
   isMovableAgingInvoice,
 } from '../../lib/supplyHouseAging'
+import { supplyInvoiceShareUrl } from '../../lib/jobs/supplyInvoiceList'
+import { BillViewer } from './BillViewer'
 import { AgingInvoiceDoor, AgingMakePaymentDoor, AgingRowDoors } from './AgingCellDoors'
 import { SUPPLY_MOVE_ASK_AGE, ageState } from '../../lib/ageState'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../../lib/stickyModalHeaderStyle'
@@ -33,6 +35,7 @@ import { EmptyState } from '../EmptyState'
 import type { SupplyHouseAgingWindows } from './useSupplyHouseAgingWindows'
 import type { AgingInvoiceRow, SupplyHouseSummaryRow } from './useSupplyHouseAccountsPayable'
 import type { SupplyHouse } from './useSupplyHouseInvoiceForm'
+import { Money, MoneyText } from '../Money'
 
 export interface AgingCellWindowProps {
   /** The aging windows' engine, whole. */
@@ -74,6 +77,8 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
     markMovedConfirmed,
     setInvoiceJobAcct,
   } = aging
+  // The bill viewer over the window (punch list #431): the bill on show, flipped through the cell's own bills.
+  const [seeBillId, setSeeBillId] = useState<string | null>(null)
   if (!agingCellModal) return null
   const { houseId, cell } = agingCellModal
   const isMovableList = cell === 'movable'
@@ -155,7 +160,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
             due {Number(inv.due_date.slice(5, 7))}/{Number(inv.due_date.slice(8, 10))}
           </span>
         )}
-        <span className={`aging-win-amt${credit ? ' aging-win-amt--credit' : ''}`}>{money(Number(inv.amount ?? 0))}</span>
+        <span className={`aging-win-amt${credit ? ' aging-win-amt--credit' : ''}`}><MoneyText text={money(Number(inv.amount ?? 0))} /></span>
         <span className="aging-win-rowstate">
           <AgingRowDoors
             doors={agingCellRowDoors(inv, agingCellAccountsLoaded ? allocationsOf(inv.id).length : null)}
@@ -199,9 +204,16 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
           ) : null}
         </span>
         {inv.link ? (
-          <a className="aging-win-ext" href={inv.link} target="_blank" rel="noreferrer" title="The invoice" aria-label={`Open invoice ${inv.invoice_number}`}>
+          <button
+            type="button"
+            className="aging-win-ext"
+            onClick={() => setSeeBillId(inv.id)}
+            title="See the bill here, without leaving the page"
+            aria-label={`See invoice ${inv.invoice_number}`}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', fontFamily: 'inherit', fontSize: 'inherit', cursor: 'pointer' }}
+          >
             ↗
-          </a>
+          </button>
         ) : (
           <span className="aging-win-ext" />
         )}
@@ -253,7 +265,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
             ) : null}
           </div>
           <div className="aging-win-job-meta">
-            {n} {n === 1 ? 'invoice' : 'invoices'} · {money(job.total)}
+            {n} {n === 1 ? 'invoice' : 'invoices'} · <MoneyText text={money(job.total)} />
             {job.onCount > 0 && job.offCount > 0 ? ` · ${job.onCount} of ${n} on it` : ''}
           </div>
         </div>
@@ -290,11 +302,11 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
           <div className="aging-win-split">
             <div className="aging-win-split-row">
               <div className="aging-win-fig aging-win-fig--on">
-                <b>{money(accountSplit.onAmount)}</b>
+                <b><MoneyText text={money(accountSplit.onAmount)} /></b>
                 <span>on job accounts · {accountSplit.onCount} of {accountSplit.onCount + accountSplit.offCount} · the owners' debt</span>
               </div>
               <div className="aging-win-fig aging-win-fig--off">
-                <b>{money(accountSplit.offAmount)}</b>
+                <b><MoneyText text={money(accountSplit.offAmount)} /></b>
                 <span>not on one · {accountSplit.offCount} of {accountSplit.onCount + accountSplit.offCount} · Click's debt</span>
               </div>
             </div>
@@ -314,7 +326,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
             <Fragment key={g.key}>
               {g.name ? (
                 <div className="aging-win-house">
-                  {g.name} · {money(g.rows.reduce((acc, r) => acc + Number(r.amount ?? 0), 0))}
+                  {g.name} · <MoneyText text={money(g.rows.reduce((acc, r) => acc + Number(r.amount ?? 0), 0))} />
                   {isMovableList ? (() => {
                     const rep = (agingCellReps[g.key] ?? []).find((r) => typeof r.email === 'string' && r.email.includes('@')) ?? (agingCellReps[g.key] ?? [])[0]
                     const unasked = g.rows.filter((r) => !agingMoveData.asks[r.id])
@@ -383,12 +395,12 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
           <div style={{ fontWeight: 600 }}>
             {isMovableList ? (
               <>
-                {cellRows.length === 0 ? 'All moved or marked.' : `${movableToAsk} to ask · ${cellRows.length - movableToAsk} asked, awaiting the house · $${formatCurrency(total)}`}
+                {cellRows.length === 0 ? 'All moved or marked.' : <MoneyText text={`${movableToAsk} to ask · ${cellRows.length - movableToAsk} asked, awaiting the house · $${formatCurrency(total)}`} />}
                 {agingMoveError ? <span style={{ display: 'block', fontWeight: 500, color: 'var(--text-red-700)' }}>{agingMoveError}</span> : null}
               </>
             ) : (
               <>
-            {isCredits ? 'Open credits' : 'Cell total'}: {money(total)}
+            {isCredits ? 'Open credits' : 'Cell total'}: <MoneyText text={money(total)} />
               </>
             )}
           </div>
@@ -442,7 +454,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
                   <div>
                     <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Move {inv.invoice_number} onto the job account</h3>
                     <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                      {thisHouse} · {jobLabel} · ${formatCurrency(inv.amount)}{inv.due_date ? <> · due {formatYmdLocal(inv.due_date)} — <strong style={{ color: 'var(--text-amber-800)' }}>{daysLeft} day{daysLeft === 1 ? '' : 's'} left in the window</strong></> : null}
+                      {thisHouse} · {jobLabel} · <Money amount={inv.amount} />{inv.due_date ? <> · due {formatYmdLocal(inv.due_date)} — <strong style={{ color: 'var(--text-amber-800)' }}>{daysLeft} day{daysLeft === 1 ? '' : 's'} left in the window</strong></> : null}
                     </p>
                   </div>
                   <button type="button" onClick={closeMove} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
@@ -499,7 +511,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
                           <div><strong style={{ color: 'var(--text-base)' }}>To:</strong> {(rep!.name ?? '').trim() || 'Job accounts'} · {rep!.email}</div>
                           <div><strong style={{ color: 'var(--text-base)' }}>Subject:</strong> Move invoice {inv.invoice_number} to the {jobLabel.split(' ·')[0]} job account</div>
                           <div style={{ marginTop: '0.3rem', borderTop: '1px dashed var(--border)', paddingTop: '0.3rem' }}>
-                            Please move this charge onto the job account for {jobLabel}: {inv.invoice_number} · {formatYmdLocal(inv.invoice_date)} · ${formatCurrency(inv.amount)}{inv.purchase_order_number?.trim() ? ` · PO ${inv.purchase_order_number}` : ''}.{' '}
+                            Please move this charge onto the job account for {jobLabel}: {inv.invoice_number} · {formatYmdLocal(inv.invoice_date)} · <Money amount={inv.amount} />{inv.purchase_order_number?.trim() ? ` · PO ${inv.purchase_order_number}` : ''}.{' '}
                             {account?.status === 'open' && account.account_ref ? `Account ref ${account.account_ref}.` : AGING_MOVE_EMAIL_NO_ACCOUNT} We'll call to confirm. Replies come to you.
                           </div>
                         </div>
@@ -560,6 +572,16 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
           )
         })()}
       </div>
+      {seeBillId ? (
+        <BillViewer
+          // The cell's own bills, so Previous and Next stay inside what the window lists.
+          items={cellRows.map((inv) => ({ invoiceId: inv.id, number: inv.invoice_number, house: houseNameOf(inv.supply_house_id), dateYmd: (inv.invoice_date ?? '').slice(0, 10), amount: Number(inv.amount) || 0 }))}
+          openId={seeBillId}
+          onOpen={setSeeBillId}
+          onClose={() => setSeeBillId(null)}
+          shareUrlOf={(id) => supplyInvoiceShareUrl(id, null)}
+        />
+      ) : null}
     </div>
   )
 }

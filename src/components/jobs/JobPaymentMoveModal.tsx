@@ -49,6 +49,7 @@ import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { sendBackStripeBilledLine } from '../../lib/voidStripeInvoiceForRevert'
 import type { PaymentRow } from '../../lib/jobs/jobFormTypes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { Money } from '../Money'
 
 // The RPC and the destination read go through the untyped client until the types regenerate.
 const db = supabase as unknown as SupabaseClient
@@ -456,8 +457,8 @@ export function JobPaymentMoveModal({
                 {[plan.from, plan.to].map((s, i) => (
                   <tr key={i}>
                     <td style={{ padding: '3px 0' }}>{s.label}</td>
-                    <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>${formatCurrency(s.paidBefore)} → <strong>${formatCurrency(s.paidAfter)}</strong></td>
-                    <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>${formatCurrency(s.openBefore)} → <strong>${formatCurrency(s.openAfter)}</strong>{i === 1 && plan.toPaidInFull ? <span style={{ marginLeft: 6, color: 'var(--text-green-700)', fontSize: '0.75rem' }}>paid in full</span> : null}</td>
+                    <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}><Money amount={s.paidBefore} /> → <strong><Money amount={s.paidAfter} /></strong></td>
+                    <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}><Money amount={s.openBefore} /> → <strong><Money amount={s.openAfter} /></strong>{i === 1 && plan.toPaidInFull ? <span style={{ marginLeft: 6, color: 'var(--text-green-700)', fontSize: '0.75rem' }}>paid in full</span> : null}</td>
                   </tr>
                 ))}
               </tbody>

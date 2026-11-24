@@ -18,6 +18,7 @@ import { draftRetainageReleaseBill } from '../../lib/ar/retainageHeldIo'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { Money } from '../Money'
 
 /**
  * Edit Job → *Our contract on this job* (v2.3753, punch list #33 PR 1): the
@@ -254,7 +255,7 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
                   <div data-testid="lien-retainage-from-application" style={{ display: 'grid', gap: 3, fontSize: '0.8125rem' }}>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Retainage {gcName || 'the GC'} holds back, still unpaid</span>
                     <span>
-                      <strong>${formatCurrency(appFigure.amount)}</strong> <span style={{ color: 'var(--text-muted)' }}>· read from pay application {appFigure.applicationNumber}</span>
+                      <strong><Money amount={appFigure.amount} /></strong> <span style={{ color: 'var(--text-muted)' }}>· read from pay application {appFigure.applicationNumber}</span>
                     </span>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>The latest saved pay application is the source. Change it in the AIA window.</span>
                   </div>
@@ -279,17 +280,17 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
               {suggested ? (
                 <div data-testid="lien-retainage-suggested" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem 0.6rem', padding: '0.5rem 0.6rem', borderRadius: 4, fontSize: '0.8125rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border)' }}>
                   <span style={{ flex: '1 1 14rem' }}>
-                    The payments on this job look like {gcName || 'the GC'} holds back ${formatCurrency(suggested.held)}: {retainageSuggestionWords(suggested)}. No retainage is recorded yet.
+                    The payments on this job look like {gcName || 'the GC'} holds back <Money amount={suggested.held} />: {retainageSuggestionWords(suggested)}. No retainage is recorded yet.
                   </span>
                   <button type="button" disabled={busy} onClick={useSuggested} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', fontWeight: 600, borderRadius: 4, cursor: busy ? 'default' : 'pointer', border: '1px solid currentColor', background: 'none', color: 'inherit', opacity: busy ? 0.6 : 1 }}>
-                    Use ${formatCurrency(suggested.held)}
+                    Use <Money amount={suggested.held} />
                   </button>
                 </div>
               ) : null}
               {releaseDraft ? (
                 <div data-testid="lien-retainage-release-offer" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem 0.6rem', padding: '0.5rem 0.6rem', borderRadius: 4, fontSize: '0.8125rem', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', border: '1px solid var(--border-green)' }}>
                   <span style={{ flex: '1 1 14rem' }}>
-                    Our contract has ended and {gcName || 'the GC'} still holds ${formatCurrency(releaseDraft.amount)}. A release bill asks for it.
+                    Our contract has ended and {gcName || 'the GC'} still holds <Money amount={releaseDraft.amount} />. A release bill asks for it.
                   </span>
                   <button type="button" disabled={draftingRelease} onClick={() => void draftRelease()} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', fontWeight: 600, borderRadius: 4, cursor: draftingRelease ? 'default' : 'pointer', border: '1px solid currentColor', background: 'none', color: 'inherit', opacity: draftingRelease ? 0.6 : 1 }}>
                     {draftingRelease ? 'Drafting…' : 'Draft the release bill…'}

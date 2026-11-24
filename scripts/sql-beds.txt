@@ -123,6 +123,7 @@ bid-site-permits
 theme-review
 bid-photos
 bill-lines-sweep
+supply-bill-search
 price-sheets
 case-search-phrases
 person-matter-document-fence
@@ -170,3 +171,4 @@ write-down-first-amount
 working-hours
 stripe-paid-day
 license-roll-notes
+people-hours-recorded

@@ -1,7 +1,7 @@
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import type { Temperature } from '../../lib/jobs/gcStatementRounds'
 import type { TemperatureBoardRow } from '../../lib/jobs/temperatureBoard'
 import { payPromiseStatus } from '../../lib/jobs/payPromise'
+import { Money } from '../Money'
 
 /**
  * Temperature board (v2.2813): every GC over the round threshold, cold first,
@@ -72,7 +72,7 @@ export default function GcTemperatureBoard({
                       {r.gcName}
                     </button>
                     <span style={{ color: 'var(--text-muted)' }}>
-                      {' '}· ${formatCurrency(r.amount)} · {userNameById(r.senderUserId)}
+                      {' '}· <Money amount={r.amount} /> · {userNameById(r.senderUserId)}
                     </span>
                   </td>
                   <td style={{ padding: '0.35rem 0.4rem', verticalAlign: 'top', whiteSpace: 'nowrap' }}>

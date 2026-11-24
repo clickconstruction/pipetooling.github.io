@@ -1,6 +1,7 @@
 import { NO_TAG, buildTagComposition, type CompositionRowInput } from '../../lib/bids/pricingComposition'
 import { formatCurrency } from '../../lib/format'
 import { BreakdownCardShell, type BreakdownSlice } from './BreakdownCardShell'
+import { MoneyText } from '../Money'
 
 type Props = {
   /** The Workbench's effective rows with their tags. */
@@ -68,9 +69,9 @@ export function TagBreakdownCard({ rows, marginColor }: Props) {
                       ) : null}
                     </span>
                   </td>
-                  <td style={num(b.cost > 0 ? {} : { color: 'var(--text-faint)' })}>{b.cost > 0 ? money(b.cost) : 'no cost'}</td>
-                  <td style={num()}>{money(b.revenue)}</td>
-                  <td style={num(b.margin == null ? { color: 'var(--text-faint)' } : b.profit < 0 ? { color: 'var(--text-red-700)' } : {})}>{b.margin == null ? '—' : money(b.profit)}</td>
+                  <td style={num(b.cost > 0 ? {} : { color: 'var(--text-faint)' })}>{b.cost > 0 ? <MoneyText text={money(b.cost)} /> : 'no cost'}</td>
+                  <td style={num()}><MoneyText text={money(b.revenue)} /></td>
+                  <td style={num(b.margin == null ? { color: 'var(--text-faint)' } : b.profit < 0 ? { color: 'var(--text-red-700)' } : {})}>{b.margin == null ? '—' : <MoneyText text={money(b.profit)} />}</td>
                   <td style={num({ fontFamily: 'inherit', fontWeight: 700, color: b.margin == null ? 'var(--text-faint)' : marginColor(b.margin) })}>{pct(b.margin)}</td>
                 </tr>
               ))}
@@ -83,9 +84,9 @@ export function TagBreakdownCard({ rows, marginColor }: Props) {
                     return mc > 0 ? <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', fontWeight: 400, color: 'var(--text-muted)' }}>material sold at +{Math.round((mp / mc - 1) * 1000) / 10}% across the rows</span> : null
                   })()}
                 </td>
-                <td style={num(totalTd())}>{money(sumCost)}</td>
-                <td style={num(totalTd())}>{money(sum)}</td>
-                <td style={num(totalTd())}>{money(sum - sumCost)}</td>
+                <td style={num(totalTd())}><MoneyText text={money(sumCost)} /></td>
+                <td style={num(totalTd())}><MoneyText text={money(sum)} /></td>
+                <td style={num(totalTd())}><MoneyText text={money(sum - sumCost)} /></td>
                 <td style={num(totalTd({ fontFamily: 'inherit', color: sum > 0 && sumCost > 0 ? marginColor((sum - sumCost) / sum) : 'var(--text-faint)' }))}>{sum > 0 && sumCost > 0 ? pct((sum - sumCost) / sum) : '—'}</td>
               </tr>
             </tbody>
@@ -95,8 +96,8 @@ export function TagBreakdownCard({ rows, marginColor }: Props) {
       {tagged.length > 0 ? (
         <p style={{ margin: '0.5rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
           {comp.rowsWithManyTags > 0
-            ? `${comp.rowsWithManyTags} row${comp.rowsWithManyTags === 1 ? ' carries' : 's carry'} two tags, so the lines add to ${money(sum)}, more than the price (${money(comp.totalRevenue)}).`
-            : `Every row counts once; the lines add to the price, ${money(comp.totalRevenue)}. A tag's cost is its rows' material, tax and labor.`}
+            ? <MoneyText text={`${comp.rowsWithManyTags} row${comp.rowsWithManyTags === 1 ? ' carries' : 's carry'} two tags, so the lines add to ${money(sum)}, more than the price (${money(comp.totalRevenue)}).`} />
+            : <MoneyText text={`Every row counts once; the lines add to the price, ${money(comp.totalRevenue)}. A tag's cost is its rows' material, tax and labor.`} />}
         </p>
       ) : null}
     </BreakdownCardShell>

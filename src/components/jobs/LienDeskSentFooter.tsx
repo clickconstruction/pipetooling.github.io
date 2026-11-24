@@ -18,6 +18,7 @@ import { lienRowChipStyle as chip } from './lienDeskRowStyles'
 import LienMailPieceDoors from './LienMailPieceDoors'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import type { LienSentFooterForms } from './useLienSentFooterForms'
+import { MoneyText } from '../Money'
 
 /**
  * The footer of a sent notice (v2.3760; its own file since v2.7591, out of `LienDesk.tsx` as it stood): what has
@@ -117,7 +118,7 @@ export function LienDeskSentFooter({
             {filingMailLines(data!.mailPiecesByFiling![sentFiling.id]!, formatYmdMonthDay).map((l) => (
               <span key={l.id}>Through Docsmit, {l.who.toLowerCase()}: <strong style={{ color: l.tone === 'green' ? 'var(--text-green-800)' : l.tone === 'red' ? 'var(--text-red-600)' : l.tone === 'amber' ? 'var(--text-amber-700, var(--text-amber-700))' : 'var(--text-700)' }}>{l.words}</strong>{l.tracking ? <span style={{ color: 'var(--text-muted)' }}> · {l.tracking}</span> : null}{l.cost ? <span style={{ color: 'var(--text-muted)' }}> · {l.cost}</span> : null}</span>
             ))}
-            {filingMailCostWords(data!.mailPiecesByFiling![sentFiling.id]!) ? <span data-lien-mail-cost>{filingMailCostWords(data!.mailPiecesByFiling![sentFiling.id]!)}</span> : null}
+            {filingMailCostWords(data!.mailPiecesByFiling![sentFiling.id]!) ? <span data-lien-mail-cost><MoneyText text={filingMailCostWords(data!.mailPiecesByFiling![sentFiling.id]!)} /></span> : null}
             {/* The doors (6b-3): under the lines, one set per envelope that came back, for the office. */}
             {office ? mailPiecesNeedingYou(data!.mailPiecesByFiling![sentFiling.id]!).map((p) => (
               <LienMailPieceDoors key={p.id} piece={p} jobNumber={job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : null} onChanged={onChanged} />

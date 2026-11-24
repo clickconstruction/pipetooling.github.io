@@ -10,6 +10,7 @@ import {
   AGREEMENT_GROUP_COLORS,
   AGREEMENT_GROUP_KINDS,
   AGREEMENTS_READER_DOORS,
+  AGREEMENTS_TRAINING_DOORS,
   AGREEMENT_KIND_CHIPS,
   ESTIMATOR_GROUP_KINDS,
   AGREEMENT_STATE_CHIPS,
@@ -17,6 +18,8 @@ import {
   agreementCountWords,
   agreementDayWords,
   agreementDoor,
+  agreementReaderDoor,
+  agreementsReaderDoorsWords,
   agreementNeedsAList,
   agreementPaperKindWords,
   agreementStateChips,
@@ -114,6 +117,38 @@ describe('an estimator’s chips', () => {
     expect(plainWordsFailures(AGREEMENTS_READER_DOORS)).toEqual([])
   })
 
+  it('tells an estimator at the foot that a signed name is a press, and a training account that it opens none (decision 2)', () => {
+    expect(agreementsReaderDoorsWords(true)).toBe('Press a signed paper’s name to open its record. A paper that is not signed yet has nothing to open.')
+    expect(agreementsReaderDoorsWords(false)).toBe('This list is for reading. A training account opens no signed paper.')
+    expect(agreementsReaderDoorsWords(true)).toBe(AGREEMENTS_READER_DOORS)
+    expect(agreementsReaderDoorsWords(false)).toBe(AGREEMENTS_TRAINING_DOORS)
+    expect(plainWordsFailures(AGREEMENTS_TRAINING_DOORS)).toEqual([])
+    // The old foot sent them to the company's own page. The press is on the line now.
+    expect(AGREEMENTS_READER_DOORS).not.toContain('own page')
+  })
+
+  it('opens an estimator the signed record of a signed line, and nothing else (decision 2)', () => {
+    const line = (kind: string, status: string, more: Record<string, unknown> = {}) =>
+      ({ kind, source_id: 'p1', state: status === 'signed' ? 'signed' : 'waiting', job_id: null, facts: { status }, ...more }) as Parameters<typeof agreementReaderDoor>[0]
+    const signed = { kind: 'person-signed', documentId: 'p1' }
+    // Every kind of outside company's paper they read, signed: a customer's, a supply house's, a trade company's.
+    for (const kind of ['customer_agreement', 'supply_house_agreement', 'trade_agreement', 'company_agreement']) {
+      expect(agreementReaderDoor(line(kind, 'signed'), true), kind).toEqual(signed)
+      // A paper that waits, and one never sent, stay plain words.
+      expect(agreementReaderDoor(line(kind, 'sent'), true), kind).toEqual({ kind: 'none' })
+      expect(agreementReaderDoor(line(kind, 'unsent'), true), kind).toEqual({ kind: 'none' })
+      // A training account opens nothing.
+      expect(agreementReaderDoor(line(kind, 'signed'), false), kind).toEqual({ kind: 'none' })
+    }
+    // What the office opens in a window of its own keeps no press for a reader: a work order, a job's contract, a
+    // paper on People, a GC paper.
+    expect(agreementReaderDoor(line('work_order', 'signed', { job_id: 'j1' }), true)).toEqual({ kind: 'none' })
+    expect(agreementReaderDoor(line('job_contract', 'signed', { job_id: 'j1', facts: { status: 'signed', signed_at: '2026-11-01' } }), true)).toEqual({ kind: 'none' })
+    expect(agreementReaderDoor(line('person_agreement', 'sent'), true)).toEqual({ kind: 'none' })
+    expect(agreementReaderDoor(line('sow', 'signed'), true)).toEqual({ kind: 'none' })
+    expect(agreementReaderDoor(line('company_agreement', 'sent'), true)).toEqual({ kind: 'none' })
+  })
+
   it('offers an estimator the same way out of a search or a chip as the office', () => {
     expect(agreementsEmptyWords({ kind: 'outside', state: 'live', typed: '' }, 'estimator')).toEqual(agreementsEmptyWords({ kind: 'outside', state: 'live', typed: '' }))
     expect(agreementsEmptyWords({ kind: 'all', state: 'live', typed: 'tallgrass' }, 'estimator').next).toBe('Clear the search')
@@ -133,11 +168,11 @@ describe('the chips', () => {
     expect(kindsOfPick('jobs')).toEqual(['job_contract', 'their_paper'])
     expect(kindsOfPick('warranty')).toEqual(['job_warranty'])
     // A trade company that is a party sits with the subs; a customer, a supply house and a party on no list are outside.
-    expect(kindsOfPick('people')).toEqual(['person_agreement', 'trade_agreement'])
+    expect(kindsOfPick('people')).toEqual(['person_agreement', 'trade_agreement', 'company_agreement'])
     expect(kindsOfPick('outside')).toEqual(['customer_agreement', 'supply_house_agreement', 'outside_agreement'])
     expect(kindsOfPick('partners')).toEqual(['partner_agreement'])
     expect(kindsOfPick('orders')).toEqual(['work_order'])
-    expect(kindsOfPick('gc')).toEqual(['owner_contract', 'sow', 'company_agreement'])
+    expect(kindsOfPick('gc')).toEqual(['owner_contract', 'sow'])
   })
 
   it('no kind sits under two chips', () => {
@@ -164,7 +199,9 @@ describe('the chips', () => {
     expect(agreementGroup('person_agreement')).toBe('people')
     expect(agreementGroup('partner_agreement')).toBe('partners')
     expect(agreementGroup('work_order')).toBe('orders')
-    for (const kind of ['owner_contract', 'sow', 'company_agreement']) expect(agreementGroup(kind), kind).toBe('gc')
+    for (const kind of ['owner_contract', 'sow']) expect(agreementGroup(kind), kind).toBe('gc')
+    // A trade company's own paper sits with the subs since punch list #403, step 6.
+    expect(agreementGroup('company_agreement')).toBe('people')
     expect(agreementGroup('something_new')).toBe('jobs')
   })
 
@@ -265,7 +302,7 @@ describe('a line', () => {
     expect(agreementTag(row({ kind: 'work_order' }))).toEqual({ words: 'Work order', group: 'orders' })
     expect(agreementTag(row({ kind: 'owner_contract' }))).toEqual({ words: 'Owner contract', group: 'gc' })
     expect(agreementTag(row({ kind: 'sow' }))).toEqual({ words: 'Statement of work', group: 'gc' })
-    expect(agreementTag(row({ kind: 'company_agreement' }))).toEqual({ words: 'Trade company', group: 'gc' })
+    expect(agreementTag(row({ kind: 'company_agreement' }))).toEqual({ words: 'Trade company', group: 'people' })
     expect(agreementTag(row({ kind: 'something_new' }))).toEqual({ words: 'Agreement', group: 'jobs' })
   })
 

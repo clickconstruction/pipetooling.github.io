@@ -6,12 +6,13 @@ import { useConfirmDialog, usePromptDialog } from '../../contexts/ConfirmDialogC
 import {
   AGREEMENTS_EMPTY_PAGE,
   AGREEMENTS_PAGE,
-  AGREEMENTS_READER_DOORS,
   AGREEMENT_GROUP_COLORS,
   AGREEMENT_STATE_COLORS,
   agreementCountWords,
   agreementDayWords,
   agreementDoor,
+  agreementReaderDoor,
+  agreementsReaderDoorsWords,
   agreementFindWords,
   agreementJobTail,
   agreementJobTitle,
@@ -50,6 +51,7 @@ import {
 } from '../../lib/documents/agreementsActs'
 import { TAKE_BACK_LABEL, canTakeBackPapers, takeBackConfirm, takeBackOutcomeWords, takeBackVerdict } from '../../lib/documents/paperTakeBack'
 import { takeBackPartyPaper } from '../../lib/documents/paperTakeBackIo'
+import { canOpenSignedRecord } from '../../lib/contracts/partyPapers'
 import { readPersonPaperSendFacts, sendPersonPaperForSignature, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
 import { ADD_TO_A_LIST_LABEL } from '../../lib/documents/paperPartyList'
 import { NO_PAPER_REMINDERS, readPaperReminders, writePaperReminderSwitch, type PaperReminders } from '../../lib/contracts/personPaperReminderIo'
@@ -91,8 +93,10 @@ import { documentsLinkButton, documentsQuietButton } from '../jobs/jobDocumentsS
  * that fails says so with Retry and never reads as an empty ledger. The rules are `lib/documents/agreementsLedger.ts`.
  *
  * An estimator has the tab to read (punch list #403, call 8). They are drawn the chips for the kinds their role reads,
- * no **Send a paper**, no **Contract library**, and no press on a line: a name and a job are plain words, and a line
- * carries no act. Sending stays with the four roles, and the server holds that too.
+ * no **Send a paper**, no **Contract library**, and no act on a line. Since the owner's second decision a signed
+ * line's name is a press that opens the signed record, the one window their role reads whole (`agreementReaderDoor`):
+ * a waiting paper's name and a job are plain words. A training account reads the lines and opens nothing
+ * (`canOpenSignedRecord`). Sending stays with the four roles, and the server holds that too.
  *
  * With `embedSearch` (the Search tab) the box is the page's own: the tab draws no box and no chips, asks for the words
  * it is handed across every kind and every state, so a voided paper is found too, and stays quiet until there are two
@@ -141,7 +145,6 @@ const nameText: CSSProperties = { fontWeight: 600, color: 'var(--text-strong)' }
 /** The second tag on a party's paper that is not an agreement: an outline, since it names the paper and not a group. */
 const kindTag: CSSProperties = { background: 'transparent', color: 'var(--text-700)', boxShadow: 'inset 0 0 0 1px var(--border-strong)' }
 /** What a line opens for someone who reads the tab and acts on nothing. */
-const NO_DOOR = { kind: 'none' } as const
 const actBusy: CSSProperties = { ...documentsQuietButton, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'wait' }
 /** Add to a list: the one press on a line that makes a record, so it reads as the main press. */
 const addPress: CSSProperties = { ...documentsQuietButton, background: '#2563eb', border: '1px solid #2563eb', color: 'white', fontWeight: 600 }
@@ -155,10 +158,12 @@ function pickChipStyle(pressed: boolean): CSSProperties {
 
 export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { embedSearch?: string; onClearEmbedSearch?: () => void } = {}) {
   const embedded = embedSearch !== undefined
-  const { user, role } = useAuth()
+  const { user, role, readOnly } = useAuth()
   /** Whose tab this is: the office acts on it, and an estimator reads it (punch list #403, call 8). */
   const reader = agreementsReader(role)
   const canAct = canActOnAgreements(role)
+  /** A reader's signed line opens its record, unless the reader is in training (punch list #403, decision 2). */
+  const readerOpensRecords = canOpenSignedRecord(role, readOnly)
   /** Take back deletes a paper, so it is the leader's and a dev's, as deleting one is on People (punch list #403). */
   const mayTakeBack = canAct && canTakeBackPapers(role)
   const { showToast } = useToastContext()
@@ -298,8 +303,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     const door = agreementDoor(row)
     if (door.kind === 'person-signed') {
       setSignedDocId(door.documentId)
-      // A signed paper whose party is on no list carries Add to a list on its record too.
-      setSignedNeedsAList(agreementNeedsAList(row))
+      // A signed paper whose party is on no list carries Add to a list on its record too, for the roles that name one.
+      setSignedNeedsAList(canAct && agreementNeedsAList(row))
       return
     }
     if (door.kind === 'contract' && !agreementOpensContractWindow(row)) {
@@ -497,8 +502,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                       // The business the paper names, when it is not the party beside it (the audit's finding 9).
                       const signingForWords = agreementSigningForWords(row)
                       const name = agreementName(row)
-                      // A reader's line opens nothing: its name is plain words.
-                      const door = canAct ? agreementDoor(row) : NO_DOOR
+                      // A reader's signed line opens its record, and every other line of theirs is plain words.
+                      const door = canAct ? agreementDoor(row) : agreementReaderDoor(row, readerOpensRecords)
                       const chip = agreementStateChip(row, today)
                       const chipColors = AGREEMENT_STATE_COLORS[chip.tone]
                       const jobTitle = agreementJobTitle(row)
@@ -609,7 +614,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
           ) : null}
           {!embedded && !canAct ? (
             <p style={quiet} data-testid="documents-agreements-reader-doors">
-              {AGREEMENTS_READER_DOORS}
+              {agreementsReaderDoorsWords(readerOpensRecords)}
             </p>
           ) : null}
           {!embedded && canAct ? (

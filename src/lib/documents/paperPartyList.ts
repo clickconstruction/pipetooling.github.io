@@ -8,12 +8,30 @@
  * Pure: no React, no supabase. The reads and writes are `paperPartyIo.ts`; the window is `PaperPartyAddToList.tsx`.
  */
 import { pluralNoun } from '../batchWords'
-import type { PartyBusiness } from './paperPartyPick'
+import { SUB_COMPANY_TRADE } from '../people/subCompanies'
+import type { PartyBusiness, PartyRecordTable } from './paperPartyPick'
 
 export const ADD_TO_A_LIST_LABEL = 'Add to a list'
 
-/** What someone on no list becomes. */
-export type ListChoice = 'customer' | 'supply_house' | 'existing'
+/** What someone on no list becomes. A trade company is the kind a sub works for (punch list #403, step 6). */
+export type ListChoice = 'customer' | 'supply_house' | 'trade' | 'existing'
+
+/** A trade company we keep, as the window finds it and keeps someone at it. */
+export type TradeBusiness = { table: 'gc_companies'; id: string; name: string; party: 'trade' }
+
+/** A company someone on no list can join: a customer, a supply house or a trade company. */
+export type ListBusiness = PartyBusiness | TradeBusiness
+
+/** The record a contact is named as: a party's own records, and a trade company's two. */
+export type ListRecordTable = PartyRecordTable | 'gc_companies' | 'gc_company_people'
+
+/** The trade a trade company made here starts with. The office changes it on the company's own page. */
+export const LIST_TRADE = SUB_COMPANY_TRADE
+
+/** The tag a found company carries in the window's list. */
+export function listBusinessTag(business: Pick<ListBusiness, 'party'>): string {
+  return business.party === 'customer' ? 'Customer' : business.party === 'supply_house' ? 'Supply house' : 'Trade company'
+}
 
 /** Who is being added: the signer the paper kept, and the company the office typed for them, if any. */
 export type ListPerson = {
@@ -34,8 +52,9 @@ export function addToListTitle(person: Pick<ListPerson, 'name'>): string {
 export type ListOption = { choice: ListChoice; title: string; sub: string }
 
 /**
- * The window's three choices, with what each will make. A person with a company becomes a person there; one with none
- * is the customer themselves. A supply house needs a company's name, so with none typed its row asks for one.
+ * The window's four choices, with what each will make. A person with a company becomes a person there; one with none
+ * is the customer themselves. A supply house and a trade company need a company's name, so with none typed their rows
+ * ask for one.
  */
 export function listOptions(person: ListPerson): ListOption[] {
   const name = person.name.trim() || 'them'
@@ -43,7 +62,8 @@ export function listOptions(person: ListPerson): ListOption[] {
   return [
     { choice: 'customer', title: 'A new customer', sub: company ? `${company}, with ${name} as a person there` : `${name}, as the customer` },
     { choice: 'supply_house', title: 'A new supply house or vendor', sub: company ? `${company}, with ${name} as a rep` : `Type the company’s name. ${name} is added as a rep.` },
-    { choice: 'existing', title: 'Someone at a company we already have', sub: 'Search customers and supply houses' },
+    { choice: 'trade', title: 'A new trade company', sub: company ? `${company}, with ${name} as a person there` : `Type the company’s name. ${name} is added as a person there.` },
+    { choice: 'existing', title: 'Someone at a company we already have', sub: 'Search customers, supply houses and trade companies' },
   ]
 }
 
@@ -57,17 +77,19 @@ export function papersComeWords(paperNames: ReadonlyArray<string>): string {
 }
 
 /** Why the choice cannot be made yet, in the window's words; null when it can. */
-export function listChoiceRefusal(choice: ListChoice, person: ListPerson, picked: PartyBusiness | null): string | null {
+export function listChoiceRefusal(choice: ListChoice, person: ListPerson, picked: ListBusiness | null): string | null {
   if (!person.name.trim()) return 'The paper kept no name for them. Send it again with the signer’s name first.'
   if (choice === 'supply_house' && !person.company.trim()) return 'Type the supply house’s or the vendor’s name.'
+  if (choice === 'trade' && !person.company.trim()) return 'Type the trade company’s name.'
   if (choice === 'existing' && !picked) return 'Pick the company they are at.'
   return null
 }
 
 /** The button's words: it names the act and where they go. */
-export function listConfirmLabel(choice: ListChoice, picked: Pick<PartyBusiness, 'name'> | null): string {
+export function listConfirmLabel(choice: ListChoice, picked: Pick<ListBusiness, 'name'> | null): string {
   if (choice === 'customer') return 'Add as a customer'
   if (choice === 'supply_house') return 'Add as a supply house'
+  if (choice === 'trade') return 'Add as a trade company'
   return picked ? `Add to ${picked.name}` : 'Add to a company'
 }
 
@@ -76,18 +98,21 @@ export type ListPlan =
   /** The app's own New customer form opens on their name; the customer it makes is theirs. */
   | { kind: 'new-customer'; customerName: string; person: { name: string; email: string } | null }
   | { kind: 'new-supply-house'; houseName: string; person: { name: string; email: string } }
-  | { kind: 'existing'; business: PartyBusiness; person: { name: string; email: string } }
+  /** A trade company with its trade, and them as a person there who gets its contracts. */
+  | { kind: 'new-trade'; companyName: string; trades: string[]; person: { name: string; email: string } }
+  | { kind: 'existing'; business: ListBusiness; person: { name: string; email: string } }
 
 /**
  * The plan for a choice. A new customer with no company is the person themselves, so no person is kept under it. A
  * person kept under a company is always a row of that company's own list.
  */
-export function listPlan(choice: ListChoice, person: ListPerson, picked: PartyBusiness | null): ListPlan | null {
+export function listPlan(choice: ListChoice, person: ListPerson, picked: ListBusiness | null): ListPlan | null {
   if (listChoiceRefusal(choice, person, picked)) return null
   const who = { name: person.name.trim(), email: person.email.trim() }
   const company = person.company.trim()
   if (choice === 'customer') return { kind: 'new-customer', customerName: company || who.name, person: company ? who : null }
   if (choice === 'supply_house') return { kind: 'new-supply-house', houseName: company, person: who }
+  if (choice === 'trade') return { kind: 'new-trade', companyName: company, trades: [LIST_TRADE], person: who }
   return picked ? { kind: 'existing', business: picked, person: who } : null
 }
 
@@ -106,7 +131,7 @@ export type MadeRecord = { table: string; id: string; name?: string }
  * earlier write landed leaves the window open, and the next press finds that write by this key (the audit of punch
  * list #403, finding 10).
  */
-export function listMadeKey(step: 'house' | 'customer' | 'kept', parts: ReadonlyArray<string>): string {
+export function listMadeKey(step: 'house' | 'customer' | 'trade' | 'kept', parts: ReadonlyArray<string>): string {
   return JSON.stringify([step, ...parts.map((p) => p.trim().toLowerCase())])
 }
 

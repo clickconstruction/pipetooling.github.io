@@ -12,6 +12,7 @@ import { expiredLicensesHeading, lapsedWords, licenseExpiryBuckets, type Expired
 import { CLASS_RANK, TRADE_LABEL, parseLicenseTargets, parseLicenseType, type LicenseTarget, type Trade } from '../../lib/logbook/logbook'
 import { targetLines } from '../../lib/logbook/licenseTarget'
 import LicenseTargetWindow from '../../components/logbook/LicenseTargetWindow'
+import { MoneyText } from '../Money'
 
 type PersonLicenseCostLine = { id: string; person_license_id: string; amount: number; note: string | null; date: string; created_at: string | null }
 type PersonLicense = {
@@ -85,7 +86,7 @@ function LicenseExpiryTable<T extends PersonLicense>({
               <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>{daysCell(l)}</td>
               <td style={{ padding: '0.5rem' }}>{l.license_type}</td>
               <td style={{ padding: '0.5rem' }}>{l.date_of_expiry}</td>
-              <td style={{ padding: '0.5rem' }}>{costLinesTotal(l.person_license_cost_lines) > 0 ? `$${costLinesTotal(l.person_license_cost_lines).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '—'}</td>
+              <td style={{ padding: '0.5rem' }}>{costLinesTotal(l.person_license_cost_lines) > 0 ? <MoneyText text={`$${costLinesTotal(l.person_license_cost_lines).toLocaleString('en-US', { minimumFractionDigits: 2 })}`} /> : '—'}</td>
             </tr>
           ))}
         </tbody>
@@ -442,7 +443,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                                                             style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
                                                           >
                                                             <span style={{ fontSize: '0.75em', color: 'var(--text-muted)' }}>{expandedCostLinesLicenseId === l.id ? '▾' : '▸'}</span>
-                                                            {costLinesTotal(costLines) > 0 ? `$${costLinesTotal(costLines).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '—'}
+                                                            {costLinesTotal(costLines) > 0 ? <MoneyText text={`$${costLinesTotal(costLines).toLocaleString('en-US', { minimumFractionDigits: 2 })}`} /> : '—'}
                                                             {costLines.length > 1 && (
                                                               <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}>({costLines.length} lines)</span>
                                                             )}
@@ -456,7 +457,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                                                             <tbody>
                                                               {costLines.map((cl) => (
                                                                 <tr key={cl.id}>
-                                                                  <td style={{ padding: '0.2rem 0.35rem 0 0' }}>${Number(cl.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                                                                  <td style={{ padding: '0.2rem 0.35rem 0 0' }}><MoneyText text={`$${Number(cl.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`} /></td>
                                                                   <td style={{ padding: '0.2rem 0.35rem 0 0' }}>{cl.note || '—'}</td>
                                                                   <td style={{ padding: '0.2rem 0.35rem 0 0' }}>{cl.date}</td>
                                                                   <td style={{ padding: '0.2rem 0' }}>

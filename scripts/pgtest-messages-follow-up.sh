@@ -62,4 +62,9 @@ grep -o "ok: .*" <<<"$out"
 out="$(psql_as postgres -f - < supabase/tests/messages_follow_up/40_payment_word.sql 2>&1 || true)"
 if ! grep -q "messages_payment_word PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
+# Punch list #421 (*_heard_day_write): a heard day said in one press through write_down_heard, each person's kinds, the
+# same kind taking a new day, just talk with its day; a payment mark's job through write_down_payment's p_job_id.
+out="$(psql_as postgres -f - < supabase/tests/messages_follow_up/50_heard_day.sql 2>&1 || true)"
+if ! grep -q "messages_heard_day PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
 echo "messages-follow-up bed ok"

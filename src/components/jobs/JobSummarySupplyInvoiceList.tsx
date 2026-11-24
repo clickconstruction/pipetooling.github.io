@@ -1,6 +1,8 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { EmptyState } from '../EmptyState'
+import { CopyLinkIcon } from '../icons/CopyLinkIcon'
+import { BillViewer } from '../materials/BillViewer'
 import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { useOptionalToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -11,26 +13,21 @@ import {
   SUPPLY_INVOICE_WORDS as WORDS,
   canShareSupplyInvoice,
   invoiceDayWords,
+  markWords,
   searchSupplyInvoices,
   supplierSiteHref,
   supplyHouseChips,
   supplyInvoiceCountWords,
   supplyInvoicePdfHref,
+  supplyInvoiceSearchWords,
   supplyInvoiceShareUrl,
+  type InvoiceLinesById,
   type SupplyInvoiceRow,
 } from '../../lib/jobs/supplyInvoiceList'
+import { supabasePaperIo, type PaperIo } from '../../lib/materials/lines/paperIo'
+import type { BillViewerItem } from '../../lib/materials/bills/billViewer'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-
-/** The glyph on the share press: a link, since the press copies one. */
-function LinkGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" />
-      <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
-    </svg>
-  )
-}
 
 const linkStyle: CSSProperties = {
   margin: 0,
@@ -46,18 +43,24 @@ const linkStyle: CSSProperties = {
 }
 
 /**
- * A job's supply house invoices on the Job Summary (punch list #431, PR 1): the list the Parts Cost section opens.
- * Each invoice number opens the bill's PDF. For the office, an icon to its left copies the app's own link to the bill
- * and says so in a toast. A list of eight or more grows a search box over the house, the number, the date and the
- * amount, with a chip per supply house and a count and a total of what is left. Cents are drawn small and a date
- * drops this year. The kernel is `lib/jobs/supplyInvoiceList.ts`; this file draws it.
+ * A job's supply house invoices on the Job Summary (punch list #431): the list the Parts Cost section opens. For the
+ * office an invoice number opens the bill in place, in the bill viewer, with this list beside the paper so Previous
+ * and Next follow it as it is searched (PR 2). An icon to its left copies the app's own link to the bill and says so
+ * in a toast. Anyone else who sees the list keeps the bill's Drive link, in a tab of its own. A list of eight or more
+ * grows a search box over the house, the number, the date and the amount, with a chip per supply house and a count and
+ * a total of what is left. Cents are drawn small and a date drops this year. The kernel is
+ * `lib/jobs/supplyInvoiceList.ts`; this file draws it.
+ *
+ * For the office the search also reaches the lines read from each bill's paper (PR 3): a list with a box reads its
+ * bills' lines once, under the office's own read of them, and a row a part found says which line found it.
  */
-export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[] }) {
+export function JobSummarySupplyInvoiceList({ rows, paperIo }: { rows: SupplyInvoiceRow[]; /** The read of the bills' lines; a smoke hands in a fake. */ paperIo?: Pick<PaperIo, 'loadForInvoices'> }) {
   const { role } = useAuth()
   const toast = useOptionalToastContext()
   const narrow = useIsNarrowScreen()
   const [query, setQuery] = useState('')
   const [house, setHouse] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
   const todayYmd = useMemo(() => todayYmdInAppTz(), [])
 
   const canShare = canShareSupplyInvoice(role)
@@ -65,8 +68,37 @@ export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[]
   const chips = useMemo(() => (searchable ? supplyHouseChips(rows) : []), [rows, searchable])
   // A chip whose house left the list (the rows were read again) no longer narrows it.
   const liveHouse = house != null && chips.some((c) => c.name === house) ? house : null
-  const found = useMemo(() => searchSupplyInvoices(rows, searchable ? query : '', liveHouse), [rows, searchable, query, liveHouse])
+  // The lines on each bill's paper, for the search. Only the office reads them, and only a list long enough to have a
+  // box asks. Until they come, and if they never do, the search is the four facts alone.
+  const invoiceIdsKey = useMemo(() => rows.map((row) => row.invoice_id).join(','), [rows])
+  const [lines, setLines] = useState<{ key: string; byId: InvoiceLinesById } | null>(null)
+  useEffect(() => {
+    if (!canShare || !searchable || !invoiceIdsKey) return
+    let live = true
+    const io = paperIo ?? supabasePaperIo()
+    void io.loadForInvoices(invoiceIdsKey.split(',')).then(
+      (papers) => {
+        if (!live) return
+        const byId = new Map<string, { description: string; code: string; mfr: string }[]>()
+        for (const [invoiceId, paper] of papers) byId.set(invoiceId, paper.lines.map((line) => ({ description: line.description, code: line.houseCode, mfr: line.mfrNumber })))
+        setLines({ key: invoiceIdsKey, byId })
+      },
+      () => {},
+    )
+    return () => {
+      live = false
+    }
+  }, [canShare, searchable, invoiceIdsKey, paperIo])
+  const linesById = lines?.key === invoiceIdsKey && lines.byId.size > 0 ? lines.byId : null
+  const found = useMemo(() => searchSupplyInvoices(rows, searchable ? query : '', liveHouse, linesById), [rows, searchable, query, liveHouse, linesById])
+  const searchWords = useMemo(() => supplyInvoiceSearchWords(searchable ? query : ''), [searchable, query])
   const narrowed = found.rows.length !== rows.length
+  const jobId = rows[0]?.job_id ?? null
+  // The viewer flips through the list as it is searched, so it is handed what the search left.
+  const viewerItems = useMemo<BillViewerItem[]>(
+    () => found.rows.map((row) => ({ invoiceId: row.invoice_id, number: row.invoice_number, house: row.supply_house_name ?? '', dateYmd: (row.invoice_date ?? '').slice(0, 10), amount: row.allocated_amount })),
+    [found.rows],
+  )
 
   const clear = () => {
     setQuery('')
@@ -84,10 +116,8 @@ export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[]
   }
 
   const press = narrow ? 44 : 24
-  const shareCell = (row: SupplyInvoiceRow, hasPdf: boolean) => {
+  const shareCell = (row: SupplyInvoiceRow) => {
     if (!canShare) return null
-    // A bill with no PDF has nothing for the link to open yet, so its row keeps the gap and no press.
-    if (!hasPdf) return <span aria-hidden="true" style={{ width: press, height: press, flex: 'none' }} />
     return (
       <button
         type="button"
@@ -97,35 +127,64 @@ export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[]
         data-testid="supply-invoice-share"
         style={{ width: press, height: press, flex: 'none', display: 'inline-grid', placeItems: 'center', margin: 0, padding: 0, border: 'none', borderRadius: 6, background: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
       >
-        <LinkGlyph />
+        <CopyLinkIcon />
       </button>
     )
   }
 
   const invoiceCell = (row: SupplyInvoiceRow) => {
     const pdf = supplyInvoicePdfHref(row)
-    const site = pdf ? null : supplierSiteHref(row)
-    return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: narrow ? 0 : '0.15rem', flexWrap: 'wrap', minWidth: 0 }}>
-        {shareCell(row, !!pdf)}
-        {pdf ? (
-          <button type="button" onClick={() => openInExternalBrowser(pdf)} style={{ ...linkStyle, minHeight: narrow ? 44 : undefined }}>
-            {row.invoice_number}
-          </button>
-        ) : (
-          <>
-            <span>{row.invoice_number}</span>
-            <span title={WORDS.noPdfTitle} style={{ marginLeft: '0.4rem', padding: '0 0.3rem', borderRadius: 4, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.92em', whiteSpace: 'nowrap' }}>
-              {WORDS.noPdf}
-            </span>
-            {site ? (
-              <button type="button" onClick={() => openInExternalBrowser(site)} style={{ ...linkStyle, marginLeft: '0.4rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                {WORDS.supplierSite} ↗
-              </button>
-            ) : null}
-          </>
-        )}
+    // The office opens any bill in the viewer, which says what a bill with no PDF needs. Anyone else has the Drive link.
+    const site = pdf || canShare ? null : supplierSiteHref(row)
+    const noPdfChip = (
+      <span title={WORDS.noPdfTitle} style={{ marginLeft: '0.4rem', padding: '0 0.3rem', borderRadius: 4, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.92em', whiteSpace: 'nowrap' }}>
+        {WORDS.noPdf}
       </span>
+    )
+    const onPaper = found.onPaper.get(row.invoice_id)
+    return (
+      <>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: narrow ? 0 : '0.15rem', flexWrap: 'wrap', minWidth: 0 }}>
+          {shareCell(row)}
+          {canShare ? (
+            <>
+              <button type="button" onClick={() => setOpenId(row.invoice_id)} style={{ ...linkStyle, minHeight: narrow ? 44 : undefined }}>
+                {row.invoice_number}
+              </button>
+              {pdf ? null : noPdfChip}
+            </>
+          ) : pdf ? (
+            <button type="button" onClick={() => openInExternalBrowser(pdf)} style={{ ...linkStyle, minHeight: narrow ? 44 : undefined }}>
+              {row.invoice_number}
+            </button>
+          ) : (
+            <>
+              <span>{row.invoice_number}</span>
+              {noPdfChip}
+              {site ? (
+                <button type="button" onClick={() => openInExternalBrowser(site)} style={{ ...linkStyle, marginLeft: '0.4rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  {WORDS.supplierSite} ↗
+                </button>
+              ) : null}
+            </>
+          )}
+        </span>
+        {onPaper ? (
+          // The line on the bill's paper that found this row, with the words of the search marked in it.
+          <div data-testid="supply-invoice-on-paper" style={{ paddingLeft: press + (narrow ? 0 : 2), marginTop: narrow ? '-0.35rem' : 0, color: 'var(--text-muted)', fontSize: '0.92em' }}>
+            {WORDS.onThePaper}{' '}
+            {markWords(onPaper.description || onPaper.code || onPaper.mfr, searchWords).map((piece, i) =>
+              piece.hit ? (
+                <mark key={i} style={{ background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderRadius: 2, padding: '0 1px' }}>
+                  {piece.text}
+                </mark>
+              ) : (
+                <span key={i}>{piece.text}</span>
+              ),
+            )}
+          </div>
+        ) : null}
+      </>
     )
   }
 
@@ -134,7 +193,7 @@ export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[]
 
   return (
     // The list sits inside rows and folds that open on a press or a key: neither should hear what happens in here.
-    <div data-testid="supply-invoice-list" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} style={{ maxWidth: 560, fontSize }}>
+    <div data-testid="supply-invoice-list" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} style={{ maxWidth: 640, fontSize }}>
       {searchable ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.45rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -142,7 +201,7 @@ export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[]
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={WORDS.searchPlaceholder}
+              placeholder={linesById ? WORDS.searchPlaceholderWithLines : WORDS.searchPlaceholder}
               aria-label={WORDS.searchLabel}
               autoComplete="off"
               style={{
@@ -246,6 +305,19 @@ export function JobSummarySupplyInvoiceList({ rows }: { rows: SupplyInvoiceRow[]
           </tbody>
         </table>
       )}
+
+      {openId ? (
+        <BillViewer
+          items={viewerItems}
+          openId={openId}
+          onOpen={setOpenId}
+          onClose={() => setOpenId(null)}
+          jobId={jobId}
+          search={searchable ? { query, onQuery: setQuery } : null}
+          shareUrlOf={(id) => supplyInvoiceShareUrl(id, jobId)}
+          markWords={searchWords}
+        />
+      ) : null}
     </div>
   )
 }

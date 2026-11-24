@@ -21,6 +21,7 @@ import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money, MoneyText } from '../Money'
 
 type StubPick = {
   id: string
@@ -438,8 +439,7 @@ export function PayStubAdditionalModal({
           Additional — {activeStub.person_name}
         </h2>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          Period {ledgerPeriodLabel(activeStub.period_start, activeStub.period_end)} · Gross ${formatCurrency(activeStub.gross_pay)} · Less $
-          {formatCurrency(lessSum)} · Subtotal Additional ${formatCurrency(addSum)} · Net Pay ${formatCurrency(netPay)}
+          Period {ledgerPeriodLabel(activeStub.period_start, activeStub.period_end)} · Gross <Money amount={activeStub.gross_pay} /> · Less <Money amount={lessSum} /> · Subtotal Additional <Money amount={addSum} /> · Net Pay <Money amount={netPay} />
         </p>
         {locked ? (
           <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-green-600)', fontWeight: 500 }}>
@@ -532,7 +532,7 @@ export function PayStubAdditionalModal({
               {idealRemainderDisplay === null ? (
                 <span style={{ color: 'var(--text-faint)' }}>—</span>
               ) : (
-                <strong>${formatCurrency(idealRemainderDisplay)}</strong>
+                <strong><Money amount={idealRemainderDisplay} /></strong>
               )}
             </p>
             <button
@@ -632,7 +632,7 @@ export function PayStubAdditionalModal({
           <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>Prevailing Wages</div>
           <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
             Stub period {ledgerPeriodLabel(activeStub.period_start, activeStub.period_end)}. Base rate uses pay config hourly wage (
-            {`$${formatCurrency(baseHourlyWage)}/hr`}). Add creates an Additional line: hours × (prevailing − base). Sessions exclude rejected/revoked; pending
+            <MoneyText text={`$${formatCurrency(baseHourlyWage)}/hr`} />). Add creates an Additional line: hours × (prevailing − base). Sessions exclude rejected/revoked; pending
             approval is labeled.
           </p>
           {baseHourlyWage <= 0 ? (
@@ -797,10 +797,10 @@ export function PayStubAdditionalModal({
                         <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', verticalAlign: 'top' }}>
                           <div style={{ lineHeight: 1.35 }}>{closed ? hrs.toFixed(2) : '—'}</div>
                           <div style={{ lineHeight: 1.35, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                            ${formatCurrency(base)}
+                            <Money amount={base} />
                           </div>
                         </td>
-                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{closed ? `$${formatCurrency(atBase)}` : '—'}</td>
+                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{closed ? <Money amount={atBase} /> : '—'}</td>
                         <td style={{ padding: '0.35rem 0.5rem' }}>
                           {s.approved_at ? (
                             <span style={{ color: 'var(--text-green-600)' }}>Approved</span>
@@ -943,7 +943,7 @@ function LineEditor({ row, disabled, onSave, onRemove }: LineEditorProps) {
       </div>
       <div style={{ marginTop: '0.35rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem' }}>
         <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
-          Line: ${formatCurrency(preview)} (saved ${formatCurrency(row.line_total)})
+          Line: <Money amount={preview} /> (saved <Money amount={row.line_total} />)
         </span>
         <button
           type="button"

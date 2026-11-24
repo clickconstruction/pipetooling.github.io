@@ -86,6 +86,7 @@ import { type Tab, TAB_LABELS, MUTED, btn, pill, Door, DeskEnvelopeAnswersBand, 
 import { agreementCountsForSuit } from '../../../lib/legal/legalContractBasis'
 import { CounselReadPanel, OffersPanel, SettlementAnswer, DeskVoidableText, DeskUndo } from './LegalDeskFirmPanels'
 import { EmptyState } from '../../EmptyState'
+import { MoneyText } from '../../Money'
 
 /**
  * The Legal desk's tabs (v2.5852, the split): one component drawing whichever tab is open — Narrative, Account,
@@ -213,12 +214,12 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
           panel={{ documents: claim?.documents ?? [], acts: claim?.acts ?? null, onOpenDocument: claim?.onOpenDocument, onOpenJob: props.onOpenEditJob, onOpenAccountsReceivable: props.onOpenAccountsReceivable }}
         />
         <SectionTitle doors={<Door label="Accounts Receivable" onClick={props.onOpenAccountsReceivable} />}>Invoices and payments</SectionTitle>
-        <Table head={['Date', 'Job', 'Entry', 'Amount', 'Balance']} numCols={[3, 4]} rows={legalRunningLedger(a.ledger).map((e) => [e.ymd ?? '—', e.jobLabel, e.text, <span key="a" style={{ color: e.amount < 0 ? '#1f7a3a' : undefined }}>{formatLegalMoney(e.amount)}</span>, formatLegalMoney(e.running)])} empty="No billed lines or payments recorded on these jobs." />
+        <Table head={['Date', 'Job', 'Entry', 'Amount', 'Balance']} numCols={[3, 4]} rows={legalRunningLedger(a.ledger).map((e) => [e.ymd ?? '—', e.jobLabel, e.text, <span key="a" style={{ color: e.amount < 0 ? '#1f7a3a' : undefined }}><MoneyText text={formatLegalMoney(e.amount)} /></span>, formatLegalMoney(e.running)])} empty="No billed lines or payments recorded on these jobs." />
         <div style={{ display: 'flex', gap: 18, fontSize: '0.84rem', marginTop: 6, flexWrap: 'wrap' }}>
-          <span><span style={MUTED}>Billed</span> <b>{formatLegalMoney(a.totals.billed)}</b></span>
-          <span><span style={MUTED}>Paid</span> <b>{formatLegalMoney(a.totals.paid)}</b></span>
-          {a.totals.writtenDown ? <span><span style={MUTED}>Written down</span> <b>{formatLegalMoney(a.totals.writtenDown)}</b></span> : null}
-          <span><span style={MUTED}>Balance</span> <b>{formatLegalMoney(a.totals.balance)}</b></span>
+          <span><span style={MUTED}>Billed</span> <b><MoneyText text={formatLegalMoney(a.totals.billed)} /></b></span>
+          <span><span style={MUTED}>Paid</span> <b><MoneyText text={formatLegalMoney(a.totals.paid)} /></b></span>
+          {a.totals.writtenDown ? <span><span style={MUTED}>Written down</span> <b><MoneyText text={formatLegalMoney(a.totals.writtenDown)} /></b></span> : null}
+          <span><span style={MUTED}>Balance</span> <b><MoneyText text={formatLegalMoney(a.totals.balance)} /></b></span>
         </div>
         <SectionTitle doors={customerDoor('Property record')}>Property record</SectionTitle>
         <Table head={['Job', 'Address', 'County', 'Owner of record', 'Owner’s mailing address', 'Legal description', 'Parcel', 'Lien-ready']}
@@ -254,7 +255,7 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
             <div>
               <button type="button" onClick={() => { const job = jobOf(t.jobId); if (job) props.onOpenLienInstruments(job) }} style={{ ...btn, fontWeight: 700 }}>{t.jobLabel}</button>
               <div style={{ ...MUTED, fontSize: '0.76rem' }}>{kindWordsOf(t.jobId)} · {roleWords}{legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource) ? ` · ${legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource)}` : ''}</div>
-              <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
+              <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={formatLegalMoney(t.openBalance)} /> open</div>
               {t.retainageWords ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>{t.retainageWords}</div> : null}
             </div>
             <LienTimelineStrip
@@ -311,7 +312,7 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
           ])} empty="No demand letter recorded on this account." />
         <SectionTitle>The paper that went out</SectionTitle>
         <Table head={['', 'Paper', 'Went out', 'Claim', 'Months as printed', 'Jobs and shares', 'County · recording', 'Copy']} numCols={[3]}
-          rows={packet.paper.envelopes.map((e) => [<b key="a">{e.letter}</b>, envelopeKindWords(e), envelopeWentOutWords(e, packet.todayYmd), <b key="c">{formatLegalMoney(e.claim)}</b>, envelopeMonthsWords(e) || '—', envelopeSharesWords(e, formatLegalMoney), [e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—', e.documentUrl ? <a key="d" href={e.documentUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>open ›</a> : '—'])}
+          rows={packet.paper.envelopes.map((e) => [<b key="a">{e.letter}</b>, envelopeKindWords(e), envelopeWentOutWords(e, packet.todayYmd), <b key="c"><MoneyText text={formatLegalMoney(e.claim)} /></b>, envelopeMonthsWords(e) || '—', envelopeSharesWords(e, formatLegalMoney), [e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—', e.documentUrl ? <a key="d" href={e.documentUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>open ›</a> : '—'])}
           subRows={packet.paper.envelopes.map((e) => (e.answers ? <DeskEnvelopeAnswersBand key={e.key} e={e} packet={packet} /> : null))}
           empty="No § 53.056 notice, affidavit or release recorded." />
         <p style={{ ...MUTED, fontSize: '0.76rem', margin: '2px 0 0' }}>One row per envelope — a paper that covered several jobs (v2.3770, v2.3777) shows every share. A month marked <i>as information</i> was named after its own window closed and is not in the claim. Under a notice: the owner's call and the pile, the attorney’s letter’s clock and the GC's written okay, as the Lien desk records them — the firm reads the same band.</p>
@@ -375,9 +376,9 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
     <div>
       {officeActs && officeActs.canAsk ? <CounselReadPanel read={officeActs.counselRead} busy={officeActs.busy} onSave={officeActs.setCounselRead} /> : null}
       {officeActs && officeActs.canAsk ? <OffersPanel entries={entries} todayYmd={packet.todayYmd} busy={officeActs.busy} onAdd={officeActs.offerAdd} onStatus={officeActs.offerSetStatus} onUndo={officeActs.voidEntry} /> : null}
-      <SectionTitle>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
+      <SectionTitle>Attorney fees and costs{fees.length ? <MoneyText text={` · ${formatLegalMoney(feeTotal)}`} /> : ''}</SectionTitle>
       {fees.length ? (
-        <Table head={['Date', 'Kind', 'Note', 'By', 'Amount', '']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, <DeskVoidableText key="t" e={e} />, entryRecordedByWords(e, 'office', userNameOf), <span key="a" style={isVoidedEntry(e) ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{formatLegalMoney(Number(e.amount ?? 0))}</span>, withFirmWait(e, officeActs && officeCanVoid(e) ? <DeskUndo key="u" onUndo={(reason) => officeActs.voidEntry(e.id, reason)} /> : officeActs && e.via_portal && !e.acknowledged_at && !isVoidedEntry(e) ? (
+        <Table head={['Date', 'Kind', 'Note', 'By', 'Amount', '']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, <DeskVoidableText key="t" e={e} />, entryRecordedByWords(e, 'office', userNameOf), <span key="a" style={isVoidedEntry(e) ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}><MoneyText text={formatLegalMoney(Number(e.amount ?? 0))} /></span>, withFirmWait(e, officeActs && officeCanVoid(e) ? <DeskUndo key="u" onUndo={(reason) => officeActs.voidEntry(e.id, reason)} /> : officeActs && e.via_portal && !e.acknowledged_at && !isVoidedEntry(e) ? (
           // #85 item 18 PR 2: a fee or cost the firm adds is acknowledged here like a step, which clears it from Needs You.
           <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
         ) : e.via_portal && e.acknowledged_at ? <span key="k" style={{ ...MUTED, fontSize: '0.76rem' }}>seen</span> : '')])} empty="" />
@@ -408,7 +409,7 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
               ) : r.isAnswer && e.via_portal && !e.acknowledged_at && officeActs ? (
                 <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
               ) : s ? pill(s.text, s.tone) : null
-              return [e.occurred_on, <span key="w" style={r.isAnswer ? { paddingLeft: 16, color: 'var(--text-muted)' } : undefined}>{r.isAnswer ? '↳ ' : ''}{conversationWho(r, 'office')}</span>, e.body, withFirmWait(e, acts)]
+              return [e.occurred_on, <span key="w" style={r.isAnswer ? { paddingLeft: 16, color: 'var(--text-muted)' } : undefined}>{r.isAnswer ? '↳ ' : ''}<MoneyText text={conversationWho(r, 'office')} /></span>, e.body, withFirmWait(e, acts)]
             })}
             empty="" />
         </div>

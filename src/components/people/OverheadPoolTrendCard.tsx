@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEv
 import type { OverheadPoolTrend } from '../../lib/overheadPoolTrend'
 import { OVERHEAD_POOL_SERIES, overheadPoolTypicalLabel, type OverheadPoolCategory, type OverheadPoolDayIndex, type OverheadPoolPartsLine } from '../../lib/overheadPoolDayLines'
 import type { OverheadPoolDayModalCategory } from './OverheadPoolDayModal'
+import { MoneyText } from '../Money'
 
 /**
  * People → Overhead "pool trend + composition" card (v2.2673). Presentational:
@@ -334,7 +335,7 @@ export function OverheadPoolTrendCard({
                   <span style={{ color: 'var(--text-muted)' }}>7-day avg</span> {money(chart.avg[hover!.i] ?? hoverDay.trailing7AvgUsd)}
                   {hoverBiggest ? (
                     <div style={{ marginTop: 3, paddingTop: 3, borderTop: '1px solid var(--border)' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Biggest:</span> {hoverBiggest.label} · {money2(hoverBiggest.usd)}
+                      <span style={{ color: 'var(--text-muted)' }}>Biggest:</span> {hoverBiggest.label} · <MoneyText text={money2(hoverBiggest.usd)} />
                     </div>
                   ) : null}
                   {interactive ? <div style={{ color: 'var(--text-faint)', marginTop: 2 }}>click a color for its lines · the space above for the whole day</div> : null}
@@ -384,7 +385,7 @@ export function OverheadPoolTrendCard({
                         </td>
                         <td style={bigTd}>{what}</td>
                         <td style={{ ...bigTd, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                          <strong>{money2(b.amountUsd)}</strong>
+                          <strong><MoneyText text={money2(b.amountUsd)} /></strong>
                           <span style={{ color: 'var(--text-muted)' }}>
                             {' '}· {dayIndex.poolUsd > 0 ? `${((100 * b.amountUsd) / dayIndex.poolUsd).toFixed(1)}% of the pool` : ''}
                             {typ ? ` · that day was ${typ}` : ''}

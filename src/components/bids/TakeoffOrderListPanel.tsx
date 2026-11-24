@@ -3,6 +3,7 @@ import { formatCurrency } from '../../lib/format'
 import { orderListRows, orderRoundingHover, type TakeoffOrderRounding } from '../../lib/bids/takeoffOrderRounding'
 import { orderIncrementChip } from '../../lib/materials/orderIncrement'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { Money, MoneyText } from '../Money'
 
 /**
  * Materials to order (v2.3409): the shopping list the sticks make. One row per
@@ -55,7 +56,7 @@ export function TakeoffOrderListPanel({
         Materials to order · rounded to what the house sells {compact ? (open ? '▾' : '▸') : ''}
       </button>
       {rounding.parts.length > 0 ? (
-        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: totalExtra > 0 ? 'var(--text-violet-700)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>+${formatCurrency(totalExtra)}</span>
+        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: totalExtra > 0 ? 'var(--text-violet-700)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>+<Money amount={totalExtra} /></span>
       ) : null}
     </div>
   )
@@ -84,7 +85,7 @@ export function TakeoffOrderListPanel({
                     {num(r.part.packs)} × {orderIncrementChip({ increment: r.part.increment, unit: r.part.unit })}
                   </span>
                   <span style={{ color: r.part.extraCost > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                    {r.part.extraCost > 0 ? `+$${formatCurrency(r.part.extraCost)}` : 'exact'}
+                    {r.part.extraCost > 0 ? <MoneyText text={`+$${formatCurrency(r.part.extraCost)}`} /> : 'exact'}
                   </span>
                 </li>
               ))}
@@ -92,7 +93,7 @@ export function TakeoffOrderListPanel({
             </ul>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.78rem', fontWeight: 700 }}>
               <span>Extra bought for rounding</span>
-              <span style={{ color: totalExtra > 0 ? 'var(--text-violet-700)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>+${formatCurrency(totalExtra)}</span>
+              <span style={{ color: totalExtra > 0 ? 'var(--text-violet-700)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>+<Money amount={totalExtra} /></span>
             </div>
             <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)' }}>Fittings and fixtures are by the each and never round. Request quotes sends the ordered quantities.</p>
           </>

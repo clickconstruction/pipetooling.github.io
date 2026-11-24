@@ -13,6 +13,7 @@ import { alternateCardNumbers, alternateOnScreenWords } from '../../lib/bids/own
 import { cardFigures, cardOwnedByVersion, type CardsRowMode } from '../../lib/bids/pricingCardsRow'
 import type { AlternateVersionCardData } from '../../hooks/usePricingCardsData'
 import type { BidVersion, PriceBookVersion } from '../../lib/bids/bidPricingEngineTypes'
+import { MoneyText } from '../Money'
 
 /**
  * The ＋ Add price door (v2.2104): one creation door for both variant kinds. The tab also draws it at the solver line's end.
@@ -292,7 +293,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
           {nums.margin != null ? (
             <>
               <span style={{ fontWeight: 700, color: marginColor(nums.margin) }}>{Math.round(nums.margin * 100)}% margin</span>
-              {` · profit ${fmtM(nums.profit ?? 0)}`}
+              <MoneyText text={` · profit ${fmtM(nums.profit ?? 0)}`} />
             </>
           ) : (
             '—'
@@ -304,10 +305,10 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
             : d.materials != null
               ? (
                 <>
-                  Materials {fmtM(d.materials)}
+                  Materials <MoneyText text={fmtM(d.materials)} />
                   {nums.materialsDelta != null && nums.materialsDelta !== 0 ? (
                     <span style={{ fontWeight: 600, color: nums.materialsDelta < 0 ? 'var(--text-green-600)' : 'var(--text-amber-700)' }}>
-                      {` · ${nums.materialsDelta < 0 ? '−' : '+'}${fmtM(Math.abs(nums.materialsDelta))} ${alternate ? 'vs base' : 'vs the alternate'}`}
+                      <MoneyText text={` · ${nums.materialsDelta < 0 ? '−' : '+'}${fmtM(Math.abs(nums.materialsDelta))} ${alternate ? 'vs base' : 'vs the alternate'}`} />
                     </span>
                   ) : null}
                   {' · '}
@@ -362,7 +363,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
             <>
               <b style={{ fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums' }}>{rev != null ? <AmountSmallCents value={rev} /> : '…'}</b>
               <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                {m == null ? '' : `${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`}
+                {m == null ? '' : <MoneyText text={`${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`} />}
               </span>
             </>
           )}
@@ -441,7 +442,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
               </div>
               <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unpriced ? 'var(--text-muted)' : undefined }}>{rev != null ? <AmountSmallCents value={rev} /> : '…'}</div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginBottom: '0.4rem' }}>
-                {m == null ? '—' : `${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`}
+                {m == null ? '—' : <MoneyText text={`${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`} />}
               </div>
               {unpriced && viewing && copySource ? (
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-amber-700)', marginTop: '0.25rem' }}>

@@ -62,6 +62,7 @@ vi.mock('../../hooks/useAuth', async () => {
 })
 
 import JobsMaterialsTab from './JobsMaterialsTab'
+import { moneyText } from '../../test/moneyText'
 
 const jobs = [{ id: 'ja', hcp_number: '', click_number: '224', job_name: 'ZZ Test phase 2', job_address: null, google_drive_link: null }]
 
@@ -138,7 +139,7 @@ describe('a job’s Deliveries panel', () => {
     paste('25 EA ZZ test elbow 117.50')
     expect(screen.getByTestId('delivery-lone-figure').textContent).toContain('Until you say, those lines land with no price.')
     fireEvent.click(screen.getByRole('button', { name: 'The line’s total' }))
-    expect(screen.getByText('$4.70')).toBeTruthy()
+    expect(screen.getByText(moneyText('$4.70'))).toBeTruthy()
     fireEvent.click(addButton())
     await waitFor(() => expect(data.prices).toEqual([['text:zz test elbow', 4.7]]))
   })

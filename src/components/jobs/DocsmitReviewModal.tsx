@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { DocsmitHeld, DocsmitPreparedEnvelope } from '../../lib/mail/runDocsmitIo'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 /**
  * Review before it mails (the Docsmit train, PR 5b — `docs/DOCSMIT_LIEN_RUN_PLAN.md`, "Review before it mails"):
@@ -60,7 +61,7 @@ export default function DocsmitReviewModal({ prepared, held, priceWords, short, 
               <button key={p.key} type="button" onClick={() => setIndex(i)} data-testid={`dsm-env-${p.n}`} aria-current={i === index ? 'true' : undefined} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.55rem 0.8rem', border: 'none', borderBottom: '1px solid var(--border)', background: i === index ? 'var(--bg-page)' : 'transparent', color: 'var(--text)', cursor: 'pointer', font: 'inherit' }}>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Envelope {p.n} · {p.label}</div>
                 <div style={{ fontWeight: 600, fontSize: '0.86rem' }}>{p.who}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.sheets} {p.sheets === 1 ? 'sheet' : 'sheets'} · {p.envelope ?? '—'} · {money(p.price)}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.sheets} {p.sheets === 1 ? 'sheet' : 'sheets'} · {p.envelope ?? '—'} · <MoneyText text={money(p.price)} /></div>
               </button>
             ))}
             {held.map((h) => (
@@ -79,7 +80,7 @@ export default function DocsmitReviewModal({ prepared, held, priceWords, short, 
                     {env.windowLines.map((l) => <div key={l}>{l}</div>)}
                   </div>
                   {env.correction ? <div data-testid="dsm-correction" style={{ gridColumn: '1 / -1', color: 'var(--text-muted)' }}>Address as Docsmit checked it: {env.correction}</div> : null}
-                  <div style={{ gridColumn: '1 / -1', color: 'var(--text-muted)' }}>Code on the owner’s letter: <code>{env.shortCode}</code> · {money(env.price)}</div>
+                  <div style={{ gridColumn: '1 / -1', color: 'var(--text-muted)' }}>Code on the owner’s letter: <code>{env.shortCode}</code> · <MoneyText text={money(env.price)} /></div>
                 </div>
                 <iframe data-testid="dsm-pdf" title={`Envelope ${env.n} as Docsmit mails it`} src={env.pdfUrl} style={{ flex: 1, minHeight: 320, margin: '0.6rem 1rem 0.8rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)' }} />
               </>

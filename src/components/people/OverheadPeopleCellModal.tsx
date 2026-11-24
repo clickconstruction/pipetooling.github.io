@@ -18,6 +18,7 @@ import {
 import type { OverheadSessionDetailLine } from '../../lib/overheadDailyLabor'
 import type { OverheadPeoplePartsInput, OverheadPeopleTable } from '../../lib/overheadPeopleTable'
 import { USERS_TAB_PAY_LENS_PATH } from '../../lib/people/usersTabLens'
+import { MoneyText } from '../Money'
 
 /**
  * Behind the cell (v2.3264): the sessions and purchases that add up to one cell
@@ -90,7 +91,7 @@ function DayRow({ d, showPerson, bidLabelById }: { d: OverheadCellDay; showPerso
       </td>
       <td style={{ ...td, verticalAlign: 'top' }}>{d.hours.toFixed(2)} h</td>
       <td style={{ ...td, color: 'var(--text-muted)', verticalAlign: 'top' }}>{rate}</td>
-      <td style={{ ...td, fontWeight: 600, verticalAlign: 'top' }}>{money2(d.usd)}</td>
+      <td style={{ ...td, fontWeight: 600, verticalAlign: 'top' }}><MoneyText text={money2(d.usd)} /></td>
     </tr>
   )
 }
@@ -106,7 +107,7 @@ function PurchaseRow({ l, showPerson }: { l: Extract<OverheadCellLine, { kind: '
         <span style={chipMuted}>{src}</span>
       </td>
       <td style={tdLeft}>{bucketLabel(l.bucket) ? <span style={{ ...chip('var(--bg-amber-tint)', 'var(--text-amber-800)', false), marginLeft: 0 }}>{bucketLabel(l.bucket)}</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
-      <td style={{ ...td, fontWeight: 600 }}>{money2(l.usd)}</td>
+      <td style={{ ...td, fontWeight: 600 }}><MoneyText text={money2(l.usd)} /></td>
     </tr>
   )
 }
@@ -194,7 +195,7 @@ export function OverheadPeopleCellModal({ table, person, unattributed, column, l
             </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.9rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', color: COL_COLOR[column] }}>{money2(model.cellUsd)}</span>
+            <span style={{ fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', color: COL_COLOR[column] }}><MoneyText text={money2(model.cellUsd)} /></span>
             {mathLine ? <span style={{ color: 'var(--text-700)', fontSize: '0.85rem' }}>{mathLine}</span> : null}
           </div>
           <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }} role="group" aria-label="Column">
@@ -260,7 +261,7 @@ export function OverheadPeopleCellModal({ table, person, unattributed, column, l
                   <span style={{ color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.78rem' }}>
                     {sec.lineCount} line{sec.lineCount === 1 ? '' : 's'}
                   </span>
-                  <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{money2(sec.usd)}</span>
+                  <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money2(sec.usd)} /></span>
                 </div>
               ) : null}
               {sec.groups.length === 0 ? (
@@ -278,7 +279,7 @@ export function OverheadPeopleCellModal({ table, person, unattributed, column, l
                             {g.hours > 0 ? ` · ${g.hours.toFixed(1)} h` : ''}
                             {g.flagged > 0 ? <span style={{ color: 'var(--text-amber-800)' }}> · {g.flagged} to review</span> : null}
                           </span>
-                          <span style={{ marginLeft: 'auto', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{money2(g.usd)}</span>
+                          <span style={{ marginLeft: 'auto', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money2(g.usd)} /></span>
                           <div style={{ flexBasis: '100%', height: 4, background: 'var(--bg-muted)', borderRadius: 2, overflow: 'hidden', marginTop: 2 }}>
                             <div style={{ width: `${Math.round((100 * g.usd) / maxG)}%`, height: '100%', background: SECTION_COLOR[sec.kind], borderRadius: 2 }} />
                           </div>
@@ -324,7 +325,7 @@ export function OverheadPeopleCellModal({ table, person, unattributed, column, l
             {model.counts.lines} {column === 'officePartsUsd' ? (model.counts.lines === 1 ? 'purchase' : 'purchases') : model.counts.lines === 1 ? 'line' : 'lines'}
             {filter && model.counts.shown !== model.counts.lines ? ` · ${model.counts.shown} shown` : ''}
           </span>
-          <span style={{ color: model.ties ? 'var(--text-green-700)' : 'var(--text-red-700)', fontWeight: 700 }}>{model.ties ? `sum ${money2(model.sumUsd)} · ties to the cell` : `sum ${money2(model.sumUsd)} · off by ${money2(model.sumUsd - model.cellUsd)} — tell a dev`}</span>
+          <span style={{ color: model.ties ? 'var(--text-green-700)' : 'var(--text-red-700)', fontWeight: 700 }}>{model.ties ? <MoneyText text={`sum ${money2(model.sumUsd)} · ties to the cell`} /> : <MoneyText text={`sum ${money2(model.sumUsd)} · off by ${money2(model.sumUsd - model.cellUsd)} — tell a dev`} />}</span>
           <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.75rem' }}>
             <button type="button" onClick={() => void copy()} style={btn}>
               {copied ? 'Copied' : 'Copy as CSV'}

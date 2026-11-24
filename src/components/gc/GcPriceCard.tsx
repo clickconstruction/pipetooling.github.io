@@ -7,6 +7,7 @@ import type { GcProject, GcState } from '../../lib/gc/types'
 import { money } from '../../lib/gc/words'
 import { Btn, PlusUnknown } from './gcUi'
 import type { PriceCardHandle } from './usePriceCard'
+import { MoneyText } from '../Money'
 
 /**
  * GC mode, the real build (the Board's B3), from the design spike's `GcPriceCard.tsx`: the card
@@ -68,7 +69,7 @@ export function GcPriceLikely({ state, project }: { state: GcState; project: GcP
   if (p.holes === 0) return null
   return (
     <span style={{ display: 'block', fontWeight: 600, fontSize: '0.75rem', color: 'var(--text-base)' }}>
-      {aboutMoney(p.likely)} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>with every trade in</span>
+      <MoneyText text={aboutMoney(p.likely)} /> <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>with every trade in</span>
     </span>
   )
 }

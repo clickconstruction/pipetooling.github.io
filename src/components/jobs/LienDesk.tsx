@@ -201,6 +201,7 @@ import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctio
 import { propertyKindWords, type PropertyKind } from '../../lib/jobs/propertyKind'
 import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
 import { LIEN_AFFIDAVIT_PILES, lienOwnerIsPublic, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
+import { MoneyText } from '../Money'
 
 /**
  * The Lien desk: the queue of § 53.056 notices the law says are due per
@@ -1749,7 +1750,7 @@ export default function LienDesk({
       ) : null}
     </div>
   ) : redrawnRecord ? (
-    <div data-lien-desk-redrawn style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{lienNoticeRedrawnWords(redrawnRecord, footShortDay)}</div>
+    <div data-lien-desk-redrawn style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}><MoneyText text={lienNoticeRedrawnWords(redrawnRecord, footShortDay)} /></div>
   ) : null
   const saveOffer = () => run('The pay offer', async () => void (item && (await setLienDeskItemOffer(item.id, offer))), offer ? `Offer saved: ${lienOfferChipWords(offer)}.` : 'The offer is off.')
   const hold = (reason: 'promised' | 'call_first') =>

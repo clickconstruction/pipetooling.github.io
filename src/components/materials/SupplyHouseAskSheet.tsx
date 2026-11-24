@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { CallPhoneButton } from '../CallPhoneButton'
-import { formatCurrency } from '../../lib/format'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { saveSupplierWords } from '../../lib/jobs/lienSupplierWordIo'
 import { parseSupplierWordBalance, lienSupplierSaidWords } from '../../lib/jobs/lienJobSuppliers'
@@ -22,6 +21,7 @@ import {
   type HouseAskContact,
   type HouseAskJob,
 } from '../../lib/materials/houseAsk'
+import { Money } from '../Money'
 
 const input: CSSProperties = { minHeight: 34, padding: '0 9px', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-strong)', background: 'var(--surface)', minWidth: 0, width: '100%', boxSizing: 'border-box' }
 const plainBtn: CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none' }
@@ -180,7 +180,7 @@ export function SupplyHouseAskSheet({ asks, authName, isMobile, onClose, onSaved
             })}
           </div>
           <div data-house-ask-summary style={{ color: 'var(--text-700)' }}>
-            <strong>{ask.jobs.length} {ask.jobs.length === 1 ? 'job' : 'jobs'}</strong> · ${formatCurrency(ask.owed)} owed by our books
+            <strong>{ask.jobs.length} {ask.jobs.length === 1 ? 'job' : 'jobs'}</strong> · <Money amount={ask.owed} /> owed by our books
             {ask.firstYmd ? <> · first notice {formatYmdMonthDay(ask.firstYmd)}</> : null}
             {ask.paidInFullJobs ? <span style={{ color: 'var(--text-red-700)', fontWeight: 600 }}> · {ask.paidInFullJobs} paid in full by the customer</span> : null}
             {ask.answered ? <> · {ask.answered} answered</> : null}
@@ -248,13 +248,13 @@ export function SupplyHouseAskSheet({ asks, authName, isMobile, onClose, onSaved
                 <div style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{j.number} · {j.name}</div>
                 {j.address ? <div style={small}>{j.address}</div> : null}
                 <div style={{ fontSize: '0.75rem', marginTop: 1 }}>
-                  {j.customerPaidInFull ? <span style={{ color: 'var(--text-red-700)', fontWeight: 600 }}>customer paid in full</span> : <span style={{ color: 'var(--text-muted)' }}>customer owes us ${formatCurrency(j.openToUs)}</span>}
+                  {j.customerPaidInFull ? <span style={{ color: 'var(--text-red-700)', fontWeight: 600 }}>customer paid in full</span> : <span style={{ color: 'var(--text-muted)' }}>customer owes us <Money amount={j.openToUs} /></span>}
                 </div>
               </div>
             )
             const books = (
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(j.owed)}</div>
+                <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}><Money amount={j.owed} /></div>
                 <div style={small}>
                   {j.unpaidCount} unpaid{j.unpaidSince ? ` · since ${j.unpaidSince}` : ''}
                 </div>
@@ -277,7 +277,7 @@ export function SupplyHouseAskSheet({ asks, authName, isMobile, onClose, onSaved
             const hints = (
               <>
                 {isBad ? <div style={{ fontSize: '0.75rem', color: 'var(--text-red-700)' }}>Type the balance as a number, like 8,950.00.</div> : null}
-                {saysPaid ? <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>They show nothing owed. Our books show ${formatCurrency(j.owed)}: mark those invoices paid under Supply houses.</div> : null}
+                {saysPaid ? <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>They show nothing owed. Our books show <Money amount={j.owed} />: mark those invoices paid under Supply houses.</div> : null}
               </>
             )
             return isMobile ? (

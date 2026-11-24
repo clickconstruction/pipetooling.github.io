@@ -2,7 +2,7 @@
 title: find an agreement we sent or signed
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature, contract library, contract book, write a paper, packet, outside company, supply house, vendor, customer, who is it with, not on a list, take back, sent by mistake, delete a paper, signer, w-9, certificate, papers section, papers with this customer, not sent, estimator, read only
+keywords: agreements, trade company, add to a list, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature, contract library, contract book, write a paper, packet, outside company, supply house, vendor, customer, who is it with, not on a list, take back, sent by mistake, delete a paper, signer, w-9, certificate, papers section, papers with this customer, not sent, estimator, read only
 where: /documents?tab=agreements
 ---
 The Agreements tab lists every agreement in one place. It holds job contracts, warranties, a GC's own paper, staff and sub agreements, partner agreements and sub work orders. It also holds a paper sent to a customer or a supply house.
@@ -148,6 +148,8 @@ The second window is **Who is it with?** It lists your team and your subs first.
 
 Type a name to find a customer or a supply house. Press **Supply houses** to list every one.
 
+Type a trade company's name to find the subs who work there. Each sub's line says who they sign for.
+
 - A person on file at a company signs for that company. Pick them and their name fills in.
 - A company picked alone has no signer yet. You name the signer in the next window.
 - **Someone not in any list** is the last row. You type their name, their email and their company.
@@ -178,7 +180,7 @@ Each copy is its own line under **Outside companies**.
 A paper sent to someone you typed in reads **Not on a list**. Its line carries **Add to a list**, signed or not.
 
 1. Press **Add to a list**.
-2. Pick what they are. They can be a new customer, a new supply house or vendor, or someone at a company you already have.
+2. Pick what they are. It can be a new customer, a new supply house or vendor, or a new trade company. It can also be someone at a company you already have.
 3. Check the company's name, or find the company they are at.
 4. Press the blue button. It names what it will do.
 
@@ -186,9 +188,11 @@ Their paper comes with them. Nothing is copied.
 
 A new customer opens the same form you use to add any customer. Save it and they are added.
 
+A new trade company starts with the trade Plumbing. They are kept there as someone who gets its contracts.
+
 If adding them fails, the window says why and stays open. Press the blue button again. The second press goes on from where the first one stopped, so nothing is made twice.
 
-The line then reads **Customer** or **Supply house**. A signed paper's record carries the same press.
+The line then reads **Customer**, **Supply house** or **Trade company**. A trade company's line sits under **Staff and subs**. A signed paper's record carries the same press.
 
 A job's contract is not sent here. Send it from its job.
 
@@ -339,9 +343,31 @@ An estimator has the tab to read.
 - A staff paper, a sub's own paper and a job's contract are not on it.
 - A paper sent to someone on no list is not on it until the office adds them to a list.
 
-An estimator has no **Send a paper** and no **Contract library**. A line has no press.
+An estimator has no **Send a paper** and no **Contract library**. Nothing is sent or taken back from an estimator's line.
 
-To open a signed paper, go to the company's own page. A W-9 and an insurance certificate are there too.
+### Open a signed paper
+
+Press the name of a signed paper. Its signed record opens right there.
+
+:::example An estimator's signed line
+{{chip:blue|Supply house}} **Subcontractor Agreement**. With Tallgrass Supply Co., signed by Lena Park, Owner. {{chip:green|signed ✓}}
+:::
+
+The signed record lists the **Form answers** and draws the **Signature**. A sensitive answer, like a tax number, reads *in the PDF only*. Press **Open signed PDF** to read the whole form. Each open is logged.
+
+A paper that is not signed yet has nothing to open. Its name is plain words.
+
+A supply house's page and a customer's page open the same record.
+
+### A training account
+
+A training account reads the lines and opens nothing. The form answers, the signature and the signed PDF stay closed to a training account.
+
+### Who says who someone is
+
+Someone on no list can hold a paper. Only the office says who they are. That is the leader, an assistant, the controller or a dev.
+
+An estimator who tries in Messages reads *They hold a paper, so only the office says who they are.* Ask the office to name them. An estimator can still name someone who holds no paper.
 
 ## Who can see the tab
 

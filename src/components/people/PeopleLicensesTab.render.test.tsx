@@ -10,6 +10,7 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import PeopleLicensesTab from './PeopleLicensesTab'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
+import { moneyText } from '../../test/moneyText'
 
 const TODAY = todayYmdInAppTz()
 
@@ -57,7 +58,7 @@ describe('PeopleLicensesTab', () => {
     expect(within(expired).getByRole('button', { name: 'Hal Sample' })).toBeTruthy()
     expect(within(expired).getByText('Master Plumber #1001')).toBeTruthy()
     expect(within(expired).getByText('232 days ago')).toBeTruthy()
-    expect(within(expired).getByText('$150.00')).toBeTruthy()
+    expect(within(expired).getByText(moneyText('$150.00'))).toBeTruthy()
     expect(within(expired).queryByText('Journeyman #2002')).toBeNull()
 
     const expiring = expiringSection()

@@ -2,13 +2,13 @@ import { useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import {
   billToUpdatePayload,
   invoiceBillToFromRow,
   validateBillToDraft,
   type InvoiceBillToRowFields,
 } from '../../lib/jobs/invoiceBillTo'
+import { Money } from '../Money'
 
 export type BillToEditorInvoice = InvoiceBillToRowFields & {
   id: string
@@ -128,7 +128,7 @@ export function JobFormBillToEditor({
           Bill this invoice to…
         </div>
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-          The <strong>${formatCurrency(Number(invoice.amount ?? 0))}</strong> invoice normally goes to the job
+          The <strong><Money amount={Number(invoice.amount ?? 0)} /></strong> invoice normally goes to the job
           customer{jobCustomerName ? ` (${jobCustomerName})` : ''}. Enter someone else — a tenant, a property
           manager — and this one invoice bills them instead. The rest of the job still bills the customer.
         </div>

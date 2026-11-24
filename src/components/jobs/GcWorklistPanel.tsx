@@ -9,6 +9,7 @@ import GcReviewRow from './GcReviewRow'
 import { TEMP_PILL } from './GcTemperatureBoard'
 import { GC_STATEMENT_UNCHECKED_WORDS } from '../../../supabase/functions/_shared/gcStatementGate'
 import { EmptyState } from '../EmptyState'
+import { Money, MoneyText } from '../Money'
 
 export type GcWorklistLastWord = { temperature: string | null; at: string | null; by: string; note: string | null }
 
@@ -278,7 +279,7 @@ export default function GcWorklistPanel({
               {at.shown} of {at.of}
             </b>{' '}
             GC{at.of === 1 ? '' : 's'} — {GC_STAGE_WAITING_ON[stage]}
-            {at.shown > 0 ? ` · $${formatCurrency(shownTotal)}` : ''}
+            {at.shown > 0 ? <MoneyText text={` · $${formatCurrency(shownTotal)}`} /> : ''}
           </span>
           {onClearStage ? (
             <button type="button" onClick={onClearStage} style={{ ...linkStyle, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 }}>
@@ -294,7 +295,7 @@ export default function GcWorklistPanel({
             <div className="gcWorklistGroup">
               <b>{groupTitle(g)}</b>
               <span style={{ color: 'var(--text-muted)' }}>
-                · {whole.rows.length} GC{whole.rows.length === 1 ? '' : 's'} · ${formatCurrency(whole.rows.reduce((t, r) => t + owed(r), 0))}
+                · {whole.rows.length} GC{whole.rows.length === 1 ? '' : 's'} · <Money amount={whole.rows.reduce((t, r) => t + owed(r), 0)} />
                 {underLineCount(whole) > 0 ? ` · ${underLineCount(whole)} under $${GC_ROUND_THRESHOLD.toLocaleString('en-US')}, word optional` : ''}
               </span>
               <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: whole.open === 0 ? 'var(--text-green-800)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
@@ -373,7 +374,7 @@ export default function GcWorklistPanel({
                   }
                   meta={
                     <>
-                      ${formatCurrency(owed(r))} · {jobs} job{jobs === 1 ? '' : 's'}
+                      <Money amount={owed(r)} /> · {jobs} job{jobs === 1 ? '' : 's'}
                       {oldest != null ? ` · oldest ${oldest}d` : ''}
                       {r.promise ? (
                         <>

@@ -4,6 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
   billsPaidCellCount,
+  billsPaidCellCredit,
   billsPaidCellLabel,
   billsPaidCellMoney,
   billsPaidChips,
@@ -21,6 +22,7 @@ import {
   billsPaidMonthName,
   billsPaidMonthOf,
   billsPaidOpeningDay,
+  billsPaidPayoutWords,
   billsPaidRange,
   billsPaidShiftMonth,
   billsPaidStepLabel,
@@ -34,9 +36,10 @@ import {
   type BillsPaidChip,
   type BillsPaidHow,
   type BillsPaidLine,
+  type BillsPaidPayoutAnswer,
   type BillsPaidSum,
 } from '../../lib/billing/billsPaidDays'
-import { readBillsPaid, readStripePayout, type BillsPaidPayout, type BillsPaidRead } from '../../lib/billing/billsPaidIo'
+import { readBillsPaid, readStripePayout, type BillsPaidRead } from '../../lib/billing/billsPaidIo'
 import { billsSentRecordPath } from '../../lib/billing/billsSent'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { saveBlobAs } from '../../lib/storageSave'
@@ -47,6 +50,7 @@ import { EmptyState } from '../EmptyState'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { ValueLine, ValueLines, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { THUMB, billLink, chipStyle, jobLink, money, phoneButton, strong, tile, tileSmall } from './billsSentLook'
+import { MoneyText } from '../Money'
 
 /**
  * Bills sent, the second view: By day paid (punch list #422, PR 3). The first view lists bills in the order they
@@ -111,14 +115,20 @@ function DayCell({ cell, picked, phone, onPick }: { cell: BillsPaidCell; picked:
     ...(cell.later ? { background: 'var(--bg-subtle)', borderStyle: 'dashed', cursor: 'default' } : {}),
   }
   const inside = picked ? 'var(--surface)' : 'var(--text-strong)'
+  // A day that holds a credit in kind and no money: marked, never green, since nothing came in.
+  const credit = billsPaidCellCredit(cell)
   return (
     <button type="button" data-testid="bills-paid-cell" data-day={cell.ymd} disabled={cell.later} aria-pressed={picked} aria-label={billsPaidCellLabel(cell)} onClick={() => onPick(cell.ymd)} style={style}>
       <span style={{ fontSize: '0.6875rem', fontWeight: 600 }}>{cell.day}</span>
       {has ? (
         <>
-          <span style={{ fontSize: phone ? '0.6875rem' : '0.75rem', fontWeight: 800, color: inside, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', letterSpacing: phone ? '-0.02em' : undefined }}>{billsPaidCellMoney(cell.sum.total, phone)}</span>
+          <span style={{ fontSize: phone ? '0.6875rem' : '0.75rem', fontWeight: 800, color: inside, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', letterSpacing: phone ? '-0.02em' : undefined }}><MoneyText text={billsPaidCellMoney(cell.sum.total, phone)} /></span>
           {phone ? null : <span style={{ fontSize: '0.65625rem', color: picked ? 'var(--surface)' : 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden' }}>{billsPaidCellCount(cell.sum)}</span>}
         </>
+      ) : credit ? (
+        <span data-testid="bills-paid-cell-credit" style={{ fontSize: '0.65625rem', color: picked ? 'var(--surface)' : 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+          {credit}
+        </span>
       ) : null}
     </button>
   )
@@ -193,7 +203,8 @@ export function BillsPaidByDay() {
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [reading, setReading] = useState(false)
   const [tries, setTries] = useState(0)
-  const [payout, setPayout] = useState<BillsPaidPayout | null>(null)
+  // Null until Stripe's answer is in, or when a caller hands back none: the tile is drawn only on an answer.
+  const [payout, setPayout] = useState<BillsPaidPayoutAnswer | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -303,13 +314,19 @@ export function BillsPaidByDay() {
         {tiles.today ? <SumTile label={`Today${tail}`} sum={tiles.today} testId="bills-paid-tile-today" phone={phone} /> : null}
         {tiles.week ? <SumTile label={`This week${tail}`} sum={tiles.week} testId="bills-paid-tile-week" phone={phone} /> : null}
         <SumTile label={`${billsPaidMonthName(month)}${tail}`} sum={tiles.month} testId="bills-paid-tile-month" phone={phone} tint />
-        {payout ? (
+        {payout?.state === 'coming' ? (
           <div style={tile} data-testid="bills-paid-tile-payout" title="What Stripe sends to the bank next, after Stripe’s fee. It is less than the Stripe payments it carries.">
             <span style={tileSmall}>Next Stripe payout to the bank</span>
             <b style={{ color: 'var(--text-strong)', fontSize: '0.9375rem', fontVariantNumeric: 'tabular-nums' }}>
               <AmountSmallCents value={payout.usd} />
             </b>{' '}
             <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap', ...(phone ? { display: 'block' } : {}) }}>{payout.arrivalYmd ? formatWorkDateYmdWeekdayShortFriendly(payout.arrivalYmd) : 'on its way'}</span>
+          </div>
+        ) : payout ? (
+          // No payout is an answer too: the tile keeps its place and says which, so it never reads as a tile gone missing.
+          <div style={tile} data-testid="bills-paid-tile-payout" title={payout.state === 'none' ? 'Stripe has no payout to the bank on its way. A payment joins the next one once Stripe has cleared it.' : 'Stripe was asked for its next payout and gave no answer. Open the page again to ask once more.'}>
+            <span style={tileSmall}>Next Stripe payout to the bank</span>
+            <b style={{ color: 'var(--text-700)', fontSize: '0.875rem' }}>{billsPaidPayoutWords(payout)}</b>
           </div>
         ) : null}
       </div>

@@ -955,7 +955,9 @@ Since v2.7937 **Send a paper** writes a person's copy as People → Contracts' q
 Since v2.7938 the tab's **Contract library** door opens People's library with one copy of its role rules (`contractLibraryRoles.ts`): the owner and a dev delete, and the controller and a dev see the Forms tab.
 Since v2.7726 a person's copy of a paper a job requires is in it with its job, under the same read as every person's agreement: the office.
 `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
-Since v2.8175 (punch list #403, the owner's call 8) an `estimator` has the tab to read, and an old link to it lands them on it: the kind chips are the ones their role reads (*All*, *Outside companies*, *Work orders*), with no **Send a paper**, no **Contract library**, and no press on a line.
+Since v2.8175 (punch list #403, the owner's call 8) an `estimator` has the tab to read, and an old link to it lands them on it: the kind chips are the ones their role reads (*All*, *Outside companies*, *Work orders*), with no **Send a paper**, no **Contract library**, and no act on a line.
+Since v2.8388 (the owner's second decision) a signed line's name is a press that opens the signed record for an estimator (`agreementReaderDoor`), and a waiting paper, a work order and a job stay plain words.
+A training estimator's lines open nothing, on the tab and on a company's own page (`canOpenSignedRecord`), the default it was built on, which the owner has yet to read: a training account reads the line only.
 Their list is what the view answers them under each table's own read, an outside company's papers from `person_contract_documents` and work orders from `step_commitments`, so no policy changed for it.
 Since v2.8354 (`20261123083000_agreements_every_party_paper.sql`) the view lists a party's paper of every kind and every state, so their list also holds an outside company's W-9, certificate and paper never sent, rows their policy already read.
 Since v2.7977 (punch list #403, `20261120010000_paper_party.sql`, the owner's calls 4 and 7) one more read policy, `person_contract_documents_estimator_outside`, lets an estimator read a paper that is with an outside company: a trade company's own paper (`company_id`), or a party's paper whose contact (`party_contact_id`) is a customer, a person at one, a supply house, a rep, a trade company or a person at one.
@@ -967,6 +969,7 @@ That list reads `person_contract_documents` itself, every kind and every state, 
 An estimator opens a signed paper's record from its name there.
 Since v2.8378 (punch list #403, the owner's second decision, `20261123184149_estimator_reach.sql`) an estimator who is not a digital twin and not in training also reads that record's two other reads for an outside company's paper: the form's layout (`contract_form_templates_estimator_outside`, a form such a paper is filled on) and the signature's image (`contract_signer_signatures_estimator_outside` on `storage.objects`, which asks `estimator_reads_paper`).
 A training estimator still reads the paper's row and reads neither, and the four roles read both as before.
+Since v2.8388 `open-contract-form-pdf` and `person-paper-pdf` refuse an estimator in training the signed file (`users.read_only`, read by each handler with the role), and a dev, the controller, a pay-approved master and the four roles open theirs in training as before.
 Since v2.8108 (calls 10 and 11) an estimator also opens a signed form's PDF, and its scan, through `open-contract-form-pdf` when the paper is with an outside company, a signed W-9 with its whole tax number among them.
 That function asks `estimator_reads_paper`, the policy's own rule, as the caller, refuses a digital twin and a signed hours statement itself, and logs the open as every other.
 An assistant still reads the row and is refused the file, and a person's signed form opens for a dev, the controller and a pay-approved master alone, as before.
@@ -976,15 +979,20 @@ Every function that reads a paper as its caller and then acts with the service r
 Since v2.7995 **Who is it with?** sends an outside party's paper as the four roles: it reads customers, the people on file there, supply houses and their reps under their own policies, writes the paper under `person_contract_documents`' own write policy, and a person kept with a company is written under `customer_contact_persons`' or `supply_house_contacts`' own.
 Someone on no list is a contact made through `contact_make_for_channel`, the office team's, and named by the sender.
 Since v2.7998 **Add to a list** says what such a contact is through `name_contact`, as the caller: a new customer is made in the app's own New customer form, a new supply house and a person kept with a company are written under their own tables' policies, and the paper follows through `contacts_fold_papers` when the contact folds.
+Since v2.8419 **Who is it with?** reads who works for which trade company through `person_trade_companies`, which answers the four roles alone, so anyone else's roster shows no company.
+Since v2.8419 **Add to a list** makes a trade company through `gc_add_company` and keeps a person at one as a `gc_company_people` row, both under the GC office team's policy, then names the contact through `name_contact` with the kind *trade*.
 Since v2.8378 (the owner's second decision, `20261123184149_estimator_reach.sql`) a contact that holds a paper is named by the four roles alone (`is_office_staff()`), where the whole office team named it before and an estimator then read its papers.
 The trigger `paper_holder_named_by_office` on `contacts` refuses anyone else signed in who gives a contact on no list a kind or a record, or who makes a contact an outside company's when it was not, through `name_contact` or a statement of their own (`officeNamesPaperHolder`).
 `contacts_fold_papers` refuses the same caller a fold that would carry a paper off a contact that is not an outside company's.
 An estimator still names a contact that holds no paper, and `contact_holds_paper`, the definer both guards ask, is open to nobody signed in.
+Since v2.8388 Messages' **Who is this?** says the refusal in the app's words (`contacts/paperHolderNaming.ts`), where it showed the database's own.
 Since v2.8313 (punch list #403, step 5, the owner's calls 3 and 7, `20261123020000_sub_company_ground.sql`) `person_trade_companies` says which trade company a roster person works for, and it is the four roles' to read and to write under one policy (`is_office_staff()`).
 Nobody else reads a row of it, an estimator and the person themself among them, and a training account, a digital twin and an archived account write nothing.
 Its two doors, `person_trade_company_set` and `person_trade_company_enter`, run as the caller and say so in words to anyone off the four roles.
 Since v2.8381 People → Contracts reads those links only for the four roles (`isOfficeRole`), so the company rows and the **Their company** control are drawn for them alone, and anyone else sees the tab as before.
 A company the control makes goes through `gc_add_company` as the caller, under `gc_companies`' team policy (`gc_office_team()`).
+Since v2.8394 the company's **Send for signature** keeps the signer as a person at the company who gets its contracts under `gc_company_people`' team policy, makes the copy through `gc_company_paper` and names the signer under the paper's own update policy, then calls `send-contract-for-signature`'s company branch with `from: 'office'`, which takes the four roles (v2.8322).
+**Enter from paper** makes the copy the same way and marks it signed under the paper's own update policy, so no function is called and nothing is emailed.
 A person's paper takes `signing_for` from that link through definer triggers, so no read policy on a paper changes: an estimator reads no person's paper, whether or not it names a company.
 Since v2.8013 (punch list #376, `20261120133000_person_paper_reminders.sql`) a waiting staff or sub paper's own reminder switch is a write to its row under `person_contract_documents`' existing write policy, the four roles that send a paper.
 The switch for all is the `app_settings` row `person_paper_reminders_v1`, which the owner and a dev change under one update policy on that key, and it ships off.
@@ -1138,6 +1146,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Our copy's lasting link (`/files/messages/<attachment>`, `/files/bills/<invoice>`) opens under the office's `message_attachments` and `supply_house_invoices` policies and the bucket's `gc_office_team()` read.
   Since v2.8391 (punch list #431) `/files/bills/<invoice>` also opens a bill with no copy of ours, by going to the Drive link on its row, read under the same `supply_house_invoices` policy.
   The Job Summary's share press, which copies that link, shows to the four roles that policy lets read a bill (dev, leader, assistant, controller) and to nobody else who sees the list.
+  Since v2.8399 `/files/bills/<invoice>` is the bill viewer as a page (`BillOpen.tsx`) and no longer leaves the app: the bill is read as the reader, so anyone that policy keeps out reads *This file is not one you can open.* and sees no amounts.
+  On the Job Summary the same four roles open a bill in the viewer, and anyone else who sees the list keeps the bill's Drive link in a tab of its own.
 
 ### Materials on site — the cages and boxes on a job site (v2.6039, `20261029010000_materials_on_site.sql`)
 
@@ -2700,6 +2710,7 @@ A training-mode account cannot sign, since starting a paper is a write.
   The State roll tab (`/prospects?tab=roll`, v2.8198, punch list #411) is not theirs: it opens to `users.team_prospects_access`, the Hiring switch itself, through `user_can_read_license_roll()` on `license_roll`, `license_roll_changes`, `license_roll_pulls`, `license_roll_counties`, `license_roll_left_off` and `license_roll_notes`.
   A shared Hiring column does not open the State roll.
   Its **Our own** view (v2.8233) is drawn only for a person who also passes People → Licenses' gate (`canAccessLicenses`), and it reads and writes `person_licenses` under that table's own policy, so it reaches no one the Licenses tab does not.
+  Its **Everyone** view and the person's sheet (v2.8390) are drawn for every Hiring holder, and a row's **One of ours** tag only for one who also passes `canAccessLicenses`.
   Nobody signed in writes a roll row: `license-roll-pull` writes with the service key, and the tab's **Pull 4 files** press runs it under the caller's JWT after the same gate and the archived-caller guard.
   The gate opens three writes to a person.
   A county: a Hiring holder adds a `license_roll_counties` row as themself (`added_by`) or removes one (v2.8159), and no screen offers it yet.
@@ -3452,7 +3463,15 @@ staff paths still use **`is_dev_or_master_or_assistant()`** unchanged.
 | Edit customers | ✅ | ✅ Own | ✅ Adopted | ❌ | ✅ Basic fields only | ❌ | ❌ |
 | Delete customers | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Change customer owner | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Merge two customers | ✅ | ✅ | ✅ Both customers have an owner | ❌ | ❌ | ❌ | ❌ |
 | Quick Fill | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+
+**Merge two customers** is the database's rule, not the screen's alone.
+`merge_customers` and `preview_merge_customers` are SECURITY DEFINER and carry no role test in their own lines: each calls `assert_caller_can_merge_customer_pair` once it holds the two rows.
+That function lets a dev or a leader through, lets an assistant or a controller through when both customers have an owner (`master_user_id`), and answers everyone else *Not allowed to merge customers*;
+the Edit Customer window shows the press to the same four roles (`showMergeUi` in `EditCustomerForm.tsx`).
+A caller in training mode is stopped at the merge's first write by the read-only statement trigger, a digital twin is an estimator and is refused by role, and an archived caller's request never reaches the function.
+The `merge-customers` bed holds the refusals: nobody signed out, an estimator, and an assistant in training mode.
 
 ### Project Management
 
@@ -3801,6 +3820,7 @@ do not copy it for tables holding real data.
 - **DELETE**: Not granted;
   UI shows no delete for estimators
 - **UI**: No **Advanced** (owner), **merge**, or **delete** in edit modal
+- **Merge**: refused by the database too ([Customer Management](#customer-management))
 
 **Workflow (Bids)**:
 1. Estimator opens "+ Add new customer" modal in Bids

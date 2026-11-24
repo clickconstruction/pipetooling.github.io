@@ -15,6 +15,7 @@ import { counselReadDraftProblem, counselReadFacts, counselReadLine, counselTrie
 import { moneyBarDayWords } from '../../../lib/legal/moneyBars'
 import { EmptyState } from '../../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../../lib/emptyWords'
+import { MoneyText } from '../../Money'
 
 /**
  * The With-the-firm panels (v2.5852, the split): the attorney's read of how the case tries (punch list #218 PR 2), the
@@ -126,7 +127,7 @@ export function OffersPanel({ entries, todayYmd, busy, onAdd, onStatus, onUndo }
           return [
             e.occurred_on,
             <span key="k" style={struck ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{offerKindWords(meta)}{meta.notes ? <span style={{ ...MUTED }}> · {meta.notes}</span> : null}</span>,
-            <span key="a" style={struck ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{formatLegalMoney(Number(e.amount ?? 0))}</span>,
+            <span key="a" style={struck ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}><MoneyText text={formatLegalMoney(Number(e.amount ?? 0))} /></span>,
             meta.expiresOn ?? '—',
             <span key="s" data-legal-offer-status={meta.status}>{struck ? `Undone${e.void_reason ? `: ${e.void_reason}` : ''}` : offerStatusWords(meta.status)}{meta.statusNote ? <span style={MUTED}> · {meta.statusNote}</span> : null}</span>,
             !struck && meta.status === 'open' ? (

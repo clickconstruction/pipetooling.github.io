@@ -8,6 +8,7 @@ import { PRICE_HISTORY_TONE_COLOR, priceHistoryChange } from '../../lib/material
 import { PartHouseNumbers } from './PartHouseNumbers'
 import { usePriceSources } from '../../hooks/usePriceSources'
 import { priceSourceWords } from '../../lib/materials/priceSheet/rowCard'
+import { MoneyText } from '../Money'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -267,11 +268,11 @@ export function PartPricesManager({
                         <td style={{ padding: '0.75rem' }}>
                           {p.supply_house?.name || 'Unknown'}
                           {priceSources.get(p.id) ? (
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{priceSourceWords(priceSources.get(p.id)!)}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}><MoneyText text={priceSourceWords(priceSources.get(p.id)!)} /></div>
                           ) : null}
                         </td>
                         <td style={{ padding: '0.75rem', fontWeight: isBest ? 600 : 400, color: isBest ? 'var(--text-green-600)' : 'inherit' }}>
-                          ${p.price.toFixed(2)} {isBest && '(Best)'}
+                          <MoneyText text={`$${p.price.toFixed(2)}`} /> {isBest && '(Best)'}
                         </td>
                         <td style={{ padding: '0.75rem' }}>{p.effective_date || '-'}</td>
                         <td style={{ padding: '0.75rem' }}>
@@ -343,9 +344,9 @@ export function PartPricesManager({
                               {h.changed_at ? new Date(h.changed_at).toLocaleDateString() : '-'}
                             </td>
                             <td style={{ padding: '0.75rem' }}>
-                              {h.old_price !== null ? `$${h.old_price.toFixed(2)}` : '-'}
+                              {h.old_price !== null ? <MoneyText text={`$${h.old_price.toFixed(2)}`} /> : '-'}
                             </td>
-                            <td style={{ padding: '0.75rem', fontWeight: 500 }}>${h.new_price.toFixed(2)}</td>
+                            <td style={{ padding: '0.75rem', fontWeight: 500 }}><MoneyText text={`$${h.new_price.toFixed(2)}`} /></td>
                             <td style={{ padding: '0.75rem', fontWeight: 600, color: PRICE_HISTORY_TONE_COLOR[change.tone] }}>
                               {change.text}
                             </td>

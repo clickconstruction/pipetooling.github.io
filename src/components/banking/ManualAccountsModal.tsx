@@ -3,6 +3,7 @@ import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { MoneyText } from '../Money'
 
 type ManualAccountRow = Database['public']['Functions']['list_manual_bank_accounts']['Returns'][number]
 
@@ -191,7 +192,7 @@ export function ManualAccountsModal({ open, onClose, onChanged }: ManualAccounts
                   </div>
                   <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-slate-500)', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 1rem' }}>
                     <span><strong>{r.tx_count}</strong> tx</span>
-                    <span>Net <strong style={{ color: r.net_total < 0 ? 'var(--text-red-700)' : '#047857' }}>{usd(r.net_total)}</strong></span>
+                    <span>Net <strong style={{ color: r.net_total < 0 ? 'var(--text-red-700)' : '#047857' }}><MoneyText text={usd(r.net_total)} /></strong></span>
                     <span>{ymd(r.oldest_posted)} → {ymd(r.newest_posted)}</span>
                   </div>
                   {confirming ? (

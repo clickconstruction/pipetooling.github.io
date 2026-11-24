@@ -27,6 +27,7 @@ import { SheetStoryModal } from './SheetStoryModal'
 import SubPortalGlobeButton from '../people/SubPortalGlobeButton'
 import { effectiveSubSheetStage, subSheetWorkEndYmd } from '../../lib/subSheetStageDerived'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { MoneyText } from '../Money'
 
 /**
  * "Work order" box on a Sub Labor sheet (Sub Work Orders train, PR 2 —
@@ -694,7 +695,7 @@ export function SubSheetWorkOrderPanel({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.6rem' }}>
               <div>
                 <span style={{ ...labelStyle, fontWeight: 600 }}>Amount</span>
-                <div style={{ ...inputStyle, background: 'var(--bg-muted)', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{money(amount)}</div>
+                <div style={{ ...inputStyle, background: 'var(--bg-muted)', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}><MoneyText text={money(amount)} /></div>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Fixed at send · the sheet total</span>
               </div>
               <div>
@@ -772,7 +773,7 @@ export function SubSheetWorkOrderPanel({
 
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button type="button" style={primaryBtn(saving)} disabled={saving} onClick={() => void send()}>
-              {saving ? 'Sending…' : `Send for signature · ${money(amount)}`}
+              {saving ? 'Sending…' : <MoneyText text={`Send for signature · ${money(amount)}`} />}
             </button>
             <button type="button" style={ghostBtn(saving)} disabled={saving} onClick={() => void saveDraft()}>
               Save draft
@@ -787,7 +788,7 @@ export function SubSheetWorkOrderPanel({
         <div style={{ marginTop: '0.6rem', fontSize: '0.8125rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.5rem' }}>
             <span style={{ fontWeight: 600, background: 'var(--bg-blue-tint)', color: 'var(--text-link)', borderRadius: 999, padding: '0.08rem 0.55rem' }}>{commitment.display_name}</span>
-            <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{money(Number(commitment.amount))}</span>
+            <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money(Number(commitment.amount))} /></span>
             {Number(commitment.retainage_pct) > 0 && <span style={{ color: 'var(--text-muted)' }}>({Number(commitment.retainage_pct)}% retainage)</span>}
             {snapshot.startsLabel && <span style={{ color: 'var(--text-muted)' }}>· {snapshot.startsLabel}</span>}
             {commitment.status === 'offered' && commitment.offer_expires_at && <span style={{ color: 'var(--text-muted)' }}>· good through {fmtYmd(commitment.offer_expires_at)}</span>}
@@ -795,7 +796,7 @@ export function SubSheetWorkOrderPanel({
 
           {drift?.differs && (
             <div style={{ marginTop: '0.45rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 6, padding: '0.4rem 0.6rem' }}>
-              ⚠ The sheet now totals {money(sheetTotal)}, which differs from the signed {money(Number(commitment.amount))} by {money(Math.abs(drift.delta))}. The signed number stands — write a change order for the difference.
+              ⚠ The sheet now totals <MoneyText text={money(sheetTotal)} />, which differs from the signed <MoneyText text={money(Number(commitment.amount))} /> by <MoneyText text={money(Math.abs(drift.delta))} />. The signed number stands — write a change order for the difference.
             </div>
           )}
 

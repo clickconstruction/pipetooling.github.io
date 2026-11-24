@@ -2,9 +2,9 @@ import { useState } from 'react'
 import type { GcReviewGroup } from '../../lib/gcReviewRollup'
 import { buildGcCertSnapshot } from '../../lib/jobs/gcReviewCertification'
 import { insertGcReviewCertification } from '../../lib/gcReviewCertifications'
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import GcBillLines from './GcBillLines'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { Money } from '../Money'
 
 /**
  * Wednesday GC certification checklist (v2.1983, from the owner's mockup):
@@ -98,7 +98,7 @@ export default function GcReviewCertifyModal({
             <strong>
               {checked.size} of {group.rows.length}
             </strong>{' '}
-            reviewed · ${formatCurrency(group.subtotal)}
+            reviewed · <Money amount={group.subtotal} />
           </span>
         </div>
         <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>

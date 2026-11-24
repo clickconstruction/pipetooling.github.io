@@ -24,6 +24,7 @@ import { houseVerdict, type HouseVerdict } from '../../lib/materials/priceSheet/
 import { planSheet, readerWords, sheetVerdict, type PlannedGroup, type PlannedRow } from '../../lib/materials/priceSheet/sheetPlan'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { PriceRowCardView, type CardFileOpts, type KnownPart, type ServerAsk } from './PriceRowCardView'
+import { MoneyText } from '../Money'
 
 type House = { id: string; name: string }
 const HOW: Record<string, 'crosswalk' | 'mfr_number' | 'description' | 'person'> = { house_number: 'crosswalk', model_number: 'mfr_number', same_name: 'description', words: 'description' }
@@ -565,7 +566,7 @@ export function PriceSheetPanel({
         <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
           {r.bucket === 'filed' ? (
             <>
-              Filed {r.line.filedPrice != null ? dollars(r.line.filedPrice) : ''}{' '}
+              Filed {r.line.filedPrice != null ? <MoneyText text={dollars(r.line.filedPrice)} /> : ''}{' '}
               <button type="button" disabled={busy} onClick={() => void takeBack(r)} style={cardLink}>
                 Undo
               </button>
@@ -578,10 +579,10 @@ export function PriceSheetPanel({
             <span style={{ color: 'var(--text-muted)' }}>in the bundle</span>
           ) : r.bucket === 'ready' && part && r.card.each != null ? (
             <button type="button" disabled={busy} onClick={() => void fileRow(r, part)} style={{ ...cardPress(busy, false), padding: '0.2rem 0.55rem' }}>
-              {working === r.line.id ? 'Filing…' : `File ${dollars(r.card.each)}`}
+              {working === r.line.id ? 'Filing…' : <MoneyText text={`File ${dollars(r.card.each)}`} />}
             </button>
           ) : (
-            <span style={{ color: 'var(--text-muted)' }}>{r.card.each != null ? dollars(r.card.each) : ''}</span>
+            <span style={{ color: 'var(--text-muted)' }}>{r.card.each != null ? <MoneyText text={dollars(r.card.each)} /> : ''}</span>
           )}
         </span>
       </div>
@@ -615,11 +616,11 @@ export function PriceSheetPanel({
             <br />
             <span style={{ fontSize: '0.75rem', color: g.addsUp === false || waits ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
               {g.rows.length === 1 ? '1 row' : `${g.rows.length} rows`}
-              {g.addsUp === false && g.rowsSum != null && g.group.eachPrice != null ? ` · the rows add to ${dollars(g.rowsSum)}, the paper says ${dollars(g.group.eachPrice)}` : ''}
+              {g.addsUp === false && g.rowsSum != null && g.group.eachPrice != null ? <MoneyText text={` · the rows add to ${dollars(g.rowsSum)}, the paper says ${dollars(g.group.eachPrice)}`} /> : ''}
               {waits ? ` · ${waits === 1 ? '1 waits' : `${waits} wait`} above` : g.ready ? ' · every row is ready' : ''}
             </span>
           </span>
-          <strong style={{ whiteSpace: 'nowrap' }}>{g.group.eachPrice != null ? `${dollars(g.group.eachPrice)} each` : ''}</strong>
+          <strong style={{ whiteSpace: 'nowrap' }}>{g.group.eachPrice != null ? <MoneyText text={`${dollars(g.group.eachPrice)} each`} /> : ''}</strong>
         </button>
         {st ? (
           <div data-testid="price-sheet-fixture" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', padding: '0 0 0.5rem 1.5rem', fontSize: '0.75rem' }}>
@@ -631,12 +632,12 @@ export function PriceSheetPanel({
             <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
               {st.state === 'ready' && st.each != null ? (
                 <button type="button" disabled={busy} onClick={() => void fixtureAct(g, () => placeFixture(g, false))} style={{ ...cardPress(busy, false), padding: '0.25rem 0.6rem' }}>
-                  {working === `g${g.group.id}` ? 'Placing…' : `Place · ${dollars(st.each)} each`}
+                  {working === `g${g.group.id}` ? 'Placing…' : <MoneyText text={`Place · ${dollars(st.each)} each`} />}
                 </button>
               ) : null}
               {st.state === 'costed_by_hand' && st.each != null ? (
                 <button type="button" disabled={busy} onClick={() => void fixtureAct(g, () => placeFixture(g, true))} style={{ ...cardPress(busy, false), padding: '0.25rem 0.6rem' }}>
-                  Use the sheet&apos;s {dollars(st.each)}
+                  Use the sheet&apos;s <MoneyText text={dollars(st.each)} />
                 </button>
               ) : null}
               {st.state === 'placed' ? (

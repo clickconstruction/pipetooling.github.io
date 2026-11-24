@@ -915,10 +915,15 @@ the apprentice file is read for ours alone.
 **Gone** means the state's file no longer has the row.
 A gone row is taken off 28 days later.
 **Left off** means a person asked not to be listed, and no pull keeps them.
+Since v2.8380 the sheet's **Leave off** press writes it and takes the person's rows off at once, by number and by name and ZIP.
+**Put back on the list**, at the foot of Everyone, removes it, and the next pull keeps the person again.
 The roll holds no phone, street address or email, since the state gives none for a person.
 It is not People → Licenses, which holds our own team's licenses.
 **Our own** (v2.8233) is the tab's view that lays each plumbing license we hold beside the state's row of the same number and rank, for a person who may also open People → Licenses.
 **Use the state's date** saves the state's expiry on that license's `person_licenses` row.
+**Everyone** (v2.8390) is the tab's view of the kept roll for our counties, searched by name or number and read fifty rows at a time, for everyone who holds the Hiring switch.
+A row opens the **person's sheet**: the state's facts, **What changed, as we saw it** (the `license_roll_changes` lines, from our first pull), **Our notes** and **Leave off**.
+**Our notes** are `license_roll_notes` rows, kept by the license's number and by name and ZIP, so a note outlives the roll row and follows a new rank.
 
 ### Stage / Step
 Individual work phase in a project workflow (e.g., "Rough In", "Inspection", "Top Out", "Trim Set").
@@ -2252,6 +2257,7 @@ Corrections are new entries — the log has no UPDATE/DELETE policies.
 Since v2.6392 the tab opens a person as **the person file**: a **Timeline** of everything on record on the day it is about (the entries beside the papers, licenses, write-ups, no-shows, excused lates, waiting field reports and the start and last days the app already knows, lanes Said · Did · Paper · Missed · Ahead;
 since v2.6820 a signed paper's line opens its own signed record on People → Contracts and says how it was signed, the person's hours statements stand on the line with where each one stands and a door to the paper, each fact chip on the strip is a press that narrows the Timeline to what it counts, and the dev seat's `get_person_file` lists the same papers as `signed_papers` and the statements as `hours_statements`), **Evidence** as records (the day it is about, a title, a memo and its files, filed in Drive under People › the person › the day and the title by `hr-evidence-drive`, v2.6393;
 a file already in Drive — a recording over the 10 MB cap — is linked rather than staged, v2.6541;
+a file up to 50 MB is staged by the dev seat's agent without passing through a call, declared on the plan and sent to the address the plan answers, v2.8375;
 every staged file carries its `sha256`, v2.6544;
 a **counsel-only** record stays in the app alone, never filed and never read by the agent's key, v2.6554;
 the dev seat reads it marked counsel-only since v2.6986) and **Documents** (the view named *Narrative*, then *Summary & narrative* from v2.6612: the summary and the narrative, each edited in place since v2.6610 through `dev_person_doc_write`, the function the dev seat's `plan_person_doc` writes through, and since v2.6614 the **named documents** beside them — any number of titled markdown texts a person, written, pasted or taken from a `.md` / `.txt` file, with a counsel-only mark;
@@ -4757,6 +4763,10 @@ What of it is on main, one line a piece:
   Since v2.8307 *Never said that* leaves the day on the thread while another promise of the customer's still names it (`dayStillPromised`), and a line on the screen says so.
   Since v2.8382 (punch list #421) the move line names a written promise's kind in words (`runningPromise`): *quote*, *start*, *delivery*, *insurance*, *W-9*, *payment*, *their answer* for a customer's answer on our bid, *on site*, *answer* and *certificate* for an architect's, and *their word* for a day given on a call.
   The same PR holds the words of a heard day's choice (`messages/heardChoice.ts`): the line it draws under, the day read in the app's zone, the presses by who they are and *just talk*.
+  Since v2.8383 `write_down_heard` writes a heard day and its kind in one press, or just talk with its day, on a customer's, a trade partner's or an architect's own text or voicemail, each only the kinds the screen offers them, and a payment mark names its Pipeline job (`message_promises.job_id`, `write_down_payment`'s `p_job_id`).
+  Since v2.8384 the choice draws under a customer's, a trade partner's or an architect's own text or voicemail naming a day still ahead: a press for each of their kinds after the day, then *just talk*, and *Another day* on a voicemail.
+  Each kind is written in one press, a customer's *A payment* opens the sheet with the day, and a line already said reads *Written down as their quote by Wed Nov 25*.
+  Since v2.8385 the same press also writes the day where that kind lives (`messages/promiseWritesIo.ts` over `promiseWrites.ts`): a quote on the company's open ask on the GC job, a start, a delivery, insurance or a W-9 on the Board's promises, a customer's answer on the bid's follow-up day, and the other kinds as a hold on the GC job's flow step, each skip and refusal said in words after the written ones.
   Since v2.8278 (punch list #334) the sheet sits on the modal stack (`useModalStackEntry`) and Escape closes it when it is the top window and no save is on its way, wherever it was opened from, while *Never said that*'s own question takes the key first.
 - **R3** · v2.5411: `stepsByFlow` and `qrStepName` name a quick reply's step across a kind's flows, the residential customer's beside the GC customer's.
 - **R4 · 1** · v2.5396: the residential customer flow, eleven facts from booked to review asked and two papers, the estimate and the bill (migration `20261014050000`;
@@ -5159,6 +5169,10 @@ Since v2.7103 the sums know what the papers print: a price rounded on a paper th
 On the Supply houses tab each bill's **Lines** cell reads *6 lines · adds up*, the gap (*5 lines · $12.40 short of the subtotal*) with **Look**, *counted as read by …*, *No lines yet* or *No PDF on this bill* (`rowLinesWords`, `paperRows.ts`).
 **Look** (`PaperLookModal.tsx`) is the paper beside the lines: the strip names the sum that is off, the line whose own arithmetic fails is marked, a person fixes a number or types the missing line and the strip turns green before **Save N lines**;
 **Count it as read anyway** keeps the gap beside the lines with their name.
+**The bill viewer** (`BillViewer.tsx`, v2.8399, punch list #431) is a supply house bill drawn in place over the list it came from, with that list beside the paper so Previous, Next and the arrow keys flip through it as it is searched.
+It draws the pages of the PDF that are this bill, shows the bill's facts beside them, and is also the page a bill's lasting link opens (`/files/bills/<invoice id>`).
+Since v2.8401 the Job Summary's invoice search also reads the lines of each bill's paper, a row a part found says *On the paper* with the line, and the viewer lists the lines beside the page with the matching ones first.
+Since v2.8403 it also opens from **See the bill ›** on a supply house's bills, from the ↗ on a row of an aging cell's window, and from **See the bill ›** in Link invoices for the office.
 The office writes through `supply_paper_save` and `supply_paper_accept` (`20261109210000`).
 **The sweep** (v2.6882, the edge function `bill-lines-sweep`, kernel `_shared/billSweep.ts`) reads a bill nobody filled from its PDF: every ten minutes it opens the Drive file a row links as the service account, asks the reader for every paper in the file, gives each row its paper by the invoice number (exactly, or since v2.6897 the printed number with a short suffix the office did not type when the totals agree) and writes it as the service role, so a typed bill's Lines cell fills by itself;
 it is also the backfill of the bills on file.
@@ -6924,7 +6938,8 @@ The Documents page's list of every agreement on file, for the office and, since 
 A line is a kind tag (*Contract · Warranty · Their paper · Staff · Sub · Partner · Work order*, and since v2.7625 GC mode's *Owner contract · Statement of work · Trade company*), the paper's name, who it is with, the job, where it stands in that kind's own words, and the day it was signed, sent or ended.
 Every kind shares three states, *waiting*, *signed* and *ended*, which the second row of chips asks for: **Sent and signed** (where the tab opens), **Waiting on a signature** with its count, **Signed**, **Voided or ended**.
 A draft is never on it, and a signed paper filed over several jobs is one line that names the first job and counts the rest.
-An estimator's tab (punch list #403, call 8) has the chips **All**, **Outside companies** and **Work orders**, lists what their role reads, and carries no **Send a paper**, no **Contract library** and no press on a line.
+An estimator's tab (punch list #403, call 8) has the chips **All**, **Outside companies** and **Work orders**, lists what their role reads, and carries no **Send a paper**, no **Contract library** and no act on a line.
+Since v2.8388 a signed line's name opens its **Signed contract** window for an estimator, which lists **Form answers** and draws the **Signature** for an outside company's paper, and a training account's line opens nothing.
 It reads the `agreements_on_file` view, where each table's own row security decides what the reader sees ([`agreementsLedger.ts`](../src/lib/documents/agreementsLedger.ts), [`DocumentsAgreementsTab.tsx`](../src/components/documents/DocumentsAgreementsTab.tsx)).
 It adds a view and renames nothing: *Contract* under a job on the Jobs tab and in the job window, the Customer page's **Agreements** card, People → Contracts and Partnerships → Agreements keep their names.
 Since v2.7932 a staff, sub or partner paper that waits on a signature acts on its own line: **Send again** emails a new signing link through the window People → Contracts uses, and **Copy the signing link** makes a link to text and emails nobody.
@@ -6934,10 +6949,14 @@ Since v2.7937 **Send a paper**, beside the find box, picks a paper from the Cont
 Since v2.7938 **Contract library**, beside it, opens the library People → Contracts opens, in place and with the same role rules ([`AgreementsContractLibrary.tsx`](../src/components/documents/AgreementsContractLibrary.tsx)).
 Nothing left People → Contracts: both pages keep a door.
 Since v2.7995 (punch list #403) the second window of **Send a paper** is **Who is it with?**, which finds a teammate, a sub, a customer and the people on file there, a supply house and its reps, and takes **Someone not in any list** ([`PaperPartyPicker.tsx`](../src/components/documents/PaperPartyPicker.tsx), [`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts)).
+Since v2.8419 (punch list #403, step 6) **Who is it with?** finds a sub by their trade company's name too, and their line reads *Signs for* the company ([`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts), `sendRosterWithCompanies` in [`agreementsSend.ts`](../src/lib/documents/agreementsSend.ts)).
 Since v2.8325 (punch list #403, the owner's third decision of 2026-11-22) a company that already has the picked paper out is named before the email window opens: a small window says who has it and the day it went, and offers **Send it to … again** or **Send a second copy to someone else**, which is a row of its own ([`partyPaperOut.ts`](../src/lib/documents/partyPaperOut.ts)).
 A paper with an outside company is a line tagged *Customer*, *Supply house* or *Not on a list*, under the chip **Outside companies**, and it says who signs after the party.
+Since v2.8419 a trade company's own paper, tagged *Trade company*, sits under **Staff and subs** with the subs who work there, where it sat under **GC projects** before.
+An estimator still reads a trade company's own paper under **Outside companies**.
 Since v2.8244 a line whose paper names another business than the party beside it also says *signing for* that business, on the tab and on the party's own page (`signingForBeside`, [`paperParty.ts`](../src/lib/contracts/paperParty.ts)).
 Since v2.7998 a line tagged *Not on a list* carries **Add to a list**, signed or not, and so does its signed record: the window says what they are, a new customer, a new supply house or vendor, or someone at a company the app keeps, and the paper comes with them ([`PaperPartyAddToList.tsx`](../src/components/documents/PaperPartyAddToList.tsx), [`paperPartyList.ts`](../src/lib/documents/paperPartyList.ts)).
+Since v2.8419 the window also offers **A new trade company**, made with the trade Plumbing and the person kept there as someone who gets its contracts, and *someone at a company the app keeps* finds trade companies too ([`paperPartyList.ts`](../src/lib/documents/paperPartyList.ts)).
 Since v2.8348 (punch list #403, the owner's first decision and his answer of 2026-11-23) an outside party's paper that is not signed carries **Take back** on its line, for the leader and a dev: after a confirm the paper is deleted and its signing link stops working, nobody is emailed, and a signed paper is kept ([`paperTakeBack.ts`](../src/lib/documents/paperTakeBack.ts)).
 Since v2.8128 a press after a failed write goes on from where it stopped and makes nothing twice while the window is open (`listMadeKey`, `writeOnce`);
 a window closed and opened again starts over.
@@ -6963,6 +6982,7 @@ Since v2.8354 (punch list #403, the owner's first decision, `20261123083000_agre
 Since v2.8313 (punch list #403, step 5, `20261123020000_sub_company_ground.sql`) a roster person can work for a trade company: `person_trade_companies` holds one row a person, written through `person_trade_company_set` or `person_trade_company_enter` by the office's four roles, and a person's paper fills `signing_for` from that link when it is made and each time it is sent, while a signed paper keeps what it said (who may write it: [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md)).
 Since v2.8381 (punch list #403, step 6) People → Contracts draws a **trade company** row above the subs who work for it, tagged *Trade company* and naming its workers, a worker with a title first ([`subCompanies.ts`](../src/lib/people/subCompanies.ts)).
 **Their company** is the value in place on a sub's opened row that enters, moves or clears that link, with **Same as their name** for a sub whose business carries their own name, and a new name makes a trade company whose trade is Plumbing.
+Since v2.8394 the company's row lists the company's own papers once, the newest copy of each with its state, and offers **Send for signature** and **Enter from paper**, while each worker's own paper says *signing for* the company on their row ([`subCompanyPapers.ts`](../src/lib/people/subCompanyPapers.ts)).
 Since v2.8162 a party's own page lists its papers: a supply house's window under **Papers**, and the Customer page's **Agreements** card under *Papers with this customer* ([`PartyPapers.tsx`](../src/components/contracts/PartyPapers.tsx), [`partyPapers.ts`](../src/lib/contracts/partyPapers.ts)).
 A paper is a party's when its contact is the party's own or that of a person there: a person on file at the customer, or a rep of the house.
 That list holds every kind and every state, so a W-9 and a paper that reads *not sent* are on it, where the Agreements tab lists agreements that were sent.

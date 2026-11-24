@@ -15,6 +15,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { ledgerDayWords } from '../../lib/subWorkOrders/subPaymentsLedger'
 import { rideAlongOutcomeWords, rideAlongPlan, rideAlongRowWords, type RideAlongCleanUp, type RideAlongFailure, type RideAlongRow } from '../../lib/subWorkOrders/rideAlongCleanUp'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 const usd = (n: number): string => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const shell: CSSProperties = { position: 'fixed', inset: 0, zIndex: 1002, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }
@@ -66,7 +67,7 @@ export function RideAlongCleanUpWindowView({ cleanUp, busy, outcome, onRun, onOp
                   <b>{r.label}</b>
                   {r.day ? <span style={{ color: 'var(--text-muted)' }}>{ledgerDayWords(r.day, true)}</span> : null}
                   <span style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                    {usd(r.total)} · {r.open > 0 ? <b>{usd(r.open)} open</b> : 'paid'}
+                    <MoneyText text={usd(r.total)} /> · {r.open > 0 ? <b><MoneyText text={usd(r.open)} /> open</b> : 'paid'}
                   </span>
                 </div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 3, paddingLeft: 22 }}>{rideAlongRowWords(r)}</div>

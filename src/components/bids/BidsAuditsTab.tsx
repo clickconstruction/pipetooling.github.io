@@ -50,6 +50,7 @@ import { effectiveTwinQuestionKind } from '../../../supabase/functions/_shared/t
 import { loadPricedTakeoffRows } from '../../lib/bids/loadPricedTakeoffRows'
 import { emptyWords } from '../../lib/emptyWords'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 /**
  * The Audits tab, cockpit v2 (v2.2553): judge the differences, coach the robot.
@@ -764,7 +765,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
             <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--text-muted)' }}>robot ×{fmtQty(entry.robotCount)} · ours ×{fmtQty(entry.ourCount)}</span>
           ) : bucket === 'rates' ? (
             <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--text-muted)' }}>
-              robot {fmtRate(entry.robotExt, entry.robotCount)}/u · ours {fmtRate(entry.ourExt, entry.ourCount)}/u ×{fmtQty(entry.ourCount)}
+              robot <MoneyText text={fmtRate(entry.robotExt, entry.robotCount)} />/u · ours <MoneyText text={fmtRate(entry.ourExt, entry.ourCount)} />/u ×{fmtQty(entry.ourCount)}
             </span>
           ) : (
             <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--text-muted)' }}>×{fmtQty(bucket === 'missed' ? entry.ourCount : entry.robotCount)}</span>

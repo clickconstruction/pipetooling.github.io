@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { ThreadWindow } from './ThreadWindow'
 import { WhoIsThisWindow } from './WhoIsThisWindow'
+import { PAPER_HOLDER_NAMING_WORDS } from '../../../lib/contacts/paperHolderNaming'
 import type { MessagesWrites } from './messagesWrites'
 import type { ThreadSlots } from './threadSlots'
 import { renderWithProviders } from '../../../test/renderSmokeMocks'
@@ -213,6 +214,24 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     expect(within(who).queryByRole('textbox', { name: /^Their own name/ })).toBeNull()
     fireEvent.click(within(who).getByRole('button', { name: 'This is who it is' }))
     await waitFor(() => expect(w.nameContact).toHaveBeenLastCalledWith('c-unknown', { record: { table: 'supply_house_contacts', id: 'rep-ray' }, kind: 'supply_house', name: null }))
+  })
+
+  it('Who is this?: a contact who holds a paper is refused in words, and nothing is named (punch list #403, decision 2)', async () => {
+    const house: RecordHit = { record: { table: 'supply_houses', id: 'sh-ridgeway' }, label: 'Ridgeway Supply', sub: 'Supply house', kind: 'supply_house' }
+    const unknown = spineMessagesView().contacts.find((c) => c.id === 'c-unknown')!
+    // What `messagesIo.nameContact` throws when the database answers officeNamesPaperHolder.
+    const w = { ...writes(), searchRecords: vi.fn(() => Promise.resolve([house])), nameContact: vi.fn(() => Promise.reject(new Error(PAPER_HOLDER_NAMING_WORDS))) }
+    const onNamed = vi.fn()
+    renderWithProviders(<WhoIsThisWindow contact={unknown} box="team" writes={w} onNamed={onNamed} onClose={vi.fn()} />)
+    const who = screen.getByRole('dialog', { name: /^Who is this\?/ })
+    fireEvent.change(within(who).getByRole('textbox', { name: 'Their name or their company' }), { target: { value: 'Ridgeway' } })
+    fireEvent.click(await within(who).findByRole('option', { name: /^Ridgeway Supply/ }))
+    fireEvent.click(within(who).getByRole('button', { name: 'This is who it is' }))
+    const refusal = await within(who).findByRole('alert')
+    expect(refusal.textContent).toBe('They hold a paper, so only the office says who they are. Ask a leader, an assistant or the controller to name them.')
+    expect(onNamed).not.toHaveBeenCalled()
+    // The window stays, with its press ready again.
+    expect((within(who).getByRole('button', { name: 'This is who it is' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('Who is this?: the box their line came in on puts its own kinds first (R6)', async () => {

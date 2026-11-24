@@ -3,6 +3,9 @@ import { AlertCircle } from 'lucide-react'
 import { billDateWords, billDayName, groupSupplyBills, isBareOfJobAccount, supplyBillSummary, type SupplyBillGroup } from '../../lib/materials/supplyBillGroups'
 import { isSupplyCredit } from '../../lib/supplyHouseDocument'
 import { formatCurrency } from '../../lib/format'
+import { SUPPLY_INVOICE_WORDS } from '../../lib/jobs/supplyInvoiceList'
+import { CopyLinkIcon } from '../icons/CopyLinkIcon'
+import { Money, MoneyText } from '../Money'
 
 /**
  * A supply house's bills, as its card shows them at a desk (punch list #334 PR 5, 2026-11-12).
@@ -18,6 +21,9 @@ import { formatCurrency } from '../../lib/format'
  *   (the owner: "I think we should individually mark them as paid"). A bill marked on this visit stays where it was,
  *   greyed, with *Mark unpaid*.
  * - Edit stays one press away on every row, and *Look* shows where the bill's lines were read.
+ * - *See the bill* opens the bill in place, in the bill viewer, with the card's bills beside the paper in the order
+ *   they are drawn, and a link icon beside it copies the bill's own link (punch list #431). A host that hands in no
+ *   viewer keeps the older link to the PDF in a new tab.
  *
  * It draws only. The host holds the bills, the save and the windows the presses open.
  */
@@ -87,6 +93,8 @@ export function SupplyHouseBillsCard({
   puttingBackId = null,
   onPutBack,
   onFinish,
+  onSeeBill,
+  onShareBill,
 }: {
   /** The bills to list: the unpaid ones, the ones paid on this visit, and every paid one when the page shows them. */
   bills: ReadonlyArray<SupplyBillCardRow>
@@ -109,6 +117,10 @@ export function SupplyHouseBillsCard({
   onPutBack?: (paymentId: string) => void
   /** Finish… on a paid row whose payment has no method yet: the host opens "how it was sent" for it. */
   onFinish?: (billId: string) => void
+  /** See the bill: the host opens the bill viewer on it. `listed` is every bill on the card, in the order drawn. */
+  onSeeBill?: (billId: string, listed: readonly string[]) => void
+  /** The link icon beside See the bill: the host copies the bill's own link. */
+  onShareBill?: (billId: string) => void
 }) {
   const dayName = (ymd: string): string => billDayName(ymd, todayYmd)
   const stats = supplyBillSummary(
@@ -120,6 +132,8 @@ export function SupplyHouseBillsCard({
   // Largest first inside a group. Past due is read oldest first by the grouping, the largest of a day leading.
   const ordered = [...bills].sort((a, b) => b.amount - a.amount)
   const groups: SupplyBillGroup<SupplyBillCardRow>[] = groupSupplyBills(ordered, todayYmd, dayName, paidThisVisit)
+  // The bills as the eye meets them, group by group: the order the viewer's Previous and Next follow.
+  const listed = groups.flatMap((g) => g.rows.map((b) => b.id))
 
   const row = (b: SupplyBillCardRow, kind: SupplyBillGroup<SupplyBillCardRow>['kind']) => {
     const paidNow = b.is_paid && paidThisVisit.has(b.id)
@@ -199,10 +213,23 @@ export function SupplyHouseBillsCard({
                 Look ›
               </button>
             )}
-            {b.link && (
-              <a href={b.link} target="_blank" rel="noreferrer" title="The invoice" style={link}>
-                See the bill ›
-              </a>
+            {onSeeBill && (b.link || b.lines.look) ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <button type="button" onClick={() => onSeeBill(b.id, listed)} title="Open the bill here, without leaving the page" style={{ ...link, fontFamily: 'inherit', fontSize: 'inherit', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  See the bill ›
+                </button>
+                {onShareBill ? (
+                  <button type="button" onClick={() => onShareBill(b.id)} title={SUPPLY_INVOICE_WORDS.shareTitle} aria-label={SUPPLY_INVOICE_WORDS.shareLabel(b.invoice_number)} style={{ display: 'inline-grid', placeItems: 'center', minWidth: 28, minHeight: 28, padding: 0, border: 'none', borderRadius: 6, background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    <CopyLinkIcon size={14} />
+                  </button>
+                ) : null}
+              </span>
+            ) : (
+              b.link && (
+                <a href={b.link} target="_blank" rel="noreferrer" title="The invoice" style={link}>
+                  See the bill ›
+                </a>
+              )
             )}
             {b.payment_link && (
               <a href={b.payment_link} target="_blank" rel="noreferrer" title="The payment's receipt" style={link}>
@@ -224,7 +251,7 @@ export function SupplyHouseBillsCard({
         {/* The amount and the two presses stay together, so a narrow card wraps them as one and Edit never drops alone. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: '0 0 auto', marginLeft: 'auto' }}>
           <div style={{ fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right', minWidth: 96, color: credit ? 'var(--text-green-700)' : 'var(--text-strong)' }} data-testid="supply-bill-amount">
-            {credit ? `− $${formatCurrency(Math.abs(b.amount))}` : `$${formatCurrency(b.amount)}`}
+            {credit ? <MoneyText text={`− $${formatCurrency(Math.abs(b.amount))}`} /> : <Money amount={b.amount} />}
             {credit && <span style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 500 }}>credit</span>}
           </div>
           {/* Each bill is marked by itself, and the press names the act. */}
@@ -261,7 +288,7 @@ export function SupplyHouseBillsCard({
         {onAccount > 0.005 ? (
           <div data-testid="supply-bills-stat-account" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.55rem 0.75rem', minWidth: 0 }}>
             <div style={label}>On account</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', color: 'var(--text-green-700)' }}>${formatCurrency(onAccount)}</div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', color: 'var(--text-green-700)' }}><Money amount={onAccount} /></div>
             <div style={quiet}>sent past the bills, offered on the next payment</div>
           </div>
         ) : null}

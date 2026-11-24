@@ -51,6 +51,7 @@ import {
   mercuryTxCombinedNoteInlineText,
   mercuryTxPipeLineAriaLabel,
 } from './bankingMercuryDragSortLedger'
+import { MoneyText } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -167,7 +168,7 @@ const DragSortTransactionPreview = memo(function DragSortTransactionPreview({ ro
         fontSize: '0.8125rem',
       }}
     >
-      <div style={{ fontWeight: 700, color: 'var(--text-slate-900)' }}>{formatUsd(Number(row.amount))}</div>
+      <div style={{ fontWeight: 700, color: 'var(--text-slate-900)' }}><MoneyText text={formatUsd(Number(row.amount))} /></div>
       <div
         style={{
           marginTop: 4,
@@ -247,7 +248,7 @@ function InboxDropZone({ count, amountSum }: { count: number; amountSum: number 
     >
       <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-slate-900)' }}>Unlabeled</div>
       <div style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', marginTop: 4 }}>
-        Drop here to clear Accounting Label · {count} tx · {formatUsd(amountSum)}
+        Drop here to clear Accounting Label · {count} tx · <MoneyText text={formatUsd(amountSum)} />
       </div>
     </div>
   )

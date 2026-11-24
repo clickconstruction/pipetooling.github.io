@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { PriceBreakdownCard } from './PriceBreakdownCard'
 import type { PriceBreakdownInput } from '../../lib/bids/priceBreakdown'
+import { moneyText } from '../../test/moneyText'
 
 afterEach(() => {
   cleanup()
@@ -25,7 +26,7 @@ describe('PriceBreakdownCard', () => {
     render(<PriceBreakdownCard input={input} companyMarkup={0.5} onMarkupChange={() => {}} marginColor={marginColor} />)
     expect(screen.getByText('Traditional breakdown')).toBeTruthy()
     for (const name of ['Material', 'Sales tax', 'Equipment', 'Labor', 'Driving, travel, permits, subs', 'The bid']) expect(screen.getByText(name)).toBeTruthy()
-    expect(screen.getByText('$8,600.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$8,600.00'))).toBeTruthy()
     expect(screen.getByText(/crew rate/)).toBeTruthy()
   })
   it('with no hours the labor line reads Labor and margin and offers Labor', () => {

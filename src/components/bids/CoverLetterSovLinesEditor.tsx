@@ -5,6 +5,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { lineSplit, parsePastedLineNames, reconcileLines, scaleLinesToContract, sovLinesTotals, type SovLine, type SovLineSeed } from '../../lib/bidDocuments/sovLines'
+import { Money } from '../Money'
 
 type Props = {
   bidId: string
@@ -232,7 +233,7 @@ export function CoverLetterSovLinesEditor({ bidId, lines, contractAmount, splitO
                       />
                     </td>
                   ) : null}
-                  {splitOn && s ? <td style={{ ...cellStyle, textAlign: 'right' }}>${formatCurrency(s.material)}</td> : null}
+                  {splitOn && s ? <td style={{ ...cellStyle, textAlign: 'right' }}><Money amount={s.material} /></td> : null}
                   <td style={{ ...cellStyle, textAlign: 'right' }}>
                     <input
                       type="text"
@@ -272,20 +273,20 @@ export function CoverLetterSovLinesEditor({ bidId, lines, contractAmount, splitO
           <tr style={{ fontWeight: 600 }}>
             <td style={{ ...cellStyle, borderTop: '1px solid var(--border-strong)' }} />
             <td style={{ ...cellStyle, borderTop: '1px solid var(--border-strong)' }}>{sorted.length} {sorted.length === 1 ? 'line' : 'lines'}</td>
-            {splitOn ? <td style={{ ...cellStyle, borderTop: '1px solid var(--border-strong)', textAlign: 'right' }}>${formatCurrency(totals.labor)}</td> : null}
-            {splitOn ? <td style={{ ...cellStyle, borderTop: '1px solid var(--border-strong)', textAlign: 'right' }}>${formatCurrency(totals.material)}</td> : null}
-            <td style={{ ...cellStyle, borderTop: '1px solid var(--border-strong)', textAlign: 'right' }}>${formatCurrency(totals.value)}</td>
+            {splitOn ? <td style={{ ...cellStyle, borderTop: '1px solid var(--border-strong)', textAlign: 'right' }}><Money amount={totals.labor} /></td> : null}
+            {splitOn ? <td style={{ ...cellStyle, borderTop: '1px solid var(--border-strong)', textAlign: 'right' }}><Money amount={totals.material} /></td> : null}
+            <td style={{ ...cellStyle, borderTop: '1px solid var(--border-strong)', textAlign: 'right' }}><Money amount={totals.value} /></td>
             <td style={{ borderTop: '1px solid var(--border-strong)' }} />
           </tr>
         </tbody>
       </table>
       {sorted.length > 0 && !rec.balanced ? (
         <div data-testid="cover-letter-sov-lines-gap" style={{ marginTop: '0.4rem', padding: '0.3rem 0.45rem', background: 'var(--bg-amber-100)', border: '1px solid var(--border-amber)', borderRadius: 4, color: 'var(--text-amber-700)', fontSize: '0.75rem' }}>
-          ⚠ Lines add to ${formatCurrency(rec.total)} — ${formatCurrency(Math.abs(rec.gap))} {rec.gap > 0 ? 'short of' : 'over'} the ${formatCurrency(contractAmount)} contract.{' '}
+          ⚠ Lines add to <Money amount={rec.total} /> — <Money amount={Math.abs(rec.gap)} /> {rec.gap > 0 ? 'short of' : 'over'} the <Money amount={contractAmount} /> contract.{' '}
           <button type="button" onClick={() => void scaleToContract()} disabled={busy} style={{ ...linkStyle, color: 'var(--text-amber-700)' }}>Scale every line to the contract</button>
         </div>
       ) : sorted.length > 0 ? (
-        <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-green-700)' }}>Lines add to the ${formatCurrency(contractAmount)} contract.</div>
+        <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-green-700)' }}>Lines add to the <Money amount={contractAmount} /> contract.</div>
       ) : null}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.9rem', alignItems: 'center', marginTop: '0.45rem', fontSize: '0.75rem' }}>
         <button type="button" onClick={() => void addLine()} disabled={busy} style={{ padding: '0.2rem 0.6rem', background: 'var(--bg-blue-tint)', border: '1px solid #3b82f6', borderRadius: 4, color: 'var(--text-blue-700)', cursor: 'pointer', fontSize: '0.8125rem' }}>+ Add line</button>

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
-import { formatCurrency } from '../../lib/format'
 import {
   type PayStubDeductionRow,
   stubNetPay,
@@ -15,6 +14,7 @@ import {
 } from '../../lib/payStubPayments'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money } from '../Money'
 
 type StubPick = {
   id: string
@@ -275,8 +275,7 @@ export function PayStubLessModal({
           Less — {activeStub.person_name}
         </h2>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          Period {ledgerPeriodLabel(activeStub.period_start, activeStub.period_end)} · Gross ${formatCurrency(activeStub.gross_pay)} · Net Pay $
-          {formatCurrency(netPay)}
+          Period {ledgerPeriodLabel(activeStub.period_start, activeStub.period_end)} · Gross <Money amount={activeStub.gross_pay} /> · Net Pay <Money amount={netPay} />
         </p>
         <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Installments apply to Net Pay (not Gross).
@@ -294,7 +293,7 @@ export function PayStubLessModal({
           <div style={{ fontSize: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
               <span style={{ color: 'var(--text-700)' }}>Paid to date</span>
-              <span style={{ fontWeight: 600 }}>${formatCurrency(paidSum)}</span>
+              <span style={{ fontWeight: 600 }}><Money amount={paidSum} /></span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
               <span style={{ color: 'var(--text-700)' }}>Balance</span>
@@ -321,7 +320,7 @@ export function PayStubLessModal({
                   textAlign: 'right',
                 }}
               >
-                ${formatCurrency(balanceRemaining)}
+                <Money amount={balanceRemaining} />
               </button>
             </div>
           </div>
@@ -333,7 +332,7 @@ export function PayStubLessModal({
                 .sort((a, b) => a.paid_at.localeCompare(b.paid_at))
                 .map((p) => (
                   <li key={p.id} style={{ marginBottom: '0.35rem' }}>
-                    <span style={{ fontWeight: 500 }}>${formatCurrency(Number(p.amount))}</span>
+                    <span style={{ fontWeight: 500 }}><Money amount={Number(p.amount)} /></span>
                     {' · '}
                     {new Date(p.paid_at).toLocaleDateString()}
                     {p.memo?.trim() ? (
@@ -361,7 +360,7 @@ export function PayStubLessModal({
             <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.875rem' }}>
               {deductions.map((d) => (
                 <li key={d.id} style={{ marginBottom: '0.5rem' }}>
-                  <span style={{ fontWeight: 500 }}>${formatCurrency(d.amount)}</span>
+                  <span style={{ fontWeight: 500 }}><Money amount={d.amount} /></span>
                   {' · '}
                   <span style={{ color: 'var(--text-muted)' }}>{d.source === 'offset' ? 'Offset' : 'Manual'}</span>
                   {' — '}
@@ -447,7 +446,7 @@ export function PayStubLessModal({
                 const creditBlocked = o.type === 'employee_credit'
                 return (
                 <li key={o.id} style={{ marginBottom: '0.45rem' }}>
-                  ${formatCurrency(o.amount)} · {typeLabel}
+                  <Money amount={o.amount} /> · {typeLabel}
                   {o.description?.trim() ? ` — ${o.description.trim()}` : ''}
                   <button
                     type="button"

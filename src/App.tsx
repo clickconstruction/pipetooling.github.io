@@ -7,6 +7,7 @@ import { supabase } from './lib/supabase'
 import Layout from './components/Layout'
 import { IndexLanding } from './components/IndexLanding'
 import { indexLandingPath } from './lib/devBridgeLanding'
+import { helpGuideAddressFromSlugPath } from './lib/helpGuideUrlParam'
 import SignIn from './pages/SignIn'
 import Away from './pages/Away'
 import DevLogin from './pages/DevLogin'
@@ -229,6 +230,13 @@ function AuthHandler() {
   }, [location.hash, navigate])
 
   return null
+}
+
+/** `/help/<slug>`, the address a guide link is written with: typed or pasted from outside the app, it opens that guide. */
+function NavigateToHelpGuide() {
+  const { slug } = useParams<{ slug: string }>()
+  const { hash } = useLocation()
+  return <Navigate to={helpGuideAddressFromSlugPath(slug, hash)} replace />
 }
 
 function NavigateToEditCustomer() {
@@ -504,6 +512,7 @@ function AppContent() {
           <Route path="m/:code" element={<MachineCode />} />
           <Route path="settings" element={<Settings />} />
           <Route path="help" element={<Help />} />
+          <Route path="help/:slug" element={<NavigateToHelpGuide />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
