@@ -126,6 +126,7 @@ Every imitation is on record before its link exists (v2.6290, `20261101175329_us
 a dev alone reads the table (`USING (public.is_dev())`), nobody signed in writes it, `anon` holds nothing, and the three fences cover it.
 `gmail-mine` reads it to refuse such a session (*Messages, My email* below).
 The app activity heartbeat reads it too (v2.8251, `20261122021600_imitated_session_holds_app_activity.sql`): `bump_user_app_activity()` writes nothing when `session_opened_by_imitation()` says the calling session's magic-link sign-in falls from 1 minute before an imitation of the same person to 2 minutes after it, a window of minutes where `gmail-mine` reads back a day, since a wrong hold here would cost a person their own activity.
+The four seen marks that are functions read it too (v2.8459, `20261124084500_imitated_session_holds_seen_marks.sql`): `job_note_tags_seen()`, `task_note_tags_seen()` and `bid_mark_requests_seen()` mark nothing and answer 0 for such a session, and `legal_firm_intake_seen()` stamps nothing after its own office check, while a press made in View as still saves as that person.
 The door (v2.3608;
 the Settings rail's chip and `/settings#view-as` since v2.4041, not the gear menu): **View as…** (dev only, `ViewAsPanel`) — the Roles list backed by the samples with their switch chips, and a People search;
 guide *see the app as a role or as a person*.
