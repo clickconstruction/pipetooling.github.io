@@ -2,7 +2,7 @@
 name: "Punch list: what is still to answer and what it looks like, on every card"
 number: 438
 group: ready
-status: asked 2026-11-24 by Diane · the same day fifteen built cards that waited on a person were drawn in the lens frame with invented data, and each got a pictures page beside it with what it waits on and what to say · the kit that drew them is in this folder · the board's own view of the questions and the pictures is not drawn and not built
+status: asked 2026-11-24 by Diane · the same day fifteen built cards that waited on a person were drawn in the lens frame with invented data, and each got a pictures page beside it with what it waits on and what to say · the kit that drew them is in this folder · the board's own view drawn the same day on Diane's word, as a canvas of seven frames with a refined cut D and a static copy here · her word on it the same day, *Build D*, on the seven picks · PR 1, the question on the card, is open as #9706 · PR 2, Waiting on me, is being built
 summary: >
   Diane wants the Punch list page to make two things easy for a person. First, the questions that
   person still has to answer. Second, what a card looks like before and after it is built. Today the
@@ -11,9 +11,9 @@ summary: >
   invented data and wrote, for each, what it waits on and the one or two answers that would move it.
   Those pages now sit beside their cards, so the board links to them. What is left is the board
   itself: a view of every card that waits on a person, each with its question and its pictures.
-next: Draw the board's view as a mock-up, a list of the cards that wait on a person with the question and two pictures on each row, and put the five calls below to the owner.
+next: Merge PR 1 (#9706) and push its migration. Then PR 2, the Waiting on me view as D draws it, and a look at it on the live site.
 size: M as a train of three (S · M · S)
-blocker: None. The view wants a mock-up and the five calls before it is built.
+blocker: None. Diane said Build D on 2026-11-24.
 opinion: build — the pictures and the answers exist for fifteen cards and the board already links to them, so the view is mostly reading what is there
 ---
 
@@ -80,36 +80,90 @@ pictures page too.
   whether that is the app or the invented rows.
 - **#111**: Settings → Training lists four courses. The card speaks of three.
 
-## What the board does not have yet
+## What the board has today
 
 The board (`/punch-list`, `src/pages/PunchList.tsx` over `src/lib/todos/todoBoard.ts`) reads each
-card's front matter and lists its pages. A row shows the name, the status, the Next line, the
-blocker and links. It has no place for a question and no picture.
+card's front matter and lists its pages. A row shows the name, the summary, the Next line, the
+blocker, an opinion and links. At a desk one row is about 520 px tall, and on a phone 1,111 px.
+What the card waits on is inside the Next line. The pictures are one press away. The row's answer
+control is Do, Later, Drop with a note: it is shared, it keeps the name and the day, and it sorts a
+card that is not built yet.
 
-What the ask wants, as three small PRs:
+## The mock-up
 
-1. **A question on the card (S).** A front-matter list, one line a question, each with who it
-   waits on and the answers that would move it. `npm run check:todos` reads it. The board draws
-   the questions on the row, and a filter shows only the cards that wait on a person, grouped by
-   who.
-2. **The pictures on the row (M).** The row shows two small pictures from the card's pictures
-   page, and a press opens the page. A card that is not built shows the app today beside its
-   mock-up, which is the before and the after. A built card shows the built screen alone.
+Drawn 2026-11-24 on Diane's word (*Yes, draw it*). Her word on it the same day: *Build D*.
+
+- The canvas, where each frame also has a dark theme: *Punch list: answers and pictures* —
+  https://claude.ai/artifact/JAcnxSYRzuYqpenkf9bTbN (private to Diane's account).
+- The static copy: [`mockup.html`](mockup.html). It carries the critique, the doubts and the calls.
+
+Seven frames:
+
+- **Today, at a desk and on a phone.** The real app in the lens frame, invented data.
+- **A.** A third View, *Waiting on a person*: the cards grouped by who, a short row each, a small
+  picture, and Go ahead and Change on the row.
+- **B.** One card opened: the question, the card's own answers, and today beside what it becomes if
+  built.
+- **C.** A on a phone.
+- **D, at a desk and on a phone.** The refined cut.
+
+### What was wrong with A, B and C
+
+1. A answers the wrong question. The ask was the questions *I* need to answer. A lists fifteen rows
+   for everyone.
+2. A row says a status, *Waits on the owner*. A person cannot answer a status.
+3. Go ahead and Change sit beside the board's own Do, Later and Drop: two ways to answer on one page.
+4. A picture 54 px wide says there is a picture. It does not show the screen.
+5. Before and after only exists for work that is not built. Fourteen of the fifteen cards are built.
+6. Nothing says a picture is old. The My Bids screen changed the day its pictures were drawn.
+7. An answered card stays in the list.
+
+### What D does
+
+- It opens on **Waiting on me**, with the count on the View pill. Everyone else's questions are
+  behind pills.
+- The question comes first, as a sentence a person can act on, with one word in front for the kind:
+  Look, Read, Walk, Decide or Use. The card's name comes second.
+- One way to answer: the board's own pick, which on a card with a question reads **Go ahead,
+  Change, Not now**. Change opens the note. It is saved where Do, Later and Drop are saved today.
+- One lead picture at a size that reads, and *See all* for the rest. A built card says Built. Work
+  not built shows Today beside If built, the mock-up side with a dashed edge.
+- An old picture says so: *The screen changed after these were drawn.*
+- Answered cards fold into one line at the foot.
+- B stays as the opened row.
+
+### Honest doubts
+
+- *Me* needs a rule: each question has to name who it waits on, by role. Counsel has no login.
+- Change is not a pick today. The store holds Do, Later and Drop. A fourth value is one migration.
+- A question on the card is one more thing each session has to keep true.
+- The lead picture is somebody's choice.
+
+## The plan
+
+Three PRs, on the seven picks as they stand:
+
+1. **The question on the card (S).** The front-matter list, read by `npm run check:todos`. The
+   fifteen cards take theirs from their pictures pages. No screen changes.
+2. **Waiting on me (M).** The View as D draws it: the rows, the answer control over the pick store,
+   the lead picture, the opened row, the fold of answered cards. The fourth pick is its migration.
 3. **Draw them again with one command (S).** The kit in `draw/` becomes a script that redraws one
-   card's pictures by its number, so a picture does not go stale after the next change to its
-   screen.
+   card's pictures by its number, and the row says when a page is older than the card's newest
+   version.
 
 ## The calls, each with a pick
 
-These picks are the session's, not the owner's.
+These picks are the session's. Diane said *Build D* on them on 2026-11-24, so they are the build's until someone overturns one.
 
 | Call | Pick |
 |---|---|
-| 1. Where a question lives | In the card's front matter, as a list. The Next line stays the next act. A question is what a person must say. |
-| 2. Where the answer goes | Said in a chat or to a session, as today. The board gives a line to copy, such as *#396: go ahead*. No answer is saved in the database in the first cut. |
-| 3. Before and after | A card that is not built: the app today in the lens frame, beside the card's mock-up. A built card: the built screen alone, with its mock-up only where the two differ. |
-| 4. Where the pictures live | Inside the pictures page, as WebP, about 0.3 to 0.5 MB a card. The build copies only `.html` out of `to-dos/`, so a picture beside the page would not be served. |
-| 5. Who draws them | A session, when it builds a card or leaves it waiting on a person. The page carries its date, and the board says when a page is older than the card's newest version. |
+| 1. Does it open first? | Yes, for a person who has a question waiting. Everyone else lands on By group, as today. |
+| 2. Where a question lives | In the card's front matter, a list. Each line has who, the kind (Look, Read, Walk, Decide, Use) and the question. The Next line stays the next act. |
+| 3. Who is *me* | By role: the owner is the Leader, the office is the assistants and the controller. Counsel and Time show to the office and the owner. |
+| 4. The answer | The board's own pick and note, read as Go ahead, Change, Not now on a card with a question. Change becomes a fourth pick, with one migration. |
+| 5. The picture on the row | One lead picture, named in the card's pictures page. *See all* opens the page. The picture stays inside the page as WebP, since the build copies only `.html` out of `to-dos/`. |
+| 6. Before and after | Only for work that is not built: the app today in the lens frame, beside the card's mock-up. A built card shows the built screen alone. |
+| 7. An old picture | The pictures page carries its day. The row says so when the card shipped a version after that day. |
 
 ## How to verify
 
@@ -117,5 +171,5 @@ This PR: after the deploy, each of the fifteen rows on `/punch-list` lists *pict
 `/to-dos/training/pictures.html` opens with its eight pictures. `/to-dos/punch-list-answers-and-pictures/waiting-2026-11-24.html`
 opens, and each *See its pictures* door opens that card's page.
 
-The view, once built: a person opens `/punch-list`, picks the cards that wait on them, and reads
-each question with its pictures without opening a card.
+The view, once built: a person opens `/punch-list`, lands on the cards that wait on them, and
+answers each question beside its picture without opening a card.
