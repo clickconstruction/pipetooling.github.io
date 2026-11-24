@@ -1308,6 +1308,10 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
 
 - **Left:** the hook call 778–829, the rows after the find 850–861, the router `actOnNextUp` 963–1037, `zoomTo` 1043, `zoomJob` 1075, `zoomFor` 1081, `listLabel` 1086, `stepFactsFor` 1753, the view's mount 2779–2786, and a phone's job screen 2614–2616, 2863–2890.
 - **Out:** [`useLienDeskBoard.ts`](../src/components/jobs/useLienDeskBoard.ts) (the rows, the Board, its picks, the leader's one press, the pinned find box's frame, the reminder).
+- **The run's first step** (v2.8474, punch list #362 step 5): [`useLienGetItRight.ts`](../src/components/jobs/useLienGetItRight.ts) reads the papers left out (`lienLeftOutIo.ts`) and builds the checklist over the Board and the rows the hook above already made (`lienGetItRight.ts`, `lienLeftOut.ts`).
+  [`LienGetItRightHost.tsx`](../src/components/jobs/LienGetItRightHost.tsx) is the frame's third part: the run's door over `LienDeskNextUp` while the run is shut, and [`LienGetItRight.tsx`](../src/components/jobs/LienGetItRight.tsx) in the list's place while it is open.
+  The desk keeps one hook call and the host's mount, and hands the host its own router (`actOnNextUp`), `zoomFor` and the Board's prints, so a line's press opens what its To do row opens.
+  The first tile is not the run's door: its red line is a press of its own, and a tile that is a press cannot hold a second one.
 - **Why the router stays:** it turns a row's target into 23 of the desk's setters across every view.
 - **Next:** `actOnNextUp` as a kernel that names the target and a thin switch that calls the setters.
 

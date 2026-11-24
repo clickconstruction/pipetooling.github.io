@@ -110,9 +110,11 @@ import { lienClosedNoticeStopNote, lienStopPaperKind } from '../../lib/jobs/lien
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import LienDeskNextUp from './LienDeskNextUp'
+import LienGetItRightHost from './LienGetItRightHost'
 import { lienNoticeToldWords } from '../../lib/jobs/lienLeaderTold'
 import LienDoNowBar from './LienDoNowBar'
 import { useLienDeskBoard } from './useLienDeskBoard'
+import { useLienGetItRight } from './useLienGetItRight'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type CallerMatchInput, type CallerOwnerHit } from '../../lib/jobs/lienCallerMatch'
 import LienCallScriptModal from './LienCallScriptModal'
@@ -906,6 +908,8 @@ export default function LienDesk({
       setRunOpen(true)
     },
   })
+  // The run's first step, Get it right (punch list #362, step 5): the checklist over the same Board and rows, and the papers left out.
+  const getItRight = useLienGetItRight({ shown: kind === 'next', board, rows: nextUpRows, todayYmd, jobTitle: (jobId) => (data?.jobsById[jobId]?.job_name ?? '').trim() || jobLabel(data?.jobsById[jobId], jobId), leaderName: (jobId) => leaderNameFor?.(data?.jobsById[jobId]?.master_user_id ?? null)?.trim() || null, refreshKey: data })
   // A phone's flow (punch list #428). A pressed stage narrows the list as a bin's head does. Where the page keeps the
   // stage in the history entry, the entry is what says which stage is picked: a press asks the page for it, and Back
   // puts the flow back. A stage the Board no longer holds reads as none.
@@ -3124,7 +3128,9 @@ export default function LienDesk({
             <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)} prints={boardPrints ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.short.label, left: side.short.left, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>
+            <LienGetItRightHost run={getItRight.run} open={getItRight.open} failure={getItRight.failure} onOpen={() => getItRight.setOpen(true)} onRetry={() => void getItRight.reload()} scrolls={doNow.listScrolls} isMobile={isMobile} canLeaveOut={office} userName={(id) => leaderNameFor?.(id)?.trim() || null} onBack={() => getItRight.setOpen(false)} onAct={(rowKey) => { const row = nextUpRows.find((r) => r.key === rowKey); if (row) actOnNextUp(row) }} onOpenLine={(line) => zoomFor(line.jobId, line.kind)?.press()} onLeaveOut={getItRight.leaveOut} onPutBack={getItRight.putBack} prints={boardPrints ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.label, left: side.left?.words ?? null, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
             <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} risk={rowRisk} riskLabel={riskLabel} stageFor={rowStage} noticeFor={rowNotice} byBin={board && !isMobile ? { binFor: rowBin, folds: lienBinFolds({ office, serveOwed: serveJobs.length, serveButton: serveDoor, printReady: affPrintPlanAll.ready.length, printButton: lienAffidavitPrintDoorWords(affPrintPlanAll), sendReady: affSendPlanAll.ready.length }), narrowed: Boolean(boardPick) } : null} trackPress={office && !isMobile && affPrintPlanAll.ready.length >= 2 ? { button: lienAffidavitPrintDoorWords(affPrintPlanAll), onPress: () => { setAffHeldOnlyPicked(false); setAffPile('ready'); setKind('affidavit') } } : null} remind={office && reminderWords && waitingRows.length > 0 ? { button: reminderWords.button, dead: reminderWords.dead, busy: reminding, onPress: () => void remindLeader() } : null} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
+            </LienGetItRightHost>
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
