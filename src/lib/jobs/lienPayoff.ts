@@ -246,7 +246,7 @@ export type LienPayoffPlace = {
   key: string
   /** The property's address as the first job writes it. */
   place: string
-  /** The customer on the jobs: at a home, the property owner. */
+  /** The customers on the place's jobs, each named once: at a home, the property owner. */
   payer: string
   /** What the office is told about the place, with its values marked. */
   headline: string
@@ -254,14 +254,14 @@ export type LienPayoffPlace = {
 }
 
 /**
- * One key for a place however its jobs spell it: the customer, the house number and the street's first word.
- * *212 Larkspur Ct, Austin* and *212 Larkspur Court Austin, TX* are one place.
+ * One key for a place however its jobs spell it: the house number and the street's first word.
+ * *212 Larkspur Ct, Austin* and *212 Larkspur Court Austin, TX* are one place. A lien sits on the property, so
+ * the customer is not part of the key: two jobs at one address under two customers are one place with two payers.
  */
-export function lienPlaceKey(customerId: string | null, address: string | null): string {
+export function lienPlaceKey(address: string | null): string {
   const a = (address ?? '').toLowerCase().replace(/[.,#]/g, ' ').trim()
   const m = /^(\d+[a-z]?)\s+(?:(?:n|s|e|w|north|south|east|west)\s+)?([a-z0-9]+)/.exec(a)
-  const street = m ? `${m[1]} ${m[2]}` : a.replace(/\s+/g, ' ')
-  return `${customerId ?? ''}|${street}`
+  return m ? `${m[1]} ${m[2]}` : a.replace(/\s+/g, ' ')
 }
 
 const lien = (n: number): string => (n === 1 ? 'lien' : 'liens')
@@ -323,8 +323,10 @@ export function lienPayoffPlaces(facts: LienPayoffFacts): LienPayoffPlace[] {
       open,
       step: lienPayoffStep({ affidavit: a, releases: facts.releases, affidavitsOnJob: onJob.get(a.job_id) ?? 1, open, payments: facts.paymentsByJob[a.job_id] ?? [], todayYmd: facts.todayYmd }),
     }
-    const key = job ? lienPlaceKey(job.customer_id, job.job_address) : `job|${a.job_id}`
-    const place = byPlace.get(key) ?? { key, place: (job?.job_address ?? '').trim() || 'A job with no address', payer: (job?.customer_name ?? '').trim(), headline: '', rows: [] }
+    const key = (job && lienPlaceKey(job.job_address)) || `job|${a.job_id}`
+    const place = byPlace.get(key) ?? { key, place: (job?.job_address ?? '').trim() || 'A job with no address', payer: '', headline: '', rows: [] }
+    const name = (job?.customer_name ?? '').trim()
+    if (name && !place.payer.split(', ').includes(name)) place.payer = place.payer ? `${place.payer}, ${name}` : name
     place.rows.push(row)
     byPlace.set(key, place)
   }

@@ -674,7 +674,7 @@ last_updated: 2026-11-21
 
 > **v2.8504 (Payoffs, punch list #435 piece 1):** `LienDeskPage`'s grid has two rows, `auto minmax(0, 1fr)`, and the first holds [`LienPayoffs`](../src/components/jobs/LienPayoffs.tsx), whose wrapper is always drawn so the desk keeps the second row.
 > It draws one line, *Payoffs*, with what waits on a release and **Someone paid ›**, and the window that press opens: every live filed affidavit under its place, each with three step rounds, one sentence and one press.
-> The rule is [`lienPayoff.ts`](../src/lib/jobs/lienPayoff.ts), whose `lienPayoffStep`, `releaseForAffidavit`, `lienPlaceKey`, `lienPayoffPlaces` and `lienPayoffStrip` are held by 21 tests.
+> The rule is [`lienPayoff.ts`](../src/lib/jobs/lienPayoff.ts), whose `lienPayoffStep`, `releaseForAffidavit`, `lienPlaceKey`, `lienPayoffPlaces` and `lienPayoffStrip` are held by 22 tests.
 > The reads are [`lienPayoffIo.ts`](../src/lib/jobs/lienPayoffIo.ts), which start from the filings because the desk's list functions drop a job paid to zero.
 > The presses are the page's: `onOpenBill` is `openEditJob(jobId, 'bill')` and `onOpenRelease` opens the Lien window with `initialTab: 'release_record'`.
 > It reads again whenever the desk's `data` changes, and `?payoffs=1` opens the window at once.

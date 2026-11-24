@@ -131,11 +131,11 @@ describe('the small readers', () => {
   })
 
   it('keys one place however its jobs spell it', () => {
-    const one = lienPlaceKey('c1', '212 Larkspur Ct, Austin, TX 78701')
-    expect(lienPlaceKey('c1', '212 Larkspur Court Austin, TX')).toBe(one)
-    expect(lienPlaceKey('c1', '212 N. Larkspur Ct')).toBe(one)
-    expect(lienPlaceKey('c1', '214 Larkspur Ct, Austin')).not.toBe(one)
-    expect(lienPlaceKey('c2', '212 Larkspur Ct, Austin')).not.toBe(one)
+    const one = lienPlaceKey('212 Larkspur Ct, Austin, TX 78701')
+    expect(lienPlaceKey('212 Larkspur Court Austin, TX')).toBe(one)
+    expect(lienPlaceKey('212 N. Larkspur Ct')).toBe(one)
+    expect(lienPlaceKey('214 Larkspur Ct, Austin')).not.toBe(one)
+    expect(lienPlaceKey('')).toBe('')
   })
 
   it('reads the three steps against where a lien stands', () => {
@@ -199,6 +199,15 @@ describe('lienPayoffPlaces and the strip', () => {
     expect(done.every((p) => p.rows.every((r) => r.step.step === 'done'))).toBe(true)
     expect(plainSentence(done.find((p) => p.payer === 'Marisol Okafor')!.headline)).toBe('Every lien here is released.')
     expect(plainSentence(lienPayoffStrip(done).say ?? '')).toBe('Every filed lien is released.')
+  })
+
+  it('keeps one place when its jobs sit under two customers, and names both', () => {
+    const f = facts()
+    const places = lienPayoffPlaces({ ...f, jobs: f.jobs.map((j) => (j.id === 'j3' ? { ...j, customer_id: 'c9', customer_name: 'Bright Fork Builders' } : j)) })
+    expect(places.map((p) => [p.payer, p.rows.length])).toEqual([
+      ['Marisol Okafor, Bright Fork Builders', 3],
+      ['Calloway Homes', 1],
+    ])
   })
 
   it('says nothing when no lien is filed', () => {

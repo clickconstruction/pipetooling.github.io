@@ -6772,7 +6772,7 @@ A policy, not an app rule: the bar sends, files and moves nothing.
 ### Payoffs (Lien desk)
 The line above the Lien desk's lists and the window it opens, since **v2.8504** (punch list #435, piece 1): what to do when someone pays off a filed lien.
 The line says how many filed liens are paid and still on record, and its press reads **Someone paid ›**.
-The window lists every live filed affidavit under its **place**, the jobs of one customer at one property, with the amount that pays the place's liens off.
+The window lists every live filed affidavit under its **place**, the jobs at one property whatever customer each sits under, with the amount that pays the place's liens off.
 A lien stands on one of three steps: **money** (the job's sent bills still owe), **release** (the bills read paid and no release of record is saved) and **county** (a release is saved and the county has not recorded it).
 Past the three it is **released**.
 Each row has one sentence and the one press for its step: *Record the payment ›*, *Make the release ›*, *Open the release ›*.
