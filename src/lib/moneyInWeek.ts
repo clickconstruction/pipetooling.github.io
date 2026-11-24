@@ -32,20 +32,18 @@ import { claimOpen, type PaidClaim } from './jobs/paidClaims'
 import { arRowInvoiceId } from './bridge/collect/collectBills'
 import { MAILED_CHECK_DAYS, mailedCheckYmd } from './bridge/collect/collectOutcome'
 import type { CollectBillRead } from './bridge/collect/collectPile'
-import { AR_UNBANKED_CHECK_DAYS } from '../../supabase/functions/_shared/bankReturnedDeposits'
 import { isInKindPaymentType } from '../../supabase/functions/_shared/inKindPayment'
 import { ymdAddDays } from '../utils/dateUtils'
+import { DRAWER_DAYS, MATCH_TOLERANCE_USD, depositOnNoBill, matchMoneyInDeposits, type MoneyInDeposit, type MoneyInUnlinkedPayment } from './moneyInDeposits'
+
+// The deposit rule lives in `moneyInDeposits.ts`, where By day paid reads it too. These names are kept here for this file's callers.
+export { DRAWER_DAYS, MATCH_LOOKBACK_DAYS, MATCH_TOLERANCE_USD, isCustomerDeposit } from './moneyInDeposits'
+export type { MoneyInDeposit, MoneyInDepositFilter, MoneyInUnlinkedPayment } from './moneyInDeposits'
 
 /** Business days a pending Mercury deposit usually takes to post: Friday's deposit posts Tuesday. */
 export const PENDING_POSTS_BUSINESS_DAYS = 2
 /** Days a claimed online payment or bank transfer takes to land, when it was not a mailed check. */
 export const CLAIM_OTHER_ARRIVES_DAYS = 2
-/** Dollars two amounts may differ by and still be the same money. */
-export const MATCH_TOLERANCE_USD = 1
-/** A payment typed in up to this many days before a deposit can be that deposit. */
-export const MATCH_LOOKBACK_DAYS = 30
-/** A check typed in more than this many days ago without reaching the bank leaves the drawer for Accounts Receivable's cases. */
-export const DRAWER_DAYS = AR_UNBANKED_CHECK_DAYS
 
 export type MoneyInRowKind = 'landed' | 'drawer' | 'bank' | 'returned' | 'sent-claim' | 'word' | 'pace' | 'stripe-payout'
 export type MoneyInDoorKind = 'deposits' | 'job' | 'banking' | 'return-case'
@@ -102,28 +100,6 @@ export type MoneyInPayment = {
   payerName: string
   /** The Mercury deposit Accounts Receivable matched this payment to, if any. */
   bankTransactionId: string | null
-}
-
-/** A recorded payment no deposit carries yet (`list_unlinked_payments_for_bank_payments`). */
-export type MoneyInUnlinkedPayment = {
-  paymentId: string
-  jobId: string | null
-  usd: number
-  paidOnYmd: string | null
-  paymentType: string | null
-  referenceNumber: string | null
-  payerName: string
-}
-
-export type MoneyInDeposit = {
-  mercuryTransactionId: string
-  /** Pending: the amount. Posted: what is still not applied to a bill. */
-  usd: number
-  kind: string | null
-  counterpartyName: string | null
-  state: 'pending' | 'posted'
-  /** Pending: the day it was made. Posted: the day it posted. */
-  dayYmd: string | null
 }
 
 /** An open return case, in the Accounts Receivable window's own words. */
@@ -251,45 +227,6 @@ function daysBetween(fromYmd: string, toYmd: string): number {
   return Number.isFinite(a) && Number.isFinite(b) ? Math.round((b - a) / 86_400_000) : 0
 }
 
-/** Mercury kinds that are never a customer paying us. */
-const NOT_CUSTOMER_KINDS = new Set([
-  'internalTransfer',
-  'treasuryTransfer',
-  'debitCardTransaction',
-  'creditCardTransaction',
-  'creditCardCredit',
-  'outgoingPayment',
-  'wireFee',
-  'cardInternationalTransactionFee',
-])
-
-/** The org's Accounts Receivable deposit filter (`app_settings` bank_payments_sorting_config_v1). */
-export type MoneyInDepositFilter = {
-  kinds: ReadonlyArray<string>
-  excludeCounterpartyContains: ReadonlyArray<string>
-  excludeNoteContains: ReadonlyArray<string>
-}
-
-/**
- * A Mercury row that is a customer paying us, by the same filter the Accounts
- * Receivable window lists deposits with — and never a Stripe payout, which the
- * payout chip already carries.
- */
-export function isCustomerDeposit(tx: { usd: number; kind: string | null; counterpartyName: string | null; note?: string | null }, filter: MoneyInDepositFilter | null): boolean {
-  if (!(tx.usd > 0)) return false
-  const kind = tx.kind ?? ''
-  if (NOT_CUSTOMER_KINDS.has(kind)) return false
-  const counterparty = (tx.counterpartyName ?? '').toLowerCase()
-  if (counterparty.includes('stripe')) return false
-  if (filter) {
-    if (filter.kinds.length > 0 && !filter.kinds.includes(kind)) return false
-    if (filter.excludeCounterpartyContains.some((p) => p.trim() !== '' && counterparty.includes(p.trim().toLowerCase()))) return false
-    const note = (tx.note ?? '').toLowerCase()
-    if (filter.excludeNoteContains.some((p) => p.trim() !== '' && note.includes(p.trim().toLowerCase()))) return false
-  }
-  return true
-}
-
 /** "check deposit", "bank transfer", "wire", "deposit". */
 export function depositKindWord(kind: string | null): string {
   switch (kind) {
@@ -351,7 +288,6 @@ export function buildMoneyInWeek(input: MoneyInWeekInput): MoneyInWeekView {
   // money — never landed, never at the bank, never a check in the drawer. It is also kept off
   // `list_unlinked_payments_for_bank_payments`; this holds until that push lands, and after.
   const payments = input.payments.filter((p) => !isInKindPaymentType(p.paymentType))
-  const unlinkedInput = input.unlinked.filter((u) => !isInKindPaymentType(u.paymentType))
   const weekMonday = weekMondayContaining(todayYmd) ?? todayYmd
   const weekSunday = ymdAddDays(weekMonday, 6)
   const lastMonday = ymdAddDays(weekMonday, -7)
@@ -431,25 +367,11 @@ export function buildMoneyInWeek(input: MoneyInWeekInput): MoneyInWeekView {
   }
 
   // ── Deposits meet what they pay ─────────────────────────────────────────
-  const unlinked = unlinkedInput.filter((u) => u.usd > 0 && !returnedPaymentIds.has(u.paymentId))
-  const usedPayments = new Set<string>()
+  // Which typed-in payment carries each deposit is `moneyInDeposits.ts`'s rule, shared with By day paid.
+  const { matches, unlinked, usedPaymentIds: usedPayments } = matchMoneyInDeposits({ deposits: input.deposits, unlinked: input.unlinked, returnedPaymentIds, todayYmd })
   const matchedBillKeys = new Set<string>()
   const matchedBillJobs = new Set<string>()
   const near = (a: number, b: number): boolean => Math.abs(a - b) <= MATCH_TOLERANCE_USD
-
-  const paymentFor = (d: MoneyInDeposit, dDay: string): MoneyInUnlinkedPayment | null => {
-    const from = ymdAddDays(dDay, -MATCH_LOOKBACK_DAYS)
-    const to = ymdAddDays(dDay, 3)
-    const checkDeposit = d.kind === 'checkDeposit'
-    const candidates = unlinked.filter((u) => !usedPayments.has(u.paymentId) && near(u.usd, d.usd) && (u.paidOnYmd == null || (u.paidOnYmd >= from && u.paidOnYmd <= to)))
-    candidates.sort(
-      (a, b) =>
-        Number(isCheckPayment({ payment_type: b.paymentType }) === checkDeposit) - Number(isCheckPayment({ payment_type: a.paymentType }) === checkDeposit) ||
-        Math.abs(a.usd - d.usd) - Math.abs(b.usd - d.usd) ||
-        (b.paidOnYmd ?? '').localeCompare(a.paidOnYmd ?? ''),
-    )
-    return candidates[0] ?? null
-  }
 
   /** An open bill of the same amount — only when it is the one bill it can be. */
   const billFor = (d: MoneyInDeposit): CollectBillRead | null => {
@@ -460,14 +382,9 @@ export function buildMoneyInWeek(input: MoneyInWeekInput): MoneyInWeekView {
     return named.length === 1 ? named[0]! : null
   }
 
-  const deposits = input.deposits
-    .filter((d) => isCustomerDeposit({ usd: d.usd, kind: d.kind, counterpartyName: d.counterpartyName }, null))
-    .sort((a, b) => (a.dayYmd ?? '').localeCompare(b.dayYmd ?? ''))
-  for (const d of deposits) {
-    const dDay = d.dayYmd ?? todayYmd
-    const pay = paymentFor(d, dDay)
+  for (const m of matches) {
+    const { deposit: d, dayYmd: dDay, payment: pay } = m
     const bill = pay ? null : billFor(d)
-    if (pay) usedPayments.add(pay.paymentId)
     if (bill) {
       matchedBillKeys.add(bill.key)
       if (bill.jobId) matchedBillJobs.add(bill.jobId)
@@ -495,7 +412,8 @@ export function buildMoneyInWeek(input: MoneyInWeekInput): MoneyInWeekView {
       })
     } else {
       if (!inThisWeek(dDay) || dDay > todayYmd) continue
-      const matched = pay != null || bill != null
+      // On no bill yet, and no open bill it can only be: the chip says so. By day paid counts every deposit on no bill.
+      const matched = !depositOnNoBill(m) || bill != null
       landed({
         key: `deposit:${d.mercuryTransactionId}`,
         tag: matched ? (reference ? `Landed · check #${reference}` : `Landed · ${depositKindWord(d.kind)}`) : 'Landed · not applied yet',

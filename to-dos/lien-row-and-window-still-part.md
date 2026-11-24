@@ -2,7 +2,7 @@
 name: "Lien: where a billed row and the Lien window still part"
 number: 335
 group: residual
-status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 4, 5 and 6 shipped v2.7193, v2.7187, v2.7198 + v2.7273, v2.7184 and v2.7181 · row 1's migration pushed 2026-11-13 on the owner's yes · row 4 finished with the Dashboard card 2026-11-14 · an earlier hand day allowed, v2.7447 (the owner's call of 2026-11-16: any past day, with a second look) · an approved affidavit moves to Held when a gate closes, v2.7449 (his call of 2026-11-16: the approval stands)
+status: carried from #325 when it closed 2026-11-12 · rows 1, 2, 4, 5 and 6 shipped v2.7193, v2.7187, v2.7198 + v2.7273, v2.7184 and v2.7181 · row 1's migration pushed 2026-11-13 on the owner's yes · row 4 finished with the Dashboard card 2026-11-14 · an earlier hand day allowed, v2.7447 (the owner's call of 2026-11-16: any past day, with a second look) · an approved affidavit moves to Held when a gate closes, v2.7449 (his call of 2026-11-16: the approval stands) · the three Also seen fixes Diane asked for on 2026-11-24 shipped: the header names the leader, v2.8475; the header's affidavit button lands on the job, v2.8478; the Legal desk and the firm's page read the last day set by hand, v2.8481, with `legal-portal` deployed the same day
 summary: >
   Punch list #325 made a billed row's lien line say one thing, in the words of the next act, and
   open the Lien window on the right paper. A read-only walk of the finished train on the live board
@@ -10,11 +10,11 @@ summary: >
   not a wording: a last day of work set by hand that is earlier than later clock hours. The row
   counts from the hand day and says Lien gone. The window counts from the later hours and gives the
   affidavit 95 more days. The rest are small wordings.
-next: Nothing that was asked for is left. The Also seen list holds smaller things nobody has asked for yet. Pick one up on an ask, or retire the card.
-size: M as six small pieces (S · S · XS · M · S · XS), five shipped, and the two Also seen fixes (S · S), both shipped; left: the rest of Also seen, unsized
+next: Nothing that was asked for is left. The three Also seen fixes asked for on 2026-11-24 are shipped. Three notes stay on that list and nobody has asked to build them: the Lien window opened from the Documents tab, one live job that is a question for the office, and the release of record on a job paid in full. Retiring the card is the owner's.
+size: M as six small pieces (S · S · XS · M · S · XS), five shipped, and the five Also seen fixes (S · S · XS · S · S), all shipped; left: three Also seen notes, unsized
 blocker: none
 mockup: not required — words on screens that exist, and one rule in a clock
-ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193 · 7198 · 7273 · 7447 · 7449
+ver: v2.7042 · 7043 · 7046 · 7047 · 7048 · 7077 · 7181 · 7184 · 7187 · 7193 · 7198 · 7273 · 7447 · 7449 · 8475 · 8478 · 8481
 ---
 
 # Lien: where a billed row and the Lien window still part
@@ -88,16 +88,33 @@ what still differed. Counts only are given here, since the repo is public.
   the months with hours that leave the clock, and reads *Set the day anyway* when the day is far
   from the hours, before the first month with hours, drops a month a recorded notice or the
   affidavit names, or puts the affidavit's day in the past. `dev-mcp` is deployed after the merge.
-- The Legal desk and the firm's page never read the last day set by hand (`legalLastWorkBasis` in
+- ~~The Legal desk and the firm's page never read the last day set by hand (`legalLastWorkBasis` in
   `legalLienPaper.ts`, `legalPacket.ts`, the `legal-portal` function's job columns). They date a job
   from its approved hours, else its last work date, else its creation. So counsel's page can show a
-  later last day than the Lien window. It needs an edge deploy.
-- The header's button for an affidavit to draft, approve or review opens the Lien desk's Affidavits
+  later last day than the Lien window. It needs an edge deploy.~~ **Shipped v2.8481**, on Diane's
+  word of 2026-11-24. The day set by hand comes first, with its reason, as the Lien window reads
+  it. After it the order is the old one: approved hours, the last work date, the latest unpaid
+  bill, creation. Hours approved after a hand day are named and do not move it. No paper's words
+  changed. The Field evidence table's *Worked* column still shows the hours on record. The firm's
+  Lien grid already followed the hand day. `legal-portal` sends the day and its reason, never who
+  set it, and was deployed after the merge on 2026-11-24.
+- ~~The header's button for an affidavit to draft, approve or review opens the Lien desk's Affidavits
   list, not the job's row in it. The desk selects a notice from its address (`&job=`) and has no
-  such read for an affidavit. The Accounts Receivable chip's door lands the same way.
-- A paper that waits on someone else's approval reads *Waiting on Robert* on the row and *Approve
+  such read for an affidavit. The Accounts Receivable chip's door lands the same way.~~ **Shipped
+  v2.8478**, on Diane's word of 2026-11-24. Two parts of this note were already mended on `main`.
+  The desk has read `&job=` for an affidavit since v2.7180 (`lienDeskAimFrom`,
+  `src/lib/lien/lienDeskAim.ts` line 38). The Accounts Receivable chip's door already wrote the job
+  (`lienArChipHref`, `src/lib/jobs/lienArChip.ts` line 529). What dropped the job was the Lien
+  window's button, in its two openers, and the desk did not aim again when the same job was named
+  on another list. Both are mended (`lienWindowDeskDoor.ts`, `lienDeskReaimKey`). A job whose
+  affidavit is not on the list lands on the list with the line that says so.
+- ~~A paper that waits on someone else's approval reads *Waiting on Robert* on the row and *Approve
   the affidavit* in the header, whose second line says *the leader's approval*. A notice reads the
-  same two ways. The header could name the leader.
+  same two ways. The header could name the leader.~~ **Shipped v2.8475**, on Diane's word of
+  2026-11-24 to do the rest of this list. The header's second line names the leader the row names,
+  for a notice and for an affidavit, and reads *your approval* to the leader himself. One words
+  kernel, `lienApprovalWait.ts`, with the act table and the path both on it. The firm's page and the
+  desk's By job tab are handed no leader and read as before.
 - ~~An affidavit approved before a fact came to hold it stays on the desk's Ready pile, because
   `pileFor` in `lienDeskAffidavits.ts` reads the paper's status before its gates.~~ **Shipped
   v2.7449.** The owner's call of 2026-11-14: a closed gate moves an approved paper to Held, with the

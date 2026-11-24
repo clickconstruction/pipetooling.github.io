@@ -4638,6 +4638,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         deskNotice={lienWindowDeskNotice(lienInstrumentsModal ? lienDeskData?.queue.entries.find((e) => e.jobId === lienInstrumentsModal.job.id) : null)}
         // v2.7187, punch list #335, row 2: and the step an affidavit is on (to draft, waiting on approval, held, or held by a fact).
         deskAffidavit={lienWindowDeskAffidavit(lienInstrumentsModal ? lienDeskData?.affidavits.entries.find((e) => e.jobId === lienInstrumentsModal.job.id) : null)}
+        // Punch list #335: and the leader a paper sent for approval waits on, by the name the row prints.
+        deskLeader={lienDeskLeaderFor(lienInstrumentsModal?.job?.master_user_id ?? null)}
         openLastWork={lienInstrumentsModal?.openLastWork ?? false}
         // v2.4735: a day set here moves the By date row, so the clocks and the desk re-read.
         onLastWorkSaved={(jobId, facts) => {

@@ -430,8 +430,11 @@ export interface Invite {
   bid: SubBid | null
   /** The last day the office chased them on this ask. */
   nudgedOn?: string
-  /** Why they are out, when the office took the answer by phone: will not do it, or cannot. */
-  declinedWhy?: 'wont' | 'cant'
+  /**
+   * Why they are out, when the answer is not their own pass in the portal. Will not do it or cannot: the office took
+   * their no by phone. Withdrawn (v2.8490): we took the ask back after they heard about it, which is no answer of theirs.
+   */
+  declinedWhy?: 'wont' | 'cant' | 'withdrawn'
   /** The reason the office wrote down with it (the owner, 2026-10-04); kept with the job and the company. */
   declineReason?: DeclineReasonNote
   /** Every contact on this ask, newest first. Lines are added, never changed. */

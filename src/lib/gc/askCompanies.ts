@@ -59,19 +59,29 @@ export function askChoices(state: GcState, projectId: string, packageId: string)
     .map((x) => x.choice)
 }
 
-/** Where the trade stands on quotes, and where asking this many would leave it. */
-export function askStanding(state: GcState, projectId: string, packageId: string, asking: number): { quotes: number; wanted: number; out: number; words: string } {
+/**
+ * Where the trade stands on quotes, and where asking this many would leave it. `emailing` is whether this press sends
+ * the invitations: with the tick off the asks are saved and nothing goes out, so the line counts companies asked,
+ * never emails (the 2026-11-24 walk read *1 email goes out* over an unticked box).
+ */
+export function askStanding(state: GcState, projectId: string, packageId: string, asking: number, emailing: boolean): { quotes: number; wanted: number; out: number; words: string } {
   const { pkg } = find(state, projectId, packageId)
   const quotes = pkg ? bidsIn(pkg).length : 0
   // Companies already asked that have not quoted or said no.
   const out = pkg ? pkg.invites.filter((i) => i.bid === null && i.status !== 'declined').length : 0
   const reach = quotes + out + asking
-  const emails = asking === 1 ? '1 email goes out' : `${asking} emails go out`
+  const goes = emailing
+    ? asking === 1
+      ? "1 email goes out, with the company's own portal link."
+      : `${asking} emails go out, each with the company's own portal link.`
+    : asking === 1
+      ? '1 company is asked.'
+      : `${asking} companies are asked.`
   const words =
     asking === 0
       ? 'Tick a company to ask.'
       : reach >= QUOTES_WANTED
-        ? `${emails}, each with the company's own portal link. If they answer, ${pkg?.trade ?? 'the trade'} has the ${QUOTES_WANTED} quotes we want.`
-        : `${emails}, each with the company's own portal link. That still leaves ${pkg?.trade ?? 'the trade'} short of ${QUOTES_WANTED} quotes.`
+        ? `${goes} If they answer, ${pkg?.trade ?? 'the trade'} has the ${QUOTES_WANTED} quotes we want.`
+        : `${goes} That still leaves ${pkg?.trade ?? 'the trade'} short of ${QUOTES_WANTED} quotes.`
   return { quotes, wanted: QUOTES_WANTED, out, words }
 }

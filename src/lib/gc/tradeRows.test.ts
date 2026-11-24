@@ -47,6 +47,12 @@ describe('one row a trade: bidding', () => {
     expect(row.next).toEqual({ key: 'compare', words: 'Compare quotes (1)' })
   })
 
+  it('an ask we took back reads as ours, never as passed (v2.8490)', () => {
+    const row = tradeRow(facts({ pkg: pkg({ invites: [invite('i1', 'hillside', 'bid', 91200), { ...invite('i2', 'alamo', 'declined'), declinedWhy: 'withdrawn' }] }) }))
+    expect(row.standing).toEqual({ kind: 'quotes', words: '1 of 1 in', tone: 'warn' })
+    expect(row.asked[1]).toEqual({ company: 'Alamo Flatwork', words: 'we took it back', tone: 'grey' })
+  })
+
   it('two quotes in is good, and with every company asked and none to compare there is no press', () => {
     const two = tradeRow(facts({ pkg: pkg({ invites: [invite('i1', 'hillside', 'bid', 91200), invite('i2', 'alamo', 'bid', 95000)] }) }))
     expect(two.standing).toEqual({ kind: 'quotes', words: '2 of 2 in', tone: 'good' })

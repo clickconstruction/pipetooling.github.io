@@ -60,6 +60,8 @@ vi.mock('../../lib/billing/billsPaidIo', () => ({
     return io.paidWeek
   },
   readStripePayout: async () => null,
+  // The second view's best-effort read of the bank deposits on no bill: none here.
+  readDepositsOnNoBill: async () => ({ state: 'read', days: new Map() }),
 }))
 vi.mock('../../lib/storageSave', () => ({
   saveBlobAs: (blob: Blob, name: string) => void io.saved.push({ name, type: blob.type }),

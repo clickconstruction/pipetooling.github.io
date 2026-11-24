@@ -55,9 +55,28 @@ export type CallAhead = {
   why: 'missing' | 'replaced'
 }
 
-/** The one sentence the check prints on a finding: what to do, in the order it must happen. */
+/**
+ * What to do about a call to a name only a pending migration creates (`missing`), in the order it
+ * must happen. The deploy's own step (`--prod`) fails on such a call, so the deploy does hold.
+ */
 export const CALLS_AHEAD_ADVICE =
   'Push the migration right after the merge, before the Pages deploy finishes (bash scripts/db-push.sh from the main checkout), and arm the PR only when the person who pushes is at hand: the deploy holds until the push.'
+
+/**
+ * What to do about a call to a function a pending migration replaces (`replaced`). The deploy's own
+ * step only warns on one, so nothing holds: the old sentence said "the deploy holds until the push"
+ * here too, and a pull request was kept out of the queue on its word (#9324, punch list #417).
+ */
+export const CALLS_REPLACED_ADVICE =
+  "Push the migration right after the merge (bash scripts/db-push.sh from the main checkout). No deploy waits for this push: prod's old function answers until it lands."
+
+/**
+ * The advice for a set of findings: the hold when any call is `missing`, since one such call holds
+ * the deploy for all of them, and the no-hold words when every call reaches a replaced function.
+ */
+export function callsAheadAdvice(ahead: ReadonlyArray<Pick<CallAhead, 'why'>>): string {
+  return ahead.some((a) => a.why === 'missing') ? CALLS_AHEAD_ADVICE : CALLS_REPLACED_ADVICE
+}
 
 /** The GitHub label the check puts on a pull request whose client calls ahead of its migration. */
 export const CALLS_AHEAD_LABEL = 'push right after the merge'
@@ -65,9 +84,13 @@ export const CALLS_AHEAD_LABEL = 'push right after the merge'
 /** GitHub refuses a label whose description runs past 100 characters (v2.6254: 110 kept the label off every PR). */
 export const GITHUB_LABEL_DESCRIPTION_MAX = 100
 
-/** The label's color, and the line GitHub's label list shows under it. */
+/**
+ * The label's color, and the line GitHub's label list shows under it. The check labels a change that
+ * only replaces functions too, so the line names both kinds. The check writes it only when it makes
+ * the label, so a change to these words is also made on GitHub by hand (`gh api -X PATCH`).
+ */
 export const CALLS_AHEAD_LABEL_COLOR = 'D93F0B'
-export const CALLS_AHEAD_LABEL_DESCRIPTION = 'Its client calls what only its migration creates: push right after the merge'
+export const CALLS_AHEAD_LABEL_DESCRIPTION = 'Its client calls what its migration creates or replaces: push right after the merge'
 
 /**
  * The `gh api` calls that put the label on pull request `number` of `repo` (`owner/name`): read the

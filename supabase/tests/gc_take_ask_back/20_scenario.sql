@@ -1,7 +1,9 @@
--- Taking an ask back (v2.8440, 20261124050000): gc_take_ask_back deletes an ask the company never heard about and
--- refuses every other one in words. Who may, each refusal, the ask and the office's notes gone, the row the undo
--- leaves in gc_asks_taken_back and who reads and writes it, the bench's Remove letting the company go afterwards by
--- its own unchanged rule, and the award guard still refusing a plain write. Presses run as a signed-in person through
+-- Taking an ask back (v2.8440, 20261124050000; v2.8490, 20261124100000): gc_take_ask_back deletes an ask the company
+-- never heard about, and closes one they did hear about as ours (declined_why 'withdrawn'), kept on their record. Who
+-- may, each refusal, the ask and the office's notes gone, the row the undo leaves in gc_asks_taken_back and who reads
+-- and writes it, each way of having heard closing the ask instead with its line on the company's call log, the trade's
+-- own lock telling our close from its pass, the bench's Remove letting the company go afterwards by its own unchanged
+-- rule, and the award guard still refusing a plain write. Presses run as a signed-in person through
 -- RLS; the fixtures are made as postgres with nobody signed in; everything rolls back. Raises on the first failed
 -- assertion; ends with "gc_take_ask_back PASSED". See scripts/pgtest-gc-take-ask-back.sh. Never against prod.
 \set ON_ERROR_STOP 1
@@ -166,7 +168,7 @@ BEGIN
 END $$;
 SELECT tab.same('every try left the asks as they were', (SELECT count(*)::text FROM public.gc_invites WHERE package_id IN ('00000000-0000-0000-0000-0000000a8b01', '00000000-0000-0000-0000-0000000a8b02', '00000000-0000-0000-0000-0000000a8b03')), '9');
 
--- 2 · Each refusal, in its words: what stands on the ask, the company's own answer, and every way they heard of it.
+-- 2 · Each refusal, in its words: what stands on the ask, and the company's own answer.
 SELECT tab.as_user('00000000-0000-0000-0000-0000000a8d02');
 SET LOCAL ROLE authenticated;
 SELECT tab.refused('no ask with that id', $q$SELECT public.gc_take_ask_back('00000000-0000-0000-0000-0000000a82ff')$q$, 'That ask is not on a GC trade.');
@@ -178,14 +180,6 @@ SELECT tab.refused('an ask with a quote', $q$SELECT public.gc_take_ask_back('000
   'Quoted Electric stays asked on Electrical, since they sent a quote. A quote stays on their record.');
 SELECT tab.refused('an ask the company passed on', $q$SELECT public.gc_take_ask_back('00000000-0000-0000-0000-0000000a8204')$q$,
   'Passed Electric stays asked on Electrical, since they already passed on it. Their answer stays on their record.');
-SELECT tab.refused('an ask the company opened', $q$SELECT public.gc_take_ask_back('00000000-0000-0000-0000-0000000a8205')$q$,
-  'Looking Electric stays asked on Electrical, since they opened it in their portal. Close an ask they heard about with Will not do it or Cannot do it.');
-SELECT tab.refused('an ask whose plans the company opened', $q$SELECT public.gc_take_ask_back('00000000-0000-0000-0000-0000000a8209')$q$,
-  'Seen Electric stays asked on Electrical, since they opened it in their portal. Close an ask they heard about with Will not do it or Cannot do it.');
-SELECT tab.refused('an ask whose invitation was emailed', $q$SELECT public.gc_take_ask_back('00000000-0000-0000-0000-0000000a8206')$q$,
-  'Emailed Electric stays asked on Electrical, since we emailed them about it. Close an ask they heard about with Will not do it or Cannot do it.');
-SELECT tab.refused('an ask with a contact logged', $q$SELECT public.gc_take_ask_back('00000000-0000-0000-0000-0000000a8207')$q$,
-  'Called Electric stays asked on Electrical, since a contact with them is logged on it. Close an ask they heard about with Will not do it or Cannot do it.');
 -- The ledger is the function's alone: the office reads it and cannot write it.
 SELECT tab.refused_code('the office cannot write the ledger by hand', $q$INSERT INTO public.gc_asks_taken_back (package_id, company_name, asked_on)
   VALUES ('00000000-0000-0000-0000-0000000a8b01', 'x', public.app_today())$q$, '42501');
@@ -206,6 +200,30 @@ SELECT tab.refused('an ask taken back twice', $q$SELECT public.gc_take_ask_back(
 -- The company can be asked again on the same trade.
 SELECT tab.same('asked again', cardinality(public.gc_invite_companies('00000000-0000-0000-0000-0000000a8b01', ARRAY['00000000-0000-0000-0000-0000000a8101'::uuid]))::text, '1');
 SELECT public.gc_take_ask_back(i.id) FROM public.gc_invites i WHERE i.package_id = '00000000-0000-0000-0000-0000000a8b01' AND i.company_id = '00000000-0000-0000-0000-0000000a8101';
+
+-- 3b · An ask the company heard about is kept and closed as ours (v2.8490): each way of having heard. Nothing is
+-- deleted, the ledger of deleted asks gains no row, and the company's own call log says who took it back and what
+-- they had heard.
+SELECT public.gc_take_ask_back(t.id) FROM (VALUES
+  ('00000000-0000-0000-0000-0000000a8205'::uuid), ('00000000-0000-0000-0000-0000000a8209'::uuid),
+  ('00000000-0000-0000-0000-0000000a8206'::uuid), ('00000000-0000-0000-0000-0000000a8207'::uuid)) AS t(id);
+SELECT tab.same('each ask they heard about is kept and closed as ours', (
+  SELECT string_agg(c.name || ' ' || i.status || ' ' || i.declined_why || ' ' || (i.declined_on = public.app_today()) || ' ' || coalesce(i.decline_reason, 'no reason') || ' [' || i.decline_note || ']', ' | ' ORDER BY c.name)
+  FROM public.gc_invites i JOIN public.gc_companies c ON c.id = i.company_id
+  WHERE i.id IN ('00000000-0000-0000-0000-0000000a8205', '00000000-0000-0000-0000-0000000a8209', '00000000-0000-0000-0000-0000000a8206', '00000000-0000-0000-0000-0000000a8207')),
+  'Called Electric declined withdrawn true no reason [] | Emailed Electric declined withdrawn true no reason [] | Looking Electric declined withdrawn true no reason [] | Seen Electric declined withdrawn true no reason []');
+SELECT tab.same('the company''s call log says who took it back and what they had heard', (
+  SELECT string_agg(c.name || ': ' || x.by_name || ', ' || x.how || ', ' || (x.contacted_on = public.app_today()) || ', ' || x.note, ' | ' ORDER BY c.name)
+  FROM public.gc_company_contacts x JOIN public.gc_companies c ON c.id = x.company_id
+  WHERE x.invite_id IS NULL AND x.note LIKE 'Ask taken back%'),
+  'Called Electric: Askback Estimator, note, true, Ask taken back on Electrical, Askback test clinic. Asked Nov 20 by Askback Dev. A contact with them was logged on it.'
+  || ' | Emailed Electric: Askback Estimator, note, true, Ask taken back on Electrical, Askback test clinic. Asked Nov 20 by Askback Dev. We had emailed them about it.'
+  || ' | Looking Electric: Askback Estimator, note, true, Ask taken back on Electrical, Askback test clinic. Asked Nov 20 by Askback Dev. They had opened it in their portal.'
+  || ' | Seen Electric: Askback Estimator, note, true, Ask taken back on Electrical, Askback test clinic. Asked Nov 20 by Askback Dev. They had opened it in their portal.');
+SELECT tab.same('the call logged on the ask stays, and the ledger of deleted asks gained no row', (
+  SELECT (SELECT count(*) FROM public.gc_company_contacts WHERE invite_id = '00000000-0000-0000-0000-0000000a8207') || ' ' || (SELECT count(*) FROM public.gc_asks_taken_back)), '1 2');
+SELECT tab.refused('an ask taken back twice says so', $q$SELECT public.gc_take_ask_back('00000000-0000-0000-0000-0000000a8205')$q$,
+  'The ask to Looking Electric on Electrical is already taken back.');
 
 -- 4 · The bench's Remove, unchanged: it lets go of the company whose only history was that ask, and still keeps one
 -- that was emailed. The ledger keeps the company's name once its row is gone.
@@ -230,6 +248,12 @@ SELECT tab.refused('an estimator clears an award by hand', $q$UPDATE public.gc_t
   WHERE id = '00000000-0000-0000-0000-0000000a8b02'$q$,
   'A trade''s award changes only through Award and draft the statement of work in Compare quotes.');
 RESET ROLE;
+
+-- 6 · The trade's own lock tells the two closes apart (gc_trade_ask, the service role's): our close raises tookBack,
+-- the company's pass still raises youPassed. And the ask takes no answer the CHECK does not know.
+SELECT tab.refused('the trade writes on an ask we took back', $q$SELECT public.gc_trade_ask('00000000-0000-0000-0000-0000000a8105', '00000000-0000-0000-0000-0000000a8205')$q$, 'tookBack');
+SELECT tab.refused('the trade writes on an ask it passed on', $q$SELECT public.gc_trade_ask('00000000-0000-0000-0000-0000000a8104', '00000000-0000-0000-0000-0000000a8204')$q$, 'youPassed');
+SELECT tab.refused_code('an answer the ask does not know', $q$UPDATE public.gc_invites SET declined_why = 'gone' WHERE id = '00000000-0000-0000-0000-0000000a8204'$q$, '23514');
 
 DO $$ BEGIN RAISE NOTICE 'gc_take_ask_back PASSED'; END $$;
 ROLLBACK;

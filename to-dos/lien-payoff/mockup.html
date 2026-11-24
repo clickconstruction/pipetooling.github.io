@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A lien payoff: one check in, every lien released</title>
+<style>
+/* Layout: a reading column of short sections, with the app drawn inside one wide desk frame that can be stepped.
+   The page takes the app's own tokens (src/index.css) so the frames read as the app in either theme. */
+:root{
+  --pg:#f0f2f5;--pg-surface:#ffffff;--pg-text:#111827;--pg-muted:#4b5563;--pg-border:#cfd4db;--pg-frame:#1f2937;
+  --pg-link:#2563eb;--pg-good:#15803d;--pg-warn:#b91c1c;--pg-pin:#dc2626;--pg-tint:#eef2f7;
+  --bg-page:#f0f2f5;--surface:#ffffff;--bg-subtle:#f9fafb;--bg-muted:#f3f4f6;--bg-200:#e5e7eb;
+  --text-base:#1a1a1a;--text-strong:#111827;--text-700:#374151;--text-600:#4b5563;--text-muted:#6b7280;
+  --border:#cfd4db;--border-strong:#aab2bd;
+  --text-link:#2563eb;--text-red-700:#b91c1c;--text-amber-800:#92400e;
+  --bg-amber-tint:#fffbeb;--border-amber:#fcd34d;--bg-red-tint:#fef2f2;--border-red:#fca5a5;
+  --text-green-700:#15803d;--bg-green-tint:#f0fdf4;--border-green:#86efac;--bg-blue-tint:#eff6ff;--border-blue:#bfdbfe;
+  --dead-bg:#e5e7eb;--dead-text:#6b7280;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --pg:#0b1220;--pg-surface:#151e2e;--pg-text:#f3f4f6;--pg-muted:#b6beca;--pg-border:#334155;--pg-frame:#475569;
+  --pg-link:#60a5fa;--pg-good:#4ade80;--pg-warn:#f87171;--pg-pin:#ef4444;--pg-tint:#1a2436;
+  --bg-page:#111827;--surface:#1f2937;--bg-subtle:#18212f;--bg-muted:#374151;--bg-200:#4b5563;
+  --text-base:#f3f4f6;--text-strong:#f9fafb;--text-700:#d1d5db;--text-600:#d1d5db;--text-muted:#9ca3af;
+  --border:#374151;--border-strong:#4b5563;
+  --text-link:#60a5fa;--text-red-700:#f87171;--text-amber-800:#fcd34d;
+  --bg-amber-tint:#3a2f11;--border-amber:#92400e;--bg-red-tint:#3b1a1a;--border-red:#7f1d1d;
+  --text-green-700:#4ade80;--bg-green-tint:#12301f;--border-green:#166534;--bg-blue-tint:#1e3358;--border-blue:#1e40af;
+  --dead-bg:#374151;--dead-text:#9ca3af;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --pg:#0b1220;--pg-surface:#151e2e;--pg-text:#f3f4f6;--pg-muted:#b6beca;--pg-border:#334155;--pg-frame:#475569;
+  --pg-link:#60a5fa;--pg-good:#4ade80;--pg-warn:#f87171;--pg-pin:#ef4444;--pg-tint:#1a2436;
+  --bg-page:#111827;--surface:#1f2937;--bg-subtle:#18212f;--bg-muted:#374151;--bg-200:#4b5563;
+  --text-base:#f3f4f6;--text-strong:#f9fafb;--text-700:#d1d5db;--text-600:#d1d5db;--text-muted:#9ca3af;
+  --border:#374151;--border-strong:#4b5563;
+  --text-link:#60a5fa;--text-red-700:#f87171;--text-amber-800:#fcd34d;
+  --bg-amber-tint:#3a2f11;--border-amber:#92400e;--bg-red-tint:#3b1a1a;--border-red:#7f1d1d;
+  --text-green-700:#4ade80;--bg-green-tint:#12301f;--border-green:#166534;--bg-blue-tint:#1e3358;--border-blue:#1e40af;
+  --dead-bg:#374151;--dead-text:#9ca3af;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg);color:var(--pg-text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.55;
+  padding-block:28px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1080px;margin:0 auto}
+h1{font-size:1.7rem;line-height:1.2;margin:0 0 8px;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:1.15rem;margin:44px 0 8px;padding-top:18px;border-top:1px solid var(--pg-border);text-wrap:balance}
+h3{font-size:1rem;margin:20px 0 4px}
+p{margin:6px 0;max-width:70ch}
+ul,ol{max-width:72ch;padding-left:1.2rem;margin:6px 0}
+li{margin:4px 0}
+a{color:var(--pg-link)}
+.lede{color:var(--pg-muted);font-size:1rem}
+.note{color:var(--pg-muted);font-size:13.5px}
+.eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--pg-muted);margin:0 0 6px}
+.three{display:grid;gap:10px;margin:14px 0 0;padding:0;list-style:none;max-width:76ch}
+.three li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;margin:0}
+.three b.n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--pg-border);font-size:12px}
+.scroll{overflow-x:auto;max-width:100%}
+table{border-collapse:collapse;margin-top:10px;font-size:14px;width:100%;min-width:640px}
+th,td{text-align:left;padding:7px 14px 7px 0;border-bottom:1px solid var(--pg-border);vertical-align:top}
+th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--pg-muted);white-space:nowrap}
+td.k{font-weight:700;white-space:nowrap}
+td .miss{color:var(--pg-warn);font-weight:600}
+td .ok{color:var(--pg-good);font-weight:600}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px 28px;margin-top:10px}
+.cols>div{min-width:0}
+.box{background:var(--pg-surface);border:1px solid var(--pg-border);border-radius:10px;padding:12px 16px}
+.pick{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;border-radius:999px;padding:1px 9px;background:#15803d;color:#fff;vertical-align:middle}
+.faults{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:8px;max-width:78ch}
+.faults li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;align-items:start;margin:0}
+.pin{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--pg-pin);color:#fff;font:700 12px/1 system-ui,sans-serif;flex:none}
+
+/* ---- the app, drawn ---- */
+.frame{border:1px solid var(--pg-frame);border-radius:10px;overflow:hidden;background:var(--bg-page);color:var(--text-base);font-size:14px;line-height:1.45;margin-top:12px}
+.frame .bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:9px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.frame .bar b{font-size:15px}
+.frame .bar .crumb{color:var(--text-muted);font-size:13px}
+.frame .body{padding:14px 16px 16px;display:grid;gap:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;min-width:0}
+.card h4{margin:0 0 8px;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted)}
+.pile{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline;font-weight:700;font-size:14px}
+.pile .ct{font-weight:600;color:var(--text-muted)}
+.row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1.3fr) auto;gap:6px 14px;align-items:center;padding:8px 0;border-top:1px solid var(--border)}
+.row:first-of-type{border-top:0}
+.row .who{min-width:0}
+.row .who small,.small{display:block;color:var(--text-muted);font-size:12.5px}
+.row.dim{opacity:.55}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.c{font-size:.72em}
+.val{font-weight:700}
+.chg{font-weight:700;color:var(--text-link);background:var(--bg-blue-tint);border-bottom:1.5px solid var(--text-link);border-radius:3px 3px 0 0;padding:0 4px;cursor:text}
+input.chg{font:inherit;font-weight:700;border:0;border-bottom:1.5px solid var(--text-link);width:8.2em;text-align:right;color:var(--text-link);background:var(--bg-blue-tint)}
+input.chg:focus-visible,.frame button:focus-visible,.stops button:focus-visible,.chips button:focus-visible{outline:2px solid var(--text-link);outline-offset:2px}
+.lines{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 16px;align-items:baseline}
+.lines dt{color:var(--text-muted)}
+.lines dd{margin:0;min-width:0}
+.chip{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:1px 9px;border:1px solid var(--border);white-space:nowrap}
+.chip.red{color:var(--text-red-700);background:var(--bg-red-tint);border-color:var(--border-red)}
+.chip.amber{color:var(--text-amber-800);background:var(--bg-amber-tint);border-color:var(--border-amber)}
+.chip.green{color:var(--text-green-700);background:var(--bg-green-tint);border-color:var(--border-green)}
+.chip.blue{color:var(--text-link);background:var(--bg-blue-tint);border-color:var(--border-blue)}
+.frame button{font:inherit;cursor:pointer;border-radius:6px;padding:7px 13px;font-weight:600;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-base)}
+.frame button.go{background:#2563eb;border-color:#2563eb;color:#fff}
+.frame button.ok{background:#15803d;border-color:#15803d;color:#fff}
+.frame button.dead{background:var(--dead-bg);border-color:var(--dead-bg);color:var(--dead-text);cursor:not-allowed}
+.frame button.link{border:0;background:none;color:var(--text-link);padding:0;font-weight:600}
+.foot{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;margin-top:10px}
+.foot .say{min-width:0;flex:1 1 320px;font-size:13.5px}
+.strip{border-radius:8px;padding:9px 12px;font-size:13.5px;border:1px solid var(--border)}
+.strip.red{background:var(--bg-red-tint);border-color:var(--border-red)}
+.strip.amber{background:var(--bg-amber-tint);border-color:var(--border-amber)}
+.strip.green{background:var(--bg-green-tint);border-color:var(--border-green)}
+.grp{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.grp+.grp{margin-top:8px}
+.grp .gh{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between;align-items:baseline;background:var(--bg-subtle);padding:7px 12px;font-weight:700}
+.grp .gh small{font-weight:500;color:var(--text-muted)}
+.bill{display:grid;grid-template-columns:minmax(0,1fr) 7.5em 9.5em;gap:4px 12px;align-items:baseline;padding:6px 12px;border-top:1px solid var(--border)}
+.bill .r{text-align:right}
+.bill.head{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);border-top:0;padding-bottom:0}
+.sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+.sum div{background:var(--bg-subtle);border:1px solid var(--border);border-radius:8px;padding:8px 12px;min-width:0}
+.sum small{display:block;color:var(--text-muted);font-size:12px}
+.sum b{font-size:1.25rem}
+.track{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0;padding:0;list-style:none}
+.track li{border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--bg-subtle);margin:0;min-width:0}
+.track li b{display:block;font-size:13px}
+.track li small{color:var(--text-muted);font-size:12.5px}
+.track li.done{background:var(--bg-green-tint);border-color:var(--border-green)}
+.track li.now{background:var(--bg-amber-tint);border-color:var(--border-amber)}
+.track li.bad{background:var(--bg-red-tint);border-color:var(--border-red)}
+.rel{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.4fr) auto;gap:4px 14px;align-items:center;padding:8px 0;border-top:1px solid var(--border)}
+.rel:first-of-type{border-top:0}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);gap:12px}
+@media (max-width:760px){.two{grid-template-columns:minmax(0,1fr)}.row,.rel{grid-template-columns:minmax(0,1fr)}.sum{grid-template-columns:minmax(0,1fr)}.bill{grid-template-columns:minmax(0,1fr) 6em 8.4em}}
+/* the stepper around the frame */
+.stops{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0;padding:0;list-style:none}
+.stops button,.chips button{font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid var(--pg-border);background:var(--pg-surface);color:var(--pg-text);border-radius:999px;padding:5px 12px}
+.stops button[aria-current="step"]{background:var(--pg-text);color:var(--pg);border-color:var(--pg-text)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 0}
+.chips span{font-size:12.5px;color:var(--pg-muted);margin-right:2px}
+.chips button[aria-pressed="true"]{background:var(--pg-link);border-color:var(--pg-link);color:#fff}
+.cap{margin:10px 0 0;font-size:14px;max-width:76ch}
+.cap b{color:var(--pg-text)}
+.nav{display:flex;gap:8px;margin-top:10px}
+.nav button{font:inherit;font-weight:600;cursor:pointer;border:1px solid var(--pg-border);background:var(--pg-surface);color:var(--pg-text);border-radius:6px;padding:6px 14px}
+.nav button:disabled{opacity:.45;cursor:default}
+.old .frame{opacity:.96}
+.old .pinrow{position:relative}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;background:var(--pg-tint);border-radius:4px;padding:0 4px}
+.at{display:inline-flex;vertical-align:middle;margin-left:6px}
+@media (prefers-reduced-motion:no-preference){.frame .body{animation:in .18s ease-out}@keyframes in{from{opacity:.6;transform:translateY(3px)}to{opacity:1;transform:none}}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="eyebrow">Punch list #435 · proposal · pieces 1 and 2 built 2026-11-24</p>
+<h1>A lien payoff: one check in, every lien at the place released</h1>
+<p class="lede">A property owner pays off every lien the company filed at one place with one check. Today that is about fifty presses across three jobs, and nothing ties the releases to the money. This page says what exists, what to build, and what must never happen. Every name and number on it is made up.</p>
+
+<ol class="three">
+  <li><b class="n">1</b><span><b>A payoff is one paper on the Lien desk, kept by place.</b> It takes one check, places it on the liened bills first, and checks the total against the check.</span></li>
+  <li><b class="n">2</b><span><b>It lines up one release for each filed lien the money covers.</b> Each waits for the check to clear and shows the day it is due. The releases print in the desk’s one run.</span></li>
+  <li><b class="n">3</b><span><b>The card stays until the county has recorded each release and the copies are out.</b> A check that comes back holds every release that has not left.</span></li>
+</ol>
+
+<h2 id="door">Where the door is</h2>
+<p><b>On the Lien desk, above the lists.</b> A line named <b>Payoffs</b> says what waits on a release and has one press, <b>Someone paid ›</b>. The press opens every filed lien under its place. Each lien says where it stands in one sentence and offers the one press that comes next: <b>Record the payment ›</b>, then <b>Make the release ›</b>, then <b>Record the county’s stamp ›</b>. The app works out the step from the bills, the payments and the release on record.</p>
+<p class="note">The first cut of this page put the door in piece 4 of the build. That was a fault. A person holding a check starts from the lien, so the door ships first. It is built, as pieces 1 and 2 below.</p>
+
+<h2 id="today">What existed before today</h2>
+<p>The papers exist. The path between them does not. A payoff of three liens at one place runs through three jobs, one bill and one tab at a time.</p>
+<div class="scroll"><table>
+<thead><tr><th>Step</th><th>What the office presses today</th><th>What is missing</th></tr></thead>
+<tbody>
+<tr><td class="k">Type the check</td><td>Job → Bill tab → <b>Record payment</b> on the bill → <i>Record a cash or check payment</i> → <b>Confirm</b>. Once for each bill.</td><td><span class="miss">One row, one job, one bill.</span> A check for more than the bill is refused. Nothing adds the rows up to the check.</td></tr>
+<tr><td class="k">Match the deposit</td><td>Accounts Receivable → the deposit → pick a bill → <b>+ Split across another bill</b> → <b>Apply</b>.</td><td><span class="ok">Spreads over bills and jobs</span>, checked against the deposit. Only once the bank shows the deposit. It knows nothing of liens.</td></tr>
+<tr><td class="k">The desk sees it</td><td>The job’s lien timeline reads <i>Paid — file the release of record</i>, with <b>File the release ›</b>.</td><td><span class="miss">No pile for a release owed.</span> A job paid to zero leaves the desk’s lists with its lien still on record.</td></tr>
+<tr><td class="k">Make the release</td><td>Job → Lien window → <b>Release of record</b> → type the payment date → <b>Print for notarization</b> → <b>Save release record</b>.</td><td><span class="miss">Works with no payment recorded.</span> It takes the job’s first filed affidavit. The date is typed by hand.</td></tr>
+<tr><td class="k">Sign and notarize</td><td>On paper, before a notary. The paper carries a notary block.</td><td>The block is the affidavit’s sworn one. Which certificate a release needs is counsel’s call.</td></tr>
+<tr><td class="k">Record at the county</td><td>Nothing. The app says <i>file it with the County Clerk</i>.</td><td><span class="miss">No home for the release’s own instrument number or day.</span> <i>Released</i> shows the day the row was saved. The scan press is on affidavits only.</td></tr>
+<tr><td class="k">Send the copy</td><td>Nothing.</td><td>No record that the payer got it. No clock from a written request.</td></tr>
+<tr><td class="k">Waiver on final payment</td><td>A paid bill offers <b>Add the unconditional ›</b> once a check has had seven days. The Release of Lien window makes the four statutory forms.</td><td>A different paper in a different table. It does not release a filed lien. A final form speaks for everything furnished to the property.</td></tr>
+<tr><td class="k">A check comes back</td><td>Accounts Receivable → <i>Came back</i> → <b>Take it off the job</b>. A returned check cannot pay a bill.</td><td><span class="miss">The case does not know a release went out on that money.</span></td></tr>
+</tbody></table></div>
+<p class="note">Counted for three liens over four bills: seven windows, about fifty presses, the check number typed four times and the payment date three times.</p>
+
+<h2 id="law">The law’s shape, for counsel</h2>
+<p>This is a reading of the published text, not legal advice. Each section was read on 2026-11-24 in a public copy of the Code that dates itself May 2025.</p>
+<ul>
+  <li><b>Tex. Prop. Code § 53.152(a).</b> Once the debt is “paid by collected funds”, the claimant must furnish a release within ten days of receiving a written request, to the extent of what was paid. The owner, the original contractor or whoever paid may ask.</li>
+  <li><b>§ 53.152(b).</b> The release must be in a form that can be filed of record. <b>§ 53.157(1)</b> says recording it discharges the filed affidavit.</li>
+  <li><b>Prop. Code § 12.001(a).</b> A paper can be recorded if it is acknowledged, sworn to with a proper jurat, or proved.</li>
+  <li><b>What lateness risks.</b> § 53.152 names no penalty of its own. § 53.156 has a court award costs and reasonable attorney’s fees in a suit to declare a lien invalid or unenforceable. § 53.160 is the summary motion that removes one.</li>
+  <li><b>§ 53.283 and § 53.284.</b> No one may demand an unconditional waiver before good funds. The conditional forms take effect when the bank has paid the check.</li>
+</ul>
+
+<h2 id="shape">The shape to build</h2>
+<p><b>A payoff, kept by place, on the Lien desk.</b> A lien sits on a property, so the door is the place: every filed lien there, every open bill behind each, and what is open and not liened. The office types one check. The app places it on the liened bills first, oldest first, and shows the check, what is placed and what is left as three values. One press records a payment on each bill. From then on the payoff is a card on the desk with five stops: money recorded, check cleared, releases signed and notarized, recorded at the county, copies sent. The card draws one release for each filed lien the money covers in full, from that affidavit’s own facts. It holds each release until its money is recorded and the check has cleared, and it shows the day the release is due beside the day the check clears. The releases print in the desk’s one run with the day’s other papers. Money recorded anywhere else in the app starts the same card by itself.</p>
+
+<h3>What else was weighed</h3>
+<div class="cols">
+  <div class="box"><b>Mend the job’s tab and stop.</b><p>Give the Release of record tab a money check and a place for the county’s stamp. It is cheap, and it is the first two pieces of the build anyway. Alone it leaves three trips, a check typed four times, and a desk that never sees the payoff.</p></div>
+  <div class="box"><b>A receive-a-payment door in Accounts Receivable.</b><p>Good for any check over several jobs. Accounts Receivable already spreads a deposit once the bank shows it. The gap is the release, its clock and its run, and those belong to the desk. The build takes this door’s kernel and puts it where the lien is.</p></div>
+  <div class="box"><b>No door: draft the release when a bill reads paid.</b><p>The app cannot know of a written request, a cashier’s check, or which bills the payer meant. A release drawn from a payment placed on the wrong job is the worst mistake on offer. The build keeps the good half: the card appears by itself.</p></div>
+</div>
+<h2 id="first-draw">The first draw, and what Grace would say</h2>
+<p>The first draw was one window, <i>Paid in full</i>, with four steps done in a sitting. Read as Grace would on a day with one payoff and twenty other papers, it fails six ways.</p>
+<div class="old">
+<div class="frame" aria-label="First draw: a four-step window">
+  <div class="bar"><b>Paid in full</b><span class="pin at" aria-label="fault 4">4</span><span class="crumb">212 Larkspur Court · Marisol Okafor</span><span class="pin at" aria-label="fault 6">6</span></div>
+  <div class="body">
+    <div class="card">
+      <div class="pile"><span class="chip green">1 The check ✓</span> <span class="pin at" aria-label="fault 2">2</span> <span class="chip green">2 The bills ✓</span> <span class="chip blue">3 The releases</span> <span class="chip">4 Done</span> <span class="pin at" aria-label="fault 1">1</span></div>
+      <div class="rel" style="margin-top:8px"><div><b>Release of lien</b> · J2041<small class="small">instrument 2026-0412207</small></div><div><span class="num">$7,420<span class="c">.00</span></span></div><div><span class="chip green">Ready</span></div></div>
+      <div class="rel"><div><b>Release of lien</b> · J2058<small class="small">instrument 2026-0412208</small></div><div><span class="num">$5,160<span class="c">.50</span></span></div><div><span class="chip green">Ready</span></div></div>
+      <div class="rel"><div><b>Release of lien</b> · J2063<small class="small">instrument 2026-0412209</small></div><div><span class="num">$3,875<span class="c">.00</span></span></div><div><span class="chip green">Ready</span></div></div>
+      <div class="foot"><div class="say">Releases are due 10 days after a written request. <span class="pin at" aria-label="fault 5">5</span></div><button type="button" class="ok">Print 3 releases</button><span class="pin at" aria-label="fault 3">3</span></div>
+    </div>
+  </div>
+</div>
+</div>
+<ul class="faults">
+  <li><span class="pin">1</span><span><b>It is a sitting, and a payoff takes two weeks.</b> The check clears in a week. The notary is another day and the clerk another. A window cannot be left half done.</span></li>
+  <li><span class="pin">2</span><span><b>The check may not be hers to type.</b> Money often lands in Accounts Receivable or on the job first. The window asked for it again.</span></li>
+  <li><span class="pin">3</span><span><b>A second print run.</b> The desk already has one run a day for what gets signed, notarized, mailed and filed. This made another.</span></li>
+  <li><span class="pin">4</span><span><b>The name promises what a check may not keep.</b> <i>Paid in full</i> is wrong on a short check, and the window had no state for part.</span></li>
+  <li><span class="pin">5</span><span><b>No day on it.</b> Every other paper on the desk shows its due day and the days left. Here the rule was a sentence and the day was nowhere.</span></li>
+  <li><span class="pin">6</span><span><b>It covers the desk.</b> Twenty other papers wait behind a window that needs nothing for a week.</span></li>
+</ul>
+<p>The second draw answers each. The payoff is a card that stays, fed from wherever the money was recorded. It is named for what it is. Its days sit in a column. Its releases join the run. On a day it needs nothing, it says so in one line.</p>
+<h2 id="second-draw">The second draw: a payoff is a paper on the desk</h2>
+<p>Press a stop, or change what happens to the check. Every name, address, job, instrument number, check number and amount is made up.</p>
+
+<ul class="stops" id="stops" aria-label="Stops of the payoff"></ul>
+<div class="chips" role="group" aria-label="What happens to the check">
+  <span>The check</span>
+  <button type="button" data-case="full" aria-pressed="true">pays every lien</button>
+  <button type="button" data-case="short" aria-pressed="false">falls short</button>
+  <button type="button" data-case="back" aria-pressed="false">comes back</button>
+</div>
+<p class="cap" id="cap"></p>
+<div class="frame" id="frame" aria-live="polite"></div>
+<div class="nav"><button type="button" id="prev">‹ Back</button><button type="button" id="next">Next ›</button></div>
+
+<script>
+(function () {
+  // ---- made-up data ----
+  var LIENS = [
+    { id: 'a', job: 'J2041', name: 'Okafor main house', inst: '2026-0412207', amount: 7420.00, bills: [{ n: 'Bill 3', open: 4420.00 }, { n: 'Bill 4', open: 3000.00 }] },
+    { id: 'b', job: 'J2058', name: 'Okafor service visit', inst: '2026-0412208', amount: 5160.50, bills: [{ n: 'Bill 1', open: 5160.50 }] },
+    { id: 'c', job: 'J2063', name: 'Okafor shower valves', inst: '2026-0412209', amount: 3875.00, bills: [{ n: 'Bill 1', open: 3875.00 }] }
+  ];
+  var LOOSE = { job: 'J2071', name: 'Okafor trip charge', bills: [{ n: 'Bill 1', open: 640.00 }] };
+  var CHECK = { full: 16455.50, short: 15000.00, back: 16455.50 };
+  var STOPS = [
+    ['The desk', 'Built: the line Payoffs with its one press. It opens the filed liens under their place, each with the press that comes next. The check pane on the next stop is piece 3 and 4.'],
+    ['The check', 'One check, typed once. The app places it on the liened bills first, oldest first, and checks the total against the check.'],
+    ['Waiting', 'The payoff is a card that stays on the desk. It needs nothing today, so it says so and gets out of the way.'],
+    ['Releases', 'The releases ride the desk’s one run with the day’s other papers. The run prints what is ready and names what it held.'],
+    ['Afterwards', 'A released lien leaves every pile. What is still owed at the place stays in view.']
+  ];
+  var state = { stop: 0, kase: 'full' };
+
+  function money(n) {
+    var neg = n < 0, v = Math.abs(n), d = Math.floor(v + 1e-9), c = Math.round((v - d) * 100);
+    if (c === 100) { d += 1; c = 0; }
+    return '<span class="num">' + (neg ? '−' : '') + '$' + d.toLocaleString('en-US') + '<span class="c">.' + (c < 10 ? '0' : '') + c + '</span></span>';
+  }
+  /** The spread: liened bills first, oldest first; the rest stays in hand. */
+  function spread(check) {
+    var left = check, out = [];
+    LIENS.forEach(function (l) {
+      var paid = 0, bills = l.bills.map(function (b) { var p = Math.min(b.open, left); left = +(left - p).toFixed(2); paid += p; return { n: b.n, open: b.open, pays: p }; });
+      out.push({ lien: l, bills: bills, paid: +paid.toFixed(2), shortBy: +(l.amount - paid).toFixed(2) });
+    });
+    return { groups: out, left: left, placed: +(check - left).toFixed(2) };
+  }
+  function el(tag, cls, html) { return '<' + tag + (cls ? ' class="' + cls + '"' : '') + '>' + html + '</' + tag + '>'; }
+  function others(n) {
+    var rows = [['Bright Fork Builders · J2012', 'October notice', 'Sign ▸'], ['Calloway Homes · J1987', 'Affidavit, copies to mail', 'Record service ▸'], ['Ninth Street Lofts · J2030', 'November notice', 'Ready']];
+    return rows.slice(0, n).map(function (r) { return '<div class="row dim"><div class="who">' + r[0] + '</div><div>' + r[1] + '</div><div><span class="chip">' + r[2] + '</span></div></div>'; }).join('') +
+      '<div class="row dim"><div class="who small">and 17 more papers today</div><div></div><div></div></div>';
+  }
+
+  function sDesk() {
+    var rows = LIENS.map(function (l) {
+      return '<div class="row"><div class="who"><b>' + l.job + '</b> ' + l.name + '<small>Filed lien · Travis · instrument ' + l.inst + ' · filed Nov 9</small></div><div>' + money(l.amount) + ' <span class="small" style="display:inline">on the affidavit</span></div><div><span class="chip amber">On record</span></div></div>';
+    }).join('');
+    return '<div class="bar"><b>Lien desk</b><span class="crumb">Tue, Nov 24 · 21 papers</span></div><div class="body">' +
+      '<div class="card" style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center"><b>Payoffs</b><span style="flex:1 1 12rem"><span class="val">3</span> filed liens on record.</span><button type="button" class="go" data-go="1">Someone paid ›</button></div>' +
+      '<div class="card"><div class="pile">212 Larkspur Court, Austin <span class="ct">Marisol Okafor · 3 filed liens · ' + money(16455.50) + ' liened</span></div>' + rows +
+      '<div class="foot"><div class="say"><span class="val">3</span> liens on record here. ' + money(16455.50) + ' pays them off. ' + money(640) + ' more is open on J2071, not liened.</div><button type="button" class="go" data-go="1">Record the payment ›</button></div></div>' +
+      '<div class="card"><h4>The rest of today</h4>' + others(3) + '</div></div>';
+  }
+
+  function sCheck() {
+    var check = CHECK[state.kase], s = spread(check);
+    var groups = s.groups.map(function (g) {
+      var whole = g.shortBy <= 0.004;
+      return '<div class="grp"><div class="gh"><span>' + g.lien.job + ' · instrument ' + g.lien.inst + ' <small>lien for ' + money(g.lien.amount) + '</small></span>' +
+        (whole ? '<span class="chip green">paid in full</span>' : '<span class="chip red">short ' + money(g.shortBy) + '</span>') + '</div>' +
+        g.bills.map(function (b) { return '<div class="bill"><div>' + b.n + '</div><div class="r">' + money(b.open) + '</div><div class="r"><span class="chg">' + money(b.pays) + '</span></div></div>'; }).join('') + '</div>';
+    }).join('');
+    var loose = '<div class="grp"><div class="gh"><span>' + LOOSE.job + ' · not liened <small>stays open unless you place money here</small></span></div>' +
+      '<div class="bill"><div>Bill 1</div><div class="r">' + money(640) + '</div><div class="r"><span class="chg">' + money(0) + '</span></div></div></div>';
+    var shortG = s.groups.filter(function (g) { return g.shortBy > 0.004; });
+    var say = shortG.length
+      ? '<b>Pays 2 liens in full.</b> Instrument ' + shortG[0].lien.inst + ' is short ' + money(shortG[0].shortBy) + ', so its release is held until the rest comes in.'
+      : '<b>Pays all 3 liens in full.</b> ' + money(640) + ' stays open on J2071, which is not liened.';
+    return '<div class="bar"><b>Payoff at 212 Larkspur Court</b><span class="crumb">Lien desk › payoff</span></div><div class="body"><div class="two">' +
+      '<div class="card"><h4>The check</h4><dl class="lines">' +
+      '<dt>Amount</dt><dd><span class="chg">' + money(check) + '</span></dd>' +
+      '<dt>Check number</dt><dd><span class="chg">1184</span></dd>' +
+      '<dt>Received</dt><dd><span class="chg">Tue, Nov 24</span></dd>' +
+      '<dt>From</dt><dd><span class="val">Marisol Okafor</span><span class="small">the property owner</span></dd>' +
+      '<dt>Asked for a release in writing</dt><dd><span class="chg">Tue, Nov 24</span></dd>' +
+      '<dt>Release due</dt><dd><span class="val">Fri, Dec 4</span><span class="small">10 days after the ask</span></dd>' +
+      '<dt>Check clears about</dt><dd><span class="val">Tue, Dec 1</span></dd></dl>' +
+      '<p class="small" style="margin:10px 0 0">Underlined values can be changed in place. Bold ones the app works out.</p></div>' +
+      '<div class="card"><h4>What this check pays</h4><div class="bill head"><div></div><div class="r">Open</div><div class="r">Pays</div></div>' + groups + loose +
+      '<div class="sum"><div><small>The check</small><b>' + money(check) + '</b></div><div><small>Placed</small><b>' + money(s.placed) + '</b></div><div><small>Left to place</small><b>' + money(s.left) + '</b></div></div>' +
+      '<div class="foot"><div class="say">' + say + '</div><button type="button" class="ok" data-go="2">Record 4 payments on 3 jobs</button></div></div></div></div>';
+  }
+
+  function track(items) { return '<ul class="track">' + items.map(function (i) { return '<li class="' + i[0] + '"><b>' + i[1] + '</b><small>' + i[2] + '</small></li>'; }).join('') + '</ul>'; }
+
+  function sWait() {
+    var short = state.kase === 'short', back = state.kase === 'back';
+    var t = back
+      ? track([['done', 'Money recorded', 'Tue, Nov 24 · check 1184'], ['bad', 'Check came back', 'Mon, Nov 30 · the bank sent it back'], ['', 'Releases', 'held, never left the office'], ['', 'Recorded at the county', 'not started'], ['', 'Copies sent', 'not started']])
+      : track([['done', 'Money recorded', 'Tue, Nov 24 · check 1184'], ['now', 'Check clears', 'about Tue, Dec 1'], ['', 'Releases', short ? '2 drawn · 1 held, short' : '3 drawn, waiting on the check'], ['', 'Recorded at the county', 'after the notary'], ['', 'Copies sent', 'after recording']]);
+    var strip = back
+      ? '<div class="strip red"><b>Check 1184 came back.</b> The 4 payments are off their bills and the 3 liens stand as filed. No release was printed. Accounts Receivable holds the case.</div>'
+      : '<div class="strip amber"><b>Nothing to do today.</b> The releases wait for the check to clear, about Tue, Dec 1. They are due Fri, Dec 4. That leaves 3 days. <button type="button" class="link">The bank confirmed the funds ›</button> <span class="small" style="display:inline">a leader’s press</span></div>';
+    var hand = back ? '' : '<div class="foot"><div class="say">For the payer today: a receipt that names the three instruments and says the releases follow once the check clears.</div><button type="button">Print the receipt</button></div>';
+    return '<div class="bar"><b>Lien desk</b><span class="crumb">Tue, Nov 24 · 21 papers</span></div><div class="body">' +
+      '<div class="card"><div class="pile">Payoffs <span class="ct">1 · 212 Larkspur Court · Marisol Okafor · ' + money(CHECK[state.kase]) + '</span></div><div style="margin-top:10px">' + t + '</div><div style="margin-top:10px">' + strip + '</div>' + hand + '</div>' +
+      '<div class="card"><h4>The rest of today</h4>' + others(3) + '</div></div>';
+  }
+
+  function sRelease() {
+    var short = state.kase === 'short', back = state.kase === 'back';
+    var rows = LIENS.map(function (l, i) {
+      var held = (short && i === 2) || back;
+      var why = back ? 'the check came back' : 'short ' + money(1455.50);
+      return '<div class="rel"><div><b>Release of lien</b> · ' + l.job + '<small class="small">Releases instrument ' + l.inst + ' · filed Nov 9 · Travis</small></div>' +
+        '<div>' + (short && i === 2 ? money(2419.50) + ' <span class="small" style="display:inline">paid of ' + money(l.amount) + '</span>' : money(l.amount) + ' <span class="small" style="display:inline">paid Nov 24' + (back ? '' : ', cleared Dec 1') + '</span>') + '<small class="small">Signer: R. Castellan, before a notary</small></div>' +
+        '<div>' + (held ? '<span class="chip red">Held: ' + why + '</span>' : '<span class="chip green">Ready</span>') + '</div></div>';
+    }).join('');
+    var btn = back ? '<button type="button" class="dead" disabled>Print releases for the notary</button>'
+      : short ? '<button type="button" class="ok" data-go="4">Print 2 releases for the notary · 1 is short ▸</button>'
+      : '<button type="button" class="ok" data-go="4">Print 3 releases for the notary</button>';
+    var say = back ? 'Nothing is ready. A release cannot be printed against money that came back.'
+      : short ? 'The run prints 2 releases. It holds 1. Instrument 2026-0412209 stays on record until ' + money(1455.50) + ' more is recorded.'
+      : 'All 3 releases are due Fri, Dec 4. Each names one instrument and no other claim.';
+    return '<div class="bar"><b>Lien desk</b><span class="crumb">Tue, Dec 1 · the run</span></div><div class="body">' +
+      '<div class="card"><div class="pile">Payoffs <span class="ct">212 Larkspur Court · ' + (back ? 'check came back' : 'check cleared Tue, Dec 1') + ' · due Fri, Dec 4</span></div>' + rows +
+      '<div class="foot"><div class="say">' + say + '</div>' + btn + '</div></div>' +
+      '<div class="card"><h4>In the same run</h4>' + others(2) + '</div></div>';
+  }
+
+  function sAfter() {
+    var short = state.kase === 'short', back = state.kase === 'back';
+    if (back) {
+      return '<div class="bar"><b>Lien desk</b><span class="crumb">Mon, Nov 30</span></div><div class="body">' +
+        '<div class="card"><div class="pile">212 Larkspur Court, Austin <span class="ct">3 filed liens · ' + money(16455.50) + ' liened, as before</span></div>' +
+        LIENS.map(function (l) { return '<div class="row"><div class="who"><b>' + l.job + '</b> ' + l.name + '<small>instrument ' + l.inst + '</small></div><div>' + money(l.amount) + '</div><div><span class="chip amber">On record</span></div></div>'; }).join('') +
+        '<div style="margin-top:10px" class="strip red"><b>Had a release already been recorded,</b> the app could not take it back. The row would read <i>Released, money came back</i> with one press: <i>Open the matter for counsel ›</i>.</div></div></div>';
+    }
+    var rows = LIENS.map(function (l, i) {
+      var held = short && i === 2;
+      return '<div class="row"><div class="who"><b>' + l.job + '</b> ' + l.name + '<small>Lien ' + l.inst + (held ? ' · ' + money(2419.50) + ' paid, ' + money(1455.50) + ' still owed' : ' · release recorded Thu, Dec 3 as <span class="chg">2026-04319' + (55 + i) + '</span> · stamped copy saved') + '</small></div>' +
+        '<div>' + (held ? 'Still on record' : 'Copy mailed to the payer and the builder Dec 4') + '</div><div>' + (held ? '<span class="chip amber">On record</span>' : '<span class="chip green">Released</span>') + '</div></div>';
+    }).join('');
+    return '<div class="bar"><b>Lien desk</b><span class="crumb">Fri, Dec 4</span></div><div class="body">' +
+      '<div class="card"><div class="pile">212 Larkspur Court, Austin <span class="ct">Marisol Okafor · ' + (short ? '1 filed lien on record · 2 released' : 'no lien on record · 3 released') + '</span></div>' + rows +
+      '<div class="foot"><div class="say">' + (short ? money(1455.50) + ' on J2063 and ' : '') + money(640) + ' on J2071 ' + (short ? 'are' : 'is') + ' still open here. ' + (short ? 'J2071 is' : 'It is') + ' not liened.</div><span class="chip green">Payoff closed' + (short ? ' in part' : '') + '</span></div></div>' +
+      '<div class="card"><h4>What the other piles show</h4><dl class="lines"><dt>Filed liens, copies to mail</dt><dd><span class="val">' + (short ? '1' : '0') + '</span> from this place</dd><dt>Bills sent</dt><dd><span class="val">' + (short ? '3 paid, 1 part paid' : '4 paid') + '</span> · Check 1184</dd><dt>The job’s Lien window</dt><dd>the release sits under its affidavit</dd></dl></div></div>';
+  }
+
+  var DRAW = [sDesk, sCheck, sWait, sRelease, sAfter];
+  var stopsEl = document.getElementById('stops'), frame = document.getElementById('frame'), cap = document.getElementById('cap');
+  function render() {
+    stopsEl.innerHTML = STOPS.map(function (s, i) { return '<li><button type="button" data-stop="' + i + '"' + (i === state.stop ? ' aria-current="step"' : '') + '>' + (i + 1) + ' · ' + s[0] + '</button></li>'; }).join('');
+    cap.innerHTML = '<b>' + STOPS[state.stop][0] + '.</b> ' + STOPS[state.stop][1];
+    frame.innerHTML = DRAW[state.stop]();
+    document.getElementById('prev').disabled = state.stop === 0;
+    document.getElementById('next').disabled = state.stop === STOPS.length - 1;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-case]'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-case') === state.kase)); });
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-stop],[data-go],[data-case],#prev,#next') : null;
+    if (!t) return;
+    if (t.hasAttribute('data-stop')) state.stop = +t.getAttribute('data-stop');
+    else if (t.hasAttribute('data-go')) state.stop = +t.getAttribute('data-go');
+    else if (t.hasAttribute('data-case')) { state.kase = t.getAttribute('data-case'); if (state.kase === 'back' && state.stop < 2) state.stop = 2; }
+    else if (t.id === 'prev') state.stop = Math.max(0, state.stop - 1);
+    else if (t.id === 'next') state.stop = Math.min(STOPS.length - 1, state.stop + 1);
+    render();
+  });
+  render();
+})();
+</script>
+<h2 id="person">What stays a person’s</h2>
+<div class="scroll"><table>
+<thead><tr><th>The act</th><th>Who</th><th>What the app prints</th><th>What the app tracks</th></tr></thead>
+<tbody>
+<tr><td class="k">Signing</td><td>The job’s master, the affidavit’s signer</td><td>One release for each lien, with that affidavit’s instrument number, day, county and legal description</td><td>Printed on, and by whom</td></tr>
+<tr><td class="k">Notarizing</td><td>A notary, in person</td><td>The certificate counsel picks, with the county and the signer’s name filled in</td><td>Out for the notary since, and the notarized scan when it comes back</td></tr>
+<tr><td class="k">Recording</td><td>The office, at the county clerk</td><td>A cover line for the clerk that names each instrument being released</td><td>The release’s own instrument number, the day recorded, the stamped copy</td></tr>
+<tr><td class="k">Mailing</td><td>The office</td><td>A cover letter to the payer and the builder with the stamped copies behind it</td><td>Sent on, to whom and how, with the tracking number</td></tr>
+<tr><td class="k">Saying the funds are good</td><td>A leader</td><td>Nothing</td><td>Who pressed <i>The bank confirmed the funds</i>, when, and their note</td></tr>
+</tbody></table></div>
+
+<h2 id="never">What must never happen</h2>
+<div class="scroll"><table>
+<thead><tr><th>The mistake</th><th>The guard</th></tr></thead>
+<tbody>
+<tr><td class="k">A release goes out for a lien whose money is not recorded</td><td>A release is drawn only from payment rows. It is ready when every bill behind its lien reads paid and the check has cleared, or a leader has confirmed the funds. The print press counts only ready releases. The job’s own tab gets the same gate.</td></tr>
+<tr><td class="k">A release for the wrong filing</td><td>Each release holds a link to one affidavit row and copies nothing by hand. The paper’s instrument number, day and county come through that link. A job with two filed liens shows two releases, never the first one found.</td></tr>
+<tr><td class="k">A release wider than the money</td><td>The release names one instrument and its claim. Where other bills stay open at the place, the app does not offer a final unconditional waiver there until counsel has said how it should read.</td></tr>
+<tr><td class="k">A paid bill left showing as liened</td><td>A filed lien has three states the desk can see: on record, paid and release owed, released. A released lien leaves every pile, the clock for copies and the year’s suit reminder.</td></tr>
+<tr><td class="k">A lien paid and forgotten</td><td>A filed lien whose bills read paid shows in the Payoffs pile by itself, even when the job has left the desk’s other lists. It stays until the county’s stamp is recorded.</td></tr>
+<tr><td class="k">A check comes back after the release is filed</td><td>Before recording: the returned-check case holds every release on that check, and a printed one reads <i>Do not record</i>. After recording the app cannot undo it. The row reads <i>Released, money came back</i>, the bills go back to open, and one press opens the matter for counsel.</td></tr>
+</tbody></table></div>
+
+<h2 id="build">The build, as small pieces in order</h2>
+<div class="scroll"><table>
+<thead><tr><th>#</th><th>The piece</th><th>Size</th><th>Kernel and tests</th><th>Migration</th><th>What proves it</th></tr></thead>
+<tbody>
+<tr><td class="k">1</td><td><b>The door, and each lien’s next press.</b> The line <i>Payoffs</i> with <i>Someone paid ›</i>, and the window of every filed lien under its place, each with one sentence and one press. <span class="pick">built · v2.8504</span></td><td>S</td><td><code>lienPayoff.ts</code>: the step, the sentence and the press from the bills, the payments and the release on record. 22 tests, 6 render tests.</td><td>None</td><td>Its tests, and a read-only look at the live desk</td></tr>
+<tr><td class="k">2</td><td><b>The release waits for the money and takes the county’s stamp.</b> The tab is on one filed lien, holds its print and save while the bills still owe unless a reason is typed, starts the payment date on the last payment, saves one release a lien, and takes the day recorded and the release’s own instrument number in place. <span class="pick">built · v2.8508</span></td><td>M</td><td><code>lienReleaseOfRecord.ts</code>: the targets, the money hold, the stamp. 12 tests, 6 render tests.</td><td>None after all. The link and the number live on the row a release already saves.</td><td>Its tests, and a read-only look at the hold on a live job</td></tr>
+<tr><td class="k">3</td><td><b>One check over many bills.</b> One typed check becomes a payment on each bill in one write, each carrying the same check mark.</td><td>M</td><td><code>checkSpread.ts</code>: liened first, oldest first, to the cent, the three totals, changes by hand. Tests for short, over, rounding and a bill at zero.</td><td>A check mark column on payments and one function that writes the rows through the guards <i>Record payment</i> uses</td><td>Kernel tests, a database bed for the function, a walk on two test jobs</td></tr>
+<tr><td class="k">4</td><td><b>The payoff door and card.</b> The place’s press, the check pane, the card with its five stops, the written request’s day and the leader’s funds press. The guide ships here.</td><td>M</td><td><code>lienPayoff.ts</code>: the stops, the next act, the due day, the held reasons. Render smokes for the pane and the card.</td><td>One small table for a payoff: the place, the check, the day asked, who confirmed funds</td><td>Kernel tests, smokes, a walk from check to card on test jobs</td></tr>
+<tr><td class="k">5</td><td><b>The releases ride the run.</b> Print for the notary, mark notarized, record at the county, record the copies, each with its count and what it held.</td><td>M</td><td>The run’s checklist kernel takes releases. <code>batchWords</code> gives the labels.</td><td>None</td><td>Checklist tests, a full run on test jobs with one release held</td></tr>
+<tr><td class="k">6</td><td><b>A check that comes back knows its releases.</b> The case reads the check mark, holds what has not left and marks what has.</td><td>S</td><td><code>payoffReturned.ts</code>: none printed, printed, recorded. Tests for each.</td><td>None</td><td>Kernel tests, a played-back returned check on a test job</td></tr>
+<tr><td class="k">7</td><td><b>No final waiver wider than the money.</b> The unconditional prompt waits where other bills stay open at the place. Built on counsel’s word.</td><td>S</td><td>The waiver pick kernel gains the place’s open bills. Tests beside it.</td><td>None</td><td>Kernel tests</td></tr>
+</tbody></table></div>
+<p class="note">Pieces 1 and 2 are built and carry the door. Pieces 3 to 7 wait on the picks below. Until piece 3, one check over several bills is recorded bill by bill, or in Accounts Receivable once the bank shows the deposit.</p>
+
+<h2 id="calls">The calls</h2>
+<div class="cols">
+  <div class="box"><b>For the company’s owner</b>
+    <ol>
+      <li><b>Does a release wait for the check to clear?</b> Pick: yes, the app’s seven days, with a leader’s press when the bank confirms the funds.</li>
+      <li><b>One release for each lien, or one paper for the place?</b> Pick: one for each lien. Each matches one record at the clerk, and one can be held while the others go.</li>
+      <li><b>What does the payer get on the day of the check?</b> Pick: a receipt that names the instruments. Nothing signed that waives.</li>
+      <li><b>Who signs a release?</b> Pick: the affidavit’s signer.</li>
+    </ol></div>
+  <div class="box"><b>For Grace</b>
+    <ol>
+      <li><b>Do releases print in the day’s run or by themselves?</b> Pick: in the run.</li>
+      <li><b>Who types the check?</b> Pick: whoever holds it. The desk picks the money up from anywhere it was recorded.</li>
+      <li><b>Is a payoff kept by place or by payer?</b> Pick: by place. A payer with two properties has two payoffs.</li>
+      <li><b>What is the pile called?</b> Pick: <i>Payoffs</i>.</li>
+    </ol></div>
+  <div class="box"><b>For counsel</b> <span class="note">questions only; the build takes the cautious reading until answered</span>
+    <ol>
+      <li>May the company wait for a check to clear before it releases, and what if the tenth day comes first?</li>
+      <li>If the payer asks for the release before or as the check changes hands, what may be given?</li>
+      <li>If no written request ever comes, is a release still owed, and by when?</li>
+      <li>Does a release take an acknowledgment or a jurat, and will the clerk record either?</li>
+      <li>May one release name several instruments?</li>
+      <li>With other bills still open at the place, how must a release or a waiver read so it gives up the lien paid and no more? Is a waiver needed at all beside a release?</li>
+      <li>The property owner paid and the builder owes the bills. Does that change the wording or who gets a copy?</li>
+      <li>A release is recorded and the check comes back. What can be done, and how fast?</li>
+      <li>What does a late release risk beyond costs and fees?</li>
+    </ol></div>
+</div>
+<p class="note" style="margin-top:28px">Drawn 2026-11-24 for punch list #435. The frames use the app’s own colours and words. Nothing here is copied from the live app.</p>
+</div>
+</body>
+</html>

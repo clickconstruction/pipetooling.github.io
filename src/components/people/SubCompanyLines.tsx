@@ -9,6 +9,7 @@
  *
  * The rules and the words are `src/lib/people/subCompanies.ts`; the calls are `subCompaniesIo.ts`.
  */
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { ChangeableValue, ValueLine, ValueLines, ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import {
   SUB_COMPANY_WORDS,
@@ -22,7 +23,7 @@ import {
   type SubCompany,
 } from '../../lib/people/subCompanies'
 import { keepPersonCompany, keepPersonCompanyTitle } from '../../lib/people/subCompaniesIo'
-import { COMPANY_PAPER_WORDS, companyPaperDetail, companyPaperStateWords, type CompanyPaperRow } from '../../lib/people/subCompanyPapers'
+import { COMPANY_PAPER_WORDS, companyPaperDetail, companyPaperStateWords, companyPressHeight, type CompanyPaperRow } from '../../lib/people/subCompanyPapers'
 
 /** The state chip on a company's paper, in the tab's own colours. */
 function PaperStateChip({ status }: { status: string }) {
@@ -40,7 +41,7 @@ function PaperStateChip({ status }: { status: string }) {
 /** The mark on the paper a deep link landed on: the tint and outline a person's linked paper carries on People → Contracts. */
 const PAPER_MARK = { background: 'var(--bg-blue-tint)', outline: '2px solid #2563eb', outlineOffset: -2 } as const
 
-const pressLook = { padding: '0.35rem 0.7rem', minHeight: 36, fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer' } as const
+const pressLook = { padding: '0.35rem 0.7rem', boxSizing: 'border-box', fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer' } as const
 
 /**
  * The company's row: its name, its tag, its workers, and its own papers once with **Send for signature** and
@@ -60,6 +61,8 @@ export function SubCompanyHeadRow({
   onSend?: () => void
   onEnter?: () => void
 }) {
+  /** A phone: the two presses stand a fingertip tall. A desk keeps its own height. */
+  const pressHeight = { minHeight: companyPressHeight(useNarrowViewport640()) }
   return (
     <tr data-sub-company-row={group.company.id} style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
       <td colSpan={2} style={{ padding: '0.75rem' }}>
@@ -107,12 +110,12 @@ export function SubCompanyHeadRow({
             {onSend || onEnter ? (
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {onSend ? (
-                  <button type="button" onClick={onSend} style={{ ...pressLook, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600 }}>
+                  <button type="button" onClick={onSend} style={{ ...pressLook, ...pressHeight, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600 }}>
                     {COMPANY_PAPER_WORDS.send}
                   </button>
                 ) : null}
                 {onEnter ? (
-                  <button type="button" onClick={onEnter} style={{ ...pressLook, border: '1px solid var(--border-strong)', background: 'var(--surface)' }}>
+                  <button type="button" onClick={onEnter} style={{ ...pressLook, ...pressHeight, border: '1px solid var(--border-strong)', background: 'var(--surface)' }}>
                     {COMPANY_PAPER_WORDS.enter}
                   </button>
                 ) : null}

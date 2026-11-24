@@ -3,6 +3,7 @@
  * from the GC mode prototype (branch spike/gc-mode, `gcPriceStanding.ts`; built by the Building lane on the Board's row).
  */
 import { bidsIn, carriedAmount, carriedUncosted, isGuess, leveledTotal, proposalTotals, quoteRanOut } from './bids'
+import { askTakenBack } from './decline'
 import { partnerById } from './lookups'
 import type { GcProject, GcState, Invite, TradePackage } from './types'
 import { money, weekdayDate } from './words'
@@ -61,11 +62,13 @@ function companyOf(state: GcState, invite: Invite): string {
   return partnerById(state, invite.partnerId)?.company ?? 'A company'
 }
 
-/** "Bexar Steel Erectors has not opened it." · "Tejas Power opened it and has not quoted." · "Comal Iron said no." */
+/** "Bexar Steel Erectors has not opened it." · "Tejas Power opened it and has not quoted." · "Comal Iron said no." · "We took the ask back from Alamo Steel." */
 function askedWords(state: GcState, invites: Invite[]): string {
   return invites
     .map((i) =>
-      i.status === 'declined'
+      askTakenBack(i)
+        ? `We took the ask back from ${companyOf(state, i)}.`
+        : i.status === 'declined'
         ? `${companyOf(state, i)} said no.`
         : i.status === 'opened'
           ? `${companyOf(state, i)} opened it and has not quoted.`

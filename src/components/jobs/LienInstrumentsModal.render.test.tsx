@@ -355,6 +355,30 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(card.textContent).not.toMatch(/Draft the/)
   })
 
+  it('a notice sent for approval names the leader in the header, as the row does (punch list #335)', async () => {
+    const verdict = async () =>
+      waitFor(() => {
+        const el = document.querySelector('[data-lien-timeline-verdict]') as HTMLElement | null
+        expect(el?.textContent).toMatch(/Approve the \w+ notice/)
+        return el!
+      })
+    const fresh = () => {
+      const now = new Date().toISOString()
+      return job({ created_at: now, last_work_date: null, invoices: [{ ...INV, billed_at: now, sent_to_customer_at: now }] })
+    }
+    // An opener with no name to give: the words from before.
+    const first = renderWithProviders(<LienInstrumentsModal {...baseProps} job={fresh()} deskNotice={{ state: 'awaiting', holdUntil: null }} />)
+    await settle()
+    expect((await verdict()).textContent).toContain('the leader’s approval of the notice')
+    first.unmount()
+    // Rosa is a made-up leader; the office is signed in, so the header names her.
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={fresh()} deskNotice={{ state: 'awaiting', holdUntil: null }} deskLeader="Rosa" />)
+    await settle()
+    const card = await verdict()
+    expect(card.textContent).toContain('Rosa’s approval of the notice')
+    expect(card.textContent).not.toContain('the leader’s approval')
+  })
+
   it('the header names the desk’s step on an affidavit in work, and its button opens the desk’s Affidavits list (v2.7187, punch list #335, row 2)', async () => {
     const verdict = async (re: RegExp) =>
       waitFor(() => {

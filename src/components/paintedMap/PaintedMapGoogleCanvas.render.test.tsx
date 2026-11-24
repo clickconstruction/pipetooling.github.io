@@ -77,6 +77,8 @@ vi.mock('@vis.gl/react-google-maps', async () => {
 import type { PaintedCanvasDot, PaintedCanvasDraft, PaintedCanvasLine, PaintedCanvasPlace } from './PaintedMapCanvas'
 import PaintedMapGoogleCanvas, { type PaintedMapGoogleCanvasProps } from './PaintedMapGoogleCanvas'
 import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
+import { BURIED_COLORS } from '../../lib/paintedMap/paintedPlaceKind'
+import { PAINT_COLOR, PAINT_INK } from './paintedMapLook'
 import { forgetPaintedGlassForTests } from './paintedGoogleGlassMap'
 
 class PolylineStub {
@@ -381,6 +383,38 @@ describe('the lines', () => {
     expect(second.length).toBeGreaterThan(0)
     view.unmount()
     for (const line of PolylineStub.made) expect(line.on).toBeNull()
+  })
+
+  it('draws a line in a color of its own, as the Leaflet canvas does: a buried water line in blue (#413)', () => {
+    mount({ lines: [{ ...WALKED, color: BURIED_COLORS.water }, DRAWN] })
+    // A canvas hands Google a copy of a line's points, so a line is told by where it starts.
+    const ofDrawn = (l: (typeof PolylineStub.made)[number]) => (l.opts.path as Array<{ lat: number }>)[0]?.lat === DRAWN.points[0]?.lat
+    const ofWalked = PolylineStub.made.filter((l) => !ofDrawn(l))
+    // The dark edge stays dark. The paint over it, and the dots of the unsure stretch, are the line's own color.
+    const edges = ofWalked.filter((l) => l.opts.strokeWeight === 8)
+    const solid = ofWalked.filter((l) => l.opts.strokeOpacity === 1 && !l.opts.icons)
+    const dotted = ofWalked.filter((l) => (l.opts.icons as Array<{ repeat: string }> | undefined)?.[0]?.repeat === '11px')
+    expect(edges.map((l) => l.opts.strokeColor)).toEqual([PAINT_INK, PAINT_INK])
+    expect(solid.map((l) => l.opts.strokeColor)).toEqual([BURIED_COLORS.water, BURIED_COLORS.water])
+    expect((dotted[0]?.opts.icons as Array<{ icon: { fillColor: string } }>)[0]?.icon.fillColor).toBe(BURIED_COLORS.water)
+    // A line with no color of its own beside it is the paint's, dashes and all.
+    const dashes = PolylineStub.made.find((l) => ofDrawn(l) && l.opts.icons)
+    expect((dashes?.opts.icons as Array<{ icon: { strokeColor: string } }>)[0]?.icon.strokeColor).toBe(PAINT_COLOR)
+  })
+
+  it('draws a kept line again when its color comes: the job’s places are read after the map', () => {
+    const { rerender } = mount({ lines: [WALKED] })
+    const first = [...PolylineStub.made]
+    expect(first.filter((l) => l.opts.strokeOpacity === 1 && !l.opts.icons).map((l) => l.opts.strokeColor)).toEqual([PAINT_COLOR, PAINT_COLOR])
+    // The same line, the same points, now with what is buried under it.
+    rerender({ lines: [{ ...WALKED, color: BURIED_COLORS.sewer }] })
+    for (const line of first) expect(line.on).toBeNull()
+    const second = PolylineStub.made.filter((l) => !first.includes(l))
+    expect(second.filter((l) => l.opts.strokeOpacity === 1 && !l.opts.icons).map((l) => l.opts.strokeColor)).toEqual([BURIED_COLORS.sewer, BURIED_COLORS.sewer])
+    // Handed again as it is, nothing is drawn a third time.
+    const made = PolylineStub.made.length
+    rerender({ lines: [{ ...WALKED, color: BURIED_COLORS.sewer }] })
+    expect(PolylineStub.made).toHaveLength(made)
   })
 })
 
@@ -947,6 +981,15 @@ describe('a place’s dot, put down by hand (step 3)', () => {
     expect(glass()?.querySelectorAll('[data-painted-glass-place]')).toHaveLength(1)
     act(() => marker().fire('dragend', event(29.55001, -98.29999)))
     expect(glass()).toBeNull()
+  })
+
+  it('draws a line in the glass in its own color too, over the same dark edge', () => {
+    mount({ lines: [{ ...DRAWN, color: BURIED_COLORS.gas }], places: [GATE], dot: dotAt(AT) })
+    down('touch')
+    act(() => marker().fire('drag', event(29.55001, -98.29999)))
+    const strokes = [...(glass()?.querySelectorAll('polyline') ?? [])].map((l) => l.getAttribute('stroke'))
+    expect(strokes).toEqual([PAINT_INK, BURIED_COLORS.gas])
+    act(() => marker().fire('dragend', event(29.55001, -98.29999)))
   })
 
   it('makes the glass’s map once for the page, however many drags and painted maps follow', () => {

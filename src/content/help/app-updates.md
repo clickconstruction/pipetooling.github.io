@@ -28,6 +28,8 @@ The app also checks for new versions on its own about once an hour. It checks ag
 
 Right after an update, a page can occasionally fail to load its files. The app fixes this itself. You briefly see **Updating app…** and it reloads once automatically. If something is still saving, it waits for that first. If it still can't load, it shows a **Reload** button.
 
+The app never reloads by itself over words you typed. A message or a report you have not sent stays on the screen. It stays until you send it or clear it. While it is there, the app shows the **Reload** button and waits for you.
+
 A window can fail to load the same way, for example a job you pressed on a list. Then only the window gives up. The page behind it stays as it was. An amber line tells you:
 
 :::example When a window cannot load
@@ -35,6 +37,16 @@ The job could not open. Check your signal, then press it again.
 :::
 
 Press the same row again once you have a signal.
+
+When your signal is back, the app mends the page by itself. It reloads once, and your next press opens the window. It waits while a window is open, while a field has the cursor in it and while something is saving.
+
+It also waits while words you typed are on the page. Then the amber line tells you what to do:
+
+:::example When you have typed words on the page
+The job could not open. The app must reload first, and it will not reload over what you typed. Send or clear it, then press again.
+:::
+
+Send your message or clear it. The app reloads soon after, and the press opens the window.
 
 If all else fails, use the fix-it page:
 

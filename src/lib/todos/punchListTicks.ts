@@ -118,7 +118,7 @@ export function tickLabel(card: Pick<BoardItem, 'number' | 'name'>): string {
 
 /** The words under the board's note line: what the checkbox means, who sees it, and what ends it. */
 export const TICK_BLURB =
-  'Tick the box beside a card you are working on. Everyone who opens this board sees your name on it. A claim goes quiet after 12 hours with no update. A card that moves to another section loses its tick.'
+  'Tick the box beside a card you are working on. Everyone who opens this board sees your name on it. A claim goes quiet after 12 hours with no update, and its tick is cleared. A card that moves to another section loses its tick.'
 
 /** The lead of the line shown when the ticks could not be read; the reason follows it. */
 export const TICKS_READ_FAILED = 'The ticks could not be read'

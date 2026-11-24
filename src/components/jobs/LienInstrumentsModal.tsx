@@ -60,6 +60,7 @@ import LienTimelineStrip from './LienTimelineStrip'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import { isLienOffice } from '../../lib/jobs/lienDesk'
 import { LIEN_WINDOW_TAB_LABEL, lienWindowNextStep } from '../../lib/jobs/lienWindowNextStep'
+import { lienApproverFor } from '../../lib/jobs/lienApprovalWait'
 import { LIEN_LAST_WORK_COLUMNS, lienLastWorkFactsOf, type LienLastWorkFacts } from '../../lib/jobs/lienLastWorkJobs'
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
 import DemandRecordSendSheet from './DemandRecordSendSheet'
@@ -159,6 +160,7 @@ export default function LienInstrumentsModal({
   onLastWorkSaved,
   deskNotice,
   deskAffidavit,
+  deskLeader,
 }: {
   open: boolean
   onClose: () => void
@@ -192,6 +194,8 @@ export default function LienInstrumentsModal({
   deskNotice?: LienWindowDeskNotice | null
   /** Where the job's affidavit stands on the Lien desk (v2.7187, punch list #335, row 2), from an opener that holds the desk's queue; absent, the header reads *File the affidavit*. */
   deskAffidavit?: LienWindowDeskAffidavit | null
+  /** The job's leader by the name the desk's rows print (punch list #335), from the same opener: a paper sent for approval names him in the header. Absent, the header reads *the leader*. */
+  deskLeader?: string | null
 }) {
   const { role: authRole, user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -895,6 +899,10 @@ export default function LienInstrumentsModal({
   const deskAffidavitState = deskAffidavit?.state ?? ''
   const deskAffidavitMissing = (deskAffidavit?.missing ?? []).join('|')
   const deskAffidavitHoldUntil = deskAffidavit?.holdUntil ?? null
+  // Who a paper sent for approval waits on (punch list #335, `lienApprovalWait.ts`), by value: the row's name, or *your* for the leader himself.
+  const approver = lienApproverFor({ leaderName: deskLeader, masterUserId: job?.master_user_id, viewerUserId: authUser?.id, role: authRole })
+  const approverName = approver.name ?? ''
+  const approverYours = approver.yours === true
   const timeline = useMemo(
     () =>
       job && property
@@ -912,9 +920,10 @@ export default function LienInstrumentsModal({
             courtesy: courtesyRows,
             deskNotice: deskNoticeState ? { state: deskNoticeState, holdUntil: deskHoldUntil } : null,
             deskAffidavit: deskAffidavitState ? { state: deskAffidavitState, missing: (deskAffidavitMissing ? deskAffidavitMissing.split('|') : []) as LienAffidavitGateKey[], holdUntil: deskAffidavitHoldUntil } : null,
+            approver: { name: approverName, yours: approverYours },
           })
         : null,
-    [job, property, billedOpen, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows, courtesyRows, deskNoticeState, deskHoldUntil, deskAffidavitState, deskAffidavitMissing, deskAffidavitHoldUntil],
+    [job, property, billedOpen, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows, courtesyRows, deskNoticeState, deskHoldUntil, deskAffidavitState, deskAffidavitMissing, deskAffidavitHoldUntil, approverName, approverYours],
   )
   // The period the affidavit tab swears (v2.6061): the tab gets the fresh last-day read (a day set by hand reaches the paper the moment it is
   // saved) and the window's months, and fills the paper by the desk's own recipe (v2.6809); a job with no sessions swears its creation month.

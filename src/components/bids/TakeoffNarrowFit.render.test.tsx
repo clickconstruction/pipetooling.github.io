@@ -100,6 +100,28 @@ describe('the line table’s box', () => {
     expect(box().dataset.fit).toBe('roomy')
   })
 
+  it('judges nothing while the box is not the width it measured, so a resize leaves no false record (v2.8494)', () => {
+    measuredAt(884)
+    const view = renderWithProviders(<TakeoffLinesBox><table /></TakeoffLinesBox>)
+    const fit = () => screen.getByTestId('takeoff-lines-box').dataset.fit
+    expect(fit()).toBe('roomy')
+    // The window narrows and the page draws again before the box has measured itself: the layout is 386 px
+    // wide and the table overflows it, while the box still believes it is 884.
+    vi.restoreAllMocks()
+    measuredAt(386)
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(726)
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(386)
+    view.rerender(<TakeoffLinesBox><table /></TakeoffLinesBox>)
+    expect(fit()).toBe('roomy')
+    // The window comes back to the width it had, where the table fits.
+    vi.restoreAllMocks()
+    measuredAt(884)
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(884)
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(884)
+    view.rerender(<TakeoffLinesBox><table /></TakeoffLinesBox>)
+    expect(fit()).toBe('roomy')
+  })
+
   it('steps tighter when the table overflows a box its width called roomy, and stops at scroll', () => {
     measuredAt(780)
     vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(812)

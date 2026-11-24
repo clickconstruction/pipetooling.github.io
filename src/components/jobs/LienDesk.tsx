@@ -187,6 +187,7 @@ import LienNoticeAlreadyWent from './LienNoticeAlreadyWent'
 import LienPenSignaturePane from './LienPenSignaturePane'
 import { buildLienMonthGrid } from '../../lib/jobs/lienMonthGrid'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
+import { lienApproverFor } from '../../lib/jobs/lienApprovalWait'
 import { bringLienFooterUp } from './lienFooterFocus'
 import type { LienNextAct, LienNextActDoor } from '../../lib/jobs/lienNextAct'
 import LienDeskTimelineTab from './LienDeskTimelineTab'
@@ -1320,6 +1321,8 @@ export default function LienDesk({
           openBalance,
           todayYmd,
           demandLetters: data.demandLettersByJob?.[selected.jobId] ?? null,
+          // The path names the leader a paper sent for approval waits on, as the row does (punch list #335).
+          approver: lienApproverFor({ leaderName: leaderNameFor?.(job?.master_user_id ?? null), masterUserId: job?.master_user_id, viewerUserId: authUserId, role: authRole }),
         })
       : null
   // v2.4708: every window closed unsent while the affidavit's own window is still open — the new notice names the closed months, late.

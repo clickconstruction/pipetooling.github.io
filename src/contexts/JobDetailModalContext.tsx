@@ -19,6 +19,7 @@ import { WindowLoadBoundary } from '../components/WindowLoadBoundary'
 import { WindowOpening } from '../components/WindowOpening'
 import { useAuth } from '../hooks/useAuth'
 import { useWarmWindows } from '../hooks/useWarmWindows'
+import { useWindowCure } from '../hooks/useWindowCure'
 import { lazyWindow } from '../lib/lazyWindow'
 import { WINDOW_NAMES } from '../lib/windowLoad'
 import { resolveJobWindowMode } from '../lib/jobDetailModalRole'
@@ -203,6 +204,9 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
   const windowMode = resolveJobWindowMode(authRole)
   // The first open finds its window loaded: warmed a moment after the app has drawn, for someone signed in.
   useWarmWindows(windowMode === 'window' ? WARM_JOB_WINDOW : WARM_JOB_DETAIL, !!authUser)
+  // A window this page could not load is asked for again once the signal is back and nothing typed would be lost.
+  // Here because this provider is mounted for everyone signed in, on every page. It watches every host's windows.
+  useWindowCure(!!authUser)
 
   // Telemetry: one `ui_nav_clicks` row per open — control `job_window_opened`,
   // target `#window` / `#read-only`. Invariant: the self-close above must stay

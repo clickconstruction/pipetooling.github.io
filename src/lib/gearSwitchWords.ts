@@ -1,7 +1,8 @@
 /**
- * The gear menu's two show-or-hide switches (v2.8043): the pin bar's and Tell the dev's.
+ * The gear menu's show-or-hide switches: the pin bar's and Tell the dev's (v2.8043), and the mode row's
+ * (punch list #433), which is a phone's and shows or hides the row of three modes when the app opens.
  *
- * Neither is a mode. A mode changes the page a person sees (Job Mode, Dispatch Mode, Task Mode); these two
+ * None is a mode. A mode changes the page a person sees (Job Mode, Dispatch Mode, Task Mode); these two
  * only show or hide one thing, so each row is named for that thing and wears its icon. They read Pin Mode
  * and Fix Mode until v2.8043. The stored keys (`pinModeToggle.ts`, `tellTheDev/fixMode.ts`) kept the old
  * word so nobody's choice was lost.
@@ -9,7 +10,7 @@
  * One home for the words, because two screens draw the rows: the gear menu and the phone dock's More sheet.
  */
 
-export type GearSwitch = 'pin' | 'fix'
+export type GearSwitch = 'pin' | 'fix' | 'modes'
 
 /** The row that shows or hides the pin bar at the bottom of a page. */
 export const PIN_BAR_SWITCH_LABEL = 'Pin bar'
@@ -17,8 +18,12 @@ export const PIN_BAR_SWITCH_LABEL = 'Pin bar'
 /** The row that shows or hides the wrench. The feature's own name: the wrench opens Tell the dev. */
 export const TELL_THE_DEV_SWITCH_LABEL = 'Tell the dev'
 
+/** The row that shows or hides the mode row when the app opens. The phone's, ticked until someone unticks it. */
+export const MODE_ROW_SWITCH_LABEL = 'Modes at open'
+
 /** What a press will do, said as the act: the row is ticked while its thing shows. */
 export function switchRowTip(which: GearSwitch, on: boolean): string {
+  if (which === 'modes') return on ? 'Stop showing the three modes when the app opens' : 'Show Task Mode, Dashboard and Job Mode for five seconds when the app opens'
   if (which === 'pin') return on ? 'Hide the pin bar' : 'Show the pin bar at the bottom of pages'
   return on ? 'Hide the wrench that sends a note to the dev' : 'Show the wrench that sends a note to the dev'
 }
@@ -28,5 +33,6 @@ export function switchRowTip(which: GearSwitch, on: boolean): string {
  * a narrow phone the gear menu also holds the press that opens the box, and that one is named Tell the dev.
  */
 export function switchRowAriaLabel(which: GearSwitch): string {
+  if (which === 'modes') return 'Show the modes when the app opens'
   return which === 'pin' ? 'Show the pin bar' : 'Show the Tell the dev wrench'
 }

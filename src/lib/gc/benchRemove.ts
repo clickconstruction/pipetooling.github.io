@@ -4,7 +4,9 @@
  * it, and no Remove shows on its row. History is what the office would lose: a work order, a quote, an ask,
  * a contact logged, a promise, a paper sent or come in, a portal opened, a vetting form sent. The server
  * function `gc_remove_bench_company` holds the same rule over every table and refuses in words, so a stale
- * row never takes a company that was asked a minute ago. Pure; the write is `removeGcBenchCompany` in gcIo.
+ * row never takes a company that was asked a minute ago. It also sees what this screen cannot: an email we
+ * sent the company (`gc_trade_messages`, a dev's to read) holds it too, refused as *since we emailed them*
+ * (v2.8491; it read *they wrote to us from their portal*, which that table never holds). Pure; the write is `removeGcBenchCompany` in gcIo.
  */
 import type { Partner } from './types'
 

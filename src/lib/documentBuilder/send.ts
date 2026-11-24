@@ -269,6 +269,26 @@ export function heldLines(held: SendBatch['held'], noun: BatchNoun): HeldLine[] 
   })
 }
 
+/** Who the one press reaches. With `summary`, the lines sit folded under it. */
+export type BatchGoesTo = { summary: string | null; lines: Array<{ key: string; words: string }> }
+
+/**
+ * Who the one press reaches, said before it goes: a line a ready party, with the person its email goes to. That
+ * person is the first on the party's record, since the one press asks nobody who. A press that named only a count
+ * sent to people nobody had read (the 2026-11-24 walk: one of two went to an address the mail service refuses). A few
+ * parties read a line each, and more than `HELD_NAMED_AT_MOST` fold under one line with their count. The values are
+ * marked with `val`, for `ValueSentence`.
+ */
+export function batchGoesTo(ready: ReadonlyArray<SendParty>): BatchGoesTo {
+  const lines = ready.flatMap((party) => {
+    const to = party.contacts[0]
+    if (!to) return []
+    const who = !to.name.trim() || sameWords(to.name, to.email) ? val('email', to.email) : `${val('who', pressName(to))} at ${val('email', to.email)}`
+    return [{ key: party.id, words: `${party.name}: it goes to ${who}.` }]
+  })
+  return { summary: lines.length > HELD_NAMED_AT_MOST ? `See who the ${lines.length} emails go to` : null, lines }
+}
+
 /** After the one press: what went, what was held, and what did not go. */
 export function sendBatchOutcome(done: number, held: number, failed: number, noun: BatchNoun): string {
   const went = done > 0 ? `Sent to ${done} ${pluralNoun(noun, done)}.` : 'Nothing sent.'

@@ -31,6 +31,8 @@ const io = vi.hoisted(() => ({
   failSearch: null as unknown,
   /** The contact a picked record already has, when the look before the window finds one. */
   found: null as string | null,
+  /** The named people's contacts that point at a picked company: someone put under it by Add to a list. */
+  foundNamed: [] as string[],
 }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'assistant', user: { id: 'u1' } })
@@ -53,7 +55,7 @@ vi.mock('../../lib/documents/paperPartyIo', () => ({
     if (io.failSearch) throw io.failSearch
     return io.customers
   },
-  findPartyContact: async () => io.found,
+  findPartyContacts: async () => [...(io.found ? [io.found] : []), ...io.foundNamed],
   readCopiesOut: async (ids: string[]) => ids.map((docId) => ({ docId, signerName: 'Lena Park', signerTitle: 'Branch manager', signerEmail: 'lena@tallgrass.example', sentAt: '2026-11-01T18:00:00Z' })),
   readPartyContact: async (record: { table: string; id: string }) => {
     io.party.push(`contact ${record.table}:${record.id}`)
@@ -147,6 +149,7 @@ beforeEach(() => {
   io.customers = []
   io.failSearch = null
   io.found = null
+  io.foundNamed = []
 })
 afterEach(() => {
   cleanup()
@@ -324,6 +327,61 @@ describe('AgreementsSendPaper', () => {
     expect(screen.getByRole('button', { name: /^Send a second copy to someone else/ })).toBeTruthy()
     expect(screen.queryByTestId('send-window')).toBeNull()
     expect(io.party).toEqual([])
+  })
+
+  // The walks of 2026-11-24: both waiting papers of a customer sat on a named person's contact, which points at the
+  // customer and carries their name (Add to a list). The look read the customer's own contact alone, and asked nothing.
+  it('a company whose copy is out with a person named under it is asked about too, though its own contact holds nothing', async () => {
+    io.found = '3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d'
+    io.foundNamed = ['7c4d2e1f-0a4d-4e8b-9c6f-1d2e3a4b5c6d']
+    io.personDocuments = [{ ...sentCopy, id: 'p-named', person_name: 'party:7c4d2e1f-0a4d-4e8b-9c6f-1d2e3a4b5c6d' }]
+    await openPicker('Supply houses')
+    fireEvent.click(await screen.findByRole('button', { name: /^Tallgrass Supply Co\./ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Subcontractor Handbook is already out' })
+    expect(dialog.textContent).toContain('Tallgrass Supply Co. has one copy waiting on a signature.')
+    // Send again goes to the copy that is out, on the named person's contact: no second row.
+    fireEvent.click(screen.getByRole('button', { name: /^Send it to Lena Park again/ }))
+    expect((await screen.findByTestId('send-window')).textContent).toContain('again|p-named|')
+    expect(io.party).toEqual([])
+  })
+
+  it('a company with a named person and no copy out opens the Send window as before', async () => {
+    io.foundNamed = ['7c4d2e1f-0a4d-4e8b-9c6f-1d2e3a4b5c6d']
+    io.personDocuments = [{ ...sentCopy, id: 'p-signed', status: 'signed', person_name: 'party:7c4d2e1f-0a4d-4e8b-9c6f-1d2e3a4b5c6d' }]
+    await openPicker('Supply houses')
+    fireEvent.click(await screen.findByRole('button', { name: /^Tallgrass Supply Co\./ }))
+    expect(await screen.findByTestId('send-window-party')).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Subcontractor Handbook is already out' })).toBeNull()
+  })
+
+  it('Escape closes each window the press draws, with nothing written', async () => {
+    // The window that says a paper is already out.
+    outAtTallgrass()
+    await openPicker('Supply houses')
+    fireEvent.click(await screen.findByRole('button', { name: /^Tallgrass Supply Co\./ }))
+    await screen.findByRole('dialog', { name: 'Subcontractor Handbook is already out' })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    // The paper list, then Who is it with?.
+    fireEvent.click(screen.getByRole('button', { name: 'Send a paper' }))
+    await screen.findByRole('dialog', { name: 'Send a paper' })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: 'Send a paper' }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Subcontractor Handbook/ }))
+    await screen.findByRole('dialog', { name: 'Send Subcontractor Handbook: who is it with?' })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(io.party).toEqual([])
+  })
+
+  it('Escape leaves the Send window alone: it holds what someone typed', async () => {
+    await openPicker('Supply houses')
+    fireEvent.click(await screen.findByRole('button', { name: /^Tallgrass Supply Co\./ }))
+    await screen.findByTestId('send-window-party')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.getByTestId('send-window-party')).toBeTruthy()
   })
 
   it('Send it to them again opens the copy that is out, on the person who has it', async () => {

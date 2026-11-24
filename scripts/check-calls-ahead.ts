@@ -16,7 +16,9 @@
  *    step summary says what to do, and the pull request gets the label *push right after the merge*
  *    when the token may label it. Never a failure: the
  *    migration cannot be pushed before it is on main, so the PR is right to carry both; the deploy
- *    is what holds. In CI, HEAD is the merge of the change into its base, so the base is HEAD's
+ *    is what holds, and only for a name the migration creates. A change that only replaces
+ *    functions is told that no deploy waits for its push (`callsAheadAdvice`).
+ *    In CI, HEAD is the merge of the change into its base, so the base is HEAD's
  *    first parent; locally, the merge base with origin/main. `--base <ref> --head <ref>` compare
  *    any two commits (every read goes through git, so the working tree need not match).
  *
@@ -32,7 +34,7 @@ import { execFileSync } from 'node:child_process'
 import { appendFileSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { CALLS_AHEAD_ADVICE, CALLS_AHEAD_LABEL, callsAhead, callsAheadLabelCalls, ghFailureWords, labelAlreadyExists, namesCreatedIn, schemaCallsIn, type CallAhead, type CreatedName, type SchemaCall } from '../src/lib/callsAhead'
+import { CALLS_AHEAD_LABEL, callsAhead, callsAheadAdvice, callsAheadLabelCalls, ghFailureWords, labelAlreadyExists, namesCreatedIn, schemaCallsIn, type CallAhead, type CreatedName, type SchemaCall } from '../src/lib/callsAhead'
 import { changedLinesFromDiff } from '../src/lib/pronounOpeners'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -162,7 +164,8 @@ function report(ahead: CallAhead[], level: (a: CallAhead) => 'warning' | 'error'
     console.log(`  ${describe(a)}`)
     if (inActions && annotated < ANNOTATIONS_SHOWN) {
       annotated++
-      console.log(`::${level(a)} file=${escapeProperty(a.file)},line=${a.call.line},title=${escapeProperty(TITLES[a.why])}::${escapeData(`${describe(a)}. ${CALLS_AHEAD_ADVICE}`)}`)
+      // Each line carries the advice for its own kind: a replaced function holds no deploy.
+      console.log(`::${level(a)} file=${escapeProperty(a.file)},line=${a.call.line},title=${escapeProperty(TITLES[a.why])}::${escapeData(`${describe(a)}. ${callsAheadAdvice([a])}`)}`)
     }
   }
 }
@@ -199,11 +202,15 @@ function checkChange(): number {
   }
   console.log(`\ncheck-calls-ahead: ${ahead.length} call(s) are ahead of a migration this change adds (against ${base.how}):`)
   report(ahead, () => 'warning')
-  console.log(`\n${CALLS_AHEAD_ADVICE}`)
+  // One call to a name the migration creates holds the deploy for the whole change; a change that
+  // only replaces functions holds nothing, and the words must not say it does.
+  const advice = callsAheadAdvice(ahead)
+  const held = ahead.some((a) => a.why === 'missing')
+  console.log(`\n${advice}`)
   summary([
     `## Push right after the merge`,
     ``,
-    `This change's client calls what its migration creates or replaces. ${CALLS_AHEAD_ADVICE}`,
+    `This change's client calls ${held ? 'what only its migration creates' : 'a function its migration replaces'}. ${advice}`,
     ``,
     ...ahead.map((a) => `- ${describe(a)}`),
   ])

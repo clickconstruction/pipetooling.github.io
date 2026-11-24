@@ -1,10 +1,9 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2023"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "bundler"
+    "incremental": false,
+    "tsBuildInfoFile": null,
+    "types": ["node"]
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "playwright.config.ts", "src/vite-env.d.ts"]
 }

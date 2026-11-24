@@ -156,6 +156,7 @@ trips
 primary-test-papers
 job-papers-lock
 job-papers-lists
+job-papers-gc-page
 job-paper-settings
 schedule-reads-gate
 dashboard-view

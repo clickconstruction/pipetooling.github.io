@@ -53,16 +53,24 @@ describe('asking companies to quote, before anything goes out', () => {
     const one = askChoices(state, projectId, packageId)[0]!.partner
     const after = asked(state, projectId, packageId, one.id)
     expect(askChoices(after, projectId, packageId).map((c) => c.partner.id)).not.toContain(one.id)
-    expect(askStanding(after, projectId, packageId, 1)).toMatchObject({ quotes: 0, out: 1 })
-    expect(askStanding(after, projectId, packageId, 1).words).toContain('has the 2 quotes we want')
+    expect(askStanding(after, projectId, packageId, 1, true)).toMatchObject({ quotes: 0, out: 1 })
+    expect(askStanding(after, projectId, packageId, 1, true).words).toContain('has the 2 quotes we want')
   })
 
   it('says whether the trade reaches the two quotes we want', () => {
     const { state, projectId, packageId } = padBConcrete()
-    expect(askStanding(state, projectId, packageId, 0).words).toBe('Tick a company to ask.')
-    expect(askStanding(state, projectId, packageId, 1).words).toBe("1 email goes out, each with the company's own portal link. That still leaves Concrete short of 2 quotes.")
-    expect(askStanding(state, projectId, packageId, 2).words).toBe("2 emails go out, each with the company's own portal link. If they answer, Concrete has the 2 quotes we want.")
-    expect(askStanding(state, projectId, packageId, 2)).toMatchObject({ quotes: 0, wanted: 2, out: 0 })
+    expect(askStanding(state, projectId, packageId, 0, true).words).toBe('Tick a company to ask.')
+    expect(askStanding(state, projectId, packageId, 1, true).words).toBe("1 email goes out, with the company's own portal link. That still leaves Concrete short of 2 quotes.")
+    expect(askStanding(state, projectId, packageId, 2, true).words).toBe("2 emails go out, each with the company's own portal link. If they answer, Concrete has the 2 quotes we want.")
+    expect(askStanding(state, projectId, packageId, 2, true)).toMatchObject({ quotes: 0, wanted: 2, out: 0 })
+  })
+
+  it('counts companies asked, never emails, when the press sends no email', () => {
+    const { state, projectId, packageId } = padBConcrete()
+    expect(askStanding(state, projectId, packageId, 0, false).words).toBe('Tick a company to ask.')
+    expect(askStanding(state, projectId, packageId, 1, false).words).toBe('1 company is asked. That still leaves Concrete short of 2 quotes.')
+    expect(askStanding(state, projectId, packageId, 2, false).words).toBe('2 companies are asked. If they answer, Concrete has the 2 quotes we want.')
+    expect(askStanding(state, projectId, packageId, 2, false).words).not.toContain('email')
   })
 
   it('finds the project, the trade, the ask and its company, and nothing for an id it does not know', () => {

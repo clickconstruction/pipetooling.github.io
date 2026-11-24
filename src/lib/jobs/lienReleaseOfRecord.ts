@@ -1,0 +1,131 @@
+/**
+ * The release of a filed lien, on the Lien window's Release of record tab (punch list #435, piece 2).
+ *
+ * Until now the tab took the job's first filed affidavit, saved with no payment recorded, typed its payment date by
+ * hand, and had nowhere to put what the county clerk hands back. Four rules, all pure:
+ *
+ *   - `releaseTargets`: every live filed affidavit on the job with its own release, so a job with two filed liens
+ *     releases the one picked and never the first one found. A saved release names its affidavit
+ *     (`fields.releasesFilingId`, read by `lienPayoff.ts`).
+ *   - `releaseMoneyGate`: money holds the release. While the job's sent bills still owe, the tab holds its print and
+ *     its save, and says what is open. A reason typed under *Release it anyway* lifts the hold and is saved on the
+ *     release: a lien settled for less is a real case, and the app does not judge it. A check still clearing only
+ *     warns. Whether a release waits for a check to clear is the owner's call, not yet made.
+ *   - `releasePaymentDay`: the paper's payment date starts on the day of the last payment, not on today.
+ *   - `releaseStampPatch`: the county's stamp. The day the clerk recorded the release is the row's `filed_at`,
+ *     which nothing set before, and the release's own instrument number is `fields.releaseInstrument`. The row's
+ *     `recording_number` keeps the affidavit's number, as every older row and reader has it.
+ *
+ * No migration: the link and the instrument number live in the `fields` the release already saves.
+ * The app counts the days and does not judge the law.
+ */
+import { moneyWords } from '../moneyParts'
+import { val } from '../valuesInPlace'
+import { ymdAddDays } from '../../utils/dateUtils'
+import { formatYmdMonthDay } from './billedExpectedPay'
+import { CHECK_CLEAR_DAYS, isCheckPayment } from './checkClearing'
+import { lastPayment, payWayWords, releaseForAffidavit, releaseOwnInstrument, type LienPayoffAffidavit, type LienPayoffPayment, type LienPayoffRelease } from './lienPayoff'
+
+export const RELEASE_OF_RECORD_WORDS = {
+  which: 'Which lien',
+  anyway: 'Release it anyway…',
+  anywayLabel: 'Why it is released with money still open',
+  anywayExample: 'settled for less on Nov 24, per the owner',
+  saved: 'This release is saved. Sign it before a notary. Then record it at the county.',
+  stampHead: 'The county’s stamp',
+  instrumentLabel: 'the release’s instrument number',
+  dayLabel: 'the day the county recorded it',
+  notYet: 'not yet',
+  stampKept: 'The county’s stamp is on the release.',
+  stampFailed: 'The release did not take the change.',
+  futureDay: 'The county cannot have recorded it on a day still to come.',
+  beforeLien: 'A release cannot be recorded before its lien was filed.',
+} as const
+
+export type ReleaseState = 'none' | 'made' | 'recorded'
+
+export type ReleaseTarget<A extends LienPayoffAffidavit, R extends LienPayoffRelease> = { affidavit: A; release: R | null; state: ReleaseState }
+
+/** Every live filed affidavit on a job, oldest filing first, each with its own release of record. */
+export function releaseTargets<A extends LienPayoffAffidavit, R extends LienPayoffRelease>(affidavits: ReadonlyArray<A>, releases: ReadonlyArray<R>): ReleaseTarget<A, R>[] {
+  const filed = affidavits.filter((a) => a.filed_at).sort((a, b) => (a.filed_at ?? '').localeCompare(b.filed_at ?? '') || (a.recording_number ?? '').localeCompare(b.recording_number ?? '') || a.id.localeCompare(b.id))
+  return filed.map((affidavit) => {
+    const release = releaseForAffidavit(affidavit, releases, filed.length)
+    return { affidavit, release, state: release ? (release.filed_at ? 'recorded' : 'made') : 'none' }
+  })
+}
+
+/** The lien the tab opens on: the one picked, else the first whose release the county has not recorded, else the first. */
+export function pickReleaseTarget<T extends { affidavit: { id: string }; state: ReleaseState }>(targets: ReadonlyArray<T>, pickedId: string | null): T | null {
+  return targets.find((t) => t.affidavit.id === pickedId) ?? targets.find((t) => t.state !== 'recorded') ?? targets[0] ?? null
+}
+
+/** The payment date the paper starts on: the day of the last payment, or today when the job has none. */
+export function releasePaymentDay(payments: ReadonlyArray<LienPayoffPayment>, todayYmd: string): string {
+  return (lastPayment(payments)?.paid_on ?? '').slice(0, 10) || todayYmd
+}
+
+export type ReleaseMoneyGate = {
+  /** True while the tab holds its print and its save. */
+  hold: boolean
+  tone: 'red' | 'amber' | 'green'
+  /** What the money says, with its values marked. */
+  say: string
+}
+
+/** Whether money holds the release, and what the tab says about it. */
+export function releaseMoneyGate(input: { open: number; payments: ReadonlyArray<LienPayoffPayment>; todayYmd: string; anywayReason: string }): ReleaseMoneyGate {
+  const open = Math.round((Number(input.open) || 0) * 100) / 100
+  if (open > 0.004) {
+    const money = val('money', moneyWords(open))
+    return input.anywayReason.trim()
+      ? { hold: false, tone: 'amber', say: `${money} is still open on this job’s bills. The release goes out anyway.` }
+      : { hold: true, tone: 'red', say: `${money} is still open on this job’s bills. Record the payment first.` }
+  }
+  const paid = lastPayment(input.payments)
+  if (!paid) return { hold: false, tone: 'green', say: 'The bills read paid.' }
+  const ymd = (paid.paid_on ?? '').slice(0, 10)
+  const way = payWayWords(paid)
+  const said = `Paid ${val('day', formatYmdMonthDay(ymd))}${way ? ` by ${val('way', way)}` : ''}.`
+  const clears = isCheckPayment(paid) ? ymdAddDays(ymd, CHECK_CLEAR_DAYS) : null
+  return clears && clears > input.todayYmd ? { hold: false, tone: 'amber', say: `${said} The check clears about ${val('day', formatYmdMonthDay(clears))}.` } : { hold: false, tone: 'green', say: said }
+}
+
+/** The fields a release saves: the paper's own, the affidavit it releases, and the reason it went out unpaid. */
+export function releaseSaveFields(paper: Record<string, unknown>, affidavitId: string, anywayReason: string): Record<string, unknown> {
+  const reason = anywayReason.trim()
+  return { ...paper, releasesFilingId: affidavitId, ...(reason ? { releasedUnpaidReason: reason } : {}) }
+}
+
+/** Why a recorded day cannot be kept, or null. */
+export function releaseStampDayCheck(day: string, lienFiledYmd: string, todayYmd: string): string | null {
+  if (!day) return null
+  if (day > todayYmd) return RELEASE_OF_RECORD_WORDS.futureDay
+  if (lienFiledYmd && day < lienFiledYmd.slice(0, 10)) return RELEASE_OF_RECORD_WORDS.beforeLien
+  return null
+}
+
+/**
+ * The county's stamp as a patch for the release row. `day` '' takes the recorded day back off; `instrument` ''
+ * clears the number. A part left out is left alone.
+ */
+export function releaseStampPatch(release: Pick<LienPayoffRelease, 'fields'>, change: { instrument?: string; day?: string }): { filed_at?: string | null; fields?: Record<string, unknown> } {
+  const patch: { filed_at?: string | null; fields?: Record<string, unknown> } = {}
+  if (change.day !== undefined) patch.filed_at = change.day.trim() || null
+  if (change.instrument !== undefined) {
+    const base = release.fields && typeof release.fields === 'object' ? { ...(release.fields as Record<string, unknown>) } : {}
+    const number = change.instrument.trim()
+    if (number) base.releaseInstrument = number
+    else delete base.releaseInstrument
+    patch.fields = base
+  }
+  return patch
+}
+
+/** The recorded release in one line, its values marked: *Released. The county recorded it Dec 3 as 2026-0431955.* */
+export function releaseRecordedSentence(release: Pick<LienPayoffRelease, 'fields' | 'filed_at'>): string | null {
+  if (!release.filed_at) return null
+  const day = val('day', formatYmdMonthDay(release.filed_at))
+  const instrument = releaseOwnInstrument(release)
+  return instrument ? `Released. The county recorded it ${day} as ${val('instrument', instrument)}.` : `Released. The county recorded it ${day}.`
+}

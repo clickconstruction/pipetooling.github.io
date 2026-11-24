@@ -262,7 +262,7 @@ The Legal desk's Paper tab draws each job's timeline under *Where each job stand
 
 ## Step 3 — when it's paid, release it
 
-Once a filing exists, a **Release of record** tab appears. It is prefilled with the instrument number, county, and filing date. Print, notarize, file. The recorded lien is discharged.
+Once a filing exists, a **Release of record** tab appears. It is prefilled with the instrument number, county, and filing date. It holds its buttons while the job's bills still owe. Print, notarize, file. Then set the day the county recorded it under **The county's stamp**. The recorded lien is discharged. The Lien desk walks these steps for every filed lien. See [release a filed lien after it is paid](/help/release-a-filed-lien-after-it-is-paid).
 
 :::example The three Dashboard watches
 **Next lien deadline: Oct 15** (amber inside 14 days for the soonest notice still to draft — inside 7 days the card turns red and reads *N lien windows close …*), **lien filing window closes Nov 16** (amber — noticed jobs still unpaid as the § 53.052 window ends), and **a filed lien has not been served** (red — the 5-day § 53.055 clock). Each clears itself the moment the record exists.

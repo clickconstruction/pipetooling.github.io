@@ -8,7 +8,7 @@ covers:
   - supabase/functions/twin-mcp/index.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-11
+last_updated: 2026-11-24
 ---
 
 ## Overview
@@ -68,7 +68,7 @@ Seat sets come from `_shared/twinSeatGate.ts`: `PRICER_VERBS` 9 (8 at `mapped_at
 1. **The units are verbs, not tabs.** A region is a verb family plus the module helpers only it uses. There is no render tree, no state and no effects.
 2. **Nothing is shared across calls.** Every `tools/call` re-resolves the twin (`resolveTwin`, 694–717), and each case that touches the database builds its **own** service-role client. That is **37 `createClient` calls inside `callTool`**, plus 1 in `resolveTwin`.
 3. **The service role means every fence is in code.** RLS never applies. Ownership, claims, seat and blindness are all `if` statements (see the Shared substrate and Hazards sections).
-4. **CI does not see it.** `tsconfig.json` includes only `src`, and `npm run lint` is `eslint src`. Only the `_shared` kernels that `src/**` tests import get type-checked. A bad move fails at deploy or boot, not in CI.
+4. **CI does not see it.** `tsconfig.json` includes only `src`, and `npm run lint` reads `src` and the two config files at the root. Only the `_shared` kernels that `src/**` tests import get type-checked. A bad move fails at deploy or boot, not in CI.
 5. **The shared shell already exists.** `_shared/mcpJsonRpc.ts` (90 lines, v2.3640) is the same wire code lifted out for `dev-mcp`, and its header says twin-mcp adopts it "when it is decomposed". dev-mcp (`supabase/functions/dev-mcp/index.ts` 553–589) shows the target shape: one admin client per call, identity resolved once, a `runVerb` dispatcher, and a per-call ledger (`dev_mcp_calls`). twin-mcp has no per-call ledger.
 
 ### How to maintain this doc

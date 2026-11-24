@@ -19,7 +19,6 @@ import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLi
 import { usePageMode } from '../hooks/usePageMode'
 import { jobModeActiveSource, readJobModeStoredValue } from '../lib/jobModeToggle'
 import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
-import { modeRowDrawnHere } from '../lib/modeRow'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import { JobModeShortPage } from '../components/jobMode/JobModeShortPage'
 import { JobModeTopRow } from '../components/jobMode/JobModeTopRow'
@@ -1411,11 +1410,9 @@ export default function Dashboard() {
         <div style={{ marginTop: '0.75rem' }} data-job-mode-training>
           <DashboardTrainingSection userId={authUser.id} role={role} />
         </div>
-        {/* On a phone the mode row above the header (punch list #425) is the way to the full Dashboard for the
-            roles it is drawn for. Wherever the row is not drawn (a desk, a tablet, the estimator) the way back
-            is two presses into the gear menu's list, so this press stands at the foot of the page. `isMobile` is
-            the row's own 640 px line. */}
-        {modeRowDrawnHere(role, isMobile) ? null : (
+        {/* The way to the full Dashboard, at the foot of the page at every width. A phone hid it while the mode row
+            stood above the header (punch list #425). Since #433 the row shows only when the app opens, and the way
+            back is otherwise two presses into the gear menu's list, so this press stands here on a phone too. */}
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button
             type="button"
@@ -1434,7 +1431,6 @@ export default function Dashboard() {
             Show full dashboard
           </button>
         </div>
-        )}
         {jobModeWindows}
       </div>
     )

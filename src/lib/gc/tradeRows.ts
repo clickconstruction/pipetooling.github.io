@@ -8,6 +8,7 @@
  */
 import { bidsIn, carriedAmount } from './bids'
 import type { CardStage } from './cardHead'
+import { TAKEN_BACK_WORDS, askTakenBack } from './decline'
 import type { GcTradeView } from './projectRows'
 import type { HealthTile, TileDot, TileState } from './stageHealth'
 import type { Invite, Partner, TradePackage } from './types'
@@ -114,7 +115,7 @@ export function tradeRow(f: TradeRowFacts): TradeRow {
     asked = pkg.invites.map((i) => {
       const partner = f.partners.find((p) => p.id === i.partnerId)
       const w = ASKED_WORDS[i.status]
-      return { company: partner?.company ?? 'a company', words: i.status === 'bid' && i.bid ? `${w.words} · ${money(i.bid.amount)}` : w.words, tone: w.tone }
+      return { company: partner?.company ?? 'a company', words: i.status === 'bid' && i.bid ? `${w.words} · ${money(i.bid.amount)}` : askTakenBack(i) ? TAKEN_BACK_WORDS : w.words, tone: w.tone }
     })
     const askedIds = new Set(pkg.invites.map((i) => i.partnerId))
     const canAsk = f.partners.some((p) => p.trades.includes(trade.trade) && !askedIds.has(p.id))

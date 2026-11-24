@@ -6,9 +6,8 @@
  *
  *   the wrench's press     only where the header had no room for it, first and unlabelled
  *   Modes                  the list of Dashboard, Job Mode and Task Mode with one dot, then Dispatch Mode with its
- *                          PO tab: each changes the page (a phone that has the mode row above the header keeps
- *                          Dispatch Mode alone, `gearModesRows`)
- *   Show                   Pin bar, Tell the dev, Dark Mode: each shows or hides one thing
+ *                          PO tab: each changes the page (`gearModesRows`)
+ *   Show                   Pin bar, Tell the dev, Modes at open, Dark Mode: each shows or hides one thing
  *   Pages                  the pages this menu is the door to, in `GEAR_PAGE_ORDER`
  *   Help and settings      My logbook, Help, Settings
  *   a band, no label       Sign out and the reloads
@@ -70,31 +69,24 @@ export function gearModeRowTip(third: ModeRowThird, on: boolean): string {
 }
 
 /**
- * The Modes group's rows for this person at this width (v2.8332, punch list #425).
+ * The Modes group's rows for this person (v2.8332, punch list #425; at every width since #433).
  *
- * On a phone the mode row above the header (`modeRow.ts`) is the door to Job Mode and Task Mode for the
- * roles it is drawn for, so their menu lists neither there: one door, and the mark can never disagree
- * with the row. Wherever the row is not drawn (a desk or a tablet for every role, any width for the
- * estimator) the menu holds the same three as a list with one dot, `list`: **Dashboard**, **Job Mode**
- * for whoever can hold it, **Task Mode**. A press goes through the row's own rule (`modeRowPressWrites`).
+ * The menu holds the three as a list with one dot, `list`: **Dashboard**, **Job Mode** for whoever can
+ * hold it, **Task Mode**. A press goes through the mode row's own rule (`modeRowPressWrites`). Until
+ * #433 a phone that had the mode row above the header listed neither mode here. The row now shows only
+ * when the app opens and shrinks into this menu's gear, so the list is the door at every width.
  *
- * Dispatch Mode is on neither the row nor the list, so its tick row stays for whoever can hold it. The
- * label is drawn only when a row stands under it. `job` and `task` say whether the list holds that row:
- * the phone dock's More sheet draws its own two switches by them.
+ * Dispatch Mode is on neither the row nor the list, so its tick row stays for whoever can hold it.
+ * `job` and `task` say whether the list holds that row: the phone dock's More sheet draws its own two
+ * switches by them. `label` is always drawn, since the list is never empty.
  */
-export function gearModesRows(input: {
-  /** The mode row is drawn for this role at this width (`modeRowDrawnHere`). */
-  modeRow: boolean
-  jobEligible: boolean
-  dispatchEligible: boolean
-}): {
+export function gearModesRows(input: { jobEligible: boolean; dispatchEligible: boolean }): {
   list: ModeRowThird[]
   job: boolean
   dispatch: boolean
   task: boolean
   label: boolean
 } {
-  const list = input.modeRow ? [] : GEAR_MODE_LIST_ORDER.filter((third) => third !== 'job' || input.jobEligible)
-  const dispatch = input.dispatchEligible
-  return { list, job: list.includes('job'), dispatch, task: list.includes('task'), label: list.length > 0 || dispatch }
+  const list = GEAR_MODE_LIST_ORDER.filter((third) => third !== 'job' || input.jobEligible)
+  return { list, job: list.includes('job'), dispatch: input.dispatchEligible, task: true, label: true }
 }

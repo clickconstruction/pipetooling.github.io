@@ -39,6 +39,7 @@ import { isLienLeader } from '../lib/jobs/lienDesk'
 import { syncLienDeskAfterRecord } from '../lib/jobs/lienDeskIo'
 import { lienWindowDeskAffidavit, lienWindowDeskNotice } from '../lib/jobs/lienTimelineDesk'
 import { withJobLastWork, withJobsLastWork } from '../lib/jobs/lienLastWorkJobs'
+import LienPayoffs from '../components/jobs/LienPayoffs'
 import { ownerRecordsFromDesk } from '../lib/jobs/ownerRecordsDesk'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
@@ -329,7 +330,16 @@ export default function LienDeskPage() {
   )
 
   return (
-    <div ref={rootRef} data-lien-desk-page-root style={{ height: `calc(100dvh - ${top}px - var(--app-bottom-chrome, 0px) - ${PAGE_BOTTOM_GAP_PX}px)`, minHeight: 360, display: 'grid', gridTemplateRows: 'minmax(0, 1fr)' }}>
+    <div ref={rootRef} data-lien-desk-page-root style={{ height: `calc(100dvh - ${top}px - var(--app-bottom-chrome, 0px) - ${PAGE_BOTTOM_GAP_PX}px)`, minHeight: 360, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
+      {/* Payoffs (punch list #435): what waits on a release, and the door for a payer who just paid. Always drawn, so the desk keeps the second row. */}
+      <LienPayoffs
+        todayYmd={todayYmd}
+        refreshKey={data}
+        isMobile={isMobile}
+        initiallyOpen={searchParams.get('payoffs') === '1'}
+        onOpenBill={(jobId) => openEditJob(jobId, 'bill')}
+        onOpenRelease={(jobId) => withJob(jobId, (job) => setLienWindow({ job, initialTab: 'release_record' }))}
+      />
       <LienDesk
         layout={isMobile ? 'stacked' : 'columns'}
         onOpenNotice={onOpenNotice}
@@ -401,6 +411,8 @@ export default function LienDeskPage() {
         deskNotice={lienWindowDeskNotice(lienWindow ? data?.queue.entries.find((e) => e.jobId === lienWindow.job.id) : null)}
         // v2.7187, punch list #335, row 2: and the step an affidavit is on.
         deskAffidavit={lienWindowDeskAffidavit(lienWindow ? data?.affidavits.entries.find((e) => e.jobId === lienWindow.job.id) : null)}
+        // Punch list #335: and the leader a paper sent for approval waits on, by the name the row prints.
+        deskLeader={leaderNameFor(lienWindow?.job.master_user_id ?? null)}
         openLastWork={lienWindow?.openLastWork ?? false}
         // v2.4735: a day set here moves the By date row, so the clocks and the desk re-read. v2.7208: the row counts from
         // the day on the jobs list this page holds, so the day is written there too; it kept its old dates until a reload.

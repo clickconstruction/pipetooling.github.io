@@ -21,11 +21,13 @@ import {
   companyPaperChoices,
   companySendRefusal,
   defaultSigner,
+  signerEmail,
   workerEmail,
   type BookEntryChoice,
+  type CompanyKeptPerson,
   type CompanyPaperRow,
 } from '../../lib/people/subCompanyPapers'
-import { enterCompanyPaperFromPaper, sendCompanyPaperFromPeople } from '../../lib/people/subCompanyPapersIo'
+import { enterCompanyPaperFromPaper, loadCompanyKeptPeople, sendCompanyPaperFromPeople } from '../../lib/people/subCompanyPapersIo'
 
 export type SubCompanyPaperWindowProps = {
   kind: 'send' | 'enter'
@@ -56,6 +58,31 @@ export function SubCompanyPaperWindow({ kind, group, papers, bookEntries, roster
   const [busy, setBusy] = useState(false)
   const choice = choices.find((c) => c.id === choiceId) ?? null
   const heading = kind === 'send' ? COMPANY_PAPER_WORDS.send : COMPANY_PAPER_WORDS.enter
+  /** The people the company keeps, read once the send window opens: a signer's address when the roster has none. */
+  const [kept, setKept] = useState<readonly CompanyKeptPerson[]>([])
+  /** True once the office types in the address box: what they typed is never replaced, an emptied box included. */
+  const [emailTyped, setEmailTyped] = useState(false)
+  /**
+   * The address the box shows and the send uses. The roster had none for the signer and the company keeps one: the
+   * box opens on the company's. Only a box the office has not typed in is filled.
+   */
+  const shownEmail = emailTyped || email !== '' ? email : signerEmail(signer, roster, kept)
+
+  const companyId = group.company.id
+  useEffect(() => {
+    if (kind !== 'send') return
+    let live = true
+    // A read that fails leaves the box as the roster filled it, and the office types the address as before.
+    loadCompanyKeptPeople(companyId).then(
+      (people) => {
+        if (live) setKept(people)
+      },
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [kind, companyId])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -67,13 +94,14 @@ export function SubCompanyPaperWindow({ kind, group, papers, bookEntries, roster
     return () => window.removeEventListener('keydown', onKey)
   }, [busy, onClose])
 
-  /** A worker picked from the list: their title and their roster address come with them. */
+  /** A worker picked from the list: their title and their address come with them, the roster's or the company's. */
   const pickWorker = (name: string) => {
     setSigner(name)
     const w = group.workers.find((x) => x.name === name)
     if (w) {
       setTitle(w.title)
       setEmail(workerEmail(w.name, roster))
+      setEmailTyped(false)
     }
     setWhy(null)
   }
@@ -82,7 +110,7 @@ export function SubCompanyPaperWindow({ kind, group, papers, bookEntries, roster
     if (busy) return
     const refusal =
       kind === 'send'
-        ? companySendRefusal({ choice, signer, email })
+        ? companySendRefusal({ choice, signer, email: shownEmail })
         : companyEntryRefusal({ choice, signer, signedOn, today: todayYmdInAppTz() })
     if (refusal || !choice) {
       setWhy(refusal ?? COMPANY_PAPER_WORDS.pickPaper)
@@ -92,7 +120,7 @@ export function SubCompanyPaperWindow({ kind, group, papers, bookEntries, roster
     setWhy(null)
     const outcome =
       kind === 'send'
-        ? await sendCompanyPaperFromPeople({ company: group.company, bookEntryId: choice.id, paper: choice.name, signer: { name: signer, title, email } })
+        ? await sendCompanyPaperFromPeople({ company: group.company, bookEntryId: choice.id, paper: choice.name, signer: { name: signer, title, email: shownEmail } })
         : await enterCompanyPaperFromPaper({ companyId: group.company.id, bookEntryId: choice.id, signer: { name: signer, title }, signedOn, link })
     setBusy(false)
     if (!outcome.ok) {
@@ -155,7 +183,7 @@ export function SubCompanyPaperWindow({ kind, group, papers, bookEntries, roster
         {kind === 'send' ? (
           <label style={label}>
             <span style={{ fontWeight: 600 }}>Their email</span>
-            <input aria-label="Their email" type="email" value={email} disabled={busy} onChange={(e) => (setEmail(e.target.value), setWhy(null))} style={field} />
+            <input aria-label="Their email" type="email" value={shownEmail} disabled={busy} onChange={(e) => (setEmailTyped(true), setEmail(e.target.value), setWhy(null))} style={field} />
           </label>
         ) : (
           <>

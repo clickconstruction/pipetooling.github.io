@@ -2,8 +2,13 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { Link, useSearchParams } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useAuth } from '../../hooks/useAuth'
+import { canRoleSeeArBankUnallocatedOrgNudge } from '../../hooks/useArBankUnallocatedCount'
 import {
   BILLS_PAID_LEFT_OUT,
+  BILLS_PAID_NO_BILL_NOT_ADDED,
+  BILLS_PAID_NO_BILL_PATH,
+  BILLS_PAID_NO_BILL_PRESS,
   billsPaidCellCount,
   billsPaidCellCredit,
   billsPaidCellLabel,
@@ -23,6 +28,7 @@ import {
   billsPaidMonthLabel,
   billsPaidMonthName,
   billsPaidMonthOf,
+  billsPaidNoBillLine,
   billsPaidOpeningDay,
   billsPaidPayoutWords,
   billsPaidRange,
@@ -38,10 +44,12 @@ import {
   type BillsPaidChip,
   type BillsPaidHow,
   type BillsPaidLine,
+  type BillsPaidNoBillAnswer,
+  type BillsPaidNoBillLine,
   type BillsPaidPayoutAnswer,
   type BillsPaidSum,
 } from '../../lib/billing/billsPaidDays'
-import { readBillsPaid, readStripePayout, type BillsPaidRead } from '../../lib/billing/billsPaidIo'
+import { readBillsPaid, readDepositsOnNoBill, readStripePayout, type BillsPaidRead } from '../../lib/billing/billsPaidIo'
 import { billsSentRecordPath } from '../../lib/billing/billsSent'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { saveBlobAs } from '../../lib/storageSave'
@@ -50,9 +58,9 @@ import { formatWorkDateYmdWeekdayShortFriendly, todayYmdInAppTz } from '../../ut
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { AmountSmallCents } from '../AmountSmallCents'
-import { ValueLine, ValueLines, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { ValueLine, ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { THUMB, billLink, chipStyle, jobLink, linePress, money, phoneButton, strong, tile, tileRow, tileSmall } from './billsSentLook'
-import { MoneyText } from '../Money'
+import { Money, MoneyText } from '../Money'
 
 /**
  * Bills sent, the second view: By day paid (punch list #422, PR 3). The first view lists bills in the order they
@@ -66,6 +74,10 @@ import { MoneyText } from '../Money'
  *
  * Values in place: a day's facts are one a line with the values in a column, and every value is the app's own
  * working out, so none is a press. The presses are the chips, the days and the bills' names.
+ *
+ * Under a picked day, one quiet line names the bank deposits that landed that day and are on no bill yet, with
+ * the press to Accounts Receivable where they are put on one. They are a second read, by the Dashboard's Money
+ * in bar's own rule, and are added to nothing here.
  */
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
@@ -190,8 +202,46 @@ function PaidLine({ line, phone, how }: { line: BillsPaidLine; phone: boolean; h
   )
 }
 
+/**
+ * The quiet line under a picked day: the bank deposits that landed that day and are on no bill yet, what they add
+ * to, and the press to where they are put on a bill. Dashed and grey, with its amount grey as a credit in kind's
+ * is, because none of it is in the day's figure. A role that cannot open the deposits reads the line with no press.
+ */
+function NoBillLine({ line, phone, canOpen }: { line: BillsPaidNoBillLine; phone: boolean; canOpen: boolean }) {
+  const band: CSSProperties = { display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.1rem 0.5rem', margin: '0.35rem 0', padding: '0.3rem 0.5rem', borderRadius: 6, border: '1px dashed var(--border)', fontSize: '0.8125rem', color: 'var(--text-muted)', minWidth: 0 }
+  if (line.kind === 'unread') {
+    return (
+      <div data-testid="bills-paid-no-bill" data-state="unread" style={band}>
+        {line.words}
+      </div>
+    )
+  }
+  return (
+    <div data-testid="bills-paid-no-bill" data-state="deposits" style={band}>
+      <span>
+        <ValueSentence text={line.words} />
+      </span>
+      <span style={{ ...money, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+        <Money amount={line.total} />
+      </span>
+      <span style={{ flexBasis: '100%' }}>
+        {BILLS_PAID_NO_BILL_NOT_ADDED}
+        {canOpen ? (
+          <>
+            {' '}
+            <Link to={BILLS_PAID_NO_BILL_PATH} style={{ color: 'var(--text-700)', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2, ...linePress(phone) }}>
+              {BILLS_PAID_NO_BILL_PRESS}
+            </Link>
+          </>
+        ) : null}
+      </span>
+    </div>
+  )
+}
+
 export function BillsPaidByDay() {
   const phone = useIsMobile()
+  const { role } = useAuth()
   const { showToast } = useToastContext()
   const [params, setParams] = useSearchParams()
   const today = todayYmdInAppTz()
@@ -209,6 +259,8 @@ export function BillsPaidByDay() {
   const [tries, setTries] = useState(0)
   // Null until Stripe's answer is in, or when a caller hands back none: the tile is drawn only on an answer.
   const [payout, setPayout] = useState<BillsPaidPayoutAnswer | null>(null)
+  // Null until the bank's answer for the month is in: no line is drawn on a guess.
+  const [noBill, setNoBill] = useState<{ month: string; answer: BillsPaidNoBillAnswer } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -230,6 +282,17 @@ export function BillsPaidByDay() {
     }
   }, [month, today, tries])
   const retry = useCallback(() => setTries((n) => n + 1), [])
+
+  // The deposits on no bill are a second, best-effort read: it never fails the page, and Retry asks it again too.
+  useEffect(() => {
+    let cancelled = false
+    void readDepositsOnNoBill(billsPaidRange(month, today), today).then((answer) => {
+      if (!cancelled) setNoBill({ month, answer })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [month, today, tries])
 
   useEffect(() => {
     let cancelled = false
@@ -311,6 +374,9 @@ export function BillsPaidByDay() {
   const after = billsPaidShiftMonth(month, 1)
   const atLatest = month >= thisMonth
   const tileCount = (tiles.today ? 2 : 0) + 1 + (payout ? 1 : 0)
+  // Beside the day's figure, never in it: `daySum`, the cells and the tiles read the payment lines alone.
+  const noBillLine = billsPaidNoBillLine({ answer: noBill && noBill.month === month ? noBill.answer : null, ymd: day, how })
+  const noBillRow = noBillLine ? <NoBillLine line={noBillLine} phone={phone} canOpen={canRoleSeeArBankUnallocatedOrgNudge(role ?? null)} /> : null
 
   return (
     <section aria-label="Bills paid, by day" data-testid="bills-paid-view" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -398,12 +464,15 @@ export function BillsPaidByDay() {
           <div style={{ ...panel, padding: '0.6rem 0.75rem' }} data-testid="bills-paid-day">
             <h2 style={{ margin: '0 0 0.4rem', fontSize: '0.9375rem', color: 'var(--text-strong)' }}>{billsPaidDayHeading(day, today)}</h2>
             {dayLines.length === 0 ? (
-              <EmptyState
-                compact
-                finger={phone}
-                main={empty.main}
-                next={{ label: empty.next.label, onPress: () => go(empty.next.go) }}
-              />
+              <>
+                <EmptyState
+                  compact
+                  finger={phone}
+                  main={empty.main}
+                  next={{ label: empty.next.label, onPress: () => go(empty.next.go) }}
+                />
+                {noBillRow}
+              </>
             ) : (
               <>
                 <div style={{ fontSize: '0.8125rem', marginBottom: '0.35rem' }}>
@@ -432,6 +501,7 @@ export function BillsPaidByDay() {
                     ) : null}
                   </ValueLines>
                 </div>
+                {noBillRow}
                 {groups.map((g) => {
                   const words = billsPaidGroupWords(g)
                   return (

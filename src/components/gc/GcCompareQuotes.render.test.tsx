@@ -99,6 +99,39 @@ describe('GcCompareQuotes', () => {
     await waitFor(() => expect(w.award).toHaveBeenCalledWith('i1', 'u1'))
   })
 
+  it('says a number ran out at the award press, asks first, and awards only on the yes', async () => {
+    // Lonestar's quote of Oct 5 holds 30 days, to Nov 4. Read on Nov 24 it has run out. On Oct 8 it holds.
+    const won = rows({ today: '2026-11-24' })
+    const state = boardStateFromRows({ ...won, projects: won.projects.map((p) => ({ ...p, stage: 'buyout' })) })
+    const w = { ...writes(), award: vi.fn(() => Promise.resolve()) }
+    const { dialog } = open(state, w)
+    const lonestar = dialog.querySelector('[data-gc-award="i1"]') as HTMLElement
+    expect(within(lonestar).getByText('Their number ran out Nov 4. Ask them whether it still holds.')).toBeTruthy()
+    fireEvent.click(within(lonestar).getByRole('button', { name: 'Award and draft the statement of work' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Award Sitework to Lonestar Earthworks on a number that ran out?' })
+    expect(within(ask).getByText(/^Lonestar Earthworks held this number until Nov 4\./)).toBeTruthy()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(w.award).not.toHaveBeenCalled()
+
+    fireEvent.click(within(lonestar).getByRole('button', { name: 'Award and draft the statement of work' }))
+    const again = await screen.findByRole('alertdialog', { name: 'Award Sitework to Lonestar Earthworks on a number that ran out?' })
+    fireEvent.click(within(again).getByRole('button', { name: 'Award on this number' }))
+    await waitFor(() => expect(w.award).toHaveBeenCalledWith('i1', null))
+  })
+
+  it('awards a number that still holds with no window and no line about its day', async () => {
+    const won = rows()
+    const state = boardStateFromRows({ ...won, projects: won.projects.map((p) => ({ ...p, stage: 'buyout' })) })
+    const w = { ...writes(), award: vi.fn(() => Promise.resolve()) }
+    const { dialog } = open(state, w)
+    const lonestar = dialog.querySelector('[data-gc-award="i1"]') as HTMLElement
+    expect(within(lonestar).queryByText(/ran out/)).toBeNull()
+    fireEvent.click(within(lonestar).getByRole('button', { name: 'Award and draft the statement of work' }))
+    await waitFor(() => expect(w.award).toHaveBeenCalledWith('i1', null))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
   it('reads Awarded on the quote awarded, and holds the other quotes’ Award', () => {
     const won = rows()
     const awarded = boardStateFromRows({
