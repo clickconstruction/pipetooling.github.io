@@ -5,6 +5,7 @@ import { formatCurrency } from '../../lib/format'
 import { parsePayStubPaymentAmount, payStubBalance, payStubPaymentExcess } from '../../lib/pay/recordPayStubPayment'
 import type { RecordPayStubPaymentApi } from '../../hooks/useRecordPayStubPayment'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money, MoneyText } from '../Money'
 
 /** Above the pay overlays it is opened from (Draft Payroll, Catch-up). */
 const Z_RECORD_PAYMENT = 1200
@@ -49,10 +50,9 @@ export function RecordPayStubPaymentModal({ recordPayment, personNameOptions, on
       {payStubMarkPaidTarget && (
         <RecordPaymentShell title="Record payment" zIndex={Z_RECORD_PAYMENT}>
           <RecordPaymentSummary>
-            {payStubMarkPaidTarget.person_name} · Gross ${formatCurrency(payStubMarkPaidTarget.gross_pay)}
-            {` · Net Pay $${formatCurrency(payStubBalance(payStubMarkPaidTarget, payStubLineMaps).netPay)}`}{' '}
-            · Remaining $
-            {formatCurrency(payStubBalance(payStubMarkPaidTarget, payStubLineMaps).remaining)}
+            {payStubMarkPaidTarget.person_name} · Gross <Money amount={payStubMarkPaidTarget.gross_pay} />
+            <MoneyText text={` · Net Pay $${formatCurrency(payStubBalance(payStubMarkPaidTarget, payStubLineMaps).netPay)}`} />{' '}
+            · Remaining <Money amount={payStubBalance(payStubMarkPaidTarget, payStubLineMaps).remaining} />
           </RecordPaymentSummary>
           <AmountPaidField value={payStubMarkPaidAmount} onChange={setPayStubMarkPaidAmount} />
           <RecordPaymentHelp>
@@ -77,9 +77,9 @@ export function RecordPayStubPaymentModal({ recordPayment, personNameOptions, on
                   }}
                 >
                   <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-slate-600)', lineHeight: 1.45 }}>
-                    You entered <strong>${formatCurrency(parsedPaid)}</strong>, which is more than the remaining balance (<strong>${formatCurrency(rem)}</strong>).{' '}
-                    <strong>Confirm</strong> will apply <strong>${formatCurrency(rem)}</strong> to this pay report.{' '}
-                    <strong>Excess:</strong> ${formatCurrency(excess)} — use the button below to open <strong>Add offset</strong> (employee credit) on top of this dialog (optional; you can confirm the payment first).
+                    You entered <strong><Money amount={parsedPaid} /></strong>, which is more than the remaining balance (<strong><Money amount={rem} /></strong>).{' '}
+                    <strong>Confirm</strong> will apply <strong><Money amount={rem} /></strong> to this pay report.{' '}
+                    <strong>Excess:</strong> <Money amount={excess} /> — use the button below to open <strong>Add offset</strong> (employee credit) on top of this dialog (optional; you can confirm the payment first).
                   </p>
                   <button
                     type="button"

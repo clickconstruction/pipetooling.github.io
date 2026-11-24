@@ -20,7 +20,7 @@ import { StagesAiaG702Button, StagesChecklistDoorButton, StagesHazmatFeeButton, 
 import { pipelineChecklistDoor } from '../../lib/jobs/pipelineChecklistDoor'
 import { StagesCrewLine } from './StagesCrewLine'
 import { StagesExpandedThreadRow } from './StagesExpandedThreadRow'
-import { formatCurrency, formatTimeSince, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { formatTimeSince, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { jobBillingUnallocatedDollars, type InvoiceWithJob } from '../../lib/jobsStagesBoard'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { billMarkFor } from '../../lib/jobs/jobMoneyBar'
@@ -28,6 +28,7 @@ import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { stagesAddedStampLabel } from '../../lib/jobsStagesSortMode'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import { datesBlockBilledYmd } from '../../lib/jobs/stagesRowDoors'
+import { Money } from '../Money'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -175,7 +176,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
             style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: '0.25rem' }}
             title="Single billing line for this job (Stripe or external send)"
           >
-            Billing line: {formatCurrency(Number(bundleInv.amount))}
+            Billing line: <Money amount={Number(bundleInv.amount)} symbol="" />
           </div>
         ) : null}
         {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}

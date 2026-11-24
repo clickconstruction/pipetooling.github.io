@@ -12,6 +12,7 @@ import { makeUseAuthValue, renderWithProviders } from '../../test/renderSmokeMoc
 import type { Container, Movement, MovementReason, Place } from '../../lib/materials/onSite'
 import { readSiteView } from '../../lib/materials/siteMaterialsViewPrefs'
 import SiteMaterialsView from './SiteMaterialsView'
+import { moneyText } from '../../test/moneyText'
 
 // The By person look's own read: nothing on the trail here, and no call to the database.
 vi.mock('../../lib/materials/sitePeopleTrailIo', () => ({ fetchSiteTrail: async () => ({ boxChanges: [], boxRenames: [], removedAnswers: [] }) }))
@@ -168,7 +169,7 @@ describe('SiteMaterialsView', () => {
     expect(within(glance).getByText('150 in')).toBeTruthy()
     expect(within(glance).getByText('8 used')).toBeTruthy()
     // The week's Can't find at the price the store knows: 3 at $4.
-    expect(within(glance).getByText('$12.00')).toBeTruthy()
+    expect(within(glance).getByText(moneyText('$12.00'))).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Print the material location report' }).getAttribute('href')).toBe('/developments/dev1?report=materials')
   })
 
@@ -221,7 +222,7 @@ describe('SiteMaterialsView', () => {
 
   it('draws no money for a role that does not read it, and no print press without the Development page', () => {
     setup({ showMoney: false, developmentHref: null })
-    expect(screen.queryByText('$12.00')).toBeNull()
+    expect(screen.queryByText(moneyText('$12.00'))).toBeNull()
     expect(screen.queryByText('Worth')).toBeNull()
     expect(document.querySelector('[data-row-worth]')).toBeNull()
     expect(screen.queryByRole('link', { name: 'Print the material location report' })).toBeNull()

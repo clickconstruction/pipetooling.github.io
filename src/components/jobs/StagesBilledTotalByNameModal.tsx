@@ -8,7 +8,6 @@
  */
 import { Fragment } from 'react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
-import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import {
   buildBilledTotalByNameEntries,
   sortStageRowsForTotalByNameDetail,
@@ -16,6 +15,7 @@ import {
   stageRowBilledLineLabel,
   stageRowBilledRemainingAmount,
 } from '../../lib/jobs/invoiceBilling'
+import { Money } from '../Money'
 
 export function StagesBilledTotalByNameModal({
   rows,
@@ -114,7 +114,7 @@ export function StagesBilledTotalByNameModal({
                         {name}
                       </button>
                     </td>
-                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 500 }}>${formatCurrency(total)}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 500 }}><Money amount={total} /></td>
                   </tr>
                   {expanded && (
                     <tr>
@@ -147,7 +147,7 @@ export function StagesBilledTotalByNameModal({
                                   <Fragment key={rowKey}>
                                     <tr style={{ borderBottom: 'none' }}>
                                       <td style={{ padding: '0.35rem 0.5rem' }}>{stageRowBilledLineLabel(r)}</td>
-                                      <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>${formatCurrency(amt)}</td>
+                                      <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}><Money amount={amt} /></td>
                                       <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: 'var(--text-muted)' }}>{ageLabel}</td>
                                     </tr>
                                     <tr style={{ borderBottom: isLastBillInGroup ? 'none' : '1px solid var(--border)' }}>

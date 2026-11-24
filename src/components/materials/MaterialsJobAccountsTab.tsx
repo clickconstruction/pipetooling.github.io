@@ -27,6 +27,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { jobAccountsEmptyWords } from '../../lib/materials/materialsEmptyWords'
+import { Money, MoneyText } from '../Money'
 
 /** Same bar segment palette as the Supply Houses phone aging bars (v2.2191). */
 const OWED_SEGMENT_COLORS: Record<AgingBucketKey, string> = {
@@ -63,7 +64,7 @@ function JobAccountChip({ amount }: { amount?: number }) {
         fontVariantNumeric: 'tabular-nums',
       }}
     >
-      {amount !== undefined ? `$${formatCurrency(amount)} on job acct` : 'Job acct'}
+      {amount !== undefined ? <MoneyText text={`$${formatCurrency(amount)} on job acct`} /> : 'Job acct'}
     </span>
   )
 }
@@ -495,7 +496,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', textAlign: 'center' }}>
             <div style={{ fontSize: '1rem', fontWeight: 600 }}>
-              Held for suppliers: ${formatCurrency(view.holdingTotal)}
+              Held for suppliers: <Money amount={view.holdingTotal} />
             </div>
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Customer money in vs. supply house money out, per job. Jobs where the customer paid you but a house is
@@ -510,7 +511,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                 Holding for suppliers
               </div>
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}>
-                ${formatCurrency(view.holdingTotal)}
+                <Money amount={view.holdingTotal} />
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>
                 {view.holdingJobs} job{view.holdingJobs === 1 ? '' : 's'} paid you — houses still owed
@@ -519,11 +520,11 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                 <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px dashed var(--bg-amber-200)', fontSize: '0.75rem', color: 'var(--text-amber-700)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                   <span>
                     Your account:{' '}
-                    <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(view.holdingTotal - view.holdingOnJobAccount)}</strong>
+                    <strong style={{ fontVariantNumeric: 'tabular-nums' }}><Money amount={view.holdingTotal - view.holdingOnJobAccount} /></strong>
                   </span>
                   <span style={{ color: JOB_ACCOUNT_TEAL.text }}>
                     Job accounts:{' '}
-                    <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(view.holdingOnJobAccount)}</strong>
+                    <strong style={{ fontVariantNumeric: 'tabular-nums' }}><Money amount={view.holdingOnJobAccount} /></strong>
                   </span>
                 </div>
               )}
@@ -533,7 +534,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                 Floating out of pocket
               </div>
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-blue-800)', fontVariantNumeric: 'tabular-nums' }}>
-                ${formatCurrency(view.floatingTotal)}
+                <Money amount={view.floatingTotal} />
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-500)' }}>
                 {view.floatingJobs} job{view.floatingJobs === 1 ? '' : 's'} — you paid houses, customer hasn&rsquo;t paid
@@ -553,7 +554,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                 Unallocated invoices
               </div>
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>
-                ${formatCurrency(view.unallocatedTotal)}
+                <Money amount={view.unallocatedTotal} />
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {view.unallocatedCount} unpaid invoice{view.unallocatedCount === 1 ? '' : 's'} not tied to a job or bid
@@ -565,7 +566,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                   On job accounts
                 </div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 700, color: JOB_ACCOUNT_TEAL.text, fontVariantNumeric: 'tabular-nums' }}>
-                  ${formatCurrency(view.onJobAccountTotal)}
+                  <Money amount={view.onJobAccountTotal} />
                 </div>
                 <div style={{ fontSize: '0.75rem', color: JOB_ACCOUNT_TEAL.text }}>
                   {view.onJobAccountJobs} job{view.onJobAccountJobs === 1 ? '' : 's'} — house bills the owner if unpaid, not you
@@ -751,7 +752,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                               </span>
                             </span>
                             <span style={{ fontSize: '0.75rem', color: dimmed ? 'var(--text-faint)' : 'var(--text-600)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                              ${formatCurrency(row.paidIn)} / ${formatCurrency(row.billed)}
+                              <Money amount={row.paidIn} /> / <Money amount={row.billed} />
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -780,11 +781,11 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                               )}
                             </span>
                             <span style={{ fontSize: '0.75rem', color: dimmed ? 'var(--text-faint)' : 'var(--text-600)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                              ${formatCurrency(row.suppliersPaid)} paid
+                              <Money amount={row.suppliersPaid} /> paid
                               {row.suppliersOwed > 0.005 ? (
                                 <>
                                   {' · '}
-                                  <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>${formatCurrency(row.suppliersOwed)} owed</span>
+                                  <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}><Money amount={row.suppliersOwed} /> owed</span>
                                 </>
                               ) : (
                                 ' · $0.00 owed'
@@ -793,7 +794,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                                 <>
                                   {' · '}
                                   <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>
-                                    ${formatCurrency(Math.abs(row.suppliersCredits))} credit
+                                    <Money amount={Math.abs(row.suppliersCredits)} /> credit
                                   </span>
                                 </>
                               ) : null}
@@ -804,7 +805,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                           {row.status === 'owe_suppliers' && (
                             <>
                               <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}>
-                                ${formatCurrency(row.held)}
+                                <Money amount={row.held} />
                               </span>
                               <span style={{ fontSize: '0.6875rem', color: 'var(--text-amber-700)' }}>
                                 {row.customerPaidFraction !== null && row.customerPaidFraction >= 1
@@ -816,7 +817,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                           {row.status === 'floating' && (
                             <>
                               <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-blue-800)', fontVariantNumeric: 'tabular-nums' }}>
-                                ${formatCurrency(row.suppliersPaid)}
+                                <Money amount={row.suppliersPaid} />
                               </span>
                               <span style={{ fontSize: '0.6875rem', color: 'var(--text-blue-500)' }}>awaiting customer</span>
                             </>
@@ -824,7 +825,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                           {row.status === 'awaiting_customer' && (
                             <>
                               <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-600)', fontVariantNumeric: 'tabular-nums' }}>
-                                ${formatCurrency(row.suppliersOwed)}
+                                <Money amount={row.suppliersOwed} />
                               </span>
                               <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>nothing received yet</span>
                             </>
@@ -847,7 +848,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                             >
                               {row.owedOnJobAccount > row.suppliersOwed - 0.005
                                 ? 'all on job acct'
-                                : `$${formatCurrency(row.owedOnJobAccount)} on job acct`}
+                                : <MoneyText text={`$${formatCurrency(row.owedOnJobAccount)} on job acct`} />}
                             </span>
                           )}
                         </div>
@@ -873,11 +874,11 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                             <span style={{ fontSize: '0.8125rem', color: row.customerPaidFraction !== null && row.customerPaidFraction >= 1 ? 'var(--text-green-800)' : 'var(--text-700)' }}>
                               {row.customerPaidFraction !== null && row.customerPaidFraction >= 1 ? (
                                 <>
-                                  <strong>Customer paid in full</strong> — ${formatCurrency(row.paidIn)} received
+                                  <strong>Customer paid in full</strong> — <Money amount={row.paidIn} /> received
                                 </>
                               ) : (
                                 <>
-                                  Customer billed ${formatCurrency(row.billed)} · received ${formatCurrency(row.paidIn)}
+                                  Customer billed <Money amount={row.billed} /> · received <Money amount={row.paidIn} />
                                 </>
                               )}
                             </span>
@@ -980,9 +981,9 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                                     <span style={{ color: 'var(--text-faint)' }}>—</span>
                                   )}
                                 </div>
-                                <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-600)' }}>${formatCurrency(group.paid)}</div>
+                                <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-600)' }}><Money amount={group.paid} /></div>
                                 <div style={{ textAlign: 'right' }}>
-                                  <div style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: group.owed > 0.005 ? 'var(--text-amber-800)' : 'var(--text-600)' }}>${formatCurrency(group.owed)}</div>
+                                  <div style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: group.owed > 0.005 ? 'var(--text-amber-800)' : 'var(--text-600)' }}><Money amount={group.owed} /></div>
                                   {hr?.theirBalanceWords ? <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{hr.theirBalanceWords}</div> : null}
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
@@ -1026,12 +1027,12 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                           )}
                           {row.suppliersOwed > 0.005 && (
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              Owed on this job: <span style={{ fontWeight: 600, color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(row.suppliersOwed)}</span>{' '}
+                              Owed on this job: <span style={{ fontWeight: 600, color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}><Money amount={row.suppliersOwed} /></span>{' '}
                               across {row.houses.filter((g) => g.owed > 0.005).length} house{row.houses.filter((g) => g.owed > 0.005).length === 1 ? '' : 's'}
                               {row.owedOnJobAccount > 0.005 && (
                                 <>
                                   {' — '}
-                                  <span style={{ fontWeight: 600, color: JOB_ACCOUNT_TEAL.text, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(row.owedOnJobAccount)}</span>{' '}
+                                  <span style={{ fontWeight: 600, color: JOB_ACCOUNT_TEAL.text, fontVariantNumeric: 'tabular-nums' }}><Money amount={row.owedOnJobAccount} /></span>{' '}
                                   of it on the job account (the house&rsquo;s recourse is the owner)
                                 </>
                               )}
@@ -1051,7 +1052,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                     <strong>
                       {view.unallocatedCount} unpaid invoice{view.unallocatedCount === 1 ? ' isn' : 's aren'}&rsquo;t tied to any job
                     </strong>{' '}
-                    — ${formatCurrency(view.unallocatedTotal)} missing from the numbers above.
+                    — <Money amount={view.unallocatedTotal} /> missing from the numbers above.
                   </span>
                   <div style={{ flex: 1 }} />
                   <button type="button" onClick={() => onOpenSupplyHouse(null)}>

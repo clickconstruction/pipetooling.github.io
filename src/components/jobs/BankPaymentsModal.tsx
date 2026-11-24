@@ -131,6 +131,7 @@ import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { isInKindPaymentType } from '../../lib/jobs/inKindPayment'
+import { MoneyText } from '../Money'
 
 type MercuryCandidateRow =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
@@ -3375,7 +3376,7 @@ export default function BankPaymentsModal({
                                     lineHeight: 1.4,
                                   }}
                                 >
-                                  <div style={{ fontWeight: 600 }}>{arRecordedPaymentSearchLabel(pickedPayment)}</div>
+                                  <div style={{ fontWeight: 600 }}><MoneyText text={arRecordedPaymentSearchLabel(pickedPayment)} /></div>
                                   <div style={{ color: 'var(--text-muted)' }}>
                                     Links the deposit to this recorded payment — amount locked, no new payment created.
                                   </div>

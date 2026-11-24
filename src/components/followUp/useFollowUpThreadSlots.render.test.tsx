@@ -610,6 +610,134 @@ describe('Write down their word under their line (v2.5649)', () => {
 })
 
 /**
+ * A day was heard, say what it is (punch list #421): under their own text or voicemail naming a day still ahead, one
+ * press says what the day is a promise of. The hook reads the real clock, so each line is from now and names tomorrow.
+ */
+describe('A day was heard under their line (punch list #421)', () => {
+  const IVY: Contact = { ...GREG, id: 'ivy', kind: 'arch', name: 'Ivy Stone', company: 'ZZ Test Studio', trade: undefined }
+  const DANA: Contact = { ...PRIYA, id: 'dana', name: 'Dana Whitfield', company: '', customerId: 'c-dana' }
+  const theirs = (contactId: string, body: string, patch: Partial<ThreadMessage> = {}): ThreadMessage =>
+    sentText({ id: 'm-in', contactId, direction: 'in', who: 'Them', at: new Date().toISOString(), body, ...patch })
+  const tomorrow = () => dayAfter(todayYmdInAppTz())
+  const heardRow = (kind: string | null, state: string, day: string, writes: string | null = null) => ({
+    id: 'p-m-in', message_id: 'm-in', kind, state, day, day_words: null, writes, decided_by: 'u-rosa', decided_at: state === 'offered' ? null : '2026-10-01T15:00:00.000Z', message: { contact_id: 'greg', at: '2026-10-01T14:00:00.000Z' },
+  })
+  const under = () => within(screen.getByTestId('under'))
+  /** The first element under the line that matches, once it draws. */
+  const drawn = (selector: string) =>
+    waitFor(() => {
+      const el = screen.getByTestId('under').querySelector(selector)
+      if (!el) throw new Error(`${selector} not drawn yet`)
+      return el as HTMLElement
+    })
+
+  it('a trade partner’s text: the day as a value, their three kinds and just talk, and no Another day on a text', async () => {
+    open.contactId = 'greg'
+    renderThread(fakeIo({ writeDownHeard: vi.fn(async () => undefined) }), GREG, false, theirs('greg', 'We can get you the quote by tomorrow.'))
+    const line = await drawn('[data-heard-choice]')
+    expect(line.getAttribute('data-heard-choice')).toBe(tomorrow())
+    expect(line.querySelector('[data-value="worked-out"]')?.textContent).toBe(dayLabel(tomorrow()))
+    expect(line.textContent).toContain(`${dayLabel(tomorrow())} is a promise of`)
+    expect(under().getAllByRole('button').map((b) => b.textContent)).toEqual(['Their quote', 'A start or delivery', 'Insurance or W-9', 'just talk'])
+    expect(under().getByRole('button', { name: 'Their quote' }).getAttribute('title')).toBe('Goes on their ask on the Board')
+  })
+
+  it('Their quote writes the line in one press, says so, and reads the thread again', async () => {
+    open.contactId = 'greg'
+    const io = fakeIo({ writeDownHeard: vi.fn(async () => undefined) })
+    renderThread(io, GREG, false, theirs('greg', 'We can get you the quote by tomorrow.'))
+    reread.mockClear()
+    fireEvent.click(await under().findByRole('button', { name: 'Their quote' }))
+    await waitFor(() => expect(io.writeDownHeard).toHaveBeenCalledWith('m-in', 'quote', tomorrow(), null))
+    expect(await screen.findByText(`Written down. Their quote by ${dayLabel(tomorrow())}.`)).toBeTruthy()
+    expect(reread).toHaveBeenCalled()
+  })
+
+  it('a start or delivery writes a start, and just talk writes no kind', async () => {
+    open.contactId = 'greg'
+    const io = fakeIo({ writeDownHeard: vi.fn(async () => undefined) })
+    renderThread(io, GREG, false, theirs('greg', 'Crew can start tomorrow.'))
+    fireEvent.click(await under().findByRole('button', { name: 'A start or delivery' }))
+    await waitFor(() => expect(io.writeDownHeard).toHaveBeenCalledWith('m-in', 'start', tomorrow(), 'start'))
+    fireEvent.click(under().getByRole('button', { name: 'just talk' }))
+    await waitFor(() => expect(io.writeDownHeard).toHaveBeenLastCalledWith('m-in', null, tomorrow(), null))
+    expect(await screen.findByText('Kept as just talk. Nothing else was written.')).toBeTruthy()
+  })
+
+  it('an architect’s voicemail offers Another day, and the day picked is the one written', async () => {
+    open.contactId = 'ivy'
+    const io = fakeIo({ writeDownHeard: vi.fn(async () => undefined) })
+    renderThread(io, IVY, false, theirs('ivy', 'You will have our answer tomorrow.', { channel: 'voicemail' }))
+    expect((await under().findAllByRole('button')).map((b) => b.textContent)).toEqual(['Their answer', 'The certificate', 'just talk', 'Another day'])
+    fireEvent.click(under().getByRole('button', { name: 'Another day' }))
+    const picker = within(screen.getByTestId('under').querySelector('[data-heard-another-day]') as HTMLElement)
+    const chips = picker.getAllByRole('button')
+    const later = chips[2]!
+    const laterLabel = later.getAttribute('aria-label')!
+    fireEvent.click(later)
+    await waitFor(() => expect(screen.getByTestId('under').querySelector('[data-heard-another-day]')).toBeNull())
+    expect(screen.getByTestId('under').textContent).toContain(`${laterLabel} is a promise of`)
+    fireEvent.click(under().getByRole('button', { name: 'The certificate' }))
+    await waitFor(() => expect((io.writeDownHeard as ReturnType<typeof vi.fn>).mock.calls[0]![0]).toBe('m-in'))
+    const [, kind, day] = (io.writeDownHeard as ReturnType<typeof vi.fn>).mock.calls[0]!
+    expect([kind, dayLabel(day as string)]).toEqual(['cert', laterLabel])
+  })
+
+  it('a line already said draws its words in place of the choice, and just talk draws nothing', async () => {
+    open.contactId = 'greg'
+    const day = tomorrow()
+    renderThread(fakeIo({ writeDownHeard: vi.fn(async () => undefined) }, { ...rows(), heard: [heardRow('papers', 'written', day, 'w9')] }), GREG, false, theirs('greg', 'W-9 by tomorrow.'))
+    const said = await drawn('[data-heard-written]')
+    expect(said.textContent).toBe(`Written down as their W-9 by ${dayLabel(day)}.`)
+    expect(under().queryAllByRole('button')).toEqual([])
+    cleanup()
+    renderThread(fakeIo({ writeDownHeard: vi.fn(async () => undefined) }, { ...rows(), heard: [heardRow(null, 'no', day)] }), GREG, false, theirs('greg', 'W-9 by tomorrow.'))
+    await settleTick()
+    await waitFor(() => expect(screen.getByTestId('header').textContent).not.toBe(''))
+    expect(screen.getByTestId('under').textContent).toBe('')
+  })
+
+  it('an offered day still offers the choice', async () => {
+    open.contactId = 'greg'
+    renderThread(fakeIo({ writeDownHeard: vi.fn(async () => undefined) }, { ...rows(), heard: [heardRow(null, 'offered', tomorrow())] }), GREG, false, theirs('greg', 'Quote tomorrow.'))
+    expect(await under().findByRole('button', { name: 'Their quote' })).toBeTruthy()
+  })
+
+  it('a refusal says the database’s own words', async () => {
+    open.contactId = 'greg'
+    const io = fakeIo({ writeDownHeard: vi.fn(async () => Promise.reject(new DatabaseError('Someone has said what that day is already.', 'P0001'))) })
+    renderThread(io, GREG, false, theirs('greg', 'Quote by tomorrow.'))
+    fireEvent.click(await under().findByRole('button', { name: 'Their quote' }))
+    expect(await screen.findByText(/Someone has said what that day is already/)).toBeTruthy()
+  })
+
+  it('a customer’s text: A payment opens #129’s sheet on the day, beside their other two kinds', async () => {
+    open.contactId = 'dana'
+    const money: BidMoneyLine = {
+      bidId: null,
+      job: { id: 'j2', number: '1040', name: 'Job 1040', status: 'billed', customerId: 'c-dana', customerName: 'Dana Whitfield', customerPhone: null, customerEmail: null, createdAt: null },
+      stage: 'Billed', open: 900, bills: [], payUrl: null, promise: null, pastDays: null, staleDays: null, payments: [], words: [], tone: 'quiet',
+    }
+    const io = fakeIo({ writeDownHeard: vi.fn(async () => undefined) })
+    renderThread(io, DANA, false, theirs('dana', 'We will pay tomorrow.', { jobId: 'j2' }), async () => [money])
+    expect((await under().findAllByRole('button')).map((b) => b.textContent)).toEqual(['A payment', 'Their answer on our bid', 'A day we can be on site', 'just talk'])
+    expect(under().queryByRole('button', { name: 'Write down their word' })).toBeNull()
+    fireEvent.click(under().getByRole('button', { name: 'A payment' }))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy())
+    expect((screen.getByLabelText('Promised payment date') as HTMLInputElement).value).toBe(tomorrow())
+    expect(io.writeDownHeard).not.toHaveBeenCalled()
+  })
+
+  it('a customer’s line called just talk keeps Write down their word, as before #421', async () => {
+    open.contactId = 'dana'
+    const read = { ...rows(), heard: [{ ...heardRow(null, 'no', tomorrow()), message: { contact_id: 'dana', at: '2026-10-01T14:00:00.000Z' } }] }
+    renderThread(fakeIo({ writeDownHeard: vi.fn(async () => undefined) }, read), DANA, false, theirs('dana', 'We will pay tomorrow.'), async () => [])
+    expect(await under().findByRole('button', { name: 'Write down their word' })).toBeTruthy()
+    expect(under().queryByRole('button', { name: 'A payment' })).toBeNull()
+  })
+})
+
+/**
  * Who is off (v2.6060, punch list #141 PR 4): the hook reads the team's Push me hours with the team and hands them to
  * the header's pill. The hook reads the real clock, so the hours here are on a day that is never today, one hour long:
  * off whenever the test runs, back inside the week.

@@ -1,4 +1,4 @@
-import { formatCurrency } from '../../lib/format'
+import { Money } from '../Money'
 
 /**
  * Bid→Job (Per-GC Phase 3, docs/PER_GC_BID_PLAN.md): a multi-GC bid is becoming a job and no
@@ -60,7 +60,7 @@ export function PickWinningGcModal({
                 <span style={{ fontSize: '0.7rem', fontWeight: 700, borderRadius: 999, padding: '0.1rem 0.5rem', background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }}>won</span>
               ) : null}
               <span style={{ fontSize: '0.75rem', color: o.sentOn ? 'var(--text-green-600)' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>{o.sentOn ? `sent ${o.sentOn}` : 'not sent'}</span>
-              {o.value != null ? <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>${formatCurrency(o.value)}</span> : null}
+              {o.value != null ? <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}><Money amount={o.value} /></span> : null}
             </button>
           ))}
         </div>

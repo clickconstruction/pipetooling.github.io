@@ -20,10 +20,14 @@ import {
   dayFromUsDate,
   feedPasses,
   feedsToPull,
+  heldPassStarts,
+  issuedReadingRecord,
   layerDayWindow,
   passDayColumns,
   passStarts,
   permitCity,
+  type KeptIssuedReading,
+  type NewestHeldDays,
   permitRowFromAustin,
   permitRowFromNewBraunfels,
   permitRowFromSanMarcos,
@@ -490,7 +494,7 @@ describe('the day each reading starts from (punch list #405, v2.8328)', () => {
 
   it('has permit-pull work every start out before its first page, and nowhere else', () => {
     const src = readFileSync('supabase/functions/permit-pull/index.ts', 'utf8')
-    const starts = src.indexOf('const starts = passStarts(passes, newestHeld, today, sinceOverride)')
+    const starts = src.indexOf('const starts = heldPassStarts(passes, passStarts(passes, newestHeld, today, sinceOverride), kept, sinceOverride)')
     const reads = src.indexOf('for (const col of passDayColumns(passes)) newestHeld[col] = await newestHeldDay(admin, feed.source, col)')
     const loop = src.indexOf('for (const [i, pass] of passes.entries()) {')
     const firstPage = src.indexOf('await readPage(feed, pass, since, size, offset, until)')
@@ -507,6 +511,84 @@ describe('the day each reading starts from (punch list #405, v2.8328)', () => {
     expect(src).not.toContain('pullSinceDay')
     // One read of the newest day in the whole function.
     expect(src.split('newestHeldDay(').length - 1).toBe(2)
+  })
+})
+
+describe('the second reading keeps its own start (punch list #405, v2.8402)', () => {
+  const [issued, applied] = feedsToPull('San Antonio')
+  const passes = feedPasses(applied!, false)
+
+  /** One night: the starts from the days held, held to the kept start, and what the night keeps. */
+  function night(today: string, held: NewestHeldDays, kept: KeptIssuedReading | null, readWhole: boolean) {
+    const starts = heldPassStarts(passes, passStarts(passes, held, today), kept, null)
+    const record = issuedReadingRecord(passes, starts, readWhole)
+    return { starts, kept: { issuedSince: record.issued_since, issuedWhole: record.issued_whole } as KeptIssuedReading }
+  }
+
+  it('a month of failed second readings alone still reads the permits issued while it was down', () => {
+    // 2026-10-01: the second reading starts 30 days before the 30th of September and fails.
+    let n = night('2026-10-01', { submitted_on: '2026-09-30', issued_on: '2026-09-30' }, null, false)
+    expect(n.starts).toEqual(['2026-09-20', '2026-08-31'])
+    const firstFailure = n.starts[1]!
+    // Every night after, the first reading runs and writes the newest issued day; the second fails again.
+    for (let day = 2; day <= 31; day++) {
+      const today = `2026-10-${String(day).padStart(2, '0')}`
+      const yesterday = `2026-10-${String(day - 1).padStart(2, '0')}`
+      n = night(today, { submitted_on: yesterday, issued_on: yesterday }, n.kept, false)
+      // Without the kept start it would count from yesterday: past the 1st of October by the 31st.
+      expect(passStarts(passes, { submitted_on: yesterday, issued_on: yesterday }, today)[1]! > firstFailure).toBe(true)
+      expect(n.starts[1]).toBe(firstFailure)
+      expect(n.starts[0]).toBe(passStarts(passes, { submitted_on: yesterday, issued_on: yesterday }, today)[0])
+    }
+    // A permit issued on the 2nd of October, the second night it was down, is inside the start on the 1st of November.
+    n = night('2026-11-01', { submitted_on: '2026-10-31', issued_on: '2026-10-31' }, n.kept, true)
+    expect('2026-10-02' >= n.starts[1]!).toBe(true)
+    expect(n.starts[1]).toBe(firstFailure)
+    // That reading read to its end: the next night counts from the days held again.
+    n = night('2026-11-02', { submitted_on: '2026-11-01', issued_on: '2026-11-01' }, n.kept, true)
+    expect(n.starts).toEqual(['2026-10-22', '2026-10-02'])
+  })
+
+  it('a kept start later than the one the days held give changes nothing', () => {
+    const starts = passStarts(passes, { submitted_on: '2026-11-20', issued_on: '2026-11-13' }, '2026-11-22')
+    expect(heldPassStarts(passes, starts, { issuedSince: '2026-11-01', issuedWhole: false })).toEqual(starts)
+  })
+
+  it('a whole reading, an older row with nothing kept, and a feed read once start as v2.8328 does', () => {
+    const starts = passStarts(passes, { submitted_on: '2026-11-20', issued_on: '2026-11-13' }, '2026-11-22')
+    expect(heldPassStarts(passes, starts, { issuedSince: '2026-09-01', issuedWhole: true })).toEqual(starts)
+    expect(heldPassStarts(passes, starts, { issuedSince: null, issuedWhole: null })).toEqual(starts)
+    expect(heldPassStarts(passes, starts, { issuedSince: null, issuedWhole: false })).toEqual(starts)
+    expect(heldPassStarts(passes, starts, null)).toEqual(starts)
+    const once = feedPasses(issued!, false)
+    const onceStarts = passStarts(once, { issued_on: '2026-11-13' }, '2026-11-22')
+    expect(heldPassStarts(once, onceStarts, { issuedSince: '2026-09-01', issuedWhole: false })).toEqual(onceStarts)
+  })
+
+  it('the body’s since starts every reading on its day and keeps nothing', () => {
+    const starts = passStarts(passes, {}, '2026-11-22', '2026-06-01')
+    expect(heldPassStarts(passes, starts, { issuedSince: '2026-01-01', issuedWhole: false }, '2026-06-01')).toEqual(['2026-06-01', '2026-06-01'])
+    expect(issuedReadingRecord(passes, starts, true, '2026-06-01')).toEqual({ issued_since: null, issued_whole: null })
+  })
+
+  it('keeps the second reading’s start and its end on a feed read twice, nothing on a feed read once', () => {
+    expect(issuedReadingRecord(passes, ['2026-11-10', '2026-10-14'], true)).toEqual({ issued_since: '2026-10-14', issued_whole: true })
+    expect(issuedReadingRecord(passes, ['2026-11-10', '2026-10-14'], false)).toEqual({ issued_since: '2026-10-14', issued_whole: false })
+    expect(issuedReadingRecord(feedPasses(issued!, false), ['2026-11-10'], true)).toEqual({ issued_since: null, issued_whole: null })
+    expect(issuedReadingRecord(feedPasses(applied!, true), ['2026-11-10'], true)).toEqual({ issued_since: null, issued_whole: null })
+  })
+
+  it('has permit-pull read the kept start before the readings, write it on every run, and survive the column missing', () => {
+    const src = readFileSync('supabase/functions/permit-pull/index.ts', 'utf8')
+    const kept = src.indexOf('await keptIssuedReading(admin, feed.source)')
+    const held = src.indexOf('const starts = heldPassStarts(passes, passStarts(passes, newestHeld, today, sinceOverride), kept, sinceOverride)')
+    const loop = src.indexOf('for (const [i, pass] of passes.entries()) {')
+    expect(kept).toBeGreaterThan(-1)
+    expect(held).toBeGreaterThan(kept)
+    expect(loop).toBeGreaterThan(held)
+    expect(src).toContain('issuedReadingRecord(issued.passes, issued.starts, issuedWhole, sinceOverride)')
+    // Deployed ahead of the migration the row still lands, without the two columns.
+    expect(src).toContain("if (runError && /issued_(since|whole)/.test(runError.message)) await admin.from('permit_pulls').insert(run)")
   })
 })
 

@@ -5,6 +5,7 @@
  */
 import type { CSSProperties } from 'react'
 import { HAND_CREDIT_BOX, type HandPlan } from '../../lib/subWorkOrders/subSendingByHand'
+import { MoneyText } from '../Money'
 
 const usd = (n: number): string => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const head: CSSProperties = { fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)' }
@@ -26,9 +27,9 @@ export function SendingByHandGrid({ hand, boxes, onBox, canCredit, disabled }: {
               {r.label}
               {i === 0 ? <span style={{ color: 'var(--text-muted)' }}> · this sheet</span> : null}
             </span>
-            <span style={num}>{usd(r.open)}</span>
+            <span style={num}><MoneyText text={usd(r.open)} /></span>
             <input aria-label={`This payment on ${r.label}`} inputMode="decimal" value={boxes[r.id] ?? ''} placeholder="0.00" disabled={disabled} onChange={(e) => onBox(r.id, e.target.value)} style={{ ...box, borderColor: r.error ? 'var(--text-red-700)' : 'var(--border-strong)' }} />
-            <span style={{ ...num, color: r.staysOpen <= 0 ? 'var(--text-green-700)' : undefined }}>{usd(r.staysOpen)}</span>
+            <span style={{ ...num, color: r.staysOpen <= 0 ? 'var(--text-green-700)' : undefined }}><MoneyText text={usd(r.staysOpen)} /></span>
           </div>
         ))}
         {canCredit ? (

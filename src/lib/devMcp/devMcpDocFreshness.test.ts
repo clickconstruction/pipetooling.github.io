@@ -109,7 +109,7 @@ describe('get_person_document { freshness: true } (0.124.0)', () => {
   })
 
   it('the server, the README and the notes carry it', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.131.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.132.0'")
     expect(SERVER).toContain('freshness: args.freshness }, { role: who.role, ymdOf: calendarYmdInAppTzFromIso })')
     expect(SERVER).toContain("freshness: { type: 'boolean'")
     expect(README).toContain('`get_person_document(person, doc_id? \\| kind?, section?, freshness?)`')

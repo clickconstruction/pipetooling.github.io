@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import GcFindCheckModal from './GcFindCheckModal'
 import type { GcChecksInputs } from '../../lib/jobs/gcChecksAppliedIo'
+import { moneyText } from '../../test/moneyText'
 
 const io = vi.hoisted(() => ({
   fetch: vi.fn(),
@@ -85,9 +86,9 @@ describe('GcFindCheckModal', () => {
     fireEvent.change(screen.getByLabelText('Check number, amount or the day it was received'), { target: { value: '48211' } })
     expect(screen.getByText('1 match')).toBeTruthy()
     expect(screen.getAllByTestId('gc-found-check')).toHaveLength(1)
-    expect(screen.getByText('Check #48211 · $18,400.00 · received Sep 24, 2026 (mailed Sep 19)')).toBeTruthy()
-    expect(screen.getByText('Applied now to $6,400.00 on 210 Maple Ct · 1058 Maple Ct, Invoice 1 of 1, which it paid in full and $12,000.00 on 4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2, Invoice 2 of 2.')).toBeTruthy()
-    expect(screen.getByText('$12,000.00 moved from 210 Maple Ct · 1058 Maple Ct to 4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2 on Sep 26')).toBeTruthy()
+    expect(screen.getByText(moneyText('Check #48211 · $18,400.00 · received Sep 24, 2026 (mailed Sep 19)'))).toBeTruthy()
+    expect(screen.getByText(moneyText('Applied now to $6,400.00 on 210 Maple Ct · 1058 Maple Ct, Invoice 1 of 1, which it paid in full and $12,000.00 on 4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2, Invoice 2 of 2.'))).toBeTruthy()
+    expect(screen.getByText(moneyText('$12,000.00 moved from 210 Maple Ct · 1058 Maple Ct to 4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2 on Sep 26'))).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Check number, amount or the day it was received'), { target: { value: '$9,750' } })
     expect(screen.getByText(/Check #48102/)).toBeTruthy()

@@ -77,6 +77,7 @@ import { ScheduleSheet, ScheduleSheetAction } from '../schedule/ScheduleBlockShe
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { MoneyText } from '../Money'
 
 /** A sheet with its money, its stage and its people — the board derives everything from these. */
 type SheetLite = WorkOrderBoardSheet & { assignees?: Array<{ person_id: string }> | null; progress_pct?: number | null; progress_at?: string | null }
@@ -603,7 +604,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     r.kind === 'stage' ? (
       <>
         <div style={{ fontWeight: 600 }}>{r.stage.name}</div>
-        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>line item{r.stage.amount > 0 ? ` · ${money(r.stage.amount)}` : ''} · no order yet</div>
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>line item{r.stage.amount > 0 ? <MoneyText text={` · ${money(r.stage.amount)}`} /> : ''} · no order yet</div>
       </>
     ) : (
       <>
@@ -729,9 +730,9 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
   /** One column for the money (v2.2963): agreed on top, paid in green, open in red — they read as a stack. */
   const moneyStack = (agreed: number | null, paid: number | null, open: number | null, unpriced: boolean) => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1, fontVariantNumeric: 'tabular-nums', lineHeight: 1.25 }}>
-      <span>{unpriced ? <span style={{ color: 'var(--text-faint)' }}>unpriced</span> : agreed == null ? <span style={{ color: 'var(--text-faint)' }}>—</span> : money(agreed)}</span>
-      <span style={{ color: paid != null && paid > 0 ? 'var(--text-green-700)' : 'var(--text-faint)', fontWeight: paid != null && paid > 0 ? 600 : 400 }}>{paid == null ? '—' : money(paid)}</span>
-      <span style={{ color: !unpriced && open != null && open > 0 ? 'var(--text-red-700)' : 'var(--text-faint)', fontWeight: !unpriced && open != null && open > 0 ? 700 : 400 }}>{unpriced || open == null ? '—' : money(open)}</span>
+      <span>{unpriced ? <span style={{ color: 'var(--text-faint)' }}>unpriced</span> : agreed == null ? <span style={{ color: 'var(--text-faint)' }}>—</span> : <MoneyText text={money(agreed)} />}</span>
+      <span style={{ color: paid != null && paid > 0 ? 'var(--text-green-700)' : 'var(--text-faint)', fontWeight: paid != null && paid > 0 ? 600 : 400 }}>{paid == null ? '—' : <MoneyText text={money(paid)} />}</span>
+      <span style={{ color: !unpriced && open != null && open > 0 ? 'var(--text-red-700)' : 'var(--text-faint)', fontWeight: !unpriced && open != null && open > 0 ? 700 : 400 }}>{unpriced || open == null ? '—' : <MoneyText text={money(open)} />}</span>
     </div>
   )
   /** A stage row's own "Where it stands" and "Next" — no rail yet, the order is the next move. */
@@ -1176,7 +1177,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
                     <>
                       <div>
                         {label('Agreed')}
-                        {r.stage.amount > 0 ? money(r.stage.amount) : <span style={{ color: 'var(--text-faint)' }}>unpriced</span>}
+                        {r.stage.amount > 0 ? <MoneyText text={money(r.stage.amount)} /> : <span style={{ color: 'var(--text-faint)' }}>unpriced</span>}
                       </div>
                       <div>
                         {label('Paid')}
@@ -1191,15 +1192,15 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
                     <>
                       <div>
                         {label('Agreed')}
-                        {r.board.unpriced ? <span style={{ color: 'var(--text-faint)' }}>unpriced</span> : money(r.board.agreed)}
+                        {r.board.unpriced ? <span style={{ color: 'var(--text-faint)' }}>unpriced</span> : <MoneyText text={money(r.board.agreed)} />}
                       </div>
                       <div>
                         {label('Paid')}
-                        <span style={{ color: r.board.paid > 0 ? 'var(--text-green-700)' : 'var(--text-faint)', fontWeight: r.board.paid > 0 ? 600 : 400 }}>{money(r.board.paid)}</span>
+                        <span style={{ color: r.board.paid > 0 ? 'var(--text-green-700)' : 'var(--text-faint)', fontWeight: r.board.paid > 0 ? 600 : 400 }}><MoneyText text={money(r.board.paid)} /></span>
                       </div>
                       <div>
                         {label('Open')}
-                        <span style={{ color: !r.board.unpriced && r.board.open > 0 ? 'var(--text-red-700)' : 'var(--text-faint)', fontWeight: !r.board.unpriced && r.board.open > 0 ? 700 : 400 }}>{r.board.unpriced ? '—' : money(r.board.open)}</span>
+                        <span style={{ color: !r.board.unpriced && r.board.open > 0 ? 'var(--text-red-700)' : 'var(--text-faint)', fontWeight: !r.board.unpriced && r.board.open > 0 ? 700 : 400 }}>{r.board.unpriced ? '—' : <MoneyText text={money(r.board.open)} />}</span>
                       </div>
                     </>
                   )}

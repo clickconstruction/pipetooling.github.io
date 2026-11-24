@@ -15,7 +15,7 @@
 import type { ContactKind } from '../contacts/kernel'
 import { val } from '../valuesInPlace'
 import { dayLabel } from './owed'
-import { JUST_TALK, promiseChoices, promiseGoesOn, writtenWhat, type HeardPromiseKind, type PromiseChoice, type PromisePerson } from './promises'
+import { JUST_TALK, promiseChoices, promiseGoesOn, type HeardPromiseKind, type PromiseChoice, type PromisePerson } from './promises'
 import { daySaidIn } from './voicemailRead'
 
 /** The kinds of person a heard day is offered for. */
@@ -114,14 +114,17 @@ export const ANOTHER_DAY_TIP = 'Quo may have heard the day wrong. Pick the day t
 /** The day picker's label for a typed day. */
 export const ANOTHER_DAY_TYPED = 'The day they said'
 
-/** "Their quote for Elm Street", with its first letter up, for the start of a sentence. */
-function upFirst(s: string): string {
-  return `${s.charAt(0).toUpperCase()}${s.slice(1)}`
+/** What the office reads once the line is written: "Written down. Their quote by Wed Nov 25." */
+export function heardWrittenToast(kind: string, writes: string | null, ymd: string): string {
+  const day = dayLabel(ymd)
+  if (kind === 'access') return `Written down. We can be on site ${day}.`
+  const what = MARK_WHAT[writes ?? kind] ?? 'their word'
+  return `Written down. ${what.charAt(0).toUpperCase()}${what.slice(1)} by ${day}.`
 }
 
-/** What the office reads once the line is written: "Written down. Hillside’s quote for Elm Street by Wed Nov 25." */
-export function heardWrittenToast(choice: PromiseChoice, ymd: string): string {
-  return `Written down. ${upFirst(writtenWhat(choice))} by ${dayLabel(ymd)}.`
+/** The kind a choice writes by default: a double kind writes its first (the lead, 2026-10-12). */
+export function defaultWrites(kind: string): 'start' | 'insurance' | null {
+  return kind === 'start' ? 'start' : kind === 'papers' ? 'insurance' : null
 }
 
 /** A line's day already said, as the thread keeps it (`message_promises`). */
@@ -153,6 +156,7 @@ const MARK_WHAT: Readonly<Record<string, string>> = {
  */
 export function heardMarkWords(mark: HeardMark): string | null {
   if (mark.state !== 'written' || !mark.kind || !mark.day) return null
+  if (mark.kind === 'access') return `Written down. We can be on site ${val('day', dayLabel(mark.day))}.`
   const what = MARK_WHAT[mark.writes ?? mark.kind]
   if (!what) return null
   return `Written down as ${val('what', what)} by ${val('day', dayLabel(mark.day))}.`

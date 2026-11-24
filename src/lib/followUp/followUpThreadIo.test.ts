@@ -40,3 +40,29 @@ describe('writeDownPayment (v2.8271, punch list #129)', () => {
     expect((refused as DatabaseError).serverMessage).toBe('Someone has said what that day is already.')
   })
 })
+
+describe('writeDownHeard (punch list #421)', () => {
+  it('writes the day and its kind, a double kind with the one written, and just talk with no kind', async () => {
+    const { client, calls } = fakeClient()
+    const io = supabaseFollowUpThreadIo(client)
+    await io.writeDownHeard!('m1', 'quote', '2026-11-25', null)
+    await io.writeDownHeard!('m2', 'papers', '2026-11-27', 'insurance')
+    await io.writeDownHeard!('m3', null, '2026-11-25', null)
+    expect(calls).toEqual([
+      { fn: 'write_down_heard', args: { p_message_id: 'm1', p_kind: 'quote', p_day: '2026-11-25' } },
+      { fn: 'write_down_heard', args: { p_message_id: 'm2', p_kind: 'papers', p_day: '2026-11-27', p_writes: 'insurance' } },
+      { fn: 'write_down_heard', args: { p_message_id: 'm3', p_kind: null, p_day: '2026-11-25' } },
+    ])
+  })
+  it('rejects with the database’s own words on a refusal', async () => {
+    const { client } = fakeClient({ message: 'Someone has said what that day is already.', code: 'P0001' })
+    const refused = await supabaseFollowUpThreadIo(client)
+      .writeDownHeard!('m1', 'quote', '2026-11-25', null)
+      .then(
+        () => null,
+        (e: unknown) => e,
+      )
+    expect(refused).toBeInstanceOf(DatabaseError)
+    expect((refused as DatabaseError).serverMessage).toBe('Someone has said what that day is already.')
+  })
+})

@@ -2,7 +2,7 @@
 title: reply to a person from their thread
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, laptop, short screen, reply, reply box, bill, invoice, pay link, what they owe, text, email, note, call, log a call, phone call, they said, the day they gave, send, send window, subject, tie to, job, opt-out, stop, company number, signature, plain email, greeting, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal, own mailbox, answered from my own mailbox, sent mail, tag it, write it down
+keywords: gc mode, messages, a day was heard, promise of, just talk, their quote, a start or delivery, insurance or w-9, the certificate, another day, laptop, short screen, reply, reply box, bill, invoice, pay link, what they owe, text, email, note, call, log a call, phone call, they said, the day they gave, send, send window, subject, tie to, job, opt-out, stop, company number, signature, plain email, greeting, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal, own mailbox, answered from my own mailbox, sent mail, tag it, write it down
 where: /messages
 order: 117
 ---
@@ -84,9 +84,33 @@ Dana texts that a bill went missing. Type **/bill** and light the open bill. Pre
 
 A customer's own text, email or call carries {{button:outline|Write down their word}} under it. Press it when the customer says when they will pay, or that they already paid. The sheet opens on the job the line is about. The customer's name and how they said it are filled in. When the line is on no job, the word goes on their one job with money open. With more than one, pick the job. The word shows on the job as **They said**. Read [see where a job you bid stands on money](/help/see-where-a-job-you-bid-stands-on-money#write-down-their-word) for the sheet.
 
-When their text or voicemail names a day, the day shows beside the button. It reads **They said Fri Nov 27.** Press the button and the sheet opens on **They'll pay by…** with that day in **Pay by**. A line under the job says the day was read from their text. Change the day when they meant another one. Nothing is saved until you press {{button:green|Save promise}}. A call or an email shows no day, and neither does a day that has passed.
+When their text or voicemail names a day still ahead, the message asks what the day is a promise of. Press {{button:outline|A payment}} there. [Say what a day they named is](#say-what-a-day-they-named-is) shows the other buttons. The sheet opens on **They'll pay by…** with that day in **Pay by**. A line under the job says the day was read from their text. Change the day when they meant another one. Nothing is saved until you press {{button:green|Save promise}}. A call or an email shows no day, and neither does a day that has passed.
+
+Once a payment is saved, the message shows the day beside the button. It reads **They said Fri Nov 27.** Press the button to change the promise or take it off.
 
 A saved promise marks the line it was written from. The job's **They promised** row then names the day. Once we have answered them, the thread's **Their move** chip runs until that day and says it is a payment. When you take the word off with **Never said that**, the mark comes off the line too. The day stays on the thread when another job of theirs still has a promise for it. A line on the screen tells you so.
+
+## Say what a day they named is
+
+A text or a voicemail may name a day still ahead, like a quote by Wednesday. It works for a customer, a trade partner or an architect. A line shows under their message, like **Wed Nov 25 is a promise of**. A button follows for each kind of promise they make.
+
+- A trade partner has {{button:outline|Their quote}}, {{button:outline|A start or delivery}} and {{button:outline|Insurance or W-9}}.
+- A customer has {{button:outline|A payment}}, {{button:outline|Their answer on our bid}} and {{button:outline|A day we can be on site}}.
+- An architect has {{button:outline|Their answer}} and {{button:outline|The certificate}}.
+
+Press the one it is. The day is written down in one press, and a line on the screen says so. The message then reads **Written down as their quote by Wed Nov 25.** The thread's chip runs until that day, like {{chip:blue|Their move · until Wed Nov 25 · quote}}.
+
+A start or delivery is written as a start. Insurance or a W-9 is written as insurance.
+
+{{button:outline|A payment}} opens the payment sheet with the day filled in, as [Write down their word](#write-down-their-word) does. Nothing is saved until you press {{button:green|Save promise}}.
+
+Press {{button:outline|just talk}} when the day was not a promise. The buttons go away and nothing is written.
+
+A voicemail also shows **Another day**. Quo may have heard the day wrong. Press it and pick the day they said. The buttons then use that day.
+
+:::example a tile company names a day
+Dee from the tile company texts that the quote comes by Wednesday. Under the text it reads **Wed Nov 25 is a promise of**. Press {{button:outline|Their quote}}. The thread now reads {{chip:blue|Their move · until Wed Nov 25 · quote}}.
+:::
 
 ## Find a reply
 

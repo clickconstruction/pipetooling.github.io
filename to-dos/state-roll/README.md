@@ -2,7 +2,7 @@
 name: "State roll: who holds a license near us"
 number: 411
 group: ready
-status: Go 2026-11-21 · Taunya said build it as drawn · step one built and live, v2.8159, v2.8164 and v2.8198 (the tab with its Pulls view) · step two built and live, v2.8202 (the read keeps our own licenses, redeployed and pulled), v2.8233 (the Our own view) and v2.8317 (`check_license` reads a plumbing number) · the Our own view not yet walked on the live site
+status: Go 2026-11-21 · Taunya said build it as drawn · step one built and live, v2.8159, v2.8164 and v2.8198 (the tab with its Pulls view) · step two built and live, v2.8202 (the read keeps our own licenses, redeployed and pulled), v2.8233 (the Our own view) and v2.8317 (`check_license` reads a plumbing number) · step three built, not merged, v2.8380 (the notes table and Leave off, PR #9511) and v2.8390 (Everyone and the person's sheet), approved by the owner 2026-11-23 · the Our own view not yet walked on the live site
 summary: >
   Taunya cannot find experienced plumbers, and they must be licensed. The state publishes the roll
   of every licensed plumber as free files, and of every electrician and A/C license on its open
@@ -12,9 +12,9 @@ summary: >
   is no score. The state gives no phone, address or email, so how to reach a person is added by
   the office by hand.
 next: >
-  Walk the Our own view on the live site. The first scheduled pull of 2026-11-23 is read and holds. Then step three: Everyone and the person's sheet.
+  Merge v2.8380 (PR #9511), push its migration, regenerate the types, then arm v2.8390 and walk Everyone and the sheet on the live site. Walk the Our own view too. Then step four: Call this week.
 size: L as a train of five (M · M · M · M · S)
-ver: v2.8159 · 8164 · 8198 · 8202 · 8233 · 8317
+ver: v2.8159 · 8164 · 8198 · 8202 · 8233 · 8317 · 8380 · 8390
 blocker: None. A lawyer's answer is wanted before the first call from the list, which is step four.
 opinion: build — start with the pull and Our own, which are worth having with no outreach at all
 ---
@@ -140,9 +140,9 @@ After they run, check by counts:
 - **No sub shows on Our own.** No person record holds a license today. The view reads one and tags a sub's when it does. The drawing's Teammates and Subs chips wait for the first.
 - **The apprentice file is not on Pull 4 files.** It is read on its Monday job only, so a new apprentice's license reads *Not on the roll* until then.
 - **Our date on a card is 28 px tall on a phone.** It is the app's shared in-place field (`ChangeableValue`), so it was left as it is. Every other press on the view is 44 px.
-- **Leave off cannot be written yet.** The table `license_roll_left_off` exists and is read by each pull. Nobody can add to it until step three.
+- **Leave off is written by the sheet** since step three ([v2.8380](../../docs/recent-features/v2.8380.md) and [v2.8390](../../docs/recent-features/v2.8390.md)), once both are merged and the migration is pushed. Until then nobody can add to `license_roll_left_off`.
 - **The cards that need a look are real.** Some licenses read *The state has a later date*, *Lapsed* or *Not on the roll*. A license *Not on the roll* may be a number typed wrong, or one the state's file no longer lists. These are the office's to check on People → Licenses, not code.
-- **Steps three to five are not built.** Three: Everyone, the person's sheet, notes and Leave off. Four: Call this week, with its tags, Pursue to Hiring, Not for us and the Reach block. Five: electrical and A/C over TDLR's open list, where an A/C contractor's class and endorsement and a technician's `REG` or `CER` are visible.
+- **Steps four and five are not built.** Four: Call this week, with its tags, Pursue to Hiring, Not for us and the Reach block. Five: electrical and A/C over TDLR's open list, where an A/C contractor's class and endorsement and a technician's `REG` or `CER` are visible.
 
 ### Taunya's to say
 
@@ -158,9 +158,26 @@ One change a PR. A migration merges alone and is pushed before the code that cal
 
 1. **The tables and the pull.** `license_roll` (one row a license), `license_roll_changes` (what a pull saw change, growing only), `license_roll_pulls` (the ledger), `license_roll_counties` and `license_roll_left_off`. Then `license-roll-pull`, a function on a Monday cron that reads the plumbing files, keeps our counties, honours Leave off and writes what changed. **Built, v2.8159 and v2.8164**, and the first pull is in. The Pulls view shipped with the tab, v2.8198.
 2. **Our own.** The match of our people's and subs' numbers against the state. `check_license` reads a plumbing number. **Built, v2.8202, v2.8233 and v2.8317**: the pull keeps a row whose number is ours whatever the county, and reads the apprentice file for our own apprentices alone. The Our own view lays each license beside its state row. The dev seat's `check_license` reads a plumbing number off the board's files. What is left is under [Left to do and to walk](#left-to-do-and-to-walk-2026-11-22).
-3. **Everyone and the person's sheet.** Search, the line of history, notes, Leave off.
+3. **Everyone and the person's sheet.** Search, the line of history, notes, Leave off. **Built, not merged, v2.8380 and v2.8390**, the owner's go of 2026-11-23. See [Step three, as built](#step-three-as-built-2026-11-23).
 4. **Call this week.** The tags, the order, Pursue to Hiring, Not for us, the Reach block.
 5. **Electrical and A/C.** The same four views over TDLR's open list.
+
+## Step three, as built (2026-11-23)
+
+Two PRs, neither armed when this was written. Every name in their tests and looks is made up.
+
+- **v2.8380, the migration** (PR #9511, `20261123185500_license_roll_notes`). `license_roll_notes` holds our notes, kept by the license's number and by name and ZIP, so a note outlives the roll row and follows a new rank. A trigger stamps the author and the time. `license_roll_leave_off()` writes the left-off row and takes the person's rows off at once, by number and by name and ZIP. It refuses a person who holds one of our own licenses. `license_roll_left_off` gains `shown_as`, `noted_by_name` and a delete for Put back. A new SQL bed covers it.
+- **v2.8390, the client**, stacked on v2.8380. The Everyone view between Our own and Pulls: a search box, the seven chips, the six columns on a desk and two lines a person on a phone, fifty rows a page. A row opens the person's sheet, kept on the address as `person=<id>`. The sheet has the state's facts, **What changed, as we saw it**, **Our notes**, **Add a note**, **Delete** on one's own note and **Leave off**. Leave off asks first with a press that names the person, and the toast after it offers **Put back**. At the foot of Everyone, **Left off at their asking** lists each with **Put back on the list**. Guide `look-up-a-licensed-plumber-on-the-state-roll`.
+- **Who reads and writes notes, as built.** Everyone who holds the Hiring switch (`user_can_read_license_roll()`) reads every note and writes one as themself. Only the author deletes a note. Nobody edits one. A training account, a digital twin and an archived account read and write nothing new. Leave off and Put back are open to the same people, with the same refusals.
+- **Who sees Everyone.** Every Hiring holder. Each now has a strip with Everyone and Pulls and opens on Everyone. A person who may also open People → Licenses keeps Our own first, and alone sees the **One of ours** tag.
+- **Not drawn, on purpose.** The Reach block, a cell and OK to text, is step four and waits on a lawyer's answer. The Ours column draws no *On Hiring*, *Not for us* or *New this week*: those belong to step four's list.
+
+### Left for step three
+
+1. **The parent's steps after v2.8380 merges.** `supabase db push`, a types PR for `src/types/database.ts`, and a `dev-mcp` deploy if its catalog moves. Then arm v2.8390.
+2. **A walk on the live site** once v2.8390 is deployed, as a Hiring holder at 375 px and 1100 px, light and dark. Search a name, light each chip, open a sheet, read its history. Press nothing that writes on a real person's row. A note and Leave off are walked on a row only with Taunya's go, since every row is a real person.
+3. **The walk as a holder without People → Licenses.** The strip should show Everyone and Pulls, and no row should say One of ours.
+4. **Has our notes counts every note's number.** A note on a person who is now left off still counts on the chip until they come back. It is a small count, read in one go, and fine at the size the office will write.
 
 ## What bites here
 

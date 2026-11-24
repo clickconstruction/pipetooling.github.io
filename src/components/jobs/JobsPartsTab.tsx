@@ -11,6 +11,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { TallyPartRow } from '../../types/tallyPart'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { MercuryJobAllocationWithAttributionRow } from '../../lib/fetchMercuryJobAllocationsWithAttributionForJob'
+import { Money, MoneyText } from '../Money'
 
 /**
  * Presentational Parts tab (jobs ledger "parts" view). The shared tally-parts data lives in the parent's
@@ -294,12 +295,12 @@ export default function JobsPartsTab({
                       </td>
                       <td style={{ padding: '0.75rem' }}>{hcpNumber ?? '—'}</td>
                       <td style={{ padding: '0.75rem' }}>{jobName ?? '—'}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{currencyOrDash(partsTotal)}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{currencyOrDash(billedMaterialsSum)}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{currencyOrDash(invoiceAmountByJob[jobId] ?? 0)}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{currencyOrDash(cardCharges)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}><MoneyText text={currencyOrDash(partsTotal)} /></td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}><MoneyText text={currencyOrDash(billedMaterialsSum)} /></td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}><MoneyText text={currencyOrDash(invoiceAmountByJob[jobId] ?? 0)} /></td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}><MoneyText text={currencyOrDash(cardCharges)} /></td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>
-                        {currencyOrDash(partsTotal + billedMaterialsSum + (invoiceAmountByJob[jobId] ?? 0) + cardCharges)}
+                        <MoneyText text={currencyOrDash(partsTotal + billedMaterialsSum + (invoiceAmountByJob[jobId] ?? 0) + cardCharges)} />
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>{parts.length}</td>
                     </tr>,
@@ -416,19 +417,19 @@ export default function JobsPartsTab({
                                                   )}
                                                 </td>
                                                 <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                                  {currencyOrDash(row.partsFromTally, true)}
+                                                  <MoneyText text={currencyOrDash(row.partsFromTally, true)} />
                                                 </td>
                                                 <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                                  {currencyOrDash(row.otherJobCharges, true)}
+                                                  <MoneyText text={currencyOrDash(row.otherJobCharges, true)} />
                                                 </td>
                                                 <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                                  {currencyOrDash(row.invoicesFromSupply, true)}
+                                                  <MoneyText text={currencyOrDash(row.invoicesFromSupply, true)} />
                                                 </td>
                                                 <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                                  {currencyOrDash(row.cardCharges, true)}
+                                                  <MoneyText text={currencyOrDash(row.cardCharges, true)} />
                                                 </td>
                                                 <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>
-                                                  {currencyOrDash(rt, true)}
+                                                  <MoneyText text={currencyOrDash(rt, true)} />
                                                 </td>
                                               </tr>
                                             )
@@ -442,25 +443,25 @@ export default function JobsPartsTab({
                                           >
                                             <td style={{ padding: '0.35rem 0.5rem' }}>Total</td>
                                             <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                              {currencyOrDash(pFooter.partsFromTally, true)}
+                                              <MoneyText text={currencyOrDash(pFooter.partsFromTally, true)} />
                                             </td>
                                             <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                              {currencyOrDash(pFooter.otherJobCharges, true)}
+                                              <MoneyText text={currencyOrDash(pFooter.otherJobCharges, true)} />
                                             </td>
                                             <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                              {currencyOrDash(pFooter.invoicesFromSupply, true)}
+                                              <MoneyText text={currencyOrDash(pFooter.invoicesFromSupply, true)} />
                                             </td>
                                             <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                              {currencyOrDash(pFooter.cardCharges, true)}
+                                              <MoneyText text={currencyOrDash(pFooter.cardCharges, true)} />
                                             </td>
                                             <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
-                                              {currencyOrDash(
+                                              <MoneyText text={currencyOrDash(
                                                 pFooter.partsFromTally +
                                                   pFooter.otherJobCharges +
                                                   pFooter.invoicesFromSupply +
                                                   pFooter.cardCharges,
                                                 true,
-                                              )}
+                                              )} />
                                             </td>
                                           </tr>
                                         </tbody>
@@ -552,7 +553,7 @@ export default function JobsPartsTab({
                                               fontSize: 'inherit',
                                             }}
                                           >
-                                            {formatCurrency(Number(r.price_at_time))}
+                                            <Money amount={Number(r.price_at_time)} symbol="" />
                                           </button>
                                         ) : (
                                           '—'
@@ -604,7 +605,7 @@ export default function JobsPartsTab({
                                         .map((m) => (
                                           <tr key={m.id} style={{ borderTop: '1px solid var(--border)' }}>
                                             <td style={{ padding: '0.35rem 0.5rem' }}>{m.description?.trim() || 'Item'}</td>
-                                            <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{formatCurrency(Number(m.amount ?? 0))}</td>
+                                            <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}><Money amount={Number(m.amount ?? 0)} symbol="" /></td>
                                           </tr>
                                         ))}
                                     </tbody>

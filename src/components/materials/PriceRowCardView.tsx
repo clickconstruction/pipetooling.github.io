@@ -10,6 +10,7 @@ import { cardInput, cardLink, cardPress, CHIP_TONE } from '../../lib/materials/p
 import type { BookPart, PartMatch } from '../../lib/materials/partMatch'
 import { bookPrice, PRICING_UNIT_FACTOR, type PricingUnit } from '../../lib/materials/priceSheet/pastedRow'
 import { dollars, rowCard, type OnFilePrice } from '../../lib/materials/priceSheet/rowCard'
+import { MoneyText } from '../Money'
 
 export type KnownPart = BookPart & { is_robot?: boolean | null }
 export type CardRow = { key: string; houseCode: string; description: string; unitPrice: number | null; pricingUnit: PricingUnit; lines: number }
@@ -134,10 +135,10 @@ export function PriceRowCardView({
         {part && each != null && c.unitAsk && !serverAsk ? (
           <>
             <button type="button" disabled={dead} onClick={() => onFileRow(part)} style={cardPress(dead, true)}>
-              {busy ? 'Filing…' : `File ${dollars(each)} each`}
+              {busy ? 'Filing…' : <MoneyText text={`File ${dollars(each)} each`} />}
             </button>
             <button type="button" disabled={dead} onClick={() => onFileRow(part, { unitFactor: 1 })} style={cardPress(dead, false)}>
-              It is {dollars(c.eachAsPrinted ?? each)} each
+              It is <MoneyText text={dollars(c.eachAsPrinted ?? each)} /> each
             </button>
           </>
         ) : part && each != null && c.older && !serverAsk ? (
@@ -146,17 +147,17 @@ export function PriceRowCardView({
               Keep the newer price
             </button>
             <button type="button" disabled={dead} onClick={() => onFileRow(part, { allow: true })} style={cardPress(dead, false)}>
-              File {dollars(each)} over it
+              File <MoneyText text={dollars(each)} /> over it
             </button>
           </>
         ) : part && each != null && house ? (
           <>
             <button type="button" disabled={dead} onClick={() => onFileRow(part, { allow: c.bigMove || serverAsk != null })} style={cardPress(dead, true)}>
-              {busy ? 'Filing…' : serverAsk ? `File ${dollars(each)} anyway` : c.status === 'offer' && !picked ? `Same part · file ${dollars(each)}` : `File ${dollars(each)}`}
+              {busy ? 'Filing…' : serverAsk ? <MoneyText text={`File ${dollars(each)} anyway`} /> : c.status === 'offer' && !picked ? <MoneyText text={`Same part · file ${dollars(each)}`} /> : <MoneyText text={`File ${dollars(each)}`} />}
             </button>
             {c.bigMove && priceOnFile ? (
               <button type="button" disabled={dead} onClick={onLeaveOut} style={cardPress(dead, false)}>
-                Keep {dollars(priceOnFile.price)}
+                Keep <MoneyText text={dollars(priceOnFile.price)} />
               </button>
             ) : null}
           </>
@@ -177,7 +178,7 @@ export function PriceRowCardView({
           <>
             <input type="text" value={name} onChange={(e) => setNewName(e.target.value)} aria-label="Name in the book" style={{ ...cardInput, flex: '1 1 16rem', minWidth: 0 }} />
             <button type="button" disabled={dead || !name.trim()} onClick={() => onMakeAndFile(name.trim())} style={cardPress(dead || !name.trim(), true)}>
-              {busy ? 'Making…' : `New part in the book · file ${dollars(bookPrice(row.unitPrice, PRICING_UNIT_FACTOR[row.pricingUnit]))}`}
+              {busy ? 'Making…' : <MoneyText text={`New part in the book · file ${dollars(bookPrice(row.unitPrice, PRICING_UNIT_FACTOR[row.pricingUnit]))}`} />}
             </button>
           </>
         ) : null}

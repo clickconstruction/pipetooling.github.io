@@ -4,6 +4,7 @@ import { BILLED_SHELL_NO_BILL_LINE, stageRowBilledAgeDays, stageRowBilledAgeRefe
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { MoneyText } from '../Money'
 
 /** What the row's They said… press opens the promise window with. */
 export type StagesBilledRowPromiseTarget = { jobId: string; jobLabel: string; initialYmd: string | null }
@@ -57,7 +58,7 @@ export function StagesBilledRowExtras({
           }}
           style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 9px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-red-800)', background: 'var(--bg-red-tint)', border: '1px solid #fecaca', cursor: 'pointer', whiteSpace: 'nowrap' }}
         >
-          ⚠ {bankReturnedBadgeWords(bankRet)}
+          ⚠ <MoneyText text={bankReturnedBadgeWords(bankRet)} />
         </button>
       ) : null}
       {shell && collectionsRef?.source === 'collections' ? (

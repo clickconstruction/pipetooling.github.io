@@ -8,6 +8,7 @@ import { sendBackStripeBilledLine } from '../../lib/voidStripeInvoiceForRevert'
 import type { InvoiceWithJobForBillView } from './HostedStripeBillPanel'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { MoneyText } from '../Money'
 
 /** What the modal did, for the host's toast. */
 export type UnwindStripeOobResult = {
@@ -179,7 +180,7 @@ export default function UnwindStripeOobPaymentModal({
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Invoice amount:{' '}
           <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
-            ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <MoneyText text={`$${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
           </strong>
         </p>
         <label htmlFor="unwind-oob-reason" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}>

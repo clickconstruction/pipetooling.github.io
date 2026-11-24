@@ -73,6 +73,7 @@ import { overToCreditPlan, type OverToCreditPlan } from '../../lib/subWorkOrders
 import { ledgerDayWords, paymentDay } from '../../lib/subWorkOrders/subPaymentsLedger'
 import { useSubPaperAnswers } from '../../hooks/useSubPaperAnswers'
 import { noteAnsweredWords, noteFlagWords, notesForSheet, paymentReceivedDay, receivedChipWords, waitingNotes } from '../../lib/subWorkOrders/subPaperAnswers'
+import { Money, MoneyText } from '../Money'
 
 export type JobsSubLaborTabProps = {
   error: string | null
@@ -851,7 +852,7 @@ export default function JobsSubLaborTab({
                                   })
                                 }}
                               >
-                                Keep the {'$'}{formatCurrency(-balance)} over as credit…
+                                Keep the {'$'}<Money amount={-balance} symbol="" /> over as credit…
                               </button>
                             ) : null}
                           </div>
@@ -965,7 +966,7 @@ export default function JobsSubLaborTab({
                                       {(job.payments ?? []).map((p) => (
                                         <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                           <td style={{ padding: '0.5rem 0.75rem' }}>{p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
-                                          <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}{subPayMethodWords(p) ? <span data-sub-payment-method style={{ color: 'var(--text-muted)' }}> · {subPayMethodWords(p)}</span> : null}{p.sending_no ? <span data-sub-payment-sending style={{ color: 'var(--text-muted)' }}> · sending {p.sending_no}</span> : null}{p.credit_kept ? <span data-sub-payment-kept style={{ color: 'var(--text-green-700)' }}> · {creditNoteWords(p.credit_kept)} kept</span> : null}{paymentReceivedDay(paperAnswers.answers, p) ? <span data-sub-payment-received style={{ marginLeft: 8 }}>{tag(receivedChipWords(paymentReceivedDay(paperAnswers.answers, p), answersToday), 'gray', 'The sub marked this payment received on their page. It is not a release or a waiver.')}</span> : null}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}{subPayMethodWords(p) ? <span data-sub-payment-method style={{ color: 'var(--text-muted)' }}> · {subPayMethodWords(p)}</span> : null}{p.sending_no ? <span data-sub-payment-sending style={{ color: 'var(--text-muted)' }}> · sending {p.sending_no}</span> : null}{p.credit_kept ? <span data-sub-payment-kept style={{ color: 'var(--text-green-700)' }}> · <MoneyText text={creditNoteWords(p.credit_kept)} /> kept</span> : null}{paymentReceivedDay(paperAnswers.answers, p) ? <span data-sub-payment-received style={{ marginLeft: 8 }}>{tag(receivedChipWords(paymentReceivedDay(paperAnswers.answers, p), answersToday), 'gray', 'The sub marked this payment received on their page. It is not a release or a waiver.')}</span> : null}</td>
                                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? 'var(--text-red-600)' : undefined }}><AmountSmallCents value={Number(p.amount)} /></td>
                                           <td style={{ padding: '0.5rem 0.75rem' }}>
                                             {p.memo?.trim() ? p.memo : '—'}

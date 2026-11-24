@@ -13,6 +13,7 @@ import {
 import type { RetainageJobFacts } from '../../../lib/ar/retainageHeldRows'
 import { formatYmdMonthDay } from '../../../lib/jobs/billedExpectedPay'
 import { formatCurrency } from '../../../lib/jobs/jobFormatting'
+import { MoneyText } from '../../Money'
 
 /**
  * The Retainage held band in the Accounts Receivable window (punch list #165, PR 2 — show A):
@@ -49,14 +50,14 @@ function Figure({ line }: { line: RetainageHeldLine }) {
   if (line.owed > 0) {
     return (
       <>
-        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{money(line.owed)}</span>
+        <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}><MoneyText text={money(line.owed)} /></span>
         {release ? <span style={{ ...muted, display: 'block', fontSize: '0.75rem' }}>{release}</span> : null}
       </>
     )
   }
   return (
     <>
-      <span style={{ ...muted, fontVariantNumeric: 'tabular-nums', textDecoration: 'line-through' }}>{money(line.held)}</span>
+      <span style={{ ...muted, fontVariantNumeric: 'tabular-nums', textDecoration: 'line-through' }}><MoneyText text={money(line.held)} /></span>
       <span style={{ ...muted, display: 'block', fontSize: '0.75rem' }}>{release}</span>
     </>
   )

@@ -38,6 +38,7 @@ import {
   type VisualsSelection,
   type VisualsTxRow,
 } from '../../lib/banking/mercuryVisualsFlows'
+import { MoneyText } from '../Money'
 
 /**
  * Banking → Mercury → Visuals (v2.1712): three Sankey views of where money
@@ -491,7 +492,7 @@ function VisualsDrilldownModal({
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{title}</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-slate-500)' }}>
-              {sorted.length.toLocaleString()} transaction{sorted.length === 1 ? '' : 's'} · {formatSankeyUsd(total)}
+              {sorted.length.toLocaleString()} transaction{sorted.length === 1 ? '' : 's'} · <MoneyText text={formatSankeyUsd(total)} />
               {sorted.length > shown.length ? ` · showing the ${DRILLDOWN_ROW_CAP} most recent` : ''}
             </div>
           </div>
@@ -517,7 +518,7 @@ function VisualsDrilldownModal({
               <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.counterpartyName ?? '—'}</span>
               <span style={{ color: 'var(--text-slate-500)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{accountLabel(t.accountId)}</span>
               <span style={{ minWidth: '6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-                {`${t.amount < 0 ? '−' : '+'}${formatSankeyUsd(t.amount)}`}
+                <MoneyText text={`${t.amount < 0 ? '−' : '+'}${formatSankeyUsd(t.amount)}`} />
               </span>
             </button>
           ))}
@@ -811,7 +812,7 @@ export function BankingMercuryVisualsTab() {
                 </button>
                 <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{focus.name}</span>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-slate-500)' }}>
-                  {formatSankeyUsd(focusResult.total)} · {focusResult.txCount.toLocaleString()} transaction
+                  <MoneyText text={formatSankeyUsd(focusResult.total)} /> · {focusResult.txCount.toLocaleString()} transaction
                   {focusResult.txCount === 1 ? '' : 's'} · {focusResult.payeeCount.toLocaleString()} payee
                   {focusResult.payeeCount === 1 ? '' : 's'}
                 </span>
@@ -829,10 +830,10 @@ export function BankingMercuryVisualsTab() {
             <>
               <SankeySvg input={flow.input} height={560} onRibbonClick={setDrilldown} onNodeClick={handleNodeFocus} />
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-slate-500)' }}>
-                In {formatSankeyUsd(flow.totalIn)} · out {formatSankeyUsd(flow.totalOut)}
-                {flow.kept > 0 ? ` · kept ${formatSankeyUsd(flow.kept)}` : ''}
-                {flow.fromReserves > 0 ? ` · drawn from reserves ${formatSankeyUsd(flow.fromReserves)}` : ''}
-                {flow.unlabeledOut > 0 ? ` · unlabeled spend ${formatSankeyUsd(flow.unlabeledOut)} (label it in Drag Sort)` : ''}
+                In <MoneyText text={formatSankeyUsd(flow.totalIn)} /> · out <MoneyText text={formatSankeyUsd(flow.totalOut)} />
+                {flow.kept > 0 ? <MoneyText text={` · kept ${formatSankeyUsd(flow.kept)}`} /> : ''}
+                {flow.fromReserves > 0 ? <MoneyText text={` · drawn from reserves ${formatSankeyUsd(flow.fromReserves)}`} /> : ''}
+                {flow.unlabeledOut > 0 ? <MoneyText text={` · unlabeled spend ${formatSankeyUsd(flow.unlabeledOut)} (label it in Drag Sort)`} /> : ''}
                 {' · click a family or label bar to zoom into its payees'}
               </p>
             </>
@@ -841,10 +842,10 @@ export function BankingMercuryVisualsTab() {
             <>
               <SankeySvg input={transfers.input} height={560} padRight={210} onRibbonClick={setDrilldown} />
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-slate-500)' }}>
-                In {formatSankeyUsd(transfers.externalInTotal)} · between accounts {formatSankeyUsd(transfers.pairedTotal)} · out{' '}
-                {formatSankeyUsd(transfers.externalOutTotal)}
+                In <MoneyText text={formatSankeyUsd(transfers.externalInTotal)} /> · between accounts <MoneyText text={formatSankeyUsd(transfers.pairedTotal)} /> · out{' '}
+                <MoneyText text={formatSankeyUsd(transfers.externalOutTotal)} />
                 {transfers.unpairedTotal > 0
-                  ? ` · ${formatSankeyUsd(transfers.unpairedTotal)} in transfer legs with no matching opposite leg in the period`
+                  ? <MoneyText text={` · ${formatSankeyUsd(transfers.unpairedTotal)} in transfer legs with no matching opposite leg in the period`} />
                   : ''}
               </p>
             </>
@@ -853,8 +854,8 @@ export function BankingMercuryVisualsTab() {
             <>
               <SankeySvg input={cards.input} height={460} padRight={260} onRibbonClick={setDrilldown} />
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-slate-500)' }}>
-                {formatSankeyUsd(cards.spendTotal)} of card spend across {cards.txCount.toLocaleString()} purchases
-                {cards.noJobTotal > 0 ? ` · ${formatSankeyUsd(cards.noJobTotal)} not on any job yet` : ' · everything is on a job'}
+                <MoneyText text={formatSankeyUsd(cards.spendTotal)} /> of card spend across {cards.txCount.toLocaleString()} purchases
+                {cards.noJobTotal > 0 ? <MoneyText text={` · ${formatSankeyUsd(cards.noJobTotal)} not on any job yet`} /> : ' · everything is on a job'}
               </p>
             </>
           ) : null}
