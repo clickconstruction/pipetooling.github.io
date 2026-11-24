@@ -155,9 +155,14 @@ export function resendTo(party: SendParty): ResendTo | null {
   return { to: null, words: `${val('count', String(namesakes.length))} people at ${party.name} are named ${val('who', named)}, and this send does not say which. Take it off their page, then send it to the one you mean.` }
 }
 
-/** A person's first name, for the press: *Send to Dana*. A contact is *Dana Whitlock*, with their role kept apart. */
-export function firstName(name: string): string {
-  return name.trim().split(/\s+/)[0] ?? ''
+/**
+ * Who the press names: the contact's whole name, *Send to Dana Whitlock*, or the address when the record keeps no name.
+ * Never the first word alone. A first word is a first name only when the name is a person's, and the record does not
+ * say which it is: a GC's first contact is the customer's own record, named for the company, and a contact can be
+ * *Accounts Payable*. The role stays apart, in the list the person is picked from.
+ */
+export function pressName(to: PartyContact): string {
+  return to.name.trim().replace(/\s+/g, ' ') || to.email.trim()
 }
 
 export type SendBoxState = {
@@ -171,7 +176,7 @@ export type SendBoxState = {
  * party has an email, and while an unread revision has not been waved through with the box *Send it anyway*.
  */
 export function sendBox(party: SendParty, to: PartyContact | null, gate: { published: boolean; unpublishedWords: string; unread: string; anyway: boolean }): SendBoxState {
-  const label = to ? `Send to ${firstName(to.name) || to.email}` : 'Send'
+  const label = to ? `Send to ${pressName(to)}` : 'Send'
   if (!gate.published) return { note: { tone: 'warn', words: gate.unpublishedWords }, press: { label, dead: true } }
   if (party.page.state === 'off') {
     const on = party.page.offOn ? ` on ${formatWorkDateYmdMonthDayShort(party.page.offOn)}` : ''

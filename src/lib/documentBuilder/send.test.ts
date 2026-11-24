@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
-import { ABOUT_ALL_JOBS, SEND_LIST_FIRST_ROWS, aboutChoices, aboutJobId, firstName, resendPress, resendTo, shownParties, sendBatch, sendBatchOutcome, sendBox, sendChips, sendStanding, unreadGateWords, type SendParty, type SendRecord } from './send'
+import { ABOUT_ALL_JOBS, SEND_LIST_FIRST_ROWS, aboutChoices, aboutJobId, pressName, resendPress, resendTo, shownParties, sendBatch, sendBatchOutcome, sendBox, sendChips, sendStanding, unreadGateWords, type SendParty, type SendRecord } from './send'
 
 /** Made-up trades on a made-up job. */
 const send = (over: Partial<SendRecord> = {}): SendRecord => ({ id: 's1', contactName: 'Ana Pruitt', contactEmail: 'ana@cedarfork.test', about: null, sentOn: '2026-11-12', sentRevision: 1, timesSent: 1, openedOn: null, openedRevision: null, ...over })
@@ -151,13 +151,21 @@ describe('the chips on a row', () => {
 describe('the box that sends to one', () => {
   const ana = party().contacts[0] ?? null
 
-  it('names the person on its press', () => {
-    expect(firstName('Dana Whitlock')).toBe('Dana')
-    expect(sendBox(party(), ana, OPEN)).toEqual({ note: { tone: 'quiet', words: 'They get an email with a link to their page. No login.' }, press: { label: 'Send to Ana', dead: false } })
+  it('names the contact whole on its press, never by a first word alone', () => {
+    expect(pressName({ name: 'Dana Whitlock', email: 'dana@northgate.test' })).toBe('Dana Whitlock')
+    // A GC's first contact is the customer's own record, named for the company. A contact can be a desk, or a test row.
+    expect(pressName({ name: 'Northgate Builders', email: 'office@northgate.test' })).toBe('Northgate Builders')
+    expect(pressName({ name: 'Accounts Payable', email: 'ap@northgate.test' })).toBe('Accounts Payable')
+    expect(pressName({ name: 'ZZ Test Sink', email: 'sink@zz.test' })).toBe('ZZ Test Sink')
+    expect(pressName({ name: '  Dana   Whitlock ', email: 'dana@northgate.test' })).toBe('Dana Whitlock')
+    // A record that keeps no name reads by its address.
+    expect(pressName({ name: ' ', email: 'office@northgate.test' })).toBe('office@northgate.test')
+    expect(sendBox(party(), { name: 'ZZ Test Sink', email: 'sink@zz.test' }, OPEN).press.label).toBe('Send to ZZ Test Sink')
+    expect(sendBox(party(), ana, OPEN)).toEqual({ note: { tone: 'quiet', words: 'They get an email with a link to their page. No login.' }, press: { label: 'Send to Ana Pruitt', dead: false } })
   })
 
   it('makes a page for someone who never had one, and says so first', () => {
-    expect(sendBox(party({ page: { state: 'none' } }), ana, OPEN)).toEqual({ note: { tone: 'warn', words: 'Cedar Fork Drain has no page yet. Sending makes one.' }, press: { label: 'Send to Ana', dead: false } })
+    expect(sendBox(party({ page: { state: 'none' } }), ana, OPEN)).toEqual({ note: { tone: 'warn', words: 'Cedar Fork Drain has no page yet. Sending makes one.' }, press: { label: 'Send to Ana Pruitt', dead: false } })
   })
 
   it('never turns a page back on: the send is dead, and turning it on is its own press', () => {
@@ -167,7 +175,7 @@ describe('the box that sends to one', () => {
   })
 
   it('is dead while nothing is published, with nobody to send to, and while an unread revision is not waved through', () => {
-    expect(sendBox(party(), ana, { ...OPEN, published: false })).toEqual({ note: { tone: 'warn', words: "Publish this job's sheet first." }, press: { label: 'Send to Ana', dead: true } })
+    expect(sendBox(party(), ana, { ...OPEN, published: false })).toEqual({ note: { tone: 'warn', words: "Publish this job's sheet first." }, press: { label: 'Send to Ana Pruitt', dead: true } })
     expect(sendBox(party({ contacts: [] }), null, OPEN).press).toEqual({ label: 'Send', dead: true })
     const unread = { ...OPEN, unread: 'Your insurance agent has not checked your usual sheet.' }
     expect(sendBox(party(), ana, unread).press.dead).toBe(true)

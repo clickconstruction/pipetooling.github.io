@@ -56,7 +56,7 @@ describe('BuilderGcSendCard', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Send it to Northgate Builders' }))
     expect((screen.getByRole('textbox', { name: 'A note to them' }) as HTMLTextAreaElement).value).toBe(BUILDER_SEND_NOTE)
     fireEvent.change(screen.getByRole('combobox', { name: 'What it is about' }), { target: { value: 'j2' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Send to Dana' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Dana Whitlock' }))
     await waitFor(() => expect(io.send).toHaveBeenCalledTimes(1))
     expect(io.send).toHaveBeenCalledWith({ builderKey: 'sub-nda', customerId: 'northgate', aboutJobId: 'j2', contactEmail: 'dana@northgate.test', note: BUILDER_SEND_NOTE, why: 'first', anyway: false })
     await waitFor(() => expect(io.readParties).toHaveBeenCalledTimes(2))
