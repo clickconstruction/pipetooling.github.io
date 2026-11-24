@@ -2,19 +2,20 @@
 name: "Lien desk: what the ledger (#361) left, to do later"
 number: 415
 group: residual
-status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454
+status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454 · loose ends 1, 2, 4 and 6 built the same day on the picks from the pictures, v2.8537, v2.8535 and v2.8538, and loose end 5 answered · walk 2 done on a staged ZZ Test job, walk 7's record written and its reading not seen, which left a finding with no decision yet
 summary: >
   Punch list #361 rebuilt the Lien desk's Months on this job as one card, the ledger, and closed on
   2026-11-21 once every choice made with it was built and live. Its last night left a handful of
-  small things. Four are builds still to do: the claim's dropped cents, an empty card with no next
-  press, strip chips too small on a phone, and a strip chip too long for its strip. A fifth, the late
-  window the desk and the timeline read from two sources, shipped as v2.8454. One is five things Grace has not been told. Six are walks: five
-  screens seen only on made-up rows because no live notice is in that state yet, and one affidavit
-  reading never walked. The look at the three fixes of 2026-11-21 in both themes was walked on
-  2026-11-24. Nothing left here has a date. Taunya wants every one of them done, later.
-next: Taunya says which piece to build next. Tell Grace the five things in loose end 5 first, since that costs no code. Walk 7 can be done any time on a ZZ Test job. Walks 2 to 6 wait on a live notice in that state. Loose ends 2 and 6 can be built in a quiet hour. Loose ends 1 and 4 change how a screen looks: their labeled pictures at 730 px and 380 px went to Taunya on 2026-11-24, and each waits on its caller's pick.
-size: four small builds (1 S · 2 XS · 4 S · 6 XS), one word to Grace, six walks (XS each; five wait on live cases)
-blocker: None for the builds. The walks wait on live notices in the states they name.
+  small things. Every build among them shipped on 2026-11-24: the late window read from one source
+  (v2.8454), the empty card's next press (v2.8535), the claim's cents (v2.8537), and the pinned strip
+  for a thumb with a long chip that fits (v2.8538). The five things for Grace were answered that day.
+  Seven walks were owed. Walks 1 and 2 are done. Walk 7's record was written on a ZZ Test job and its
+  reading was not seen, and that left a finding: the affidavit pane draws its months card only for a
+  job with approved clock hours. Walk 4 was staged and not walked. Walks 3, 5 and 6 were not staged
+  and wait on live cases. The three builds of v2.8535 to v2.8538 have not been seen live.
+next: The owner decides the finding under *Found on the walks*, since walk 7's reading waits on it. Walk 4 can be staged again on the ZZ Test job on the owner's yes, and it needs the two by-hand papers that are still on that job, so void them after it, not before. A read-only look at the live desk is owed for v2.8535, v2.8537 and v2.8538. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
+size: no build left · one decision (the finding) · one live look · five walks (XS each): 4 can be staged, 7 waits on the finding, 3, 5 and 6 wait on live cases
+blocker: The finding waits on the owner's decision. Staging a walk writes on a ZZ Test job, so each waits on the owner's yes.
 ---
 
 # Lien desk: what the ledger (#361) left, to do later (#415)
@@ -39,9 +40,13 @@ every single follow-up at a later time."* This card is every follow-up that thre
 
 Each names the PR it comes from and whose call it is. Each was read again against `main` on 2026-11-24, after
 v2.8341 and v2.8346 (the desk on a phone), v2.8364 (deeper green presses) and v2.8415 (smaller cents) had touched
-the desk's files. Nothing was built that day.
+the desk's files. Loose end 3 was built that day, and then loose ends 1, 2, 4 and 6 on the picks made from the
+pictures. Each struck line names its version, and the fragment of that version holds what changed and what was run.
 
-1. **The claim drops cents while its bills keep them (S).** In Months on this job the claim reads *$12,700* and the
+1. ~~**The claim drops cents while its bills keep them (S).**~~ **Shipped v2.8537**, as B: cents on both, the cents
+   small. The pick was answered on 2026-11-24 from the labeled pictures. The claim, the figure under *This notice*,
+   the Months title row and the strip's Claim chip now show their cents through `Money`. The list at the left keeps
+   whole dollars, as a column to run the eye down. Not seen live yet. What it was: in Months on this job the claim reads *$12,700* and the
    bill lines under it *$12,700.00*. The claim is `formatUsdNoCents`; the lines are `demandMoney` in
    `LienClaimBills.tsx`. It is older than #361 and was carried over by #8990 (v2.7989). Show cents on both or drop
    them on both. **Grace's call**, since it is how her desk reads money. Draw both ways at 730 px and 380 px first.
@@ -57,7 +62,10 @@ the desk's files. Nothing was built that day.
      on both) and B (cents on both, the cents small, with B in dark beside it). B is the one recommended, since the
      desk then reads the figure the paper prints. At 380 px the longer figure still fits under *This notice*:
      85 px in an 88 px column. The pictures went to Taunya for Grace. They are not in the repo.
-2. **The empty card names no next press (XS).** With no month on the job the card reads only *No months on this job
+2. ~~**The empty card names no next press (XS).**~~ **Shipped v2.8535.** The empty card now reads *No months on
+   this job yet. Set the last day of work › gives the job its first month.*, and the press opens the window the
+   path's LAST WORK stop opens. A reader with no press reads what gives the job a month. Not seen live yet: a
+   notice whose job has no month is rare. What it was: with no month on the job the card reads only *No months on this job
    yet.* (`LienDeskMonths.tsx`, `data-lien-ledger-empty`), from #8990 (v2.7989). The repo's rule is that an empty
    state says what fills it and offers the press (`EmptyState` with `next`). The next step is the row above it, the
    last day of work and its Change ›. **No one's call**: a rule the card breaks. Still so on 2026-11-24:
@@ -70,7 +78,11 @@ the desk's files. Nothing was built that day.
    the path it draws (`lienLateNoticeUntil`, `LienTimeline.affidavitDay`), under the desk's unchanged rule. The
    example, the sweep and what was run are in `docs/recent-features/v2.8454.md`. It was never seen live: walk 2
    is its look, on a live notice in the late window.
-4. **The strip's chips are 18 px tall on a phone (S).** The line that pins to the top of a notice pane holds chips
+4. ~~**The strip's chips are 18 px tall on a phone (S).**~~ **Shipped v2.8538**, as C: one line that slides
+   sideways, 44 px tall, with a 44 px touch area on every press and the chips' look unchanged. The pick was
+   answered on 2026-11-24 from the labeled pictures. Measured on a harness of the real pane: the strip pins 45 px
+   at 380 px where it pinned 81 px. Chromium only, not seen on a real phone, and not seen live yet. What it was:
+   the line that pins to the top of a notice pane holds chips
    that are presses (`lienStripChips`, `.lienStripChip`, #8177, v2.7318). At 390 px each is 18 px tall. The owner's
    answer 5 of 2026-11-20 (#9133) grew every press on the months card to 44 px, not the strip's. **The owner's
    call**, since his answer drew that line. Grow the touch area, not the look, and picture it at 380 px first.
@@ -83,7 +95,9 @@ the desk's files. Nothing was built that day.
      the 44 px, on one line that slides sideways, so the strip pins 44 px. C is the one recommended. B and C change
      a phone only, so the 730 px picture is the same for all three. The pictures went to Taunya for the owner.
      They are not in the repo.
-5. **Tell Grace (no code).** The Lien desk is Grace's desk. She has not yet heard five things decided or built
+5. ~~**Tell Grace (no code).**~~ **Answered 2026-11-24**: the list was given as told, with no objection. It is six
+   things with v2.8454's late window. This line rests on that day's session's own report. What it was: the Lien
+   desk is Grace's desk. She had not yet heard five things decided or built
    while she was away from the thread. **Grace's**, to hear and to object to any. Taunya or the coordinator tells her.
    - #9134 (v2.8115): Record it… on a missed notice opens with no paper picked and no month ticked. That was the
      owner's answer 1 of 2026-11-20, and it changes how her v2.8027 (#9026) opens.
@@ -94,7 +108,10 @@ the desk's files. Nothing was built that day.
    - #9305 (v2.8234): her open choice on #361, the figure in the head of the notice's column, was answered by
      Taunya from three mock-ups. The claim now sits small under the name.
    - #9211 (v2.8167): a sent notice's strip and months bar name the months it went for, not *No month picked*.
-6. **A long next step runs off the strip (XS).** Found on walk 1, 2026-11-24. The strip's third chip is the path's
+6. ~~**A long next step runs off the strip (XS).**~~ **Shipped v2.8538**, with loose end 4. At a desk a chip too
+   long for the strip wraps inside its own shape, and on a phone C's sliding line holds it. Measured on a harness:
+   the pane slides sideways 0 px where it slid 150 px and 152 px. Not seen live yet. What it was: found on walk 1,
+   2026-11-24. The strip's third chip is the path's
    next step. On a missed notice that can no longer go it is a whole sentence in red: *The affidavit window closed
    with nothing filed — the lien is gone; the money is still owed ›*. A chip cannot wrap (`lienRowChipStyle`,
    `whiteSpace: 'nowrap'`), so the chip is cut at the right edge and the pane slides sideways: 150 px at 380 px,
@@ -102,6 +119,8 @@ the desk's files. Nothing was built that day.
    How it fits rides loose end 4: C's sliding line holds it, and A or B needs the chip to wrap or say less.
 
 ## Walks still owed
+
+Walks 1 and 2 are done. Walks 3 to 7 are owed, and *Where the walks stand* under the list says what each needs.
 
 Every walk is read-only: open the page, read it, press nothing that saves. On the dev server a save writes prod.
 Sign in with `node scripts/dev-pane-login.mjs`, never a typed password. If the browser pane is in another session's
@@ -122,11 +141,21 @@ line says otherwise. Each is read at 730 px and 380 px, in light and in dark. Na
      page. The pictures show real jobs, so they stayed out of the repo.
    - The desk that day held one notice to draft, eight ready, six printed, two sent and one missed. The missed one
      is past the late window and has one closed month, so walks 2 and 3 still wait.
-2. **A missed notice in the late window (#9215)**, as the dev. Pick a missed notice whose every window closed
+2. **Done 2026-11-24, on a staged ZZ Test job. A missed notice in the late window (#9215)**, as the dev. Pick a missed notice whose every window closed
    unsent, while the affidavit is unfiled and its day is ahead. The card says *a late notice can still go · the
    affidavit by <day>*. The footer holds *Ask the leader to approve* under *Sign and send · Not signed yet*. The
    closed month's stop says *A late notice can still go, and the affidavit can follow it*. Nothing says the lien
    right is gone. Not walked because no live notice is in the late window; the one on 2026-11-21 was past it.
+   - It read right at 730 px and 380 px, in light and in dark, by that day's session's own report. The card said
+     *a late notice can still go · the affidavit by Dec 15*. The footer's head was *Sign and send · Not signed
+     yet*. The closed month's stop said *A late notice can still go, and the affidavit can follow it*. Nothing
+     said the lien right is gone, and the path said *Send the Sep notice late*.
+   - One difference from the words above: the footer said *Don't send yet. Enter the owner of record…* in place
+     of *Ask the leader to approve*, because the ZZ Test job has no property record.
+   - It was a day the windows' list held the job, so it is not v2.8454's own case. That case has still not been
+     seen live. Its next day is 2027-04-16.
+   - Staged through the dev seat: the job was given a ZZ Test GC and a last day of work set by hand. Both were
+     put back after, and read back as before on 2026-11-24.
 3. **A missed notice that can no longer go, with two or more closed months (#9262)**, as the dev. The gates' line
    and the strip's first chip read *Windows closed, the last <day>*, and the months bar reads *<months>, closed*.
    Not walked because the one live case has a single closed month.
@@ -145,7 +174,53 @@ line says otherwise. Each is read at 730 px and 380 px, in light and in dark. Na
    affidavit claims* reads that month *on the lien*, whatever the paper's date. Delete the ZZ rows after. Not walked
    because it was read only in the code, and a real case needs a real paper recorded.
 
+## Where the walks stand
+
+Read on 2026-11-24. Staging a walk writes on a ZZ Test job through the dev seat, so each waits on the owner's yes.
+What walks 3 and 5 need is that day's session's reading, written here as it left it.
+
+- **Walk 3** was not staged. Two closed months need approved clock hours in two past months, and hours cannot be
+  put in a past month through the app. It waits on a live case.
+- **Walk 4** can be staged, and was once. The ZZ Test job holds two § 53.056 notices recorded by hand for one
+  closed month. With its GC put back and its last day of work set by hand to a day in a month still open, the
+  desk drafts a notice with two earlier papers. That is two writes on the job's row to stage and two to put back.
+  It was staged on 2026-11-24 and the staging was taken back before the look.
+- **Walk 5** was not staged: the *noted by* line needs a note made by another account, one with a long name. It
+  waits on a live case.
+- **Walk 6** cannot be staged. No press makes a sent record that names no month: the by-hand form and the dev
+  seat's verb both refuse a paper with no months. It waits on a live case, and there may never be one.
+- **Walk 7** is half done. Record it… on the months card opened the by-hand form with the closed month ticked,
+  and one record was written: one new filing and nothing else. The affidavit pane then drew no *Months the
+  affidavit claims* card, and its path read *§ 53.056 notice · no work month yet*. Its reading waits on the
+  finding below.
+
+## Found on the walks
+
+**The affidavit pane draws *Months the affidavit claims* only for a job with approved clock hours.** Found on
+walk 7, 2026-11-24, and read again in the code that day. The pane builds the card when the job's clock months are
+not empty (`LienDeskAffidavitPane.tsx`, `monthRows`, `workMonths.months.length`). A job dated by hand, by a bill
+or by its creation has no clock month, so it never shows the card, whatever notice is on record. The notice pane
+reads such a job's month from `list_lien_notice_months` and draws it. **Not decided, and nothing is built.** Two
+ways it could go:
+
+- **Leave the rule and say so.** The card stays a list of months worked by the clock. A job with no approved
+  hours gets one quiet line in its place that says no month has approved hours, so the reader knows the card is
+  absent and not lost.
+- **Draw the card from the months the notice pane reads.** A job dated by hand, by a bill or by its creation
+  shows its stand-in month, marked as a stand-in, with its notice read against it as for a clock month. Walk 7
+  could then be read on the ZZ Test job as it stands.
+
+## Left on prod
+
+Two § 53.056 notice filings stand on the ZZ Test job of the walks, recorded by hand on 2026-11-24 for one closed
+month at $1 each. Their ids start `b32b3eba` and `ccb70578`, and each note starts *ZZ TEST*. Read back live on
+2026-11-24: neither is voided. Nothing deletes a filing. Void is the press on each record in the job's Lien
+window, and it writes one column on one row. No paper on the desk is tied to either, so the void moves nothing
+else. The job has no GC, so it is on no notice list, and ZZ Test jobs are hidden from the desk and left out of
+the attorney's portal. Walk 4 needs both, so void them after it. Void or leave is the owner's call.
+
 ## How to retire it
 
 Strike each piece as it ships, with its version. Delete the card when the five builds are shipped or
-dropped by their caller, Grace has heard the five, and each walk is done or dropped.
+dropped by their caller, Grace has heard the five, each walk is done or dropped, the finding is decided, and the
+two ZZ Test filings are voided or left on the owner's word.
