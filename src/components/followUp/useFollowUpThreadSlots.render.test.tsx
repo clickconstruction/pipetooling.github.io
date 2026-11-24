@@ -653,6 +653,30 @@ describe('A day was heard under their line (punch list #421)', () => {
     expect(reread).toHaveBeenCalled()
   })
 
+  it('then the write-throughs (PR 4): they get the line, the person and the words, and their words are the toast', async () => {
+    open.contactId = 'greg'
+    const through = vi.fn(async () => ({ words: 'Written down. Their quote by then. It went on their ask on the Board.', tone: 'success' as const }))
+    const io = fakeIo({ writeDownHeard: vi.fn(async () => undefined), writeHeardThrough: through })
+    renderThread(io, { ...GREG, gcCompanyId: 'hillside' }, false, theirs('greg', 'Quote by tomorrow.', { jobId: 'project:p1' }))
+    fireEvent.click(await under().findByRole('button', { name: 'Their quote' }))
+    expect(await screen.findByText('Written down. Their quote by then. It went on their ask on the Board.')).toBeTruthy()
+    expect(through).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.objectContaining({ id: 'm-in', channel: 'text', jobId: 'project:p1' }),
+        contact: expect.objectContaining({ id: 'greg', gcCompanyId: 'hillside' }),
+        kind: 'quote',
+        writes: null,
+        ymd: tomorrow(),
+        written: `Written down. Their quote by ${dayLabel(tomorrow())}.`,
+        by: { userId: SMOKE_AUTH_USER_ID, name: 'Robert' },
+      }),
+    )
+    // Just talk writes nothing else, so nothing goes through.
+    fireEvent.click(under().getByRole('button', { name: 'just talk' }))
+    expect(await screen.findByText('Kept as just talk. Nothing else was written.')).toBeTruthy()
+    expect(through).toHaveBeenCalledTimes(1)
+  })
+
   it('a start or delivery writes a start, and just talk writes no kind', async () => {
     open.contactId = 'greg'
     const io = fakeIo({ writeDownHeard: vi.fn(async () => undefined) })

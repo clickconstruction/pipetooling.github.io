@@ -12,6 +12,7 @@ import { makeInvoice, makeJob, renderWithProviders, settle } from '../../../test
 import LegalDeskMapView from './LegalDeskMapView'
 import type { VenueBlock } from '../../../lib/legal/legalParties'
 import LegalDesk from './LegalDesk'
+import { moneyText } from '../../../test/moneyText'
 
 vi.mock('../../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../../test/renderSmokeMocks')
@@ -62,7 +63,7 @@ describe('LegalDesk', () => {
     // A page since punch list #182: a named region, not a dialog.
     expect(screen.getByRole('region', { name: /^Legal Desk/ })).toBeTruthy()
     expect(screen.getAllByText('The Reading Corner').length).toBeGreaterThan(0)
-    expect(screen.getByText(/1 account · \$8,982\.00/)).toBeTruthy()
+    expect(screen.getByText(moneyText(/1 account · \$8,982\.00/))).toBeTruthy()
     // v2.5851: six tabs; the Record of contact is the Timeline's Said lane and Fees & steps reads With the firm.
     for (const label of ['Narrative', 'Account', 'Paper', 'Evidence', 'With the firm', 'Timeline']) expect(screen.getByRole('tab', { name: label })).toBeTruthy()
     expect(screen.queryByRole('tab', { name: 'Record of contact' })).toBeNull()

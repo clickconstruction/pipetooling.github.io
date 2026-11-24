@@ -1,6 +1,6 @@
-import { formatCurrency } from '../../../lib/format'
 import type { ReviewLaborContributor } from '../../../lib/people/reviewPersonTypes'
 import { stripAddressZipState } from './reviewFormat'
+import { Money } from '../../Money'
 
 /** Which job the contributors window is about, and whether it shows labor or profit shares. */
 export type ReviewLaborBreakdownContext = {
@@ -114,11 +114,11 @@ export function ReviewLaborBreakdownModal({
                         {sourceLabel ? <div style={{ fontSize: '0.75em', color: 'var(--text-faint)' }}>{sourceLabel}</div> : null}
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{r.hours > 0 ? r.hours.toFixed(2) : '—'}</td>
-                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{r.laborCost > 0 ? `$${formatCurrency(r.laborCost)}` : '—'}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{r.laborCost > 0 ? <Money amount={r.laborCost} /> : '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>{denom > 0 && r.laborCost > 0 ? `${pct}%` : '—'}</td>
                       {isProfit && (
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: isYou ? 600 : 400, color: profitSlice >= 0 ? undefined : 'var(--text-red-700)' }}>
-                          {Math.abs(profitSlice) >= 0.5 ? `$${formatCurrency(profitSlice)}` : '—'}
+                          {Math.abs(profitSlice) >= 0.5 ? <Money amount={profitSlice} /> : '—'}
                         </td>
                       )}
                     </tr>
@@ -129,13 +129,13 @@ export function ReviewLaborBreakdownModal({
                 <tr>
                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', fontWeight: 600 }}>Total</td>
                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', fontWeight: 600 }}>{sumHours > 0 ? sumHours.toFixed(2) : '—'}</td>
-                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', fontWeight: 600 }}>{sumOfRows > 0 ? `$${formatCurrency(sumOfRows)}` : '—'}</td>
+                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', fontWeight: 600 }}>{sumOfRows > 0 ? <Money amount={sumOfRows} /> : '—'}</td>
                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', color: 'var(--text-muted)' }}>
                     {denom > 0 ? `${Math.round((sumOfRows / denom) * 100)}%` : '—'}
                   </td>
                   {isProfit && (
                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', fontWeight: 600, color: ctx.revenueBeforeOverhead >= 0 ? undefined : 'var(--text-red-700)' }}>
-                      {Math.abs(ctx.revenueBeforeOverhead) >= 0.5 ? `$${formatCurrency(denom > 0 ? (sumOfRows / denom) * ctx.revenueBeforeOverhead : 0)}` : '—'}
+                      {Math.abs(ctx.revenueBeforeOverhead) >= 0.5 ? <Money amount={denom > 0 ? (sumOfRows / denom) * ctx.revenueBeforeOverhead : 0} /> : '—'}
                     </td>
                   )}
                 </tr>
@@ -145,7 +145,7 @@ export function ReviewLaborBreakdownModal({
         )}
         {Math.abs(sumOfRows - ctx.totalLaborOnJob) > 1 && ctx.totalLaborOnJob > 0 && (
           <p style={{ marginTop: '0.75rem', fontSize: '0.75em', color: 'var(--text-faint)' }}>
-            Per-person rows total ${formatCurrency(sumOfRows)}; the job header showed ${formatCurrency(ctx.totalLaborOnJob)}. The two should match — a small gap usually means a sub-labor card without an assignee or a crew row outside the 2-year lookback window.
+            Per-person rows total <Money amount={sumOfRows} />; the job header showed <Money amount={ctx.totalLaborOnJob} />. The two should match — a small gap usually means a sub-labor card without an assignee or a crew row outside the 2-year lookback window.
           </p>
         )}
       </div>

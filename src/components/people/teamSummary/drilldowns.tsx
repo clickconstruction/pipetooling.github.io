@@ -32,6 +32,7 @@ import {
 import { compactAddressForHoursDisplay } from './addressDisplay'
 import { EmptyState } from '../../EmptyState'
 import { useJobFormModal } from '../../../contexts/JobFormModalContext'
+import { MoneyText } from '../../Money'
 
 // Link-style button used inside drilldown table cells (e.g. "Where the
 // field hrs went" Job column) that open the Edit Job modal in the
@@ -540,7 +541,7 @@ export function ProfitBody(props: {
           <span style={burden < 0 ? negStyle : undefined}>{fmtMoney(burden)}</span>
           <span style={{ color: 'var(--text-muted)' }}>
             {' '}
-            ({fmtH(entry.fieldHours)} field hrs &times; ${partsRate.toFixed(2)}/hr)
+            ({fmtH(entry.fieldHours)} field hrs &times; <MoneyText text={`$${partsRate.toFixed(2)}`} />/hr)
           </span>
         </div>
         <div style={{ fontSize: '1.05rem' }}>
@@ -1078,7 +1079,7 @@ export function OverheadBurdenBody(props: {
             Overhead burden:{' '}
             <span style={burden < 0 ? negStyle : undefined}>{fmtMoney(burden)}</span>
           </strong>{' '}
-          ({fmtH(fieldHrs)} field hrs &times; ${partsRate.toFixed(2)}/hr)
+          ({fmtH(fieldHrs)} field hrs &times; <MoneyText text={`$${partsRate.toFixed(2)}`} />/hr)
         </div>
       </div>
       <h3>How the parts rate is built (rolling 90 days)</h3>
@@ -1102,7 +1103,7 @@ export function OverheadBurdenBody(props: {
         <tfoot>
           <tr>
             <td style={{ textAlign: 'right', fontWeight: 600 }}>= Parts rate</td>
-            <td className="num" style={{ fontWeight: 600 }}>${partsRate.toFixed(2)}/field hr</td>
+            <td className="num" style={{ fontWeight: 600 }}><MoneyText text={`$${partsRate.toFixed(2)}`} />/field hr</td>
           </tr>
         </tfoot>
       </table>
@@ -1121,7 +1122,7 @@ export function OverheadBurdenBody(props: {
           </tr>
           <tr>
             <td>&times; Parts rate</td>
-            <td className="num">${partsRate.toFixed(2)}/hr</td>
+            <td className="num"><MoneyText text={`$${partsRate.toFixed(2)}`} />/hr</td>
           </tr>
         </tbody>
         <tfoot>
@@ -1176,12 +1177,12 @@ export function OverheadLaborBody(props: { entry: TeamSummaryBreakdown }) {
       <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
         <div>
           <strong>{dualRate ? 'Office rate:' : 'Hourly wage:'}</strong>{' '}
-          {wage > 0 ? `$${wage.toFixed(2)}/hr` : <span style={dashStyle}>not configured</span>}
-          {dualRate && <span style={{ color: 'var(--text-muted)' }}> (field wage ${entry.hourlyWage.toFixed(2)}/hr)</span>}
+          {wage > 0 ? <MoneyText text={`$${wage.toFixed(2)}/hr`} /> : <span style={dashStyle}>not configured</span>}
+          {dualRate && <span style={{ color: 'var(--text-muted)' }}> (field wage <MoneyText text={`$${entry.hourlyWage.toFixed(2)}`} />/hr)</span>}
         </div>
         <div style={{ marginTop: '0.5rem', fontSize: '1.05rem', textAlign: 'center' }}>
           <strong>Overhead labor: {fmtMoney(overheadLaborCost)}</strong>{' '}
-          ({fmtH(overheadHrs)} overhead hrs &times; ${(wage || 0).toFixed(2)}/hr)
+          ({fmtH(overheadHrs)} overhead hrs &times; <MoneyText text={`$${(wage || 0).toFixed(2)}`} />/hr)
         </div>
       </div>
       <table>
@@ -1512,7 +1513,7 @@ export function OverheadRateBody(props: { overheadDecomp: OverheadRateDecomp }) 
           {ratePerHour == null ? (
             <span style={dashStyle}>unavailable</span>
           ) : (
-            `$${Number(ratePerHour).toFixed(2)} per field hour`
+            <MoneyText text={`$${Number(ratePerHour).toFixed(2)} per field hour`} />
           )}
         </div>
       </div>
@@ -1577,7 +1578,7 @@ export function OverheadRateBody(props: { overheadDecomp: OverheadRateDecomp }) 
           <tr>
             <td>Method A &mdash; per field hour</td>
             <td className="num">
-              {ratePerHour == null ? <DashCell /> : `$${Number(ratePerHour).toFixed(2)}/hr`}
+              {ratePerHour == null ? <DashCell /> : <MoneyText text={`$${Number(ratePerHour).toFixed(2)}/hr`} />}
             </td>
             <td>
               Reference rate: whole pool &divide; field hours. The Profit
@@ -1603,7 +1604,7 @@ export function OverheadRateBody(props: { overheadDecomp: OverheadRateDecomp }) 
               {ratePerLaborDollar == null ? (
                 <DashCell />
               ) : (
-                `$${Number(ratePerLaborDollar).toFixed(2)} / $1 labor`
+                <MoneyText text={`$${Number(ratePerLaborDollar).toFixed(2)} / $1 labor`} />
               )}
             </td>
             <td>Reference only: ratio of overhead pool to field labor dollars. Matches the &ldquo;C. Overhead by direct labor cost&rdquo; rows in Jobs Worked.</td>

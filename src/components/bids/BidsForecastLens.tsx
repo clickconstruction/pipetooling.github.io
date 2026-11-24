@@ -22,6 +22,7 @@ import {
 } from '../../lib/bids/bidForecast'
 import { cohortDrill } from '../../lib/bids/bidDrill'
 import { BidListModal } from './BidListModal'
+import { MoneyText } from '../Money'
 
 /**
  * Bids → Bid Costs → History & forecast (v2.3355). Three panels from the pure
@@ -72,7 +73,7 @@ function CohortTooltip({ active, payload }: { active?: boolean; payload?: Array<
   const d = payload[0].payload
   const c = d.cohort
   const line = (label: string, n: number, u: number, color: string) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color }}>{label}</span><span>{n} · {formatUsdShort(u)}</span></div>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color }}>{label}</span><span>{n} · <MoneyText text={formatUsdShort(u)} /></span></div>
   )
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', fontSize: '0.75rem', minWidth: 190 }}>
@@ -240,15 +241,15 @@ export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, r
         <p style={sub}>Open bids sent in the last {FORECAST_MATURITY_DAYS} days, each counted at the odds of its size. The range is one standard deviation — wide when a few bids are very large.</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, marginBottom: 10 }}>
           <button type="button" style={tile} onClick={() => setDrill(list({ title: `Open · sent in the last ${FORECAST_MATURITY_DAYS} days`, sub: `${forecast.n} bids · ${formatUsdShort(forecast.usd)}`, rows: forecast.fresh }))}>
-            <span style={tileN}>{forecast.n} · {formatUsdShort(forecast.usd)}</span><span style={tileL}>open, sent in the last {FORECAST_MATURITY_DAYS} days</span>
-            <span style={{ ...tileL, display: 'block' }}>{forecast.stale.n} more · {formatUsdShort(forecast.stale.usd)} open longer, left out</span>
+            <span style={tileN}>{forecast.n} · <MoneyText text={formatUsdShort(forecast.usd)} /></span><span style={tileL}>open, sent in the last {FORECAST_MATURITY_DAYS} days</span>
+            <span style={{ ...tileL, display: 'block' }}>{forecast.stale.n} more · <MoneyText text={formatUsdShort(forecast.stale.usd)} /> open longer, left out</span>
           </button>
           <div style={{ ...tile, cursor: 'default' }}><span style={tileN}>≈ {Math.round(forecast.expCount)} win{Math.round(forecast.expCount) === 1 ? '' : 's'}</span><span style={tileL}>expected from those {forecast.n}</span><span style={{ ...tileL, display: 'block' }}>at the odds by size</span></div>
-          <div style={{ ...tile, cursor: 'default' }}><span style={tileN}>≈ {formatUsdShort(forecast.expUsd)}</span><span style={tileL}>expected value won</span><span style={{ ...tileL, display: 'block' }}>likely {formatUsdShort(forecast.lowUsd)} – {formatUsdShort(forecast.highUsd)}</span></div>
+          <div style={{ ...tile, cursor: 'default' }}><span style={tileN}>≈ <MoneyText text={formatUsdShort(forecast.expUsd)} /></span><span style={tileL}>expected value won</span><span style={{ ...tileL, display: 'block' }}>likely <MoneyText text={formatUsdShort(forecast.lowUsd)} /> – <MoneyText text={formatUsdShort(forecast.highUsd)} /></span></div>
           {forecast.largest ? (
             <button type="button" style={tile} onClick={() => onSelectBid(forecast.largest!.row.bidId)} title="Select this bid across the workflow tabs">
-              <span style={tileN}>{pct(forecast.largest.share)}</span><span style={tileL}>of that {formatUsdShort(forecast.usd)} is one bid</span>
-              <span style={{ ...tileL, display: 'block' }}>{forecast.largest.row.label} · {formatUsdShort(forecast.largest.row.bidValue ?? 0)} · counted at {pct(forecast.largest.p)}</span>
+              <span style={tileN}>{pct(forecast.largest.share)}</span><span style={tileL}>of that <MoneyText text={formatUsdShort(forecast.usd)} /> is one bid</span>
+              <span style={{ ...tileL, display: 'block' }}>{forecast.largest.row.label} · <MoneyText text={formatUsdShort(forecast.largest.row.bidValue ?? 0)} /> · counted at {pct(forecast.largest.p)}</span>
             </button>
           ) : null}
         </div>
@@ -268,9 +269,9 @@ export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, r
                   <td style={num}>{pct(p.byCount)}{p.key !== '*' && !p.ownRate ? <span style={{ ...subLine, textAlign: 'right' }}>{oddsWords(p)}</span> : null}</td>
                   <td style={num}>{pct(p.byValue)}</td>
                   <td style={num}>{p.open} · {p.fresh}</td>
-                  <td style={num}>{p.openUsd > 0 ? formatUsdShort(p.openUsd) : '—'}</td>
+                  <td style={num}>{p.openUsd > 0 ? <MoneyText text={formatUsdShort(p.openUsd)} /> : '—'}</td>
                   <td style={num}>{p.fresh > 0 ? `≈ ${p.expCount < 1 ? p.expCount.toFixed(1) : Math.round(p.expCount)}` : '—'}</td>
-                  <td style={num}>{p.fresh > 0 ? `≈ ${formatUsdShort(p.expUsd)}` : '—'}</td>
+                  <td style={num}>{p.fresh > 0 ? <MoneyText text={`≈ ${formatUsdShort(p.expUsd)}`} /> : '—'}</td>
                 </tr>
               ))}
             </tbody>

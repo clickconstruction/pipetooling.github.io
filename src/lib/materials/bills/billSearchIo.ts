@@ -13,9 +13,16 @@ export interface BillSearchIo {
 
 export const supabaseBillSearchIo: BillSearchIo = {
   async search(args) {
-    // The generated types learn the function after the push; until then its name and arguments are plain here.
-    const { data, error } = await supabase.rpc('search_supply_bills' as never, { p_words: args.words, p_year: args.year, p_month: args.month, p_day: args.day, p_limit: BILL_SEARCH_LIMIT } as never)
+    // A date part nobody typed is left out, and the function reads its own default for it.
+    const { data, error } = await supabase.rpc('search_supply_bills', {
+      p_words: args.words,
+      p_year: args.year ?? undefined,
+      p_month: args.month ?? undefined,
+      p_day: args.day ?? undefined,
+      p_limit: BILL_SEARCH_LIMIT,
+    })
     if (error) throw new Error(formatErrorMessage(error, BILL_SEARCH_WORDS.failed))
-    return (data ?? []) as BillSearchHit[]
+    // The generated types call `jobs` JSON; the function builds it in the shape `BillSearchHit` names.
+    return (data ?? []) as unknown as BillSearchHit[]
   },
 }

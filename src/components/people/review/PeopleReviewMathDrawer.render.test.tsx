@@ -12,6 +12,7 @@ import { VehicleArrangementChip } from '../PeopleVehiclesWheelsSection'
 import { buildReviewPersonMath } from '../../../lib/people/reviewRanked'
 import type { TeamSummaryBreakdown } from '../teamSummary/types'
 import type { CategoryTagRow } from '../../../lib/banking/categoryTags'
+import { moneyText } from '../../../test/moneyText'
 
 const FUEL: CategoryTagRow = { id: 't-fuel', name: 'Fuel & gas', icon: '⛽', color: 'amber', sort_order: 0, default_key: 'fuel_vehicle', show_as_cost_line: true, hide_from_picker: false }
 
@@ -66,7 +67,7 @@ describe('PeopleReviewMathDrawer — the vehicle deal', () => {
     expect(screen.getByText('− ⛽ Fuel & gas')).toBeTruthy()
     expect(screen.getByText('− 🚚 2019 Ford F-150')).toBeTruthy()
     expect(
-      screen.getByText('165.5 field h × $2.24 fixed + $48.10 of their fuel on no job in the period; their fuel on jobs is in the ⛽ line above'),
+      screen.getByText(moneyText('165.5 field h × $2.24 fixed + $48.10 of their fuel on no job in the period; their fuel on jobs is in the ⛽ line above')),
     ).toBeTruthy()
   })
 })
@@ -82,7 +83,7 @@ describe('VehicleArrangementChip', () => {
       </>,
     )
     // first paint: the chips are pure props
-    expect(screen.getByText('$2.24/h fixed')).toBeTruthy()
+    expect(screen.getByText(moneyText('$2.24/h fixed'))).toBeTruthy()
     expect(screen.getByText('company')).toBeTruthy()
   })
 })

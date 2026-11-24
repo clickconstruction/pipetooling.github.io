@@ -21,6 +21,7 @@ import {
   type SetAsideReason,
 } from '../../lib/bids/robotFixtures'
 import { SET_ASIDE_WORDS } from '../../lib/bids/robotFixtureShade'
+import { MoneyText } from '../Money'
 
 /**
  * The robot fixtures window (punch list #221, PR 3): the fixtures the robot found on the bid's set, against her
@@ -227,7 +228,7 @@ export function RobotFixturesWindow({ bidLabel, pull, rows, herRows, setName, re
           <div style={{ minWidth: 0 }}>
             <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Fixtures the robot found on {bidLabel}</h2>
             <p style={{ ...MUTED, margin: '2px 0 0' }} data-testid="robot-fixtures-set-line">
-              {pull ? fixtureSetLineWords({ pull, setName, when: readWhen, review, herRowCount: herRows.length }) : 'The robot is still working on this set.'}
+              {pull ? <MoneyText text={fixtureSetLineWords({ pull, setName, when: readWhen, review, herRowCount: herRows.length })} /> : 'The robot is still working on this set.'}
             </p>
           </div>
           <button type="button" onClick={onClose} disabled={busy} aria-label="Close" title="Close" style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', color: 'var(--text-muted)', cursor: 'pointer', lineHeight: 1 }}>×</button>

@@ -12,6 +12,7 @@ import type { TakeoffPartPricesModalTarget } from './TakeoffPartPricesModal'
 import type { Database } from '../../types/database'
 import type { MaterialTemplateWithAssemblyType, TakeoffRoughPartLineRow } from '../../lib/bids/bidPricingEngineTypes'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -614,7 +615,7 @@ export function TakeoffAssemblyAuthoringModals({
                             </label>
                           )}
                           <span style={{ fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.supplyHouseName}</span>
-                          <span style={{ fontSize: '0.875rem', textAlign: 'right' }}>${p.price.toFixed(2)}</span>
+                          <span style={{ fontSize: '0.875rem', textAlign: 'right' }}><MoneyText text={`$${p.price.toFixed(2)}`} /></span>
                           <button
                             type="button"
                             onClick={() => {
@@ -899,7 +900,7 @@ export function TakeoffAssemblyAuthoringModals({
                               aria-label={`Change ${p.supply_house_name} bundle price, currently $${p.price.toFixed(2)}`}
                               style={{ justifySelf: 'end', padding: '0.15rem 0', background: 'none', border: 'none', borderBottom: '1px dashed var(--border-400)', borderRadius: 0, color: 'var(--text-blue-700)', cursor: 'pointer', fontSize: '0.875rem' }}
                             >
-                              ${p.price.toFixed(2)}
+                              <MoneyText text={`$${p.price.toFixed(2)}`} />
                             </button>
                           )}
                           <button

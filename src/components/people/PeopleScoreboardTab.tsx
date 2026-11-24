@@ -5,6 +5,7 @@ import { useSuperintendentScores } from '../../hooks/useSuperintendentScores'
 import { bonusWords, daysColumnWords, daysWords, hoursUnderWords, jobScoreWords, keptWords, monthOf, monthRange, monthShift, monthWords, rateRuleWords, SCORE_RULE_LINES, superintendentScores } from '../../lib/people/superintendentScores'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 /**
  * People → Review → Scoreboard (punch list #234, PR 4; until v2.6666 a dev-only sample with two
@@ -109,7 +110,7 @@ export function PeopleScoreboardTab() {
             {line}
           </div>
         ))}
-        {read ? <div style={{ fontSize: '0.8rem', color: 'var(--text-700)' }} data-testid="scoreboard-rate">{rateRuleWords(read)}</div> : null}
+        {read ? <div style={{ fontSize: '0.8rem', color: 'var(--text-700)' }} data-testid="scoreboard-rate"><MoneyText text={rateRuleWords(read)} /></div> : null}
         <div style={{ ...muted, marginTop: 4 }}>
           The share is {read?.sharePct ?? 10}% of the labor kept, paid at the office's sign-off, read by the month.
           {canSetRule ? (

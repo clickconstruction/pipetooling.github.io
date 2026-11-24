@@ -6,6 +6,7 @@ import { initialGcState } from '../../lib/gc/schedule/testState'
 import type { GcProject, OwnerPayAppSent } from '../../lib/gc/types'
 import { money } from '../../lib/gc/words'
 import { installDomShims } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 installDomShims()
 
@@ -348,13 +349,13 @@ describe('GcBillCustomerWindow', () => {
 
   it('Pay by card (O8c): a bill on card says what Stripe asks, offers its card page and Back to a check bill, and takes no part payment here', () => {
     const { writes, last } = setup({}, [], { certified: 900, certifiedOn: '2026-10-20', paidOn: null, card: { invoiceId: 'inv-9', state: 'onCard', base: 900, fee: 27, total: 927, chosenOn: '2026-10-21', payUrl: 'https://invoice.stripe.com/i/test9', undoneOn: null } })
-    expect(screen.getByText('They chose card in their portal on Oct 21. Stripe asks $927.00 with the $27.00 card fee.')).toBeTruthy()
+    expect(screen.getByText(moneyText('They chose card in their portal on Oct 21. Stripe asks $927.00 with the $27.00 card fee.'))).toBeTruthy()
     expect((screen.getByRole('link', { name: 'Their card page' }) as HTMLAnchorElement).href).toBe('https://invoice.stripe.com/i/test9')
     expect(screen.getByTestId(`gc-bill-card-${last.number}`).textContent).toContain('on card')
     // Stripe records a card payment: no part payment is typed for it here.
     expect(screen.queryByRole('button', { name: 'They paid part…' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Back to a check bill' }))
-    expect(screen.getByText('This takes the card page down and the $27.00 fee off. The bill goes back to $900.00.')).toBeTruthy()
+    expect(screen.getByText(moneyText('This takes the card page down and the $27.00 fee off. The bill goes back to $900.00.'))).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Keep it on card' }))
     expect(writes.onCardUndo).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Back to a check bill' }))

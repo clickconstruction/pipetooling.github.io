@@ -307,12 +307,41 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
       </span>
     )
   }
-  /** A heard day written as a kind, or as just talk with no choice, in one press (punch list #421). */
-  const writeHeard = (m: ThreadMessage, choice: HeardChoice | null, ymd: string) => {
+  /**
+   * A heard day written as a kind, or as just talk with no choice, in one press (punch list #421). Then, for a kind, the
+   * write-throughs (PR 4): where else the day goes, said after the written words, or why it did not go.
+   */
+  const writeHeard = async (m: ThreadMessage, c: Contact, choice: HeardChoice | null, ymd: string) => {
     const write = io.writeDownHeard
     if (!write) return
     const writes = choice ? defaultWrites(choice.kind) : null
-    void press(`heard ${m.id}`, () => write(m.id, choice?.kind ?? null, ymd, writes), choice ? heardWrittenToast(choice.kind, writes, ymd) : JUST_TALK_TOAST).then(() => setAnother(null))
+    setPressing(`heard ${m.id}`)
+    try {
+      await write(m.id, choice?.kind ?? null, ymd, writes)
+      const written = choice ? heardWrittenToast(choice.kind, writes, ymd) : JUST_TALK_TOAST
+      const said =
+        choice && io.writeHeardThrough
+          ? await io.writeHeardThrough({
+              message: { id: m.id, channel: m.channel, at: m.at, jobId: m.jobId ?? null },
+              contact: c,
+              kind: choice.kind,
+              writes,
+              ymd,
+              written,
+              by: { userId: me.id, name: me.name },
+              todayYmd,
+              nowIso: new Date().toISOString(),
+            })
+          : { words: written, tone: 'success' as const }
+      showToast(said.words, said.tone)
+      setAnother(null)
+      reread()
+      await load()
+    } catch (e) {
+      showToast(pressProblem(e), 'error')
+    } finally {
+      setPressing(null)
+    }
   }
   /** The choice under a line: the day, a press for each kind by who they are, just talk, and a voicemail's Another day. */
   const choiceFace = (m: ThreadMessage, c: Contact, heard: HeardChoiceLine, picking: boolean) => {
@@ -323,11 +352,11 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
           <ValueSentence text={heardChoiceWords(heard.label)} />
         </span>
         {heard.choices.map((h) => (
-          <button key={h.kind} type="button" style={quiet} disabled={busy} title={h.tip} onClick={() => (h.opens === 'sheet' ? void wordPress(m, c) : writeHeard(m, h, heard.ymd))}>
+          <button key={h.kind} type="button" style={quiet} disabled={busy} title={h.tip} onClick={() => void (h.opens === 'sheet' ? wordPress(m, c) : writeHeard(m, c, h, heard.ymd))}>
             {h.label}
           </button>
         ))}
-        <button type="button" style={{ ...quiet, borderStyle: 'dashed' }} disabled={busy} title={JUST_TALK_TIP} onClick={() => writeHeard(m, null, heard.ymd)}>
+        <button type="button" style={{ ...quiet, borderStyle: 'dashed' }} disabled={busy} title={JUST_TALK_TIP} onClick={() => void writeHeard(m, c, null, heard.ymd)}>
           {JUST_TALK_PRESS}
         </button>
         {heard.anotherDay ? (

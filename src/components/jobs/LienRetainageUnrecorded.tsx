@@ -5,6 +5,7 @@ import { recordRetainageHeld } from '../../lib/ar/retainageHeldIo'
 import { retainageUnrecordedWhy, type RetainageUnrecordedRow } from '../../lib/ar/retainageSuggested'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 /**
  * Retainage the desk was never told about (the owner's pick of 2026-11-16, fix A of the
@@ -121,12 +122,12 @@ export function LienRetainageUnrecorded({
               {row.heldBy ? <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> · {row.heldBy}</span> : null}
             </div>
             <div data-testid="lien-retainage-unrecorded-why" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {retainageUnrecordedWhy(row)}
+              <MoneyText text={retainageUnrecordedWhy(row)} />
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', color: 'var(--text-link)' }}>
               {office && row.suggestion ? (
                 <button type="button" disabled={busy} onClick={() => void record(row, row.suggestion!.held)} style={{ ...press, opacity: busy ? 0.6 : 1, cursor: busy ? 'default' : 'pointer' }} data-testid="lien-retainage-unrecorded-record">
-                  {busy ? 'Recording…' : `Record ${money(row.suggestion.held)} on the job`}
+                  {busy ? 'Recording…' : <MoneyText text={`Record ${money(row.suggestion.held)} on the job`} />}
                 </button>
               ) : null}
               <button type="button" onClick={() => onOpenLienContract(row.jobId)} style={press} data-testid="lien-retainage-unrecorded-open">

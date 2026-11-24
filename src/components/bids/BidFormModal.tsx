@@ -53,6 +53,7 @@ import { BidFormDevelopmentPicker } from './BidFormDevelopmentPicker'
 import { useDevelopmentPicker } from '../../hooks/useDevelopmentPicker'
 import { useDevelopmentAddressSuggestion } from '../../hooks/useDevelopmentAddressSuggestion'
 import { DevelopmentAddressSuggestionLine } from '../developments/DevelopmentAddressSuggestionLine'
+import { Money, MoneyText } from '../Money'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 
@@ -1126,7 +1127,7 @@ export function BidFormModal(props: BidFormModalProps) {
                                 style={{ font: 'inherit', textAlign: 'left', display: 'flex', alignItems: 'baseline', gap: '0.5rem', padding: '0.3rem 0.6rem', borderRadius: 6, border: `1px solid ${on ? 'var(--text-amber-700)' : 'var(--border-strong)'}`, background: on ? 'var(--surface)' : 'transparent', cursor: wonOptionBusy ? 'wait' : 'pointer', fontWeight: on ? 700 : 500 }}
                               >
                                 <span>{on ? '●' : '○'} Option {i + 1} — {o.name}</span>
-                                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 400 }}>{sent != null ? `sent $${formatCurrency(sent)}` : 'not sent yet'}</span>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 400 }}>{sent != null ? <MoneyText text={`sent $${formatCurrency(sent)}`} /> : 'not sent yet'}</span>
                               </button>
                             )
                           })}
@@ -1180,12 +1181,12 @@ export function BidFormModal(props: BidFormModalProps) {
                                 {pill('unanswered', 'Not sure')}
                               </span>
                               <span><strong>{a.tag}</strong> <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)' }}>ALT</span></span>
-                            <span style={{ color: 'var(--text-muted)' }}>{a.amount != null ? `adds $${formatCurrency(a.amount)}` : 'not priced on the letter yet'}</span>
+                            <span style={{ color: 'var(--text-muted)' }}>{a.amount != null ? <MoneyText text={`adds $${formatCurrency(a.amount)}`} /> : 'not priced on the letter yet'}</span>
                             </div>
                           )
                         })}
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {agreed != null ? <>Agreed value <strong style={{ color: 'var(--text-strong)' }}>${formatCurrency(agreed)}</strong> · the sent value stays ${formatCurrency(Number.isFinite(sent) ? sent : 0)}</> : 'Set the bid value and the agreed value follows.'}
+                          {agreed != null ? <>Agreed value <strong style={{ color: 'var(--text-strong)' }}><Money amount={agreed} /></strong> · the sent value stays <Money amount={Number.isFinite(sent) ? sent : 0} /></> : 'Set the bid value and the agreed value follows.'}
                         </span>
                       </div>
                     )

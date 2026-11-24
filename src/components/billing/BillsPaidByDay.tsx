@@ -50,6 +50,7 @@ import { EmptyState } from '../EmptyState'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { ValueLine, ValueLines, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { THUMB, billLink, chipStyle, jobLink, money, phoneButton, strong, tile, tileSmall } from './billsSentLook'
+import { MoneyText } from '../Money'
 
 /**
  * Bills sent, the second view: By day paid (punch list #422, PR 3). The first view lists bills in the order they
@@ -121,7 +122,7 @@ function DayCell({ cell, picked, phone, onPick }: { cell: BillsPaidCell; picked:
       <span style={{ fontSize: '0.6875rem', fontWeight: 600 }}>{cell.day}</span>
       {has ? (
         <>
-          <span style={{ fontSize: phone ? '0.6875rem' : '0.75rem', fontWeight: 800, color: inside, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', letterSpacing: phone ? '-0.02em' : undefined }}>{billsPaidCellMoney(cell.sum.total, phone)}</span>
+          <span style={{ fontSize: phone ? '0.6875rem' : '0.75rem', fontWeight: 800, color: inside, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', letterSpacing: phone ? '-0.02em' : undefined }}><MoneyText text={billsPaidCellMoney(cell.sum.total, phone)} /></span>
           {phone ? null : <span style={{ fontSize: '0.65625rem', color: picked ? 'var(--surface)' : 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden' }}>{billsPaidCellCount(cell.sum)}</span>}
         </>
       ) : credit ? (

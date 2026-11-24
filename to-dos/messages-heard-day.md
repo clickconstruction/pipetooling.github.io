@@ -2,7 +2,7 @@
 name: "Messages: a day was heard, say what it is"
 number: 421
 group: ready
-status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 merged · PR 2 #9514 the migration merged · PR 3 the choice open, unarmed
+status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 merged · PR 2 #9514 the migration merged and pushed · PR 3 #9526 the choice merged · PR 4 #9533 the write-throughs armed
 summary: >
   When a person names a day in a text or a voicemail, Messages was planned to lift the day out,
   ask the office what it is a promise of, and write it where that kind of date lives. The table, the
@@ -27,12 +27,15 @@ customer's payment opens #129's sheet. The screens he approved are the *after* o
    no longer describes the unseen button. PR #9510, merged.
 2. **PR 2, v2.8383**: the migration (`20261123185942_heard_day_write.sql`): `write_down_heard` writes a line's day and
    kind in one press or just talk, and `message_promises.job_id` with `write_down_payment`'s `p_job_id` gives a payment
-   mark its job. PR #9514, merged: the parent pushes it, then a types PR and the dev seat's deploy.
+   mark its job. PR #9514, merged and pushed; a types PR and the dev seat's deploy follow.
 3. **PR 3, v2.8384**: the choice under a line (`useFollowUpThreadSlots`' `underLine` over `heardChoice.ts`): their
    kinds, *just talk*, a voicemail's *Another day*, a customer's *A payment* opening #129's sheet, and a line already
    said reading *Written down as their quote by Wed Nov 25.* Written on the line only; PR 4 adds where else it goes.
-   Open, unarmed until PR 2's push.
-4. **PR 4, v2.8385**: the write-throughs' hands. Not yet open.
+   PR #9526, merged.
+4. **PR 4, v2.8385**: the write-throughs' hands (`messages/promiseWritesIo.ts`): the read that fills `PromiseAt` (the
+   line's job by name and kind, the company's open ask, the person's standing holds) and the writers through the Board's
+   own verbs, the bid's contact log and `nudge_hold_until`; the toast names where it went, every skip and a refusal.
+   Open, armed after PR 3.
 5. **PR 5, v2.8386**: a payment mark carries its job. Not yet open.
 
 ## Where this comes from
@@ -79,13 +82,12 @@ Messages' cut 2 (`20261012160000_messages_follow_up.sql`, the prototype v1.178) 
 
 1. **Nothing can write an offered row.** No function inserts one, no reader runs on the server, and
    a signed-in client has no insert on the table. So step 2 never happens, and the press in step 3
-   can never appear. The guide describes a button nobody can see.
-2. **The voicemail chip is drawn nowhere.** No screen calls `heardDay`, so there is no
-   **Keep the day** and no **Another day**.
-3. **The choice under the line is drawn nowhere.** Follow up's press says it opens *the line, where
-   the day's choices are*. There are none.
-4. **The write-throughs have no hands.** The read that fills `PromiseAt` and the writers
-   `runPromiseWrites` wants were never built.
+   can never appear. Left so by the owner's call (straight to the choice), and the guide no longer
+   describes the press since PR 1.
+2. **The voicemail chip is drawn nowhere.** *Keep the day* is not needed straight to the choice, and a
+   voicemail's **Another day** sits in the choice since PR 3.
+3. **The choice under the line is drawn nowhere.** Built by PR 3 (v2.8384), straight to the choice.
+4. **The write-throughs have no hands.** Built by PR 4 (v2.8385).
 
 ## What #129 built in its place
 

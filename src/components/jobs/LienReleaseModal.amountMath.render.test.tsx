@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienReleaseModal from './LienReleaseModal'
+import { moneyText } from '../../test/moneyText'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'assistant-1' }, role: 'assistant', profileName: 'Taunya' }) }))
 vi.mock('signature_pad', () => ({ default: class { off() {} clear() {} isEmpty() { return true } toDataURL() { return null } } }))
@@ -80,7 +81,7 @@ describe('LienReleaseModal — how the amount is figured (v2.4296)', () => {
     renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={bill1} signerNameFallback="Malachi Whites" />)
     const box = await screen.findByTestId('lien-waiver-math')
     await settle()
-    expect(screen.getByText('#1 · $9,022.49 owed')).toBeTruthy()
+    expect(screen.getByText(moneyText('#1 · $9,022.49 owed'))).toBeTruthy()
     expect(box.textContent).toContain('How $9,022.49 is figured')
     expect(box.textContent).toContain('Bill #1 · billed Jul 15')
     expect(box.textContent).toContain('Check · Sep 14')

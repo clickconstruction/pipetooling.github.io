@@ -17,11 +17,11 @@ import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
 import { askDispatchToOpenJob, type AskDispatchOutcome } from '../../lib/bids/openJobFromBidDispatchRequest'
 import { draftCarryFor, draftProblem, type JobDraft } from '../../lib/bids/jobDraft'
 import { supabaseJobDraftIo, type JobDraftIo, type JobDraftStart } from '../../lib/bids/jobDraftIo'
-import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { useIsDigitalTwin } from '../../hooks/useIsDigitalTwin'
 import DraftPayTermsPart from './DraftPayTermsPart'
+import { Money } from '../Money'
 
 export interface JobDraftSheetProps {
   bidId: string
@@ -145,7 +145,7 @@ export function JobDraftSheet({ bidId, onClose, onSent, io = supabaseJobDraftIo,
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', padding: '2px 0' }}>
                       <input type="radio" name={`job-draft-gc-${bidId}`} checked={draft.gcKey === o.key} onChange={() => pickGc(o.key)} />
                       {o.name}
-                      {o.value != null ? <span style={quiet}>· sent ${formatCurrency(o.value)}</span> : null}
+                      {o.value != null ? <span style={quiet}>· sent <Money amount={o.value} /></span> : null}
                     </label>
                     {draft.gcKey === o.key && !isTwin ? (
                       <div style={{ marginLeft: 22 }}>

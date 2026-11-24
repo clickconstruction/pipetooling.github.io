@@ -78,6 +78,7 @@ import { vehicleLedgerEmptyWords, vehiclesEmptyWords } from '../../lib/people/pe
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { MachinesSection } from '../machines/MachinesSection'
+import { Money, MoneyText } from '../Money'
 
 /**
  * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
@@ -1610,8 +1611,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       <div style={{ fontSize: '0.75rem', color: weekly > 0 ? 'var(--text-700)' : 'var(--text-muted)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
                         {weekly > 0
                           ? cur
-                            ? formatInsuranceCostLine(weekly)
-                            : `$0.00/wk while off a plan · last cost $${formatCurrency(weekly)}/wk`
+                            ? <MoneyText text={formatInsuranceCostLine(weekly)} />
+                            : <MoneyText text={`$0.00/wk while off a plan · last cost $${formatCurrency(weekly)}/wk`} />
                           : 'no cost set — type what the carrier charges for this vehicle'}
                       </div>
                     </div>
@@ -1641,7 +1642,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                         </select>
                       </div>
                       <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', minHeight: '1em' }}>
-                        {preview != null && insCostUnit !== 'wk' ? `saved as $${formatCurrency(preview)} / wk` : '\u00a0'}
+                        {preview != null && insCostUnit !== 'wk' ? <MoneyText text={`saved as $${formatCurrency(preview)} / wk`} /> : '\u00a0'}
                       </span>
                     </div>
                     <button
@@ -1926,7 +1927,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       {/* Phone (v2.2176): the label claims its own line when the row can't fit date · chip · label · value side by side. */}
                       <span style={{ flex: '1 1 160px', minWidth: 0 }}>{r.label}</span>
                       <span style={{ textAlign: 'right', width: 90, flexShrink: 0, color: r.odometer == null && r.amount == null ? 'var(--text-muted)' : undefined }}>
-                        {r.odometer != null ? `${r.odometer.toLocaleString()} mi` : r.amount != null ? `$${formatCurrency(r.amount)}` : '—'}
+                        {r.odometer != null ? `${r.odometer.toLocaleString()} mi` : r.amount != null ? <Money amount={r.amount} /> : '—'}
                       </span>
                       {r.kind !== 'return' && r.kind !== 'problem_resolved' && r.kind !== 'insurance_off' && (
                         <button
@@ -2493,7 +2494,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                               <span style={{ color: 'var(--text-muted)' }}>since {formatYmdShort(period.start_date)}</span>
                               {/* v2.2180: each vehicle's weekly cost, so the plan can be held up against the carrier's bill. */}
                               <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 78, textAlign: 'right', color: cost > 0 ? undefined : 'var(--text-amber-800)' }}>
-                                {cost > 0 ? `$${formatCurrency(cost)}/wk` : 'no cost set'}
+                                {cost > 0 ? <MoneyText text={`$${formatCurrency(cost)}/wk`} /> : 'no cost set'}
                               </span>
                               <button type="button" style={actionBtn} onClick={() => openTakeOff(period, vehicleDisplayName(v))}>
                                 Take off
@@ -2509,7 +2510,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                                 Plan total{t.unpriced > 0 ? ` (${t.priced} of ${t.priced + t.unpriced} priced)` : ''}
                               </span>
                               <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                <strong style={{ color: 'var(--text-700)' }}>${formatCurrency(t.weekly)}/wk</strong> · {formatInsuranceCostLine(t.weekly).split(' · ').slice(1).join(' · ')}
+                                <strong style={{ color: 'var(--text-700)' }}><Money amount={t.weekly} />/wk</strong> · {formatInsuranceCostLine(t.weekly).split(' · ').slice(1).join(' · ')}
                               </span>
                             </div>
                           )
