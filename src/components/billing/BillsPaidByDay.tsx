@@ -51,7 +51,7 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { EmptyState } from '../EmptyState'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { ValueLine, ValueLines, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
-import { THUMB, billLink, chipStyle, jobLink, linePress, money, phoneButton, strong, tile, tileSmall } from './billsSentLook'
+import { THUMB, billLink, chipStyle, jobLink, linePress, money, phoneButton, strong, tile, tileRow, tileSmall } from './billsSentLook'
 import { MoneyText } from '../Money'
 
 /**
@@ -315,7 +315,7 @@ export function BillsPaidByDay() {
   return (
     <section aria-label="Bills paid, by day" data-testid="bills-paid-view" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
       {phone ? null : outRow}
-      <div style={{ display: 'grid', gridTemplateColumns: phone ? (tileCount % 2 === 0 ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(5.2rem, 1fr))') : 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' }}>
+      <div data-testid="bills-paid-tiles" style={tileRow(phone, tileCount)}>
         {tiles.today ? <SumTile label={`Today${tail}`} sum={tiles.today} testId="bills-paid-tile-today" phone={phone} /> : null}
         {tiles.week ? <SumTile label={`This week${tail}`} sum={tiles.week} testId="bills-paid-tile-week" phone={phone} /> : null}
         <SumTile label={`${billsPaidMonthName(month)}${tail}`} sum={tiles.month} testId="bills-paid-tile-month" phone={phone} tint />

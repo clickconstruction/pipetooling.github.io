@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
-import { THUMB, chipStyle, linePress, phoneButton } from './billsSentLook'
+import { THUMB, chipStyle, linePress, phoneButton, tile, tileRow } from './billsSentLook'
 
 describe('billsSentLook — a press on a phone stands a fingertip tall', () => {
   it('takes its height from the app’s one source', () => {
@@ -20,5 +20,22 @@ describe('billsSentLook — a press on a phone stands a fingertip tall', () => {
     // A bill's name and a job's name in By day paid's day box were text links 16 px tall.
     expect(linePress(true)).toEqual({ display: 'inline-flex', alignItems: 'center', minHeight: 44 })
     expect(linePress(false)).toEqual({})
+  })
+})
+
+describe('tileRow — the tiles over either view', () => {
+  it('lets a desk fit as many tiles to a row as have room', () => {
+    expect(tileRow(false, 5)).toEqual({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(8rem, 1fr))', gap: '0.4rem' })
+  })
+  it('sits an even count two to a row on a phone, so no tile is left alone', () => {
+    expect(tileRow(true, 4)).toEqual({ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.4rem' })
+    expect(tileRow(true, 2)).toEqual(tileRow(true, 6))
+  })
+  it('wraps an odd count on a phone so the last row’s tiles grow to fill it, and no hole is left', () => {
+    // Five tiles at 375 px sat three and two in a three-column grid, with an empty third cell in the second row.
+    expect(tileRow(true, 5)).toEqual({ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' })
+    expect(tileRow(true, 3)).toEqual(tileRow(true, 5))
+    // A tile grows from the width three of them fit a phone at.
+    expect(tile.flex).toBe('1 1 5.2rem')
   })
 })
