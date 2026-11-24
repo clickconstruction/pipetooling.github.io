@@ -1,5 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
-import { lazyWindow, warmWhenIdle, WARM_FALLBACK_DELAY_MS, WARM_IDLE_TIMEOUT_MS, type IdleClock } from './lazyWindow'
+import {
+  __forgetLostWindowsForTests,
+  lazyWindow,
+  lostWindowCount,
+  rewarmLostWindows,
+  subscribeLostWindows,
+  warmWhenIdle,
+  WARM_FALLBACK_DELAY_MS,
+  WARM_IDLE_TIMEOUT_MS,
+  type IdleClock,
+} from './lazyWindow'
 
 /** A clock the test turns by hand: every scheduled run waits in `queue` until `tick`. */
 function handClock(withIdle: boolean) {
@@ -56,6 +66,57 @@ describe('lazyWindow', () => {
     await expect(lazyOne.preload()).rejects.toThrow('Failed to fetch')
     await expect(lazyOne.preload()).resolves.toBeTruthy()
     expect(load).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('the lost windows', () => {
+  const lostChunk = () => new TypeError('Failed to fetch dynamically imported module: https://x/assets/JobWindowModal-abc.js')
+
+  it('a window whose load failed is lost, a warm-up’s failure too, until its code lands', async () => {
+    __forgetLostWindowsForTests()
+    const Window = () => null
+    let fail = true
+    const load = vi.fn(async () => {
+      if (fail) throw lostChunk()
+      return { default: Window }
+    })
+    const heard = vi.fn()
+    const stop = subscribeLostWindows(heard)
+    const lazyOne = lazyWindow(load)
+    expect(lostWindowCount()).toBe(0)
+    await expect(lazyOne.preload()).rejects.toThrow(/dynamically imported/)
+    expect(lostWindowCount()).toBe(1)
+    expect(heard).toHaveBeenCalledTimes(1)
+    // It fails again: still one lost window, and nobody is told twice.
+    await rewarmLostWindows()
+    expect(load).toHaveBeenCalledTimes(2)
+    expect(lostWindowCount()).toBe(1)
+    expect(heard).toHaveBeenCalledTimes(1)
+    // The code lands: no window is lost.
+    fail = false
+    await rewarmLostWindows()
+    expect(load).toHaveBeenCalledTimes(3)
+    expect(lostWindowCount()).toBe(0)
+    expect(heard).toHaveBeenCalledTimes(2)
+    stop()
+  })
+
+  it('a load cancelled by a recovery reload, which resolves to nothing, counts as lost', async () => {
+    __forgetLostWindowsForTests()
+    const lazyOne = lazyWindow((async () => undefined) as unknown as () => Promise<{ default: () => null }>)
+    await expect(lazyOne.preload()).rejects.toThrow()
+    expect(lostWindowCount()).toBe(1)
+  })
+
+  it('asking again never rejects, with nothing lost or with everything still lost', async () => {
+    __forgetLostWindowsForTests()
+    await expect(rewarmLostWindows()).resolves.toBeUndefined()
+    const lazyOne = lazyWindow(async (): Promise<{ default: () => null }> => {
+      throw lostChunk()
+    })
+    await lazyOne.preload().catch(() => undefined)
+    await expect(rewarmLostWindows()).resolves.toBeUndefined()
+    expect(lostWindowCount()).toBe(1)
   })
 })
 

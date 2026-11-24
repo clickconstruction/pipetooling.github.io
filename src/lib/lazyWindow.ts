@@ -16,6 +16,13 @@ import { createElement, lazy, useState, type ComponentType } from 'react'
  * once, with no loading step in between, so a warmed window opens in the same frame as the press. And a
  * load that failed is asked for again on a later open, where `React.lazy` keeps the failure for good.
  *
+ * That second ask reaches the network in Safari and Firefox. Chromium keeps a failed import, and a failed
+ * file the import needs, for the life of the page (seen on the live site and in a bare harness, 2026-11-24):
+ * the ask is answered at once with the same failure and no request, by any address. Only a new page loads
+ * the window there. So every window whose load failed is kept in `lostWindows`, and `useWindowCure` asks
+ * for them again once the signal is back and nothing typed would be lost. Where the browser can load the
+ * window it loads, silently. Where it cannot, that ask is what starts the one guarded reload.
+ *
  * Later, not at once. The render that was waiting gets the failure, so its boundary can say so. Until
  * v2.8327 the next ask began the moment a load failed: the waiting render drew again, asked again and
  * failed again, with no pause and no error for any boundary to catch, for as long as the file stayed away.
@@ -32,6 +39,38 @@ export type LazyWindow<P> = ComponentType<P> & { preload: () => Promise<unknown>
  */
 export const FAILED_LOAD_HELD_MS = 2000
 
+/** The loaders of the windows whose last load failed. A window leaves when its code lands. */
+const lostWindows = new Set<() => Promise<unknown>>()
+const lostWindowListeners = new Set<() => void>()
+
+function tellLostWindowListeners(): void {
+  for (const listener of Array.from(lostWindowListeners)) listener()
+}
+
+/** How many windows this page failed to load and has not loaded since. */
+export function lostWindowCount(): number {
+  return lostWindows.size
+}
+
+/** Hears every change in `lostWindowCount`. Returns the unsubscribe. */
+export function subscribeLostWindows(listener: () => void): () => void {
+  lostWindowListeners.add(listener)
+  return () => {
+    lostWindowListeners.delete(listener)
+  }
+}
+
+/** Asks again for every lost window. Never rejects: a window that fails again stays lost. */
+export function rewarmLostWindows(): Promise<void> {
+  return Promise.allSettled(Array.from(lostWindows).map((load) => load())).then(() => undefined)
+}
+
+/** Tests only: forget every lost window. */
+export function __forgetLostWindowsForTests(): void {
+  lostWindows.clear()
+  lostWindowListeners.clear()
+}
+
 export function lazyWindow<P extends object>(load: () => Promise<Loaded<P>>): LazyWindow<P> {
   let loaded: ComponentType<P> | null = null
   let pending: Promise<Loaded<P>> | null = null
@@ -39,17 +78,23 @@ export function lazyWindow<P extends object>(load: () => Promise<Loaded<P>>): La
   let waitedOn = false
   /** When the load `suspended` waited on failed. `React.lazy` keeps that failure, so `suspended` is spent. */
   let failedAt: number | null = null
-  const once = (): Promise<Loaded<P>> => {
+  const preload = (): Promise<unknown> => once()
+  function once(): Promise<Loaded<P>> {
     if (!pending) {
       pending = load()
         .then((module) => {
           // A lost chunk can resolve to nothing: `main.tsx` cancels Vite's throw when it starts the recovery
           // reload. Reading `default` then throws here, and the catch below treats it as the failure it is.
           loaded = module.default
+          if (lostWindows.delete(preload)) tellLostWindowListeners()
           return module
         })
         .catch((error: unknown) => {
           pending = null
+          if (!lostWindows.has(preload)) {
+            lostWindows.add(preload)
+            tellLostWindowListeners()
+          }
           // A load nobody rendered for (a warm-up) leaves `suspended` untouched, so the first open asks again.
           if (waitedOn) failedAt = Date.now()
           throw error
@@ -77,7 +122,7 @@ export function lazyWindow<P extends object>(load: () => Promise<Loaded<P>>): La
     return createElement(Chosen, props)
   }
   const out = Window as LazyWindow<P>
-  out.preload = () => once()
+  out.preload = preload
   return out
 }
 

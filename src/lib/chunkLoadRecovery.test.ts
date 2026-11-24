@@ -3,6 +3,7 @@ import {
   CHUNK_RECOVERY_KEY,
   CHUNK_RECOVERY_MIN_INTERVAL_MS,
   CHUNK_RELOAD_SETTLE_MS,
+  CHUNK_RELOAD_TYPED_LOOK_MS,
   CHUNK_RELOAD_WAIT_MAX_MS,
   chunkBoundaryView,
   chunkRecoveryReloadStarted,
@@ -10,6 +11,7 @@ import {
   decideChunkReloadWait,
   forgetChunkRecoveryReload,
   isChunkLoadError,
+  msSinceChunkRecoveryReload,
   startChunkRecoveryReload,
   tryClaimChunkRecoveryReload,
   type WriteWatch,
@@ -169,6 +171,63 @@ describe('decideChunkReloadWait: the reload waits for a write', () => {
     // The beat never runs past the give-up either.
     const nearEnd = decideChunkReloadWait({ ...idle, msSinceStarted: CHUNK_RELOAD_WAIT_MAX_MS - 200, msSinceWriteSettled: 0 })
     expect(nearEnd).toMatchObject({ act: 'wait', lookAgainInMs: 200 })
+  })
+})
+
+describe('the app never reloads itself over words someone typed', () => {
+  beforeEach(() => {
+    forgetChunkRecoveryReload()
+    vi.useFakeTimers()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('starts nothing while the page holds typed words, and leaves the guard for when they are sent', () => {
+    const storage = fakeStorage()
+    let reloads = 0
+    let typed = true
+    expect(startChunkRecoveryReload(1_000_000, storage, () => reloads++, undefined, false, () => typed)).toBe(false)
+    expect(reloads).toBe(0)
+    expect(chunkRecoveryReloadStarted()).toBe(false)
+    expect(storage.dump()[CHUNK_RECOVERY_KEY]).toBeUndefined()
+    // The message is sent: the one reload is still there to take.
+    typed = false
+    expect(startChunkRecoveryReload(1_000_000 + 9_000, storage, () => reloads++, undefined, false, () => typed)).toBe(true)
+    expect(reloads).toBe(1)
+  })
+
+  it('words typed after the reload was started hold it, past the wait’s own end, until they are cleared', () => {
+    let count = 1
+    const listeners = new Set<() => void>()
+    const writes: WriteWatch = { count: () => count, subscribe: (cb) => (listeners.add(cb), () => void listeners.delete(cb)) }
+    let typed = false
+    let reloads = 0
+    expect(startChunkRecoveryReload(Date.now(), fakeStorage(), () => reloads++, writes, false, () => typed)).toBe(true)
+    expect(reloads).toBe(0)
+    // While the save is out, someone starts a message.
+    typed = true
+    count = 0
+    for (const cb of [...listeners]) cb()
+    vi.advanceTimersByTime(CHUNK_RELOAD_WAIT_MAX_MS * 4)
+    expect(reloads).toBe(0)
+    // They send it. The next look reloads.
+    typed = false
+    vi.advanceTimersByTime(CHUNK_RELOAD_TYPED_LOOK_MS + CHUNK_RELOAD_SETTLE_MS)
+    expect(reloads).toBe(1)
+  })
+
+  it('decideChunkReloadWait waits for typed words before anything else, the give-up included', () => {
+    expect(
+      decideChunkReloadWait({ inFlightWrites: 0, msSinceStarted: CHUNK_RELOAD_WAIT_MAX_MS * 10, msSinceWriteSettled: null, typedText: true }),
+    ).toEqual({ act: 'wait', reason: 'words typed on the page', lookAgainInMs: CHUNK_RELOAD_TYPED_LOOK_MS })
+  })
+})
+
+describe('msSinceChunkRecoveryReload', () => {
+  it('reads nothing before a recovery reload, the time since after one, and nothing from a storage that throws', () => {
+    expect(msSinceChunkRecoveryReload(5_000, fakeStorage())).toBeNull()
+    expect(msSinceChunkRecoveryReload(65_000, fakeStorage({ [CHUNK_RECOVERY_KEY]: '5000' }))).toBe(60_000)
+    expect(msSinceChunkRecoveryReload(1, { getItem: () => { throw new Error('denied') } })).toBeNull()
+    expect(msSinceChunkRecoveryReload(1, null)).toBeNull()
   })
 })
 
