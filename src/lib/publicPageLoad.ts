@@ -72,6 +72,23 @@ export function publicPageTryAgainAct(online: boolean | undefined): PublicPageTr
 }
 
 /**
+ * How long *Checking for a signal…* stays on the page when the answer is no. With no network a browser refuses
+ * the ask in a millisecond or two, so a press after the first went from *Still offline…* to *Still offline…*
+ * with nothing to see, and the press looked dead (seen on the live site, 2026-11-24). Half a second is long
+ * enough to read the words and short enough not to feel held. A yes is never held: the page reloads at once.
+ */
+export const PUBLIC_PAGE_CHECKING_SHOWN_MS = 500
+
+/**
+ * How much longer the checking look stays after a no that came `tookMs` after the press. A no that took longer
+ * than the floor, such as an ask given up at five seconds, is not held at all. A clock that cannot say holds in full.
+ */
+export function publicPageCheckingHoldMs(tookMs: number): number {
+  if (!(tookMs >= 0)) return PUBLIC_PAGE_CHECKING_SHOWN_MS
+  return Math.max(0, PUBLIC_PAGE_CHECKING_SHOWN_MS - tookMs)
+}
+
+/**
  * The file the ask reads: the site's own icon, 2 kB, at an address that never changes. The icon is in the
  * service worker's precache, so the bare address is answered from the phone with no network at all. The key
  * `publicPageProbeUrl` puts on the address is what stops that: the precache matches an address exactly, but

@@ -4,7 +4,7 @@
  * job's sheet to its trades and a builder to GCs.
  *
  * The one press acts on whoever has a page that is on, lists who it held with the reason, and keeps going past one
- * that fails. A reason that holds many reads as one line with its count, and their names fold under it. A send to one party alone makes a page for someone who never had one. A send never turns a page back
+ * that fails. Above it, a line a ready party says who its email goes to. A reason that holds many reads as one line with its count, and their names fold under it. A send to one party alone makes a page for someone who never had one. A send never turns a page back
  * on: that is its own press. A revision nobody has read goes only once the box *Send it anyway* is ticked.
  *
  * Every rule is `lib/documentBuilder/send.ts`. This file draws, and hands each press to its caller.
@@ -14,7 +14,7 @@ import type { BatchNoun } from '../../lib/batchWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import type { BuilderChip, BuilderChipTone } from '../../lib/documentBuilder/builders'
 import type { Landed } from '../../lib/documentBuilder/documentBuildersIo'
-import { ABOUT_ALL_JOBS, aboutChoices, aboutJobId, heldLines, resendPress, resendTo, sendBatch, sendBatchOutcome, sendBox, sendChips, shownParties, unreadGateWords, type PartyContact, type ResendWhy, type SendParty } from '../../lib/documentBuilder/send'
+import { ABOUT_ALL_JOBS, aboutChoices, aboutJobId, batchGoesTo, heldLines, resendPress, resendTo, sendBatch, sendBatchOutcome, sendBox, sendChips, shownParties, unreadGateWords, type PartyContact, type ResendWhy, type SendParty } from '../../lib/documentBuilder/send'
 import { EmptyState } from '../EmptyState'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 
@@ -96,6 +96,8 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
 
   const gate = { published, unpublishedWords, unread, anyway }
   const batch = sendBatch(parties, noun, gate)
+  /** Who the one press reaches, read before it is pressed. Not the row's `goesTo`, which is one sent party's. */
+  const batchTo = batchGoesTo(batch.ready)
   const shown = shownParties(parties, findWords ? find : null)
 
   const run = async (partyId: string | null, act: () => Promise<Landed<unknown>>, after?: () => void) => {
@@ -272,6 +274,29 @@ export function BuilderSendList({ title, lead, parties, revision, published, unp
       {parties.length > 0 ? (
         <div style={{ display: 'grid', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 10, justifyItems: 'start' }}>
           {box == null ? unreadGate('anyway-everyone') : null}
+          {published && batchTo.lines.length > 0 ? (
+            batchTo.summary == null ? (
+              <div data-batch-goes-to style={{ display: 'grid', gap: 2 }}>
+                {batchTo.lines.map((line) => (
+                  <p key={line.key} style={FINE}>
+                    <ValueSentence text={line.words} />
+                  </p>
+                ))}
+              </div>
+            ) : (
+              // Many are ready: one line counts the emails, and a press on it opens who each goes to.
+              <details data-batch-goes-to style={FINE}>
+                <summary style={{ cursor: 'pointer' }}>{batchTo.summary}</summary>
+                <div style={{ display: 'grid', gap: 2, marginTop: 4 }}>
+                  {batchTo.lines.map((line) => (
+                    <p key={line.key} style={FINE}>
+                      <ValueSentence text={line.words} />
+                    </p>
+                  ))}
+                </div>
+              </details>
+            )
+          ) : null}
           <button type="button" disabled={batch.press.dead || busy} style={mainPress(batch.press.dead || busy)} onClick={() => void sendToEveryoneReady()}>
             {batch.press.label}
           </button>

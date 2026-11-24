@@ -671,6 +671,7 @@ last_updated: 2026-11-21
 > The address keeps `job` on any of the three lists while the note stands (`lienDeskAimAddressJob`), and the aim is forgotten once its list holds the job, the reader picks another row or leaves the list (`lienDeskAimSpent`).
 > The re-aim effect hands the named job to all three selections, so a row picked before never stays open under an address that names another job.
 > Since v2.8478 the effect keys on `lienDeskReaimKey` (the job, the paper list it is named on, the press count), so the same job named on another list re-aims too, and the Lien window's button sends the job on every list (`lienWindowDeskDoorHref` in [`lib/lien/lienWindowDeskDoor.ts`](../src/lib/lien/lienWindowDeskDoor.ts)).
+> Since v2.8498 the Legal desk's Paper tab reads the same helper for its two notice doors, each on its own list (`legalPaperNextDoorHref` in [`lib/legal/legalPaperNextDoor.ts`](../src/lib/legal/legalPaperNextDoor.ts)).
 
 > **v2.8504 (Payoffs, punch list #435 piece 1):** `LienDeskPage`'s grid has two rows, `auto minmax(0, 1fr)`, and the first holds [`LienPayoffs`](../src/components/jobs/LienPayoffs.tsx), whose wrapper is always drawn so the desk keeps the second row.
 > It draws one line, *Payoffs*, with what waits on a release and **Someone paid ›**, and the window that press opens: every live filed affidavit under its place, each with three step rounds, one sentence and one press.

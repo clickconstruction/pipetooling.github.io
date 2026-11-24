@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  PUBLIC_PAGE_CHECKING_SHOWN_MS,
   PUBLIC_PAGE_CHECKING_WORDS,
   PUBLIC_PAGE_LOADING_WORDS,
   PUBLIC_PAGE_LOST_WORDS,
@@ -13,6 +14,7 @@ import {
   PUBLIC_PAGE_TRY_AGAIN,
   probeAnswered,
   probeForSignal,
+  publicPageCheckingHoldMs,
   publicPageLostView,
   publicPageProbeUrl,
   publicPageTryAgainAct,
@@ -57,6 +59,29 @@ describe('publicPageTryAgainAct: what a press on Try again does', () => {
   })
   it('offline, a press asks the network, the first one too: it never reloads on the browser’s word alone', () => {
     expect(publicPageTryAgainAct(false)).toBe('ask')
+  })
+})
+
+describe('publicPageCheckingHoldMs: how long the checking look stays after a no', () => {
+  it('a no that comes at once is held the whole half second, so the press visibly did something', () => {
+    expect(PUBLIC_PAGE_CHECKING_SHOWN_MS).toBe(500)
+    expect(publicPageCheckingHoldMs(0)).toBe(500)
+    expect(publicPageCheckingHoldMs(2)).toBe(498)
+  })
+  it('a slower no is held only for what is left', () => {
+    expect(publicPageCheckingHoldMs(350)).toBe(150)
+    expect(publicPageCheckingHoldMs(499)).toBe(1)
+  })
+  it('a no that took the half second or longer is not held: an ask given up at five seconds answers then', () => {
+    expect(publicPageCheckingHoldMs(500)).toBe(0)
+    expect(publicPageCheckingHoldMs(PUBLIC_PAGE_PROBE_TIMEOUT_MS)).toBe(0)
+  })
+  it('the hold is far shorter than the ask’s own limit, so it never doubles a long wait', () => {
+    expect(PUBLIC_PAGE_CHECKING_SHOWN_MS * 5).toBeLessThanOrEqual(PUBLIC_PAGE_PROBE_TIMEOUT_MS)
+  })
+  it('a clock that went backwards or cannot say holds in full, never longer', () => {
+    expect(publicPageCheckingHoldMs(-40)).toBe(500)
+    expect(publicPageCheckingHoldMs(Number.NaN)).toBe(500)
   })
 })
 

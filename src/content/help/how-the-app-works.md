@@ -52,7 +52,7 @@ The header stays on one line. On a small phone, **Tell the dev**, **People** and
 {{icon:gear}} **Gear menu** — Dark Mode toggle, Calendar, Help (this page), Settings, Sign out
 :::
 
-On a phone you switch **Job Mode** and **Task Mode** on [the row at the top](/help/job-mode-clocking#the-row-at-the-top) of the Dashboard. A computer or a tablet has no row. There the gear menu lists **Dashboard**, **Job Mode** and **Task Mode** under **Modes**. An estimator finds that list on every screen.
+The gear menu lists **Dashboard**, **Job Mode** and **Task Mode** under **Modes**, on every screen. On a phone [the row at the top](/help/job-mode-clocking#the-row-at-the-top) offers the same three for five seconds when the app opens. Then the row shrinks into the gear. An estimator has the list alone.
 
 The gear menu reads in groups. Each group has a small label.
 

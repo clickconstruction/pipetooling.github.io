@@ -424,7 +424,7 @@ export function inviteFromRows(invite: InviteRow, quotes: QuoteRow[], contacts: 
     seenRev: invite.seen_rev ?? null,
     bid: quoteOf(invite, quotes),
     ...(chased ? { nudgedOn: chased } : {}),
-    ...(invite.declined_why === 'wont' || invite.declined_why === 'cant' ? { declinedWhy: invite.declined_why } : {}),
+    ...(invite.declined_why === 'wont' || invite.declined_why === 'cant' || invite.declined_why === 'withdrawn' ? { declinedWhy: invite.declined_why } : {}),
     ...(reason ? { declineReason: { reason, note: invite.decline_note, on: invite.declined_on ?? invite.invited_on } } : {}),
     ...(story.length ? { contacts: story } : {}),
   }

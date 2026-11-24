@@ -554,9 +554,8 @@ button:focus-visible {
 /* The mode row (punch list #425): Task Mode, Dashboard and Job Mode as three thirds above the header,
    drawn by `ModeRow`. The third of the mode drawn is filled. A thumb's 44 px on a phone, where the row
    lives; 32 px past it, for the window that shows another person's Task Mode. In Task Mode the row is
-   a line of the page, inside an `AppTopBanner`. On the Dashboard (punch list #433) the page's line is
-   the row's handle instead: a 24 px band, the smallest press WCAG 2.2 allows, the whole width of the
-   screen, with a small bar in its middle. The row is drawn over that line for five seconds a visit. */
+   a line of the page, inside an `AppTopBanner`. On the Dashboard (punch list #433) the row takes no
+   room at all: it is drawn over the top of the page for five seconds when the app opens. */
 .modeRow {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -598,56 +597,36 @@ button:focus-visible {
   cursor: default;
 }
 /* The ring is drawn inside the third: outside it would be cut off by the row's rounded edge. */
-.modeRowThird:focus-visible,
-.modeRowHandle:focus-visible {
+.modeRowThird:focus-visible {
   outline-offset: -2px;
-}
-.modeRowHandle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 24px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  -webkit-tap-highlight-color: transparent;
-}
-.modeRowHandle:hover,
-.modeRowHandle:active {
-  background: none;
-}
-.modeRowHandle > span {
-  display: block;
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border-strong);
 }
 @media (min-width: 641px) {
   .modeRowThird {
     min-height: 32px;
   }
 }
-/* The counted row (punch list #433). The handle's line is the page's first line, so on a Home Screen
-   iPhone it pays the status bar and paints the band under the clock and the camera. The row lies over
-   that line and what follows it, above the header, and never pushes the page: nothing under it moves
-   when it comes or goes. Its clip names no `top`, so it starts where the line's own content starts,
-   under the status bar, and the row slides away behind that bar with no word crossing the clock. The
-   clip's lower edge is let out so the row's shadow shows. While the row is on its way out the clip
-   stays and takes the presses, so a thumb aimed at a third does not land on the header under it. */
-.appTopBanner[data-mode-row='tucked'] {
+/* The counted row (punch list #433). Its host is a line of no height, and not an `.appTopBanner`, so
+   the header under it pays the status bar as it does on every page and nothing moves when the row
+   comes or goes. The row lies over the top of the page, above the header. Its clip starts under the
+   status bar, so a row sliding in or out passes behind that bar with no word crossing the clock. The
+   clip's lower edge is let out so the row's shadow shows, and further while the row is on its way to
+   the gear, which may sit a line lower. While the row is on its way out the clip stays and takes the
+   presses, so a thumb aimed at a third does not land on the header under it. */
+.modeRowHost {
   position: relative;
+  height: 0;
   z-index: 51;
 }
 .modeRowClip {
   position: absolute;
+  top: env(safe-area-inset-top, 0px);
   left: 0;
   right: 0;
   clip-path: inset(0 0 -1rem 0);
   touch-action: none;
+}
+.modeRowClip[data-mode-row-phase='leaving'] {
+  clip-path: inset(0 0 -6rem 0);
 }
 .modeRowOver {
   position: relative;
@@ -673,6 +652,25 @@ button:focus-visible {
     transform: translateY(-110%);
   }
 }
+/* The way out (the owner's look on a real phone, 2026-11-24): the row shrinks into the header's gear,
+   where the same three modes are listed from then on. `ModeRow` reads where the gear is and how big,
+   and hands the travel and the end size in as `--mode-row-to-*`. The row ends the gear's own size, on
+   the gear, nearly clear. */
+@keyframes modeRowOverToGear {
+  from {
+    transform: translate(0, 0) scale(1, 1);
+    opacity: 1;
+    border-radius: 0;
+  }
+  70% {
+    opacity: 0.9;
+  }
+  to {
+    transform: translate(var(--mode-row-to-x, 40vw), var(--mode-row-to-y, 0px)) scale(var(--mode-row-to-sx, 0.1), var(--mode-row-to-sy, 0.6));
+    opacity: 0;
+    border-radius: 12px;
+  }
+}
 @keyframes modeRowOverFade {
   from {
     opacity: 1;
@@ -681,12 +679,19 @@ button:focus-visible {
     opacity: 0;
   }
 }
-/* Brought by a pull, the handle or a change of page: the row slides down. Drawn on the app's first paint it does not. */
+/* Brought by coming back to the app: the row slides down. Drawn when the app opens it does not. */
 .modeRowOver[data-mode-row-in] {
   animation: modeRowOverIn var(--mode-row-in-ms, 180ms) ease-out;
 }
+/* A row on its way out is not drawn until `ModeRow` has said which way it goes, before the first frame. */
 [data-mode-row-phase='leaving'] > .modeRowOver {
-  animation: modeRowOverOut var(--mode-row-out-ms, 240ms) ease-in forwards;
+  transform-origin: center center;
+}
+[data-mode-row-phase='leaving'] > .modeRowOver[data-mode-row-out='gear'] {
+  animation: modeRowOverToGear var(--mode-row-out-ms, 380ms) cubic-bezier(0.5, 0, 0.75, 0.4) forwards;
+}
+[data-mode-row-phase='leaving'] > .modeRowOver[data-mode-row-out='up'] {
+  animation: modeRowOverOut var(--mode-row-out-ms, 380ms) ease-in forwards;
 }
 /* The time left, on the row's lower edge: a bar that starts full and whose end runs to the left until
    nothing is left. It is the muted text grey, because it is only time. A held row shows it full. */
@@ -764,7 +769,7 @@ button:focus-visible {
   .modeRowOver[data-mode-row-in] {
     animation: none;
   }
-  [data-mode-row-phase='leaving'] > .modeRowOver {
+  [data-mode-row-phase='leaving'] > .modeRowOver[data-mode-row-out] {
     animation: modeRowOverFade 150ms linear forwards;
   }
   .modeRowBar {
@@ -8331,6 +8336,12 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
   padding: 4px 5px;
   min-height: 28px;
   box-shadow: inset 0 3px 0 var(--tone);
+}
+/* The cell whose page is open on the right, outlined in its level's colour at every width. An outline sits outside
+   the cell's own border, so a changed cell keeps its amber edge inside it. */
+.documentBuilderMapCell[aria-pressed='true'] {
+  outline: 2px solid var(--tone);
+  outline-offset: 1px;
 }
 .documentBuilderMapWords {
   display: -webkit-box;

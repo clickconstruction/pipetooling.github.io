@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { BENCH_REMOVE_CONFIRM, BENCH_REMOVE_PRESS, benchRemoveConfirmWords, benchRemoveHold, canRemoveFromBench } from './benchRemove'
 import type { Partner } from './types'
@@ -68,5 +70,42 @@ describe('benchRemoveHold · v2.6749 (punch list #153)', () => {
       expect(s.split(/\s+/).length).toBeLessThanOrEqual(20)
       expect(s).not.toMatch(/[;—]/)
     }
+  })
+})
+
+describe('gc_remove_bench_company · the words of its refusals (v2.8491)', () => {
+  /** The function as the newest migration that defines it wrote it: the one the database runs once pushed. */
+  const dir = join(process.cwd(), 'supabase', 'migrations')
+  const newest = readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .filter((f) => readFileSync(join(dir, f), 'utf8').includes('CREATE OR REPLACE FUNCTION public.gc_remove_bench_company'))
+    .pop()
+  const sql = newest ? readFileSync(join(dir, newest), 'utf8') : ''
+  const body = sql.slice(sql.indexOf('CREATE OR REPLACE FUNCTION public.gc_remove_bench_company'))
+
+  it('an email we sent is said as ours, never as words the company wrote', () => {
+    expect(newest).toBeTruthy()
+    // gc_trade_messages holds every email we sent to a trade company. Nothing a company writes lands there.
+    expect(body).toMatch(/FROM public\.gc_trade_messages m WHERE m\.company_id = p_company_id\) THEN 'we emailed them'/)
+    expect(body).not.toContain('wrote to us')
+    expect(body).toContain("RAISE EXCEPTION '% stays on the bench, since %.', v_name, v_hold")
+  })
+
+  it('keeps every other reason and their order', () => {
+    const reasons = [...body.matchAll(/THEN '([^']+)'/g)].map((m) => m[1])
+    expect(reasons).toEqual([
+      'they hold a work order with us',
+      'they were asked to quote',
+      'a contact is logged on them',
+      'they gave us a promise',
+      'papers went to them or came in',
+      'they sent us a file from their portal',
+      'we emailed them',
+      'they have a Messages thread',
+      'they sent us their form',
+      'they opened their portal',
+      'they have a record on a job',
+    ])
   })
 })

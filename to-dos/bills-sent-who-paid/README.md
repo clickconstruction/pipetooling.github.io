@@ -2,7 +2,7 @@
 name: "Bills sent: who paid, when, and what came in each day"
 number: 422
 group: close
-status: asked 2026-11-23 by the owner · the card and the mock-up the same day · the owner asked for two changes, the delivery word at the right edge and every amount's cents smaller, then said build it all · the list with payment made plain in v2.8333 · By day paid in v2.8343 · the Stripe paid day at its source in v2.8335, merged and its migration pushed on the owner's yes the same day · the six Stripe rows filed a day late before the fix moved back in v2.8371, pushed on the owner's yes the same day · the printed month with its calendar and the month buttons that name where they go in v2.8416, the owner's two asks after his own look · left: the leader's look
+status: asked 2026-11-23 by the owner · the card and the mock-up the same day · the owner asked for two changes, the delivery word at the right edge and every amount's cents smaller, then said build it all · the list with payment made plain in v2.8333 · By day paid in v2.8343 · the Stripe paid day at its source in v2.8335, merged and its migration pushed on the owner's yes the same day · the six Stripe rows filed a day late before the fix moved back in v2.8371, pushed on the owner's yes the same day · the printed month with its calendar and the month buttons that name where they go in v2.8416, the owner's two asks after his own look · a day names the bank deposits on no bill in v2.8493 · left: the leader's look
 summary: >
   The owner asked that Bills sent show more clearly who has paid and when, in a way that fits what
   the leader already reads there, and that he can see how much money comes in from Stripe on any
@@ -294,6 +294,7 @@ The owner said go on 2026-11-23: *Let's build it all testing along the way, maki
 | 1 | The list, payment made plain: the kernel `billsPaid.ts`, the payments read, the stamp, the band's line, the tile, the chips, the phone's bar, the record's payments, print and CSV. The plan's PR 1 and PR 2 as one | v2.8333 |
 | 2 | The Stripe paid day at its source: `mark_invoice_paid_from_stripe` files the company's day. Migration `20261123074206`, with a SQL bed that ran green on the whole schema | v2.8335, merged and pushed on the owner's yes on 2026-11-23. The live function was read afterwards: it files the company's day, and the service role alone may call it. The older rows were a second step: v2.8371 moved the six back a day on the owner's yes, after their list was read, and was pushed the same day. Read afterwards, no Stripe row sat a day late and every job's paid total still matched its payments |
 | 3 | By day paid: the switch, the month, the picked day, the chips, the payout tile, the Paid this week tile, print and CSV | v2.8343 |
+| 4 | A picked day names the bank deposits that landed that day and are on no bill yet, with **Open deposits**. One rule with the Dashboard's Money in bar (`moneyInDeposits.ts`). Never added to a figure | v2.8493, not yet looked at on the live site |
 
 What step 1 found while it was built:
 

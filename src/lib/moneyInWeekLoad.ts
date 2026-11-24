@@ -22,21 +22,11 @@ import { arReturnCaseView, type ArReturnCaseRow } from './jobs/arReturnCase'
 import { buildCollectPile } from './bridge/collect/collectPile'
 import { collectBillsFromAr, arRowInvoiceId } from './bridge/collect/collectBills'
 import { loadCollectDeskReads } from './bridge/collect/loadCollectDesk'
-import { BANKING_SORTING_CONFIG_VERSION, fetchBankPaymentsSortingConfigFromAppSettings } from './bankingSortingConfig'
+import { fetchBankPaymentsSortingConfigFromAppSettings } from './bankingSortingConfig'
+import { moneyInDepositsFromRows, moneyInDepositsSince, moneyInUnlinkedFromRows, returnCaseLivePaymentIds, type MoneyInPendingDepositRow, type MoneyInPostedDepositRow, type MoneyInUnlinkedRow } from './moneyInDeposits'
+import { moneyInDepositFilterOf, readOpenReturnCaseRows, readPendingDepositRows, readPostedDepositRows, readUnlinkedPaymentRows } from './moneyInDepositsLoad'
 import type { FinancialItem } from './dashboardFinancials'
-import {
-  DRAWER_DAYS,
-  MATCH_LOOKBACK_DAYS,
-  isCustomerDeposit,
-  weekMondayContaining,
-  type MoneyInDeposit,
-  type MoneyInDepositFilter,
-  type MoneyInPayment,
-  type MoneyInReturn,
-  type MoneyInStripePayout,
-  type MoneyInUnlinkedPayment,
-  type MoneyInWeekInput,
-} from './moneyInWeek'
+import { MATCH_LOOKBACK_DAYS, weekMondayContaining, type MoneyInDeposit, type MoneyInPayment, type MoneyInReturn, type MoneyInStripePayout, type MoneyInUnlinkedPayment, type MoneyInWeekInput } from './moneyInWeek'
 
 export type MoneyInSource = 'payments' | 'drawer' | 'bank' | 'returns' | 'pile' | 'claims' | 'stripe'
 
@@ -44,9 +34,9 @@ export type MoneyInWeekLoad = { input: MoneyInWeekInput; failed: MoneyInSource[]
 
 type PaymentRow = { id: string; job_id: string | null; amount: number | string | null; paid_on: string | null; payment_type: string | null; note: string | null; reference_number: string | null; mercury_transaction_id: string | null }
 type PayerJobRow = { id: string; bill_to_party: string | null; customer_id: string | null; gc_customer_id: string | null; customer: { name: string | null } | null; gc: { name: string | null } | null }
-type UnlinkedRow = { payment_id: string; job_id: string | null; amount: number | string | null; paid_on: string | null; payment_type: string | null; reference_number: string | null; job_name: string | null }
-type PendingRow = { id: string; amount: number | string | null; kind: string | null; created_at: string | null; counterparty_name: string | null; note: string | null }
-type PostedRow = { mercury_transaction_id: string; amount: number | string | null; posted_at: string | null; counterparty_name: string | null; note: string | null; kind: string | null; remaining_available: number | string | null; returned: boolean | null }
+type UnlinkedRow = MoneyInUnlinkedRow
+type PendingRow = MoneyInPendingDepositRow
+type PostedRow = MoneyInPostedDepositRow
 type LinkedDepositRow = { id: string; posted_at: string | null; kind: string | null }
 type StripeOpenRow = { id: string }
 
@@ -64,12 +54,6 @@ function payerNamesByJob(jobs: ReadonlyArray<PayerJobRow>): Map<string, string> 
   return out
 }
 
-async function rpcRows<T>(db: SupabaseClient<Database>, fn: string, args?: Record<string, unknown>): Promise<T[]> {
-  const { data, error } = await db.rpc(fn as never, (args ?? {}) as never)
-  if (error) throw error
-  return Array.isArray(data) ? (data as T[]) : []
-}
-
 export async function loadMoneyInWeek(
   db: SupabaseClient<Database>,
   args: { ar: ReadonlyArray<FinancialItem>; collections: ReadonlyArray<FinancialItem>; todayYmd: string },
@@ -81,7 +65,7 @@ export async function loadMoneyInWeek(
   // A payment typed in weeks ago can still reach the bank this week.
   const paymentsSince = ymdAddDays(lastMonday, -21)
   // A deposit can only be a drawer check typed in up to three days after it.
-  const depositsSince = ymdAddDays(todayYmd, -(DRAWER_DAYS + 4))
+  const depositsSince = moneyInDepositsSince(todayYmd)
   const unlinkedSince = ymdAddDays(weekMonday, -MATCH_LOOKBACK_DAYS)
   const soft = async <T>(source: MoneyInSource, fallback: T, read: () => Promise<T>): Promise<T> => {
     try {
@@ -95,7 +79,7 @@ export async function loadMoneyInWeek(
   // The deposit filter first: the posted read takes it as its own filter.
   const sorting = await fetchBankPaymentsSortingConfigFromAppSettings()
   const cfg = sorting.outcome === 'error' ? null : sorting.config
-  const filter: MoneyInDepositFilter | null = cfg ? { kinds: cfg.kinds, excludeCounterpartyContains: cfg.excludeCounterpartyContains, excludeNoteContains: cfg.excludeNoteContains } : null
+  const filter = moneyInDepositFilterOf(cfg)
 
   const jobIds = [...new Set([...args.ar, ...args.collections].map((i) => i.jobId).filter((id): id is string => id != null))]
   const invoiceIds = [...new Set([...args.ar, ...args.collections].map((i) => arRowInvoiceId(i.key)).filter((id): id is string => id != null))]
@@ -114,30 +98,10 @@ export async function loadMoneyInWeek(
         'money in payments',
       ),
     ),
-    soft<UnlinkedRow[]>('drawer', [], async () => (await rpcRows<UnlinkedRow>(db, 'list_unlinked_payments_for_bank_payments')).filter((r) => r.paid_on != null && r.paid_on.slice(0, 10) >= unlinkedSince)),
-    soft<PendingRow[]>('bank', [], async () => {
-      const rows = await withSupabaseRetry(
-        async () => db.from('mercury_transactions').select('id, amount, kind, created_at, counterparty_name, note').eq('status', 'pending').gt('amount', 0).order('created_at', { ascending: false }).limit(200),
-        'money in pending deposits',
-      )
-      return (rows ?? []) as PendingRow[]
-    }),
-    soft<PostedRow[]>('bank', [], async () =>
-      rpcRows<PostedRow>(db, 'list_mercury_transactions_for_bank_payments', {
-        p_filter: cfg
-          ? {
-              v: BANKING_SORTING_CONFIG_VERSION,
-              kinds: cfg.kinds,
-              accountIds: cfg.accountIds,
-              debitCardIds: cfg.debitCardIds,
-              startDateYmd: depositsSince,
-              excludeCounterpartyContains: cfg.excludeCounterpartyContains,
-              excludeNoteContains: cfg.excludeNoteContains,
-            }
-          : { v: BANKING_SORTING_CONFIG_VERSION, startDateYmd: depositsSince },
-      }),
-    ),
-    soft<ArReturnCaseRow[]>('returns', [], async () => (await rpcRows<ArReturnCaseRow>(db, 'list_ar_return_cases', { p_include_closed: false })).filter((r) => r && typeof r.mercury_transaction_id === 'string' && r.closed_at == null)),
+    soft<UnlinkedRow[]>('drawer', [], async () => readUnlinkedPaymentRows(db, unlinkedSince)),
+    soft<PendingRow[]>('bank', [], async () => readPendingDepositRows(db)),
+    soft<PostedRow[]>('bank', [], async () => readPostedDepositRows(db, cfg, depositsSince)),
+    soft<ArReturnCaseRow[]>('returns', [], async () => readOpenReturnCaseRows(db)),
     soft<PaidClaim[] | null>('claims', null, async () => {
       const { data, error } = await db.rpc('list_paid_claims')
       if (error) throw error
@@ -237,24 +201,9 @@ export async function loadMoneyInWeek(
     bankTransactionId: p.mercury_transaction_id,
   }))
 
-  const unlinked: MoneyInUnlinkedPayment[] = unlinkedRows.map((u) => ({
-    paymentId: u.payment_id,
-    jobId: u.job_id,
-    usd: num(u.amount),
-    paidOnYmd: (u.paid_on ?? '').slice(0, 10) || null,
-    paymentType: u.payment_type,
-    referenceNumber: u.reference_number,
-    payerName: payerFor(u.job_id, u.job_name),
-  }))
+  const unlinked: MoneyInUnlinkedPayment[] = moneyInUnlinkedFromRows(unlinkedRows, (u) => payerFor(u.job_id, u.job_name))
 
-  const deposits: MoneyInDeposit[] = [
-    ...pendingRows
-      .filter((t) => isCustomerDeposit({ usd: num(t.amount), kind: t.kind, counterpartyName: t.counterparty_name, note: t.note }, filter))
-      .map((t): MoneyInDeposit => ({ mercuryTransactionId: t.id, usd: num(t.amount), kind: t.kind, counterpartyName: t.counterparty_name, state: 'pending', dayYmd: ymdOf(t.created_at) })),
-    ...postedRows
-      .filter((t) => !t.returned && num(t.remaining_available) > 0.005 && isCustomerDeposit({ usd: num(t.amount), kind: t.kind, counterpartyName: t.counterparty_name, note: t.note }, filter))
-      .map((t): MoneyInDeposit => ({ mercuryTransactionId: t.mercury_transaction_id, usd: num(t.remaining_available), kind: t.kind, counterpartyName: t.counterparty_name, state: 'posted', dayYmd: ymdOf(t.posted_at) })),
-  ]
+  const deposits: MoneyInDeposit[] = moneyInDepositsFromRows(pendingRows, postedRows, filter)
 
   let unbankedCount = 0
   const returns: MoneyInReturn[] = []
@@ -272,7 +221,7 @@ export async function loadMoneyInWeek(
         usd: view.amount,
         cameBackYmd: view.cameBackYmd,
         chip: view.chip.text,
-        livePaymentIds: [...(r.live_payments ?? []).map((p) => p.payment_id), ...(r.recorded_payment ? [r.recorded_payment.payment_id] : [])],
+        livePaymentIds: returnCaseLivePaymentIds(r),
         jobId,
       })
     } catch {

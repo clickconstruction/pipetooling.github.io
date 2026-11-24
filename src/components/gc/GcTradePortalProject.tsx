@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
+import { askTakenBack } from '../../lib/gc/decline'
 import { planLabel } from '../../lib/gc/lookups'
 import { questionsCloseOn } from '../../lib/gc/planQuestions'
 import { bidIsStale } from '../../lib/gc/bids'
@@ -261,7 +262,7 @@ function TradeBlocks({
           <GcTradePortalJob project={project} pkg={pkg} partner={partner} today={today} />
         </>
       ) : invite.status === 'declined' ? (
-        <PortalBlock title={t('inviteTitle', { trade: pkg.trade })}>{t('youPassed')}</PortalBlock>
+        <PortalBlock title={t('inviteTitle', { trade: pkg.trade })}>{askTakenBack(invite) ? t('weTookItBack', { gc: GC }) : t('youPassed')}</PortalBlock>
       ) : (
         <AskBlock project={project} pkg={pkg} invite={invite} today={today} openedNewest={!news.behind} notVetted={portalVetting(partner).state === 'send' || portalVetting(partner).state === 'checking'} />
       )}

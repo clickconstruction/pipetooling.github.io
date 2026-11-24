@@ -158,7 +158,7 @@ Rows were read through the dev seat.
   - Read through the dev seat after: the row is `taken_back` and `seen_at` is null.
 - **Not walked.** `job_note_tags_seen`, `task_note_tags_seen` and `legal_firm_intake_seen` rest on the bed. The Sample estimator has no cleared tag to hold, and is not the office.
 - **Left on production.** A second closed `bid_mark_requests` row on BP398, `41a412c2-2c5d-44ad-b081-562f44fca25c`, `taken_back`, never seen. A second `user_imitations` row for the Sample estimator, at 11:02 UTC.
-- **Seen, not fixed.** On a PR whose migration only replaces functions, `check:calls-ahead` ends with *the deploy holds until the push*. The deploy's own step prints those calls as a warning and goes on. That sentence is what the mistake about #9324 was read from.
+- **Seen, and fixed in v2.8489.** On a PR whose migration only replaces functions, `check:calls-ahead` ended with *the deploy holds until the push*. The deploy's own step prints those calls as a warning and goes on. That sentence is what the mistake about #9324 was read from. From v2.8489 such a PR is told that no deploy waits for its push.
 
 ### Loose ends
 

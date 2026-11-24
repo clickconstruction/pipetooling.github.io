@@ -18,29 +18,37 @@ import { cardsByNumber, tickVerdict, type PunchTick } from './punchListTicks'
  *   this build read it (`PunchListHistory.touched`, by the card's slug).
  * - After 12 hours with none of those the claim has **gone quiet**. To everyone else the card reads
  *   as free to pick up, with who had it and how long ago it went quiet.
- * - To the claimer, their own tick stays, shown as gone quiet with **Still on it** beside it. The
- *   tick Taunya asked for first is kept between sessions, so it does not vanish overnight. That is
- *   one reading of her two asks together, and `OWN_TICK_AFTER_QUIET` is the one word that flips it.
+ * - To the claimer, their own tick is wiped once the claim has gone quiet. Their box is clear, their
+ *   own page deletes the row, and for that visit the card says the tick was cleared and why. That
+ *   is Taunya's answer of 2026-11-24 (*"Wipe it"*) to the question put to her on 2026-11-22. The
+ *   other reading of her two asks, where the tick stays marked as gone quiet with **Still on it**
+ *   beside it, is still here: `OWN_TICK_AFTER_QUIET` is the one word that picks between them.
  * - A second person may tick a card whose claim has gone quiet. That takes it over: the card reads as
- *   theirs, and the first person still sees their own quiet tick.
+ *   theirs. Where a quiet tick stays, the first person still sees their own.
  * - Two fresh claims on one card are allowed, and the card names both. Two people do work one train,
  *   and a refusal would only make the second person untick a card they are in fact on.
  * - A move to another section still ends a claim, by the rule in `punchListTicks.ts`: a row whose
  *   section is not the card's section today is no claim at all, whoever made it.
  *
- * Nothing expires a row and no job runs. Fresh or quiet is worked out here each time the page draws.
+ * Nothing expires a row and no job runs. Fresh or quiet is worked out here each time the page draws,
+ * and a quiet row goes only when its claimer's own page next opens the board (`usePunchListTicks`).
+ * Until then everyone else still reads who had the card.
  */
 
 export const QUIET_AFTER_HOURS = 12
 export const QUIET_AFTER_MS = QUIET_AFTER_HOURS * 3_600_000
 
 /**
- * What happens to a person's own tick once their claim has gone quiet. `stays`: they still see it,
- * marked as gone quiet, with Still on it. `wiped`: it is gone for them as it is for everyone else,
- * and the page deletes the row.
+ * What happens to a person's own tick once their claim has gone quiet. `wiped`: it is gone for them
+ * as it is for everyone else, their page deletes the row, and the card says so for that visit
+ * (`CardClaims.cleared`). `stays`: they still see it, marked as gone quiet, with Still on it.
+ *
+ * `wiped` since v2.8441, on Taunya's answer of 2026-11-24. It was built as `stays` (v2.8226) while
+ * her answer was awaited. Still on it is offered only on a quiet tick that stays, so with `wiped`
+ * no card offers it: a person who is still on a card ticks it again.
  */
 export type OwnTickAfterQuiet = 'stays' | 'wiped'
-export const OWN_TICK_AFTER_QUIET: OwnTickAfterQuiet = 'stays'
+export const OWN_TICK_AFTER_QUIET: OwnTickAfterQuiet = 'wiped'
 
 /** What the claims need of a card: its number, its group today, and the slug its last change is kept under. */
 export type ClaimCard = Pick<BoardItem, 'number' | 'group' | 'slug'>
@@ -60,13 +68,15 @@ export interface CardClaim {
 export interface CardClaims {
   /** The viewer's own claim, fresh or gone quiet; null when they have none (or theirs was wiped). */
   mine: CardClaim | null
+  /** The viewer's own claim that went quiet and was wiped: their box is clear and the card says why. Null where a quiet tick stays. */
+  cleared: CardClaim | null
   /** Other people's fresh claims, the freshest first. */
   held: CardClaim[]
   /** Other people's claims that have gone quiet, the one that went quiet last first. */
   wentQuiet: CardClaim[]
 }
 
-export const NO_CLAIMS: CardClaims = { mine: null, held: [], wentQuiet: [] }
+export const NO_CLAIMS: CardClaims = { mine: null, cleared: null, held: [], wentQuiet: [] }
 
 /** The name a row with none reads as. */
 export const UNNAMED_CLAIMER = 'Someone'
@@ -88,7 +98,7 @@ export interface ClaimsRead {
   byCard: Map<number, CardClaims>
   /** The numbers of the cards the viewer's own tick shows on. */
   ticked: ReadonlySet<number>
-  /** The viewer's own rows to delete because their claim went quiet; empty unless a quiet tick is wiped. */
+  /** The cards whose row of the viewer's own went quiet and is to be deleted; empty where a quiet tick stays. */
   wiped: number[]
 }
 
@@ -117,12 +127,12 @@ export function readClaims(input: {
     const freshAt = claimFreshAt(tick.tickedAt, touched?.[card.slug])
     const claim: CardClaim = { userId: tick.userId, name: tick.claimerName.trim() || UNNAMED_CLAIMER, freshAt, quiet: isQuiet(freshAt, nowMs) }
     const mine = Boolean(me) && tick.userId === me
+    const entry = byCard.get(card.number) ?? { mine: null, cleared: null, held: [], wentQuiet: [] }
     if (mine && claim.quiet && ownTickAfterQuiet === 'wiped') {
+      // No tick and no claim: the card only says what became of it.
       wiped.push(card.number)
-      continue
-    }
-    const entry = byCard.get(card.number) ?? { mine: null, held: [], wentQuiet: [] }
-    if (mine) {
+      entry.cleared = claim
+    } else if (mine) {
       entry.mine = claim
       ticked.add(card.number)
     } else if (claim.quiet) entry.wentQuiet.push(claim)
@@ -166,16 +176,20 @@ export type ClaimTone = 'mine' | 'taken' | 'quiet' | 'free'
 export interface ClaimLine {
   tone: ClaimTone
   text: string
-  /** True on the viewer's own line once their claim has gone quiet: the line offers Still on it. */
+  /** True on the viewer's own line once their claim has gone quiet and their tick stayed: the line offers Still on it. */
   stillOn: boolean
 }
 
 export const STILL_ON_LABEL = 'Still on it'
 
+/** What a card says to a person whose own tick went quiet and was wiped: what happened, why, and the press that puts it back. */
+export const TICK_CLEARED_WORDS = `Your tick was cleared after ${QUIET_AFTER_HOURS} quiet hours. Tick the card again if you are still on it.`
+
 /**
  * What a card says about who is on it, for this viewer: at most two lines, and none for a card nobody
- * has ticked. The first line is who is working on it now, or that it is free. The second is the
- * viewer's own claim gone quiet, when someone else's line came first or nobody's did.
+ * has ticked. The first line is who is working on it now, or that it is free. The second is what
+ * became of the viewer's own claim once it went quiet: that their tick was cleared, or, where a quiet
+ * tick stays, that the claim went quiet with Still on it.
  */
 export function claimLines(claims: CardClaims | undefined, nowMs: number): ClaimLine[] {
   if (!claims) return []
@@ -207,6 +221,8 @@ export function claimLines(claims: CardClaims | undefined, nowMs: number): Claim
       text: `Your claim went quiet ${val('when', agoWords(mineQuiet.freshAt + QUIET_AFTER_MS, nowMs))}.${claims.held.length > 0 ? '' : ' Others see this card as free to pick up.'}`,
       stillOn: true,
     })
+  } else if (claims.cleared) {
+    lines.push({ tone: 'quiet', text: TICK_CLEARED_WORDS, stillOn: false })
   }
   return lines
 }

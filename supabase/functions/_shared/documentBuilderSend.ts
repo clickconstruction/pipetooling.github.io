@@ -26,6 +26,8 @@ export const DOCUMENT_BUILDER_SEND_REFUSALS = {
   pageOff: { status: 409, words: 'Their page was turned off. A send never turns a page back on.' },
   noEmail: { status: 409, words: 'Email is not set up yet, so nothing was sent.' },
   sendFailed: { status: 502, words: 'The email did not go. Nothing was recorded. Try again.' },
+  /** The email went and only its record did not land. Never *Try again*: that would send them a second email. */
+  sentNotRecorded: { status: 500, words: 'The email went, but the send was not recorded here. Do not send it again.' },
   linkOff: { status: 404, words: 'This link is no longer open.' },
   failed: { status: 500, words: 'Something went wrong. Try again in a moment.' },
 } as const

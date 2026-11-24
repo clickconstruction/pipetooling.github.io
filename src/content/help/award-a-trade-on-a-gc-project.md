@@ -22,6 +22,14 @@ The quote then reads {{chip:green|Awarded}}. A trade is awarded once.
 
 While we still bid, Compare quotes offers **Carry this number** instead. See [compare quotes and carry one](/help/compare-quotes-and-carry-one).
 
+## When their number ran out
+
+A quote holds for the days the company gave. The row *Their number holds* shows the day.
+
+Past that day, a line under the button reads *Their number ran out*, with the day. Ask the company whether the number still holds.
+
+The button still works. A window asks first, and its button reads {{button:blue|Award on this number}}. Press **Cancel** to leave the trade as it was.
+
 ## When Award is off
 
 The app checks the company before it awards. The words under the button say what stops it.

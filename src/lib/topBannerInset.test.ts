@@ -69,7 +69,9 @@ describe('the lines above the header', () => {
   it.each([
     ['components/AddTaskShortcutBanner.tsx', 1],
     ['components/CustomerWaitingBanner.tsx', 2],
-    ['components/layout/ModeRow.tsx', 2],
+    // Task Mode's row alone. The Dashboard's row lies over the page from a line of no height that is no banner (punch list #433):
+    // the header under it keeps paying the status bar, as on every page, so nothing moves when the row comes or goes.
+    ['components/layout/ModeRow.tsx', 1],
   ])('%s draws its line through the component, with no padding of its own', (file, lines) => {
     // The opening tag ends at the first `>` that closes a line.
     const tags = read(file).match(/<AppTopBanner\b[\s\S]*?>\n/g) ?? []

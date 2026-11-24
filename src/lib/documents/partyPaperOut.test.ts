@@ -10,6 +10,7 @@ import {
   copyOutSentence,
   copyOutWho,
   partyContactIsOwn,
+  partyContactsToLook,
   partyPapersOut,
   sendAgainLabel,
   type PartyCopyOut,
@@ -44,9 +45,39 @@ describe('partyPapersOut', () => {
     expect(partyPapersOut(docs, CONTACT, 'Mutual secrecy agreement')).toEqual([])
   })
 
+  it('reads a company’s copies on every contact handed in, and still by paper and state', () => {
+    const NAMED = '7c4d2e1f-0a4d-4e8b-9c6f-1d2e3a4b5c6d'
+    const docs = [
+      row({ id: 'own', sent_at: '2026-11-18T18:00:00Z' }),
+      row({ id: 'named', person_name: `party:${NAMED}`, sent_at: '2026-11-21T18:00:00Z' }),
+      row({ id: 'named signed', person_name: `party:${NAMED}`, status: 'signed' }),
+      row({ id: 'elsewhere', person_name: 'party:9a1b2c3d-0a4d-4e8b-9c6f-1d2e3a4b5c6d' }),
+    ]
+    expect(partyPapersOut(docs, [CONTACT, NAMED], 'Mutual secrecy agreement').map((d) => d.id)).toEqual(['named', 'own'])
+    expect(partyPapersOut(docs, [NAMED], 'Mutual secrecy agreement').map((d) => d.id)).toEqual(['named'])
+    expect(partyPapersOut(docs, [], 'Mutual secrecy agreement')).toEqual([])
+  })
+
   it('a party with no contact yet has nothing out', () => {
     expect(partyPapersOut([row({})], null, 'Mutual secrecy agreement')).toEqual([])
     expect(partyPapersOut([row({})], undefined, 'Mutual secrecy agreement')).toEqual([])
+  })
+})
+
+describe('partyContactsToLook', () => {
+  const own = { id: 'own', name: null }
+  const ana = { id: 'ana', name: 'Ana Reyes' }
+  const ben = { id: 'ben', name: 'Ben Ortiz' }
+
+  it('a company is looked at on its own contact first, then on each person named under it', () => {
+    expect(partyContactsToLook('customers', [ana, own, ben])).toEqual(['own', 'ana', 'ben'])
+    expect(partyContactsToLook('supply_houses', [ana])).toEqual(['ana'])
+    expect(partyContactsToLook('customers', [])).toEqual([])
+  })
+
+  it('a person on file is looked at on their one contact', () => {
+    expect(partyContactsToLook('customer_contact_persons', [ana, ben])).toEqual(['ana'])
+    expect(partyContactsToLook('supply_house_contacts', [])).toEqual([])
   })
 })
 

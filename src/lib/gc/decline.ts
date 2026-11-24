@@ -30,14 +30,28 @@ export function declineLogWords(reason: DeclineReason, note: string): string {
   return note ? `${declineReasonLabel(reason)}, "${note}"` : declineReasonLabel(reason)
 }
 
-/** The chip's words for a company that is out: "will not do it · too busy", or "passed" from their portal. */
+/**
+ * We took this ask back after the company heard about it (v2.8490, `gc_take_ask_back`): the ask is closed, and the
+ * close is ours. It is out of every count of who is still asked, as a pass is, and it never reads as their answer.
+ */
+export function askTakenBack(invite: Pick<Invite, 'status' | 'declinedWhy'>): boolean {
+  return invite.status === 'declined' && invite.declinedWhy === 'withdrawn'
+}
+
+/** An ask we took back, in a chip's words. */
+export const TAKEN_BACK_WORDS = 'we took it back'
+export const TAKEN_BACK_TITLE = 'We took this ask back after they heard about it. It is not their answer.'
+
+/** The chip's words for a company that is out: "will not do it · too busy", "passed" from their portal, or "we took it back". */
 export function declinedWords(invite: Invite): string {
+  if (askTakenBack(invite)) return TAKEN_BACK_WORDS
   const head = invite.declinedWhy === 'wont' ? 'will not do it' : invite.declinedWhy === 'cant' ? 'cannot do it' : 'passed'
   return invite.declineReason ? `${head} · ${declineReasonLabel(invite.declineReason.reason)}` : head
 }
 
-/** The hover's sentence: the reason in full and the day it was written down. */
+/** The hover's sentence: the reason in full and the day it was written down, or that the close is ours. */
 export function declinedTitle(invite: Invite): string | undefined {
+  if (askTakenBack(invite)) return TAKEN_BACK_TITLE
   const r = invite.declineReason
   return r ? `${declineReasonWords(r)}. Written down ${shortDate(r.on)}.` : undefined
 }

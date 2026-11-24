@@ -2,7 +2,7 @@
  * A stand-in for the supabase client that keeps `punch_list_ticks` in memory, for the smokes of the punch list's
  * ticks (`PunchList.ticks.render.test.tsx`, `usePunchListTicks.render.test.tsx`). It answers the three calls the
  * hook makes (a select of every row, an upsert of one row, a delete of a person's rows by card number or
- * numbers), stamps the name and the time on a write as the table's trigger does, can be told to fail a read or
+ * numbers, which answers the rows it deleted and can be held to rows no newer than a time), stamps the name and the time on a write as the table's trigger does, can be told to fail a read or
  * a write with a plain result error, and logs every write so a test can read what was sent. Any other table
  * answers an empty list.
  *
@@ -28,7 +28,7 @@ export interface TicksFake {
   failRead: { code?: string; message: string } | null
   /** A plain result error for the next writes, or null. */
   failWrite: { code?: string; message: string } | null
-  /** Every write that landed, in order: `upsert 299 ready v2.8196`, `delete 299`, `delete 2,9`. */
+  /** Every write that landed, in order: `upsert 299 ready v2.8196`, `delete 299`, `delete 2,9`, and a delete held to a time as `delete 5 quiet` (`delete 5 quiet, none` when the row was newer). */
   log: string[]
   reads: number
   /** The names the trigger would stamp, by user id; a person not listed gets ''. */
@@ -64,6 +64,7 @@ export function makeTicksFake(): TicksFake {
     let op: 'select' | 'upsert' | 'delete' = 'select'
     let payload: FakeTickRow | null = null
     const filters: Record<string, unknown> = {}
+    const atMost: Record<string, unknown> = {}
     const run = (): { data: unknown; error: unknown } => {
       if (table !== 'punch_list_ticks') return { data: [], error: null }
       if (op === 'select') {
@@ -83,8 +84,13 @@ export function makeTicksFake(): TicksFake {
       } else {
         const wanted = filters.card_number
         const gone = new Set(Array.isArray(wanted) ? (wanted as number[]) : [wanted as number])
-        fake.rows = fake.rows.filter((r) => !(r.user_id === filters.user_id && gone.has(r.card_number)))
-        fake.log.push(`delete ${[...gone].join(',')}`)
+        // `lte('ticked_at', …)`: a row stamped after that time is a newer row, and it stays.
+        const latest = typeof atMost.ticked_at === 'string' ? Date.parse(atMost.ticked_at) : null
+        const goes = (r: FakeTickRow) => r.user_id === filters.user_id && gone.has(r.card_number) && (latest === null || Date.parse(r.ticked_at ?? fake.now()) <= latest)
+        const deleted = fake.rows.filter(goes)
+        fake.rows = fake.rows.filter((r) => !goes(r))
+        fake.log.push(`delete ${[...gone].join(',')}${latest === null ? '' : deleted.length > 0 ? ' quiet' : ' quiet, none'}`)
+        return { data: deleted.map((r) => ({ card_number: r.card_number })), error: null }
       }
       return { data: null, error: null }
     }
@@ -106,6 +112,10 @@ export function makeTicksFake(): TicksFake {
     }
     builder.in = (col: string, value: unknown) => {
       filters[col] = value
+      return builder
+    }
+    builder.lte = (col: string, value: unknown) => {
+      atMost[col] = value
       return builder
     }
     builder.then = (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) => Promise.resolve(run()).then(onFulfilled, onRejected)

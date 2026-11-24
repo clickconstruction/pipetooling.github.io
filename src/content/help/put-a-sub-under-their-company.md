@@ -51,8 +51,8 @@ The sub's own papers stay on the sub's row either way. Papers already filed unde
 The subcontractor agreement and the W-9 belong to the business. Those two papers show once, under the company's row, and not on a worker's row.
 
 1. Press {{button:blue|Send for signature}} under the company's row.
-2. Pick the **Paper**. A paper the company has signed shows as signed already and cannot be picked.
-3. Check **Who signs**. The window opens on the worker with a title, with their email from the roster.
+2. Pick the **Paper**. The list holds the papers the Contract Book keeps for subs. A paper the company has signed shows as signed already and cannot be picked.
+3. Check **Who signs**. The window opens on the worker with a title, with their email from the roster. A worker with no roster email opens on the address the company keeps for them.
 4. Press {{button:blue|Send email}}.
 
 The email goes to the signer and to anyone else at the company who gets its contracts. The paper says who signs and the company they sign for.

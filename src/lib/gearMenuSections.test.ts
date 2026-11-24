@@ -31,43 +31,29 @@ describe('the gear menu’s sections', () => {
     expect(gearPagesInOrder(none)).toEqual([])
   })
 
-  describe('the Modes rows (punch list #425)', () => {
-    const rowsFor = (role: string, phone: boolean) =>
-      gearModesRows({ modeRow: modeRowDrawnHere(role, phone), jobEligible: canLeaveJobFieldReport(role), dispatchEligible: dispatchModeEligibleForRole(role) })
-    const WITH_THE_ROW = ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent', 'subcontractor', 'helpers']
+  describe('the Modes rows (punch list #425, at every width since #433)', () => {
+    const rowsFor = (role: string) => gearModesRows({ jobEligible: canLeaveJobFieldReport(role), dispatchEligible: dispatchModeEligibleForRole(role) })
+    const EVERY_ROLE = ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent', 'subcontractor', 'helpers', 'estimator']
 
-    it('on a phone a role with the mode row lists neither Job Mode nor Task Mode', () => {
-      for (const role of WITH_THE_ROW) {
-        expect(rowsFor(role, true).list, role).toEqual([])
-        expect(rowsFor(role, true).job, role).toBe(false)
-        expect(rowsFor(role, true).task, role).toBe(false)
-      }
-    })
-
-    it('on a phone whoever can hold Dispatch Mode keeps it under the label, and the rest have no Modes group at all', () => {
-      for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
-        expect(rowsFor(role, true), role).toEqual({ list: [], job: false, dispatch: true, task: false, label: true })
-      }
-      for (const role of ['primary', 'superintendent', 'subcontractor', 'helpers']) {
-        expect(rowsFor(role, true), role).toEqual({ list: [], job: false, dispatch: false, task: false, label: false })
-      }
-    })
-
-    it('on a desk every role has the list of three under the label: Dashboard, Job Mode, Task Mode', () => {
-      for (const role of [...WITH_THE_ROW, 'estimator']) {
-        const rows = rowsFor(role, false)
+    it('every role has the list of three under the label, at a phone and at a desk: Dashboard, Job Mode, Task Mode', () => {
+      for (const role of EVERY_ROLE) {
+        const rows = rowsFor(role)
         expect(rows.list, role).toEqual(['full', 'job', 'task'])
         expect(rows.job && rows.task && rows.label, role).toBe(true)
         expect(rows.dispatch, role).toBe(dispatchModeEligibleForRole(role))
       }
     })
 
-    it('the estimator, who has no row, has the list at a phone’s width too', () => {
-      expect(rowsFor('estimator', true)).toEqual({ list: ['full', 'job', 'task'], job: true, dispatch: false, task: true, label: true })
+    it('the list is the door on a phone too: the mode row shows only when the app opens, then shrinks into the gear', () => {
+      // Until #433 a phone with the row listed neither mode here. The rows no longer read the width or the row.
+      for (const role of ['primary', 'superintendent', 'subcontractor', 'helpers']) {
+        expect(modeRowDrawnHere(role, true), role).toBe(true)
+        expect(rowsFor(role), role).toEqual({ list: ['full', 'job', 'task'], job: true, dispatch: false, task: true, label: true })
+      }
     })
 
     it('leaves Job Mode out of the list for whoever cannot hold it', () => {
-      expect(gearModesRows({ modeRow: false, jobEligible: false, dispatchEligible: false })).toEqual({ list: ['full', 'task'], job: false, dispatch: false, task: true, label: true })
+      expect(gearModesRows({ jobEligible: false, dispatchEligible: false })).toEqual({ list: ['full', 'task'], job: false, dispatch: false, task: true, label: true })
     })
 
     it('puts the Dashboard first and Task Mode, pressed least, last', () => {

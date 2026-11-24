@@ -24,6 +24,7 @@ import { DailyGoalsGateProvider } from '../contexts/DailyGoalsGateContext'
 import { PersonDeskProvider } from '../contexts/PersonDeskContext'
 import { switchRowAriaLabel } from '../lib/gearSwitchWords'
 import { GEAR_PAGE_ORDER } from '../lib/gearMenuSections'
+import { MODE_ROW_AT_OPEN_OFF_STORAGE_KEY, MODE_ROW_HOME_ATTR } from '../lib/modeRow'
 import { renderWithProviders, settle } from '../test/renderSmokeMocks'
 
 /** The one question Layout asks the screen: is it a phone's width? */
@@ -113,15 +114,16 @@ describe('Layout: the gear menu’s sections and switches', () => {
     const groups = rowsBySection(menu)
     expect(Object.keys(groups)).toEqual(['top', 'Modes', 'Show', 'Pages', 'Help and settings', 'last'])
 
-    // Modes holds a leader's Dispatch Mode and its PO tab, and nothing else. On a phone Job Mode and Task Mode left
-    // the menu for the roles with the mode row above the header (punch list #425): the row is their one door there.
-    expect(groups.Modes!.length).toBeGreaterThan(0)
-    expect(groups.Modes!.every((n) => /^Dispatch Mode|^PO tab/.test(n))).toBe(true)
-    expect(menu.textContent).not.toMatch(/Job Mode|Task Mode/)
-    expect(menu.querySelector('[role="radiogroup"]')).toBeNull()
-    // The switches, each with its icon. The only row called a mode outside Modes is the phone's own Dark Mode.
+    // Modes holds the three as a list with one dot, on a phone as at a desk (punch list #433): the mode row shows
+    // only when the app opens, then shrinks into this menu's gear. A leader's Dispatch Mode and its PO tab follow.
+    const radios = Array.from(menu.querySelectorAll('[role="radio"]')) as HTMLElement[]
+    expect(radios.map((r) => r.textContent)).toEqual(['Dashboard', 'Job Mode', 'Task Mode'])
+    expect(radios.map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false'])
+    expect(groups.Modes![0]).toBe('DashboardJob ModeTask Mode')
+    expect(groups.Modes!.slice(1).every((n) => /^Dispatch Mode|^PO tab/.test(n))).toBe(true)
+    // The switches, each with its icon. The mode row's own, Modes at open, is a phone's and ticked until someone unticks it.
     // A leader on a phone is offered the new phone layout's tick too, unticked until they tick it.
-    expect(groups.Show).toEqual(['Pin bar', 'Tell the dev✓', 'New phone layout', 'Dark Mode'])
+    expect(groups.Show).toEqual(['Pin bar', 'Tell the dev✓', 'Modes at open✓', 'New phone layout', 'Dark Mode'])
     const show = menu.querySelector('[data-gear-section="Show"]')!
     expect(show.nextElementSibling!.querySelector('svg')).toBeTruthy()
     expect(show.nextElementSibling!.nextElementSibling!.querySelector('svg')).toBeTruthy()
@@ -170,6 +172,41 @@ describe('Layout: the gear menu’s sections and switches', () => {
     expect(storedUnder('dashboard_job_mode_')).toEqual(['0'])
     // The Dashboard choice never writes Dispatch Mode: a leader keeps the bar they had.
     expect(storedUnder('dispatch_mode_')).toEqual([])
+  })
+
+  it('on a phone the mode row’s switch is this phone’s: unticked it is kept with no person in the key, and the row stops showing', async () => {
+    setScreen(true)
+    const menu = await openGearMenu()
+    // The app opened on the Dashboard: the row is over the page, and the gear is where it will go.
+    expect(document.querySelector('.modeRowOver')).toBeTruthy()
+    expect(screen.getByTitle('Settings').hasAttribute(MODE_ROW_HOME_ATTR)).toBe(true)
+    const modes = menu.querySelector(`[aria-label="${switchRowAriaLabel('modes')}"]`) as HTMLElement
+    expect(modes.getAttribute('aria-pressed')).toBe('true')
+    expect(modes.title).toBe('Stop showing the three modes when the app opens')
+    expect(localStorage.getItem(MODE_ROW_AT_OPEN_OFF_STORAGE_KEY)).toBeNull()
+
+    fireEvent.click(modes)
+    expect(localStorage.getItem(MODE_ROW_AT_OPEN_OFF_STORAGE_KEY)).toBe('1')
+    expect(document.querySelector('.modeRowOver')).toBeNull()
+    cleanup()
+
+    // The next opening on this phone: no row, and the switch comes up unticked.
+    const again = await openGearMenu()
+    expect(document.querySelector('.modeRowOver')).toBeNull()
+    const off = again.querySelector(`[aria-label="${switchRowAriaLabel('modes')}"]`) as HTMLElement
+    expect(off.getAttribute('aria-pressed')).toBe('false')
+    expect(off.textContent).toBe('Modes at open')
+    expect(off.title).toBe('Show Task Mode, Dashboard and Job Mode for five seconds when the app opens')
+    fireEvent.click(off)
+    expect(localStorage.getItem(MODE_ROW_AT_OPEN_OFF_STORAGE_KEY)).toBeNull()
+    expect(document.querySelector('.modeRowOver')).toBeTruthy()
+  })
+
+  it('at a desk there is no mode row, so the menu holds no switch for it', async () => {
+    setScreen(false)
+    const menu = await openGearMenu()
+    expect(menu.querySelector(`[aria-label="${switchRowAriaLabel('modes')}"]`)).toBeNull()
+    expect(document.querySelector('.modeRowOver')).toBeNull()
   })
 
   it('reads each switch’s state and next press aloud, and keeps the stored keys', async () => {

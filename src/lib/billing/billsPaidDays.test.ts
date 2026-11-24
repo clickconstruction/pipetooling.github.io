@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   BILLS_PAID_LEFT_OUT,
   BILLS_PAID_CSV_HEAD,
+  BILLS_PAID_NO_BILL_NOT_ADDED,
+  BILLS_PAID_NO_BILL_PATH,
+  BILLS_PAID_NO_BILL_PRESS,
+  BILLS_PAID_NO_BILL_UNREAD,
+  billsPaidNoBillAnswer,
+  billsPaidNoBillLine,
   billsPaidCellCount,
   billsPaidCellCredit,
   billsPaidCellLabel,
@@ -38,6 +44,9 @@ import {
   type BillsPaidInput,
   type BillsPaidPayment,
 } from './billsPaidDays'
+import { buildMoneyInWeek } from '../moneyInWeek'
+import { plainSentence } from '../valuesInPlace'
+import type { MoneyInDeposit, MoneyInUnlinkedPayment } from '../moneyInDeposits'
 
 // Made-up data throughout: no live bill, job, customer, check number or amount.
 const B = (n: number) => `bbbbbbbb-0000-4000-8000-00000000000${n}`
@@ -391,7 +400,7 @@ describe('billsPaid — out of the app', () => {
     expect(cal).toContain('<td class="none"><i>21</i></td>')
     expect(cal).toContain('<td class="later"><i>24</i></td>')
     // The page says what a day's figure leaves out, so a day that differs from the Dashboard's Money in has its reason.
-    expect(BILLS_PAID_LEFT_OUT).toBe('A bank deposit counts once it is put on a bill or a job. Until then the Dashboard’s Money in shows it and this page does not.')
+    expect(BILLS_PAID_LEFT_OUT).toBe('A bank deposit counts once it is put on a bill or a job. Until then the Dashboard’s Money in counts it. This page names it under its day and does not add it.')
     expect(billsPaidMonthHtml(lines, { month: '2026-11', how: 'all', printedAtIso: '2026-11-23T21:00:00.000Z' })).toContain('A bank deposit not yet put on a bill or a job is not shown.')
     // A day that holds a credit and no money says so in its cell.
     const credits = billsPaidMonthHtml(lines.filter((l) => l.inKind || l.ymd === '2026-11-18'), { month: '2026-11', how: 'all', printedAtIso: '2026-11-23T21:00:00.000Z' })
@@ -399,5 +408,68 @@ describe('billsPaid — out of the app', () => {
     const none = billsPaidMonthHtml(billsPaidFilter(lines, 'bank'), { month: '2026-11', how: 'bank', printedAtIso: '2026-11-23T21:00:00.000Z' })
     expect(none).toContain('Nothing came in by bank transfer in November 2026.')
     expect(none).not.toContain('<table class="cal">')
+  })
+})
+
+describe('billsPaid — deposits on no bill', () => {
+  // Monday of a made-up week: two deposits on no bill, one a typed-in check carries, one still pending, one Stripe payout.
+  const MONDAY = '2026-10-26'
+  const TODAY = '2026-10-27'
+  const dep = (over: Partial<MoneyInDeposit> & { mercuryTransactionId: string }): MoneyInDeposit => ({ usd: 640, kind: 'checkDeposit', counterpartyName: 'JUNIPER HILL', state: 'posted', dayYmd: MONDAY, ...over })
+  const deposits = [
+    dep({ mercuryTransactionId: 'loose-1', usd: 640.25 }),
+    dep({ mercuryTransactionId: 'loose-2', usd: 1200.5, kind: 'externalTransfer' }),
+    dep({ mercuryTransactionId: 'carried', usd: 7250 }),
+    dep({ mercuryTransactionId: 'pending', usd: 300, state: 'pending' }),
+    dep({ mercuryTransactionId: 'payout', usd: 900, counterpartyName: 'STRIPE TRANSFER' }),
+  ]
+  const unlinked: MoneyInUnlinkedPayment[] = [{ paymentId: 'u1', jobId: 'job-1', usd: 7250, paidOnYmd: '2026-10-23', paymentType: 'Check', referenceNumber: '4471', payerName: 'Cedar Ridge Builders' }]
+  const answer = billsPaidNoBillAnswer({ deposits, unlinked, todayYmd: TODAY })
+
+  it('names the deposits that landed on a day and are on no bill, and what they add to', () => {
+    const line = billsPaidNoBillLine({ answer, ymd: MONDAY, how: 'all' })
+    expect(line).toEqual({ kind: 'deposits', deposits: 2, total: 1840.75, words: expect.any(String) })
+    expect(plainSentence(line?.words ?? '')).toBe('2 deposits landed that are on no bill yet.')
+    expect(BILLS_PAID_NO_BILL_NOT_ADDED).toBe('Not added to the day.')
+    expect(BILLS_PAID_NO_BILL_PRESS).toBe('Open deposits')
+    expect(BILLS_PAID_NO_BILL_PATH).toBe('/accounts-receivable')
+  })
+
+  it('says one deposit as one', () => {
+    const one = billsPaidNoBillAnswer({ deposits: [dep({ mercuryTransactionId: 'm1' })], unlinked: [], todayYmd: TODAY })
+    expect(plainSentence(billsPaidNoBillLine({ answer: one, ymd: MONDAY, how: 'all' })?.words ?? '')).toBe('1 deposit landed that is on no bill yet.')
+  })
+
+  it('draws no line on a day with none, and none while the bank is still being read', () => {
+    expect(billsPaidNoBillLine({ answer, ymd: TODAY, how: 'all' })).toBeNull()
+    expect(billsPaidNoBillLine({ answer: null, ymd: MONDAY, how: 'all' })).toBeNull()
+  })
+
+  it('draws the line under All alone: a deposit on no bill has no way of paying yet', () => {
+    for (const how of ['stripe', 'check', 'bank', 'cash', 'other'] as const) expect(billsPaidNoBillLine({ answer, ymd: MONDAY, how })).toBeNull()
+  })
+
+  it('says the bank did not read, and never calls that none', () => {
+    const line = billsPaidNoBillLine({ answer: { state: 'unread' }, ymd: MONDAY, how: 'all' })
+    expect(line).toEqual({ kind: 'unread', words: BILLS_PAID_NO_BILL_UNREAD })
+    expect(BILLS_PAID_NO_BILL_UNREAD).toBe('The bank deposits did not read. A deposit that is on no bill yet is not shown.')
+    expect(billsPaidNoBillLine({ answer: { state: 'unread' }, ymd: MONDAY, how: 'stripe' })).toBeNull()
+  })
+
+  it('counts the deposits the Dashboard’s Money in marks Landed · not applied yet, and the same money', () => {
+    const week = buildMoneyInWeek({ payments: [], unlinked, deposits, linkedDeposits: new Map(), returns: [], unbankedCount: 0, pile: [], claims: null, stripeOpenInvoiceIds: new Set<string>(), payout: null, todayYmd: TODAY })
+    const chips = (week.days.find((d) => d.ymd === MONDAY)?.rows ?? []).filter((r) => r.tag === 'Landed · not applied yet')
+    const line = billsPaidNoBillLine({ answer, ymd: MONDAY, how: 'all' })
+    expect(line?.kind).toBe('deposits')
+    if (line?.kind !== 'deposits') return
+    expect(chips.length).toBe(line.deposits)
+    expect(Math.round(chips.reduce((s, r) => s + r.usd, 0) * 100) / 100).toBe(line.total)
+  })
+
+  it('adds no deposit to a day’s figure, its cell, the tiles, the print or the CSV', () => {
+    // The deposits are a second read. Nothing that sums payments takes them: each takes the lines alone.
+    expect(billsPaidSum(lines.filter((l) => l.ymd === '2026-11-20')).total).toBe(6670)
+    expect(billsPaidMonthHtml(lines, { month: '2026-11', how: 'all', printedAtIso: '2026-11-23T21:00:00.000Z' })).not.toContain('on no bill')
+    expect(billsPaidCsv(lines)).not.toContain('on no bill')
   })
 })

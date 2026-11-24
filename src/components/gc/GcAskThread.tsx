@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { GC_WAITING_ON_THEM_ID } from '../../lib/gc/links'
 import { bidsIn } from '../../lib/gc/bids'
-import { ASK_BACK_FAILED, ASK_BACK_PRESS, ASK_BACK_PRESS_TITLE, askBackConfirmWords, canTakeAskBack } from '../../lib/gc/askBack'
+import { ASK_BACK_FAILED, ASK_BACK_PRESS, askBackConfirmWords, askBackPressTitle, askHeard, canTakeAskBack } from '../../lib/gc/askBack'
 import { declinedTitle, declinedWords } from '../../lib/gc/decline'
 import { askPromise, followUps, promiseWords, wordRecord, type FollowUp, type FollowUpWhy, type PromiseState } from '../../lib/gc/followUp'
 import { telHref } from '../../lib/gc/followUpSheet'
@@ -169,15 +169,17 @@ function ContactLine({ line, sayDay }: { line: AskContact; sayDay: boolean }) {
 }
 
 /**
- * Take the ask back… (v2.8440), on an ask the company has not heard about. A component of its own, mounted only
- * where the write is given, so the confirm's provider is asked for nowhere else. A refusal draws its reason beside it.
+ * Take the ask back… (v2.8440), on an ask still open. One the company has not heard about is deleted; one they opened
+ * or heard from us about is kept and closes as we took it back (v2.8490), and the confirm says which. A component of
+ * its own, mounted only where the write is given, so the confirm's provider is asked for nowhere else. A refusal
+ * draws its reason beside it.
  */
 function TakeAskBackButton({ pkg, invite, partner, takeBack }: { pkg: TradePackage; invite: Invite; partner: Partner; takeBack: (inviteId: string) => Promise<void> }) {
   const confirmDialog = useConfirmDialog()
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const press = async () => {
-    if (!(await confirmDialog({ ...askBackConfirmWords(partner.company, pkg.trade), danger: true }))) return
+    if (!(await confirmDialog({ ...askBackConfirmWords(partner.company, pkg.trade, askHeard(invite)), danger: true }))) return
     setBusy(true)
     setProblem(null)
     try {
@@ -189,7 +191,7 @@ function TakeAskBackButton({ pkg, invite, partner, takeBack }: { pkg: TradePacka
   }
   return (
     <span data-gc-ask-back={invite.id} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-      <Btn kind="quiet" disabled={busy} title={ASK_BACK_PRESS_TITLE} onClick={() => void press()}>
+      <Btn kind="quiet" disabled={busy} title={askBackPressTitle(invite)} onClick={() => void press()}>
         {busy ? 'Taking it back…' : ASK_BACK_PRESS}
       </Btn>
       {problem && <span style={{ color: 'var(--text-red-700)', fontSize: '0.8rem' }}>{problem}</span>}

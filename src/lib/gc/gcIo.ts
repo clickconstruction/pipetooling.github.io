@@ -935,9 +935,10 @@ export async function vetGcCompany(companyId: string, status: 'approved' | 'decl
 
 /**
  * Remove from the bench (v2.6749, punch list #153): a company with no history leaves Trade partners through
- * `gc_remove_bench_company` (migration 20261109004500), which refuses in words when the company holds any history
- * (a work order, an ask, a logged contact, a promise, a paper, a portal file or message, a Messages thread, its form,
- * an opened portal), puts the sub it came from back on Prospects → Subs, and deletes the row. The client never
+ * `gc_remove_bench_company` (migration 20261109004500, one reason reworded by 20261124153500), which refuses in
+ * words when the company holds any history (a work order, an ask, a logged contact, a promise, a paper, a file from
+ * their portal, an email we sent, a Messages thread, its form, an opened portal), puts the sub it came from back on
+ * Prospects → Subs, and deletes the row. The client never
  * deletes `gc_companies` itself: the office's policy would let it, and the asks would go with the row. The function's
  * name goes through `as never` until the types regen after the push, as `contact_for_prospect` did.
  */

@@ -306,7 +306,17 @@ This week starts on Sunday here. The Dashboard's **Money in** week starts on Mon
 
 A day can differ too. **Money in** counts a bank deposit as soon as it posts. This page counts it once it is put on a bill or a job.
 
-**Money in** marks such a deposit *Landed · not applied yet*.
+**Money in** marks such a deposit *Landed · not applied yet*. Here the day names it in a quiet line under the day's facts.
+
+The line reads like *2 deposits landed that are on no bill yet*. It shows what those deposits add up to.
+
+That money is not added to the day, the month or a tile. The line says *Not added to the day*.
+
+Press **Open deposits** on the line to put a deposit on a bill. The guide is [match bank deposits to the bills they pay](/help/match-bank-deposits-to-bills).
+
+The line shows under {{chip:gray|All}} only. A deposit has no way of paying until it is on a bill.
+
+A day with no such deposit has no line. When the bank deposits do not read, the line says so.
 
 Each payment names the bill, the job and who paid. A pill says how the money came.
 
@@ -360,6 +370,8 @@ The payout is after Stripe's fee. The payout is less than the Stripe payments it
 
 A refund made in Stripe does not show on this page. A credit in kind is listed and not added.
 
+A bank deposit that is on no bill yet is named under its day and not added.
+
 A day that holds a credit and no money reads *1 credit*. On a phone the day reads *credit*. The day is not green, because no money came.
 
 ## Move between months
@@ -376,7 +388,7 @@ The address keeps the day, the month and the chip. Save the address to come back
 
 Press {{button:outline|Print}} to print the month. The page opens with the month of days. Each day's payments follow, newest day first.
 
-Press {{button:outline|Download CSV}} to save one row for each payment.
+Press {{button:outline|Download CSV}} to save one row for each payment. The print and the file hold payments only, so a deposit on no bill is in neither.
 
 ## What the list cannot know
 
