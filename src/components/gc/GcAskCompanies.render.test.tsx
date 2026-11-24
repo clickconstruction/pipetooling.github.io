@@ -67,7 +67,9 @@ describe('GcAskCompanies', () => {
     expect(within(dialog).getByText('Too far, or declined')).toBeTruthy()
     const far = dialog.querySelector('[data-gc-ask-choice="border"]') as HTMLElement
     expect(within(far).getByText('no email on file')).toBeTruthy()
-    expect(within(dialog).getByText(/1 email goes out/)).toBeTruthy()
+    // Nobody here can send: the line counts the company asked, and names no email.
+    expect(within(dialog).getByText(/^1 company is asked\./)).toBeTruthy()
+    expect(within(dialog).queryByText(/email goes out/)).toBeNull()
     expect(within(dialog).getByText('The asks are saved. A dev sends the invitation emails while GC mode is built.')).toBeTruthy()
     expect(within(dialog).getByRole('button', { name: 'Ask Alamo Concrete' })).toBeTruthy()
   })
@@ -87,6 +89,9 @@ describe('GcAskCompanies', () => {
     const { dialog } = open({ emails: true, onAsk })
     const tick = within(dialog).getByRole('checkbox', { name: 'Email the invitations now' }) as HTMLInputElement
     expect(tick.checked).toBe(false)
+    // The tick is off, so no email goes: the line above it must not say one does.
+    expect(within(dialog).getByText(/^1 company is asked\./)).toBeTruthy()
+    expect(within(dialog).queryByText(/email goes out/)).toBeNull()
     expect(within(dialog).getByText('The asks are saved without an email. Tick Email the invitations now to send them.')).toBeTruthy()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Ask Alamo Concrete' }))
     await waitFor(() => expect(onAsk).toHaveBeenCalledWith(['alamo'], false))
@@ -96,6 +101,7 @@ describe('GcAskCompanies', () => {
     const onAsk = vi.fn(() => Promise.resolve())
     const { dialog } = open({ emails: true, onAsk })
     fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Email the invitations now' }))
+    expect(within(dialog).getByText(/^1 email goes out, with the company's own portal link\./)).toBeTruthy()
     expect(within(dialog).getByText('Each company gets this invitation by email now, with its portal link.')).toBeTruthy()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Ask Alamo Concrete' }))
     await waitFor(() => expect(onAsk).toHaveBeenCalledWith(['alamo'], true))

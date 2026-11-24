@@ -7,6 +7,7 @@ import { travelFor, travelWords } from '../../lib/gc/map'
 import { alternateWords, bidGoodUntil, bidRanOut } from '../../lib/gc/portal'
 import type { GcState, Includes, Invite, TradePackage } from '../../lib/gc/types'
 import { awardGate } from '../../lib/gc/vetting'
+import { awardRanOutConfirmWords, awardRanOutLine } from '../../lib/gc/awardRanOut'
 import { AWARD_BACK_FAILED, AWARD_BACK_PRESS, AWARD_BACK_PRESS_TITLE, awardBackConfirmWords, awardBackHold, showsAwardBack } from '../../lib/gc/awardBack'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { money, shortDate } from '../../lib/gc/words'
@@ -150,6 +151,14 @@ export function GcCompareQuotes({
     run()
       .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
       .finally(() => setBusy(false))
+  }
+
+  // Award: a number past its day asks first, naming the day. A number that holds awards with no window.
+  const awardTo = async (inv: Invite, by: string | null) => {
+    if (!award) return
+    const ranOut = awardRanOutConfirmWords(pkg.trade, partnerById(state, inv.partnerId)?.company ?? 'them', inv.bid, state.today)
+    if (ranOut && !(await confirmDialog(ranOut))) return
+    act(() => award(inv.id, by))
   }
 
   // Take the award back (v2.8434): behind a confirm that says what goes. The server's refusal draws as the problem.
@@ -433,10 +442,11 @@ export function GcCompareQuotes({
                                 </span>
                               ) : canAward && award ? (
                                 <>
-                                  <AwardButton team={team} disabled={busy || pkg.awardedInviteId !== null || !gate.ok} title={gate.why ?? undefined} onAward={(by) => act(() => award(inv.id, by))}>
+                                  <AwardButton team={team} disabled={busy || pkg.awardedInviteId !== null || !gate.ok} title={gate.why ?? undefined} onAward={(by) => void awardTo(inv, by)}>
                                     Award and draft the statement of work
                                   </AwardButton>
                                   {!gate.ok && pkg.awardedInviteId === null && <AwardBlocked why={gate.why} />}
+                                  {gate.ok && pkg.awardedInviteId === null && <AwardBlocked why={awardRanOutLine(inv.bid, state.today)} />}
                                 </>
                               ) : null}
                             </td>
