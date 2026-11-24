@@ -4065,6 +4065,7 @@ These 45 doors keep their gate;
 each line names the risk it guards, so a gate that was never argued for now has its reason here.
 Rows 92–96, 100, 104, 109, 114, 118 and 120 are already the owner's and are listed so the map is whole.
 The Dev doors card (`src/lib/settings/devDoors.ts`) lists each with its link.
+Row 97's signal is held by the database too since v2.8532: on the private Realtime channel `force-reload` anyone signed in hears it and only a dev sends it (`20261124215500_global_reload_dev_only.sql`).
 
 | # | Door | Who | The risk it guards |
 |---|---|---|---|

@@ -348,7 +348,7 @@ There is **no data engine**. Layout loads almost nothing itself; each banner, fo
 
 | Region | Covered by | Gap |
 |---|---|---|
-| A Boot/providers | `useAuth`, `UpdatePrompt`, `chunkLoadRecovery`, `RouteLoadingFallback` | no `App` render; `AuthHandler`, `ForceReloadContext`, `RealtimeLifecycleContext` |
+| A Boot/providers | `useAuth`, `UpdatePrompt`, `chunkLoadRecovery`, `RouteLoadingFallback`, `ForceReloadContext` (4, the private `force-reload` channel a dev alone sends on, v2.8532; its names in `forceReloadChannel.test.ts`, 8) | no `App` render; `AuthHandler`, `RealtimeLifecycleContext` |
 | B Routes | `customerSurfaceRegistry.test`, `appDirectoryCheck.test` (source parsers), `signInReturnAddress.test`, `SignInReturn.render.test` | `ProtectedRoute` and `SignInRoute` rendered whole |
 | C Guard/landing | `layoutRouteAccess`, `roleGate`, `taskModeToggle`, `assistantDispatchLanding`; e2e deep links (non-gating) | effect wiring; nav ↔ guard parity |
 | E Modes | `pageMode`, `usePageMode`, `useJobModeEnabled`, `jobModeToggle`, `pinModeToggle`, `dispatchModePoToggle`, `taskModeToggle`, `jobModeTelemetry` | inline derivations; 3 mode hooks; `dispatchModeToggle` |

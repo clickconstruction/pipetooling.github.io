@@ -89,7 +89,7 @@ A Master Plumber can:
   - Authentication (email/password)
   - Row Level Security (RLS) policies
   - Edge Functions (Deno runtime)
-  - Real-time subscriptions (people_hours for Pay/Hours sync; clock_sessions for Hours tab pending; user_pinned_tabs for Dashboard pins; force-reload broadcast for Global Reload)
+  - Real-time subscriptions (people_hours for Pay/Hours sync; clock_sessions for Hours tab pending; user_pinned_tabs for Dashboard pins; the private force-reload broadcast for Global Reload, which anyone signed in hears and only a dev can send since v2.8532)
 
 ### Hosting
 - **GitHub Pages** - Static site hosting
