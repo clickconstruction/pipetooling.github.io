@@ -3,6 +3,7 @@
  * (branch spike/gc-mode, `gcBench.ts`).
  */
 import { BIDS_WANTED, bidTabsOpen, bidsIn, packageHasTab } from './bids'
+import { askTakenBack } from './decline'
 import { OPEN_WITHIN_DAYS, followUps, packageIsOpen } from './followUp'
 import { partnerById } from './lookups'
 import { travelFor } from './map'
@@ -112,7 +113,8 @@ export function tradeBenches(state: GcState): TradeBench[] {
         bids,
         looking: pkg.invites.filter((i) => i.status === 'opened').length,
         silent: pkg.invites.filter((i) => i.status === 'invited').length,
-        passed: pkg.invites.filter((i) => i.status === 'declined').length,
+        // An ask we took back is out, and is no pass of theirs (v2.8490).
+        passed: pkg.invites.filter((i) => i.status === 'declined' && !askTakenBack(i)).length,
         short: Math.max(0, BIDS_WANTED - bids),
         daysLeft: project.bidDue ? daysUntil(project.bidDue, state.today) : null,
       }

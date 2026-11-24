@@ -196,12 +196,12 @@ describe('GcTradeAsks · Take the ask back… (v2.8440)', () => {
     return { ...writes(), takeBack: vi.fn(() => Promise.resolve()) }
   }
 
-  it('shows on the ask they have not heard about alone, asks first in its words, and takes it back on the press', async () => {
+  it('shows on an ask still open, asks first in its words, and takes it back on the press', async () => {
     const w = backWrites()
     renderWithProviders(<GcTradeAsks state={boardStateFromRows(withFreshAsk())} projectId="p1" packageId="k1" writes={w} />)
-    // Lonestar quoted and Hillside opened it: neither ask offers the press, and each keeps its own two.
+    // Lonestar quoted: its ask offers no press. Hillside opened theirs and has not quoted: it does (v2.8490, below).
     expect(document.querySelector('[data-gc-ask-back="i1"]')).toBeNull()
-    expect(document.querySelector('[data-gc-ask-back="i2"]')).toBeNull()
+    expect(document.querySelector('[data-gc-ask-back="i2"]')).not.toBeNull()
     const cell = document.querySelector('[data-gc-ask-back="i9"]') as HTMLElement
     fireEvent.click(within(cell).getByRole('button', { name: 'Take the ask back…' }))
     const ask = await screen.findByRole('alertdialog', { name: 'Take the Sitework ask back from ZZ Test trade no page, delete me?' })
@@ -227,6 +227,29 @@ describe('GcTradeAsks · Take the ask back… (v2.8440)', () => {
     fireEvent.click(within(ask).getByRole('button', { name: 'Take the ask back' }))
     await within(cell).findByText('The ask did not come back: ZZ Test trade no page, delete me stays asked on Sitework, since we emailed them about it. Close an ask they heard about with Will not do it or Cannot do it.')
     expect((within(cell).getByRole('button', { name: 'Take the ask back…' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  // v2.8490: an ask they heard about is kept and closes as ours, and the window says so before the press.
+  it('on an ask they opened, the window says it is kept and closes as we took it back', async () => {
+    const w = backWrites()
+    renderWithProviders(<GcTradeAsks state={boardStateFromRows(withFreshAsk())} projectId="p1" packageId="k1" writes={w} />)
+    const cell = document.querySelector('[data-gc-ask-back="i2"]') as HTMLElement
+    const press = within(cell).getByRole('button', { name: 'Take the ask back…' })
+    expect(press.getAttribute('title')).toBe('They heard about this ask and have not quoted. Press to close it as we took it back.')
+    fireEvent.click(press)
+    const ask = await screen.findByRole('alertdialog', { name: 'Take the Sitework ask back from Hillside Excavation?' })
+    expect(within(ask).getByText('Hillside Excavation opened this ask in their portal. So the ask is kept, and it closes as we took it back. Their portal says we took it back, and no email goes to them. A closed ask does not open again.')).toBeTruthy()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Take the ask back' }))
+    await waitFor(() => expect(w.takeBack).toHaveBeenCalledWith('i2'))
+  })
+
+  it('an ask we took back reads we took it back on its chip, with no press left on it', () => {
+    const base = withFreshAsk()
+    const rows = { ...base, invites: base.invites.map((i) => (i.id === 'i2' ? { ...i, status: 'declined', declined_why: 'withdrawn', declined_on: '2026-10-07' } : i)) }
+    renderWithProviders(<GcTradeAsks state={boardStateFromRows(rows)} projectId="p1" packageId="k1" writes={backWrites()} />)
+    expect(screen.getByText('we took it back').getAttribute('title')).toBe('We took this ask back after they heard about it. It is not their answer.')
+    expect(screen.queryByText('passed')).toBeNull()
+    expect(document.querySelector('[data-gc-ask-back="i2"]')).toBeNull()
   })
 
   it('offers no press to a reader without the write', () => {
