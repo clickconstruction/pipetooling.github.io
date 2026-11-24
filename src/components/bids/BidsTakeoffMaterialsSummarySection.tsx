@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { formatCurrency } from '../../lib/format'
 import type { useBidPricingEngine } from '../../hooks/useBidPricingEngine'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import { Money } from '../Money'
 
 type Engine = ReturnType<typeof useBidPricingEngine>
 
@@ -63,12 +63,10 @@ export function BidsTakeoffMaterialsSummarySection({
           />
         </div>
         <p style={{ margin: '0.5rem 0 0', fontWeight: 600, textAlign: 'right' }}>
-          Materials total: $
-          {formatCurrency(costEstimateMaterialTotalRoughIn ?? 0)}
+          Materials total: <Money amount={costEstimateMaterialTotalRoughIn ?? 0} />
           <br />
           <span style={{ fontWeight: 400 }}>
-            With tax: $
-            {formatCurrency((costEstimateMaterialTotalRoughIn ?? 0) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}
+            With tax: <Money amount={(costEstimateMaterialTotalRoughIn ?? 0) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100)} />
           </span>
         </p>
       </div>

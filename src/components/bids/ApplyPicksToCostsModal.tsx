@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 const MODAL_Z = 10060
 
@@ -244,7 +245,7 @@ export function ApplyPicksToCostsModal({
               <div key={r.countRowId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.4fr) 3.5rem 6rem 6.5rem minmax(0,1fr)', gap: '0.5rem', padding: '0.32rem 0.6rem', borderBottom: '1px solid var(--bg-muted)', alignItems: 'center', fontSize: '0.8125rem' }}>
                 <span style={{ ...mono, color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>{r.fixture}</span>
                 <span style={{ ...smallMuted, ...mono }}>{r.count}</span>
-                <span style={{ ...smallMuted, ...mono, textAlign: 'right' }}>{r.beforeUnitCents != null ? money(r.beforeUnitCents) : '—'}</span>
+                <span style={{ ...smallMuted, ...mono, textAlign: 'right' }}>{r.beforeUnitCents != null ? <MoneyText text={money(r.beforeUnitCents)} /> : '—'}</span>
                 {r.lotGroupId ? (
                   <input
                     value={lotEdits[r.lotGroupId]?.[r.fixture.trim().toLowerCase()] ?? (r.afterUnitCents / 100).toFixed(2)}
@@ -258,7 +259,7 @@ export function ApplyPicksToCostsModal({
                     style={{ ...mono, textAlign: 'right', padding: '0.2rem 0.4rem', border: '1px solid #f59e0b', borderRadius: 4, fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }}
                   />
                 ) : (
-                  <span style={{ ...mono, textAlign: 'right', color: 'var(--text-green-700)', fontWeight: 700 }}>{money(r.afterUnitCents)}</span>
+                  <span style={{ ...mono, textAlign: 'right', color: 'var(--text-green-700)', fontWeight: 700 }}><MoneyText text={money(r.afterUnitCents)} /></span>
                 )}
                 <span style={smallMuted}>{r.houseName}{r.lotGroupId ? ' · package' : ''}</span>
               </div>
@@ -268,7 +269,7 @@ export function ApplyPicksToCostsModal({
 
         {plan.lotRemainders.map((l) => (
           <p key={l.lotId} style={{ margin: 0, fontSize: '0.78rem', color: Math.abs(l.remainderCents) <= plan.rows.length * 100 ? 'var(--text-muted)' : 'var(--text-amber-700)' }}>
-            {l.houseName} package remainder: <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{money(l.remainderCents)}</strong>
+            {l.houseName} package remainder: <strong style={{ fontVariantNumeric: 'tabular-nums' }}><MoneyText text={money(l.remainderCents)} /></strong>
             {Math.abs(l.remainderCents) <= plan.rows.length * 100 ? ' ✓ (rounding)' : ' — adjust the split so the package total holds'}
           </p>
         ))}

@@ -15,6 +15,7 @@ import {
   type LostBidSessionRow,
 } from '../../lib/bidLostSummaryLabor'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 const MODAL_Z = 10040
 const BID_ID_CHUNK = 80
@@ -717,7 +718,7 @@ export function BidBoardLostSummaryModal({
                             ...(missingLossReason ? { background: 'var(--bg-red-tint)' } : {}),
                           }}
                         >
-                          {laborCellDisplay(getLaborUsdForBid(laborByBid, bid.id))}
+                          <MoneyText text={laborCellDisplay(getLaborUsdForBid(laborByBid, bid.id))} />
                         </td>
                       ) : null}
                     </tr>

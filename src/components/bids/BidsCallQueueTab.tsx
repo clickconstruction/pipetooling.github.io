@@ -58,6 +58,7 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { PermitNewsDoors } from '../../lib/research/bidPermitNews'
 import { PermitNewsChip } from './PermitChip'
 import { telHrefFor } from '../../lib/phoneContact'
+import { Money, MoneyText } from '../Money'
 
 export type BidsCallQueueTabProps = {
   bids: BidWithBuilder[]
@@ -548,7 +549,7 @@ export function BidsCallQueueTab({
         </span>
         <PermitNewsChip bidId={b.raw.id} news={permitNews} />
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          {b.value > 0 ? `$${formatCurrency(b.value)}` : 'no bid value'}
+          {b.value > 0 ? <Money amount={b.value} /> : 'no bid value'}
           {extra}
         </span>
       </div>
@@ -856,7 +857,7 @@ export function BidsCallQueueTab({
             {queue.totals.buildersWithWork} builder{queue.totals.buildersWithWork === 1 ? '' : 's'} worth a call
           </strong>
           {/* Tier-2 #20: bids lead, GC packets follow — "96 bids · 99 GC packets to chase". */}
-          {` · ${scopeLabel(sentScope)} · ${bidsAndPacketsLabel(queue.totals.chaseCount, queue.totals.chasePacketRows)} to chase · ${bidsAndPacketsLabel(queue.totals.reasonsCount, queue.totals.reasonsPacketRows, { one: 'loss', many: 'losses' })} need${queue.totals.reasonsCount === 1 ? 's' : ''} a reason · $${formatCurrency(queue.totals.reasonsDollars)} unexplained · ${queue.totals.tabsCount} tabs gettable`}
+          <MoneyText text={` · ${scopeLabel(sentScope)} · ${bidsAndPacketsLabel(queue.totals.chaseCount, queue.totals.chasePacketRows)} to chase · ${bidsAndPacketsLabel(queue.totals.reasonsCount, queue.totals.reasonsPacketRows, { one: 'loss', many: 'losses' })} need${queue.totals.reasonsCount === 1 ? 's' : ''} a reason · $${formatCurrency(queue.totals.reasonsDollars)} unexplained · ${queue.totals.tabsCount} tabs gettable`} />
         </span>
         <input
           type="text"
@@ -947,7 +948,7 @@ export function BidsCallQueueTab({
               <strong>Later</strong> · {laterRows.length} bid{laterRows.length === 1 ? '' : 's'} waiting on a date
               {laterOpen ? '' : ` · next ${followupDateLabel(laterRows[0]!.f.dueYmd ?? todayYmd, todayYmd)}`}
             </span>
-            <span style={{ color: 'var(--text-muted)' }}>${formatCurrency(laterRows.reduce((sum, r) => sum + (Number.isFinite(r.b.value) ? r.b.value : 0), 0))} pending</span>
+            <span style={{ color: 'var(--text-muted)' }}><Money amount={laterRows.reduce((sum, r) => sum + (Number.isFinite(r.b.value) ? r.b.value : 0), 0)} /> pending</span>
           </button>
           {laterOpen
             ? laterRows.map(({ builder, b, f }) => {
@@ -961,7 +962,7 @@ export function BidsCallQueueTab({
                       <strong style={{ minWidth: '6.2rem', fontVariantNumeric: 'tabular-nums' }}>{followupDateLabel(f.dueYmd ?? todayYmd, todayYmd)}</strong>
                       <span style={{ flex: '1 1 16rem' }}>
                         <strong>{builder.builderName}</strong> · {b.label} · {b.project}
-                        {b.value > 0 ? ` · $${formatCurrency(b.value)}` : ''}
+                        {b.value > 0 ? <MoneyText text={` · $${formatCurrency(b.value)}`} /> : ''}
                       </span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flex: '1 1 12rem' }}>
                         {[waiting && b.followupCols.reason !== 'other' ? waiting : null, personHere ? `ask for ${personHere.name}` : null, f.source === 'builder' ? 'the builder’s date' : null].filter(Boolean).join(' · ') || '—'}
@@ -1054,7 +1055,7 @@ export function BidsCallQueueTab({
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                     {builder.stats.won} won · {builder.stats.lost} lost · {builder.stats.pending} pending
                     {builder.stats.hitRatePct != null ? ` · hit rate ${builder.stats.hitRatePct}%` : ''}
-                    {builder.stats.pendingValue > 0 ? ` · pending $${formatCurrency(builder.stats.pendingValue)}` : ''}
+                    {builder.stats.pendingValue > 0 ? <MoneyText text={` · pending $${formatCurrency(builder.stats.pendingValue)}`} /> : ''}
                   </span>
                   {anyBid ? (
                     <button

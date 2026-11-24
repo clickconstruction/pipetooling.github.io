@@ -7,6 +7,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { BidsDirectCostsSection } from './BidsDirectCostsSection'
+import { moneyText } from '../../test/moneyText'
 
 const row = (id: string, note: string, rough = 0, top = 0, trim = 0, sequence_order = 1) => ({ id, note, rough_in: rough, top_out: top, trim_set: trim, sequence_order })
 
@@ -36,7 +37,7 @@ describe('BidsDirectCostsSection', () => {
     renderSection()
     const rows = screen.getAllByRole('row').slice(1) // header row first
     expect(rows[0]!.getAttribute('data-testid')).toBe('direct-cost-driving')
-    expect(within(rows[0]!).getByText('88 crew-days · 176 trips (8 h each) · 41 mi · $0.70/mi')).toBeTruthy()
+    expect(within(rows[0]!).getByText(moneyText('88 crew-days · 176 trips (8 h each) · 41 mi · $0.70/mi'))).toBeTruthy()
     expect(rows.slice(1).map((r) => r.getAttribute('data-testid'))).toEqual(['direct-cost-row-equipment', 'direct-cost-row-permit', 'direct-cost-row-sub', 'direct-cost-row-sub'])
     expect(screen.getByDisplayValue('Sawcut')).toBeTruthy() // sequence 1 before 2 within the kind
     expect(screen.getByTestId('direct-costs-total').textContent).toBe('Other direct total: $10,540.00 · subs $7,400.00 · equipment $1,900.00 · permits $1,240.00')

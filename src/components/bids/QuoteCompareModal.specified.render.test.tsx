@@ -12,6 +12,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { QuoteCompareModal } from './QuoteCompareModal'
+import { moneyText } from '../../test/moneyText'
 
 const state: { updates: Array<{ patch: Record<string, unknown>; where: string }> } = { updates: [] }
 
@@ -166,7 +167,7 @@ describe('QuoteCompareModal — the Specified column and the reason at the pick'
     mount()
     await screen.findByText('Specified')
     // LAV-1: Kohler K-2210 against a K-2196 spec — tapping the price picks it and asks why.
-    fireEvent.click(screen.getByText('$210.00 ★'))
+    fireEvent.click(screen.getByText(moneyText('$210.00 ★')))
     await waitFor(() => expect(state.updates.some((u) => u.patch.picked === true && u.where === 'n-lav')).toBe(true))
     expect(await screen.findByRole('dialog', { name: 'LAV-1 against the schedule' })).toBeTruthy()
   })

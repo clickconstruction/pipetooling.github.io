@@ -18,6 +18,7 @@ import { BidCellPast } from './BidCellPast'
 import { takeoffCellKeys } from '../../lib/bids/bidCellHistory'
 import { STAGE_KEYS, toggleStage, weightsEqual, type StageSplitLookup, type StageWeights } from '../../lib/bids/materialsByStage'
 import type { StageSplitScopeKey } from '../../lib/bids/materialsByStageIo'
+import { Money } from '../Money'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
@@ -683,7 +684,7 @@ export function SortableRoughPartLineRow({
           whiteSpace: 'nowrap',
         }}
       >
-        ${formatCurrency(lineTotal)}
+        <Money amount={lineTotal} />
       </td>
       <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>

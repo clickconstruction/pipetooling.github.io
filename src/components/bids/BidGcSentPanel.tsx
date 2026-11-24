@@ -5,7 +5,6 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
-import { formatCurrency } from '../../lib/format'
 import { firstSentOn, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
 import { sentDateAfterLedgerWrite } from '../../lib/bids/bidSentDate'
 import { recordBidSentLane } from '../../lib/bids/bidSentTelemetry'
@@ -17,6 +16,7 @@ import { undoneToast } from './BidBoardGcRows'
 import { useAuth } from '../../hooks/useAuth'
 import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { LOSS_UNCATEGORIZED_NUDGE, bidLossCategoryLabel, type BidLossCategoryKey } from '../../lib/bidLossCategories'
+import { Money } from '../Money'
 
 /**
  * Edit Bid → per-GC sent panel (v2.2407, Option A): on a bid with versions, "sent" lives with
@@ -321,7 +321,7 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
             <div key={p.key || 'own'} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.45rem 0.6rem', borderBottom: i < packets.length - 1 ? '1px solid var(--border)' : 'none', fontSize: '0.85rem' }}>
               <b style={{ overflowWrap: 'anywhere' }}>{p.name}</b>
               <span style={chipStyle(p.sentOn != null)}>{p.sentOn != null ? `sent ${p.sentOn}` : 'not sent'}</span>
-              {p.sentValue != null ? <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(p.sentValue)}</span> : null}
+              {p.sentValue != null ? <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}><Money amount={p.sentValue} /></span> : null}
               {(() => {
                 const lc = contactByGc[p.key === '' ? '' : (p.gcId ?? '')]
                 if (!lc) return null

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { buildPriceBreakdown, priceBreakdownNote, type PriceBreakdown, type PriceBreakdownInput, type PriceLine } from '../../lib/bids/priceBreakdown'
 import { formatCurrency } from '../../lib/format'
 import { BreakdownCardShell, type BreakdownSlice } from './BreakdownCardShell'
+import { MoneyText } from '../Money'
 
 type Props = {
   input: PriceBreakdownInput
@@ -120,10 +121,10 @@ export function PriceBreakdownCard({ input, companyMarkup, onMarkupChange, onMar
                       )}
                     </span>
                   </td>
-                  <td style={num(l.cost == null ? { color: 'var(--text-amber-700)', fontFamily: 'inherit' } : {})}>{l.cost == null ? (b.hours > 0 ? 'no rate' : 'no hours') : money(l.cost)}</td>
-                  <td style={num(l.price == null ? { color: 'var(--text-faint)' } : {})}>{l.price == null ? '—' : money(l.price)}</td>
+                  <td style={num(l.cost == null ? { color: 'var(--text-amber-700)', fontFamily: 'inherit' } : {})}>{l.cost == null ? (b.hours > 0 ? 'no rate' : 'no hours') : <MoneyText text={money(l.cost)} />}</td>
+                  <td style={num(l.price == null ? { color: 'var(--text-faint)' } : {})}>{l.price == null ? '—' : <MoneyText text={money(l.price)} />}</td>
                   <td style={num(l.key === 'small' ? { color: 'var(--text-faint)', fontFamily: 'inherit' } : l.profit == null ? { color: 'var(--text-faint)' } : l.profit < 0 ? { color: 'var(--text-red-700)' } : {})}>
-                    {l.key === 'small' ? 'in labor' : l.profit == null ? '—' : money(l.profit)}
+                    {l.key === 'small' ? 'in labor' : l.profit == null ? '—' : <MoneyText text={money(l.profit)} />}
                   </td>
                   <td style={num({ fontFamily: 'inherit', fontWeight: 700, color: l.margin == null ? 'var(--text-faint)' : marginColor(l.margin) })}>{l.margin == null ? (l.key === 'tax' || l.key === 'small' ? '' : '—') : pct(l.margin)}</td>
                 </tr>
@@ -131,9 +132,9 @@ export function PriceBreakdownCard({ input, companyMarkup, onMarkupChange, onMar
             })}
             <tr>
               <td style={cell({ borderBottom: 'none', borderTop: '2px solid var(--text-strong)', fontWeight: 700 })}>The bid</td>
-              <td style={num({ borderBottom: 'none', borderTop: '2px solid var(--text-strong)', fontWeight: 700 })}>{money(b.cost)}</td>
-              <td style={num({ borderBottom: 'none', borderTop: '2px solid var(--text-strong)', fontWeight: 700 })}>{money(b.price)}</td>
-              <td style={num({ borderBottom: 'none', borderTop: '2px solid var(--text-strong)', fontWeight: 700 })}>{money(b.profit)}</td>
+              <td style={num({ borderBottom: 'none', borderTop: '2px solid var(--text-strong)', fontWeight: 700 })}><MoneyText text={money(b.cost)} /></td>
+              <td style={num({ borderBottom: 'none', borderTop: '2px solid var(--text-strong)', fontWeight: 700 })}><MoneyText text={money(b.price)} /></td>
+              <td style={num({ borderBottom: 'none', borderTop: '2px solid var(--text-strong)', fontWeight: 700 })}><MoneyText text={money(b.profit)} /></td>
               <td style={num({ borderBottom: 'none', borderTop: '2px solid var(--text-strong)', fontWeight: 700, fontFamily: 'inherit', color: b.margin == null ? 'var(--text-faint)' : marginColor(b.margin) })}>{pct(b.margin)}</td>
             </tr>
           </tbody>

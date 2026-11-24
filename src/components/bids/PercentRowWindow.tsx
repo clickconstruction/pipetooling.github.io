@@ -16,6 +16,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatCurrency } from '../../lib/format'
 import { percentSourceOptions, percentWindowPreview, type PercentGridRow, type PercentWindowPreview, type PercentWindowValue } from '../../lib/bids/percentRow'
 import { ROW_KINDS, ROW_KIND_WORDS, type RowKind } from '../../lib/bids/rowKinds'
+import { Money } from '../Money'
 
 const NO_COST = 'no cost'
 const DASH = '—'
@@ -277,7 +278,7 @@ export function PercentRowWindow({
                     style={{ font: 'inherit', fontSize: '0.9rem', border: 'none', padding: '0 0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', cursor: none && !on ? 'default' : 'pointer', fontWeight: on ? 700 : 400, color: on ? 'var(--text-blue-700)' : none ? DEAD_PRESS_TEXT : 'var(--text-700)', background: on ? 'var(--bg-blue-tint)' : none ? DEAD_PRESS_FILL : 'var(--surface)', boxShadow: on ? 'inset 0 0 0 2px #2563eb' : undefined }}
                   >
                     {b === 'revenue' ? 'Revenue' : 'Cost'}
-                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: none ? 400 : 700 }}>{amount == null ? '' : none ? 'none yet' : `$${formatCurrency(amount)}`}</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: none ? 400 : 700 }}>{amount == null ? '' : none ? 'none yet' : <Money amount={amount} />}</span>
                   </button>
                 )
               })}

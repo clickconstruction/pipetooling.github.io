@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { percentWindowStart, type PercentGridRow, type PercentRowLast } from '../../lib/bids/percentRow'
 import { PercentRowWindow } from './PercentRowWindow'
+import { moneyText } from '../../test/moneyText'
 
 afterEach(cleanup)
 
@@ -43,10 +44,10 @@ describe('PercentRowWindow', () => {
   it('opens filled with the last rule and draws the new row as the grid will show it', () => {
     setup()
     expect(drawn().getByText('Connections')).toBeTruthy()
-    expect(drawn().getByText('40% of Pipe revenue · $6,200.00')).toBeTruthy()
-    expect(drawn().getAllByText('$2,480.00')).toHaveLength(2)
+    expect(drawn().getByText(moneyText('40% of Pipe revenue · $6,200.00'))).toBeTruthy()
+    expect(drawn().getAllByText(moneyText('$2,480.00'))).toHaveLength(2)
     expect(drawn().getByText('no cost')).toBeTruthy()
-    expect(drawn().getByText('$17,680.00')).toBeTruthy()
+    expect(drawn().getByText(moneyText('$17,680.00'))).toBeTruthy()
     expect((drawn().getByLabelText('The new row’s kind') as HTMLSelectElement).value).toBe('fitting')
     expect(screen.getByRole('button', { name: 'Add Connections at $2,480.00' })).toBeTruthy()
   })
@@ -67,10 +68,10 @@ describe('PercentRowWindow', () => {
   it('the drawn row and the press move as she types, picks other rows, or unticks Keep following', () => {
     setup()
     fireEvent.change(screen.getByLabelText('Percent'), { target: { value: '35' } })
-    expect(drawn().getByText('35% of Pipe revenue · $6,200.00')).toBeTruthy()
+    expect(drawn().getByText(moneyText('35% of Pipe revenue · $6,200.00'))).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add Connections at $2,170.00' })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Rows'), { target: { value: 'tag:water' } })
-    expect(drawn().getByText('35% of water revenue · $3,000.00')).toBeTruthy()
+    expect(drawn().getByText(moneyText('35% of water revenue · $3,000.00'))).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add Connections at $1,050.00' })).toBeTruthy()
     fireEvent.click(screen.getByLabelText('Keep following these rows until the bid is sent'))
     expect(drawn().queryByText(/% of water revenue/)).toBeNull()
@@ -87,7 +88,7 @@ describe('PercentRowWindow', () => {
     const cost = group.getByRole('button', { name: 'Cost $2,300.00' }) as HTMLButtonElement
     expect(cost.disabled).toBe(false)
     fireEvent.click(cost)
-    expect(drawn().getByText('40% of Fixtures cost · $2,300.00')).toBeTruthy()
+    expect(drawn().getByText(moneyText('40% of Fixtures cost · $2,300.00'))).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add Connections at $920.00' })).toBeTruthy()
   })
 
@@ -139,15 +140,15 @@ describe('PercentRowWindow', () => {
     expect(drawn().getByText('Pick a row below')).toBeTruthy()
     expect(drawn().getByText('The row, as Pricing will show it')).toBeTruthy()
     expect(screen.queryByLabelText('The new row’s kind')).toBeNull()
-    expect(drawn().queryByText('$16,100.00')).toBeNull()
-    expect(drawn().getByText('$15,200.00')).toBeTruthy()
+    expect(drawn().queryByText(moneyText('$16,100.00'))).toBeNull()
+    expect(drawn().getByText(moneyText('$15,200.00'))).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Set a row to $900.00' }) as HTMLButtonElement).disabled).toBe(true)
     const list = screen.getByLabelText('Row') as HTMLSelectElement
     expect([...list.options].map((o) => o.textContent)).toEqual(['Pick a row on this bid…', 'WC · now $5,000.00', 'LAV · now $4,000.00', 'ft of 3/4IN WATER · now $1,800.00', 'ft of 1/2IN WATER · now $1,200.00', 'ft of 2IN VENT · now $1,000.00', 'ft of 4IN WASTE · now $1,800.00', 'ft of 3IN WASTE · now $400.00'])
     fireEvent.change(list, { target: { value: 'lav' } })
     // $900.00 over two lavatories, in place of their $4,000.00.
-    expect(drawn().getByText('$450.00')).toBeTruthy()
-    expect(drawn().getByText('$12,100.00')).toBeTruthy()
+    expect(drawn().getByText(moneyText('$450.00'))).toBeTruthy()
+    expect(drawn().getByText(moneyText('$12,100.00'))).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Set LAV to $900.00' }))
     expect(calls.submit.mock.calls[0]![1]).toMatchObject({ ruleToSave: null, hold: null })
     expect(calls.submit.mock.calls[0]![1].target.id).toBe('lav')
@@ -178,8 +179,8 @@ describe('PercentRowWindow', () => {
     setup({ narrow: true })
     expect(drawn().queryByRole('table')).toBeNull()
     expect(drawn().getByText('Count 1 · no cost')).toBeTruthy()
-    expect(drawn().getByText('40% of Pipe revenue · $6,200.00')).toBeTruthy()
-    expect(drawn().getByText('$2,480.00')).toBeTruthy()
-    expect(drawn().getByText('$17,680.00')).toBeTruthy()
+    expect(drawn().getByText(moneyText('40% of Pipe revenue · $6,200.00'))).toBeTruthy()
+    expect(drawn().getByText(moneyText('$2,480.00'))).toBeTruthy()
+    expect(drawn().getByText(moneyText('$17,680.00'))).toBeTruthy()
   })
 })
