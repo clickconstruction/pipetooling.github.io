@@ -2122,6 +2122,9 @@ The restrictive policy `job_papers_fence` (`TO authenticated`, every command) si
 **The lists and the service key** (v2.7665, `20261118020000_job_papers_lists.sql`): `search_jobs_ledger`, `list_assigned_jobs_for_dashboard`, `list_superintendent_jobs_for_dashboard` and `list_jobs_for_tally` answer a job shut to the caller with its number alone, and `list_reports_with_job_info` leaves its reports out.
 A locked job is found by its number and never by its name, its address or its development.
 `job_shut_to_user(job, user)` and `jobs_shut_to_user(user)` ask the lock about a named person and run for the service role alone.
+**What a GC reads about a job's papers** (v2.8503, `20261124160000_job_papers_gc_page.sql`): `job_papers_gc_page(job ids)` runs for the service role alone, for the `customer-portal` function, and only for the jobs a link's customer is the GC on.
+It answers a count over the office's own roster and each sub business by name, and never a helper's, a crew member's or an office person's name.
+The roster's body is `job_papers_roster_now`, granted to nobody, and `job_papers_roster` stays the office's alone.
 The edge functions that read a job with the service key ask them through `_shared/jobPapersLock.ts`: `plan-set-files`, `drive-link`, the four push functions and `schedule-share-dispatch`.
 A person locked out of a job gets no push that names it, and their schedule email shows its number and time only.
 The guard fails open: a read that fails reads as not locked, so a notice on a job that requires nothing is never stopped.
