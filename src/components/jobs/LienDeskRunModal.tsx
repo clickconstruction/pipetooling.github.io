@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
-import { noticeInvoiceDocs, noticeInvoicePrintSections, unpaidBilledInvoices, type NoticeInvoiceDoc } from '../../lib/jobs/noticeInvoiceEnclosure'
-import { fetchStripeInvoiceFacts } from '../../lib/stripeInvoiceFacts'
+import { noticeInvoicePrintSections, type NoticeInvoiceDoc } from '../../lib/jobs/noticeInvoiceEnclosure'
+import { useLienRunEnclosures } from './useLienRunEnclosures'
 import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -14,8 +13,7 @@ import { runLabelCsv, runLabelFilename, runLabelRows, runLabelSavedWords } from 
 import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticePrintRefusal, runNoticeProblems, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
-import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
+import type { PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
 import { filingDocHtml, type FilingDocBlock } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { envelopeCourtesy, runCopies, runEnvelopes, type RunEnvelope } from '../../lib/jobs/runEnvelopes'
 import { buildRunNoticePdf, recordLienDeskRun } from '../../lib/jobs/lienDeskRunIo'
@@ -210,47 +208,9 @@ export default function LienDeskRunModal({
   const partsOf = (n: CombinedRunNotice) => (n.parts && n.parts.length > 1 ? n.parts : null)
   // The property record each job points at (v2.7559), read off the notices as handed in: a combined notice's jobs each keep their own.
   const propertyOfJob = useMemo(() => new Map(notices.map((n) => [n.jobId, n.propertyId ?? null])), [notices])
-  // The unpaid invoices behind each notice (v2.3437, § 53.056(a-3)) — loaded once per job.
-  const [invoiceDocsByJob, setInvoiceDocsByJob] = useState<Record<string, NoticeInvoiceDoc[]>>({})
-  const [payByJob, setPayByJob] = useState<Record<string, { rows: PayPageRow[]; assets: PayPageAssets }>>({})
-  // The bills and pay codes read once (v2.5073): until then a courtesy PDF would go without them, so its preview waits.
-  const [enclosuresRead, setEnclosuresRead] = useState(false)
-  useEffect(() => {
-    let cancelled = false
-    const jobIds = Array.from(new Set(initial.map((n) => n.jobId)))
-    void (async () => {
-      const next: Record<string, NoticeInvoiceDoc[]> = {}
-      await Promise.all(
-        jobIds.map(async (id) => {
-          try {
-            const job = await fetchJobWithDetailsById(id)
-            if (!job) return
-            // Stripe's own number and due day on each enclosed bill (v2.4852); without an answer the app's document prints.
-            const facts = await fetchStripeInvoiceFacts(unpaidBilledInvoices(job).filter((i) => (i.stripe_invoice_id ?? '').trim()).map((i) => i.id), stripeMode)
-            next[id] = noticeInvoiceDocs(job, facts)
-          } catch {
-            // the notice goes without its invoice; the statute only permits the enclosure
-          }
-        }),
-      )
-      if (!cancelled) setInvoiceDocsByJob(next)
-      // The pay page's codes (v2.3758): one per Stripe bill, built once the bills are known.
-      const pay: Record<string, { rows: PayPageRow[]; assets: PayPageAssets }> = {}
-      await Promise.all(
-        Object.entries(next).map(async ([id, docs]) => {
-          const rows = payPageRows(docs)
-          pay[id] = { rows, assets: rows.some((r) => r.payable) ? await buildPayPageAssets(rows).catch(() => ({})) : {} }
-        }),
-      )
-      if (!cancelled) {
-        setPayByJob(pay)
-        setEnclosuresRead(true)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [initial, stripeMode])
+  // The unpaid invoices behind each notice (v2.3437, § 53.056(a-3)) and the pay codes on them (v2.3758), read once a job.
+  // The read is `useLienRunEnclosures`, shared with the checklist's one print, so a notice prints the same pages from either.
+  const { invoiceDocsByJob, payByJob, read: enclosuresRead } = useLienRunEnclosures(initial, stripeMode)
   // The enclosures by the notice that prints them: a combined notice carries every part's invoices and bills under the lead job's id.
   const invoiceDocsShown = useMemo(() => {
     const out: Record<string, NoticeInvoiceDoc[]> = { ...invoiceDocsByJob }
