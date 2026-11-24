@@ -248,6 +248,31 @@ describe('BillsSentLedger', () => {
     expect(within(record).getAllByTestId('bills-sent-record-payment').map((p) => p.textContent)).toEqual(['Fri, Nov 6Cash · typed by hand$1,000.00', 'Tue, Nov 10Check 4417 · bank deposit$3,860.00'])
   })
 
+  it('draws a part-paid bill’s record with small cents on the line under its amount', async () => {
+    io.data = {
+      ...data([copy({ id: 'c1' })]),
+      paid: new Map([
+        [
+          BILL,
+          {
+            kind: 'part' as const,
+            paidOn: '2026-11-06',
+            paidAmount: 3240,
+            outAmount: 1620,
+            wayWords: 'Cash · typed by hand',
+            paidAtIso: null,
+            payments: [{ id: 'p1', ymd: '2026-11-06', amount: 3240, wayWords: 'Cash · typed by hand', atIso: null, stripe: false, inKind: false, bankTransactionId: null }],
+          },
+        ],
+      ]),
+    }
+    renderWithProviders(<BillsSentLedger />, { route: `/bills-sent?bill=${BILL}` })
+    const state = await screen.findByTestId('bills-sent-record-state')
+    // The words are whole for a reader and a copy, and the cents are their own smaller span, as on every other amount.
+    expect(state.textContent).toBe('Sable Ridge Builders · Part paid, $1,620.00 still out')
+    expect([...state.querySelectorAll('[data-cents]')].map((c) => c.textContent)).toEqual(['.00'])
+  })
+
   it('switches between the bills by day sent and the money by day paid, and counts what came in this week', async () => {
     const today = todayYmdInAppTz()
     const paid = (id: string, amount: number, over: Record<string, unknown> = {}) => ({ id, billId: BILL, jobId: JOB, amount, paidOn: today, createdAtIso: `${today}T18:21:00.000Z`, paymentType: null, note: 'Stripe', referenceNumber: null, bankTransactionId: null, stripeCreditNoteId: null, ...over })
