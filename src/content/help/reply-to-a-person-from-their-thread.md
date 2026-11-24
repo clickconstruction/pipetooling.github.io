@@ -102,6 +102,15 @@ Press the one it is. The day is written down in one press, and a line on the scr
 
 A start or delivery is written as a start. Insurance or a W-9 is written as insurance.
 
+The day also goes where that kind of date lives.
+
+- A quote goes on their ask on the Board. That needs a GC job they were asked to quote.
+- A start, a delivery, insurance or a W-9 goes on the Board's promises.
+- Their answer on our bid sets the bid's follow-up day, when the message is on the bid.
+- On a GC job, the other kinds hold the flow's reminder until the day.
+
+The words on the screen say where it went. When it could not go, they say why and what to do. The day stays on their message either way.
+
 {{button:outline|A payment}} opens the payment sheet with the day filled in, as [Write down their word](#write-down-their-word) does. Nothing is saved until you press {{button:green|Save promise}}.
 
 Press {{button:outline|just talk}} when the day was not a promise. The buttons go away and nothing is written.
