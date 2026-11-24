@@ -66,6 +66,18 @@ The email goes to the signer and to anyone else at the company who gets its cont
 
 The paper shows as {{chip:green|Signed}} under the company. No email goes out.
 
+## Take back a paper sent by mistake
+
+A company's paper that is not signed carries {{button:outline|Take back}} on its line. The leader and a dev have the press.
+
+1. Press {{button:outline|Take back}} on the paper under the company's row.
+2. Read the window. It names the paper and who holds its signing link.
+3. Press **Take back the paper**.
+
+The paper is deleted and its signing link stops working. Nobody is emailed. A signed paper is kept.
+
+A paper GC mode asked the company for stays. The app says so, with the day GC mode asked for it by.
+
 ## Find a worker by the company
 
 Type part of the company's name in the search box on People → Contracts. Every worker of that company shows.

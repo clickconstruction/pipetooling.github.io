@@ -956,6 +956,7 @@ No policy changed for it, and nobody reads a paper through it that they could no
 Since v2.7932 a waiting staff, sub or partner line carries **Send again** and **Copy the signing link**: both call `send-contract-for-signature` as the reader, which reads the paper under the caller's own policy and refuses one it cannot read.
 Since v2.8101 that function also says who may send before it reads the paper: the four roles that write one, never a training account or a digital twin.
 Since v2.8348 (punch list #403, the owner's first decision) an outside party's line that is not signed carries **Take back**: one delete of the paper's row as the caller, asking for a party's paper with no job that is unsent or sent, so a signed paper is never removed and the signing link ends with the row.
+Since v2.8488 a trade company's own paper that is not signed is taken back through `take_back_company_paper` (`20261124103000`), a definer whose door is the leader and a dev (`is_master_or_dev()`), with a training account, a digital twin and an archived caller refused first: it refuses a paper a job requires, one a newer copy replaced and one GC mode is waiting on (an open `gc_trade_promises` row of the paper's kind), and the press is drawn for the same two roles on Documents → Agreements and on People → Contracts.
 The press is drawn for the two roles the library lets delete a paper (`canTakeBackPapers` is `canDeleteFromContractLibrary`, below), which is the app's own rule: `person_contract_documents`' delete policy has answered the office's four roles since `20260714200000_dissolve_assistant_pay_linkage.sql`, and no policy changed.
 The training-mode blocks, the twin fence and the archived seal hold on it as on every write, and an estimator's delete removes nothing.
 Since v2.8352 a party's line that was never sent carries **Send**, the window and the function **Send again** uses, so it is the four roles' under the same rule.
@@ -2122,6 +2123,9 @@ The restrictive policy `job_papers_fence` (`TO authenticated`, every command) si
 **The lists and the service key** (v2.7665, `20261118020000_job_papers_lists.sql`): `search_jobs_ledger`, `list_assigned_jobs_for_dashboard`, `list_superintendent_jobs_for_dashboard` and `list_jobs_for_tally` answer a job shut to the caller with its number alone, and `list_reports_with_job_info` leaves its reports out.
 A locked job is found by its number and never by its name, its address or its development.
 `job_shut_to_user(job, user)` and `jobs_shut_to_user(user)` ask the lock about a named person and run for the service role alone.
+**What a GC reads about a job's papers** (v2.8503, `20261124160000_job_papers_gc_page.sql`): `job_papers_gc_page(job ids)` runs for the service role alone, for the `customer-portal` function, and only for the jobs a link's customer is the GC on.
+It answers a count over the office's own roster and each sub business by name, and never a helper's, a crew member's or an office person's name.
+The roster's body is `job_papers_roster_now`, granted to nobody, and `job_papers_roster` stays the office's alone.
 The edge functions that read a job with the service key ask them through `_shared/jobPapersLock.ts`: `plan-set-files`, `drive-link`, the four push functions and `schedule-share-dispatch`.
 A person locked out of a job gets no push that names it, and their schedule email shows its number and time only.
 The guard fails open: a read that fails reads as not locked, so a notice on a job that requires nothing is never stopped.

@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { gcPortalStages, loadGcStageInputs, type GcPortalStages, type GcStageAdmin } from '../_shared/gcStages.ts'
 import { customerPageBuildersOrNone } from '../_shared/documentBuilderCustomerPage.ts'
+import { gcJobPapersOrNone } from '../_shared/portalJobPapers.ts'
 import { loadGcPageJobs } from '../_shared/startChecksPortal.ts'
 import type { GcPageStage } from '../_shared/gcKernels/lib/startChecks/gcPage.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -828,6 +829,11 @@ serve(async (req) => {
     // Only on a page that shows the jobs they are the GC on.
     const builders = link.audience === 'gc' || link.audience === 'all' ? await customerPageBuildersOrNone(admin, link.customer_id, jobs.filter((j) => j.gc_customer_id === link.customer_id).map((j) => ({ id: j.id, label: jobLabel(j) }))) : []
 
+    // Papers before a job opens (punch list #389, step 5): on a job that requires a paper built from settings, what
+    // the paper asks in plain words and who has signed, as a count and as each sub business. No worker is named.
+    // Only for the jobs this customer is the GC on, and nothing when the read fails.
+    const jobPapers = link.audience === 'gc' || link.audience === 'all' ? await gcJobPapersOrNone(admin, jobs.filter((j) => j.gc_customer_id === link.customer_id).map((j) => ({ id: j.id, label: jobLabel(j) }))) : []
+
     return jsonResponse({
       // Whose letterhead (v2.5229): Click Construction for a customer whose every job is a GC job we build.
       company: portalLetterhead({ audience: link.audience, gcJobCount: gcJobs.length, jobs }),
@@ -852,6 +858,7 @@ serve(async (req) => {
       stages,
       startChecks,
       builders,
+      jobPapers,
       checks,
       waivers,
       promise,

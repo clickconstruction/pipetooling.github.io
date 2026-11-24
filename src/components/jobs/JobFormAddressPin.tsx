@@ -8,8 +8,8 @@ import { ADDRESS_PIN_PAUSE_MS, addressLooksWhole, addressPinFailureReason, addre
 
 /**
  * The *On the map* line under the Job address (v2.4783, the owner's ask of
- * 2026-10-07): the address pins itself through `geocode-one` — the cache, then the
- * street map, Google and the Census — on blur or a pause after a whole-looking
+ * 2026-10-07): the address pins itself through `geocode-one` — the cache, then
+ * Google and the Census — on blur or a pause after a whole-looking
  * address, and says the county it landed in so a wrong pin is seen at the desk.
  * Advice, never law: nothing here blocks a save, and nothing is written on the job;
  * the pin lives in `address_geocodes` under the address, where the Map page and the

@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useEffect, useState } from 'react'
 import { resetModalStackForTests } from '../lib/modalStack'
+import { isPhoneSheetOpen, resetPhoneSheetOpenForTests } from '../lib/phoneSheetOpen'
 import { PhoneSheet, PHONE_SHEET_QUERY } from './PhoneSheet'
 
 const realMatchMedia = window.matchMedia
@@ -159,6 +160,32 @@ describe('PhoneSheet on a phone', () => {
     expect(threadClosed).not.toHaveBeenCalled()
     escape()
     expect(threadClosed).toHaveBeenCalledTimes(1)
+  })
+
+  it('says a phone sheet is open for as long as it is drawn, so the version pill keeps off its bottom press (v2.8507)', () => {
+    resetPhoneSheetOpenForTests()
+    screenIs(true)
+    viewport(600)
+    expect(isPhoneSheetOpen()).toBe(false)
+    const view = render(
+      <PhoneSheet label="Write someone up" onClose={() => {}}>
+        <button type="button">Send write-up to HR</button>
+      </PhoneSheet>,
+    )
+    expect(isPhoneSheetOpen()).toBe(true)
+    view.unmount()
+    expect(isPhoneSheetOpen()).toBe(false)
+  })
+
+  it('at a desk it is a centred window, which leaves the bottom of the screen alone (v2.8507)', () => {
+    resetPhoneSheetOpenForTests()
+    screenIs(false)
+    render(
+      <PhoneSheet label="Write someone up" onClose={() => {}}>
+        <button type="button">Send write-up to HR</button>
+      </PhoneSheet>,
+    )
+    expect(isPhoneSheetOpen()).toBe(false)
   })
 
   it('a press inside the sheet closes nothing', () => {

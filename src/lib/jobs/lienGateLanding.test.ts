@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { affidavitGates } from './lienDeskAffidavits'
 import { LIEN_GATE_MARK_SLOTS, lienGateMarks } from './lienGateMarks'
-import { LIEN_GATE_LANDING_BREATH_PX, lienGateLanding, lienGateLandingScrollTop, type LienGateLandingView } from './lienGateLanding'
+import { LIEN_GATE_LANDING_BREATH_PX, lienGateLanding, lienGateLandingScrollTop, lienGatePressByKeyboard, type LienGateLandingView } from './lienGateLanding'
 
 const row = (key: string, ok: boolean, pressable = true) => ({ key, ok, pressable })
 
@@ -28,6 +28,14 @@ describe('the gate a row press lands on (punch list #364)', () => {
     const landing = lienGateLanding(gates.map((g) => ({ key: g.key, ok: g.ok, pressable: true })))
     expect(firstRed?.slot).toBe('contractor')
     expect(landing?.key).toBe('contractor')
+  })
+})
+
+describe('what made the press (v2.8509)', () => {
+  it('reads a click with no press count as the keyboard’s, and a tap, a mouse press or a double press as not', () => {
+    expect(lienGatePressByKeyboard(0)).toBe(true)
+    expect(lienGatePressByKeyboard(1)).toBe(false)
+    expect(lienGatePressByKeyboard(2)).toBe(false)
   })
 })
 
@@ -58,6 +66,15 @@ describe('how far the pane scrolls to show the gate (punch list #364)', () => {
   it('lands the row itself under the head when the section is taller than the window', () => {
     const tall: LienGateLandingView = { rowTop: 900, rowHeight: 44, scrollTop: 0, viewHeight: 300, topInset: 40, bottomInset: 0, sectionTop: 520 }
     expect(lienGateLandingScrollTop(tall)).toBe(900 - 40 - LIEN_GATE_LANDING_BREATH_PX)
+  })
+
+  // v2.8509: under reduced motion the pane jumped, the job's path then grew, and the row on the screen held the pane 47 px short.
+  it('follows a pane it has already moved: a row on the screen goes back under the section’s head', () => {
+    const settled = { ...desk, scrollTop: 152, sectionTop: 200 }
+    expect(lienGateLandingScrollTop(settled)).toBeNull()
+    expect(lienGateLandingScrollTop({ ...settled, moved: true })).toBe(200)
+    // A section too tall for the window still lands the row itself.
+    expect(lienGateLandingScrollTop({ rowTop: 900, rowHeight: 44, scrollTop: 852, viewHeight: 300, topInset: 40, bottomInset: 0, sectionTop: 520, moved: true })).toBe(900 - 40 - LIEN_GATE_LANDING_BREATH_PX)
   })
 
   it('moves nothing on a page with no layout', () => {

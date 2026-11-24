@@ -10,6 +10,7 @@ describe('the question before a contact is removed', () => {
       confirmLabel: 'Remove Dana Whitlock',
       cancelLabel: 'Keep them',
       danger: true,
+      cancelIsSafe: true,
     })
   })
 
@@ -21,6 +22,11 @@ describe('the question before a contact is removed', () => {
     expect(contactNameForConfirm('  Dana   Whitlock ')).toBe('Dana Whitlock')
     expect(contactNameForConfirm(' ')).toBe('this contact')
     expect(removeContactConfirm({ name: null, getsBillCopies: false }).confirmLabel).toBe('Remove this contact')
+  })
+
+  it('makes Keep them the safe answer, whoever the contact is', () => {
+    expect(removeContactConfirm({ name: 'Dana Whitlock', getsBillCopies: true }).cancelIsSafe).toBe(true)
+    expect(removeContactConfirm({ name: null, getsBillCopies: false }).cancelIsSafe).toBe(true)
   })
 
   it('reads in plain words', () => {

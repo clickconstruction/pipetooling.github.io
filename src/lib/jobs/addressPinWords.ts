@@ -16,7 +16,7 @@ export function addressLooksWhole(address: string): boolean {
 /** Wait this long after the last keystroke before a lookup, so fragments cost nothing. */
 export const ADDRESS_PIN_PAUSE_MS = 1200
 
-export type AddressPinSource = 'cache' | 'nominatim' | 'google' | 'census'
+export type AddressPinSource = 'cache' | 'google' | 'census'
 
 export type AddressPinState =
   | { kind: 'idle' }
@@ -25,15 +25,13 @@ export type AddressPinState =
   | { kind: 'placed'; county: string; source: AddressPinSource }
   | { kind: 'failed'; reason: string }
 
-/** `pinned from the street map` · `pinned by Google` · `pinned by the US Census` · `pinned earlier`. */
+/** `pinned by Google` · `pinned by the US Census` · `pinned earlier`. */
 export function pinSourceWords(source: AddressPinSource): string {
   switch (source) {
     case 'google':
       return 'pinned by Google'
     case 'census':
       return 'pinned by the US Census'
-    case 'nominatim':
-      return 'pinned from the street map'
     default:
       return 'pinned earlier'
   }

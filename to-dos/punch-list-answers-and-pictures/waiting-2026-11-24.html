@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Still to answer, 24 November 2026</title>
+<!-- Made by a script on 2026-11-24 (punch list #438). Every name, job and amount is invented.
+     To change the words or redraw a picture, see to-dos/punch-list-answers-and-pictures/how-the-pictures-were-drawn.md. -->
+<style>
+/* Layout: a closeout punch list. An index sheet on top, then one sheet per item:
+   the item's number in the margin, its facts in a narrow column, its pictures beside them. */
+:root {
+  --bg: #e9edf1;
+  --sheet: #ffffff;
+  --sunk: #f3f5f8;
+  --ink: #16202b;
+  --muted: #566475;
+  --line: #cdd5de;
+  --accent: #b8470a;        /* safety orange: the item number, the group rule */
+  --accent-soft: #fbe9dc;
+  --k-app: #0b6b63;
+  --k-app-bg: #dcf1ee;
+  --k-harness: #8a5a00;
+  --k-harness-bg: #fbedc8;
+  --k-mock: #5546b8;
+  --k-mock-bg: #e8e4fb;
+  --warn: #9a1c1c;
+  --warn-bg: #fbe1e1;
+  --shadow: 0 1px 2px rgba(22, 32, 43, 0.06), 0 6px 20px rgba(22, 32, 43, 0.05);
+  --f-display: 'Helvetica Neue', 'Arial Narrow', Arial, system-ui, sans-serif;
+  --f-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --f-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f141a; --sheet: #182029; --sunk: #121920; --ink: #e6ebf0; --muted: #98a6b5; --line: #2b3643;
+    --accent: #ff9050; --accent-soft: #3a2415;
+    --k-app: #5fd6c9; --k-app-bg: #10332f; --k-harness: #f0c35a; --k-harness-bg: #3a2c08; --k-mock: #b3a8ff; --k-mock-bg: #272052;
+    --warn: #ff9a9a; --warn-bg: #401818;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.25);
+    color-scheme: dark;
+  }
+}
+
+html { color-scheme: light dark }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 28px; }
+a { color: inherit; }
+q { quotes: '\201C' '\201D'; }
+code { font-family: var(--f-mono); font-size: 0.9em; background: var(--sunk); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; overflow-wrap: anywhere; }
+h1, h2, h3, h4, p, ul, dl, dd, figure { margin: 0; }
+ul { padding: 0; list-style: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Top */
+.top { display: flex; flex-direction: column; gap: 12px; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--f-display); font-stretch: 87.5%; font-weight: 800; font-size: clamp(30px, 5vw, 46px); line-height: 1.05; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { max-width: 66ch; font-size: 16px; color: var(--ink); }
+.progress { align-self: flex-start; background: var(--accent-soft); color: var(--ink); border-left: 3px solid var(--accent); padding: 8px 12px; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; padding-top: 6px; }
+.legend > div { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.legend p { font-size: 13px; color: var(--muted); max-width: 46ch; }
+
+/* Chips */
+.chip { display: inline-block; font-family: var(--f-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; white-space: nowrap; }
+.k-app { color: var(--k-app); background: var(--k-app-bg); }
+.k-harness { color: var(--k-harness); background: var(--k-harness-bg); }
+.k-mock { color: var(--k-mock); background: var(--k-mock-bg); }
+.k-warn { color: var(--warn); background: var(--warn-bg); }
+.plus { font-family: var(--f-mono); font-size: 11px; font-weight: 500; color: var(--k-app); border: 1px dashed var(--k-app); border-radius: 3px; padding: 2px 6px; white-space: nowrap; }
+
+/* Index table */
+.index { background: var(--sheet); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th { text-align: left; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 10px 14px; border-bottom: 2px solid var(--ink); }
+.g-row th { text-align: left; font-family: var(--f-display); font-stretch: 87.5%; font-weight: 700; font-size: 14px; padding: 12px 14px 6px; color: var(--accent); border-top: 1px solid var(--line); }
+tbody:first-of-type .g-row th { border-top: 0; }
+td { padding: 7px 14px; vertical-align: top; border-top: 1px solid var(--line); }
+.t-num { font-family: var(--f-mono); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; width: 1%; }
+.t-num a { text-decoration: none; }
+.t-name { font-weight: 600; min-width: 190px; }
+.t-name a { text-decoration: none; }
+.t-name a:hover, .t-num a:hover { text-decoration: underline; }
+.t-wait { color: var(--muted); min-width: 240px; }
+
+/* Groups */
+.group { display: flex; flex-direction: column; gap: 20px; }
+.group > h2 { font-family: var(--f-display); font-stretch: 87.5%; font-weight: 800; font-size: 24px; line-height: 1.15; padding-top: 14px; border-top: 3px solid var(--accent); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; text-wrap: balance; }
+.g-n { font-family: var(--f-mono); font-weight: 500; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+/* One card */
+.card { background: var(--sheet); border: 1px solid var(--line); box-shadow: var(--shadow); scroll-margin-top: 12px; }
+.card-head { display: flex; gap: 18px; align-items: flex-start; padding: 18px 20px 16px; border-bottom: 1px solid var(--line); }
+.num { font-family: var(--f-mono); font-weight: 600; font-size: 34px; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; padding-top: 2px; }
+.num span { font-size: 20px; opacity: 0.7; margin-right: 1px; }
+.card-title { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.card-title h3 { font-family: var(--f-display); font-stretch: 87.5%; font-weight: 700; font-size: 22px; line-height: 1.2; text-wrap: balance; }
+.what { color: var(--muted); max-width: 72ch; }
+.card-body { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 0; }
+.facts { padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; border-right: 1px solid var(--line); min-width: 0; }
+.gallery { padding: 18px 20px; display: flex; flex-direction: column; gap: 18px; min-width: 0; background: var(--sunk); }
+@media (max-width: 860px) {
+  .card-body { grid-template-columns: minmax(0, 1fr); }
+  .facts { border-right: 0; border-bottom: 1px solid var(--line); }
+  .card-head { gap: 12px; padding: 14px 16px; }
+  .facts, .gallery { padding: 14px 16px; }
+  .num { font-size: 26px; }
+  .num span { font-size: 16px; }
+}
+.fact h4 { font-family: var(--f-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.fact p, .fact dd { font-size: 14px; overflow-wrap: break-word; }
+.fact.waits p { font-weight: 500; }
+.fact.stale dl { display: flex; flex-direction: column; gap: 2px; }
+.fact.stale dt { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 6px; }
+.calls { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.calls li { display: flex; flex-direction: column; padding-left: 10px; border-left: 2px solid var(--line); }
+.calls .call { color: var(--muted); }
+.calls .pick { font-weight: 500; }
+.say ul { display: flex; flex-direction: column; gap: 8px; }
+.say li { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 8px 10px; }
+.say q { font-size: 14.5px; font-weight: 500; min-width: 0; overflow-wrap: break-word; }
+.copy { flex: none; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink); background: var(--sheet); border: 1px solid var(--line); border-radius: 3px; padding: 4px 8px; cursor: pointer; }
+.copy:hover { border-color: var(--accent); }
+.copy.done { color: var(--k-app); border-color: var(--k-app); }
+
+/* Pictures */
+.note { font-size: 14px; padding: 8px 12px; border-left: 3px solid var(--k-harness); background: var(--k-harness-bg); color: var(--ink); max-width: 80ch; }
+.note.couldnot { border-left-color: var(--warn); background: var(--warn-bg); }
+.pending, .nopic { color: var(--muted); font-size: 14px; padding: 18px 0; max-width: 60ch; }
+.pics { display: flex; flex-wrap: wrap; gap: 20px 18px; align-items: flex-start; }
+.pic { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pic.is-phone { flex: 0 1 250px; }
+.pic.is-desk { flex: 1 1 100%; max-width: 100%; }
+.pic-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pic-meta { font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
+.pic-frame { display: block; padding: 0; margin: 0; border: 1px solid var(--line); background: var(--sheet); cursor: zoom-in; border-radius: 2px; overflow: hidden; max-width: 100%; line-height: 0; }
+.is-phone .pic-frame { border-radius: 10px; }
+.pic-frame img { display: block; width: 100%; height: auto; }
+.is-desk .pic-frame { align-self: flex-start; }
+.pic figcaption { font-size: 13.5px; color: var(--ink); max-width: 70ch; }
+.is-phone figcaption { max-width: 100%; }
+
+.foot { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; max-width: 80ch; }
+
+/* Lightbox */
+dialog#lightbox { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96vh; overflow: auto; }
+dialog#lightbox::backdrop { background: rgba(8, 12, 17, 0.82); }
+dialog#lightbox img { display: block; max-width: 96vw; height: auto; border: 1px solid var(--line); background: var(--sheet); }
+dialog#lightbox form { position: sticky; top: 0; display: flex; justify-content: flex-end; z-index: 1; }
+.lb-close { font-family: var(--f-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; background: var(--sheet); color: var(--ink); border: 1px solid var(--line); padding: 8px 12px; margin: 0 0 6px; cursor: pointer; }
+
+/* One card's page */
+.back a, .door a { color: var(--accent); font-weight: 600; }
+.answer { background: var(--sheet); border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); }
+h2 { font-family: var(--f-display); font-weight: 800; font-size: 22px; line-height: 1.2; }
+h3 { font-family: var(--f-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.answer .waits, .row .waits { font-size: 15.5px; max-width: 78ch; }
+ul.say { display: flex; flex-direction: column; gap: 6px; max-width: 78ch; }
+ul.say li { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 7px 10px; font-weight: 500; }
+section.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px 28px; padding: 0; border: 0; }
+section.facts .fact { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+section.facts .fact h3 { margin: 0; }
+section.facts dl { display: flex; flex-direction: column; gap: 2px; margin: 0; }
+section.facts dt { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 6px; }
+section.gallery { background: transparent; padding: 0; }
+.pic-frame img { max-width: 100%; }
+section.legend { border-top: 1px solid var(--line); padding-top: 14px; }
+/* The index */
+.group > h2 { font-size: 22px; }
+.row { display: flex; gap: 18px; align-items: flex-start; background: var(--sheet); border: 1px solid var(--line); box-shadow: var(--shadow); padding: 16px 20px; scroll-margin-top: 12px; }
+.row-main { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.row h3 { font-family: var(--f-display); font-size: 20px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--ink); line-height: 1.2; }
+.row h3 a { text-decoration: none; }
+.row h3 a:hover { text-decoration: underline; }
+@media (max-width: 600px) { .row { flex-direction: column; gap: 6px; padding: 14px 16px; } }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+<p class="eyebrow">Punch list #438 · a snapshot of 24 November 2026</p>
+<h1>Fifteen cards, built and waiting on a person</h1>
+<p class="lede">Each card here was built, or nearly, and waited on a person on that day. For each: what it waits on, what to say to move it, and a door to pictures of its screen drawn with invented data. A card's own front matter is the truth today. This page is the day it was drawn.</p>
+</header>
+<section class="group"><h2>The owner's look, read or walk</h2>
+<article class="row" id="c111">
+<div class="num"><span>#</span>111</div>
+<div class="row-main"><h3><a href="../training/pictures.html">Training: courses the crew takes at their own pace</a></h3><p class="what">A Training card at the foot of the Dashboard shows each person the courses their role must take, in red, amber or green. A course is a page of short lessons, each with a check. A dev sets each course's policy in Settings → Training.</p>
+<p class="waits"><strong>Waits on.</strong> The owner's correction pass over the card's Read-through: 34 doubted facts in the OSHA 30 refresher, the three starred rows first. Then the first crew member through a lesson. The only press left is his: Off, if the course should not be live before his corrections.</p><ul class="say"><li><q>Go ahead. Leave the courses On while he works through the 34 rows.</q></li><li><q>Change: turn the OSHA 30 refresher Off until his corrections are in.</q></li></ul>
+<p class="door"><a href="../training/pictures.html">See its 8 pictures</a></p></div>
+</article>
+<article class="row" id="c119">
+<div class="num"><span>#</span>119</div>
+<div class="row-main"><h3><a href="../intro-plumbing/pictures.html">Intro to plumbing: how water comes in and goes out, in drawings</a></h3><p class="what">The second training course: thirty five-minute lessons, in drawings, on how a house's water comes in under pressure and goes out by gravity.</p>
+<p class="waits"><strong>Waits on.</strong> The owner's correction pass over the card's Read-through: 25 doubted facts. Sixteen of them hang on one call: which code the numbers follow, the IPC or the UPC.</p><ul class="say"><li><q>Go ahead. It stays On while he corrects the 25 rows.</q></li><li><q>Change: the numbers follow the UPC, not the IPC.</q></li></ul>
+<p class="door"><a href="../intro-plumbing/pictures.html">See its 4 pictures</a></p></div>
+</article>
+<article class="row" id="c125">
+<div class="num"><span>#</span>125</div>
+<div class="row-main"><h3><a href="../pipeline-customer-conversation/pictures.html">The customer's conversation on the Pipeline row and in its Job activity</a></h3><p class="what">A customer's calls, texts and emails now read on the Pipeline row's activity box, in the expanded Job activity with Reply and Tie to this job, and on the phone row.</p>
+<p class="waits"><strong>Waits on.</strong> The owner's look. The owner texts the company number from the test phone on the ZZ Test customer's thread, then looks at the box, Reply, Tie and the phone row. Then the three doors on a ZZ Test customer.</p><ul class="say"><li><q>Go ahead. Fix the bar and Nobody has answered first, then the text from the test phone and the look.</q></li><li><q>Change: the phone row's third line should carry the newest note too.</q></li></ul>
+<p class="door"><a href="../pipeline-customer-conversation/pictures.html">See its 4 pictures</a></p></div>
+</article>
+<article class="row" id="c284">
+<div class="num"><span>#</span>284</div>
+<div class="row-main"><h3><a href="../people-utilization/pictures.html">People → Utilization and the drawn week</a></h3><p class="what">The office reads the hours each person said they can work against the hours the clock recorded, by pay week, and each person draws the week they can work on My Time.</p>
+<p class="waits"><strong>Waits on.</strong> The owner's look. Then the card's folder is deleted.</p><ul class="say"><li><q>Go ahead. He has looked, delete the folder.</q></li><li><q>Change: a long day starts at 10 hours, not 8.</q></li></ul>
+<p class="door"><a href="../people-utilization/pictures.html">See its 7 pictures</a></p></div>
+</article>
+<article class="row" id="c396">
+<div class="num"><span>#</span>396</div>
+<div class="row-main"><h3><a href="../pace-card-shown/pictures.html">The pace card, shown: stages as a rail, fewer words, and presses of its own</a></h3><p class="what">The superintendent's pace card on the short Job Mode page shows the job instead of telling it: the stages as a rail that ends in the finish day, Set the % on the stage in hand, and two new presses, Ask a master and My finish date.</p>
+<p class="waits"><strong>Waits on.</strong> The owner's walk with one real superintendent on his own phone, on a real project of his. That walk also carries the three questions punch list #384 left.</p><ul class="say"><li><q>Go ahead. Set up the walk with one superintendent on his own phone.</q></li><li><q>Change: put a label on each of the two thin bars on the folded row.</q></li></ul>
+<p class="door"><a href="../pace-card-shown/pictures.html">See its 5 pictures</a></p></div>
+</article>
+<article class="row" id="c426">
+<div class="num"><span>#</span>426</div>
+<div class="row-main"><h3><a href="../my-bids-refresh/pictures.html">My Bids and Recent Reports on the Dashboard: one swipe to put a row away</a></h3><p class="what">My Bids groups a person's bids by state. Recent Reports keeps its heading on one row. On both, a swipe to the left puts a row away, with Undo and a folded group at the foot that holds it.</p>
+<p class="waits"><strong>Waits on.</strong> The owner tries the swipe on his phone. Then retire the card.</p><ul class="say"><li><q>Go ahead. He tried the swipe on his phone. Retire the card.</q></li><li><q>Change: the swipe should uncover the press and wait for a tap.</q></li></ul>
+<p class="door"><a href="../my-bids-refresh/pictures.html">See its 5 pictures</a></p></div>
+</article>
+<article class="row" id="c188">
+<div class="num"><span>#</span>188</div>
+<div class="row-main"><h3><a href="../dev-gates/pictures.html">Dev gates: every door only a dev, the controller or the owner may open</a></h3><p class="what">An audit of 124 doors that only a dev, the controller or the owner could open. Each was opened to a role, opened behind a typed confirm, or kept as a gate with its risk named.</p>
+<p class="waits"><strong>Waits on.</strong> The owner's look at the doors he now opens. Nothing else.</p><ul class="say"><li><q>Go ahead. He has looked, close the card.</q></li><li><q>Change this door: close it again, or open it wider.</q></li></ul>
+<p class="door"><a href="../dev-gates/pictures.html">See its 6 pictures</a></p></div>
+</article>
+<article class="row" id="c189">
+<div class="num"><span>#</span>189</div>
+<div class="row-main"><h3><a href="../phone-first/pictures.html">Phone first: the five screens a tech touches, with one thumb and a camera</a></h3><p class="what">The five screens a tech uses every day, rebuilt for one thumb: a press bar pinned above the tab bar on Job Mode, the On my way sheet, a field report that opens on the camera, the percent stepper by stage, and a bar at the bottom of the job window.</p>
+<p class="waits"><strong>Waits on.</strong> The owner's read of the run. Nothing else is left.</p><ul class="say"><li><q>Go ahead. He read the run. Close the card.</q></li><li><q>Change this press on this screen: ...</q></li></ul>
+<p class="door"><a href="../phone-first/pictures.html">See its 6 pictures</a></p></div>
+</article>
+</section>
+<section class="group"><h2>A walk that writes on prod, with a person at hand</h2>
+<article class="row" id="c421">
+<div class="num"><span>#</span>421</div>
+<div class="row-main"><h3><a href="../messages-heard-day-pictures.html">Messages: a day was heard, say what it is</a></h3><p class="what">When a person names a day still ahead in a text or a voicemail, one press under the line says what the day is a promise of. The day is then written where that kind of date lives.</p>
+<p class="waits"><strong>Waits on.</strong> A walk on a ZZ Test thread, then the card is deleted. The walk writes on prod, so it waits on a person at hand. The walk also says whether the office needs to pick between a start and a delivery, and between Insurance and a W-9.</p><ul class="say"><li><q>Go ahead. I am at hand, walk it on a ZZ Test thread.</q></li><li><q>Change: let the office pick delivery or W-9, not only start and insurance.</q></li></ul>
+<p class="door"><a href="../messages-heard-day-pictures.html">See its 4 pictures</a></p></div>
+</article>
+<article class="row" id="c375">
+<div class="num"><span>#</span>375</div>
+<div class="row-main"><h3><a href="../task-note-tags/pictures.html">Tag a teammate in a task note</a></h3><p class="what">Type @ in a task's note and tap a name. That teammate gets a count, a Tagged task notes section on Today, a Needs you line and a phone notice.</p>
+<p class="waits"><strong>Waits on.</strong> The same walk on a real phone: the box on an iPhone and an Android keyboard, and a notice seen to arrive. Then a job tag's tagged side on a ZZ Test job. It needs a real phone and a second person.</p><ul class="say"><li><q>Go ahead. I will be the second person for the phone walk.</q></li><li><q>Change: on a phone the count sits on the gear and hides it. Move it.</q></li></ul>
+<p class="door"><a href="../task-note-tags/pictures.html">See its 6 pictures</a></p></div>
+</article>
+</section>
+<section class="group"><h2>Counsel or Grace</h2>
+<article class="row" id="c350">
+<div class="num"><span>#</span>350</div>
+<div class="row-main"><h3><a href="../sub-papers-statement-of-account/pictures.html">Sub papers: a work statement, a payment record and a statement of account</a></h3><p class="what">Three papers for a sub that add up, made from one window on the sub's row: a work statement for each sheet, a payment record for each sending and a statement of account for a period.</p>
+<p class="waits"><strong>Waits on.</strong> Counsel's words for sentence 2, then the switch <code>SUB_PAPER_CONFIRM_LIVE</code> and a walk on the test sub's page. Grace's word on a redeploy, so a send can fall back to a sub's sign-in address. Still owed: a walk of the To line's save and of a send in two emails.</p><ul class="say"><li><q>Go ahead. Send the six sentences to counsel as drafted, sentence 2 first.</q></li><li><q>Change this sentence before counsel reads it: ...</q></li></ul>
+<p class="door"><a href="../sub-papers-statement-of-account/pictures.html">See its 7 pictures</a></p></div>
+</article>
+</section>
+<section class="group"><h2>A walk of the site first</h2>
+<article class="row" id="c329">
+<div class="num"><span>#</span>329</div>
+<div class="row-main"><h3><a href="../stickers-before-boxes/pictures.html">Stickers before boxes: reserve a run, stick one on a box, then say what it is</a></h3><p class="what">The office prints a run of stickers that each reserve a box name, and on site the first scan of one asks whether it is on a box the app knows or a new box.</p>
+<p class="waits"><strong>Waits on.</strong> Taunya's first named run off the P-touch. Then the walk of the site with the phone's own camera. Then PRs 4 to 6 on the owner's go. The owner ordered the stop on 2026-11-14.</p><ul class="say"><li><q>Go ahead. Build PRs 4 to 6 now, without waiting for the walk.</q></li><li><q>Hold PRs 4 to 6 until the site is walked.</q></li><li><q>Change: drop the sheet of 30 from the plan.</q></li></ul>
+<p class="door"><a href="../stickers-before-boxes/pictures.html">See its 9 pictures</a></p></div>
+</article>
+</section>
+<section class="group"><h2>Use, then a look</h2>
+<article class="row" id="c302">
+<div class="num"><span>#</span>302</div>
+<div class="row-main"><h3><a href="../permit-skim/pictures.html">Permits: skim every one in a few seconds, dig into the few, and know the builders</a></h3><p class="what">Prospects → Permits shows one permit on one screen with two answers, Investigate or Pass, then keeps every permit in one of four places, lists the builders and counts whether permits turn into bids.</p>
+<p class="waits"><strong>Waits on.</strong> Two weeks of use, then a look at the count on Permits and the pass reasons, before anything held is built. The two weeks from going live end today, 2026-11-24.</p><ul class="say"><li><q>Go ahead. The six picks stand. Look at the count and the pass reasons now.</q></li><li><q>Change this pick: ...</q></li></ul>
+<p class="door"><a href="../permit-skim/pictures.html">See its 7 pictures</a></p></div>
+</article>
+<article class="row" id="c298">
+<div class="num"><span>#</span>298</div>
+<div class="row-main"><h3><a href="../supply-bill-lines/pictures.html">Every supply house bill's lines as rows: what we buy, how often, at what price</a></h3><p class="what">Every supply house bill's lines are read into rows, so the office can see what the company buys, how often and at what price, and teach the Parts Book each house's code once.</p>
+<p class="waits"><strong>Waits on.</strong> Someone who keeps the Parts Book presses <em>Match 105 offered codes</em> and works the first forty rows of Codes with no part, about a third of the dollars. Then PR 2b.</p><ul class="say"><li><q>Go ahead. This person keeps the Parts Book and works the first forty: ...</q></li><li><q>Change the Codes with no part window first: ...</q></li></ul>
+<p class="door"><a href="../supply-bill-lines/pictures.html">See its 5 pictures</a></p></div>
+</article>
+</section>
+<section class="group"><h2>A stale next line</h2>
+<article class="row" id="c411">
+<div class="num"><span>#</span>411</div>
+<div class="row-main"><h3><a href="../state-roll/pictures.html">State roll: who holds a license near us</a></h3><p class="what">A State roll tab on Prospects keeps the state's public roll of licensed plumbers for our counties, checks our own licenses against it, and lets the office look up any licensee and keep notes.</p>
+<p class="waits"><strong>Waits on.</strong> Walks on the live site: Everyone and the person's sheet, and the Our own view. Taunya's say on pressing <em>Use the state's date</em> on real cards. A lawyer's answer before step four ships a list people call from.</p><ul class="say"><li><q>Go ahead. Fix the line, walk the live site, then build Call this week once the lawyer answers.</q></li><li><q>Change before step four: ...</q></li></ul>
+<p class="door"><a href="../state-roll/pictures.html">See its 5 pictures</a></p></div>
+</article>
+</section>
+<footer class="foot"><p>Made 2026-11-24 from main at 68e9244. Card #430 was the sixteenth and was closed the same day. The page is static: it does not follow the cards as they change.</p></footer>
+</div>
+<dialog id="lightbox" aria-label="Enlarged picture"><form method="dialog"><button class="lb-close">Close</button></form><img alt=""></dialog>
+<script>(function(){var box=document.getElementById('lightbox');var big=box.querySelector('img');document.addEventListener('click',function(e){var f=e.target.closest?e.target.closest('.pic-frame'):null;if(f){var i=f.querySelector('img');big.src=i.src;big.alt=i.alt;if(box.showModal)box.showModal();return}if(e.target===box)box.close()})})()</script>
+</body>
+</html>

@@ -15,7 +15,11 @@ export function contactNameForConfirm(name: string | null | undefined): string {
   return (name ?? '').trim().replace(/\s+/g, ' ') || 'this contact'
 }
 
-/** The confirm window's words. Its press names the act and the contact; Cancel is *Keep them*. */
+/**
+ * The confirm window's words. Its press names the act and the contact; Cancel is *Keep them*. *Keep them* is the safe
+ * answer and takes the focus, so Enter does not remove (seen on the live walk of 2026-11-24: the focus sat on the
+ * remove press).
+ */
 export function removeContactConfirm(contact: { name: string | null; getsBillCopies: boolean }): ConfirmDialogOptions {
   const who = contactNameForConfirm(contact.name)
   const bills = contact.getsBillCopies ? ' They stop getting a copy of every bill.' : ''
@@ -24,5 +28,6 @@ export function removeContactConfirm(contact: { name: string | null; getsBillCop
     confirmLabel: `Remove ${who}`,
     cancelLabel: 'Keep them',
     danger: true,
+    cancelIsSafe: true,
   }
 }

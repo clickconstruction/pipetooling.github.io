@@ -1,5 +1,6 @@
 import type { PortalPropertyNotice } from '../../../supabase/functions/_shared/portalPropertyNotices'
 import { customerBuildersFrom, type CustomerBuilder } from '../documentBuilder/customerPageBuilders'
+import { parseGcJobPapers, type GcJobPapers } from '../../../supabase/functions/_shared/portalJobPapers'
 import type { GcPageStage } from '../startChecks/gcPage'
 import { TRADE_COLORS } from '../tradeColors'
 import type { ChecksEventIn, ChecksJobIn } from '../jobs/gcChecksApplied'
@@ -151,6 +152,8 @@ export type PortalPayload = {
   startChecks: PortalStartChecksJob[]
   /** The Document builder (punch list #404, step 9): a builder the office sent this GC, about one job or all their jobs. [] from an older function. */
   builders: CustomerBuilder[]
+  /** Papers before a job opens (punch list #389, step 5): on a job that requires a paper built from settings, what it asks and who has signed. [] from an older function. */
+  jobPapers: GcJobPapers[]
   /** Their Word PR 2: the latest pay-by date on record across the open bills (office-marked or the customer's own), null when none. */
   promise: { promisedYmd: string; source: 'office' | 'customer' } | null
   /** Your payments (v2.4053): the viewer's jobs with the bills they pay and the payments on them, pre-scoped by `_shared/portalChecks.ts`; null from a function without it. */
@@ -605,6 +608,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     stages: Array.isArray(r.stages) ? r.stages.map(parseJobStages).filter((x): x is PortalJobStages => x != null) : [],
     startChecks: Array.isArray(r.startChecks) ? r.startChecks.map(parseStartChecksJob).filter((x): x is PortalStartChecksJob => x != null) : [],
     builders: customerBuildersFrom(r.builders),
+    jobPapers: parseGcJobPapers(r.jobPapers),
     promise: parsePortalPromise(r.promise),
     checks: parsePortalChecks(r.checks),
     gcJobs: Array.isArray(r.gcJobs) ? r.gcJobs.map(parsePortalGcJob).filter((x): x is PortalGcJob => x != null) : [],

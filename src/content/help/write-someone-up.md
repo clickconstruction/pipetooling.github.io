@@ -7,7 +7,7 @@ order: 22
 ---
 You saw something on a job that HR should know about. You can write it up on your phone while it is fresh.
 
-Your Dashboard has one press for it, {{button:outline|Write someone up}}. The press sits right under the row of squares at the top. The press opens a sheet and saves nothing by itself.
+Your Dashboard has one press for it, {{button:outline|Write someone up}}. On the full Dashboard the press sits right under the row of squares at the top. In Job Mode it sits above the job card. On the short Dashboard it sits under the greeting. The press opens a sheet and saves nothing by itself.
 
 ## Pick the person
 

@@ -237,11 +237,11 @@ puts its rows back after, and its line on #404 names what it could not delete.
   - No award and no statement of work. All five trades read not awarded, read back through the dev seat.
 - **What it changes on the test rows.** The test sheet's send card now lists two trades, since the second company's ask on HVAC stays.
 - **Seen, not fixed.**
-  - The one press sends to each company's first contact and names nobody before it goes.
-  - The ask window says *1 email goes out, each with the company's own portal link* while **Email the invitations now** is unticked and no email goes.
-  - **Remove from the bench…** first says the company has *no contact logged*, then refuses because *they wrote to us from their portal*. The company wrote nothing. What holds it is the sheet we emailed.
+  - ~~The one press sends to each company's first contact and names nobody before it goes.~~ Fixed by v2.8487 (PR #9659): above the one press a line for each company says who its email goes to, by name and address. More than three lines fold under *See who the N emails go to*. The press still sends to each company's first contact. Held by its tests and carried by a deploy of 2026-11-24. Not walked on the live site.
+  - ~~The ask window says *1 email goes out, each with the company's own portal link* while **Email the invitations now** is unticked and no email goes.~~ Fixed by v2.8487 (PR #9659): with the tick off the window reads *1 company is asked.* and names no email. With it on, one company reads *1 email goes out, with the company's own portal link.* Held by its tests and carried by a deploy of 2026-11-24. Not walked on the live site.
+  - ~~**Remove from the bench…** first says the company has *no contact logged*, then refuses because *they wrote to us from their portal*. The company wrote nothing. What holds it is the sheet we emailed.~~ The refusal's words are fixed by v2.8491 (PR #9661), whose migration was pushed on 2026-11-24: it reads *stays on the bench, since we emailed them*. The rule is the same and the company stays. Seen live on 2026-11-24 on *ZZ Test trade no page, delete me*. Still so: the row offers the press on a company we emailed and says *no contact logged* first, since the office cannot read the emails we sent.
   - The ask-back window says the company has not heard from us about it, after the sheet for that job was emailed to it.
-  - The Concrete quote ran out on Nov 7 and was awarded with no word about it.
+  - ~~The Concrete quote ran out on Nov 7 and was awarded with no word about it.~~ Fixed by v2.8487 (PR #9659): under the award press a line reads *Their number ran out Nov 7. Ask them whether it still holds.* The press then asks first, and its yes reads **Award on this number**. The award is asked about, not blocked. Held by its tests and carried by a deploy of 2026-11-24. Not walked on the live site.
   - The awarded Concrete trade read *Insured to Nov 24*, from walk 1j's test certificate, with no year.
 
 **1g. The Sub NDA's Publish and its attorney's mark** (v2.8024)

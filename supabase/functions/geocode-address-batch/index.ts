@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle } from '../_shared/googleGeocode.ts'
 import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
-import { inUsPointBox, refusePointOutsideUs } from '../_shared/usPointBox.ts'
+import { inUsPointBox } from '../_shared/usPointBox.ts'
 import {
   geocodeMissDetail,
   geocodeServiceSaid,
@@ -20,7 +20,6 @@ const corsHeaders = {
 }
 
 const MAX_ADDRESSES = 20
-const NOMINATIM_DELAY_MS = 1100
 const MIN_KEY_LEN = 3
 
 function normalizeKey(address: string): string {
@@ -48,8 +47,6 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 }
-
-type NominatimHit = { lat: string; lon: string }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -144,18 +141,10 @@ serve(async (req) => {
     if (missErr) console.warn(`geocode-address-batch: the misses could not be read, asking as before: ${missErr.message}`)
     else remembered = standingGeocodeMisses((missRows ?? []) as GeocodeMissRow[], new Date())
   }
-  // Nominatim asks for a second between requests: the wait is owed only once one has been sent.
-  let askedNominatim = false
-  // OpenStreetMap turning the function away is said once a call, in the function's log (v2.8484).
-  let warnedNominatim = false
-
   for (let i = 0; i < uniqueInput.length; i++) {
     const { key, display } = uniqueInput[i]!
     let failure: { error_code: string; detail?: string } | null = null
     // What each service said. A miss is kept when Google and the Census both said *not found*.
-    let nominatimSaid: GeocodeServiceSaid = 'not_asked'
-    // Set when OpenStreetMap gave no plain answer, so the failure's words can say so.
-    let nominatimNote = ''
     let googleSaid: GeocodeServiceSaid = 'not_asked'
 
     const { data: existing, error: exErr } = await supabase
@@ -178,68 +167,8 @@ serve(async (req) => {
       continue
     }
 
-    if (askedNominatim) {
-      await new Promise((r) => setTimeout(r, NOMINATIM_DELAY_MS))
-    }
-    askedNominatim = true
-
-    let lat: number | null = null
-    let lng: number | null = null
-
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(display)}&limit=1&addressdetails=0`
-    try {
-      const nRes = await fetch(url, {
-        headers: { 'User-Agent': 'PipeTooling/1.0 (https://github.com/Click-Construction; map page geocode)' },
-      })
-      if (nRes.ok) {
-        const arr = (await nRes.json()) as NominatimHit[]
-        if (Array.isArray(arr) && arr.length > 0) {
-          const la = parseFloat(arr[0]!.lat)
-          const lo = parseFloat(arr[0]!.lon)
-          if (Number.isFinite(la) && Number.isFinite(lo) && !inUsPointBox(la, lo)) {
-            failure = { error_code: 'not_found', detail: refusePointOutsideUs('nominatim', display, la, lo, arr[0]) }
-          } else if (Number.isFinite(la) && Number.isFinite(lo)) {
-            lat = la
-            lng = lo
-          } else {
-            failure = { error_code: 'invalid_coordinates', detail: 'OpenStreetMap returned unusable coordinates' }
-          }
-        } else {
-          failure = { error_code: 'not_found', detail: 'No match from OpenStreetMap' }
-        }
-      } else {
-        failure = { error_code: 'upstream', detail: `OpenStreetMap (Nominatim) HTTP ${nRes.status}` }
-      }
-    } catch {
-      failure = { error_code: 'upstream', detail: 'OpenStreetMap (Nominatim) request failed' }
-    }
-    nominatimSaid = failure ? geocodeServiceSaid(failure.error_code) : 'not_asked'
-    if (failure && nominatimSaid === 'failed') {
-      nominatimNote = failure.detail ?? 'OpenStreetMap did not answer'
-      if (!warnedNominatim) {
-        warnedNominatim = true
-        console.warn(`geocode-address-batch: OpenStreetMap gave no plain answer: ${nominatimNote}`)
-      }
-    }
-
-    if (lat !== null && lng !== null) {
-      const { error: upErr } = await supabase.from('address_geocodes').upsert(
-        {
-          address_normalized: key,
-          lat,
-          lng,
-          geocoded_at: new Date().toISOString(),
-          geocode_error: null,
-        },
-        { onConflict: 'address_normalized' }
-      )
-      if (upErr && !isRlsRefusal(upErr)) {
-        return jsonResponse(500, { error: upErr.message })
-      }
-      results.push({ address_normalized: key, lat, lng })
-      continue
-    }
-
+    // Google is asked first, then the US Census (punch list #436). OpenStreetMap's lookup is no longer
+    // asked: it turned every call from this function away, and each address waited on it for nothing.
     if (googleKey.length > 0) {
       let g: Awaited<ReturnType<typeof geocodeWithGoogle>>
       try {
@@ -265,18 +194,10 @@ serve(async (req) => {
         continue
       }
       googleSaid = geocodeServiceSaid(g.error)
-      failure =
-        g.error === 'not_found' && !g.detail
-          ? { error_code: 'not_found', detail: nominatimNote ? `${nominatimNote}; no match from Google` : 'No match from OpenStreetMap or Google' }
-          : { error_code: g.error, detail: g.detail }
-    } else if (failure) {
-      failure = {
-        ...failure,
-        detail: appendDetail(failure.detail, 'Google fallback not configured'),
-      }
+      failure = g.error === 'not_found' && !g.detail ? { error_code: 'not_found', detail: 'No match from Google' } : { error_code: g.error, detail: g.detail }
     }
 
-    // Third-tier fallback: US Census geocoder (free, no key, US addresses only).
+    // The second ask: the US Census geocoder (free, no key, US addresses only).
     let c: Awaited<ReturnType<typeof geocodeWithCensus>>
     try {
       c = await geocodeWithCensus(display)
@@ -314,15 +235,16 @@ serve(async (req) => {
         c.error === 'census_upstream'
           ? { error_code: 'census_upstream', detail: c.detail }
           : { error_code: 'not_found', detail: c.detail ?? 'No match from US Census' }
+      // Only reached with no Google key set: say so, since the Census alone was asked.
+      failure = { ...failure, detail: appendDetail(failure.detail, 'Google Geocoding is not configured') }
     }
 
     // Google and the Census both answered and neither found it: keep the miss, so the next open does not
     // ask again (punch list #408). Either of them down, refused or over its limit keeps nothing.
-    // OpenStreetMap is not part of the rule (v2.8484): it often gives the function no answer at all.
     // The keeping is best effort: a refused or failed write never fails the batch. A miss that was
     // kept answers with the day, so the caller can tell it from one that was not.
     let keptAt: string | null = null
-    if (isSettledGeocodeMiss({ nominatim: nominatimSaid, google: googleSaid, census: geocodeServiceSaid(c.error) })) {
+    if (isSettledGeocodeMiss({ google: googleSaid, census: geocodeServiceSaid(c.error) })) {
       const { error: missWriteErr } = await supabase
         .from('address_geocode_misses')
         .upsert({ address_normalized: key, error_code: 'not_found', detail: geocodeMissDetail(failure.detail) }, { onConflict: 'address_normalized' })

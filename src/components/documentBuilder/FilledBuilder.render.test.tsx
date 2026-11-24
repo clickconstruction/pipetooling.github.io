@@ -91,6 +91,13 @@ function type(label: string, words: string) {
   return field
 }
 const publish = () => screen.getByRole('button', { name: /^(Publish|Nothing to publish)/ }) as HTMLButtonElement
+/** Press the bar's publish, then the window's own press: a publish asks first. */
+async function publishYes() {
+  fireEvent.click(publish())
+  const win = await screen.findByRole('alertdialog')
+  fireEvent.click(within(win).getByRole('button', { name: /^Publish/ }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+}
 
 describe('FilledBuilder', () => {
   it('opens on the first job, with its blanks filled from the job and nothing differing', async () => {
@@ -121,6 +128,45 @@ describe('FilledBuilder', () => {
     open({ rec: builder({ published: null, revision: 0 }) })
     expect(await screen.findByText('Publish your usual sheet first.')).toBeTruthy()
     expect(publish().disabled).toBe(true)
+    // A dead press opens no window.
+    fireEvent.click(publish())
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
+  it('asks before a job’s publish, and publishes nothing on Not yet', async () => {
+    const { io } = open({ sheets: [sheetRow()] })
+    await screen.findByText('This job is on your usual sheet')
+    type('Umbrella, its amount', 'Made-up amount 9')
+    fireEvent.click(publish())
+    const win = await screen.findByRole('alertdialog')
+    expect(within(win).getByText('Publish the sheet for Cedar Park Medical Office')).toBeTruthy()
+    expect(within(win).getByText('Every sub you sent this sheet to sees revision 2 from now on. So does anyone with the link. A publish cannot be taken back. A later revision can only replace it.')).toBeTruthy()
+    expect(within(win).getByRole('button', { name: 'Publish revision 2' })).toBeTruthy()
+    expect(io.publishSheet).not.toHaveBeenCalled()
+    fireEvent.click(within(win).getByRole('button', { name: 'Not yet' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(io.publishSheet).not.toHaveBeenCalled()
+    expect(publish().textContent).toBe("Publish this job's sheet")
+    expect(screen.getByRole('textbox', { name: 'Umbrella, its amount' }).textContent).toBe('Made-up amount 9')
+  })
+
+  it('asks before the usual’s publish with the jobs it goes to and the jobs held, and publishes nothing on Not yet', async () => {
+    const { io } = open({ sheets: [sheetRow()] })
+    await screen.findByText('This job is on your usual sheet')
+    fireEvent.click(screen.getByRole('button', { name: 'The standing sheet' }))
+    type('The line at the foot', 'A new foot line.')
+    fireEvent.click(publish())
+    const win = await screen.findByRole('alertdialog')
+    expect(within(win).getByText('Publish your usual')).toBeTruthy()
+    expect(within(win).getByText("Your usual becomes revision 2. 1 job gets it now, and each sub sent that sheet sees the change. 1 job is held. Each held job's row says why. A publish cannot be taken back. A later revision can only replace it.")).toBeTruthy()
+    expect(within(win).getByRole('button', { name: 'Publish to 1 job' })).toBeTruthy()
+    fireEvent.click(within(win).getByRole('button', { name: 'Not yet' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(io.publishBuilder).not.toHaveBeenCalled()
+    expect(io.publishSheet).not.toHaveBeenCalled()
+    expect(publish().textContent).toBe('Publish to 1 job')
+    // The typed line is still saved as a draft, a moment after the typing rests.
+    await waitFor(() => expect(io.saveBuilderDraft).toHaveBeenCalledTimes(1), { timeout: 3000 })
   })
 
   it('marks a job’s own words, lists them with the usual’s, and takes them back', async () => {
@@ -210,7 +256,7 @@ describe('FilledBuilder', () => {
   it('publishes a job with no row yet: the row is made, then the page goes out on the usual’s revision', async () => {
     const { io } = open()
     await screen.findByText('This job is on your usual sheet')
-    fireEvent.click(publish())
+    await publishYes()
     await waitFor(() => expect(io.publishSheet).toHaveBeenCalledTimes(1))
     expect(io.startSheet).toHaveBeenCalledWith('insurance', 'cedar', CEDAR_OWN())
     expect(io.publishSheet).toHaveBeenCalledWith('sheet-cedar', 0, CEDAR_OWN(), layOver(USUAL, CEDAR_OWN()), 1, 0)
@@ -223,7 +269,7 @@ describe('FilledBuilder', () => {
     const { io } = open({ sheets: [sheetRow()] })
     await screen.findByText('This job is on your usual sheet')
     type('Umbrella, its amount', 'Made-up amount 9')
-    fireEvent.click(publish())
+    await publishYes()
     await waitFor(() => expect(io.publishSheet).toHaveBeenCalledTimes(1))
     const own = withJobWords(USUAL, CEDAR_OWN(), coverPath('umb', 'limit'), 'Made-up amount 9')
     expect(io.saveSheetDraft).toHaveBeenCalledWith('sheet-cedar', own, 0)
@@ -233,7 +279,7 @@ describe('FilledBuilder', () => {
   it('names the reason when a publish is refused', async () => {
     open({ sheets: [sheetRow({ published: null, publishedSheet: null, revision: 0, usualRevision: null })], io: { publishSheet: vi.fn(async () => ({ ok: false as const, error: 'Someone published this since you opened it. Read it again, then publish.' })) } })
     await screen.findByText('This job is on your usual sheet')
-    fireEvent.click(publish())
+    await publishYes()
     expect((await screen.findByRole('alert')).textContent).toBe('Someone published this since you opened it. Read it again, then publish.')
   })
 
@@ -278,7 +324,7 @@ describe('FilledBuilder', () => {
     expect(screen.getByText('Gets it, as revision 2')).toBeTruthy()
     expect(screen.getByText('Held. It has no sheet yet.')).toBeTruthy()
     expect(publish().textContent).toBe('Publish to 1 job')
-    fireEvent.click(publish())
+    await publishYes()
     await waitFor(() => expect(io.publishSheet).toHaveBeenCalledTimes(1))
     const usual = { ...USUAL, fields: { ...USUAL.fields, foot: 'A new foot line.' } }
     expect(io.publishBuilder).toHaveBeenCalledWith('insurance', 1, usual, 0)
@@ -339,7 +385,7 @@ describe('FilledBuilder', () => {
     fireEvent.click(screen.getByRole('button', { name: 'The standing sheet' }))
     type('The line at the foot', 'A new foot line.')
     expect(publish().textContent).toBe('Publish to 2 jobs')
-    fireEvent.click(publish())
+    await publishYes()
     expect(await screen.findByText('Published to 1 job. 1 did not publish.')).toBeTruthy()
     expect(publishSheet).toHaveBeenCalledTimes(2)
     expect(screen.getByText('1 job did not publish. It stays here with the reason.')).toBeTruthy()

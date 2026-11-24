@@ -22,13 +22,19 @@
  *   - **A signed paper.** It is the agreement itself. Its e-sign record, its signed copy and the log of who opened it
  *     all describe it, so it is kept. The delete asks the database for an unsigned paper only, so a paper signed a
  *     moment before the press is kept too, and the office is told.
- *   - **A paper that is not an outside party's.** A teammate's or a sub's is removed on People → Contracts, a job's
- *     contract is voided in its Contract window, and a trade company's GC paper is GC mode's.
+ *   - **A paper that is not an outside party's or a trade company's own.** A teammate's or a sub's is removed on
+ *     People → Contracts, and a job's contract is voided in its Contract window.
  *   - **A paper a job requires.** It belongs to the job's list of papers, which is where it comes off.
  *   - **A paper a newer one replaced.** It is history: the newer one is the live paper.
  *
+ * **A trade company's own paper** (the walks of 2026-11-24: no press took one back) is taken back too, on this tab
+ * and under the company's row on People → Contracts. It goes through `take_back_company_paper`, not the plain delete:
+ * GC mode keeps a record of each paper it asks a company for, which only a dev reads, and a paper GC mode is waiting
+ * on stays GC mode's. The function says so in words, and the office reads them. Which door a paper takes is
+ * `takeBackHolder`.
+ *
  * Pure: no React, no supabase. The delete is `paperTakeBackIo.ts`; the press is on the line in
- * `DocumentsAgreementsTab.tsx`.
+ * `DocumentsAgreementsTab.tsx` and on a company's paper in `SubCompanyLines.tsx`.
  */
 import { canDeleteFromContractLibrary } from '../contracts/contractLibraryRoles'
 import { isPartyAgreementKind } from '../contracts/paperParty'
@@ -42,6 +48,18 @@ export const TAKE_BACK_LABEL = 'Take back'
  */
 export function canTakeBackPapers(role: string | null | undefined): boolean {
   return canDeleteFromContractLibrary(role)
+}
+
+/** Whose a paper that can be taken back is: an outside party's, or a trade company's own. Each has its own door. */
+export type TakeBackHolder = 'party' | 'company'
+
+/** The view's kind for a trade company's own paper. */
+export const COMPANY_AGREEMENT_KIND = 'company_agreement'
+
+/** Whose a line's paper is, for Take back; null for a kind that is never taken back here. */
+export function takeBackHolder(kind: string | null | undefined): TakeBackHolder | null {
+  if (isPartyAgreementKind(kind)) return 'party'
+  return kind === COMPANY_AGREEMENT_KIND ? 'company' : null
 }
 
 /** The statuses of a paper that can be taken back, as the delete asks the database for them: never `signed`. */
@@ -65,7 +83,7 @@ function word(v: unknown): string {
  * link is out, which the confirm's words turn on.
  */
 export function takeBackVerdict(row: Pick<AgreementRow, 'kind' | 'state' | 'job_id' | 'facts'>): TakeBackVerdict {
-  if (!isPartyAgreementKind(row.kind)) return { ok: false, why: 'not-a-party' }
+  if (!takeBackHolder(row.kind)) return { ok: false, why: 'not-a-party' }
   const status = word(fact(row, 'status'))
   // The row's status is asked before its state: a signed paper a newer one replaced reads *ended*, and is still signed.
   if (status === 'signed' || status === 'received' || row.state === 'signed') return { ok: false, why: 'signed' }
@@ -136,6 +154,27 @@ export function takeBackOutcome(deleted: number, statusAfter: string | null): Ta
   const status = statusAfter.trim()
   if (status === 'signed' || status === 'received') return { kind: 'signed-since' }
   return { kind: 'refused' }
+}
+
+/**
+ * The outcome from what `take_back_company_paper` answered: *taken*, *signed* (signed before the press, kept) or
+ * *gone*. Null for an answer this does not know, which the caller says as a failure and never as a paper taken back.
+ */
+export function companyTakeBackOutcome(answer: unknown): TakeBackOutcome | null {
+  if (answer === 'taken') return { kind: 'taken' }
+  if (answer === 'signed') return { kind: 'signed-since' }
+  if (answer === 'gone') return { kind: 'gone' }
+  return null
+}
+
+/** A company's paper as People → Contracts holds it, for the confirm and the toast: its name, the company, who signs. */
+export function companyPaperTakeBackRow(paper: { document_name: string; signer_name: string | null }, companyName: string): Pick<AgreementRow, 'paper_name' | 'with_name' | 'facts'> {
+  return { paper_name: paper.document_name, with_name: companyName, facts: { signer_name: paper.signer_name ?? '' } }
+}
+
+/** Whether a company's paper on People → Contracts carries Take back: one that is out or was never sent. */
+export function companyPaperCanBeTakenBack(status: string): boolean {
+  return (TAKE_BACK_STATUSES as ReadonlyArray<string>).includes(status)
 }
 
 /** What the office is told once the press is answered, and how the toast reads it. */

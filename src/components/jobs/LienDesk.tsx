@@ -2570,7 +2570,7 @@ export default function LienDesk({
       onPick={(jobId, from) => {
         setAffSelectedJobId(jobId)
         setMobileListShown(false)
-        gateAsk.askFor(from === 'row' ? jobId : null)
+        gateAsk.askFor(from ? jobId : null, from === 'row-keys')
       }}
     />
   )

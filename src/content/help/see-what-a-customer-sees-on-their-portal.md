@@ -94,6 +94,19 @@ A GC can look only. Nothing they pick is sent to you. Opening it tells you the d
 
 Sending it is in [use the document builder](/help/use-the-document-builder#send-the-sub-nda-to-a-gc).
 
+## A paper a job requires
+
+A job can require a paper built from settings before anyone opens it. The GC on that job reads about it on their page. The block sits under the job's name and reads **How we bind everyone we bring onto this job**.
+
+- A chip names the level the job's settings come to. A mix reads {{chip:gray|A mix of its own}}.
+- Each topic shows the choice you picked, with its plain words under it.
+- A count says how many people have signed, such as *3 of 9 people have signed*.
+- Each sub business has a line. It reads {{chip:green|Signed Nov 24, 2026}} once all of its people have signed. Until then it reads {{chip:yellow|Not yet}}.
+
+No worker is named. A helper or an office person counts in the total and has no line. A sub with no company on file shows under their own name.
+
+The GC can read only. Nothing on the block is a press. Setting the paper up is in [require papers before a job opens](/help/require-papers-before-a-job-opens#what-the-gc-sees).
+
 ## More on the portal
 
 - The link, the gear and whether they have looked are in [share a customer their portal](/help/share-a-customer-their-portal).
