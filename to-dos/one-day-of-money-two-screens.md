@@ -18,7 +18,7 @@ opinion: build piece 1 now, since it needs no call; hold pieces 2 to 4 for the c
 
 # One day of money, two screens (#440)
 
-This card follows [#422, Bills sent: who paid](./bills-sent-who-paid/README.md). The live test of that page on 2026-11-24 set one Monday beside the Dashboard's Money in bar. Money in showed seven payments and By day paid showed five. Both were right. Nothing on either screen said why.
+This card follows punch list #422, *Bills sent: who paid, when, and what came in each day*, which is being retired. Its record is in `docs/recent-features/` from v2.8333 on. The live test of that page on 2026-11-24 set one Monday beside the Dashboard's Money in bar. Money in showed seven payments and By day paid showed five. Both were right. Nothing on either screen said why.
 
 ## What each screen counts today
 
