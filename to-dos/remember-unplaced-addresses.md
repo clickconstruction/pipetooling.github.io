@@ -2,7 +2,7 @@
 name: "Remember an address the map cannot place"
 number: 408
 group: close
-status: asked 2026-11-20 as a loose end of v2.8049 · sized the same day from the code, the function logs and the dev seat · the owner's word to build it 2026-11-24, on the plan's three picks · steps 1, 2 and 3 shipped as v2.8473, v2.8477 and v2.8479 · a mend to step 2 is PR #9652
+status: asked 2026-11-20 as a loose end of v2.8049 · sized the same day from the code, the function logs and the dev seat · the owner's word to build it 2026-11-24, on the plan's three picks · steps 1, 2 and 3 shipped as v2.8473, v2.8477 and v2.8479, with step 2 mended as v2.8484 · checked on the live site 2026-11-24 on a ZZ test job, one call and then none
 summary: >
   When no map service can place an address, the app keeps nothing, so every screen that lists that
   record asks again on every open: OpenStreetMap, then Google, then the Census. Five addresses cause
@@ -10,7 +10,7 @@ summary: >
   they cost 80 to 250 calls a day, about 100 to 350 of them to Google. The card keeps a miss beside
   the saved points with the day it was checked, so a screen that reads it does not ask again, and
   gives each *no map location yet* line a press that opens the list and the fix.
-next: Deploy `geocode-address-batch` and `geocode-one` once the mend to step 2, PR #9652, is merged, then the check on a ZZ test job, two opens of the Pipeline and one call, and **Try again** on the Map page's list. Step 0 needs no code and is a person's to do. The owner's calls stay open to flip, the three in the plan and a fourth in that mend's fragment.
+next: Step 0, which needs no code and is a person's to do, fix the five addresses from the Map page's list. Since the check all five are remembered, so the repeat asks have stopped for 30 days either way. The owner's four calls stay open to flip. One thing found on the way has no card yet, OpenStreetMap refuses the two functions with HTTP 403, so every address goes on to Google.
 size: S as a train of three (XS · S · XS)
 blocker: None. The three calls are built to the plan's picks and listed for the owner to flip.
 opinion: build, small — it is under Google's free count today, so the gain is headroom and a faster Pipeline open, and fixing the five by hand is ten minutes either way
@@ -147,6 +147,10 @@ The owner said to build it on 2026-11-24. Each call is built to the plan's pick 
    by hand is the real fix for those. Jobs have no point of their own today, so that is a card of
    its own and not a step of this one. Until then such a job stays off every map, with its line
    saying so.
+4. **Which services must say *not found* before a miss is kept.** The plan said all three. On the
+   live site OpenStreetMap refuses the functions, so that rule kept nothing. v2.8484 keeps a miss
+   when Google and the Census both say *not found*, whatever OpenStreetMap did. What is given up, and
+   the one line that flips it, are in [its fragment](../docs/recent-features/v2.8484.md).
 
 ## How to verify
 
@@ -157,3 +161,34 @@ The owner said to build it on 2026-11-24. Each call is built to the plan's pick 
 - **After step 3.** The count line opens the list. **Try again** makes one call and updates the day.
 - The count script from the read of 2026-11-20 pages the dev seat and prints counts only. Running it
   again gives the number of unplaced addresses at any time.
+
+## Checked on the live site, 2026-11-24
+
+On a ZZ test job alone, its address changed to made-up words and put back after. Signed in as the dev.
+
+- **Step 2, first try, 14:02Z to 14:06Z.** Every open sent the address again and no miss was kept.
+  That is what v2.8484 mends.
+- **Step 2, after v2.8484's functions were deployed, 15:37Z to 15:41Z.** Four opens of the live
+  Pipeline. The first sent the made-up address once, and the answer came back with its day. The
+  next three made no call at all, and the screen's read of the misses held the row. The function's
+  log agrees: two calls in the first open's seconds, the made-up address in one and three other
+  unplaced addresses in the other, and none after.
+- **Step 3, 15:42Z, on a local server at the merged commit against the live data and the deployed
+  function.** The Dashboard's and the Pipeline's line is a link. A press opened the Map page's list
+  with six rows, each with its *Checked Nov 24. The app asks again by itself on Dec 24.* line and
+  **Try again**. One press on the ZZ row's **Try again** made one call with `retry: true`, moved
+  the day from 15:38Z to 15:42Z and said *Still no match*. No press was made on a real record's row.
+- **What the check left.** The five real addresses are each remembered now, kept when the Pipeline
+  and the Map page were opened, as any person's open would keep them. The check's made-up words
+  stay as a row in `address_geocode_misses`, and most likely the first try's words as a second.
+  No screen reads them and no press deletes a miss.
+
+## Found on the way
+
+- **OpenStreetMap refuses the functions.** The function's log reads *OpenStreetMap (Nominatim) HTTP
+  403* on each call the check made, so on the live site every address goes on to Google and the
+  Census. Why is not known. Two guesses, neither checked: it turns away a caller that asks the same
+  thing again and again, which this card's fault did for weeks, or it turns away the server's
+  address. No card yet.
+- **The Bid Board's own sheet** lists a bid with no map location without the reason, the day or
+  **Try again**. No card yet.
