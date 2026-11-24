@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BILLS_PAID_LEFT_OUT,
   BILLS_PAID_CSV_HEAD,
   billsPaidCellCount,
   billsPaidCellCredit,
@@ -369,6 +370,9 @@ describe('billsPaid — out of the app', () => {
     // A day with nothing is a number alone, and a day after the print is marked as not come.
     expect(cal).toContain('<td class="none"><i>21</i></td>')
     expect(cal).toContain('<td class="later"><i>24</i></td>')
+    // The page says what a day's figure leaves out, so a day that differs from the Dashboard's Money in has its reason.
+    expect(BILLS_PAID_LEFT_OUT).toBe('A bank deposit counts once it is put on a bill or a job. Until then the Dashboard’s Money in shows it and this page does not.')
+    expect(billsPaidMonthHtml(lines, { month: '2026-11', how: 'all', printedAtIso: '2026-11-23T21:00:00.000Z' })).toContain('A bank deposit not yet put on a bill or a job is not shown.')
     // A day that holds a credit and no money says so in its cell.
     const credits = billsPaidMonthHtml(lines.filter((l) => l.inKind || l.ymd === '2026-11-18'), { month: '2026-11', how: 'all', printedAtIso: '2026-11-23T21:00:00.000Z' })
     expect(credits).toContain('<td class="none"><i>23</i><span>1 credit</span></td>')

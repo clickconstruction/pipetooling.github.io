@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
+  BILLS_PAID_LEFT_OUT,
   billsPaidCellCount,
   billsPaidCellCredit,
   billsPaidCellLabel,
@@ -386,7 +387,7 @@ export function BillsPaidByDay() {
               ))}
             </div>
             <p style={{ margin: '0.5rem 0.1rem 0', color: 'var(--text-muted)', fontSize: '0.75rem' }} data-testid="bills-paid-foot">
-              A figure is what came in that day. The ring is today. Stripe’s fee is not taken off. A refund made in Stripe is not shown. All times are Central.
+              A figure is what came in that day. {BILLS_PAID_LEFT_OUT} The ring is today. Stripe’s fee is not taken off. A refund made in Stripe is not shown. All times are Central.
               {data.more ? ' This month holds more payments than one read takes. Its first days may be short.' : ''}
             </p>
           </div>
