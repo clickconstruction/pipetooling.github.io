@@ -14,7 +14,6 @@ import { useAssistantDispatchLanding } from '../hooks/useAssistantDispatchLandin
 import { useNavFitCollapse } from '../hooks/useNavFitCollapse'
 import { useNavRowFit } from '../hooks/useNavRowFit'
 import { NAV_ROW_GAP_REM, NAV_ROW_ICON_HOLD, NAV_ROW_TIGHT_GAP_REM, navRowPressGive } from '../lib/navRowFit'
-import { useForceReload } from '../contexts/ForceReloadContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import AddTaskShortcutBanner from './AddTaskShortcutBanner'
@@ -419,7 +418,6 @@ export default function Layout() {
   const [pinForSaving, setPinForSaving] = useState(false)
   const [pinForOpen, setPinForOpen] = useState(false)
   const pinForRef = useRef<HTMLDivElement>(null)
-  const forceReload = useForceReload()
   const checklistAddModal = useChecklistAddModal()
   const dispatchTaskModal = useDispatchTaskModal()
   const estimatorTaskModal = useEstimatorTaskModal()
@@ -2253,33 +2251,11 @@ export default function Layout() {
                     cursor: 'pointer',
                     fontSize: 'inherit',
                     color: 'var(--text-red-600)',
-                    borderBottom: role === 'dev' ? '1px solid var(--chrome-border)' : 'none',
+                    borderBottom: 'none',
                   }}
                 >
                   Hard Reload
                 </button>
-                {role === 'dev' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGearOpen(false)
-                      forceReload?.forceEveryoneToReload()
-                    }}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '0.5rem 1rem',
-                      textAlign: 'left',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: 'inherit',
-                      color: '#ea580c',
-                    }}
-                  >
-                    Global Reload
-                  </button>
-                )}
               </div>
             )}
           </div>
