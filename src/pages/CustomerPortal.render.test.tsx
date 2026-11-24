@@ -247,6 +247,34 @@ describe('CustomerPortal render smoke', () => {
     expect(screen.getByTestId('portal-tagline').textContent).toBe('Plumbing, Electrical, and HVAC')
   })
 
+  it('the GC sample carries the Sub NDA builder the office would send, made up on the page, and no other sample does (punch list #416)', async () => {
+    const calls: string[] = []
+    const answer = (state: 'gc' | 'owner') => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string, init?: { method?: string }) => {
+          calls.push(`${init?.method ?? 'GET'} ${String(url)}`)
+          return new Response(JSON.stringify(sampleCustomerPortalResponse(payload.company, state, '2026-10-09', 'https://app.example')), { status: 200 })
+        }),
+      )
+    }
+    answer('gc')
+    const gc = mountAt('/portal?t=sample-gc')
+    await waitFor(() => expect(screen.getByText('Secrecy on your jobs')).toBeTruthy())
+    expect(screen.getByText('New')).toBeTruthy()
+    // The press opens the flow right there, and a sample tells the office nothing: the page is read once and that is all.
+    fireEvent.click(screen.getByRole('button', { name: 'Open the Sub NDA builder' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close the builder' })).toBeTruthy())
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toContain('/functions/v1/customer-portal?token=sample-gc')
+    gc.unmount()
+
+    answer('owner')
+    mountAt('/portal?t=sample-owner')
+    await waitFor(() => expect(screen.getByText('Sample Owner LLC')).toBeTruthy())
+    expect(screen.queryByText('Secrecy on your jobs')).toBeNull()
+  })
+
   it('a portal function from before v2.5229 sends no tagline: the page draws the plumbing company’s line', async () => {
     const { tagline: _drop, ...company } = { tagline: '', ...payload.company }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ...payload, company }), { status: 200 })))

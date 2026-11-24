@@ -16,7 +16,7 @@ import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { COMPANY_EMAIL_FROM_LABEL, CUSTOMER_EMAIL_FROM_ADDRESS, estimateEmailFrom } from './customerEmailFrom'
 import { SAMPLE_BID, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, ymdPlusDays } from './customerSample'
-import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, SUBMITTAL_ROOM_SAMPLE_PATH, TRADE_PORTAL_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
+import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, GC_PORTAL_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, SUBMITTAL_ROOM_SAMPLE_PATH, TRADE_PORTAL_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
 import { buildSubmittalRoomLinkEmail, roomLinkBidLabel } from '../../supabase/functions/_shared/submittalRoomLinkEmail'
 import { buildJobContractPaperEmail, buildJobContractReminderEmail, buildJobContractSendEmail, buildJobContractSignedCopyEmail, type BuiltEmail } from './jobContractEmail'
 import { SAMPLE_JOB_CONTRACT } from './customerSample'
@@ -52,6 +52,7 @@ import { gcTradePortalSample, gcTradePortalSampleRows } from '../../supabase/fun
 import { mailboxWithName } from '../../supabase/functions/_shared/mailboxWithName'
 import { inviteMessage, mailRecipients, portalMailGroup } from './gc/portal'
 import { inviteEmailLines } from './gc/tradeEmail'
+import { sampleBuilderSendWords } from './documentBuilder/gcSendSample'
 import { tradePortalState } from './gc/tradePortalState'
 
 export type { AppSettingRow }
@@ -440,6 +441,26 @@ export function buildSampleGcTradeEmail(ctx: SampleEmailContext): BuiltEmail {
   })
 }
 
+/**
+ * The Document builder (punch list #416): the email a GC gets when the office sends them the Sub NDA builder, as
+ * `document-builder-send` sends it. The send's own words on the note a send starts with, about all their jobs, in the
+ * trade email's frame, with the one press to the sample GC's page.
+ */
+export function buildSampleBuilderSendEmail(ctx: SampleEmailContext): BuiltEmail {
+  const us = PORTAL_COMPANY.name
+  const words = sampleBuilderSendWords(us)
+  return buildGcTradeEmail({
+    lang: 'en',
+    recipients: [SAMPLE_GC.contact],
+    company: SAMPLE_GC.company,
+    subject: words.subject,
+    lines: words.lines,
+    linkUrl: `${ctx.origin}${GC_PORTAL_SAMPLE_PATH}`,
+    signer: String(ctx.sender?.name || us),
+    gc: us,
+  })
+}
+
 /** v2.5026 (Submittals decision 11): a named reviewer's own room link, as `send-submittal-room-link` sends it, to the sample room. */
 export function buildSampleSubmittalRoomLinkEmail(ctx: SampleEmailContext): BuiltEmail {
   return buildSubmittalRoomLinkEmail({
@@ -528,6 +549,7 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-weekly') return buildSampleGcWeeklyEmail(ctx)
   if (id === 'gc-schedule') return buildSampleGcScheduleEmail(ctx)
   if (id === 'gc-contract') return buildSampleGcContractEmail(ctx)
+  if (id === 'gc-secrecy') return buildSampleBuilderSendEmail(ctx)
   if (id === 'submittal-room-link') return buildSampleSubmittalRoomLinkEmail(ctx)
   if (id === 'messages-reply') return buildSampleMessagesReplyEmail(ctx)
   // Lien letters (punch list #326): the courtesy notice as `send-lien-filing-email` sends it, the Lien desk's own words in the lien email's own frame.

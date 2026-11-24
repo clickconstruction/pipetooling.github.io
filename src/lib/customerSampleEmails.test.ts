@@ -150,6 +150,21 @@ describe('v2.5026 · the submittal link email (Submittals decision 11)', () => {
   })
 })
 
+describe('punch list #416 · the Sub NDA builder sent to a GC', () => {
+  it('is document-builder-send\u2019s own words in the trade email\u2019s frame, to the sample GC, with one press to their page', () => {
+    const m = buildSampleEmail('gc-secrecy', ctx)
+    expect(m.subject).toBe('Secrecy on your jobs with Click Plumbing and Electrical')
+    expect(m.html).toContain('Here is how we bind the people we bring onto your jobs. Tell me what you would change.')
+    expect(m.html).toContain('It is on your page.')
+    expect(m.html).toContain('You can look. Nothing is sent from it.')
+    expect(m.html).toContain('href="https://clicktooling.com/portal?t=sample-gc"')
+    expect(m.text).toContain(`Hello ${SAMPLE_GC.contact.split(' ')[0]},`)
+    expect(m.text).toContain('Wendi Douglas')
+    // It goes out under the company's own name, as the function sends it.
+    expect(m.from).toContain('Click Plumbing and Electrical')
+  })
+})
+
 describe('sample emails carry the From line the inbox shows (v2.4138)', () => {
   it('the estimate is the plumbing brand; every other sample is the company', () => {
     expect(buildSampleEmail('estimate', ctx).from).toBe('Click Plumbing <team@noreply.clicktooling.com>')

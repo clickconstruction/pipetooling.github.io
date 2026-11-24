@@ -21,10 +21,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_LOW, SAMPLE_TOKEN_OWNER } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'job-account-move' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-due-soon' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-schedule' | 'gc-contract' | 'submittal-room-link' | 'messages-reply' | 'lien-courtesy-owner' | 'lien-courtesy-gc'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'job-account-move' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-due-soon' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-schedule' | 'gc-contract' | 'gc-secrecy' | 'submittal-room-link' | 'messages-reply' | 'lien-courtesy-owner' | 'lien-courtesy-gc'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'job-account-move', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link', 'messages-reply', 'lien-courtesy-owner', 'lien-courtesy-gc']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'job-account-move', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'gc-secrecy', 'submittal-room-link', 'messages-reply', 'lien-courtesy-owner', 'lien-courtesy-gc']
 
 /** Every text the tab builds from the kernels' own words (Messages cut 5, `journeys/sampleTexts.ts`). */
 export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked' | 'text-estimate' | 'text-rating' | 'text-first-look' | 'text-lien-courtesy-owner' | 'text-lien-courtesy-gc'
@@ -502,6 +502,26 @@ export function customerJourneys(): Journey[] {
           customerCan: 'See the properties they build for, each job\'s stage, their customers\' open bills, and pay what is theirs.',
           guide: 'see-what-a-customer-sees-on-their-portal',
           reflects: ['Portal letterhead (portalCompany)', 'AS GC tags and owner names', 'Agreements card'],
+          render: { kind: 'page', path: GC_PORTAL_SAMPLE_PATH },
+        },
+        {
+          id: 'gc-secrecy-email',
+          label: 'Secrecy on their jobs: the email',
+          sublabel: 'Documents → Document builder → Sub NDA → Send it to a GC (devs only for now)',
+          when: 'When the office sends them the Sub NDA builder, and with each reminder or new revision',
+          customerCan: 'Read our note and where the builder sits on their page, then open their page with one press.',
+          guide: 'use-the-document-builder',
+          reflects: ['The note the office typed on the send', 'The job it is about, or all their jobs', 'The customer’s portal link, which the first send makes'],
+          render: { kind: 'email', email: 'gc-secrecy' },
+        },
+        {
+          id: 'gc-portal-secrecy',
+          label: 'Secrecy on their jobs: on their portal',
+          sublabel: 'Their portal, at the top or under the job it is about, once the office sends it',
+          when: 'From the send until the office takes it off their page',
+          customerCan: 'Open the Sub NDA builder, pick a level and read what it asks, page by page. They can look. Nothing is sent from it.',
+          guide: 'use-the-document-builder',
+          reflects: ['The Sub NDA as published: its levels, its topics and the words on each', 'Whether they opened it, and whether it changed since'],
           render: { kind: 'page', path: GC_PORTAL_SAMPLE_PATH },
         },
         {
