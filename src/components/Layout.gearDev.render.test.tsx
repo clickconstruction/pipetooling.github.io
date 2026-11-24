@@ -55,7 +55,7 @@ describe('Layout: a dev’s gear menu', () => {
     fireEvent.click(screen.getByTitle('Settings'))
     const menu = container.querySelector('[data-navtrack="gear-menu"]') as HTMLElement
     const rows = Array.from(menu.querySelectorAll('button')).map((b) => b.textContent)
-    expect(rows.at(-1)).toBe('Hard Reload')
+    expect(rows[rows.length - 1]).toBe('Hard Reload')
     expect(rows).toContain('Sign out')
     expect(menu.textContent).not.toMatch(/Global Reload/)
   })
