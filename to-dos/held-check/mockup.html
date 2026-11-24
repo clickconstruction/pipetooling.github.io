@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A held check: counted the day the bank makes it good</title>
+<style>
+/* Layout: a reading column of short sections, with the app drawn inside one wide desk frame that can be stepped.
+   The page takes the app's own tokens (src/index.css) so the frames read as the app in either theme. */
+:root{
+  --pg:#f0f2f5;--pg-surface:#ffffff;--pg-text:#111827;--pg-muted:#4b5563;--pg-border:#cfd4db;--pg-frame:#1f2937;
+  --pg-link:#2563eb;--pg-good:#15803d;--pg-warn:#b91c1c;--pg-pin:#dc2626;--pg-tint:#eef2f7;
+  --bg-page:#f0f2f5;--surface:#ffffff;--bg-subtle:#f9fafb;--bg-muted:#f3f4f6;--bg-200:#e5e7eb;
+  --text-base:#1a1a1a;--text-strong:#111827;--text-700:#374151;--text-600:#4b5563;--text-muted:#6b7280;
+  --border:#cfd4db;--border-strong:#aab2bd;
+  --text-link:#2563eb;--text-red-700:#b91c1c;--text-amber-800:#92400e;
+  --bg-amber-tint:#fffbeb;--border-amber:#fcd34d;--bg-red-tint:#fef2f2;--border-red:#fca5a5;
+  --text-green-700:#15803d;--bg-green-tint:#f0fdf4;--border-green:#86efac;--bg-blue-tint:#eff6ff;--border-blue:#bfdbfe;
+  --dead-bg:#e5e7eb;--dead-text:#6b7280;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --pg:#0b1220;--pg-surface:#151e2e;--pg-text:#f3f4f6;--pg-muted:#b6beca;--pg-border:#334155;--pg-frame:#475569;
+  --pg-link:#60a5fa;--pg-good:#4ade80;--pg-warn:#f87171;--pg-pin:#ef4444;--pg-tint:#1a2436;
+  --bg-page:#111827;--surface:#1f2937;--bg-subtle:#18212f;--bg-muted:#374151;--bg-200:#4b5563;
+  --text-base:#f3f4f6;--text-strong:#f9fafb;--text-700:#d1d5db;--text-600:#d1d5db;--text-muted:#9ca3af;
+  --border:#374151;--border-strong:#4b5563;
+  --text-link:#60a5fa;--text-red-700:#f87171;--text-amber-800:#fcd34d;
+  --bg-amber-tint:#3a2f11;--border-amber:#92400e;--bg-red-tint:#3b1a1a;--border-red:#7f1d1d;
+  --text-green-700:#4ade80;--bg-green-tint:#12301f;--border-green:#166534;--bg-blue-tint:#1e3358;--border-blue:#1e40af;
+  --dead-bg:#374151;--dead-text:#9ca3af;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --pg:#0b1220;--pg-surface:#151e2e;--pg-text:#f3f4f6;--pg-muted:#b6beca;--pg-border:#334155;--pg-frame:#475569;
+  --pg-link:#60a5fa;--pg-good:#4ade80;--pg-warn:#f87171;--pg-pin:#ef4444;--pg-tint:#1a2436;
+  --bg-page:#111827;--surface:#1f2937;--bg-subtle:#18212f;--bg-muted:#374151;--bg-200:#4b5563;
+  --text-base:#f3f4f6;--text-strong:#f9fafb;--text-700:#d1d5db;--text-600:#d1d5db;--text-muted:#9ca3af;
+  --border:#374151;--border-strong:#4b5563;
+  --text-link:#60a5fa;--text-red-700:#f87171;--text-amber-800:#fcd34d;
+  --bg-amber-tint:#3a2f11;--border-amber:#92400e;--bg-red-tint:#3b1a1a;--border-red:#7f1d1d;
+  --text-green-700:#4ade80;--bg-green-tint:#12301f;--border-green:#166534;--bg-blue-tint:#1e3358;--border-blue:#1e40af;
+  --dead-bg:#374151;--dead-text:#9ca3af;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg);color:var(--pg-text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.55;
+  padding-block:28px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1080px;margin:0 auto}
+h1{font-size:1.7rem;line-height:1.2;margin:0 0 8px;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:1.15rem;margin:44px 0 8px;padding-top:18px;border-top:1px solid var(--pg-border);text-wrap:balance}
+h3{font-size:1rem;margin:20px 0 4px}
+p{margin:6px 0;max-width:70ch}
+ul,ol{max-width:72ch;padding-left:1.2rem;margin:6px 0}
+li{margin:4px 0}
+a{color:var(--pg-link)}
+.lede{color:var(--pg-muted);font-size:1rem}
+.note{color:var(--pg-muted);font-size:13.5px}
+.eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--pg-muted);margin:0 0 6px}
+.three{display:grid;gap:10px;margin:14px 0 0;padding:0;list-style:none;max-width:76ch}
+.three li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;margin:0}
+.three b.n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1px solid var(--pg-border);font-size:12px}
+.scroll{overflow-x:auto;max-width:100%}
+table{border-collapse:collapse;margin-top:10px;font-size:14px;width:100%;min-width:640px}
+th,td{text-align:left;padding:7px 14px 7px 0;border-bottom:1px solid var(--pg-border);vertical-align:top}
+th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--pg-muted);white-space:nowrap}
+td.k{font-weight:700;white-space:nowrap}
+td .miss{color:var(--pg-warn);font-weight:600}
+td .ok{color:var(--pg-good);font-weight:600}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px 28px;margin-top:10px}
+.cols>div{min-width:0}
+.box{background:var(--pg-surface);border:1px solid var(--pg-border);border-radius:10px;padding:12px 16px}
+.pick{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;border-radius:999px;padding:1px 9px;background:#15803d;color:#fff;vertical-align:middle}
+.faults{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:8px;max-width:78ch}
+.faults li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;align-items:start;margin:0}
+.pin{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--pg-pin);color:#fff;font:700 12px/1 system-ui,sans-serif;flex:none}
+
+/* ---- the app, drawn ---- */
+.frame{border:1px solid var(--pg-frame);border-radius:10px;overflow:hidden;background:var(--bg-page);color:var(--text-base);font-size:14px;line-height:1.45;margin-top:12px}
+.frame .bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:9px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.frame .bar b{font-size:15px}
+.frame .bar .crumb{color:var(--text-muted);font-size:13px}
+.frame .body{padding:14px 16px 16px;display:grid;gap:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;min-width:0}
+.card h4{margin:0 0 8px;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted)}
+.pile{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline;font-weight:700;font-size:14px}
+.pile .ct{font-weight:600;color:var(--text-muted)}
+.row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1.3fr) auto;gap:6px 14px;align-items:center;padding:8px 0;border-top:1px solid var(--border)}
+.row:first-of-type{border-top:0}
+.row .who{min-width:0}
+.row .who small,.small{display:block;color:var(--text-muted);font-size:12.5px}
+.row.dim{opacity:.55}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.c{font-size:.72em}
+.val{font-weight:700}
+.chg{font-weight:700;color:var(--text-link);background:var(--bg-blue-tint);border-bottom:1.5px solid var(--text-link);border-radius:3px 3px 0 0;padding:0 4px;cursor:text}
+input.chg{font:inherit;font-weight:700;border:0;border-bottom:1.5px solid var(--text-link);width:8.2em;text-align:right;color:var(--text-link);background:var(--bg-blue-tint)}
+input.chg:focus-visible,.frame button:focus-visible,.stops button:focus-visible,.chips button:focus-visible{outline:2px solid var(--text-link);outline-offset:2px}
+.lines{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 16px;align-items:baseline}
+.lines dt{color:var(--text-muted)}
+.lines dd{margin:0;min-width:0}
+.chip{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:1px 9px;border:1px solid var(--border);white-space:nowrap}
+.chip.red{color:var(--text-red-700);background:var(--bg-red-tint);border-color:var(--border-red)}
+.chip.amber{color:var(--text-amber-800);background:var(--bg-amber-tint);border-color:var(--border-amber)}
+.chip.green{color:var(--text-green-700);background:var(--bg-green-tint);border-color:var(--border-green)}
+.chip.blue{color:var(--text-link);background:var(--bg-blue-tint);border-color:var(--border-blue)}
+.frame button{font:inherit;cursor:pointer;border-radius:6px;padding:7px 13px;font-weight:600;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-base)}
+.frame button.go{background:#2563eb;border-color:#2563eb;color:#fff}
+.frame button.ok{background:#15803d;border-color:#15803d;color:#fff}
+.frame button.dead{background:var(--dead-bg);border-color:var(--dead-bg);color:var(--dead-text);cursor:not-allowed}
+.frame button.link{border:0;background:none;color:var(--text-link);padding:0;font-weight:600}
+.foot{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;margin-top:10px}
+.foot .say{min-width:0;flex:1 1 320px;font-size:13.5px}
+.strip{border-radius:8px;padding:9px 12px;font-size:13.5px;border:1px solid var(--border)}
+.strip.red{background:var(--bg-red-tint);border-color:var(--border-red)}
+.strip.amber{background:var(--bg-amber-tint);border-color:var(--border-amber)}
+.strip.green{background:var(--bg-green-tint);border-color:var(--border-green)}
+.grp{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.grp+.grp{margin-top:8px}
+.grp .gh{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between;align-items:baseline;background:var(--bg-subtle);padding:7px 12px;font-weight:700}
+.grp .gh small{font-weight:500;color:var(--text-muted)}
+.bill{display:grid;grid-template-columns:minmax(0,1fr) 7.5em 9.5em;gap:4px 12px;align-items:baseline;padding:6px 12px;border-top:1px solid var(--border)}
+.bill .r{text-align:right}
+.bill.head{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);border-top:0;padding-bottom:0}
+.sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+.sum div{background:var(--bg-subtle);border:1px solid var(--border);border-radius:8px;padding:8px 12px;min-width:0}
+.sum small{display:block;color:var(--text-muted);font-size:12px}
+.sum b{font-size:1.25rem}
+.track{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0;padding:0;list-style:none}
+.track li{border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--bg-subtle);margin:0;min-width:0}
+.track li b{display:block;font-size:13px}
+.track li small{color:var(--text-muted);font-size:12.5px}
+.track li.done{background:var(--bg-green-tint);border-color:var(--border-green)}
+.track li.now{background:var(--bg-amber-tint);border-color:var(--border-amber)}
+.track li.bad{background:var(--bg-red-tint);border-color:var(--border-red)}
+.rel{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.4fr) auto;gap:4px 14px;align-items:center;padding:8px 0;border-top:1px solid var(--border)}
+.rel:first-of-type{border-top:0}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);gap:12px}
+@media (max-width:760px){.two{grid-template-columns:minmax(0,1fr)}.row,.rel{grid-template-columns:minmax(0,1fr)}.sum{grid-template-columns:minmax(0,1fr)}.bill{grid-template-columns:minmax(0,1fr) 6em 8.4em}}
+/* the stepper around the frame */
+.stops{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0;padding:0;list-style:none}
+.stops button,.chips button{font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid var(--pg-border);background:var(--pg-surface);color:var(--pg-text);border-radius:999px;padding:5px 12px}
+.stops button[aria-current="step"]{background:var(--pg-text);color:var(--pg);border-color:var(--pg-text)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 0}
+.chips span{font-size:12.5px;color:var(--pg-muted);margin-right:2px}
+.chips button[aria-pressed="true"]{background:var(--pg-link);border-color:var(--pg-link);color:#fff}
+.cap{margin:10px 0 0;font-size:14px;max-width:76ch}
+.cap b{color:var(--pg-text)}
+.nav{display:flex;gap:8px;margin-top:10px}
+.nav button{font:inherit;font-weight:600;cursor:pointer;border:1px solid var(--pg-border);background:var(--pg-surface);color:var(--pg-text);border-radius:6px;padding:6px 14px}
+.nav button:disabled{opacity:.45;cursor:default}
+.old .frame{opacity:.96}
+.old .pinrow{position:relative}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;background:var(--pg-tint);border-radius:4px;padding:0 4px}
+.at{display:inline-flex;vertical-align:middle;margin-left:6px}
+@media (prefers-reduced-motion:no-preference){.frame .body{animation:in .18s ease-out}@keyframes in{from{opacity:.6;transform:translateY(3px)}to{opacity:1;transform:none}}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<p class="eyebrow">Punch list #437 · plan and mock-up · nothing is built</p>
+<h1>A held check: recorded the day it comes, counted the day the bank makes it good</h1>
+<p class="lede">A paper check is not money until the bank says so. Today the app counts it the moment someone types it. This plan lets the office say what a check is for the day it arrives, and counts it only when the bank posts it. A lien is released after that, never before. Every name and number here is made up.</p>
+
+<ol class="three">
+  <li><b class="n">1</b><span><b>The door is the bank’s own row.</b> When a check is deposited, the Dashboard says so and names the bills it fits. One press holds it for those bills. Nobody types the check.</span></li>
+  <li><b class="n">2</b><span><b>A held check counts nowhere.</b> Its bills stay open, each marked with the check and the day the bank expects it. Chasing stops for those bills. The lien clocks keep running.</span></li>
+  <li><b class="n">3</b><span><b>The bank’s answer does the rest.</b> When the bank posts it, the app counts it and tells the office which liens to release. When the bank fails it, nothing has to be undone.</span></li>
+</ol>
+
+<h2 id="why">Why not just record the payment</h2>
+<p>A check typed on a bill today counts at once. Only three things in the app wait for the bank.</p>
+<div class="cols">
+  <div class="box"><b>Counts the moment it is typed</b>
+    <ul>
+      <li>The bill reads <i>Paid</i>, and a job paid to zero moves to <i>Paid in Full</i>.</li>
+      <li>The customer’s page says <i>You’re all paid up</i>.</li>
+      <li>The sub’s page says <i>Customer paid</i>, and the office is nudged to queue their pay.</li>
+      <li><i>Paid in full</i> emails go to the office.</li>
+      <li>Chasing, statements and the Collections mark stop.</li>
+      <li>The job leaves the lien lists and the year-to-sue watch.</li>
+      <li>Bills sent, the customer’s totals and their pay speed all count it.</li>
+    </ul></div>
+  <div class="box"><b>Waits</b>
+    <ul>
+      <li>The prompt for an unconditional waiver, seven days.</li>
+      <li>The close of a Stripe invoice, seven days from the day typed.</li>
+      <li>The Dashboard’s <i>Money in</i> line, which follows the bank.</li>
+    </ul>
+    <p class="note">The seven days run from the day typed, not from the bank. A check typed the day it is deposited closes its Stripe invoice a day before the bank expects to post it. Stripe never takes that back.</p></div>
+</div>
+
+<h2 id="words">Four words for a check</h2>
+<p>The Dashboard’s Money in line already uses the first two. The plan uses the same words everywhere.</p>
+<div class="scroll"><table>
+<thead><tr><th>The word</th><th>What is true</th><th>What the app does</th></tr></thead>
+<tbody>
+<tr><td class="k">In the drawer</td><td>The office has the paper. It is not deposited.</td><td>Holds it for its bills. Asks for the deposit after three days.</td></tr>
+<tr><td class="k">At the bank</td><td>It is deposited. The bank shows it as pending and names the day it expects it.</td><td>Holds it for its bills. Shows the bank’s day. Counts nothing.</td></tr>
+<tr><td class="k">Cleared</td><td>The bank posted it.</td><td>Counts it on its bills that day. Tells the office what to release.</td></tr>
+<tr><td class="k">Came back</td><td>The bank failed it, before or after posting.</td><td>Ends the hold. The bills chase again. After posting, the returned-check case takes over.</td></tr>
+</tbody></table></div>
+<h2 id="first-draw">The first draw, and is it the best we can do</h2>
+<p>The first draw put the hold inside the Lien desk’s check pane. The office opened Payoffs, found the place, and pressed <i>Hold this check</i>. On the day the bank posted it, a Dashboard line offered <i>Count it</i>. Six things are wrong with it.</p>
+<div class="old">
+<div class="frame" aria-label="First draw: the hold inside the Lien desk">
+  <div class="bar"><b>Lien desk</b><span class="crumb">Payoffs › 212 Larkspur Court</span><span class="pin at" aria-label="fault 1">1</span><span class="pin at" aria-label="fault 2">2</span></div>
+  <div class="body">
+    <div class="card">
+      <div class="pile">One check <span class="ct">Marisol Okafor</span></div>
+      <dl class="lines" style="margin-top:8px">
+        <dt>Check</dt><dd><span class="val">1184</span> for <span class="num val">$16,455<span class="c">.50</span></span>, found at the bank</dd>
+        <dt>Clears</dt><dd><span class="val">Wed, Dec 2</span> <span class="pin at" aria-label="fault 4">4</span></dd>
+      </dl>
+      <div class="foot"><div class="say">Nothing is counted until it clears. On Dec 2 press <b>Count it</b> on the Dashboard. <span class="pin at" aria-label="fault 3">3</span></div><button type="button" class="ok">Hold this check for 4 bills</button></div>
+    </div>
+    <div class="card">
+      <h4>Meanwhile, on the bill</h4>
+      <div class="foot" style="margin-top:0"><div class="say">J2041 · Bill sent Nov 2 · <span class="num">$4,420<span class="c">.00</span></span> open</div><button type="button">Record payment</button><span class="pin at" aria-label="fault 5">5</span></div>
+      <div class="foot"><div class="say">Lien filed Nov 9. Copies to mail by Nov 14. <span class="pin at" aria-label="fault 6">6</span></div><span class="chip">nothing shown while held</span></div>
+    </div>
+  </div>
+</div>
+</div>
+<ul class="faults">
+  <li><span class="pin">1</span><span><b>She has to know to go to the Lien desk.</b> The check reached the bank from her phone. The app already holds the bank’s row. It should come to her and say what the check fits.</span></li>
+  <li><span class="pin">2</span><span><b>It only works where a lien is filed.</b> A check for an ordinary job has no such door, so the rule would hold for some checks and not others.</span></li>
+  <li><span class="pin">3</span><span><b>A second press can be forgotten.</b> She said which bills on day one. A press on the day it clears adds a day’s delay and no new choice. If she is out, paid liens sit on record.</span></li>
+  <li><span class="pin">4</span><span><b>The day reads as a promise.</b> It is the bank’s estimate. If the bank is a day late, the screen says cleared and the money is not there.</span></li>
+  <li><span class="pin">5</span><span><b>The old way still counts at once.</b> <i>Record payment</i> on the same bill takes a check and marks it paid. Two rules for one check, and it can be counted twice.</span></li>
+  <li><span class="pin">6</span><span><b>Quiet where it must not be.</b> If a held bill drops out of everything, the lien’s own clocks drop out with it. A check is not a reason to miss a filing day.</span></li>
+</ul>
+<p>The second draw answers each. The door is the bank’s row, on the Dashboard, for any check. The bank’s posting counts it, with no second press. Every screen says <i>the bank expects it</i> and acts on the fact, never the date. The bill’s own payment press knows the check is held. Lien days stay in view beside the bank’s day.</p>
+<h2 id="second-draw">The second draw: the bank’s row is the door</h2>
+<p>Press a stop, or change what the bank does. Every name, address, job, check number and amount is made up.</p>
+
+<ul class="stops" id="stops" aria-label="Stops of a held check"></ul>
+<div class="chips" role="group" aria-label="What the bank does">
+  <span>The bank</span>
+  <button type="button" data-case="posts" aria-pressed="true">posts it</button>
+  <button type="button" data-case="late" aria-pressed="false">is late</button>
+  <button type="button" data-case="fails" aria-pressed="false">fails it</button>
+</div>
+<p class="cap" id="cap"></p>
+<div class="frame" id="frame" aria-live="polite"></div>
+<div class="nav"><button type="button" id="prev">‹ Back</button><button type="button" id="next">Next ›</button></div>
+
+<script>
+(function () {
+  // ---- made-up data ----
+  var BILLS = [
+    { job: 'J2041', name: 'Okafor main house', sent: 'Nov 2', open: 4420.00, lien: '2026-0412207' },
+    { job: 'J2041', name: 'Okafor main house', sent: 'Nov 10', open: 3000.00, lien: '2026-0412207' },
+    { job: 'J2058', name: 'Okafor service visit', sent: 'Nov 9', open: 5160.50, lien: '2026-0412208' },
+    { job: 'J2063', name: 'Okafor shower valves', sent: 'Aug 18', open: 3875.00, lien: '2026-0412209' }
+  ];
+  var LIENS = [['J2041', 'Okafor main house', '2026-0412207', 7420.00], ['J2058', 'Okafor service visit', '2026-0412208', 5160.50], ['J2063', 'Okafor shower valves', '2026-0412209', 3875.00]];
+  var CHECK = 16455.50;
+  var STOPS = [
+    ['The Dashboard', 'The day the check is deposited. The app holds the bank’s row, so it says what came in and what it fits. One press holds it. Nobody types the check.'],
+    ['The hold', 'The same hold with its lines open, for a check that fits more than one way. It opens from the Dashboard, from Accounts Receivable and from the Lien desk’s Payoffs.'],
+    ['While it waits', 'Nothing is counted. Each place a bill shows says the check is at the bank. The bill’s own payment press knows it, and the lien’s days stay in view.'],
+    ['The bank answers', 'The app acts on what the bank does, never on the day it guessed. Posting counts the check with no second press.'],
+    ['The liens', 'Only money the bank has posted offers a release. The release itself stays a person’s press.']
+  ];
+  var state = { stop: 0, kase: 'posts' };
+
+  function money(n) {
+    var v = Math.abs(n), d = Math.floor(v + 1e-9), c = Math.round((v - d) * 100);
+    return '<span class="num">$' + d.toLocaleString('en-US') + '<span class="c">.' + (c < 10 ? '0' : '') + c + '</span></span>';
+  }
+  function bar(title, crumb) { return '<div class="bar"><b>' + title + '</b><span class="crumb">' + crumb + '</span></div>'; }
+  function moneyIn(words) {
+    return '<div class="card"><h4>Money in, this week</h4><div class="row" style="border-top:0"><div class="who"><b>At the bank</b><small>Check 1184 · Marisol Okafor</small></div><div>' + money(CHECK) + '</div><div><span class="chip blue">' + words + '</span></div></div></div>';
+  }
+
+  function sDash() {
+    return bar('Dashboard', 'Taunya · Tue, Nov 24') + '<div class="body">' +
+      '<div class="card"><h4>Needs you</h4>' +
+      '<div class="strip amber"><b>A check is at the bank.</b> ' + money(CHECK) + ', check <span class="val">1184</span>, from <span class="val">Marisol Okafor</span>. The bank expects it <span class="val">Wed, Dec 2</span>.<br>' +
+      'It fits <span class="val">4</span> bills at <span class="val">212 Larkspur Court</span> to the cent. Those bills sit behind <span class="val">3</span> filed liens.</div>' +
+      '<div class="foot"><div class="say"><button type="button" class="link">See the check ›</button> &nbsp; <button type="button" class="link" data-go="1">It is for something else ›</button></div><button type="button" class="ok" data-go="2">Hold it for these 4 bills</button></div></div>' +
+      moneyIn('the bank expects it Wed, Dec 2') + '</div>';
+  }
+
+  function sHold() {
+    var jobs = [];
+    BILLS.forEach(function (b) { if (jobs.indexOf(b.job) < 0) jobs.push(b.job); });
+    var rows = jobs.map(function (job) {
+      var mine = BILLS.filter(function (b) { return b.job === job; });
+      return '<div class="grp"><div class="gh"><span>' + job + ' ' + mine[0].name + ' <small>lien ' + mine[0].lien + '</small></span><span class="chip amber">lien on record</span></div>' +
+        mine.map(function (b) { return '<div class="bill"><div>Bill sent ' + b.sent + '</div><div class="r">' + money(b.open) + '</div><div class="r"><span class="chg">' + money(b.open) + '</span></div></div>'; }).join('') + '</div>';
+    }).join('');
+    var loose = '<div class="grp"><div class="gh"><span>J2071 Okafor trip charge <small>no lien</small></span></div><div class="bill"><div>Bill sent Sep 3</div><div class="r">' + money(640) + '</div><div class="r"><span class="chg">' + money(0) + '</span></div></div></div>';
+    return bar('Hold a check', 'opened from the Dashboard') + '<div class="body"><div class="two">' +
+      '<div class="card"><h4>The check, from the bank</h4><dl class="lines">' +
+      '<dt>Amount</dt><dd><span class="val">' + money(CHECK) + '</span></dd>' +
+      '<dt>Check number</dt><dd><span class="val">1184</span></dd>' +
+      '<dt>From</dt><dd><span class="val">Marisol Okafor</span></dd>' +
+      '<dt>Deposited</dt><dd><span class="val">Tue, Nov 24</span></dd>' +
+      '<dt>The bank expects it</dt><dd><span class="val">Wed, Dec 2</span></dd></dl>' +
+      '<p class="small" style="margin:10px 0 0">The bank wrote these. Nothing here is typed. <button type="button" class="link">See the check ›</button></p></div>' +
+      '<div class="card"><h4>What this check is for</h4><div class="bill head"><div></div><div class="r">Open</div><div class="r">Holds</div></div>' + rows + loose +
+      '<div class="sum"><div><small>The check</small><b>' + money(CHECK) + '</b></div><div><small>Held for bills</small><b>' + money(CHECK) + '</b></div><div><small>Left</small><b>' + money(0) + '</b></div></div>' +
+      '<div class="foot"><div class="say"><b>Nothing counts until the bank posts it.</b> The bills stay open. They are marked with this check and stop being chased.</div><button type="button" class="ok" data-go="2">Hold this check for 4 bills</button></div></div></div></div>';
+  }
+
+  function sWait() {
+    var chip = '<span class="chip blue">check 1184 at the bank · expected Dec 2</span>';
+    return bar('Four screens, one fact', 'Tue, Nov 24 to Wed, Dec 2') + '<div class="body"><div class="two" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr))">' +
+      '<div class="card"><h4>The job’s Bill tab</h4><div class="row" style="border-top:0;grid-template-columns:minmax(0,1fr)"><div class="who"><b>Bill sent Nov 2</b> ' + money(4420) + ' open<small>' + chip + '</small></div></div>' +
+      '<div class="foot"><div class="say"><b>Record payment</b> on this bill says: <i>Check 1184 is held for this bill. It counts when the bank posts it.</i></div><button type="button" class="link">Count it now… <span class="small" style="display:inline">a leader, with a reason</span></button></div></div>' +
+      '<div class="card"><h4>Bills sent</h4><div class="row" style="border-top:0"><div class="who"><b>J2041</b> Okafor main house<small>sent Mon, Nov 2</small></div><div>' + money(4420) + '</div><div><span class="chip blue">Check at the bank</span></div></div><p class="small" style="margin:6px 0 0">Not <i>Paid</i>, and not <i>Not paid</i>. The day’s totals leave it out.</p></div>' +
+      '<div class="card"><h4>Pipeline, Billed Awaiting Payment</h4><div class="row" style="border-top:0;grid-template-columns:minmax(0,1fr)"><div class="who"><b>J2041</b> Okafor main house · ' + money(7420) + ' open<small>' + chip + ' · no reminder, statement or call is due</small></div></div><p class="small" style="margin:6px 0 0">The job stays here. It does not move to Paid in Full.</p></div>' +
+      '<div class="card"><h4>Lien desk, Payoffs</h4><div class="row" style="border-top:0;grid-template-columns:minmax(0,1fr)"><div class="who"><b>J2041</b> Okafor main house · lien 2026-0412207<small>Check 1184 is at the bank. The bank expects it Wed, Dec 2. The release waits for it.</small></div></div>' +
+      '<div class="foot"><div class="say"><span class="chip amber">still running</span> The lien stays on every list, with its own days.</div><span class="chip">no release press</span></div></div>' +
+      '</div></div>';
+  }
+
+  function sBank() {
+    if (state.kase === 'late') {
+      return bar('Dashboard', 'Taunya · Thu, Dec 3') + '<div class="body"><div class="card"><h4>Needs you</h4>' +
+        '<div class="strip amber"><b>Check 1184 is late at the bank.</b> The bank expected it Wed, Dec 2. It is still pending. Nothing is counted and no release is offered.</div>' +
+        '<div class="foot"><div class="say">The hold stands. This line stays until the bank posts the check or fails it.</div><button type="button">See it at the bank ›</button></div></div>' + moneyIn('late · expected Wed, Dec 2') + '</div>';
+    }
+    if (state.kase === 'fails') {
+      return bar('Dashboard', 'Taunya · Mon, Nov 30') + '<div class="body"><div class="card"><h4>Needs you</h4>' +
+        '<div class="strip red"><b>Check 1184 came back.</b> The bank failed it before it posted. It was never counted, so nothing has to be undone.<br>4 bills are open again and are chased again. 3 liens stay on record.</div>' +
+        '<div class="foot"><div class="say">The hold has ended. A new check starts a new hold.</div><button type="button" data-go="4">Open the place ›</button></div></div>' +
+        '<div class="card"><h4>Money in, this week</h4><div class="row" style="border-top:0"><div class="who"><b>Came back</b><small>Check 1184 · Marisol Okafor</small></div><div>' + money(CHECK) + '</div><div><span class="chip red">not counted</span></div></div></div></div>';
+    }
+    return bar('Dashboard', 'Taunya · Wed, Dec 2') + '<div class="body"><div class="card"><h4>Needs you</h4>' +
+      '<div class="strip green"><b>Check 1184 cleared.</b> The bank posted it today. It is counted on 4 bills, ' + money(CHECK) + '.<br><b>3 liens are paid and still on record.</b> Release them.</div>' +
+      '<div class="foot"><div class="say">A check can still come back for about six days after it posts. The release tab says so until Tue, Dec 8.</div><button type="button" class="go" data-go="4">Release 3 liens ›</button></div></div>' +
+      '<div class="card"><h4>Money in, this week</h4><div class="row" style="border-top:0"><div class="who"><b>Landed</b><small>Check 1184 · Marisol Okafor · 4 bills</small></div><div>' + money(CHECK) + '</div><div><span class="chip green">Wed, Dec 2</span></div></div></div></div>';
+  }
+
+  function sLiens() {
+    var k = state.kase;
+    var rows = LIENS.map(function (l) {
+      var say = k === 'posts' ? 'Paid Dec 2 by check 1184. The release is owed.'
+        : k === 'late' ? 'Check 1184 is late at the bank. The release waits for it.'
+        : money(l[3]) + ' is still open on this job’s bills. Check 1184 came back Nov 30.';
+      var press = k === 'posts' ? '<button type="button" class="go">Make the release ›</button>' : k === 'late' ? '<span class="chip">no release press</span>' : '<button type="button">Record the payment ›</button>';
+      return '<div class="row"><div class="who"><b>' + l[0] + '</b> ' + l[1] + '<small>Filed lien · instrument ' + l[2] + ' · ' + money(l[3]) + '</small></div><div>' + say + '</div><div>' + press + '</div></div>';
+    }).join('');
+    var strip = k === 'posts' ? '<b>3</b> liens are paid and still on record.' : k === 'late' ? '<b>3</b> liens wait on a check at the bank.' : '<b>3</b> filed liens on record.';
+    return bar('Lien desk', k === 'posts' ? 'Wed, Dec 2' : k === 'late' ? 'Thu, Dec 3' : 'Mon, Nov 30') + '<div class="body">' +
+      '<div class="card" style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center"><b>Payoffs</b><span style="flex:1 1 12rem">' + strip + '</span><button type="button" class="go">Someone paid ›</button></div>' +
+      '<div class="card"><div class="pile">212 Larkspur Court, Austin <span class="ct">Marisol Okafor</span></div>' + rows +
+      '<div class="foot"><div class="say">' + money(640) + ' more is open here on J2071. It is not liened.</div></div></div></div>';
+  }
+
+  var DRAW = [sDash, sHold, sWait, sBank, sLiens];
+  var stopsEl = document.getElementById('stops'), frame = document.getElementById('frame'), cap = document.getElementById('cap');
+  function render() {
+    stopsEl.innerHTML = STOPS.map(function (s, i) { return '<li><button type="button" data-stop="' + i + '"' + (i === state.stop ? ' aria-current="step"' : '') + '>' + (i + 1) + ' · ' + s[0] + '</button></li>'; }).join('');
+    cap.innerHTML = '<b>' + STOPS[state.stop][0] + '.</b> ' + STOPS[state.stop][1];
+    frame.innerHTML = DRAW[state.stop]();
+    document.getElementById('prev').disabled = state.stop === 0;
+    document.getElementById('next').disabled = state.stop === STOPS.length - 1;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-case]'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-case') === state.kase)); });
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-stop],[data-go],[data-case],#prev,#next') : null;
+    if (!t) return;
+    if (t.hasAttribute('data-stop')) state.stop = +t.getAttribute('data-stop');
+    else if (t.hasAttribute('data-go')) state.stop = +t.getAttribute('data-go');
+    else if (t.hasAttribute('data-case')) { state.kase = t.getAttribute('data-case'); if (state.stop < 3) state.stop = 3; }
+    else if (t.id === 'prev') state.stop = Math.max(0, state.stop - 1);
+    else if (t.id === 'next') state.stop = Math.min(STOPS.length - 1, state.stop + 1);
+    render();
+  });
+  render();
+})();
+</script>
+<h2 id="where">What each screen says while a check is held</h2>
+<div class="scroll"><table>
+<thead><tr><th>The screen</th><th>Today, once a check is typed</th><th>With a held check</th></tr></thead>
+<tbody>
+<tr><td class="k">The job’s Bill tab</td><td><i>Paid</i></td><td>The bill stays open with a chip: the check, <i>at the bank</i>, the day the bank expects it. <b>Record payment</b> says the check is held for this bill.</td></tr>
+<tr><td class="k">Pipeline</td><td>The job moves to <i>Paid in Full</i>.</td><td>The job stays in Billed with the chip. No reminder is due.</td></tr>
+<tr><td class="k">Bills sent</td><td><i>Paid</i>, with the day typed.</td><td><i>Check at the bank</i>. The day’s paid totals leave it out until the bank posts it.</td></tr>
+<tr><td class="k">Chasing and statements</td><td>Stop, for good.</td><td>Stop for the held bills only, and start again if the check comes back.</td></tr>
+<tr><td class="k">The customer’s page</td><td><i>You’re all paid up</i></td><td>The bill stays listed, with <i>We have your check 1184. It is clearing.</i> The pay page says the same, so nobody pays twice.</td></tr>
+<tr><td class="k">The sub’s page</td><td><i>Customer paid</i></td><td>Nothing, until the bank posts it.</td></tr>
+<tr><td class="k">Paid in full emails</td><td>Sent.</td><td>Sent the day the bank posts it.</td></tr>
+<tr><td class="k">The Stripe invoice</td><td>Closes seven days after the day typed.</td><td>Stays open while held. Closes seven days after the bank posts, as it does for a deposit today.</td></tr>
+<tr><td class="k">The lien lists</td><td>The job leaves them.</td><td>The job stays, with the chip. No lien day is hidden.</td></tr>
+<tr><td class="k">Payoffs and the release tab</td><td>Offer the release, with an amber line.</td><td>Offer nothing until the bank posts it. A leader may release sooner with a typed reason.</td></tr>
+</tbody></table></div>
+
+<h2 id="never">What must never happen</h2>
+<div class="scroll"><table>
+<thead><tr><th>The mistake</th><th>The guard</th></tr></thead>
+<tbody>
+<tr><td class="k">A lien is released on a check the bank has not made good</td><td>The release reads the bank’s fact. It is offered only when the paying deposit has posted. A check typed the old way, with no deposit, waits its seven days as now.</td></tr>
+<tr><td class="k">One check is counted twice</td><td>A held bill refuses a second check payment and says which check holds it. A held deposit is not offered to other bills in Accounts Receivable.</td></tr>
+<tr><td class="k">A payer is chased for money the office holds a check for</td><td>One rule, <i>this bill has a check held for it</i>, read by the chase list, the statements and the reminders.</td></tr>
+<tr><td class="k">A lien day is missed because a check came in</td><td>A hold never takes a job off a lien list and never holds a lien paper by itself. The desk shows the lien’s day beside the bank’s day.</td></tr>
+<tr><td class="k">A hold that never ends</td><td>A check in the drawer asks for its deposit after three days. A check past the bank’s day reads <i>late</i> until the bank posts or fails it.</td></tr>
+<tr><td class="k">The bank fails it and nobody notices</td><td>The hold ends itself. The Dashboard says so in red, the bills chase again, and the liens read on record.</td></tr>
+<tr><td class="k">It was held for the wrong bills</td><td><b>Let it go</b> ends a hold any time before the bank posts. After that, a payment moves as it does today.</td></tr>
+<tr><td class="k">The bank posts it, then takes it back</td><td>The returned-check case that exists today takes the payments off. The case names any release made on that check.</td></tr>
+</tbody></table></div>
+
+<h2 id="build">The build, as small pieces in order</h2>
+<div class="scroll"><table>
+<thead><tr><th>#</th><th>The piece</th><th>Size</th><th>Kernel and tests</th><th>Migration</th><th>What proves it</th></tr></thead>
+<tbody>
+<tr><td class="k">1</td><td><b>No release before the bank.</b> Payoffs and the release tab hold while the paying check has not cleared. The Lien desk’s check pane refuses a check that is still pending at the bank. A leader’s <i>Release it anyway</i> keeps its typed reason.</td><td>S</td><td>The two gates read one new rule, <code>checkCleared</code>: the linked deposit has posted, else the typed day plus seven. Tests for each.</td><td>None</td><td>Kernel and render tests</td></tr>
+<tr><td class="k">2</td><td><b>The bank’s own day.</b> The app reads the day the bank expects a pending check, and its check number. Money in shows that day in place of its guess.</td><td>S</td><td><code>bankCheckFacts</code> beside the bank kernel. Tests on a pending, a posted and a failed row.</td><td>None</td><td>Kernel tests, the line on the Dashboard</td></tr>
+<tr><td class="k">3</td><td><b>The held check.</b> The Dashboard’s <i>A check is at the bank</i> with what it fits, the hold with its lines, <i>Let it go</i>, the count when the bank posts, the three Dashboard lines, and Payoffs’ waiting step.</td><td>M</td><td><code>heldCheck.ts</code>: what a check fits, the states, the lines, what each screen says. The count is a database function with a bed.</td><td>One table for a held check and its lines, and the function that counts it when the bank’s row posts</td><td>Kernel tests, a database bed, a walk on test jobs with a made-up bank row</td></tr>
+<tr><td class="k">4</td><td><b>Billing says so.</b> The chip on the Bill tab, the Pipeline row and Bills sent. Chasing and statements skip a held bill. <b>Record payment</b> steers a check to a hold.</td><td>M</td><td>One rule, <code>billHeldCheck</code>, read by each screen. Tests beside each reader.</td><td>None</td><td>Render tests on each screen</td></tr>
+<tr><td class="k">5</td><td><b>The customer’s page and the pay page</b> say the check is held.</td><td>S</td><td>The page’s kernel gains the line.</td><td>None</td><td>The owner’s look at the words</td></tr>
+<tr><td class="k">6</td><td><b>A check in the drawer.</b> A paper check not yet deposited is held by hand and takes its bank row when the deposit appears.</td><td>S</td><td><code>heldCheck.ts</code> pairs a drawer check with a pending row, as Money in does.</td><td>None</td><td>Kernel tests</td></tr>
+</tbody></table></div>
+<p class="note">Piece 1 is the safety fix for what was built on 2026-11-24, and can land before anything else. Pieces 2 and 3 are the plan itself. Pieces 4 to 6 follow in any order.</p>
+
+<h2 id="calls">The calls</h2>
+<div class="cols">
+  <div class="box"><b>For the company’s owner</b>
+    <ol>
+      <li><b>What does cleared mean?</b> Pick: the day the bank posts it. Most failed checks fail before that. The rest came back within six days after, so the release tab carries a caution for those days and does not block.</li>
+      <li><b>Does the count need a press?</b> Pick: no. The office chose the bills on day one. The bank’s posting counts the check, and the Dashboard says it did.</li>
+      <li><b>Every check, or only where a lien waits?</b> Pick: every check. One rule is easier to keep than two. A leader keeps <i>Count it now</i> with a reason, for a cashier’s check or a payer who is always good.</li>
+      <li><b>Who may release before the bank posts?</b> Pick: a leader only, with a typed reason.</li>
+      <li><b>What does the payer’s page say?</b> Pick: <i>We have your check. It is clearing.</i></li>
+    </ol></div>
+  <div class="box"><b>For Taunya and Grace</b>
+    <ol>
+      <li><b>Where should the line appear first?</b> Pick: Needs you on the Dashboard, and on the deposit’s row in Money in.</li>
+      <li><b>What if a check fits two sets of bills?</b> Pick: the line names both and opens the hold with nothing placed.</li>
+      <li><b>Who is told when it clears?</b> Pick: every office seat, with the liens to release in the same line.</li>
+    </ol></div>
+  <div class="box"><b>For counsel</b> <span class="note">questions only</span>
+    <ol>
+      <li>The release is due ten days after a written request. What if the bank has not posted the check by then?</li>
+      <li>May the release wait a further week after the bank posts, for a payer whose check has come back before?</li>
+      <li>May the payer be told in writing that the release follows once the check clears?</li>
+    </ol></div>
+</div>
+<p class="note" style="margin-top:28px">Drawn 2026-11-24 for punch list #437. It follows #435, a lien payoff, and builds on the returned-check work and the Money in line. Nothing here is copied from the live app.</p>
+</div>
+</body>
+</html>
