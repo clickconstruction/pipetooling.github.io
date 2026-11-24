@@ -162,7 +162,8 @@ describe('GcCompareQuotes', () => {
     // A Supabase refusal is a plain object, never an Error: the window must still read its reason.
     vi.mocked(w.takeAwardBack).mockRejectedValueOnce({ message: 'Sitework stays awarded to Lonestar Earthworks, since the trade has submittals. Open Submittals on the job’s card.', code: 'P0001' })
     render(<GcCompareQuotes state={boardStateFromRows(awardedRows('draft'))} projectId="p1" packageId="k1" writes={w} onClose={() => undefined} />)
-    const dialog = screen.getAllByRole('dialog', { name: 'Compare Sitework quotes' }).at(-1) as HTMLElement
+    const dialogs = screen.getAllByRole('dialog', { name: 'Compare Sitework quotes' })
+    const dialog = dialogs[dialogs.length - 1] as HTMLElement
     fireEvent.click(within(dialog).getByRole('button', { name: 'Take the award back…' }))
     const ask = await screen.findByRole('alertdialog', { name: 'Take the Sitework award back from Lonestar Earthworks?' })
     fireEvent.click(within(ask).getByRole('button', { name: 'Take the award back' }))
