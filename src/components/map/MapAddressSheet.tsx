@@ -6,6 +6,10 @@
  * address, with a Google re-check for the office cohort). Each row opens its
  * record so the address is fixed where it lives. The old Review geocodes
  * window is reached from here.
+ *
+ * An address nobody could place is remembered (punch list #408): its row says
+ * the day it was last checked and the day the app asks again by itself, and
+ * **Try again** asks the map services now, past that memory.
  */
 import { useCallback, useState } from 'react'
 import type { MapPageEntity } from '../../hooks/useMapPageData'
@@ -14,6 +18,11 @@ import { mapGeocodeErrorMessage } from '../../lib/map/geocodeErrorMessage'
 import { farMilesWords, farPlaceCountWords, type FarPlace } from '../../lib/map/mapPageFirstView'
 import { mapPageDirectionsUrl } from '../../lib/map/mapPagePins'
 import { unplacedName, type MapPageUnplaced, type NotFoundGroup } from '../../lib/map/mapPageUnplaced'
+import { UNPLACED_NOTHING_TAIL, missCheckedSentence, tryAgainWords, type TryAgainOutcome } from '../../lib/map/unplacedMemory'
+import { emptyWords } from '../../lib/emptyWords'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { EmptyState } from '../EmptyState'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { milesBetween } from '../../lib/bids/bidBoardMap'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -27,6 +36,8 @@ const H3: React.CSSProperties = { margin: '0 0 0.35rem', fontSize: '0.95rem' }
 const ROW: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.35rem 0.6rem', padding: '0.4rem 0', borderTop: '1px solid var(--border)', fontSize: '0.875rem' }
 const MUTED: React.CSSProperties = { color: 'var(--text-muted)' }
 const KIND: Record<MapPageEntity['kind'], string> = { job: 'Job', bid: 'Bid', estimate: 'Estimate' }
+/** **Try again**: a press, so it is drawn as one, and it takes a finger. */
+const TRY_AGAIN: React.CSSProperties = { fontFamily: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0 0.75rem', minHeight: 44, borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
 
 function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms))
@@ -62,6 +73,7 @@ export function MapAddressSheet({
   onShow,
   onAfterRecheck,
   onReviewAll,
+  onTryAgain,
 }: {
   open: boolean
   onClose: () => void
@@ -76,6 +88,8 @@ export function MapAddressSheet({
   onShow: (lat: number, lng: number) => void
   onAfterRecheck: () => void | Promise<void>
   onReviewAll: () => void
+  /** Asks the map services about one address past the memory of its miss, and says what they found. */
+  onTryAgain: (addressLabel: string) => Promise<TryAgainOutcome>
 }) {
   const [recheck, setRecheck] = useState<Record<string, { busy: boolean; words: string; ok?: boolean }>>({})
   const recheckAddress = useCallback(
@@ -97,6 +111,17 @@ export function MapAddressSheet({
       }
     },
     [anchor, onAfterRecheck],
+  )
+  // What each **Try again** found, by address: the words stay under the row until the sheet closes.
+  const [tried, setTried] = useState<Record<string, { busy: boolean; outcome?: TryAgainOutcome; at?: string }>>({})
+  const tryAgain = useCallback(
+    async (g: NotFoundGroup<MapPageEntity>) => {
+      setTried((prev) => ({ ...prev, [g.addressKey]: { busy: true } }))
+      const outcome = await onTryAgain(g.addressLabel)
+      setTried((prev) => ({ ...prev, [g.addressKey]: { busy: false, outcome, at: new Date().toISOString() } }))
+      if (outcome.kind === 'placed') await Promise.resolve(onAfterRecheck())
+    },
+    [onTryAgain, onAfterRecheck],
   )
   if (!open) return null
   const nothing = noAddress.length === 0 && notFound.length === 0 && far.length === 0 && resolving === 0
@@ -122,7 +147,7 @@ export function MapAddressSheet({
           </button>
         </div>
         {resolving > 0 ? <p style={{ margin: 0, ...MUTED, fontSize: '0.875rem' }}>{`Placing ${resolving} ${resolving === 1 ? 'address' : 'addresses'}… this list fills in as the geocoder answers.`}</p> : null}
-        {nothing ? <p style={{ margin: 0, ...MUTED, fontSize: '0.875rem' }}>Every record with an address is on the map, and none is far from the office.</p> : null}
+        {nothing ? <EmptyState compact main={emptyWords({ kind: 'waiting', who: 'an address' }).main} tail={UNPLACED_NOTHING_TAIL} /> : null}
 
         {noAddress.length > 0 ? (
           <section data-sheet-no-address>
@@ -143,17 +168,41 @@ export function MapAddressSheet({
         {notFound.length > 0 ? (
           <section data-sheet-not-found>
             <h3 style={H3}>{`Could not be found · ${notFound.length} ${notFound.length === 1 ? 'address' : 'addresses'}`}</h3>
-            <p style={{ margin: '0 0 0.25rem', ...MUTED, fontSize: '0.8125rem' }}>The geocoder has no match. Check the spelling on Google Maps, then fix it on the record.</p>
-            {notFound.map((g) => (
-              <div key={g.addressKey} style={ROW}>
-                <span style={{ fontWeight: 600 }}>{g.addressLabel}</span>
-                <span style={MUTED}>{g.error}</span>
-                <button type="button" onClick={() => openInExternalBrowser(mapPageDirectionsUrl(g.addressLabel))} style={LINK}>
-                  Check on Google Maps ↗
-                </button>
-                <RecordLinks items={g.items} onOpen={onOpen} />
-              </div>
-            ))}
+            <p style={{ margin: '0 0 0.25rem', ...MUTED, fontSize: '0.8125rem' }}>
+              No map service has a match. Open the record and fix the address. The app remembers a miss and does not ask about it again for a while. Try again asks now.
+            </p>
+            {notFound.map((g) => {
+              const st = tried[g.addressKey]
+              const now = st?.at ?? new Date().toISOString()
+              // After a Try again that kept the miss again, the row's own day is the new one.
+              const checkedAt = st?.outcome?.kind === 'missed' && st.outcome.checkedAt ? st.outcome.checkedAt : g.checkedAt
+              const checked = missCheckedSentence(checkedAt, now)
+              return (
+                <div key={g.addressKey} style={ROW} data-not-found-row>
+                  <span style={{ fontWeight: 600 }}>{g.addressLabel}</span>
+                  <span style={MUTED}>{g.error}</span>
+                  <button type="button" onClick={() => openInExternalBrowser(mapPageDirectionsUrl(g.addressLabel))} style={LINK}>
+                    Check on Google Maps ↗
+                  </button>
+                  <RecordLinks items={g.items} onOpen={onOpen} />
+                  <span style={{ width: '100%', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem 0.75rem' }}>
+                    {checked ? (
+                      <span data-miss-checked style={{ ...MUTED, fontSize: '0.8125rem' }}>
+                        <ValueSentence text={checked} />
+                      </span>
+                    ) : null}
+                    <button type="button" onClick={() => void tryAgain(g)} disabled={st?.busy} style={st?.busy ? { ...TRY_AGAIN, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : TRY_AGAIN} title="Ask the map services about this address now">
+                      {st?.busy ? 'Asking the map services…' : 'Try again'}
+                    </button>
+                  </span>
+                  {st?.outcome ? (
+                    <span data-try-again-result={st.outcome.kind} role="status" style={{ width: '100%', fontSize: '0.8125rem', color: st.outcome.kind === 'failed' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                      {tryAgainWords(st.outcome)}
+                    </span>
+                  ) : null}
+                </div>
+              )
+            })}
           </section>
         ) : null}
 

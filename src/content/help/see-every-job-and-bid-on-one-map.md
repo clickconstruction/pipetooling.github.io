@@ -63,10 +63,26 @@ Pick the polygon tool at the top left of the map. Click along the edge of an are
 A line under the map counts the records with no map location. It also counts the addresses far from the office. Click it to open the sheet. The sheet has three parts.
 
 - **No address** lists each record with no address, or with a stub like a dot. Click the record to open it and type the site address.
-- **Could not be found** lists each address the geocoder has no match for, with its reason. Press **Check on Google Maps** to see the spelling. Then fix it on the record.
+- **Could not be found** lists each address no map service has a match for, with its reason. Press **Check on Google Maps** to see the spelling. Then fix it on the record.
 - **Far from the office** lists each address more than 300 miles out, with its count and miles. It is a far job or a wrong address. The map draws these pins but never frames them. Press **Show on the map** to fly there. The office can press **Re-check with Google** to ask Google again.
 
 While the geocoder is still working, the line reads **Placing 4 addresses…** instead.
+
+### An address no map service can place
+
+The app remembers an address that no map service could place. It does not ask about that address again on every open. So the maps settle sooner.
+
+Each row under **Could not be found** shows two days. The row reads *Checked Nov 20. The app asks again by itself on Dec 20.* The app waits 30 days before it asks again.
+
+:::steps
+1. Click the record's name on the row. The record opens.
+2. Fix the address and save. A changed address is asked about right away.
+3. Or press {{button:outline|Try again}} on the row. The app asks the map services now.
+:::
+
+After **Try again**, the row says what happened. *Placed* means the pin is on the map. *Still no match* means the address needs fixing, and the first day moves to today. Sometimes nothing is remembered, for example when a map service did not answer. The row then says *Not placed* and gives the reason. The app asks again on the next open.
+
+A job whose address is only words, like a pasture or a gate, may never be placed. It stays off the maps until its address is a street address.
 
 ## Precincts
 

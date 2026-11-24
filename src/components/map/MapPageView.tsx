@@ -73,6 +73,8 @@ import { MAP_TIME_PINS_WORDS } from '../../lib/map/mapTime'
 import { farFromOfficePlaces, mapPageFitAllPoints, mapPageHomeFitPoints, splitFarFromOffice } from '../../lib/map/mapPageFirstView'
 import { farShortLine, mapPageNotFound, unplacedLine } from '../../lib/map/mapPageUnplaced'
 import { MapAddressSheet, type OpenableRecord } from './MapAddressSheet'
+import { tryPlaceAgain } from '../../lib/map/unplacedTryAgainIo'
+import { UNPLACED_DOOR_PARAM } from '../../lib/map/unplacedMemory'
 
 const openLinkLikeStyle: CSSProperties = {
   color: 'var(--text-link)',
@@ -332,6 +334,21 @@ export function MapPageView() {
   // GC's bids, markers colored by outcome, with a scoreboard banner.
   const [searchParams, setSearchParams] = useSearchParams()
   const builderFocusId = searchParams.get('builder')
+  // The door from a card's *N jobs have no map location yet* line (punch list #408): /map?unplaced=1 opens the
+  // address sheet. The mark is taken off the address at once, so a reload or Back does not open it again.
+  const unplacedDoor = searchParams.get(UNPLACED_DOOR_PARAM) === '1'
+  useEffect(() => {
+    if (!unplacedDoor) return
+    setSheetOpen(true)
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete(UNPLACED_DOOR_PARAM)
+        return next
+      },
+      { replace: true },
+    )
+  }, [unplacedDoor, setSearchParams])
   const [builderFocusName, setBuilderFocusName] = useState<string | null>(null)
   useEffect(() => {
     if (!builderFocusId) {
@@ -723,6 +740,7 @@ export function MapPageView() {
         onShow={(lat, lng) => { setSheetOpen(false); setMapFlyTo({ lat, lng }) }}
         onAfterRecheck={() => void reload()}
         onReviewAll={() => { setSheetOpen(false); setReviewOpen(true) }}
+        onTryAgain={tryPlaceAgain}
       />
       <MapGeocodeReviewModal
         open={reviewOpen}

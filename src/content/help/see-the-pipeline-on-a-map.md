@@ -96,3 +96,5 @@ On a desktop the mouse wheel scrolls the page when the pointer crosses the map. 
 ## A job with no map location yet
 
 Under the map, *N jobs have no map location yet* lists the jobs the map could not place. The address is looked up in the background the first time the card needs it. The map may still not find a job's address. Then that job is listed by its number as a link to its row. You open it and check the address.
+
+The app remembers an address no map service could place. It asks again by itself after 30 days, or as soon as the address changes. For the office, the line itself is a link. Click it to open the Map page's list. The list shows why each address could not be placed and the day it was checked. Press **Try again** there to ask now. See [an address no map service can place](/help/see-every-job-and-bid-on-one-map#an-address-no-map-service-can-place).
