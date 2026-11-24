@@ -83,6 +83,15 @@ jobs:
           TYPECHECK_NO_LOCK: '1'
         run: npm run typecheck
 
+      # The typecheck above reads `src` alone. vite.config.ts and playwright.config.ts were read by no typecheck
+      # and ignored by eslint until 2026-11-24, so only a build caught a mistake in the build's own config. Three
+      # seconds, no cache: tsconfig.node.json takes the app's options and reads the two files and what they import.
+      # The Lint step ends with `npm run lint:config`, which lints the two files past eslint.config.js's ignore of
+      # `*.config.ts`. The ignore stays: eslint.config.js is in the caches' key below, and a change to it sends every
+      # pull request through a cold typecheck, which is at its heap's edge (punch list #434).
+      - name: Typecheck the build's own config (vite.config.ts, playwright.config.ts)
+        run: npm run typecheck:config
+
       - name: Lint
         run: npm run lint
 
