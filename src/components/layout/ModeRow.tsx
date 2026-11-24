@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, type CSSProperties, type FocusEvent, type PointerEvent } from 'react'
 import { AppTopBanner } from './AppTopBanner'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { isBodyScrollLockHeld } from '../../lib/bodyScrollLock'
@@ -6,25 +6,31 @@ import { recordJobModeEnabledOncePerSession } from '../../lib/jobModeTelemetry'
 import type { JobModeSource } from '../../lib/jobModeToggle'
 import {
   MODE_ROW_HANDLE,
-  MODE_ROW_NO_MEMORY,
-  MODE_ROW_OPEN_DWELL_MS,
   MODE_ROW_PRESS_CONTROL,
   MODE_ROW_PULL_PX,
+  MODE_ROW_SENT_CONTROL,
   MODE_ROW_SHOWN_CONTROL,
   MODE_ROW_THIRDS,
   MODE_ROW_WORDS,
-  modeRowCountOpen,
   modeRowDraw,
   modeRowLandingPath,
-  modeRowOnPage,
   modeRowPressWrites,
   modeRowPull,
   modeRowThirdOn,
-  readModeRowMemory,
-  writeModeRowMemory,
-  type ModeRowMemory,
+  type ModeRowDraw,
   type ModeRowThird,
 } from '../../lib/modeRow'
+import {
+  MODE_ROW_GONE,
+  MODE_ROW_IN_MS,
+  MODE_ROW_OUT_MS,
+  MODE_ROW_SHOW_MS,
+  MODE_ROW_SWIPE_PX,
+  modeRowCountDeadline,
+  modeRowCountStep,
+  modeRowOnScreen,
+  modeRowTakesPress,
+} from '../../lib/modeRowCount'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import type { PageMode, PageModeKey } from '../../lib/pageMode'
 
@@ -41,6 +47,22 @@ function touchBelongsElsewhere(target: EventTarget | null): boolean {
 function pageScrollTop(): number {
   return window.scrollY || document.documentElement.scrollTop || 0
 }
+
+/** Whether the focus that landed came from a keyboard. A tap that leaves focus on a third is not a hold. */
+function focusFromKeyboard(target: Element): boolean {
+  try {
+    return target.matches(':focus-visible')
+  } catch {
+    return true
+  }
+}
+
+/** The count's three lengths, handed to `index.css` so the bar and the slides run on the kernel's own numbers. */
+const COUNT_LENGTHS = {
+  '--mode-row-show-ms': `${MODE_ROW_SHOW_MS}ms`,
+  '--mode-row-in-ms': `${MODE_ROW_IN_MS}ms`,
+  '--mode-row-out-ms': `${MODE_ROW_OUT_MS}ms`,
+} as CSSProperties
 
 /**
  * The three thirds, the one of the mode drawn filled. `ModeRow` draws them above the header. The window
@@ -61,12 +83,18 @@ export function ModeRowThirds({ on, onPress }: { on: ModeRowThird; onPress?: (th
 
 /**
  * The mode row (punch list #425): **Task Mode · Dashboard · Job Mode**, the first line above the header.
- * `modeRow.ts` holds who gets it, where, when it shows and every word. This component draws it, counts
- * the page's opens, listens for the pull while it is tucked and sends each press through the page
- * mode's one door.
+ * `modeRow.ts` holds who gets it, where and every word, and `modeRowCount.ts` its five seconds. This
+ * component draws it, feeds the count what happened, listens for the pull while the row is out of
+ * sight and sends each press through the page mode's one door.
  *
- * It is an `AppTopBanner`, so on a Home Screen iPhone the row, or its handle, pays the status bar and
- * the header under it pays none. `Layout` mounts it before every other line.
+ * On the Dashboard (punch list #433) the page's first line is the row's small handle, an
+ * `AppTopBanner`, so on a Home Screen iPhone the handle pays the status bar and paints the band under
+ * the clock and the camera. The row is drawn over that line and what follows it, inside a clip that
+ * starts where the handle does. So the row starts under the phone's own bar, slides away behind it,
+ * and never pushes the page: nothing under it moves when it comes or goes.
+ *
+ * In Task Mode the row is a line of the page, as it always was, with no count. `Layout` mounts it
+ * before every other line.
  */
 export function ModeRow({
   userId,
@@ -87,48 +115,41 @@ export function ModeRow({
   onLand: (path: string) => void
 }) {
   const phone = useNarrowViewport640()
-  // The memory this page load holds for the person. Until the open is counted it is read straight
-  // from the phone with this open added, so the first draw already knows whether to tuck.
-  const [held, setHeld] = useState<{ userId: string; memory: ModeRowMemory } | null>(null)
-  const memory: ModeRowMemory = !userId ? MODE_ROW_NO_MEMORY : held?.userId === userId ? held.memory : modeRowCountOpen(readModeRowMemory(userId))
-  const [shownNow, setShownNow] = useState(false)
-  /** Slide in only when a pull or the handle brought the row down, never on the page's first draw. */
-  const [slideIn, setSlideIn] = useState(false)
+  const draw = modeRowDraw({ role, pathname, mode, phone })
+  const counted = draw === 'counted'
+  const [count, send] = useReducer(modeRowCountStep, MODE_ROW_GONE)
 
-  const draw = modeRowDraw({ role, pathname, mode, phone, memory, shownNow })
-  const counts = !!userId && phone && draw !== 'none' && held?.userId !== userId
-
-  // Count this open once per page load, once the row has stayed on the page on a phone for a moment:
-  // a page that is sent on at once (the office's phone lands on the schedule) was not a look at the row.
-  // The ref holds whose open was counted, so an effect that runs twice (React's strict mode) counts once.
-  const countedFor = useRef<string | null>(null)
+  // A visit: the page became the Dashboard. The row slides down when it came from another page. It is
+  // drawn in place on the app's first paint, and after a switch out of Task Mode, where the row was
+  // already in sight. The second effect keeps what was drawn before, and runs after the first reads it.
+  const arrivals = useRef(0)
+  const drawnBefore = useRef<ModeRowDraw>('none')
   useEffect(() => {
-    if (!counts || !userId || countedFor.current === userId) return
-    const timer = window.setTimeout(() => {
-      if (countedFor.current === userId) return
-      countedFor.current = userId
-      const next = modeRowCountOpen(readModeRowMemory(userId))
-      writeModeRowMemory(userId, next)
-      setHeld({ userId, memory: next })
-    }, MODE_ROW_OPEN_DWELL_MS)
+    if (!counted) {
+      send({ type: 'hide' })
+      return
+    }
+    const slideIn = arrivals.current > 0 && drawnBefore.current === 'none'
+    arrivals.current += 1
+    send({ type: 'arrive', now: Date.now(), slideIn })
+  }, [counted])
+  useEffect(() => {
+    drawnBefore.current = draw
+  }, [draw])
+
+  // The one clock. The count names the next moment and this rings then. A timer that rings a hair
+  // early still counts as on time, or the count would wait for a ring that never comes.
+  const deadline = modeRowCountDeadline(count)
+  useEffect(() => {
+    if (deadline === null) return
+    const timer = window.setTimeout(() => send({ type: 'time', now: Math.max(Date.now(), deadline) }), Math.max(0, deadline - Date.now()))
     return () => window.clearTimeout(timer)
-  }, [counts, userId])
+  }, [deadline])
 
-  // Leaving the row's pages tucks it again. The checklist counts as one of them in any mode, so the
-  // moment between a press there and the landing on the Dashboard does not tuck the row.
-  const onRowPath = modeRowOnPage(pathname, 'task')
-  useEffect(() => {
-    if (onRowPath) return
-    setShownNow(false)
-    setSlideIn(false)
-  }, [onRowPath])
-
-  // So does putting the phone away: the next look at the app starts with the row out of sight.
+  // Putting the phone away takes the row off: the next look at the app starts with it out of sight.
   useEffect(() => {
     function onVisibility() {
-      if (document.visibilityState !== 'hidden') return
-      setShownNow(false)
-      setSlideIn(false)
+      if (document.visibilityState === 'hidden') send({ type: 'hide' })
     }
     document.addEventListener('visibilitychange', onVisibility)
     return () => document.removeEventListener('visibilitychange', onVisibility)
@@ -137,15 +158,15 @@ export function ModeRow({
   const bringDown = useCallback(
     (how: 'pull' | 'handle') => {
       recordNavClick(userId, role ?? null, MODE_ROW_SHOWN_CONTROL, `#${how}`)
-      setSlideIn(true)
-      setShownNow(true)
+      send({ type: 'arrive', now: Date.now(), slideIn: true })
     },
     [userId, role],
   )
 
   // The pull: a finger going down at the top of the page, or a wheel turned up there.
+  const pullArmed = counted && count.phase === 'gone'
   useEffect(() => {
-    if (draw !== 'tucked') return
+    if (!pullArmed) return
     let start: { x: number; y: number } | null = null
     let wheel = 0
     let wheelAt = 0
@@ -190,35 +211,47 @@ export function ModeRow({
       window.removeEventListener('touchcancel', onEnd)
       window.removeEventListener('wheel', onWheel)
     }
-  }, [draw, bringDown])
+  }, [pullArmed, bringDown])
+
+  // A finger on the row holds the count. One that travels up sends the row away.
+  const finger = useRef<{ y: number } | null>(null)
+  function onFingerDown(e: PointerEvent<HTMLDivElement>) {
+    finger.current = { y: e.clientY }
+    send({ type: 'touch', now: Date.now(), hold: 'finger' })
+  }
+  function onFingerMove(e: PointerEvent<HTMLDivElement>) {
+    const from = finger.current
+    if (!from || !(from.y - e.clientY >= MODE_ROW_SWIPE_PX)) return
+    finger.current = null
+    recordNavClick(userId, role ?? null, MODE_ROW_SENT_CONTROL, '#swipe')
+    send({ type: 'swipe', now: Date.now() })
+  }
+  function onFingerUp() {
+    if (!finger.current) return
+    finger.current = null
+    send({ type: 'release', now: Date.now(), hold: 'finger' })
+  }
+  // A keyboard's focus inside the row holds it too.
+  function onRowFocus(e: FocusEvent<HTMLDivElement>) {
+    if (focusFromKeyboard(e.target)) send({ type: 'touch', now: Date.now(), hold: 'focus' })
+  }
+  function onRowBlur(e: FocusEvent<HTMLDivElement>) {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    send({ type: 'release', now: Date.now(), hold: 'focus' })
+  }
 
   if (draw === 'none') return null
-
-  if (draw === 'tucked') {
-    if (!MODE_ROW_HANDLE) return null
-    return (
-      <AppTopBanner padY="0px" padX="0px" data-mode-row="tucked" style={{ background: 'var(--chrome-bg)' }}>
-        <button type="button" className="modeRowHandle" aria-label={MODE_ROW_WORDS.handle} title={MODE_ROW_WORDS.handleTip} onClick={() => bringDown('handle')}>
-          <span aria-hidden="true" />
-        </button>
-      </AppTopBanner>
-    )
-  }
 
   const on = modeRowThirdOn(mode)
 
   function press(third: ModeRowThird) {
     if (third === on) return
+    // A row on its way out takes no press: the thumb was aimed at something that is leaving.
+    if (counted && !modeRowTakesPress(count)) return
     recordNavClick(userId, role ?? null, MODE_ROW_PRESS_CONTROL, `#${third}`)
     if (third === 'job') recordJobModeEnabledOncePerSession(userId, role ?? null, 'row')
-    if (userId) {
-      const next = { ...memory, pressed: true }
-      writeModeRowMemory(userId, next)
-      setHeld({ userId, memory: next })
-    }
-    // The row stays in sight after a switch: the way back is where the thumb is.
-    setSlideIn(false)
-    setShownNow(true)
+    // The row gets a fresh five seconds after a switch: the way back is where the thumb is.
+    send({ type: 'press', now: Date.now() })
     for (const write of modeRowPressWrites(third)) setMode(write.key, write.on, 'row')
     const to = modeRowLandingPath(third, pathname)
     if (to) onLand(to)
@@ -229,15 +262,63 @@ export function ModeRow({
     }
   }
 
+  // The row slides down only while it is arriving or showing, never on its way out.
+  const slideIn = (count.phase === 'showing' || count.phase === 'held') && count.slideIn
+
+  if (draw === 'held') {
+    return (
+      <AppTopBanner padY="0.4rem" padX="0.6rem" data-mode-row="row" style={{ background: 'var(--chrome-bg)' }}>
+        <ModeRowThirds on={on} onPress={press} />
+      </AppTopBanner>
+    )
+  }
+
   return (
-    <AppTopBanner
-      padY="0.4rem"
-      padX="0.6rem"
-      data-mode-row="row"
-      {...(slideIn ? { 'data-mode-row-in': '' } : null)}
-      style={{ background: 'var(--chrome-bg)' }}
-    >
-      <ModeRowThirds on={on} onPress={press} />
+    <AppTopBanner padY="0px" padX="0px" data-mode-row="tucked" style={{ background: 'var(--chrome-bg)' }}>
+      {/* The clip comes first and names no top, so it starts where the line's own content does: under the status bar the line pays. */}
+      {modeRowOnScreen(count) ? (
+        <div className="modeRowClip" data-mode-row-phase={count.phase}>
+          <div
+            className="modeRowOver"
+            style={COUNT_LENGTHS}
+            {...(slideIn ? { 'data-mode-row-in': '' } : null)}
+            onPointerDown={onFingerDown}
+            onPointerMove={onFingerMove}
+            onPointerUp={onFingerUp}
+            onPointerCancel={onFingerUp}
+            onPointerLeave={onFingerUp}
+            onFocus={onRowFocus}
+            onBlur={onRowBlur}
+          >
+            <ModeRowThirds on={on} onPress={press} />
+            {/* The time left: a bar that starts full and runs out. Drawn again for every whole start, so it always starts full. */}
+            <div className="modeRowBar" aria-hidden="true" key={`bar-${count.showing}`}>
+              <i />
+            </div>
+            {/* The same for a person who asked their phone for less motion: five blocks that go out one a second. */}
+            <div className="modeRowBlocks" aria-hidden="true" key={`blocks-${count.showing}`}>
+              <b />
+              <b />
+              <b />
+              <b />
+              <b />
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {MODE_ROW_HANDLE ? (
+        <button
+          type="button"
+          className="modeRowHandle"
+          aria-label={MODE_ROW_WORDS.handle}
+          title={MODE_ROW_WORDS.handleTip}
+          onClick={() => {
+            if (count.phase === 'gone') bringDown('handle')
+          }}
+        >
+          <span aria-hidden="true" />
+        </button>
+      ) : null}
     </AppTopBanner>
   )
 }

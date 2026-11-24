@@ -2,7 +2,7 @@
 name: "The mode row shows for five seconds, then leaves"
 number: 433
 group: ready
-status: asked 2026-11-24 after a look at the row on a phone · read and drawn twice the same day, the ask word for word and then again after a critique · the owner liked the second draw and asked that the iPhone's camera bar be allowed for, drawn the same day · then *build it all*, so the nine calls stand on their picks · PR 1 built as v2.8455, the New mark off
+status: asked 2026-11-24 after a look at the row on a phone · read and drawn twice the same day, the ask word for word and then again after a critique · the owner liked the second draw and asked that the iPhone's camera bar be allowed for, drawn the same day · then *build it all*, so the nine calls stand on their picks · PR 1 built as v2.8455, the New mark off · PR 2 built as v2.8461, the five seconds, the bar and the row over the page
 summary: >
   The owner likes the idea of the mode row and not how it was built. The New mark comes off Job Mode.
   The row shows on top of a phone's Dashboard for five seconds on each visit, with a bar that says
@@ -10,8 +10,8 @@ summary: >
   can leave under a finger, Task Mode loses its way out and the bar reads as loading. The second draw
   lays the row over the page so nothing under it moves, holds it while a finger is on it, keeps the
   handle and the pull that are already built, and runs a grey bar down to nothing.
-next: Build PR 2, the five seconds, the bar and the row over the page. Then PR 3, the other ways of going to the Dashboard.
-size: M as a train of three (XS · M · S); left: PR 2 (M) and PR 3 (S)
+next: Build PR 3, the other ways of going to the Dashboard. Then try the row on a real phone, an iPhone on its Home Screen first.
+size: M as a train of three (XS · M · S); left: PR 3 (S)
 blocker: None. A real phone in a hand is the last check.
 opinion: build — the owner said build it all on 2026-11-24; each call stays a line or a rule to flip later
 ---
@@ -170,7 +170,9 @@ visit, so that step could not ship alone.
 - **Tests:** the mark's case left `modeRow.test.ts`. `ModeRow.render.test.tsx` holds that a phone
   with nothing stored draws three thirds and no mark.
 
-### PR 2 · Five seconds, the bar, the row over the page (M)
+### PR 2 · Five seconds, the bar, the row over the page (M) — built, v2.8461
+
+`docs/recent-features/v2.8461.md` is the record, with what was walked.
 
 - **Kernel:** `src/lib/modeRowCount.ts`, pure. One state (`showing` with the time it ends, `held`,
   `leaving`, `gone`) and one step function over the events *arrive*, *touch*, *release*, *press*,
@@ -229,7 +231,9 @@ The lens frame cannot answer these. A Home Screen iPhone and an Android phone, i
 
 ## Where it stands
 
-PR 1 is built: the *New* mark is off (v2.8455). PRs 2 and 3 are next. The mock-up was walked headless at a desk's
+PRs 1 and 2 are built: the *New* mark is off (v2.8455), and the row shows for five seconds a visit, lying
+over the page, with its bar (v2.8461). PR 3 is next. The built row was walked headless at a phone's width
+through the lens frame, and not on a real phone. The mock-up was walked headless at a desk's
 width in the light look and a phone's in the dark: the count, the handle, a held press, a press that
 switches, the swipe up, the pull down and Task Mode holding each did what the page says. With the
 camera bar drawn, the row's thirds start 7 px under it and nothing of the row draws over it at any moment.

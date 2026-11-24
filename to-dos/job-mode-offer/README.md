@@ -200,8 +200,10 @@ leave, which replaces calls 2 and 3. It is drawn and planned in [#433](../mode-r
 
 ## How to verify
 
-1. View as a leader on a phone with nothing stored. The Dashboard opens with the row showing and
-   **Dashboard** filled. No third carries a mark (v2.8455).
+1. View as a leader on a phone. The Dashboard opens with the row showing and **Dashboard** filled. No
+   third carries a mark (v2.8455). Since v2.8461 steps 3, 5 and 8 read differently: the row shows for
+   five seconds on every visit and then only the handle is left, for a sub too, and nothing is kept on
+   the phone. [#433](../mode-row-five-seconds/README.md) has the steps for that.
 2. Press **Job Mode**. The Job Mode page opens with the row showing and **Job Mode** filled. Press
    **Dashboard**. The Dashboard is back, with the Dispatch Mode bar if the leader had it.
 3. Reload. The page opens with only the handle. Pull down at the top of the page. The row comes down.

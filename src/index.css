@@ -551,11 +551,12 @@ button:focus-visible {
   --app-nav-safe-top: 0px;
 }
 
-/* The mode row (punch list #425): Task Mode, Dashboard and Job Mode as three thirds, the first line
-   above the header, drawn by `ModeRow` inside an `AppTopBanner`. The third of the mode drawn is
-   filled. A thumb's 44 px on a phone, 32 px on a desk, where the row always shows. While the row is
-   tucked on a phone the line is its handle instead: a 24 px band, the smallest press WCAG 2.2 allows,
-   the whole width of the screen, with a small bar in its middle. */
+/* The mode row (punch list #425): Task Mode, Dashboard and Job Mode as three thirds above the header,
+   drawn by `ModeRow`. The third of the mode drawn is filled. A thumb's 44 px on a phone, where the row
+   lives; 32 px past it, for the window that shows another person's Task Mode. In Task Mode the row is
+   a line of the page, inside an `AppTopBanner`. On the Dashboard (punch list #433) the page's line is
+   the row's handle instead: a 24 px band, the smallest press WCAG 2.2 allows, the whole width of the
+   screen, with a small bar in its middle. The row is drawn over that line for five seconds a visit. */
 .modeRow {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -630,24 +631,147 @@ button:focus-visible {
     min-height: 32px;
   }
 }
-/* Brought down by a pull or the handle: the row slides in. Drawn on the page's first paint it does not. */
-@keyframes modeRowIn {
+/* The counted row (punch list #433). The handle's line is the page's first line, so on a Home Screen
+   iPhone it pays the status bar and paints the band under the clock and the camera. The row lies over
+   that line and what follows it, above the header, and never pushes the page: nothing under it moves
+   when it comes or goes. Its clip names no `top`, so it starts where the line's own content starts,
+   under the status bar, and the row slides away behind that bar with no word crossing the clock. The
+   clip's lower edge is let out so the row's shadow shows. While the row is on its way out the clip
+   stays and takes the presses, so a thumb aimed at a third does not land on the header under it. */
+.appTopBanner[data-mode-row='tucked'] {
+  position: relative;
+  z-index: 51;
+}
+.modeRowClip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  clip-path: inset(0 0 -1rem 0);
+  touch-action: none;
+}
+.modeRowOver {
+  position: relative;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--chrome-bg);
+  box-shadow: 0 8px 16px -10px rgba(0, 0, 0, 0.55);
+  touch-action: none;
+}
+@keyframes modeRowOverIn {
   from {
-    max-height: 0;
-    opacity: 0;
+    transform: translateY(-110%);
   }
   to {
-    max-height: 5rem;
-    opacity: 1;
+    transform: translateY(0);
   }
 }
-[data-mode-row-in] {
+@keyframes modeRowOverOut {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-110%);
+  }
+}
+@keyframes modeRowOverFade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+/* Brought by a pull, the handle or a change of page: the row slides down. Drawn on the app's first paint it does not. */
+.modeRowOver[data-mode-row-in] {
+  animation: modeRowOverIn var(--mode-row-in-ms, 180ms) ease-out;
+}
+[data-mode-row-phase='leaving'] > .modeRowOver {
+  animation: modeRowOverOut var(--mode-row-out-ms, 240ms) ease-in forwards;
+}
+/* The time left, on the row's lower edge: a bar that starts full and whose end runs to the left until
+   nothing is left. It is the muted text grey, because it is only time. A held row shows it full. */
+.modeRowBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
   overflow: hidden;
-  animation: modeRowIn 0.18s ease-out;
+  pointer-events: none;
+}
+.modeRowBar > i {
+  display: block;
+  height: 100%;
+  background: var(--text-muted);
+  transform-origin: left center;
+}
+@keyframes modeRowBarOut {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+[data-mode-row-phase='showing'] .modeRowBar > i {
+  animation: modeRowBarOut var(--mode-row-show-ms, 5000ms) linear forwards;
+}
+[data-mode-row-phase='leaving'] .modeRowBar > i {
+  transform: scaleX(0);
+}
+/* The same time for a person who asked their phone for less motion: five blocks, and one goes out each
+   fifth of the time, from the right. Nothing slides. */
+.modeRowBlocks {
+  display: none;
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: 1px;
+  height: 4px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+  pointer-events: none;
+}
+.modeRowBlocks > b {
+  border-radius: 1px;
+  background: var(--text-muted);
+}
+@keyframes modeRowBlockOut {
+  to {
+    background: var(--border);
+  }
+}
+[data-mode-row-phase='showing'] .modeRowBlocks > b {
+  animation: modeRowBlockOut 1ms linear forwards;
+  animation-delay: var(--mode-row-show-ms, 5000ms);
+}
+[data-mode-row-phase='showing'] .modeRowBlocks > b:nth-child(2) {
+  animation-delay: calc(var(--mode-row-show-ms, 5000ms) * 0.8);
+}
+[data-mode-row-phase='showing'] .modeRowBlocks > b:nth-child(3) {
+  animation-delay: calc(var(--mode-row-show-ms, 5000ms) * 0.6);
+}
+[data-mode-row-phase='showing'] .modeRowBlocks > b:nth-child(4) {
+  animation-delay: calc(var(--mode-row-show-ms, 5000ms) * 0.4);
+}
+[data-mode-row-phase='showing'] .modeRowBlocks > b:nth-child(5) {
+  animation-delay: calc(var(--mode-row-show-ms, 5000ms) * 0.2);
+}
+[data-mode-row-phase='leaving'] .modeRowBlocks > b {
+  background: var(--border);
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-mode-row-in] {
+  .modeRowOver[data-mode-row-in] {
     animation: none;
+  }
+  [data-mode-row-phase='leaving'] > .modeRowOver {
+    animation: modeRowOverFade 150ms linear forwards;
+  }
+  .modeRowBar {
+    display: none;
+  }
+  .modeRowBlocks {
+    display: grid;
   }
 }
 
