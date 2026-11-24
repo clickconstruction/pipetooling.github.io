@@ -1,11 +1,14 @@
 // The card's own mock-up, shot as it is from file:// (no dev server): the frames for PRs 4 to 6, which are not built.
 const { chromium } = require('playwright')
 const path = require('path')
-const OUT = path.join(__dirname, '..', 'shots')
+// Pictures land where the shooter's do: PIC_OUT, or a folder under the system's temp folder.
+const OUT = process.env.PIC_OUT || path.join(require('os').tmpdir(), 'punch-list-pictures')
+require('fs').mkdirSync(OUT, { recursive: true })
 ;(async () => {
   const b = await chromium.launch()
   const p = await b.newPage({ viewport: { width: 1280, height: 900 }, colorScheme: 'light' })
-  await p.goto('file://' + path.join(__dirname, '329-mockup.html'))
+  // Run from the repo root: the card's own mock-up, as it stands.
+  await p.goto('file://' + path.join(process.cwd(), 'to-dos/stickers-before-boxes/mockup.html'))
   await p.waitForTimeout(800)
   const union = async (sel) => {
     const boxes = await p.locator(sel).evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { x: r.x + scrollX, y: r.y + scrollY, r: r.right + scrollX, b: r.bottom + scrollY } }))

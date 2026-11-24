@@ -1,7 +1,11 @@
 // Makes the pictures page beside each punch-list card, and the index page, from cards.json and a folder of
 // WebP pictures (punch list #438). The pictures are not in the repo as files: each page carries its own.
 // Draw them again with the kit one folder up, convert each PNG with `cwebp -q 80 -m 6`, then run from the repo root:
-//   node to-dos/punch-list-answers-and-pictures/draw/pages/make-pages.cjs <folder of .webp pictures>
+//   node to-dos/punch-list-answers-and-pictures/draw/pages/make-pages.cjs <folder of .webp pictures> [--card <number>]
+// With --card it writes that one card's page and leaves the rest, so the folder needs that card's pictures alone.
+// Each card in cards.json says the day its pictures were drawn (`drawn`) and the newest version main held that
+// day (`drawnAt`). The page says both, and the board reads them: a card that cites a newer version than its
+// pictures were drawn at is marked as changed since (`picturesAreStale` in src/lib/todos/todoBoard.ts).
 // To change only a page's words, edit the page itself: the words are plain HTML above the pictures.
 const fs = require('fs')
 const path = require('path')
@@ -10,6 +14,11 @@ const REPO = path.resolve(HERE, '../../../..')
 const WEBP = process.argv[2]
 if (!WEBP || !fs.existsSync(WEBP)) throw new Error('pass the folder that holds the .webp pictures')
 const CARDS = JSON.parse(fs.readFileSync(path.join(HERE, 'cards.json'), 'utf8'))
+const ONLY = process.argv.includes('--card') ? Number(process.argv[process.argv.indexOf('--card') + 1]) : null
+if (ONLY !== null && !CARDS.some((c) => c.number === ONLY)) throw new Error(`cards.json holds no card #${ONLY}`)
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+/** `2026-11-24` -> `24 November 2026`. */
+const longDay = (ymd) => { const [y, m, d] = ymd.split('-').map(Number); return `${d} ${MONTHS[m - 1]} ${y}` }
 
 const HOME = 'punch-list-answers-and-pictures'
 const GROUPS = []
@@ -73,7 +82,7 @@ function cardPage(c) {
   const up = WHERE[c.number].endsWith('.md') ? '' : '../'
   return page(`#${c.number} pictures: ${c.short || c.name}`, `
 <header class="top">
-<p class="eyebrow">Punch list #${c.number} · the built screen, drawn with invented data · 24 November 2026</p>
+<p class="eyebrow">Punch list #${c.number} · the built screen, drawn with invented data · ${longDay(c.drawn)}</p>
 <h1>${rich(c.name)}</h1>
 <p class="lede">${rich(c.what)}</p>
 <p class="back"><a href="${up}${HOME}/waiting-2026-11-24.html">All fifteen cards that waited on a person that day</a></p>
@@ -85,7 +94,7 @@ ${notes.join('\n')}
 ${pics}
 </section>
 ${LEGEND}
-<footer class="foot"><p>Drawn 2026-11-24 from main at 68e9244. Every person, job, customer and amount is invented. The app ran on a local server in the lens frame (punch list #194), which swaps the database for an invented company before the app starts. The live site was not opened and nothing was written. How to draw them again: <code>to-dos/${HOME}/how-the-pictures-were-drawn.md</code>.</p></footer>`)
+<footer class="foot"><p>Drawn ${c.drawn} with main at ${c.drawnAt}. Every person, job, customer and amount is invented. The app ran on a local server in the lens frame (punch list #194), which swaps the database for an invented company before the app starts. The live site was not opened and nothing was written. How to draw them again: <code>to-dos/${HOME}/how-the-pictures-were-drawn.md</code>.</p></footer>`, c)
 }
 
 const LEGEND = `<section class="legend" aria-label="What each picture label means">
@@ -96,14 +105,14 @@ const LEGEND = `<section class="legend" aria-label="What each picture label mean
 const CSS = fs.readFileSync(path.join(HERE, 'cardpage.css'), 'utf8')
 const JS = `(function(){var box=document.getElementById('lightbox');var big=box.querySelector('img');document.addEventListener('click',function(e){var f=e.target.closest?e.target.closest('.pic-frame'):null;if(f){var i=f.querySelector('img');big.src=i.src;big.alt=i.alt;if(box.showModal)box.showModal();return}if(e.target===box)box.close()})})()`
 
-function page(title, body) {
+function page(title, body, made = { drawn: '2026-11-24', drawnAt: 'v2.8442' }) {
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
-<!-- Made by a script on 2026-11-24 (punch list #438). Every name, job and amount is invented.
+<!-- Made by a script on ${made.drawn} (punch list #438), with main at ${made.drawnAt}. Every name, job and amount is invented.
      To change the words or redraw a picture, see to-dos/${HOME}/how-the-pictures-were-drawn.md. -->
 <style>
 ${CSS}
@@ -124,6 +133,7 @@ const cards = {}
 const written = []
 for (const g of GROUPS) for (const n of g.cards) {
   const c = (cards[n] = card(n))
+  if (ONLY !== null && n !== ONLY) continue
   const before = bytes
   const html = cardPage(c)
   const file = path.join(REPO, pageOf(n))
@@ -154,7 +164,7 @@ const index = page('Still to answer, 24 November 2026', `
 </header>
 ${rows}
 <footer class="foot"><p>Made 2026-11-24 from main at 68e9244. Card #430 was the sixteenth and was closed the same day. The page is static: it does not follow the cards as they change.</p></footer>`)
-fs.mkdirSync(path.join(REPO, 'to-dos', HOME), { recursive: true })
-fs.writeFileSync(path.join(REPO, 'to-dos', HOME, 'waiting-2026-11-24.html'), index)
+// The index is the snapshot of 2026-11-24. A redraw of one card leaves it as it is.
+if (ONLY === null) fs.writeFileSync(path.join(REPO, 'to-dos', HOME, 'waiting-2026-11-24.html'), index)
 console.log(written.join('\n'))
 console.log('index', (index.length / 1000).toFixed(0), 'KB; webp total', (bytes / 1e6).toFixed(2), 'MB')

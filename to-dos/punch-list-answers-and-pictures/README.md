@@ -2,18 +2,19 @@
 name: "Punch list: what is still to answer and what it looks like, on every card"
 number: 438
 group: ready
-status: asked 2026-11-24 by Diane · the same day fifteen built cards that waited on a person were drawn in the lens frame with invented data, and each got a pictures page beside it with what it waits on and what to say · the kit that drew them is in this folder · the board's own view drawn the same day on Diane's word, as a canvas of seven frames with a refined cut D and a static copy here · her word on it the same day, *Build D*, on the seven picks · PR 1, the question on the card, is open as #9706 · PR 2, Waiting on me, is being built
+status: asked 2026-11-24 by Diane · the same day fifteen built cards that waited on a person were drawn in the lens frame with invented data, and each got a pictures page beside it with what it waits on and what to say · the kit that drew them is in this folder · the board's own view drawn the same day on Diane's word, as a canvas of seven frames with a refined cut D and a static copy here · her word on it the same day, *Build D*, on the seven picks · PR 1 built as v2.8519, the question on the card, its migration pushed · PR 2 built as v2.8521, Waiting on me · PR 3 built as v2.8528, a row says when its pictures are old and one command draws a card again · the three questions the build left were answered the same day, *Keep the old picks on #438* · left: a look at Waiting on me on the live site
 summary: >
   Diane wants the Punch list page to make two things easy for a person. First, the questions that
   person still has to answer. Second, what a card looks like before and after it is built. Today the
   board shows a card's status, its Next line and links to its pages, and a person has to open the card
   to find the question. On 2026-11-24 a session drew the real screens of fifteen built cards with
   invented data and wrote, for each, what it waits on and the one or two answers that would move it.
-  Those pages now sit beside their cards, so the board links to them. What is left is the board
-  itself: a view of every card that waits on a person, each with its question and its pictures.
-next: Merge PR 1 (#9706) and push its migration. Then PR 2, the Waiting on me view as D draws it, and a look at it on the live site.
+  Those pages now sit beside their cards, so the board links to them. The board's own view is built:
+  Waiting on me, every card that waits on a person with its question, one lead picture and one answer.
+next: A look at Waiting on me on the live site, as the owner and as a dev. Then draw #426's pictures again with `npm run todo:pictures -- 426`, since its row says they are old.
+ask: owner · look · Open Waiting on me on the Punch list and answer one card on it.
 size: M as a train of three (S · M · S)
-blocker: None. Diane said Build D on 2026-11-24.
+blocker: None. All three PRs are built. The live look is left.
 opinion: build — the pictures and the answers exist for fifteen cards and the board already links to them, so the view is mostly reading what is there
 ---
 
@@ -80,10 +81,10 @@ pictures page too.
   whether that is the app or the invented rows.
 - **#111**: Settings → Training lists four courses. The card speaks of three.
 
-## What the board has today
+## What the board had before the view
 
-The board (`/punch-list`, `src/pages/PunchList.tsx` over `src/lib/todos/todoBoard.ts`) reads each
-card's front matter and lists its pages. A row shows the name, the summary, the Next line, the
+This is the board as it was when the mock-up was drawn. The board (`/punch-list`, `src/pages/PunchList.tsx` over `src/lib/todos/todoBoard.ts`) reads each
+card's front matter and lists its pages. A row showed the name, the summary, the Next line, the
 blocker, an opinion and links. At a desk one row is about 520 px tall, and on a phone 1,111 px.
 What the card waits on is inside the Next line. The pictures are one press away. The row's answer
 control is Do, Later, Drop with a note: it is shared, it keeps the name and the day, and it sorts a
@@ -141,19 +142,46 @@ Seven frames:
 
 ## The plan
 
-Three PRs, on the seven picks as they stand:
+Three PRs, on the seven picks as they stand. All three are built.
 
-1. **The question on the card (S).** The front-matter list, read by `npm run check:todos`. The
-   fifteen cards take theirs from their pictures pages. No screen changes.
-2. **Waiting on me (M).** The View as D draws it: the rows, the answer control over the pick store,
-   the lead picture, the opened row, the fold of answered cards. The fourth pick is its migration.
-3. **Draw them again with one command (S).** The kit in `draw/` becomes a script that redraws one
-   card's pictures by its number, and the row says when a page is older than the card's newest
+1. **The question on the card (S). Built as v2.8519.** One front-matter line, `ask:`, read by
+   `npm run check:todos`. The fifteen cards took theirs from their pictures pages. Its migration,
+   the fourth pick and the question an answer was given to, is pushed.
+2. **Waiting on me (M). Built as v2.8521.** The View as D draws it: the rows, the answer control
+   over the pick store, the lead picture, the fold of answered cards.
+3. **Draw them again with one command (S). Built as v2.8528.** `npm run todo:pictures -- <number>`
+   draws one card's pictures again, and the row says when a page is older than the card's newest
    version.
+
+## Where it stands
+
+Built, and not yet looked at on the live site. The view was only seen in the sealed lens frame on a
+local server.
+
+What the build left out of the mock-up:
+
+- **The opened row, frame B.** **See all** opens the card's pictures page instead.
+- ***Built and live* on the row.** No field of a card holds it.
+- **A list of questions.** A card has one question at a time.
+
+Three questions the build left, asked on 2026-11-24. The answer was *Keep the old picks on #438*:
+
+- **Who is *me* for a dev.** It stays as built. A dev's own list is the questions for a dev and for
+  anyone at hand. The owner's are behind **The owner** and **Everyone**.
+- **The opened row.** It stays unbuilt. The pictures page is enough.
+- **The seven picks.** They stand.
+
+One place the build is narrower than pick 3 as written. The page opens to the owner and the devs
+alone, so the office has no list of its own. Counsel's and the office's questions are behind their
+pills and are not on the owner's own list.
+
+`npm run todo:pictures` was run for #396 alone. The other fourteen cards' draw lines were written
+from the scripts' names and have not been run through the command. A card whose line is wrong stops
+the command, which then writes nothing.
 
 ## The calls, each with a pick
 
-These picks are the session's. Diane said *Build D* on them on 2026-11-24, so they are the build's until someone overturns one.
+These picks are the session's. Diane said *Build D* on them on 2026-11-24. Asked again the same day whether any should change, the answer was *Keep the old picks on #438*.
 
 | Call | Pick |
 |---|---|
@@ -171,5 +199,7 @@ This PR: after the deploy, each of the fifteen rows on `/punch-list` lists *pict
 `/to-dos/training/pictures.html` opens with its eight pictures. `/to-dos/punch-list-answers-and-pictures/waiting-2026-11-24.html`
 opens, and each *See its pictures* door opens that card's page.
 
-The view, once built: a person opens `/punch-list`, lands on the cards that wait on them, and
-answers each question beside its picture without opening a card.
+The view: the owner opens `/punch-list` and lands on **Waiting on me**, the cards that wait on the
+owner, and answers each question beside its picture without opening a card. `/punch-list?view=waiting`
+opens it for anyone who can open the page. The row of #426 says *The screen changed after these were
+drawn.* until its pictures are drawn again.

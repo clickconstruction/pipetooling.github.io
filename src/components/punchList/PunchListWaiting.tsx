@@ -168,6 +168,12 @@ function WaitingRow({ item, picks, onSave, first }: { item: AskedCard; picks: Pi
             </a>
           </p>
         ) : null}
+        {item.pictures?.stale ? (
+          // The card cites a version shipped after its pictures were drawn (`picturesAreStale`).
+          <p data-testid={`punch-waiting-stale-${item.number}`} style={STALE_MARK}>
+            The screen changed after these were drawn.
+          </p>
+        ) : null}
       </div>
       <div style={{ padding: item.pictures?.lead ? '0.75rem 0.75rem 0.75rem 1rem' : 0 }}>{item.pictures?.lead ? <Lead lead={item.pictures.lead} page={page} name={item.name} /> : null}</div>
       <div className="punch-wait-act" style={{ padding: '0.75rem 0.875rem' }}>
@@ -265,6 +271,18 @@ const KIND_CHIP: CSSProperties = {
   border: '1px solid var(--border-strong)',
   background: 'var(--bg-subtle)',
   color: 'var(--text-strong)',
+}
+
+/** The amber line under a row whose pictures are older than the card's newest shipped work. */
+const STALE_MARK: CSSProperties = {
+  margin: 0,
+  alignSelf: 'flex-start',
+  fontSize: '0.78rem',
+  padding: '1px 8px',
+  borderRadius: 4,
+  border: '1px solid var(--border-amber)',
+  background: 'var(--bg-amber-100)',
+  color: 'var(--text-amber-900)',
 }
 
 /** A who pill: dark when it is the one chosen, as the page's View pills are. */

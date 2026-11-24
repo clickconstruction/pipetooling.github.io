@@ -24,6 +24,16 @@ written to the database. 88 pictures of fifteen cards were drawn this way on 202
 
 ## To draw a card again
 
+One command does it: `npm run todo:pictures -- 396`, with the card's number.
+
+It reads the card from `pages/cards.json`, starts the dev server with the kit's config, runs the card's scripts (`draw`, each line a script and the words it takes), turns each PNG into WebP, stamps the card with today and the newest version on the checkout, and writes the card's page. The PNGs land in a new folder under the system's temp folder, and the command prints where. It stops and writes nothing when a script fails or a picture the card names was not drawn. The app has then changed under the script, and the script is the thing to mend.
+
+The command does not cut the lead picture beside the card (`pictures-lead.webp`, or `pictures-today.webp` with `pictures-if-built.webp`). That cut is a choice: `cwebp -crop x y w h -resize <width> 0`, about 234 px wide for a phone screen and 412 px for a desk one.
+
+A page says the day its pictures were drawn and what main was at: *Made by a script on 2026-11-24 (…), with main at v2.8442.* The board reads both. A card that cites a version newer than that is marked on its row: *The screen changed after these were drawn.* A redraw clears the mark.
+
+By hand, the same steps:
+
 1. Start the dev server with the kit's config, on a port of its own, from the repo root:
    `npx vite --config to-dos/punch-list-answers-and-pictures/draw/vite.config.ts --port 5187 --strictPort`.
    In a Claude session, use a launch entry and `preview_start`, and close the tab it opens: that tab is not sealed.
@@ -35,7 +45,7 @@ written to the database. 88 pictures of fifteen cards were drawn this way on 202
    real name, and that it shows what its caption says.
 4. Convert each PNG: `cwebp -q 80 -m 6 picture.png -o picture.webp`.
 5. Write the pages: `node to-dos/punch-list-answers-and-pictures/draw/pages/make-pages.cjs <folder of .webp>`.
-   It needs every picture named in `cards.json`. To change only a page's words, edit the page: the
+   It needs every picture named in `cards.json`. With `--card <number>` it writes that one card's page and needs that card's pictures alone. To change only a page's words, edit the page: the
    words are plain HTML above the pictures.
 
 ## The rules the pictures keep

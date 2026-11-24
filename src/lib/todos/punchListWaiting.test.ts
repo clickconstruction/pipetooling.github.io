@@ -162,9 +162,9 @@ describe('the words', () => {
   it('says how many pictures and the day they were drawn', () => {
     expect(drawnLabel('2026-11-24', 'en-US')).toBe('Nov 24')
     expect(drawnLabel('')).toBe('')
-    expect(picturesLine({ page: 'to-dos/x/pictures.html', count: 5, drawn: '2026-11-24', lead: null }, 'en-US')).toBe('5 pictures, drawn Nov 24')
-    expect(picturesLine({ page: 'to-dos/x/pictures.html', count: 1, drawn: '', lead: null })).toBe('1 picture')
-    expect(picturesLine({ page: null, count: 0, drawn: '', lead: { kind: 'built', path: 'to-dos/x/pictures-lead.webp' } })).toBe('')
+    expect(picturesLine({ page: 'to-dos/x/pictures.html', count: 5, drawn: '2026-11-24', drawnAt: '', stale: false, lead: null }, 'en-US')).toBe('5 pictures, drawn Nov 24')
+    expect(picturesLine({ page: 'to-dos/x/pictures.html', count: 1, drawn: '', drawnAt: '', stale: false, lead: null })).toBe('1 picture')
+    expect(picturesLine({ page: null, count: 0, drawn: '', drawnAt: '', stale: false, lead: { kind: 'built', path: 'to-dos/x/pictures-lead.webp' } })).toBe('')
     expect(picturesLine(null)).toBe('')
   })
 })

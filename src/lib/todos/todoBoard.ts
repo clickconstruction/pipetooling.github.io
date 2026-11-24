@@ -160,6 +160,13 @@ export interface CardPictures {
   count: number
   /** `YYYY-MM-DD`, the day the page was made; '' when the page does not say. */
   drawn: string
+  /** The newest version on main when the page was made (`v2.8442`); '' when the page does not say. */
+  drawnAt: string
+  /**
+   * The card cites a version shipped after the pictures were drawn, so its screen may no longer look
+   * like them. False when the page does not say what main was at.
+   */
+  stale: boolean
   lead: CardLead | null
 }
 
@@ -180,19 +187,41 @@ export function picturesFilesFor(file: string, siblings: readonly string[]): { p
   return { page, lead }
 }
 
-/** How many pictures a pictures page holds and the day it says it was made, read off its own markup. */
-export function picturesPageFacts(html: string): { count: number; drawn: string } {
+/**
+ * How many pictures a pictures page holds, the day it says it was made and the newest version main
+ * held that day, read off its own markup: `Made by a script on 2026-11-24 (…), with main at v2.8442.`
+ */
+export function picturesPageFacts(html: string): { count: number; drawn: string; drawnAt: string } {
   const count = (html.match(/<figure class="pic[ "]/g) ?? []).length
   const drawn = /Made by a script on (\d{4}-\d{2}-\d{2})/.exec(html)?.[1] ?? ''
-  return { count, drawn }
+  const drawnAt = /with main at (v2\.\d+)/.exec(html)?.[1] ?? ''
+  return { count, drawn, drawnAt }
 }
 
-/** A card's pictures from its folder's listing and its pictures page's text; null when it has neither. */
-export function picturesFor(file: string, siblings: readonly string[], pageHtml?: string | null): CardPictures | null {
+/** The newest `v2.NNNN` a text names, or '' when it names none. */
+export function newestVersionCited(text: string): string {
+  let newest = ''
+  for (const m of text.matchAll(/\bv2\.\d{3,4}\b/g)) if (versionNumber(m[0]) > versionNumber(newest)) newest = m[0]
+  return newest
+}
+
+/**
+ * Pictures are old when the card cites a version newer than main held when they were drawn: work on
+ * the card shipped after the picture. A page that does not say what main was at is never called old.
+ */
+export function picturesAreStale(drawnAt: string, newestCited: string): boolean {
+  return versionNumber(drawnAt) > 0 && versionNumber(newestCited) > versionNumber(drawnAt)
+}
+
+/**
+ * A card's pictures from its folder's listing and its pictures page's text; null when it has neither.
+ * `cited` is the card's own words that name versions: its status, its `ver` and its Next line.
+ */
+export function picturesFor(file: string, siblings: readonly string[], pageHtml?: string | null, cited = ''): CardPictures | null {
   const { page, lead } = picturesFilesFor(file, siblings)
   if (!page && !lead) return null
-  const facts = page && pageHtml ? picturesPageFacts(pageHtml) : { count: 0, drawn: '' }
-  return { page, count: facts.count, drawn: facts.drawn, lead }
+  const facts = page && pageHtml ? picturesPageFacts(pageHtml) : { count: 0, drawn: '', drawnAt: '' }
+  return { page, count: facts.count, drawn: facts.drawn, drawnAt: facts.drawnAt, stale: picturesAreStale(facts.drawnAt, newestVersionCited(cited)), lead }
 }
 
 export interface TodoParseError {
@@ -349,7 +378,7 @@ export function readTodoDoc(
     slug,
     mockups: mockupsFor(file, siblings),
     artifacts: artifactsCited(fm.body),
-    pictures: picturesFor(file, siblings, picturesHtml),
+    pictures: picturesFor(file, siblings, picturesHtml, [fm.fields.status, fm.fields.ver, fm.fields.next].join(' ')),
     meta: {
       name: (fm.fields.name ?? '').trim(),
       number: Number(numberText),
