@@ -463,6 +463,14 @@ export function billsPaidTiles(lines: ReadonlyArray<BillsPaidLine>, month: strin
   }
 }
 
+/**
+ * What a day's figure leaves out, said under the month. The view reads payment rows, and a bank deposit has none
+ * until someone puts it on a bill or a job. The Dashboard's Money in bar counts that deposit the day it posts
+ * (*Landed · not applied yet*), so the two can differ for a day. The live test of 2026-11-24 found Monday short
+ * by two such deposits, and nothing on the page said why.
+ */
+export const BILLS_PAID_LEFT_OUT = 'A bank deposit counts once it is put on a bill or a job. Until then the Dashboard’s Money in shows it and this page does not.'
+
 // ---------- Out of the app ----------
 
 export function plural(n: number, noun: string): string {
@@ -566,6 +574,6 @@ table.cal span{display:block;font-size:9.5px;color:#444}
 <h1>Bills paid · ${esc(billsPaidMonthLabel(opts.month))}</h1>
 <p>${esc(chip)}. ${esc(plural(sum.payments, 'payment'))}, ${esc(billsPaidMoney(sum.total))}. Newest day first. All times are Central.</p>
 ${days.length ? `${billsPaidMonthGridHtml(inMonth, opts.month, printedYmd || '9999-12-31')}<table>${days.map(block).join('')}</table>` : `<p>Nothing came in${esc(HOW_TAIL[opts.how])} in ${esc(billsPaidMonthLabel(opts.month))}.</p>`}
-<p style="margin-top:14px">A payment sits on the day the money came, at what it took off the bill. Stripe’s fee is not taken off. A refund made in Stripe is not shown. Printed ${esc(printed)}.</p>
+<p style="margin-top:14px">A payment sits on the day the money came, at what it took off the bill. Stripe’s fee is not taken off. A refund made in Stripe is not shown. A bank deposit not yet put on a bill or a job is not shown. Printed ${esc(printed)}.</p>
 </body></html>`
 }

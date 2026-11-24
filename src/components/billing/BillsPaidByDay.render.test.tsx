@@ -102,6 +102,8 @@ describe('BillsPaidByDay', () => {
     const cents = within(day).getAllByTestId('bills-paid-line')[0]!.querySelector('span[style*="0.7em"]') as HTMLElement
     expect(cents.textContent).toBe('.00')
     expect(screen.getByTestId('bills-paid-foot').textContent).toContain('Stripe’s fee is not taken off.')
+    // The foot says why a day here can be less than the Dashboard's Money in for the same day.
+    expect(screen.getByTestId('bills-paid-foot').textContent).toContain('A bank deposit counts once it is put on a bill or a job. Until then the Dashboard’s Money in shows it and this page does not.')
   })
 
   it('narrows the month to Stripe, and a day the chip emptied offers every way', async () => {
