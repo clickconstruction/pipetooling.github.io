@@ -22,6 +22,8 @@ A new version is ready. {{button:blue|Reload}} Not now
 - **Reload** applies the update right away. The app refreshes once and brings you back where you were. A reload clears words you typed and have not sent, just like a browser refresh. So **Reload** asks first when the page holds such words.
 - **Not now** hides the pill so you can keep working. The app leaves you alone for ten minutes, then takes the next quiet moment. The pill also comes back on its own. Closing and reopening the app picks up the update automatically.
 
+The app also checks for new versions on its own about once an hour. It checks again when you return to a tab that has been sitting in the background. So a phone left open overnight finds the morning's update by itself.
+
 ## When you press Reload over words you typed
 
 The app does not reload yet. It takes you to each place you typed. Each place shows an orange ring for a second. If you typed in several places, the page moves from one to the next. Then the pill offers two presses:
@@ -34,10 +36,6 @@ Reloading clears what you typed. {{button:amber|Reload anyway}} Not now
 - **Not now** keeps your words. Send or clear them, and the app updates at the next quiet moment.
 
 Touch anywhere else on the page and the pill goes back to **Reload**. Your words stay where they are.
-
-## How the app finds an update
-
-The app also checks for new versions on its own about once an hour. It checks again when you return to a tab that has been sitting in the background. So a phone left open overnight finds the morning's update by itself.
 
 ## If a page ever fails to load
 

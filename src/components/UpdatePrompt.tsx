@@ -17,6 +17,7 @@ import { pageHoldsTypedText } from '../lib/typedText'
 import { pageTourDeps, startTypedTextTour, type TypedTour } from '../lib/typedTextTour'
 import {
   UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT,
+  UPDATE_PILL_WARNED_TOP,
   updatePillIgnoresPress,
   updatePillPress,
   updatePillSide,
@@ -407,11 +408,10 @@ export function UpdatePrompt() {
 
   return (
     <div
-      ref={pillRef}
       role="status"
       style={{
         position: 'fixed',
-        ...(view.warned && pillSide === 'top' ? { top: '1rem' } : { bottom: '1rem' }),
+        bottom: '1rem',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 9998,
@@ -429,7 +429,11 @@ export function UpdatePrompt() {
           ? // `max-content`: a box fixed at `left: 50%` is otherwise fitted to half the screen, and a phone stacks it three deep.
             { flexWrap: 'wrap', justifyContent: 'flex-end', rowGap: '0.375rem', borderRadius: '1rem', padding: '0.625rem 0.75rem 0.625rem 1rem', width: 'max-content' }
           : null),
+        // While a place being shown is under the pill's foot, the warned pill sits at the top instead. Last, so it
+        // wins over wherever the pill is otherwise pinned.
+        ...(view.warned && !autoUpdating && pillSide === 'top' ? { top: UPDATE_PILL_WARNED_TOP, bottom: 'auto' } : null),
       }}
+      ref={pillRef}
     >
       <span
         style={{

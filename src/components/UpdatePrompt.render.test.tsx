@@ -3,11 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { UpdatePrompt } from './UpdatePrompt'
-import { AUTO_RELOAD_KEY } from '../lib/autoReload'
-import { __resetUnsavedWorkForTests, holdUnsavedWork, wrapFetchCountingWrites } from '../lib/unsavedWork'
 import { __forgetTypedTextForTests, noteTypedInto } from '../lib/typedText'
 import { TYPED_SHOWN_ATTR, TYPED_TOUR_SETTLE_MS, TYPED_TOUR_SHOWN_MS } from '../lib/typedTextTour'
-import { UPDATE_PILL_DOUBLE_PRESS_MS, UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT } from '../lib/updatePillWarn'
+import { UPDATE_PILL_DOUBLE_PRESS_MS, UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT, UPDATE_PILL_WARNED_TOP } from '../lib/updatePillWarn'
+import { AUTO_RELOAD_KEY } from '../lib/autoReload'
+import { __resetUnsavedWorkForTests, holdUnsavedWork, wrapFetchCountingWrites } from '../lib/unsavedWork'
 
 type SWOpts = { onNeedRefresh?: () => void; onRegisteredSW?: (url: string, reg: unknown) => void }
 const swOpts: { current: SWOpts | null } = { current: null }
@@ -398,11 +398,11 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
         // Both are on the screen, so both are ringed in one stop, and one is under the pill's foot.
         expect([ringed(middle), ringed(foot)]).toEqual([true, true])
-        expect(pill().style.top).toBe('1rem')
-        expect(pill().style.bottom).toBe('')
+        expect(pill().style.top).toBe(UPDATE_PILL_WARNED_TOP)
+        expect(pill().style.bottom).toBe('auto')
         await pass(TYPED_TOUR_SHOWN_MS)
         // Shown: the page has not moved, so the pill stays clear of the words.
-        expect(pill().style.top).toBe('1rem')
+        expect(pill().style.top).toBe(UPDATE_PILL_WARNED_TOP)
         fireEvent.pointerDown(foot)
         expect(pill().style.bottom).toBe('1rem')
         expect(pill().style.top).toBe('')

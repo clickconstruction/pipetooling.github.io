@@ -58,6 +58,9 @@ export const UPDATE_PILL_BAND_PX = 140
 
 export type UpdatePillSide = 'bottom' | 'top'
 
+/** Where the warned pill is pinned when it sits at the top: under the app's own top strip, where there is one. */
+export const UPDATE_PILL_WARNED_TOP = 'calc(var(--app-top-chrome, 0px) + 0.5rem)'
+
 /** Where the pill sits while these places are ringed. `places` are their boxes on the screen, top and bottom. */
 export function updatePillSide(places: ReadonlyArray<{ top: number; bottom: number }>, screenHeight: number): UpdatePillSide {
   const onScreen = places.filter((p) => p.bottom > 0 && p.top < screenHeight)
