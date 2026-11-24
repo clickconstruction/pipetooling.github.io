@@ -2,14 +2,14 @@
 name: "My Bids and Recent Reports on the Dashboard: one swipe to put a row away"
 number: 426
 group: ready
-status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps built; steps 1 to 5 and step 6's migration merged and live, the column pushed 2026-11-23; step 6's client in review
+status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · Recent Reports and a real phone not walked
 summary: >
   The owner wants the eye icon on each My Bids row replaced by a swipe and the bids grouped by state.
   He wants Recent Reports' heading back on one row, its presses moved to the foot, and the same swipe
   to mark a report opened, so a person can clear work off a list. The plan is one swipe for both
   cards: left, a strip that names the act, Undo, and a folded group at the foot that holds what was
   put away. The reading also found things neither ask named, listed below for each card.
-next: The owner tries the swipe on his phone once step 6's client is live. Then retire the card.
+next: The owner tries the swipe on his phone. Then retire the card.
 size: L as a train of six (S · M · M · M · S · S); left: the owner's try
 blocker: None.
 opinion: build — the owner said go on every recommendation
@@ -23,8 +23,9 @@ The owner said **go, as recommended** on 2026-11-23. Every pick below is answere
 PRs, listed under *The build*. Step 1, the My Bids read, is the PR that adds this card. Step 2, the groups
 and the one-press bid, is the PR after it. Step 3, Recent Reports' heading and foot, is the third. Step 4,
 the shared swipe on My Bids, is the fourth. Step 5, the swipe on Recent Reports, is the fifth. Step 6 is two
-PRs: the migration, #9494, merged and pushed on 2026-11-23, and the client that reads and writes it. The swipe
-has not been tried on a real phone.
+PRs: the migration, #9494, merged and pushed on 2026-11-23, and the client that reads and writes it, #9495.
+All six are merged and live. My Bids was walked on clicktooling.com on 2026-11-24, in the lens frame, and what
+was seen is under *The walk in the lens frame* below. The swipe has not been tried on a real phone.
 
 The mock-up is [`mockup.html`](mockup.html). For each card it draws the card as it is beside the card as
 planned at 430 px and at 320 px, the swipe in three frames, and the desk. Two frames work under a finger or
@@ -34,6 +35,122 @@ builder, street and person on it is made up.
 The page as the owner saw it is a private artifact:
 
 - *My Bids refresh* — https://claude.ai/artifact/DqWG8MR525tvWibXru6URz
+
+### The walk in the lens frame, 2026-11-24
+
+My Bids was walked on clicktooling.com inside the lens frame, read only. Nobody signed in. The frame's bids are
+invented, and each hide was answered inside the frame: no request to the database's address left the browser.
+
+**The frame.** A window named `pipetooling-lens:` with `{ as: 'estimator', mood: 'full', theme: 'light' }`, then
+the same with `theme: 'dark'`. `window.__lens.config.as` read `estimator` before any press and again before each
+press after it. The frame holds five bids for its estimator: three unsent, one sent with no answer, one won.
+
+**The widths.** 430 by 932 as a phone, with touch. 1400 by 900 as a desk, with a mouse.
+
+**The browsers.** Two. Each line below is from headless Chromium unless it says the built-in browser.
+
+- **The session's built-in browser**, 430 px, light. It sealed, drew the card and opened a bid's window. Then it
+  stopped drawing frames: no animation frame came in 2 seconds, and a row's slide back stood still part way. A
+  drag in it was not a fair test, so nothing about the swipe is taken from it past two short drags.
+- **Headless Chromium** through Playwright, for the rest. Touch went in as touch points, 4 px a step.
+
+**What held, at 430 px.**
+
+- **Unsent is open and the rest are folded.** The title read *My Bids (5)*. **Unsent** was open with 3.
+  **Not yet won or lost** and **Won** were folded with 1 each. No other group was drawn, since the frame has no
+  started bid and nothing hidden. Seen in both browsers.
+- **A press on a bid opens the bid's window.** It opened over the Dashboard, 398 by 839, under the bid's name,
+  with **Edit bid** and *Open in Bids*. The address stayed `/dashboard`. Seen in both browsers.
+- **A short drag springs back.** 100 px of touch: the row followed to 100 px, the strip stayed grey, and the row
+  went back on letting go. Nothing was hidden and no window opened. The built-in browser came to the same end
+  with a mouse at 66 px and at 108 px: nothing hidden, no window.
+- **The strip turns blue at 112 px.** Grey, `rgb(107, 114, 128)`, at 108 px. Blue, `rgb(37, 99, 235)`, at
+  112 px. White on the grey reads 4.83 to 1 and white on the blue 5.17 to 1.
+- **Letting go hides the bid, with Undo.** Let go at 148 px: the bid left **Unsent**, the title went from 5 to 4,
+  and a toast at the foot read *Hidden: Cedar Bend Apartments, building D.* with **Undo**. **Undo** put the bid
+  back and the title back to 5. Left alone, the toast went after 10 seconds.
+- **Hidden sits at the foot, with Show again.** **Hidden** came up as the last group, folded, with 1, one pixel
+  above the foot line that holds **Bid Board**. Opened, it read *You hid these. Show again puts one back.* and
+  drew the bid with its state, *Unsent*, and **Show again**. The press put the bid back first in **Unsent**.
+- **A right drag does nothing.** 140 px to the right moved the row 0 px.
+- **An up and down touch scrolls.** A finger moved 200 px down scrolled the page 278 px. The row did not move
+  sideways.
+- **A keyboard reaches the strip's press.** Tab landed on *Hide, Kyle library restrooms*, the row slid 160 px
+  aside to show it, and a 2 px blue ring was drawn. Shift and Tab shut the row. Enter hid the bid, with **Undo**.
+  The strip's press comes before its bid in the Tab order.
+- **No sideways scroll.** The page was 430 px wide in a 430 px window at rest, during a drag, with the bid's
+  window open and with **Hidden** open. Nothing stood past either edge.
+
+**What held, at 1400 px.**
+
+- The same groups and the same window, 720 by 744.
+- **No strip at a desk.** Each bid has **Hide** as a word press on its right and no swipe line at the foot. A
+  mouse dragged 160 px across a row moved nothing. Let go over the bid, it counted as a press and opened the
+  bid's window. So the check *a left drag turns the strip blue* has nothing to act on at a desk with a mouse.
+- **Tab reaches Hide.** From the card's heading the order was **My Bids**, **New Bid**, **Unsent**, the first
+  bid, its **Hide**, the second bid, its **Hide**, the third bid, its **Hide**, **Not yet won or lost**, **Won**,
+  **Bid Board**. Four Tabs to the first **Hide**, with a 2 px blue ring. Enter hid the bid, with **Undo**.
+- **Hidden** and **Show again** as on the phone.
+
+**The presses, measured.** The same in both themes.
+
+| Press | Wide by tall, px |
+|---|---|
+| The card's heading, *My Bids (5)* | 119 by 44 |
+| **New Bid** | 82 by 44 |
+| A group's heading, folded | full width by 44 |
+| **Unsent**'s heading, open with its line | full width by 48 |
+| A bid, inside a box 67 tall | 329 by 44 on the phone |
+| The strip under a bid | 160 by 67 |
+| **Hide** at a desk | 57 by 44 |
+| **Show again** | 100 by 44 |
+| **Bid Board** | 75 by 44 |
+| **Undo** on the toast | 55 by 26 |
+| **Close** on the bid's window | 30 by 33 |
+
+**What held, in the dark theme.** Every check above was run again at both widths with `theme: 'dark'`, and
+each one held with the same counts, words and sizes. The page's `data-theme` read `dark`.
+
+| What | Light | Dark |
+|---|---|---|
+| A bid's name on its box | 4.95 to 1 | 6.37 to 1 |
+| *Due* on its box | 4.63 to 1 | 6.38 to 1 |
+| **Hide** at a desk, **Show again** | 10.31 to 1 | 9.96 to 1 |
+| White on the strip, grey then blue | 4.83 and 5.17 to 1 | 4.83 and 5.17 to 1 |
+| The ring a keyboard draws | 2 px, `rgb(37, 99, 235)` | 2 px, `rgb(96, 165, 250)` |
+
+**What did not hold, or differed.** Nothing in My Bids itself failed a check. Five things were not as the
+recipe expected.
+
+1. **The first open left the Dashboard by itself.** In the built-in browser at 430 px, `/dashboard` opened sealed
+   as the estimator and then stood at `/bids?tab=bid-board` a few seconds later, with no press made. The frame's
+   own **Open menu** then **Dashboard** brought the Dashboard back, and the walk went on from there. It did not
+   happen again: a second open in the same browser stayed on `/dashboard` for the 12 seconds it was watched, and
+   the five headless opens that got the whole app stayed for 10 seconds each. The cause was not found.
+2. **The built-in browser would not take a drag**, as said above. That is the browser, not the card.
+3. **The host answered 429 for about six minutes.** From about 06:50Z to 06:56Z GitHub Pages answered every
+   request from this address with *Rate limit exceeded*. The first dark run at the desk got that page in place
+   of the app, so `window.__lens` was missing and the page was closed at once without a look. The first dark run
+   on the phone sealed and then the page moved under it, and that run was stopped. Both were run again after the
+   limit lifted, and those are the dark results above. A headless open of the app in a new browser made 1,052
+   and 1,488 requests to the host in the two runs that counted them, since the app's worker saves the whole app.
+   Four such opens in three minutes, beside other sessions on the live site, is the likely cause.
+4. **Two presses the walk used are under 44 px.** **Undo** on the toast is 55 by 26. **Close** on the bid's
+   window is 30 by 33. Neither is this card's own piece: the toast is the shared one and the window is the
+   bid's. Every press the card itself added measured 44 or more.
+5. **A desk has no strip to drag**, as said above. The recipe asked for the drag at both widths.
+
+**Not looked at.**
+
+- **Recent Reports.** The frame's Recent Reports is empty, so its swipe, **Opened** and **Mark unread** were not
+  walked.
+- **A real phone.** A thumb, a real scroll that drifts and the phone's own Back swipe are still the owner's try.
+- **Hidden on a second device.** The frame keeps nothing between two windows, so step 6 was not walked.
+- **A bid with unread updates, a past due date, more than one trade, or 320 px.** The frame's bids have none of
+  them, and 320 px was not in the recipe.
+- **A real person's bids.** Nobody signed in.
+
+No screenshot is in the repo.
 
 ## The asks
 
@@ -338,12 +455,12 @@ Each PR claims its version, ships its release note and fragment, and passes the 
 
 | Step | Belongs to | Size | What it does |
 |---|---|---|---|
-| 1, in review | My Bids | S | **The read.** The grouping kernel over `getSubmissionSectionKey`, the board's two orders and its due-date parts, with tests. The read stops the 50 from cutting live bids, adds `created_at`, and leaves out adopted bids and, on pick 5, archived ones. On the screen, a bid that read *Unsent* reads its true state. |
-| 2, in review | My Bids | M | **The groups.** Headings, counts and folds, one box per bid with one press, the **Bid Board** door, **Hide** as a word press, the **Hidden** group with **Show again**, the fix for the vanished card, and picks 2 and 3. |
-| 3, in review | Recent Reports | M | **The heading and the foot.** One heading row, the foot's two rows, the day and time as one value, **Mark opened** as a word press on each row, the **Opened** group with **Mark unread**, the words for a clear list, the read of the marks narrowed to the listed reports, and picks 6, 7 and 8. |
-| 4, in review | Shared | M | **The swipe.** `SwipeAwayRow` and `settleAt` on `useSwipeRow`, the strip, the blue mark, **Undo** and the keyboard's way in, with a render smoke on pointer events. My Bids uses it in this PR. |
-| 5, in review | Recent Reports | S | **The swipe on reports.** The same shared row with **Mark opened**. The guides for both cards. |
-| 6, the client in review | My Bids | S, a migration | **Hidden follows you.** Pick 4. The migration (#9494, pushed) adds `user_bid_notes_read_state.hidden_at`; the client PR reads and writes it and moves the browser's ids once. |
+| 1, v2.8337 | My Bids | S | **The read.** The grouping kernel over `getSubmissionSectionKey`, the board's two orders and its due-date parts, with tests. The read stops the 50 from cutting live bids, adds `created_at`, and leaves out adopted bids and, on pick 5, archived ones. On the screen, a bid that read *Unsent* reads its true state. |
+| 2, v2.8340 | My Bids | M | **The groups.** Headings, counts and folds, one box per bid with one press, the **Bid Board** door, **Hide** as a word press, the **Hidden** group with **Show again**, the fix for the vanished card, and picks 2 and 3. |
+| 3, v2.8344 | Recent Reports | M | **The heading and the foot.** One heading row, the foot's two rows, the day and time as one value, **Mark opened** as a word press on each row, the **Opened** group with **Mark unread**, the words for a clear list, the read of the marks narrowed to the listed reports, and picks 6, 7 and 8. |
+| 4, v2.8349 | Shared | M | **The swipe.** `SwipeAwayRow` and `settleAt` on `useSwipeRow`, the strip, the blue mark, **Undo** and the keyboard's way in, with a render smoke on pointer events. My Bids uses it in this PR. |
+| 5, v2.8351 | Recent Reports | S | **The swipe on reports.** The same shared row with **Mark opened**. The guides for both cards. |
+| 6, v2.8369 and v2.8370 | My Bids | S, a migration | **Hidden follows you.** Pick 4. The migration (#9494, pushed) adds `user_bid_notes_read_state.hidden_at`; the client (#9495) reads and writes it and moves the browser's ids once. |
 
 Steps 1, 2 and 3 do not wait on each other. Step 4 waits on 2. Step 5 waits on 3 and 4.
 
