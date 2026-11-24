@@ -173,22 +173,35 @@ export async function readBuilderParties(builderKey: string): Promise<SendParty[
   return builderPartiesFrom({ jobs, customers, people, links, sends: (sends ?? []) as SendRow[] })
 }
 
+/** What a function deployed before the key of its own answered: `failed`, with the truth in the first words of its reason. */
+const WENT_UNRECORDED = /^Sent, but not recorded:?\s*/i
+
+/**
+ * True when the function's answer says the email went and only its record did not land. The function says so under a
+ * key of its own, `sentNotRecorded` (punch list #416). One deployed before that key answers `failed` with the truth in
+ * the first words of `detail`, and this reads both, so the page is right whichever function is live.
+ */
+export function sendWentUnrecorded(body: unknown): boolean {
+  const b = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
+  if (b.error === 'sentNotRecorded') return true
+  return typeof b.detail === 'string' && WENT_UNRECORDED.test(b.detail.trim())
+}
+
 /**
  * The words for a send the function refused. The function answers its key's words, and for some refusals the reason
  * beside them (`detail`): the mail service's own answer, or what the database said. One of those is not a refusal of
- * the send at all: the email went and only its record did not land. Its key's words say *Try again*, which would send
- * a second email, so that case reads as what happened.
+ * the send at all: the email went and only its record did not land. Those words never say *Try again*, which would
+ * send a second email. They are this file's own, so they read the same from either function.
  */
 export function sendRefusalWords(body: unknown): string {
   const b = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
   const words = typeof b.words === 'string' && b.words ? b.words : DOCUMENT_BUILDER_SEND_REFUSALS.failed.words
   const detail = typeof b.detail === 'string' ? b.detail.trim() : ''
-  if (!detail) return words
-  const went = /^Sent, but not recorded:?\s*/i
-  if (went.test(detail)) {
-    const reason = detail.replace(went, '')
-    return `The email went, but the send was not recorded here. Do not send it again.${reason ? ` The reason: ${reason}` : ''}`
+  if (sendWentUnrecorded(body)) {
+    const reason = detail.replace(WENT_UNRECORDED, '')
+    return `${DOCUMENT_BUILDER_SEND_REFUSALS.sentNotRecorded.words}${reason ? ` The reason: ${reason}` : ''}`
   }
+  if (!detail) return words
   return `${words} The reason: ${detail}`
 }
 

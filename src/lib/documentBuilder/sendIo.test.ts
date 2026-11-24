@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('../supabase', () => ({ supabase: {} }))
 
-import { builderPartiesFrom, contactsOf, gcPageFromLinks, pageFromLinks, sendRecordFromRow, sendRefusalWords } from './sendIo'
+import { builderPartiesFrom, contactsOf, gcPageFromLinks, pageFromLinks, sendRecordFromRow, sendRefusalWords, sendWentUnrecorded } from './sendIo'
 import { BUILDER_SEND_NOTE, DOCUMENT_BUILDER_SEND_REFUSALS, builderSendEmail, customerPageUrl, gcJobLabel, gcPageLink, parseBuilderSend, parseSheetSend, resendGoesToWhoItWentTo, sendAskKind, sheetSendEmail, sheetSendMessageKey } from './sendWords'
 import { plainWordsFailures } from '../plainWords'
 
@@ -201,6 +201,29 @@ describe('the words for a send the function refused', () => {
     expect(words).toBe('The email went, but the send was not recorded here. Do not send it again. The reason: a made-up reason')
     expect(words).not.toMatch(/try again/i)
     expect(sendRefusalWords({ error: 'failed', words: 'x', detail: 'Sent, but not recorded: ' })).toBe('The email went, but the send was not recorded here. Do not send it again.')
+  })
+  it('read the function\u2019s own key for it, with the reason beside it and with none (punch list #416)', () => {
+    const own = DOCUMENT_BUILDER_SEND_REFUSALS.sentNotRecorded
+    expect(own).toEqual({ status: 500, words: 'The email went, but the send was not recorded here. Do not send it again.' })
+    expect(own.words).not.toMatch(/try again/i)
+    // The new function: its key, its words, and the database's reason alone in `detail`.
+    expect(sendRefusalWords({ error: 'sentNotRecorded', words: own.words, detail: 'a made-up reason' })).toBe('The email went, but the send was not recorded here. Do not send it again. The reason: a made-up reason')
+    expect(sendRefusalWords({ error: 'sentNotRecorded', words: own.words })).toBe(own.words)
+    // The key alone decides: an answer whose words were lost on the way still never says to try again.
+    expect(sendRefusalWords({ error: 'sentNotRecorded' })).toBe(own.words)
+    expect(sendRefusalWords({ error: 'sentNotRecorded', words: 'Something went wrong. Try again in a moment.', detail: 'a made-up reason' })).not.toMatch(/try again/i)
+  })
+  it('read both functions the same: the one deployed before the key, and the one after', () => {
+    const before = { error: 'failed', words: DOCUMENT_BUILDER_SEND_REFUSALS.failed.words, detail: 'Sent, but not recorded: a made-up reason' }
+    const after = { error: 'sentNotRecorded', words: DOCUMENT_BUILDER_SEND_REFUSALS.sentNotRecorded.words, detail: 'a made-up reason' }
+    expect(sendRefusalWords(before)).toBe(sendRefusalWords(after))
+    expect(sendWentUnrecorded(before)).toBe(true)
+    expect(sendWentUnrecorded(after)).toBe(true)
+    // Every other refusal, and no answer at all, is a send that did not go.
+    expect(sendWentUnrecorded({ error: 'sendFailed', words: 'x', detail: 'a made-up answer from the mail service' })).toBe(false)
+    expect(sendWentUnrecorded({ error: 'failed', words: 'x', detail: 'The page was not made: a made-up reason' })).toBe(false)
+    expect(sendWentUnrecorded({ error: 'failed' })).toBe(false)
+    expect(sendWentUnrecorded(null)).toBe(false)
   })
   it('name the reason the function gave for any other refusal', () => {
     expect(sendRefusalWords({ error: 'sendFailed', words: DOCUMENT_BUILDER_SEND_REFUSALS.sendFailed.words, detail: 'a made-up answer from the mail service' })).toBe(
