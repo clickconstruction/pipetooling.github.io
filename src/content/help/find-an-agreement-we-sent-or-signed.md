@@ -269,6 +269,8 @@ Press the name on a line.
 - A voided contract opens as a preview in its own window.
 - A signed staff, sub or partner agreement opens its signed record.
 - One that is still waiting opens People, on Contracts, at that paper. The person's papers are open and that paper's line is marked. Press **Resend** on the line to send it again.
+- A trade company's paper that waits opens People, on Contracts, too. The paper is marked under the company's row. Press **Send for signature** there to send it again.
+- Maybe no one on your People list works at that company. The tab then says so. That paper is kept in GC mode.
 - A work order opens the work order window.
 - A GC project's paper opens the GC page.
 

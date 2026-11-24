@@ -572,13 +572,21 @@ export type AgreementDoor =
   | { kind: 'contract'; jobId: string; recordId: string; signed: boolean }
   /** The signed record window People → Contracts uses. */
   | { kind: 'person-signed'; documentId: string }
-  /** People → Contracts on that paper's own row. Its line here also carries Send again and Copy the signing link (`agreementsActs.ts`). */
+  /**
+   * People → Contracts on that paper's own row. A person's waiting paper also carries Send again and Copy the signing
+   * link on its line here (`agreementsActs.ts`). A trade company's waiting paper lands under its company's row there.
+   */
   | { kind: 'people-contracts'; to: string }
   /** GC mode's page, for a paper of a GC project: it has no address of its own to open one project on. */
   | { kind: 'gc'; to: string }
   /** The work order window on that job. */
   | { kind: 'work-order'; jobId: string; commitmentId: string }
   | { kind: 'none' }
+
+/** People → Contracts on one paper: the address `contractsDocLanding` answers (`src/lib/contractsDocLink.ts`). */
+export function agreementPeopleContractsPath(documentId: string): string {
+  return `/people?tab=contracts&doc=${encodeURIComponent(documentId)}`
+}
 
 export function agreementDoor(row: Pick<AgreementRow, 'kind' | 'source_id' | 'state' | 'job_id' | 'facts'>): AgreementDoor {
   if (row.kind === 'job_contract' || row.kind === 'job_warranty' || row.kind === 'their_paper') {
@@ -587,16 +595,23 @@ export function agreementDoor(row: Pick<AgreementRow, 'kind' | 'source_id' | 'st
   }
   if (row.kind === 'person_agreement' || row.kind === 'partner_agreement') {
     if (str(fact(row, 'status')) === 'signed') return { kind: 'person-signed', documentId: row.source_id }
-    return { kind: 'people-contracts', to: `/people?tab=contracts&doc=${encodeURIComponent(row.source_id)}` }
+    return { kind: 'people-contracts', to: agreementPeopleContractsPath(row.source_id) }
   }
   if (row.kind === 'work_order') {
     return row.job_id ? { kind: 'work-order', jobId: row.job_id, commitmentId: row.source_id } : { kind: 'none' }
   }
-  if (row.kind === 'company_agreement' && str(fact(row, 'status')) === 'signed') return { kind: 'person-signed', documentId: row.source_id }
+  if (row.kind === 'company_agreement') {
+    if (str(fact(row, 'status')) === 'signed') return { kind: 'person-signed', documentId: row.source_id }
+    // A trade company's paper that waits opens People → Contracts on the paper (2026-11-24): a sub's company is a row
+    // there with its own papers and its own send, and the line carries nothing that says where it was sent from. The
+    // landing (`contractsDocLanding`) opens the paper under its company's row, or says it is kept in GC mode when no one
+    // on the roster works at that company. Until then every one of them opened GC mode's page, which shows no paper.
+    return { kind: 'people-contracts', to: agreementPeopleContractsPath(row.source_id) }
+  }
   // An outside party's paper has no page of its own yet: signed, it opens the signed record; waiting, its acts sit on
   // its line (`agreementsActs.ts`).
   if (isPartyAgreementKind(row.kind)) return str(fact(row, 'status')) === 'signed' ? { kind: 'person-signed', documentId: row.source_id } : { kind: 'none' }
-  if (row.kind === 'owner_contract' || row.kind === 'sow' || row.kind === 'company_agreement') return { kind: 'gc', to: AGREEMENTS_GC_PAGE }
+  if (row.kind === 'owner_contract' || row.kind === 'sow') return { kind: 'gc', to: AGREEMENTS_GC_PAGE }
   return { kind: 'none' }
 }
 

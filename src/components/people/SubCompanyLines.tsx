@@ -37,6 +37,9 @@ function PaperStateChip({ status }: { status: string }) {
   )
 }
 
+/** The mark on the paper a deep link landed on: the tint and outline a person's linked paper carries on People → Contracts. */
+const PAPER_MARK = { background: 'var(--bg-blue-tint)', outline: '2px solid #2563eb', outlineOffset: -2 } as const
+
 const pressLook = { padding: '0.35rem 0.7rem', minHeight: 36, fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer' } as const
 
 /**
@@ -46,11 +49,14 @@ const pressLook = { padding: '0.35rem 0.7rem', minHeight: 36, fontSize: '0.8125r
 export function SubCompanyHeadRow({
   group,
   papers,
+  markedPaperId,
   onSend,
   onEnter,
 }: {
   group: CompanyGroup
   papers?: readonly CompanyPaperRow[]
+  /** The paper a deep link landed on (`/people?tab=contracts&doc=<id>`): marked as a person's linked paper is. */
+  markedPaperId?: string | null
   onSend?: () => void
   onEnter?: () => void
 }) {
@@ -85,7 +91,8 @@ export function SubCompanyHeadRow({
                 <div
                   key={p.id}
                   data-sub-company-paper={p.id}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', padding: '0.5rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)' }}
+                  aria-current={p.id === markedPaperId ? 'true' : undefined}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', padding: '0.5rem 0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', ...(p.id === markedPaperId ? PAPER_MARK : null) }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 500, overflowWrap: 'anywhere' }}>{p.document_name}</div>

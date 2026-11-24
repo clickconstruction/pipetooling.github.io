@@ -595,11 +595,15 @@ describe('what a press opens', () => {
     expect(agreementDoor(row({ kind: 'something_new' }))).toEqual({ kind: 'none' })
   })
 
-  it('a GC project’s paper opens GC mode, and a trade company’s signed agreement opens its record', () => {
+  it('a GC project’s paper opens GC mode, and a trade company’s agreement opens its record or its row on People', () => {
     expect(agreementDoor(row({ kind: 'owner_contract', source_id: 'o1', job_id: null, facts: {} }))).toEqual({ kind: 'gc', to: '/gc' })
     expect(agreementDoor(row({ kind: 'sow', source_id: 's1', job_id: null, facts: { status: 'sent' } }))).toEqual({ kind: 'gc', to: '/gc' })
     expect(agreementDoor(row({ kind: 'company_agreement', source_id: 'm1', job_id: null, facts: { status: 'signed' } }))).toEqual({ kind: 'person-signed', documentId: 'm1' })
-    expect(agreementDoor(row({ kind: 'company_agreement', source_id: 'm2', state: 'waiting', job_id: null, facts: { status: 'sent' } }))).toEqual({ kind: 'gc', to: '/gc' })
+    // One that waits opens People → Contracts on the paper, where a sub's company has its row and its send. It used to
+    // open GC mode's page, which shows no paper.
+    expect(agreementDoor(row({ kind: 'company_agreement', source_id: 'm2', state: 'waiting', job_id: null, facts: { status: 'sent' } }))).toEqual({ kind: 'people-contracts', to: '/people?tab=contracts&doc=m2' })
+    // An estimator's waiting line still opens nothing.
+    expect(agreementReaderDoor(row({ kind: 'company_agreement', source_id: 'm2', state: 'waiting', job_id: null, facts: { status: 'sent' } }), true)).toEqual({ kind: 'none' })
   })
 
   it('a paper that was never sent opens nothing: its acts are on its line', () => {

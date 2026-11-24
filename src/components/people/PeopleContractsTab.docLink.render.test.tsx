@@ -4,9 +4,12 @@
  * Documents → Agreements writes that address for a paper that is not signed, and the signing page's thank-you writes
  * it for a signed one. The choice is `contractsDocLanding`'s; this holds the wiring: the unsigned paper's row is in
  * view and marked with its Resend press and no error, and the signed paper still opens its signed record.
+ *
+ * Since v2.8436 a waiting line of a trade company's paper writes the address too: the paper is marked under its
+ * company's row, and a company no one on the roster works at says its paper is kept in GC mode. Every name is made up.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import PeopleContractsTab from './PeopleContractsTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
@@ -17,6 +20,11 @@ vi.mock('../../hooks/useAuth', async () => {
 
 const SENT = '11111111-1111-4111-8111-111111111111'
 const SIGNED = '22222222-2222-4222-8222-222222222222'
+/** A trade company a sub works at, with a paper that waits; and one no one on the roster works at. */
+const MECH = { id: 'c0000000-0000-4000-8000-000000000001', name: 'ZZ Sample Mechanical LLC' }
+const GC_ONLY = { id: 'c0000000-0000-4000-8000-000000000002', name: 'Juniper Mechanical LLC' }
+const CO_SENT = '77777777-7777-4777-8777-777777777777'
+const CO_GC_ONLY = '99999999-9999-4999-8999-999999999999'
 
 const paper = (over: Record<string, unknown>) => ({
   url: null,
@@ -45,7 +53,11 @@ const TABLE_ROWS: Record<string, unknown[]> = {
     paper({ id: SENT, person_name: 'Pat Lee', document_name: 'Job Secrecy Agreement', status: 'sent', sent_at: '2026-11-17T15:00:00Z', contract_lineage_id: 'l1' }),
     paper({ id: SIGNED, person_name: 'Pat Lee', document_name: 'W-9', status: 'signed', signed_at: '2026-11-01', contract_lineage_id: 'l2' }),
     paper({ id: '33333333-3333-4333-8333-333333333333', person_name: 'Sam Ortiz', document_name: 'W-9', status: 'signed', signed_at: '2026-10-01', contract_lineage_id: 'l3' }),
+    paper({ id: CO_SENT, person_name: `gc-company:${MECH.id}`, company_id: MECH.id, document_name: 'Subcontractor agreement', status: 'sent', sent_at: '2026-11-18T15:00:00Z', contract_lineage_id: 'l4', signer_name: null, signer_title: null }),
+    paper({ id: CO_GC_ONLY, person_name: `gc-company:${GC_ONLY.id}`, company_id: GC_ONLY.id, document_name: 'Trade agreement', status: 'sent', sent_at: '2026-11-19T15:00:00Z', contract_lineage_id: 'l5', signer_name: null, signer_title: null }),
   ],
+  person_trade_companies: [{ person_id: 'p3', company_id: MECH.id, title: 'Owner' }],
+  gc_companies: [MECH, GC_ONLY],
 }
 
 vi.mock('../../lib/supabase', () => {
@@ -74,6 +86,7 @@ vi.mock('../../lib/supabase', () => {
 const people = [
   { id: 'p1', master_user_id: 'm1', kind: 'employee', name: 'Pat Lee', email: 'pat@example.com', phone: null, notes: null },
   { id: 'p2', master_user_id: 'm1', kind: 'employee', name: 'Sam Ortiz', email: null, phone: null, notes: null },
+  { id: 'p3', master_user_id: 'm1', kind: 'sub', name: 'Lee Sample', email: null, phone: null, notes: null },
 ]
 
 function openAt(search: string) {
@@ -121,6 +134,30 @@ describe('People → Contracts deep link', () => {
     const { container } = openAt('?tab=contracts')
 
     await screen.findByText('Sam Ortiz')
+    expect(container.querySelector('[aria-current="true"]')).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('lands a trade company’s waiting paper under its company’s row, marked, and opens no signed record', async () => {
+    const { container } = openAt(`?tab=contracts&doc=${CO_SENT}`)
+
+    // The company's row is drawn over its worker once the companies are read, and the paper under it carries the mark.
+    await waitFor(() => expect(container.querySelector(`[data-sub-company-paper="${CO_SENT}"]`)?.getAttribute('aria-current')).toBe('true'))
+    const row = container.querySelector(`[data-sub-company-row="${MECH.id}"]`) as HTMLElement
+    expect(within(row).getByText('ZZ Sample Mechanical LLC')).toBeTruthy()
+    expect(within(row).getByText('Subcontractor agreement')).toBeTruthy()
+    // The send is right there, and nothing else is marked.
+    expect(within(row).getByRole('button', { name: 'Send for signature' })).toBeTruthy()
+    expect(container.querySelectorAll('[aria-current="true"]')).toHaveLength(1)
+    // The signed record window, which answers an unsigned paper with an error, stays shut.
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByText(/No one on the People list works there/)).toBeNull()
+  })
+
+  it('says a company no one on the roster works at keeps its paper in GC mode, and opens nothing', async () => {
+    const { container } = openAt(`?tab=contracts&doc=${CO_GC_ONLY}`)
+
+    expect(await screen.findByText('Trade agreement is with Juniper Mechanical LLC. No one on the People list works there, so the paper has no line on this tab. It is kept in GC mode.')).toBeTruthy()
     expect(container.querySelector('[aria-current="true"]')).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
