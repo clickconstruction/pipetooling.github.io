@@ -1,5 +1,5 @@
 -- Taking an award back (v2.8434, 20261124040000): gc_take_award_back is gc_award's mirror. Who may, each refusal in
--- its words, the drafted statement of work gone with the award, the line the undo leaves on the ask's story, and the
+-- its words, the drafted statement of work gone with the award, the line the undo leaves on the company's own call log, and the
 -- award guard still refusing a plain write of the three columns. Presses run as a signed-in person through RLS; the
 -- fixtures are made as postgres with nobody signed in; everything rolls back. Raises on the first failed assertion;
 -- ends with "gc_take_award_back PASSED". See scripts/pgtest-gc-take-award-back.sh. Never against prod.
@@ -215,7 +215,7 @@ SELECT tab.same('every case left the award as it was', (
   '00000000-0000-0000-0000-0000000a7201 draft lines 2');
 
 -- 5 · The dev takes Sitework's award back: the three columns clear, the draft and its lines go, the flag is off
--- again, what the trade carried stays, and the ask's story holds the undo with who and when.
+-- again, what the trade carried stays, and the company's own call log holds the undo with who and when.
 SELECT tab.as_user('00000000-0000-0000-0000-0000000a7d01');
 SET LOCAL ROLE authenticated;
 SELECT public.gc_take_award_back('00000000-0000-0000-0000-0000000a7b01');
@@ -224,10 +224,10 @@ SELECT tab.same('the award is clear', (
   FROM public.gc_trade_packages WHERE id = '00000000-0000-0000-0000-0000000a7b01'), 'null null null carries 00000000-0000-0000-0000-0000000a7202');
 SELECT tab.same('the draft and its lines went with it', (SELECT (SELECT count(*) FROM public.gc_sows) || ' ' || (SELECT count(*) FROM public.gc_sow_lines)), '0 0');
 SELECT tab.same('the flag is off once it returns', coalesce(current_setting('gc.award_write', true), ''), '');
-SELECT tab.same('the undo is on the ask''s story, with who and when', (
-  SELECT c.company_id || ' ' || c.invite_id || ' ' || c.by_user_id || ' ' || c.by_name || ' ' || c.how || ' ' || (c.contacted_on = public.app_today()) || ' ' || c.note
-  FROM public.gc_company_contacts c WHERE c.invite_id = '00000000-0000-0000-0000-0000000a7201'),
-  '00000000-0000-0000-0000-0000000a7101 00000000-0000-0000-0000-0000000a7201 00000000-0000-0000-0000-0000000a7d01 Takeback Dev note true Award taken back. Awarded '
+SELECT tab.same('the undo is on the company''s own call log, with who and when', (
+  SELECT coalesce(c.invite_id::text, 'no ask') || ' ' || c.by_user_id || ' ' || c.by_name || ' ' || c.how || ' ' || (c.contacted_on = public.app_today()) || ' ' || c.note
+  FROM public.gc_company_contacts c WHERE c.company_id = '00000000-0000-0000-0000-0000000a7101'),
+  'no ask 00000000-0000-0000-0000-0000000a7d01 Takeback Dev note true Award taken back on Sitework, Takeback test clinic. Awarded '
     || to_char(public.app_today(), 'Mon FMDD') || ' by Takeback Dev for $66,500. The drafted statement of work went with it.');
 SELECT tab.same('the ask and its quote are as they were', (
   SELECT i.status || ' ' || (SELECT count(*) FROM public.gc_quotes q WHERE q.invite_id = i.id) FROM public.gc_invites i WHERE i.id = '00000000-0000-0000-0000-0000000a7201'), 'bid 1');
@@ -262,8 +262,8 @@ SELECT tab.as_user('00000000-0000-0000-0000-0000000a7d01');
 SET LOCAL ROLE authenticated;
 SELECT public.gc_take_award_back('00000000-0000-0000-0000-0000000a7b02');
 SELECT tab.same('an award with no statement of work', (
-  SELECT coalesce(k.awarded_invite_id::text, 'null') || ' ' || (SELECT c.note FROM public.gc_company_contacts c WHERE c.invite_id = '00000000-0000-0000-0000-0000000a7203')
-  FROM public.gc_trade_packages k WHERE k.id = '00000000-0000-0000-0000-0000000a7b02'), 'null Award taken back. Awarded Oct 1.');
+  SELECT coalesce(k.awarded_invite_id::text, 'null') || ' ' || (SELECT c.note FROM public.gc_company_contacts c WHERE c.company_id = '00000000-0000-0000-0000-0000000a7103')
+  FROM public.gc_trade_packages k WHERE k.id = '00000000-0000-0000-0000-0000000a7b02'), 'null Award taken back on Concrete, Takeback test clinic. Awarded Oct 1.');
 RESET ROLE;
 
 DO $$ BEGIN RAISE NOTICE 'gc_take_award_back PASSED'; END $$;

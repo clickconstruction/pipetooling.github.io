@@ -8,7 +8,7 @@
 # applied in order. The take-back's migration is then applied a second time, which must change nothing. The scenario
 # awards as a dev through RLS and takes awards back, inside one transaction that rolls back: who may, each refusal
 # in its words (a statement of work sent or signed, and every record that can stand on one or on the award), the
-# draft and its lines gone with the award, the line the undo leaves on the ask's story, and the award guard still
+# draft and its lines gone with the award, the line the undo leaves on the company's own call log, and the award guard still
 # refusing a plain write. It raises on its first failed assertion and ends with "gc_take_award_back PASSED".
 # PGTEST_KEEP=1 leaves the container up. Needs docker; .github/workflows/sql-beds.yml runs it.
 # Never touches prod.

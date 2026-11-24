@@ -4663,7 +4663,7 @@ An **award** (`gc_award`, B6-a) gives a trade to one quote: it re-checks the com
 Dev only until the owner's call W: since B6-a-ii (v2.5036) a dev awards in Compare quotes once the job is won, and the trade's card shows the statement of work with **Send to their portal to sign** (guide `award-a-trade-on-a-gc-project`).
 **Take the award back…** (v2.8434, `gc_take_award_back`, the award's mirror behind the same door) undoes an award beside **Awarded** in Compare quotes: the three award columns clear and the drafted statement of work is deleted with them.
 It refuses in words a statement of work that was sent or signed, and any record that stands on one or on the award (a pay application, a back charge, a change, a paper sent for the trade, a submittal, the company's RFI or its promise).
-The undo is kept as a note on the ask's story (`gc_company_contacts`, `how` *note*) with who took it back and when, since the award's own columns are the ones it clears.
+The undo is kept as a note on the company's own call log (`gc_company_contacts` with no ask, `how` *note*) with who took it back and when, since the award's own columns are the ones it clears, and the company window's Activity shows it.
 A trade partner's **papers** (B6-b-i, v2.5041) are its master agreement, W-9 and insurance certificate, kept as contract papers keyed to the company (`person_contract_documents.company_id`, stored as `gc-company:<id>`);
 each send of one is a `gc_paper_sends` row with its promise, sent from the company window's **Documents** tab (B6-b-ii).
 The master agreement is the **Master Services Agreement** the owner is writing;

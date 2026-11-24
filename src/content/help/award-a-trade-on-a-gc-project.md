@@ -45,7 +45,7 @@ The award comes off. The drafted statement of work is deleted with it. The quote
 
 The company may have opened its portal after the award. If so, it read that it got the job. Call them when that matters.
 
-The ask keeps a note. The note says who took the award back and when.
+The company's **Activity** keeps a note. The note says who took the award back and when.
 
 ## When the award stays
 

@@ -1075,8 +1075,8 @@ export async function awardGcTrade(inviteId: string, estimatorId: string | null)
 /**
  * Take a trade's award back (v2.8434, `gc_take_award_back`, `gc_award`'s mirror): the award's three columns clear and
  * the drafted statement of work goes with them, in one transaction. The database refuses in words a statement of work
- * that was sent or signed and every record that stands on one or on the award, and writes the undo on the ask's
- * story. The function's name goes through `as never` until the types regen after the push.
+ * that was sent or signed and every record that stands on one or on the award, and writes the undo as a note on the
+ * company's own call log, which its Activity shows. The function's name goes through `as never` until the types regen after the push.
  */
 export async function takeGcAwardBack(packageId: string): Promise<void> {
   taken(await supabase.rpc('gc_take_award_back' as never, { p_package_id: packageId } as never), 'take the award back')

@@ -20,10 +20,11 @@ SET lock_timeout = '3s';
 --   * Everything else reads the award live from the three columns (the board, the send card of a sheet, our number's
 --     carry, the scorecard, the trade's portal), so it reads right once they are null. The trade goes back to what it
 --     carried: carried_invite_id and carry_budget were never touched by the award.
---   * The trace. An award is recorded only in the columns this clears, so the undo writes a line on the ask's own
---     story (gc_company_contacts, how 'note', the office's note, which is no contact with the company): the day it was
---     awarded, who awarded it and the price, and that it was taken back, by whom (by_user_id, by_name) and when
---     (contacted_on). It shows on the ask and in the company's activity.
+--   * The trace. An award is recorded only in the columns this clears, and it shows in the company's Activity as a
+--     line read from them. So the undo writes a line of the company's own on its call log (gc_company_contacts with no
+--     ask, how 'note'), which that same Activity shows: the trade and the job, the day it was awarded, who awarded it
+--     and the price, and that it was taken back, by whom (by_user_id, by_name) and when (contacted_on). A note on the
+--     ask itself would be kept and shown nowhere: the board's kernels leave an ask's notes out of its story.
 --   * SECURITY INVOKER, as gc_award: a dev's policies cover every table it reads and writes. The read-only, twin and
 --     archived fences hold as on any write, and each is refused first in its own words: the read-only fence hides the
 --     trade from a row lock, so a training dev would otherwise read "No trade with that id." No table is made, so no fence call. CREATE OR REPLACE, so
@@ -57,9 +58,10 @@ BEGIN
   IF public.caller_is_archived() THEN
     RAISE EXCEPTION 'An archived account cannot take an award back.' USING ERRCODE = '42501';
   END IF;
-  SELECT k.id, k.trade, k.awarded_invite_id, k.awarded_by, k.awarded_on, i.company_id, c.name AS company
+  SELECT k.id, k.trade, k.awarded_invite_id, k.awarded_by, k.awarded_on, i.company_id, c.name AS company, p.name AS project
   INTO v
   FROM public.gc_trade_packages k
+  JOIN public.projects p ON p.id = k.project_id
   LEFT JOIN public.gc_invites i ON i.id = k.awarded_invite_id
   LEFT JOIN public.gc_companies c ON c.id = i.company_id
   WHERE k.id = p_package_id
@@ -121,10 +123,10 @@ BEGIN
   WHERE id = p_package_id;
   PERFORM set_config('gc.award_write', '', true);
 
-  INSERT INTO public.gc_company_contacts (company_id, invite_id, contacted_on, by_name, how, note)
+  INSERT INTO public.gc_company_contacts (company_id, contacted_on, by_name, how, note)
   VALUES (
-    v.company_id, v.awarded_invite_id, public.app_today(), coalesce(v_by, ''), 'note',
-    'Award taken back. Awarded ' || coalesce(to_char(v.awarded_on, 'Mon FMDD'), 'an earlier day')
+    v.company_id, public.app_today(), coalesce(v_by, ''), 'note',
+    'Award taken back on ' || v.trade || ', ' || v.project || '. Awarded ' || coalesce(to_char(v.awarded_on, 'Mon FMDD'), 'an earlier day')
       || CASE WHEN coalesce(v_awarded, '') <> '' THEN ' by ' || v_awarded ELSE '' END
       || CASE WHEN v_sow.id IS NOT NULL THEN ' for $' || to_char(round(v_sow.price), 'FM999,999,999,990') || '. The drafted statement of work went with it.' ELSE '.' END
   );
@@ -132,7 +134,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.gc_take_award_back(uuid) IS
-  'GC mode (v2.8434): take a trade''s award back, gc_award''s mirror, dev only until call W. Refuses a training account, a digital twin and an archived caller in words, a trade not awarded, and in words a statement of work that was sent or signed or that a pay application, a back charge, a change request, a change order, a report of work or a bill day answer stands on, and an award a paper send, a submittal, the company''s RFI or its promise stands on. Else deletes the drafted statement of work with its lines, clears the award under gc.award_write, and writes the undo on the ask''s story (gc_company_contacts, how note) with who and when. SECURITY INVOKER.';
+  'GC mode (v2.8434): take a trade''s award back, gc_award''s mirror, dev only until call W. Refuses a training account, a digital twin and an archived caller in words, a trade not awarded, and in words a statement of work that was sent or signed or that a pay application, a back charge, a change request, a change order, a report of work or a bill day answer stands on, and an award a paper send, a submittal, the company''s RFI or its promise stands on. Else deletes the drafted statement of work with its lines, clears the award under gc.award_write, and writes the undo on the company''s own call log (gc_company_contacts with no ask, how note), which its Activity shows, with who and when. SECURITY INVOKER.';
 
 REVOKE ALL ON FUNCTION public.gc_take_award_back(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.gc_take_award_back(uuid) TO authenticated;
