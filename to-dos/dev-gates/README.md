@@ -11,6 +11,7 @@ summary: >
   with the code that gates it, why it was gated when it shipped, and a recommendation: keep the gate, open
   it to a named role, or open it wider behind a typed confirm. The owner decides each row.
 next: The owner's look at the doors he now opens (the walk below names the sample checked).
+ask: owner · look · Look at the doors you now open.
 size: S per row (one gate, one doc line, one test); the audit itself is done
 blocker: None. The owner decided every row on 2026-11-08: each recommendation as written.
 mockup: not required — an audit

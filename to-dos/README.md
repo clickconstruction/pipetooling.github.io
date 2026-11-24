@@ -99,6 +99,7 @@ status: built 2026-09-15 · left: the first real run on a TEST GC
 summary: >                        # one paragraph: what this is
   One modal that sends the § 53.056 notice to every owner on every job with a failing GC…
 next: The first real run on a TEST GC, then delete the folder.
+ask: owner · look · Press Send on the TEST GC's notice, then look at what the owner got.   # optional — who the card waits on · the kind · the question
 size: XS
 blocker: A live run.
 ver: v2.3469 · 3470 · 3482 · 3479
@@ -107,6 +108,15 @@ pointer: true                     # optional — a standing list, not an open it
 mockup: not required — a live test   # optional — the board says this instead of "waiting on a mock-up"
 ---
 ```
+
+**`ask:` is the question a card waits on** (punch list #438): one line, `who · kind · question`.
+*Who* is `owner`, `office`, `anyone` (a person at hand), `counsel`, `time` or `dev`. *Kind* is what is
+asked of them: `look` (open a screen and say), `read` (read a text through), `walk` (be there for a
+walk), `decide` (pick among answers) or `use` (use it for a while). The *question* is one sentence that
+person can act on, ending in a full stop or a question mark, at most 160 characters. `next:` stays the
+next act of the work; `ask:` is what a person must say or do first. Leave the line out when the card
+waits on nobody, and change it when the question changes: the board treats an answer as the answer
+only to the question it was given. `npm run check:todos` refuses a line it cannot read.
 
 Everything else in the file stays prose: the ask in the owner's words, the decision, the mock-up,
 where it plugs in, the PR train, the verify recipe, and a `## Where it stands` section where the

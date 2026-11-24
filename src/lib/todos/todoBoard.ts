@@ -23,6 +23,8 @@
  * Pure string/data work — all file IO lives in `scripts/todos/readTodos.ts`.
  */
 
+import { formatAsk, parseAsk, type CardAsk } from './punchListAsk'
+
 export const BOARD_GROUPS = ['ready', 'close', 'gated', 'waiting', 'residual'] as const
 export type BoardGroup = (typeof BOARD_GROUPS)[number]
 
@@ -73,6 +75,11 @@ export interface TodoMeta {
    * Empty when a mock-up is expected.
    */
   mockupNotRequired: string
+  /**
+   * `ask: <who> · <kind> · <question>` (punch list #438): the question the card waits on, who it
+   * waits on and what kind of thing is asked. Null when the card waits on nobody. See `punchListAsk.ts`.
+   */
+  ask: CardAsk | null
 }
 
 /** The verdict word an `opinion:` opens with. */
@@ -279,6 +286,8 @@ export function readTodoDoc(
       problem: `number "${numberText}" is not a whole number from 1 up — the row's handle on the board; take the next free one (npm run check:todos prints it).`,
     }
   }
+  const asked = parseAsk(fm.fields.ask)
+  if (asked && 'problem' in asked) return { file, problem: `${asked.problem} See to-dos/README.md.` }
   const slug = slugForFile(file)
   return {
     file,
@@ -299,6 +308,7 @@ export function readTodoDoc(
       pointer: /^true$/i.test((fm.fields.pointer ?? '').trim()),
       flagged: /^true$/i.test((fm.fields.flagged ?? '').trim()),
       mockupNotRequired: parseMockupField(fm.fields.mockup),
+      ask: asked ? asked.ask : null,
     },
   }
 }
@@ -469,6 +479,8 @@ export interface BoardItem {
   mockup: MockupState
   /** The reason when not required ('' otherwise). */
   mockupNote: string
+  /** The question the card waits on; null or absent when it waits on nobody. See `TodoMeta.ask`. */
+  ask?: CardAsk | null
 }
 
 export interface BoardData {
@@ -501,6 +513,7 @@ export function renderBoardData(docs: readonly TodoDoc[], validated: BoardData['
       artifacts: d.artifacts.map((a) => ({ label: toPlainText(a.label), url: a.url })),
       mockup: mockupState(d),
       mockupNote: toPlainText(d.meta.mockupNotRequired),
+      ask: d.meta.ask ? { ...d.meta.ask, question: toPlainText(d.meta.ask.question) } : null,
     })),
   }
 }
@@ -705,6 +718,7 @@ export function renderFrontMatter(meta: TodoMeta): string {
     ...wrap('status', meta.status),
     ...wrap('summary', meta.summary),
     ...wrap('next', meta.next),
+    ...(meta.ask ? wrap('ask', formatAsk(meta.ask)) : []),
     ...wrap('size', meta.size),
     ...wrap('blocker', meta.blocker),
     ...wrap('ver', meta.ver || '—'),

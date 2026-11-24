@@ -10,6 +10,7 @@ summary: >
   Saturday, and read their last eight weeks against it. Everything is built, tested and on main; what
   is left is the owner's look.
 next: The owner reads the walk below and the two fixes, then this folder goes (and the spike branch claude/people-utilization-tracking-745ad5 with it).
+ask: owner · look · Look at People → Utilization and the drawn week on My Time.
 size: S as what is left (the code is on main; the owner's look)
 blocker: The owner's look.
 opinion: build — the owner said ship; the branches are ready and the write-up is theirs
