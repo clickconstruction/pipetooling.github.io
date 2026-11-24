@@ -3289,6 +3289,8 @@ Checklist and Tally feature access still varies by role (see the feature matrice
 **narrow** hides pin → **Map** under **gear**;
 **`address_geocodes`** RLS: read / insert / update for every signed-in user since **`20260908035852`** (v2.3131 — the Dashboard **Your jobs on a map** card), delete for the five `/map` roles, dev / master_technician / assistant / controller / estimator (**`20270520120000_address_geocodes_estimator_map_access.sql`**;
 the controller since **`20260927220000_controller_policies_the_rest.sql`**, v2.3898);
+**`address_geocode_misses`** RLS (v2.8473, punch list #408): read / insert / update for every signed-in user, the same reach as `address_geocodes`, and no delete for anyone (**`20261124091500_address_geocode_misses.sql`**);
+a point saved to `address_geocodes` deletes its miss through the definer trigger `address_geocodes_clears_miss`, and the server stamps `checked_at` on every write;
 Edge **`geocode-address-batch`** (primary load chunks, every signed-in role) / **`geocode-one`** (**Review geocodes** Google refresh, Settings default-label, the Edit Job **On the map** line — the five `/map` roles, controller included since v2.4974;
 the line itself reads `isPathAllowedForRole(role, '/map')`).
 **`court_areas`** (v2.4768, `20261007110000`): read for every signed-in user (the **Precincts** chip, v2.4807), write `is_office_staff()` (dev · master · assistant-like);

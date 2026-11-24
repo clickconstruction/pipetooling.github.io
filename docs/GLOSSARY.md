@@ -5807,6 +5807,12 @@ Written by Edge Functions **`geocode-one`** and **`geocode-address-batch`** (see
 Client: [`useMapPageData.ts`](../src/hooks/useMapPageData.ts).
 See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) **Key Features** §16.
 
+### address_geocode_misses
+An address no map service could place, kept beside [`address_geocodes`](#address_geocodes) by the same **normalized address key**, with the reason (`error_code`, `detail`) and the day it was checked (`checked_at`, the server's clock on every write) (v2.8473, punch list #408).
+**RLS** — read, insert and update for every signed-in user, and no delete for anyone (`20261124091500`).
+A point saved to `address_geocodes` deletes its miss through the trigger `address_geocodes_clears_miss`.
+How long a miss stands before it is asked again is the geocode functions' rule, not the table's.
+
 ### Last work date (`jobs_ledger.last_work_date`)
 Cached calendar **`work_date`**: the latest among **approved**, non-rejected, non-revoked **`clock_sessions`** with **`job_ledger_id`** pointing at the job.
 Maintained by database triggers on **`clock_sessions`** (not edited in Job form).
