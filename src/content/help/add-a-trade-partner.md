@@ -77,7 +77,7 @@ A company with no quote, no ask, no work order and no contact logged can leave t
 
 A company with any history stays. Its row shows no Remove press. Use {{button:outline|Will not do it}} or {{button:outline|Cannot do it}} on its ask instead.
 
-An ask the company never heard about can come back first. Then the company can leave. See [Take an ask back](/help/follow-up-on-a-quote-from-a-trade-partner#take-an-ask-back).
+An ask the company never heard about can come back first. The company can leave after that. See [Take an ask back](/help/follow-up-on-a-quote-from-a-trade-partner#take-an-ask-back).
 
 A sub that came from Prospects goes back on the Subs lane. Its card keeps the calls logged there. The card reads *Removed from the bench* with the day.
 

@@ -88,12 +88,12 @@ An ask made on the wrong company can come back. The ask comes back only while th
 
 The ask is deleted. The company reads as never asked on that trade. You can ask them again.
 
-The button shows only on an ask the company has not heard about. These asks show no button.
+The button shows only on an ask the company has not heard about. An ask shows no button in each of these cases.
 
 - The company opened the ask in its portal.
 - We emailed them the invitation.
 - A call, a text or an email is logged on the ask.
-- Their quote is in, or the trade is awarded to them.
+- The company's quote is in, or the trade is awarded to the company.
 
 Close one of those with {{button:outline|Will not do it}} or {{button:outline|Cannot do it}}. An awarded trade comes back first. See [award a trade on a GC project](/help/award-a-trade-on-a-gc-project).
 
