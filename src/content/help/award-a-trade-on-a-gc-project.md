@@ -34,11 +34,11 @@ The app measures the award by the quote's **All in** number.
 
 ## Take an award back
 
-An award made on the wrong company can come back. It comes back only while the statement of work is still a draft.
+An award made on the wrong company can come back. The award comes back only while the statement of work is still a draft.
 
 1. Open **Compare quotes** on the trade.
 2. Press {{button:outline|Take the award back…}} beside {{chip:green|Awarded}}.
-3. Read the window. It says what goes.
+3. Read the window. The window says what goes.
 4. Press {{button:red|Take the award back}}.
 
 The award comes off. The drafted statement of work is deleted with it. The quote and the ask stay. You can award the trade again.
