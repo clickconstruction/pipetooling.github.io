@@ -2,7 +2,7 @@
 title: see what pricing sees on takeoffs
 category: Bids & Estimating
 roles: dev, master_technician, assistant, estimator
-keywords: sticks, order rounding, sold in, minimum order, 20 ft, takeoff, sheet, new 2, cost rail, what pricing sees, materials total, no takeoffs cost, needs a price, request quotes, copy from previous bid, book suggests
+keywords: narrow window, half screen, split screen, delete a row, sticks, order rounding, sold in, minimum order, 20 ft, takeoff, sheet, new 2, cost rail, what pricing sees, materials total, no takeoffs cost, needs a price, request quotes, copy from previous bid, book suggests
 order: 86
 ---
 **Sheet** on **Bids → Takeoffs** keeps the sheet you know. It adds a rail that explains what Pricing is about to work from.
@@ -34,6 +34,12 @@ Some parts are sold in packs. Copper comes in {{chip:purple|20 ft}} sticks. PEX 
 The strip's **Order rounding** tile says what the sticks add. Hover it to see how many parts round. A line whose part rounds wears the pack as a small chip beside its name. Hover the chip and it reads *105 ft needed on this bid → 120 ft (6 × 20 ft sticks)*.
 
 The extra is spread over the fixtures that use the part, so the fixture costs still add up. The rule itself lives on the Part Type or the part. See [add a part and its prices fast](/help/add-a-part-and-its-prices-fast).
+
+## In a narrow window
+
+You can keep the plans in one window and the app in another beside it. A narrow window cannot hold the sheet and the rail side by side. The rail then moves under the sheet, and the sheet has the whole width. Every panel and button of the rail is still there. Scroll to the foot of the sheet to reach them.
+
+The lines draw closer together in a narrow window. Every field and both row buttons stay on screen. On a phone the lines scroll sideways inside their own box. The drag handle and the delete stay pinned at the right edge of the box.
 
 ## Needs a price
 

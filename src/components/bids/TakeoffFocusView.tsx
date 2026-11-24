@@ -13,6 +13,8 @@ import type { MaterialTemplateWithAssemblyType, TakeoffRoughPartLineRow } from '
 import { TakeoffCoverageStrip } from './TakeoffCoverageStrip'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { Money, MoneyText } from '../Money'
+import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
+import { focusListFitsBeside } from '../../lib/bids/takeoffSheetFit'
 
 /**
  * New 1 — "One fixture at a time" (v2.2778, docs/TAKEOFFS_REFRESH_PLAN.md):
@@ -95,6 +97,21 @@ export function TakeoffFocusView({
   const [busy, setBusy] = useState<'book' | 'lines' | 'done' | null>(null)
   const focusIdRef = useRef(focusId)
   focusIdRef.current = focusId
+  // v2.8476: the fixtures list sits beside the fixture only where both fit. Narrower, it goes above, a few
+  // rows tall with its own scroll, so the line table has the whole width and the page never scrolls sideways.
+  const [viewRef, viewWidth] = useMeasuredWidth<HTMLDivElement>()
+  const listBeside = focusListFitsBeside(viewWidth)
+  const listRef = useRef<HTMLDivElement>(null)
+  // Keep the focused fixture in the list's own view: Done and the arrows move past its foot.
+  useEffect(() => {
+    const list = listRef.current
+    const row = list?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (!list || !row) return
+    // The list is positioned (pinned beside, relative above), so a row's offsetTop is measured from it.
+    const top = row.offsetTop
+    if (top < list.scrollTop) list.scrollTop = top
+    else if (top + row.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = top + row.offsetHeight - list.clientHeight
+  }, [focusId, listBeside])
   useEffect(() => {
     onFocusChange?.(focusId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -188,7 +205,7 @@ export function TakeoffFocusView({
   const sectionLabel: React.CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 
   return (
-    <div data-testid="takeoff-focus-view">
+    <div data-testid="takeoff-focus-view" ref={viewRef} data-list={listBeside ? 'beside' : 'above'}>
       <TakeoffCoverageStrip
         coverage={coverage}
         onClickUncosted={() => {
@@ -213,8 +230,8 @@ export function TakeoffFocusView({
       {countRows.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', margin: 0 }}>Add fixtures in the Counts tab first.</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 300px) minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
-          <div role="listbox" aria-label="Fixtures" style={{ display: 'flex', flexDirection: 'column', gap: 2, border: '1px solid var(--border)', borderRadius: 10, padding: 6, background: 'var(--bg-subtle)', position: 'sticky', top: 8, maxHeight: 'calc(100vh - 8rem)', overflowY: 'auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: listBeside ? 'minmax(220px, 300px) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
+          <div ref={listRef} role="listbox" aria-label="Fixtures" style={{ display: 'flex', flexDirection: 'column', gap: 2, border: '1px solid var(--border)', borderRadius: 10, padding: 6, background: 'var(--bg-subtle)', overflowY: 'auto', minWidth: 0, ...(listBeside ? { position: 'sticky', top: 8, maxHeight: 'calc(100vh - 8rem)' } : { position: 'relative', maxHeight: '13.5rem' }) }}>
             <div style={{ ...sectionLabel, padding: '4px 10px 6px' }}>
               Fixtures · {leftCount === 0 ? 'all costed' : `${leftCount} left`}
             </div>

@@ -17,6 +17,8 @@ The top strip shows **Costed**, **Materials** and **$0 lines**. **Costed** is ho
 
 The rail lists every fixture on the bid, each with a dot. Green means costed. An amber ring means no lines yet. Red means it has a $0 line. Costed fixtures show their total. Uncosted ones show **book** when the takeoff book has an entry for them. Click any fixture, or use **↑ ↓** when you are not typing in a field.
 
+In a narrow window the list sits above the fixture instead of beside it. The list shows a few fixtures at a time and scrolls by itself. The fixture you are on stays in view.
+
 ## What a fixture usually gets
 
 Above the lines, the cards answer "what did we put on this last time?":

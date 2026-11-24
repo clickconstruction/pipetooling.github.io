@@ -39,6 +39,7 @@ import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { TakeoffViewPills } from './TakeoffViewPills'
 import { TakeoffFocusView } from './TakeoffFocusView'
 import { TakeoffCostRailView } from './TakeoffCostRailView'
+import { TakeoffLinesBox } from './TakeoffLinesBox'
 import { PriceSheetDoor } from '../materials/PriceSheetDoor'
 import type { PriceSheetRowOffer, PriceSheetTakeoff } from '../materials/PriceSheetPanel'
 import { TakeoffViewChooser } from './TakeoffViewChooser'
@@ -1319,8 +1320,9 @@ export function BidsTakeoffTab({
                     }}
                   >
                   {/* overflow visible (not hidden): the part-search dropdown is position:absolute
-                      and was clipped at the container edge on the sheet's last rows. */}
-                  <div style={{ border: '1px solid var(--border)', borderRadius: 4 }}>
+                      and was clipped at the container edge on the sheet's last rows. The box measures
+                      itself and draws the table snug, or scrolling inside it, when it is narrow (v2.8476). */}
+                  <TakeoffLinesBox>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead style={{ background: 'var(--bg-subtle)' }}>
                         <tr>
@@ -1570,7 +1572,7 @@ export function BidsTakeoffTab({
                         })}
                       </tbody>
                     </table>
-                  </div>
+                  </TakeoffLinesBox>
                   </DndContext>
   )
 
