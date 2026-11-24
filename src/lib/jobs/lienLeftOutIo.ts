@@ -19,21 +19,23 @@ export async function readLienLeftOut(): Promise<LienLeftOutRow[]> {
   const data = await withSupabaseRetry(
     () =>
       supabase
-        .from('lien_run_left_out' as never)
+        .from('lien_run_left_out')
         .select('id, job_id, paper, run_day, reason, note, left_out_by, left_out_at, put_back_by, put_back_at')
         .is('put_back_at', null)
         .order('left_out_at', { ascending: true }),
     'read the papers left out of the lien run',
   )
-  return ((data ?? []) as unknown as Row[]).map(lienLeftOutFromRow)
+  return (data ?? []).map(lienLeftOutFromRow)
 }
 
 export type LienLeftOutWrite = { jobId: string; paper: LienLeftOutPaper } & ({ leftOut: true; runDay: string; reason: LienLeaveOutReason; note: string } | { leftOut: false })
 
 /** Leave a paper out of a run, or put it back. Throws with the function's own words when it refuses. */
 export async function writeLienLeftOut(w: LienLeftOutWrite): Promise<{ changed: boolean }> {
-  const args = w.leftOut ? { p_job_id: w.jobId, p_paper: w.paper, p_run_day: w.runDay, p_left_out: true, p_reason: w.reason, p_note: w.note.trim() } : { p_job_id: w.jobId, p_paper: w.paper, p_run_day: null, p_left_out: false }
-  const { data, error } = await supabase.rpc('set_lien_run_left_out' as never, args as never)
+  // A put back names no run: the function stamps every standing leave-out of the paper and reads no day. The
+  // generated types call the argument a string because it has no default, so the null is the one cast left here.
+  const args = w.leftOut ? { p_job_id: w.jobId, p_paper: w.paper, p_run_day: w.runDay, p_left_out: true, p_reason: w.reason, p_note: w.note.trim() } : { p_job_id: w.jobId, p_paper: w.paper, p_run_day: null as unknown as string, p_left_out: false }
+  const { data, error } = await supabase.rpc('set_lien_run_left_out', args)
   if (error) throw error
   const answer = (data ?? null) as { ok?: boolean; changed?: boolean; error?: string } | null
   if (!answer || answer.error || !answer.ok) throw new Error(answer?.error || (w.leftOut ? 'The paper was not left out.' : 'The paper was not put back.'))
