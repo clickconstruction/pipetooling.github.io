@@ -164,7 +164,7 @@ The card **Send the sheet to this job's trades** lists every trade asked to quot
 3. Press {{button:outline-blue|Send it to them}}.
 4. Pick who at the company gets the email.
 5. Read the note and change it if you want.
-6. Press the blue button. It names the person, like {{button:blue|Send to Dana}}.
+6. Press the blue button. The button names who gets the email, like {{button:blue|Send to Dana Whitlock}}.
 
 The trade gets an email with a link to their own page. The sheet is on that page.
 

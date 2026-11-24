@@ -125,7 +125,7 @@ A GC here is a customer who is the GC on a job with you. The card **Send it to a
 4. Pick who at the GC gets the email.
 5. Pick what it is about. *All their jobs with you* is the choice it starts on.
 6. Read the note and change it if you want.
-7. Press the blue button. The button names the person, like {{button:blue|Send to Dana}}.
+7. Press the blue button. The button names who gets the email, like {{button:blue|Send to Dana Whitlock}}.
 
 The GC gets an email with a link to their own page. The builder is on that page. One about a job sits under that job's name. One about all their jobs sits at the top.
 

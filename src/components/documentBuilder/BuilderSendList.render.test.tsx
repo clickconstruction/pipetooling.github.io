@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The Document builder's send list (punch list #404, step 5): a row a party with where the send stands, the box that
- * sends to one and names the person on its press, a page that is off kept off, an unread revision held until the box
+ * sends to one and names the contact whole on its press, a page that is off kept off, an unread revision held until the box
  * is ticked, and the one press that sends to everyone ready, names who it held and keeps going past one that fails.
  * Every name here is made up.
  */
@@ -62,14 +62,25 @@ describe('BuilderSendList', () => {
     expect(screen.getByText('Each send is kept under Sent copies on Documents.')).toBeTruthy()
   })
 
+  it('names a contact that is no person by its whole name, never by its first word', () => {
+    // A GC's first contact is the customer's own record, named for the company. The second is a made-up test row.
+    const gc = party('zzgc', 'ZZ TEST GC On Notice', { contacts: [{ name: 'ZZ TEST GC On Notice', email: 'office@zzgc.test' }, { name: 'ZZ Test Sink', email: 'sink@zzgc.test' }] })
+    draw({ parties: [gc], noun: ['GC', 'GCs'], showAbout: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Send it to ZZ TEST GC On Notice' }))
+    expect(screen.getByRole('button', { name: 'Send to ZZ TEST GC On Notice' })).toBeTruthy()
+    fireEvent.change(screen.getByRole('combobox', { name: 'To' }), { target: { value: 'sink@zzgc.test' } })
+    expect(screen.getByRole('button', { name: 'Send to ZZ Test Sink' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Send to ZZ' })).toBeNull()
+  })
+
   it('opens a box that names the person on its press, and sends the note to who was picked', async () => {
     const props = draw()
     fireEvent.click(screen.getByRole('button', { name: 'Send it to Lone Mesa Excavation' }))
-    expect(screen.getByRole('button', { name: 'Send to Ben' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Send to Ben Winters' })).toBeTruthy()
     fireEvent.change(screen.getByRole('combobox', { name: 'To' }), { target: { value: 'cy@lonemesa.test' } })
     expect(screen.getByRole('option', { name: 'Cy Doyle, office' })).toBeTruthy()
     fireEvent.change(screen.getByRole('textbox', { name: 'A note to them' }), { target: { value: 'A made-up note.' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Send to Cy' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Cy Doyle' }))
     await waitFor(() => expect(props.onSend).toHaveBeenCalledTimes(1))
     expect(props.onSend).toHaveBeenCalledWith(PARTIES[1], { name: 'Cy Doyle', email: 'cy@lonemesa.test', role: 'office' }, 'A made-up note.', 'first', false, null)
     await waitFor(() => expect(screen.queryByRole('textbox', { name: 'A note to them' })).toBeNull())
@@ -79,14 +90,14 @@ describe('BuilderSendList', () => {
     draw()
     fireEvent.click(screen.getByRole('button', { name: 'Send it to Hilltop Electric' }))
     expect(screen.getByText('Hilltop Electric has no page yet. Sending makes one.')).toBeTruthy()
-    expect((screen.getByRole('button', { name: 'Send to Noor' }) as HTMLButtonElement).disabled).toBe(false)
+    expect((screen.getByRole('button', { name: 'Send to Noor Abbasi' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('never turns a page back on: the send is dead, and turning the page on is its own press', async () => {
     const props = draw()
     fireEvent.click(screen.getByRole('button', { name: 'Send it to Tollgate Mechanical' }))
     expect(screen.getByText(/Their page was turned off on Oct 3\. A send never turns a page back on\./)).toBeTruthy()
-    expect((screen.getByRole('button', { name: 'Send to Pat' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Send to Pat Lindqvist' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Turn their page on' }))
     await waitFor(() => expect(props.onTurnPageOn).toHaveBeenCalledWith(PARTIES[4]))
     expect(props.onSend).not.toHaveBeenCalled()
@@ -176,7 +187,7 @@ describe('BuilderSendList', () => {
     const about = screen.getByRole('combobox', { name: 'What it is about' }) as HTMLSelectElement
     expect([...about.options].map((o) => o.textContent)).toEqual(['All their jobs with you', 'Pike Street clinic · Job 1180'])
     fireEvent.change(about, { target: { value: 'j1' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Send to Dana' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Dana Whitlock' }))
     await waitFor(() => expect(props.onSend).toHaveBeenCalledTimes(1))
     expect(vi.mocked(props.onSend).mock.calls[0]?.[5]).toBe('j1')
   })
@@ -185,7 +196,7 @@ describe('BuilderSendList', () => {
     const gc = party('northgate', 'Northgate Builders', { contacts: [{ name: 'Dana Whitlock', email: 'dana@northgate.test' }], jobs: [{ id: 'j1', label: 'Pike Street clinic · Job 1180' }] })
     const props = draw({ parties: [gc], showAbout: true })
     fireEvent.click(screen.getByRole('button', { name: 'Send it to Northgate Builders' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Send to Dana' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Dana Whitlock' }))
     await waitFor(() => expect(props.onSend).toHaveBeenCalledTimes(1))
     expect(vi.mocked(props.onSend).mock.calls[0]?.[5]).toBeNull()
     cleanup()
@@ -224,9 +235,9 @@ describe('BuilderSendList', () => {
   it('names the reason when one send is refused', async () => {
     draw({ onSend: vi.fn(async () => ({ ok: false as const, error: 'That company is not on this job.' })) })
     fireEvent.click(screen.getByRole('button', { name: 'Send it to Pecos Insulation' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Send to Gil' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send to Gil Marsh' }))
     expect((await screen.findByRole('alert')).textContent).toBe('That company is not on this job.')
-    expect(screen.getByRole('button', { name: 'Send to Gil' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Send to Gil Marsh' })).toBeTruthy()
   })
 
   it('is dead until the sheet is published, and says what to do first', () => {
