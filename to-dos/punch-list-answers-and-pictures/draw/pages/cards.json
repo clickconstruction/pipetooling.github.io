@@ -1,0 +1,1730 @@
+[
+ {
+  "number": 111,
+  "name": "Training: courses the crew takes at their own pace",
+  "short": "Training courses",
+  "what": "A Training card at the foot of the Dashboard shows each person the courses their role must take, in red, amber or green. A course is a page of short lessons, each with a check. A dev sets each course's policy in Settings → Training.",
+  "stands": "Built and live since 2026-10-16 (six PRs, then v2.5624). Every course has stood On since 2026-10-18. As of 2026-11-08 nobody had passed a final check.",
+  "waits": "The owner's correction pass over the card's Read-through: 34 doubted facts in the OSHA 30 refresher, the three starred rows first. Then the first crew member through a lesson. The only press left is his: Off, if the course should not be live before his corrections.",
+  "say": [
+   "Go ahead. Leave the courses On while he works through the 34 rows.",
+   "Change: turn the OSHA 30 refresher Off until his corrections are in."
+  ],
+  "calls": [
+   {
+    "call": "Who must take the OSHA 30 refresher",
+    "pick": "Helpers, subcontractors, primaries, masters and superintendents. The office is optional."
+   },
+   {
+    "call": "The clock",
+    "pick": "Good for 12 months, amber from 30 days before the day."
+   },
+   {
+    "call": "The pass rule",
+    "pick": "Every lesson check right, with retries, and 14 of 20 on the final check."
+   },
+   {
+    "call": "The record",
+    "pick": "Who, course, version, day and score. A CSV export is a later card."
+   },
+   {
+    "call": "The word training",
+    "pick": "Both stay for now. The read-only flag keeps the words training mode."
+   },
+   {
+    "call": "Spanish",
+    "pick": "Later, after the English course has been through a crew."
+   },
+   {
+    "call": "Blocking",
+    "pick": "A lapsed course never blocks the clock or a job."
+   }
+  ],
+  "calls_title": "The seven calls, each built to its pick",
+  "extra": {
+   "title": "The three starred rows",
+   "items": [
+    "Lessons 8 and 22 disagree on whether a net prevents a fall.",
+    "The final check's table saw question explains itself with silica. Lesson 16 says wood has none.",
+    "Lesson 28 teaches that a rubber-coated tool is insulated."
+   ]
+  },
+  "differs": "Settings → Training lists four courses. The card speaks of three. Intro to HVAC arrived on 2026-11-21 from another card and is drawn Off.",
+  "pictures": [
+   {
+    "file": "111-dashboard-red-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The Training card at the foot of the Dashboard in red: two courses to do, Continue on the refresher at 12 of 30 lessons, and an offered course under Available.",
+    "w": 748,
+    "h": 630
+   },
+   {
+    "file": "111-dashboard-red-phone-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "dark",
+    "caption": "The same red card in the dark theme.",
+    "w": 748,
+    "h": 630
+   },
+   {
+    "file": "111-dashboard-amber-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "Amber: the refresher was passed almost a year ago and is due again in 14 days, so the press reads Take it again.",
+    "w": 748,
+    "h": 706
+   },
+   {
+    "file": "111-dashboard-green-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "Green: You are caught up, with each course's day and a quiet Read it again.",
+    "w": 748,
+    "h": 706
+   },
+   {
+    "file": "111-lesson-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The course page opens where the person stopped: lesson 13 of the OSHA 30 refresher, with Why it matters and Must know.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "111-lesson-check-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "Check yourself at the foot of the lesson: a wrong pick says why and offers Try again, a right pick turns green, and the lesson is done when all four are right.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "111-settings-training-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Dev",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Settings → Training: each course with its On switch, Required for roles, Also open to, Good for months, where everyone stands and Everyone takes it again.",
+    "w": 984,
+    "h": 1361
+   },
+   {
+    "file": "111-settings-osha-who-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Dev",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The refresher's policy with See who opened: who is not done, who is due soon and who is current, worst first.",
+    "w": 984,
+    "h": 398
+   }
+  ],
+  "where": "training",
+  "group": "The owner's look, read or walk"
+ },
+ {
+  "number": 119,
+  "name": "Intro to plumbing: how water comes in and goes out, in drawings",
+  "short": "Intro to plumbing",
+  "what": "The second training course: thirty five-minute lessons, in drawings, on how a house's water comes in under pressure and goes out by gravity.",
+  "stands": "Built 2026-10-18 in six PRs (v2.5610 to v2.5613, v2.5619, v2.5621). On since that day: offered to every role, required of helpers, good for 120 months.",
+  "waits": "The owner's correction pass over the card's Read-through: 25 doubted facts. Sixteen of them hang on one call: which code the numbers follow, the IPC or the UPC.",
+  "say": [
+   "Go ahead. It stays On while he corrects the 25 rows.",
+   "Change: the numbers follow the UPC, not the IPC."
+  ],
+  "calls": [
+   {
+    "call": "Who must take it",
+    "pick": "Required of helpers, offered to every other role. The live row also names devs."
+   },
+   {
+    "call": "The name on the card",
+    "pick": "Intro to plumbing."
+   },
+   {
+    "call": "Gas",
+    "pick": "Its own course, after electrical."
+   },
+   {
+    "call": "Brands and the stock",
+    "pick": "No brands, the common sizes only."
+   },
+   {
+    "call": "The code the numbers cite",
+    "pick": "The International Plumbing Code where it gives a number, until the owner names the code."
+   },
+   {
+    "call": "The clock",
+    "pick": "Good for 120 months, so a required helper takes it once."
+   }
+  ],
+  "calls_title": "The six calls, each built to its pick",
+  "pictures": [
+   {
+    "file": "119-water-in-valves-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "Water in, lesson 9: three valves drawn with the water going through them, the supply pipe narrow and blue, a black arrow for flow and a red one for the flow a check valve stops.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "119-water-out-trap-phone-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "dark",
+    "caption": "Water out, lesson 13, in the dark theme: the wide drain pipe, the hatched trap seal and the dotted sewer gas arrow that stops at it.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "119-water-out-fittings-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "Water out, lesson 17: a sanitary tee and a wye, each drawn with waste water going through it.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "119-conditions-clog-strip-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The two together, lesson 21: a condition strip of three still frames, at rest, a clog and the cleanout.",
+    "w": 780,
+    "h": 1688
+   }
+  ],
+  "where": "intro-plumbing",
+  "group": "The owner's look, read or walk"
+ },
+ {
+  "number": 125,
+  "name": "The customer's conversation on the Pipeline row and in its Job activity",
+  "short": "The customer's conversation",
+  "what": "A customer's calls, texts and emails now read on the Pipeline row's activity box, in the expanded Job activity with Reply and Tie to this job, and on the phone row.",
+  "stands": "Built and live in seven PRs: v2.6683, 6689, 6690, 6691 (the read, the box, the filter, Reply and Tie), 6700, 6710, 6717 (the doors), and v2.6692 for the phone row. Walked read-only on 2026-11-08.",
+  "waits": "The owner's look. The owner texts the company number from the test phone on the ZZ Test customer's thread, then looks at the box, Reply, Tie and the phone row. Then the three doors on a ZZ Test customer.",
+  "say": [
+   "Go ahead. Fix the bar and Nobody has answered first, then the text from the test phone and the look.",
+   "Change: the phone row's third line should carry the newest note too."
+  ],
+  "calls": [
+   {
+    "call": "The box: a, b or c",
+    "pick": "a. Their newest three lines in the box, unnumbered under an orange tag."
+   },
+   {
+    "call": "What Customer means",
+    "pick": "Everything the customer got or sent. The events stay under Billing too. Their payment is left out."
+   },
+   {
+    "call": "Reply on which lines",
+    "pick": "On the customer's lines only."
+   },
+   {
+    "call": "A text door from the row",
+    "pick": "It opens the customer's box filled, with its confirm. It never sends in the press. A tech texts from Job Mode and does not email."
+   },
+   {
+    "call": "The contract's typed number",
+    "pick": "Add it to the contact, asked with one chip on the send."
+   },
+   {
+    "call": "Notes on the phone row",
+    "pick": "Still open. Today the third line is the customer's newest line alone."
+   }
+  ],
+  "calls_title": "The six calls, five taken and one open",
+  "differs": "The row's box draws no bar and no *Nobody has answered.*, and the speech bubble draws no dot. These are the things the owner's text is meant to show. In the code on main the waiting list is keyed `pipeline:<job id>` while the row asks by the bare job id, and the box's scroll area cuts the bar off. The phone row and the expanded Job activity do draw the bar. Nothing was fixed.",
+  "could_not": "The bar and *Nobody has answered.* in the row's box, since the built app does not draw them. Tie's Undo and a sent reply were not pressed. The card's mock-up was left out because it carries an address that reads real.",
+  "pictures": [
+   {
+    "file": "125-row-box-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The Pipeline row's activity box: note 3 keeps its number, and the two texts sit under the orange Text tag with Sam's line tinted. No bar and no Nobody has answered. draw.",
+    "w": 2060,
+    "h": 408
+   },
+   {
+    "file": "125-job-activity-reply-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "See all, with the Customer filter on: the contract's lines beside the texts, Tie to this job and Another job… on the untied email, and Reply opened under Replying to Sam's text. The picture is cut above the reply box's own words.",
+    "w": 1494,
+    "h": 908
+   },
+   {
+    "file": "125-phone-row-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The phone row's third line: Sam, text, today, with the bar. The words are cut short beside the chip.",
+    "w": 780,
+    "h": 400
+   },
+   {
+    "file": "125-row-box-desk-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "dark",
+    "caption": "The same row's box in the dark theme.",
+    "w": 2060,
+    "h": 408
+   }
+  ],
+  "where": "pipeline-customer-conversation",
+  "group": "The owner's look, read or walk"
+ },
+ {
+  "number": 284,
+  "name": "People → Utilization and the drawn week",
+  "short": "People → Utilization",
+  "what": "The office reads the hours each person said they can work against the hours the clock recorded, by pay week, and each person draws the week they can work on My Time.",
+  "stands": "On main since 2026-11-08 in four PRs (v2.6707 to v2.6709). Walked on a dev server as the dev, the Sample assistant and the Sample helper.",
+  "waits": "The owner's look. Then the card's folder is deleted.",
+  "say": [
+   "Go ahead. He has looked, delete the folder.",
+   "Change: a long day starts at 10 hours, not 8."
+  ],
+  "calls": [
+   {
+    "call": "A long day",
+    "pick": "Over 8 hours, not 10."
+   },
+   {
+    "call": "Who may set another person's hours",
+    "pick": "The clock's readers: dev, controller, assistant and a pay-approved leader."
+   },
+   {
+    "call": "Subs on the board",
+    "pick": "Yes."
+   },
+   {
+    "call": "A person sees their own percent",
+    "pick": "Yes."
+   }
+  ],
+  "calls_title": "The four calls, each built to its pick",
+  "differs": "My Time has been reworked since the card was written. The card says Save reads the week back in words and that a person sees their own percent. The screen now shows one line, *The office has your week as 38 h*, and hours on the eight bars with no percent.",
+  "pictures": [
+   {
+    "file": "284-utilization-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Controller",
+    "width": "desk",
+    "theme": "light",
+    "caption": "People → Utilization: the week in words, five tiles, then the field crew and the office with eight weeks of bars, last week against their hours and a read for each person.",
+    "w": 1280,
+    "h": 1500
+   },
+   {
+    "file": "284-utilization-weeks-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Controller",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Weeks pressed on one row: each pay week with hours worked, hours they could work and the read. The week of Nov 1 shows 8 h off for a day off.",
+    "w": 1230,
+    "h": 498
+   },
+   {
+    "file": "284-set-hours-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Controller",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Change pressed on a helper: the office sees and can redraw the week, here Monday to Thursday 7 to 3 and Friday 7 to 1, 38 h a week.",
+    "w": 560,
+    "h": 1048
+   },
+   {
+    "file": "284-utilization-desk-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Controller",
+    "width": "desk",
+    "theme": "dark",
+    "caption": "The top of the board in the dark theme.",
+    "w": 1280,
+    "h": 890
+   },
+   {
+    "file": "284-my-time-ask-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "My Time before the person has answered: the last 8 weeks and the line How many hours a week can you work? with Set hours.",
+    "w": 780,
+    "h": 1072
+   },
+   {
+    "file": "284-draw-week-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The drawn week on a phone: Hours you can work, painted by pressing and sweeping, with Friday ending at 1.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "284-my-time-drawn-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "My Time after the week is drawn: one line with the total, 38 h, and Change.",
+    "w": 780,
+    "h": 1072
+   }
+  ],
+  "where": "people-utilization",
+  "group": "The owner's look, read or walk"
+ },
+ {
+  "number": 396,
+  "name": "The pace card, shown: stages as a rail, fewer words, and presses of its own",
+  "short": "The pace card, shown",
+  "what": "The superintendent's pace card on the short Job Mode page shows the job instead of telling it: the stages as a rail that ends in the finish day, Set the % on the stage in hand, and two new presses, Ask a master and My finish date.",
+  "stands": "Built and live since 2026-11-19: v2.7797 the card's new face, v2.7803 Ask a master, v2.7807 and v2.7808 My finish date, v2.7811 his date on the Projects board, v2.7910 other bid lines folded into one row. Walked live as the Sample superintendent.",
+  "waits": "The owner's walk with one real superintendent on his own phone, on a real project of his. That walk also carries the three questions punch list #384 left.",
+  "say": [
+   "Go ahead. Set up the walk with one superintendent on his own phone.",
+   "Change: put a label on each of the two thin bars on the folded row."
+  ],
+  "calls": [
+   {
+    "call": "Does his finish date move the plan or the score?",
+    "pick": "No. It is his word beside the plan. The plan and the score stay the office's."
+   },
+   {
+    "call": "Who gets the question?",
+    "pick": "The master on the job. The office can read it."
+   },
+   {
+    "call": "Where does the month's score go?",
+    "pick": "Behind How this is figured, since it changes once a month."
+   },
+   {
+    "call": "Bid lines that are not stages",
+    "pick": "Yes, fold them. The stages keep their names and every other line is one last row, Other work."
+   }
+  ],
+  "calls_title": "The four calls, each built to its pick",
+  "differs": "The open card's face is now called Job pace and draws two bars, Hours used and Work done, under the headline *On track*. The card's text says one hours bar and *On pace*. The change came from the owner's walk of 2026-11-20, after the card was written.",
+  "pictures": [
+   {
+    "file": "396-folded-row-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Superintendent",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The short Job Mode page: the folded pace row reads On track, the finish day, and two thin bars, blue for the work and amber for the hours.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "396-open-card-track-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Superintendent",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The open card on a job that is on track: the stages as a rail ending in Finish, Set the % on the stage in hand, his own day under You said, then My finish date and Ask a master.",
+    "w": 780,
+    "h": 1548
+   },
+   {
+    "file": "396-my-finish-date-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Superintendent",
+    "width": "phone",
+    "theme": "light",
+    "caption": "My finish date, pressed: the plan's day, the working days after it, Another day, and a line for what is in the way.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "396-ask-a-master-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Superintendent",
+    "width": "phone",
+    "theme": "light",
+    "caption": "Ask a master, pressed: quick questions that name the stage in hand, a line to type, and the numbers that go with it.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "396-open-card-behind-phone-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Superintendent",
+    "width": "phone",
+    "theme": "dark",
+    "caption": "The same card in dark on a job that is behind: the gap in hours, the question Still finishing Fri, Dec 11? with Yes and Pick a day, and At this pace as a second flag on the rail.",
+    "w": 780,
+    "h": 1986
+   }
+  ],
+  "where": "pace-card-shown",
+  "group": "The owner's look, read or walk"
+ },
+ {
+  "number": 426,
+  "name": "My Bids and Recent Reports on the Dashboard: one swipe to put a row away",
+  "short": "My Bids and Recent Reports",
+  "what": "My Bids groups a person's bids by state. Recent Reports keeps its heading on one row. On both, a swipe to the left puts a row away, with Undo and a folded group at the foot that holds it.",
+  "stands": "All six steps are merged and live: v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 (the column, pushed 2026-11-23) and v2.8370, the client that reads and writes it. My Bids was walked on the live site in the lens frame on 2026-11-24, read only, and it held.",
+  "waits": "The owner tries the swipe on his phone. Then retire the card.",
+  "say": [
+   "Go ahead. He tried the swipe on his phone. Retire the card.",
+   "Change: the swipe should uncover the press and wait for a tap."
+  ],
+  "calls": [
+   {
+    "call": "1. The swipe, on both cards",
+    "pick": "A. Let go to put away, with Undo."
+   },
+   {
+    "call": "2. My Bids: what a press on a bid opens",
+    "pick": "One press per bid, which opens the bid's window. The two doors alternative is not built."
+   },
+   {
+    "call": "3. My Bids: a hidden bid with unread updates",
+    "pick": "It shows again until Mark read."
+   },
+   {
+    "call": "4. My Bids: where Hidden is kept",
+    "pick": "It follows the person to every device."
+   },
+   {
+    "call": "5. My Bids: a bid archived from the board",
+    "pick": "The card leaves it out."
+   },
+   {
+    "call": "6. Recent Reports: the put away state",
+    "pick": "Opened is the one put away state. The Done press goes."
+   },
+   {
+    "call": "7. Recent Reports: the list",
+    "pick": "It refills as it is cleared, eight at a time from the last 14 days."
+   },
+   {
+    "call": "8. Recent Reports: a press on the name",
+    "pick": "It opens the report. Job detail stays inside the opened report."
+   }
+  ],
+  "calls_title": "The eight calls, each built to its pick",
+  "differs": "These pictures were drawn before v2.8464, which made Undo and a bid window's ✕ easier to tap on a phone.",
+  "pictures": [
+   {
+    "file": "426-my-bids-groups-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Estimator",
+    "width": "phone",
+    "theme": "light",
+    "caption": "My Bids grouped by state: Unsent open with a past due bid and a bid with no due date in red, a sent bid drawn in its folded group because it has an unread note, and Won, Started or Complete and Hidden folded with their counts.",
+    "w": 780,
+    "h": 1936
+   },
+   {
+    "file": "426-my-bids-mid-swipe-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Estimator",
+    "width": "phone",
+    "theme": "light",
+    "caption": "A bid mid swipe under a real touch: the row has slid left past the mark and the strip under it has turned blue and reads Hide.",
+    "w": 780,
+    "h": 1120
+   },
+   {
+    "file": "426-my-bids-undo-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Estimator",
+    "width": "phone",
+    "theme": "light",
+    "caption": "After letting go: the green toast names the bid with Undo, and the Hidden group at the foot, opened here, holds it with Show again.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "426-recent-reports-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Leader",
+    "width": "phone",
+    "theme": "light",
+    "caption": "Recent Reports: the heading and its 7 new badge on one row, a divided list, the Opened group folded, and the presses at the foot, Mark 7 opened, Email reports and View all.",
+    "w": 780,
+    "h": 1228
+   },
+   {
+    "file": "426-my-bids-groups-phone-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Estimator",
+    "width": "phone",
+    "theme": "dark",
+    "caption": "My Bids in dark, as the owner's own screenshot was: the same groups, edges and counts.",
+    "w": 780,
+    "h": 1936
+   }
+  ],
+  "where": "my-bids-refresh",
+  "group": "The owner's look, read or walk"
+ },
+ {
+  "number": 188,
+  "name": "Dev gates: every door only a dev, the controller or the owner may open",
+  "short": "Dev gates",
+  "what": "An audit of 124 doors that only a dev, the controller or the owner could open. Each was opened to a role, opened behind a typed confirm, or kept as a gate with its risk named.",
+  "stands": "Shipped 2026-11-09, v2.6753 to v2.6767. 71 doors opened to a role (44 to the owner, 16 to the controller, 10 to the office, 1 to the estimators). 8 opened behind a typed confirm. 45 kept as gates.",
+  "waits": "The owner's look at the doors he now opens. Nothing else.",
+  "say": [
+   "Go ahead. He has looked, close the card.",
+   "Change this door: close it again, or open it wider."
+  ],
+  "calls": [
+   {
+    "call": "Jobs, Crew P&L. People, Review and Scoreboard (rows 1 to 3)",
+    "pick": "Opened to the owner, v2.6757."
+   },
+   {
+    "call": "Settings, People & teams: Quick time add, Typed hours, the dispatch groups, Find duplicates (rows 8 to 13)",
+    "pick": "Opened to the owner, and Additional People to the office, v2.6755."
+   },
+   {
+    "call": "Settings tabs Training, Usage, Emails & reports, What the team sees (rows 4 to 7)",
+    "pick": "Opened to the owner, v2.6753 and v2.6762."
+   },
+   {
+    "call": "Settings, Jobs & billing cards (rows 19 to 26)",
+    "pick": "Prices and law firms to the owner, the bill's wording and HCP reconcile to the controller, developments to the office, v2.6755 and v2.6756."
+   },
+   {
+    "call": "Pipeline money: Weekly money movement, the two charts, overhead dials, coverage floor (rows 38 to 45)",
+    "pick": "Opened to the owner, pay-speed math to the controller, v2.6759."
+   },
+   {
+    "call": "Banking: Stripe, Ledger, account nicknames, Import CSV. Tally payroll rules. Forms (rows 51 to 62)",
+    "pick": "Opened to the controller, v2.6761."
+   },
+   {
+    "call": "The Bridge, Moneyfill, Templates, a course that is off (rows 68 to 71)",
+    "pick": "Opened to the owner, and Quickfill's edit modes to the office, v2.6763."
+   },
+   {
+    "call": "Settings, Bids & materials (rows 27 to 29, 63)",
+    "pick": "The estimators' blocks to the estimators, the customer wording and the cost of estimating to the owner, v2.6764."
+   },
+   {
+    "call": "Eight deletes and sweeps (rows 72 to 79)",
+    "pick": "Opened behind a typed confirm: a supply house to the office, a report and a write-up to the owner, a pay report and draft bills to the controller, duplicate parts to the estimators, v2.6765 and v2.6766."
+   },
+   {
+    "call": "45 gates kept (rows 80 to 124)",
+    "pick": "View as, HR, Feedback, Day book, Data & recovery, invites, the Legal desk's release and the GC doors stay, each with its risk named in the access doc, v2.6767."
+   }
+  ],
+  "calls_title": "The doors that changed",
+  "differs": "On People & teams, two cards the owner now opens still say *(dev)* in their titles: Assistant hours visibility (dev) and Bulk hours alert (dev). Banking's empty Ledger offers the controller *Refresh from Mercury*, while the audit keeps Sync from Mercury a dev's.",
+  "pictures": [
+   {
+    "file": "188-bridge-owner-desk-light.webp",
+    "kind": "app",
+    "rows": "lens",
+    "role": "Leader",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The Bridge, opened as the owner. It was a dev's page until v2.6763 (row 69).",
+    "w": 1280,
+    "h": 820
+   },
+   {
+    "file": "188-people-teams-owner-desk-light.webp",
+    "kind": "app",
+    "rows": "lens",
+    "role": "Leader",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Settings, People & teams as the owner. The tab was empty for him. It now draws Find duplicates, the two groups, Quick time add and Typed hours (rows 8 to 13).",
+    "w": 1010,
+    "h": 1010
+   },
+   {
+    "file": "188-banking-ledger-controller-desk-light.webp",
+    "kind": "app",
+    "rows": "lens",
+    "role": "Controller",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Banking as the controller. The Stripe segment, the Ledger tab and Nicknames were a dev's until v2.6761 (rows 51 to 53). The lens has no bank rows, so the table is empty.",
+    "w": 1280,
+    "h": 520
+   },
+   {
+    "file": "188-typed-confirm-office-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "A door opened behind a typed confirm. An assistant deletes a supply house only by typing its name (row 72).",
+    "w": 1280,
+    "h": 620
+   },
+   {
+    "file": "188-dev-doors-card-dev-desk-light.webp",
+    "kind": "app",
+    "rows": "lens",
+    "role": "Dev",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Settings, Dev doors, as a dev. The map of every door still gated, each a link with who may open it.",
+    "w": 1010,
+    "h": 760
+   },
+   {
+    "file": "188-bridge-owner-desk-dark.webp",
+    "kind": "app",
+    "rows": "lens",
+    "role": "Leader",
+    "width": "desk",
+    "theme": "dark",
+    "caption": "The Bridge as the owner in the dark theme.",
+    "w": 1280,
+    "h": 820
+   }
+  ],
+  "where": "dev-gates",
+  "group": "The owner's look, read or walk"
+ },
+ {
+  "number": 189,
+  "name": "Phone first: the five screens a tech touches, with one thumb and a camera",
+  "short": "Phone first",
+  "what": "The five screens a tech uses every day, rebuilt for one thumb: a press bar pinned above the tab bar on Job Mode, the On my way sheet, a field report that opens on the camera, the percent stepper by stage, and a bar at the bottom of the job window.",
+  "stands": "Every PR of the train is built, live and run on ZZ test jobs: v2.5905, 5910, 6076, 6083, 6089, 6091, 6092, 6126, 6219, 6265, 6738.",
+  "waits": "The owner's read of the run. Nothing else is left.",
+  "say": [
+   "Go ahead. He read the run. Close the card.",
+   "Change this press on this screen: ..."
+  ],
+  "calls": [
+   {
+    "call": "1. The train",
+    "pick": "The press bar and the job window's bar first, then the percent by stage, the camera, 44 px presses, Leaving and clock out."
+   },
+   {
+    "call": "2. Native",
+    "pick": "Stay a home screen web app."
+   },
+   {
+    "call": "3. The clock out note",
+    "pick": "Filled from the day's reports and editable, so the usual press is one."
+   },
+   {
+    "call": "4. A report's photos when the job has no Drive folder",
+    "pick": "The bucket keeps the photo and the report card says not in Drive yet."
+   },
+   {
+    "call": "5. The manual Clock In's typed plan",
+    "pick": "It stays."
+   },
+   {
+    "call": "6. What Leaving opens",
+    "pick": "The On my way sheet for the next job when the day has one. With none, Update Focus."
+   }
+  ],
+  "calls_title": "The six calls, each built to its pick",
+  "differs": "The row over the two big presses shows two of its three presses for each person drawn here. Paco the tech gets Turnaway and Clock out. Hal the helper gets Turnaway and % done.",
+  "could_not": "The camera itself. A headless browser has none. The press did ask for the camera, and the report is shown as it stands when the camera is cancelled.",
+  "pictures": [
+   {
+    "file": "189-job-mode-press-bar-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Tech (Primary)",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The Job Mode card as Paco at 11:25 AM: the day's press, On my way, sits in a bar pinned above the tab bar with Leave report beside it and Turnaway and Clock out over them.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "189-on-my-way-sheet-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Tech (Primary)",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The On my way sheet: the next job suggested, the text the customer gets with the minutes guessed and a minus and plus to change them, what the press does, and the two presses at the foot.",
+    "w": 780,
+    "h": 1460
+   },
+   {
+    "file": "189-field-report-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Tech (Primary)",
+    "width": "phone",
+    "theme": "light",
+    "caption": "Leave report as it stands after the camera: Take a photo is the first tile, each stage is a row with quick picks, a minus 5 and plus 5, and Save names what it writes.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "189-my-schedule-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "My Schedule as Hal: the day's job with its percent bar and the two 44 px presses, Leave Report and Update % done.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "189-my-schedule-stepper-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "light",
+    "caption": "Update % done, pressed: the stepper is a sheet from the bottom with every stage in view, the open stage's picks, the Job line under it, Not now and Save.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "189-job-window-bar-phone-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Helper",
+    "width": "phone",
+    "theme": "dark",
+    "caption": "The job window as a helper, in dark: the bar at the bottom carries Leaving, Leave report and Note.",
+    "w": 780,
+    "h": 1688
+   }
+  ],
+  "where": "phone-first",
+  "group": "The owner's look, read or walk"
+ },
+ {
+  "number": 421,
+  "name": "Messages: a day was heard, say what it is",
+  "short": "Messages: a day was heard",
+  "what": "When a person names a day still ahead in a text or a voicemail, one press under the line says what the day is a promise of. The day is then written where that kind of date lives.",
+  "stands": "Built 2026-11-23 in five PRs, v2.8382 to v2.8386, all merged (#9510, #9514, #9526, #9533, #9536) and the migration pushed. Not yet walked.",
+  "waits": "A walk on a ZZ Test thread, then the card is deleted. The walk writes on prod, so it waits on a person at hand. The walk also says whether the office needs to pick between a start and a delivery, and between Insurance and a W-9.",
+  "say": [
+   "Go ahead. I am at hand, walk it on a ZZ Test thread.",
+   "Change: let the office pick delivery or W-9, not only start and insurance."
+  ],
+  "calls": [
+   {
+    "call": "Build it, leave it or drop it",
+    "pick": "Build it. The owner's call of 2026-11-23."
+   },
+   {
+    "call": "Offer first, or straight to the choice",
+    "pick": "Straight to the choice. One press under the line, no offered row and no Keep the day."
+   },
+   {
+    "call": "A customer's payment in the choice",
+    "pick": "A payment opens the payment sheet #129 built."
+   },
+   {
+    "call": "The guide's sentence about the press",
+    "pick": "Taken out in PR 1."
+   },
+   {
+    "call": "A double kind",
+    "pick": "A start or delivery writes a start. Insurance or W-9 writes insurance. The walk says whether the office needs to pick the second."
+   }
+  ],
+  "calls_title": "The five calls, each with its pick",
+  "differs": "In the customer's thread the job chip reads the raw word `ready_to_bill`. It was not checked whether that comes from the app or from the frame's rows.",
+  "could_not": "The row that offers a heard day and a voicemail's Keep the day. Neither was built: the owner's call of 2026-11-23 was straight to the choice, and a voicemail gets Another day. No kind was pressed, so the line that names where the day went is not pictured.",
+  "pictures": [
+   {
+    "file": "421-trade-thread-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "A trade partner's thread in Messages: a line already said reads Written down as their start by Wed Nov 25., and under Friday's text the choice reads Fri Nov 27 is a promise of, with Their quote, A start or delivery, Insurance or W-9 and just talk.",
+    "w": 1551,
+    "h": 1068
+   },
+   {
+    "file": "421-voicemail-another-day-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "A voicemail's choice with Another day pressed: the day Quo heard is lit, and the office can pick another or type one.",
+    "w": 1551,
+    "h": 300
+   },
+   {
+    "file": "421-customer-choice-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "A customer's text gets their own kinds: A payment, Their answer on our bid, A day we can be on site, then just talk.",
+    "w": 1013,
+    "h": 630
+   },
+   {
+    "file": "421-trade-thread-desk-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "dark",
+    "caption": "The trade partner's thread in the dark theme.",
+    "w": 1551,
+    "h": 1068
+   }
+  ],
+  "where": "messages-heard-day.md",
+  "group": "A walk that writes on prod, with a person at hand"
+ },
+ {
+  "number": 375,
+  "name": "Tag a teammate in a task note",
+  "short": "Tag a teammate in a task note",
+  "what": "Type @ in a task's note and tap a name. That teammate gets a count, a Tagged task notes section on Today, a Needs you line and a phone notice.",
+  "stands": "Built and live in six PRs: v2.7566, 7570, 7574, 7576, 7577, 7578. Walked on a desktop on 2026-11-17, both sides. Not yet on a phone.",
+  "waits": "The same walk on a real phone: the box on an iPhone and an Android keyboard, and a notice seen to arrive. Then a job tag's tagged side on a ZZ Test job. It needs a real phone and a second person.",
+  "say": [
+   "Go ahead. I will be the second person for the phone walk.",
+   "Change: on a phone the count sits on the gear and hides it. Move it."
+  ],
+  "calls": [
+   {
+    "call": "Does a typed name tag by itself",
+    "pick": "No. A tag is a tap or Enter only."
+   },
+   {
+    "call": "Who can be tagged on a task",
+    "pick": "Only people who can already open it. The task's own people first, then the office."
+   },
+   {
+    "call": "Where a tag lands",
+    "pick": "The Checklist: a count and Tagged task notes on Today. The Needs you line counts job and task tags together."
+   },
+   {
+    "call": "A plain note with no tag",
+    "pick": "It still tells nobody."
+   },
+   {
+    "call": "Bid and estimate notes",
+    "pick": "After tasks, as their own small train."
+   },
+   {
+    "call": "The notice's words",
+    "pick": "The note's first words, as on a job."
+   }
+  ],
+  "calls_title": "The six calls, each built to its pick",
+  "differs": "On a phone the Checklist count rides the gear at the top right and covers most of the icon. The code says the placement is meant.",
+  "could_not": "A real phone keyboard and the phone notice. A headless frame has neither. Post was not pressed.",
+  "pictures": [
+   {
+    "file": "375-at-presses-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Primary",
+    "width": "phone",
+    "theme": "light",
+    "caption": "Typing @ in a task's note: the names come up as big presses above the box, the person who gave the task first, then the office.",
+    "w": 780,
+    "h": 670
+   },
+   {
+    "file": "375-tag-marked-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Primary",
+    "width": "phone",
+    "theme": "light",
+    "caption": "After a tap on Rosa: her name is marked in the words, and Will tag names her above the box. The thread above shows a posted tag and waiting on you.",
+    "w": 780,
+    "h": 782
+   },
+   {
+    "file": "375-today-tagged-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Primary",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The tagged side on Today: the count in the top bar, and Tagged task notes with an answer box and No reply needed on each.",
+    "w": 780,
+    "h": 1520
+   },
+   {
+    "file": "375-dashboard-needs-you-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Primary",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The Dashboard's Needs you line counts both kinds: 1 job note tagged you, 2 task notes tagged you, 1 answer to a note you tagged.",
+    "w": 780,
+    "h": 800
+   },
+   {
+    "file": "375-needs-you-window-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Primary",
+    "width": "phone",
+    "theme": "light",
+    "caption": "Open on that line: one window lists the job note and the task notes together, oldest first.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "375-at-presses-phone-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Primary",
+    "width": "phone",
+    "theme": "dark",
+    "caption": "The @ presses in the dark theme.",
+    "w": 780,
+    "h": 670
+   }
+  ],
+  "where": "task-note-tags",
+  "group": "A walk that writes on prod, with a person at hand"
+ },
+ {
+  "number": 350,
+  "name": "Sub papers: a work statement, a payment record and a statement of account",
+  "short": "Sub papers",
+  "what": "Three papers for a sub that add up, made from one window on the sub's row: a work statement for each sheet, a payment record for each sending and a statement of account for a period.",
+  "stands": "Built and live, v2.7401 to v2.8303. One window prints, downloads and emails all three papers under their numbers (WS, PR, SA). Confirming a work statement is built and switched off.",
+  "waits": "Counsel's words for sentence 2, then the switch `SUB_PAPER_CONFIRM_LIVE` and a walk on the test sub's page. Grace's word on a redeploy, so a send can fall back to a sub's sign-in address. Still owed: a walk of the To line's save and of a send in two emails.",
+  "say": [
+   "Go ahead. Send the six sentences to counsel as drafted, sentence 2 first.",
+   "Change this sentence before counsel reads it: ..."
+  ],
+  "calls": [
+   {
+    "call": "1. The names",
+    "pick": "Work statement, Payment record, Statement of account, and Still open for what we owe. Kept by Taunya 2026-11-16."
+   },
+   {
+    "call": "2. One payment over several papers",
+    "pick": "Placed by hand, with Oldest first as the fill. Built as picked."
+   },
+   {
+    "call": "3. Do subs confirm a work statement",
+    "pick": "Yes, as a press, never a condition of being paid. Built and switched off."
+   },
+   {
+    "call": "4. Do payment records send by themselves",
+    "pick": "No. The window after Record payment offers it."
+   },
+   {
+    "call": "5. The period a statement covers",
+    "pick": "Since the last statement, cut by the date on the payment. A late one is carried. Answered by the owner 2026-11-21."
+   },
+   {
+    "call": "6. A sheet that is not payable yet",
+    "pick": "On the statement under Still open, with counsel's line about terms and no due date."
+   },
+   {
+    "call": "7. The Paid this year line",
+    "pick": "Keep it, leave out Client direct, say it is not a tax form. The accountant's call."
+   },
+   {
+    "call": "8. The letterhead",
+    "pick": "The bill's own block from Settings. The app has no logo to print."
+   }
+  ],
+  "calls_title": "The eight calls, each with its pick",
+  "extra": {
+   "title": "The six sentences for counsel",
+   "items": [
+    "1, on a work statement. [Company] prepared this statement from its own records. It is not an invoice from [sub].",
+    "2, on a confirmed work statement, not printed while the switch is off. By confirming, [sub] agrees that the statement is its bill to [company] for this work.",
+    "3, on a work statement. Payment follows the terms of the work order for this job.",
+    "4, on a payment record. This record shows a payment [company] sent. It is not a release or a waiver of any lien right. A waiver is a separate paper.",
+    "5, on a statement of account. This figure is for your records. It is not a tax form.",
+    "6, on a statement of account. Open amounts are paid under the terms of each job's work order."
+   ]
+  },
+  "differs": "A payment record for one check over two sheets prints only the first sheet's memo as its note from the office. The card does not say which is meant.",
+  "could_not": "The confirm press on the sub's own page. It is switched off, so no screen draws it.",
+  "pictures": [
+   {
+    "file": "350-window-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The papers window on Sam Plumber's row in People, Subs. One pick for each of the three papers, the period, what it will show, and Print, Download the PDF and Send to Sam Plumber.",
+    "w": 820,
+    "h": 1004
+   },
+   {
+    "file": "350-paper-statement-of-account-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The statement of account as the window previews it. Still open on top, the sheets, the last payments and How it adds up. The purple boxes are sentences 5 and 6, marked as draft wording.",
+    "w": 786,
+    "h": 884
+   },
+   {
+    "file": "350-paper-work-statement-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "A work statement, WS-1321-2, with a back-charge in red and a part payment. Sentences 1 and 3 are marked as draft. Sentence 2 is not on it while the switch is off.",
+    "w": 786,
+    "h": 739
+   },
+   {
+    "file": "350-paper-payment-record-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "A payment record, PR-0017, for one check placed on two work statements. Each row says open before, this payment and open after. Sentence 4 is marked as draft.",
+    "w": 786,
+    "h": 782
+   },
+   {
+    "file": "350-send-step-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The send step. Who it goes to, the message the sub gets, the four files, and what the press does. The press reads Send 4 papers by email.",
+    "w": 820,
+    "h": 445
+   },
+   {
+    "file": "350-send-no-email-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The same step for a sub with no email on the roster. The To line takes an address in place and offers the sign-in address. The press reads Cannot send yet.",
+    "w": 820,
+    "h": 422
+   },
+   {
+    "file": "350-window-desk-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "dark",
+    "caption": "The window in the dark theme. The paper inside stays light, as it prints.",
+    "w": 820,
+    "h": 1004
+   }
+  ],
+  "where": "sub-papers-statement-of-account",
+  "group": "Counsel or Grace"
+ },
+ {
+  "number": 329,
+  "name": "Stickers before boxes: reserve a run, stick one on a box, then say what it is",
+  "short": "Stickers before boxes",
+  "what": "The office prints a run of stickers that each reserve a box name, and on site the first scan of one asks whether it is on a box the app knows or a new box.",
+  "stands": "Built and live: the sticker (v2.7072), print a run (v2.7272), the first scan (v2.7298), named runs and These are on boxes (v2.7312 to v2.7406), and after (to v2.7553). **Not built: PRs 4 to 6.** They are a sticker's presses on a box (wrong box, take off, lost, Empty it and start over), the sticker walk with the camera in the app, and the sheet of 30.",
+  "waits": "Taunya's first named run off the P-touch. Then the walk of the site with the phone's own camera. Then PRs 4 to 6 on the owner's go. The owner ordered the stop on 2026-11-14.",
+  "say": [
+   "Go ahead. Build PRs 4 to 6 now, without waiting for the walk.",
+   "Hold PRs 4 to 6 until the site is walked.",
+   "Change: drop the sheet of 30 from the plan."
+  ],
+  "calls": [
+   {
+    "call": "Grace 1. What a sticker is",
+    "pick": "Its own code that points at a box. Taken."
+   },
+   {
+    "call": "Grace 2. The number",
+    "pick": "One company-wide number. Taken, then taken off every tape and screen by Taunya (v2.7438)."
+   },
+   {
+    "call": "Grace 3. The paper",
+    "pick": "Brother tape now, the sheet of 30 if it is too slow. Taken."
+   },
+   {
+    "call": "Grace 4. The known boxes",
+    "pick": "Any reserved sticker, matched on the phone. Old labels keep working. Taken."
+   },
+   {
+    "call": "Grace 5. The walk",
+    "pick": "The camera in the app, with a press that needs no scan. Taken, not built (PR 5)."
+   },
+   {
+    "call": "Grace 6. Who prints a run",
+    "pick": "The office, a primary and a superintendent. Taken."
+   },
+   {
+    "call": "Grace 7. A new box's name",
+    "pick": "The site's next free name, changed by the owner on 2026-11-14."
+   },
+   {
+    "call": "Owner 1. The number on a named strip",
+    "pick": "Kept small, then dropped everywhere by Taunya on 2026-11-16."
+   },
+   {
+    "call": "Owner 2. Names the site already has",
+    "pick": "A notice: their stickers go on those boxes."
+   },
+   {
+    "call": "Owner 3. A grid range",
+    "pick": "In: A1-D50 is four rows of fifty."
+   },
+   {
+    "call": "Owner 4. Numbered-only runs",
+    "pick": "Stay as the exception, with the Names field cleared."
+   },
+   {
+    "call": "Owner 5. A second run over reserved names",
+    "pick": "The press is held until Print them anyway."
+   },
+   {
+    "call": "Owner 6. These are on boxes",
+    "pick": "Built in the Runs fold and on the job's line."
+   }
+  ],
+  "calls_title": "The thirteen calls, all taken",
+  "could_not": "No strip was printed and no camera scan was made. The first scan was reached by opening the sticker's own address, the way a scan lands.",
+  "pictures": [
+   {
+    "file": "329-print-run-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The Print future stickers window with Names G78-300. It reads G78 to G300, 223 stickers, draws the strips, and the press says Print 223 future stickers, G78 to G300.",
+    "w": 640,
+    "h": 1350
+   },
+   {
+    "file": "329-reserved-line-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The job's boxes after that run. One line says 223 stickers are reserved and on no box yet, with These are on boxes, Runs and a press to print the reserved stickers.",
+    "w": 1280,
+    "h": 420
+   },
+   {
+    "file": "329-these-are-on-boxes-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "These are on boxes. Type the names that were stuck on, how they sit and the place. The press says Put 73 stickers on their boxes.",
+    "w": 560,
+    "h": 700
+   },
+   {
+    "file": "329-first-scan-new-box-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Superintendent",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The first scan of sticker G78 on a phone. One question, It is on a box I know or It is a new box. The new box is named G78 and one press saves it.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "329-first-scan-known-box-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Superintendent",
+    "width": "phone",
+    "theme": "light",
+    "caption": "The other answer. Type 76, pick G76, and the press says Put this sticker on G76.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "329-first-scan-new-box-phone-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Superintendent",
+    "width": "phone",
+    "theme": "dark",
+    "caption": "The first scan in the dark theme.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "329-mockup-pr4-change-it-desk-light.webp",
+    "kind": "mockup",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The card's mock-up for PR 4. A box's screen with Rename, This sticker is on the wrong box and Empty it and start over. Only the rename exists today, as Edit on a box.",
+    "not_built": true,
+    "w": 835,
+    "h": 455
+   },
+   {
+    "file": "329-mockup-pr5-sticker-walk-desk-light.webp",
+    "kind": "mockup",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The card's mock-up for PR 5. The Sticker walk: the camera in the app, a count of boxes done, and Or use the next sticker.",
+    "not_built": true,
+    "w": 625,
+    "h": 609
+   },
+   {
+    "file": "329-mockup-pr6-sheet-of-30-desk-light.webp",
+    "kind": "mockup",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The card's mock-up for PR 6. Thirty stickers on one weatherproof sheet, for a run the tape prints too slowly.",
+    "not_built": true,
+    "w": 414,
+    "h": 463
+   }
+  ],
+  "where": "stickers-before-boxes",
+  "group": "A walk of the site first"
+ },
+ {
+  "number": 302,
+  "name": "Permits: skim every one in a few seconds, dig into the few, and know the builders",
+  "short": "Permits: skim every one",
+  "what": "Prospects → Permits shows one permit on one screen with two answers, Investigate or Pass, then keeps every permit in one of four places, lists the builders and counts whether permits turn into bids.",
+  "stands": "Built and live since 2026-11-10. All eight PRs shipped, v2.6828 to v2.6907. Held until use asks for it: the stack for one site, the first-day card, joining two names into one builder.",
+  "waits": "Two weeks of use, then a look at the count on Permits and the pass reasons, before anything held is built. The two weeks from going live end today, 2026-11-24.",
+  "say": [
+   "Go ahead. The six picks stand. Look at the count and the pass reasons now.",
+   "Change this pick: ..."
+  ],
+  "calls": [
+   {
+    "call": "The words",
+    "pick": "Investigate (Keep until v2.6879), Pass, Pursue and Has a plumber everywhere"
+   },
+   {
+    "call": "A reason on a pass",
+    "pick": "Optional and one tap on the skim. Asked for on Not pursuing"
+   },
+   {
+    "call": "What reaches the deck",
+    "pick": "Commercial only, $25k and up or not declared, no houses, nothing that already has a plumber"
+   },
+   {
+    "call": "Where a pursued permit lands",
+    "pick": "By the builder's kind. A general contractor on the Customers deck, an owner or developer on Jobs to GC. Built as v2.6907"
+   },
+   {
+    "call": "What Avoid does",
+    "pick": "A red word and a place at the end of the deck. It never passes a permit by itself"
+   },
+   {
+    "call": "Who may mark a builder, and when the nudge widens",
+    "pick": "The office and every estimator may mark. The team is asked after two days"
+   }
+  ],
+  "calls_title": "The six calls, each built to its pick",
+  "differs": "The card's design section draws the dig-in as three chips. The built sheet is The building, with What we did as a section and the name as the door to Who pulled it.",
+  "could_not": "The street view and the map. They come from outside services, which the frame does not load, so the tiles draw grey with the app's own words.",
+  "pictures": [
+   {
+    "file": "302-skim-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Skim at desk width. One permit with its green line saying why it is first, Up next beside it, and the two answers Pass and Investigate with their keys under the card. The street view and map tiles are grey because outside pictures are not loaded in the frame.",
+    "w": 1280,
+    "h": 808
+   },
+   {
+    "file": "302-skim-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "phone",
+    "theme": "light",
+    "caption": "Skim on a phone. The same card with Pass and Investigate held at the foot. The tiles read No street view · satellite, the app's own fallback, and are grey because outside pictures are not loaded.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "302-skim-passed-why-phone-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "phone",
+    "theme": "light",
+    "caption": "After one press on Pass. The dark bar asks Passed. Why? with four one-tap reasons and Undo, and the next permit is already up.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "302-skim-phone-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "phone",
+    "theme": "dark",
+    "caption": "The skim card on a phone in the dark theme. The picture tiles stay light on purpose.",
+    "w": 780,
+    "h": 1688
+   },
+   {
+    "file": "302-investigating-and-count-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Investigating. Four kept permits with who marked each, Look again today, Hand to and Put back. Under it the month's count: arrived, skimmed, investigating, pursuing, bid, won, and the pass reasons.",
+    "w": 1232,
+    "h": 870
+   },
+   {
+    "file": "302-dig-in-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "A kept permit dug into. The building sheet with the city's permit, the county's owner of record, What we did, and the close-out at the foot: Pursue…, Not pursuing…, Look again.",
+    "w": 600,
+    "h": 1060
+   },
+   {
+    "file": "302-builders-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Builders. Each name with its mark, permits, how many have no plumber, our bids and the plumber they use, with the chip 3 or more permits and never bid.",
+    "w": 1232,
+    "h": 660
+   }
+  ],
+  "where": "permit-skim",
+  "group": "Use, then a look"
+ },
+ {
+  "number": 298,
+  "name": "Every supply house bill's lines as rows: what we buy, how often, at what price",
+  "short": "Supply house bill lines",
+  "what": "Every supply house bill's lines are read into rows, so the office can see what the company buys, how often and at what price, and teach the Parts Book each house's code once.",
+  "stands": "Built and live, v2.6817 to v2.7121: the reader and the backfill, Bill lines, What we buy, Price over time, What to stock, Codes with no part. Not built: PR 2b, the price offered from a bill, and the joins of stage 5.",
+  "waits": "Someone who keeps the Parts Book presses *Match 105 offered codes* and works the first forty rows of Codes with no part, about a third of the dollars. Then PR 2b.",
+  "say": [
+   "Go ahead. This person keeps the Parts Book and works the first forty: ...",
+   "Change the Codes with no part window first: ..."
+  ],
+  "calls": [
+   {
+    "call": "Does a bill read by itself?",
+    "pick": "Yes. Every bill with a PDF is read after Save, with no press"
+   },
+   {
+    "call": "Does a bill change the book's price by itself?",
+    "pick": "No, for the first month. The price is offered with the bill beside it"
+   },
+   {
+    "call": "The reader",
+    "pick": "The model reader behind the five checks. A parser only if a house needs one"
+   },
+   {
+    "call": "Who matches codes to parts",
+    "pick": "Whoever keeps the Parts Book, from the list sorted by dollars"
+   },
+   {
+    "call": "How far back the backfill goes",
+    "pick": "Every bill on file, newest first"
+   },
+   {
+    "call": "Freight, fuel and fees",
+    "pick": "Counted as spend under Charges, never as a part"
+   },
+   {
+    "call": "Who sees the views",
+    "pick": "The owner, a dev, the office roles and an estimator. Half built: the office sees them and an estimator does not"
+   },
+   {
+    "call": "Ship tickets, quotes and acknowledgements",
+    "pick": "Bills and credits only through stage 4"
+   },
+   {
+    "call": "Ask the houses for a file of lines",
+    "pick": "Not now"
+   },
+   {
+    "call": "Who fixes the bills that wait for a person",
+    "pick": "The office, from the Bill lines window"
+   }
+  ],
+  "calls_title": "The ten calls, each with its pick",
+  "differs": "Every figure in these pictures is invented, and the rows were made so the press reads *Match 105 offered codes*, the name the card uses. On the live site that number comes from the real bills.",
+  "could_not": "The Bill lines window under Accounts payable. It needs each bill's paper and hold rows, which were not made up for this page.",
+  "pictures": [
+   {
+    "file": "298-codes-with-no-part-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Codes with no part, opened from the Parts Book. The most dollars first, the press Match 105 offered codes, and on each row what the book offers with This is it, Another part, New part in the book, Not a part and Later.",
+    "w": 1280,
+    "h": 1000
+   },
+   {
+    "file": "298-codes-with-no-part-desk-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "dark",
+    "caption": "The same window in the dark theme.",
+    "w": 1280,
+    "h": 1000
+   },
+   {
+    "file": "298-what-we-buy-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Materials → What we buy. Spend on parts, charges and distinct parts at the top, then a row a part with how often, how much, the months as bars and the last price paid.",
+    "w": 1232,
+    "h": 800
+   },
+   {
+    "file": "298-price-over-time-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Price over time for one part. Every purchase is a point, a colour a house, the book's price the dashed line, and under it the last price paid at each house.",
+    "w": 1232,
+    "h": 705
+   },
+   {
+    "file": "298-what-to-stock-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Assistant",
+    "width": "desk",
+    "theme": "light",
+    "caption": "What to stock. Parts bought on three or more separate days, ranked by trips, each read as a trip every so many days.",
+    "w": 1232,
+    "h": 700
+   }
+  ],
+  "where": "supply-bill-lines",
+  "group": "Use, then a look"
+ },
+ {
+  "number": 411,
+  "name": "State roll: who holds a license near us",
+  "short": "State roll",
+  "what": "A State roll tab on Prospects keeps the state's public roll of licensed plumbers for our counties, checks our own licenses against it, and lets the office look up any licensee and keep notes.",
+  "stands": "Steps one to three are built and merged: v2.8159, 8164, 8198, 8202, 8233, 8317, then v2.8380 (#9511) and v2.8390 (#9529) on 2026-11-23. Not built: step four, Call this week, and step five, electrical and A/C.",
+  "waits": "Walks on the live site: Everyone and the person's sheet, and the Our own view. Taunya's say on pressing *Use the state's date* on real cards. A lawyer's answer before step four ships a list people call from.",
+  "say": [
+   "Go ahead. Fix the line, walk the live site, then build Call this week once the lawyer answers.",
+   "Change before step four: ..."
+  ],
+  "calls": [
+   {
+    "call": "Who sees it",
+    "pick": "The people who hold the Hiring switch and nobody else. Our own follows People → Licenses"
+   },
+   {
+    "call": "Trades",
+    "pick": "Plumbing first. Electrical and A/C are the last step"
+   },
+   {
+    "call": "Counties",
+    "pick": "Bexar, Travis, Hays, Comal and Guadalupe. A county can be added on the page"
+   },
+   {
+    "call": "Apprentices",
+    "pick": "Off. The file is read only to check a teammate's own number"
+   },
+   {
+    "call": "A lapse",
+    "pick": "Waits three months before the list shows it"
+   },
+   {
+    "call": "Looking people up",
+    "pick": "Nobody is looked up. A number is one a person here adds"
+   },
+   {
+    "call": "Texts",
+    "pick": "No text without a yes. OK to text starts as Not asked"
+   },
+   {
+    "call": "Use the state's date on the real cards",
+    "pick": "Open. Taunya's to say: press it, or the office fixes the dates on People → Licenses"
+   },
+   {
+    "call": "A Monday note that carries the list",
+    "pick": "Open. Taunya's to say"
+   }
+  ],
+  "calls_title": "The nine calls, seven taken and two open",
+  "stale": {
+   "says": "Merge v2.8380 (PR #9511), push its migration, regenerate the types, then arm v2.8390 and walk Everyone and the sheet on the live site. Walk the Our own view too. Then step four: Call this week.",
+   "truth": "v2.8380 merged as #9511 and v2.8390 merged as #9529, both on 2026-11-23. The migration file is on main. The types were regenerated in #9566 with the new tables in them, which is a sign the migration is pushed. The repo cannot say whether the push is on the ledger or whether any walk was done. The card's status line also still says built, not merged.",
+   "fix": "Next: walk Everyone and the person's sheet on the live site, and the Our own view too (v2.8380 and v2.8390 are merged; check migration 20261123185500 is on prod with the drift check first). Then step four: Call this week."
+  },
+  "differs": "The frame shows a Sub card on Our own. The card says no sub shows on the live site today, because no sub's record holds a license there.",
+  "pictures": [
+   {
+    "file": "411-pulls-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Dev with the Hiring switch",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The Pulls view. How many licenses are kept by rank, and a card a state file with when it was last read, what it kept and what changed.",
+    "w": 1030,
+    "h": 685
+   },
+   {
+    "file": "411-our-own-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Dev with the Hiring switch",
+    "width": "desk",
+    "theme": "light",
+    "caption": "The Our own view on Needs a look. Each license we hold beside what the state says, with a pill such as Lapsed, The state has a later date or Lapses in 23 days, and the press Use the state's date.",
+    "w": 1030,
+    "h": 930
+   },
+   {
+    "file": "411-our-own-desk-dark.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Dev with the Hiring switch",
+    "width": "desk",
+    "theme": "dark",
+    "caption": "Our own in the dark theme. The red and amber pills still read.",
+    "w": 1030,
+    "h": 930
+   },
+   {
+    "file": "411-everyone-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Dev with the Hiring switch",
+    "width": "desk",
+    "theme": "light",
+    "caption": "Everyone, step three, with sample typed in the search. The chips, the six columns, our note counts and One of ours under Ours, and Left off at their asking at the foot.",
+    "w": 1030,
+    "h": 1170
+   },
+   {
+    "file": "411-person-sheet-desk-light.webp",
+    "kind": "app",
+    "rows": "supplied",
+    "role": "Dev with the Hiring switch",
+    "width": "desk",
+    "theme": "light",
+    "caption": "A person's sheet. The state's facts, What changed, as we saw it, Our notes with Add a note, and Leave off at the foot.",
+    "w": 1280,
+    "h": 1000
+   }
+  ],
+  "where": "state-roll",
+  "group": "A stale next line"
+ }
+]
