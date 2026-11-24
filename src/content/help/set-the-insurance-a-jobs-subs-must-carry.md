@@ -43,6 +43,10 @@ Nobody outside sees a draft. A sub sees only what you publish.
 
 1. Read the card **Where this change goes**. It lists every job you run as the GC.
 2. Press the blue button on the bar. It reads {{button:blue|Publish your usual}} or names how many jobs get the change.
+3. Read the window that opens. The window counts the jobs that get the change and the jobs held.
+4. Press the blue button in the window to publish. Press **Not yet** to keep the draft as a draft.
+
+A publish cannot be taken back. A later revision can only replace it.
 
 A list **Before this can be published** shows while something is missing. Fix each line and the button wakes.
 
@@ -67,6 +71,7 @@ A yellow panel may say the sheet changed somewhere else. See [When someone else 
 3. Type the names and the place the blue fields ask for.
 4. Press any other words to change them for this job alone.
 5. Press {{button:blue|Publish this job's sheet}}.
+6. Press {{button:blue|Publish revision 1}} in the window that opens. Press **Not yet** to keep the draft as a draft.
 
 - **Add a name** adds one more name the sub's policy must list.
 - **Add a coverage line for this job** adds a line that only this job asks for.

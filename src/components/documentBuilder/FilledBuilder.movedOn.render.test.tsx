@@ -6,7 +6,7 @@
  * and amount here is made up.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -81,6 +81,13 @@ function type(label: string, words: string) {
 }
 const words = (label: string) => screen.getByRole('textbox', { name: label }).textContent
 const publish = () => screen.getByRole('button', { name: /^(Publish|Nothing to publish)/ }) as HTMLButtonElement
+/** Press the bar's publish, then the window's own press: a publish asks first. */
+async function publishYes() {
+  fireEvent.click(publish())
+  const win = await screen.findByRole('alertdialog')
+  fireEvent.click(within(win).getByRole('button', { name: /^Publish/ }))
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+}
 const usualTitle = 'Your usual sheet changed somewhere else'
 const jobTitle = 'The sheet for Cedar Park Medical Office changed somewhere else'
 
@@ -146,7 +153,7 @@ describe('FilledBuilder, when the usual moved on somewhere else', () => {
     const publishBuilder = vi.fn(async (): Promise<Landed<BuilderRecord>> => ({ ok: false, error: MOVED_ON_PUBLISH, movedOn: newerUsual({ published: TEAMMATES_USUAL, revision: 2, draft_no: 6 }) }))
     const { io } = await openOnUsual({ publishBuilder })
     type(FOOT, 'A foot line typed on this page.')
-    fireEvent.click(publish())
+    await publishYes()
     expect(await screen.findByText(usualTitle, undefined, { timeout: 3000 })).toBeTruthy()
     expect(screen.getByText('Revision 2 was published after this page read it.')).toBeTruthy()
     expect(screen.getByText('Save mine over it drops the newer draft. Revision 2 stays published.')).toBeTruthy()
@@ -211,7 +218,7 @@ describe('FilledBuilder, the usual published to every job', () => {
     const { io } = await openOnUsual({ readBuilderSheets })
     type(FOOT, 'A new foot line.')
     expect(publish().textContent).toBe('Publish to 1 job')
-    fireEvent.click(publish())
+    await publishYes()
     // The press said one job. Read again, no job gets it, so the press does nothing and says why.
     expect(await screen.findByText('Nothing was published yet.', undefined, { timeout: 3000 })).toBeTruthy()
     expect(screen.getByText('A job changed since this page read it. The rows and the button now say where your usual goes. Press it again.')).toBeTruthy()
@@ -222,7 +229,7 @@ describe('FilledBuilder, the usual published to every job', () => {
     await waitFor(() => expect(publish().textContent).toBe('Publish your usual'))
     expect(publish().disabled).toBe(false)
     // The second press does what it now says: the usual, and no job.
-    fireEvent.click(publish())
+    await publishYes()
     expect(await screen.findByText('Published your usual. Held 1.', undefined, { timeout: 3000 })).toBeTruthy()
     expect(io.publishBuilder).toHaveBeenCalledTimes(1)
     // The job's draft is never written from this page's old copy of it.
@@ -239,7 +246,7 @@ describe('FilledBuilder, the usual published to every job', () => {
       .mockResolvedValueOnce(new Map([['cedar', sheetRow()]]))
     const { io } = await openOnUsual({ readBuilderSheets })
     type(FOOT, 'A new foot line.')
-    fireEvent.click(publish())
+    await publishYes()
     expect(await screen.findByText('Published to 1 job.', undefined, { timeout: 3000 })).toBeTruthy()
     const usual = withUsualWords(USUAL, fieldPath('foot'), 'A new foot line.')
     expect(io.publishSheet).toHaveBeenCalledWith('sheet-cedar', 1, CEDAR_OWN(), layOver(usual, CEDAR_OWN()), 2, 9)
@@ -253,7 +260,7 @@ describe('FilledBuilder, the usual published to every job', () => {
       .mockResolvedValueOnce(new Map([['cedar', sheetRow()]]))
     const { io } = await openOnUsual({ readBuilderSheets })
     type(FOOT, 'A new foot line.')
-    fireEvent.click(publish())
+    await publishYes()
     expect((await screen.findByRole('alert', undefined, { timeout: 3000 })).textContent).toBe('The network is down. Nothing was published.')
     expect(io.publishBuilder).not.toHaveBeenCalled()
     expect(io.publishSheet).not.toHaveBeenCalled()

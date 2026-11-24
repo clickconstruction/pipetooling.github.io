@@ -14,6 +14,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { DOCUMENT_BUILDER_WORDS as WORDS, type BuilderChip, type BuilderChipTone, type DocumentBuilderEntry } from '../../lib/documentBuilder/builders'
@@ -41,6 +42,7 @@ import {
 } from '../../lib/documentBuilder/sheet'
 import { SHEET_SENT_KIND, sheetPrintHtml, sheetPrintTitle } from '../../lib/documentBuilder/sheetPrint'
 import {
+  jobPublishConfirm,
   jobPublishPress,
   readPress,
   sheetBarChips,
@@ -55,6 +57,7 @@ import {
   usualPlanChip,
   USUAL_PRESS_MOVED,
   usualPlanFor,
+  usualPublishConfirm,
   usualPublishPress,
   type JobSheetState,
 } from '../../lib/documentBuilder/sheetScreen'
@@ -162,6 +165,7 @@ type Hold = { kind: 'usual'; newer: BuilderRecord } | { kind: 'job'; newer: Shee
 const USUAL_KEY = 'usual'
 
 export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) {
+  const confirmDialog = useConfirmDialog()
   const draftParsed = useMemo(() => parseSheetDef(rec.draft), [rec.draft])
   const publishedDef = useMemo(() => {
     const parsed = parseSheetDef(rec.published)
@@ -431,6 +435,10 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
 
   const publishJob = async () => {
     if (!job || !jobState || busy || holdsRef.current.has(job.projectId)) return
+    // A dead press opens no window. A live one asks first: a publish cannot be taken back.
+    if (press.dead) return
+    if (!(await confirmDialog(jobPublishConfirm(job.name, jobState)))) return
+    if (holdsRef.current.has(job.projectId)) return
     setBusy(true)
     setRefusal(null)
     await flush()
@@ -458,6 +466,10 @@ export function FilledBuilder({ entry, rec, onBack, onRecord, io = IO }: Props) 
   /** The usual published. `shown` is the plan the press and the rows showed when it was pressed. */
   const publishUsual = async (shown: ReadonlyArray<UsualPublishRow>) => {
     if (busy || holdsRef.current.has(USUAL_KEY)) return
+    // A dead press opens no window. A live one asks first, with the jobs it goes to as the press and the rows count them.
+    if (press.dead) return
+    if (!(await confirmDialog(usualPublishConfirm(recRef.current, shown)))) return
+    if (holdsRef.current.has(USUAL_KEY)) return
     setBusy(true)
     setRefusal(null)
     setOutcome(null)
