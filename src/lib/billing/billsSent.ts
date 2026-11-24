@@ -944,6 +944,21 @@ export function billsSentFilter(lines: ReadonlyArray<BillsSentLine>, route: Bill
   return lines.filter((l) => kept(l) && words.every((w) => l.haystack.includes(w)))
 }
 
+/**
+ * Three chips list what still wants someone: a send that did not arrive, a bill not paid, a bill with no send on
+ * record. Nothing under one of them is the good state, and the list once answered it as a search that missed:
+ * *No sends match the filters.* This says who the list would be waiting on, for `emptyWords`' *Nothing waiting on …*,
+ * and why there is nothing. Null for a chip that only sorts the sends, and whenever a search is typed, since a
+ * search that finds nothing is a search that found nothing.
+ */
+export function billsSentEmptyGood(route: BillsSentChip, typed: string): { who: string; why: string } | null {
+  if (typed.trim()) return null
+  if (route === 'missed') return { who: 'a resend', why: 'No send on an open bill bounced.' }
+  if (route === 'unpaid') return { who: 'a payment', why: 'Every bill on this list is paid in full.' }
+  if (route === 'gap') return { who: 'a send', why: 'Every bill the app made has a send on record.' }
+  return null
+}
+
 /** The words a copy's window is headed with. */
 export function billsSentCopyLabel(line: Pick<BillsSentLine, 'what' | 'jobWords' | 'routeWords'>): string {
   return ['Copy as it went out', line.what, line.jobWords, line.routeWords].filter(Boolean).join(' · ')
