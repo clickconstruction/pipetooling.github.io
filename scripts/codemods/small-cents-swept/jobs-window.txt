@@ -1,0 +1,15 @@
+# The job window and the job form (v2.8413).
+src/components/jobs/JobForm*.tsx
+src/components/jobs/JobDetail*.tsx
+src/components/jobs/DetailJobModal.tsx
+src/components/jobs/JobWindow*.tsx
+src/components/jobs/JobBudgetCard.tsx
+src/components/jobs/JobPaymentMoveModal.tsx
+src/components/jobs/JobDocuments*.tsx
+src/components/jobs/HazmatFeeModal.tsx
+src/components/jobs/MultipleSegmentGeneratorModal.tsx
+src/components/jobs/StageWindowEditor.tsx
+src/components/jobs/TestReportModal.tsx
+src/components/jobs/WorkOrderAssemblerModal.tsx
+src/components/jobs/JobsCombineSeparateModal.tsx
+src/components/jobs/JobSubsOwedBlock.tsx

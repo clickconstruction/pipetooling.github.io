@@ -8,6 +8,7 @@ import {
   type HazmatTestimonial,
 } from '../../lib/hazmatFee'
 import { buildHazmatFeeNoticeHtml } from '../../lib/jobsDocuments/hazmatFeeNotice'
+import { MoneyText } from '../Money'
 
 export type HazmatFeeModalJob = {
   id: string
@@ -204,7 +205,7 @@ export function HazmatFeeModal({
         {createdDraft ? (
           <>
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-700)' }}>
-              A ${createdDraft.feeAmount.toFixed(2)} rider invoice was added to this job (independent of
+              A <MoneyText text={`$${createdDraft.feeAmount.toFixed(2)}`} /> rider invoice was added to this job (independent of
               the main bill). Print the notice and include it when you bill the customer.
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>

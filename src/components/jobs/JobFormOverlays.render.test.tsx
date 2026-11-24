@@ -12,6 +12,7 @@ import { JobFormPaymentRemoveConfirm } from './JobFormPaymentRemoveConfirm'
 import { JobFormStripeLinePreviewDialog } from './JobFormStripeLinePreviewDialog'
 import { JobFormMercuryUnlinkConfirm } from './JobFormMercuryUnlinkConfirm'
 import type { FixtureRow, PaymentRow } from '../../lib/jobs/jobFormTypes'
+import { moneyText } from '../../test/moneyText'
 
 afterEach(() => {
   cleanup()
@@ -27,7 +28,7 @@ describe('JobFormPaymentRemoveConfirm', () => {
     cleanup()
     await renderSettled(<JobFormPaymentRemoveConfirm open preview={preview} confirmsPersistedRpc busy={false} onCancel={onCancel} onConfirm={onConfirm} zIndex={1011} />, { loaded: () => screen.findByText('Remove payment?') })
     expect(screen.getByText(/updates the database immediately/)).toBeTruthy()
-    expect(screen.getByText('$1,300.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$1,300.00'))).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Remove payment' }))
     expect(onConfirm).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))

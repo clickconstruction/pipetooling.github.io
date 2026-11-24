@@ -10,6 +10,7 @@ import { billChoicesForPayment } from '../../lib/jobs/paymentBillMatching'
 import { splitBillsAndPayments, type MercuryDepositFacts } from '../../lib/jobs/billsAndPayments'
 import { JobFormPaymentLine, type PaymentLineActions } from './JobFormPaymentLine'
 import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
+import { Money, MoneyText } from '../Money'
 
 /**
  * Tappable bill choices for an unapplied payment (v2.2570) — one tap applies.
@@ -53,12 +54,12 @@ function BillApplyChips({
           }}
         >
           <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>
-            ${formatCurrency(c.amount)} bill{c.sentYmd ? ` · sent ${formatPaymentDateForDisplay(c.sentYmd)}` : ''}
+            <Money amount={c.amount} /> bill{c.sentYmd ? ` · sent ${formatPaymentDateForDisplay(c.sentYmd)}` : ''}
           </span>
           <span style={{ fontSize: '0.66rem', color: c.matchesAmount ? 'var(--text-green-700)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
             {c.remaining < 0
-              ? `over-applied by $${formatCurrency(Math.abs(c.remaining))}`
-              : `$${formatCurrency(c.remaining)} left${c.matchesAmount ? ' · matches this payment' : ''}`}
+              ? <MoneyText text={`over-applied by $${formatCurrency(Math.abs(c.remaining))}`} />
+              : <MoneyText text={`$${formatCurrency(c.remaining)} left${c.matchesAmount ? ' · matches this payment' : ''}`} />}
           </span>
         </button>
       ))}
@@ -295,7 +296,7 @@ export function JobFormPaymentsTable({
             >
               <div style={{ minWidth: '6.5rem' }}>
                 <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem', color: 'var(--text-strong)' }}>
-                  ${formatCurrency(Number(p.amount) || 0)}
+                  <Money amount={Number(p.amount) || 0} />
                 </div>
                 <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
                   received {formatPaymentDateForDisplay(p.paid_on)}
@@ -367,7 +368,7 @@ export function JobFormPaymentsTable({
                   ) : (
                     <div style={{ marginTop: '0.25rem' }}>
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>
-                        ⚠ Which bill does this ${formatCurrency(Number(row.amount) || 0)} pay? It won&rsquo;t count
+                        ⚠ Which bill does this <Money amount={Number(row.amount) || 0} /> pay? It won&rsquo;t count
                         toward the customer&rsquo;s pay speed until it&rsquo;s applied.
                       </div>
                       <BillApplyChips
@@ -400,7 +401,7 @@ export function JobFormPaymentsTable({
                   ? stripeHandoffBills.map((inv) => (
                       <div key={inv.id} style={{ marginTop: '0.35rem' }} data-testid="stripe-handoff-note">
                         <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>
-                          ⚠ The ${formatCurrency(Number(inv.amount ?? 0))} bill went out through Stripe. Record the payment on the bill so
+                          ⚠ The <Money amount={Number(inv.amount ?? 0)} /> bill went out through Stripe. Record the payment on the bill so
                           Stripe knows it was paid — this row can&rsquo;t be applied to it.
                         </div>
                         {onRecordPaymentOnBill ? (
@@ -424,7 +425,7 @@ export function JobFormPaymentsTable({
                               fontFamily: 'inherit',
                             }}
                           >
-                            Record on the ${formatCurrency(Number(inv.amount ?? 0))} bill →
+                            Record on the <Money amount={Number(inv.amount ?? 0)} /> bill →
                           </button>
                         ) : null}
                       </div>
