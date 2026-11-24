@@ -313,10 +313,15 @@ export function billsPaidCellCount(sum: Pick<BillsPaidSum, 'payments'>): string 
  * A grid cell's small line on a day that holds a credit in kind and no money: *1 credit*. '' on any other day. The
  * credit is listed under the day and never added, so without the mark the month gave no sign the day held anything,
  * and the chip that narrows to it opened a month with nothing to press.
+ *
+ * A phone's cell says the word alone, *credit*. It holds about 33 px of words, *1 credit* needs 37, and the live
+ * test of 2026-11-24 read *1 credi* at 375 px. The word alone needs 29. The count is left off as a paid day's
+ * *3 paid* is on a phone: the day says it once pressed, and a screen reader hears it (`billsPaidCellLabel`).
  */
-export function billsPaidCellCredit(cell: Pick<BillsPaidCell, 'sum'> & { credits?: number }): string {
+export function billsPaidCellCredit(cell: Pick<BillsPaidCell, 'sum'> & { credits?: number }, phone = false): string {
   const n = cell.credits ?? 0
-  return cell.sum.payments === 0 && n > 0 ? plural(n, 'credit') : ''
+  if (cell.sum.payments > 0 || n <= 0) return ''
+  return phone ? 'credit' : plural(n, 'credit')
 }
 
 /** What a screen reader hears on a day: *Wed, Nov 18, $7,935.00, 3 payments*, a credit in kind alone, or that nothing came in. */

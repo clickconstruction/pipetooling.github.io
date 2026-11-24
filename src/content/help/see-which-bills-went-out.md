@@ -324,7 +324,7 @@ The payout is after Stripe's fee. The payout is less than the Stripe payments it
 
 A refund made in Stripe does not show on this page. A credit in kind is listed and not added.
 
-A day that holds a credit and no money reads *1 credit*. The day is not green, because no money came.
+A day that holds a credit and no money reads *1 credit*. On a phone the day reads *credit*. The day is not green, because no money came.
 
 ## Move between months
 

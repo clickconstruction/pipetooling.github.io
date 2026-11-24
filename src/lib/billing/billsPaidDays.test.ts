@@ -258,6 +258,11 @@ describe('billsPaid — the month', () => {
     expect(billsPaidCellCredit({ sum: { payments: 0, total: 0 }, credits: 1 })).toBe('1 credit')
     expect(billsPaidCellCredit({ sum: { payments: 0, total: 0 }, credits: 2 })).toBe('2 credits')
     expect(billsPaidCellCredit({ sum: { payments: 1, total: 1500 }, credits: 1 })).toBe('')
+    // A phone's cell holds about 33 px of words and *1 credit* needs 37: it read *1 credi*. A phone says the word alone.
+    expect(billsPaidCellCredit({ sum: { payments: 0, total: 0 }, credits: 1 }, true)).toBe('credit')
+    expect(billsPaidCellCredit({ sum: { payments: 0, total: 0 }, credits: 3 }, true)).toBe('credit')
+    expect(billsPaidCellCredit({ sum: { payments: 1, total: 1500 }, credits: 1 }, true)).toBe('')
+    expect(billsPaidCellCredit({ sum: { payments: 0, total: 0 }, credits: 0 }, true)).toBe('')
     expect(billsPaidCellCredit({ sum: { payments: 0, total: 0 } })).toBe('')
     expect(billsPaidCellLabel({ ymd: '2026-11-19', sum: { payments: 0, total: 0 }, credits: 1 })).toBe('Thu, Nov 19, 1 credit in kind, not added')
     // The month's own cells count them: the 23rd holds a check and a credit, and a day alone with a credit is marked.
