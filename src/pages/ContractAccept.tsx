@@ -28,9 +28,14 @@ import { armJobPapersBack, endJobPapersReturn, readJobPapersReturn } from '../li
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
+// The thank-you's one press takes a finger: 44 px tall, its words centred (v2.8462). It was 40 px on a phone.
 const contractThankYouPrimaryLinkStyle: CSSProperties = {
   marginTop: '1.5rem',
-  display: 'inline-block',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 44,
+  boxSizing: 'border-box',
   padding: '0.5rem 1.25rem',
   fontWeight: 600,
   background: '#ea580c',
