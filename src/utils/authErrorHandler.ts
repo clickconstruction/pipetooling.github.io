@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { leaveSignInNotice } from '../lib/signInNotice'
 
 // Check if error is authentication-related
 export function isAuthError(error: any): boolean {
@@ -25,7 +26,7 @@ export async function handleAuthError(): Promise<void> {
   await supabase.auth.signOut()
   
   // Store message for sign-in page
-  sessionStorage.setItem('auth_error_message', 'Your session expired. Please sign in again to continue.')
+  leaveSignInNotice('Your session expired. Please sign in again to continue.')
   
   // Redirect to sign-in
   window.location.href = '/sign-in'

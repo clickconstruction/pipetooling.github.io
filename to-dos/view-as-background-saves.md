@@ -194,8 +194,9 @@ Rows were read through the dev seat.
   `legal_firm_intake_seen`) each took `session_opened_by_imitation()` in one line in v2.8459, so they
   are built. The table writes (`user_bid_notes_read_state`, `bid_plan_questions.seen_at`, the first look
   stamp) would need a policy or a trigger.
-- **Exit's sign-in page says nothing.** A dev signed out by a refused swap lands on the plain sign-in
-  page with no reason given, and a lost signal at the press signs out too, with no retry.
+- **Exit's sign-in page says why, since v2.8522.** A dev signed out by a refused swap landed on the plain sign-in
+  page with no reason given. A line above the form now says the dev's own sign-in could not be put back.
+  Still open: a lost signal at the press signs out too, with no retry.
 
 ### Calls that are Taunya's
 

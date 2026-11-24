@@ -4,6 +4,7 @@ import PasswordInput from '../components/PasswordInput'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import ToolingFamilyStrip from '../components/ToolingFamilyStrip'
 import { LandingTagline } from '../components/LandingTagline'
+import { takeSignInNotice } from '../lib/signInNotice'
 import {
   MAGIC_LINK_RESEND_COOLDOWN_S,
   friendlyOtpError,
@@ -53,12 +54,10 @@ export default function SignIn() {
   }, [cooldownLeft])
 
   useEffect(() => {
-    // Check for session expiry message
-    const message = sessionStorage.getItem('auth_error_message')
-    if (message) {
-      setSessionMessage(message)
-      sessionStorage.removeItem('auth_error_message')
-    }
+    // The line a forced sign-out left: a session that expired, or an Exit from View as that
+    // could not put the dev's own sign-in back.
+    const message = takeSignInNotice()
+    if (message) setSessionMessage(message)
   }, [])
 
   useEffect(() => {
