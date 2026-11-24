@@ -105,8 +105,10 @@ export function lienBillsCountWords(owing: number, sent: number = owing): string
 }
 
 /** The amber line under the bills: "$1,000 of the job's $5,000 · not claimed until it is billed". */
-export function lienUnbilledWords(unbilled: number, revenue: number | null | undefined): string {
-  return `${formatUsdNoCents(unbilled)} of the job’s ${formatUsdNoCents(Number(revenue ?? 0))} · not claimed until it is billed`
+export function lienUnbilledWords(unbilled: number, revenue: number | null | undefined, money: (n: number) => string = formatUsdNoCents): string {
+  // The Months card hands its own money (v2.8537, punch list #415): cents, as the bills over this line show theirs. The
+  // Lien window's note keeps whole dollars, with the notes beside it.
+  return `${money(unbilled)} of the job’s ${money(Number(revenue ?? 0))} · not claimed until it is billed`
 }
 
 /** The fifth gate's sentence when the sent bills owe nothing and money is still on the job. */

@@ -3,7 +3,8 @@ import { workMonthLabel, workMonthShort } from '../../lib/jobs/forecastWorkMonth
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { lienStandInWords } from '../../lib/jobs/lienBillMonths'
-import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { moneyWords } from '../../lib/moneyParts'
+import { MoneyText } from '../Money'
 import { documentLinkWords } from '../../lib/jobs/lienFilingDocumentLink'
 import { LIEN_MONTHS_EMPTY, lienGridNoticedWords, lienGridPaperTitle, lienGridPaperWords, type LienGridRow, type LienMonthGrid } from '../../lib/jobs/lienMonthGrid'
 import { lienNoticeOpensOn } from '../../lib/jobs/lienTimeline'
@@ -264,7 +265,7 @@ export default function LienDeskMonths({
                       <span className="lienLedgerLetter" data-tone="paper">{p.letter}</span>
                       {lienGridPaperTitle(p, formatYmdMonthDay)}
                       <span className="lienLedgerPaperWords">
-                        {lienGridPaperWords(p, formatUsdNoCents, (m) => METHOD_LABELS[m] ?? m)}
+                        <MoneyText text={lienGridPaperWords(p, moneyWords, (m) => METHOD_LABELS[m] ?? m)} />
                         {p.documentUrl ? <> · <a href={p.documentUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>{documentLinkWords({ document_url: p.documentUrl, document_note: p.documentNote })} ›</a></> : null}
                       </span>
                     </th>
@@ -278,7 +279,7 @@ export default function LienDeskMonths({
                           <span className="lienLedgerLetter" data-tone="this">{thisPaper.letter}</span>
                           This notice
                         </span>
-                        {claim ? <span className="lienLedgerHeadFigure" data-lien-grid-head-figure>{claim}</span> : null}
+                        {claim ? <span className="lienLedgerHeadFigure" data-lien-grid-head-figure><MoneyText text={claim} /></span> : null}
                       </span>
                     </th>
                   ) : null}
@@ -340,7 +341,7 @@ export default function LienDeskMonths({
           : (claimNode ?? (
               <div className="lienLedgerClaim">
                 <span>Claim amount on the notice</span>
-                <strong>{claim}</strong>
+                <strong><MoneyText text={claim} /></strong>
                 <span>Still unpaid on this job</span>
                 {foot}
               </div>

@@ -1,4 +1,5 @@
 import { lienPaneHeadFactWords, lienPaneHeadOffsets, type LienPaneSection } from '../../lib/jobs/lienPaneSections'
+import { MoneyText } from '../Money'
 
 /**
  * One stacked head of the notice pane (v2.4733): the Notices list's pile head, reused — a sticky
@@ -21,7 +22,7 @@ export default function LienPaneHead({ section, index, count, stripHeight, lit, 
       <button type="button" className="lienPileHeadBtn" onClick={onGo} title="Go to this section">
         <span className="lienPaneHeadLabel">{section.label}</span>
         <span className="n" data-lien-pane-head-fact title={lienPaneHeadFactWords(section)}>
-          {section.fact}
+          <MoneyText text={section.fact} />
           {section.tail ? <span className="lienPaneHeadTail"> · {section.tail}</span> : null}
         </span>
       </button>
