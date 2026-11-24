@@ -2,7 +2,16 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from './plainWords'
-import { WINDOW_NAMES, WINDOW_UPDATING_WORDS, windowLoadView, windowLostWords } from './windowLoad'
+import {
+  WINDOW_LOST_LINE_MS,
+  WINDOW_LOST_TYPED_LINE_MS,
+  WINDOW_NAMES,
+  WINDOW_UPDATING_WORDS,
+  windowLoadView,
+  windowLostLine,
+  windowLostTypedWords,
+  windowLostWords,
+} from './windowLoad'
 
 const lostChunk = new TypeError('Failed to fetch dynamically imported module: https://x/assets/JobWindowModal-abc123.js')
 // What `lazyWindow` throws when the preload handler cancelled Vite's throw: the import resolved to nothing.
@@ -33,6 +42,16 @@ describe('the line a window leaves', () => {
   it.each(Object.values(WINDOW_NAMES))('%s: its line is plain words', (what) => {
     expect(plainWordsFailures(windowLostWords(what))).toEqual([])
     expect(what).toMatch(/^The [a-z]/)
+  })
+  it.each(Object.values(WINDOW_NAMES))('%s: its line over typed words is plain words, and says what frees it', (what) => {
+    expect(plainWordsFailures(windowLostTypedWords(what))).toEqual([])
+    expect(windowLostTypedWords(what)).toMatch(/Send or clear it, then press again\.$/)
+  })
+  it('says the typed line only when the browser says the network is there', () => {
+    expect(windowLostLine('The job', false, true)).toEqual({ words: windowLostTypedWords('The job'), ms: WINDOW_LOST_TYPED_LINE_MS })
+    expect(windowLostLine('The job', true, true)).toEqual({ words: windowLostWords('The job'), ms: WINDOW_LOST_LINE_MS })
+    expect(windowLostLine('The job', false, false)).toEqual({ words: windowLostWords('The job'), ms: WINDOW_LOST_LINE_MS })
+    expect(WINDOW_LOST_TYPED_LINE_MS).toBeGreaterThan(WINDOW_LOST_LINE_MS)
   })
   it('says nothing of the app’s own workings', () => {
     for (const what of Object.values(WINDOW_NAMES)) expect(windowLostWords(what)).not.toMatch(/chunk|cache|update|reload/i)

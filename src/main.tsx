@@ -9,12 +9,17 @@ import { AuthProvider } from './hooks/useAuth'
 import { startChunkRecoveryReload } from './lib/chunkLoadRecovery'
 import { hardReloadFromRoot } from './lib/hardReload'
 import { markInvitePendingFromHash, safeSessionStorage } from './lib/acceptInviteState'
+import { watchTypedText } from './lib/typedText'
 import { installModalBackdropGuard } from './lib/modalBackdropGuard'
 import './index.css'
 
 // A window closes on a click outside it only when the press and the release were both outside it:
 // a drag that starts inside (a signature off the pad's edge, a text selection) no longer closes it.
 installModalBackdropGuard()
+
+// The app never reloads itself over words someone typed (`typedText.ts`). Watching starts here, before
+// anything can be typed, so every reload that asks finds the fields a person has typed into.
+watchTypedText()
 
 // A deploy replaces all hashed assets; when Vite's preload helper hits a stale-chunk 404
 // mid-navigation, reload once (guarded) for the fresh build instead of white-screening.

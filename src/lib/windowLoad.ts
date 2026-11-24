@@ -35,12 +35,33 @@ export const WINDOW_UPDATING_WORDS = 'Updating app…'
 /** How long the line stays: two short sentences, read once. */
 export const WINDOW_LOST_LINE_MS = 8000
 
+/** How long the longer line stays, the one that asks for the typed words to be sent or cleared. */
+export const WINDOW_LOST_TYPED_LINE_MS = 14000
+
 /**
  * The one line a window leaves when it gives up. `what` is the window as its host names it, with its
  * article: "The job", "The bid". It names the next press, since the line has none of its own.
  */
 export function windowLostWords(what: string): string {
   return `${what} could not open. Check your signal, then press it again.`
+}
+
+/**
+ * The line when the signal is there and the window still cannot open: the app has to reload to load it, and
+ * it will not reload over words someone typed (`typedText.ts`). It says what frees it. The app reloads by
+ * itself soon after the words are sent or cleared (`windowCure.ts`), and the press then opens the window.
+ */
+export function windowLostTypedWords(what: string): string {
+  return `${what} could not open. The app must reload first, and it will not reload over what you typed. Send or clear it, then press again.`
+}
+
+/**
+ * Which line a window that gave up says. The typed line only when the browser says the network is there:
+ * offline, the signal is the first thing to mend, and no reload would come anyway.
+ */
+export function windowLostLine(what: string, offline: boolean, typedText: boolean): { words: string; ms: number } {
+  if (!offline && typedText) return { words: windowLostTypedWords(what), ms: WINDOW_LOST_TYPED_LINE_MS }
+  return { words: windowLostWords(what), ms: WINDOW_LOST_LINE_MS }
 }
 
 /** The windows the app holds on demand, by the name each one's line carries. */

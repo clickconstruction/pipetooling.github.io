@@ -118,6 +118,40 @@ describe('WindowLoadBoundary', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
+  it('over words someone typed it says what frees the window, and the words stay', async () => {
+    const load = vi.fn(async (): Promise<{ default: typeof JobWindow }> => {
+      throw lostChunk()
+    })
+    render(
+      <>
+        <textarea aria-label="Message to the customer" defaultValue="We can start Monday." />
+        <JobsPage Window={lazyWindow(load)} />
+      </>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'J1001 · ZZ Test Kitchen row' }))
+    expect(
+      await screen.findByText('The job could not open. The app must reload first, and it will not reload over what you typed. Send or clear it, then press again.'),
+    ).toBeTruthy()
+    expect(screen.queryByText(LINE)).toBeNull()
+    expect((screen.getByLabelText('Message to the customer') as HTMLTextAreaElement).value).toBe('We can start Monday.')
+    expect(screen.getByRole('heading', { name: 'Jobs' })).toBeTruthy()
+  })
+
+  it('offline it says the signal line even over typed words: the signal is the first thing to mend', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    const load = vi.fn(async (): Promise<{ default: typeof JobWindow }> => {
+      throw lostChunk()
+    })
+    render(
+      <>
+        <textarea aria-label="Message to the customer" defaultValue="We can start Monday." />
+        <JobsPage Window={lazyWindow(load)} />
+      </>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'J1001 · ZZ Test Kitchen row' }))
+    expect(await screen.findByText(LINE)).toBeTruthy()
+  })
+
   it('the next press asks again, and the window opens once its code is back', async () => {
     let fail = true
     const load = vi.fn(async () => {

@@ -1,7 +1,8 @@
 import { Component, useCallback, type ErrorInfo, type ReactNode } from 'react'
 import { useOptionalToastContext } from '../contexts/ToastContext'
-import { chunkRecoveryReloadStarted } from '../lib/chunkLoadRecovery'
-import { WINDOW_LOST_LINE_MS, WINDOW_UPDATING_WORDS, windowLoadView, windowLostWords } from '../lib/windowLoad'
+import { browserSaysOffline, chunkRecoveryReloadStarted } from '../lib/chunkLoadRecovery'
+import { pageHoldsTypedText } from '../lib/typedText'
+import { WINDOW_UPDATING_WORDS, windowLoadView, windowLostLine } from '../lib/windowLoad'
 import { WindowOpening } from './WindowOpening'
 
 /**
@@ -24,7 +25,7 @@ type Props = {
   resetKey?: string | number | null
 }
 
-type CatchProps = Props & { say: (words: string) => void }
+type CatchProps = Props & { say: (words: string, ms: number) => void }
 
 type State = { error: Error | null }
 
@@ -41,7 +42,9 @@ class WindowLoadCatch extends Component<CatchProps, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (windowLoadView(error, chunkRecoveryReloadStarted()) !== 'gave-up') return
     console.error('WindowLoadBoundary caught:', error, errorInfo)
-    this.props.say(windowLostWords(this.props.what))
+    // Typed words hold the reload that would load the window, so the line says what frees it.
+    const line = windowLostLine(this.props.what, browserSaysOffline(), pageHoldsTypedText())
+    this.props.say(line.words, line.ms)
     this.props.onGaveUp()
   }
 
@@ -62,7 +65,7 @@ class WindowLoadCatch extends Component<CatchProps, State> {
 export function WindowLoadBoundary({ children, what, onGaveUp, resetKey }: Props) {
   // Null in a render smoke with no provider: the window still closes, with no line.
   const toasts = useOptionalToastContext()
-  const say = useCallback((words: string) => toasts?.showToast(words, 'warning', WINDOW_LOST_LINE_MS), [toasts])
+  const say = useCallback((words: string, ms: number) => toasts?.showToast(words, 'warning', ms), [toasts])
   return (
     <WindowLoadCatch what={what} onGaveUp={onGaveUp} resetKey={resetKey} say={say}>
       {children}

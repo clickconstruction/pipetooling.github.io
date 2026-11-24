@@ -18,6 +18,7 @@
  * to come, but a save still on its way out is let finish first (`decideChunkReloadWait`):
  * a reload inside a write sends the write and never hears its answer.
  */
+import { pageHoldsTypedText } from './typedText'
 import { inFlightWriteCount, subscribeUnsavedWork } from './unsavedWork'
 
 /** sessionStorage key recording the last automatic chunk-recovery reload. */
@@ -94,7 +95,12 @@ export type ChunkReloadWaitSnapshot = {
   msSinceStarted: number
   /** Time since the last write seen during the wait came back, null when none was seen. */
   msSinceWriteSettled: number | null
+  /** The page holds words someone typed and has not sent (`typedText.ts`). */
+  typedText?: boolean
 }
+
+/** While typed words hold the reload, how often the wait looks again. Nothing tells it when a field is cleared. */
+export const CHUNK_RELOAD_TYPED_LOOK_MS = 1_000
 
 export type ChunkReloadWait =
   | { act: 'reload'; reason: string }
@@ -106,6 +112,8 @@ export type ChunkReloadWait =
  * now or a little later.
  */
 export function decideChunkReloadWait(s: ChunkReloadWaitSnapshot): ChunkReloadWait {
+  // Before the wait's own end: a reload never goes over words someone typed, however long they stay.
+  if (s.typedText) return { act: 'wait', reason: 'words typed on the page', lookAgainInMs: CHUNK_RELOAD_TYPED_LOOK_MS }
   const untilGiveUp = CHUNK_RELOAD_WAIT_MAX_MS - s.msSinceStarted
   if (untilGiveUp <= 0) return { act: 'reload', reason: 'waited as long as a lost page can' }
   if (s.inFlightWrites > 0) {
@@ -129,8 +137,8 @@ export type WriteWatch = {
 
 const appWrites: WriteWatch = { count: inFlightWriteCount, subscribe: subscribeUnsavedWork }
 
-/** Call `reload` as soon as `decideChunkReloadWait` allows it: at once when nothing is in flight. */
-function reloadWhenWritesSettle(reload: () => void, writes: WriteWatch): void {
+/** Call `reload` as soon as `decideChunkReloadWait` allows it: at once when nothing is in flight and nothing is typed. */
+function reloadWhenWritesSettle(reload: () => void, writes: WriteWatch, typed: () => boolean): void {
   const startedAt = Date.now()
   let lastCount = writes.count()
   let settledAt: number | null = null
@@ -146,6 +154,7 @@ function reloadWhenWritesSettle(reload: () => void, writes: WriteWatch): void {
       inFlightWrites: writes.count(),
       msSinceStarted: at - startedAt,
       msSinceWriteSettled: settledAt == null ? null : at - settledAt,
+      typedText: typed(),
     })
     if (wait.act === 'reload') {
       fired = true
@@ -181,6 +190,11 @@ export function browserSaysOffline(): boolean {
  * False too while the browser says it is offline, with the guard left unclaimed. A reload has
  * nothing to fetch then: it empties the caches and lands on the browser's own error page, which
  * is worse than the fallback. The chunk was lost to the signal, not to a deploy.
+ *
+ * And false while the page holds words someone typed and has not sent (`typedText.ts`), with the
+ * guard left unclaimed: the app never reloads itself over them. The caller's fallback shows, and
+ * its press is the person's own. Words typed after the reload was started hold it too
+ * (`decideChunkReloadWait`), until they are sent or cleared.
  */
 export function startChunkRecoveryReload(
   now: number,
@@ -188,12 +202,24 @@ export function startChunkRecoveryReload(
   reload: () => void,
   writes: WriteWatch = appWrites,
   offline: boolean = browserSaysOffline(),
+  typed: () => boolean = pageHoldsTypedText,
 ): boolean {
   if (offline) return false
+  if (typed()) return false
   if (!tryClaimChunkRecoveryReload(now, storage)) return false
   recoveryReloadStarted = true
-  reloadWhenWritesSettle(reload, writes)
+  reloadWhenWritesSettle(reload, writes, typed)
   return true
+}
+
+/** Time since the last automatic recovery reload in this tab, null when there was none or it cannot be read. */
+export function msSinceChunkRecoveryReload(now: number, storage: Pick<Storage, 'getItem'> | null | undefined): number | null {
+  try {
+    const last = Number.parseInt(storage?.getItem(CHUNK_RECOVERY_KEY) ?? '', 10)
+    return Number.isFinite(last) ? now - last : null
+  } catch {
+    return null
+  }
 }
 
 /** True while a recovery reload started here is on its way. */
