@@ -72,6 +72,7 @@ import {
   writeAccountingHideLabeledTransactions,
 } from '../lib/bankingDragSortStorage'
 import { fetchAccountingPrefs, saveBankingPref } from '../lib/bankingUserPrefs'
+import { MoneyText } from '../components/Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 /** Stable empty list for org-note fetch ids when not on Mercury Banking (avoid spurious refetches). */
@@ -1873,7 +1874,7 @@ export default function Banking() {
               </span>
             </div>
             <div style={{ marginLeft: 'auto', fontWeight: 600 }}>
-              Visible total: {formatCurrency(sortingTotalAmount)} ({booksSortingFilteredSorted.length} of {rows.length} loaded)
+              Visible total: <MoneyText text={formatCurrency(sortingTotalAmount)} /> ({booksSortingFilteredSorted.length} of {rows.length} loaded)
               {rowsTruncated ? (
                 <span
                   title={`Only the newest ${MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT.toLocaleString()} transactions are loaded. Older transactions are not shown here.`}
@@ -2174,7 +2175,7 @@ export default function Banking() {
               />
             </label>
             <div style={{ marginLeft: 'auto', fontWeight: 600 }}>
-              Filtered total: {formatCurrency(totalAmount)} ({filteredSorted.length} of {rows.length} loaded)
+              Filtered total: <MoneyText text={formatCurrency(totalAmount)} /> ({filteredSorted.length} of {rows.length} loaded)
               {rowsTruncated ? (
                 <span
                   title={`Only the newest ${MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT.toLocaleString()} transactions are loaded. Older transactions are not shown here.`}

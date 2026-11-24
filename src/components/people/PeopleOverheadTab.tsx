@@ -71,6 +71,7 @@ import {
   readOverheadTableSimpleViewFromStorage,
   writeOverheadTableSimpleViewToStorage,
 } from '../../lib/overheadTableViewStorage'
+import { Money, MoneyText } from '../Money'
 
 function formatOverheadTabWorkDateLabel(workDateYmd: string): string {
   const d = referenceDateForWorkDateYmd(workDateYmd)
@@ -143,7 +144,7 @@ function OverheadPartsSectionsList({
                 ) : null}
               </span>
               <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>
-                ${formatCurrency(section.totalUsd)}
+                <Money amount={section.totalUsd} />
               </span>
             </div>
             {section.lines.length === 0 ? (
@@ -160,7 +161,7 @@ function OverheadPartsSectionsList({
                       ) : null}
                       {' — '}
                       {ln.amountUsd < 0 ? '−$' : '$'}
-                      {formatCurrency(Math.abs(ln.amountUsd))}
+                      <Money amount={Math.abs(ln.amountUsd)} symbol="" />
                       {ln.amountUsd < 0 ? <span style={{ color: 'var(--text-muted)' }}> refund</span> : null}
                     </li>
                   )
@@ -1274,9 +1275,9 @@ export default function PeopleOverheadTab({
             }
             return (
               <>
-                <span><span style={{ color: 'var(--text-muted)' }}>7-day:</span> {fmt(overheadAvgDailyCost.avg7)}</span>
-                <span><span style={{ color: 'var(--text-muted)' }}>30-day:</span> {fmt(overheadAvgDailyCost.avg30)}</span>
-                <span><span style={{ color: 'var(--text-muted)' }}>90-day:</span> {fmt(overheadAvgDailyCost.avg90)}</span>
+                <span><span style={{ color: 'var(--text-muted)' }}>7-day:</span> <MoneyText text={fmt(overheadAvgDailyCost.avg7)} /></span>
+                <span><span style={{ color: 'var(--text-muted)' }}>30-day:</span> <MoneyText text={fmt(overheadAvgDailyCost.avg30)} /></span>
+                <span><span style={{ color: 'var(--text-muted)' }}>90-day:</span> <MoneyText text={fmt(overheadAvgDailyCost.avg90)} /></span>
               </>
             )
           })()}
@@ -1306,9 +1307,9 @@ export default function PeopleOverheadTab({
             }
             return (
               <>
-                <span><span style={{ color: 'var(--text-muted)' }}>7-day:</span> {fmt(overheadAvgDailyCost.per100_7)}</span>
-                <span><span style={{ color: 'var(--text-muted)' }}>30-day:</span> {fmt(overheadAvgDailyCost.per100_30)}</span>
-                <span><span style={{ color: 'var(--text-muted)' }}>90-day:</span> {fmt(overheadAvgDailyCost.per100_90)}</span>
+                <span><span style={{ color: 'var(--text-muted)' }}>7-day:</span> <MoneyText text={fmt(overheadAvgDailyCost.per100_7)} /></span>
+                <span><span style={{ color: 'var(--text-muted)' }}>30-day:</span> <MoneyText text={fmt(overheadAvgDailyCost.per100_30)} /></span>
+                <span><span style={{ color: 'var(--text-muted)' }}>90-day:</span> <MoneyText text={fmt(overheadAvgDailyCost.per100_90)} /></span>
               </>
             )
           })()}
@@ -1682,7 +1683,7 @@ export default function PeopleOverheadTab({
                                 onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'bid' })}
                                 style={overheadValueCellButtonStyle}
                               >
-                                {formatCurrency(row.bidLaborUsd)}
+                                <Money amount={row.bidLaborUsd} symbol="" />
                               </button>
                             </td>
                             <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)' }}>
@@ -1692,7 +1693,7 @@ export default function PeopleOverheadTab({
                                 onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'office' })}
                                 style={overheadValueCellButtonStyle}
                               >
-                                {formatCurrency(row.officeLaborUsd)}
+                                <Money amount={row.officeLaborUsd} symbol="" />
                               </button>
                             </td>
                             <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)' }}>
@@ -1702,7 +1703,7 @@ export default function PeopleOverheadTab({
                                 onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'officeParts' })}
                                 style={overheadValueCellButtonStyle}
                               >
-                                {formatCurrency(row.officePartsUsd)}
+                                <Money amount={row.officePartsUsd} symbol="" />
                               </button>
                             </td>
                           </>
@@ -1736,7 +1737,7 @@ export default function PeopleOverheadTab({
                                 onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'total' })}
                                 style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
                               >
-                                {formatCurrency(row.totalUsd)}
+                                <Money amount={row.totalUsd} symbol="" />
                                 <span style={{ fontWeight: 400 }}> · {row.totalLaborHours.toFixed(2)}h</span>
                               </button>
                             </td>
@@ -1747,7 +1748,7 @@ export default function PeopleOverheadTab({
                                 onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'otherJobs' })}
                                 style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
                               >
-                                {formatCurrency(row.otherJobsUsd)}
+                                <Money amount={row.otherJobsUsd} symbol="" />
                                 <span style={{ fontWeight: 400 }}> · {row.otherJobsLaborHours.toFixed(2)}h</span>
                               </button>
                             </td>
@@ -1766,7 +1767,7 @@ export default function PeopleOverheadTab({
                                 onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'total' })}
                                 style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
                               >
-                                {formatCurrency(row.totalUsd)}
+                                <Money amount={row.totalUsd} symbol="" />
                                 <span style={{ fontWeight: 400 }}> · {row.totalLaborHours.toFixed(2)}h</span>
                               </button>
                             </td>
@@ -1791,7 +1792,7 @@ export default function PeopleOverheadTab({
                                 onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'otherJobs' })}
                                 style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
                               >
-                                {formatCurrency(row.otherJobsUsd)}
+                                <Money amount={row.otherJobsUsd} symbol="" />
                                 <span style={{ fontWeight: 400 }}> · {row.otherJobsLaborHours.toFixed(2)}h</span>
                               </button>
                             </td>
@@ -1826,13 +1827,13 @@ export default function PeopleOverheadTab({
                       {!overheadTableSimpleView ? (
                         <>
                           <td style={footerCellBase}>
-                            {formatCurrency(overheadTableTotals.bidLaborUsd)}
+                            <Money amount={overheadTableTotals.bidLaborUsd} symbol="" />
                           </td>
                           <td style={footerCellBase}>
-                            {formatCurrency(overheadTableTotals.officeLaborUsd)}
+                            <Money amount={overheadTableTotals.officeLaborUsd} symbol="" />
                           </td>
                           <td style={footerCellBase}>
-                            {formatCurrency(overheadTableTotals.officePartsUsd)}
+                            <Money amount={overheadTableTotals.officePartsUsd} symbol="" />
                           </td>
                         </>
                       ) : null}
@@ -1853,14 +1854,14 @@ export default function PeopleOverheadTab({
                               : `${Math.round(totalOverheadFactor * 100)}%`}
                           </td>
                           <td style={{ ...footerCellBase, borderLeft: '1px solid var(--border-strong)' }}>
-                            {formatCurrency(overheadTableTotals.totalUsd)}
+                            <Money amount={overheadTableTotals.totalUsd} symbol="" />
                             <span style={{ fontWeight: 400 }}>
                               {' '}
                               · {overheadTableTotals.totalLaborHours.toFixed(2)}h
                             </span>
                           </td>
                           <td style={{ ...footerCellBase, borderLeft: '1px solid var(--border-strong)' }}>
-                            {formatCurrency(overheadTableTotals.otherJobsUsd)}
+                            <Money amount={overheadTableTotals.otherJobsUsd} symbol="" />
                             <span style={{ fontWeight: 400 }}>
                               {' '}
                               · {overheadTableTotals.otherJobsLaborHours.toFixed(2)}h
@@ -1870,7 +1871,7 @@ export default function PeopleOverheadTab({
                       ) : (
                         <>
                           <td style={footerCellBase}>
-                            {formatCurrency(overheadTableTotals.totalUsd)}
+                            <Money amount={overheadTableTotals.totalUsd} symbol="" />
                             <span style={{ fontWeight: 400 }}>
                               {' '}
                               · {overheadTableTotals.totalLaborHours.toFixed(2)}h
@@ -1891,7 +1892,7 @@ export default function PeopleOverheadTab({
                               : `${Math.round(totalOverheadFactor * 100)}%`}
                           </td>
                           <td style={{ ...footerCellBase, borderLeft: '1px solid var(--border-strong)' }}>
-                            {formatCurrency(overheadTableTotals.otherJobsUsd)}
+                            <Money amount={overheadTableTotals.otherJobsUsd} symbol="" />
                             <span style={{ fontWeight: 400 }}>
                               {' '}
                               · {overheadTableTotals.otherJobsLaborHours.toFixed(2)}h
@@ -1953,7 +1954,7 @@ export default function PeopleOverheadTab({
                     sources.
                   </p>
                   <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
-                    Total: ${formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
+                    Total: <Money amount={overheadBreakdownModalModel.totalPartsUsd} />
                   </p>
                   {overheadBreakdownModalModel.internalTransferUsd > 0 ? (
                     <p
@@ -1965,19 +1966,17 @@ export default function PeopleOverheadTab({
                       }}
                       title="Movement between your own accounts; excluded from Materials."
                     >
-                      Internal Transfers (excluded): $
-                      {formatCurrency(overheadBreakdownModalModel.internalTransferUsd)}
+                      Internal Transfers (excluded): <Money amount={overheadBreakdownModalModel.internalTransferUsd} />
                     </p>
                   ) : null}
                 </>
               ) : overheadBreakdownModalModel.scope === 'total' ? (
                 <>
                   <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
-                    Labor: {overheadBreakdownModalModel.totalHours.toFixed(2)}h — $
-                    {formatCurrency(overheadBreakdownModalModel.totalLaborUsd)}
+                    Labor: {overheadBreakdownModalModel.totalHours.toFixed(2)}h — <Money amount={overheadBreakdownModalModel.totalLaborUsd} />
                   </p>
                   <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
-                    Office materials: ${formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
+                    Office materials: <Money amount={overheadBreakdownModalModel.totalPartsUsd} />
                   </p>
                   {overheadBreakdownModalModel.internalTransferUsd > 0 ? (
                     <p
@@ -1989,22 +1988,20 @@ export default function PeopleOverheadTab({
                       }}
                       title="Movement between your own accounts; excluded from Materials."
                     >
-                      Internal Transfers (excluded): $
-                      {formatCurrency(overheadBreakdownModalModel.internalTransferUsd)}
+                      Internal Transfers (excluded): <Money amount={overheadBreakdownModalModel.internalTransferUsd} />
                     </p>
                   ) : null}
                   <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
-                    Total: ${formatCurrency(overheadBreakdownModalModel.grandTotalUsd)}
+                    Total: <Money amount={overheadBreakdownModalModel.grandTotalUsd} />
                   </p>
                 </>
               ) : overheadBreakdownModalModel.scope === 'otherJobs' ? (
                 <>
                   <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
-                    Labor: {overheadBreakdownModalModel.totalHours.toFixed(2)}h — $
-                    {formatCurrency(overheadBreakdownModalModel.totalLaborUsd)}
+                    Labor: {overheadBreakdownModalModel.totalHours.toFixed(2)}h — <Money amount={overheadBreakdownModalModel.totalLaborUsd} />
                   </p>
                   <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
-                    Materials: ${formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
+                    Materials: <Money amount={overheadBreakdownModalModel.totalPartsUsd} />
                   </p>
                   {overheadBreakdownModalModel.internalTransferUsd > 0 ? (
                     <p
@@ -2016,12 +2013,11 @@ export default function PeopleOverheadTab({
                       }}
                       title="Movement between your own accounts; excluded from Materials."
                     >
-                      Internal Transfers (excluded): $
-                      {formatCurrency(overheadBreakdownModalModel.internalTransferUsd)}
+                      Internal Transfers (excluded): <Money amount={overheadBreakdownModalModel.internalTransferUsd} />
                     </p>
                   ) : null}
                   <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
-                    Combined: ${formatCurrency(overheadBreakdownModalModel.grandTotalUsd)}
+                    Combined: <Money amount={overheadBreakdownModalModel.grandTotalUsd} />
                   </p>
                 </>
               ) : (
@@ -2030,8 +2026,7 @@ export default function PeopleOverheadTab({
                     Recorded sessions (closed, not rejected) in this category. Labor $ = hours × hourly wage from pay config.
                   </p>
                   <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
-                    Totals: {overheadBreakdownModalModel.totalHours.toFixed(2)}h — $
-                    {formatCurrency(overheadBreakdownModalModel.totalLaborUsd)}
+                    Totals: {overheadBreakdownModalModel.totalHours.toFixed(2)}h — <Money amount={overheadBreakdownModalModel.totalLaborUsd} />
                   </p>
                 </>
               )}
@@ -2076,10 +2071,10 @@ export default function PeopleOverheadTab({
                               ) : null}
                             </td>
                             <td style={{ padding: '0.45rem', textAlign: 'right' }}>{r.hours.toFixed(2)}</td>
-                            <td style={{ padding: '0.45rem', textAlign: 'right' }}>{formatCurrency(r.officeLaborUsd)}</td>
-                            <td style={{ padding: '0.45rem', textAlign: 'right' }}>{formatCurrency(r.bidLaborUsd)}</td>
+                            <td style={{ padding: '0.45rem', textAlign: 'right' }}><Money amount={r.officeLaborUsd} symbol="" /></td>
+                            <td style={{ padding: '0.45rem', textAlign: 'right' }}><Money amount={r.bidLaborUsd} symbol="" /></td>
                             <td style={{ padding: '0.45rem', textAlign: 'right', fontWeight: 600 }}>
-                              {formatCurrency(r.totalLaborUsd)}
+                              <Money amount={r.totalLaborUsd} symbol="" />
                             </td>
                           </tr>
                         ))}
@@ -2096,7 +2091,7 @@ export default function PeopleOverheadTab({
                         {overheadBreakdownModalModel.sortedSessions.map((ln) => (
                           <li key={ln.sessionId} style={{ marginBottom: '0.25rem' }}>
                             {ln.userName} — {ln.bucket === 'office' ? 'Office' : 'Bid'} — {ln.hours.toFixed(2)}h —{' '}
-                            ${formatCurrency(ln.laborUsd)}
+                            <Money amount={ln.laborUsd} />
                             {ln.missingWage ? <span style={{ color: 'var(--text-amber-700)' }}> (no hourly wage)</span> : null}
                             {ln.notes ? (
                               <span style={{ color: 'var(--text-muted)' }}> | {ln.notes}</span>
@@ -2163,7 +2158,7 @@ export default function PeopleOverheadTab({
                             </td>
                             <td style={{ padding: '0.45rem', textAlign: 'right' }}>{r.hours.toFixed(2)}</td>
                             <td style={{ padding: '0.45rem', textAlign: 'right', fontWeight: 600 }}>
-                              {formatCurrency(r.laborUsd)}
+                              <Money amount={r.laborUsd} symbol="" />
                             </td>
                           </tr>
                         ))}
@@ -2179,7 +2174,7 @@ export default function PeopleOverheadTab({
                       <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.1rem' }}>
                         {overheadBreakdownModalModel.sortedSessions.map((ln) => (
                           <li key={ln.sessionId} style={{ marginBottom: '0.25rem' }}>
-                            {ln.userName} — {ln.hours.toFixed(2)}h — ${formatCurrency(ln.laborUsd)}
+                            {ln.userName} — {ln.hours.toFixed(2)}h — <Money amount={ln.laborUsd} />
                             {ln.missingWage ? <span style={{ color: 'var(--text-amber-700)' }}> (no hourly wage)</span> : null}
                             {ln.notes ? (
                               <span style={{ color: 'var(--text-muted)' }}> | {ln.notes}</span>
@@ -2245,7 +2240,7 @@ export default function PeopleOverheadTab({
                           ) : null}
                         </td>
                         <td style={{ padding: '0.45rem', textAlign: 'right' }}>{r.hours.toFixed(2)}</td>
-                        <td style={{ padding: '0.45rem', textAlign: 'right' }}>{formatCurrency(r.laborUsd)}</td>
+                        <td style={{ padding: '0.45rem', textAlign: 'right' }}><Money amount={r.laborUsd} symbol="" /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -2264,7 +2259,7 @@ export default function PeopleOverheadTab({
                       {overheadBreakdownModalModel.sortedSessions.map((ln) => (
                         <li key={ln.sessionId} style={{ marginBottom: '0.25rem' }}>
                           {ln.userName} — {ln.bucket === 'office' ? 'Office' : 'Bid'} — {ln.hours.toFixed(2)}h —{' '}
-                          ${formatCurrency(ln.laborUsd)}
+                          <Money amount={ln.laborUsd} />
                           {ln.missingWage ? <span style={{ color: 'var(--text-amber-700)' }}> (no hourly wage)</span> : null}
                           {ln.notes ? (
                             <span style={{ color: 'var(--text-muted)' }}> | {ln.notes}</span>

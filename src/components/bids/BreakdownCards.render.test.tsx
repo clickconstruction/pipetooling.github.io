@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { TagBreakdownCard } from './TagBreakdownCard'
 import { KindBreakdownCard } from './KindBreakdownCard'
+import { moneyText } from '../../test/moneyText'
 
 afterEach(() => {
   cleanup()
@@ -27,7 +28,7 @@ describe('TagBreakdownCard', () => {
     expect(screen.getByText('restrooms')).toBeTruthy()
     expect(screen.getByText('level 2')).toBeTruthy()
     expect(screen.getByText('No tag')).toBeTruthy()
-    expect(screen.getByText('$1,800.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$1,800.00'))).toBeTruthy()
     expect(screen.getByText(/carries two tags/)).toBeTruthy()
   })
   it('with no tags says so and draws no table', () => {
@@ -44,7 +45,7 @@ describe('KindBreakdownCard', () => {
     expect(screen.getByText('2 kinds')).toBeTruthy()
     expect(screen.getByText('Fixtures')).toBeTruthy()
     expect(screen.getByText('Equipment')).toBeTruthy()
-    expect(screen.getByText('$1,800.00')).toBeTruthy()
-    expect(screen.getByText('$2,000.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$1,800.00'))).toBeTruthy()
+    expect(screen.getByText(moneyText('$2,000.00'))).toBeTruthy()
   })
 })

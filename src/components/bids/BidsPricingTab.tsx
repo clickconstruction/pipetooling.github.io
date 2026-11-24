@@ -142,6 +142,7 @@ import type {
   BidCountRowSubmissionHide,
   BidVersion,
 } from '../../lib/bids/bidPricingEngineTypes'
+import { Money, MoneyText } from '../Money'
 
 /** "Tue 4:12 PM" for a restored solve from this week; adds the date once it's older (v2.2373). */
 function formatRestoredStamp(at: number): string {
@@ -2557,7 +2558,7 @@ export function BidsPricingTab({
                       ) : null}
                       {price != null ? (
                         <span data-testid="pricing-robot-reference" title={`The robot priced this fixture at ${moneyWords(price)} each on its own book. A reference, nothing more.`} style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.35rem', whiteSpace: 'nowrap' }}>
-                          robot {moneyWords(price)}
+                          robot <MoneyText text={moneyWords(price)} />
                         </span>
                       ) : null}
                     </>
@@ -3248,7 +3249,7 @@ export function BidsPricingTab({
                       {uncostedRevenue > 0 && wbPreview && previewCount + vetoCount > 0 ? (
                         <div style={{ marginTop: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.7rem', flexWrap: 'wrap', border: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: 7, padding: '0.4rem 0.7rem' }}>
                           <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-                            <strong style={{ color: 'var(--text-strong)' }}>{eff.length - costed.length}/{eff.length} have no cost:</strong> their ${formatCurrency(uncostedRevenue)} is unaffected
+                            <strong style={{ color: 'var(--text-strong)' }}>{eff.length - costed.length}/{eff.length} have no cost:</strong> their <Money amount={uncostedRevenue} /> is unaffected
                           </span>
                           <button
                             type="button"
@@ -3518,7 +3519,7 @@ export function BidsPricingTab({
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.count}</td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.cost > 0 ? 'var(--text-700)' : 'var(--text-muted)' }} onClick={(e) => e.stopPropagation()}>
-                                  {r.cost > 0 ? `$${formatCurrency(r.cost / r.count)}` : 'no cost'}
+                                  {r.cost > 0 ? <Money amount={r.cost / r.count} /> : 'no cost'}
                                   {(() => {
                                     const cc = bidCountRowCustomCosts.find((c) => c.count_row_id === r.countRow.id)
                                     if (!cc) return null
@@ -3559,7 +3560,7 @@ export function BidsPricingTab({
                                     )
                                   })() : r.entry ? (
                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'var(--bg-blue-tint)', border: '1px solid var(--border)', color: 'var(--text-blue-700)', borderRadius: 6, padding: '0.1rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                                      {r.entry.fixture_types?.name ?? 'entry'} · ${formatCurrency(Number(r.entry.total_price) || 0)}
+                                      {r.entry.fixture_types?.name ?? 'entry'} · <Money amount={Number(r.entry.total_price) || 0} />
                                       <button
                                         type="button"
                                         onClick={() => void removePricingAssignment(r.countRow.id)}
@@ -3618,7 +3619,7 @@ export function BidsPricingTab({
                                                   style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', width: '100%', textAlign: 'left', font: 'inherit', fontSize: '0.78rem', padding: '0.35rem 0.55rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
                                                 >
                                                   <span>{renderAssignHighlightedName(name, ranges)}</span>
-                                                  <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(Number(e.total_price) || 0)}</span>
+                                                  <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}><Money amount={Number(e.total_price) || 0} /></span>
                                                 </button>
                                               ))
                                             ) : assignMatchMode === 'exact' && term.trim() ? (
@@ -3676,7 +3677,7 @@ export function BidsPricingTab({
                                         textDecoration: r.isVetoed ? 'line-through' : 'none',
                                       }}
                                     >
-                                      ${formatCurrency(wbPreview?.[r.countRow.id] ?? 0)} {r.isVetoed ? '✕' : '→'}
+                                      <Money amount={wbPreview?.[r.countRow.id] ?? 0} /> {r.isVetoed ? '✕' : '→'}
                                     </button>
                                   ) : null}
                                   {pricesLoading ? wbCellLoading : (
@@ -3865,7 +3866,7 @@ export function BidsPricingTab({
                                             )}
                                           </td>
                                           <td style={td({ textAlign: 'center', color: 'var(--text-faint)' })}>{priced ? r.count : ''}</td>
-                                          <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums' })}>{priced ? money(part.costEa) : ''}</td>
+                                          <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums' })}>{priced ? <MoneyText text={money(part.costEa)} /> : ''}</td>
                                           <td style={td()} />
                                           <td style={td({ textAlign: 'right' })}>
                                             {!priced ? (
@@ -3892,12 +3893,12 @@ export function BidsPricingTab({
                                               />
                                             ) : (
                                               <span style={{ display: 'inline-block', width: '6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: under ? 'var(--text-red-700)' : part.key === 'labor' ? 'var(--text-strong)' : 'var(--text-700)', fontWeight: part.key === 'labor' ? 600 : 400, textDecoration: part.key === 'tax' && !s.taxable ? 'line-through' : 'none' }}>
-                                                {money(part.priceEa, true)}
+                                                <MoneyText text={money(part.priceEa, true)} />
                                               </span>
                                             )}
                                           </td>
-                                          <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: under ? 'var(--text-red-700)' : undefined, fontWeight: part.key === 'labor' ? 600 : 400 })}>{priced ? money(revenue, true) : ''}</td>
-                                          <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: profit != null && profit < 0 ? 'var(--text-red-700)' : undefined })}>{priced ? money(profit, true) : ''}</td>
+                                          <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: under ? 'var(--text-red-700)' : undefined, fontWeight: part.key === 'labor' ? 600 : 400 })}>{priced ? <MoneyText text={money(revenue, true)} /> : ''}</td>
+                                          <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: profit != null && profit < 0 ? 'var(--text-red-700)' : undefined })}>{priced ? <MoneyText text={money(profit, true)} /> : ''}</td>
                                           <td style={td({ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: margin == null ? 'var(--text-faint)' : mColor(margin) })}>{priced && margin != null ? `${Math.round(margin * 100)}%` : ''}</td>
                                           <td style={td()} />
                                         </tr>

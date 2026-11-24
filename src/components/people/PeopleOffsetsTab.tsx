@@ -11,6 +11,7 @@ import { isArchivedRosterRef, NO_ARCHIVED_ROSTER, personIdByName, type ArchivedR
 import { EmptyState } from '../EmptyState'
 import { searchEmptyWords, settleUpEmptyWords } from '../../lib/people/peopleEmptyWords'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { Money, MoneyText } from '../Money'
 
 /** Above Record payment / nested pay dialogs when opening PersonOffsetFormModal from Pay History. */
 const Z_PEOPLE_OFFSET_FORM = 1210
@@ -281,7 +282,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, payStubDeduc
                           >
                             <td style={{ padding: '0.5rem 0.75rem', fontWeight: settled ? 400 : 600 }}>{b.personName}</td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.unpaidRemaining > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
-                              {b.unpaidRemaining > 0 ? `$${formatCurrency(b.unpaidRemaining)}` : '—'}
+                              {b.unpaidRemaining > 0 ? <Money amount={b.unpaidRemaining} /> : '—'}
                             </td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.unreportedWeeks > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
                               {b.unreportedWeeks > 0
@@ -291,10 +292,10 @@ export default function PeopleOffsetsTab({ people, users, payStubs, payStubDeduc
                                   : '—'}
                             </td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.credits > 0 ? 'var(--text-green-800)' : 'var(--text-muted)' }}>
-                              {b.credits > 0 ? `+$${formatCurrency(b.credits)}` : '—'}
+                              {b.credits > 0 ? <MoneyText text={`+$${formatCurrency(b.credits)}`} /> : '—'}
                             </td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: b.charges > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
-                              {b.charges > 0 ? `−$${formatCurrency(b.charges)}` : '—'}
+                              {b.charges > 0 ? <MoneyText text={`−$${formatCurrency(b.charges)}`} /> : '—'}
                             </td>
                             <td
                               style={{
@@ -307,9 +308,9 @@ export default function PeopleOffsetsTab({ people, users, payStubs, payStubDeduc
                               {settled
                                 ? 'settled'
                                 : b.net > 0
-                                  ? `pay $${formatCurrency(b.net)}`
+                                  ? <MoneyText text={`pay $${formatCurrency(b.net)}`} />
                                   : b.net < 0
-                                    ? `owes $${formatCurrency(Math.abs(b.net))}`
+                                    ? <MoneyText text={`owes $${formatCurrency(Math.abs(b.net))}`} />
                                     : '$0.00'}
                               {b.netMissingUnpricedHours ? ' *' : ''}
                             </td>
@@ -468,7 +469,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, payStubDeduc
                     <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.75rem' }}>{o.person_name}</td>
                       <td style={{ padding: '0.75rem' }}>{offsetTypeLabel}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(o.amount)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}><Money amount={o.amount} /></td>
                       <td style={{ padding: '0.75rem' }}>{o.description || '—'}</td>
                       <td style={{ padding: '0.75rem' }}>{o.occurred_date}</td>
                       <td style={{ padding: '0.75rem' }}>
@@ -587,7 +588,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, payStubDeduc
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710, paddingTop: 'var(--app-top-chrome, 0px)' }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Apply offset to pay report</h3>
-            <p style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>Apply {offsetToApply.type} ${formatCurrency(offsetToApply.amount)} for {offsetToApply.person_name} to a pay report:</p>
+            <p style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>Apply {offsetToApply.type} <Money amount={offsetToApply.amount} /> for {offsetToApply.person_name} to a pay report:</p>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4 }}>Pay report</label>
               <select value={offsetApplyPayStubId} onChange={(e) => setOffsetApplyPayStubId(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>

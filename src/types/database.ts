@@ -27259,6 +27259,8 @@ export type Database = {
           note: string
           noted_at: string
           noted_by: string | null
+          noted_by_name: string
+          shown_as: string
           source: string | null
         }
         Insert: {
@@ -27269,6 +27271,8 @@ export type Database = {
           note?: string
           noted_at?: string
           noted_by?: string | null
+          noted_by_name?: string
+          shown_as?: string
           source?: string | null
         }
         Update: {
@@ -27279,11 +27283,57 @@ export type Database = {
           note?: string
           noted_at?: string
           noted_by?: string | null
+          noted_by_name?: string
+          shown_as?: string
           source?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "license_roll_left_off_noted_by_fkey"
+            columns: ["noted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      license_roll_notes: {
+        Row: {
+          body: string
+          id: string
+          license_class: string
+          license_number: string
+          name_key: string
+          noted_at: string
+          noted_by: string | null
+          noted_by_name: string
+          source: string
+        }
+        Insert: {
+          body: string
+          id?: string
+          license_class: string
+          license_number: string
+          name_key?: string
+          noted_at?: string
+          noted_by?: string | null
+          noted_by_name?: string
+          source: string
+        }
+        Update: {
+          body?: string
+          id?: string
+          license_class?: string
+          license_number?: string
+          name_key?: string
+          noted_at?: string
+          noted_by?: string | null
+          noted_by_name?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "license_roll_notes_noted_by_fkey"
             columns: ["noted_by"]
             isOneToOne: false
             referencedRelation: "users"
@@ -29927,6 +29977,7 @@ export type Database = {
           decided_at: string | null
           decided_by: string | null
           id: string
+          job_id: string | null
           kind: string | null
           message_id: string
           offered_at: string
@@ -29939,6 +29990,7 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           id?: string
+          job_id?: string | null
           kind?: string | null
           message_id: string
           offered_at?: string
@@ -29951,6 +30003,7 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           id?: string
+          job_id?: string | null
           kind?: string | null
           message_id?: string
           offered_at?: string
@@ -33041,6 +33094,8 @@ export type Database = {
           city: string
           error: string | null
           id: string
+          issued_since: string | null
+          issued_whole: boolean | null
           ran_at: string
           rows_kept: number
           rows_seen: number
@@ -33051,6 +33106,8 @@ export type Database = {
           city: string
           error?: string | null
           id?: string
+          issued_since?: string | null
+          issued_whole?: boolean | null
           ran_at?: string
           rows_kept?: number
           rows_seen?: number
@@ -33061,6 +33118,8 @@ export type Database = {
           city?: string
           error?: string | null
           id?: string
+          issued_since?: string | null
+          issued_whole?: boolean | null
           ran_at?: string
           rows_kept?: number
           rows_seen?: number
@@ -41126,6 +41185,7 @@ export type Database = {
           number: string
           order_number: string
           page_from: number | null
+          page_text: string | null
           page_to: number | null
           po_text: string
           read_at: string | null
@@ -41160,6 +41220,7 @@ export type Database = {
           number?: string
           order_number?: string
           page_from?: number | null
+          page_text?: string | null
           page_to?: number | null
           po_text?: string
           read_at?: string | null
@@ -41194,6 +41255,7 @@ export type Database = {
           number?: string
           order_number?: string
           page_from?: number | null
+          page_text?: string | null
           page_to?: number | null
           po_text?: string
           read_at?: string | null
@@ -46866,6 +46928,7 @@ export type Database = {
       contact_for_customer: { Args: { p_customer_id: string }; Returns: string }
       contact_for_job: { Args: { p_job_id: string }; Returns: string }
       contact_for_prospect: { Args: { p_prospect_id: string }; Returns: string }
+      contact_holds_paper: { Args: { p_contact_id: string }; Returns: boolean }
       contact_job_check: {
         Args: { p_job_id: string; p_job_kind: string }
         Returns: undefined
@@ -49848,6 +49911,10 @@ export type Database = {
         Returns: Json
       }
       license_expiry_notices_sweep: { Args: never; Returns: Json }
+      license_roll_leave_off: {
+        Args: { p_note?: string; p_roll_id: string }
+        Returns: Json
+      }
       lien_affidavit_days: {
         Args: never
         Returns: {
@@ -53041,6 +53108,29 @@ export type Database = {
           service_type_name: string
         }[]
       }
+      search_supply_bills: {
+        Args: {
+          p_day?: number
+          p_limit?: number
+          p_month?: number
+          p_words?: string[]
+          p_year?: number
+        }
+        Returns: {
+          amount: number
+          has_pdf: boolean
+          invoice_date: string
+          invoice_id: string
+          invoice_number: string
+          is_paid: boolean
+          jobs: Json
+          on_paper: string
+          on_paper_code: string
+          purchase_order_number: string
+          supply_house_id: string
+          supply_house_name: string
+        }[]
+      }
       seed_default_mercury_category_tags: { Args: never; Returns: undefined }
       self_move_schedule_block: {
         Args: {
@@ -54167,8 +54257,17 @@ export type Database = {
         Args: { p_kind: string; p_message_id: string; p_writes?: string }
         Returns: undefined
       }
+      write_down_heard: {
+        Args: {
+          p_day: string
+          p_kind: string
+          p_message_id: string
+          p_writes?: string
+        }
+        Returns: undefined
+      }
       write_down_payment: {
-        Args: { p_day?: string; p_message_id: string }
+        Args: { p_day?: string; p_job_id?: string; p_message_id: string }
         Returns: undefined
       }
       write_up_people: { Args: never; Returns: Json }

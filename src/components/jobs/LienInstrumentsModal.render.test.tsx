@@ -14,6 +14,7 @@ import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 // second alone and outlasts a case's 5 s under a loaded full run (the flake on 2026-10-08), so the file loads it
 // here, outside every case's clock; the door's React.lazy then resolves from the module cache (v2.4955).
 import './LienRulesModal'
+import { moneyText } from '../../test/moneyText'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -489,7 +490,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
   it('a single-bill job with an unlinked payment claims the difference, and the gate closes', async () => {
     const paidUnlinked = job({ payments: [{ id: 'p1', job_id: 'job-4102', invoice_id: null, amount: 1000, paid_on: '2026-08-20', sequence_order: 0 }] })
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={paidUnlinked} />)
-    await waitFor(() => expect(screen.getByText(/\$1,000\.00 has been paid and \$500\.00 remains\./)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(moneyText(/\$1,000\.00 has been paid and \$500\.00 remains\./))).toBeTruthy())
     expect(screen.getByText(/not applicable — payments have been made on this job/)).toBeTruthy()
   })
 

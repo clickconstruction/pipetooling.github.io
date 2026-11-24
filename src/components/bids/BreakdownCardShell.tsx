@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { formatCurrency } from '../../lib/format'
+import { MoneyText } from '../Money'
 
 export type BreakdownSlice = { key: string; name: string; color: string; share: number }
 
@@ -67,9 +68,9 @@ export function BreakdownCardShell({ storageKey, title, sub, slices, totals, mar
   )
   const totalsLine = (
     <span style={{ display: 'inline-flex', gap: '0.9rem', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontVariantNumeric: 'tabular-nums', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
-      <span title="Cost">{money(totals.cost)}</span>
-      <span title="Price" style={{ fontWeight: 700 }}>{money(totals.price)}</span>
-      <span title="Profit">{money(totals.profit)}</span>
+      <span title="Cost"><MoneyText text={money(totals.cost)} /></span>
+      <span title="Price" style={{ fontWeight: 700 }}><MoneyText text={money(totals.price)} /></span>
+      <span title="Profit"><MoneyText text={money(totals.profit)} /></span>
       <span title="Margin" style={{ fontWeight: 700, color: marginColor(totals.margin) }}>{pct(totals.margin)}</span>
     </span>
   )

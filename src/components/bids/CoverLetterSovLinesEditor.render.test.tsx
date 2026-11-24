@@ -9,6 +9,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { CoverLetterSovLinesEditor } from './CoverLetterSovLinesEditor'
 import type { SovLine } from '../../lib/bidDocuments/sovLines'
+import { moneyText } from '../../test/moneyText'
 
 const writes: Array<{ op: string; payload: unknown }> = []
 vi.mock('../../lib/supabase', () => {
@@ -56,7 +57,7 @@ describe('CoverLetterSovLinesEditor', () => {
     expect(screen.getByLabelText('Line 1 note')).toHaveProperty('value', 'To the meter')
     // Water heater has no labor typed: the company share (45% of 4,500 = 2,025) is the placeholder, material 2,475.
     expect(screen.getByLabelText('Line 2 labor')).toHaveProperty('placeholder', '2,025.00')
-    expect(screen.getByText('$2,475.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$2,475.00'))).toBeTruthy()
     expect(screen.getByText('2 lines')).toBeTruthy()
     const gap = screen.getByTestId('cover-letter-sov-lines-gap')
     expect(gap.textContent).toContain('Lines add to $8,700.00')
@@ -74,7 +75,7 @@ describe('CoverLetterSovLinesEditor', () => {
     const onChanged = vi.fn()
     renderWithProviders(<CoverLetterSovLinesEditor bidId="b1" lines={[line({ id: 'l1', label: 'Trim', value: 9000 })]} contractAmount={9000} splitOn={false} ruleLaborPct={45} seeds={null} onChanged={onChanged} />)
     expect(screen.queryByTestId('cover-letter-sov-lines-gap')).toBeNull()
-    expect(screen.getByText('Lines add to the $9,000.00 contract.')).toBeTruthy()
+    expect(screen.getByText(moneyText('Lines add to the $9,000.00 contract.'))).toBeTruthy()
     fireEvent.click(screen.getByText('+ Add line'))
     await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
     expect(writes[0]).toMatchObject({ op: 'insert', payload: { bid_id: 'b1', sort_order: 1, label: '', value: 0 } })

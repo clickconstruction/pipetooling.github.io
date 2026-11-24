@@ -13,6 +13,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { sameModelGroups } from '../lib/materials/partMatch'
 import { addMergeCounts, allCalledDistinct, callDistinct, loadDistinctPairs, mergeAsk, mergeOutcome, mergeParts, NO_MERGE_COUNTS } from '../lib/materials/mergeParts'
+import { Money } from '../components/Money'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
@@ -25,10 +26,6 @@ interface PartType {
 interface ServiceType {
   id: string
   name: string
-}
-
-function formatCurrency(n: number): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 export default function Duplicates() {
@@ -335,7 +332,7 @@ export default function Duplicates() {
                       <td style={{ padding: '0.5rem 0.75rem' }}>{part.manufacturer ?? '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{(part.part_type_id ? partTypeMap[part.part_type_id]?.name : null) ?? '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{serviceTypeMap[part.service_type_id]?.name ?? '—'}</td>
-                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{best ? `$${formatCurrency(best.price)}` : '—'}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{best ? <Money amount={best.price} /> : '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{best?.supplyHouseName ?? '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <button

@@ -86,6 +86,7 @@ import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
 import { gcDisplayName } from '../../lib/bids/gcDisplayName'
+import { Money, MoneyText } from '../Money'
 
 const COVER_LETTER_INCLUSIONS_PLACEHOLDER = 'Permits'
 
@@ -1229,7 +1230,7 @@ export function BidsCoverLetterTab({
                   />
                   <span>Offer <strong>{g.label}</strong><span style={altChipStyle}>ALT</span></span>
                   {alternateIsPriced(g) ? (
-                    <span style={{ color: 'var(--text-muted)' }}>adds ${formatCurrency(g.revenueSum)}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>adds <Money amount={g.revenueSum} /></span>
                   ) : (
                     // v2.4224: no price yet — say what the customer will read, where the estimator is looking.
                     <span data-testid="cover-letter-alt-unpriced" title="Its rows have no sale price yet. Price them on the Pricing tab and the letter shows what it adds." style={{ color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderRadius: 4, padding: '0 0.35rem', fontWeight: 600 }}>
@@ -1807,7 +1808,7 @@ export function BidsCoverLetterTab({
                                 return (
                                   <>
                                     <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                                      One bid{activePricingName ? <> — the letter shows ★ <strong style={{ color: 'var(--text-strong)' }}>{activePricingName}</strong>{baseSec && baseSec.revenueSum > 0 ? <> · ${formatCurrency(baseSec.revenueSum)}</> : null}</> : null}
+                                      One bid{activePricingName ? <> — the letter shows ★ <strong style={{ color: 'var(--text-strong)' }}>{activePricingName}</strong>{baseSec && baseSec.revenueSum > 0 ? <> · <Money amount={baseSec.revenueSum} /></> : null}</> : null}
                                       {unsplitOthers.length === 0 ? <>. To offer an alternate, add a price on the Pricing tab, or make it a bid to send (＋ Another bid to send… at the top).</> : null}
                                     </div>
                                     {unsplitOthers.length > 0 ? (
@@ -1834,7 +1835,7 @@ export function BidsCoverLetterTab({
                                                   </button>
                                                 </>
                                               )}
-                                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{op.include_in_submission ? (osec && osec.revenueSum > 0 ? `alternate · $${formatCurrency(osec.revenueSum)}` : 'alternate · unpriced — left off the letter') : 'not offered'}</span>
+                                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{op.include_in_submission ? (osec && osec.revenueSum > 0 ? <MoneyText text={`alternate · $${formatCurrency(osec.revenueSum)}`} /> : 'alternate · unpriced — left off the letter') : 'not offered'}</span>
                                               {twin ? (
                                                 <span data-testid="cover-letter-same-amount" style={{ fontSize: '0.64rem', fontWeight: 600, color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderRadius: 4, padding: '0 0.35rem' }}>same amount as “{twin}” — probably a copy</span>
                                               ) : null}
@@ -1943,7 +1944,7 @@ export function BidsCoverLetterTab({
                                       <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                                         {/* Each segment is a nowrap unit so a narrow panel breaks BETWEEN the
                                             " · " separators, never inside "sent 8/27" (owner, 2026-08-28). */}
-                                        {starName ? <><span style={{ whiteSpace: 'nowrap' }}>★ {starName}</span>{sec && sec.revenueSum > 0 ? <>{' · '}<span style={{ whiteSpace: 'nowrap' }}>${formatCurrency(sec.revenueSum)}</span></> : null}</> : 'no prices yet'}
+                                        {starName ? <><span style={{ whiteSpace: 'nowrap' }}>★ {starName}</span>{sec && sec.revenueSum > 0 ? <>{' · '}<span style={{ whiteSpace: 'nowrap' }}><Money amount={sec.revenueSum} /></span></> : null}</> : 'no prices yet'}
                                         {v.include_in_submission && (!sec || sec.revenueSum <= 0) ? (
                                           <span style={{ marginLeft: '0.35rem', fontSize: '0.64rem', fontWeight: 700, color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.03rem 0.4rem', whiteSpace: 'nowrap' }}>unpriced — left off the letter</span>
                                         ) : null}
@@ -1979,7 +1980,7 @@ export function BidsCoverLetterTab({
                                                   </button>
                                                 </>
                                               )}
-                                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{op.include_in_submission ? (osec && osec.revenueSum > 0 ? `alternate · $${formatCurrency(osec.revenueSum)}` : 'alternate · unpriced — left off the letter') : 'not offered'}</span>
+                                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{op.include_in_submission ? (osec && osec.revenueSum > 0 ? <MoneyText text={`alternate · $${formatCurrency(osec.revenueSum)}`} /> : 'alternate · unpriced — left off the letter') : 'not offered'}</span>
                                             </div>
                                           )
                                         })}
@@ -1991,7 +1992,7 @@ export function BidsCoverLetterTab({
                               {(multi || bundlePricings.length === 0) ? (
                                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                                   {multi ? <>Checked packets go in {gcShort}'s letter at their ★ base price; ticked prices under one are offered to {gcShort} as alternates. Change prices on the Pricing tab.</> : null}
-                                  {multi ? <> <strong style={{ color: 'var(--text-strong)' }}>{gcShort}: base ${formatCurrency(gcBase)}{gcAlts ? ` + ${gcAlts} alternate${gcAlts === 1 ? '' : 's'}` : ''}</strong></> : null}
+                                  {multi ? <> <strong style={{ color: 'var(--text-strong)' }}>{gcShort}: base <Money amount={gcBase} />{gcAlts ? ` + ${gcAlts} alternate${gcAlts === 1 ? '' : 's'}` : ''}</strong></> : null}
                                   {bundlePricings.length === 0 ? <> Nothing checked — showing the active bid's letter.</> : null}
                                 </div>
                               ) : null}
@@ -2059,7 +2060,7 @@ export function BidsCoverLetterTab({
                         <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>{displayHeadlineNumber}</span>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                           {useCustomAmount ? 'custom amount' : letterOptions ? `Option 1 leads · ${letterOptions.length} options · ${letterOptions.reduce((n, o) => n + o.alternates.length, 0) + samePagePlan!.alternates.length} alternate${letterOptions.reduce((n, o) => n + o.alternates.length, 0) + samePagePlan!.alternates.length === 1 ? '' : 's'}` : alternateLeadsLetter ? `letter amount · ★ alternate leads · ${bundleSummary(bundlePricings)}` : newBundleActive ? `${boardValueRule === 'active_star' ? "active bid's ★" : 'letter total'} · ${bundleSummary(bundlePricings)}` : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
-                          {letterOptions && !useCustomAmount ? letterOptions.slice(1).map((o) => <span key={o.n} data-testid="cover-letter-option-line" style={{ display: 'block' }}>Option {o.n} · ${formatCurrency(o.section.revenueSum)}</span>) : null}
+                          {letterOptions && !useCustomAmount ? letterOptions.slice(1).map((o) => <span key={o.n} data-testid="cover-letter-option-line" style={{ display: 'block' }}>Option {o.n} · <Money amount={o.section.revenueSum} /></span>) : null}
                         </span>
                       </div>
                       {/* Frozen bid prices, PR 2: the letter recomputes from the price copy; the quote is what went out. */}
@@ -2072,7 +2073,7 @@ export function BidsCoverLetterTab({
                             data-testid="cover-letter-sent-vs-today"
                             style={{ marginTop: '0.35rem', fontSize: '0.74rem', fontVariantNumeric: 'tabular-nums', color: differs ? 'var(--text-amber-700)' : 'var(--text-muted)', fontWeight: differs ? 600 : 400 }}
                           >
-                            {sentVsTodayText(cmp, { where: letterSaysSent ? 'grid' : 'letter', currentYear: new Date().getFullYear() })}
+                            <MoneyText text={sentVsTodayText(cmp, { where: letterSaysSent ? 'grid' : 'letter', currentYear: new Date().getFullYear() })} />
                           </div>
                         )
                       })()}
@@ -2171,7 +2172,7 @@ export function BidsCoverLetterTab({
                       <BidBasisCard bid={bid} exports={bidBasisExports} />
                       {scheduleOfValuesEnabled && (
                         <div data-testid="cover-letter-schedule-of-values" style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem 0.7rem', marginBottom: '0.7rem' }}>
-                          <span style={studioFieldLabelStyle}>Schedule of values · ${formatCurrency(effectiveRevenue)} · {sovShape === 'lines' ? 'my lines' : 'by stage'}</span>
+                          <span style={studioFieldLabelStyle}>Schedule of values · <Money amount={effectiveRevenue} /> · {sovShape === 'lines' ? 'my lines' : 'by stage'}</span>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1rem', marginBottom: '0.45rem', fontSize: '0.78rem', alignItems: 'center' }}>
                             <span role="radiogroup" aria-label="Schedule shape" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
                               {(['stage', 'lines'] as const).map((shape) => (
@@ -2251,8 +2252,8 @@ export function BidsCoverLetterTab({
                                               style={{ width: '6.2rem', padding: '0.2rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', textAlign: 'right', boxSizing: 'border-box', background: sp.source === 'typed' ? 'var(--bg-amber-100)' : undefined }}
                                             />
                                           </td>
-                                          <td style={{ padding: '0.15rem 0.2rem', textAlign: 'right' }}>${formatCurrency(sp.material)}</td>
-                                          <td style={{ padding: '0.15rem 0.2rem', textAlign: 'right' }}>${formatCurrency(sp.value)}</td>
+                                          <td style={{ padding: '0.15rem 0.2rem', textAlign: 'right' }}><Money amount={sp.material} /></td>
+                                          <td style={{ padding: '0.15rem 0.2rem', textAlign: 'right' }}><Money amount={sp.value} /></td>
                                           <td style={{ padding: '0.15rem 0.2rem', fontSize: '0.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                                             {sp.source === 'typed' ? (
                                               <>
@@ -2286,8 +2287,8 @@ export function BidsCoverLetterTab({
                                     ))}
                                     <tr style={{ fontWeight: 600 }}>
                                       <td style={{ padding: '0.3rem 0.2rem 0', borderTop: '1px solid var(--border-strong)' }}>Total</td>
-                                      <td style={{ padding: '0.3rem 0.2rem 0', borderTop: '1px solid var(--border-strong)', textAlign: 'right' }}>${formatCurrency(sovSplitPreviewTotals?.labor ?? 0)}</td>
-                                      <td style={{ padding: '0.3rem 0.2rem 0', borderTop: '1px solid var(--border-strong)', textAlign: 'right' }}>${formatCurrency(sovSplitPreviewTotals?.material ?? 0)}</td>
+                                      <td style={{ padding: '0.3rem 0.2rem 0', borderTop: '1px solid var(--border-strong)', textAlign: 'right' }}><Money amount={sovSplitPreviewTotals?.labor ?? 0} /></td>
+                                      <td style={{ padding: '0.3rem 0.2rem 0', borderTop: '1px solid var(--border-strong)', textAlign: 'right' }}><Money amount={sovSplitPreviewTotals?.material ?? 0} /></td>
                                       <td style={{ padding: '0.3rem 0.2rem 0', borderTop: '1px solid var(--border-strong)', textAlign: 'right' }}>{scheduleOfValuesPreview.totalFormatted}</td>
                                       <td style={{ borderTop: '1px solid var(--border-strong)' }} />
                                     </tr>
@@ -2298,7 +2299,7 @@ export function BidsCoverLetterTab({
                                   {scheduleOfValuesPreview.rows.map((r) => (
                                     <div key={r.stage} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.15rem 0', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}>
                                       <span style={{ flex: 1 }}>{r.label}</span>
-                                      <span>${formatCurrency(r.amount)}</span>
+                                      <span><Money amount={r.amount} /></span>
                                       <span style={{ color: 'var(--text-muted)', minWidth: '3.4rem', textAlign: 'right' }}>{r.shareFormatted}</span>
                                     </div>
                                   ))}
@@ -2314,7 +2315,7 @@ export function BidsCoverLetterTab({
                               ) : null}
                               <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                 Shares from the Takeoffs sheet's stages, {materialsByStageDoc.summary.stagedFixtureCount} of {materialsByStageDoc.summary.costedFixtureCount} costed fixtures staged.
-                                {sovSplitEnabled && sovCosts ? ` Labor from ${formatCurrency(sovCosts.hoursByStage.rough_in + sovCosts.hoursByStage.top_out + sovCosts.hoursByStage.trim_set)} h × $${formatCurrency(sovCosts.laborRate)}${sovCosts.subByStage.rough_in + sovCosts.subByStage.top_out + sovCosts.subByStage.trim_set > 0 ? ' plus subcontractors' : ''}; material from the takeoff × ${materialsByStageDoc.summary.factor}.` : ''}
+                                {sovSplitEnabled && sovCosts ? <MoneyText text={` Labor from ${formatCurrency(sovCosts.hoursByStage.rough_in + sovCosts.hoursByStage.top_out + sovCosts.hoursByStage.trim_set)} h × $${formatCurrency(sovCosts.laborRate)}${sovCosts.subByStage.rough_in + sovCosts.subByStage.top_out + sovCosts.subByStage.trim_set > 0 ? ' plus subcontractors' : ''}; material from the takeoff × ${materialsByStageDoc.summary.factor}.`} /> : ''}
                                 {sovSplitPreview?.some((sp) => sp.source === 'rule') ? ` A stage with no cost on either side takes the company rule (${sovRuleLaborPct}% labor).` : ''}{' '}
                                 <button
                                   type="button"
@@ -2327,7 +2328,7 @@ export function BidsCoverLetterTab({
                               </div>
                               {materialsByStageDoc.summary.unassignedRaw > 0.005 && (
                                 <div style={{ marginTop: '0.4rem', padding: '0.3rem 0.45rem', background: 'var(--bg-amber-100)', border: '1px solid var(--border-amber)', borderRadius: 4, color: 'var(--text-amber-700)', fontSize: '0.75rem' }}>
-                                  ⚠ {materialsByStageDoc.summary.incompleteFixtureIds.length} {materialsByStageDoc.summary.incompleteFixtureIds.length === 1 ? 'fixture still needs' : 'fixtures still need'} a stage (${formatCurrency(materialsByStageDoc.summary.unassignedRaw)} of material) — the shares above leave that money out. Stage them on Takeoffs.
+                                  ⚠ {materialsByStageDoc.summary.incompleteFixtureIds.length} {materialsByStageDoc.summary.incompleteFixtureIds.length === 1 ? 'fixture still needs' : 'fixtures still need'} a stage (<Money amount={materialsByStageDoc.summary.unassignedRaw} /> of material) — the shares above leave that money out. Stage them on Takeoffs.
                                 </div>
                               )}
                             </>
@@ -2375,7 +2376,7 @@ export function BidsCoverLetterTab({
                                 />
                                 <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>%</span>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: '5.5rem' }}>
-                                  {rowDollars != null ? `= $${formatCurrency(rowDollars)}` : ''}
+                                  {rowDollars != null ? <MoneyText text={`= $${formatCurrency(rowDollars)}`} /> : ''}
                                 </span>
                                 <button type="button" onClick={() => void reorderPaymentScheduleRow(bid.id, row, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: 0 }}>▲</button>
                                 <button type="button" onClick={() => void reorderPaymentScheduleRow(bid.id, row, 1)} disabled={i === arr.length - 1} title="Move later" style={{ background: 'none', border: 'none', cursor: i === arr.length - 1 ? 'default' : 'pointer', color: i === arr.length - 1 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: 0 }}>▼</button>

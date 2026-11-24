@@ -8,6 +8,7 @@ import { LEGAL_TIMELINE_LANES, composerDeadlineSuggestion, composerKind, eventDr
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { EmptyState } from '../../EmptyState'
+import { MoneyText } from '../../Money'
 
 /**
  * The Timeline (v2.5800): one vertical line of what has happened on a matter and what is planned next, with
@@ -465,7 +466,7 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
             <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.88rem', fontWeight: 600, textDecoration: struck ? 'line-through' : undefined, color: struck ? look.muted : look.text, overflowWrap: 'anywhere' }}>{item.what || (item.kind === 'entry' ? item.kindWords : '')}</span>
               {kindChip}
-              {item.amount != null ? <span style={{ fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums', color: look.muted }}>{formatLegalMoney(item.amount)}</span> : null}
+              {item.amount != null ? <span style={{ fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums', color: look.muted }}><MoneyText text={formatLegalMoney(item.amount)} /></span> : null}
               <span style={{ fontSize: '0.74rem', color: look.faint }}>{item.byName}</span>
             </div>
             {item.notes ? <div data-legal-timeline-notes style={{ fontSize: '0.8rem', color: look.muted, whiteSpace: 'pre-wrap', margin: '3px 0 0', overflowWrap: 'anywhere' }}>{item.notes}</div> : null}

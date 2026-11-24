@@ -7,6 +7,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { PartHouseNumbers } from '../materials/PartHouseNumbers'
 import { usePriceSources } from '../../hooks/usePriceSources'
 import { priceSourceWords } from '../../lib/materials/priceSheet/rowCard'
+import { MoneyText } from '../Money'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -243,7 +244,7 @@ export function TakeoffPartPricesModal({
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
                                 <span>{row.supply_house_name}</span>
                                 {priceSources.get(row.price_id) ? (
-                                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{priceSourceWords(priceSources.get(row.price_id)!)}</span>
+                                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}><MoneyText text={priceSourceWords(priceSources.get(row.price_id)!)} /></span>
                                 ) : null}
                                 <SupplyHouseWebsiteLink websiteUrl={row.website_url} />
                               </div>

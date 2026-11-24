@@ -18,6 +18,7 @@ import { debitCardsHref } from '../../lib/banking/debitCards'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
 import { addVehicleEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { MoneyText } from '../Money'
 
 /** formatCurrency returns digits only; every money cell here carries the sign. */
 function usd(n: number): string {
@@ -52,7 +53,7 @@ export function VehicleArrangementChip({ arrangement, rate }: { arrangement: Veh
       title={o.label}
     >
       {o.icon ? <span aria-hidden="true">{o.icon}</span> : null}
-      {arrangement === 'none' ? '—' : rate != null && rate > 0 ? `$${rate.toFixed(2)}/h fixed` : o.short}
+      {arrangement === 'none' ? '—' : rate != null && rate > 0 ? <MoneyText text={`$${rate.toFixed(2)}/h fixed`} /> : o.short}
     </span>
   )
 }
@@ -156,11 +157,11 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig, onAddVehic
               <div style={{ display: 'flex', gap: '6px 18px', flexWrap: 'wrap', alignItems: 'baseline', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 <span>
                   <VehicleArrangementChip arrangement="own_fuel_paid" /> own vehicle, fuel paid averages{' '}
-                  <b style={{ color: 'var(--text-700)' }}>{snap.comparison.ownAvg != null ? `$${snap.comparison.ownAvg.toFixed(2)}/field h` : '—'}</b>
+                  <b style={{ color: 'var(--text-700)' }}>{snap.comparison.ownAvg != null ? <MoneyText text={`$${snap.comparison.ownAvg.toFixed(2)}/field h`} /> : '—'}</b>
                 </span>
                 <span>
                   <VehicleArrangementChip arrangement="company" /> company trucks{' '}
-                  <b style={{ color: 'var(--text-700)' }}>{snap.comparison.companyAvg != null ? `$${snap.comparison.companyAvg.toFixed(2)}/field h` : '—'}</b> all-in
+                  <b style={{ color: 'var(--text-700)' }}>{snap.comparison.companyAvg != null ? <MoneyText text={`$${snap.comparison.companyAvg.toFixed(2)}/field h`} /> : '—'}</b> all-in
                 </span>
                 <span>
                   {snap.window.start} → {snap.window.end}
@@ -168,7 +169,7 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig, onAddVehic
                 </span>
                 {snap.unattributedCards.length > 0 ? (
                   <span title="Card fuel that reaches no one: nobody is attributed and the card has no holder. Click a card to name it, mark it a company card, or link it to its holder — past and future purchases fill in. A held card's fuel is its holder's, as on People → Spending and Review.">
-                    {usd(snap.unattributedFuelUsd)} of fuel has no person on it:{' '}
+                    <MoneyText text={usd(snap.unattributedFuelUsd)} /> of fuel has no person on it:{' '}
                     {snap.unattributedCards.map((c, i) => (
                       <span key={c.cardId ?? `nocard-${i}`}>
                         {i > 0 ? ' · ' : ''}
@@ -179,19 +180,19 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig, onAddVehic
                         ) : (
                           c.label
                         )}{' '}
-                        {usd(c.usd)}
+                        <MoneyText text={usd(c.usd)} />
                       </span>
                     ))}
                   </span>
                 ) : null}
                 {snap.companyCardSpend.usd > 0 ? (
                   <span title="Fuel-tag purchases on cards marked as company cards (management tools) that nobody is attributed to. Not fuel, not counted; an attributed one is that person's.">
-                    Not fuel: {usd(snap.companyCardSpend.usd)} on company cards ({snap.companyCardSpend.byCard.map((c) => `${c.label} ${usd(c.usd)}`).join(', ')})
+                    Not fuel: <MoneyText text={usd(snap.companyCardSpend.usd)} /> on company cards ({snap.companyCardSpend.byCard.map((c) => `${c.label} ${usd(c.usd)}`).join(', ')})
                   </span>
                 ) : null}
                 {snap.offCardFuelFamily.usd > 0 ? (
                   <span title="Rows in the fuel tag that were not paid with a debit card — usually a supplier payment filed under a vehicle label. Not counted as anyone's fuel; check the label in Banking → Accounting.">
-                    Not counted: {usd(snap.offCardFuelFamily.usd)} filed under a vehicle label but not on a card ({snap.offCardFuelFamily.top.map((t) => `${t.counterparty} ${usd(t.usd)}`).join(', ')})
+                    Not counted: <MoneyText text={usd(snap.offCardFuelFamily.usd)} /> filed under a vehicle label but not on a card ({snap.offCardFuelFamily.top.map((t) => `${t.counterparty} ${usd(t.usd)}`).join(', ')})
                   </span>
                 ) : null}
                 <button type="button" onClick={() => void load()} disabled={loading} style={{ marginLeft: 'auto', padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
@@ -227,10 +228,10 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig, onAddVehic
                           <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>{r.name}</td>
                           <td style={td}><VehicleArrangementChip arrangement={r.arrangement} /></td>
                           <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.truck ? r.truck.name : <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
-                          <td style={tdNum}>{r.fuelUsd > 0 ? usd(r.fuelUsd) : <span style={{ color: 'var(--text-faint)' }}>$0</span>}</td>
+                          <td style={tdNum}>{r.fuelUsd > 0 ? <MoneyText text={usd(r.fuelUsd)} /> : <span style={{ color: 'var(--text-faint)' }}>$0</span>}</td>
                           <td style={tdNum}>{fmtH(r.fieldHours)}</td>
-                          <td style={tdNum}>{r.fuelPerFieldHour != null ? `$${r.fuelPerFieldHour.toFixed(2)}` : '—'}</td>
-                          <td style={{ ...tdNum, fontWeight: 600 }}>{r.fixedRate != null ? `$${r.fixedRate.toFixed(2)}` : '—'}</td>
+                          <td style={tdNum}>{r.fuelPerFieldHour != null ? <MoneyText text={`$${r.fuelPerFieldHour.toFixed(2)}`} /> : '—'}</td>
+                          <td style={{ ...tdNum, fontWeight: 600 }}>{r.fixedRate != null ? <MoneyText text={`$${r.fixedRate.toFixed(2)}`} /> : '—'}</td>
                           <td style={tdNum}><OverrideCell row={r} onSaved={() => void load()} /></td>
                           <td style={{ ...td, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{r.note}</td>
                         </tr>
@@ -282,13 +283,13 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig, onAddVehic
                         <tr key={t.vehicleId}>
                           <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>{t.name}</td>
                           <td style={{ ...td, whiteSpace: 'nowrap' }}>{t.holderName ?? '—'}</td>
-                          <td style={tdNum}>{usd(t.cost.fuel)}</td>
-                          <td style={tdNum}>{usd(t.cost.insurance + t.cost.registration)}</td>
-                          <td style={tdNum}>{usd(t.cost.service)}</td>
-                          <td style={tdNum}>{t.cost.hasReplacementValue ? usd(t.cost.wear) : <span title="No replacement value on file: add one on the vehicle and its wear counts" style={{ color: 'var(--text-faint)' }}>—</span>}</td>
-                          <td style={{ ...tdNum, fontWeight: 600 }}>{usd(t.cost.total)}</td>
+                          <td style={tdNum}><MoneyText text={usd(t.cost.fuel)} /></td>
+                          <td style={tdNum}><MoneyText text={usd(t.cost.insurance + t.cost.registration)} /></td>
+                          <td style={tdNum}><MoneyText text={usd(t.cost.service)} /></td>
+                          <td style={tdNum}>{t.cost.hasReplacementValue ? <MoneyText text={usd(t.cost.wear)} /> : <span title="No replacement value on file: add one on the vehicle and its wear counts" style={{ color: 'var(--text-faint)' }}>—</span>}</td>
+                          <td style={{ ...tdNum, fontWeight: 600 }}><MoneyText text={usd(t.cost.total)} /></td>
                           <td style={tdNum}>{fmtH(t.holderFieldHours)}</td>
-                          <td style={{ ...tdNum, fontWeight: 600 }}>{t.cost.ratePerFieldHour != null ? `$${t.cost.ratePerFieldHour.toFixed(2)}` : <span title="No field hours for the holder in the window">—</span>}</td>
+                          <td style={{ ...tdNum, fontWeight: 600 }}>{t.cost.ratePerFieldHour != null ? <MoneyText text={`$${t.cost.ratePerFieldHour.toFixed(2)}`} /> : <span title="No field hours for the holder in the window">—</span>}</td>
                         </tr>
                       ))}
                       {idleTrucks.length > 0 ? (
@@ -302,9 +303,9 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig, onAddVehic
                   </table>
                 </div>
                 <div style={{ marginTop: 6, fontSize: '0.875rem', color: 'var(--text-muted)' }} data-testid="wheels-fleet-rate">
-                  All {snap.fleet.trucks} {snap.fleet.trucks === 1 ? 'vehicle' : 'vehicles'}: {usd(snap.fleet.fixedUsd)} insurance, registration, service and wear ÷{' '}
+                  All {snap.fleet.trucks} {snap.fleet.trucks === 1 ? 'vehicle' : 'vehicles'}: <MoneyText text={usd(snap.fleet.fixedUsd)} /> insurance, registration, service and wear ÷{' '}
                   {snap.fleet.fieldHours.toLocaleString('en-US', { maximumFractionDigits: 1 })} crew field h ={' '}
-                  <b style={{ color: 'var(--text-700)' }}>{snap.fleet.ratePerFieldHour != null ? `$${snap.fleet.ratePerFieldHour.toFixed(2)}/field h` : 'no rate without field hours'}</b>. Bids shows this beside the crew rate and never adds it.
+                  <b style={{ color: 'var(--text-700)' }}>{snap.fleet.ratePerFieldHour != null ? <MoneyText text={`$${snap.fleet.ratePerFieldHour.toFixed(2)}/field h`} /> : 'no rate without field hours'}</b>. Bids shows this beside the crew rate and never adds it.
                 </div>
               </div>
               <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '72ch' }}>

@@ -29,6 +29,7 @@ import {
 } from '../../lib/people/personMoneyLedger'
 import { openPayStubWindow } from '../../lib/peopleDocuments/buildPayStubHtml'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { Money, MoneyText } from '../Money'
 
 /**
  * The person money ledger (v2.1668 settle-up redesign, owner-approved
@@ -359,17 +360,17 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
           ) : (
             <>
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                Unpaid reports {money(settle.unpaidRemaining)}
+                Unpaid reports <MoneyText text={money(settle.unpaidRemaining)} />
                 {settle.unreportedHours > 0 && (
-                  <> + unreported {settle.unreportedEst != null ? `~${money(settle.unreportedEst)}` : `${settle.unreportedHours} h (no wage on file)`}</>
+                  <> + unreported {settle.unreportedEst != null ? <MoneyText text={`~${money(settle.unreportedEst)}`} /> : `${settle.unreportedHours} h (no wage on file)`}</>
                 )}
-                {' '}+ credits {money(settle.credits)} − charges {money(settle.charges)} ={' '}
+                {' '}+ credits <MoneyText text={money(settle.credits)} /> − charges <MoneyText text={money(settle.charges)} /> ={' '}
               </span>
               <strong>
                 {settle.net > 0
-                  ? `pay ${personName} ${money(settle.net)}`
+                  ? <MoneyText text={`pay ${personName} ${money(settle.net)}`} />
                   : settle.net < 0
-                    ? `${personName} owes the company ${money(settle.net)}`
+                    ? <MoneyText text={`${personName} owes the company ${money(settle.net)}`} />
                     : 'settled'}
               </strong>
               {settle.netMissingUnpricedHours && <> (plus {settle.unreportedHours} unpriced hours)</>}
@@ -390,7 +391,7 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
                 <span style={{ flex: 1, minWidth: 160 }}>
                   Report {formatYmdShort(u.stub.period_start)} – {formatYmdShort(u.stub.period_end)} · {u.stub.hours_total} h
                 </span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>${formatCurrency(u.remaining)}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}><Money amount={u.remaining} /></span>
                 <button type="button" style={actionBtn} onClick={goToPayroll}>
                   Record payment
                 </button>
@@ -404,7 +405,7 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
                   {formatYmdShort(pricedWeeks[0]!.weekEnd)} · {settle.unreportedHours} h approved
                 </span>
                 <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: settle.unreportedEst == null ? 'var(--text-muted)' : undefined }}>
-                  {settle.unreportedEst != null ? `~$${formatCurrency(settle.unreportedEst)}` : '—'}
+                  {settle.unreportedEst != null ? <MoneyText text={`~$${formatCurrency(settle.unreportedEst)}`} /> : '—'}
                 </span>
                 <button type="button" style={actionBtn} onClick={goToPayroll}>
                   Draft reports
@@ -420,7 +421,7 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
                     {(o.description ?? '').trim() || o.type} · {formatYmdShort(o.occurred_date)}
                   </span>
                   <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: signed < 0 ? 'var(--text-red-700)' : 'var(--text-green-800)' }}>
-                    {signed < 0 ? '−' : '+'}${formatCurrency(Math.abs(signed))}
+                    {signed < 0 ? '−' : '+'}<Money amount={Math.abs(signed)} />
                   </span>
                   {signed < 0 && onApplyOffset ? (
                     <button type="button" style={actionBtn} onClick={() => onApplyOffset(o.id)}>
@@ -459,7 +460,7 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
                 </div>
                 {g.reportGross != null && (
                   <div style={{ padding: '0.35rem 0.9rem 0.35rem 1.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
-                    Report ${formatCurrency(g.reportGross)}
+                    Report <Money amount={g.reportGross} />
                     {g.legacyPaid && ' — marked paid'}
                   </div>
                 )}
@@ -469,7 +470,7 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
                       Paid {formatYmdShort(p.dateYmd)}
                       {p.memo ? ` · ${p.memo}` : ''}
                     </span>
-                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(p.amount)}</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums' }}><Money amount={p.amount} /></span>
                   </div>
                 ))}
                 {g.offsets.map((o, i) => (
@@ -479,7 +480,7 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
                       {o.applied ? ' · applied' : ' · pending'}
                     </span>
                     <span style={{ fontVariantNumeric: 'tabular-nums', color: o.amount < 0 ? 'var(--text-red-700)' : 'var(--text-green-800)' }}>
-                      {o.amount < 0 ? '−' : '+'}${formatCurrency(Math.abs(o.amount))}
+                      {o.amount < 0 ? '−' : '+'}<Money amount={Math.abs(o.amount)} />
                     </span>
                   </div>
                 ))}
@@ -521,13 +522,13 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
                       {l.estimated && <span style={{ color: 'var(--text-muted)', fontSize: '0.6875rem' }}> · estimated split</span>}
                     </span>
                     <span style={{ width: 64, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{l.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
-                    <span style={{ width: 100, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(l.billing)}</span>
+                    <span style={{ width: 100, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><Money amount={l.billing} /></span>
                   </div>
                 ))}
                 <div style={{ display: 'flex', gap: '0.6rem', padding: '0.45rem 0.9rem', borderTop: '1px solid var(--border-strong)', fontSize: '0.8125rem', fontWeight: 600 }}>
                   <span style={{ flex: 1 }}>Total (clocked crew labor)</span>
                   <span style={{ width: 64, textAlign: 'right' }}>{personRow.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span>
-                  <span style={{ width: 100, textAlign: 'right' }}>${formatCurrency(personRow.billing)}</span>
+                  <span style={{ width: 100, textAlign: 'right' }}><Money amount={personRow.billing} /></span>
                 </div>
               </div>
             )}

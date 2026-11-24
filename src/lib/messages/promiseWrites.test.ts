@@ -179,3 +179,38 @@ describe('runPromiseWrites: the writes in order, stopping at the first refused',
     expect((await runPromiseWrites(writes, writers('hold', after), words)).made).toEqual([writes[0]])
   })
 })
+
+describe('throughWords: what the office reads after a heard day goes through (punch list #421)', () => {
+  const written = 'Written down. Their quote by Wed Oct 14.'
+  const ask: PromiseWrite = { kind: 'askDay', companyId: 'hillside', inviteId: 'inv', on: '2026-10-12', how: 'text', note: 'n', promisedBy: '2026-10-14' }
+  const hold: PromiseWrite = { kind: 'hold', contactId: 'elena', stepId: 'onsite', jobId: 'boerne', until: '2026-10-14' }
+
+  it('names where each write went, then every skip', async () => {
+    const { throughWords } = await import('./promiseWrites')
+    expect(throughWords(written, { made: [ask], refused: null }, [])).toEqual({ words: `${written} It went on their ask on the Board.`, tone: 'success' })
+    expect(throughWords(written, { made: [hold], refused: null }, ['The reminder is already held until Fri Oct 16, so it stays.']).words).toBe(
+      `${written} The flow’s reminder waits until Wed Oct 14. The reminder is already held until Fri Oct 16, so it stays.`,
+    )
+  })
+
+  it('with nothing made, the skips alone, as words to read', async () => {
+    const { throughWords } = await import('./promiseWrites')
+    expect(throughWords(written, { made: [], refused: null }, ['No open ask for Hillside Excavation on this job. Ask them from the Board.'])).toEqual({
+      words: `${written} No open ask for Hillside Excavation on this job. Ask them from the Board.`,
+      tone: 'info',
+    })
+  })
+
+  it('a refusal says its own words alone', async () => {
+    const { throughWords } = await import('./promiseWrites')
+    expect(throughWords(written, { made: [], refused: 'Written down. The Board did not take it. No.' }, [])).toEqual({ words: 'Written down. The Board did not take it. No.', tone: 'error' })
+  })
+
+  it('a hold on a Pipeline job is skipped with its own words, never as a line on no job', async () => {
+    const { PIPELINE_HOLD_WORDS } = await import('./promiseWrites')
+    const pipeline = customer({ line: { ...customer().line, projectId: null, bidId: null, pipelineJob: true } })
+    expect(promiseWriteThrough(promise('access'), pipeline).skips).toEqual([PIPELINE_HOLD_WORDS])
+    expect(promiseWriteThrough(promise('decision'), pipeline).skips).toEqual([PIPELINE_HOLD_WORDS])
+    expect(plainWordsFailures(PIPELINE_HOLD_WORDS)).toEqual([])
+  })
+})

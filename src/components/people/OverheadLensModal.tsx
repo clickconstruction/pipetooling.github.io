@@ -6,6 +6,7 @@ import {
   type OverheadLensSeries,
 } from '../../lib/overheadLensSeries'
 import { OVERHEAD_METHOD_INKS } from '../../lib/overheadMethodInks'
+import { MoneyText } from '../Money'
 
 /**
  * People → Overhead lens modal (v2.2674): the arithmetic behind Method A / B /
@@ -278,7 +279,7 @@ export function OverheadLensModal({
             <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cfg.denLabel}</span>
           </span>
           <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>=</span>
-          <strong style={{ fontSize: '1.35rem', color: cfg.ink }}>{fmtRate(lens, rate)}</strong>
+          <strong style={{ fontSize: '1.35rem', color: cfg.ink }}><MoneyText text={fmtRate(lens, rate)} /></strong>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0.75rem' }}>

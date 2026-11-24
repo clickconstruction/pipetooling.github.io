@@ -15,6 +15,7 @@ import type { ContactFollowUpRow, ContactOwedRow, FollowUpMessageRow, HolderRow,
 import { followUpTeamOf, type Teammate } from './team'
 import type { OfficeHours } from '../messages/hasRule'
 import { parsePushHours, type PushHoursByUser } from '../messages/pushHours'
+import { writeHeardThrough, type HeardThroughInput } from '../messages/promiseWritesIo'
 
 /** The open person's rows. */
 export interface FollowUpThreadRows {
@@ -56,6 +57,11 @@ export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' |
    * kind as just talk. A double kind writes `writes`. Rejects with the database's own words on a refusal.
    */
   writeDownHeard?(messageId: string, kind: string | null, ymd: string, writes: string | null): Promise<void>
+  /**
+   * Where a written heard day also goes (punch list #421 PR 4, `messages/promiseWritesIo.ts`): the Board's ask, the
+   * Board's promises, the bid's follow-up day or the flow's hold, and the words to say after. Never rejects.
+   */
+  writeHeardThrough?(input: HeardThroughInput): Promise<{ words: string; tone: 'success' | 'info' | 'error' }>
 }
 
 /** A promise's columns with its line inner-joined, so a filter on the line's person keeps only theirs. */
@@ -106,6 +112,7 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
       const result = await db.rpc('write_down_heard', { p_message_id: messageId, p_kind: kind, p_day: ymd, ...(writes ? { p_writes: writes } : {}) })
       checkSupabaseError(result, 'write down what the day is')
     },
+    writeHeardThrough: (input) => writeHeardThrough(input, client),
     async loadTeam() {
       const result = await db.from('users').select('id, name, role').in('role', [...GC_OFFICE_TEAM]).is('archived_at', null).eq('is_digital_twin', false).eq('is_sample', false).eq('is_walk_tester', false)
       checkSupabaseError(result, 'load the office team')

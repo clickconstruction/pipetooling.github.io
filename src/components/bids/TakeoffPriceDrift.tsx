@@ -5,9 +5,9 @@
  * someone presses Revise on Pricing (`pricingLock.ts`), so its line shows the gap only.
  */
 import type { CSSProperties } from 'react'
-import { formatCurrency } from '../../lib/format'
 import type { PricingLockState } from '../../lib/bids/pricingLock'
 import { gapWords, movedWords, type TakeoffDrift } from '../../lib/bids/takeoffPriceDrift'
+import { Money } from '../Money'
 
 const pctText = (share: number) => `${share < 0 ? '▼' : '▲'} ${(Math.abs(share) * 100).toFixed(1)}%`
 const btnPrimary: CSSProperties = { minHeight: 40, padding: '0 0.9rem', borderRadius: 8, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
@@ -19,7 +19,7 @@ function WrongPrices({ drift }: { drift: TakeoffDrift }) {
     <div role="note" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 10, padding: '0.6rem 0.8rem', fontSize: '0.8125rem', color: 'var(--text-amber-900)' }}>
       <div style={{ flex: '1 1 18rem', minWidth: 0 }}>
         <strong>{drift.wrong.length === 1 ? '1 price looks wrong, so it is left out.' : `${drift.wrong.length} prices look wrong, so they are left out.`}</strong>{' '}
-        {first.partName} at {first.houseName} reads ${formatCurrency(first.today)}. It was ${formatCurrency(first.priced)} on this takeoff.
+        {first.partName} at {first.houseName} reads <Money amount={first.today} />. It was <Money amount={first.priced} /> on this takeoff.
       </div>
       <a href="/materials?tab=parts-book" style={{ color: 'var(--text-amber-900)', fontWeight: 600, whiteSpace: 'nowrap' }}>Fix it in Materials</a>
     </div>
@@ -83,10 +83,10 @@ export function TakeoffPriceDriftLine({
                       <td style={{ padding: '0.3rem 0.5rem', overflowWrap: 'anywhere' }}>{m.partName}</td>
                       <td style={{ padding: '0.3rem 0.5rem' }}>{m.houseName}</td>
                       <td style={{ padding: '0.3rem 0.5rem', textAlign: 'right' }}>{Number(m.quantity.toFixed(2))}</td>
-                      <td style={{ padding: '0.3rem 0.5rem', textAlign: 'right' }}>${formatCurrency(m.priced)}</td>
-                      <td style={{ padding: '0.3rem 0.5rem', textAlign: 'right' }}>${formatCurrency(m.today)}</td>
+                      <td style={{ padding: '0.3rem 0.5rem', textAlign: 'right' }}><Money amount={m.priced} /></td>
+                      <td style={{ padding: '0.3rem 0.5rem', textAlign: 'right' }}><Money amount={m.today} /></td>
                       <td style={{ padding: '0.3rem 0.5rem', textAlign: 'right', fontWeight: 700, color: m.change < 0 ? 'var(--text-blue-700)' : 'var(--text-orange-700)' }}>
-                        {m.change < 0 ? '▼' : '▲'} ${formatCurrency(Math.abs(m.change))}
+                        {m.change < 0 ? '▼' : '▲'} <Money amount={Math.abs(m.change)} />
                       </td>
                     </tr>
                   ))}

@@ -10,6 +10,7 @@ import { cleanup, fireEvent, screen } from '@testing-library/react'
 import PeopleOffsetsTab from './PeopleOffsetsTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { ArchivedRoster } from '../../lib/people/rosterPeople'
+import { moneyText } from '../../test/moneyText'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -68,7 +69,7 @@ const ARCHIVED: ArchivedRoster = {
 }
 
 async function findExact(want: string) {
-  return screen.findAllByText((_, el) => el?.childElementCount === 0 && el?.textContent === want)
+  return screen.findAllByText(moneyText(want))
 }
 
 afterEach(cleanup)
@@ -100,7 +101,7 @@ describe('PeopleOffsetsTab settle-up board', () => {
     expect(nameCells[nameCells.length - 1]).toContain('Malachi')
     // Trace's id is archived → folded into the collapsed Archived users section;
     // his row is hidden until the section expands.
-    expect(screen.queryByText('pay $150.00')).toBeNull()
+    expect(screen.queryByText(moneyText('pay $150.00'))).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Archived users \(1\)/ }))
     expect((await findExact('pay $150.00')).length).toBeGreaterThan(0)
 
@@ -113,7 +114,7 @@ describe('PeopleOffsetsTab settle-up board', () => {
     // Click Abraham → the ledger: equation banner, Needs action rows with
     // verbs, folded History and Jobs toggles, Pay statement.
     fireEvent.click(screen.getAllByText('Abraham')[0]!)
-    expect(await screen.findByText(/pay Abraham \$415\.00/)).toBeTruthy()
+    expect(await screen.findByText(moneyText(/pay Abraham \$415\.00/))).toBeTruthy()
     expect(screen.getByText('Needs action')).toBeTruthy()
     expect(screen.getByText('Partly paid')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Record payment' })).toBeTruthy()
@@ -127,7 +128,7 @@ describe('PeopleOffsetsTab settle-up board', () => {
     fireEvent.click(screen.getByText(/History — /))
     expect((await screen.findAllByText(/Week /)).length).toBeGreaterThan(0)
     expect(screen.getByText(/Paid Aug 5.*cashapp/)).toBeTruthy()
-    expect(screen.getByText('$840.00 still owed')).toBeTruthy()
+    expect(screen.getByText(moneyText('$840.00 still owed'))).toBeTruthy()
   })
 
   // v2.4900: a report's Less line lowers what it owes. $1,840 gross with a $840 Less line and $1,000 paid
@@ -148,8 +149,8 @@ describe('PeopleOffsetsTab settle-up board', () => {
     // Before, the Unpaid reports column read $840.00 (gross − paid) and the net read pay $415.00.
     // Now nothing is owed on the report once the $1,000 payment loads, so only the $425 charge is left.
     expect((await findExact('owes $425.00')).length).toBeGreaterThan(0)
-    expect(screen.queryAllByText((_, el) => el?.childElementCount === 0 && el?.textContent === '$840.00')).toHaveLength(0)
-    expect(screen.queryAllByText((_, el) => el?.childElementCount === 0 && el?.textContent === 'pay $415.00')).toHaveLength(0)
+    expect(screen.queryAllByText(moneyText('$840.00'))).toHaveLength(0)
+    expect(screen.queryAllByText(moneyText('pay $415.00'))).toHaveLength(0)
     fireEvent.click(screen.getAllByText('Abraham')[0]!)
     expect(await screen.findByText('Needs action')).toBeTruthy()
     expect(screen.queryByText('Partly paid')).toBeNull()

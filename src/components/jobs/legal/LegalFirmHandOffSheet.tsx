@@ -10,6 +10,7 @@ import { legalFirmInputProblem } from '../../../lib/legal/legalFirmFacts'
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
 import type { LegalFirmRow } from '../../../lib/legal/legalMatters'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
+import { MoneyText } from '../../Money'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -124,7 +125,7 @@ export default function LegalFirmHandOffSheet({ firm, firms, coverage, cases, li
           {rows.map((r) => (
             <label key={r.county} data-legal-hand-off-county={r.county} style={line}>
               <input type="checkbox" checked={picked.has(r.county)} onChange={() => toggle(r.county)} />
-              <span><b>{countyWords(r.county)}</b> <span style={muted}>· {r.cases ? `${r.cases} ${r.cases === 1 ? 'case' : 'cases'} · ${formatLegalMoney(r.balance)}` : 'no cases'} · {r.role === 'first' ? 'first call' : `also covers, ${firmNames.get(r.firstCall) ?? 'another firm'} first call`}</span></span>
+              <span><b>{countyWords(r.county)}</b> <span style={muted}>· {r.cases ? <MoneyText text={`${r.cases} ${r.cases === 1 ? 'case' : 'cases'} · ${formatLegalMoney(r.balance)}`} /> : 'no cases'} · {r.role === 'first' ? 'first call' : `also covers, ${firmNames.get(r.firstCall) ?? 'another firm'} first call`}</span></span>
             </label>
           ))}
         </div>

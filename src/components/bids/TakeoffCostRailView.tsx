@@ -1,7 +1,6 @@
 import { orderRoundingTitle } from '../../lib/bids/takeoffOrderRounding'
 import { TakeoffOrderListPanel } from './TakeoffOrderListPanel'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { formatCurrency } from '../../lib/format'
 import type { TakeoffCoverageSummary } from '../../lib/bids/takeoffCoverage'
 import { sumByAlternate } from '../../lib/bids/alternateScope'
 import { isAlternateRow } from '../../lib/bids/countSheet'
@@ -14,6 +13,7 @@ import type { MaterialTemplateWithAssemblyType, TakeoffRoughPartLineRow } from '
 import { TakeoffCoverageStrip } from './TakeoffCoverageStrip'
 import { EmptyState } from '../EmptyState'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money } from '../Money'
 
 /**
  * New 2 — "Cost rail" (v2.2781, docs/TAKEOFFS_REFRESH_PLAN.md; mockup C):
@@ -203,21 +203,21 @@ export function TakeoffCostRailView({
             <span style={panelK}>What Pricing sees</span>
             <div style={kv}>
               <span>Materials on this bid</span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(coverage.materialsTotal)}</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><Money amount={coverage.materialsTotal} /></span>
             </div>
             {coverage.orderRounding.extraCost > 0 ? (
               <div style={{ ...kv, fontSize: '0.78rem' }} title={orderRoundingTitle(coverage.orderRounding)} data-testid="takeoff-rail-order-rounding">
                 <span style={{ color: 'var(--text-muted)' }}>incl. order rounding · {coverage.orderRounding.partsRounded} part{coverage.orderRounding.partsRounded === 1 ? '' : 's'} sold in packs</span>
-                <span style={{ fontWeight: 700, color: 'var(--text-violet-700)', fontVariantNumeric: 'tabular-nums' }}>+${formatCurrency(coverage.orderRounding.extraCost)}</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-violet-700)', fontVariantNumeric: 'tabular-nums' }}>+<Money amount={coverage.orderRounding.extraCost} /></span>
               </div>
             ) : null}
             {altSplit ? (
               <div data-testid="takeoff-rail-alternates" style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.8rem', padding: '0.35rem 0.5rem', borderRadius: 6, background: 'var(--bg-amber-tint)' }} title="The customer wants this section priced with and without — the Counts tab's alternate groups">
-                <div style={kv}><span style={{ color: 'var(--text-muted)' }}>Base</span><span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(altSplit.base)}</span></div>
+                <div style={kv}><span style={{ color: 'var(--text-muted)' }}>Base</span><span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><Money amount={altSplit.base} /></span></div>
                 {altSplit.alternates.map((a) => (
-                  <div key={a.label} style={kv}><span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>+ {a.label} <span style={altChipStyle}>ALT</span></span><span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(a.value)}</span></div>
+                  <div key={a.label} style={kv}><span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>+ {a.label} <span style={altChipStyle}>ALT</span></span><span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><Money amount={a.value} /></span></div>
                 ))}
-                <div style={kv}><span style={{ color: 'var(--text-muted)' }}>With {altSplit.alternates.length === 1 ? 'the alternate' : 'every alternate'}</span><span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(altSplit.total)}</span></div>
+                <div style={kv}><span style={{ color: 'var(--text-muted)' }}>With {altSplit.alternates.length === 1 ? 'the alternate' : 'every alternate'}</span><span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}><Money amount={altSplit.total} /></span></div>
               </div>
             ) : null}
             <div style={kv}>
@@ -241,7 +241,7 @@ export function TakeoffCostRailView({
                   <div key={u.countRowId} style={kv}>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.fixture}{altRowIds.has(u.countRowId) ? <span style={altChipStyle}>ALT</span> : null}</span>
                     <span style={{ fontVariantNumeric: 'tabular-nums', color: u.incomplete ? 'var(--text-red-700)' : undefined, whiteSpace: 'nowrap' }}>
-                      ${formatCurrency(u.unitCost)}{u.incomplete ? ' · incomplete' : ''}
+                      <Money amount={u.unitCost} />{u.incomplete ? ' · incomplete' : ''}
                     </span>
                   </div>
                 ))}

@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import PeopleVehiclesTab from './PeopleVehiclesTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -151,7 +152,7 @@ describe('PeopleVehiclesTab fleet board', () => {
     // note + cost, and the oil chip derived from last oil change vs latest
     // reading (115,000 + 5,000 interval vs 121,480 → overdue 1,480).
     expect(screen.getByRole('button', { name: 'Log service' })).toBeTruthy()
-    expect(screen.getByText('Oil change · Tune 5 · $89.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('Oil change · Tune 5 · $89.00'))).toBeTruthy()
     expect(screen.getAllByText('Oil overdue 1,480 mi').length).toBeGreaterThan(0)
 
     // v2.1647: problem reports — Report problem action, the Open problems

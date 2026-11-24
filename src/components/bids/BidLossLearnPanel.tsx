@@ -10,9 +10,9 @@ import {
   type LearnBucket,
   type LearnReadKey,
 } from '../../lib/bidLossLearn'
-import { formatCurrency } from '../../lib/format'
 import { EmptyState } from '../EmptyState'
 import { learnPanelEmptyWords } from '../../lib/bids/bidsEmptyWords'
+import { Money } from '../Money'
 
 /** Matches the reason-rollup's literal amber (saturated status colors stay literal). */
 const AMBER = '#f59e0b'
@@ -208,7 +208,7 @@ export function BidLossLearnPanel({ rows, nowIso }: BidLossLearnPanelProps) {
                       {g.usualRank != null ? `#${g.usualRank}` : '—'}
                     </td>
                     <td style={{ padding: '0.42rem 0.75rem 0.42rem 0', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      ${formatCurrency(g.dollars)}
+                      <Money amount={g.dollars} />
                     </td>
                     <td style={{ padding: '0.42rem 0 0.42rem 0', borderBottom: '1px solid var(--border)' }}>
                       {g.read ? (
