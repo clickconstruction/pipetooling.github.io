@@ -140,6 +140,7 @@ import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
 import LienDeskAffidavitPane from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LienDeskAffidavitList } from './LienDeskAffidavitList'
+import { useLienGateAsk } from './useLienGateLanding'
 import { LienDeskNoticeList } from './LienDeskNoticeList'
 import { LienDeskNoticePane, type LienNoticePaneContext } from './LienDeskNoticePane'
 import { LIEN_STRIP_COLLAPSE_PX as STRIP_COLLAPSE_PX } from './lienDeskPaneStyles'
@@ -2541,6 +2542,8 @@ export default function LienDesk({
   const pileStrip = (chips: ReactNode[]) => (isMobile && chips.length > 0 ? <div data-lien-desk-piles style={{ display: 'flex', gap: 8, padding: '8px 12px', overflowX: 'auto', borderBottom: '1px solid var(--border)' }}>{chips}</div> : null)
 
   const affHeads = useLienPileHeads(affPilesShown.map((x) => x.p), isMobile)
+  // A press on a list row asks the pane for the row's open gate (v2.8472, punch list #364, `useLienGateLanding`).
+  const gateAsk = useLienGateAsk()
   const affList = (
     <LienDeskAffidavitList
       aff={aff}
@@ -2558,9 +2561,10 @@ export default function LienDesk({
       pileChips={pileStrip(affPileChips)}
       supplierMarks={supplierMarks}
       rowLabel={(jobId) => listLabel(jobId, 'affidavit', false)}
-      onPick={(jobId) => {
+      onPick={(jobId, from) => {
         setAffSelectedJobId(jobId)
         setMobileListShown(false)
+        gateAsk.askFor(from === 'row' ? jobId : null)
       }}
     />
   )
@@ -2602,6 +2606,7 @@ export default function LienDesk({
         onOpenLastWork={office ? onOpenCalendarLastWork : undefined}
         onLastWorkChanged={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())}
         footerEl={affFooterEl}
+        landOnGate={gateAsk.ask}
       />
     ) : offList?.kind === 'affidavit' ? offListNote : (
       <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
