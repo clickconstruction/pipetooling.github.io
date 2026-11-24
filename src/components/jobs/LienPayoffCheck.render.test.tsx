@@ -8,6 +8,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import type { BankCheck } from '../../lib/jobs/checkCleared'
 import type { LienPayoffFacts } from '../../lib/jobs/lienPayoff'
 import type { PayoffCheckOutcome, PayoffCheckWrite } from '../../lib/jobs/lienPayoffCheckIo'
 import LienPayoffs from './LienPayoffs'
@@ -20,7 +21,7 @@ vi.mock('../../lib/supabase', async () => {
 // Every name, address, job, instrument, check and amount here is made up.
 const job = (id: string, n: string, name: string) => ({ id, hcp_number: null, click_number: n, job_name: name, job_address: '212 Larkspur Court, Austin, TX', customer_id: 'c1', customer_name: 'Marisol Okafor' })
 const lien = (id: string, job_id: string, amount: number, recording_number: string) => ({ id, job_id, amount, county: 'Travis', recording_number, filed_at: '2026-11-09' })
-const facts = (): LienPayoffFacts => ({
+const facts = (over: Partial<LienPayoffFacts> = {}): LienPayoffFacts => ({
   affidavits: [lien('a1', 'j1', 7420, '2026-0412207'), lien('a2', 'j2', 5160.5, '2026-0412208')],
   releases: [],
   jobs: [job('j1', '2041', 'Okafor main house'), job('j2', '2058', 'Okafor service visit')],
@@ -36,15 +37,18 @@ const facts = (): LienPayoffFacts => ({
   },
   paymentsByJob: {},
   todayYmd: '2026-11-24',
+  ...over,
 })
+/** The bank's deposit of check 2290 for exactly what pays the two liens off. */
+const AT_BANK: BankCheck = { id: 'k1', amount: 12580.5, status: 'pending', depositedYmd: '2026-11-23', postedYmd: null, bankDayYmd: '2026-12-02', checkNumber: '2290', failureReason: null }
 
 type Record = (lines: ReadonlyArray<PayoffCheckWrite>, check: { paidOn: string; number: string; note: string }) => Promise<PayoffCheckOutcome[]>
-const draw = async (record?: Record) => {
+const draw = async (record?: Record, over: Partial<LienPayoffFacts> = {}) => {
   const onOpenBill = vi.fn()
   const onChanged = vi.fn()
-  const read = vi.fn(() => Promise.resolve(facts()))
+  const read = vi.fn(() => Promise.resolve(facts(over)))
   const write = vi.fn<Record>(record ?? (async (lines) => lines.map((l) => ({ invoiceId: l.invoiceId, ok: true, why: null }))))
-  renderWithProviders(<LienPayoffs todayYmd="2026-11-24" refreshKey={1} onOpenBill={onOpenBill} onOpenRelease={() => {}} onChanged={onChanged} read={read} record={write} initiallyOpen />)
+  renderWithProviders(<LienPayoffs todayYmd={over.todayYmd ?? '2026-11-24'} refreshKey={1} onOpenBill={onOpenBill} onOpenRelease={() => {}} onChanged={onChanged} read={read} record={write} initiallyOpen />)
   fireEvent.click(await screen.findByRole('button', { name: 'One check for this place ›' }))
   return { onOpenBill, onChanged, read, write }
 }
@@ -61,6 +65,35 @@ describe('One check for this place', () => {
     await screen.findByRole('button', { name: 'One check for this place ›' })
     expect(q('[data-lien-payoff-other]').textContent).toBe('$640.00 more is open here on 2071. It is not liened.')
     expect(q('[data-lien-payoff-headline]').textContent).toBe('2 liens on record here. $12,580.50 pays them off.')
+  })
+
+  it('opens on the check the bank holds, and records nothing until the bank clears it', async () => {
+    const { write } = await draw(undefined, { bank: [AT_BANK] })
+    // Nobody types the check: its amount, its number and the day it was deposited come from the bank.
+    expect(q<HTMLInputElement>('[data-lien-payoff-check-amount]').value).toBe('12,580.50')
+    expect(q<HTMLInputElement>('[data-lien-payoff-check-number]').value).toBe('2290')
+    expect(q<HTMLInputElement>('[data-lien-payoff-check-received]').value).toBe('2026-11-23')
+    expect(q('[data-lien-payoff-check-say]').textContent).toBe('Check 2290 is at the bank. The bank says it clears Dec 2. Record it then.')
+    expect(q('[data-lien-payoff-check-say]').dataset.lienPayoffCheckSay).toBe('amber')
+    const press = q<HTMLButtonElement>('[data-lien-payoff-check-record]')
+    expect(press.disabled).toBe(true)
+    fireEvent.click(press)
+    expect(write).not.toHaveBeenCalled()
+    // Another check, typed by hand, is not the one the bank holds.
+    type('[data-lien-payoff-check-number]', '2291')
+    expect(q('[data-lien-payoff-check-bank]').textContent).toBe('The bank shows no deposit of this check. A release then waits seven days.')
+    expect(q<HTMLButtonElement>('[data-lien-payoff-check-record]').disabled).toBe(false)
+  })
+
+  it('records the check the day the bank clears it', async () => {
+    const { write } = await draw(undefined, { bank: [{ ...AT_BANK, status: 'sent', postedYmd: '2026-11-25' }], todayYmd: '2026-12-02' })
+    expect(q('[data-lien-payoff-check-bank]').textContent).toBe('The bank cleared check 2290 on Dec 2.')
+    expect(q('[data-lien-payoff-check-bank]').dataset.lienPayoffCheckBank).toBe('green')
+    const press = q<HTMLButtonElement>('[data-lien-payoff-check-record]')
+    expect(press.disabled).toBe(false)
+    fireEvent.click(press)
+    await waitFor(() => expect(write).toHaveBeenCalledTimes(1))
+    expect(write.mock.calls[0]![1]).toMatchObject({ paidOn: '2026-11-23', number: '2290' })
   })
 
   it('opens on what pays the liens off, placed on the liened bills, and waits for the check’s number', async () => {

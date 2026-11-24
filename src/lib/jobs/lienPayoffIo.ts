@@ -7,9 +7,13 @@
  *
  * Since piece 3 it also reads the other billed jobs of the same customers, so money open at a liened place on a
  * job with no lien is shown, and each job's sent bills that still owe, for the check pane (`lienPayoffCheck.ts`).
+ *
+ * Since punch list #437, piece 1, it reads the bank's check deposits too (`checkClearedIo.ts`), so a release waits
+ * for the bank and a place can say its check is there.
  */
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { readBankChecks } from './checkClearedIo'
 import { lienBilledOpen, type LienClaimInvoice } from './lienBilledOpen'
 import { lienPayoffBills, type LienPayoffAffidavit, type LienPayoffBill, type LienPayoffFacts, type LienPayoffJob, type LienPayoffPayment, type LienPayoffRelease } from './lienPayoff'
 
@@ -34,7 +38,7 @@ export async function readLienPayoffFacts(todayYmd: string): Promise<LienPayoffF
   const affidavits = filings.filter((f) => f.kind === 'affidavit' && f.filed_at)
   const jobIds = [...new Set(affidavits.map((a) => a.job_id))]
   const releases = filings.filter((f) => f.kind === 'release_of_record' && jobIds.includes(f.job_id))
-  if (jobIds.length === 0) return { affidavits: [], releases: [], jobs: [], openByJob: {}, paymentsByJob: {}, todayYmd }
+  if (jobIds.length === 0) return { affidavits: [], releases: [], jobs: [], openByJob: {}, paymentsByJob: {}, bank: [], todayYmd }
 
   const JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, status, revenue, payments_made'
   const jobs: JobRow[] = []
@@ -55,7 +59,7 @@ export async function readLienPayoffFacts(todayYmd: string): Promise<LienPayoffF
   for (const ids of chunks(allJobs.map((j) => j.id))) {
     const [i, p] = await Promise.all([
       withSupabaseRetry(() => supabase.from('jobs_ledger_invoices').select('id, job_id, status, amount, sequence_order, billed_at, stripe_invoice_id').in('job_id', ids), 'lien payoffs: bills'),
-      withSupabaseRetry(() => supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on, payment_type, reference_number').in('job_id', ids), 'lien payoffs: payments'),
+      withSupabaseRetry(() => supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on, payment_type, reference_number, mercury_transaction_id').in('job_id', ids), 'lien payoffs: payments'),
     ])
     invoices.push(...((i ?? []) as InvoiceRow[]))
     payments.push(...((p ?? []) as PaymentRow[]))
@@ -78,5 +82,9 @@ export async function readLienPayoffFacts(todayYmd: string): Promise<LienPayoffF
     billsByJob[j.id] = lienPayoffBills(j.id, bills, paid, j.revenue)
   }
   const named = (j: JobRow): LienPayoffJob => ({ id: j.id, hcp_number: j.hcp_number, click_number: j.click_number, job_name: j.job_name, job_address: j.job_address, customer_id: j.customer_id, customer_name: j.customer_id ? (nameById.get(j.customer_id) ?? null) : null })
-  return { affidavits, releases, jobs: jobs.map(named), otherJobs: others.map(named), openByJob, billsByJob, paymentsByJob, todayYmd }
+  const bank = await readBankChecks(
+    todayYmd,
+    payments.map((p) => p.mercury_transaction_id),
+  )
+  return { affidavits, releases, jobs: jobs.map(named), otherJobs: others.map(named), openByJob, billsByJob, paymentsByJob, bank, todayYmd }
 }

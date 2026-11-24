@@ -22,6 +22,7 @@ import { LIEN_SCANS_DOOR_FROM_FILING } from '../../lib/jobs/lienScanBatch'
 import { lienDeskHref } from '../../lib/lien/lienDeskRoute'
 import { recordSheetField, recordSheetLabel } from './lienRecordSheetStyles'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useBankChecks } from '../../hooks/useBankChecks'
 import {
   customerAddressLienGaps,
   lienPropertyOwnerDisplayName,
@@ -82,7 +83,7 @@ import type { JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { lienTradeWords } from '../../lib/jobs/lienTradeWords'
 import { MoneyText } from '../Money'
 import { ChangeableValue, ValueLine, ValueLines, ValueSentence } from '../valuesInPlace/ValuesInPlace'
-import { RELEASE_OF_RECORD_WORDS, pickReleaseTarget, releaseMoneyGate, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from '../../lib/jobs/lienReleaseOfRecord'
+import { RELEASE_OF_RECORD_WORDS, pickReleaseTarget, releaseMoneyGate, releaseNeedsBank, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from '../../lib/jobs/lienReleaseOfRecord'
 
 /**
  * The statutory filing tabs of the Lien instruments modal (v2.2645, phase 3):
@@ -285,7 +286,10 @@ export default function LienFilingTabs({
   const claimNotes = useMemo(() => lienWindowClaimNotes(claim, job, claimCorrection, formatYmdMonthDay, { correctionUnread: claimCorrectionUnread }), [claim, job, claimCorrection, claimCorrectionUnread])
   const claimedAmount = claim.claimed.claim
   // Money holds the release: while the sent bills still owe, the tab holds its print and its save, unless a reason is typed.
-  const releaseGate = useMemo(() => releaseMoneyGate({ open: claim.openBalance, payments: job.payments ?? [], todayYmd: todayYmd(), anywayReason: releaseAnyway ?? '' }), [claim.openBalance, job.payments, releaseAnyway])
+  // A release waits for the bank (#437, piece 1): the bank's check deposits are read only when the bills read paid by a recent check.
+  const releaseAsksBank = useMemo(() => releaseNeedsBank(claim.openBalance, job.payments ?? [], todayYmd()), [claim.openBalance, job.payments])
+  const bankChecks = useBankChecks(releaseAsksBank, todayYmd(), (job.payments ?? []).map((p) => p.mercury_transaction_id))
+  const releaseGate = useMemo(() => releaseMoneyGate({ open: claim.openBalance, payments: job.payments ?? [], todayYmd: todayYmd(), anywayReason: releaseAnyway ?? '', bank: bankChecks }), [claim.openBalance, job.payments, releaseAnyway, bankChecks])
   // Under the claim on both tabs: where the figure came from, so nobody prints it blind.
   const claimNoteLines = claimNotes.map((n) => (
     <span key={n.key} data-lien-window-claim-note={n.key} style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: n.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-amber-700)' }}>
@@ -898,7 +902,7 @@ export default function LienFilingTabs({
       {
         kind: 'release_of_record',
         amount: 0,
-        fields: releaseSaveFields(JSON.parse(JSON.stringify(releaseFields)) as Record<string, unknown>, releaseTarget.affidavit.id, releaseAnyway ?? ''),
+        fields: releaseSaveFields(JSON.parse(JSON.stringify(releaseFields)) as Record<string, unknown>, releaseTarget.affidavit.id, releaseAnyway ?? '', releaseGate.why),
         county: releaseFields.county,
         // The affidavit's number, as every older release row holds it. The release's own is `fields.releaseInstrument`.
         recording_number: releaseFields.recordingNumber,
@@ -1746,9 +1750,9 @@ export default function LienFilingTabs({
                   ) : null}
                   {releaseAnyway != null ? (
                     <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.78rem' }}>
-                      <span style={{ fontWeight: 600 }}>{RELEASE_OF_RECORD_WORDS.anywayLabel}</span>
+                      <span style={{ fontWeight: 600 }}>{releaseGate.why === 'check' ? RELEASE_OF_RECORD_WORDS.anywayCheckLabel : RELEASE_OF_RECORD_WORDS.anywayLabel}</span>
                       <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                        <input type="text" data-lien-release-anyway-reason value={releaseAnyway} onChange={(e) => setReleaseAnyway(e.target.value)} placeholder={RELEASE_OF_RECORD_WORDS.anywayExample} autoComplete="off" style={{ flex: 1, minWidth: 0, padding: '0.35rem 0.5rem', fontFamily: 'inherit', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)' }} />
+                        <input type="text" data-lien-release-anyway-reason value={releaseAnyway} onChange={(e) => setReleaseAnyway(e.target.value)} placeholder={releaseGate.why === 'check' ? RELEASE_OF_RECORD_WORDS.anywayCheckExample : RELEASE_OF_RECORD_WORDS.anywayExample} autoComplete="off" style={{ flex: 1, minWidth: 0, padding: '0.35rem 0.5rem', fontFamily: 'inherit', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)' }} />
                         <button type="button" onClick={() => setReleaseAnyway(null)} style={{ border: 'none', background: 'none', padding: 0, fontFamily: 'inherit', fontSize: '0.78rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
                           Cancel
                         </button>

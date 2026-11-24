@@ -2,7 +2,7 @@
 name: "A held check: recorded the day it comes, counted the day the bank makes it good"
 number: 437
 group: gated
-status: asked 2026-11-24 by Diane, with a payer's check deposited and not yet good at the bank · every place a typed check counts was read in the code, and everything the app knows about a check clearing · a first draw, a critique and a second draw the same day · the same day she asked for a badge on the Pipeline card and for the path when a check fails, both added · nothing is built · waiting on the owner's six calls
+status: asked 2026-11-24 by Diane, with a payer's check deposited and not yet good at the bank · every place a typed check counts was read in the code, and everything the app knows about a check clearing · a first draw, a critique and a second draw the same day · the same day she asked for a badge on the Pipeline card and for the path when a check fails, both added · piece 1 is built as v2.8525, no release before the bank clears the check, and it found that the bank posts a check days before the day it names · call 1 answered the same day: cleared is the bank's named day · pieces 2 to 7 are not built · waiting on the owner's other five calls
 summary: >
   A paper check typed on a bill counts everywhere the moment it is saved: the bill reads Paid, the
   customer's page says all paid up, chasing stops, the job leaves the lien lists. Only three things
@@ -11,9 +11,9 @@ summary: >
   and the day the bank expects it. The card proposes a held check: the Dashboard says a check is at
   the bank and what it fits, one press holds it for those bills, nothing counts while it is held,
   and the bank's posting counts it and tells the office which liens to release.
-next: The owner answers the six calls. Piece 1, no release before the bank, waits on nothing and can be built first.
+next: The owner answers calls 2 to 6. Then the screens of pieces 3 to 7, drawn on the day the bank posts, are redrawn on the bank's named day before piece 3 is built.
 size: L as a train of seven (S · S · M · M · S · S · M)
-blocker: The owner's calls, the first two above all. Counsel's three questions gate nothing in the build.
+blocker: The owner's calls 2 to 6, the second above all. Counsel's three questions gate nothing in the build.
 opinion: build — one rule for every check, made from what the bank already tells the app; piece 1 closes a hole in #435 as built
 ---
 
@@ -39,7 +39,7 @@ It builds on [#76, returned checks](../ar-returned-checks.md) and on the Dashboa
 
 1. **The door is the bank's own row.** When a check is deposited, the Dashboard says so and names the bills it fits. One press holds it for those bills. Nobody types the check.
 2. **A held check counts nowhere.** Its bills stay open, each marked with the check and the day the bank expects it. Chasing stops for those bills. The lien clocks keep running.
-3. **The bank's answer does the rest.** When the bank posts it, the app counts it and tells the office which liens to release. When the bank fails it, nothing has to be undone.
+3. **The bank's answer does the rest.** When the bank has posted it and the bank's named day has come, the app counts it and tells the office which liens to release. When the bank fails it, nothing has to be undone.
 
 ## What happens today
 
@@ -67,7 +67,8 @@ Two faults sit in that:
 
 ## What the app already knows
 
-- **The bank's row.** `mercury_transactions` holds a deposited check as `pending`, with the check number and the day the bank expects it in `raw` (`checkNumber`, `estimatedDeliveryDate`), and images of the check. No code reads that day.
+- **The bank's row.** `mercury_transactions` holds a deposited check as `pending`, with the check number and the day the bank expects it in `raw` (`checkNumber`, `estimatedDeliveryDate`), and images of the check. Piece 1 reads that day and the check number (`checkCleared.ts`).
+- **Two days, not one.** The bank posts a check deposit within a day or three. The day it names is about a week after the deposit. A check reads posted days before the day the bank names.
 - **Posted deposits only.** Accounts Receivable lists a deposit once `posted_at` is set, and can then split it over bills and jobs, Stripe bills among them (`BankPaymentsModal.tsx`).
 - **A failed deposit.** The bank marks a check `failed` with its reason. Of the failed check deposits the returned-check work counted, most never posted and the rest came back within six days of posting (`bankReturnedDeposits.ts`).
 - **Money in.** The Dashboard already draws *In the drawer* and *At the bank*, with a guessed posting day.
@@ -79,7 +80,7 @@ Two faults sit in that:
 |---|---|---|
 | In the drawer | The office has the paper. It is not deposited. | Holds it for its bills. Asks for the deposit after three days. |
 | At the bank | It is deposited. The bank shows it as pending and names the day it expects it. | Holds it for its bills. Shows the bank's day. Counts nothing. |
-| Cleared | The bank posted it. | Counts it on its bills that day. Tells the office what to release. |
+| Cleared | The bank posted it, and the day the bank named has come. | Counts it on its bills that day. Tells the office what to release. |
 | Came back | The paying bank refused it, before or after posting. | Ends the hold. The bills chase again. After posting, the returned-check case takes over. |
 
 ## The badge on the Pipeline card
@@ -172,7 +173,7 @@ Lien days stay in view beside the bank's day.
 
 | # | The piece | Size | Kernel and tests | Migration | What proves it |
 |---|---|---|---|---|---|
-| 1 | **No release before the bank.** Payoffs and the release tab hold while the paying check has not cleared. The Lien desk's check pane refuses a check that is still pending at the bank. A leader's *Release it anyway* keeps its typed reason. | S | The two gates read one new rule, `checkCleared`: the linked deposit has posted, else the typed day plus seven. Tests for each. | None | Kernel and render tests |
+| 1 | **No release before the bank.** Payoffs and the release tab hold while the paying check has not cleared. The Lien desk's check pane refuses a check that is still pending at the bank. A leader's *Release it anyway* keeps its typed reason. | S | Built, v2.8525. The gates read one rule, `checkCleared.ts`: the paying deposit has posted and the bank's named day has come. A posted deposit with no named day waits seven days from its posting. A check with no deposit waits seven days from the typed day. The deposit is found by Accounts Receivable's link, else by the check's number. | None | Kernel and render tests, and a read-only look at a real check at the bank. No walk with a real write. |
 | 2 | **The bank's own day.** The app reads the day the bank expects a pending check, and its check number. Money in shows that day in place of its guess. | S | `bankCheckFacts` beside the bank kernel. Tests on a pending, a posted and a failed row. | None | Kernel tests, the line on the Dashboard |
 | 3 | **The held check.** The Dashboard's *A check is at the bank* with what it fits, the hold with its lines, *Let it go*, the count when the bank posts, the three Dashboard lines, and Payoffs' waiting step. | M | `heldCheck.ts`: what a check fits, the states, the lines, what each screen says. The count is a database function with a bed. | One table for a held check and its lines, with the four fence calls, and the function that counts it when the bank's row posts | Kernel tests, a database bed, a walk on ZZ test jobs with a made-up bank row |
 | 4 | **Billing says so.** The badge on the Pipeline card, in its dates, with the count on the section's head. The chip on the Bill tab and Bills sent. Chasing and statements skip a held bill. **Record payment** steers a check to a hold. | M | One rule, `billHeldCheck`, read by each screen. Tests beside each reader. | None | Render tests on each screen |
@@ -180,8 +181,9 @@ Lien days stay in view beside the bank's day.
 | 6 | **A check in the drawer.** A paper check not yet deposited is held by hand and takes its bank row when the deposit appears. A check the bank could not read falls back here. | S | `heldCheck.ts` pairs a drawer check with a pending row, as Money in does. | None | Kernel tests |
 | 7 | **When it comes back after it was counted.** The card's *Check clearing* badge in Paid in Full. On a return, the Collections mark comes back, a sub told *Customer paid* is told otherwise, and the case names any release made on the check. | M | The returned-check kernel gains the three. Tests beside it. | A small one, to put the Collections mark back when the payments come off | Kernel tests, a played-back return on a ZZ test job |
 
-Piece 1 is the safety fix for #435 as built, where Payoffs, the release tab and the check pane only warn while a check clears.
-It can land before anything else.
+Piece 1 is the safety fix for #435 as built, where Payoffs, the release tab and the check pane only warned while a check cleared.
+It is built, v2.8525.
+It also reads the bank's day and the check number, the kernel half of piece 2, and gives Payoffs its waiting step and a line that says a check for a place is at the bank.
 Pieces 2 and 3 are the plan itself.
 Pieces 4 to 7 follow in any order.
 
@@ -197,10 +199,10 @@ A Stripe bill paid whole by check is a ledger row, and Stripe closes it seven da
 
 **For the company's owner**
 
-1. What does cleared mean? Pick: the day the bank posts it. Most failed checks fail before that. The rest came back within six days after, so the release tab carries a caution for those days and does not block.
+1. What does cleared mean? Answered 2026-11-24 by Diane: the bank's day. The bank does two things on two days. It posts a check within a day or three, and it names a later day, about a week out. A check has cleared when the bank posted it and the bank's day has come, as piece 1 is built. The answer set aside was the day the bank posts it, about a week sooner, with a caution for the days after.
 2. Does the count need a press? Pick: no. The office chose the bills on day one. The bank's posting counts the check, and the Dashboard says it did.
 3. Every check, or only where a lien waits? Pick: every check. One rule is easier to keep than two. A leader keeps *Count it now* with a reason, for a cashier's check or a payer who is always good.
-4. Who may release before the bank posts? Pick: a leader only, with a typed reason.
+4. Who may release before the bank clears it? Pick: a leader only, with a typed reason. As built in piece 1, anyone who can open the release tab may, with a typed reason.
 5. What does the payer's page say? Pick: *We have your check. It is clearing.*
 6. A payer whose check came back before. Pick: their next check still counts when the bank posts it. The release waits the six days after, unless a leader releases sooner with a reason.
 
