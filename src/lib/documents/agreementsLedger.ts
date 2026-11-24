@@ -259,9 +259,16 @@ export const AGREEMENTS_EMPTY_PAGE = { label: 'Pipeline', to: '/jobs?tab=stages'
 export const AGREEMENTS_READER_EMPTY_TAIL = 'The office sends a paper to an outside company from this tab.'
 
 /**
- * Where an estimator opens a signed paper: the tab is theirs to read, and the press is on the company's own page.
+ * What an estimator's list says at its foot (punch list #403, the owner's second decision). A signed line's name is a
+ * press that opens its record, and a paper that waits has none. A training account reads the lines and opens nothing.
  */
-export const AGREEMENTS_READER_DOORS = 'This list is for reading. A signed paper, a W-9 or a certificate opens from the company’s own page.'
+export const AGREEMENTS_READER_DOORS = 'Press a signed paper’s name to open its record. A paper that is not signed yet has nothing to open.'
+export const AGREEMENTS_TRAINING_DOORS = 'This list is for reading. A training account opens no signed paper.'
+
+/** The foot of an estimator's list: `opensRecords` is `canOpenSignedRecord` for the reader. */
+export function agreementsReaderDoorsWords(opensRecords: boolean): string {
+  return opensRecords ? AGREEMENTS_READER_DOORS : AGREEMENTS_TRAINING_DOORS
+}
 
 /**
  * The empty list's words: nothing matches the search (*Clear the search*), nothing matches the chips (*Clear the
@@ -590,4 +597,16 @@ export function agreementDoor(row: Pick<AgreementRow, 'kind' | 'source_id' | 'st
   if (isPartyAgreementKind(row.kind)) return str(fact(row, 'status')) === 'signed' ? { kind: 'person-signed', documentId: row.source_id } : { kind: 'none' }
   if (row.kind === 'owner_contract' || row.kind === 'sow' || row.kind === 'company_agreement') return { kind: 'gc', to: AGREEMENTS_GC_PAGE }
   return { kind: 'none' }
+}
+
+/**
+ * What a press opens for an estimator, who reads the tab and acts on nothing (punch list #403, the owner's second
+ * decision): a signed paper opens the signed record, the one window their role reads whole, and every other line is
+ * plain words. A waiting paper, a work order and a GC paper keep no press. `opensRecords` is `canOpenSignedRecord`:
+ * a training account opens nothing.
+ */
+export function agreementReaderDoor(row: Pick<AgreementRow, 'kind' | 'source_id' | 'state' | 'job_id' | 'facts'>, opensRecords: boolean): AgreementDoor {
+  if (!opensRecords) return { kind: 'none' }
+  const door = agreementDoor(row)
+  return door.kind === 'person-signed' ? door : { kind: 'none' }
 }

@@ -2,6 +2,8 @@
  * The PDF of a signed paper of plain words or clauses (punch list #376). The shared file takes pdf-lib as a parameter,
  * so here it runs on node_modules' copy, as the job contract's does. Every name is made up.
  */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import * as pdfLib from 'pdf-lib'
 import type { PdfLibLike } from '../../../supabase/functions/_shared/jobContractPdf'
@@ -138,6 +140,23 @@ describe('who opens a signed paper’s PDF', () => {
     const twin = { role: 'estimator', is_digital_twin: true }
     expect(paperPdfOpener(twin)).toBe('none')
     expect(paperPdfRefusal(twin, { estimatorReads: true })).toBe(PAPER_PDF_REFUSALS.twin)
+  })
+
+  it('refuses an estimator in training, and opens for the four roles in training as before (punch list #403, decision 2)', () => {
+    const trainee = { role: 'estimator', read_only: true }
+    expect(paperPdfOpener(trainee)).toBe('none')
+    expect(paperPdfRefusal(trainee, { estimatorReads: true })).toBe(PAPER_PDF_REFUSALS.training)
+    expect(PAPER_PDF_REFUSALS.training).toBe('A training account does not open a signed paper’s PDF.')
+    expect(paperPdfRefusal({ role: 'estimator', read_only: false }, { estimatorReads: true })).toBeNull()
+    expect(paperPdfRefusal({ role: 'estimator', is_digital_twin: true, read_only: true }, { estimatorReads: true })).toBe(PAPER_PDF_REFUSALS.twin)
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
+      expect(paperPdfRefusal({ role, read_only: true }, {}), role).toBeNull()
+    }
+  })
+
+  it('the handler reads training mode with the caller’s role', () => {
+    const handler = readFileSync(resolve(process.cwd(), 'supabase/functions/person-paper-pdf/index.ts'), 'utf8')
+    expect(handler).toMatch(/admin\.from\('users'\)\.select\('role, is_digital_twin, read_only'\)\.eq\('id', user\.id\)/)
   })
 
   it('refuses every other role and an account with no row', () => {

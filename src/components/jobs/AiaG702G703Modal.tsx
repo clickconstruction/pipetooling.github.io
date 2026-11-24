@@ -1502,7 +1502,7 @@ export default function AiaG702G703Modal({
             disabled={generating || !job}
             style={{
               padding: '0.5rem 1rem',
-              background: '#16a34a',
+              background: '#15803d',
               color: '#fff',
               border: 'none',
               borderRadius: 4,

@@ -262,7 +262,7 @@ export function ChecklistHistoryLedger({
         const dropped = droppedReason(eventsByInstance.get(inst.id) ?? [])
         return (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <span style={{ ...base, background: '#16a34a', color: 'white' }}>✓ {stripStamp(chip.completedAt)}</span>
+            <span style={{ ...base, background: '#15803d', color: 'white' }}>✓ {stripStamp(chip.completedAt)}</span>
             {late ? <span style={{ ...base, fontWeight: 500, background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }}>{late}</span> : null}
             {dropped !== null ? (
               <span data-ledger-dropped title={dropped || undefined} style={{ ...base, fontWeight: 500, background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-700)' }}>

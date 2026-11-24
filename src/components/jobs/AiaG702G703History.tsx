@@ -280,7 +280,7 @@ export default function AiaG702G703History({
         <button
           type="button"
           onClick={onNew}
-          style={{ padding: '0.5rem 1rem', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}
+          style={{ padding: '0.5rem 1rem', background: '#15803d', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}
         >
           New application · {nextNumber}
         </button>

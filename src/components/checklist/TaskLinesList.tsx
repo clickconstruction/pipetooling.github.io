@@ -41,7 +41,7 @@ export function TaskLinesList({
                 borderRadius: 7,
                 border: l.checked ? 'none' : `2px solid ${l.criterion.id === nextOpenId ? '#d97706' : 'var(--text-600)'}`,
                 boxShadow: !l.checked && l.criterion.id === nextOpenId ? '0 0 0 2px var(--bg-amber-tint)' : 'none',
-                background: l.checked ? '#16a34a' : 'var(--surface)',
+                background: l.checked ? '#15803d' : 'var(--surface)',
                 color: 'white',
                 fontSize: '0.95rem',
                 lineHeight: 1,

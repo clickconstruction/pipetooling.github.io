@@ -10,6 +10,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, screen, fireEvent, within } from '@testing-library/react'
 import PeopleHrTab from './PeopleHrTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { useLocation } from 'react-router-dom'
+
+/** Draws the address, so a test can read what the tab wrote to it. */
+function AddressProbe() {
+  const { search } = useLocation()
+  return <output data-testid="address">{search}</output>
+}
 
 const TABLE_ROWS: Record<string, unknown[]> = {
   people: [
@@ -162,5 +169,30 @@ describe('PeopleHrTab · the person file', () => {
     expect(screen.getByText(/Entries append and never change\. A correction is a new entry/)).toBeTruthy()
     const add = screen.getByRole('button', { name: 'Add entry' }) as HTMLButtonElement
     expect(add.disabled).toBe(true)
+  })
+})
+
+describe('PeopleHrTab · the link to one file', () => {
+  it('a cold load of ?tab=hr&person=<id> opens that file and the address keeps the person', async () => {
+    renderWithProviders(<><PeopleHrTab /><AddressProbe /></>, { route: '/people?tab=hr&person=p-marcus' })
+    expect(await screen.findByRole('tab', { name: /Timeline \(/ })).toBeTruthy()
+    expect(screen.queryByText(/Pick a person to open their file/)).toBeNull()
+    expect(screen.getByTestId('address').textContent).toBe('?tab=hr&person=p-marcus')
+  })
+
+  it('a press on a name writes the person to the address, so the link can be copied', async () => {
+    renderWithProviders(<><PeopleHrTab /><AddressProbe /></>, { route: '/people?tab=hr' })
+    const danny = (await screen.findAllByRole('button', { name: /Danny Ortiz/ }))[0]!
+    fireEvent.click(danny)
+    expect(await screen.findByRole('tab', { name: /Timeline \(/ })).toBeTruthy()
+    expect(screen.getByTestId('address').textContent).toBe('?tab=hr&person=p-danny')
+  })
+
+  it('an id that matches no one lands on the roster with one plain line', async () => {
+    renderWithProviders(<><PeopleHrTab /><AddressProbe /></>, { route: '/people?tab=hr&person=p-nobody' })
+    expect(await screen.findByText('No one you can see matches that link. Pick a person from the list.')).toBeTruthy()
+    expect(screen.getByText(/Pick a person to open their file/)).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: /Timeline \(/ })).toBeNull()
+    expect(screen.getByTestId('address').textContent).toBe('?tab=hr')
   })
 })

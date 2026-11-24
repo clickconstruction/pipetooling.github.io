@@ -1,8 +1,15 @@
 import React from 'react'
+import { chunkRecoveryReloadStarted, errorIsForChunkBoundary } from '../lib/chunkLoadRecovery'
 
 type Props = {
   children: React.ReactNode
   fallback?: React.ReactNode
+  /**
+   * For a boundary around a lazy page (`RoutePageBoundary`): a page whose code did not come is not this
+   * boundary's to answer. It is thrown on to the chunk boundary above, which reloads once and offers
+   * **Reload**. An ordinary crash is still caught here.
+   */
+  chunkLoadsGoUp?: boolean
 }
 
 export class ErrorBoundary extends React.Component<
@@ -24,6 +31,9 @@ export class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
+      if (this.props.chunkLoadsGoUp && errorIsForChunkBoundary(this.state.error, chunkRecoveryReloadStarted())) {
+        throw this.state.error
+      }
       return (
         this.props.fallback ?? (
           <div style={{ padding: '1rem', color: 'var(--text-red-700)', fontSize: '0.875rem' }}>

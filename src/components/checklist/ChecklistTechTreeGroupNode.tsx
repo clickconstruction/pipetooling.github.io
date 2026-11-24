@@ -133,7 +133,7 @@ function TaskBridgeChipSpan({ chip }: { chip: GroupTask['bridgeChip'] }) {
         ...(chip === 'in_review'
           ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' }
           : chip === 'signed_off'
-            ? { background: '#16a34a', color: 'white' }
+            ? { background: '#15803d', color: 'white' }
             : { background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)' }),
       }}
     >
@@ -599,7 +599,7 @@ export function GroupNode({ data }: NodeProps) {
                     fontWeight: 600,
                     padding: '1px 6px',
                     borderRadius: 6,
-                    background: '#16a34a',
+                    background: '#15803d',
                     color: 'white',
                     whiteSpace: 'nowrap',
                   }}

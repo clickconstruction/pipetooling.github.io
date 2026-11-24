@@ -9,6 +9,7 @@ import { derivePersonFileFreshness, type PersonFileFreshness } from '../../lib/p
 import { HrPendingReportsSection } from './HrPendingReportsSection'
 import { PersonFilePanel, type PersonFileView } from './personFile/PersonFilePanel'
 import { HrKeptPlansSection } from './HrKeptPlansSection'
+import { HR_LINK_UNKNOWN_WORDS, hrPersonParams, readHrPersonLink } from '../../lib/people/hrPersonLink'
 
 export { HR_ENTRY_SOURCES } from './personFile/PersonFilePanel'
 
@@ -73,14 +74,17 @@ export default function PeopleHrTab() {
   const [loaded, setLoaded] = useState(false)
 
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
-  // Deep link from the Person Desk (v2.2710): ?tab=hr&person=<people.id> lands on that file.
+  // Deep link from the Person Desk (v2.2710): ?tab=hr&person=<people.id> lands on that file,
+  // and the address keeps the person while the file is open (`hrPersonLink`).
   const [hrSearchParams, setHrSearchParams] = useSearchParams()
   const deepLinkPersonId = hrSearchParams.get('person')
   /** By theme (v2.6547): `?theme=<id>` opens the file on that theme, and a pick writes it back so a link reopens the same view. */
   const deepLinkThemeId = hrSearchParams.get('theme')
-  useEffect(() => {
-    if (deepLinkPersonId) setSelectedPersonId(deepLinkPersonId)
-  }, [deepLinkPersonId])
+  /** A link whose person no one on the roster matches: the roster, with one plain line. */
+  const [linkMissed, setLinkMissed] = useState(false)
+  const writePersonToAddress = (personId: string | null) => {
+    setHrSearchParams((prev) => hrPersonParams(prev, personId), { replace: true })
+  }
   useEffect(() => {
     if (deepLinkPersonId && deepLinkThemeId) {
       setFileView('themes')
@@ -141,6 +145,21 @@ export default function PeopleHrTab() {
   useEffect(() => {
     void load()
   }, [load])
+
+  // The link is read once the roster is in: an id is opened only when it names someone the reader can see.
+  useEffect(() => {
+    if (!loaded) return
+    const link = readHrPersonLink(deepLinkPersonId, people.map((p) => p.id))
+    if (link.kind === 'open') {
+      setSelectedPersonId(link.personId)
+      setLinkMissed(false)
+    } else if (link.kind === 'unknown') {
+      setSelectedPersonId(null)
+      setLinkMissed(true)
+      writePersonToAddress(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, people, deepLinkPersonId])
 
   const summaryByPerson = useMemo(() => {
     const map = new Map<string, PersonFileMetaRow>()
@@ -208,6 +227,8 @@ export default function PeopleHrTab() {
 
   const openPerson = (id: string, view: PersonFileView) => {
     setSelectedPersonId(id)
+    setLinkMissed(false)
+    writePersonToAddress(id)
     setFileView(view)
     setFileViewKey((k) => k + 1)
     setQueueOpen(false)
@@ -303,13 +324,20 @@ export default function PeopleHrTab() {
         {/* The file */}
         <section style={{ flex: '1 1 480px', minWidth: 0 }}>
           {!selectedPerson ? (
+            <>
+            {linkMissed ? (
+              <div role="status" style={{ color: 'var(--text-amber-800)', fontSize: '0.9rem', paddingTop: '0.5rem' }}>
+                {HR_LINK_UNKNOWN_WORDS}
+              </div>
+            ) : null}
             <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', paddingTop: '0.5rem' }}>
               Pick a person to open their file. Dots: <span style={{ color: 'var(--text-green-600)' }}>●</span> summary current · <span style={{ color: 'var(--text-amber-700)' }}>●</span> entries newer than the summary · <span style={{ color: 'var(--text-faint)' }}>●</span> no file yet.
             </div>
+            </>
           ) : (
             <>
               {narrow ? (
-                <button type="button" onClick={() => setSelectedPersonId(null)} style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: '0 0 0.5rem', cursor: 'pointer' }}>
+                <button type="button" onClick={() => { setSelectedPersonId(null); writePersonToAddress(null) }} style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: '0 0 0.5rem', cursor: 'pointer' }}>
                   ‹ All people
                 </button>
               ) : null}

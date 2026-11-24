@@ -75,7 +75,7 @@ export function JobModeMachinesLine({ jobId, jobWords }: { jobId: string; jobWor
             {asking ? (
               <div role="group" aria-label={`Is ${m.unitLabel} here`} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.35rem', marginTop: '0.25rem', marginLeft: '1.25rem' }} data-machine-arrival={m.unitLabel}>
                 {(['here', 'later', 'not_coming'] as ArrivalAnswer[]).map((a) => (
-                  <button key={a} type="button" style={{ ...press, ...(a === 'here' ? { background: '#16a34a', borderColor: '#16a34a', color: '#fff' } : {}) }} onClick={() => answer(x, a)}>
+                  <button key={a} type="button" style={{ ...press, ...(a === 'here' ? { background: '#15803d', borderColor: '#15803d', color: '#fff' } : {}) }} onClick={() => answer(x, a)}>
                     {ANSWER_WORDS[a]}
                   </button>
                 ))}
