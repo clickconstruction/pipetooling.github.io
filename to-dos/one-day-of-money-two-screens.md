@@ -10,10 +10,10 @@ summary: >
   names a deposit that is on no bill yet. Four differences are left: the day a check counts on, a
   payment whose check came back, test rows, and the day a week starts. The card lists each one and
   the call it needs, then proposes one rule for a day's money that both screens draw from.
-next: The owner answers the four calls. The two small pieces that need no call can be built first.
+next: The owner answers the four calls. Piece 1 needs no call and can be built first.
 size: L as a train of four (S · S · M · M)
 blocker: The owner's four calls. Call 1 is the same question as punch list #437, a held check.
-opinion: build pieces 1 and 2 now, since neither changes a figure a leader has quoted; hold pieces 3 and 4 for the calls
+opinion: build piece 1 now, since it needs no call; hold pieces 2 to 4 for the calls
 ---
 
 # One day of money, two screens (#440)
@@ -60,7 +60,7 @@ A Stripe payment, a bank transfer typed by hand and a credit in kind already agr
 
 ## Is this the best we can do?
 
-For the leader, yes: one day, one figure, on either screen. The cheaper end is to stop after pieces 1 and 2 and say the rest in the guide, as the week's start is said today. That leaves call 1 open, and call 1 is the one a leader will meet, since a check is most of the money.
+For the leader, yes: one day, one figure, on either screen. The cheaper end is to stop after pieces 1 and 2, once call 2 is answered, and say the rest in the guide, as the week's start is said today. That leaves call 1 open, and call 1 is the one a leader will meet, since a check is most of the money.
 
 ## What is known
 
