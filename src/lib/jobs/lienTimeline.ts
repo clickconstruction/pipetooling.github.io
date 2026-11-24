@@ -160,6 +160,12 @@ export interface LienTimeline {
   lienGone: boolean
   /** The suit date (or the affidavit's, unfiled) — the clock's far end, '' when none. */
   suitDate: string
+  /**
+   * The § 53.052 affidavit's last day to file while nothing is filed (v2.8454, punch list #415): the day the path itself counts to,
+   * from the affidavit windows when they list the job, else the last month of work's own filing day. '' once an affidavit
+   * is filed, and when no month dates the job. A reader beside the path takes the day from here, so the two cannot part.
+   */
+  affidavitDay: string
   /** Steps before this index are past; the today marker sits at this boundary. */
   todayIndex: number
   /** The Windows view's second Next sentence (v2.3815): the lien may follow the notice — '' when it does not apply. */
@@ -735,7 +741,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
   // The band's press (v2.7321): decided from the same facts as the words, so the two cannot part.
   const act = lienNextActFor({ next, waitingOn, noticeState: input.noticeState, missingKeys: input.affidavit?.missingKeys ?? [], noticeStanding: input.affidavit?.noticeStanding ?? null, serveStage: input.affidavit?.serveStage ?? null, paid: input.paid })
 
-  return { steps: folded, next: { ...next, act }, kindUnknown, lienGone, suitDate, todayIndex, windowsAside, todayYmd, waitingOn }
+  return { steps: folded, next: { ...next, act }, kindUnknown, lienGone, suitDate, affidavitDay: filedAt ? '' : filingDeadline, todayIndex, windowsAside, todayYmd, waitingOn }
 }
 
 function moneyWords(n: number): string {
