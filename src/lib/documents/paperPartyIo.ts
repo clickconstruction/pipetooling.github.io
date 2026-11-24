@@ -10,7 +10,7 @@ import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { PaperPartyKind } from '../contracts/paperParty'
 import type { PartyBusiness, PartyCustomer, PartyCustomerPerson, PartyRecordTable, PartyRep, PartySupplyHouse } from './paperPartyPick'
-import { PARTY_CONTACT_COLUMN, partyContactIsOwn, type PartyCopyOut } from './partyPaperOut'
+import { PARTY_CONTACT_COLUMN, partyContactsToLook, type PartyContactRow, type PartyCopyOut } from './partyPaperOut'
 import type { ListRecordTable, TradeBusiness } from './paperPartyList'
 
 // `paper_party_contact` joins the generated types with the types PR after its push; until then the client is cast once.
@@ -68,17 +68,15 @@ export async function readPartyContact(record: { table: PartyRecordTable; id: st
   return id
 }
 
-/** Whose an address already is, when the app knows it. */
 /**
- * The contact a record's paper is filed under, when the record has one already. A read alone: nothing is made here,
- * where `readPartyContact` makes one. A business's own contact carries no name, as `paper_party_contact` finds it.
+ * The contacts a record's papers are filed under, when it has any. A read alone: nothing is made here, where
+ * `readPartyContact` makes one. A company's are its own contact, which carries no name as `paper_party_contact` finds
+ * it, and each named person's that points at the company (`partyContactsToLook`). A person on file has one.
  */
-export async function findPartyContact(record: { table: PartyRecordTable; id: string }): Promise<string | null> {
+export async function findPartyContacts(record: { table: PartyRecordTable; id: string }): Promise<string[]> {
   const column = PARTY_CONTACT_COLUMN[record.table]
-  const rows = await withSupabaseRetry(async () => db.from('contacts').select('id, name').eq(column, record.id).limit(50), 'look for who the paper is with')
-  const list = (rows ?? []) as Array<{ id: string; name: string | null }>
-  const found = partyContactIsOwn(record.table) ? list.find((c) => c.name == null) : list[0]
-  return found?.id ?? null
+  const rows = await withSupabaseRetry(async () => db.from('contacts').select('id, name').eq(column, record.id).order('created_at').limit(50), 'look for who the paper is with')
+  return partyContactsToLook(record.table, (rows ?? []) as PartyContactRow[])
 }
 
 /** Who each copy that is out went to, in the order asked. A copy that went away since is left out. */

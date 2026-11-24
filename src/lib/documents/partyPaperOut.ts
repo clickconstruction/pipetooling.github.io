@@ -8,7 +8,13 @@ import type { PartyRecordTable } from './paperPartyPick'
  * filed under the company's own contact, so the same paper sent to a second person there used to land on the first
  * person's copy: their name was replaced and their link stopped. Now **Send a paper** says who already has the paper
  * out, and offers to send it to them again or to send a second copy to someone else. These are its pure parts: which
- * copies are out, and the words of the choice.
+ * contacts are looked at, which copies are out, and the words of the choice.
+ *
+ * A company's papers can sit on more than one contact. **Add to a list** puts someone who was on no list under a
+ * customer or a supply house by name (`name_contact`), and their contact then points at the company and carries their
+ * name, with their papers still on it. So the look for a company reads every contact that points at it, its own and
+ * each named one. The walks of 2026-11-24 found a customer whose two waiting papers sat on named contacts, and a
+ * second send asked nothing. How those two contacts came to that shape was not traced.
  */
 
 /** The column of `contacts` that points at each kind of record a paper can be with. */
@@ -24,18 +30,31 @@ export function partyContactIsOwn(table: PartyRecordTable): boolean {
   return table === 'customers' || table === 'supply_houses'
 }
 
+/** A contact as the look reads it: its key, and its name when it is a named person at a company. */
+export type PartyContactRow = { id: string; name: string | null }
+
+/**
+ * The contacts whose papers count as a record's, from the contacts that point at it. A company: its own contact first
+ * (the one with no name), then each named one. A person on file: their one contact.
+ */
+export function partyContactsToLook(table: PartyRecordTable, contacts: readonly PartyContactRow[]): string[] {
+  if (!partyContactIsOwn(table)) return contacts.slice(0, 1).map((c) => c.id)
+  return [...contacts.filter((c) => c.name == null), ...contacts.filter((c) => c.name != null)].map((c) => c.id)
+}
+
 /** A paper's row as far as this reads it. */
 export type PartyPaperRow = { id: string; person_name: string; document_name: string; status: string; sent_at: string | null }
 
 /**
  * The copies of one paper a party has out: sent and not signed, newest first. A copy that was made and never sent is
- * not out, and a signed one is done.
+ * not out, and a signed one is done. `contacts` is the party's contact, or every contact a company's papers sit on.
  */
-export function partyPapersOut<T extends PartyPaperRow>(personDocuments: readonly T[], contactId: string | null | undefined, documentName: string): T[] {
-  if (!contactId) return []
-  const stored = partyPaperName(contactId)
+export function partyPapersOut<T extends PartyPaperRow>(personDocuments: readonly T[], contacts: string | readonly string[] | null | undefined, documentName: string): T[] {
+  const ids = typeof contacts === 'string' ? [contacts] : (contacts ?? [])
+  if (ids.length === 0) return []
+  const stored = new Set(ids.filter(Boolean).map((id) => partyPaperName(id)))
   return personDocuments
-    .filter((d) => d.person_name === stored && d.document_name === documentName && d.status === 'sent')
+    .filter((d) => stored.has(d.person_name) && d.document_name === documentName && d.status === 'sent')
     .slice()
     .sort((a, b) => (b.sent_at ?? '').localeCompare(a.sent_at ?? ''))
 }
