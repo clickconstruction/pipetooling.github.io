@@ -2,16 +2,16 @@
 name: "Lien desk gate marks: the spike's record and what it left"
 number: 364
 group: residual
-status: spike 2026-11-15 · shape G shipped v2.7335 the same day · the row press that lands on its open gate built v2.8472 · walked live 2026-11-24, Safari's ring mended v2.8509 · left: a look on a real phone
+status: spike 2026-11-15 · shape G shipped v2.7335 the same day · the row press that lands on its open gate built v2.8472 · walked live 2026-11-24, two mends in v2.8509, both seen live the same day · left: a look on a real iPhone
 summary: >
   The owner asked on 2026-11-15 whether the affidavit pane's five gates should show on each row of the
   Lien affidavits list. A design spike measured eight shapes, and shape G shipped the same day: five small
   marks after the row's last work month, in the pane's order, on the two piles where a hold is still
   possible. This card is the way back to the spike's note, its measurements and its flags. The one piece the
   spike left, a row press that lands on its open gate, is built in v2.8472.
-next: Once v2.8509 is live, press a held row on the Lien affidavits list on a real iPhone, and say whether the landing reads right and the gate shows no blue ring. Then this card can go.
+next: Press a held row on the Lien affidavits list on a real iPhone, and say whether the landing reads right and the gate shows no blue ring. Then this card can go.
 size: S (a look, no build)
-blocker: v2.8509 has to be live first.
+blocker: none — v2.8509 is live.
 mockup: not required — the marks shipped in v2.7335, and the piece left changes only where a press lands
 opinion: look at it on a phone first — that is where the gates open a whole screen under the job's path
 ver: v2.7313 · 7335 · 8472 · 8509
@@ -85,19 +85,32 @@ Diane asked for the live walk. It was read-only: row presses on the live desk, n
 - **The iPhone simulator's Safari, the live desk:** the pane landed the same way. It is a simulator, not a real phone.
 - **The fault it found:** in Safari the first press after a page load left the keyboard's blue ring and underlined
   words on the gate, and they stayed after the amber light had gone. v2.8509 mends it: a gate landed on by a tap or a
-  mouse press takes the keyboard without the ring. The mend was seen in the simulator's Safari on the harness page,
-  not yet on the live desk.
+  mouse press takes the keyboard without the ring.
 - **A second fault, with less motion:** the pane jumped, the job's path then grew, and the landing stood 47 px short
   with two heads pinned. v2.8509 follows a pane it has moved while it settles, so the jump ends where the glide does.
-  Seen in the simulator's Safari with Reduce Motion on.
 
 The fragment `docs/recent-features/v2.8509.md` has the measures.
+
+## The mends, seen live (2026-11-24, after v2.8509 deployed)
+
+Read-only again: row presses on the live desk, nothing written.
+
+- **The iPhone simulator's Safari:** the first press after a fresh load landed the held gate under the one pinned
+  head, in the amber light alone. No blue ring and no underline, during the light or after it. With Reduce Motion on
+  the pane ended in the same place, the gate in its amber outline and tint.
+- **Headless Chromium:** at 730 px wide with less motion the gates head sat snug under the path's, where it had sat
+  4 px low. A tap's landing wore the quiet mark, and Enter on the row kept the keyboard's blue ring. 1400 and 380 px
+  wide and dark held as before.
+- **Seen in passing:** the Payoffs card now sits over the desk, so on a 380 px phone the pane is 346 px tall where it
+  was 435. The gates section no longer fits, and the held gate's row lands right under the gates' head. That is the
+  rule for a section taller than the window, and the row was whole on the screen.
 
 ## Left: a look on a real phone
 
 Not seen: a real iPhone in a hand, Safari on a Mac, and a screen reader's words when the keyboard lands on the gate.
-Once v2.8509 is live, press a held row on a real iPhone. If the keyboard moving to the pane gets in the way of working
-down the list with the keys, say so: the focus is one line in `useLienGateLanding.ts`.
+The simulator's presses arrive as a mouse's, so a fingertip is the one thing it cannot stand in for. If the keyboard
+moving to the pane gets in the way of working down the list with the keys, say so: the focus is one line in
+`useLienGateLanding.ts`.
 
 ## Where it plugs in
 
