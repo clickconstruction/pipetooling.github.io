@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { CHUNK_RECOVERY_KEY, forgetChunkRecoveryReload, startChunkRecoveryReload } from '../lib/chunkLoadRecovery'
 import { ROUTE_RELOAD_CHECKING_WORDS, ROUTE_RELOAD_NO_SIGNAL_WORDS } from '../lib/routeReload'
+import { __resetReloadAskForTests } from '../lib/reloadOverWords'
+import { __forgetTypedTextForTests } from '../lib/typedText'
+import { ReloadOverWordsBar } from './ReloadOverWordsBar'
 import { __resetUnsavedWorkForTests, wrapFetchCountingWrites } from '../lib/unsavedWork'
 import { RouteChunkBoundary } from './RouteChunkBoundary'
 
@@ -129,6 +132,41 @@ describe('RouteChunkBoundary', () => {
     await waitFor(() => expect(hardReloadFromRoot).toHaveBeenCalledTimes(1))
     // The press stays dead while the page leaves.
     expect(press.disabled).toBe(true)
+  })
+
+  it('v2.8513: over typed words Reload is asked first, and asks the network only after Reload anyway', async () => {
+    const fetcher = vi.fn(async () => icon())
+    vi.stubGlobal('fetch', fetcher)
+    __resetReloadAskForTests()
+    __forgetTypedTextForTests()
+    const note = document.createElement('textarea')
+    note.value = 'We can start Monday.'
+    document.body.appendChild(note)
+    try {
+      render(<ReloadOverWordsBar />)
+      // Typed words also hold the recovery reload, so the fallback is what draws.
+      render(
+        <RouteChunkBoundary>
+          <Throws error={lostChunk()} />
+        </RouteChunkBoundary>,
+      )
+      const press = screen.getByRole('button', { name: 'Reload' })
+      fireEvent.click(press)
+      expect(fetcher).not.toHaveBeenCalled()
+      expect(screen.getByText('Reloading clears what you typed.')).toBeTruthy()
+      const anyway = screen.getByRole('button', { name: 'Reload anyway' })
+      expect(anyway.getAttribute('aria-disabled')).toBe('true')
+      await waitFor(() => expect(anyway.getAttribute('aria-disabled')).toBeNull(), { timeout: 3000 })
+      expect(fetcher).not.toHaveBeenCalled()
+      expect(hardReloadFromRoot).not.toHaveBeenCalled()
+      fireEvent.click(anyway)
+      expect(fetcher).toHaveBeenCalledTimes(1)
+      await waitFor(() => expect(hardReloadFromRoot).toHaveBeenCalledTimes(1))
+      expect(note.value).toBe('We can start Monday.')
+    } finally {
+      note.remove()
+      __resetReloadAskForTests()
+    }
   })
 
   it('Reload with no network reloads nothing, says so, and gives the press back', async () => {

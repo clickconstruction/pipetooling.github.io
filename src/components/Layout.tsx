@@ -68,6 +68,7 @@ import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
 import { appActivityPageKey } from '../lib/appActivityPage'
 import { hardReloadFromRoot } from '../lib/hardReload'
+import { askReloadOverWords } from '../lib/reloadOverWords'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { canAccessBanking } from '../lib/bankingAccess'
@@ -2239,7 +2240,8 @@ export default function Layout() {
                   type="button"
                   onClick={() => {
                     setGearOpen(false)
-                    hardReloadFromRoot()
+                    // Over typed words the press is asked first, and the page is walked through each place (v2.8513).
+                    askReloadOverWords(hardReloadFromRoot)
                   }}
                   style={{
                     display: 'block',

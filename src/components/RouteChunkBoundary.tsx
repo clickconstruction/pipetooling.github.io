@@ -7,6 +7,7 @@ import {
 } from '../lib/chunkLoadRecovery'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 import { hardReloadFromRoot } from '../lib/hardReload'
+import { askReloadOverWords } from '../lib/reloadOverWords'
 import { probeForSignal } from '../lib/publicPageLoad'
 import {
   ROUTE_RELOAD_PRESS,
@@ -45,6 +46,11 @@ function RouteReloadPress() {
   const view = routeReloadView(state)
   const press = () => {
     if (view.pressDead) return
+    // Over typed words the press is asked first, and the page is walked through each place (v2.8513).
+    askReloadOverWords(askTheNetwork)
+  }
+  const askTheNetwork = () => {
+    if (!here.current) return
     setState('checking')
     void probeForSignal().then((answered) => {
       if (!here.current) return

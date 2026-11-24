@@ -28,7 +28,7 @@ The app also checks for new versions on its own about once an hour. It checks ag
 
 ## When you press Reload over words you typed
 
-The app does not reload yet. It takes you to each place you typed. Each place shows an orange ring for a second. If you typed in several places, the page moves from one to the next. Then the pill offers two presses:
+The app does not reload yet. The app takes you to each place you typed. Each place shows an orange ring for a second. If you typed in several places, the page moves from one to the next. Then the pill offers two presses:
 
 :::example The update pill over words you typed
 Reloading clears what you typed. {{button:amber|Reload anyway}} Not now
@@ -38,6 +38,8 @@ Reloading clears what you typed. {{button:amber|Reload anyway}} Not now
 - **Not now** keeps your words. Send or clear them, and the app updates at the next quiet moment.
 
 Touch anywhere else on the page and the pill goes back to **Reload**. Your words stay where they are.
+
+Two other presses ask the same way. One is **Hard Reload** in the gear menu. The other is **Reload** on a page that could not load. The app takes you to each place you typed. Then a small bar offers **Reload anyway** and **Not now**.
 
 ## If a page ever fails to load
 
@@ -71,3 +73,5 @@ If all else fails, use the fix-it page:
 ## Force a fresh copy any time
 
 Open the {{icon:gear}} **gear menu** in the top-right of the header and choose **Hard Reload**. This clears cached files and reloads the newest version, then returns you to the page you were on.
+
+**Hard Reload** clears words you typed and have not sent. So it asks first when the page holds such words. See [When you press Reload over words you typed](#when-you-press-reload-over-words-you-typed).

@@ -107,6 +107,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { LedgerDisplayPrefixProvider } from './contexts/LedgerDisplayPrefixContext'
 import { DispatchNoteRequirementsProvider } from './contexts/DispatchNoteRequirementsContext'
 import { UpdatePrompt } from './components/UpdatePrompt'
+import { ReloadOverWordsBar } from './components/ReloadOverWordsBar'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
 import { RealtimeLifecycleProvider } from './contexts/RealtimeLifecycleContext'
 import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
@@ -265,6 +266,7 @@ function AppContent() {
     <>
       <AuthHandler />
       <UpdatePrompt />
+      <ReloadOverWordsBar />
       {/* Freezes the page behind ANY blocking overlay (modal, sheet, dialog) on every route, the public pages too; opt-out via data-page-scroll="allow". */}
       <BodyScrollLockSentinel />
       {/* Every route sits in a chunk boundary: a page outside the Layout (a box label's scan, a public room), or a provider
