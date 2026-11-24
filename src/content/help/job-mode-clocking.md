@@ -38,11 +38,11 @@ On a phone, every role but the estimator gets one row above the header. The row 
 - **Dashboard** is the full Dashboard. Anyone with Dispatch Mode on keeps the Dispatch Mode bar there.
 - **Task Mode** shows only your checklist. See [use Task Mode](/help/task-mode).
 
-The row shows for five seconds each time you go to the Dashboard. A thin grey line under the row gets shorter as the time runs out. Then the row slides up and away. The page under the row does not move.
+The row shows for five seconds each time you go to the Dashboard. A thin grey line under the row gets shorter as the time runs out. Then the row slides up and away. The page under the row does not move. The row also shows when you come back to the app after a minute away.
 
 You can keep the row longer. Rest a finger on the row and the row waits. The row starts five fresh seconds when you lift the finger. You can also send the row away at once. Swipe up on the row.
 
-A small grey bar at the top of the page marks the row's place. Tap the grey bar to bring the row back. A pull down from the top of the page does the same.
+A small grey bar at the top of the page marks the row's place. Tap the grey bar to bring the row back. A pull down from the top of the page does the same. So does a tap on the **Dashboard** link in the header.
 
 The row stays in sight while you are in Task Mode. There the row is the way out.
 

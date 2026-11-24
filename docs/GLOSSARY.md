@@ -1678,7 +1678,8 @@ The counted row lies over the top of the page and never pushes it: the page's fi
 A tap on the handle or a pull down at the top of the page brings the row back for five seconds more.
 In Task Mode the row is held: a line of the page, always in sight, with no count (`modeRowHeldOpen`).
 With `prefers-reduced-motion` the row does not slide, it fades out, and the bar is five blocks that go out one a second.
-The green *New* mark Job Mode wore until a first press is gone (v2.8455).
+A visit is the page becoming the Dashboard, a press on the Dashboard's own link while there (`modeRowSamePlaceVisit`: the router moved and the address did not), or a return to the app after a minute out of sight (`modeRowBackIsVisit`).
+The green *New* mark Job Mode wore until a first press is gone (v2.8461).
 Past a phone's width it is not drawn (v2.8373, the owner's second look of 2026-11-23): the gear menu holds **Dashboard**, **Job Mode** and **Task Mode** as a list with one dot under *Modes* (**[`GearModeList`](../src/components/layout/GearModeList.tsx)**, rows from `gearModesRows`), and the estimator has that list at every width in place of the two ticks.
 A press in the list goes through the row's own `modeRowPressWrites` and `modeRowLandingPath`, so the list and the row write the same values and land on the same page, and **Dispatch Mode** keeps its own tick under the list.
 A tablet is past a phone's width, so it has the list and not the row.

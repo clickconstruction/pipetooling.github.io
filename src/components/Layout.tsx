@@ -1033,8 +1033,17 @@ export default function Layout() {
       {/* The lines above the header (v2.8053): each is an `AppTopBanner`, a direct child here. The first one showing
           pays the phone's status bar, and the lines, the View-as strip and the header under it pay none.
           Under the new phone layout the Add Task offer is a quiet row of the Dashboard instead, mounted in <main> below. */}
-      {/* The mode row (punch list #425): Task Mode, Dashboard and Job Mode, the first line of all, tucked on a phone. */}
-      <ModeRow userId={authUser?.id ?? null} role={role} pathname={location.pathname} mode={pageMode.mode} setMode={setPageMode} onLand={(to) => navigate(to)} />
+      {/* The mode row (punch list #425): Task Mode, Dashboard and Job Mode, the first line of all. On a phone's Dashboard the line is its handle, and the row is drawn over it for five seconds a visit (#433). */}
+      <ModeRow
+        userId={authUser?.id ?? null}
+        role={role}
+        pathname={location.pathname}
+        search={location.search + location.hash}
+        locationKey={location.key}
+        mode={pageMode.mode}
+        setMode={setPageMode}
+        onLand={(to) => navigate(to)}
+      />
       {phoneBars ? null : <AddTaskShortcutBanner role={role} />}
       {isDigitalTwin && (
         <AppTopBanner

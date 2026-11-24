@@ -17,6 +17,10 @@
  * - **The strip it uncovers is dead for a moment.** `leaving` lasts the slide and then
  *   `MODE_ROW_DEAD_MS` more. The row's place keeps taking presses for that long and does nothing with
  *   them, so a thumb aimed at a third does not land on the header that was under it.
+ *
+ * What counts as a visit is at the foot. The page becoming the Dashboard is one, and `ModeRow` sees
+ * that by itself. The two it cannot see that way are here: a press on the Dashboard's own link while
+ * already there, and coming back to the app after a while away.
  */
 
 /** How long a visit shows the row. */
@@ -29,6 +33,8 @@ export const MODE_ROW_OUT_MS = 240
 export const MODE_ROW_DEAD_MS = 300
 /** How far up a finger travels on the row before the row is sent away. */
 export const MODE_ROW_SWIPE_PX = 16
+/** How long the app is out of sight before coming back to it is a visit. A glance at a text is not one. */
+export const MODE_ROW_AWAY_MS = 60_000
 
 /** What is holding the row: a finger on it, or a keyboard's focus inside it. */
 export type ModeRowHold = 'finger' | 'focus'
@@ -112,4 +118,30 @@ export function modeRowOnScreen(state: ModeRowCount): boolean {
 /** Whether a press on a third counts. A row on its way out takes none. */
 export function modeRowTakesPress(state: ModeRowCount): boolean {
   return state.phase === 'showing' || state.phase === 'held'
+}
+
+/* ------------------------------------------------------------------ what counts as a visit */
+
+/** Where the app is: the page, what follows the page in the address, and the key the router gives each move. */
+export interface ModeRowPlace {
+  pathname: string
+  /** The query and the hash, as one string. */
+  search: string
+  key: string
+}
+
+/**
+ * A press on the Dashboard's own link while already on the Dashboard: the router moved, and the
+ * address is what it was. That is a person asking for the top of the page again, so the row comes
+ * with it. A move that changes the query is a window or a tab of the page opening, not a visit. A
+ * move from another page is a visit `ModeRow` already sees, by the row's place changing.
+ */
+export function modeRowSamePlaceVisit(before: ModeRowPlace | null, after: ModeRowPlace): boolean {
+  if (!before) return false
+  return before.key !== after.key && before.pathname === after.pathname && before.search === after.search
+}
+
+/** Coming back to the app is a visit once it was out of sight for `MODE_ROW_AWAY_MS`. `hiddenAt` is null when it never left. */
+export function modeRowBackIsVisit(hiddenAt: number | null, now: number): boolean {
+  return hiddenAt !== null && now - hiddenAt >= MODE_ROW_AWAY_MS
 }

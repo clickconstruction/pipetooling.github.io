@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import {
+  MODE_ROW_AWAY_MS,
   MODE_ROW_DEAD_MS,
   MODE_ROW_GONE,
   MODE_ROW_OUT_MS,
   MODE_ROW_SHOW_MS,
   modeRowCountDeadline,
+  modeRowBackIsVisit,
   modeRowCountStep,
   modeRowOnScreen,
+  modeRowSamePlaceVisit,
   modeRowTakesPress,
   type ModeRowCount,
   type ModeRowCountEvent,
+  type ModeRowPlace,
 } from './modeRowCount'
 
 /** Feed the count a run of events, in order. */
@@ -129,5 +133,35 @@ describe('a press, a swipe and a page left', () => {
   it('every whole start is numbered, so the bar is drawn again for each', () => {
     const state = run([arrive(), { type: 'press', now: T0 + 1 }, { type: 'touch', now: T0 + 2, hold: 'finger' }, { type: 'release', now: T0 + 3, hold: 'finger' }, time(T0 + 5003), time(T0 + 6000), arrive(T0 + 7000)])
     expect(state.showing).toBe(4)
+  })
+})
+
+describe('what counts as a visit', () => {
+  const dash: ModeRowPlace = { pathname: '/dashboard', search: '', key: 'a' }
+
+  it('a press on the Dashboard link while on the Dashboard: the router moved and the address did not', () => {
+    expect(modeRowSamePlaceVisit(dash, { ...dash, key: 'b' })).toBe(true)
+    expect(modeRowSamePlaceVisit({ ...dash, search: '?tab=today' }, { ...dash, search: '?tab=today', key: 'b' })).toBe(true)
+  })
+
+  it('a window or a tab of the page opening changes the query, and is no visit', () => {
+    expect(modeRowSamePlaceVisit(dash, { ...dash, search: '?task=12', key: 'b' })).toBe(false)
+    expect(modeRowSamePlaceVisit({ ...dash, search: '?task=12' }, { ...dash, key: 'b' })).toBe(false)
+    expect(modeRowSamePlaceVisit(dash, { ...dash, search: '#top', key: 'b' })).toBe(false)
+  })
+
+  it('a draw with no move is no visit, nor is the first place the row sees, nor a move from another page', () => {
+    expect(modeRowSamePlaceVisit(dash, { ...dash })).toBe(false)
+    expect(modeRowSamePlaceVisit(null, dash)).toBe(false)
+    expect(modeRowSamePlaceVisit({ pathname: '/jobs', search: '', key: 'a' }, { ...dash, key: 'b' })).toBe(false)
+  })
+
+  it('coming back to the app is a visit after a minute away, and not after a glance elsewhere', () => {
+    expect(MODE_ROW_AWAY_MS).toBe(60_000)
+    expect(modeRowBackIsVisit(T0, T0 + 10_000)).toBe(false)
+    expect(modeRowBackIsVisit(T0, T0 + 59_999)).toBe(false)
+    expect(modeRowBackIsVisit(T0, T0 + 60_000)).toBe(true)
+    expect(modeRowBackIsVisit(T0, T0 + 3_600_000)).toBe(true)
+    expect(modeRowBackIsVisit(null, T0)).toBe(false)
   })
 })

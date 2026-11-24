@@ -13,7 +13,7 @@ vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
 import { ModeRow, ModeRowThirds } from './ModeRow'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { MODE_ROW_PULL_PX, MODE_ROW_WORDS } from '../../lib/modeRow'
-import { MODE_ROW_DEAD_MS, MODE_ROW_OUT_MS, MODE_ROW_SHOW_MS, MODE_ROW_SWIPE_PX } from '../../lib/modeRowCount'
+import { MODE_ROW_AWAY_MS, MODE_ROW_DEAD_MS, MODE_ROW_OUT_MS, MODE_ROW_SHOW_MS, MODE_ROW_SWIPE_PX } from '../../lib/modeRowCount'
 import type { PageMode } from '../../lib/pageMode'
 
 /** A phone: the 640 px query matches. Without it jsdom has no `matchMedia` and the hook reads a desk. */
@@ -45,7 +45,7 @@ function finger(type: 'pointerdown' | 'pointermove' | 'pointerup', el: Element, 
   })
 }
 
-type Props = { userId: string; role: string; pathname: string; mode: PageMode }
+type Props = { userId: string; role: string; pathname: string; mode: PageMode; search?: string; locationKey?: string }
 
 function draw(over: Partial<Props> = {}) {
   const setMode = vi.fn()
@@ -264,16 +264,57 @@ describe('ModeRow', () => {
     expect(vi.mocked(recordNavClick)).toHaveBeenCalledWith('u1', 'master_technician', 'mode_row_shown', '#pull')
   })
 
-  it('putting the phone away takes the row off', () => {
+  it('putting the phone away takes the row off, and coming back after a minute is a visit', () => {
     draw()
     expect(thirds().length).toBe(3)
     const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
-    act(() => {
-      document.dispatchEvent(new Event('visibilitychange'))
-    })
+    const turn = (to: 'hidden' | 'visible') => {
+      visibility.mockReturnValue(to)
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
+    }
+    turn('hidden')
     expect(thirds().length).toBe(0)
     expect(handle()).toBeTruthy()
+    // A glance elsewhere: back in ten seconds, the row stays out of sight.
+    pass(10_000)
+    turn('visible')
+    expect(thirds().length).toBe(0)
+    // Away a minute and more: the row comes back, sliding, for five seconds.
+    turn('hidden')
+    pass(MODE_ROW_AWAY_MS + 1000)
+    turn('visible')
+    expect(thirds().length).toBe(3)
+    expect(row()?.hasAttribute('data-mode-row-in')).toBe(true)
+    untilGone()
+    expect(thirds().length).toBe(0)
     visibility.mockRestore()
+  })
+
+  it('a press on the Dashboard link while on the Dashboard is a visit, and a window of the page opening is not', () => {
+    const { redraw } = draw({ locationKey: 'a' })
+    untilGone()
+    expect(thirds().length).toBe(0)
+    // The page opens a window by its address: the query changed, so the row stays away.
+    redraw({ locationKey: 'b', search: '?task=12' })
+    expect(thirds().length).toBe(0)
+    redraw({ locationKey: 'c', search: '' })
+    expect(thirds().length).toBe(0)
+    // The router moved and the address is what it was: the Dashboard link, pressed on the Dashboard.
+    redraw({ locationKey: 'd', search: '' })
+    expect(thirds().length).toBe(3)
+    expect(row()?.hasAttribute('data-mode-row-in')).toBe(true)
+    untilGone()
+    expect(thirds().length).toBe(0)
+  })
+
+  it('in Task Mode neither a return nor the checklist link pressed again starts a count', () => {
+    const { redraw } = draw({ pathname: '/checklist', mode: 'task', locationKey: 'a' })
+    redraw({ pathname: '/checklist', mode: 'task', locationKey: 'b' })
+    expect(document.querySelector('.modeRowClip')).toBeNull()
+    pass(30_000)
+    expect(thirds().length).toBe(3)
   })
 
   it('in Task Mode the row is a line of the page, with no handle, no bar and no count', () => {

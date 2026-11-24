@@ -26,10 +26,13 @@ import {
   MODE_ROW_OUT_MS,
   MODE_ROW_SHOW_MS,
   MODE_ROW_SWIPE_PX,
+  modeRowBackIsVisit,
   modeRowCountDeadline,
   modeRowCountStep,
   modeRowOnScreen,
+  modeRowSamePlaceVisit,
   modeRowTakesPress,
+  type ModeRowPlace,
 } from '../../lib/modeRowCount'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import type { PageMode, PageModeKey } from '../../lib/pageMode'
@@ -100,6 +103,8 @@ export function ModeRow({
   userId,
   role,
   pathname,
+  search = '',
+  locationKey = '',
   mode,
   setMode,
   onLand,
@@ -107,6 +112,9 @@ export function ModeRow({
   userId: string | null | undefined
   role: string | null | undefined
   pathname: string
+  /** The query and the hash of the address, and the key the router gives each move. Together they tell a press on the Dashboard's own link from a window of the page opening. */
+  search?: string
+  locationKey?: string
   /** The one mode the page is drawn in (`usePageMode`). */
   mode: PageMode
   /** The page mode's door. The row passes `row` as the door that turned Job Mode on. */
@@ -146,14 +154,33 @@ export function ModeRow({
     return () => window.clearTimeout(timer)
   }, [deadline])
 
-  // Putting the phone away takes the row off: the next look at the app starts with it out of sight.
+  // A press on the Dashboard's own link while already there is a visit too: the router moved and the
+  // address did not. The place before is kept on every move, whatever is drawn.
+  const placeBefore = useRef<ModeRowPlace | null>(null)
+  useEffect(() => {
+    const before = placeBefore.current
+    const after: ModeRowPlace = { pathname, search, key: locationKey }
+    placeBefore.current = after
+    if (counted && modeRowSamePlaceVisit(before, after)) send({ type: 'arrive', now: Date.now(), slideIn: true })
+  }, [counted, pathname, search, locationKey])
+
+  // Putting the phone away takes the row off. Coming back after a minute or more is a visit, and the
+  // row comes with it. Back sooner, a glance at a text, the app is as it was left: the row out of sight.
+  const hiddenAt = useRef<number | null>(null)
   useEffect(() => {
     function onVisibility() {
-      if (document.visibilityState === 'hidden') send({ type: 'hide' })
+      if (document.visibilityState === 'hidden') {
+        hiddenAt.current = Date.now()
+        send({ type: 'hide' })
+        return
+      }
+      const away = hiddenAt.current
+      hiddenAt.current = null
+      if (counted && modeRowBackIsVisit(away, Date.now())) send({ type: 'arrive', now: Date.now(), slideIn: true })
     }
     document.addEventListener('visibilitychange', onVisibility)
     return () => document.removeEventListener('visibilitychange', onVisibility)
-  }, [])
+  }, [counted])
 
   const bringDown = useCallback(
     (how: 'pull' | 'handle') => {
