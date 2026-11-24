@@ -36,7 +36,7 @@ import { PunchListByNumber } from '../components/punchList/PunchListByNumber'
 import { PunchListShortlist } from '../components/punchList/PunchListShortlist'
 import { PunchListAnswer } from '../components/punchList/PunchListAnswer'
 import { PunchListWaiting } from '../components/punchList/PunchListWaiting'
-import { isAsked, mineFor, waitingCounts, waitingViewLabel } from '../lib/todos/punchListWaiting'
+import { isAsked, mineFor, waitingCounts, waitingViewLabel, whoInSentence } from '../lib/todos/punchListWaiting'
 import { PunchListTick } from '../components/punchList/PunchListTick'
 import { PunchListClaim } from '../components/punchList/PunchListClaim'
 import type { CardClaims } from '../lib/todos/punchListClaims'
@@ -594,6 +594,12 @@ function Row({
         <p style={{ margin: '0.4rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '68ch' }}>
           <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>Next:</b> {item.next}
         </p>
+        {/* The question the card waits on (punch list #438); its answer is the control at the row's end. */}
+        {isAsked(item) ? (
+          <p data-testid={`punch-ask-${item.number}`} style={{ margin: '0.4rem 0 0', fontSize: '0.85rem', color: 'var(--text-base)', maxWidth: '68ch' }}>
+            <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>Waits on {whoInSentence(item.ask.who)}:</b> {item.ask.question}
+          </p>
+        ) : null}
         <p style={{ margin: '0.5rem 0 0', display: 'flex', flexWrap: 'wrap', gap: '0.375rem', alignItems: 'center' }}>
           <span style={{ ...eyebrow, marginRight: 2 }}>{hasPages ? 'Mock-ups' : 'Links'}</span>
           {item.mockup !== 'has' && !item.pointer && (

@@ -74,6 +74,8 @@ export function PunchListWaiting({
           .punch-wait-num { display: none; }
           .punch-wait-num-inline { display: inline; }
           .punch-wait-act { border-left: 0; border-top: 1px solid var(--border); }
+          /* A who pill takes a thumb on a phone. */
+          .punch-wait-pill { min-height: 44px; }
         }
       `}</style>
 
@@ -82,7 +84,7 @@ export function PunchListWaiting({
           {waitingHeadline(who, rows.waiting.length, firstName)}
         </span>
         {pills.map((p) => (
-          <button key={p.who} type="button" onClick={() => choose(p.who)} aria-pressed={who === p.who} style={whoPillStyle(who === p.who)}>
+          <button key={p.who} type="button" className="punch-wait-pill" onClick={() => choose(p.who)} aria-pressed={who === p.who} style={whoPillStyle(who === p.who)}>
             {p.label} <span style={{ opacity: 0.7, fontVariantNumeric: 'tabular-nums', marginLeft: 4 }}>{p.count}</span>
           </button>
         ))}
