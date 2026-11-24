@@ -221,6 +221,8 @@ Taking a paper back cannot be undone. To send the paper again, press **Send a pa
 
 The leader and a dev have **Take back**. They are the two who can delete a paper anywhere in the app. Anyone else in the office asks one of them.
 
+A trade company's own paper carries **Take back** too, while it is not signed. A paper GC mode asked the company for stays. The app says so, with the day GC mode asked for it by.
+
 The email that went out stays under Sent copies. The record that they opened the paper goes with it.
 
 A teammate's or a sub's paper is not taken back here. It stays on People, under Contracts.

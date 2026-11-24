@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const db = vi.hoisted(() => ({
   answers: [] as Array<{ data: unknown; error: unknown }>,
   statements: [] as Array<{ table: string; calls: Array<[string, unknown[]]> }>,
+  rpcs: [] as Array<{ fn: string; args: unknown }>,
 }))
 
 vi.mock('../supabase', () => {
@@ -26,14 +27,23 @@ vi.mock('../supabase', () => {
     )
     return b
   }
-  return { supabase: { from: (table: string) => builder(table) } }
+  return {
+    supabase: {
+      from: (table: string) => builder(table),
+      rpc: (fn: string, args: unknown) => {
+        db.rpcs.push({ fn, args })
+        return Promise.resolve(db.answers.shift() ?? { data: null, error: null })
+      },
+    },
+  }
 })
 
-import { PAPERS_TABLE, takeBackPartyPaper } from './paperTakeBackIo'
+import { PAPERS_TABLE, takeBackCompanyPaper, takeBackPartyPaper } from './paperTakeBackIo'
 
 beforeEach(() => {
   db.answers.length = 0
   db.statements.length = 0
+  db.rpcs.length = 0
 })
 
 describe('takeBackPartyPaper', () => {
@@ -85,5 +95,31 @@ describe('takeBackPartyPaper', () => {
     db.answers.push({ data: null, error: { code: '42501', message: 'This account is read only.' } })
     await expect(takeBackPartyPaper('d1')).rejects.toBeTruthy()
     expect(db.statements).toHaveLength(1)
+  })
+})
+
+describe('takeBackCompanyPaper', () => {
+  it('goes through the function alone, with the paper’s key, and never deletes the row itself', async () => {
+    db.answers.push({ data: 'taken', error: null })
+    expect(await takeBackCompanyPaper('g1')).toEqual({ kind: 'taken' })
+    expect(db.rpcs).toEqual([{ fn: 'take_back_company_paper', args: { p_document_id: 'g1' } }])
+    expect(db.statements).toHaveLength(0)
+  })
+
+  it('reads a paper signed before the press, and one that is gone', async () => {
+    db.answers.push({ data: 'signed', error: null }, { data: 'gone', error: null })
+    expect(await takeBackCompanyPaper('g1')).toEqual({ kind: 'signed-since' })
+    expect(await takeBackCompanyPaper('g1')).toEqual({ kind: 'gone' })
+  })
+
+  it('a refusal in words is thrown with those words: a paper GC mode is waiting on', async () => {
+    const words = 'W-9 stays with Juniper Mechanical LLC, since GC mode asked for it by Nov 30. It is GC mode’s paper to chase.'
+    db.answers.push({ data: null, error: { code: 'P0001', message: words } })
+    await expect(takeBackCompanyPaper('g1')).rejects.toMatchObject({ message: expect.stringContaining('GC mode asked for it by Nov 30') })
+  })
+
+  it('an answer it does not know is a failure, never a paper taken back', async () => {
+    db.answers.push({ data: null, error: null })
+    await expect(takeBackCompanyPaper('g1')).rejects.toThrow('The app could not tell whether the paper was taken back. Read the list again.')
   })
 })
