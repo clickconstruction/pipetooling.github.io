@@ -321,6 +321,26 @@ describe('BillsSentLedger', () => {
     expect(io.asks).toEqual([])
   })
 
+  it('says the good news under Did not arrive when every send arrived, and under Not paid when every bill is paid', async () => {
+    io.data = { ...data([copy({})]), bills: new Map([[BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'paid' }]]) }
+    renderWithProviders(<BillsSentLedger />)
+    expect(await screen.findAllByTestId('bills-sent-line')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Did not arrive' }))
+    // Empty is the good state: it reads as nothing to do, never as a search that missed.
+    expect(screen.getByTestId('bills-sent-empty').textContent).toBe('Nothing waiting on a resend. No send on an open bill bounced. See every send')
+    fireEvent.click(screen.getByRole('button', { name: 'Not paid' }))
+    expect(screen.getByTestId('bills-sent-empty').textContent).toBe('Nothing waiting on a payment. Every bill on this list is paid in full. See every send')
+    fireEvent.click(screen.getByRole('button', { name: 'No send on record' }))
+    expect(screen.getByTestId('bills-sent-empty').textContent).toBe('Nothing waiting on a send. Every bill the app made has a send on record. See every send')
+    // The press goes back to every send.
+    fireEvent.click(screen.getByRole('button', { name: 'See every send' }))
+    expect(screen.getAllByTestId('bills-sent-line')).toHaveLength(1)
+    // A search that finds nothing under the chip still reads as a search.
+    fireEvent.click(screen.getByRole('button', { name: 'Did not arrive' }))
+    fireEvent.change(screen.getByLabelText('Find a bill'), { target: { value: 'nobody here' } })
+    expect(screen.getByTestId('bills-sent-empty').textContent).toContain('No sends match ‘nobody here’.')
+  })
+
   it('narrows by what is typed and by how it went, and says so when nothing matches', async () => {
     io.data = data([copy({}), copy({ id: 's1', kind: 'gc_statement', title: 'Statement for Ridgeway Builders', recipientName: 'Ridgeway Builders', recipientEmails: ['billing@ridgeway.example'], sourceTable: '', sourceId: null, jobIds: [], resendEmailId: 're_s' })])
     renderWithProviders(<BillsSentLedger />)

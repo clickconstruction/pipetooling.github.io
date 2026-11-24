@@ -12,6 +12,7 @@ import {
   billsSentCsvFileName,
   billsSentDayExtras,
   billsSentDays,
+  billsSentEmptyGood,
   billsSentFilter,
   billsSentLines,
   billsSentListHtml,
@@ -818,5 +819,18 @@ describe('billsSentPhoneWords — a line in three rows', () => {
     // A Housecall Pro day has nobody to name.
     const [stamp] = billsSentLines(input([], { stamps: [{ billId: BILL_B, atIso: '2026-11-11T18:00:00.000Z', channel: 'housecallpro' }] }))
     expect(billsSentPhoneWords(stamp!)).toEqual({ main: 'J1398 · Larkfield Clinic · Larkfield Construction', to: '', again: '' })
+  })
+})
+
+describe('billsSentEmptyGood — a chip that lists what still wants someone, with nothing under it', () => {
+  it('says the good news under Did not arrive, Not paid and No send on record', () => {
+    expect(billsSentEmptyGood('missed', '')).toEqual({ who: 'a resend', why: 'No send on an open bill bounced.' })
+    expect(billsSentEmptyGood('unpaid', '')).toEqual({ who: 'a payment', why: 'Every bill on this list is paid in full.' })
+    expect(billsSentEmptyGood('gap', '  ')).toEqual({ who: 'a send', why: 'Every bill the app made has a send on record.' })
+  })
+  it('leaves a chip that only sorts the sends, and any search, to the words for a filter', () => {
+    expect((['all', 'paid', 'email', 'text', 'printed', 'statement', 'housecall_pro', 'by_hand', 'other'] as const).map((c) => billsSentEmptyGood(c, ''))).toEqual(Array(9).fill(null))
+    // A search that finds nothing under the chip is a search that found nothing: the bill may be there under another word.
+    expect(billsSentEmptyGood('missed', 'juniper')).toBeNull()
   })
 })

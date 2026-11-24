@@ -14,6 +14,7 @@ import {
   billsSentCsvFileName,
   billsSentDayExtras,
   billsSentDays,
+  billsSentEmptyGood,
   billsSentFilter,
   billsSentGapFilter,
   billsSentGapHeading,
@@ -815,6 +816,7 @@ export function BillsSentLedger() {
   // The strip rides with every bill (All) and is the whole list under its own chip; a route chip shows that route alone.
   const stripVisible = (route === 'all' || route === 'gap') && gapsShown.open.length + gapsShown.paid.length > 0
   const narrowed = route !== 'all' || typed.trim() !== ''
+  const good = billsSentEmptyGood(route, typed)
   const clear = () => {
     setTyped('')
     setRoute('all')
@@ -980,7 +982,10 @@ export function BillsSentLedger() {
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : route === 'gap' && stripVisible ? null : data != null && shown.length === 0 ? (
         <div data-testid="bills-sent-empty">
-          {narrowed ? (
+          {good ? (
+            // A chip that lists what still wants someone, with nothing under it: the good state, said as one.
+            <EmptyState main={`${emptyWords({ kind: 'waiting', who: good.who }).main} ${good.why}`} next={{ label: 'See every send', onPress: clear }} />
+          ) : narrowed ? (
             <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'sends', query: typed.trim() }), { onPress: clear })} />
           ) : (
             <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'data', noun: 'bills sent', page: { label: 'Open the Pipeline', tail: 'to send the first.' } }), { to: '/jobs?tab=stages' })} />

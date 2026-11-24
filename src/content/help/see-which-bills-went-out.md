@@ -80,6 +80,8 @@ The tile counts sends that did not arrive on a bill that is still open.
 
 Press {{chip:gray|Did not arrive}} to see only those sends. Fix the address on the bill and send the bill again.
 
+The chip may show no sends. The list then reads *Nothing waiting on a resend.* No send on an open bill bounced.
+
 Green on this page means money. The word about the email is plain, and a bounce is red.
 
 ## See who has paid
