@@ -818,7 +818,7 @@ describe('billsSent — a record made by hand (PR 6)', () => {
   })
 
   it('offers the same person’s other bills, counts the press and words what took (R2)', () => {
-    const g = (billId: string, payer: string) => ({ billId, jobId: null, jobWords: '', jobTo: null, payer, amount: 100, paid: false, billedWords: 'Billed.', billedYmd: '', haystack: '' })
+    const g = (billId: string, payer: string) => ({ billId, jobId: null, jobWords: '', jobTo: null, payer, amount: 100, paid: false, out: 100, billedWords: 'Billed.', billedYmd: '', haystack: '' })
     const all = [g('b1', 'Harlan Voss'), g('b2', ' harlan voss '), g('b3', 'Alder Court Homes'), g('b4', 'Harlan Voss'), g('b5', '')]
     // The same name, however it is cased or spaced, in the strip's order, without the form's own bill.
     expect(byHandOthers(all[0]!, all).map((x) => x.billId)).toEqual(['b2', 'b4'])
