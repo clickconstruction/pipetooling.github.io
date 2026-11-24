@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CheckPricesWindow } from './CheckPricesWindow'
 import type { CheckItem } from '../../lib/materials/materialPriceIndex'
+import { moneyText } from '../../test/moneyText'
 
 beforeEach(() => {
   // jsdom has no matchMedia; the window's shell asks it whether this is a phone (≤640px). Desktop here.
@@ -68,7 +69,7 @@ describe('CheckPricesWindow', () => {
     fireEvent.change(within(row).getByRole('textbox', { name: 'Today’s price for EXPANSION TANK' }), { target: { value: '$86.67' } })
     expect(row.textContent).toContain('Up 3.4% from $83.80.')
     fireEvent.click(within(row).getByRole('button', { name: 'Save' }))
-    await screen.findByText('✓ Saved at $86.67')
+    await screen.findByText(moneyText('✓ Saved at $86.67'))
     expect(p.onSave).toHaveBeenCalledWith('p-tank', 86.67)
   })
 

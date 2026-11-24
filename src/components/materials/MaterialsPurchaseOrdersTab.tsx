@@ -13,6 +13,7 @@ import { MaterialsPoLaneSignpost } from './MaterialsPoLaneSignpost'
 import { EmptyState } from '../EmptyState'
 import { purchaseOrdersEmptyWords } from '../../lib/materials/materialsEmptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money } from '../Money'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
@@ -616,7 +617,7 @@ export function MaterialsPurchaseOrdersTab({
                                           return (
                                             <tr key={row.price_id} style={{ borderBottom: '1px solid var(--border)' }}>
                                               <td style={{ padding: '0.5rem' }}>{row.supply_house_name}</td>
-                                              <td style={{ padding: '0.5rem' }}>${formatCurrency(row.price)}</td>
+                                              <td style={{ padding: '0.5rem' }}><Money amount={row.price} /></td>
                                               <td style={{ padding: '0.5rem' }}>
                                                 <input
                                                   type="number"
@@ -806,8 +807,8 @@ export function MaterialsPurchaseOrdersTab({
                               item.supply_house?.name || '-'
                             )}
                           </td>
-                          <td style={{ padding: '0.75rem' }}>${formatCurrency(item.price_at_time)}</td>
-                          <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(item.price_at_time * item.quantity)}</td>
+                          <td style={{ padding: '0.75rem' }}><Money amount={item.price_at_time} /></td>
+                          <td style={{ padding: '0.75rem', fontWeight: 600 }}><Money amount={item.price_at_time * item.quantity} /></td>
                           <td style={{ padding: '0.75rem' }}>
                             {item.source_template ? (
                               <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', borderRadius: 4 }} title={`From: ${item.source_template?.name ?? 'Unknown'}`}>
@@ -874,7 +875,7 @@ export function MaterialsPurchaseOrdersTab({
                           <tr>
                             <td colSpan={selectedPO.status === 'draft' ? 6 : 5} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
                             <td style={{ padding: '0.75rem', fontWeight: 600 }}>
-                              ${formatCurrency(viewedPOGrandTotal)}
+                              <Money amount={viewedPOGrandTotal} />
                             </td>
                           </tr>
                           <tr>
@@ -891,7 +892,7 @@ export function MaterialsPurchaseOrdersTab({
                               %:
                             </td>
                             <td style={{ padding: '0.75rem', fontWeight: 600 }}>
-                              ${formatCurrency(withTaxAmount)}
+                              <Money amount={withTaxAmount} />
                             </td>
                           </tr>
                         </>
@@ -1064,8 +1065,8 @@ export function MaterialsPurchaseOrdersTab({
                           </span>
                         </td>
                         <td style={{ padding: '0.75rem' }}>{po.items.filter(i => Number(i.price_at_time ?? 0) > 0).length}/{po.items.length}</td>
-                        <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(total)}</td>
-                        <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(totalWithTax)}</td>
+                        <td style={{ padding: '0.75rem', fontWeight: 600 }}><Money amount={total} /></td>
+                        <td style={{ padding: '0.75rem', fontWeight: 600 }}><Money amount={totalWithTax} /></td>
                         <td style={{ padding: '0.75rem' }}>
                           {po.created_at ? new Date(po.created_at).toLocaleDateString() : '-'}
                         </td>

@@ -18,6 +18,7 @@ import { useQueueState } from './useQueueState'
 import { WITHDRAWN_DRAFT_KEPT, type RosterContact, type SubsTileActions } from './subsTileActions'
 import type { StepCommitmentRow } from '../../../lib/workflow/stepCommitments'
 import { acts, btn, chip, door, expandedRow, handledRow, money, muted, red, shortDay, td, tdAct, tdNum, telHref, th, where, who } from './subsTileStyles'
+import { MoneyText } from '../../Money'
 
 export type HandshakeQueueProps = {
   board: WorkOrderBoardRow[]
@@ -166,7 +167,7 @@ export function HandshakeQueue({ board, jobs, contacts, authUserId, todayYmd, ac
                       <span style={muted}>—</span>
                     )}
                   </td>
-                  <td style={{ ...tdNum, ...(isOpen ? { borderBottom: 'none' } : {}) }}>{r.row.unpriced ? <span style={muted}>no price yet</span> : <span style={red}>{money(r.row.open)}</span>}</td>
+                  <td style={{ ...tdNum, ...(isOpen ? { borderBottom: 'none' } : {}) }}>{r.row.unpriced ? <span style={muted}>no price yet</span> : <span style={red}><MoneyText text={money(r.row.open)} /></span>}</td>
                   <td style={{ ...tdAct, ...(isOpen ? { borderBottom: 'none' } : {}) }} onClick={(e) => e.stopPropagation()}>
                     <span style={acts}>
                       {r.row.sheetId && actions.openSheet ? (
@@ -201,7 +202,7 @@ export function HandshakeQueue({ board, jobs, contacts, authUserId, todayYmd, ac
                 <div style={where}>{r.row.primary}</div>
               </td>
               <td style={td}>{r.workingSince ? shortDay(r.workingSince) : '—'}</td>
-              <td style={tdNum}>{money(r.row.agreed)}</td>
+              <td style={tdNum}><MoneyText text={money(r.row.agreed)} /></td>
               <td style={tdAct}>
                 <HandledCell label={mark.label} onUndo={mark.undo ? () => void mark.undo!() : null} action={mark.action ? { label: mark.action.label, danger: mark.action.danger, run: () => void mark.action!.run() } : null} />
               </td>

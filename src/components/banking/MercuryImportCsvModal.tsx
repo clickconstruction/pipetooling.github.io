@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { parseBankingImportCsv, type BankingImportRow } from '../../lib/parseBankingImportCsv'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 export type ImportCsvSubmitPayload = {
   accountName: string
@@ -226,15 +227,15 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
                 <strong>{rows.length}</strong> transactions
               </span>
               <span>
-                Net: <strong style={{ color: amountColor(parse.totalAmount) }}>{usd(parse.totalAmount)}</strong>
+                Net: <strong style={{ color: amountColor(parse.totalAmount) }}><MoneyText text={usd(parse.totalAmount)} /></strong>
               </span>
               {parse.endingBalance != null ? (
                 <span>
-                  Ending balance: <strong>{usd(parse.endingBalance)}</strong>{' '}
+                  Ending balance: <strong><MoneyText text={usd(parse.endingBalance)} /></strong>{' '}
                   {balanceMatch ? (
                     <span style={{ color: '#047857', fontWeight: 600 }}>✓ matches</span>
                   ) : (
-                    <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>⚠ differs by {usd(parse.totalAmount - (parse.endingBalance ?? 0))}</span>
+                    <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>⚠ differs by <MoneyText text={usd(parse.totalAmount - (parse.endingBalance ?? 0))} /></span>
                   )}
                 </span>
               ) : null}
@@ -266,7 +267,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
                       </td>
                       <td style={tdStyle}>{r.category ?? ''}</td>
                       <td style={{ ...tdStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: amountColor(r.amount), fontWeight: 500, whiteSpace: 'nowrap' }}>
-                        {usd(r.amount)}
+                        <MoneyText text={usd(r.amount)} />
                       </td>
                     </tr>
                   ))}

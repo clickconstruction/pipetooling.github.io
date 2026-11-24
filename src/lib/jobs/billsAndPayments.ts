@@ -59,6 +59,22 @@ export function instrumentWord(paymentType: string | null | undefined): string |
   return null
 }
 
+/**
+ * A check's number as a person reads it off the check, or '' when the row's reference is not one. A bank match
+ * writes the deposit's own id into the reference, 36 characters of letters and dashes, and a person may type
+ * *ck# 3045* or *#4417*. The number is what is left once a leading word for check and a leading # are gone. It
+ * starts with a digit and runs no longer than a check's number does, so an id is never read out as one.
+ */
+export function checkNumberOf(reference: string | null | undefined): string {
+  const bare = (reference ?? '')
+    .trim()
+    .replace(/^(?:check|cheque|chk|ck)\b\.?\s*/i, '')
+    .replace(/^(?:no\.?|number)\s*/i, '')
+    .replace(/^#\s*/, '')
+    .trim()
+  return /^\d[\dA-Za-z-]{0,11}$/.test(bare) ? bare : ''
+}
+
 function cap(word: string): string {
   return word === 'ach' ? 'ACH' : word.charAt(0).toUpperCase() + word.slice(1)
 }
@@ -171,7 +187,8 @@ export function paymentLineWords(input: {
   const memo = (row.note ?? '').trim()
   const detailParts: string[] = []
   if (source.kind === 'hand' || source.kind === 'stripe-recorded') {
-    if (ref) detailParts.push(source.instrument === 'check' ? `check ${ref}` : `ref ${ref}`)
+    // A check's reference is said as its number, so *ck# 3045* does not read *check ck# 3045*.
+    if (ref) detailParts.push(source.instrument === 'check' ? `check ${checkNumberOf(ref) || ref}` : `ref ${ref}`)
     if (memo && memo.toLowerCase() !== 'stripe') detailParts.push(memo)
   } else if (source.kind === 'stripe-card') {
     detailParts.push('Stripe wrote this row')

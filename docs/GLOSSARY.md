@@ -915,10 +915,15 @@ the apprentice file is read for ours alone.
 **Gone** means the state's file no longer has the row.
 A gone row is taken off 28 days later.
 **Left off** means a person asked not to be listed, and no pull keeps them.
+Since v2.8380 the sheet's **Leave off** press writes it and takes the person's rows off at once, by number and by name and ZIP.
+**Put back on the list**, at the foot of Everyone, removes it, and the next pull keeps the person again.
 The roll holds no phone, street address or email, since the state gives none for a person.
 It is not People → Licenses, which holds our own team's licenses.
 **Our own** (v2.8233) is the tab's view that lays each plumbing license we hold beside the state's row of the same number and rank, for a person who may also open People → Licenses.
 **Use the state's date** saves the state's expiry on that license's `person_licenses` row.
+**Everyone** (v2.8390) is the tab's view of the kept roll for our counties, searched by name or number and read fifty rows at a time, for everyone who holds the Hiring switch.
+A row opens the **person's sheet**: the state's facts, **What changed, as we saw it** (the `license_roll_changes` lines, from our first pull), **Our notes** and **Leave off**.
+**Our notes** are `license_roll_notes` rows, kept by the license's number and by name and ZIP, so a note outlives the roll row and follows a new rank.
 
 ### Stage / Step
 Individual work phase in a project workflow (e.g., "Rough In", "Inspection", "Top Out", "Trim Set").
@@ -2252,6 +2257,7 @@ Corrections are new entries — the log has no UPDATE/DELETE policies.
 Since v2.6392 the tab opens a person as **the person file**: a **Timeline** of everything on record on the day it is about (the entries beside the papers, licenses, write-ups, no-shows, excused lates, waiting field reports and the start and last days the app already knows, lanes Said · Did · Paper · Missed · Ahead;
 since v2.6820 a signed paper's line opens its own signed record on People → Contracts and says how it was signed, the person's hours statements stand on the line with where each one stands and a door to the paper, each fact chip on the strip is a press that narrows the Timeline to what it counts, and the dev seat's `get_person_file` lists the same papers as `signed_papers` and the statements as `hours_statements`), **Evidence** as records (the day it is about, a title, a memo and its files, filed in Drive under People › the person › the day and the title by `hr-evidence-drive`, v2.6393;
 a file already in Drive — a recording over the 10 MB cap — is linked rather than staged, v2.6541;
+a file up to 50 MB is staged by the dev seat's agent without passing through a call, declared on the plan and sent to the address the plan answers, v2.8375;
 every staged file carries its `sha256`, v2.6544;
 a **counsel-only** record stays in the app alone, never filed and never read by the agent's key, v2.6554;
 the dev seat reads it marked counsel-only since v2.6986) and **Documents** (the view named *Narrative*, then *Summary & narrative* from v2.6612: the summary and the narrative, each edited in place since v2.6610 through `dev_person_doc_write`, the function the dev seat's `plan_person_doc` writes through, and since v2.6614 the **named documents** beside them — any number of titled markdown texts a person, written, pasted or taken from a `.md` / `.txt` file, with a counsel-only mark;
@@ -6970,6 +6976,7 @@ Since v2.8354 (punch list #403, the owner's first decision, `20261123083000_agre
 Since v2.8313 (punch list #403, step 5, `20261123020000_sub_company_ground.sql`) a roster person can work for a trade company: `person_trade_companies` holds one row a person, written through `person_trade_company_set` or `person_trade_company_enter` by the office's four roles, and a person's paper fills `signing_for` from that link when it is made and each time it is sent, while a signed paper keeps what it said (who may write it: [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md)).
 Since v2.8381 (punch list #403, step 6) People → Contracts draws a **trade company** row above the subs who work for it, tagged *Trade company* and naming its workers, a worker with a title first ([`subCompanies.ts`](../src/lib/people/subCompanies.ts)).
 **Their company** is the value in place on a sub's opened row that enters, moves or clears that link, with **Same as their name** for a sub whose business carries their own name, and a new name makes a trade company whose trade is Plumbing.
+Since v2.8394 the company's row lists the company's own papers once, the newest copy of each with its state, and offers **Send for signature** and **Enter from paper**, while each worker's own paper says *signing for* the company on their row ([`subCompanyPapers.ts`](../src/lib/people/subCompanyPapers.ts)).
 Since v2.8162 a party's own page lists its papers: a supply house's window under **Papers**, and the Customer page's **Agreements** card under *Papers with this customer* ([`PartyPapers.tsx`](../src/components/contracts/PartyPapers.tsx), [`partyPapers.ts`](../src/lib/contracts/partyPapers.ts)).
 A paper is a party's when its contact is the party's own or that of a person there: a person on file at the customer, or a rep of the house.
 That list holds every kind and every state, so a W-9 and a paper that reads *not sent* are on it, where the Agreements tab lists agreements that were sent.

@@ -2,7 +2,7 @@
 name: "Messages: a day was heard, say what it is"
 number: 421
 group: ready
-status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 merged · PR 2 #9514 the migration merged and pushed · PR 3 #9526 the choice armed · PR 4 the write-throughs armed
+status: building 2026-11-23 on the owner's word, straight to the choice · PR 1 #9510 merged · PR 2 #9514 the migration merged and pushed · PR 3 #9526 the choice merged · PR 4 #9533 the write-throughs armed
 summary: >
   When a person names a day in a text or a voicemail, Messages was planned to lift the day out,
   ask the office what it is a promise of, and write it where that kind of date lives. The table, the
@@ -31,7 +31,7 @@ customer's payment opens #129's sheet. The screens he approved are the *after* o
 3. **PR 3, v2.8384**: the choice under a line (`useFollowUpThreadSlots`' `underLine` over `heardChoice.ts`): their
    kinds, *just talk*, a voicemail's *Another day*, a customer's *A payment* opening #129's sheet, and a line already
    said reading *Written down as their quote by Wed Nov 25.* Written on the line only; PR 4 adds where else it goes.
-   PR #9526, armed.
+   PR #9526, merged.
 4. **PR 4, v2.8385**: the write-throughs' hands (`messages/promiseWritesIo.ts`): the read that fills `PromiseAt` (the
    line's job by name and kind, the company's open ask, the person's standing holds) and the writers through the Board's
    own verbs, the bid's contact log and `nudge_hold_until`; the toast names where it went, every skip and a refusal.

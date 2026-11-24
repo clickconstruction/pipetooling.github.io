@@ -22,6 +22,7 @@ import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -321,7 +322,7 @@ export function BankingMercuryUserReviewLedgerModal({
               {rows.length.toLocaleString()} transaction{rows.length === 1 ? '' : 's'}
               {' · '}
               <span style={{ color: amountColor(totalAmount), fontWeight: 500 }}>
-                {formatUsd(totalAmount)}
+                <MoneyText text={formatUsd(totalAmount)} />
               </span>
             </div>
           </div>
@@ -369,7 +370,7 @@ export function BankingMercuryUserReviewLedgerModal({
               Filtered: {filteredRows.length.toLocaleString()} of {rows.length.toLocaleString()}
               {' · '}
               <span style={{ color: amountColor(filteredTotalAmount), fontWeight: 500 }}>
-                {formatUsd(filteredTotalAmount)}
+                <MoneyText text={formatUsd(filteredTotalAmount)} />
               </span>
             </div>
           ) : null}
@@ -583,7 +584,7 @@ export function BankingMercuryUserReviewLedgerModal({
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {formatUsd(r.amount ?? 0)}
+                        <MoneyText text={formatUsd(r.amount ?? 0)} />
                       </td>
                       <td style={{ ...cellStyle, minWidth: 200 }}>
                         <SearchableSelect

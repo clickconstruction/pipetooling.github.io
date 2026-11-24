@@ -19,6 +19,7 @@ import { dollars, type OnFilePrice } from '../../lib/materials/priceSheet/rowCar
 import { cardInput as input, cardLink as link, cardPress as press } from '../../lib/materials/priceSheet/cardStyles'
 import { PriceRowCardView, type KnownPart, type ServerAsk } from './PriceRowCardView'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 type House = { id: string; name: string }
 type Filed = { key: string; lineId: string; partName: string; houseName: string; price: number; was: OnFilePrice | null; note: string | null }
@@ -369,7 +370,7 @@ export function QuickPriceWindow({
         {filed.map((f) => (
           <div key={f.lineId} role="status" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', justifyContent: 'space-between', padding: '0.45rem 0.7rem', background: 'var(--bg-green-100)', borderRadius: 6, fontSize: '0.8125rem' }}>
             <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-              Filed: {f.partName} at {dollars(f.price)} each under {f.houseName}.{f.was ? ` It was ${dollars(f.was.price)}.` : ''}
+              Filed: {f.partName} at <MoneyText text={dollars(f.price)} /> each under {f.houseName}.{f.was ? <MoneyText text={` It was ${dollars(f.was.price)}.`} /> : ''}
               {f.note ? ` ${f.note}` : ''}
             </span>
             <button type="button" disabled={working != null} onClick={() => void undo(f)} style={{ ...link, fontWeight: 600 }}>

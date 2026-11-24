@@ -21,6 +21,7 @@ import { useReceiptStates } from '../../hooks/useReceiptStates'
 import { receiptStateChargeIds } from '../../lib/tickets/receiptState'
 import { BankLineSubPayment } from './BankLineSubPayment'
 import { useBankLineSubPayments } from '../../hooks/useBankLineSubPayments'
+import { MoneyText } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -172,7 +173,7 @@ function TransactionDetailPanel({ r }: { r: MercuryTxRow }) {
         <div style={labelStyle}>Account id</div>
         <div style={mono}>{r.mercury_account_id}</div>
         <div style={labelStyle}>Amount</div>
-        <div>{formatCurrency(Number(r.amount))}</div>
+        <div><MoneyText text={formatCurrency(Number(r.amount))} /></div>
         <div style={labelStyle}>Currency</div>
         <div>{r.currency}</div>
         <div style={labelStyle}>Created</div>
@@ -476,7 +477,7 @@ export function BankingMercuryTable({
                     }}
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
-                      <span>{formatCurrency(Number(r.amount))}</span>
+                      <span><MoneyText text={formatCurrency(Number(r.amount))} /></span>
                       <button
                         type="button"
                         id={mercuryTxNotesToggleDomId(r.id)}

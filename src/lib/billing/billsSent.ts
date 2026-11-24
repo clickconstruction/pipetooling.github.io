@@ -311,15 +311,22 @@ function noteOf(copy: BillsSentCopy, route: BillsSentRoute): string {
   return ''
 }
 
+/** What a send says when its bill is no longer on record. */
+export const BILLS_SENT_GONE_NOTE = 'This bill is no longer on the job. It was taken back or replaced after it went.'
+
 const billIdOf = (copy: BillsSentCopy): string | null => (copy.sourceTable === BILL_SOURCE && copy.sourceId ? copy.sourceId : null)
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
+/** After this many days with no word from a mail server, the line stops saying the answer is still to come. */
+export const BILLS_SENT_NO_ANSWER_DAYS = 2
+
 /**
  * The lines, newest first. A copy to the copy list folds into the send it rode with. Each line knows which send of
  * its bill it is from every send on record (`earlier`), so a second send whose first is off the page still says so.
+ * `todayYmd` is the company's day: with it a long silence from a mail server says how long it has run.
  */
-export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
+export function billsSentLines(input: BillsSentInput, opts: { todayYmd?: string } = {}): BillsSentLine[] {
   const ms = (iso: string): number => {
     const t = Date.parse(iso)
     return Number.isFinite(t) ? t : 0
@@ -410,6 +417,10 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
   const lineOf = (copy: BillsSentCopy, rode: BillsSentCopy[]): BillsSentLine => {
     const billId = billIdOf(copy)
     const bill = billId ? input.bills.get(billId) : undefined
+    // The copy names a bill the read did not find: the bill was taken back or replaced after it went. The copy is
+    // kept, so the line stays, and it says why it has no amount and no word on payment. Never said when no bill
+    // read at all, which is a read that failed and not a bill that is gone.
+    const gone = !!billId && !bill && input.bills.size > 0
     const route = routeOf(copy)
     const times = billId ? (timesByBill.get(billId) ?? []) : []
     const at = ms(copy.sentAt)
@@ -429,9 +440,10 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
     const copyTo = [...new Set(rode.flatMap((r) => r.recipientEmails))].filter((a) => !copy.recipientEmails.includes(a))
     const what = whatOf(copy)
     const mark = input.marks?.get(copy.id)
-    const arrival = arrivalOf(mark, copy.sentAt)
     // A statement and a pay application are no one bill's: they carry no payment.
     const pay = route === 'statement' || copy.kind === 'pay_application' ? null : payOf(bill, mark?.paidOn ?? null)
+    const open = pay ? pay.kind !== 'paid' : bill?.status === 'billed'
+    const arrival = arrivalOf(mark, copy.sentAt, { todayYmd: opts.todayYmd, open })
     return {
       id: copy.id,
       atIso: copy.sentAt,
@@ -459,7 +471,7 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
       by: copy.sentByName,
       nth,
       firstAtIso: firstAt != null ? new Date(firstAt).toISOString() : null,
-      note: noteOf(copy, route),
+      note: [noteOf(copy, route), gone ? BILLS_SENT_GONE_NOTE : ''].filter(Boolean).join(' '),
       copy,
       copies: rode,
       haystack: [what, jobWords, payer, copy.recipientName, ...copy.recipientEmails, ...copyTo, (job?.job_address ?? '').trim(), (job?.customer_name ?? '').trim(), copy.sentByName, copy.title]
@@ -607,8 +619,12 @@ export function billsSentLines(input: BillsSentInput): BillsSentLine[] {
 /**
  * What the mail service last said of an email, in the line's words. The service keeps only its last word: *opened*
  * means it was delivered and then opened. A send with no word yet says nothing, never that it did not arrive.
+ *
+ * *Sent* with no later word reads *has not answered yet* for `BILLS_SENT_NO_ANSWER_DAYS`, then says how long the
+ * silence has run. On a bill still open it adds the next step, since a mistyped address is the usual cause and the
+ * line once promised an answer for weeks. It stays quiet, never red: a missed word from the mail service is silence too.
  */
-function arrivalOf(mark: BillsSentMark | undefined, sentAtIso: string): { words: string; tone: BillsSentLine['deliveryTone'] } {
+function arrivalOf(mark: BillsSentMark | undefined, sentAtIso: string, now: { todayYmd?: string; open?: boolean } = {}): { words: string; tone: BillsSentLine['deliveryTone'] } {
   const event = mark?.lastEvent ?? ''
   if (!event) return { words: '', tone: '' }
   const at = mark?.lastEventAtIso ?? ''
@@ -626,8 +642,12 @@ function arrivalOf(mark: BillsSentMark | undefined, sentAtIso: string): { words:
       return { words: 'Delivered. The reader marked it as spam.', tone: 'quiet' }
     case 'delivery_delayed':
       return { words: 'Delayed by their mail server.', tone: 'quiet' }
-    case 'sent':
-      return { words: 'Sent. Their mail server has not answered yet.', tone: 'quiet' }
+    case 'sent': {
+      const sentYmd = calendarYmdInAppTzFromIso(sentAtIso)
+      const silent = now.todayYmd && sentYmd ? daysFrom(sentYmd, now.todayYmd) : null
+      if (silent == null || silent < BILLS_SENT_NO_ANSWER_DAYS) return { words: 'Sent. Their mail server has not answered yet.', tone: 'quiet' }
+      return { words: `Sent. No answer from their mail server in ${plural(silent, 'day')}.${now.open ? ' Check the address.' : ''}`, tone: 'quiet' }
+    }
     default:
       return { words: '', tone: '' }
   }

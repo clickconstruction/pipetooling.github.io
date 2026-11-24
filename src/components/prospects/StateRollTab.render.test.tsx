@@ -27,6 +27,7 @@ function read(over: Partial<RollPullsRead> = {}): RollPullsRead {
     ...over,
   }
 }
+const PULLS = '/prospects?tab=roll&roll=pulls'
 const file = (key: string) => document.querySelector(`[data-roll-file="${key}"]`) as HTMLElement
 
 describe('StateRollTab · Pulls', () => {
@@ -37,7 +38,7 @@ describe('StateRollTab · Pulls', () => {
   afterEach(cleanup)
 
   it('says what is kept and for which counties, and that the state gives no way to reach a person', async () => {
-    renderWithProviders(<StateRollTab />)
+    renderWithProviders(<StateRollTab />, { route: PULLS })
     await screen.findByText('Bexar, Comal, Guadalupe, Hays and Travis')
     expect(screen.getByText(/The state gives no phone, street address or email for a person/)).toBeTruthy()
     // The journeymen's tile and the journeyman file's card both carry the count, each as a value.
@@ -48,7 +49,7 @@ describe('StateRollTab · Pulls', () => {
   })
 
   it('draws a card a state file, each value apart from its words', async () => {
-    renderWithProviders(<StateRollTab />)
+    renderWithProviders(<StateRollTab />, { route: PULLS })
     await screen.findByText('Plumbing · journeyman')
     expect(['RMP', 'MP', 'JP', 'TP'].every((k) => file(k))).toBe(true)
     const jp = file('JP')
@@ -60,7 +61,7 @@ describe('StateRollTab · Pulls', () => {
 
   it('keeps the last clean read on a file whose newest read failed, and gives the reason', async () => {
     io.readRollPulls.mockResolvedValue(read({ pulls: [pull('JP', { id: 'bad', started_at: '2026-11-23T12:40:00Z', error: 'The board answered 503 for its JP file.' }), pull('JP')] }))
-    renderWithProviders(<StateRollTab />)
+    renderWithProviders(<StateRollTab />, { route: PULLS })
     await screen.findByText('Plumbing · journeyman')
     expect(file('JP').textContent).toContain('4 new · 31 changed · 9 gone')
     expect(file('JP').textContent).toContain('The board answered 503 for its JP file.')
@@ -69,7 +70,7 @@ describe('StateRollTab · Pulls', () => {
 
   it('pulls every file in turn, goes on past one that fails, and names it with its reason', async () => {
     io.pullRollFile.mockImplementation(async (key: string) => (key === 'MP' ? { ok: false, why: 'The board answered 503 for its MP file.' } : { ok: true, added: 1, changed: 0, gone: 0, kept: 1 }))
-    renderWithProviders(<StateRollTab />)
+    renderWithProviders(<StateRollTab />, { route: PULLS })
     fireEvent.click(await screen.findByRole('button', { name: 'Pull 4 files' }))
     await waitFor(() => expect(io.pullRollFile).toHaveBeenCalledTimes(4))
     expect(io.pullRollFile.mock.calls.map((c) => c[0])).toEqual(['RMP', 'MP', 'JP', 'TP'])
@@ -81,7 +82,7 @@ describe('StateRollTab · Pulls', () => {
 
   it('before any pull, says what fills the page and offers the press', async () => {
     io.readRollPulls.mockResolvedValue(read({ pulls: [], kept: {}, lapsed: 0 }))
-    renderWithProviders(<StateRollTab />)
+    renderWithProviders(<StateRollTab />, { route: PULLS })
     const press = await screen.findByRole('button', { name: 'Pull 4 files' })
     expect(document.querySelector('[data-roll-file]')).toBeNull()
     expect(screen.queryByText('journeymen kept')).toBeNull()
@@ -91,7 +92,7 @@ describe('StateRollTab · Pulls', () => {
 
   it('says why when the roll cannot be read, and reads again on the press', async () => {
     io.readRollPulls.mockRejectedValueOnce(new Error('Could not read the pulls: permission denied for table license_roll_pulls'))
-    renderWithProviders(<StateRollTab />)
+    renderWithProviders(<StateRollTab />, { route: PULLS })
     await screen.findByText('The state roll could not be read.')
     expect(screen.getByText(/permission denied for table license_roll_pulls/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Read it again' }))

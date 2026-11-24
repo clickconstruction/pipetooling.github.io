@@ -15,6 +15,7 @@ import { SubsTileModal, HandledCell } from './SubsTileModal'
 import { useQueueState } from './useQueueState'
 import type { SubsTileActions } from './subsTileActions'
 import { acts, btn, chip, door, handledRow, money, muted, shortDay, spanLabel, td, tdAct, tdNum, th, where, who } from './subsTileStyles'
+import { MoneyText } from '../../Money'
 
 export type SignedQueueProps = {
   board: WorkOrderBoardRow[]
@@ -128,7 +129,7 @@ export function SignedQueue({ board, ordersById, stageByOrderId, jobs, month, cu
                     <span style={muted}>set by the office</span>
                   )}
                 </td>
-                <td style={tdNum}>{money(r.row.agreed)}</td>
+                <td style={tdNum}><MoneyText text={money(r.row.agreed)} /></td>
                 <td style={td}>
                   <div style={{ fontWeight: 600, fontSize: '0.8rem' }}>{r.row.rail.label}</div>
                   {r.row.rail.sublabel ? <div style={where}>{r.row.rail.sublabel}</div> : null}
@@ -162,7 +163,7 @@ export function SignedQueue({ board, ordersById, stageByOrderId, jobs, month, cu
                       </button>
                     ) : r.next === 'pay' ? (
                       <button type="button" style={btn('primary', !actions.openMakePayment || !r.row.sheetId)} disabled={!actions.openMakePayment || !r.row.sheetId} onClick={() => pay(r)}>
-                        Pay {r.row.subName} · {money(r.row.open)}
+                        Pay {r.row.subName} · <MoneyText text={money(r.row.open)} />
                       </button>
                     ) : (
                       <span style={chip('gray')}>{SIGNED_NEXT_LABEL[r.next]}</span>
@@ -183,7 +184,7 @@ export function SignedQueue({ board, ordersById, stageByOrderId, jobs, month, cu
                 </div>
               </td>
               <td style={td} />
-              <td style={tdNum}>{money(r.row.agreed)}</td>
+              <td style={tdNum}><MoneyText text={money(r.row.agreed)} /></td>
               <td style={td} />
               <td style={tdAct}>
                 <HandledCell label={mark.label} onUndo={mark.undo ? () => void mark.undo!() : null} />

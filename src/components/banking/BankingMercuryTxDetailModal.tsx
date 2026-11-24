@@ -15,6 +15,7 @@ import { formatSankeyUsd } from '../../lib/banking/mercurySankeyLayout'
 import { parseBankingAttributionValue } from '../../lib/bankingAttributionOptions'
 import type { Database, Json } from '../../types/database'
 import type { VisualsLabelRow } from './BankingMercuryVisualsTab'
+import { MoneyText } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -400,7 +401,7 @@ export function BankingMercuryTxDetailModal({
           </div>
           <div style={{ marginLeft: 'auto', textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: '1.25rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-              {row ? `${row.amount < 0 ? '−' : '+'}${formatSankeyUsd(row.amount)}` : ''}
+              {row ? <MoneyText text={`${row.amount < 0 ? '−' : '+'}${formatSankeyUsd(row.amount)}`} /> : ''}
             </div>
             <div style={{ fontSize: '0.72rem', color: 'var(--text-slate-500)' }}>{row ? accountLabel(row.mercury_account_id) : ''}</div>
           </div>

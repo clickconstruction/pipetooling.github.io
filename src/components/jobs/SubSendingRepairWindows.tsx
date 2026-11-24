@@ -15,6 +15,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { ledgerDayWords } from '../../lib/subWorkOrders/subPaymentsLedger'
 import { gatherOutcomeWords, gatherPlan, type OverToCreditPlan, type SendingGroup } from '../../lib/subWorkOrders/subSendingRepair'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { MoneyText } from '../Money'
 
 const usd = (n: number): string => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const shell: CSSProperties = { position: 'fixed', inset: 0, zIndex: 1002, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }
@@ -39,7 +40,7 @@ export function OverToCreditWindowView({ title, plan, saving, error, onConfirm, 
               ))}
             </ol>
             <div style={{ marginTop: 10, padding: '0.5rem 0.7rem', background: 'var(--bg-page)', borderRadius: 6, fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}>
-              On the sheet {usd(plan.after)} + credit {usd(plan.over)} = <b style={{ color: 'var(--text-green-700)' }}>{usd(plan.before)} ✓ the payment, as it was</b>
+              On the sheet <MoneyText text={usd(plan.after)} /> + credit <MoneyText text={usd(plan.over)} /> = <b style={{ color: 'var(--text-green-700)' }}><MoneyText text={usd(plan.before)} /> ✓ the payment, as it was</b>
             </div>
           </>
         ) : (
@@ -119,7 +120,7 @@ export function GatherSendingsWindowView({ groups, busy, outcome, onGather, onCl
                   <b>{g.paidTo}</b>
                   <span>{ledgerDayWords(g.ymd, true)}</span>
                   <span style={{ color: 'var(--text-muted)' }}>{g.how || 'no method recorded'}</span>
-                  <b style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{usd(g.amount)}</b>
+                  <b style={{ marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}><MoneyText text={usd(g.amount)} /></b>
                 </div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 3, paddingLeft: 22 }}>{g.lines.map((l) => `${usd(l.amount)} on ${l.job}`).join(' · ')}</div>
                 {g.held ? <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-900)', marginTop: 3, paddingLeft: 22 }}>Held: {g.held}</div> : null}
@@ -138,7 +139,7 @@ export function GatherSendingsWindowView({ groups, busy, outcome, onGather, onCl
             {said.head ? <div style={{ marginTop: 4, fontWeight: 600 }}>{said.head}</div> : null}
             {outcome.failed.map((f) => (
               <div key={f.group.key} style={{ color: 'var(--text-red-700)' }}>
-                {f.group.paidTo}, {ledgerDayWords(f.group.ymd, true)}, {usd(f.group.amount)}: {f.reason}
+                {f.group.paidTo}, {ledgerDayWords(f.group.ymd, true)}, <MoneyText text={usd(f.group.amount)} />: {f.reason}
               </div>
             ))}
           </div>

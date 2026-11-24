@@ -5,6 +5,7 @@ import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionF
 import { mercuryChargeDayPhrase } from '../../lib/mercurySwipeTime'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatBankingDate, formatUsd } from './bankingMercuryDragSortLedger'
+import { MoneyText } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -78,7 +79,7 @@ export const AccountingApprovalCard = memo(function AccountingApprovalCard({
           <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
             <span>
               {p.tx
-                ? `${formatUsd(Number(p.tx.amount))} · ${p.tx.counterparty_name ?? '—'}`
+                ? <MoneyText text={`${formatUsd(Number(p.tx.amount))} · ${p.tx.counterparty_name ?? '—'}`} />
                 : `Transaction ${p.txId.slice(0, 8)}… (not in current list)`}
             </span>
             {p.tx ? (

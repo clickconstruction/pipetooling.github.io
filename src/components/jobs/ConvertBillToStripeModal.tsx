@@ -14,6 +14,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { convertMemoLine, formatConvertLongDate } from '../../lib/jobs/convertBillToStripe'
 import type { JobsLedgerInvoiceRow } from '../../lib/jobs/jobFormTypes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { Money } from '../Money'
 
 /**
  * "Make Stripe bill" confirm (v2.2045): converts a BILLED non-Stripe line to
@@ -164,7 +165,7 @@ export function ConvertBillToStripeModal({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.3rem 0.9rem', fontSize: '0.8125rem', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', padding: '0.6rem 0' }}>
           <span style={{ color: 'var(--text-muted)' }}>Line</span>
-          <span style={{ fontWeight: 600 }}>${formatCurrency(amount)}</span>
+          <span style={{ fontWeight: 600 }}><Money amount={amount} /></span>
           <span style={{ color: 'var(--text-muted)' }}>Customer</span>
           <span style={{ fontWeight: 600 }}>
             {(job.customer_name ?? '').trim() || 'Customer'}

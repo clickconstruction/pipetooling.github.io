@@ -34,6 +34,7 @@ import { fetchMercuryTransactionRawById } from '../../lib/fetchMercuryTransactio
 import type { SearchableSelectOption } from '../SearchableSelect'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { MoneyText } from '../Money'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -748,7 +749,7 @@ export function BankingMercuryCategoryReviewTab({
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {formatUsd(entry.totalAmount)}
+                      <MoneyText text={formatUsd(entry.totalAmount)} />
                     </td>
                   </tr>
                 )
@@ -778,7 +779,7 @@ export function BankingMercuryCategoryReviewTab({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {formatUsd(ledgerTotals.totalAmount)}
+                  <MoneyText text={formatUsd(ledgerTotals.totalAmount)} />
                 </td>
               </tr>
             </tfoot>
@@ -821,7 +822,7 @@ export function BankingMercuryCategoryReviewTab({
               <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {selectedEntry.count.toLocaleString()} transactions ·{' '}
                 <span style={{ color: amountColor(selectedEntry.totalAmount), fontWeight: 500 }}>
-                  {formatUsd(selectedEntry.totalAmount)}
+                  <MoneyText text={formatUsd(selectedEntry.totalAmount)} />
                 </span>
                 {windowedRangeLabel ? <span> · {windowedRangeLabel}</span> : null}
               </div>
@@ -870,7 +871,7 @@ export function BankingMercuryCategoryReviewTab({
                 Filtered: {selectedFilteredRows.length.toLocaleString()} of {selectedTxRows.length.toLocaleString()}
                 {' · '}
                 <span style={{ color: amountColor(selectedFilteredTotalAmount), fontWeight: 500 }}>
-                  {formatUsd(selectedFilteredTotalAmount)}
+                  <MoneyText text={formatUsd(selectedFilteredTotalAmount)} />
                 </span>
               </div>
             ) : null}
@@ -962,7 +963,7 @@ export function BankingMercuryCategoryReviewTab({
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          {formatUsd(r.amount ?? 0)}
+                          <MoneyText text={formatUsd(r.amount ?? 0)} />
                         </td>
                       </tr>
                     ))}
