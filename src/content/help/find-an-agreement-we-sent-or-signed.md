@@ -219,7 +219,7 @@ They may sign while the window is open. The paper is then kept, and the app tell
 
 Taking a paper back cannot be undone. To send the paper again, press **Send a paper** and start over.
 
-The leader and a dev have **Take back**. They are the two who can delete a paper anywhere in the app. Anyone else in the office asks one of them.
+A dev and the controller have **Take back**. Anyone else in the office asks one of them.
 
 A trade company's own paper carries **Take back** too, while it is not signed. A paper GC mode asked the company for stays. The app says so, with the day GC mode asked for it by.
 
@@ -244,7 +244,7 @@ The line then reads *never opened*. It moves under **Waiting on a signature**.
 {{chip:blue|Supply house}} {{chip:gray|W-9}} **W-9**, with Tallgrass Supply Co. {{chip:gray|not sent}} Made Nov 21. {{button:outline|Send}} {{button:outline|Take back}}
 :::
 
-Maybe the paper should not exist. The leader or a dev presses **Take back** on its line. Nobody holds a link to it, so nothing stops working.
+Maybe the paper should not exist. A dev or the controller presses **Take back** on its line. Nobody holds a link to it, so nothing stops working.
 
 Someone you typed in has no page of their own. This list is where their papers are found.
 

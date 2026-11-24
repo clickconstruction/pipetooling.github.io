@@ -68,7 +68,7 @@ The paper shows as {{chip:green|Signed}} under the company. No email goes out.
 
 ## Take back a paper sent by mistake
 
-A company's paper that is not signed carries {{button:outline|Take back}} on its line. The leader and a dev have the press.
+A company's paper that is not signed carries {{button:outline|Take back}} on its line. A dev and the controller have the press.
 
 1. Press {{button:outline|Take back}} on the paper under the company's row.
 2. Read the window. It names the paper and who holds its signing link.

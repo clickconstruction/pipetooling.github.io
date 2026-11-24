@@ -252,9 +252,10 @@ describe('People → Contracts, a sub’s company’s own papers', () => {
     expect((screen.getByRole('button', { name: 'Enter from paper' }) as HTMLElement).style.minHeight).toBe('44px')
   })
 
-  it('whoever may delete a paper takes a company’s waiting paper back on its line: the confirm, then the function, then a fresh read', async () => {
+  it('the controller takes a company’s waiting paper back on its line: the confirm, then the function, then a fresh read', async () => {
     TABLE_ROWS.person_contract_documents = [...PAPERS_AT_START, W9_OUT]
-    const { container } = await open(true)
+    seen.role = 'controller'
+    const { container } = await open()
     const line = await waitFor(() => {
       const found = container.querySelector('[data-sub-company-paper="d-w9-out"]') as HTMLElement | null
       expect(found).toBeTruthy()
@@ -279,7 +280,7 @@ describe('People → Contracts, a sub’s company’s own papers', () => {
   it('a paper GC mode is waiting on stays, and the office reads why', async () => {
     TABLE_ROWS.person_contract_documents = [...PAPERS_AT_START, W9_OUT]
     seen.takeBack = { data: null, error: { code: 'P0001', message: 'W-9 stays with ZZ Sample Mechanical LLC, since GC mode asked for it by Nov 30. It is GC mode’s paper to chase.' } }
-    const { container } = await open(true)
+    const { container } = await open()
     await waitFor(() => expect(container.querySelector('[data-sub-company-paper="d-w9-out"]')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Take back' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Take back the paper' }))
@@ -288,11 +289,15 @@ describe('People → Contracts, a sub’s company’s own papers', () => {
     expect(container.querySelector('[data-sub-company-paper="d-w9-out"]')).toBeTruthy()
   })
 
-  it('someone who may not delete a paper sees no Take back on a company’s paper', async () => {
+  it('the leader and an assistant see no Take back on a company’s paper, though the leader deletes a paper here', async () => {
     TABLE_ROWS.person_contract_documents = [...PAPERS_AT_START, W9_OUT]
-    const { container } = await open(false)
-    await waitFor(() => expect(container.querySelector('[data-sub-company-paper="d-w9-out"]')).toBeTruthy())
-    expect(screen.queryByRole('button', { name: 'Take back' })).toBeNull()
+    for (const role of ['master_technician', 'assistant']) {
+      seen.role = role
+      const view = await open(true)
+      await waitFor(() => expect(view.container.querySelector('[data-sub-company-paper="d-w9-out"]')).toBeTruthy())
+      expect(screen.queryByRole('button', { name: 'Take back' })).toBeNull()
+      view.unmount()
+    }
   })
 
   it('a send to an address that is not one says so and writes nothing', async () => {

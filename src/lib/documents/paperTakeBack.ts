@@ -11,12 +11,13 @@
  * delete). What goes with the row: that it was sent and when, whether they opened it, and its reminders. Nothing
  * brings a taken-back paper back, which the confirm says.
  *
- * Who may: the leader and a dev, the two roles that delete a paper anywhere in the app (`canDeleteFromContractLibrary`,
- * the rule People → Contracts keeps). The rule is the app's own, and it is narrower than the database: the table's
- * delete policy answers the office's four roles, an assistant and the controller among them (since
- * `20260714200000_dissolve_assistant_pay_linkage.sql`). So the press is drawn for the two roles the app lets delete a
- * paper on every other page, and the rest of the office sends, sends again and copies a link as before. Opening it to
- * the four roles is this one function, and is the owner's call.
+ * Who may: a dev and the controller (v2.8530, the answer of 2026-11-24 to the card's question *Who may take a paper
+ * back?*). Until then it was the leader and a dev, the rule for deleting a paper on People → Contracts and in the
+ * Contract library (`canDeleteFromContractLibrary`), which is unchanged and is no longer this rule. For an outside
+ * party's paper the rule is the app's own, and it is narrower than the database: the table's delete policy answers the
+ * office's four roles (since `20260714200000_dissolve_assistant_pay_linkage.sql`). So the press is drawn for these two
+ * roles, and the rest of the office sends, sends again and copies a link as before. A trade company's own paper is
+ * held to the same two by its function (`20261124214500_take_back_dev_and_controller.sql`).
  *
  * What it refuses, and why:
  *   - **A signed paper.** It is the agreement itself. Its e-sign record, its signed copy and the log of who opened it
@@ -36,18 +37,17 @@
  * Pure: no React, no supabase. The delete is `paperTakeBackIo.ts`; the press is on the line in
  * `DocumentsAgreementsTab.tsx` and on a company's paper in `SubCompanyLines.tsx`.
  */
-import { canDeleteFromContractLibrary } from '../contracts/contractLibraryRoles'
 import { isPartyAgreementKind } from '../contracts/paperParty'
 import type { AgreementRow } from './agreementsLedger'
 
 export const TAKE_BACK_LABEL = 'Take back'
 
 /**
- * Who has **Take back**: whoever may delete a paper, the leader and a dev. One rule with People → Contracts and the
- * Contract library, so a paper is never deletable on one page and not on the other.
+ * Who has **Take back**: a dev and the controller, on Documents → Agreements and on a company's paper on People →
+ * Contracts. One rule for both pages and both doors, so a paper is never taken back on one page and not on the other.
  */
 export function canTakeBackPapers(role: string | null | undefined): boolean {
-  return canDeleteFromContractLibrary(role)
+  return role === 'dev' || role === 'controller'
 }
 
 /** Whose a paper that can be taken back is: an outside party's, or a trade company's own. Each has its own door. */
