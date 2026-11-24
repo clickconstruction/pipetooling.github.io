@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   AUTO_RELOAD_KEY,
+  AUTO_RELOAD_TYPED_REASON,
   LANDING_SETTLE_MS,
   LANDING_WAIT_MAX_MS,
   RELOAD_FALLBACK_MS,
@@ -22,6 +23,7 @@ const quiet: AutoReloadSnapshot = {
   framed: false,
   interacted: false,
   msSinceLoad: 1_200,
+  typedText: false,
   editableFocused: false,
   dialogOpen: false,
   unsavedHolds: 0,
@@ -59,6 +61,26 @@ describe('decideAutoReload', () => {
     expect(decideAutoReload({ ...quiet, msSinceLastAutoReload: 20_000 }).reload).toBe(false)
     expect(decideAutoReload({ ...quiet, msSinceLastAutoReload: 90_000 }).reload).toBe(true)
   })
+  it('v2.8499: words typed on the page hold every moment, however long the tab has sat', () => {
+    const held = { reload: false, reason: AUTO_RELOAD_TYPED_REASON }
+    expect(decideAutoReload({ ...quiet, typedText: true })).toEqual(held)
+    expect(decideAutoReload({ ...quiet, moment: 'route-change', interacted: true, typedText: true })).toEqual(held)
+    // The moment this was built for: a message typed, the field left, the tab forgotten.
+    expect(decideAutoReload({ ...quiet, moment: 'idle', interacted: true, typedText: true, hiddenForMs: 5 * 60_000 })).toEqual(held)
+    expect(decideAutoReload({ ...quiet, moment: 'idle', interacted: true, typedText: true, idleForMs: 30 * 60_000 })).toEqual(held)
+    // No length of time wears the hold out.
+    for (const hours of [1, 8, 24, 24 * 14]) {
+      expect(decideAutoReload({ ...quiet, moment: 'idle', interacted: true, typedText: true, hiddenForMs: hours * 3_600_000 }).reload).toBe(false)
+      expect(decideAutoReload({ ...quiet, moment: 'idle', interacted: true, typedText: true, idleForMs: hours * 3_600_000 }).reload).toBe(false)
+    }
+    // The words sent or cleared, the same idle tab reloads.
+    expect(decideAutoReload({ ...quiet, moment: 'idle', interacted: true, hiddenForMs: 5 * 60_000 }).reload).toBe(true)
+  })
+  it('v2.8499: typed words are the reason named when several things hold it', () => {
+    expect(decideAutoReload({ ...quiet, moment: 'route-change', typedText: true, unsavedHolds: 2, inFlightWrites: 1, editableFocused: true, dialogOpen: true }).reason).toBe(
+      AUTO_RELOAD_TYPED_REASON,
+    )
+  })
   it('idle needs the tab hidden five minutes, or untouched half an hour', () => {
     const idle: AutoReloadSnapshot = { ...quiet, moment: 'idle', interacted: true, msSinceLoad: 3_600_000 }
     expect(decideAutoReload({ ...idle, hiddenForMs: 60_000 }).reload).toBe(false)
@@ -76,6 +98,7 @@ describe('decideReloadLanding, the second look when the reload would fire', () =
     workerTookOver: true,
     msSinceDecision: 600,
     touchedSinceDecision: false,
+    typedText: false,
     editableFocused: false,
     dialogOpen: false,
     unsavedHolds: 0,
@@ -120,6 +143,15 @@ describe('decideReloadLanding, the second look when the reload would fire', () =
     expect(decideReloadLanding({ ...landing, editableFocused: true }).act).toBe('stand-down')
     expect(decideReloadLanding({ ...landing, unsavedHolds: 1 }).act).toBe('stand-down')
   })
+  it('v2.8499: words that are on the page when the reload would fire stand it down, with no touch', () => {
+    // A draft the app brought back after the decision: nothing was pressed.
+    expect(decideReloadLanding({ ...landing, typedText: true })).toEqual({ act: 'stand-down', reason: AUTO_RELOAD_TYPED_REASON })
+    // Before the worker takes over, and with a write in flight: it does not wait and then reload.
+    expect(decideReloadLanding({ ...landing, typedText: true, workerTookOver: false, msSinceDecision: 200 }).act).toBe('stand-down')
+    expect(decideReloadLanding({ ...landing, typedText: true, inFlightWrites: 1 }).act).toBe('stand-down')
+    // However long the decision has waited.
+    expect(decideReloadLanding({ ...landing, typedText: true, msSinceDecision: 10 * 60_000 }).act).toBe('stand-down')
+  })
   it('stands down at once, before the worker takes over, and a touch outranks a write in flight', () => {
     expect(decideReloadLanding({ ...landing, workerTookOver: false, msSinceDecision: 50, touchedSinceDecision: true }).act).toBe('stand-down')
     expect(decideReloadLanding({ ...landing, touchedSinceDecision: true, inFlightWrites: 1 }).act).toBe('stand-down')
@@ -129,6 +161,7 @@ describe('decideReloadLanding, the second look when the reload would fire', () =
       ...landing,
       asked: true,
       touchedSinceDecision: true,
+      typedText: true,
       dialogOpen: true,
       editableFocused: true,
       unsavedHolds: 1,

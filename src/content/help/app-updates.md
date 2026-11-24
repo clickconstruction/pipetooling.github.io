@@ -13,18 +13,31 @@ A quiet moment is one of these. You first open a page and have not touched anyth
 Updating to the newest version…
 :::
 
-Nothing you were doing is lost. The app never reloads on its own while a window is open. It waits while a field has the cursor in it. It waits while something is still saving. It checks all of this again at the moment it reloads. If you touched the page in between, it does not reload. Your other open tabs are not reloaded with it. Each tab takes its own quiet moment. On the settings blocks and the Form Studio, unsaved edits are kept in the tab while you work. If the app updates under them, they come straight back after the reload. A note says so. Save when ready. When it cannot find a quiet moment, it asks instead:
+Nothing you were doing is lost. The app never reloads on its own over words you typed. A message, a note or a report you have not sent stays on the screen. Those words stay until you send or clear them, however long the tab sits. The app never reloads on its own while a window is open. The app waits while a field has the cursor in it. The app also waits while something is still saving. The app checks all of this again at the moment it reloads. If you touched the page in between, it does not reload. Your other open tabs are not reloaded with it. Each tab takes its own quiet moment. On the settings blocks and the Form Studio, unsaved edits are kept in the tab while you work. If the app updates under them, they come straight back after the reload. A note says so. Save when ready. When the app cannot find a quiet moment, it asks instead:
 
 :::example The update pill
 A new version is ready. {{button:blue|Reload}} Not now
 :::
 
-- **Reload** applies the update right away. The app refreshes once and brings you back where you were. Finish typing anything first. An unsaved form is lost on reload, just like a browser refresh.
+- **Reload** applies the update right away. The app refreshes once and brings you back where you were. A reload clears words you typed and have not sent, just like a browser refresh. So **Reload** asks first when the page holds such words.
 - **Not now** hides the pill so you can keep working. The app leaves you alone for ten minutes, then takes the next quiet moment. The pill also comes back on its own. Closing and reopening the app picks up the update automatically.
 
 The pill sits at the bottom of the screen. On a phone, a sheet that rises from the bottom keeps its last button there. While such a sheet is open, the pill sits at the top of the screen. So it never covers a button like **Send write-up to HR**.
 
 The app also checks for new versions on its own about once an hour. It checks again when you return to a tab that has been sitting in the background. So a phone left open overnight finds the morning's update by itself.
+
+## When you press Reload over words you typed
+
+The app does not reload yet. It takes you to each place you typed. Each place shows an orange ring for a second. If you typed in several places, the page moves from one to the next. Then the pill offers two presses:
+
+:::example The update pill over words you typed
+Reloading clears what you typed. {{button:amber|Reload anyway}} Not now
+:::
+
+- **Reload anyway** reloads the app, and your words are gone. Press it only when you do not need them.
+- **Not now** keeps your words. Send or clear them, and the app updates at the next quiet moment.
+
+Touch anywhere else on the page and the pill goes back to **Reload**. Your words stay where they are.
 
 ## If a page ever fails to load
 

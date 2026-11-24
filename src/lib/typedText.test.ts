@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { __forgetTypedTextForTests, isSearchField, noteTypedInto, pageHoldsTypedText, watchTypedText } from './typedText'
+import { __forgetTypedTextForTests, isSearchField, noteTypedInto, pageHoldsTypedText, typedTextFields, watchTypedText } from './typedText'
 
 /** Puts markup on the page and hands back the element with `id`. */
 function put<T extends Element>(html: string, id = 'f'): T {
@@ -130,5 +130,53 @@ describe('pageHoldsTypedText', () => {
   it('a page it cannot read counts as holding words', () => {
     const broken = { querySelectorAll: () => { throw new Error('no') } } as unknown as Document
     expect(pageHoldsTypedText(broken)).toBe(true)
+  })
+})
+
+describe('typedTextFields, the places the update pill walks through', () => {
+  let stop = () => {}
+  beforeEach(() => {
+    __forgetTypedTextForTests()
+    document.body.innerHTML = ''
+    stop = watchTypedText()
+  })
+  afterEach(() => stop())
+
+  it('an empty page has none', () => {
+    expect(typedTextFields()).toEqual([])
+  })
+
+  it('names every place that holds words, top of the page first, whatever order they were typed in', () => {
+    document.body.innerHTML =
+      '<input id="subject" /><textarea id="note"></textarea><div><input id="amount" value="1200.00" /><div id="report" contenteditable="true"></div></div><textarea id="empty"></textarea>'
+    const at = (id: string) => document.getElementById(id) as HTMLInputElement
+    at('report').textContent = 'Rough-in passed.'
+    type(at('note'), 'Call before you come.')
+    type(at('subject'), 'Your estimate')
+    expect(typedTextFields().map((el) => el.id)).toEqual(['subject', 'note', 'report'])
+  })
+
+  it('leaves out what does not hold a reload: a search box, a read-only box, a field the app filled', () => {
+    document.body.innerHTML = '<input id="s" type="search" /><textarea id="ro" readonly>Sent 11/24</textarea><input id="filled" value="1200.00" /><textarea id="note"></textarea>'
+    type(document.getElementById('s') as HTMLInputElement, 'smith')
+    type(document.getElementById('note') as HTMLTextAreaElement, 'Gate code is on the fridge.')
+    expect(typedTextFields().map((el) => el.id)).toEqual(['note'])
+  })
+
+  it('names exactly the places while the page holds words, and none once they are cleared', () => {
+    const box = put<HTMLTextAreaElement>('<textarea id="f"></textarea>')
+    type(box, 'Report: rough-in passed.')
+    expect(pageHoldsTypedText()).toBe(true)
+    expect(typedTextFields()).toEqual([box])
+    type(box, '')
+    expect(pageHoldsTypedText()).toBe(false)
+    expect(typedTextFields()).toEqual([])
+  })
+
+  it('a page it cannot read gives no places, and still counts as holding words', () => {
+    const broken = { querySelectorAll: () => { throw new Error('no') } } as unknown as Document
+    expect(typedTextFields(broken)).toEqual([])
+    expect(pageHoldsTypedText(broken)).toBe(true)
+    expect(typedTextFields(undefined)).toEqual([])
   })
 })

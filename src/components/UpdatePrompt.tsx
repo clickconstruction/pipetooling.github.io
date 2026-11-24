@@ -14,6 +14,19 @@ import {
   type AutoReloadMoment,
 } from '../lib/autoReload'
 import { inFlightWriteCount, subscribeUnsavedWork, unsavedHoldCount } from '../lib/unsavedWork'
+import { pageHoldsTypedText } from '../lib/typedText'
+import { pageTourDeps, startTypedTextTour, type TypedTour } from '../lib/typedTextTour'
+import {
+  UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT,
+  UPDATE_PILL_WARNED_TOP,
+  updatePillIgnoresPress,
+  updatePillPress,
+  updatePillSide,
+  updatePillView,
+  type UpdatePillSide,
+  type UpdatePillWarn,
+} from '../lib/updatePillWarn'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 import { registerSW } from 'virtual:pwa-register'
 
 /** Long-lived tabs poll for a new deploy this often. */
@@ -77,7 +90,10 @@ function ownWorkerChanges(): void {
  * version" pill; Reload posts SKIP_WAITING (listener in src/sw.ts) and this component reloads
  * the page once the new SW takes control. An automatic reload looks a second time at that
  * moment (`decideReloadLanding`): a write in flight is waited out, and a touch, a dialog, a
- * focused field or an unsaved hold hands it back to the pill. Also polls registration.update()
+ * focused field or an unsaved hold hands it back to the pill. Words someone typed and has not
+ * sent hold it at both looks (v2.8499, `pageHoldsTypedText`). The pill's own Reload is the
+ * person's press, and over typed words it warns first: the page walks through each place they
+ * typed (`typedTextTour.ts`) and the press becomes **Reload anyway** (`updatePillWarn.ts`). Also polls registration.update()
  * so tabs left open discover deploys.
  */
 export function UpdatePrompt() {
@@ -85,6 +101,14 @@ export function UpdatePrompt() {
   const [updating, setUpdating] = useState(false)
   /** v2.3740: an automatic reload is in flight — the pill reads "Updating…" with no buttons. */
   const [autoUpdating, setAutoUpdating] = useState(false)
+  /** v2.8499: the pill over typed words: showing what was typed, then offering **Reload anyway**. */
+  const [warn, setWarn] = useState<UpdatePillWarn>('ready')
+  const tourRef = useRef<TypedTour | null>(null)
+  /** When the warning took the pill's place. A press right behind it is a double press's second half. */
+  const warnedAtRef = useRef<number | null>(null)
+  /** The warned pill goes to the top of the screen while a place being shown is under its foot. */
+  const [pillSide, setPillSide] = useState<UpdatePillSide>('bottom')
+  const pillRef = useRef<HTMLDivElement | null>(null)
   const updateSWRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null)
   /** v2.1007: a dismissed pill re-surfaces on route navigation (throttled) while an update waits. */
   const updateWaitingRef = useRef(false)
@@ -119,6 +143,7 @@ export function UpdatePrompt() {
       workerTookOver: workerTookOverRef.current,
       msSinceDecision: now - pending.decidedAt,
       touchedSinceDecision: pending.touched,
+      typedText: pageHoldsTypedText(),
       editableFocused: isEditableFocused(document),
       dialogOpen: isDialogOpen(document),
       unsavedHolds: unsavedHoldCount(),
@@ -189,6 +214,7 @@ export function UpdatePrompt() {
         framed: typeof window !== 'undefined' && window.self !== window.top,
         interacted: interactedRef.current,
         msSinceLoad: now - loadedAtRef.current,
+        typedText: pageHoldsTypedText(),
         editableFocused: isEditableFocused(document),
         dialogOpen: isDialogOpen(document),
         unsavedHolds: unsavedHoldCount(),
@@ -207,10 +233,54 @@ export function UpdatePrompt() {
     [applyUpdate],
   )
 
+  /** Ends the walk through what was typed and puts the pill back as it was. */
+  const endWarning = useCallback(() => {
+    tourRef.current?.stop()
+    tourRef.current = null
+    setWarn('ready')
+    setPillSide('bottom')
+  }, [])
+  useEffect(() => () => tourRef.current?.stop(), [])
+
+  /** The pill's first button: **Reload**, or **Reload anyway** once the walk has shown what goes. */
+  const pressReload = useCallback(() => {
+    const press = updatePillPress(warn, pageHoldsTypedText())
+    if (press === 'nothing') return
+    if (press === 'show') {
+      // Each stop's places, once the page has landed on them, say where the pill may sit: never over
+      // the words it warns about.
+      const tour = startTypedTextTour({
+        ...pageTourDeps(),
+        onStop: (places) =>
+          setPillSide(
+            updatePillSide(
+              places.map((place) => place.getBoundingClientRect()),
+              window.innerHeight,
+            ),
+          ),
+      })
+      tourRef.current = tour
+      warnedAtRef.current = Date.now()
+      setWarn('showing')
+      void tour.done.then((end) => {
+        if (tourRef.current !== tour) return
+        tourRef.current = null
+        if (end !== 'stopped') setWarn('shown')
+      })
+      return
+    }
+    tourRef.current = null
+    setUpdating(true)
+    applyUpdate(true)
+  }, [warn, applyUpdate])
+
   // Any touch on the page ends the first-paint window, and stands down an automatic reload
   // that was decided and has not landed (capture phase: before the press's own handler runs).
+  // A touch off the pill also ends its warning: the person went back to their words.
   useEffect(() => {
-    const mark = () => {
+    const mark = (event: Event) => {
+      const target = event.target
+      if (!(target instanceof Node && pillRef.current?.contains(target))) endWarning()
       interactedRef.current = true
       lastInteractionAtRef.current = Date.now()
       const pending = pendingRef.current
@@ -223,7 +293,7 @@ export function UpdatePrompt() {
     return () => {
       for (const ev of INTERACTION_EVENTS) window.removeEventListener(ev, mark, { capture: true })
     }
-  }, [land])
+  }, [land, endWarning])
 
   // v2.3741, the idle moment: a tab hidden five minutes reloads while hidden (timers are
   // throttled there, so the check is generous) or the instant it comes back; a visible tab
@@ -337,6 +407,8 @@ export function UpdatePrompt() {
   // never shows the pill — the top window owns the reload.
   if (!needRefresh || (typeof window !== 'undefined' && window.self !== window.top)) return null
 
+  const view = updatePillView(warn)
+
   return (
     <div
       role="status"
@@ -356,38 +428,57 @@ export function UpdatePrompt() {
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+        // The warning is a longer line: it takes a row of its own and the presses sit under it.
+        ...(view.warned && !autoUpdating
+          ? // `max-content`: a box fixed at `left: 50%` is otherwise fitted to half the screen, and a phone stacks it three deep.
+            { flexWrap: 'wrap', justifyContent: 'flex-end', rowGap: '0.375rem', borderRadius: '1rem', padding: '0.625rem 0.75rem 0.625rem 1rem', width: 'max-content' }
+          : null),
+        // While a place being shown is under the pill's foot, the warned pill sits at the top instead. Last, so it
+        // wins over wherever the pill is otherwise pinned.
+        ...(view.warned && !autoUpdating && pillSide === 'top' ? { top: UPDATE_PILL_WARNED_TOP, bottom: 'auto' } : null),
       }}
+      ref={pillRef}
     >
-      <span style={{ fontSize: '0.875rem', color: 'var(--text-base)', whiteSpace: 'nowrap' }}>
-        {autoUpdating ? 'Updating to the newest version…' : 'A new version is ready.'}
+      <span
+        style={{
+          fontSize: '0.875rem',
+          color: 'var(--text-base)',
+          whiteSpace: 'nowrap',
+          ...(view.warned && !autoUpdating ? { flex: '1 1 100%', whiteSpace: 'normal' } : null),
+        }}
+      >
+        {autoUpdating ? 'Updating to the newest version…' : view.words}
       </span>
       {autoUpdating ? null : (
         <>
           <button
             type="button"
             disabled={updating}
-            onClick={() => {
-              setUpdating(true)
-              applyUpdate(true)
-            }}
+            // Dead while the walk shows what was typed. Not `disabled`: the press keeps its focus, so a
+            // keyboard's next key still lands on the pill.
+            aria-disabled={view.pressDead || undefined}
+            onClick={pressReload}
             style={{
               padding: '0.375rem 1rem',
               borderRadius: '9999px',
               border: 'none',
-              background: '#f97316',
-              color: '#ffffff',
+              background: view.pressDead ? DEAD_PRESS_FILL : '#f97316',
+              color: view.pressDead ? DEAD_PRESS_TEXT : '#ffffff',
               fontSize: '0.875rem',
               fontWeight: 600,
-              cursor: updating ? 'default' : 'pointer',
+              cursor: updating || view.pressDead ? 'default' : 'pointer',
               opacity: updating ? 0.7 : 1,
               whiteSpace: 'nowrap',
+              ...(view.warned ? { minHeight: UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT } : null),
             }}
           >
-            {updating ? 'Updating…' : 'Reload'}
+            {updating ? 'Updating…' : view.press}
           </button>
           <button
             type="button"
             onClick={() => {
+              if (updatePillIgnoresPress(warn, warnedAtRef.current == null ? null : Date.now() - warnedAtRef.current)) return
+              endWarning()
               dismissedAtRef.current = Date.now()
               setNeedRefresh(false)
             }}
@@ -400,6 +491,7 @@ export function UpdatePrompt() {
               fontSize: '0.8125rem',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
+              ...(view.warned ? { minHeight: UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT } : null),
             }}
           >
             Not now
