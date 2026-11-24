@@ -34,6 +34,40 @@ export function updatePillView(warn: UpdatePillWarn): UpdatePillView {
   return { words: UPDATE_PILL_TYPED_WORDS, press: UPDATE_PILL_CONFIRM, pressDead: warn === 'showing', warned: true }
 }
 
+/**
+ * A press on the pill this soon after the warning took its place is the second half of a double press on
+ * **Reload**, not a choice. The warned pill is laid out afresh, so that second press can land on **Not now**.
+ */
+export const UPDATE_PILL_DOUBLE_PRESS_MS = 400
+
+/** True for a press that is a double press's second half: the pill ignores it. */
+export function updatePillIgnoresPress(warn: UpdatePillWarn, msSinceWarned: number | null): boolean {
+  return warn !== 'ready' && msSinceWarned != null && msSinceWarned < UPDATE_PILL_DOUBLE_PRESS_MS
+}
+
+/** The warned pill's presses are this tall: **Not now** is the one that keeps the words, and a thumb must find it. */
+export const UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT = 44
+
+/**
+ * The pill sits at the foot of the screen, which is where a message box usually is. While a place is being
+ * shown under it, the pill goes to the top, so it never hides the words it is warning about.
+ *
+ * The band is the foot of the screen the warned pill can cover: its own height at a phone's width, and its gap.
+ */
+export const UPDATE_PILL_BAND_PX = 140
+
+export type UpdatePillSide = 'bottom' | 'top'
+
+/** Where the pill sits while these places are ringed. `places` are their boxes on the screen, top and bottom. */
+export function updatePillSide(places: ReadonlyArray<{ top: number; bottom: number }>, screenHeight: number): UpdatePillSide {
+  const onScreen = places.filter((p) => p.bottom > 0 && p.top < screenHeight)
+  const underFoot = onScreen.some((p) => p.bottom > screenHeight - UPDATE_PILL_BAND_PX)
+  if (!underFoot) return 'bottom'
+  // A place that reaches into both bands is hidden a little either way: the pill stays where it is known.
+  const underTop = onScreen.some((p) => p.top < UPDATE_PILL_BAND_PX)
+  return underTop ? 'bottom' : 'top'
+}
+
 export type UpdatePillPress =
   /** Reload now. */
   | 'reload'

@@ -1,14 +1,22 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { TYPED_SHOWN_ATTR, TYPED_TOUR_SETTLE_MS, TYPED_TOUR_SHOWN_MS, pageTourDeps, startTypedTextTour, type TypedTourDeps, type TypedTourEnd } from './typedTextTour'
+import { TYPED_SHOWN_ATTR, TYPED_TOUR_LAND_MAX_MS, TYPED_TOUR_SETTLE_MS, TYPED_TOUR_SHOWN_MS, pageTourDeps, startTypedTextTour, type TypedTourDeps, type TypedTourEnd } from './typedTextTour'
 import { __forgetTypedTextForTests } from './typedText'
 
 /**
  * A page as the walk sees it: places at heights down a long page, and a screen that shows one stretch of it.
  * `bring` puts a place in the middle of the screen, as `scrollIntoView({ block: 'center' })` does.
  */
-function page(tops: Record<string, number>, screen = 800) {
+function page(tops: Record<string, number>, screen = 800, scrollTakesMs = 0) {
   let scrolled = 0
+  /** A smooth scroll: where the page is going, and when it set off. */
+  let move: { from: number; to: number; at: number } | null = null
+  const settle = () => {
+    if (!move) return
+    const part = scrollTakesMs <= 0 ? 1 : Math.min(1, (Date.now() - move.at) / scrollTakesMs)
+    scrolled = move.from + (move.to - move.from) * part
+    if (part >= 1) move = null
+  }
   const els = Object.keys(tops).map((id) => {
     const el = document.createElement('textarea')
     el.id = id
@@ -20,10 +28,19 @@ function page(tops: Record<string, number>, screen = 800) {
   const deps: TypedTourDeps = {
     fields: () => els.filter((el) => !gone.has(el)),
     canShow: (el) => !gone.has(el) && tops[el.id] >= 0,
-    inView: (el) => tops[el.id] >= scrolled && tops[el.id] + 40 <= scrolled + screen,
+    inView: (el) => {
+      settle()
+      return tops[el.id] >= scrolled && tops[el.id] + 40 <= scrolled + screen
+    },
     bring: (el) => {
-      scrolled = Math.max(0, tops[el.id] - screen / 2)
+      settle()
+      move = { from: scrolled, to: Math.max(0, tops[el.id] - screen / 2), at: Date.now() }
+      settle()
       log.push(`bring ${el.id}`)
+    },
+    top: (el) => {
+      settle()
+      return Math.round(tops[el.id] - scrolled)
     },
     ring: (el, on) => {
       if (on) el.setAttribute(TYPED_SHOWN_ATTR, '')
@@ -33,7 +50,16 @@ function page(tops: Record<string, number>, screen = 800) {
     wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   }
   const ringed = () => els.filter((el) => el.hasAttribute(TYPED_SHOWN_ATTR)).map((el) => el.id)
-  return { deps, log, ringed, remove: (id: string) => gone.add(els.find((el) => el.id === id) as Element), at: () => scrolled }
+  return {
+    deps,
+    log,
+    ringed,
+    remove: (id: string) => gone.add(els.find((el) => el.id === id) as Element),
+    at: () => {
+      settle()
+      return scrolled
+    },
+  }
 }
 
 describe('startTypedTextTour: the walk through what was typed', () => {
@@ -74,6 +100,47 @@ describe('startTypedTextTour: the walk through what was typed', () => {
     await vi.advanceTimersByTimeAsync(1)
     expect(end()).toBe('shown')
     expect(p.ringed()).toEqual([])
+  })
+
+  it('a long smooth scroll: the second counts from when the place lands, not from when the page set off', async () => {
+    // Seen in the built app: 51,000 pixels down a list took over a second, and the ring lifted as it arrived.
+    const p = page({ message: 51_000 }, 800, 1_400)
+    const tour = startTypedTextTour(p.deps)
+    const end = ended(tour.done)
+    await vi.advanceTimersByTimeAsync(1_400)
+    expect(p.deps.inView(document.getElementById('message') as Element)).toBe(true)
+    // Landed. It is judged still two looks later, and held a full second from there.
+    await vi.advanceTimersByTimeAsync(TYPED_TOUR_SETTLE_MS + TYPED_TOUR_SHOWN_MS - 1)
+    expect(p.ringed()).toEqual(['message'])
+    expect(end()).toBe('running')
+    await vi.advanceTimersByTimeAsync(1)
+    expect(end()).toBe('shown')
+  })
+
+  it('says when each stop has landed, with its places, so the pill can step clear of them', async () => {
+    const p = page({ name: 100, phone: 160, far: 51_000 }, 800, 1_400)
+    const stops: Array<{ ids: string[]; farInView: boolean }> = []
+    const far = () => document.getElementById('far') as Element
+    const tour = startTypedTextTour({ ...p.deps, onStop: (places) => stops.push({ ids: places.map((el) => el.id), farInView: p.deps.inView(far()) }) })
+    const end = ended(tour.done)
+    expect(stops).toEqual([{ ids: ['name', 'phone'], farInView: false }])
+    await vi.advanceTimersByTimeAsync(TYPED_TOUR_SHOWN_MS + 1_000)
+    // The page is still on its way to the far place: no stop is said yet.
+    expect(stops).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(400 + TYPED_TOUR_SETTLE_MS)
+    expect(stops[1]).toEqual({ ids: ['far'], farInView: true })
+    await vi.advanceTimersByTimeAsync(TYPED_TOUR_SHOWN_MS)
+    expect(end()).toBe('shown')
+  })
+
+  it('a page that never stops moving is not waited on for ever', async () => {
+    const p = page({ message: 51_000 }, 800, 60_000)
+    const tour = startTypedTextTour(p.deps)
+    const end = ended(tour.done)
+    await vi.advanceTimersByTimeAsync(TYPED_TOUR_LAND_MAX_MS + TYPED_TOUR_SHOWN_MS - 1)
+    expect(end()).toBe('running')
+    await vi.advanceTimersByTimeAsync(1)
+    expect(end()).toBe('shown')
   })
 
   it('several places: it takes the person between them, top first, one at a time', async () => {

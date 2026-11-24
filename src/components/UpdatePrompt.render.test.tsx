@@ -7,6 +7,7 @@ import { AUTO_RELOAD_KEY } from '../lib/autoReload'
 import { __resetUnsavedWorkForTests, holdUnsavedWork, wrapFetchCountingWrites } from '../lib/unsavedWork'
 import { __forgetTypedTextForTests, noteTypedInto } from '../lib/typedText'
 import { TYPED_SHOWN_ATTR, TYPED_TOUR_SETTLE_MS, TYPED_TOUR_SHOWN_MS } from '../lib/typedTextTour'
+import { UPDATE_PILL_DOUBLE_PRESS_MS, UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT } from '../lib/updatePillWarn'
 
 type SWOpts = { onNeedRefresh?: () => void; onRegisteredSW?: (url: string, reg: unknown) => void }
 const swOpts: { current: SWOpts | null } = { current: null }
@@ -346,8 +347,10 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
         expect(screen.getByRole('button', { name: 'Reload anyway' }).getAttribute('aria-disabled')).toBeNull()
         expect(reload).not.toHaveBeenCalled()
         expect(note.value).toBe('We can start Monday. Call me first.')
-        // Not now is there the whole time.
-        expect(screen.getByRole('button', { name: /Dismiss update notice/ })).toBeTruthy()
+        // Not now is there the whole time, and both presses are a thumb tall.
+        const notNow = screen.getByRole('button', { name: /Dismiss update notice/ })
+        expect(notNow.style.minHeight).toBe(`${UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT}px`)
+        expect(screen.getByRole('button', { name: 'Reload anyway' }).style.minHeight).toBe(`${UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT}px`)
       })
 
       it('Reload anyway, once the place was shown, reloads: the person saw what goes and said yes', async () => {
@@ -384,12 +387,38 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
         expect(updateSW).not.toHaveBeenCalled()
       })
 
+      it('a message box at the foot of the page: the pill goes to the top while it is shown, and back when the warning ends', async () => {
+        pillWaiting()
+        const middle = leaveAMessage('Call before you come.')
+        const foot = leaveAMessage('We can start Monday.')
+        place(middle, 300)
+        // The last thing on the page: brought as far as the page goes, it sits at the foot of the screen.
+        foot.getBoundingClientRect = () => ({ top: window.innerHeight - 80, bottom: window.innerHeight - 20, left: 10, right: 310, width: 300, height: 60, x: 10, y: window.innerHeight - 80, toJSON: () => ({}) })
+        const pill = () => screen.getByRole('status')
+        fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+        // Both are on the screen, so both are ringed in one stop, and one is under the pill's foot.
+        expect([ringed(middle), ringed(foot)]).toEqual([true, true])
+        expect(pill().style.top).toBe('1rem')
+        expect(pill().style.bottom).toBe('')
+        await pass(TYPED_TOUR_SHOWN_MS)
+        // Shown: the page has not moved, so the pill stays clear of the words.
+        expect(pill().style.top).toBe('1rem')
+        fireEvent.pointerDown(foot)
+        expect(pill().style.bottom).toBe('1rem')
+        expect(pill().style.top).toBe('')
+      })
+
       it('Not now keeps the words: the pill goes, the ring lifts, and nothing reloads', async () => {
         pillWaiting()
         const note = leaveAMessage()
         place(note, 200)
         fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
         expect(ringed(note)).toBe(true)
+        // A double press on Reload: the warned pill is laid out afresh and its second half can land here. Ignored.
+        fireEvent.click(screen.getByRole('button', { name: /Dismiss update notice/ }))
+        expect(screen.getByText('Reloading clears what you typed.')).toBeTruthy()
+        expect(ringed(note)).toBe(true)
+        await pass(UPDATE_PILL_DOUBLE_PRESS_MS)
         fireEvent.click(screen.getByRole('button', { name: /Dismiss update notice/ }))
         expect(ringed(note)).toBe(false)
         expect(screen.queryByRole('status')).toBeNull()

@@ -5,8 +5,8 @@
  * there are several, it takes the user between them on their page.*
  *
  * A stop is one screenful. The walk brings the first place not yet shown to the middle of the screen, rings
- * it and every other typed place that can be seen with it, holds the ring a second, and goes on to the next
- * place not yet shown. So a form with six short fields is one stop, and a note at the top of a long page and
+ * it, waits for the page to stop moving, rings every other typed place that can be seen with it, holds the
+ * rings a second, and goes on to the next place not yet shown. So a form with six short fields is one stop, and a note at the top of a long page and
  * a message at its foot are two.
  *
  * The ring is an attribute, `data-typed-words-shown`, drawn by one rule in `index.css`. Nothing here changes
@@ -20,8 +20,12 @@ import { typedTextFields } from './typedText'
 
 /** How long a place stays ringed. */
 export const TYPED_TOUR_SHOWN_MS = 1_000
-/** The wait after the page is moved, for a smooth scroll to land, before the ring is drawn. */
-export const TYPED_TOUR_SETTLE_MS = 450
+/** A place brought to the screen is looked at this often until it has stopped moving. */
+export const TYPED_TOUR_LAND_POLL_MS = 100
+/** Still for two looks is landed: the shortest a move takes. A smooth scroll down a long list takes over a second. */
+export const TYPED_TOUR_SETTLE_MS = 2 * TYPED_TOUR_LAND_POLL_MS
+/** A page that never stops moving is not waited on past this. */
+export const TYPED_TOUR_LAND_MAX_MS = 3_000
 /** The attribute the ring's CSS rule reads. */
 export const TYPED_SHOWN_ATTR = 'data-typed-words-shown'
 
@@ -34,8 +38,12 @@ export type TypedTourDeps = {
   inView: (el: Element) => boolean
   /** Move the page so it is in the middle of the screen. */
   bring: (el: Element) => void
+  /** How far down the screen it is now. The walk reads it to tell when a move has landed. */
+  top: (el: Element) => number
   /** Draw or lift the ring. */
   ring: (el: Element, on: boolean) => void
+  /** A stop has landed with these places ringed, and its second starts now. The pill reads it to step clear of them. */
+  onStop?: (places: Element[]) => void
   wait: (ms: number) => Promise<void>
 }
 
@@ -76,8 +84,16 @@ export function startTypedTextTour(deps: TypedTourDeps = pageTourDeps()): TypedT
       ringed.add(first)
       deps.ring(first, true)
       if (!wasInView) {
-        await deps.wait(TYPED_TOUR_SETTLE_MS)
-        if (stopped) return 'stopped'
+        // The second counts from when the place has landed, not from when the page set off.
+        let last = deps.top(first)
+        let still = 0
+        for (let waited = 0; waited < TYPED_TOUR_LAND_MAX_MS && still < 2; waited += TYPED_TOUR_LAND_POLL_MS) {
+          await deps.wait(TYPED_TOUR_LAND_POLL_MS)
+          if (stopped) return 'stopped'
+          const now = deps.top(first)
+          still = now === last ? still + 1 : 0
+          last = now
+        }
       }
       // Every other typed place that can be seen with it is the same stop.
       for (const el of all) {
@@ -86,6 +102,7 @@ export function startTypedTextTour(deps: TypedTourDeps = pageTourDeps()): TypedT
         ringed.add(el)
         deps.ring(el, true)
       }
+      deps.onStop?.([...ringed])
       await deps.wait(TYPED_TOUR_SHOWN_MS)
       lift()
     }
@@ -141,6 +158,7 @@ export function pageTourDeps(doc: Document | undefined = typeof document === 'un
         el.scrollIntoView?.()
       }
     },
+    top: (el) => Math.round(el.getBoundingClientRect().top),
     ring: (el, on) => {
       if (on) el.setAttribute(TYPED_SHOWN_ATTR, '')
       else el.removeAttribute(TYPED_SHOWN_ATTR)

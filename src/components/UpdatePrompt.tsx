@@ -14,8 +14,16 @@ import {
 } from '../lib/autoReload'
 import { inFlightWriteCount, subscribeUnsavedWork, unsavedHoldCount } from '../lib/unsavedWork'
 import { pageHoldsTypedText } from '../lib/typedText'
-import { startTypedTextTour, type TypedTour } from '../lib/typedTextTour'
-import { updatePillPress, updatePillView, type UpdatePillWarn } from '../lib/updatePillWarn'
+import { pageTourDeps, startTypedTextTour, type TypedTour } from '../lib/typedTextTour'
+import {
+  UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT,
+  updatePillIgnoresPress,
+  updatePillPress,
+  updatePillSide,
+  updatePillView,
+  type UpdatePillSide,
+  type UpdatePillWarn,
+} from '../lib/updatePillWarn'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 import { registerSW } from 'virtual:pwa-register'
 
@@ -94,6 +102,10 @@ export function UpdatePrompt() {
   /** v2.8499: the pill over typed words: showing what was typed, then offering **Reload anyway**. */
   const [warn, setWarn] = useState<UpdatePillWarn>('ready')
   const tourRef = useRef<TypedTour | null>(null)
+  /** When the warning took the pill's place. A press right behind it is a double press's second half. */
+  const warnedAtRef = useRef<number | null>(null)
+  /** The warned pill goes to the top of the screen while a place being shown is under its foot. */
+  const [pillSide, setPillSide] = useState<UpdatePillSide>('bottom')
   const pillRef = useRef<HTMLDivElement | null>(null)
   const updateSWRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null)
   /** v2.1007: a dismissed pill re-surfaces on route navigation (throttled) while an update waits. */
@@ -222,6 +234,7 @@ export function UpdatePrompt() {
     tourRef.current?.stop()
     tourRef.current = null
     setWarn('ready')
+    setPillSide('bottom')
   }, [])
   useEffect(() => () => tourRef.current?.stop(), [])
 
@@ -230,8 +243,20 @@ export function UpdatePrompt() {
     const press = updatePillPress(warn, pageHoldsTypedText())
     if (press === 'nothing') return
     if (press === 'show') {
-      const tour = startTypedTextTour()
+      // Each stop's places, once the page has landed on them, say where the pill may sit: never over
+      // the words it warns about.
+      const tour = startTypedTextTour({
+        ...pageTourDeps(),
+        onStop: (places) =>
+          setPillSide(
+            updatePillSide(
+              places.map((place) => place.getBoundingClientRect()),
+              window.innerHeight,
+            ),
+          ),
+      })
       tourRef.current = tour
+      warnedAtRef.current = Date.now()
       setWarn('showing')
       void tour.done.then((end) => {
         if (tourRef.current !== tour) return
@@ -386,7 +411,7 @@ export function UpdatePrompt() {
       role="status"
       style={{
         position: 'fixed',
-        bottom: '1rem',
+        ...(view.warned && pillSide === 'top' ? { top: '1rem' } : { bottom: '1rem' }),
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 9998,
@@ -401,7 +426,8 @@ export function UpdatePrompt() {
         boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
         // The warning is a longer line: it takes a row of its own and the presses sit under it.
         ...(view.warned && !autoUpdating
-          ? { flexWrap: 'wrap', justifyContent: 'flex-end', rowGap: '0.375rem', borderRadius: '1rem', padding: '0.625rem 0.75rem 0.625rem 1rem' }
+          ? // `max-content`: a box fixed at `left: 50%` is otherwise fitted to half the screen, and a phone stacks it three deep.
+            { flexWrap: 'wrap', justifyContent: 'flex-end', rowGap: '0.375rem', borderRadius: '1rem', padding: '0.625rem 0.75rem 0.625rem 1rem', width: 'max-content' }
           : null),
       }}
     >
@@ -435,6 +461,7 @@ export function UpdatePrompt() {
               cursor: updating || view.pressDead ? 'default' : 'pointer',
               opacity: updating ? 0.7 : 1,
               whiteSpace: 'nowrap',
+              ...(view.warned ? { minHeight: UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT } : null),
             }}
           >
             {updating ? 'Updating…' : view.press}
@@ -442,6 +469,7 @@ export function UpdatePrompt() {
           <button
             type="button"
             onClick={() => {
+              if (updatePillIgnoresPress(warn, warnedAtRef.current == null ? null : Date.now() - warnedAtRef.current)) return
               endWarning()
               dismissedAtRef.current = Date.now()
               setNeedRefresh(false)
@@ -455,6 +483,7 @@ export function UpdatePrompt() {
               fontSize: '0.8125rem',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
+              ...(view.warned ? { minHeight: UPDATE_PILL_WARNED_PRESS_MIN_HEIGHT } : null),
             }}
           >
             Not now
