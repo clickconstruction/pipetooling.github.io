@@ -11,7 +11,7 @@ covers:
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
 sections: What this surface is; The shared substrate (or lack of one); Master summary table; Test coverage; JobsSubLaborFormModal dossiers; DetailJobModal dossiers; JobsCombineSeparateModal dossiers; Preserve-quirks list; Stage-A pure-logic inventory; Recommended extraction order
-last_updated: 2026-11-23
+last_updated: 2026-11-24
 ---
 
 ## What this surface is
@@ -31,6 +31,8 @@ last_updated: 2026-11-23
 > **v2.6090 (after the stamp) — the job's Drive photos:** `DetailJobModal` mounts `JobPhotosStrip` (over `lib/photos/jobPhotos.ts`, reading the `job-photos` function) under the address above the stage checklists: *Photos · N* as the door to `JobPhotosViewer`, three thumbnails and the *+ N* tile; a job with neither Drive link says so, with **Set the folder** for the roles that edit the job's links; a failed read says why with **Try again** and never hides the window (`docs/recent-features/v2.6090.md`).
 
 > **v2.6226 (after the stamp) — a combined job's prior numbers:** `DetailJobModal`'s header draws `priorNumbersBare(fullJob.prior_numbers)` (`lib/jobs/priorNumbers.ts`) beside the name as *also 550 · 543*, the HCP and C# numbers a source job answered to before `migrate_job_ledger_costs_and_delete` folded it in; `JobsCombineSeparateModal`'s *What does Combine do?* says the numbers are kept (`docs/recent-features/v2.6226.md`).
+
+> **v2.8467 (after the stamp) — the *Paid to* lists leave out a person whose account is archived:** the roster load in `Jobs.tsx` asks which linked accounts are live and marks a row whose account is not among them ([`leftAccounts.ts`](../src/lib/people/leftAccounts.ts): `accountsThatLeft`, `withAccountArchived`), and `JobsSubLaborFormModal` leaves a marked row out beside a benched sub, a name already on a sheet staying; a reader the accounts are closed to marks nobody.
 
 > **v2.7394 (after the stamp) — the sheet form's people step is one pick, *Paid to*:** in `JobsSubLaborFormModal` a chip, the job-team offer and a sub added inline all go through `nextCrewPick` ([`sheetCrewWords.ts`](../src/lib/subWorkOrders/sheetCrewWords.ts)), so ticking a name takes the place of the one ticked before, and the wizard's step, its Next press and its label read `crewStepTitle()`. `applyPickedLaborJob` and `openWithBillingPrefill` no longer tick a picked job's team (`SHEET_PRETICKS_JOB_TEAM` is false): they keep it in `laborJobTeamOffer`, one more `useState`, which `SheetJobTeamOffer` draws under the chips until someone is ticked. [`SheetCrewHints.tsx`](../src/components/jobs/SheetCrewHints.tsx) also holds `SheetCrewWhoLine` (whose the sheet is, from `crewStepLine`, with a press that takes a second name off) and `SheetSameLineWarning` over the lines (`sameLinesOnOtherSheets`). A sheet opened to edit keeps the names it was saved with, and nothing refuses a save for them. So S1b's New-mode crew pre-check and S2's toggle, as the dossiers below describe them, are the behaviour before this. v2.7237 before it added only `checkedAt` to the `EditingPaymentTarget` the Payments table hands to Edit Payment, whose window then says that a change to the amount or the date clears the bank tick.
 

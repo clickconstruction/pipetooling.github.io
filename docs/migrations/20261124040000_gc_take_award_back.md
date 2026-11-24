@@ -17,3 +17,5 @@ No table is created, so no fence call is owed. `CREATE OR REPLACE`, idempotent. 
 **The bed**: `supabase/tests/gc_take_award_back/20_scenario.sql` (`scripts/pgtest-gc-take-award-back.sh`, in `scripts/sql-beds.txt`): every role's gate, each refusal above with its words, records that are not the award's passing, the take-back itself, the award guard still refusing a plain write afterwards, and the trade awarded again.
 
 **Order**: push right after the merge. The client calls a function only this migration creates, so `check:calls-ahead` labels the PR *push right after the merge* and the deploy holds until the push. The types regen (`database.ts`, the dev-mcp catalog) follows the push as usual.
+
+**Applied** to prod by 2026-11-24: the dev seat's `check_migration_ledger` read 1,485 versions applied against 1,485 local files, this version among the newest it listed (read in the docs pass after #9574).

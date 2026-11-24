@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-23
+last_updated: 2026-11-24
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -3395,6 +3395,7 @@ Since v2.8201 (step 3) a job photo and a report photo keep where the phone was w
 The phone is read once on the pick by the shot-tile engine's `keepPoint`, the reading is carried through the waiting queue, and an opened photo offers **Taken here** (`PhotoTakenHere`).
 Since v2.8203 (steps 6 and 7) a place holds up to twelve more photos after its first (`more_photos`, `PlacePhoto`, `usePlaceMorePhotos`, **＋ Another photo** on the place sheet), drawn under its words in the list.
 A buried place may run along a line (`line_id`): **＋ Walk this line** or **＋ Draw this line** paints a map of its own named for the place, its first line is tied to the place when that map closes (`paintLineForPlace`, `tiePlaceToNewLine`), the place's row then says the line's length, and the line draws in the place's locator color (`PaintedCanvasLine.color`).
+Since v2.8495 the Google canvas reads that color too and draws a kept line again when its color comes (`PaintedMapGoogleCanvas`), where it stroked every line in the paint's orange.
 Since v2.8204 (step 8) the office's job window has a **Map** tab that draws all of it on one map → *Job window*.
 Since v2.8205 (step 2b) a new place whose save loses the signal is kept on the phone, its record in the phone's storage and its photos' bytes in `keptPhotos` (`paintedKeptSpot.ts`, `keepSpot`), and `PaintedMapHost` sends what waits when the app opens, when the phone is back online and when a map's window closes (`sendKeptSpots`), each write under ids made on the phone so a second try makes nothing twice.
 A place on the job wears a letter and a map's own place a number, and every other painted map of the job draws the job's places with a dashed ring under **On this job**, where they are read and not changed.
@@ -6948,9 +6949,11 @@ and it reads the record back above the button before the press, *The record will
 An email the mail service has only called *sent* counts the days once `BILLS_SENT_NO_ANSWER_DAYS` (2) have passed, *No answer from their mail server in 14 days*, with *Check the address* on a bill still open, and it never joins **Did not arrive** (v2.8424).
 A send whose bill is no longer on the job carries the note `BILLS_SENT_GONE_NOTE`, that the bill was taken back or replaced after it went, and counts in no total (v2.8427).
 **No send on record** (v2.7052) is a bill the app made that has no email, text or print on any record: it sits in a strip above the days, never on a day.
+Since v2.8446 the chips **Did not arrive**, **Not paid** and **No send on record** with nothing under them read *Nothing waiting on …* with **See every send**, where a search that misses still reads as a miss (`billsSentEmptyGood`).
 **Paid, Part paid, Not paid** (v2.8333, punch list #422) is where a bill stands, drawn as a stamp under its amount on every send of it, from the bill's own payment rows (`billPaidState`, `src/lib/billing/billsPaid.ts`).
 Since v2.8423 a billed bill whose payments on record leave nothing out reads **Paid**, its status unchanged, and a bill a cent short is still part paid.
 A paid bill's stamp carries the newest payment's day and, under it, the way in the job window's words (*Card · Stripe*, *Check 4417 · bank deposit*) and the days the money took from the bill's first send.
+Since v2.8452 a bill marked paid with no payment day reads *day not on record* there, and one paid before its first send on record reads *before the first send on record* where the days would stand (`BILLS_SENT_PAID_NO_DAY`, `BILLS_SENT_PAID_BEFORE_SEND`).
 Since v2.8422 a check shows its number alone (`checkNumberOf`, `src/lib/jobs/billsAndPayments.ts`: at most 12 characters that start with a digit, a leading *ck#* dropped), so a deposit's id is never drawn and a check with no readable number reads *Check · bank deposit*.
 **Still out** is an open bill's amount or a part-paid bill's remainder;
 a day's band counts it over the bills that first went that day (*1 of 3 paid · $6,820.00 still out*), and the **Not paid** tile over every bill not paid in full, sent or not.
@@ -6959,13 +6962,16 @@ The oldest is counted from a sent bill's first send, and from the day it was bil
 A bill with no amount on record is counted and adds nothing, and the tile says how many there are.
 A bill with no send whose payments leave nothing out sits with the paid ones in the yellow box, and a part-paid one's row says what is still out.
 **By day paid** (v2.8343) is the page's second view, behind the switch at its top and at `/bills-sent?view=paid`: a month of days, each with what came in, and behind a picked day its total and its payments (`src/lib/billing/billsPaidDays.ts`).
+Since v2.8448 a month opens on the newest day money came, on today only once something came in today, and an empty day's press names the day or month it goes to (`billsPaidOpeningDay`, `billsPaidLastPaidDay`, `billsPaidEmptyDay`).
 Since v2.8493 a picked day names the bank deposits that landed that day and are on no bill yet, in one quiet line with **Open deposits**, under **All** alone (`billsPaidNoBillLine` over `src/lib/moneyInDeposits.ts`, the Money in bar's own rule);
 they are never added to a figure, a cell, a tile, the print or the CSV.
+Since v2.8524 the bank is never asked from before the org's Accounts Receivable start date (`moneyInDepositsReadFrom`), so an old month names no deposit the Accounts Receivable window does not list, and the line says the deposits did not read when the org's deposit setting does not.
 **A day's figure** is each payment at what it took off its bill, on the payment's own day: a Stripe payment the day the customer paid, a matched deposit the day it posted at the bank, a typed payment the day the person named;
-Stripe's fee is not taken off, a refund made in Stripe is not seen, a credit in kind is listed and never added, and a test-mode bill's payment is left out.
+Stripe's fee is not taken off, a refund made in Stripe is not seen, a credit in kind is listed and never added, and a test bill's payment is left out.
+**A test bill** (v2.8445) is one made in Stripe's test mode or one on a ZZ test job (`isBillsTestRow`, `src/lib/billing/billTestRows.ts`): By day sent keeps its send on the list with a mark that says it is in no total, and neither view adds it to a day, a tile, a chip or a paid count.
 The chips narrow the month to one way of paying, **Stripe** first, and **one deposit** that paid several bills is drawn once with its bills under it.
 A payment is named by who its bill was sent to, and by the job's customer only when no send names one, so both views say one name (v2.8425).
-The tile *Next Stripe payout to the bank* is drawn on any answer, *None on its way* or *Stripe did not answer* standing where the amount would (`billsPaidPayoutOf`), and a day with a credit in kind and no money reads *1 credit* in its cell (v2.8426).
+The tile *Next Stripe payout to the bank* is drawn on any answer, *None on its way* or *Stripe did not answer* standing where the amount would (`billsPaidPayoutOf`), and a day with a credit in kind and no money reads *1 credit* in its cell (v2.8426), *credit* alone on a phone (`billsPaidCellCredit`, v2.8443).
 Each month step names the month it opens, *‹ Oct* and *Dec ›* (`billsPaidStepLabel`), and the printed month opens with the month's grid, a paid day boxed with its figure to the cent (`billsPaidMonthGridHtml`, v2.8416).
 Readers are the sent copies' own: dev, master, assistant, controller.
 
@@ -7009,11 +7015,13 @@ A **send** (`document_builder_sends`, v2.8009) is a job's published sheet put on
 A send reads **changed** when they opened an older revision and have not been told of the new one.
 A send never turns a page back on, a trade with no page gets one only from a send to that trade alone, and a send **taken off** leaves the trade's page.
 The one press for every trade that is ready reaches only a trade awarded on the job, and a trade asked and not awarded is sent to from its own row (v2.8192).
+Above that press a line for each ready party names who its email goes to (`batchGoesTo`, v2.8487), a reason that holds more than three parties reads as one counted line that opens the names (`heldLines`, v2.8435), the press to one party names its contact whole (`pressName`, v2.8433) and a row says how many times its send went (`sentWords`, v2.8437).
 Since v2.8024 a walked builder is typed on **what a GC sees**: each piece of words on the flow is a field named by a **path** into the paper, and a **page** is the flow's own, a topic at a level among them ([`paperEdit.ts`](../src/lib/documentBuilder/paperEdit.ts)).
 Since v2.8460 a topic's section name, the names of the facts above the basis slider, the basis page's line while the paper is Off and the last step's press with the line under it are fields too, each at the path [`flowFields.ts`](../src/lib/documentBuilder/flowFields.ts) names.
 The levels' names, and the paper's title, job, company and party, are not fields.
 The **map** is a row a topic and a column a level, each cell opening its page, and nobody types in it.
 A page is **changed** while it differs from the published revision, with **Back to revision N** to put it back, and **Publish revision N** makes the draft what everyone outside sees.
+Since v2.8439 that press asks first, with **Not yet** as the safe answer (`walkedPublishConfirm`), and since v2.8511 the insurance sheet's two publish presses ask the same way (`jobPublishConfirm`, `usualPublishConfirm`).
 Since v2.8456 the card under the map counts the changed pages, shows the two marks a field wears, *As published* and *Changed, not published*, and lists each page with its level apart from its name ([`changedCard.ts`](../src/lib/documentBuilder/changedCard.ts)).
 The **open cell** is the map's cell for the page the flow shows on the right, outlined in its level's colour: the flow says where it is (`onShown`), so the outline follows **Next**, **Back** and the slider as well as a press on the map.
 In the code the one thing a builder makes is a *paper* (`PaperDef`, `PaperSettings`), and the folders are `documentBuilder`.
@@ -7039,9 +7047,11 @@ A job contract that waits opens its Contract window from the line ([`agreementsA
 Since v2.7937 **Send a paper**, beside the find box, picks a paper from the Contract Book and a person and opens the same email window: People → Contracts' quick send on this page ([`AgreementsSendPaper.tsx`](../src/components/documents/AgreementsSendPaper.tsx)).
 Since v2.7938 **Contract library**, beside it, opens the library People → Contracts opens, in place and with the same role rules ([`AgreementsContractLibrary.tsx`](../src/components/documents/AgreementsContractLibrary.tsx)).
 Nothing left People → Contracts: both pages keep a door.
+Since v2.8430 the tab's presses, chips and line names stand 44 px tall at 640 px and under, the picker's and the shared Send window's with them ([`agreementsPhonePress.ts`](../src/lib/documents/agreementsPhonePress.ts)).
 Since v2.7995 (punch list #403) the second window of **Send a paper** is **Who is it with?**, which finds a teammate, a sub, a customer and the people on file there, a supply house and its reps, and takes **Someone not in any list** ([`PaperPartyPicker.tsx`](../src/components/documents/PaperPartyPicker.tsx), [`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts)).
 Since v2.8419 (punch list #403, step 6) **Who is it with?** finds a sub by their trade company's name too, and their line reads *Signs for* the company ([`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts), `sendRosterWithCompanies` in [`agreementsSend.ts`](../src/lib/documents/agreementsSend.ts)).
 Since v2.8325 (punch list #403, the owner's third decision of 2026-11-22) a company that already has the picked paper out is named before the email window opens: a small window says who has it and the day it went, and offers **Send it to … again** or **Send a second copy to someone else**, which is a row of its own ([`partyPaperOut.ts`](../src/lib/documents/partyPaperOut.ts)).
+Since v2.8486 that look reads the company's own contact and each named contact that points at it (`partyContactsToLook`, `findPartyContacts`), so a copy out under a person named there is found, and Escape closes the three windows the press draws.
 A paper with an outside company is a line tagged *Customer*, *Supply house* or *Not on a list*, under the chip **Outside companies**, and it says who signs after the party.
 Since v2.8419 a trade company's own paper, tagged *Trade company*, sits under **Staff and subs** with the subs who work there, where it sat under **GC projects** before.
 An estimator still reads a trade company's own paper under **Outside companies**.
@@ -7075,6 +7085,7 @@ Since v2.8313 (punch list #403, step 5, `20261123020000_sub_company_ground.sql`)
 Since v2.8381 (punch list #403, step 6) People → Contracts draws a **trade company** row above the subs who work for it, tagged *Trade company* and naming its workers, a worker with a title first ([`subCompanies.ts`](../src/lib/people/subCompanies.ts)).
 **Their company** is the value in place on a sub's opened row that enters, moves or clears that link, with **Same as their name** for a sub whose business carries their own name, and a new name makes a trade company whose trade is Plumbing.
 Since v2.8394 the company's row lists the company's own papers once, the newest copy of each with its state, and offers **Send for signature** and **Enter from paper**, while each worker's own paper says *signing for* the company on their row ([`subCompanyPapers.ts`](../src/lib/people/subCompanyPapers.ts)).
+Since v2.8485 the send window opens on the signer's roster address, else on the one the company keeps for that name (`signerEmail`), and the row's two presses stand 44 px tall at 640 px and under (`companyPressHeight`).
 Since v2.8162 a party's own page lists its papers: a supply house's window under **Papers**, and the Customer page's **Agreements** card under *Papers with this customer* ([`PartyPapers.tsx`](../src/components/contracts/PartyPapers.tsx), [`partyPapers.ts`](../src/lib/contracts/partyPapers.ts)).
 A paper is a party's when its contact is the party's own or that of a person there: a person on file at the customer, or a rep of the house.
 That list holds every kind and every state, so a W-9 and a paper that reads *not sent* are on it, where the Agreements tab lists agreements that were sent.

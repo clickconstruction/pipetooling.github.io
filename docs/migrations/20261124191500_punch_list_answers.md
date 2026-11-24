@@ -25,3 +25,5 @@ Nobody yet. The view that writes both is the next PR. The client on prod reads a
 ## Order
 
 Additive and idempotent. A second run finds the column, drops the constraint and adds the same one. Adding a column with a constant default rewrites nothing. Adding the check scans the table, which holds a row per card, under two hundred. The `SET lock_timeout` keeps the brief lock from queueing the app. Push any time after the merge, and before the view's PR merges, then regenerate the types.
+
+**Applied** to prod by 2026-11-24: the dev seat's `check_migration_ledger` read 1,485 versions applied against 1,485 local files, this version among the newest it listed (read in the docs pass after #9574).

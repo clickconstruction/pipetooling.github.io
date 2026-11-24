@@ -39,3 +39,5 @@ One entry for each live required paper that carries settings, in the order the p
 
 - The bed `job-papers-gc-page` (`supabase/tests/job_papers_gc_page`, 21 assertions), run locally: the level, the plain words, the count against the office's roster, one business of two people with one and then both signed, a helper who counts and is never named, a mix after a change, a prose paper and a job with none left out, and who may call what.
 - The beds `job-required-papers` and `job-papers-lists`, which read the office's roster, run beside it in CI.
+
+**Applied** to prod by 2026-11-24: the dev seat's `check_migration_ledger` read 1,485 versions applied against 1,485 local files, this version among the newest it listed (read in the docs pass after #9574).
