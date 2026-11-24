@@ -489,6 +489,14 @@ describe('billsSent — out of the app (PR 5)', () => {
     expect(rows[3]).toBe('2026-11-03,4:41 PM,Bill 1412-0002,J1412 · Sable Ridge Lot 14,Sable Ridge Builders,4860.00,yes,Sable Ridge Builders,hal@sableridge.example,,Email,Priya,1,,Not paid,,,4860.00,,')
     expect(rows[4]).toBe(',,Bill,J1398 · Larkfield Clinic,Larkfield Construction,2140.00,no,,,,No send on record,,,,Not paid,,,,,"Billed Mon, Nov 9 at 3:26 PM."')
     expect(billsSentCsvFileName('2026-11-12')).toBe('bills-sent-2026-11-12.csv')
+    // The file says what it holds: a chip is named, and so is a search, so a part of the list is never saved under the whole list's name.
+    expect(billsSentCsvFileName('2026-11-12', 'all', '  ')).toBe('bills-sent-2026-11-12.csv')
+    expect(billsSentCsvFileName('2026-11-12', 'unpaid')).toBe('bills-sent-2026-11-12-not-paid.csv')
+    expect(billsSentCsvFileName('2026-11-12', 'missed')).toBe('bills-sent-2026-11-12-did-not-arrive.csv')
+    expect(billsSentCsvFileName('2026-11-12', 'housecall_pro')).toBe('bills-sent-2026-11-12-housecall-pro.csv')
+    expect(billsSentCsvFileName('2026-11-12', 'gap')).toBe('bills-sent-2026-11-12-no-send-on-record.csv')
+    expect(billsSentCsvFileName('2026-11-12', 'email', 'larkfield')).toBe('bills-sent-2026-11-12-email-search.csv')
+    expect(billsSentCsvFileName('2026-11-12', 'all', 'larkfield')).toBe('bills-sent-2026-11-12-search.csv')
   })
 
   it('prints what the list shows under its days, with the gaps first', () => {

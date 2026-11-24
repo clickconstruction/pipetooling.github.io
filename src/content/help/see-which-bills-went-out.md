@@ -171,6 +171,8 @@ Press {{button:outline|Print}} to print what the list shows. The page keeps the 
 
 Press {{button:outline|Download CSV}} to save what the list shows as a spreadsheet file. Each send is one row.
 
+The file's name says the chip it was saved under. A file saved under **Not paid** ends in *not-paid*.
+
 The file has a column that says whether a row is in its day's total. Add only those rows to get the same totals as the screen.
 
 The file also says who has paid. Four columns hold the paid day, the way, what is still out and the days the money took.

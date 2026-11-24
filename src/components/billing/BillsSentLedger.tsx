@@ -882,7 +882,7 @@ export function BillsSentLedger() {
   }
   const saveCsv = () => {
     // The byte order mark lets a spreadsheet read the file's accents and dots as written.
-    saveBlobAs(new Blob(['\ufeff', billsSentCsv(shown, outGaps)], { type: 'text/csv;charset=utf-8' }), billsSentCsvFileName(today))
+    saveBlobAs(new Blob(['\ufeff', billsSentCsv(shown, outGaps)], { type: 'text/csv;charset=utf-8' }), billsSentCsvFileName(today, route, typed))
   }
   const nothingShown = shown.length === 0 && outGaps.length === 0
   const outPress: CSSProperties = phone ? phoneButton : { ...chipStyle(false), borderRadius: 6, fontWeight: 700, color: 'var(--text-strong)' }

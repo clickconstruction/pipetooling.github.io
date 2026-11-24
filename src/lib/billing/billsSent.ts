@@ -1154,9 +1154,18 @@ export function billsSentCsv(lines: ReadonlyArray<BillsSentLine>, gaps: Readonly
   return rows.map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n'
 }
 
-/** `bills-sent-2026-11-12.csv`. */
-export function billsSentCsvFileName(todayYmd: string): string {
-  return `bills-sent-${todayYmd}.csv`
+/**
+ * `bills-sent-2026-11-12.csv` for the whole list. Under a chip the file is named for it, in the chip's own words:
+ * `bills-sent-2026-11-12-not-paid.csv`. A typed search adds `-search`. The file holds what the list shows, and it
+ * once took the whole list's name whatever chip was on, while By day paid's file named its chip.
+ */
+export function billsSentCsvFileName(todayYmd: string, route: BillsSentChip = 'all', typed = ''): string {
+  const label = route === 'all' ? '' : (BILLS_SENT_ROUTE_CHIPS.find((c) => c.key === route)?.label ?? route)
+  const chip = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  return ['bills-sent', todayYmd, chip, typed.trim() ? 'search' : ''].filter(Boolean).join('-') + '.csv'
 }
 
 /**
