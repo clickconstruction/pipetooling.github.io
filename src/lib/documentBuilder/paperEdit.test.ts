@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { PAPER_OFF, breachGroups, ownBreachLines, type PaperDef } from './documentBuilder'
 import { paperDefProblems } from './definition'
+import { plainWordsFailures } from '../plainWords'
 import {
   PAPER_NEW_LINE,
   changedPages,
@@ -14,6 +15,7 @@ import {
   pathPage,
   revertPage,
   walkedNote,
+  walkedPublishConfirm,
   walkedPublishPress,
   withPaperLine,
   withPaperWords,
@@ -198,6 +200,21 @@ describe('the map', () => {
 })
 
 describe('publishing', () => {
+  it('asks first, by the revision it makes, and says a publish cannot be taken back', () => {
+    expect(walkedPublishConfirm({ revision: 2 })).toEqual({
+      title: 'Publish revision 3',
+      message: 'Everyone outside sees revision 3 from now on. That is each GC you sent it to and anyone with the link. A publish cannot be taken back. A later revision can only replace it.',
+      confirmLabel: 'Publish revision 3',
+      cancelLabel: 'Not yet',
+      cancelIsSafe: true,
+    })
+    // The first publish has nobody reading yet, so it says what revision 1 becomes.
+    expect(walkedPublishConfirm({ revision: 0 }).message).toBe('Revision 1 is what a GC sees once you send it, and what the link opens. A publish cannot be taken back. A later revision can only replace it.')
+    expect(walkedPublishConfirm({ revision: 0 }).confirmLabel).toBe('Publish revision 1')
+    const words = [0, 2].flatMap((revision) => Object.values(walkedPublishConfirm({ revision })).filter((v): v is string => typeof v === 'string'))
+    expect(words.flatMap((t) => plainWordsFailures(t))).toEqual([])
+  })
+
   it('names the next revision, is dead with nothing changed, and lists what stops it', () => {
     const def = paper()
     expect(paperDefProblems(def)).toEqual([])

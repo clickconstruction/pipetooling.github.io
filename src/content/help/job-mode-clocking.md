@@ -2,7 +2,7 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: row at the top, gear menu list, computer, tablet, switch, pull down, grey bar, dashboard, task mode, top row, squares, directions, job details, photo, my spend, paint a map, this week, tomorrow, on site, short job mode, short page, open this job, everything else, too much, overwhelmed, write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
+keywords: row at the top, five seconds, timer, row went away, row disappeared, swipe up, gear menu list, computer, tablet, switch, pull down, grey bar, dashboard, task mode, top row, squares, directions, job details, photo, my spend, paint a map, this week, tomorrow, on site, short job mode, short page, open this job, everything else, too much, overwhelmed, write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
 where: /dashboard
 order: 10
 ---
@@ -34,13 +34,17 @@ On a phone, every role but the estimator gets one row above the header. The row 
 :::
 
 - The blue part is the page you are on.
-- You tap another part to switch. The row stays in sight after a switch, so the way back is one tap.
+- You tap another part to switch. The row then stays five more seconds, so the way back is one tap.
 - **Dashboard** is the full Dashboard. Anyone with Dispatch Mode on keeps the Dispatch Mode bar there.
 - **Task Mode** shows only your checklist. See [use Task Mode](/help/task-mode).
 
-The row hides once you have used it. A small grey bar at the top of the page marks its place. You pull the page down from its top to bring the row back. A tap on the grey bar does the same.
+The row shows for five seconds each time you go to the Dashboard. A thin grey line under the row gets shorter as the time runs out. Then the row slides up and away. The page under the row does not move. The row also shows when you come back to the app after a minute away.
 
-The row stays in sight in two cases. The row stays while you are in Task Mode. The row also stays for a sub or a helper who is not in Job Mode.
+You can keep the row longer. Rest a finger on the row and the row waits. The row starts five fresh seconds when you lift the finger. You can also send the row away at once. Swipe up on the row.
+
+A small grey bar at the top of the page marks the row's place. Tap the grey bar to bring the row back. A pull down from the top of the page does the same. So does a tap on the **Dashboard** link in the header.
+
+The row stays in sight while you are in Task Mode. There the row is the way out.
 
 On a phone the row is the one place to switch. The {{icon:gear}} gear menu there does not list **Job Mode** or **Task Mode**. **Dispatch Mode** is still in the gear menu for the roles that can use it.
 

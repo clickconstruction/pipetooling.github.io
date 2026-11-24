@@ -2,19 +2,19 @@
 name: "Lien desk gate marks: the spike's record and what it left"
 number: 364
 group: residual
-status: spike 2026-11-15 · shape G shipped v2.7335 the same day · left: a row press that lands on its open gate
+status: spike 2026-11-15 · shape G shipped v2.7335 the same day · the row press that lands on its open gate built v2.8472 · left: a look on the live desk
 summary: >
   The owner asked on 2026-11-15 whether the affidavit pane's five gates should show on each row of the
   Lien affidavits list. A design spike measured eight shapes, and shape G shipped the same day: five small
   marks after the row's last work month, in the pane's order, on the two piles where a hold is still
-  possible. This card is the way back to the spike's note, its measurements and its flags, and it holds the
-  one piece the spike left for later.
-next: Decide whether a press on a row with a hold should bring the pane's first open gate into view. If yes, build it as one small PR.
-size: S (one PR)
-blocker: None. The pane's gate rows became presses in v2.7313.
+  possible. This card is the way back to the spike's note, its measurements and its flags. The one piece the
+  spike left, a row press that lands on its open gate, is built in v2.8472.
+next: Once v2.8472 is live, press a held row on the Lien affidavits list on a real phone and on a computer, and say whether the landing reads right. Then this card can go.
+size: S (a look, no build)
+blocker: v2.8472 has to be live first.
 mockup: not required — the marks shipped in v2.7335, and the piece left changes only where a press lands
-opinion: your call — the marks already name the gate on a computer, so the saving is a scroll in the pane, mostly on a phone
-ver: v2.7313 · 7335
+opinion: look at it on a phone first — that is where the gates open a whole screen under the job's path
+ver: v2.7313 · 7335 · 8472
 ---
 
 # Lien desk gate marks: the spike's record and what it left (#364)
@@ -57,35 +57,45 @@ no marks. The files and the measurements are in `docs/recent-features/v2.7335.md
   gates.
 - **The strip is not a press.** The row is a button, and a button cannot hold another. The pane is where a gate opens.
 
-## Left: a row press that lands on its open gate (S)
+## Built: a row press that lands on its open gate (v2.8472)
 
-The spike's note named it: on a phone, a tap could open the pane at the gate the row is held on. Since v2.7313 every
-row of the pane's gate list is a press that opens its record, so from that row the record is one press away.
+Diane said on 2026-11-24 to build it. A press on a list row whose gates hold opens the pane with the first open
+gate on the screen, lit for a moment, with the keyboard on it, so the next press opens the record. A row with every
+gate clear opens as it did. The fragment `docs/recent-features/v2.8472.md` has the calls taken and the measures.
 
-Today a press on a list row selects the job and, on a phone, swaps the list for the pane (`setAffSelectedJobId` and
-`setMobileListShown(false)` on the row in `LienDesk.tsx`). Nothing brings the pane's gate list into view; only the
-tests read `data-lien-gate-row`.
+- **First gate:** the pane's own order, which is the order of the row's marks.
+- **In view:** a gate already clear of the pinned heads moves nothing. Otherwise the gates section lands under its own
+  head. On a 730 px wide window the held gate opened 65 px under the pane's bottom edge, so the scroll is wanted on a
+  computer too. At 1400 px wide the gate is on the screen at open, and nothing scrolls.
+- **Less motion:** the pane jumps with no glide and the light stands still.
+- **Not changed:** a single mark is not a press. A pane opened from the Board, By job, a link or a batch's failure
+  line lands nowhere.
 
-The piece: when the pressed row has an open gate, bring the pane's first open gate row into view and focus it, so the
-next press opens the record. A row with every gate clear opens as it does now. The desk already has
-`scrollPaneTo(selector)`, and each gate row carries `data-lien-gate-row=<key>`, with `data-lien-gate-ok="no"` when it
-holds. A gate row with no door is a disabled button and cannot take focus, so that one is only brought into view. One
-render test: press a held row, and focus lands on that gate's row.
+The code had moved since this card was written. The list is `LienDeskAffidavitList.tsx`, and the affidavit pane is its
+own scrolling box with its own pinned heads, so the desk's `scrollPaneTo` was not the tool. The pane does its own
+landing.
 
-The owner's call first: on a computer the pane sits beside the list, so the scroll may not be wanted there.
+## Left: a look on the live desk
+
+The build was seen on a harness page over made-up rows, in headless Chromium, at 730 and 380 px wide, light and dark.
+Not seen: a real phone, Safari, a real job, and a screen reader's words when the keyboard lands on the gate. Once
+v2.8472 is live, press a held row on a phone and on a computer. If the keyboard moving to the pane gets in the way of
+working down the list with the keys, say so: the focus is one line in `useLienGateLanding.ts`.
 
 ## Where it plugs in
 
 - `src/lib/jobs/lienGateMarks.ts`: the marks, the summary words, and `lienGateRowParts` (which piles carry the
   marks, and the words on a phone).
+- `src/lib/jobs/lienGateLanding.ts` and `src/components/jobs/useLienGateLanding.ts`: the gate a row press lands on,
+  how far the pane scrolls, and the wiring (v2.8472).
 - `src/components/jobs/LienGateMarkStrip.tsx`: the drawing.
-- `src/components/jobs/LienDesk.tsx`: the affidavit list row, its press and `scrollPaneTo`.
+- `src/components/jobs/LienDeskAffidavitList.tsx`: the affidavit list row and its press. `LienDesk.tsx` keeps the ask.
 - `src/components/jobs/LienDeskAffidavitPane.tsx` and `src/lib/jobs/lienGateRow.ts`: the pane's gate rows (v2.7313).
 - `useIsMobile()` is the phone test, 640 px wide or less.
 
 ## How to verify
 
-- `npx vitest run src/lib/jobs/lienGateMarks.test.ts src/components/jobs/LienDesk.render.test.tsx`
+- `npx vitest run src/lib/jobs/lienGateMarks.test.ts src/lib/jobs/lienGateLanding.test.ts src/components/jobs/useLienGateLanding.test.ts src/components/jobs/LienDesk.render.test.tsx`
 - On the dev server (it needs the main checkout's `.env.local`), sign in at `/dev-login?as=1`, then open
   `/lien-desk?tab=affidavits` and read the marks in *Needs the property facts*. For a phone, set the browser pane to
   375 wide and reload. The dev sign-in is the dev account on the live database: read only, press nothing that writes,

@@ -2,7 +2,7 @@
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
 group: ready
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483 · the title bar's run door retired, v2.7490 · the run window redrawn for notices and built, v2.7477 (one count, three steps, one press); the liens' lane is drawn and not approved
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483 · the title bar's run door retired, v2.7490 · the run window redrawn for notices and built, v2.7477 (one count, three steps, one press); the liens' lane is drawn and not approved · step 5, the Get it right checklist with Leave out, built v2.8474 on Diane's word of 2026-11-24, with its one call written to flip
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -13,10 +13,10 @@ summary: >
   under it, about three rows. The mock-up draws today's desk and three answers with the Board in
   place: B (one page, clearer rows), A (the list follows the Board's bins) and D (one run in three
   steps, opened from the Board's first tile). Each is the start of the next.
-next: Step 5, the Get it right checklist with Leave out (M), the first step of the run. Ask where a left-out paper is remembered and whether the next run takes it by itself, before it is built.
-size: L for D as five steps (M · M · M · S · M); B, the first three, and step 4, the list by bin, are built; left: steps 5 to 8 (M · M · S · M)
+next: The owner's word on step 5's call (a left-out paper is on record and the next run asks about it again), then a look at the checklist on the live desk once the migration is pushed. Then step 6, the gate and the one print (M).
+size: L for D as five steps (M · M · M · S · M); B, the first three, step 4, the list by bin, and step 5, the checklist, are built; left: steps 6 to 8 (M · S · M)
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474
 ---
 
 # Lien desk To do: one run (#362)
@@ -164,9 +164,10 @@ by itself.
    the door of v2.7398), the affidavits to send (*Send N for approval…* on the Affidavits list), the
    papers waiting on the leader (the reminder press of v2.7371). A GC's approved notices and the
    printed notices already fold. A pressed bin goes to its group.
-5. **The checklist** (M): step 1 as a kernel over the desk's queues, every open question with its
-   button and a *Leave out* that the run remembers. Where a left-out paper is remembered is this
-   step's first decision: on the paper's desk row, so every office seat sees it, needs a migration.
+5. **The checklist** (M), built, v2.8474: step 1 as a kernel over the Board's chips and the To do rows
+   (`lienGetItRight.ts`), every open question with its row's own press and a *Leave out* the run
+   remembers (`lienLeftOut.ts`, the table `lien_run_left_out`, one migration). The call it took is
+   under *Open questions*; what the build changed from the drawing is under *Where it stands*.
 6. **The gate and the one print** (M): step 2. One press, one stack, the owner's answer of
    2026-11-16: the help sheet, the notices in envelope order (`buildLienDeskRun`), a divider page,
    then the affidavits by county clerk (`lienAffidavitClerkOrder`). The notices' print stamps
@@ -209,8 +210,18 @@ Two things he agreed to in direction the same day, both built since:
   day that tile counts to, since the run opens from it. The desk's lien month cards (Reminders 1 to 5,
   Notices 6 to 9, Liens 10 to 13, the 15th) describe the same rhythm. Ask before step 5 ships if the
   tile's day reads wrong in use.
-- **Leave out.** Not asked yet, and step 5's to ask: a paper left out of this run stays in its bin
-  with its own day. Does the next run take it by itself, or does it wait on a person to put it back?
+- **Leave out.** Built to a default on 2026-11-24 (v2.8474), and the owner's to flip. The question:
+  where is a left-out paper remembered, and does the next run take it by itself? The pick: it is on
+  record, with the reason, who and when, so every office seat sees it. The next run neither takes it
+  nor leaves it out. It asks about the paper again, first on the checklist, with the old reason, and
+  a person answers **Put it back** or **Leave out again**. The two other answers are *it stays out
+  until someone puts it back* (a paper can sit out of every run with nobody asked) and *the next run
+  takes it back by itself* (a paper left out because the customer was paying prints next month with
+  nobody having looked). One function decides, `lienLeftOutStandings`.
+- **What Leave out holds back.** Not asked yet, and step 6's to ask. Today it holds nothing back: a
+  left-out paper whose question is answered later is ready, and the Board's two prints take it. The
+  one print of step 6 can leave it out. Should the Board's own prints leave it out too, or is the
+  leader's Hold the way to keep a ready paper from going?
 
 ## Related
 
@@ -285,8 +296,18 @@ Step 4, the list by bin, is built (v2.7456): one group a bin on a computer, the 
 the ones to send folded into one row each, and Later under one line. Two things it left: notices to
 send do not fold, because the desk has no press that sends several for approval at once, and a pressed
 bin still narrows the list and does not scroll to its group. It was looked at with sample rows at
-1,280, 1,024 and 375 px, not on the live desk. D's steps 5 to 8 are picked (2026-11-16) and not built.
-Step 5 is next. The mock-up still draws all three; its B is what shipped, but for two things the build changed: the bin's name stands where the
+1,280, 1,024 and 375 px, not on the live desk. D's steps 6 to 8 are picked (2026-11-16) and not built.
+
+Step 5, the checklist, is built (v2.8474, 2026-11-24, on Diane's word to build it): one line over the
+list opens the run, *Get it right* lists each paper that cannot print as it stands with its row's own
+press, *Leave out* takes a paper out of this run with a reason, and the list says who left it out and
+when. Four things differ from the drawing. The door is a line under the find box and not the first
+tile, whose red line is a press of its own on `main`. Each paper has its own line, where the drawing
+folded two notices under one question. No *ask the attorney first* line is drawn, since no fact marks
+a ready affidavit that way. And nothing is locked: the gate is step 6, so the Board's prints still
+take every ready paper. It was looked at on a harness with made-up papers at 730 and 380 px, light
+and dark. Not seen on the live desk: the table is on prod only after the push, and no paper has been
+left out there. Step 6 is next. The mock-up still draws all three; its B is what shipped, but for two things the build changed: the bin's name stands where the
 mock-up dropped the four dots, and *Print N for notarization ›* (*Print N affidavits ›* until v2.7398, renamed to the button it opens) opens the affidavits list at Ready to file
 and does not print from To do.
 

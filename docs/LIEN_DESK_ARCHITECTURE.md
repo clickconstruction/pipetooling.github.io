@@ -333,7 +333,14 @@ last_updated: 2026-11-21
 > `lienGateRowParts(pile, phone)` draws the strip in `needs_property` and `to_draft` only (`LIEN_GATE_STRIP_PILES`) and the *missing …* words where the strip is not drawn, and on a phone always.
 > [`LienGateMarkStrip.tsx`](../src/components/jobs/LienGateMarkStrip.tsx) is the drawing (`data-lien-gate-marks`, one `data-lien-gate-mark=<slot>` with `data-state` each), on the affidavit list row's chip line after *last work*;
 > it is not a press, since the row is the button.
-> What the spike left, a row press that lands on its open gate, is punch list #364.
+> What the spike left, a row press that lands on its open gate, is built in v2.8472 (punch list #364).
+> [`lienGateLanding.ts`](../src/lib/jobs/lienGateLanding.ts) `lienGateLanding(rows)` answers the gate a row press lands on: the first not clear, in the pane's order, which is the order of the marks, with `focus` false for a row that has no door.
+> `lienGateLandingScrollTop(view)` answers how far the pane scrolls: null when the row is already clear of the pinned heads, else the scroll that lands the gates section under its own head, else the row itself under the head when the section is taller than the pane.
+> The list row's press says so (`onPick(jobId, 'row')` in `LienDeskAffidavitList.tsx`), the desk keeps one ask per press (`useLienGateAsk`), and the pane answers it once (`useLienGateLanding` in [`useLienGateLanding.ts`](../src/components/jobs/useLienGateLanding.ts)), so a pane the Board or the address opens lands nowhere.
+> `landOnLienGate` scrolls the pane's own box and never the page, puts the keyboard on the row with `preventScroll`, and lights it with the app's landing light (`lightLanded` in [`landOn.ts`](../src/lib/landOn.ts), `[data-landed]`).
+> While the light holds, a `ResizeObserver` on the pane's sections places the row again, because the job's path re-lays itself a frame or two after the pane opens.
+> Under reduced motion the pane jumps with no glide and the light stands still.
+> 10 cases in `lienGateLanding.test.ts`, 8 in `useLienGateLanding.test.ts` and one render smoke in `LienDesk.render.test.tsx`.
 
 > **v2.7378 · v2.7392 (the phone train's leftovers, punch list #352):** phone only, every branch behind `isMobile`.
 > The notary's print box over the Affidavits list folds behind one 44 px bar (`data-lien-affidavit-print-fold`, its words `lienPhonePrintBoxFold` in [`lienPhonePane.ts`](../src/lib/jobs/lienPhonePane.ts), opening folded;
@@ -358,6 +365,7 @@ last_updated: 2026-11-21
 > Since **v2.7422** (Taunya's ask of 2026-11-15) a monthly notice's footer is not that bar on a computer: it is the pane's last section, `sign`, under the one blue head (`lienNoticeFootHead`, `LienPaneSection.foot` in [`lienPaneSections.ts`](../src/lib/jobs/lienPaneSections.ts)), portalled into `data-lien-pane-body="sign"`, so the paper has the whole pane and the reader scrolls through it to sign.
 > The affidavit's and the retainage notice's footers are still the bar.
 > Since **v2.8170** a notice in the Missed pile draws the draft's footer, and its head reads *Sign and send*, while `lienMissedNoticeStillGoes` (`lienPaneSections.ts`) holds: a month is still due, or `lateUntil` is set, the affidavit's last day while every window closed unsent (v2.4708).
+> Since **v2.8454** (punch list #415) `lateUntil` is `lienLateNoticeUntil` (`lienPaneSections.ts`) under the same rule, and its day is the path's own, `LienTimeline.affidavitDay`: the affidavit windows' list holds a job only within thirty days of its day, and read alone it called the lien right gone for a day or two over a path that said to send the notice late.
 > Past both, the footer keeps *The window closed on … with no notice — the lien right on that work is gone* under *Window closed · Nothing to sign*.
 > A closed notice stop's note is `lienClosedNoticeStopNote` (`lienStopPaper.ts`) in the three stop windows: *A late notice can still go, and the affidavit can follow it* while the timeline's next step is `late_notice`, else that the lien right on that work is gone.
 
@@ -661,6 +669,7 @@ last_updated: 2026-11-21
 > Its presses are the list that holds the job, when one does, and the job's Lien window.
 > The address keeps `job` on any of the three lists while the note stands (`lienDeskAimAddressJob`), and the aim is forgotten once its list holds the job, the reader picks another row or leaves the list (`lienDeskAimSpent`).
 > The re-aim effect hands the named job to all three selections, so a row picked before never stays open under an address that names another job.
+> Since v2.8478 the effect keys on `lienDeskReaimKey` (the job, the paper list it is named on, the press count), so the same job named on another list re-aims too, and the Lien window's button sends the job on every list (`lienWindowDeskDoorHref` in [`lib/lien/lienWindowDeskDoor.ts`](../src/lib/lien/lienWindowDeskDoor.ts)).
 
 > **v2.6777 · v2.6780 (the desk is a page, punch list #182):** `/lien-desk` ([`pages/LienDeskPage.tsx`](../src/pages/LienDeskPage.tsx), the address in [`lib/lien/lienDeskRoute.ts`](../src/lib/lien/lienDeskRoute.ts): `?tab=deadlines|notices|affidavits|retainage|timeline`, `&job=`, `&pile=`, the one-shot `&records=`).
 > `LienDeskModal` takes `frame: 'page' | 'window'` — on the page no overlay, no ✕, no `useModalFullScreen` key, the page's `backDoor` before the title, `data-lien-desk-panel="page"`, a named region, and `onAddressChange` told every change of `kind`, the Notices selection and `pile` once `data` is in (the job a door named counts before the selection catches up);
@@ -927,6 +936,7 @@ last_updated: 2026-11-21
 > a billed job whose sent bills are paid off leaves the By date list while the desk keeps it under *Nothing billed*.
 > `LienLastWorkDayLine` (kernel `lib/jobs/lienLastWorkDay.ts`: where the day comes from, the words, what a typed day may be — never before the last approved session — and the patch) is the first row of the Months card (`LienDeskMonths` `lastWork`, `flat` since v2.7989, a box above the card until then) and sits in Edit Job's lien row;
 > the timeline's LAST WORK node reads *last day set by hand* (`lastMonthByHand`).
+> Since v2.8481 the Legal desk's packet and the firm's page read the hand day first too, with its reason (`legalLastWorkBasis` in `lib/legal/legalLienPaper.ts`, punch list #335), and `legal-portal` sends the day and the reason on each referred job.
 > The desk's clock-column read falls back to the four old columns until the migration lands.
 > **v2.4717 (what moves first):** before a typed day is saved, `LienLastWorkDayLine` opens `LienLastWorkDayConfirm` — how far the day moves from the clock hours, the dates the law hangs on it (the months the notice names, the § 53.056 window of the last month, the § 53.052 affidavit, the § 53.158 suit) with today beside the new day and the changed rows lit, the reason asked there;
 > kernel [`lienLastWorkDayPreview.ts`](../src/lib/jobs/lienLastWorkDayPreview.ts) (`refused` / `look` / `fine`, pure).
@@ -1299,6 +1309,10 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
 
 - **Left:** the hook call 778–829, the rows after the find 850–861, the router `actOnNextUp` 963–1037, `zoomTo` 1043, `zoomJob` 1075, `zoomFor` 1081, `listLabel` 1086, `stepFactsFor` 1753, the view's mount 2779–2786, and a phone's job screen 2614–2616, 2863–2890.
 - **Out:** [`useLienDeskBoard.ts`](../src/components/jobs/useLienDeskBoard.ts) (the rows, the Board, its picks, the leader's one press, the pinned find box's frame, the reminder).
+- **The run's first step** (v2.8474, punch list #362 step 5): [`useLienGetItRight.ts`](../src/components/jobs/useLienGetItRight.ts) reads the papers left out (`lienLeftOutIo.ts`) and builds the checklist over the Board and the rows the hook above already made (`lienGetItRight.ts`, `lienLeftOut.ts`).
+  [`LienGetItRightHost.tsx`](../src/components/jobs/LienGetItRightHost.tsx) is the frame's third part: the run's door over `LienDeskNextUp` while the run is shut, and [`LienGetItRight.tsx`](../src/components/jobs/LienGetItRight.tsx) in the list's place while it is open.
+  The desk keeps one hook call and the host's mount, and hands the host its own router (`actOnNextUp`), `zoomFor` and the Board's prints, so a line's press opens what its To do row opens.
+  The first tile is not the run's door: its red line is a press of its own, and a tile that is a press cannot hold a second one.
 - **Why the router stays:** it turns a row's target into 23 of the desk's setters across every view.
 - **Next:** `actOnNextUp` as a kernel that names the target and a thin switch that calls the setters.
 

@@ -7,13 +7,18 @@
  * 20 — the same pair `useMapPageData` uses, without the Map page's per-row
  * progress table. Callers paint as soon as the cache answers; cold addresses
  * fill in as each chunk returns. Nothing here is fatal: a failed geocode just
- * leaves its key out of the map, and a miss is not re-asked until the next
- * mount.
+ * leaves its key out of the map.
+ *
+ * An address no service could place is remembered (punch list #408): the hook
+ * reads `address_geocode_misses` beside the cache and sends the geocoder only an
+ * address that is in neither, so a miss is asked once and then left alone until
+ * its days are up (`GEOCODE_MISS_STANDS_DAYS`), on every device.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { batchGeocodeCacheKeys } from '../lib/map/geocodeCacheBatches'
+import { readStandingGeocodeMisses } from '../lib/map/geocodeMissesIo'
 
 /** Matches `geocode-address-batch` MAX_ADDRESSES (and the Map page's chunking). */
 const GEOCODE_BATCH_MAX = 20
@@ -77,7 +82,13 @@ export function useAddressGeocodeCoords(
         return next
       })
 
-      const cold = keys.filter((k) => !known.has(k) && !askedRef.current.has(k))
+      // No saved point and not asked already on this mount. The memory of a miss is read for these
+      // alone, after the map has painted: most opens have none, and then nothing more is read.
+      const unplaced = keys.filter((k) => !known.has(k) && !askedRef.current.has(k))
+      const misses = await readStandingGeocodeMisses(unplaced)
+      if (cancelled || gen !== genRef.current) return
+      // Cold: of those, the ones with no miss that still stands.
+      const cold = unplaced.filter((k) => !misses.has(k))
       for (let offset = 0; offset < cold.length; offset += GEOCODE_BATCH_MAX) {
         if (cancelled || gen !== genRef.current) return
         const chunk = cold.slice(offset, offset + GEOCODE_BATCH_MAX)

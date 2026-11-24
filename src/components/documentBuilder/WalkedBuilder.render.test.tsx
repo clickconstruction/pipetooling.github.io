@@ -254,6 +254,11 @@ describe('WalkedBuilder', () => {
     const { io, onRecord } = draw()
     type(screen.getByRole('textbox', { name: "The disclaimer's title" }), 'Before anything else')
     fireEvent.click(screen.getByRole('button', { name: 'Publish revision 3' }))
+    // The bar's press asks first. The window's own press, which carries the number, is the one that publishes.
+    const ask = within(await screen.findByRole('alertdialog', { name: 'Publish revision 3' }))
+    expect(ask.getByText('Everyone outside sees revision 3 from now on. That is each GC you sent it to and anyone with the link. A publish cannot be taken back. A later revision can only replace it.')).toBeTruthy()
+    expect(io.publishBuilder).not.toHaveBeenCalled()
+    fireEvent.click(ask.getByRole('button', { name: 'Publish revision 3' }))
     await waitFor(() => expect(io.publishBuilder).toHaveBeenCalledTimes(1))
     expect(io.saveBuilderDraft).toHaveBeenCalledTimes(1)
     const [key, from, contents] = vi.mocked(io.publishBuilder).mock.calls[0] ?? []
@@ -261,11 +266,34 @@ describe('WalkedBuilder', () => {
     await waitFor(() => expect(onRecord).toHaveBeenCalledTimes(2))
   })
 
+  it('publishes nothing on Not yet, and keeps the draft as it was typed', async () => {
+    const { io, onRecord } = draw()
+    type(screen.getByRole('textbox', { name: "The disclaimer's title" }), 'Before anything else')
+    fireEvent.click(screen.getByRole('button', { name: 'Publish revision 3' }))
+    const ask = within(await screen.findByRole('alertdialog', { name: 'Publish revision 3' }))
+    fireEvent.click(ask.getByRole('button', { name: 'Not yet' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(io.publishBuilder).not.toHaveBeenCalled()
+    expect(onRecord).not.toHaveBeenCalled()
+    expect(screen.getByRole('textbox', { name: "The disclaimer's title" }).textContent).toBe('Before anything else')
+    expect((screen.getByRole('button', { name: 'Publish revision 3' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('opens no window from a press that is dead', () => {
+    draw()
+    fireEvent.click(screen.getByRole('button', { name: 'Add a line to the disclaimer' }))
+    const dead = screen.getByRole('button', { name: 'Publish revision 3' }) as HTMLButtonElement
+    expect(dead.disabled).toBe(true)
+    fireEvent.click(dead)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
   it('names a refusal and keeps what was typed', async () => {
     const { io } = draw()
     vi.mocked(io.publishBuilder).mockResolvedValueOnce({ ok: false, error: 'Someone else published revision 3. Read the page again.' })
     type(screen.getByRole('textbox', { name: "The disclaimer's title" }), 'Before anything else')
     fireEvent.click(screen.getByRole('button', { name: 'Publish revision 3' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Publish revision 3' })).getByRole('button', { name: 'Publish revision 3' }))
     expect((await screen.findByRole('alert')).textContent).toBe('Someone else published revision 3. Read the page again.')
     expect(screen.getByRole('textbox', { name: "The disclaimer's title" }).textContent).toBe('Before anything else')
   })

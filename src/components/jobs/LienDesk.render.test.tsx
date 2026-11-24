@@ -2766,6 +2766,71 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(screen.getByRole('tab', { name: /Monthly notices/ })).toBeTruthy()
   })
 
+  it('a press on a row with a hold opens the pane with its first open gate in view, lit and under the keyboard; a row with none opens as before (v2.8472, punch list #364)', async () => {
+    // Two jobs: 650's GC has no address on file, so its third gate holds; 651's gates are all clear.
+    const d = data([], [], true)
+    d.jobsById = { ...d.jobsById, j651: { ...d.jobsById.j650!, id: 'j651', hcp_number: '651', job_name: 'Made-up Annex', gc_customer_id: 'northgate' } }
+    d.gcsById = { lowbeck: { ...d.gcsById.lowbeck!, address: '' }, northgate: { ...d.gcsById.lowbeck!, id: 'northgate', name: 'Northgate Builders' } }
+    const rows = withContractorAddress([affRow, { ...affRow, job_id: 'j651', gc_customer_id: 'northgate' }], d.gcsById)
+    d.affidavitRows = rows
+    d.affidavits = buildLienAffidavitQueue(rows, [], TODAY)
+    d.filingsByJob = { j650: [notice], j651: [{ ...notice, id: 'f-n2', job_id: 'j651' }] } as unknown as LienDeskData['filingsByJob']
+    // jsdom lays nothing out, so the page's measures are stood in: a pane 600 px tall, the gates section 700 px down it, the held gate's row under the pane's bottom edge.
+    let rowTop = 760
+    const box = (top: number, height: number) => ({ top, height, bottom: top + height, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => ({}) }) as DOMRect
+    const realRect = HTMLElement.prototype.getBoundingClientRect
+    const realScrollTo = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTo')
+    const scroll = vi.fn()
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      return this.getAttribute('data-lien-pane-body') === 'gates' ? box(700, 200) : this.getAttribute('data-lien-gate-row') === 'contractor' ? box(rowTop, 24) : box(0, 0)
+    }
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, get(this: HTMLElement) { return this.hasAttribute('data-lien-affidavit-pane') ? 600 : 0 } })
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, writable: true, value(this: HTMLElement, to: unknown) { if (this.hasAttribute('data-lien-affidavit-pane')) scroll(to) } })
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" onOpenCustomerRecord={vi.fn()} />)
+      await settle()
+      const heldRow = () => document.querySelector('[data-lien-pile-rows="needs_property"] button') as HTMLButtonElement
+      const clearRow = () => document.querySelector('[data-lien-pile-rows="to_draft"] button') as HTMLButtonElement
+      const gate = () => document.querySelector('[data-lien-affidavit-pane] [data-lien-gate-row="contractor"]') as HTMLButtonElement
+      expect(heldRow().textContent).toContain('650')
+      expect(clearRow().textContent).toContain('651')
+      // The desk opened on its first row with no press: nothing scrolled and nothing is lit.
+      expect(scroll).not.toHaveBeenCalled()
+      expect(document.querySelector('[data-landed]')).toBeNull()
+
+      fireEvent.click(heldRow())
+      await settle()
+      // The gates section lands under its own head (the path's head and its own, 24 px each), which puts the third gate's row on the screen.
+      expect(scroll).toHaveBeenCalledTimes(1)
+      expect(scroll).toHaveBeenLastCalledWith({ top: 700 - 48, behavior: 'smooth' })
+      expect(gate().getAttribute('data-lien-gate-ok')).toBe('no')
+      expect(gate().getAttribute('data-landed')).toBe('yes')
+      expect(document.activeElement).toBe(gate())
+      // The first two gates are clear and wear no light.
+      expect(document.querySelectorAll('[data-landed]').length).toBe(1)
+
+      // The same row pressed with its gate already on the screen: the pane stays put, and the row is lit again.
+      rowTop = 300
+      gate().removeAttribute('data-landed')
+      fireEvent.click(heldRow())
+      await settle()
+      expect(scroll).toHaveBeenCalledTimes(1)
+      expect(gate().getAttribute('data-landed')).toBe('yes')
+
+      // A row with every gate clear opens its pane as it always did.
+      fireEvent.click(clearRow())
+      await settle()
+      expect(document.querySelector('[data-lien-affidavit-pane] [data-lien-gate-row="contractor"]')?.getAttribute('data-lien-gate-ok')).toBe('yes')
+      expect(scroll).toHaveBeenCalledTimes(1)
+      expect(document.querySelector('[data-landed]')).toBeNull()
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = realRect
+      delete (HTMLElement.prototype as { clientHeight?: number }).clientHeight
+      if (realScrollTo) Object.defineProperty(HTMLElement.prototype, 'scrollTo', realScrollTo)
+      else delete (HTMLElement.prototype as { scrollTo?: unknown }).scrollTo
+    }
+  })
+
   it('the address gate offers no door to a role that cannot edit the record, and none without the page’s handler', async () => {
     const d = data([], [], true)
     d.gcsById = { lowbeck: { ...d.gcsById.lowbeck!, address: '' } }
@@ -4349,8 +4414,10 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
     expect(document.querySelector('[data-lien-pane-head="months"]')!.textContent).not.toContain('no months')
   })
 
+  // April's own affidavit day, Aug 17, is past: the lien right is gone on the pane and on its path. Until punch list #415 this row was
+  // May, whose day (Sep 15) was still ahead, and the pane said gone over a path that said to send the notice late.
   it('on a missed notice with no month still due, Record it… opens the step where the closed-window line stood (v2.8026)', async () => {
-    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data([row('j650', '2026-05', '2026-09-10', { has_owner: true })], [], true)} initialKind="notice" initialJobId="j650" initialPile="missed" />)
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data([row('j650', '2026-04', '2026-07-15', { has_owner: true })], [], true)} initialKind="notice" initialJobId="j650" initialPile="missed" />)
     await settle()
     await waitFor(() => expect(document.body.textContent).toContain('with no notice — the lien right on that work is gone.'))
     fireEvent.click(monthsDoor())
@@ -4429,6 +4496,26 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
     expect((document.querySelector('[data-lien-pane-head="sign"]') as HTMLElement).textContent).toBe('Window closedNothing to sign')
     fireEvent.click(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door="notice:2026-05"]') as HTMLButtonElement)
     expect(screen.getByTestId('lien-stop-paper').textContent).toContain('The window closed with nothing sent. The lien right on that work is gone; the money is still owed.')
+  })
+
+  // The affidavit windows' list holds a job only within thirty days of its day (`lienDeskKeepRows`). For a day or two after the
+  // last notice window closes the day can be 31 or 32 days off, when the affidavit's 15th falls on a weekend and moves to Monday,
+  // and the list is silent. The pane read the day off that list, so it said the lien right was gone over its own path, which
+  // dates the affidavit from the last month of work and said to send the notice late (punch list #415). Made-up rows: the list
+  // is empty here, as the desk's read leaves it on such a day, and May's own filing day is Sep 15.
+  it('a missed notice the affidavit windows do not list: the pane takes the affidavit’s day from its own path, so the card, the footer and the path all say a late notice can still go (punch list #415)', async () => {
+    const d = data([row('j650', '2026-05', '2026-08-15', { has_owner: true, property_kind: 'non_residential' })], [], true)
+    expect(d.affidavits.entries).toEqual([])
+    expect(d.queue.entries.find((e) => e.jobId === 'j650')).toMatchObject({ pile: 'missed', dueMonths: [], missedMonths: ['2026-05'] })
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="notice" initialJobId="j650" initialPile="missed" />)
+    await settle()
+    expect((document.querySelector('[data-lien-desk-timeline]') as HTMLElement).textContent).toContain('Send the May notice late, then file the affidavit')
+    const card = document.querySelector('[data-lien-desk-months]') as HTMLElement
+    expect(card.textContent).toContain('a late notice can still go · the affidavit by Sep 15')
+    expect(card.textContent).not.toContain('lien right gone')
+    expect((document.querySelector('[data-lien-pane-head="sign"]') as HTMLElement).textContent).toBe('Sign and sendNot signed yet')
+    expect(screen.getByRole('button', { name: /Ask the leader to approve/ })).toBeTruthy()
+    expect(document.body.textContent).not.toContain('lien right on that work is gone')
   })
 
   // A missed notice that can no longer go judged a notice nobody could send (v2.8206, punch list #361, Taunya's pick of 2026-11-21): the

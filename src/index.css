@@ -551,11 +551,12 @@ button:focus-visible {
   --app-nav-safe-top: 0px;
 }
 
-/* The mode row (punch list #425): Task Mode, Dashboard and Job Mode as three thirds, the first line
-   above the header, drawn by `ModeRow` inside an `AppTopBanner`. The third of the mode drawn is
-   filled. A thumb's 44 px on a phone, 32 px on a desk, where the row always shows. While the row is
-   tucked on a phone the line is its handle instead: a 24 px band, the smallest press WCAG 2.2 allows,
-   the whole width of the screen, with a small bar in its middle. */
+/* The mode row (punch list #425): Task Mode, Dashboard and Job Mode as three thirds above the header,
+   drawn by `ModeRow`. The third of the mode drawn is filled. A thumb's 44 px on a phone, where the row
+   lives; 32 px past it, for the window that shows another person's Task Mode. In Task Mode the row is
+   a line of the page, inside an `AppTopBanner`. On the Dashboard (punch list #433) the page's line is
+   the row's handle instead: a 24 px band, the smallest press WCAG 2.2 allows, the whole width of the
+   screen, with a small bar in its middle. The row is drawn over that line for five seconds a visit. */
 .modeRow {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -601,16 +602,6 @@ button:focus-visible {
 .modeRowHandle:focus-visible {
   outline-offset: -2px;
 }
-.modeRowNew {
-  padding: 0.1rem 0.35rem;
-  border-radius: 999px;
-  background: #15803d;
-  color: white;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
 .modeRowHandle {
   display: flex;
   align-items: center;
@@ -640,24 +631,147 @@ button:focus-visible {
     min-height: 32px;
   }
 }
-/* Brought down by a pull or the handle: the row slides in. Drawn on the page's first paint it does not. */
-@keyframes modeRowIn {
+/* The counted row (punch list #433). The handle's line is the page's first line, so on a Home Screen
+   iPhone it pays the status bar and paints the band under the clock and the camera. The row lies over
+   that line and what follows it, above the header, and never pushes the page: nothing under it moves
+   when it comes or goes. Its clip names no `top`, so it starts where the line's own content starts,
+   under the status bar, and the row slides away behind that bar with no word crossing the clock. The
+   clip's lower edge is let out so the row's shadow shows. While the row is on its way out the clip
+   stays and takes the presses, so a thumb aimed at a third does not land on the header under it. */
+.appTopBanner[data-mode-row='tucked'] {
+  position: relative;
+  z-index: 51;
+}
+.modeRowClip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  clip-path: inset(0 0 -1rem 0);
+  touch-action: none;
+}
+.modeRowOver {
+  position: relative;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--chrome-bg);
+  box-shadow: 0 8px 16px -10px rgba(0, 0, 0, 0.55);
+  touch-action: none;
+}
+@keyframes modeRowOverIn {
   from {
-    max-height: 0;
-    opacity: 0;
+    transform: translateY(-110%);
   }
   to {
-    max-height: 5rem;
-    opacity: 1;
+    transform: translateY(0);
   }
 }
-[data-mode-row-in] {
+@keyframes modeRowOverOut {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-110%);
+  }
+}
+@keyframes modeRowOverFade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+/* Brought by a pull, the handle or a change of page: the row slides down. Drawn on the app's first paint it does not. */
+.modeRowOver[data-mode-row-in] {
+  animation: modeRowOverIn var(--mode-row-in-ms, 180ms) ease-out;
+}
+[data-mode-row-phase='leaving'] > .modeRowOver {
+  animation: modeRowOverOut var(--mode-row-out-ms, 240ms) ease-in forwards;
+}
+/* The time left, on the row's lower edge: a bar that starts full and whose end runs to the left until
+   nothing is left. It is the muted text grey, because it is only time. A held row shows it full. */
+.modeRowBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
   overflow: hidden;
-  animation: modeRowIn 0.18s ease-out;
+  pointer-events: none;
+}
+.modeRowBar > i {
+  display: block;
+  height: 100%;
+  background: var(--text-muted);
+  transform-origin: left center;
+}
+@keyframes modeRowBarOut {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+[data-mode-row-phase='showing'] .modeRowBar > i {
+  animation: modeRowBarOut var(--mode-row-show-ms, 5000ms) linear forwards;
+}
+[data-mode-row-phase='leaving'] .modeRowBar > i {
+  transform: scaleX(0);
+}
+/* The same time for a person who asked their phone for less motion: five blocks, and one goes out each
+   fifth of the time, from the right. Nothing slides. */
+.modeRowBlocks {
+  display: none;
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: 1px;
+  height: 4px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+  pointer-events: none;
+}
+.modeRowBlocks > b {
+  border-radius: 1px;
+  background: var(--text-muted);
+}
+@keyframes modeRowBlockOut {
+  to {
+    background: var(--border);
+  }
+}
+[data-mode-row-phase='showing'] .modeRowBlocks > b {
+  animation: modeRowBlockOut 1ms linear forwards;
+  animation-delay: var(--mode-row-show-ms, 5000ms);
+}
+[data-mode-row-phase='showing'] .modeRowBlocks > b:nth-child(2) {
+  animation-delay: calc(var(--mode-row-show-ms, 5000ms) * 0.8);
+}
+[data-mode-row-phase='showing'] .modeRowBlocks > b:nth-child(3) {
+  animation-delay: calc(var(--mode-row-show-ms, 5000ms) * 0.6);
+}
+[data-mode-row-phase='showing'] .modeRowBlocks > b:nth-child(4) {
+  animation-delay: calc(var(--mode-row-show-ms, 5000ms) * 0.4);
+}
+[data-mode-row-phase='showing'] .modeRowBlocks > b:nth-child(5) {
+  animation-delay: calc(var(--mode-row-show-ms, 5000ms) * 0.2);
+}
+[data-mode-row-phase='leaving'] .modeRowBlocks > b {
+  background: var(--border);
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-mode-row-in] {
+  .modeRowOver[data-mode-row-in] {
     animation: none;
+  }
+  [data-mode-row-phase='leaving'] > .modeRowOver {
+    animation: modeRowOverFade 150ms linear forwards;
+  }
+  .modeRowBar {
+    display: none;
+  }
+  .modeRowBlocks {
+    display: grid;
   }
 }
 
@@ -5987,6 +6101,199 @@ button.gcStep:hover > em { text-decoration: underline; }
 }
 @media (prefers-reduced-motion: reduce) {
   .gcStageStop, .gcStageBar i, .gcReviewRowToggle { transition: none; }
+}
+
+/* The takeoff line table in a narrow box (v2.8476). `TakeoffLinesBox` measures itself and sets `data-fit`
+   (`lib/bids/takeoffSheetFit.ts`). The cells carry inline padding, so these rules need `!important`.
+   snug: the side padding of the wide cells drawn in, the part box giving up the width a text field asks
+   for by itself, and the Actions heading dropped (its two presses carry their own names). That takes the
+   table's floor from 726 px to about 600.
+   scroll: narrower than that. The box scrolls sideways by itself, so the page never does, and each row's
+   last cell, the drag handle and the delete, stays pinned at the box's right edge. */
+.takeoffLinesBox[data-fit='snug'] :is(th, td):is(:first-child, :nth-child(2), :last-child),
+.takeoffLinesBox[data-fit='scroll'] :is(th, td):is(:first-child, :nth-child(2), :last-child) {
+  padding-left: 0.4rem !important;
+  padding-right: 0.4rem !important;
+}
+.takeoffLinesBox[data-fit='snug'] :is(th, td):nth-child(3),
+.takeoffLinesBox[data-fit='scroll'] :is(th, td):nth-child(3) {
+  padding-left: 0.4rem !important;
+}
+.takeoffLinesBox[data-fit='snug'] td:nth-child(2) input[type='text'],
+.takeoffLinesBox[data-fit='scroll'] td:nth-child(2) input[type='text'] {
+  width: 0;
+}
+.takeoffLinesBox[data-fit='snug'] thead th:last-child,
+.takeoffLinesBox[data-fit='scroll'] thead th:last-child {
+  font-size: 0 !important;
+}
+/* With its field asking for nothing, the part column would be the narrowest: it takes the spare width instead. */
+.takeoffLinesBox[data-fit='snug'] thead th:nth-child(2),
+.takeoffLinesBox[data-fit='scroll'] thead th:nth-child(2) {
+  width: 42%;
+}
+/* Roomy (v2.8483): a text field asks for 260 px and no more, so the part column stood at 284 px in any window
+   and every spare pixel went to the columns beside it. It now takes its share: the part's name is the line. */
+.takeoffLinesBox[data-fit='roomy'] thead th:nth-child(2) {
+  width: 38%;
+}
+.takeoffLinesBox[data-fit='scroll'] {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  /* A field brought into view by Tab stops clear of the pinned presses. */
+  scroll-padding-right: 52px;
+}
+.takeoffLinesBox[data-fit='scroll'] thead th:last-child,
+.takeoffLinesBox[data-fit='scroll'] td:last-child:not([colspan]) {
+  position: sticky;
+  right: 0;
+  background: var(--surface);
+  box-shadow: -1px 0 0 var(--border);
+}
+.takeoffLinesBox[data-fit='scroll'] thead th:last-child {
+  background: var(--bg-subtle);
+}
+.takeoffLinesBox[data-fit='scroll'] tr[style*='--bg-page'] td:last-child:not([colspan]) {
+  background: var(--bg-page);
+}
+/* A scrolling box clips what hangs below it: leave room for the part search list on the last rows. */
+.takeoffLinesBox[data-fit='scroll']:has(td ul) {
+  padding-bottom: 232px;
+}
+
+/* The Sheet's rail folded to a strip (v2.8480, `TakeoffRailStrip`): a bar across the top of the sheet, pinned as
+   the list scrolls, as the rail beside the list is. It sits above the part search list (z-index 50) that can
+   scroll under it. The open rail hangs under it, over the list, 320 px wide and never taller than the window. */
+.takeoffRailStripWrap {
+  position: sticky;
+  top: 8px;
+  z-index: 60;
+  margin-bottom: 12px;
+}
+.takeoffRailStrip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  min-height: 44px;
+  padding: 5px 6px 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+.takeoffRailStripName {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.takeoffRailStripFact {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.takeoffRailStripFact .vipWorked {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+.takeoffRailStripFact[data-costed='some'] .vipWorked {
+  color: var(--text-amber-700);
+}
+.takeoffRailStripNoCost {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--bg-red-tint);
+  color: var(--text-red-700);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.takeoffRailStripHint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.takeoffRailStripPress,
+.takeoffRailHide {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.takeoffRailStripPress {
+  margin-left: auto;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-strong);
+}
+.takeoffRailHide {
+  min-height: 24px;
+  margin: -4px -6px -4px 0;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text-blue-700);
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.takeoffRailHide:hover {
+  border-color: var(--border);
+}
+.takeoffRailOver {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  max-width: 100%;
+  max-height: calc(100vh - 5.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--bg-page);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+  animation: takeoffRailOverIn 140ms ease-out;
+}
+@keyframes takeoffRailOverIn {
+  from {
+    opacity: 0.4;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .takeoffRailOver {
+    animation: none;
+  }
+}
+/* A phone's width: both presses are 44 px tall. */
+@media (max-width: 640px) {
+  .takeoffRailStripPress,
+  .takeoffRailHide {
+    min-height: 44px;
+  }
+  .takeoffRailHide {
+    margin: -12px -6px -12px 0;
+    padding: 0 10px;
+  }
 }
 
 /* Takeoff part search (v2.4055): the magnifier at the end of every part name — faint at rest,

@@ -8,7 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { billsPaidStepLabel, type BillsPaidBill, type BillsPaidPayment } from '../../lib/billing/billsPaidDays'
+import { billsPaidMonthLabel, billsPaidStepLabel, type BillsPaidBill, type BillsPaidPayment } from '../../lib/billing/billsPaidDays'
 import type { BillsPaidRead } from '../../lib/billing/billsPaidIo'
 import { BillsPaidByDay } from './BillsPaidByDay'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
@@ -102,6 +102,8 @@ describe('BillsPaidByDay', () => {
     const cents = within(day).getAllByTestId('bills-paid-line')[0]!.querySelector('span[style*="0.7em"]') as HTMLElement
     expect(cents.textContent).toBe('.00')
     expect(screen.getByTestId('bills-paid-foot').textContent).toContain('Stripe’s fee is not taken off.')
+    // The foot says why a day here can be less than the Dashboard's Money in for the same day.
+    expect(screen.getByTestId('bills-paid-foot').textContent).toContain('A bank deposit counts once it is put on a bill or a job. Until then the Dashboard’s Money in shows it and this page does not.')
   })
 
   it('narrows the month to Stripe, and a day the chip emptied offers every way', async () => {
@@ -115,7 +117,8 @@ describe('BillsPaidByDay', () => {
     expect(cellOf(`${OLD}-20`).textContent).toBe('20')
     const day = screen.getByTestId('bills-paid-day')
     expect(within(day).getByTestId('bills-paid-line').textContent).toMatch(/^Bill 1420-0001 · J1420 · Marlow kitchen rough · Elena Marlow\$2,480\.00Card · StripePaid \d{1,2}:\d\d [AP]MSent Mon, Mar 162 days after it went$/)
-    expect(within(day).getByRole('link', { name: 'Bill 1420-0001' }).getAttribute('href')).toBe(`/bills-sent?bill=${B(1)}`)
+    // The record's address keeps the day and the chip it was opened from, so the record can lead back to them.
+    expect(within(day).getByRole('link', { name: 'Bill 1420-0001' }).getAttribute('href')).toBe(`/bills-sent?bill=${B(1)}&view=paid&day=${OLD}-18&how=stripe`)
     // Pick the day the check came: nothing from Stripe, and the press shows every way.
     fireEvent.click(cellOf(`${OLD}-20`))
     expect(screen.getByTestId('bills-paid-day').textContent).toContain('Nothing came in from Stripe on Fri, Mar 20.')
@@ -220,6 +223,28 @@ describe('BillsPaidByDay', () => {
     expect(texts.some((t) => t?.includes('Check 2291 · typed by hand') && t.includes('Part of the bill. The bill is still open.'))).toBe(true)
   })
 
+  it('opens this month where the money is when nothing has come in today, and an empty today names the day to go to', async () => {
+    // Tue, Nov 24, 2026, noon Central. Only the clock's date is held: the screen's own timers run.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-24T18:00:00.000Z'))
+    try {
+      io.data = read([payment({ id: 's1', note: 'Stripe', paidOn: '2026-11-23', createdAtIso: '2026-11-23T15:14:00.000Z' })])
+      renderWithProviders(<BillsPaidByDay />, { route: '/bills-sent?view=paid' })
+      const day = await screen.findByTestId('bills-paid-day')
+      // Monday's money, not Tuesday's empty box.
+      expect(day.textContent).toContain('Mon, Nov 23')
+      expect(within(day).getAllByTestId('bills-paid-line')).toHaveLength(1)
+      expect(screen.getByTestId('bills-paid-tile-today').textContent).toContain('0 payments')
+      // Today is one press away, and its empty box says where the money is.
+      fireEvent.click(cellOf('2026-11-24'))
+      expect(screen.getByTestId('bills-paid-day').textContent).toContain('Nothing came in on Tue, Nov 24.')
+      fireEvent.click(screen.getByRole('button', { name: 'Go to Mon, Nov 23' }))
+      expect(within(screen.getByTestId('bills-paid-day')).getAllByTestId('bills-paid-line')).toHaveLength(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('saves the month as a spreadsheet named for the month and the chip, and offers neither on an empty month', async () => {
     io.data = march
     const { unmount } = renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&how=stripe&day=${OLD}-18` })
@@ -232,7 +257,8 @@ describe('BillsPaidByDay', () => {
     await screen.findByTestId('bills-paid-day')
     expect(screen.queryByTestId('bills-paid-out')).toBeNull()
     expect(screen.getByTestId('bills-paid-day').textContent).toContain('Nothing came in on Tue, Mar 31.')
-    expect(screen.getByRole('button', { name: 'Go to today' })).toBeTruthy()
+    // An older month that held nothing sends the reader to this month, by name.
+    expect(screen.getByRole('button', { name: `Open ${billsPaidMonthLabel(month)}` })).toBeTruthy()
   })
 
   it('on a phone, writes a day’s amount short and puts the file presses last', async () => {
@@ -253,5 +279,25 @@ describe('BillsPaidByDay', () => {
     // A refusal draws no month: there is nothing to show, and a blank month would read as no money.
     expect(screen.queryByTestId('bills-paid-day')).toBeNull()
     expect(io.asks).toHaveLength(1)
+  })
+  it('on a phone, stands the chips and a payment’s bill and job names a fingertip tall', async () => {
+    io.phone = true
+    io.data = march
+    renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-18` })
+    const day = await screen.findByTestId('bills-paid-day')
+    // The chips were 38 px and the two names in the day box 16 px, on the live page at 375 px.
+    expect(screen.getByRole('button', { name: 'Stripe' }).style.minHeight).toBe('44px')
+    expect(screen.getByRole('button', { name: 'All' }).style.minHeight).toBe('44px')
+    const bill = within(day).getByRole('link', { name: 'Bill 1420-0001' })
+    const job = within(day).getByRole('link', { name: 'J1420 · Marlow kitchen rough' })
+    expect([bill.style.minHeight, bill.style.display, job.style.minHeight, job.style.display]).toEqual(['44px', 'inline-flex', '44px', 'inline-flex'])
+  })
+
+  it('at a desk, leaves the chips and the names at the office’s size', async () => {
+    io.data = march
+    renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&day=${OLD}-18` })
+    const day = await screen.findByTestId('bills-paid-day')
+    expect(screen.getByRole('button', { name: 'Stripe' }).style.minHeight).toBe('')
+    expect(within(day).getByRole('link', { name: 'Bill 1420-0001' }).style.minHeight).toBe('')
   })
 })

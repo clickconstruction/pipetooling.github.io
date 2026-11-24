@@ -11,7 +11,8 @@
  *     matched deposit the day it posted at the bank, for a payment typed by hand the day the person named;
  *   - the amount is what the payment took off the bill. Stripe's fee is not taken off: the app does not keep it;
  *   - a credit in kind is listed and never added: it is not money;
- *   - a payment on a test-mode bill is left out;
+ *   - a payment on a test bill is left out: a bill made in Stripe's test mode, or any payment on a ZZ test job
+ *     (`billTestRows.ts`, the rule By day sent reads too);
  *   - a refund made in Stripe is not seen, so it lowers no day.
  * One deposit that paid several bills is drawn once, with its bills under it (`billsPaidDayGroups`).
  *
@@ -24,6 +25,7 @@ import { checkNumberOf, instrumentWord, isStripePayment } from '../jobs/billsAnd
 import { sentCopyJobLabel, type SentCopyAboutJob } from '../sent/sentCopyAbout'
 import { isInKindPaymentType } from '../../../supabase/functions/_shared/inKindPayment'
 import { billPaymentWayWords, billPaymentYmd, type BillPaidBill, type BillPayment } from './billsPaid'
+import { isBillsTestRow } from './billTestRows'
 
 /** A payment as this view reads it: on a bill, or on a job with no bill named. */
 export type BillsPaidPayment = Omit<BillPayment, 'billId'> & { billId: string | null; jobId: string | null }
@@ -124,18 +126,18 @@ const dayGap = (fromYmd: string, toYmd: string): number | null => {
 
 /**
  * The payments as lines, newest day first. Within a day a Stripe payment comes first, newest first, then the
- * rest with one deposit's payments together. A payment with no day, no amount to add, or on a test-mode bill is
- * left out.
+ * rest with one deposit's payments together. A payment with no day, no amount to add, or that is a test
+ * (`isBillsTestRow`: a test-mode bill, a ZZ test job) is left out.
  */
 export function billsPaidLines(input: BillsPaidInput): BillsPaidLine[] {
   const lines: BillsPaidLine[] = []
   for (const p of input.payments) {
     const bill = p.billId ? input.bills.get(p.billId) : undefined
-    if ((bill?.stripeMode ?? '').trim() === 'test') continue
-    const ymd = billPaymentYmd(p)
-    if (!ymd || !(p.amount > 0)) continue
     const jobId = p.jobId ?? bill?.jobId ?? null
     const job = jobId ? input.jobs.get(jobId) : undefined
+    if (isBillsTestRow(bill, job)) continue
+    const ymd = billPaymentYmd(p)
+    if (!ymd || !(p.amount > 0)) continue
     const number = p.billId ? (input.numbers?.get(p.billId) ?? '') : ''
     const sentIso = (p.billId ? input.firstSent?.get(p.billId) : undefined) ?? bill?.sentAtIso ?? bill?.billedAtIso ?? ''
     const sentYmd = sentIso ? calendarYmdInAppTzFromIso(sentIso) : ''
@@ -283,12 +285,28 @@ export function billsPaidMonthCells(lines: ReadonlyArray<BillsPaidLine>, month: 
   return { blanks: new Date(`${first}T12:00:00Z`).getUTCDay(), cells }
 }
 
-/** The day the view opens a month on: today in this month, else the newest day money came, else the month's last day that has come. */
+/**
+ * The newest day of a month that money came, among these lines and no later than today. '' when none has.
+ * A credit in kind is no money. The lines are newest first (`billsPaidLines`), so the first that fits is the day.
+ */
+export function billsPaidLastPaidDay(lines: ReadonlyArray<BillsPaidLine>, month: string, todayYmd: string): string {
+  return lines.find((l) => billsPaidMonthOf(l.ymd) === month && !l.inKind && l.ymd <= todayYmd)?.ymd ?? ''
+}
+
+/**
+ * The day the view opens a month on: where the money is. That is the newest day money came, which is today once
+ * something has come in today. A month with none opens on today when it is this month, else on its last day that
+ * has come.
+ *
+ * This month once opened on today whatever today held, so each morning the view opened on *Nothing came in* with
+ * no press to take (the live test of 2026-11-24), while an older month opened on its newest paid day.
+ */
 export function billsPaidOpeningDay(lines: ReadonlyArray<BillsPaidLine>, month: string, todayYmd: string): string {
+  const newest = billsPaidLastPaidDay(lines, month, todayYmd)
+  if (newest) return newest
   if (billsPaidMonthOf(todayYmd) === month) return todayYmd
   const { last } = billsPaidMonthSpan(month)
-  const newest = lines.find((l) => billsPaidMonthOf(l.ymd) === month && !l.inKind)?.ymd
-  return newest ?? (last > todayYmd ? todayYmd : last)
+  return last > todayYmd ? todayYmd : last
 }
 
 /**
@@ -407,14 +425,28 @@ export function billsPaidTime(line: Pick<BillsPaidLine, 'atIso'>): string {
   return Number.isFinite(t) ? formatDenverTimeOnly(t) : ''
 }
 
+/** The press an empty day offers: its words, and where it goes in the view's own terms (a chip, a day or a month). */
+export interface BillsPaidEmptyNext {
+  label: string
+  go: { how: BillsPaidChip } | { day: string } | { month: string }
+}
+
 /**
- * What an empty day says, and the press it offers: every way that day when the chip hid some, else today.
- * `next` is '' when the day is today and nothing is hidden: there is nowhere better to send the reader.
+ * What an empty day says, and the press that leads out of it. Every empty day has one:
+ *   - every way that day, when the chip hid what came in;
+ *   - else the newest day money came this month under the chip (`lastPaidYmd`), by name: *Go to Mon, Nov 23*;
+ *   - else, with nothing in the month, another month by name: this one from an older month, the month before
+ *     from this one.
+ * The press was once *Go to today*, which from an empty today was no press at all, and from an earlier empty day
+ * landed on the same empty today.
  */
-export function billsPaidEmptyDay(opts: { ymd: string; how: BillsPaidChip; everyWay: number; todayYmd: string }): { main: string; next: '' | 'Show every way that day' | 'Go to today' } {
+export function billsPaidEmptyDay(opts: { ymd: string; how: BillsPaidChip; everyWay: number; todayYmd: string; lastPaidYmd: string }): { main: string; next: BillsPaidEmptyNext } {
   const main = `Nothing came in${HOW_TAIL[opts.how]} on ${formatWorkDateYmdWeekdayShortFriendly(opts.ymd)}.`
-  if (opts.how !== 'all' && opts.everyWay > 0) return { main, next: 'Show every way that day' }
-  return { main, next: opts.ymd === opts.todayYmd ? '' : 'Go to today' }
+  if (opts.how !== 'all' && opts.everyWay > 0) return { main, next: { label: 'Show every way that day', go: { how: 'all' } } }
+  if (opts.lastPaidYmd && opts.lastPaidYmd !== opts.ymd) return { main, next: { label: `Go to ${formatWorkDateYmdWeekdayShortFriendly(opts.lastPaidYmd)}`, go: { day: opts.lastPaidYmd } } }
+  const thisMonth = billsPaidMonthOf(opts.todayYmd)
+  const to = billsPaidMonthOf(opts.ymd) < thisMonth ? thisMonth : billsPaidShiftMonth(thisMonth, -1)
+  return { main, next: { label: `Open ${billsPaidMonthLabel(to)}`, go: { month: to } } }
 }
 
 // ---------- The tiles ----------
@@ -430,6 +462,14 @@ export function billsPaidTiles(lines: ReadonlyArray<BillsPaidLine>, month: strin
     month: billsPaidSum(inMonth),
   }
 }
+
+/**
+ * What a day's figure leaves out, said under the month. The view reads payment rows, and a bank deposit has none
+ * until someone puts it on a bill or a job. The Dashboard's Money in bar counts that deposit the day it posts
+ * (*Landed · not applied yet*), so the two can differ for a day. The live test of 2026-11-24 found Monday short
+ * by two such deposits, and nothing on the page said why.
+ */
+export const BILLS_PAID_LEFT_OUT = 'A bank deposit counts once it is put on a bill or a job. Until then the Dashboard’s Money in shows it and this page does not.'
 
 // ---------- Out of the app ----------
 
@@ -534,6 +574,6 @@ table.cal span{display:block;font-size:9.5px;color:#444}
 <h1>Bills paid · ${esc(billsPaidMonthLabel(opts.month))}</h1>
 <p>${esc(chip)}. ${esc(plural(sum.payments, 'payment'))}, ${esc(billsPaidMoney(sum.total))}. Newest day first. All times are Central.</p>
 ${days.length ? `${billsPaidMonthGridHtml(inMonth, opts.month, printedYmd || '9999-12-31')}<table>${days.map(block).join('')}</table>` : `<p>Nothing came in${esc(HOW_TAIL[opts.how])} in ${esc(billsPaidMonthLabel(opts.month))}.</p>`}
-<p style="margin-top:14px">A payment sits on the day the money came, at what it took off the bill. Stripe’s fee is not taken off. A refund made in Stripe is not shown. Printed ${esc(printed)}.</p>
+<p style="margin-top:14px">A payment sits on the day the money came, at what it took off the bill. Stripe’s fee is not taken off. A refund made in Stripe is not shown. A bank deposit not yet put on a bill or a job is not shown. Printed ${esc(printed)}.</p>
 </body></html>`
 }

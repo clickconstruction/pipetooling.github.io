@@ -1,3 +1,5 @@
+import { RELOAD_MARK, sealedReloadTarget } from './lens/reloadPlace'
+
 /** sessionStorage key — must match inline script in index.html */
 export const HARD_RELOAD_RESTORE_KEY = 'pipetooling-hard-reload-restore'
 
@@ -38,6 +40,10 @@ export async function wipeServiceWorkersAndCaches(): Promise<void> {
  * Full reload with cache bust, without requesting the current pathname from the host.
  * GitHub Pages returns HTTP 404 for deep links (e.g. /dashboard) even when 404.html
  * serves the SPA; navigating to / first avoids a misleading 404 on the document request.
+ *
+ * A sealed lens frame (`window.__lens`, punch list #194) reloads its own address instead: its `sessionStorage` is
+ * memory, so the page kept there was gone after the reload and the frame came back on its person's home
+ * (`lens/reloadPlace.ts`).
  */
 export function hardReloadFromRoot(): void {
   try {
@@ -53,7 +59,10 @@ export function hardReloadFromRoot(): void {
     // sessionStorage may be unavailable
   }
 
-  const target = `${window.location.origin}/?nocache=${Date.now()}`
+  const target =
+    typeof window.__lens !== 'undefined'
+      ? sealedReloadTarget(window.location, Date.now())
+      : `${window.location.origin}/?${RELOAD_MARK}=${Date.now()}`
 
   const go = () => {
     window.location.href = target

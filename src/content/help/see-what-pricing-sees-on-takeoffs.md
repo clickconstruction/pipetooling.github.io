@@ -2,7 +2,7 @@
 title: see what pricing sees on takeoffs
 category: Bids & Estimating
 roles: dev, master_technician, assistant, estimator
-keywords: sticks, order rounding, sold in, minimum order, 20 ft, takeoff, sheet, new 2, cost rail, what pricing sees, materials total, no takeoffs cost, needs a price, request quotes, copy from previous bid, book suggests
+keywords: hide the rail, minimize, fold, show, narrow window, half screen, split screen, delete a row, sticks, order rounding, sold in, minimum order, 20 ft, takeoff, sheet, new 2, cost rail, what pricing sees, materials total, no takeoffs cost, needs a price, request quotes, copy from previous bid, book suggests
 order: 86
 ---
 **Sheet** on **Bids → Takeoffs** keeps the sheet you know. It adds a rail that explains what Pricing is about to work from.
@@ -34,6 +34,20 @@ Some parts are sold in packs. Copper comes in {{chip:purple|20 ft}} sticks. PEX 
 The strip's **Order rounding** tile says what the sticks add. Hover it to see how many parts round. A line whose part rounds wears the pack as a small chip beside its name. Hover the chip and it reads *105 ft needed on this bid → 120 ft (6 × 20 ft sticks)*.
 
 The extra is spread over the fixtures that use the part, so the fixture costs still add up. The rule itself lives on the Part Type or the part. See [add a part and its prices fast](/help/add-a-part-and-its-prices-fast).
+
+## Hide the rail
+
+Hide the rail when you want the whole width for the sheet. Press **Hide** at the top of the rail. The rail folds to a strip across the top of the sheet. The strip keeps **Materials** and **Costed**. In red, the strip says how many fixtures carry no cost. The strip stays in view while you scroll.
+
+Press {{button:outline|Show}} and the rail opens again, with every panel and button. Your choice is remembered on this browser.
+
+## In a narrow window
+
+You can keep the plans in one window and the app in another beside it. A narrow window cannot hold the sheet and the rail side by side. The rail then starts folded to its strip, and the sheet has the whole width. The first time, the strip says *Folded to fit this window. Show opens it.*
+
+Press {{button:outline|Show}} and the rail opens over the sheet. Every panel and button of the rail is there. Press **Hide**, press **Esc** or click anywhere on the sheet, and the rail folds away again. A narrow window always starts folded, whatever you chose in a wide one.
+
+The lines draw closer together in a narrow window. Every field and both row buttons stay on screen. On a phone the lines scroll sideways inside their own box. The drag handle and the delete stay pinned at the right edge of the box.
 
 ## Needs a price
 

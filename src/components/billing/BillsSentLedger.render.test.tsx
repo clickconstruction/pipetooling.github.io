@@ -321,6 +321,26 @@ describe('BillsSentLedger', () => {
     expect(io.asks).toEqual([])
   })
 
+  it('says the good news under Did not arrive when every send arrived, and under Not paid when every bill is paid', async () => {
+    io.data = { ...data([copy({})]), bills: new Map([[BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'paid' }]]) }
+    renderWithProviders(<BillsSentLedger />)
+    expect(await screen.findAllByTestId('bills-sent-line')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Did not arrive' }))
+    // Empty is the good state: it reads as nothing to do, never as a search that missed.
+    expect(screen.getByTestId('bills-sent-empty').textContent).toBe('Nothing waiting on a resend. No send on an open bill bounced. See every send')
+    fireEvent.click(screen.getByRole('button', { name: 'Not paid' }))
+    expect(screen.getByTestId('bills-sent-empty').textContent).toBe('Nothing waiting on a payment. Every bill on this list is paid in full. See every send')
+    fireEvent.click(screen.getByRole('button', { name: 'No send on record' }))
+    expect(screen.getByTestId('bills-sent-empty').textContent).toBe('Nothing waiting on a send. Every bill the app made has a send on record. See every send')
+    // The press goes back to every send.
+    fireEvent.click(screen.getByRole('button', { name: 'See every send' }))
+    expect(screen.getAllByTestId('bills-sent-line')).toHaveLength(1)
+    // A search that finds nothing under the chip still reads as a search.
+    fireEvent.click(screen.getByRole('button', { name: 'Did not arrive' }))
+    fireEvent.change(screen.getByLabelText('Find a bill'), { target: { value: 'nobody here' } })
+    expect(screen.getByTestId('bills-sent-empty').textContent).toContain('No sends match ‘nobody here’.')
+  })
+
   it('narrows by what is typed and by how it went, and says so when nothing matches', async () => {
     io.data = data([copy({}), copy({ id: 's1', kind: 'gc_statement', title: 'Statement for Ridgeway Builders', recipientName: 'Ridgeway Builders', recipientEmails: ['billing@ridgeway.example'], sourceTable: '', sourceId: null, jobIds: [], resendEmailId: 're_s' })])
     renderWithProviders(<BillsSentLedger />)
@@ -416,6 +436,15 @@ describe('BillsSentLedger', () => {
     opener.mockRestore()
   })
 
+  it('leads a record opened from a day of By day paid back to that day, by name', async () => {
+    io.data = data([copy({})])
+    renderWithProviders(<BillsSentLedger />, { route: `/bills-sent?bill=${BILL}&view=paid&day=2026-11-03&how=stripe` })
+    await screen.findByTestId('bills-sent-record')
+    // The live test pressed back from a record and lost the day it came from.
+    expect(screen.getByRole('link', { name: '← What came in Tue, Nov 3' }).getAttribute('href')).toBe('/bills-sent?view=paid&day=2026-11-03&how=stripe')
+    expect(screen.queryByRole('link', { name: '← All bills sent' })).toBeNull()
+  })
+
   it('makes a bill\u2019s name on a line the door to its record', async () => {
     io.data = data([copy({})])
     renderWithProviders(<BillsSentLedger />)
@@ -435,7 +464,8 @@ describe('BillsSentLedger', () => {
     expect(printed[0]).toContain('<b>Statement</b> · 12 jobs · Ridgeway Builders')
     expect(printed[0]).not.toContain('Bill 1412-0002')
     fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }))
-    expect(io.saved).toEqual([{ name: expect.stringMatching(/^bills-sent-\d{4}-\d\d-\d\d\.csv$/), type: 'text/csv;charset=utf-8' }])
+    // The file is named for the chip it was saved under.
+    expect(io.saved).toEqual([{ name: expect.stringMatching(/^bills-sent-\d{4}-\d\d-\d\d-statement\.csv$/), type: 'text/csv;charset=utf-8' }])
     fireEvent.change(screen.getByLabelText('Find a bill'), { target: { value: 'nobody here' } })
     expect(screen.queryByRole('button', { name: 'Print' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Download CSV' })).toBeNull()
@@ -645,6 +675,34 @@ describe('BillsSentLedger', () => {
     expect(io.wayCalls).toHaveLength(calls)
   })
 
+  it('on a phone, stands the list’s chips a fingertip tall', async () => {
+    io.phone = true
+    io.data = data([copy({})])
+    renderWithProviders(<BillsSentLedger />)
+    await screen.findAllByTestId('bills-sent-line')
+    // The chips were 38 px on the live page at 375 px.
+    expect(['All', 'Not paid', 'Email', 'Did not arrive'].map((name) => screen.getByRole('button', { name }).style.minHeight)).toEqual(['44px', '44px', '44px', '44px'])
+  })
+
+  it('on a phone, wraps an odd count of tiles so the last row is full, and sits an even count two to a row', async () => {
+    io.phone = true
+    // Two tiles: Today and This week. The one bill is paid, so no tile counts it as not paid.
+    io.data = { ...data([copy({})]), bills: new Map([[BILL, { id: BILL, jobId: JOB, amount: 4860, status: 'paid' }]]) }
+    const { unmount } = renderWithProviders(<BillsSentLedger />)
+    await screen.findAllByTestId('bills-sent-line')
+    expect(screen.queryByTestId('bills-sent-tile-unpaid')).toBeNull()
+    // The test DOM keeps a grid's display and drops its columns: the columns are held by the look's own test.
+    expect(screen.getByTestId('bills-sent-tiles').style.display).toBe('grid')
+    unmount()
+    // Three tiles: Not paid joins them. The row wraps, and each tile grows to fill its row.
+    io.data = data([copy({})])
+    renderWithProviders(<BillsSentLedger />)
+    await screen.findByTestId('bills-sent-tile-unpaid')
+    const row = screen.getByTestId('bills-sent-tiles')
+    expect([row.style.display, row.style.flexWrap]).toEqual(['flex', 'wrap'])
+    expect(screen.getByTestId('bills-sent-tile-unpaid').style.flex).toBe('1 1 5.2rem')
+  })
+
   it('on a phone, puts the list first: a folded strip, a three-row line that opens the record, the file presses last', async () => {
     io.phone = true
     const GAP = 'dddddddd-4444-4444-8444-444444444444'
@@ -696,5 +754,23 @@ describe('BillsSentLedger', () => {
     renderWithProviders(<BillsSentLedger />)
     await waitFor(() => expect(screen.getByText(/permission denied|did not read/i)).toBeTruthy())
     expect(screen.queryByTestId('bills-sent-empty')).toBeNull()
+  })
+
+  it('lists a test bill’s send with its mark, no stamp, and in no tile or total', async () => {
+    io.data = {
+      ...data([copy({ id: 'c1' })]),
+      // The only bill on the list is on a ZZ test job, and its payment rows say not paid.
+      jobs: new Map([[JOB, { id: JOB, hcp_number: '1412', click_number: null, job_name: 'ZZ Test sink', job_address: '', customer_name: 'ZZ Test Customer' }]]),
+      paid: new Map([[BILL, { kind: 'open' as const, paidOn: null, paidAmount: 0, outAmount: 4860, wayWords: '', paidAtIso: null, payments: [] }]]),
+    }
+    renderWithProviders(<BillsSentLedger />, { route: '/bills-sent' })
+    const line = await screen.findByTestId('bills-sent-line')
+    expect(line.textContent).toContain('A test bill. It is in no total.')
+    expect(within(line).queryByTestId('bills-sent-stamp')).toBeNull()
+    // The day counts no bill, and no tile calls the test bill not paid.
+    expect(screen.getByTestId('bills-sent-day').textContent).toContain('0 bills')
+    expect(screen.queryByTestId('bills-sent-tile-unpaid')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Not paid' }))
+    await waitFor(() => expect(screen.queryByTestId('bills-sent-line')).toBeNull())
   })
 })

@@ -42,6 +42,7 @@ import {
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
 import { batchGeocodeCacheKeys } from '../../lib/map/geocodeCacheBatches'
 import { mapGeocodeErrorMessage } from '../../lib/map/geocodeErrorMessage'
+import { readStandingGeocodeMisses } from '../../lib/map/geocodeMissesIo'
 import {
   fetchBidTitlesForScheduleBlocks,
   fetchJobsLedgerForScheduleDispatchHub,
@@ -345,13 +346,29 @@ export function QuickfillScheduleSection({
         if (cancelled) return
 
         // Fill the cache for anything missing (once per address per page load).
-        const missing = uniqueKeys.filter(
+        const unplaced = uniqueKeys.filter(
           (k) => !coordByKey.has(k) && !geocodeAttemptedKeysRef.current.has(k),
         )
+        // An address no service could place is remembered (punch list #408): it is not asked again
+        // while its miss stands, and its line says why as it did before.
+        const misses = await readStandingGeocodeMisses(unplaced)
+        if (cancelled) return
+        const missing = unplaced.filter((k) => !misses.has(k))
+        const remembered = unplaced.filter((k) => misses.has(k))
+        for (const k of remembered) geocodeAttemptedKeysRef.current.add(k)
+        if (missing.length === 0 && remembered.length > 0) {
+          setGeocodeFill({
+            running: 0,
+            failures: remembered.map((k) => ({ address: displayByKey.get(k) ?? k, message: mapGeocodeErrorMessage(misses.get(k)!.error_code, misses.get(k)!.detail ?? undefined) })),
+          })
+        }
         if (missing.length > 0) {
           for (const k of missing) geocodeAttemptedKeysRef.current.add(k)
           setGeocodeFill((prev) => ({ ...prev, running: missing.length }))
-          const failures: Array<{ address: string; message: string }> = []
+          const failures: Array<{ address: string; message: string }> = remembered.map((k) => ({
+            address: displayByKey.get(k) ?? k,
+            message: mapGeocodeErrorMessage(misses.get(k)!.error_code, misses.get(k)!.detail ?? undefined),
+          }))
           for (let i = 0; i < missing.length; i += 20) {
             const chunk = missing.slice(i, i + 20)
             try {

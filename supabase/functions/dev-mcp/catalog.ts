@@ -5,6 +5,7 @@ export type CatalogTable = { kind: 'table' | 'view'; columns: Record<string, str
 export type CatalogRpc = { args: Record<string, string>; returns: string }
 
 export const CATALOG_TABLES: Record<string, CatalogTable> = {
+  "address_geocode_misses": {"kind":"table","columns":{"address_normalized":"string","checked_at":"string","detail":"string | null","error_code":"string"}},
   "address_geocodes": {"kind":"table","columns":{"address_normalized":"string","geocode_error":"string | null","geocoded_at":"string","lat":"number","lng":"number"}},
   "agreements_on_file": {"kind":"view","columns":{"at":"string | null","at_day":"string | null","facts":"Json | null","find_text":"string | null","id":"string | null","job_address":"string | null","job_click_number":"string | null","job_hcp_number":"string | null","job_id":"string | null","job_name":"string | null","kind":"string | null","more_jobs":"number | null","paper_name":"string | null","person_id":"string | null","person_kind":"string | null","source_id":"string | null","state":"string | null","with_name":"string | null"}},
   "app_settings": {"kind":"table","columns":{"key":"string","value_num":"number | null","value_text":"string | null"}},
@@ -227,6 +228,7 @@ export const CATALOG_TABLES: Record<string, CatalogTable> = {
   "flow_step_history": {"kind":"table","columns":{"after":"Json | null","before":"Json | null","by_name":"string","by_user_id":"string | null","created_at":"string","flow_id":"string","id":"string","step_key":"string | null","what":"string"}},
   "flow_steps": {"kind":"table","columns":{"aside":"boolean","call_script":"string | null","call_script_es":"string | null","facts":"string[]","flow_id":"string","fork":"boolean","id":"string","join_word":"string","lane":"string","later_en":"string | null","later_es":"string | null","loop_ends":"string | null","loop_words":"string | null","name":"string","name_es":"string","nudge_day_fact":"string | null","nudge_days":"number | null","nudge_how":"string | null","nudge_send":"string | null","owed_words":"string | null","papers":"string[]","phase":"string","position":"number","seat_user_id":"string | null","skip_one_job":"boolean","step_key":"string","suggest_call":"boolean","updated_at":"string","usual":"number","who":"string"}},
   "flows": {"kind":"table","columns":{"created_at":"string","id":"string","kind":"string","name":"string"}},
+  "gc_asks_taken_back": {"kind":"table","columns":{"asked_by":"string | null","asked_on":"string","by_name":"string","company_id":"string | null","company_name":"string","created_at":"string","id":"string","package_id":"string","taken_back_by":"string | null","taken_back_on":"string"}},
   "gc_back_charges": {"kind":"table","columns":{"amount":"number","answer_by":"string","answer_note":"string | null","answered_on":"string | null","company_id":"string","created_at":"string","created_by":"string | null","id":"string","package_id":"string","photo_url":"string | null","project_id":"string","reason":"string","sent_on":"string","settled_by":"string | null","settled_note":"string | null","settled_on":"string | null","sow_id":"string","status":"string","taken_draw_id":"string | null","taken_on":"string | null"}},
   "gc_bid_tab_views": {"kind":"table","columns":{"company_id":"string","package_id":"string","seen_on":"string"}},
   "gc_bid_tabs": {"kind":"table","columns":{"created_at":"string","package_id":"string","shared_by":"string | null","shared_on":"string","show_names":"boolean"}},
@@ -1043,6 +1045,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "dev_person_doc_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
   "dev_person_evidence_write": [{"args":{"p":"Json","p_dry_run?":"boolean","p_files?":"Json"},"returns":"Json"}],
   "dev_person_license_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
+  "dev_query_plan": [{"args":{"p_analyze?":"boolean","p_key":"string","p_max_chars?":"number"},"returns":"Json"}],
   "dev_theme_marks_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
   "dev_theme_review_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
   "dismiss_mercury_duplicate_pair": [{"args":{"p_id_a":"string","p_id_b":"string"},"returns":"undefined"}],
@@ -1242,6 +1245,8 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "gc_start_project": [{"args":{"p_anyway?":"Json","p_project_id":"string"},"returns":"string"}],
   "gc_submittal_came_in": [{"args":{"r":"Json"},"returns":"string"}],
   "gc_submittal_move": [{"args":{"p_submittal_id":"string"},"returns":"string"}],
+  "gc_take_ask_back": [{"args":{"p_invite_id":"string"},"returns":"undefined"}],
+  "gc_take_award_back": [{"args":{"p_package_id":"string"},"returns":"undefined"}],
   "gc_take_back_charge": [{"args":{"p_charge_id":"string","p_draw_id":"string"},"returns":"string"}],
   "gc_trade_add_person": [{"args":{"p_company_id":"string","p_email":"string","p_gets":"string[]","p_name":"string","p_role":"string"},"returns":"string"}],
   "gc_trade_answer_back_charge": [{"args":{"p_agree":"boolean","p_charge_id":"string","p_company_id":"string","p_note":"string"},"returns":"undefined"}],

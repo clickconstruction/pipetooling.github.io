@@ -2,7 +2,7 @@
 name: "Remember an address the map cannot place"
 number: 408
 group: ready
-status: asked 2026-11-20 as a loose end of v2.8049 · sized the same day from the code, the function logs and the dev seat · the owner's word to file it the same day · not built
+status: asked 2026-11-20 as a loose end of v2.8049 · sized the same day from the code, the function logs and the dev seat · the owner's word to build it 2026-11-24, on the plan's three picks · steps 1 and 2 shipped as v2.8473 and v2.8477 · step 3 not built
 summary: >
   When no map service can place an address, the app keeps nothing, so every screen that lists that
   record asks again on every open: OpenStreetMap, then Google, then the Census. Five addresses cause
@@ -10,9 +10,9 @@ summary: >
   they cost 80 to 250 calls a day, about 100 to 350 of them to Google. The card keeps a miss beside
   the saved points with the day it was checked, so a screen that reads it does not ask again, and
   gives each *no map location yet* line a press that opens the list and the fix.
-next: The owner's three calls below, then step 1. Step 0 needs no code and can be done today.
+next: Deploy `geocode-address-batch` and `geocode-one` once v2.8477 is on the live site, then the check on a ZZ test job. Then step 3, the press. Step 0 needs no code and is a person's to do. The owner's three calls stay open to flip.
 size: S as a train of three (XS · S · XS)
-blocker: The owner's three calls.
+blocker: None. The three calls are built to the plan's picks and listed for the owner to flip.
 opinion: build, small — it is under Google's free count today, so the gain is headroom and a faster Pipeline open, and fixing the five by hand is ten minutes either way
 mockup: not required — the count line and the list exist on the Map page, and the other maps borrow them
 ---
@@ -100,6 +100,9 @@ headroom and a faster screen, not a bill.
    on the first line, the four fences at the end, idempotent, `supabase db push` only after the
    merge, its page in `docs/migrations/`. Open to any signed-in user to read and write, as
    `address_geocodes` has been since v2.3131.
+   **Shipped as v2.8473 on 2026-11-24** ([the fragment](../docs/recent-features/v2.8473.md)). Two
+   things differ from the lines above. A saved point takes its miss away through a trigger on
+   `address_geocodes`, so the functions hold no delete. The server stamps the day on every write.
 2. **The functions and the readers (S).** `geocode-address-batch` and `geocode-one` write a miss
    when all three services say *not found*. They never write one when a service was down, refused
    the key or was over its limit, or an outage would mark good addresses for weeks. Before asking,
@@ -108,6 +111,11 @@ headroom and a faster screen, not a bill.
    and `useMapPageData` read the misses with the saved points and send only what is in neither. A
    write refused for a person in training mode is skipped, as the cache write already is. Both
    functions are deployed after the merge, with their sections in `docs/EDGE_FUNCTIONS.md`.
+   **Shipped as v2.8477 on 2026-11-24** ([the fragment](../docs/recent-features/v2.8477.md)). Three
+   things differ from the lines above. The functions hold no delete, since step 1's trigger takes a
+   miss away on a hit. The readers read the misses after the saved points, for the addresses with no
+   point alone, so an open with every address placed makes no extra request. The 30 days are one
+   constant, `GEOCODE_MISS_STANDS_DAYS`, in a file the functions and the screens share.
 3. **The press (XS).** *N jobs have no map location yet* on the Dashboard, Pipeline and Bid Board
    cards becomes a press that opens the Map page's list: each record, why it could not be placed and
    the day it was checked, **Open the job** to fix the address, and **Try again**, which asks past
@@ -120,6 +128,8 @@ About 100 to 350 Google Geocoding requests a day, the same again to OpenStreetMa
 and 2 to 5 seconds off each open of a map for the people whose jobs include one of the five.
 
 ## The owner's calls
+
+The owner said to build it on 2026-11-24. Each call is built to the plan's pick and can be flipped.
 
 1. **Shared memory, or one per phone.** The plan above is shared: one migration, and every device
    benefits from the first miss. A memory kept on each phone needs no migration and no function

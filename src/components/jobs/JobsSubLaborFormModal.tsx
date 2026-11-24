@@ -12,6 +12,7 @@ import {
 } from 'react'
 import { subPaymentMoveRefusal, subPaymentTraceLines } from '../../lib/jobs/subPaymentMoveRemove'
 import { isOnBench } from '../../lib/people/subBench'
+import { accountHasLeft } from '../../lib/people/leftAccounts'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { supabase } from '../../lib/supabase'
 import { addWorker } from '../../lib/people/addWorker'
@@ -363,8 +364,10 @@ function JobsSubLaborFormModalInner(
       .filter((u) => (k === 'assistant' ? isAssistantLike(u.role) : u.role === userRole))
       .filter((u) => !benchedUserIds.has(u.id) && !(u.email && benchedEmails.has(u.email.trim().toLowerCase())))
       .map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email }))
+    // v2.8467: a roster row whose linked account is archived has left, and is not offered either. The dev seat
+    // already refuses a sheet for them; the row's own archive mark was the only one read here.
     const fromPeople = people
-      .filter((p) => p.kind === k && !isAlreadyUser(p.email) && !(k === 'sub' && isOnBench(p.end_date)))
+      .filter((p) => p.kind === k && !isAlreadyUser(p.email) && !(k === 'sub' && isOnBench(p.end_date)) && !accountHasLeft(p))
       .map((p) => ({ source: 'people' as const, ...p }))
     return [...fromUsers, ...fromPeople].sort((a, b) => a.name.localeCompare(b.name))
   }

@@ -4,6 +4,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import { normalizeAddressForGeocodeKey } from '../lib/map/normalizeAddressForGeocode'
 import { batchGeocodeCacheKeys } from '../lib/map/geocodeCacheBatches'
+import { readStandingGeocodeMisses } from '../lib/map/geocodeMissesIo'
 import { gcOutcomeRowsForBid } from '../lib/bids/gcOutcomeRows'
 import { groupVersionsByGc } from '../lib/bids/gcPackets'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../lib/bids/submissionSections'
@@ -60,7 +61,8 @@ export type MapPageEntity = {
 const GEOCODE_BATCH_MAX = 20
 
 type GeocodeBatchResultRow = { address_normalized: string; lat: number; lng: number }
-type GeocodeBatchFailureRow = { address_normalized: string; error_code: string; detail?: string }
+/** `remembered` and `checked_at` (punch list #408): the function answered a kept miss, and asked no service. */
+type GeocodeBatchFailureRow = { address_normalized: string; error_code: string; detail?: string; remembered?: boolean; checked_at?: string }
 
 function resolveEstimateAddress(e: EstimateRow): string | null {
   const a = e.for_address?.trim()
@@ -77,6 +79,8 @@ export type GeocodeAddressRow = {
   addressLabel: string
   status: 'pending' | 'in_progress' | 'ok' | 'error'
   errorMessage?: string
+  /** When the map services last missed this address (punch list #408); set on a remembered miss. */
+  checkedAt?: string
 }
 
 export function useMapPageData(enabled: boolean) {
@@ -244,18 +248,35 @@ export function useMapPageData(enabled: boolean) {
         })
 
       const missing = keys.filter((k) => !byKey.has(k))
+      // The addresses no service could place (punch list #408), read for the ones with no saved point. It never throws.
+      const misses = await readStandingGeocodeMisses(missing)
+      if (gen !== loadGenerationRef.current) return
       const displayByKey = new Map<string, string>()
       for (const en of next) {
         if (missing.includes(en.addressKey) && !displayByKey.has(en.addressKey)) {
           displayByKey.set(en.addressKey, en.addressLabel)
         }
       }
-      const ordered = missing.map((k) => ({ key: k, display: displayByKey.get(k) ?? k }))
+      // A miss that still stands is not asked again: its row says why and when, with nothing sent.
+      const ordered = missing.filter((k) => !misses.has(k)).map((k) => ({ key: k, display: displayByKey.get(k) ?? k }))
+      const rememberedRows: GeocodeAddressRow[] = missing
+        .filter((k) => misses.has(k))
+        .map((k) => {
+          const m = misses.get(k)!
+          return {
+            address_normalized: k,
+            addressLabel: displayByKey.get(k) ?? k,
+            status: 'error' as const,
+            errorMessage: mapGeocodeErrorMessage(m.error_code, m.detail ?? undefined),
+            checkedAt: m.checked_at,
+          }
+        })
 
-      if (ordered.length > 0) {
-        setGeocodeAddressRows(
-          ordered.map(({ key, display }) => ({ address_normalized: key, addressLabel: display, status: 'pending' as const }))
-        )
+      if (ordered.length > 0 || rememberedRows.length > 0) {
+        setGeocodeAddressRows([
+          ...rememberedRows,
+          ...ordered.map(({ key, display }) => ({ address_normalized: key, addressLabel: display, status: 'pending' as const })),
+        ])
       }
 
       setEntities(mergeCoords(next, byKey))
@@ -305,19 +326,19 @@ export function useMapPageData(enabled: boolean) {
           }
           const rawFailures =
             data != null && typeof data === 'object' && Array.isArray(data.failures) ? data.failures : []
+          const goodFailures = rawFailures.filter(
+            (f): f is GeocodeBatchFailureRow =>
+              f != null &&
+              typeof f === 'object' &&
+              typeof (f as GeocodeBatchFailureRow).address_normalized === 'string' &&
+              typeof (f as GeocodeBatchFailureRow).error_code === 'string'
+          )
           const failureMessageByKey = new Map<string, string>(
-            rawFailures
-              .filter(
-                (f): f is GeocodeBatchFailureRow =>
-                  f != null &&
-                  typeof f === 'object' &&
-                  typeof (f as GeocodeBatchFailureRow).address_normalized === 'string' &&
-                  typeof (f as GeocodeBatchFailureRow).error_code === 'string'
-              )
-              .map((f) => [
-                f.address_normalized,
-                mapGeocodeErrorMessage(f.error_code, typeof f.detail === 'string' ? f.detail : undefined),
-              ])
+            goodFailures.map((f) => [f.address_normalized, mapGeocodeErrorMessage(f.error_code, typeof f.detail === 'string' ? f.detail : undefined)])
+          )
+          // The function read the memory when this page's own read of it failed: keep the day it gave.
+          const checkedAtByKey = new Map<string, string>(
+            goodFailures.filter((f) => typeof f.checked_at === 'string').map((f) => [f.address_normalized, f.checked_at as string])
           )
           setGeocodeAddressRows((prev) =>
             prev.map((row) => {
@@ -327,6 +348,7 @@ export function useMapPageData(enabled: boolean) {
                 ...row,
                 status: 'error' as const,
                 errorMessage: failureMessageByKey.get(row.address_normalized) ?? 'Could not geocode address',
+                ...(checkedAtByKey.has(row.address_normalized) ? { checkedAt: checkedAtByKey.get(row.address_normalized) } : {}),
               }
             })
           )

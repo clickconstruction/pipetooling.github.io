@@ -48,6 +48,7 @@ import { hasInAppHistory } from '../lib/inAppHistory'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { LEGAL_DESK_PATH, PIPELINE_HREF } from '../lib/legal/legalDeskRoute'
 import { LIEN_DESK_DEFAULT_KIND, lienDeskFromSearch, lienDeskHref, type LienCopiesReader, type LienDeskKind } from '../lib/lien/lienDeskRoute'
+import { lienWindowDeskDoorHref } from '../lib/lien/lienWindowDeskDoor'
 import LienDesk from '../components/jobs/LienDesk'
 import LienInstrumentsModal from '../components/jobs/LienInstrumentsModal'
 import { lienMailProofWindowTab, type LienMailProofLanding } from '../lib/jobs/lienMailProofDoor'
@@ -410,10 +411,11 @@ export default function LienDeskPage() {
         }}
         signerNameFallback={signerNameFor(lienWindow?.job.master_user_id ?? null)}
         authEmail={user.email?.trim() ?? ''}
-        // The next step's door (punch list #82): the window closes and the desk opens on the job, through the address.
+        // The next step's door (punch list #82): the window closes and the desk opens on the job, through the address,
+        // for an affidavit and a retainage notice as for a notice (punch list #335, `lienWindowDeskDoor.ts`).
         onOpenLienDesk={(jobId, deskKind) => {
           setLienWindow(null)
-          navigate(lienDeskHref({ kind: deskKind, job: deskKind === 'notice' ? jobId : null }), { replace: true, state: location.state })
+          navigate(lienWindowDeskDoorHref(jobId, deskKind), { replace: true, state: location.state })
         }}
         onRecorded={() => {
           // v2.7208: the row behind the window reads its notice, its filing and its service off the lien clocks: read them again.

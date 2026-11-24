@@ -95,7 +95,7 @@ import { lienServeCodeLanding, lienServeStage, lienServeStageCounts, lienServeSt
 import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
 import { LienOffPathBinView } from './LienOffPathBoardParts'
 import { EmptyState } from '../EmptyState'
-import { lienDeskAimAddressJob, lienDeskAimFrom, lienDeskAimSpent, lienDeskOffListWords, readLienDeskAim, type LienDeskAim } from '../../lib/lien/lienDeskAim'
+import { lienDeskAimAddressJob, lienDeskAimFrom, lienDeskAimSpent, lienDeskOffListWords, lienDeskReaimKey, readLienDeskAim, type LienDeskAim } from '../../lib/lien/lienDeskAim'
 import { lienDeskJobLabel as jobLabel, lienDeskJobNumber as jobNumberOf, splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
 import { lienStepCard, lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { lienJobScreen, lienJobScreenClosesOnAct } from '../../lib/jobs/lienPhoneJobScreen'
@@ -110,9 +110,11 @@ import { lienClosedNoticeStopNote, lienStopPaperKind } from '../../lib/jobs/lien
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import LienDeskNextUp from './LienDeskNextUp'
+import LienGetItRightHost from './LienGetItRightHost'
 import { lienNoticeToldWords } from '../../lib/jobs/lienLeaderTold'
 import LienDoNowBar from './LienDoNowBar'
 import { useLienDeskBoard } from './useLienDeskBoard'
+import { useLienGetItRight } from './useLienGetItRight'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type CallerMatchInput, type CallerOwnerHit } from '../../lib/jobs/lienCallerMatch'
 import LienCallScriptModal from './LienCallScriptModal'
@@ -132,7 +134,7 @@ import { lienSupplierLetterParagraphFor, lienSupplierMark, type LienSupplierMark
 import { conditionalReleaseParagraph, noticeReleaseFields, noticeReleaseFormType, noticeReleasePageHtml, noticeReleaseThroughDate } from '../../lib/jobs/lienNoticeRelease'
 import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseDraft, type NoticeReleaseDraftInput } from '../../lib/jobs/lienNoticeReleaseIo'
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
-import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienMissedNoticeStillGoes, lienNoticeFootHead, lienPaneHeadsOverPages, lienPaneSections } from '../../lib/jobs/lienPaneSections'
+import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienLateNoticeUntil, lienMissedNoticeStillGoes, lienNoticeFootHead, lienPaneHeadsOverPages, lienPaneSections } from '../../lib/jobs/lienPaneSections'
 import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen, type LienPhoneFootProof } from '../../lib/jobs/lienPhonePane'
 import { lienApplyMonthsOffered, lienApplyStartsBlank } from '../../lib/jobs/lienNoticeApply'
@@ -140,6 +142,7 @@ import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
 import LienDeskAffidavitPane from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LienDeskAffidavitList } from './LienDeskAffidavitList'
+import { useLienGateAsk } from './useLienGateLanding'
 import { LienDeskNoticeList } from './LienDeskNoticeList'
 import { LienDeskNoticePane, type LienNoticePaneContext } from './LienDeskNoticePane'
 import { LIEN_STRIP_COLLAPSE_PX as STRIP_COLLAPSE_PX } from './lienDeskPaneStyles'
@@ -530,10 +533,11 @@ export default function LienDesk({
   }, [initialKind])
   // A door can re-aim the desk (punch list #82: the job's Lien window sends its next step back here through the address).
   // The job it names is new, so its list is applied as on a fresh open. v2.4612: `aimKey` says the door was pressed again,
-  // so the same job re-aims too.
-  const aimedRef = useRef(`${initialJobId ?? ''}|${aimKey ?? 0}`)
+  // so the same job re-aims too. Punch list #335: so does the same job named on another list (`lienDeskReaimKey`): the Lien
+  // window's button sends a job open on Monthly notices to its affidavit, and the Affidavits list opened on its own first row.
+  const aimedRef = useRef(lienDeskReaimKey(initialKind, initialJobId, aimKey))
   useEffect(() => {
-    const next = `${initialJobId ?? ''}|${aimKey ?? 0}`
+    const next = lienDeskReaimKey(initialKind, initialJobId, aimKey)
     const prev = aimedRef.current
     aimedRef.current = next
     if (initialJobId && next !== prev) {
@@ -904,6 +908,8 @@ export default function LienDesk({
       setRunOpen(true)
     },
   })
+  // The run's first step, Get it right (punch list #362, step 5): the checklist over the same Board and rows, and the papers left out.
+  const getItRight = useLienGetItRight({ shown: kind === 'next', board, rows: nextUpRows, todayYmd, jobTitle: (jobId) => (data?.jobsById[jobId]?.job_name ?? '').trim() || jobLabel(data?.jobsById[jobId], jobId), leaderName: (jobId) => leaderNameFor?.(data?.jobsById[jobId]?.master_user_id ?? null)?.trim() || null, refreshKey: data })
   // A phone's flow (punch list #428). A pressed stage narrows the list as a bin's head does. Where the page keeps the
   // stage in the history entry, the entry is what says which stage is picked: a press asks the page for it, and Back
   // puts the flow back. A stage the Board no longer holds reads as none.
@@ -1295,14 +1301,34 @@ export default function LienDesk({
 
   // Months a new notice names: the draft's, else every open month, minus what the user unticked.
   const monthChoices = useMemo(() => (selected ? selected.months.map((m) => ({ ...m, closed: m.daysLeft < 0 })) : []), [selected])
+  const openBalance = selected?.openBalance ?? 0
+  // The job's lien timeline (v2.3761): every Chapter 53 step in order, from what the desk already loaded. Built here, above the late window, which reads its affidavit day (punch list #415).
+  const timeline =
+    selected && data
+      ? buildLienTimelineFromDesk(selected.jobId, {
+          rows: data.rows,
+          items: data.items,
+          filings: data.filingsByJob[selected.jobId] ?? [],
+          servePrinted,
+          entry: selected,
+          affidavit: data.affidavits.entries.find((e) => e.jobId === selected.jobId) ?? null,
+          retainage: lienRetainageClockFromDesk(data, selected.jobId),
+          isSub: Boolean(selected.gcCustomerId),
+          propertyKind: property.propertyKind,
+          lastWorkDate: job?.last_work_date ?? null,
+          job: job ?? null,
+          openBalance,
+          todayYmd,
+          demandLetters: data.demandLettersByJob?.[selected.jobId] ?? null,
+        })
+      : null
   // v2.4708: every window closed unsent while the affidavit's own window is still open — the new notice names the closed months, late.
-  const lateUntil = useMemo(() => {
-    if (!selected || !data) return null
-    const aff = data.affidavits.entries.find((e) => e.jobId === selected.jobId)
-    if (!aff || aff.pile === 'filed' || !aff.deadline || aff.deadline < todayYmd) return null
-    if (selected.dueMonths.length > 0 || selected.months.some((m) => m.noticed) || selected.missedMonths.length === 0) return null
-    return aff.deadline
-  }, [selected, data, todayYmd])
+  // The day is the path's own (v2.8454, punch list #415): the affidavit windows' list holds a job only within thirty days of its day, and read
+  // alone it said the lien right was gone for a day or two over a path that said to send the notice late (`lienLateNoticeUntil`).
+  const pathAffidavitDay = timeline?.affidavitDay ?? ''
+  // Filed, by the windows' own word: the pile, or the kept row's flag, since a paper filed with no desk item is on no pile. The path says so too from the job's filings.
+  const affidavitFiled = Boolean(selected && data && (data.affidavits.entries.find((e) => e.jobId === selected.jobId)?.pile === 'filed' || data.affidavitRows.some((r) => r.job_id === selected.jobId && r.filed)))
+  const lateUntil = useMemo(() => lienLateNoticeUntil({ entry: selected, affidavitDay: pathAffidavitDay, affidavitFiled, todayYmd }), [selected, pathAffidavitDay, affidavitFiled, todayYmd])
   const defaultMonths = useMemo(() => new Set(item?.months.length ? item.months : selected?.dueMonths.length ? selected.dueMonths : lateUntil && selected ? selected.missedMonths : []), [item, selected, lateUntil])
   useEffect(() => {
     setCheckedMonths(null)
@@ -1342,7 +1368,6 @@ export default function LienDesk({
   const months = checkedMonths ?? defaultMonths
   const monthsList = [...months].sort()
 
-  const openBalance = selected?.openBalance ?? 0
   // The job's master by name (v2.4856): the word row, the record and the queue row say *on Malachi's word*.
   const leaderName = leaderNameFor?.(job?.master_user_id ?? null) ?? ''
   // Someone else's screen (v2.5791, punch list #150): the job has a master and he is not the one signed in here. The
@@ -2218,27 +2243,6 @@ export default function LienDesk({
     }
   }
 
-  // The job's lien timeline (v2.3761): every Chapter 53 step in order, from what the desk already loaded.
-  const timeline =
-    selected && data
-      ? buildLienTimelineFromDesk(selected.jobId, {
-          rows: data.rows,
-          items: data.items,
-          filings: data.filingsByJob[selected.jobId] ?? [],
-          servePrinted,
-          entry: selected,
-          affidavit: data.affidavits.entries.find((e) => e.jobId === selected.jobId) ?? null,
-          retainage: lienRetainageClockFromDesk(data, selected.jobId),
-          isSub: Boolean(selected.gcCustomerId),
-          propertyKind: property.propertyKind,
-          lastWorkDate: job?.last_work_date ?? null,
-          job: job ?? null,
-          openBalance,
-          todayYmd,
-          demandLetters: data.demandLettersByJob?.[selected.jobId] ?? null,
-        })
-      : null
-
   // The press on a recipient's card in a stop's window (`lienMailProofDoor.ts`): how this desk opens each place a copy's lack is
   // entered. The office alone does those acts, so anyone else has no opener and no press. The copies window is offered for a lien in it.
   const proofOpeners = (filingId: string): LienMailProofOpeners =>
@@ -2541,6 +2545,8 @@ export default function LienDesk({
   const pileStrip = (chips: ReactNode[]) => (isMobile && chips.length > 0 ? <div data-lien-desk-piles style={{ display: 'flex', gap: 8, padding: '8px 12px', overflowX: 'auto', borderBottom: '1px solid var(--border)' }}>{chips}</div> : null)
 
   const affHeads = useLienPileHeads(affPilesShown.map((x) => x.p), isMobile)
+  // A press on a list row asks the pane for the row's open gate (v2.8472, punch list #364, `useLienGateLanding`).
+  const gateAsk = useLienGateAsk()
   const affList = (
     <LienDeskAffidavitList
       aff={aff}
@@ -2558,9 +2564,10 @@ export default function LienDesk({
       pileChips={pileStrip(affPileChips)}
       supplierMarks={supplierMarks}
       rowLabel={(jobId) => listLabel(jobId, 'affidavit', false)}
-      onPick={(jobId) => {
+      onPick={(jobId, from) => {
         setAffSelectedJobId(jobId)
         setMobileListShown(false)
+        gateAsk.askFor(from === 'row' ? jobId : null)
       }}
     />
   )
@@ -2602,6 +2609,7 @@ export default function LienDesk({
         onOpenLastWork={office ? onOpenCalendarLastWork : undefined}
         onLastWorkChanged={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())}
         footerEl={affFooterEl}
+        landOnGate={gateAsk.ask}
       />
     ) : offList?.kind === 'affidavit' ? offListNote : (
       <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
@@ -3118,7 +3126,9 @@ export default function LienDesk({
             <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)} prints={boardPrints ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.short.label, left: side.short.left, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>
+            <LienGetItRightHost run={getItRight.run} open={getItRight.open} failure={getItRight.failure} onOpen={() => getItRight.setOpen(true)} onRetry={() => void getItRight.reload()} scrolls={doNow.listScrolls} isMobile={isMobile} canLeaveOut={office} userName={(id) => leaderNameFor?.(id)?.trim() || null} onBack={() => getItRight.setOpen(false)} onAct={(rowKey) => { const row = nextUpRows.find((r) => r.key === rowKey); if (row) actOnNextUp(row) }} onOpenLine={(line) => zoomFor(line.jobId, line.kind)?.press()} onLeaveOut={getItRight.leaveOut} onPutBack={getItRight.putBack} prints={boardPrints ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.label, left: side.left?.words ?? null, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
             <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} risk={rowRisk} riskLabel={riskLabel} stageFor={rowStage} noticeFor={rowNotice} byBin={board && !isMobile ? { binFor: rowBin, folds: lienBinFolds({ office, serveOwed: serveJobs.length, serveButton: serveDoor, printReady: affPrintPlanAll.ready.length, printButton: lienAffidavitPrintDoorWords(affPrintPlanAll), sendReady: affSendPlanAll.ready.length }), narrowed: Boolean(boardPick) } : null} trackPress={office && !isMobile && affPrintPlanAll.ready.length >= 2 ? { button: lienAffidavitPrintDoorWords(affPrintPlanAll), onPress: () => { setAffHeldOnlyPicked(false); setAffPile('ready'); setKind('affidavit') } } : null} remind={office && reminderWords && waitingRows.length > 0 ? { button: reminderWords.button, dead: reminderWords.dead, busy: reminding, onPress: () => void remindLeader() } : null} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
+            </LienGetItRightHost>
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
