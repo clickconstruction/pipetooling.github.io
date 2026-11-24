@@ -6132,6 +6132,11 @@ button.gcStep:hover > em { text-decoration: underline; }
 .takeoffLinesBox[data-fit='scroll'] thead th:nth-child(2) {
   width: 42%;
 }
+/* Roomy (v2.8483): a text field asks for 260 px and no more, so the part column stood at 284 px in any window
+   and every spare pixel went to the columns beside it. It now takes its share: the part's name is the line. */
+.takeoffLinesBox[data-fit='roomy'] thead th:nth-child(2) {
+  width: 38%;
+}
 .takeoffLinesBox[data-fit='scroll'] {
   overflow-x: auto;
   overscroll-behavior-x: contain;

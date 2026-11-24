@@ -240,6 +240,37 @@ describe('BidsTakeoffTab render smoke', () => {
     }
   })
 
+  it('draws a part line’s small line so it cannot widen the table: no width of its own, the whole text on its hover (v2.8483)', async () => {
+    window.localStorage.setItem('bids_takeoff_view_v1', 'new2')
+    try {
+      const asm = 'ZZ wall hung lavatory with concealed arm carrier, a made-up assembly with a long name'
+      renderWithProviders(
+        <BidsTakeoffTab
+          {...makeProps({
+            selectedBidForTakeoff: makeBid({ materials_model: 'rough' }),
+            takeoffCountRows: [{ id: 'row-1', bid_id: 'bid-1', fixture: 'LAV-1', count: 2, sequence_order: 1 } as unknown as Props['takeoffCountRows'][number]],
+            takeoffRoughPartLines: [
+              { id: 'line-1', countRowId: 'row-1', partId: 'part-1', quantity: 1, unitPrice: 12.5, sourceMaterialPartPriceId: null, sourceTemplateId: 'asm-1', sequenceOrder: 1, isSaved: true },
+              { id: 'line-2', countRowId: 'row-1', partId: 'part-2', quantity: 1, unitPrice: 3, sourceMaterialPartPriceId: null, sourceTemplateId: null, sequenceOrder: 2, isSaved: true },
+            ] as unknown as Props['takeoffRoughPartLines'],
+            materialTemplates: [{ id: 'asm-1', name: asm }] as unknown as Props['materialTemplates'],
+          })}
+        />,
+      )
+      await screen.findByTestId('takeoff-cost-rail-view')
+      const [fromAssembly, loose] = screen.getAllByTestId('takeoff-line-sub')
+      // A table column is as wide as its widest unbroken line. This one is unbroken, so it must ask for nothing.
+      expect(fromAssembly!.style.whiteSpace).toBe('nowrap')
+      expect(fromAssembly!.style.width).toBe('0px')
+      expect(fromAssembly!.style.flex).toContain('1')
+      expect(fromAssembly!.textContent).toBe(`Part · — · ${asm}`)
+      expect(fromAssembly!.getAttribute('title')).toBe(`Part · — · ${asm}`)
+      expect(loose!.textContent).toBe('Part · —')
+    } finally {
+      window.localStorage.removeItem('bids_takeoff_view_v1')
+    }
+  })
+
   it('a bid still flagged By Stage follows the view the device remembers (v2.4389)', async () => {
     window.localStorage.setItem('bids_takeoff_view_v1', 'new2')
     try {

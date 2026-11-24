@@ -144,6 +144,13 @@ export function SortableRoughPartLineRow({
     ? (materialTemplates.find((t) => t.id === line.sourceTemplateId)?.name ?? 'Assembly')
     : ''
   const partName = line.partId ? (takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? '') : ''
+  // The small line under a part's name: its type, and the assembly the line came from.
+  const partSubLine = (() => {
+    const partTypeName = takeoffAddTemplateParts.find((p) => p.id === line.partId)?.part_types?.name ?? '—'
+    if (!line.sourceTemplateId) return `Part · ${partTypeName}`
+    const asmName = materialTemplates.find((t) => t.id === line.sourceTemplateId)?.name
+    return `Part · ${partTypeName} · ${asmName ?? '—'}`
+  })()
   const lineRule = line.partId ? parseOrderIncrement({ order_increment: line.orderIncrement, order_increment_unit: line.orderIncrementUnit }) : null
   const roughCatalogLow = line.partId ? takeoffRoughCatalogLowestByPartId[line.partId] : undefined
   const roughMatchesLowest =
@@ -441,19 +448,16 @@ export function SortableRoughPartLineRow({
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                   minWidth: 0,
+                  // v2.8483: a table column is as wide as its widest unbroken line, whatever `minWidth: 0` and
+                  // the dots say. With no width of its own this line asks for nothing, takes what the column
+                  // has (`flex: 1`) and shortens with the dots. Its whole text is its hover.
+                  width: 0,
                   flex: 1,
                 }}
+                title={partSubLine}
+                data-testid="takeoff-line-sub"
               >
-                {(() => {
-                  const partTypeName =
-                    takeoffAddTemplateParts.find((p) => p.id === line.partId)?.part_types?.name ?? '—'
-                  let s = `Part · ${partTypeName}`
-                  if (line.sourceTemplateId) {
-                    const asmName = materialTemplates.find((t) => t.id === line.sourceTemplateId)?.name
-                    s += asmName ? ` · ${asmName}` : ' · —'
-                  }
-                  return s
-                })()}
+                {partSubLine}
               </span>
               {partAssemblyCount > 0 ? (
                 <button
