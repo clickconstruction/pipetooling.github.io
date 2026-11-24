@@ -6103,6 +6103,59 @@ button.gcStep:hover > em { text-decoration: underline; }
   .gcStageStop, .gcStageBar i, .gcReviewRowToggle { transition: none; }
 }
 
+/* The takeoff line table in a narrow box (v2.8476). `TakeoffLinesBox` measures itself and sets `data-fit`
+   (`lib/bids/takeoffSheetFit.ts`). The cells carry inline padding, so these rules need `!important`.
+   snug: the side padding of the wide cells drawn in, the part box giving up the width a text field asks
+   for by itself, and the Actions heading dropped (its two presses carry their own names). That takes the
+   table's floor from 726 px to about 600.
+   scroll: narrower than that. The box scrolls sideways by itself, so the page never does, and each row's
+   last cell, the drag handle and the delete, stays pinned at the box's right edge. */
+.takeoffLinesBox[data-fit='snug'] :is(th, td):is(:first-child, :nth-child(2), :last-child),
+.takeoffLinesBox[data-fit='scroll'] :is(th, td):is(:first-child, :nth-child(2), :last-child) {
+  padding-left: 0.4rem !important;
+  padding-right: 0.4rem !important;
+}
+.takeoffLinesBox[data-fit='snug'] :is(th, td):nth-child(3),
+.takeoffLinesBox[data-fit='scroll'] :is(th, td):nth-child(3) {
+  padding-left: 0.4rem !important;
+}
+.takeoffLinesBox[data-fit='snug'] td:nth-child(2) input[type='text'],
+.takeoffLinesBox[data-fit='scroll'] td:nth-child(2) input[type='text'] {
+  width: 0;
+}
+.takeoffLinesBox[data-fit='snug'] thead th:last-child,
+.takeoffLinesBox[data-fit='scroll'] thead th:last-child {
+  font-size: 0 !important;
+}
+/* With its field asking for nothing, the part column would be the narrowest: it takes the spare width instead. */
+.takeoffLinesBox[data-fit='snug'] thead th:nth-child(2),
+.takeoffLinesBox[data-fit='scroll'] thead th:nth-child(2) {
+  width: 42%;
+}
+.takeoffLinesBox[data-fit='scroll'] {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  /* A field brought into view by Tab stops clear of the pinned presses. */
+  scroll-padding-right: 52px;
+}
+.takeoffLinesBox[data-fit='scroll'] thead th:last-child,
+.takeoffLinesBox[data-fit='scroll'] td:last-child:not([colspan]) {
+  position: sticky;
+  right: 0;
+  background: var(--surface);
+  box-shadow: -1px 0 0 var(--border);
+}
+.takeoffLinesBox[data-fit='scroll'] thead th:last-child {
+  background: var(--bg-subtle);
+}
+.takeoffLinesBox[data-fit='scroll'] tr[style*='--bg-page'] td:last-child:not([colspan]) {
+  background: var(--bg-page);
+}
+/* A scrolling box clips what hangs below it: leave room for the part search list on the last rows. */
+.takeoffLinesBox[data-fit='scroll']:has(td ul) {
+  padding-bottom: 232px;
+}
+
 /* Takeoff part search (v2.4055): the magnifier at the end of every part name — faint at rest,
    blue on hover or focus; the takeoff's own print pages never carry it. */
 .takeoff-part-search {

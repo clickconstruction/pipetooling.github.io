@@ -1,0 +1,38 @@
+import { useLayoutEffect, useState, type ReactNode } from 'react'
+import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
+import { takeoffLinesFit, tightenedLinesFit } from '../../lib/bids/takeoffSheetFit'
+
+/**
+ * The box around the takeoff line table (v2.8476). It measures itself and tells
+ * the table how to draw (`data-fit`, `lib/bids/takeoffSheetFit.ts`): roomy, snug,
+ * or scrolling sideways inside this box with the row's two presses pinned at its
+ * right edge. The rules are in `index.css` under `.takeoffLinesBox`.
+ *
+ * A width alone cannot know the rows: a long amount or a fixture named in one
+ * unbroken word can make the table wider than its box. So after each draw the box
+ * checks whether the table overflowed anyway and steps one tighter for this width.
+ *
+ * The box keeps `overflow: visible` while the table fits, as it has since v2.1059:
+ * the part search list hangs below its row and a clipping box cut it off on the
+ * sheet's last rows. Only `scroll` clips, and there the rules make room for the list.
+ */
+export function TakeoffLinesBox({ children }: { children: ReactNode }) {
+  const [ref, width] = useMeasuredWidth<HTMLDivElement>()
+  const at = width == null ? null : Math.round(width)
+  const [seen, setSeen] = useState<{ at: number | null; overflows: number }>({ at: null, overflows: 0 })
+  const overflows = seen.at === at ? seen.overflows : 0
+  const fit = tightenedLinesFit(takeoffLinesFit(width), overflows)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el || fit === 'scroll') return
+    if (el.scrollWidth > el.clientWidth + 1) setSeen({ at, overflows: overflows + 1 })
+    // `children` is a new table on every draw of the tab, so this looks again whenever the rows may have changed.
+  }, [ref, fit, at, overflows, children])
+
+  return (
+    <div ref={ref} className="takeoffLinesBox" data-fit={fit} data-testid="takeoff-lines-box" style={{ border: '1px solid var(--border)', borderRadius: 4 }}>
+      {children}
+    </div>
+  )
+}

@@ -14,6 +14,8 @@ import { TakeoffCoverageStrip } from './TakeoffCoverageStrip'
 import { EmptyState } from '../EmptyState'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { Money } from '../Money'
+import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
+import { TAKEOFF_RAIL_PX, railFitsBeside } from '../../lib/bids/takeoffSheetFit'
 
 /**
  * New 2 — "Cost rail" (v2.2781, docs/TAKEOFFS_REFRESH_PLAN.md; mockup C):
@@ -97,6 +99,10 @@ export function TakeoffCostRailView({
   const [pickedBid, setPickedBid] = useState<string | null>(null)
   const [copying, setCopying] = useState(false)
   const [showUnitCosts, setShowUnitCosts] = useState(false)
+  // v2.8476: the rail sits beside the list only where both fit. Narrower, it goes under the list, so the
+  // line table keeps the whole width and no row press ends up under the rail.
+  const [sheetRef, sheetWidth] = useMeasuredWidth<HTMLDivElement>()
+  const railBeside = railFitsBeside(sheetWidth)
   useEffect(() => {
     if (focusRequest) setFilter('all')
   }, [focusRequest?.nonce, focusRequest])
@@ -160,7 +166,7 @@ export function TakeoffCostRailView({
   )
 
   return (
-    <div data-testid="takeoff-cost-rail-view">
+    <div data-testid="takeoff-cost-rail-view" ref={sheetRef} data-rail={railBeside ? 'beside' : 'under'}>
       <TakeoffCoverageStrip coverage={coverage} onClickUncosted={() => setFilter('uncosted')} onClickZeroPrice={() => setFilter('zero')}>
         <button type="button" onClick={onFillAll} disabled={fillButton.disabled} title={fillButton.title || undefined} style={{ padding: '0.4rem 0.8rem', background: fillButton.disabled ? DEAD_PRESS_FILL : '#2563eb', color: fillButton.disabled ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 4, cursor: fillButton.disabled ? 'default' : 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
           {fillButton.label}
@@ -170,7 +176,7 @@ export function TakeoffCostRailView({
         </button>
       </TakeoffCoverageStrip>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', gap: '1rem', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: railBeside ? `minmax(0, 1fr) ${TAKEOFF_RAIL_PX}px` : 'minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
         <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Takeoff book</label>
@@ -198,7 +204,7 @@ export function TakeoffCostRailView({
           )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'sticky', top: 8 }}>
+        <div data-testid="takeoff-rail" style={railBeside ? { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, position: 'sticky', top: 8 } : { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'start', gap: 12, minWidth: 0 }}>
           <div style={{ ...panel, boxShadow: '0 4px 14px rgba(0,0,0,0.08)' }}>
             <span style={panelK}>What Pricing sees</span>
             <div style={kv}>
