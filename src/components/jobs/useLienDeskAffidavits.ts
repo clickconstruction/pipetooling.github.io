@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
+import type { LienHelpLeftOut } from '../../lib/jobs/lienHelpSheet'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { workMonthShort } from '../../lib/jobs/forecastWorkMonths'
 import { lienAffidavitBatchToldWords, lienAffidavitTellPapers } from '../../lib/jobs/lienAffidavitApprovalTell'
@@ -180,11 +181,10 @@ export function useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, sign
   // Who a help sheet says to ask (change 9): the job's lien leader, or the dev.
   const askFor = useLienAskPeople()
   const affPrintIssuer = affSigning.issuer
-  const affPrintPapers = useMemo((): LienAffidavitPrintPaper[] => {
+  // The papers a set of entries prints, in clerk order (change 7): each county clerk's papers print together, and the help sheet's rows count them as they lie in the stack.
+  const affPapersOf = useCallback((entries: LienDeskData['affidavits']['entries']): LienAffidavitPrintPaper[] => {
     if (!data) return []
-    // In clerk order (change 7): each county clerk's papers print together, and the help sheet's rows count them as they lie in the stack.
-    // The shown rows alone while a find is typed (punch list #353): a paper the find hides is not printed and not listed as held, since nobody held it.
-    return lienAffidavitClerkOrder(lienAffidavitPrintPlan(lienAffidavitShownEntries(data.affidavits.entries, affShown)).ready.flatMap((e): LienAffidavitPrintPaper[] => {
+    return lienAffidavitClerkOrder(lienAffidavitPrintPlan(entries).ready.flatMap((e): LienAffidavitPrintPaper[] => {
       const fields = lienDeskAffidavitFieldsFor({ data, jobId: e.jobId, issuer: affPrintIssuer, signerNameFor, todayYmd })
       const job = data.jobsById[e.jobId]
       if (!fields) return []
@@ -207,30 +207,41 @@ export function useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, sign
       const checked = { propertyKind: e.propertyKind, homestead: resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null).homestead, noticeLines, noticeRow: lienNoticeCheckRowLine(noticeCheck), monthStandIn, monthsByHand: byHand ? lienAffidavitMonthsByHandCheck(byHand, formatYmdMonthDay) : null, monthCheck }
       return [{ jobId: e.jobId, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', fields, label: jobLabel(job, e.jobId), fileBy: e.deadline ? demandDate(e.deadline) : '', checked, clerk: lienClerkFor(issuer?.countyClerksText, fields.county), ask: askFor(job?.master_user_id ?? null), noticeRecord }]
     }))
-  }, [data, affShown, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])
+  }, [data, affPrintIssuer, issuer?.countyClerksText, askFor, signerNameFor, todayYmd])
+  // The shown rows alone while a find is typed (punch list #353): a paper the find hides is not printed and not listed as held, since nobody held it.
+  const affPrintPapers = useMemo((): LienAffidavitPrintPaper[] => (data ? affPapersOf(lienAffidavitShownEntries(data.affidavits.entries, affShown)) : []), [data, affShown, affPapersOf])
+  // Every ready paper on the desk, whatever a find hides: the run's one print takes its own jobs from these (punch list #362, step 6).
+  const affPapersAll = useMemo((): LienAffidavitPrintPaper[] => (data ? affPapersOf(data.affidavits.entries) : []), [data, affPapersOf])
+  /** How many papers the run's print takes for these jobs: the count on its press, before any document is built. */
+  const runAffidavitCount = (jobIds: ReadonlySet<string>) => affPapersAll.filter((p) => jobIds.has(p.jobId)).length
   // Which of them take a second sheet (v2.6930): each paper as its own Lien window lays it out, read under the press.
   const affSheetPapers = useMemo(() => lienAffidavitSheetPapers(affPrintPapers), [affPrintPapers])
   const affNoticeCopyCount = useMemo(() => lienAffidavitBatchNoticeCopyCount(affPrintPapers), [affPrintPapers])
   // The batch's print as the press prints it, built with no window: the one document and the copy each job files. Null
-  // when the press is dead. The checklist's one print stacks it behind the notices (punch list #362, step 6).
-  const readyAffidavitsRun = () => {
-    if (!data || affPrintWords.dead) return null
+  // when the press is dead. The checklist's one print stacks it behind the notices (punch list #362, step 6), and hands
+  // in `run`: the jobs whose paper it prints, whatever a find on By paper hides, and what its help sheet names as left out.
+  const readyAffidavitsRun = (run?: { jobIds: ReadonlySet<string>; leftOut: ReadonlyArray<LienHelpLeftOut> }) => {
+    if (!data) return null
+    const papers = run ? affPapersAll.filter((p) => run.jobIds.has(p.jobId)) : affPrintPapers
+    if (run ? papers.length === 0 : affPrintWords.dead) return null
     // The help sheet prints first (punch list #314): the blanks, when to stop, and a row for each paper. It is in no job's filed copy.
     const helpSheet = affHelpSheet
       ? lienAffidavitBatchHelpSheet(
-          affPrintPapers,
-          [
-            ...affPrintPlan.held.map((e) => ({ jobLabel: jobLabel(data.jobsById[e.jobId], e.jobId), reason: LIEN_HELP_EARLIER_FORM_REASON })),
-            // A ready paper a gate has closed since it was approved is not printed; the sheet names it with the gate's own reason.
-            ...affPrintPlan.gated.map((g) => ({ jobLabel: jobLabel(data.jobsById[g.entry.jobId], g.entry.jobId), reason: g.reason })),
-          ],
+          papers,
+          run
+            ? run.leftOut
+            : [
+                ...affPrintPlan.held.map((e) => ({ jobLabel: jobLabel(data.jobsById[e.jobId], e.jobId), reason: LIEN_HELP_EARLIER_FORM_REASON })),
+                // A ready paper a gate has closed since it was approved is not printed; the sheet names it with the gate's own reason.
+                ...affPrintPlan.gated.map((g) => ({ jobLabel: jobLabel(data.jobsById[g.entry.jobId], g.entry.jobId), reason: g.reason })),
+              ],
           demandDate(todayYmd),
           { guideCode: lienHelpGuideCode(), recordCode: lienHelpBatchRecordCode(), recordFollows: affNoticeRecord },
         )
       : null
     // The notice records, then a copy of each notice when its box is ticked, print behind the help sheet and in front of the stack, never between two papers (punch list #322).
-    const noticeCopies = affNoticeCopies ? lienAffidavitBatchNoticeCopies(affPrintPapers, filingLetterheadFromIssuer(issuer), todayYmd) : ''
-    return lienAffidavitPrintRun(affPrintPapers, helpSheet, affNoticeRecord ? lienAffidavitBatchNoticeRecords(affPrintPapers, demandDate(todayYmd), Boolean(noticeCopies)) : null, noticeCopies)
+    const noticeCopies = affNoticeCopies ? lienAffidavitBatchNoticeCopies(papers, filingLetterheadFromIssuer(issuer), todayYmd) : ''
+    return lienAffidavitPrintRun(papers, helpSheet, affNoticeRecord ? lienAffidavitBatchNoticeRecords(papers, demandDate(todayYmd), Boolean(noticeCopies)) : null, noticeCopies)
   }
   const printReadyAffidavits = () => {
     const run = readyAffidavitsRun()
@@ -280,6 +291,7 @@ export function useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, sign
     affNoticeCopyCount,
     printReadyAffidavits,
     readyAffidavitsRun,
+    runAffidavitCount,
     affPrintFolded,
     toggleAffPrintFold,
   }
