@@ -8,6 +8,7 @@ import { defaultStageWindow, stageWindowProblem, type StageWindowSpan } from '..
 import type { SubsStage } from '../../lib/subs/subsTabRows'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { Money } from '../Money'
 
 export type StageWindowEditorProps = {
   /** Line items to choose from; a single fixed stage renders as a label. */
@@ -45,7 +46,7 @@ export function StageWindowEditor({ stages, initialStageId, initialSpan, todayYm
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, fontSize: '0.8125rem' }} data-testid="stage-window-editor">
       {fixed ? (
-        <span style={{ fontWeight: 600 }}>{fixed.name}{fixed.amount > 0 ? <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · ${formatCurrency(fixed.amount)}</span> : null}</span>
+        <span style={{ fontWeight: 600 }}>{fixed.name}{fixed.amount > 0 ? <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · <Money amount={fixed.amount} /></span> : null}</span>
       ) : (
         <select value={stageId} onChange={(e) => setStageId(e.target.value)} style={input} aria-label="Stage">
           {stages.length === 0 ? <option value="">No line items on this job</option> : null}

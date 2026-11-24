@@ -9,6 +9,7 @@ import BilledBillViewModal from './BilledBillViewModal'
 import { billingTypeLabel } from './HostedStripeBillPanel'
 import { documentsHeading, documentsQuietButton, documentsTd, documentsTh, documentsNum, documentsLinkButton } from './jobDocumentsStyles'
 import { EmptyState } from '../EmptyState'
+import { MoneyText } from '../Money'
 
 /** One step above the job window's overlay (1010) and its form's nested overlays. */
 const BILL_VIEW_FROM_DOCUMENTS_Z_INDEX = 1030
@@ -58,7 +59,7 @@ export function JobDocumentsBills({ job, onOverlayOpenChange, onOpenBill }: { jo
                       </button>
                       <span style={{ color: 'var(--text-muted)', marginLeft: '0.4rem', fontSize: '0.8125rem' }}>{billingTypeLabel(inv)}</span>
                     </td>
-                    <td style={{ ...documentsTd, ...documentsNum }}>{formatAiaMoney(row.amount)}</td>
+                    <td style={{ ...documentsTd, ...documentsNum }}><MoneyText text={formatAiaMoney(row.amount)} /></td>
                     <td style={documentsTd}>
                       {row.words}
                       {row.hostedUrl ? (

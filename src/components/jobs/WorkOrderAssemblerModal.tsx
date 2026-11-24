@@ -27,6 +27,7 @@ import { bidScopeLines, bidSubLaborTotals, buildWorkOrderDocument, renderWorkOrd
 import { emitWorkOrderChanged } from '../../hooks/useJobWorkOrderCoverage'
 import { WorkOrderDocumentView } from './WorkOrderDocumentView'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { MoneyText } from '../Money'
 
 /**
  * The work order assembler (Work Orders tab, PR 2 — v2.2819): pick the job,
@@ -733,7 +734,7 @@ export function WorkOrderAssemblerModal({
                       <input type="number" min="0" step="0.01" value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} placeholder="Leave blank to draft" style={{ ...inputStyle, fontWeight: 700 }} />
                       {bidTotalHint ? (
                         <button type="button" onClick={() => setDraft({ ...draft, amount: String(bidTotalHint.total) })} style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontSize: '0.7rem', cursor: 'pointer', padding: '2px 0' }}>
-                          From the bid: {money(bidTotalHint.total)} sub labor
+                          From the bid: <MoneyText text={money(bidTotalHint.total)} /> sub labor
                         </button>
                       ) : (
                         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Fixed at send</span>

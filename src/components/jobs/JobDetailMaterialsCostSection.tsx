@@ -18,6 +18,7 @@ import { splitEstimateDescription } from '../../lib/jobs/otherChargeRowDisplay'
 import { EstimateChip } from './OtherChargeInputs'
 import { formatWorkDateYmdFriendly } from '../../utils/dateUtils'
 import { MoneyWithSmallCents } from './MoneySmallCents'
+import { Money } from '../Money'
 
 type MaterialsAccordionKey = 'team' | 'supply' | 'mercury' | 'tally' | 'billed'
 
@@ -139,7 +140,7 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
                     <tr key={p.personName} style={{ borderBottom: idx < teamLaborRow.people.length - 1 ? '1px solid var(--border)' : 'none' }}>
                       <td style={{ padding: '0.5rem 0.625rem' }}>{p.personName}</td>
                       <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{roundHoursLabel(p.hours)}</td>
-                      <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(p.cost)}</td>
+                      <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><Money amount={p.cost} symbol="" /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -193,7 +194,7 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
                       ) : null}
                     </td>
                     <td style={{ padding: '0.5rem 0.625rem' }}>{ln.invoiceDate || '—'}</td>
-                    <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(ln.allocatedAmount)}</td>
+                    <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><Money amount={ln.allocatedAmount} symbol="" /></td>
                   </tr>
                 ))}
               </tbody>
@@ -201,8 +202,8 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
           )}
           {jobAccountSplit.unpaidOnJobAccount > 0.005 ? (
             <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#0f766e' }}>
-              <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(jobAccountSplit.unpaidOnJobAccount)}</strong> of the{' '}
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(jobAccountSplit.unpaidTotal)}</span> unpaid here is on a job account — the house
+              <strong style={{ fontVariantNumeric: 'tabular-nums' }}><Money amount={jobAccountSplit.unpaidOnJobAccount} /></strong> of the{' '}
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}><Money amount={jobAccountSplit.unpaidTotal} /></span> unpaid here is on a job account — the house
               bills the property owner if it goes unpaid, not you.
             </p>
           ) : null}
@@ -290,7 +291,7 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
                       {[ln.fixtureName, ln.partName].filter(Boolean).join(' · ') || '—'}
                     </td>
                     <td style={{ padding: '0.5rem 0.625rem', textAlign: 'center' }}>{ln.quantity}</td>
-                    <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(ln.lineTotal)}</td>
+                    <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><Money amount={ln.lineTotal} symbol="" /></td>
                   </tr>
                 ))}
               </tbody>

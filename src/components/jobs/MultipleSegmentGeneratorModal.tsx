@@ -15,6 +15,7 @@ import {
   type SegmentGeneratorRow,
 } from '../../lib/jobs/segmentGenerator'
 import { StageKindSelector } from './StageKindControls'
+import { Money, MoneyText } from '../Money'
 
 type MultipleSegmentGeneratorModalProps = {
   open: boolean
@@ -272,7 +273,7 @@ export function MultipleSegmentGeneratorModal({
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>%</span>
                 {order ? (
                   <span style={{ width: '5.5rem', textAlign: 'right', fontSize: '0.8125rem', color: 'var(--text-700)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    ${formatCurrency(dollarsByRowId[r.id] ?? 0)}
+                    <Money amount={dollarsByRowId[r.id] ?? 0} />
                   </span>
                 ) : (
                   <span style={{ display: 'inline-flex', alignItems: 'stretch', width: '5.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
@@ -315,8 +316,8 @@ export function MultipleSegmentGeneratorModal({
           <span data-testid="generator-allocation" style={{ fontSize: '0.75rem', color: allocationOff ? 'var(--text-amber-700)' : 'var(--text-green-700)', fontWeight: 600 }}>
             {hasOrderRows ? `${allocatedPct}% allocated` : 'No split'}
             {allocationOff ? ' — segments usually total 100%' : ''}
-            {hasOrderRows ? ` · $${formatCurrency(totals.inOrderDollars)} in order` : ''}
-            {totals.outsideDollars > 0 ? ` · $${formatCurrency(totals.outsideDollars)} outside the split` : ''}
+            {hasOrderRows ? <MoneyText text={` · $${formatCurrency(totals.inOrderDollars)} in order`} /> : ''}
+            {totals.outsideDollars > 0 ? <MoneyText text={` · $${formatCurrency(totals.outsideDollars)} outside the split`} /> : ''}
           </span>
         </div>
         <div data-testid="generator-summary" style={{ display: 'flex', gap: '0.4rem 1.2rem', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -334,7 +335,7 @@ export function MultipleSegmentGeneratorModal({
             </span>
           )}
           <span style={{ marginLeft: 'auto' }}>
-            <strong style={{ color: 'var(--text-700)' }}>Job total ${formatCurrency(totals.jobTotalDollars)}</strong>
+            <strong style={{ color: 'var(--text-700)' }}>Job total <Money amount={totals.jobTotalDollars} /></strong>
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.25rem' }}>

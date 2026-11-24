@@ -22,6 +22,7 @@ import { lineBudgetColumnsFor, lineBudgetEntryOf } from '../../lib/jobs/lineBudg
 import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import { useLineBudgets } from '../../hooks/useLineBudgets'
 import { linkButtonStyle } from '../developments/developmentPageBits'
+import { Money } from '../Money'
 
 const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
   position: 'absolute',
@@ -876,7 +877,7 @@ export function JobFormFixturesSection({
                   {standingOffer.dollars > 0 ? (
                     <>
                       {' — '}
-                      <strong style={{ color: 'var(--text-green-700)' }}>−${formatCurrency(standingOffer.dollars)}</strong> here
+                      <strong style={{ color: 'var(--text-green-700)' }}>−<Money amount={standingOffer.dollars} /></strong> here
                     </>
                   ) : null}
                 </span>

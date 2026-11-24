@@ -18,6 +18,7 @@ import { JobFormHazmatRiderRows } from './JobFormHazmatRidersStrip'
 import type { JobHazmatIncidentRow } from '../../lib/hazmatIncidents'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { moneyText } from '../../test/moneyText'
 
 function makeJob(overrides: Partial<JobWithDetails> = {}): JobWithDetails {
   return {
@@ -76,7 +77,7 @@ describe('JobFormHazmatRiderRows', () => {
 
     expect(screen.getByText('RIDERS')).toBeTruthy()
     expect(screen.getByText(/Biohazard remediation fee — incident/)).toBeTruthy()
-    expect(screen.getByText('$500.00')).toBeTruthy()
+    expect(screen.getByText(moneyText('$500.00'))).toBeTruthy()
     expect(screen.getByText('Draft')).toBeTruthy()
     expect(screen.getByText('Open notice')).toBeTruthy()
     expect(screen.getByText('Download PDF')).toBeTruthy()
