@@ -199,7 +199,7 @@ puts its rows back after, and its line on #404 names what it could not delete.
   - After a send-back the trade's page reads *good to Nov 24 · Click is checking it*, and its *Needs you* no longer asks for a certificate. The company's record still offers **Mark it good**.
   - A certificate marked good and then sent back keeps `status` `signed`, which is why the company's record still reads it as good.
   - No group email reaches the test trade company, since its main contact is at `example.com`. A walk that needs one needs that contact at a sink address first.
-  - Publishing a job's sheet asks nothing first.
+  - Publishing a job's sheet asks nothing first. The Sub NDA's publish asks since v2.8439 (below). The sheet's two publish presses in `FilledBuilder`, a job's sheet and the usual to every job, still ask nothing, and nobody has made that call.
 - **For the next headless walk.** A new browser for every look pulls every file again, and GitHub Pages answered *Rate limit exceeded* after about forty loads in half an hour. The app then read *The app is slow right now.* A browser profile kept on disk stopped it.
   A first visit to `/gc` in a new profile draws a walkthrough over the page, and Escape closes it.
 
@@ -293,12 +293,12 @@ puts its rows back after, and its line on #404 names what it could not delete.
   **Take it off their page** took it off with no question, and their page no longer shows it.
 - **Left on production.** The Sub NDA at revision 1, not read by an attorney. Its link, switched off. One `document_builder_sends` row, taken off. One `email_send_log` row to the sink. One portal link on the ZZ TEST GC, turned off again. The ZZ contact is deleted. JP9309 carried the ZZ TEST GC as its customer for a few minutes, to reach the page's off switch, and reads as before.
 - **Seen, not fixed.**
-  - **Publish revision 1** asks nothing first, though a publish cannot be taken back. Switching the link off asks.
+  - ~~**Publish revision 1** asks nothing first, though a publish cannot be taken back. Switching the link off asks.~~ Fixed by v2.8439 (PR #9646), on Diane's yes of 2026-11-24: the press opens a window that says who sees the new revision and that a publish cannot be taken back. Its press reads **Publish revision N**, **Not yet** publishes nothing, and a dead press opens no window. Held by tests, not seen in a browser.
   - Revision 1's words name the company *Acme Plumbing*, the placeholder, wherever the paper names us.
-  - Once the ZZ TEST GC's page was on, the one press counted it among the GCs who are ready.
-  - A GC's page can be turned off only from the portal globe, which shows for a job's customer. A GC that is no job's customer has no off switch within reach.
-  - The send press names the contact by the first word of its name, *Send to ZZ*.
-  - Removing a customer's contact asks nothing first.
+  - Once the ZZ TEST GC's page was on, the one press counted it among the GCs who are ready. Read again on 2026-11-24 and not a fault today: the tab and the send function are a dev's alone, and for a dev the count is true, since the press does send to that GC while its page is on. The list does not follow the dev's ZZ switch (#61). The day the tab opens to the office, the GC list must take `hidesZzTestJobs(role)`, or an office batch reaches a ZZ GC whose page is on.
+  - A GC's page can be turned off only from the portal globe, which shows for a job's customer. A GC that is no job's customer has no off switch within reach. Read again on 2026-11-24 and not so: the globe is beside every customer's name on Customers, on a job or not, and its gear holds **Turn off**. The walk missed it because Customers hides a ZZ customer from a dev until the Pipeline's switch shows ZZ test jobs. On the next walk, flip that switch on and turn the ZZ TEST GC's page off from Customers. No job needs to borrow the customer.
+  - ~~The send press names the contact by the first word of its name, *Send to ZZ*.~~ Fixed by v2.8433: the press names the contact by its whole name, or by the address when the record keeps no name.
+  - ~~Removing a customer's contact asks nothing first.~~ Fixed by v2.8438, on Diane's yes of 2026-11-24: **Remove** asks first and names the person, and says a dev can put them back for 90 days from Recently deleted. The 90 days was read in the migrations. No restore was run.
 
 **1j. Step 6, a certificate checked against the sheet** (v2.8253, PR #9337)
 
@@ -384,10 +384,8 @@ A dev can delete the two Sent copies and the contact. Delete them on the next wa
 
 ### Faults seen and not fixed
 
-- **Send it again on the same day changes nothing on the row.** It still reads *Sent* with the same
-  day, and how many times it went is not shown.
-- **The GC card's held list runs long.** Under the one press it is one line for each GC with no page,
-  which is most of them.
+- ~~**Send it again on the same day changes nothing on the row.** It still reads *Sent* with the same day, and how many times it went is not shown.~~ Fixed by v2.8437: a row sent more than once reads *Sent 2 times, last Nov 22 to* the person, and the day is the last send's.
+- ~~**The GC card's held list runs long.** Under the one press it is one line for each GC with no page, which is most of them.~~ Fixed by v2.8435: a reason that holds more than three GCs reads as one line with its count, and a press on it opens the names. Three or fewer keep a line each.
 - **Step 6 leaves four things**, as its own fragment will say:
   - a trade's own page does not say its certificate was sent back, or that the asks changed
     (`gc-trade-portal`);
