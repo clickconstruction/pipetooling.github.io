@@ -334,23 +334,10 @@ puts its rows back after, and its line on #404 names what it could not delete.
 - **Walked:** on 2026-11-24, in the notes of that day above. The screens, #9337, merged on 2026-11-22
   as v2.8264.
 
-**1k. A link opened from a real phone** (v2.8194)
+**1k, a link opened from a real phone, was taken off** on 2026-11-24, on Diane's word. It is not owed, and it was not walked on a real phone.
 
-- **Where:** the insurance sheet's link card, as a dev. Then `/d/<code>` on a real phone, signed out.
-- **Rows first:** the test sheet's link switched on for the walk and off after.
-- **Should show:** the open listed under **Who opened it** with the phone's browser, and the sheet
-  fitting the phone with no sideways scroll.
-- **Why not yet:** every walk so far used a narrow desktop browser.
-
-**1k, in the iPhone simulator on 2026-11-24: holds there.** Walked by another session, in the iPhone 17 Pro simulator's Safari, never signed in. A simulator is not a real phone.
-
-- **Switch the link on** made a new link, on from 07:19:28 to 07:22:17 UTC.
-- The phone drew the published sheet, revision 7, light, as a 370 px paper in a 402 px screen. A sideways swipe moved nothing.
-- Under the paper, **Print this sheet** is 140 by 44 px. It was measured, not pressed.
-- **Who opened it** then listed one line: *Someone with no account*, the address, *Safari on iPhone* and *America/Chicago*.
-- **Switch the link off** asked first. After it the same address read *This link is no longer open. Ask for a new one.*
+- In the iPhone simulator that day the link opened signed out. The sheet drew as a 370 px paper in a 402 px screen with no sideways scroll, and **Who opened it** listed *Safari on iPhone*.
 - **Left on production.** One link, `5e344bba-9f0b-4293-83ac-6e7e64863e24`, switched off, and its one open, `5cfdd6e9-76d5-4609-b19c-2f13f9fb2ecc`. A dev cannot delete either.
-- **Not proven by a simulator.** A real phone's own browser line, an open from a cellular address, Android Chrome, and a fingertip on **Print this sheet**. Those are what a person's phone still owes this walk.
 
 **Not walkable.** A link made under the service key before the link's own secret (v2.8189): prod held
 no such link when the secret was set, and the tests hold that path.
