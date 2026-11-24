@@ -214,12 +214,39 @@ describe('DocumentsBuilderTab', () => {
     expect(screen.getByRole('button', { name: 'Open Sub NDA' })).toBeTruthy()
   })
 
-  it('puts the send to GCs under the Sub NDA\u2019s map (step 9)', async () => {
+  it('puts the send to GCs on the Sub NDA\u2019s Share side, under its link (step 9, punch list #416)', async () => {
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'Open Sub NDA' }))
+    // Edit is where a builder opens: the map shows, and the send is not on show.
+    expect(await screen.findByRole('table', { name: 'The map' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { level: 3, name: 'Send it to a GC' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
     expect(await screen.findByRole('heading', { level: 3, name: 'Send it to a GC' })).toBeTruthy()
+    expect(screen.queryByRole('table', { name: 'The map' })).toBeNull()
     // The stub's database holds no job with a GC on it.
     expect(screen.getByText('No customer is the GC on a job yet. A GC shows here once a job names them as its GC.')).toBeTruthy()
+  })
+
+  it('keeps the side in the address: a press writes it, Back undoes it, and the list starts without one', async () => {
+    open({ route: '/documents?tab=builder&builder=sub-nda' })
+    expect(await screen.findByRole('table', { name: 'The map' })).toBeTruthy()
+    expect(where()).toBe('?tab=builder&builder=sub-nda')
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
+    expect(where()).toBe('?tab=builder&builder=sub-nda&side=share')
+    expect(screen.getByRole('button', { name: 'Share' }).getAttribute('aria-pressed')).toBe('true')
+    // Edit's address carries no key, so a builder's own address has one form.
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(where()).toBe('?tab=builder&builder=sub-nda')
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
+    fireEvent.click(screen.getByRole('button', { name: '\u2039 Document builder' }))
+    expect(where()).toBe('?tab=builder')
+  })
+
+  it('opens straight onto the Share side when the address names it', async () => {
+    open({ route: '/documents?tab=builder&builder=sub-nda&side=share' })
+    expect(await screen.findByRole('heading', { level: 3, name: 'Send it to a GC' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Share' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByRole('table', { name: 'The map' })).toBeNull()
   })
 
   it('opens straight onto a builder the address names, and onto the list for a name it does not know', async () => {

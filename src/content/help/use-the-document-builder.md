@@ -41,7 +41,7 @@ The first draft is placeholder words, for you to change. Nobody outside sees a d
 
 ## Change the Sub NDA's words
 
-The Sub NDA opens on two sides. The right side is what a GC sees. The left side is the map and what changed.
+The Sub NDA opens on two sides. The right side is what a GC sees. The left side has two views behind a switch. **Edit** is the map and what changed. **Share** is the link and the send.
 
 1. Press any words on the right side and type over them.
 2. Wait for the bar to read *Draft saved*.
@@ -105,7 +105,7 @@ A revision someone published stays published either way. The publish button wait
 
 The link is a second way in, for someone with no page of their own. Anyone who holds it walks the published revision. They only look. Nothing they pick is saved or sent.
 
-Find **This builder's link** on the left side, under the list of what changed. Publish a revision first. A link opens only what is published.
+Press **Share** on the left side. **This builder's link** is the first card there. Publish a revision first. A link opens only what is published.
 
 1. Press {{button:outline|Switch the link on}}.
 2. Press {{button:outline|Copy the link}}.
@@ -126,7 +126,7 @@ A draft never shows on the link. A revision you publish later shows on the same 
 
 ## Send the Sub NDA to a GC
 
-A GC here is a customer who is the GC on a job with you. The card **Send it to a GC** lists each one. The card sits on the left side, under **This builder's link**.
+A GC here is a customer who is the GC on a job with you. The card **Send it to a GC** lists each one. Press **Share** on the left side to find it, under **This builder's link**.
 
 1. Publish the builder.
 2. Type a name in **Find a GC** when the list is long.

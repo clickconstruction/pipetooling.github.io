@@ -8390,6 +8390,14 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
   }
 }
 
+/* A walked builder's two sides (punch list #416): on a phone the Share side stands alone. What a GC sees is for
+   typing on, and Share is the link and the send, so the flow under them would only push the send off the screen. */
+@media (max-width: 720px) {
+  .documentBuilderSplit[data-side='share'] .documentBuilderGcView {
+    display: none !important;
+  }
+}
+
 /* The note that shows while an on-demand window's code loads (`WindowOpening`). It waits a quarter second
    before it shows, so a window already on the device opens with no flash of words. */
 .windowOpening {
