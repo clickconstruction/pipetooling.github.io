@@ -2,7 +2,7 @@
 name: "Document builder, what is left: the walks owed on prod, the builds left, and a way to tell one visitor from another"
 number: 416
 group: ready
-status: written 2026-11-21 on Taunya's word, *save everything we should build, everything we didn't build and all of the walks we should do to a punch list card so another user on a different computer can pick up where we left off* · 2026-11-22 each walk given its page, its role, its test rows and its widths, and the loose ends named by PR, migration and row, on her word to record what is still owed on every card · the one home for the Document builder's leftovers · 2026-11-23 walks 1d, 1e and 1g to 1i walked on prod · 2026-11-24 walks 1b and 1j walked on prod, 1f held, 1k walked in the iPhone simulator · no build on this card is started
+status: written 2026-11-21 on Taunya's word, *save everything we should build, everything we didn't build and all of the walks we should do to a punch list card so another user on a different computer can pick up where we left off* · 2026-11-22 each walk given its page, its role, its test rows and its widths, and the loose ends named by PR, migration and row, on her word to record what is still owed on every card · the one home for the Document builder's leftovers · 2026-11-23 walks 1d, 1e and 1g to 1i walked on prod · 2026-11-24 walks 1b and 1j walked on prod, 1f held, 1k walked in the iPhone simulator, 1a and 1c walked on prod with the two undo presses · no build on this card is started
 summary: >
   The Document builder (#404) is built but for steps 6 and 10, and live for a dev. This card is the
   one list of what is left, in the order to do it. First the walks on prod that no one has done yet,
@@ -10,9 +10,9 @@ summary: >
   loose ends: PRs not merged, a migration not pushed, the test rows the walks left. Then the builds
   that are ready now, a way to see that the same person opened a link twice, and the builds that
   wait on one of Taunya's calls.
-next: Part 1, the walks left. 1a and 1c wait on presses that take an award and an ask back, which another session is building. 1f waits on a person to set a billing job on the test project by hand, on Diane's yes of 2026-11-24, since no screen does and the session was refused. 1k holds in the iPhone simulator and still wants a real phone. Then remove the two test certificates and their two Drive files, named under the 2026-11-24 notes. Part 3 can start beside the walks. Parts 4 and 5 wait on Taunya's calls.
+next: Part 1, the walks left. 1f waits on a person to set a billing job on the test project by hand, on Diane's yes of 2026-11-24, since no screen does and the session was refused. 1k holds in the iPhone simulator and still wants a real phone. Then remove the two test certificates and their two Drive files, named under the 2026-11-24 notes. Part 3 can start beside the walks. Parts 4 and 5 wait on Taunya's calls.
 size: L as five parts (M · S · M · M · L), each alone
-blocker: Walks 1a and 1c wait on a way to undo an award and an ask. Walk 1f waits on a way to set and clear a billing job. None for 1k. The Sub NDA was published as revision 1 on 2026-11-23, on the owner's go. Parts 4 and 5 wait on Taunya's calls, each named on its line. An attorney's read of the Sub NDA and an insurance agent's read of the sheet come before anything goes to a real GC or a real trade.
+blocker: Walk 1f waits on a way to set and clear a billing job. None for 1k. The Sub NDA was published as revision 1 on 2026-11-23, on the owner's go. Parts 4 and 5 wait on Taunya's calls, each named on its line. An attorney's read of the Sub NDA and an insurance agent's read of the sheet come before anything goes to a real GC or a real trade.
 opinion: build — the walks first, since each one proves code that is already live
 mockup: not required — #404's mockup.html draws every screen here but the visitor lines in part 4, which are drawn first as that part's own step
 ---
@@ -53,9 +53,11 @@ walk's line on #404 when a dev cannot delete it.
 | Row | Where | Id |
 |---|---|---|
 | *GC test project, delete me* | `projects`, stage building, no billing job | `ef8905d1-039a-4cbc-9d69-9468cfea50e0` |
-| Its insurance sheet | `document_builder_sheets`, revision 2 on the usual's revision 3 | `5e93b85f-4d69-4d6d-8990-858556dd81f0` |
+| Its insurance sheet | `document_builder_sheets`, revision 7 on the usual's revision 3, reading as revision 2 did | `5e93b85f-4d69-4d6d-8990-858556dd81f0` |
 | Its five trades | `gc_trade_packages`: Concrete, Plumbing, Electrical, HVAC, Fire sprinkler. None awarded | Concrete is `7c7a509d-187c-48fe-8dda-9a5fef720e23` |
 | *GC test trade company, delete me* | Asked on Concrete, not awarded, its page on | `ff11d0fb-269e-44de-b92a-e7256c180f67` |
+| *ZZ Test trade two, delete me* | Asked on HVAC with a $15,000 quote, not awarded, its page off. A standing row since walk 1a: nothing removes a quote | `5a3fbc35-9ee0-485d-84a8-fe2ca388755a` |
+| *ZZ Test trade no page, delete me* | On the Electrical bench, not asked, its page off. Left by walk 1c: the bench keeps it | `d6b9d4d9-4519-4067-b9f7-e6faed4a74a3` |
 | *GC test bidding project, delete me* | `projects`, stage bidding, no sheet | `c4117b0d-0c64-4935-933f-01bd96bfef60` |
 | *ZZ TEST GC On Notice* | `customers`, its page off | `1cd10f0f-04c3-410d-b34a-f0809e5240a5` |
 | Its two ZZ TEST jobs | `jobs`, the GC on both is the customer above | `0e8dbf06-10bd-4288-a5fc-9be2740eaf5c`, `3426343e-77ea-4f23-a33c-ae74803fb361` |
@@ -200,6 +202,47 @@ puts its rows back after, and its line on #404 names what it could not delete.
   - Publishing a job's sheet asks nothing first.
 - **For the next headless walk.** A new browser for every look pulls every file again, and GitHub Pages answered *Rate limit exceeded* after about forty loads in half an hour. The app then read *The app is slow right now.* A browser profile kept on disk stopped it.
   A first visit to `/gc` in a new profile draws a walkthrough over the page, and Escape closes it.
+
+**1a and 1c, on clicktooling.com on 2026-11-24.** As a dev in a headless browser, once both undo tools were pushed and a deploy carried their presses. This walk was their first use on the live site. Each company's page was opened in a second browser with no sign-in. The office's side was read at 1200 px and 375 px, light and dark, and a company's page at 375 px and 730 px.
+
+- **1c holds, and its ask came back twice.**
+  - `ZZ Test trade no page, delete me` was added on Trade partners under Electrical, with a sink address and *We have worked with them* ticked.
+  - **Ask for quotes** on Electrical made the ask, with **Email the invitations now** left unticked. Its row read *has not opened it* with **Will not do it**, **Cannot do it** and **Take the ask back…**.
+  - On the sheet the row read *Electrical · asked, not awarded* and *No page yet*. The one press read *Nothing to send*, dead, and held it as *asked and not awarded. Send to them alone.* The same at all four looks.
+  - **Take the ask back…** asked *Take the Electrical ask back from* the company, and said it *has not opened this ask, sent a quote or heard from us about it. The ask is deleted, and they read as never asked on Electrical. You can ask them again.*
+  - **Cancel** changed nothing. **Take the ask back** took the ask off, and the trade read **Ask for quotes** again.
+  - Asked again the same way. On the sheet its box said the company *has no page yet. Sending makes one.* **To** read the sink person, and the press read **Send to ZZ Test 416 sink**.
+  - Sent, the row read *Sent Nov 24* and *Not opened yet*, and *No page yet* was gone. **Their portal** on the company read *Made Nov 24. They have not opened it yet.*
+  - Signed out, the page opened at `/t/<code>` at both widths with no sideways scroll. It drew the welcome, the ask to quote Electrical and the sheet marked *New*.
+  - After: the send was taken off. The ask still read *has not opened it* and still offered **Take the ask back…**, and it came back a second time. The sheet's email and a look at the page's first screen are not about the ask. The page was turned off.
+  - **Remove from the bench…** was refused: *ZZ Test trade no page, delete me stays on the bench, since they wrote to us from their portal.* So the company stays.
+- **1a holds, but the one press did not reach the test trade company.**
+  - Plumbing on the test project is our own crew and cannot be awarded, so the second trade is HVAC.
+  - `ZZ Test trade two, delete me` was added under HVAC with a sink address and asked with no email. **Make the link** made its page.
+  - Signed out on its page, **Send my quote** was dead under *Open the plans first.* until the plans were opened. A made-up quote of $15,000 went in.
+  - **Award and draft the statement of work** in Compare quotes awarded Concrete to the test trade company at $12,500 and HVAC to the second company at $15,000. Each got a drafted statement of work. Nothing was sent to sign.
+  - On the sheet both rows read *awarded*, and the one press read **Send to 2 trades who are ready**, dead until **Send it anyway** was ticked. The same at all four looks.
+  - Pressed, it read *Sent to 1 trade. 1 did not send.* The second company's row read *Sent Nov 24*. Under the press: *GC test trade company, delete me: The email did not go. Nothing was recorded. Try again. The reason: Invalid `to` field. Please use our testing email address instead of domains like `example.com`.*
+  - The one press goes to each company's first contact, and that company's first contact is at `example.com`. The press then read **Send to 1 trade who is ready**. So one row read *Sent*, not both.
+  - After: the send was taken off. **Take the award back…** beside *Awarded* in Compare quotes asked *Take the HVAC award back from* the company.
+  - It said *The award comes off, and the drafted statement of work for $15,000 is deleted. Their quote and the ask stay, and HVAC can be awarded again.* It also said their portal told them they got the job if they opened it since.
+  - **Cancel** changed nothing. **Take the award back** took the award and the draft off, on HVAC and then on Concrete. Each trade read *not awarded* with its quote in.
+  - Each company's Activity gained *Award taken back on* the trade, with who awarded it, the price and *The drafted statement of work went with it.*
+  - The second company's page was turned off. Its ask on HVAC holds a quote, so it has no **Take the ask back…** and no **Remove from the bench…**. It stays as a standing test row.
+- **Left on production.**
+  - `ZZ Test trade two, delete me`, with its ask `3fc3f0d3-8123-4897-b220-873c8e5d751d` on HVAC, its quote, its page link `04aff26c-8240-4eae-8b9d-989563c14934` turned off, and one note of the take-back.
+  - `ZZ Test trade no page, delete me`, with no ask and its page link `e183fdc2-6b9d-4a71-b645-18d12c86cac7` turned off. Its two asks left a row each in `gc_asks_taken_back`, which the dev seat's catalog does not know yet, so those were not read.
+  - One note of the take-back on the test trade company.
+  - Two sends of the sheet, each taken off: `bed18204-406c-4c68-bf22-36676b5238e2` and `3607894a-2897-44f5-89d8-02b2bbabb8ac`. Their email log rows, `a2f5226b-3e51-4984-999f-ce5d68dd6c72` and `cc4fd285-1051-4a40-88bf-6fef84b93619`, both read *delivered* to a sink. Their Sent copies are `5a0bef61-269c-4037-a864-693093cdea72` and `cdb29857-56ca-4a7d-a08d-8d2b60f59953`.
+  - No award and no statement of work. All five trades read not awarded, read back through the dev seat.
+- **What it changes on the test rows.** The test sheet's send card now lists two trades, since the second company's ask on HVAC stays.
+- **Seen, not fixed.**
+  - The one press sends to each company's first contact and names nobody before it goes.
+  - The ask window says *1 email goes out, each with the company's own portal link* while **Email the invitations now** is unticked and no email goes.
+  - **Remove from the bench…** first says the company has *no contact logged*, then refuses because *they wrote to us from their portal*. The company wrote nothing. What holds it is the sheet we emailed.
+  - The ask-back window says the company has not heard from us about it, after the sheet for that job was emailed to it.
+  - The Concrete quote ran out on Nov 7 and was awarded with no word about it.
+  - The awarded Concrete trade read *Insured to Nov 24*, from walk 1j's test certificate, with no year.
 
 **1g. The Sub NDA's Publish and its attorney's mark** (v2.8024)
 
