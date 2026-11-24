@@ -20,7 +20,7 @@
 import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, formatDenverTimeOnly, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
 import { escapeCsvField } from '../domTableToCsv'
 import { formatCurrency } from '../format'
-import { instrumentWord, isStripePayment } from '../jobs/billsAndPayments'
+import { checkNumberOf, instrumentWord, isStripePayment } from '../jobs/billsAndPayments'
 import { sentCopyJobLabel, type SentCopyAboutJob } from '../sent/sentCopyAbout'
 import { isInKindPaymentType } from '../../../supabase/functions/_shared/inKindPayment'
 import { billPaymentWayWords, billPaymentYmd, type BillPaidBill, type BillPayment } from './billsPaid'
@@ -98,7 +98,7 @@ export interface BillsPaidLine {
   took: number | null
   /** The bank deposit the payment is matched to: payments that share one are one deposit. */
   depositId: string | null
-  /** The check's number, when the row holds one. */
+  /** The check's number, when the row's reference reads as one (`checkNumberOf`). '' for a bank match's own id. */
   reference: string
   /** True when the bill is still open after this payment: the payment is part of it. */
   partOfBill: boolean
@@ -154,7 +154,7 @@ export function billsPaidLines(input: BillsPaidInput): BillsPaidLine[] {
       sentYmd,
       took: sentYmd ? dayGap(sentYmd, ymd) : null,
       depositId: (p.bankTransactionId ?? '').trim() || null,
-      reference: (p.referenceNumber ?? '').trim().replace(/^#/, ''),
+      reference: checkNumberOf(p.referenceNumber),
       partOfBill: !!bill && bill.status === 'billed',
     })
   }
