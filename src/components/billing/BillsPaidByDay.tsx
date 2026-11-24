@@ -115,8 +115,8 @@ function DayCell({ cell, picked, phone, onPick }: { cell: BillsPaidCell; picked:
     ...(cell.later ? { background: 'var(--bg-subtle)', borderStyle: 'dashed', cursor: 'default' } : {}),
   }
   const inside = picked ? 'var(--surface)' : 'var(--text-strong)'
-  // A day that holds a credit in kind and no money: marked, never green, since nothing came in.
-  const credit = billsPaidCellCredit(cell)
+  // A day that holds a credit in kind and no money: marked, never green, since nothing came in. A phone's cell takes the word alone.
+  const credit = billsPaidCellCredit(cell, phone)
   return (
     <button type="button" data-testid="bills-paid-cell" data-day={cell.ymd} disabled={cell.later} aria-pressed={picked} aria-label={billsPaidCellLabel(cell)} onClick={() => onPick(cell.ymd)} style={style}>
       <span style={{ fontSize: '0.6875rem', fontWeight: 600 }}>{cell.day}</span>
@@ -126,7 +126,7 @@ function DayCell({ cell, picked, phone, onPick }: { cell: BillsPaidCell; picked:
           {phone ? null : <span style={{ fontSize: '0.65625rem', color: picked ? 'var(--surface)' : 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden' }}>{billsPaidCellCount(cell.sum)}</span>}
         </>
       ) : credit ? (
-        <span data-testid="bills-paid-cell-credit" style={{ fontSize: '0.65625rem', color: picked ? 'var(--surface)' : 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+        <span data-testid="bills-paid-cell-credit" style={{ fontSize: '0.65625rem', color: picked ? 'var(--surface)' : 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', letterSpacing: phone ? '-0.02em' : undefined }}>
           {credit}
         </span>
       ) : null}

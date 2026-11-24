@@ -175,6 +175,17 @@ describe('BillsPaidByDay', () => {
     expect(within(cellOf(`${OLD}-18`)).queryByTestId('bills-paid-cell-credit')).toBeNull()
   })
 
+  it('on a phone, marks a credit’s day with the word alone, which the narrow cell holds whole', async () => {
+    io.phone = true
+    io.data = read([payment({ id: 'k1', paymentType: 'In kind', note: 'Rent credit', amount: 900, paidOn: `${OLD}-10` }), payment({ id: 's1', note: 'Stripe' })])
+    renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&month=${OLD}` })
+    await screen.findByTestId('bills-paid-day')
+    const cell = cellOf(`${OLD}-10`)
+    expect(within(cell).getByTestId('bills-paid-cell-credit').textContent).toBe('credit')
+    // The count stays for a screen reader, and under the day once it is pressed.
+    expect(cell.getAttribute('aria-label')).toBe('Tue, Mar 10, 1 credit in kind, not added')
+  })
+
   it('steps to the month before and reads it', async () => {
     io.data = march
     renderWithProviders(<BillsPaidByDay />, { route: `/bills-sent?view=paid&month=${OLD}` })
