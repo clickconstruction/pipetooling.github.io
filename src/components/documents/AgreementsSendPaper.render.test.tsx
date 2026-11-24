@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
+import { stubPhoneWidth } from '../../test/phoneWidth'
 import { AgreementsSendPaper } from './AgreementsSendPaper'
 
 const io = vi.hoisted(() => ({
@@ -147,7 +148,10 @@ beforeEach(() => {
   io.failSearch = null
   io.found = null
 })
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  stubPhoneWidth(false)
+})
 
 describe('AgreementsSendPaper', () => {
   it('reads the Book on the press and offers its papers; one with no words names why and is not a press', async () => {
@@ -356,5 +360,39 @@ describe('AgreementsSendPaper', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Send a second copy to someone else/ }))
     // The boxes open empty: the person picked is the one who has it.
     expect((await screen.findByTestId('send-window-party')).textContent).toBe('Tallgrass Supply Co.|listed|keep Tallgrass Supply Co.|||')
+  })
+})
+
+describe('AgreementsSendPaper · the presses on a phone', () => {
+  const openPicker = async () => {
+    renderWithProviders(<AgreementsSendPaper onSent={() => {}} onOpenLibrary={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Send a paper' }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Subcontractor Handbook/ }))
+    return screen.findByRole('dialog', { name: 'Send Subcontractor Handbook: who is it with?' })
+  }
+
+  it('stands Send a paper, the picker’s × and its chips 44 px at a phone width (the × measured 21 by 22, a chip 26)', async () => {
+    stubPhoneWidth(true)
+    const picker = await openPicker()
+    expect(screen.getByRole('button', { name: 'Send a paper' }).style.minHeight).toBe('44px')
+    const close = picker.querySelector<HTMLButtonElement>('button[aria-label="Close"]')
+    expect(close?.style.minHeight).toBe('44px')
+    expect(close?.style.minWidth).toBe('44px')
+    // The margins give back what the × grew by, so the title row does not move.
+    expect(close?.style.marginTop).toBe('-11px')
+    expect(close?.style.marginRight).toBe('-11.5px')
+    const chips = Array.from(picker.querySelectorAll<HTMLButtonElement>('[role="group"] button'))
+    expect(chips.map((c) => c.textContent)).toEqual(['All', 'Team', 'Subs', 'Customers', 'Supply houses'])
+    for (const c of chips) expect(`${c.textContent}: ${c.style.minHeight}`).toMatch(/: 44px$/)
+  })
+
+  it('adds no floor at a desk width', async () => {
+    stubPhoneWidth(false)
+    const picker = await openPicker()
+    expect(screen.getByRole('button', { name: 'Send a paper' }).style.minHeight).toBe('')
+    const close = picker.querySelector<HTMLButtonElement>('button[aria-label="Close"]')
+    expect(close?.style.minHeight).toBe('')
+    expect(close?.style.marginTop).toBe('')
+    for (const c of Array.from(picker.querySelectorAll<HTMLButtonElement>('[role="group"] button'))) expect(c.style.minHeight).toBe('')
   })
 })

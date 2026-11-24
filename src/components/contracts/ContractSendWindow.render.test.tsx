@@ -9,6 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { stubPhoneWidth } from '../../test/phoneWidth'
 import { ContractSendWindow } from './ContractSendWindow'
 
 const io = vi.hoisted(() => ({
@@ -64,7 +65,10 @@ beforeEach(() => {
   io.lookedUp = []
   io.lookUpFails = null
 })
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  stubPhoneWidth(false)
+})
 
 describe('ContractSendWindow', () => {
   it('opens on the roster’s address and sends the saved paper by email', async () => {
@@ -370,5 +374,21 @@ describe('ContractSendWindow', () => {
     expect(io.sends[0]).toMatchObject({ documentId: 'p1', signingFor: 'Tallgrass Supply Co.' })
     expect(io.lookedUp).toEqual([])
     expect(io.writes).toEqual([])
+  })
+})
+
+describe('ContractSendWindow · the presses on a phone', () => {
+  it('stands Cancel and Send email 44 px tall at a phone width (Send email measured 33.5)', () => {
+    stubPhoneWidth(true)
+    renderWithProviders(<ContractSendWindow {...base} onClose={() => {}} onSent={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Send email' }).style.minHeight).toBe('44px')
+    expect(screen.getByRole('button', { name: 'Cancel' }).style.minHeight).toBe('44px')
+  })
+
+  it('adds no floor at a desk width', () => {
+    stubPhoneWidth(false)
+    renderWithProviders(<ContractSendWindow {...base} onClose={() => {}} onSent={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Send email' }).style.minHeight).toBe('')
+    expect(screen.getByRole('button', { name: 'Cancel' }).style.minHeight).toBe('')
   })
 })

@@ -23,6 +23,7 @@ import {
   partyPapersEmptyWords,
   type PartyRecord,
 } from '../../lib/contracts/partyPapers'
+import { paperNamePress } from '../../lib/documents/agreementsPhonePress'
 import { emptyWordsWithPress } from '../../lib/emptyWords'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
@@ -66,8 +67,9 @@ function namePress(narrow: boolean): CSSProperties {
     ...nameText,
     display: 'inline-flex',
     alignItems: 'center',
-    // A phone's press is 44px tall at least; a desk's line stays as tight as the words.
-    minHeight: narrow ? 44 : undefined,
+    // A phone's press is a fingertip tall, by the rule the Agreements tab's line reads; a desk's line stays as tight
+    // as the words.
+    ...paperNamePress(narrow),
     padding: 0,
     border: 'none',
     background: 'none',

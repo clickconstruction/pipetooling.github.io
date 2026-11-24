@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { stubPhoneWidth } from '../../test/phoneWidth'
 import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 import type { PartyPaperRow } from '../../lib/contracts/partyPapers'
 import { PartyPapersCard, PartyPapersSection } from './PartyPapers'
@@ -69,7 +70,10 @@ beforeEach(() => {
   io.fail = null
   io.asked = []
 })
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  stubPhoneWidth(false)
+})
 
 describe('a supply house’s papers', () => {
   it('lists every kind and every state: a signed agreement, one that waits, and a W-9 that was never sent', async () => {
@@ -204,5 +208,25 @@ describe('the estimator’s card on the Customer page', () => {
     expect(screen.queryByTestId('party-paper-row')).toBeNull()
     // A refusal is no lost signal: it offers no Retry.
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+  })
+})
+
+describe('a signed paper’s name on a phone', () => {
+  it('stands 44 px tall at a phone width, by the rule the Agreements tab’s line reads', async () => {
+    stubPhoneWidth(true)
+    io.rows = [paper('p-signed', { status: 'signed', signed_at: '2026-11-20' })]
+    renderWithProviders(<PartyPapersSection party={HOUSE} />)
+    await screen.findAllByTestId('party-paper-row')
+    expect(screen.getByRole('button', { name: 'Mutual secrecy agreement' }).style.minHeight).toBe('44px')
+  })
+
+  it('stays as tight as its words at a desk width', async () => {
+    stubPhoneWidth(false)
+    io.rows = [paper('p-signed', { status: 'signed', signed_at: '2026-11-20' })]
+    renderWithProviders(<PartyPapersSection party={HOUSE} />)
+    await screen.findAllByTestId('party-paper-row')
+    const name = screen.getByRole('button', { name: 'Mutual secrecy agreement' })
+    expect(name.style.minHeight).toBe('')
+    expect(name.style.display).toBe('inline-flex')
   })
 })

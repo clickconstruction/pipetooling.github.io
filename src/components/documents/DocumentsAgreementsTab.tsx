@@ -1,6 +1,7 @@
 import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog, usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import {
@@ -52,6 +53,7 @@ import {
 import { TAKE_BACK_LABEL, canTakeBackPapers, takeBackConfirm, takeBackOutcomeWords, takeBackVerdict } from '../../lib/documents/paperTakeBack'
 import { takeBackPartyPaper } from '../../lib/documents/paperTakeBackIo'
 import { canOpenSignedRecord } from '../../lib/contracts/partyPapers'
+import { paperChipFloor, paperNamePress, paperPressFloor } from '../../lib/documents/agreementsPhonePress'
 import { readPersonPaperSendFacts, sendPersonPaperForSignature, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
 import { ADD_TO_A_LIST_LABEL } from '../../lib/documents/paperPartyList'
 import { NO_PAPER_REMINDERS, readPaperReminders, writePaperReminderSwitch, type PaperReminders } from '../../lib/contracts/personPaperReminderIo'
@@ -97,6 +99,10 @@ import { documentsLinkButton, documentsQuietButton } from '../jobs/jobDocumentsS
  * line's name is a press that opens the signed record, the one window their role reads whole (`agreementReaderDoor`):
  * a waiting paper's name and a job are plain words. A training account reads the lines and opens nothing
  * (`canOpenSignedRecord`). Sending stays with the four roles, and the server holds that too.
+ *
+ * On a phone (640 px and under) every press stands a fingertip tall: a line's name, its acts, the chips, the find box,
+ * Contract library and Show more (`lib/documents/agreementsPhonePress.ts`). A desk's look is as it was. A job's name
+ * inside a line's sentence and the two links in the foot's sentence stay the height of their words.
  *
  * With `embedSearch` (the Search tab) the box is the page's own: the tab draws no box and no chips, asks for the words
  * it is handed across every kind and every state, so a voided paper is found too, and stays quiet until there are two
@@ -151,14 +157,18 @@ const addPress: CSSProperties = { ...documentsQuietButton, background: '#2563eb'
 /** Take back deletes a paper, so its words are red: the one press on a line that removes something. */
 const takeBackPress: CSSProperties = { ...documentsQuietButton, color: 'var(--text-red-700)' }
 
-function pickChipStyle(pressed: boolean): CSSProperties {
-  const base: CSSProperties = { ...documentsQuietButton, borderRadius: 999, fontWeight: pressed ? 700 : 500 }
+function pickChipStyle(pressed: boolean, narrow: boolean): CSSProperties {
+  const base: CSSProperties = { ...documentsQuietButton, borderRadius: 999, fontWeight: pressed ? 700 : 500, ...paperChipFloor(narrow) }
   return pressed ? { ...base, background: 'var(--bg-blue-tint)', border: '1px solid #3b82f6', color: 'var(--text-blue-700)' } : base
 }
 
 export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { embedSearch?: string; onClearEmbedSearch?: () => void } = {}) {
   const embedded = embedSearch !== undefined
   const { user, role, readOnly } = useAuth()
+  /** A phone: every press on the tab stands a fingertip tall (`agreementsPhonePress.ts`). A desk adds nothing. */
+  const narrow = useNarrowViewport640()
+  const pressFloor = paperPressFloor(narrow)
+  const namePress = paperNamePress(narrow)
   /** Whose tab this is: the office acts on it, and an estimator reads it (punch list #403, call 8). */
   const reader = agreementsReader(role)
   const canAct = canActOnAgreements(role)
@@ -421,12 +431,12 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
             }}
             placeholder="Find an agreement: a customer, a job number, a person, a paper"
             aria-label="Find an agreement"
-            style={{ flex: '1 1 16rem', minWidth: 0, padding: '0.5rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', boxSizing: 'border-box' }}
+            style={{ flex: '1 1 16rem', minWidth: 0, padding: '0.5rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', boxSizing: 'border-box', ...pressFloor }}
           />
           {canAct ? (
             <>
               <AgreementsSendPaper onSent={retry} startOn={sendStart} onOpenLibrary={() => setLibraryOpen(true)} />
-              <button type="button" style={documentsQuietButton} onClick={() => setLibraryOpen(true)}>
+              <button type="button" style={{ ...documentsQuietButton, ...pressFloor }} onClick={() => setLibraryOpen(true)}>
                 Contract library
               </button>
             </>
@@ -451,7 +461,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                       setKind(c.key)
                       setLimit(AGREEMENTS_PAGE)
                     }}
-                    style={pickChipStyle(kind === c.key)}
+                    style={pickChipStyle(kind === c.key, narrow)}
                   >
                     {c.label}
                   </button>
@@ -467,7 +477,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                       setState(c.key)
                       setLimit(AGREEMENTS_PAGE)
                     }}
-                    style={pickChipStyle(state === c.key)}
+                    style={pickChipStyle(state === c.key, narrow)}
                   >
                     {c.key === 'waiting' ? waitingChipLabel(c.label, waiting) : c.key === 'not_sent' ? waitingChipLabel(c.label, notSent) : c.label}
                   </button>
@@ -529,13 +539,13 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                             <span style={{ ...tag, ...colors }}>{t.words}</span>
                             {paperKind ? <span style={{ ...tag, ...kindTag }}>{paperKind}</span> : null}
                             {door.kind === 'people-contracts' || door.kind === 'gc' ? (
-                              <Link to={door.to} style={{ ...documentsLinkButton, display: 'inline' }}>
+                              <Link to={door.to} style={{ ...documentsLinkButton, display: 'inline', ...namePress }}>
                                 {name}
                               </Link>
                             ) : door.kind === 'none' ? (
                               <span style={nameText}>{name}</span>
                             ) : (
-                              <button type="button" style={documentsLinkButton} onClick={() => void open(row)}>
+                              <button type="button" style={{ ...documentsLinkButton, ...namePress }} onClick={() => void open(row)}>
                                 {name}
                               </button>
                             )}
@@ -562,7 +572,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                             <span style={{ ...stateChip, background: chipColors.background, color: chipColors.color }}>{chip.words}</span>
                             {dayWords ? <span style={day}>{dayWords}</span> : null}
                             {canAct && agreementNeedsAList(row) ? (
-                              <button type="button" style={addPress} disabled={busyAct != null} onClick={() => setAddToList(row.source_id)}>
+                              <button type="button" style={{ ...addPress, ...pressFloor }} disabled={busyAct != null} onClick={() => setAddToList(row.source_id)}>
                                 {ADD_TO_A_LIST_LABEL}
                               </button>
                             ) : null}
@@ -572,27 +582,27 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                               </span>
                             ) : null}
                             {reminder.kind === 'on' || reminderTurnsOn ? (
-                              <button type="button" style={reminding ? actBusy : documentsQuietButton} disabled={busyAct != null} onClick={() => void switchReminders(row, reminderTurnsOn)}>
+                              <button type="button" style={{ ...(reminding ? actBusy : documentsQuietButton), ...pressFloor }} disabled={busyAct != null} onClick={() => void switchReminders(row, reminderTurnsOn)}>
                                 {reminding ? 'Saving…' : reminderTurnsOn ? TURN_REMINDERS_ON_LABEL : TURN_REMINDERS_OFF_LABEL}
                               </button>
                             ) : null}
                             {firstSend ? (
-                              <button type="button" style={sending ? actBusy : documentsQuietButton} disabled={busyAct != null} onClick={() => void openSend(row, false)}>
+                              <button type="button" style={{ ...(sending ? actBusy : documentsQuietButton), ...pressFloor }} disabled={busyAct != null} onClick={() => void openSend(row, false)}>
                                 {sending ? 'Opening…' : SEND_LABEL}
                               </button>
                             ) : null}
                             {acts ? (
                               <>
-                                <button type="button" style={sending ? actBusy : documentsQuietButton} disabled={busyAct != null} onClick={() => void openSend(row, true)}>
+                                <button type="button" style={{ ...(sending ? actBusy : documentsQuietButton), ...pressFloor }} disabled={busyAct != null} onClick={() => void openSend(row, true)}>
                                   {sending ? 'Opening…' : SEND_AGAIN_LABEL}
                                 </button>
-                                <button type="button" style={linking ? actBusy : documentsQuietButton} disabled={busyAct != null} onClick={() => void copySigningLink(row)}>
+                                <button type="button" style={{ ...(linking ? actBusy : documentsQuietButton), ...pressFloor }} disabled={busyAct != null} onClick={() => void copySigningLink(row)}>
                                   {linking ? 'Making the link…' : COPY_SIGNING_LINK_LABEL}
                                 </button>
                               </>
                             ) : null}
                             {canTakeBack ? (
-                              <button type="button" style={takingBack ? actBusy : takeBackPress} disabled={busyAct != null} onClick={() => void takeBack(row)}>
+                              <button type="button" style={{ ...(takingBack ? actBusy : takeBackPress), ...pressFloor }} disabled={busyAct != null} onClick={() => void takeBack(row)}>
                                 {takingBack ? 'Taking it back…' : TAKE_BACK_LABEL}
                               </button>
                             ) : null}
@@ -605,7 +615,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
               ))}
               {more ? (
                 <div>
-                  <button type="button" style={documentsQuietButton} onClick={() => setLimit((n) => n + AGREEMENTS_PAGE)}>
+                  <button type="button" style={{ ...documentsQuietButton, ...pressFloor }} onClick={() => setLimit((n) => n + AGREEMENTS_PAGE)}>
                     Show more
                   </button>
                 </div>

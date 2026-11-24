@@ -12,6 +12,8 @@ import { readContactForAddress, type KnownAddress } from '../../lib/documents/pa
 import { materializeQuickSendRow, readKeptSigner, readPortalSlugIfLive, sendPersonPaperForSignature } from '../../lib/contracts/personPaperSendIo'
 import { useToastContext } from '../../contexts/ToastContext'
 import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { paperPressFloor } from '../../lib/documents/agreementsPhonePress'
 
 /**
  * Send for signature: the one window that emails a person's paper to sign. People → Contracts opens it from a paper's
@@ -76,6 +78,8 @@ export function ContractSendWindow({
   onSent: (sent: { docId: string; emailed: boolean; planKind: QuickSendPlan['kind'] | null }) => void
 }) {
   const { showToast } = useToastContext()
+  /** A phone: Cancel and Send email stand a fingertip tall. A desk adds nothing. */
+  const pressFloor = paperPressFloor(useNarrowViewport640())
   const [email, setEmail] = useState(initialEmail)
   const [signerName, setSignerName] = useState(() => signerNameToOpenOn(initialSignerName, target?.personName))
   const [signerTitle, setSignerTitle] = useState(initialSignerTitle ?? '')
@@ -410,14 +414,14 @@ export function ContractSendWindow({
         ) : null}
         <div style={{ display: 'flex', marginTop: '1rem', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           {/* Nothing was written for a quick-send pick, so there is nothing to undo. */}
-          <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}>
+          <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer', ...pressFloor }}>
             Cancel
           </button>
           <button
             type="button"
             onClick={() => void send()}
             disabled={saving}
-            style={{ padding: '0.5rem 1rem', background: SKY_UNDER_WORDS, color: WORDS_ON_SKY, border: 'none', borderRadius: 6, cursor: saving ? 'not-allowed' : 'pointer' }}
+            style={{ padding: '0.5rem 1rem', background: SKY_UNDER_WORDS, color: WORDS_ON_SKY, border: 'none', borderRadius: 6, cursor: saving ? 'not-allowed' : 'pointer', ...pressFloor }}
           >
             {saving ? 'Sending…' : again ? 'Send the email again' : 'Send email'}
           </button>
