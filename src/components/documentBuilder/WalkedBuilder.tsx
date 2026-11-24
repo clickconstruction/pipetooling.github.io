@@ -31,7 +31,8 @@ import { levelTone } from './levelTone'
 import { MovedOnPanel } from './MovedOnPanel'
 import { CHANGED_LEGEND, changedCardEmpty, changedCardHead, changedRows, shownPageId, type ShownPage } from '../../lib/documentBuilder/changedCard'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
-import { BUILDER_SIDES, BUILDER_SIDE_SWITCH, builderSideHolds, type BuilderSide } from '../../lib/documentBuilder/builderSide'
+import { BUILDER_SIDES, BUILDER_SIDE_SWITCH, builderSideHolds } from '../../lib/documentBuilder/builderSide'
+import { useBuilderSide } from './builderSideContext'
 import { levelInk } from './levelTone'
 
 /** The writes the builder makes. A smoke hands its own in. */
@@ -44,12 +45,8 @@ type Props = {
   def: PaperDef
   onBack: () => void
   onRecord: (rec: BuilderRecord) => void
-  /** What sits under the link on the Share side: the send, as a later step adds it. */
+  /** What sits under the link on the left: the send, as a later step adds it. */
   share?: ReactNode
-  /** The side the left column shows. Absent, the builder opens on Edit and keeps the side itself. */
-  side?: BuilderSide
-  /** A press on the switch. Whoever keeps the side in the address hears it here. */
-  onSide?: (side: BuilderSide) => void
   io?: WalkedBuilderIo
   /** The link card's own reads and presses. A smoke hands its own in. */
   linkIo?: BuilderLinkCardIo
@@ -88,7 +85,7 @@ function Chip({ chip }: { chip: BuilderChip }) {
   return <span style={{ ...CHIP, ...CHIP_TONES[chip.tone] }}>{chip.words}</span>
 }
 
-export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, side: sideAsked, onSide, io = defaultIo, linkIo = BUILDER_LINK_CARD_IO }: Props) {
+export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, io = defaultIo, linkIo = BUILDER_LINK_CARD_IO }: Props) {
   const confirmDialog = useConfirmDialog()
   const [draft, setDraft] = useState<PaperDef>(def)
   const draftRef = useRef(draft)
@@ -110,13 +107,8 @@ export function WalkedBuilder({ entry, rec, def, onBack, onRecord, share, side: 
   }
   const [readOpen, setReadOpen] = useState(false)
   const [readName, setReadName] = useState('')
-  /** Edit or Share. The address's side wins when one is handed in, so Back and a reload land where the person was. */
-  const [sideHere, setSideHere] = useState<BuilderSide>(sideAsked ?? 'edit')
-  const side = sideAsked ?? sideHere
-  const pickSide = (next: BuilderSide) => {
-    setSideHere(next)
-    onSide?.(next)
-  }
+  /** Edit or Share on the left column. Whoever keeps the side (the tab, in the address) hands it down, so Back and a reload land where the person was. */
+  const { side, pickSide } = useBuilderSide()
   /** The page the flow shows on the right, as the flow says it. The map outlines its cell. */
   const [shown, setShown] = useState<ShownPage | null>(null)
 

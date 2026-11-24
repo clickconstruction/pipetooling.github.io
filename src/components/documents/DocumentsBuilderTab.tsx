@@ -17,6 +17,7 @@ import { useLocation, useSearchParams } from 'react-router-dom'
 import { FilledBuilder } from '../documentBuilder/FilledBuilder'
 import { BuilderGcSendCard } from '../documentBuilder/BuilderGcSendCard'
 import { WalkedBuilder as WalkedEditor } from '../documentBuilder/WalkedBuilder'
+import { BuilderSideProvider } from '../documentBuilder/builderSideContext'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import {
@@ -134,8 +135,10 @@ function WalkedBuilder({ entry, rec, onBack, onRecord, side, onSide }: { entry: 
   if (parsed.ok) {
     return (
       <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
-        {/* Step 9: on the Share side, under the link, the send of the published builder to GCs. */}
-        <WalkedEditor entry={entry} rec={rec} def={parsed.def} onBack={onBack} onRecord={onRecord} side={side} onSide={onSide} share={<BuilderGcSendCard builderKey={entry.id} revision={rec.revision} unread={builderUnreadWords(rec)} />} />
+        {/* Step 9: on the Share side, under the link, the send of the published builder to GCs. The side is the address's. */}
+        <BuilderSideProvider side={side} onSide={onSide}>
+          <WalkedEditor entry={entry} rec={rec} def={parsed.def} onBack={onBack} onRecord={onRecord} share={<BuilderGcSendCard builderKey={entry.id} revision={rec.revision} unread={builderUnreadWords(rec)} />} />
+        </BuilderSideProvider>
         <p style={FINE}>
           {`${parsed.def.title} on job ${parsed.def.job}, for ${parsed.def.protectedParty}. Nobody is asked to sign. The disclaimer, the breach lines, the site lines and the meanings are placeholders until an attorney has read them. No clause wording is on this page.`}
         </p>

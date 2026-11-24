@@ -17,6 +17,7 @@ import { builderRecordFromRow, type BuilderRecord } from '../../lib/documentBuil
 import { ConfirmDialogProvider } from '../../contexts/ConfirmDialogContext'
 import type { BuilderLinkCardIo } from './BuilderLinkCard'
 import { WalkedBuilder, type WalkedBuilderIo } from './WalkedBuilder'
+import { BuilderSideProvider } from './builderSideContext'
 
 afterEach(cleanup)
 
@@ -35,11 +36,19 @@ const SEND = (
   </div>
 )
 
-function draw(props: { side?: BuilderSide; onSide?: (side: BuilderSide) => void } = {}) {
+/** The builder with no one keeping its side, or under a keeper that holds one side still. */
+function draw(kept?: BuilderSide) {
   const link = linkIo()
+  const builder = <WalkedBuilder entry={ENTRY} rec={rec} def={rec.draft as PaperDef} onBack={vi.fn()} onRecord={vi.fn()} io={io} linkIo={link as unknown as BuilderLinkCardIo} share={SEND} />
   render(
     <ConfirmDialogProvider>
-      <WalkedBuilder entry={ENTRY} rec={rec} def={rec.draft as PaperDef} onBack={vi.fn()} onRecord={vi.fn()} io={io} linkIo={link as unknown as BuilderLinkCardIo} share={SEND} {...props} />
+      {kept ? (
+        <BuilderSideProvider side={kept} onSide={() => {}}>
+          {builder}
+        </BuilderSideProvider>
+      ) : (
+        builder
+      )}
     </ConfirmDialogProvider>,
   )
   return link
@@ -105,13 +114,30 @@ describe('the Edit / Share switch', () => {
     expect(io.read).toHaveBeenCalledTimes(1)
   })
 
+  it('shows the side a keeper holds, and a press that the keeper ignores changes nothing', () => {
+    draw('share')
+    expect(pressed('Share')).toBe('true')
+    press('Edit')
+    // The keeper did not move, so the side did not: the address is the one truth.
+    expect(pressed('Share')).toBe('true')
+    expect(send()).not.toBeNull()
+  })
+
   it('tells whoever keeps the address of each press, and shows the side it is handed', () => {
     const heard: BuilderSide[] = []
     function Held() {
       const [side, setSide] = useState<BuilderSide>('share')
       return (
         <ConfirmDialogProvider>
-          <WalkedBuilder entry={ENTRY} rec={rec} def={rec.draft as PaperDef} onBack={vi.fn()} onRecord={vi.fn()} io={io} linkIo={linkIo() as unknown as BuilderLinkCardIo} share={SEND} side={side} onSide={(next) => { heard.push(next); setSide(next) }} />
+          <BuilderSideProvider
+            side={side}
+            onSide={(next) => {
+              heard.push(next)
+              setSide(next)
+            }}
+          >
+            <WalkedBuilder entry={ENTRY} rec={rec} def={rec.draft as PaperDef} onBack={vi.fn()} onRecord={vi.fn()} io={io} linkIo={linkIo() as unknown as BuilderLinkCardIo} share={SEND} />
+          </BuilderSideProvider>
         </ConfirmDialogProvider>
       )
     }
@@ -125,7 +151,7 @@ describe('the Edit / Share switch', () => {
   })
 
   it('on a phone leaves the Share side alone on the screen, by the stylesheet', () => {
-    draw({ side: 'share' })
+    draw('share')
     const split = document.querySelector('.documentBuilderSplit') as HTMLElement
     expect(split.getAttribute('data-side')).toBe('share')
     expect(split.querySelector('.documentBuilderGcView')).not.toBeNull()
