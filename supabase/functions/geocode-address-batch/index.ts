@@ -3,6 +3,15 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle } from '../_shared/googleGeocode.ts'
 import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
 import { inUsPointBox, refusePointOutsideUs } from '../_shared/usPointBox.ts'
+import {
+  geocodeMissDetail,
+  geocodeServiceSaid,
+  isSettledGeocodeMiss,
+  rememberedGeocodeFailure,
+  standingGeocodeMisses,
+  type GeocodeMissRow,
+  type GeocodeServiceSaid,
+} from '../_shared/geocodeMissMemory.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,10 +34,12 @@ function appendDetail(base: string | undefined, extra: string): string {
 /**
  * A cache write refused by RLS (42501) — a read-only (training-mode) user hits the
  * restrictive write-block policies. The coordinates are still good; return them
- * and skip the cache rather than fail the whole batch (v2.3131).
+ * and skip the cache rather than fail the whole batch (v2.3131). The statement
+ * trigger that holds a training account says so in words, with its own code, and
+ * reads as the same refusal (punch list #408).
  */
 function isRlsRefusal(err: { code?: string; message?: string }): boolean {
-  return err.code === '42501' || /row-level security/i.test(err.message ?? '')
+  return err.code === '42501' || /row-level security|read-only \(training\) mode/i.test(err.message ?? '')
 }
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -83,9 +94,9 @@ serve(async (req) => {
     return jsonResponse(403, { error: 'Geocoding requires an active app account' })
   }
 
-  let body: { addresses?: unknown }
+  let body: { addresses?: unknown; retry?: unknown }
   try {
-    body = (await req.json()) as { addresses?: unknown }
+    body = (await req.json()) as { addresses?: unknown; retry?: unknown }
   } catch {
     return jsonResponse(400, { error: 'Invalid JSON' })
   }
@@ -112,12 +123,35 @@ serve(async (req) => {
 
   const results: { address_normalized: string; lat: number; lng: number }[] = []
   // Per-address failure reasons; error_code values match mapGeocodeErrorMessage on the client.
-  const failures: { address_normalized: string; error_code: string; detail?: string }[] = []
+  // `remembered` and `checked_at` (punch list #408) mark a miss answered from memory, with nothing asked.
+  const failures: { address_normalized: string; error_code: string; detail?: string; remembered?: true; checked_at?: string }[] = []
   const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY')?.trim() ?? ''
+
+  // The misses that still stand (punch list #408): an address every service missed in the last
+  // GEOCODE_MISS_STANDS_DAYS days is answered from here, and no service is asked. `retry: true`,
+  // a person's Try again, asks past it. Best effort: a failed read asks as before.
+  const retry = body.retry === true
+  let remembered = new Map<string, GeocodeMissRow>()
+  if (!retry && uniqueInput.length > 0) {
+    const { data: missRows, error: missErr } = await supabase
+      .from('address_geocode_misses')
+      .select('address_normalized, error_code, detail, checked_at')
+      .in(
+        'address_normalized',
+        uniqueInput.map((u) => u.key)
+      )
+    if (missErr) console.warn(`geocode-address-batch: the misses could not be read, asking as before: ${missErr.message}`)
+    else remembered = standingGeocodeMisses((missRows ?? []) as GeocodeMissRow[], new Date())
+  }
+  // Nominatim asks for a second between requests: the wait is owed only once one has been sent.
+  let askedNominatim = false
 
   for (let i = 0; i < uniqueInput.length; i++) {
     const { key, display } = uniqueInput[i]!
     let failure: { error_code: string; detail?: string } | null = null
+    // What each service said, so a miss is kept only when all three said *not found*.
+    let nominatimSaid: GeocodeServiceSaid = 'not_asked'
+    let googleSaid: GeocodeServiceSaid = 'not_asked'
 
     const { data: existing, error: exErr } = await supabase
       .from('address_geocodes')
@@ -133,9 +167,16 @@ serve(async (req) => {
       continue
     }
 
-    if (i > 0) {
+    const stands = remembered.get(key)
+    if (stands) {
+      failures.push(rememberedGeocodeFailure(stands))
+      continue
+    }
+
+    if (askedNominatim) {
       await new Promise((r) => setTimeout(r, NOMINATIM_DELAY_MS))
     }
+    askedNominatim = true
 
     let lat: number | null = null
     let lng: number | null = null
@@ -167,6 +208,7 @@ serve(async (req) => {
     } catch {
       failure = { error_code: 'upstream', detail: 'OpenStreetMap (Nominatim) request failed' }
     }
+    nominatimSaid = failure ? geocodeServiceSaid(failure.error_code) : 'not_asked'
 
     if (lat !== null && lng !== null) {
       const { error: upErr } = await supabase.from('address_geocodes').upsert(
@@ -210,6 +252,7 @@ serve(async (req) => {
         results.push({ address_normalized: key, lat: g.lat, lng: g.lng })
         continue
       }
+      googleSaid = geocodeServiceSaid(g.error)
       failure =
         g.error === 'not_found' && !g.detail
           ? { error_code: 'not_found', detail: 'No match from OpenStreetMap or Google' }
@@ -259,6 +302,18 @@ serve(async (req) => {
         c.error === 'census_upstream'
           ? { error_code: 'census_upstream', detail: c.detail }
           : { error_code: 'not_found', detail: c.detail ?? 'No match from US Census' }
+    }
+
+    // Every service answered and none found it: keep the miss, so the next open does not ask again
+    // (punch list #408). A service that was down, refused the key or was over its limit keeps nothing.
+    // The keeping is best effort: a refused or failed write never fails the batch.
+    if (isSettledGeocodeMiss({ nominatim: nominatimSaid, google: googleSaid, census: geocodeServiceSaid(c.error) })) {
+      const { error: missWriteErr } = await supabase
+        .from('address_geocode_misses')
+        .upsert({ address_normalized: key, error_code: 'not_found', detail: geocodeMissDetail(failure.detail) }, { onConflict: 'address_normalized' })
+      if (missWriteErr && !isRlsRefusal(missWriteErr)) {
+        console.warn(`geocode-address-batch: the miss could not be kept: ${missWriteErr.message}`)
+      }
     }
 
     failures.push({ address_normalized: key, ...failure })

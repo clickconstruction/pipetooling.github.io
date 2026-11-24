@@ -39,6 +39,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      address_geocode_misses: {
+        Row: {
+          address_normalized: string
+          checked_at: string
+          detail: string | null
+          error_code: string
+        }
+        Insert: {
+          address_normalized: string
+          checked_at?: string
+          detail?: string | null
+          error_code?: string
+        }
+        Update: {
+          address_normalized?: string
+          checked_at?: string
+          detail?: string | null
+          error_code?: string
+        }
+        Relationships: []
+      }
       address_geocodes: {
         Row: {
           address_normalized: string

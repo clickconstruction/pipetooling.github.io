@@ -3,6 +3,14 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { geocodeWithGoogle, type GoogleGeocodeErrorCode } from '../_shared/googleGeocode.ts'
 import { censusCountyFromPoint, geocodeWithCensus } from '../_shared/censusGeocode.ts'
 import { inUsPointBox, refusePointOutsideUs } from '../_shared/usPointBox.ts'
+import {
+  geocodeMissDetail,
+  geocodeMissStands,
+  geocodeServiceSaid,
+  isSettledGeocodeMiss,
+  type GeocodeMissRow,
+  type GeocodeServiceSaid,
+} from '../_shared/geocodeMissMemory.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,7 +46,8 @@ type OkGeocode = {
   /** Present when `refresh_google_only` was used. */
   refreshed?: true
 }
-type Fail = { ok: false; address_normalized: string; error: string; detail?: string }
+/** `remembered` and `checked_at` (punch list #408): the miss was answered from memory, and no service was asked. */
+type Fail = { ok: false; address_normalized: string; error: string; detail?: string; remembered?: true; checked_at?: string }
 
 /**
  * The 200 answer; an ok one without a county asks the Census lookup for the point's (v2.4783).
@@ -124,9 +133,9 @@ serve(async (req) => {
     })
   }
 
-  let body: { address?: unknown; refresh_google_only?: unknown }
+  let body: { address?: unknown; refresh_google_only?: unknown; retry?: unknown }
   try {
-    body = (await req.json()) as { address?: unknown; refresh_google_only?: unknown }
+    body = (await req.json()) as { address?: unknown; refresh_google_only?: unknown; retry?: unknown }
   } catch {
     return jsonResponse(400, { error: 'Invalid JSON' })
   }
@@ -200,7 +209,35 @@ serve(async (req) => {
     return await answer(out)
   }
 
+  // A miss that still stands (punch list #408): every service missed this address in the last
+  // GEOCODE_MISS_STANDS_DAYS days, so it is answered from memory and none is asked. `retry: true`,
+  // a person's press, asks past it. Best effort: a failed read asks as before.
+  if (body.retry !== true) {
+    const { data: missRow, error: missErr } = await supabase
+      .from('address_geocode_misses')
+      .select('address_normalized, error_code, detail, checked_at')
+      .eq('address_normalized', key)
+      .maybeSingle()
+    if (missErr) console.warn(`geocode-one: the miss could not be read, asking as before: ${missErr.message}`)
+    const miss = missRow as GeocodeMissRow | null
+    if (!missErr && miss && geocodeMissStands(miss.checked_at, new Date())) {
+      const out: Fail = {
+        ok: false,
+        address_normalized: key,
+        error: miss.error_code,
+        ...(miss.detail ? { detail: miss.detail } : {}),
+        remembered: true,
+        checked_at: miss.checked_at,
+      }
+      return await answer(out)
+    }
+  }
+
   const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY')?.trim() ?? ''
+
+  // What each service said, so a miss is kept only when all three said *not found* (punch list #408).
+  let nominatimSaid: GeocodeServiceSaid = 'failed'
+  let googleSaid: GeocodeServiceSaid = 'not_asked'
 
   // Set when the street map placed it outside the lower 48 (v2.4975): a miss, carried into the answer.
   let nominatimRefused = ''
@@ -215,6 +252,7 @@ serve(async (req) => {
       const lng = parseFloat(arr[0]!.lon)
       if (Number.isFinite(lat) && Number.isFinite(lng) && !inUsPointBox(lat, lng)) {
         nominatimRefused = refusePointOutsideUs('nominatim', display, lat, lng, arr[0])
+        nominatimSaid = 'not_found'
       } else if (Number.isFinite(lat) && Number.isFinite(lng)) {
         const { error: upErr } = await upsertGeocode(supabase, key, lat, lng)
         if (upErr) {
@@ -230,6 +268,8 @@ serve(async (req) => {
         }
         return await answer(out)
       }
+    } else if (Array.isArray(arr)) {
+      nominatimSaid = 'not_found'
     }
   }
 
@@ -252,6 +292,7 @@ serve(async (req) => {
       }
       return await answer(out)
     }
+    googleSaid = geocodeServiceSaid(g.error)
     googleFail = {
       ok: false,
       address_normalized: key,
@@ -280,6 +321,19 @@ serve(async (req) => {
   const censusNote = c.error === 'census_upstream' ? `US Census: ${c.detail ?? 'service error'}` : (c.detail ?? 'no match from US Census')
   // The street map's refusal leads, so the answer says why its point was not taken (v2.4975).
   const missNote = nominatimRefused ? `${nominatimRefused}; ${censusNote}` : censusNote
+
+  // Every service answered and none found it: keep the miss, so the next ask is answered from memory
+  // (punch list #408). A service that was down, refused the key or was over its limit keeps nothing.
+  // The keeping is best effort: a refused or failed write never changes the answer.
+  if (isSettledGeocodeMiss({ nominatim: nominatimSaid, google: googleSaid, census: geocodeServiceSaid(c.error) })) {
+    const kept = googleFail?.detail ? `${googleFail.detail}; ${missNote}` : missNote
+    const { error: missWriteErr } = await supabase
+      .from('address_geocode_misses')
+      .upsert({ address_normalized: key, error_code: 'not_found', detail: geocodeMissDetail(kept) }, { onConflict: 'address_normalized' })
+    if (missWriteErr && missWriteErr.code !== '42501' && !/row-level security|read-only \(training\) mode/i.test(missWriteErr.message ?? '')) {
+      console.warn(`geocode-one: the miss could not be kept: ${missWriteErr.message}`)
+    }
+  }
 
   // Keep the more actionable Google failure as the primary error; note the Census outcome in the detail.
   if (googleFail) {

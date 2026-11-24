@@ -3782,15 +3782,17 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### geocode-address-batch
 
+> **v2.8477 — an address no service could place is remembered** (punch list #408, step 2): before asking, the function reads `address_geocode_misses` for the batch's keys. A miss checked in the last `GEOCODE_MISS_STANDS_DAYS` days (30, the one constant in [`_shared/geocodeMissMemory.ts`](../supabase/functions/_shared/geocodeMissMemory.ts)) is answered in `failures` with its kept code and detail plus `remembered: true` and `checked_at`, and no service is asked. `retry: true` in the body, a person's **Try again**, asks past it. A miss is written only when OpenStreetMap, Google and the Census each answered and none found the address. A service that was down, refused the key or was over its limit keeps nothing, and so does Google with no key set. A saved point removes the miss by the table's trigger. The read and the write are best effort: neither fails a batch, and a training account's refused write is skipped. The ~1.1s wait is now owed only after a Nominatim request in the same call, not after a cache hit or a remembered miss. A client that predates it ignores the two new fields. **Redeploy after merge**, after the Pages deploy.
+
 > **v2.4975 — only points in the lower 48 are kept**: the box of [geocode-one](#geocode-one) ([`_shared/usPointBox.ts`](../supabase/functions/_shared/usPointBox.ts)) on OpenStreetMap's, Google's and the Census's answers and on the cache read. A refused point is a miss in `failures` with the reason in `detail`, never a row. **Redeploy after merge.**
 
 **Purpose**: Batch geocoding for the **Map** page and the Dashboard **Your jobs on a map** card (v2.3131 — every active app account; before that only **`dev`** / **`master_technician`** / **`assistant`** / **`estimator`**). Normalizes addresses, reads/writes **`public.address_geocodes`** via the user’s JWT (RLS), and for cache misses: **OpenStreetMap Nominatim** first, then **Google Geocoding API** if **`GOOGLE_MAPS_API_KEY`** is set and Nominatim does not return coordinates (rate-limited **~1.1s** between *Nominatim* request rounds server-side). There is **no** extra inter-address delay before the Google attempt in the same row.
 
 **Endpoint**: `POST /functions/v1/geocode-address-batch`
 
-**Body** (JSON): `{ "addresses": string[] }` — display strings (e.g. job street); max **20** per request.
+**Body** (JSON): `{ "addresses": string[], "retry"?: true }` — display strings (e.g. job street); max **20** per request. `retry` (v2.8477) asks the services past a remembered miss.
 
-**Response** (**200** JSON): `{ "results": { "address_normalized": string, "lat": number, "lng": number }[] }`
+**Response** (**200** JSON): `{ "results": { "address_normalized": string, "lat": number, "lng": number }[], "failures": { "address_normalized": string, "error_code": string, "detail"?: string, "remembered"?: true, "checked_at"?: string }[] }` — `remembered` and `checked_at` (v2.8477) mark a miss answered from `address_geocode_misses`, with nothing asked.
 
 **Headers**: `Authorization: Bearer <user_jwt>`, `apikey: <anon_key>`, `Content-Type: application/json`.
 
@@ -3808,6 +3810,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### geocode-one
 
+> **v2.8477 — an address no service could place is remembered** (punch list #408, step 2): the same memory as [geocode-address-batch](#geocode-address-batch). After the cache read, a miss that still stands is answered as a failure with `remembered: true` and `checked_at`, and no service is asked. `retry: true`, the job form's **Place it** and **Try again**, asks past it. A miss is kept only when all three services said *not found*. `refresh_google_only` reads no memory and keeps no miss, since it asks Google alone. **Redeploy after merge**, after the Pages deploy.
+
 > **v2.5376 — `deno check` passes again**: `upsertGeocode` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the `address_geocodes` upsert took `never` and none of its four callers could hand it the caller's client (5 errors). It takes `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.4974 — the controller is admitted**: the role check named dev, master_technician, assistant and estimator, while the Edit Job *On the map* line (and `/map` itself) opened to the controller too, so a controller's form showed a line the function answered with a 403. The list is now the five `/map` roles — the client's `isPathAllowedForRole(role, '/map')`. **Redeploy required** (until then a controller's line reads *could not place it*).
@@ -3824,13 +3828,13 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Body** (JSON):
 
-- Default: `{ "address": string }` — display string (trimmed, min length **3**).
+- Default: `{ "address": string, "retry"?: true }` — display string (trimmed, min length **3**). `retry` (v2.8477) asks the services past a remembered miss.
 - **Google refresh (Map review modal):** `{ "address": string, "refresh_google_only": true }` — **skips** the **`address_geocodes` cache and Nominatim**; calls **only** the Google Geocoding API, then **upserts**. Use when a pin is wrong or the address was edited in the app. Requires **`GOOGLE_MAPS_API_KEY`**; if missing, returns **`ok: false`** with **`error`**: **`google_unconfigured`**. On success, **`refreshed`: `true`** is included with **`source`: `"google"`**.
 
 **Response** (**200** JSON):
 
 - Success: `{ "ok": true, "address_normalized": string, "lat": number, "lng": number, "fromCache": boolean, "source": "cache" | "nominatim" | "google", "refreshed"?: true }` — when **`fromCache` is** `true`, **`source`** is **`cache`**; when coordinates were just written, **`source`** is **`nominatim`** or **`google`**. **`refreshed`** is set for **`refresh_google_only`** successes.
-- Failure: `{ "ok": false, "address_normalized": string, "error": string, "detail"?: string }` — same **`error`** codes as above. When Google’s JSON includes **`error_message`**, a sanitized, length-capped copy is included as **`detail`** (API key–like substrings redacted) so the Map UI can show *why* **REQUEST_DENIED** / quota / etc. failed.
+- Failure: `{ "ok": false, "address_normalized": string, "error": string, "detail"?: string, "remembered"?: true, "checked_at"?: string }` — same **`error`** codes as above; `remembered` and `checked_at` (v2.8477) mark a miss answered from memory. When Google’s JSON includes **`error_message`**, a sanitized, length-capped copy is included as **`detail`** (API key–like substrings redacted) so the Map UI can show *why* **REQUEST_DENIED** / quota / etc. failed.
 - Auth / validation errors: `{ "error": string }` with **401** / **403** / **400** as appropriate; **500** on DB/upsert failure.
 
 **Headers**: `Authorization: Bearer <user_jwt>`, `apikey: <anon_key>`, `Content-Type: application/json`.

@@ -5811,7 +5811,9 @@ See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) **Key Features** §16.
 An address no map service could place, kept beside [`address_geocodes`](#address_geocodes) by the same **normalized address key**, with the reason (`error_code`, `detail`) and the day it was checked (`checked_at`, the server's clock on every write) (v2.8473, punch list #408).
 **RLS** — read, insert and update for every signed-in user, and no delete for anyone (`20261124091500`).
 A point saved to `address_geocodes` deletes its miss through the trigger `address_geocodes_clears_miss`.
-How long a miss stands before it is asked again is the geocode functions' rule, not the table's.
+A miss stands 30 days before it is asked again: `GEOCODE_MISS_STANDS_DAYS` in [`geocodeMissMemory.ts`](../supabase/functions/_shared/geocodeMissMemory.ts), the functions' and the readers' rule, not the table's (v2.8477).
+Written by Edge Functions **`geocode-one`** and **`geocode-address-batch`**, only when OpenStreetMap, Google and the Census each answered and none found the address.
+Client: `readStandingGeocodeMisses` in [`geocodeMissesIo.ts`](../src/lib/map/geocodeMissesIo.ts), read for the addresses with no saved point, so a standing miss is not sent again.
 
 ### Last work date (`jobs_ledger.last_work_date`)
 Cached calendar **`work_date`**: the latest among **approved**, non-rejected, non-revoked **`clock_sessions`** with **`job_ledger_id`** pointing at the job.

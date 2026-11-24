@@ -5,6 +5,7 @@ export type CatalogTable = { kind: 'table' | 'view'; columns: Record<string, str
 export type CatalogRpc = { args: Record<string, string>; returns: string }
 
 export const CATALOG_TABLES: Record<string, CatalogTable> = {
+  "address_geocode_misses": {"kind":"table","columns":{"address_normalized":"string","checked_at":"string","detail":"string | null","error_code":"string"}},
   "address_geocodes": {"kind":"table","columns":{"address_normalized":"string","geocode_error":"string | null","geocoded_at":"string","lat":"number","lng":"number"}},
   "agreements_on_file": {"kind":"view","columns":{"at":"string | null","at_day":"string | null","facts":"Json | null","find_text":"string | null","id":"string | null","job_address":"string | null","job_click_number":"string | null","job_hcp_number":"string | null","job_id":"string | null","job_name":"string | null","kind":"string | null","more_jobs":"number | null","paper_name":"string | null","person_id":"string | null","person_kind":"string | null","source_id":"string | null","state":"string | null","with_name":"string | null"}},
   "app_settings": {"kind":"table","columns":{"key":"string","value_num":"number | null","value_text":"string | null"}},

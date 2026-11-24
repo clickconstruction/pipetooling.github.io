@@ -50,6 +50,20 @@ describe('JobFormAddressPin (v2.4783)', () => {
     await waitFor(() => expect(document.querySelector('[data-pin-state="failed"]')).not.toBeNull())
     expect(document.querySelector('[data-job-address-pin]')!.textContent).toContain('it needs a street, a city or a ZIP')
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
+    // The blur took the remembered answer; the press asks the services past the memory (punch list #408).
+    expect(db.invoke).toHaveBeenLastCalledWith('geocode-one', { body: { address: '6288 Rill Rd New Braunfels' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(db.invoke).toHaveBeenCalledTimes(2))
+    expect(db.invoke).toHaveBeenLastCalledWith('geocode-one', { body: { address: '6288 Rill Rd New Braunfels', retry: true } })
+    await waitFor(() => expect(document.querySelector('[data-pin-state="failed"]')).not.toBeNull())
+  })
+
+  it('Place it is a press too, and asks past the memory', async () => {
+    db.invoke.mockResolvedValue({ data: { ok: false, address_normalized: 'x', error: 'not_found' }, error: null })
+    render(<JobFormAddressPin address="6288 Rill Rd New Braunfels" blurSignal={0} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Place it' }))
+    await waitFor(() => expect(db.invoke).toHaveBeenCalledWith('geocode-one', { body: { address: '6288 Rill Rd New Braunfels', retry: true } }))
+    await waitFor(() => expect(document.querySelector('[data-pin-state="failed"]')).not.toBeNull())
   })
 
   it('an address already in the cache reads placed at once, with no lookup', async () => {
