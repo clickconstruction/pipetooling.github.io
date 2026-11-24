@@ -45,7 +45,7 @@ import {
   type QuickSendPlan,
   resolveQuickSendSource,
 } from '../../lib/contractsQuickSend'
-import { contractsDocLanding, contractsDocLinkId, contractsDocOffRosterWords } from '../../lib/contractsDocLink'
+import { contractsDocCompanyOffRosterWords, contractsDocLanding, contractsDocLinkCompanies, contractsDocLinkId, contractsDocOffRosterWords, type ContractsDocLinkCompanyPaper } from '../../lib/contractsDocLink'
 import { CONTRACT_ASSIGNMENT_COLUMNS, CONTRACT_BOOK_COLUMNS, CONTRACT_PACKET_COLUMNS, PERSON_PAPER_COLUMNS } from '../../lib/contracts/contractsLibraryIo'
 import { ContractQuickSendPicker } from './ContractQuickSendPicker'
 import { recordNavClick } from '../../lib/navClickTelemetry'
@@ -57,7 +57,7 @@ import { EmptyState } from '../EmptyState'
 import { nobodyMatchesWords, nobodyUnderFilterWords } from '../../lib/people/peopleEmptyWords'
 import { useToastContext } from '../../contexts/ToastContext'
 import { NO_ARCHIVED_ROSTER, splitNamesByArchived, type ArchivedRoster } from '../../lib/people/rosterPeople'
-import { isCompanyPaperName } from '../../../supabase/functions/_shared/companyPaper'
+import { companyIdFromPaperName, isCompanyPaperName } from '../../../supabase/functions/_shared/companyPaper'
 import { isPartyPaperName } from '../../lib/contracts/paperParty'
 import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 import { isOfficeRole } from '../../lib/doorRoles'
@@ -221,6 +221,10 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
   const [subCompanyLinks, setSubCompanyLinks] = useState<PersonCompanyLink[]>([])
   const [subCompanies, setSubCompanies] = useState<SubCompany[]>([])
   const [subCompaniesError, setSubCompaniesError] = useState<string | null>(null)
+  /** True once the companies have been read: a deep link to a company's paper waits for it (`contractsDocLanding`). */
+  const [subCompaniesLoadedOnce, setSubCompaniesLoadedOnce] = useState(false)
+  /** The trade companies' papers the tab's own read saw and keeps off its list: what a deep link to one is known by. */
+  const [companyDocLinkPapers, setCompanyDocLinkPapers] = useState<ContractsDocLinkCompanyPaper[]>([])
   /** The linked companies' own papers (PR 2), and the window open on one company, if any. */
   const [companyPapers, setCompanyPapers] = useState<CompanyPaperRow[]>([])
   const [companyPaperWindow, setCompanyPaperWindow] = useState<{ kind: 'send' | 'enter'; companyId: string } | null>(null)
@@ -685,7 +689,13 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       // A trade partner company's papers (GC mode, B6-b-i) share the table but are no one's here: never listed, never counted.
       // A trade company's paper and an outside party's (punch list #403) share the table and are no person's: neither is
       // listed here. An outside party's shows on Documents → Agreements.
-      setPersonContractDocuments(((documentsRes.data ?? []) as unknown as PersonContractDocument[]).filter((d) => !isCompanyPaperName(d.person_name) && !isPartyPaperName(d.person_name)))
+      const readPapers = (documentsRes.data ?? []) as unknown as PersonContractDocument[]
+      setPersonContractDocuments(readPapers.filter((d) => !isCompanyPaperName(d.person_name) && !isPartyPaperName(d.person_name)))
+      // A company's paper is drawn under its company's row from the companies' own read. These few facts are what a
+      // deep link to one is known by.
+      setCompanyDocLinkPapers(
+        readPapers.filter((d) => isCompanyPaperName(d.person_name)).map((d) => ({ id: d.id, companyId: companyIdFromPaperName(d.person_name), document_name: d.document_name, status: d.status })),
+      )
     }
     setContractsLoadedOnce(true)
   }
@@ -811,6 +821,19 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       // A deep link arrives from another page, so its row is simply there: no glide, which a tab opened in the
       // background never runs.
       row?.scrollIntoView({ block: 'center', behavior: paperRow ? 'auto' : 'smooth' })
+    }, 60)
+  }
+
+  /**
+   * A deep link to a trade company's paper: its company's row is un-hidden if the filter hides every worker under it,
+   * and the paper under the row is scrolled into view. The mark is `contractsMarkedDocId`'s, drawn by the row.
+   */
+  const jumpToContractsCompanyPaper = (companyId: string, workerNames: readonly string[], docId: string) => {
+    const shown = workerNames.some((name) => personVisibleUnderContractsFilter(contractsRosterBuckets.bucketByPerson.get(name) ?? 'none', contractsRosterFilterActive))
+    if (!contractsSearchNormalized && !shown) setContractsRosterFilter('everyone')
+    window.setTimeout(() => {
+      const row = document.querySelector(`[data-sub-company-paper="${CSS.escape(docId)}"]`) ?? document.querySelector(`[data-sub-company-row="${CSS.escape(companyId)}"]`)
+      row?.scrollIntoView({ block: 'center', behavior: 'auto' })
     }, 60)
   }
 
@@ -1165,6 +1188,10 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       documents: personContractDocuments,
       activeNames: contractsNames.active,
       archivedNames: contractsNames.archived,
+      companyPapers: companyDocLinkPapers,
+      companies: contractsDocLinkCompanies(subCompanies, rosterByCompany(contractsNames.active, companyPlaces)),
+      // Someone who reads no companies has none to wait for.
+      companiesLoaded: !officeKeepsCompanies || subCompaniesLoadedOnce,
     })
     if (landing.kind === 'wait') return
     contractsDocLinkAnswered.current = true
@@ -1172,9 +1199,13 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
     else if (landing.kind === 'paper-row') {
       setContractsMarkedDocId(landing.documentId)
       jumpToContractsPerson(landing.personName, landing.documentId)
-    } else if (landing.kind === 'off-roster') setContractsError(contractsDocOffRosterWords(landing))
+    } else if (landing.kind === 'company-paper') {
+      setContractsMarkedDocId(landing.documentId)
+      jumpToContractsCompanyPaper(landing.companyId, landing.workerNames, landing.documentId)
+    } else if (landing.kind === 'company-off-roster') setContractsError(contractsDocCompanyOffRosterWords(landing))
+    else if (landing.kind === 'off-roster') setContractsError(contractsDocOffRosterWords(landing))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- answered once; the jump reads the roster of that pass
-  }, [contractsLoadedOnce, personContractDocuments, contractsNames])
+  }, [contractsLoadedOnce, personContractDocuments, contractsNames, companyDocLinkPapers, subCompanies, companyPlaces, subCompaniesLoadedOnce])
 
   const contractsPersonNamesFiltered = useMemo(() => {
     if (!contractsSearchNormalized) {
@@ -1721,6 +1752,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       setSubCompanies(read.companies)
       setCompanyPapers(papers)
       setSubCompaniesError(null)
+      setSubCompaniesLoadedOnce(true)
     } catch (e) {
       setSubCompaniesError(formatErrorMessage(e))
     }
@@ -2274,6 +2306,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                                 <SubCompanyHeadRow
                                   group={piece.group}
                                   papers={companyPaperLines(companyPapers, piece.group.company.id)}
+                                  markedPaperId={contractsMarkedDocId}
                                   onSend={() => setCompanyPaperWindow({ kind: 'send', companyId: piece.group.company.id })}
                                   onEnter={() => setCompanyPaperWindow({ kind: 'enter', companyId: piece.group.company.id })}
                                 />

@@ -25,7 +25,8 @@ function factOf(row: Pick<AgreementRow, 'facts'>, key: string): unknown {
 /**
  * Whether a line carries Send again and Copy the signing link: a staff, sub or partner paper, or an outside party's
  * (punch list #403), that is out and not signed, and that no newer copy replaced. A trade company's `company_id` paper
- * goes out with its trade email in GC mode, so its line keeps the GC door and carries neither.
+ * goes out from its company's row on People → Contracts, or with its trade email in GC mode, so its line opens that row
+ * and carries neither.
  */
 export function agreementCanBeSentAgain(row: Pick<AgreementRow, 'kind' | 'state' | 'facts'>): boolean {
   if (row.kind !== 'person_agreement' && row.kind !== 'partner_agreement' && !isPartyAgreementKind(row.kind)) return false
