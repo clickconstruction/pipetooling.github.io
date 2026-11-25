@@ -11,7 +11,7 @@ summary: >
   invented data and wrote, for each, what it waits on and the one or two answers that would move it.
   Those pages now sit beside their cards, so the board links to them. The board's own view is built:
   Waiting on me, every card that waits on a person with its question, one lead picture and one answer.
-next: The owner's look at Waiting on me on the live site, and one at a phone's width. Then draw #426's pictures again with `npm run todo:pictures -- 426`, since its row says they are old.
+next: The owner's look at Waiting on me on the live site, and one at a phone's width. The 18 look cards still unanswered are brought to the user four at a time, on the answer of 2026-11-25 under *Where it stands*. Then draw #426's pictures again with `npm run todo:pictures -- 426`, since its row says they are old.
 ask: owner · look · Open Waiting on me on the Punch list and answer one card on it.
 size: M as a train of three (S · M · S)
 blocker: None. All three PRs are built. The owner's look is left.
@@ -186,6 +186,8 @@ pills and are not on the owner's own list.
 `npm run todo:pictures` was run for #396 alone. The other fourteen cards' draw lines were written
 from the scripts' names and have not been run through the command. A card whose line is wrong stops
 the command, which then writes nothing.
+
+**How the look cards still unanswered are put to the user, answered 2026-11-25 (UTC) in the managing session.** The last run's index counts 19 look cards pictured for the user, with one answered and 18 left. Asked *The 18 look cards still unanswered: how do you want to answer them?*, the answer was "Bring them here, four at a time", quoted from that session's record of the user's answers. *Here* is the managing session's own question cards. What it frees: a session brings the 18 in fours, each with its pictures and the question its `ask:` line holds. What it leaves open: all 18 answers. None has been brought yet.
 
 ## The calls, each with a pick
 
