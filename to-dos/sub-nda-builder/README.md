@@ -12,7 +12,7 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The two walks left in *Left to do and to walk*, each a person's, with a real phone: a person's own Read and sign, and a finger on the sliders. Three were walked on 2026-11-24 and passed. Before a real job, the real wording in the Contract Book's entry, with its breach and site lines, and an attorney's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Step 5 was walked on the live site on 2026-11-24 and passed: the GC's page, its sample's address, and the office's setting for what a GC sees. Steps 1 to 5 are built, and step 6's first part: a GC proposes a stricter setting and the office takes it or declines. Its migration was pushed and its three functions deployed on 2026-11-24, so nothing of it waits on prod. The office hears of a proposal on Needs you (v2.8558). Then a walk of both on the live site. Beside them, the last steps of the Document builder tab, #404, and Taunya's read, box by box, of the grid in this card's mock-up. Then the open calls below, with the wider calls still open in *The wider look*.
+next: The two walks left in *Left to do and to walk*, each a person's, with a real phone: a person's own Read and sign, and a finger on the sliders. Three were walked on 2026-11-24 and passed. Before a real job, the real wording in the Contract Book's entry, with its breach and site lines, and an attorney's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Step 5 was walked on the live site on 2026-11-24 and passed: the GC's page, its sample's address, and the office's setting for what a GC sees. Steps 1 to 5 are built, and step 6's first part: a GC proposes a stricter setting and the office takes it or declines. Its migration was pushed and its three functions deployed on 2026-11-24, so nothing of it waits on prod. The office hears of a proposal on Needs you (v2.8558). Then a walk of both on the live site: it was given a yes on 2026-11-25, and the yes is asked again at the time since the walk writes on prod. Step 7 is ready to build on the answer of the same day, settled 15: a tick on the form's line. Beside them, the last steps of the Document builder tab, #404, and Taunya's read, box by box, of the grid in this card's mock-up. Then the open calls below, with the wider calls still open in *The wider look*.
 ver: v2.8014 · v2.8019 · v2.8020 · v2.8145 · v2.8154 · v2.8156 · v2.8182 · v2.8183 · v2.8184 · v2.8229 · v2.8275 · v2.8462 · v2.8467 · v2.8503 · v2.8506 · v2.8533 · v2.8553 · v2.8558
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
@@ -162,6 +162,18 @@ Taunya answered these four on 2026-11-21, asked as the calls step 4 stood on.
 13. **After the first signature the office may make any change**, tighter or looser. It is a new version
     that everyone signs again. Step 3 had held it to stricter only, and the ground under step 4 changed
     that (v2.8182).
+
+These two were answered on 2026-11-25 (UTC) in the managing session, on question cards. Each answer is
+quoted from that session's record of the user's answers.
+
+14. **Every signer by name means everyone who signed.** Asked *When a job is set to show a GC every signer
+    by name, should that list name office and crew people as well as subs?*, the answer was "Everyone who
+    signed". That is the list as built in step 5: every person on the job's roster who has signed, each with
+    a name and a day, and a business only for a sub. Nothing changes in the code. It does not answer point 6
+    for an attorney, whether workers' names may go to a GC, which still stands.
+15. **The GC's own form is a tick on the form's line.** Asked *Step 7: where should the office say that a
+    paper is the GC's own form?*, the answer was "A tick on the form's line (Recommended)". The other way
+    was a *Whose paper?* choice at the head of the papers section, as the mock-up drew it. It frees step 7.
 
 ## Open: the look
 
@@ -369,7 +381,9 @@ paper until an entry has a settings list, and the first one is a test entry.
      and a new version of the paper keeps it. The row keeps who set it and when. Under the count alone the
      database sends no business, and it sends the signers only under every signer by name.
      `20261124170000_job_paper_gc_view.sql`, `jobPaperGcView.ts`. Walked on the live site on 2026-11-24, each of
-     the three choices, and passed. No signer's name was seen there, since nobody had signed.
+     the three choices, and passed. No signer's name was seen there, since nobody had signed. Under every
+     signer by name the list is everyone on the roster who has signed, office and crew people as well as
+     subs, and that was chosen on 2026-11-25 (settled 14).
 6. **The GC proposes (M), in two parts.** The proposal with the office's take or decline, then how the office
    hears of one.
    - **The proposal. Built, v2.8553.** On the GC's block, **Propose a stricter setting** opens the office's own
@@ -384,14 +398,26 @@ paper until an entry has a settings list, and the first one is a test entry.
      `PortalJobPaperPropose.tsx`, `JobPaperProposalCard.tsx`. It merged on 2026-11-24, about 23:25 Central
      (05:25 UTC on the 25th). Its migration was pushed a few minutes later, and `submit-portal-request`,
      `customer-portal` and `open-job-paper-sample` were deployed after it, each at the owner's yes of that
-     night. Not walked on the live site yet.
+     night. Not walked on the live site yet. **The walk was given a yes on 2026-11-25 (UTC) in the managing
+     session.** Asked *May a walker make walk A on the live site (a GC proposes a stricter setting, the office
+     answers)? It leaves five ZZ Test rows the app cannot delete.*, the answer was "Yes, walk it
+     (Recommended)". That is history: the walk writes on prod, so the yes is asked again at the time. The
+     five rows it leaves on the `ZZ TEST sink` job are one `job_required_papers` row, taken off, three
+     `job_paper_proposals` rows (declined, taken, set aside) and one `customer_portal_links` row, turned
+     off. They belong on card #443's list once made. A second walk, of a take after a signature and a
+     signer's name on the GC's page, was not asked and has no yes.
    - **How the office hears of one. Built, v2.8558.** The office's Needs you card has a line, *A GC proposed
      stricter settings*, that names who proposed and the job. **Open the job** opens that job's window on
      Documents, where the proposal waits, and answers nothing. The line leaves when the proposal is answered.
      It sends no push and no email, as this card's design says. It reads the table the first part made, so it
      lands after v2.8553 and its push. `needsYou/paperProposals.ts`, `usePaperProposalsWaiting.ts`. Not walked
      on the live site yet.
-7. **Their own form (S).** *Theirs* points at a Form Studio form the gate already accepts.
+7. **Their own form (S).** *Theirs* points at a Form Studio form the gate already accepts. **Ready to
+   build on settled 15:** the office says a paper is the GC's own with a tick on that form's line in **Add a
+   paper**. Not built. As the build thread read the code on 2026-11-25, not checked again for this line: the
+   GC's page skips a job unless a paper on it is built from settings, so a job on the GC's own form shows a
+   GC nothing today, and the step is a column on `job_required_papers`, a setter and `job_papers_gc_page`
+   replaced once more. That is a migration, on its own yes at the time.
 8. **A second kind of paper (M).** The company's own secrecy paper to a vendor, partner or customer. It
    is one-way or mutual, tied to a relationship and not a job, and needs its own approved clause set.
 
@@ -412,7 +438,9 @@ These are the builder's own questions, apart from the draft's wording.
 4. Wordings are approved one at a time and signed in combination. Which pairs must be barred?
 5. A GC's press on a private link is kept as acceptance. Can it bind the GC or serve as evidence?
 6. The company tells the GC who has signed. What is the exposure if that is wrong, and may workers'
-   names go to a GC?
+   names go to a GC? Still open after settled 14, which says what the list holds when a job is set to every
+   signer by name: whether that list may be sent is counsel's. Every paper starts on the count and the
+   businesses, which names no worker.
 7. Settings change mid-job and people sign again. What supports the new promise, and which revision
    governs in between?
 8. Is the frozen record the right evidence, and should a signer get a PDF copy?
