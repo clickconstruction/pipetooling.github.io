@@ -2,7 +2,7 @@
 name: "Job pace: the pace card says what it compares, and why"
 number: 406
 group: close
-status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked B, two bars · built as v2.8048, merged and walked in place as the sample superintendent · the Job Budget card's sentence, the last place that said points, built as v2.8058 · both live 2026-11-20 · Still pressed in place on the test project the same day · walked read-only as a real superintendent at a phone's width · the small-job gap fixed as v2.8120 and the card drawn for the next stop as v2.8122, both live the same evening · left: the owner's own look, and four calls · walked in an iPhone simulator 2026-11-25, clocked in as the sample superintendent: the card and What is this? hold, the amber ask was not seen, and the walk met one fault beside the card, a reload that never lands, which counts against this card, the one whose walk met it, on the word given that day
+status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked B, two bars · built as v2.8048, merged and walked in place as the sample superintendent · the Job Budget card's sentence, the last place that said points, built as v2.8058 · both live 2026-11-20 · Still pressed in place on the test project the same day · walked read-only as a real superintendent at a phone's width · the small-job gap fixed as v2.8120 and the card drawn for the next stop as v2.8122, both live the same evening · left: the owner's own look, and four calls · walked in an iPhone simulator 2026-11-25, clocked in as the sample superintendent: the card and What is this? hold, the amber ask was not seen, and the walk met one fault beside the card, a reload that never lands, which counts against this card, the one whose walk met it, on the word given that day · that reload mended as v2.8562, the client alone, merged and live 2026-11-25, measured on a local build in Chromium and WebKit and not yet walked on the live site · asked the same day whether the fault moves to #417, the answer was to keep it on this card
 summary: >
   The owner circled the pace card's headline, Spending 22 points ahead of the work, and said he did
   not understand the section's place in the app or the word points. The card had no name, a headline
@@ -13,10 +13,10 @@ summary: >
   it is red only on a fresh percent. What is this? explains the card and opens by itself once. The
   office's line says dollars over in place of points. On a small job, a gap of a tenth of the hours
   counts. Clocked in with no job, the superintendent sees the pace of the next stop.
-next: Mend the reload that never lands, which the simulator's walk met beside the card (S, the client alone). The owner looks at the card on a phone and answers the four calls below.
-size: M, built as one PR, and an XS for the Job Budget card; left: the reload mend (S)
+next: The owner looks at the card on a phone and answers the four calls below. The walkers look at the reload on the live site, now that the deploy that carries v2.8562 has landed.
+size: M, built as one PR, an XS for the Job Budget card and an S for the reload mend, all built; left: the looks (XS)
 blocker: None in the code.
-ver: v2.8048 · 8058 · 8120 · 8122
+ver: v2.8048 · 8058 · 8120 · 8122 · 8562
 opinion: your call — the card is built on the defaults, and each of the four calls is one small change either way
 ---
 
@@ -210,9 +210,11 @@ Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in 
 - **Not walked: the amber ask.** *Is N% still right?* with **Still N%** needs a project whose percent is older than its last worked day. The test project reads ahead, so the card was green.
 - **What the look cost.** The sample superintendent was clocked in and out for it. That account is a fixture and not a ZZ Test row. It left one clock session of about two minutes on the test project, and a line under **Your record** on that account's Dashboard, *No report on* the test project. **Report** was not pressed, since a saved field report is emailed. The same press had been held as a question for the owner, and he has been told.
 
-**One fault found beside the card, read in the code the same day, not built: a reload that never lands.** It counts against this card, the one whose walk met it, on the word given 2026-11-25.
+**One fault found beside the card, read in the code the same day, and built since as v2.8562: a reload that never lands.** It counts against this card, the one whose walk met it, on the word given 2026-11-25. Asked later that day *The reload fault: keep it on #406, or move it to #417 by the newest-card rule?*, the answer was "Keep #406", quoted from that session's record of the user's answers. So the mend, its fragment and its walk cite this card, and nothing of it moves to #417.
 
 - **As seen.** Right after a site deploy, in an hour when three landed, **Exit** from View as left the page on *Updating app…* for about 80 seconds. A fresh load read the same for 30 more. Then the page read *This page could not load*, and its **Reload** press stayed grey with *Checking for a signal…* for 90 seconds or more, while the site answered in a fifth of a second. Quitting Safari cleared it.
 - **Why.** Once the app decides to reload, it first clears its kept copy of the site, and only then leaves the page (`hardReload.ts`). Nothing limits that wait. The **Reload** press asks the network first, and on a yes it stays dead on purpose while the page leaves (`RouteChunkBoundary.tsx`). So a clearing that hangs leaves *Updating app…* or a grey press on screen for good. It may show most on the simulator's Safari, and the hole is in the app either way.
-- **The mend.** The client alone, S: the clearing races a few seconds' limit, the page leaves whichever comes first, and a press that is still on screen after its limit comes back with one line and the **Fix app** link.
+- **The mend. Built as v2.8562, PR #9798, merged 2026-11-25 and live with the client deploy of that merge.** The client alone, with no migration and no function. A reload waits three seconds at most for its clearing, then leaves. A grey **Reload** comes back after ten seconds with *The reload did not finish. Press Reload to try again.* *Updating app…* gives way to the same press after ten seconds. The record is [`docs/recent-features/v2.8562.md`](../../docs/recent-features/v2.8562.md).
+- **Whose fault it was: the app's, in any browser.** The clearing waits behind the app's own install of its kept copy, 1,548 files fetched one at a time, and a load after a wipe installs from nothing. Measured on a local build in headless Chromium and headless WebKit: a bare clearing asked for during an install answered only when the install ended, after about 102 seconds, and the mended reload asked the server for its page after 3.0 seconds.
+- **Not walked on the live site.** No phone and no simulator has seen the mend. Which wait hung on the simulator was never seen there, since no log came off it. The look is the walkers', with the recipe the build thread left in its hand-over note.
 - **It is not the pace card's own fault.** The card was only on screen. The reload path's earlier mends are on the legal portal's card (#85), under the main chunk's split.
