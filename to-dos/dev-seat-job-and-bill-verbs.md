@@ -2,7 +2,7 @@
 name: "The dev seat sets up a job, updates it and sends the bill: the first step of MCP doing everything a user can"
 number: 293
 group: close
-status: SHIPPED and LIVE — PR 1 v2.6790 #7463 (0.49.0), PR 2 v2.6793 #7464 (0.53.0), PR 3 v2.6794 #7467 (0.55.0), PR 4 v2.6795 #7470 (0.56.0) merged 2026-11-09/10, each renumbered behind the seat trains that landed first (accounts, submittals, mail pieces, the note verb); dev-mcp deployed from main after each, prod compared first · walked on prod 2026-11-09 late: a ZZ TEST job made, moved to Ready to Bill, billed in test mode and texted · the walk's one gap was fixed by #7520 (plan_bill refuses a job with no number to bill under), merged 2026-11-10 as v2.6826 and in every deploy of the seat since · left: the owner's look · the look of 2026-11-24 found the Bill tab drawing an empty line and a Job Total of $0.00 on the seat's ZZ TEST job: the seat stores a price and no line item, written out under *Found on the look*
+status: SHIPPED and LIVE — PR 1 v2.6790 #7463 (0.49.0), PR 2 v2.6793 #7464 (0.53.0), PR 3 v2.6794 #7467 (0.55.0), PR 4 v2.6795 #7470 (0.56.0) merged 2026-11-09/10, each renumbered behind the seat trains that landed first (accounts, submittals, mail pieces, the note verb); dev-mcp deployed from main after each, prod compared first · walked on prod 2026-11-09 late: a ZZ TEST job made, moved to Ready to Bill, billed in test mode and texted · the walk's one gap was fixed by #7520 (plan_bill refuses a job with no number to bill under), merged 2026-11-10 as v2.6826 and in every deploy of the seat since · left: the owner's look · the look of 2026-11-24 found the Bill tab drawing an empty line and a Job Total of $0.00 on the seat's ZZ TEST job: the seat stores a price and no line item, written out under *Found on the look* · the mend's first step is built in PR #9780 (dev-mcp 0.134.0), open with auto-merge off: after its merge it owes one deploy of the seat and the ZZ TEST job's line, each on the owner's yes
 summary: >
   The dev seat read everything and wrote fifty-one named things, but no verb made a job or sent a
   bill, so the short bill link's walk (#290) had to be driven through the app in Chrome. Three
@@ -11,9 +11,9 @@ summary: >
   row do. Every write goes through what the app itself calls, so a verb can do nothing the
   signed-in dev could not do on the screen. The card also carries the road: what a user can do
   against what the seat can do, pair by pair.
-next: the seat writes a job's line item with its price, so the Bill tab reads the same total as the job window (a change to `dev-mcp`, deployed from main). Then the ZZ TEST job gets its one $1 line, the owner looks at it again (the Pipeline, its Bills tab, the text in the test contact's thread), and the card is retired. The road's next pairs are in The road below.
+next: #9780 merges on the owner's yes, so the seat writes a job's line item with its price and the Bill tab reads the same total as the job window (a change to `dev-mcp`, deployed from main right after the merge). Then the ZZ TEST job gets its one $1 line through `plan_job_update` and `apply_job_update`, the owner looks at it again (the Pipeline, its Bills tab, the text in the test contact's thread), answers the two calls under *Found on the look*, and the card is retired. The road's next pairs are in The road below.
 size: M as a train of four (S · S · M · S) and one fix (XS)
-blocker: a builder for the seat's line item; it changes an edge function
+blocker: the owner's yes — #9780 changes an edge function, so its merge, the deploy of the seat and the ZZ TEST job's line wait on it
 opinion: build in the card's order — each pair stands alone, and the bill needs the status move
 mockup: not required — the verbs have no screen; the plan replies are the design, and the design note holds them in words
 ---
@@ -121,6 +121,7 @@ Next after this train, in the order the call log asks: a free text or email to a
 - 2026-11-09, afternoon: PR 3 built on PR 2's branch (v2.6794): the remainder as the RPC sizes it, the sheet's words and the share row's draft through the kernel copy, the modal's doors in order with each outcome named; #7467.
 - 2026-11-09, afternoon: PR 4 built on PR 3's branch (v2.6795) after the punch-list session relayed the owner's ask: the Collections flag through the Job window's RPC, the contract's end as the Lien row saves it.
 - 2026-11-09/10: PR 1 to PR 4 merged one at a time, each renumbered behind the seat trains that landed first; dev-mcp deployed from main after each; the walk above passed; fix PR #7520 armed for the gap it found.
+- 2026-11-24: the look's finding built in PR #9780 (dev-mcp 0.134.0): the seat writes a job's line item with its price. Checked against main on 2026-11-25 UTC: the version and the server's number are its own, its checks are green, and it merges clean. It is open with auto-merge off, and nothing was written on prod.
 
 ## Found on the look (2026-11-24)
 
@@ -136,10 +137,12 @@ The look opened the seat's ZZ TEST job. The Bill tab drew its line items as one 
 
 **The risk.** The Bill tab's autosave writes `revenue` as the sum of the form's lines. One edit of a line or a payment on a job the seat made would set its price to 0 under a standing bill. Nobody has pressed that on this job.
 
-**What would mend it,** none of it built:
+**What mends it.** Step 1 is built and waits on the owner's yes. Steps 2 and 3 are not done:
 
-1. **The seat writes the line.** `plan_job` and `apply_job` write one line item when the price is over 0, as the form does, or take the lines and work the price out. `plan_job_update`'s `revenue` gets the same care. Size S, no migration, and `dev-mcp` is deployed from main after.
-2. **The ZZ TEST job gets its line.** One $1 line item on that job, through the seat once step 1 is live.
-3. **A guard, if wanted.** The Bill tab's autosave refuses to write a price of 0 over a job that has a price and no lines. Client only, size S. Whether it is wanted is a call nobody has made.
+1. **The seat writes the line.** Built in PR #9780, `dev-mcp` 0.134.0, with no migration and no client change. `plan_job` plans one line item when the price is over 0, 1 of `line_name` (new, optional) or of the job's name at the price, and `apply_job` writes it after the job's row, as the form does. `plan_job_update` with `revenue` in `set` reads the job's lines. A job with no line gets one, even at the price it already holds, which is how a job made before this version is mended. One work line of 1, on no bill, that totals the price is repriced. Anything else is refused in words, with the Bill tab as the door. `apply_job_update` writes the line before the price. The PR is held with auto-merge off, because `dev-mcp` is deployed from main right after its merge.
+2. **The ZZ TEST job gets its line.** One $1 line item on that job, through the seat once 0.134.0 is live: `plan_job_update { update: { job_id, set: { revenue: 1 } } }`, whose plan should name one line item, 1 × $1, under the job's name, then `apply_job_update` with the plan's hash, then the line read back and the Bill tab looked at again. Not done: it is a write on prod and waits on the owner's yes.
+3. **A guard, if wanted.** The Bill tab's autosave refuses to write a price of 0 over a job that has a price and no lines. Client only, size S. Whether it is wanted is the owner's call, and it is not made.
 
-**Not read.** How many real jobs carry a price with no line item was not counted. The tab was not opened again after the rows were read.
+**The count.** Read only through the seat on 2026-11-24 and again on 2026-11-25, the same both times. 762 jobs carry a price over 0, and 12 of them have no line item. One is the seat's ZZ TEST job. Eleven are real: ten Paid and one Working. None was changed. What to do with the eleven is the owner's call, and it is not made.
+
+**Not read.** The tab was not opened again after the rows were read.
