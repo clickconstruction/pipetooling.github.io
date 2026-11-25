@@ -213,6 +213,8 @@ The papers come out as one stack. The notices come first, in envelope order, beh
 
 A paper you left out of the run does not print. The affidavits' help sheet names it with your reason. A paper an earlier run left out does not print until someone answers for it.
 
+A notice can be right and still not print here. It may wait on the leader's signature. The run window may hold it for an address or an owner. Its copies may have gone by Docsmit, so there is no paper. The card names each such notice under the press with its reason. For a held notice, press **Print and mail** on the Board. That opens the run window, where it is settled.
+
 After the print the notices are marked printed. They move to {{chip:gray|Approved · to mail}} on the Board. The affidavits go to the notary. Each job keeps its own copy of what printed.
 
 The press waits while the notices' unpaid bills are read. It then reads *Print the run · reading the bills…*. That takes a moment.
