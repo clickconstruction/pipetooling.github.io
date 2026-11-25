@@ -27,6 +27,8 @@ const bundleAnalyze = process.env.ANALYZE === '1'
  * `/to-dos/submittals/mockup.html` as a page. Not precached (`globIgnores`), and the
  * service worker's navigation fallback leaves `/to-dos/` alone (src/sw.ts). Runs after
  * VitePWA's own closeBundle, so the files never enter the precache manifest either way.
+ * Since punch list #438 it copies every `.webp` there too: a card's lead picture
+ * (`pictures-lead.webp`), which a Punch list row draws by its address.
  *
  * Every plugin here with a `closeBundle` writes into `dist/`, and each is wrapped in `buildOnlyCloseBundle`
  * (src/lib/buildOnlyCloseBundle.ts): Vite's dev server calls the hook when it closes too, and a `vitest`
@@ -43,7 +45,7 @@ function todoMockupsPlugin() {
         for (const entry of readdirSync(join(srcRoot, rel), { withFileTypes: true })) {
           const relPath = rel ? `${rel}/${entry.name}` : entry.name
           if (entry.isDirectory()) walk(relPath)
-          else if (entry.name.endsWith('.html')) {
+          else if (entry.name.endsWith('.html') || entry.name.endsWith('.webp')) {
             mkdirSync(join(outRoot, rel), { recursive: true })
             copyFileSync(join(srcRoot, relPath), join(outRoot, relPath))
             count += 1
@@ -51,7 +53,7 @@ function todoMockupsPlugin() {
         }
       }
       walk('')
-      console.log(`todo-mockups: copied ${count} mock-up page(s) under dist/to-dos`)
+      console.log(`todo-mockups: copied ${count} mock-up page(s) and lead picture(s) under dist/to-dos`)
     },
   })
 }

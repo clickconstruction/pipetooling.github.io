@@ -140,6 +140,59 @@ export interface TodoDoc {
   mockups: string[]
   /** Published artifacts the prose links, in order of first mention. */
   artifacts: TodoLink[]
+  /** The card's pictures page and its lead picture, when it has either. See `picturesFor`. */
+  pictures?: CardPictures | null
+}
+
+/**
+ * A card's lead picture (punch list #438): the one picture a row shows. A built card has one,
+ * `pictures-lead.webp`. Work that is not built has a pair, `pictures-today.webp` beside
+ * `pictures-if-built.webp`: the app today and the card's mock-up. Repo-root paths; the build copies
+ * every `.webp` under `to-dos/` beside the pages (`todoMockupsPlugin`).
+ */
+export type CardLead = { kind: 'built'; path: string } | { kind: 'pair'; today: string; ifBuilt: string }
+
+/** What a row knows of a card's pictures: the page that holds them all, how many, the day they were drawn, the lead. */
+export interface CardPictures {
+  /** Repo-root path of the pictures page, or null when the card has a lead picture and no page. */
+  page: string | null
+  /** Pictures on the page; 0 when there is no page or it holds none. */
+  count: number
+  /** `YYYY-MM-DD`, the day the page was made; '' when the page does not say. */
+  drawn: string
+  lead: CardLead | null
+}
+
+/**
+ * The files a card's pictures live in, by name. A folder card owns `pictures.html` and
+ * `pictures-<lead|today|if-built>.webp`; a flat `to-dos/foo.md` owns `foo-pictures.html` and
+ * `foo-pictures-<…>.webp`. Nothing declares them: a file beside the card is enough.
+ */
+export function picturesFilesFor(file: string, siblings: readonly string[]): { page: string | null; lead: CardLead | null } {
+  const dir = dirForFile(file)
+  const stem = file.endsWith('/README.md') ? `${dir}/pictures` : `${dir}/${slugForFile(file)}-pictures`
+  const has = (path: string): boolean => siblings.includes(path)
+  const page = has(`${stem}.html`) ? `${stem}.html` : null
+  const built = `${stem}-lead.webp`
+  const today = `${stem}-today.webp`
+  const ifBuilt = `${stem}-if-built.webp`
+  const lead: CardLead | null = has(today) && has(ifBuilt) ? { kind: 'pair', today, ifBuilt } : has(built) ? { kind: 'built', path: built } : null
+  return { page, lead }
+}
+
+/** How many pictures a pictures page holds and the day it says it was made, read off its own markup. */
+export function picturesPageFacts(html: string): { count: number; drawn: string } {
+  const count = (html.match(/<figure class="pic[ "]/g) ?? []).length
+  const drawn = /Made by a script on (\d{4}-\d{2}-\d{2})/.exec(html)?.[1] ?? ''
+  return { count, drawn }
+}
+
+/** A card's pictures from its folder's listing and its pictures page's text; null when it has neither. */
+export function picturesFor(file: string, siblings: readonly string[], pageHtml?: string | null): CardPictures | null {
+  const { page, lead } = picturesFilesFor(file, siblings)
+  if (!page && !lead) return null
+  const facts = page && pageHtml ? picturesPageFacts(pageHtml) : { count: 0, drawn: '' }
+  return { page, count: facts.count, drawn: facts.drawn, lead }
 }
 
 export interface TodoParseError {
@@ -267,6 +320,8 @@ export function readTodoDoc(
   file: string,
   markdown: string,
   siblings: readonly string[] = [],
+  /** The text of the card's pictures page, when it has one (`picturesFilesFor` names it). */
+  picturesHtml?: string | null,
 ): TodoDoc | TodoParseError {
   const fm = parseFrontMatter(markdown)
   if (!fm.found) {
@@ -294,6 +349,7 @@ export function readTodoDoc(
     slug,
     mockups: mockupsFor(file, siblings),
     artifacts: artifactsCited(fm.body),
+    pictures: picturesFor(file, siblings, picturesHtml),
     meta: {
       name: (fm.fields.name ?? '').trim(),
       number: Number(numberText),
@@ -481,6 +537,8 @@ export interface BoardItem {
   mockupNote: string
   /** The question the card waits on; null or absent when it waits on nobody. See `TodoMeta.ask`. */
   ask?: CardAsk | null
+  /** The card's pictures page and lead picture; null or absent when it has neither. See `CardPictures`. */
+  pictures?: CardPictures | null
 }
 
 export interface BoardData {
@@ -514,6 +572,7 @@ export function renderBoardData(docs: readonly TodoDoc[], validated: BoardData['
       mockup: mockupState(d),
       mockupNote: toPlainText(d.meta.mockupNotRequired),
       ask: d.meta.ask ? { ...d.meta.ask, question: toPlainText(d.meta.ask.question) } : null,
+      pictures: d.pictures ?? null,
     })),
   }
 }
