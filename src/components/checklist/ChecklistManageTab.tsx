@@ -34,6 +34,9 @@ import { checklistManageEmptyWords } from '../../lib/checklistEmptyWords'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { RoadmapTaskEmbed } from '../../lib/tasks/personDay'
 import { roadmapGoalChip, type ChecklistRole } from './checklistPageShared'
+import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { MANAGE_DELETE_WORDS } from '../../lib/checklistManageDeleteWords'
 
 type ChecklistItem = {
   id: string
@@ -59,6 +62,7 @@ type ChecklistItem = {
 }
 export function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; role: ChecklistRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
+  const { showToast } = useToastContext()
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [loading, setLoading] = useState(true)
@@ -155,13 +159,18 @@ export function ChecklistManageTab({ authUserId, role, setError, setEditItemId, 
     setManageDeleteSubmitting(true)
     setError(null)
     try {
-      const { error } = await supabase.from('checklist_items').delete().eq('id', id)
+      // The row is asked back: a delete the row rules refuse answers with no error and no row.
+      const { data, error } = await supabase.from('checklist_items').delete().eq('id', id).select('id')
       if (error) {
-        setError(error.message)
+        showToast(formatErrorMessage(error, MANAGE_DELETE_WORDS.failed), 'error')
         return
       }
       setManageDeletePending(null)
+      if ((data ?? []).length === 0) showToast(MANAGE_DELETE_WORDS.refused, 'error')
+      else showToast(MANAGE_DELETE_WORDS.done, 'success')
       await loadItems()
+    } catch (e) {
+      showToast(formatErrorMessage(e, MANAGE_DELETE_WORDS.failed), 'error')
     } finally {
       setManageDeleteSubmitting(false)
     }

@@ -118,7 +118,7 @@ The row called **Add** holds what most tasks do not need. Each one is a button w
 - **Due by** sets the day after which the task is late.
 - **Just for the day** makes the task leave the list when its day ends.
 
-The bell beside Send is **Tell me**. It is lit, so you hear when the task is done. Tap the bell to turn that off. To see everything you've handed out, open **Checklist → Manage**. Press **⋮** on a task, then **Edit**, to change it in the same rows.
+The bell beside Send is **Tell me**. It is lit, so you hear when the task is done. Tap the bell to turn that off. To see everything you've handed out, open **Checklist → Manage**. Press **⋮** on a task, then **Edit**, to change it in the same rows. Press **⋮**, then **Delete**, to remove a task for good. The page says **Task deleted.** when it is gone.
 
 ## Say what done looks like
 
