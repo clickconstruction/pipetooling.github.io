@@ -2,7 +2,7 @@
 name: "Site NDA for vendors: a paper names a job site, vendors sign before anything is sent, and the client is shown who signed"
 number: 439
 group: ready
-status: asked 2026-11-24 · thought through with the owner the same day, each call settled as it came up · drawn as a canvas of sixteen artboards and reviewed as a whole · a door audit added eight doors to the plan · the word to build the whole train, testing along the way, with screenshots at several widths as each piece goes live · piece 1 built and seen live, v2.8520 · piece 2's first part open as a PR
+status: asked 2026-11-24 · thought through with the owner the same day, each call settled as it came up · drawn as a canvas of sixteen artboards and reviewed as a whole · a door audit added eight doors to the plan · the word to build the whole train, testing along the way, with screenshots at several widths as each piece goes live · piece 1 built and seen live, v2.8520 · piece 2's list and answers built, v2.8529 · Fix the spelling and Open the job built, v2.8542
 summary: >
   The company works for a client on a site whose details are secret. Vendors must sign the company's own
   NDA before anything about the site reaches them, and the client must be shown who signed. Today the app
@@ -13,7 +13,7 @@ summary: >
   site asks the company's own people to sign before a job there opens, and holds every send to an outside
   company until it signs. A packet, and later the client's own page, list everyone bound. Outside
   companies see a code name until they sign.
-next: Piece 2, the site match. Its first part, the list and its answers, is PR #9740 and is not armed: its migration is pushed right after the merge, so it waits for the owner's yes. Then the rest of piece 2 and the train in order, one PR at a time, each tested and seen live at phone and desk width before the next.
+next: Piece 2's last part, the job form asking about an address written differently at the same map point. Then the train in order, one PR at a time, each tested and seen live at phone and desk width before the next. The live look at piece 2's door, window and Fix the spelling is still owed.
 size: L as a train of seven pieces, about fifteen PRs (S to M · M · M · M · S to M · M to L · M)
 blocker: None for the build. An attorney's read of the vendor NDA's wording comes before it is sent to a real vendor.
 opinion: build — the signing, the gate and the Contract Book already exist; this ties them to a place and adds the hold and the proof
@@ -76,6 +76,7 @@ Asked for along the way, the same day:
 Drawn and not objected to, each open to a flip:
 
 - **Same place** records the match and changes no job's address. **Fix the spelling…** is a second press.
+  Built on this pick in v2.8542, not yet answered.
 - A sub counts as an outside company. *Our own people* means employees.
 - No way around the hold is drawn. A held send goes by itself when the company signs.
 - The hold reads the job or the bid a send is tagged to. A message with no job on it is not held.
@@ -121,7 +122,7 @@ and desk width before the next is cut.
 | # | Piece | What a person can do after it | Size | Touches |
 |---|---|---|---|---|
 | 1 | Addresses already on file (built, v2.8520) | On a new job or an edit, the address box lists addresses on file above Google's, with how many jobs are there. Leaving the box with an address close to one on file asks once. | S to M | One kernel for *same address*, the job form's box |
-| 2 | The site match | **Addresses that look alike** from the Pipeline's tools menu: pairs to answer, **Fix the spelling…**, and jobs with no street number. Answers are kept. | M | A table of answers, the window, the tools menu |
+| 2 | The site match (the list, v2.8529; the fix, v2.8542) | **Addresses that look alike** from the Pipeline's tools menu: pairs to answer, **Fix the spelling…**, and jobs with no street number. Answers are kept. | M | A table of answers, the window, the tools menu |
 | 3 | A paper names a site | **Send a paper** asks which site. The site's papers show on a job's Documents tab, on Agreements with a site filter, on the development's page and on a company's own record. | M | A site on the paper's row, four lists |
 | 4 | Secrecy on a site | **Turn on secrecy for this site** from three doors. The company's own people sign before a job there opens. **Turn it off…** too. | M | A site's settings, the gate across a site's jobs |
 | 5 | The proof | **Make the packet** opens a window to look, then **Download**, **Print** and **Send to the client**. Later the client's own page shows the list, with a sample on What customers see. | S to M | A print, the customer portal |

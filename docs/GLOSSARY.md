@@ -1358,6 +1358,7 @@ Kernel: [`blockGroupCoverage.ts`](../src/lib/schedule/blockGroupCoverage.ts).
 ### Addresses that look alike
 Pipeline → the tools menu → **Addresses that look alike…** pairs the addresses on file that may be one place written two ways, and a person answers each pair **Same place** or **Not the same**, kept in `address_place_answers` (punch list #439, v2.8529).
 An answer changes no job's address.
+**Fix the spelling…** on a pair is the separate press that does: it rewrites the picked jobs and bids to one of the pair's two spellings, and **Open the job** on a **No street number** row opens a job on its ringed Job Address box (v2.8542).
 The job form's address box lists the addresses **Already on file** above Google's, so a new job takes the spelling its place already has (v2.8520).
 
 ### Combine (jobs)

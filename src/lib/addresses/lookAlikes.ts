@@ -67,7 +67,7 @@ export const LOOK_ALIKE_WORDS = {
   same: 'Same place',
   notSame: 'Not the same',
   undo: 'Undo',
-  foot: 'Same place records the match and changes no address.',
+  foot: 'Same place records the match and changes no address. Fix the spelling changes the address on the jobs you pick.',
   nothing: 'Nothing waiting. Every pair that looks alike is answered.',
 } as const
 

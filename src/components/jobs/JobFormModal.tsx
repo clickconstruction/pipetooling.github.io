@@ -1997,7 +1997,7 @@ export default function JobFormModal({
     setJobPicturesLinkHighlight,
     jobPicturesLinkHighlightRef,
     jobPicturesLinkInputRef,
-  } = useJobFormHighlights({ customerId, focusFieldInitial: focusRowInitial === 'status' || focusRowInitial === 'pct' ? focusRowInitial : null })
+  } = useJobFormHighlights({ customerId, focusFieldInitial: focusRowInitial === 'status' || focusRowInitial === 'pct' || focusRowInitial === 'address' ? focusRowInitial : null })
 
   useEffect(() => {
     if (customerId && customers.length > 0) {
@@ -2704,6 +2704,8 @@ export default function JobFormModal({
             jobAddress={jobAddress}
             setJobAddress={setJobAddress}
             editingJobId={editing?.id ?? null}
+            addressFocusRef={focusFieldFlash === 'address' ? focusFieldRef : undefined}
+            addressFocusFlash={focusFieldFlash === 'address'}
             formServiceTypeId={formServiceTypeId}
             setFormServiceTypeId={setFormServiceTypeId}
             serviceTypeOptions={jobFormServiceTypeSelectOptions}

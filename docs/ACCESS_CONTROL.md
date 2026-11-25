@@ -2669,6 +2669,7 @@ A training-mode account cannot sign, since starting a paper is a write.
 - Jobs page — Stages tab: Billed Awaiting Payment, Total by Name modal;
   **Combine / Separate** (toolbar **right**) — same **dev** / **master_technician** / **assistant** gate as **Job Book** (**v2.516**)
   **Addresses that look alike** (tools menu, under **Combine / Separate**) — the same office gate, with its answers in `address_place_answers` written by the office (`is_office_staff`) and read by the estimator beside them (**v2.8529**)
+  **Fix the spelling…** in that window writes `jobs_ledger.job_address` and `bids.address` under those tables' own policies, and a row the reader may not change stays in the window with its reason (**v2.8542**).
 - Jobs page — Labor tab: Add labor jobs per person
 - Jobs page — Sub Sheet Ledger tab: View labor jobs (own and shared);
   Edit/Delete own jobs;
