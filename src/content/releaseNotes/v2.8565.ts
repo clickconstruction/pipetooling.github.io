@@ -5,6 +5,7 @@ const note: ReleaseNote = {
   date: '2026-11-24',
   title: 'Card and footer: the developer can remove a test person’s photo',
   kind: 'feature',
+  roles: ['dev'],
   highlights: [
     'On Card and footer, the developer now reads Remove the photo… under the photo’s press. Nobody else sees it.',
     'It removes a test person’s photo only: the name starts with ZZ. A real person’s photo stays, and the card says why.',
