@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useConfirmDialog, usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { jobPapersChanged } from '../../hooks/useJobsClosedToMe'
@@ -25,12 +25,14 @@ import {
   signingLinksText,
 } from '../../lib/jobs/jobPapers'
 import { supabaseJobPapersIo, type JobPapersIo } from '../../lib/jobs/jobPapersIo'
+import { supabaseJobPaperProposalsIo, type JobPaperProposal, type JobPaperProposalsIo } from '../../lib/jobs/jobPaperProposalsIo'
 import { supabaseJobPaperSettingsIo, type JobPaperSettingsIo, type JobSettingsPaper } from '../../lib/jobs/jobPaperSettingsIo'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { documentsHeading, documentsQuietButton, documentsTd, documentsTh } from './jobDocumentsStyles'
+import { JobPaperProposalCard } from './JobPaperProposalCard'
 import { JobPaperSettingsWindow, type JobPaperSettingsTarget } from './JobPaperSettingsWindow'
 
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }
@@ -56,12 +58,14 @@ export function JobDocumentsRequiredPapers({
   job,
   io = supabaseJobPapersIo,
   settingsIo = supabaseJobPaperSettingsIo,
+  proposalsIo = supabaseJobPaperProposalsIo,
   onOverlayOpenChange,
 }: {
   job: { id: string }
   io?: JobPapersIo
   /** The reads and writes of a paper built from settings (#389 step 4). */
   settingsIo?: JobPaperSettingsIo
+  proposalsIo?: JobPaperProposalsIo
   onOverlayOpenChange?: (open: boolean) => void
 }) {
   const { showToast } = useToastContext()
@@ -79,6 +83,8 @@ export function JobDocumentsRequiredPapers({
   const [held, setHeld] = useState<{ head: string; lines: string[] } | null>(null)
   // Papers built from settings (#389 step 4): what this job set on each, and the window that sets them.
   const [settingsPapers, setSettingsPapers] = useState<JobSettingsPaper[]>([])
+  // What the job's GC proposed and the office has not answered (step 6). At most one a paper.
+  const [proposals, setProposals] = useState<JobPaperProposal[]>([])
   const [settingsTarget, setSettingsTarget] = useState<JobPaperSettingsTarget | null>(null)
   const live = useRef(true)
   useEffect(() => {
@@ -98,12 +104,15 @@ export function JobDocumentsRequiredPapers({
       // Only a job with papers can hold one built from settings, so a job with none takes no second read.
       const built = next.papers.length > 0 ? await settingsIo.readSettingsPapers(job.id) : []
       if (live.current) setSettingsPapers(built)
+      // Only a paper built from settings takes a proposal. A read of them that fails shows none, and the rest still draws.
+      const waiting = built.length > 0 ? await proposalsIo.readWaiting(job.id).catch(() => []) : []
+      if (live.current) setProposals(waiting)
     } catch (e) {
       if (live.current) setFailure(recoveryFailureFromError(e, 'Couldn’t read this job’s papers'))
     } finally {
       if (live.current) setLoading(false)
     }
-  }, [io, settingsIo, job.id])
+  }, [io, settingsIo, proposalsIo, job.id])
 
   useEffect(() => {
     void reload()
@@ -265,8 +274,10 @@ export function JobDocumentsRequiredPapers({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               {papers.map((p) => {
                 const set = settingsPapers.find((x) => x.requiredPaperId === p.id)
+                const proposal = set ? proposals.find((x) => x.requiredPaperId === p.id) : undefined
                 return (
-                <div key={p.id} style={paperRow} data-job-paper="live">
+                <Fragment key={p.id}>
+                <div style={paperRow} data-job-paper="live">
                   <b style={{ color: 'var(--text-strong)', fontWeight: 600, fontSize: '0.875rem' }}>{p.paperName}</b>
                   <span style={muted}>{set ? 'Built from this job’s settings' : p.isForm ? 'A form from the Contract Book' : 'From the Contract Book'}</span>
                   {/* The row's presses wrap together on a narrow screen, never one alone on a line of its own. */}
@@ -281,6 +292,22 @@ export function JobDocumentsRequiredPapers({
                     </button>
                   </span>
                 </div>
+                {set && proposal ? (
+                  <JobPaperProposalCard
+                    proposal={proposal}
+                    paper={set}
+                    paperName={p.paperName}
+                    io={proposalsIo}
+                    settingsIo={settingsIo}
+                    disabled={busy != null}
+                    onOverlayOpenChange={onOverlayOpenChange}
+                    onDecided={async () => {
+                      told()
+                      await reload()
+                    }}
+                  />
+                ) : null}
+                </Fragment>
                 )
               })}
               {pending.map((p) => (
