@@ -1364,6 +1364,12 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
   It builds no document on a render: the count comes from `lienRunReadyNotices` and the affidavit papers, and the press builds the packet and the batch, merges them with `lienRunStackHtml`, prints, files each paper's own copy and stamps the notices.
   `lienRunStack.ts` puts two print documents in one job by moving each `body` rule onto a wrapper and naming the affidavits' page, and refuses a document whose shape it does not know.
   The notices' bills are read while the checklist is open, by job, on a list that keeps its identity: the desk rebuilds the notices on every render.
+- **What a paper said at print** (v2.8589, punch list #362 step 7, the part with no call): [`lienPrintSworn.ts`](../src/lib/jobs/lienPrintSworn.ts) is the fingerprint and its compare.
+  Every lien print's filing fills `sourceSnapshot` under the key `lienPrint` with each paper's kind, jobs, desk items and every value it prints as text: the run's one print, the run window's packet, copy and envelope, the Board's batch and a job's Lien window.
+  `LIEN_SWORN_FIELDS` names the values a change in which counts, a shorter list than the snapshot keeps, so the list can grow and still read the prints already filed.
+  `lienChangedSincePrint` answers each change with both values, and `lienPrintStanding` answers *never*, *printed*, *changed* or *unread*, the last for a print filed before this version and for a notice combined at one property.
+  [`lienPrintsIo.ts`](../src/lib/jobs/lienPrintsIo.ts) reads each job's newest filed print through `loadSentPrintsForJobs`, and a read that fails is `null`, never no prints.
+  Nothing on the desk reads it yet: the three presses on a changed paper wait on two calls.
 - **Why the router stays:** it turns a row's target into 23 of the desk's setters across every view.
 - **Next:** `actOnNextUp` as a kernel that names the target and a thin switch that calls the setters.
 

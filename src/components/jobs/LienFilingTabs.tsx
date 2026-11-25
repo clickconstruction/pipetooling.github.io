@@ -32,6 +32,7 @@ import {
 } from '../../lib/jobs/lienProperty'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
+import { lienAffidavitPrintPaper, lienNoticePrintFields, lienPrintSourceSnapshot } from '../../lib/jobs/lienPrintSworn'
 import { lienWindowPrintNote } from '../../lib/jobs/lienWindowPrintNote'
 import type { LienTimelineNoticeState } from '../../lib/jobs/lienTimeline'
 import { LIEN_HELP_STYLES, lienHelpCoverSheetHtml, lienHelpGuideCopyHtml, lienHelpNoticeMailBy, lienHelpNoticeSheetHtml, lienHelpPaperFromFields, lienHelpPrintHtml, type LienHelpNotice } from '../../lib/jobs/lienHelpSheet'
@@ -693,15 +694,16 @@ export default function LienFilingTabs({
         return
       }
       // A print counts as a send (docs/SENT_COPIES.md): what went in the envelopes, once.
-      void fileSentCopy({ kind: 'lien_notice_53_056', title, jobIds: [job.id], how: 'print' }, { html: lienOneOffFiledHtml(oneOffPlan, title, only) })
+      void fileSentCopy({ kind: 'lien_notice_53_056', title, jobIds: [job.id], how: 'print', sourceSnapshot: lienPrintSourceSnapshot([{ kind: 'notice', jobIds: [job.id], itemIds: [], fields: lienNoticePrintFields(noticeFields) }]) }, { html: lienOneOffFiledHtml(oneOffPlan, title, only) })
     },
-    [oneOffPlan, jobNumber, helpSheetOn, helpNotice, job.id, issuer, showToast],
+    [oneOffPlan, jobNumber, helpSheetOn, helpNotice, job.id, issuer, showToast, noticeFields],
   )
 
   const printDoc = useCallback(() => {
     if (!currentDoc) return
     const paperHtml = noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind), printOptions))
-    const filing = { kind: `lien_${currentDoc.kind}`, title: currentDoc.title, jobIds: [job.id] }
+    // An affidavit's copy keeps what the paper swore (punch list #362, step 7), as the batch's copy does.
+    const filing = { kind: `lien_${currentDoc.kind}`, title: currentDoc.title, jobIds: [job.id], ...(currentDoc.kind === 'affidavit' ? { sourceSnapshot: lienPrintSourceSnapshot([lienAffidavitPrintPaper({ jobId: job.id, fields: affidavitFields })]) } : {}) }
     // A short-form affidavit prints behind its help sheet (punch list #314) and its notice record (punch list #322), each when its box is ticked.
     // Neither is the paper: the copy filed on the job is the paper alone.
     // Behind the record, a copy of each notice as its row keeps it (the owner, 2026-11-12: "I want to see copies of what was sent").
@@ -727,7 +729,7 @@ export default function LienFilingTabs({
     // A print counts as a send (docs/SENT_COPIES.md): the paper is filed on the job as it printed.
     const ok = printAndFile(paperHtml, filing)
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, jobNumber, docExtras.letterhead, printOptions, affidavitFields.form, helpSheetOn, helpPaper, noticeRecordOn, noticeRecord, printNoticeEnvelopes])
+  }, [currentDoc, noticeEnclosureHtml, showToast, job.id, jobNumber, docExtras.letterhead, printOptions, affidavitFields, helpSheetOn, helpPaper, noticeRecordOn, noticeRecord, printNoticeEnvelopes])
 
   // A guide copy (punch list #314): the paper with a mark beside each blank and the notes down the side. It is a copy to learn from, never signed or filed, so nothing is filed on the job.
   const printGuideCopy = useCallback(() => {
