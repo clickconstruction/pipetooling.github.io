@@ -2,7 +2,7 @@
 name: "Punch list: the pace of the list and the merge queue, on one page"
 number: 444
 group: close
-status: asked 2026-11-24 · all four PRs are merged · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is live as v2.8546 · PR 3 (In the merge queue on the page) is live as v2.8547 · PR 4 (each line's state) merged as v2.8550 on 2026-11-25 and ship-pace was redeployed the same hour · all three were walked on the live page on 2026-11-25 and hold · of the five State chips only the blue one was seen · the four presses the first walk found under 44 px on a phone stand a fingertip tall in v2.8574, not yet seen on a phone · left: a look at those four, and a chip that is not blue
+status: asked 2026-11-24 · all four PRs are merged · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is live as v2.8546 · PR 3 (In the merge queue on the page) is live as v2.8547 · PR 4 (each line's state) merged as v2.8550 on 2026-11-25 and ship-pace was redeployed the same hour · all three were walked on the live page on 2026-11-25 and hold · of the five State chips only the blue one was seen · the four presses the first walk found under 44 px on a phone stand a fingertip tall in v2.8574, not yet seen on a phone · left: a look at those four, and a chip that is not blue · the owner, 2026-11-25: the card retires after that look
 summary: >
   The owner asked to see the merge queue and how fast punch-list cards are being closed. Most of it
   is already live in two places. The Burndown at the top of /punch-list counts cards opened and closed
@@ -247,6 +247,11 @@ Nothing here writes a row a person made. The one write is the function's own row
   in words after the place. At 390 px the chip sits under the title. Not seen: the green **Ready** and
   **Merging now**, the grey **Waiting its turn** and the red **Will not merge**. That look was opened
   inside five minutes of the row's own rewrite, so the page made no call to `ship-pace`.
+- **When the card retires, answered 2026-11-25 (UTC) in the managing session.** Asked
+  *"Do all the picks on round 3, rows 1 to 11, stand?"*, the answer was "Yes, all picks", quoted from that session's record of the user's answers.
+  The row read: *#444: the card retires after its chip fix ships and a walker sees one chip that is not
+  blue*, and the pick was yes. The fix shipped as v2.8574. So one look is left: the four presses at
+  390 px, and a chip that is not blue.
 
 Found while building, and kept:
 
