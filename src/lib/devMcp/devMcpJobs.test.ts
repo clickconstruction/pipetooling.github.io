@@ -18,14 +18,23 @@ import {
   jobUpdateAppliedWords,
   jobUpdateDryRun,
   jobUpdateInput,
+  guardedNumbers,
+  landedSame,
   lineNameOf,
   linesTotalDollars,
+  NEXT_NUMBER_RPC,
   newJobDryRun,
   newJobRow,
+  numberJumpRefusal,
+  PRIOR_NUMBERS_MAX,
   priceLinePlan,
   priceLineRow,
+  priorNumberBare,
+  priorNumberOf,
+  priorNumbersPlan,
   readJobUpdateWorld,
   readNewJobWorld,
+  readNextNumber,
   statusSteps,
   usd,
   type JobLineRow,
@@ -40,6 +49,9 @@ import { JOB_KINDS as APP_JOB_KINDS } from '../jobs/jobKind'
 import { COMPANY_OWNER_USER_ID_KEY as APP_COMPANY_KEY } from '../companyOwner'
 import { chooseJobOwnerFromOverrideRows, JOB_OWNER_OVERRIDE_DEFAULT_KEY as APP_DEFAULT_KEY } from '../resolveEffectiveJobMasterUserId'
 import { titleCaseAddress } from '../addressTitleCase'
+import { parsePriorNumber, priorNumberEntry } from '../jobs/priorNumbers'
+import { priorNumbersAfter } from '../../../supabase/functions/_shared/devMcpJobCombine'
+import { CATALOG_RPCS, CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
 import { fixtureInsertRows } from '../jobs/jobFormAutosaveSlices'
 import { jobFormRevenueDollars } from '../jobs/jobFormMoneyTotals'
 import { revenueDollarsFromFixtures } from '../revenueFromJobFixtures'
@@ -259,7 +271,7 @@ describe('newJobDryRun — the plan', () => {
     expect(readiness.status).toContain('plan_job_update')
     // v2.6826: a Stripe bill is numbered from the HCP or Click number, and the plan says when the job has none.
     expect(readiness.number).toContain('none')
-    const numbered = newJobDryRun(p({ click_number: '9293' }), world())
+    const numbered = newJobDryRun(p({ click_number: '9293' }), world({ nextNumber: '9293' }))
     if (!numbered.ok) throw new Error(numbered.refused)
     expect((numbered.reply.readiness as Record<string, string>).number).toBe('9293')
     expect(dry.reply.not_done).toHaveLength(3)
@@ -357,7 +369,7 @@ describe('the update verbs (v2.6793, PR 2)', () => {
     const seen: string[] = []
     const reads: JobReads = { rows: async (table, query) => { seen.push(`${table}?${query}`); return table === 'jobs_ledger' ? [row()] : table === 'bids' ? [{ id: BID, project_name: 'Oak Hill' }] : [{ id: AM, name: 'Ana' }] } }
     const w = await readJobUpdateWorld(reads, up({ set: { bid_id: BID, account_manager_user_id: AM, job_name: 'x' } }))
-    expect(seen[0]).toBe(`jobs_ledger?select=id,status,updated_at,master_user_id,${UPDATE_COLUMNS.join(',')}&id=eq.${JOBID}`)
+    expect(seen[0]).toBe(`jobs_ledger?select=id,status,updated_at,master_user_id,${UPDATE_COLUMNS.join(',')},prior_numbers&id=eq.${JOBID}`)
     expect(seen).toContain(`bids?select=id,project_name&id=eq.${BID}`)
     expect(seen).toContain(`users?select=id,name&id=eq.${AM}`)
     expect(seen).toHaveLength(3)
@@ -581,6 +593,240 @@ describe('the line item the price rides on (v2.8555, punch list #293)', () => {
     expect(pricePatch).toBeGreaterThan(lineWrite)
     expect(update).toContain('The line item was not written, so nothing was changed')
     expect(update).toContain('jobUpdateAppliedWords(job, landed, status, line)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.134.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.135.0'")
+  })
+})
+
+describe('a number that changed is still found by (v2.8570, punch list #293)', () => {
+  const JOBID = '99999999-1111-4111-8111-111111111111'
+  const OTHER = '99999999-2222-4222-8222-222222222222'
+  const row = (over: Partial<JobRow> = {}): JobRow => ({
+    id: JOBID, status: 'working', updated_at: '2026-11-25T15:00:00+00:00', master_user_id: OWNER,
+    job_name: 'ZZ TEST seat walk', job_address: '123 Main St, Austin TX 78701', hcp_number: '', click_number: 'ZZ9001', customer_id: CUSTOMER, customer_name: 'ZZ Test Customer', customer_email: 'zz@example.com', customer_phone: null, service_type_id: SERVICE,
+    development_id: null, project_id: null, bid_id: null, bill_to_party: 'customer', gc_customer_id: null, google_drive_link: null, job_pictures_link: null, job_plans_link: null, account_manager_user_id: null, revenue: 1, pct_complete: 0, kind: null, prior_numbers: [],
+    ...over,
+  })
+  const up = (over: Record<string, unknown>): JobUpdatePayload => {
+    const built = jobUpdateInput('plan_job_update', { update: { job_id: JOBID, ...over } })
+    if (!built.ok) throw new Error(built.error)
+    return built.p
+  }
+  const err = (over: Record<string, unknown>): string => {
+    const built = jobUpdateInput('plan_job_update', { update: { job_id: JOBID, ...over } })
+    if (built.ok) throw new Error('expected a shape error')
+    return built.error
+  }
+  const reply = (over: Record<string, unknown>, job: JobRow, wearing?: Record<string, Array<{ id: string; job_name: string | null; status: string | null; click_number: string | null; hcp_number: string | null }>>): Record<string, unknown> => {
+    const dry = jobUpdateDryRun(up(over), { job, named: {}, lines: null, ...(wearing ? { wearing } : {}) })
+    if (!dry.ok) throw new Error(dry.refused)
+    return dry.reply
+  }
+
+  it('an entry is the app’s own shape, the tag in capitals and the number trimmed', () => {
+    expect(priorNumberOf(' c#  ZZ9001 ')).toBe('C# ZZ9001')
+    expect(priorNumberOf('hcp 550')).toBe('HCP 550')
+    expect(priorNumberOf('C# 550-2 B')).toBe('C# 550-2 B')
+    for (const bad of ['550', 'JP550', 'C#550', 'C# ', 'C# 5,5', 'HCP "5"', `C# ${'9'.repeat(41)}`, 550, null]) expect(priorNumberOf(bad)).toBe(false)
+    expect(priorNumberBare('C# ZZ9001')).toBe('ZZ9001')
+    expect(priorNumberBare('HCP 550')).toBe('550')
+    // The app parses the same two shapes (src/lib/jobs/priorNumbers.ts).
+    expect(parsePriorNumber('C# ZZ9001')).toEqual({ kind: 'click', number: 'ZZ9001' })
+    expect(priorNumberEntry('hcp', '550')).toBe(priorNumberOf('HCP 550'))
+  })
+  it('shapes add and remove, each entry once, and refuses a bad entry, one in both lists, too many, and keep_old_number with no number', () => {
+    expect(up({ prior_numbers: { add: ['c# ZZ9001', 'C# ZZ9001', 'hcp 550'], remove: ['C# ZZ9002'] } })).toEqual({ action: 'update', job_id: JOBID, set: {}, prior_numbers: { add: ['C# ZZ9001', 'HCP 550'], remove: ['C# ZZ9002'] } })
+    expect(up({ set: { click_number: 'ZZ9002' }, keep_old_number: false })).toMatchObject({ keep_old_number: false })
+    expect(up({ set: { click_number: 'ZZ9002' }, keep_old_number: true }).keep_old_number).toBeUndefined()
+    expect(up({ status: 'working', prior_numbers: { add: [] } }).prior_numbers).toBeUndefined()
+    expect(err({ prior_numbers: { add: ['ZZ9001'] } })).toContain('"ZZ9001" is not a prior number')
+    expect(err({ prior_numbers: ['C# ZZ9001'] })).toContain('prior_numbers is { add?')
+    expect(err({ prior_numbers: { add: 'C# ZZ9001' } })).toContain('prior_numbers is { add?')
+    expect(err({ prior_numbers: { add: ['C# ZZ9001'], remove: ['c# ZZ9001'] } })).toContain('in both add and remove')
+    expect(err({ prior_numbers: { add: Array.from({ length: PRIOR_NUMBERS_MAX + 1 }, (_, i) => `C# ZZ${i}`) } })).toContain(`up to ${PRIOR_NUMBERS_MAX} a list`)
+    expect(err({ prior_numbers: {} })).toContain('nothing to change')
+    expect(err({ set: { job_name: 'x' }, keep_old_number: false })).toContain('give set.hcp_number or set.click_number')
+  })
+  it('the list after a plan is the combine’s shape: what stands, the number a column gives up, what is added, each once', () => {
+    const none = { hcp_number: '', click_number: '' }
+    const plan = (over: Partial<Parameters<typeof priorNumbersPlan>[0]>) => {
+      const got = priorNumbersPlan({ label: 'ZZ9001', list: [], old: { ...none, click_number: 'ZZ9001' }, now: { ...none, click_number: 'ZZ9001' }, keepOld: true, add: [], remove: [], ...over })
+      if (!got.ok) throw new Error(got.refused)
+      return got.plan
+    }
+    expect(plan({})).toMatchObject({ before: [], after: [], moved: false })
+    expect(plan({ now: { ...none, click_number: 'ZZ9002' } })).toMatchObject({ after: ['C# ZZ9001'], kept: ['C# ZZ9001'], moved: true })
+    expect(plan({ now: { ...none, click_number: 'ZZ9002' }, keepOld: false })).toMatchObject({ after: [], kept: [], not_kept: ['C# ZZ9001'], moved: false })
+    // Both columns, as the combine orders them: HCP, then Click, after what the job already carried.
+    expect(plan({ list: ['HCP 1'], old: { hcp_number: '550', click_number: 'ZZ9001' }, now: { hcp_number: '551', click_number: 'ZZ9002' } }).after).toEqual(['HCP 1', 'HCP 550', 'C# ZZ9001'])
+    expect(priorNumbersAfter({ hcp_number: '550', click_number: 'ZZ9001', prior_numbers: [] }, { prior_numbers: ['HCP 1'] })).toEqual(['HCP 1', 'HCP 550', 'C# ZZ9001'])
+    // A number first given to a job that had none keeps nothing; one cleared is kept.
+    expect(plan({ old: none, now: { ...none, click_number: 'ZZ9001' } })).toMatchObject({ after: [], moved: false })
+    expect(plan({ now: none })).toMatchObject({ after: ['C# ZZ9001'], kept: ['C# ZZ9001'] })
+    // Changed back: the entry that is the job's own number again comes off, and the one it gives up goes on.
+    expect(plan({ list: ['C# ZZ9001'], old: { ...none, click_number: 'ZZ9002' }, now: { ...none, click_number: 'ZZ9001' } })).toMatchObject({ after: ['C# ZZ9002'], dropped: ['C# ZZ9001'], kept: ['C# ZZ9002'] })
+    // Add and remove on a job whose number already changed.
+    expect(plan({ add: ['C# ZZ9000'] })).toMatchObject({ after: ['C# ZZ9000'], added: ['C# ZZ9000'], moved: true })
+    expect(plan({ list: ['C# ZZ9000'], add: ['C# ZZ9000'] })).toMatchObject({ after: ['C# ZZ9000'], added: [], moved: false })
+    expect(plan({ list: ['C# ZZ9000', 'HCP 550'], remove: ['C# ZZ9000'] })).toMatchObject({ after: ['HCP 550'], removed: ['C# ZZ9000'], moved: true })
+    expect(priorNumbersPlan({ label: 'ZZ9001', list: [], old: none, now: none, keepOld: true, add: [], remove: ['C# ZZ9000'] })).toEqual({ ok: false, refused: "C# ZZ9000 is not among ZZ9001's prior numbers (it has none), so there is nothing to take off." })
+    expect(priorNumbersPlan({ label: 'ZZ9001', list: [], old: { ...none, click_number: 'ZZ9001' }, now: { ...none, click_number: 'ZZ9001' }, keepOld: true, add: ['C# ZZ9001'], remove: [] })).toMatchObject({ ok: false, refused: expect.stringContaining('own number today') })
+  })
+  it('a plan that replaces a number keeps the old one, says so, and names the sheets it leaves behind', () => {
+    const r = reply({ set: { click_number: 'ZZ9002' } }, row())
+    expect(r.changes).toEqual([{ column: 'click_number', before: 'ZZ9001', after: 'ZZ9002' }, { column: 'prior_numbers', before: [], after: ['C# ZZ9001'] }])
+    expect(r.patch).toEqual({ click_number: 'ZZ9002', prior_numbers: ['C# ZZ9001'] })
+    expect(r.prior_numbers).toMatchObject({ before: [], after: ['C# ZZ9001'], keeps: expect.stringContaining('keep_old_number: false leaves it out'), sets_off: expect.stringContaining('find_job') })
+    expect((r.not_done as string[]).join(' ')).toContain('plan_sub_labor')
+    // Told not to keep it: the patch is the number alone, and the plan says what is lost.
+    const dropped = reply({ set: { click_number: 'ZZ9002' }, keep_old_number: false }, row())
+    expect(dropped.patch).toEqual({ click_number: 'ZZ9002' })
+    expect(dropped.prior_numbers).toMatchObject({ after: [], not_kept: expect.stringContaining('no search for it finds this job') })
+    // A plan that touches no number says nothing of the list or of sheets.
+    const plain = reply({ set: { job_name: 'ZZ TEST seat walk two' } }, row({ prior_numbers: ['C# ZZ9000'] }))
+    expect(plain.prior_numbers).toBeNull()
+    expect(plain.patch).toEqual({ job_name: 'ZZ TEST seat walk two' })
+    expect((plain.not_done as string[]).join(' ')).not.toContain('plan_sub_labor')
+    // A row read before the column was selected (null) is an empty list.
+    expect(reply({ set: { click_number: 'ZZ9002' } }, row({ prior_numbers: null })).patch).toEqual({ click_number: 'ZZ9002', prior_numbers: ['C# ZZ9001'] })
+  })
+  it('adds a prior number to a job whose number already changed, takes one off, and warns when another job wears it', () => {
+    const added = reply({ prior_numbers: { add: ['C# ZZ9000'] }, reason: 'the bill went out under ZZ9000' }, row(), { 'C# ZZ9000': [] })
+    expect(added.changes).toEqual([{ column: 'prior_numbers', before: [], after: ['C# ZZ9000'] }])
+    expect(added.patch).toEqual({ prior_numbers: ['C# ZZ9000'] })
+    expect(added.prior_numbers).toMatchObject({ adds: ['C# ZZ9000'] })
+    expect(added.warnings).toBeUndefined()
+    const worn = reply({ prior_numbers: { add: ['C# ZZ9000'] } }, row(), { 'C# ZZ9000': [{ id: OTHER, job_name: 'ZZ TEST other job', status: 'working', click_number: 'ZZ9000', hcp_number: '' }] })
+    expect(worn.warnings).toEqual([`ZZ9000 is the number ZZ TEST other job (${OTHER}, working) wears today. A search for it will find both jobs.`])
+    const off = reply({ prior_numbers: { remove: ['C# ZZ9000'] } }, row({ prior_numbers: ['C# ZZ9000'] }))
+    expect(off.patch).toEqual({ prior_numbers: [] })
+    expect(off.prior_numbers).toMatchObject({ before: ['C# ZZ9000'], after: [], removes: ['C# ZZ9000'] })
+    // Already there, not there to take off, the job's own, and jobs not read: each in words.
+    const refused = (over: Record<string, unknown>, job: JobRow, wearing?: Record<string, never[]>) => jobUpdateDryRun(up(over), { job, named: {}, lines: null, ...(wearing ? { wearing } : {}) })
+    expect(refused({ prior_numbers: { add: ['C# ZZ9000'] } }, row({ prior_numbers: ['C# ZZ9000'] }), { 'C# ZZ9000': [] })).toEqual({ ok: false, refused: 'ZZ9001 already reads that way: its prior numbers already read C# ZZ9000. Nothing to apply.' })
+    expect(refused({ prior_numbers: { remove: ['C# ZZ9000'] } }, row())).toMatchObject({ ok: false, refused: expect.stringContaining('nothing to take off') })
+    expect(refused({ prior_numbers: { add: ['C# ZZ9001'] } }, row(), { 'C# ZZ9001': [] })).toMatchObject({ ok: false, refused: expect.stringContaining('own number today') })
+    expect(refused({ prior_numbers: { add: ['C# ZZ9000'] } }, row())).toMatchObject({ ok: false, refused: expect.stringContaining('were not read') })
+  })
+  it('reads the jobs wearing a number it adds, and nothing more when it adds none', async () => {
+    const seen: string[] = []
+    const reads: JobReads = { rows: async (table, query) => { seen.push(`${table}?${query}`); return query.includes('id=eq.') ? [row()] : [] } }
+    const w = await readJobUpdateWorld(reads, up({ prior_numbers: { add: ['C# ZZ9000'] } }))
+    expect(seen).toEqual([
+      `jobs_ledger?select=id,status,updated_at,master_user_id,${UPDATE_COLUMNS.join(',')},prior_numbers&id=eq.${JOBID}`,
+      `jobs_ledger?select=id,job_name,status,click_number,hcp_number&id=neq.${JOBID}&or=(click_number.eq.%22ZZ9000%22,hcp_number.eq.%22ZZ9000%22)&limit=5`,
+    ])
+    expect(w.wearing).toEqual({ 'C# ZZ9000': [] })
+    seen.length = 0
+    expect((await readJobUpdateWorld(reads, up({ prior_numbers: { remove: ['C# ZZ9000'] } }))).wearing).toBeUndefined()
+    expect(seen).toHaveLength(1)
+  })
+  it('the hash commits to the list as it stood, and the read back compares a list entry by entry', async () => {
+    const p1 = up({ prior_numbers: { add: ['C# ZZ9000'] } })
+    const a = jobUpdateDryRun(p1, { job: row(), named: {}, lines: null, wearing: { 'C# ZZ9000': [] } })
+    const b = jobUpdateDryRun(p1, { job: row({ prior_numbers: ['HCP 550'] }), named: {}, lines: null, wearing: { 'C# ZZ9000': [] } })
+    if (!a.ok || !b.ok) throw new Error('refused')
+    expect(await planHash('plan_job_update', p1, b.reply)).not.toBe(await planHash('plan_job_update', p1, a.reply))
+    expect(landedSame(['C# ZZ9000'], ['C# ZZ9000'])).toBe(true)
+    expect(landedSame([], ['C# ZZ9000'])).toBe(false)
+    expect(landedSame(null, [])).toBe(true)
+    expect(landedSame(['C# ZZ9000', 'HCP 550'], ['HCP 550', 'C# ZZ9000'])).toBe(false)
+    expect(landedSame(25, '25')).toBe(true)
+    expect(landedSame(null, '')).toBe(true)
+    expect(SERVER).toContain('const stuck = planned.filter((c) => row && !landedSame(row[c.column], c.after))')
+  })
+  it('the column and the search are the app’s own, and the server and the README say what the verb does', () => {
+    expect(CATALOG_TABLES.jobs_ledger!.columns).toHaveProperty('prior_numbers')
+    const SEARCH = readFileSync('supabase/migrations/20261031020000_job_prior_numbers.sql', 'utf8')
+    expect(SEARCH).toContain('unnest(jl.prior_numbers)')
+    expect(SERVER).toContain('keep_old_number? (false: a number set replaces is not kept as a prior number)')
+    expect(README).toContain('prior_numbers: { add?, remove? }')
+    expect(README).toContain('keep_old_number: false')
+  })
+})
+
+describe('the number guard: an all-digit number above the office’s next one (v2.8570, punch list #293)', () => {
+  const JOBID = '99999999-1111-4111-8111-111111111111'
+  const row = (over: Partial<JobRow> = {}): JobRow => ({
+    id: JOBID, status: 'working', updated_at: '2026-11-25T15:00:00+00:00', master_user_id: OWNER,
+    job_name: 'ZZ TEST seat walk', job_address: '123 Main St, Austin TX 78701', hcp_number: '', click_number: '40', customer_id: CUSTOMER, customer_name: 'ZZ Test Customer', customer_email: 'zz@example.com', customer_phone: null, service_type_id: SERVICE,
+    development_id: null, project_id: null, bid_id: null, bill_to_party: 'customer', gc_customer_id: null, google_drive_link: null, job_pictures_link: null, job_plans_link: null, account_manager_user_id: null, revenue: 1, pct_complete: 0, kind: null, prior_numbers: [],
+    ...over,
+  })
+  const up = (over: Record<string, unknown>): JobUpdatePayload => {
+    const built = jobUpdateInput('plan_job_update', { update: { job_id: JOBID, ...over } })
+    if (!built.ok) throw new Error(built.error)
+    return built.p
+  }
+  it('counts the numbers the suggestion counts: all digits once trimmed, in either column', () => {
+    expect(guardedNumbers({ hcp_number: ' 550 ', click_number: '42' })).toEqual([{ column: 'hcp_number', value: '550' }, { column: 'click_number', value: '42' }])
+    expect(guardedNumbers({ hcp_number: 'ZZ9001', click_number: '42-B' })).toEqual([])
+    expect(guardedNumbers({ hcp_number: '', click_number: null })).toEqual([])
+    // The function's own test, so the guard and the suggestion agree on what a number is.
+    const SQL = readFileSync('supabase/migrations/20260619170000_next_job_number_suggestion.sql', 'utf8')
+    expect(SQL).toContain("WHERE trim(COALESCE(jl.click_number, '')) ~ '^[0-9]+$'")
+    expect(SQL).toContain('SELECT (COALESCE(MAX(n), 0) + 1)::text')
+    expect(CATALOG_RPCS[NEXT_NUMBER_RPC]![0]).toEqual({ args: {}, returns: 'string' })
+  })
+  it('lets a number at or under the next one through, refuses one above it with the way out, and refuses what it could not check', () => {
+    const n = (value: string) => [{ column: 'click_number' as const, value }]
+    expect(numberJumpRefusal(n('42'), '42', false)).toBeNull()
+    expect(numberJumpRefusal(n('7'), '42', false)).toBeNull()
+    expect(numberJumpRefusal([], undefined, false)).toBeNull()
+    expect(numberJumpRefusal(n('9001'), '42', true)).toBeNull()
+    expect(numberJumpRefusal(n('9001'), '42', false)).toBe(
+      'click_number 9001 is above 42, the next number the office would be offered. A new job\'s number is the highest all-digit number on any job plus one (next_job_number_suggestion), so this one would send every job made after it to 9002 and up. A test job takes a number with a letter in it, such as ZZ9001. If the office means this number, plan again with allow_number_jump: true.',
+    )
+    expect(numberJumpRefusal(n('43'), '42', false)).toContain('43 is above 42')
+    // Longer than a 53-bit integer holds: compared as whole numbers.
+    expect(numberJumpRefusal(n('90071992547409931'), '90071992547409930', false)).toContain('is above')
+    expect(numberJumpRefusal(n('42'), undefined, false)).toContain('was not read')
+    expect(numberJumpRefusal(n('42'), null, false)).toContain('allow_number_jump: true')
+  })
+  it('reads the suggestion over GET, and only when a plan sets an all-digit number it does not say is meant', async () => {
+    const asked: string[] = []
+    const reads = (answer: unknown): JobReads => ({
+      rows: async (table, query) => (table === 'jobs_ledger' && query.includes('id=eq.') ? [row()] : []),
+      value: async (path, query) => { asked.push(`${path}?${query}`); return answer },
+    })
+    expect(await readNextNumber(reads('42'))).toBe('42')
+    expect(await readNextNumber(reads({ message: 'no' }))).toBeNull()
+    expect(await readNextNumber({ rows: async () => [] })).toBeUndefined()
+    asked.length = 0
+    expect((await readNewJobWorld(reads('42'), p({ click_number: '41' }), ME)).nextNumber).toBe('42')
+    expect((await readJobUpdateWorld(reads('42'), up({ set: { hcp_number: '41' } }))).nextNumber).toBe('42')
+    expect(asked).toEqual(['rpc/next_job_number_suggestion?', 'rpc/next_job_number_suggestion?'])
+    asked.length = 0
+    expect((await readNewJobWorld(reads('42'), p({ click_number: 'ZZ9001' }), ME)).nextNumber).toBeUndefined()
+    expect((await readNewJobWorld(reads('42'), p({ click_number: '9001', allow_number_jump: true }), ME)).nextNumber).toBeUndefined()
+    expect((await readNewJobWorld(reads('42'), p(), ME)).nextNumber).toBeUndefined()
+    expect((await readJobUpdateWorld(reads('42'), up({ set: { job_name: 'x' } }))).nextNumber).toBeUndefined()
+    expect((await readJobUpdateWorld(reads('42'), up({ set: { click_number: '9001' }, allow_number_jump: true }))).nextNumber).toBeUndefined()
+    expect(asked).toEqual([])
+  })
+  it('plan_job refuses a number above the next one, takes a lettered one, and takes the number when it is said to be meant', () => {
+    expect(newJobDryRun(p({ click_number: '9001' }), world({ nextNumber: '42' }))).toMatchObject({ ok: false, refused: expect.stringContaining('such as ZZ9001') })
+    expect(newJobDryRun(p({ hcp_number: '9001' }), world({ nextNumber: '42' }))).toMatchObject({ ok: false, refused: expect.stringContaining('hcp_number 9001 is above 42') })
+    expect(newJobDryRun(p({ click_number: '9001' }), world())).toMatchObject({ ok: false, refused: expect.stringContaining('was not read') })
+    expect(newJobDryRun(p({ click_number: '42' }), world({ nextNumber: '42' })).ok).toBe(true)
+    expect(newJobDryRun(p({ click_number: 'ZZ9001' }), world()).ok).toBe(true)
+    const meant = p({ click_number: '9001', allow_number_jump: true })
+    expect(meant.allow_number_jump).toBe(true)
+    expect(newJobDryRun(meant, world()).ok).toBe(true)
+    expect(p({ allow_number_jump: 'yes' }).allow_number_jump).toBeUndefined()
+  })
+  it('plan_job_update guards a number it changes, never the one the job already wears', () => {
+    const dry = (over: Record<string, unknown>, job: JobRow, nextNumber?: string | null) => jobUpdateDryRun(up(over), { job, named: {}, lines: null, ...(nextNumber === undefined ? {} : { nextNumber }) })
+    expect(dry({ set: { click_number: '9001' } }, row(), '42')).toMatchObject({ ok: false, refused: expect.stringContaining('click_number 9001 is above 42') })
+    expect(dry({ set: { click_number: '9001' } }, row())).toMatchObject({ ok: false, refused: expect.stringContaining('was not read') })
+    expect(dry({ set: { click_number: '41' } }, row(), '42')).toMatchObject({ ok: true, reply: { patch: { click_number: '41', prior_numbers: ['C# 40'] } } })
+    expect(dry({ set: { click_number: '9001' }, allow_number_jump: true }, row())).toMatchObject({ ok: true, reply: { patch: { click_number: '9001' } } })
+    expect(dry({ set: { click_number: 'ZZ9001' } }, row())).toMatchObject({ ok: true })
+    // A job that already wears a number above the run is not held for it: the name changes, the number is not touched.
+    expect(dry({ set: { click_number: '9001', job_name: 'ZZ TEST seat walk two' } }, row({ click_number: '9001' }), '42')).toMatchObject({ ok: true, reply: { patch: { job_name: 'ZZ TEST seat walk two' } } })
+  })
+  it('the server reads the suggestion for both verbs, and its words and the README name the way out', () => {
+    expect(SERVER.split("value: async (path, query) => {").length - 1).toBeGreaterThanOrEqual(2)
+    expect(SERVER).toContain('is refused unless allow_number_jump is true')
+    expect(README).toContain('allow_number_jump: true')
   })
 })

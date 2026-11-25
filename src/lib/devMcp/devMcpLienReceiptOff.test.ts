@@ -381,7 +381,7 @@ describe('the server and the docs', () => {
   })
 
   it('is listed, logged and documented', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.134.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.135.0'")
     expect(SERVER).toContain("name: 'plan_lien_receipt_off',")
     expect(SERVER).toContain("name: 'apply_lien_receipt_off',")
     expect(SERVER).toContain("if (name === 'apply_lien_receipt_off') return { receipt: args.receipt ?? null, plan_hash:")

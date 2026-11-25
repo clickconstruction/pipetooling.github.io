@@ -116,7 +116,7 @@ describe('the pay setup pair is on the allowlist with no wrapper RPC', () => {
     expect(isPaySetupVerb('plan_account')).toBe(false)
     expect(planVerbFor('apply_pay_setup')).toBe('plan_pay_setup')
     expect(Object.keys(WRITE_VERBS)).toHaveLength(156)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.134.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.135.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else:')
     expect(SERVER).toContain('plan_pay_setup → apply_pay_setup')
     expect(README).toContain('`plan_pay_setup(pay)` · `apply_pay_setup(pay, plan_hash)`')

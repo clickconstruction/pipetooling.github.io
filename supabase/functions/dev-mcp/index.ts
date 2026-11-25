@@ -32,7 +32,7 @@ import { noticeNumbersAppliedWords, noticeNumbersDryRun, noticeNumbersPlanReply,
 import { LIEN_CLERK_SCAN_NOTE } from '../_shared/gcKernels/lib/jobs/lienScanFile.ts'
 import { filingDocumentPayload } from '../_shared/gcKernels/lib/jobs/lienFilingDocumentLink.ts'
 import { propertyPatch, propertyPatchBody, propertyLienReading, propertyRecordAppliedWords, propertyRecordDryRun, readPropertyWorld, type PropertyRecordPayload, type PropertyReads } from '../_shared/devMcpPropertyRecord.ts'
-import { JOB_STATUSES, jobAppliedWords, jobUpdateAppliedWords, jobUpdateDryRun, newJobDryRun, priceLineRow, readJobUpdateWorld, readNewJobWorld, type JobReads, type JobStatus, type JobUpdatePayload, type NewJobPayload, type PriceLineLanded, type PriceLinePlan } from '../_shared/devMcpJobs.ts'
+import { JOB_STATUSES, jobAppliedWords, jobUpdateAppliedWords, jobUpdateDryRun, landedSame, newJobDryRun, priceLineRow, readJobUpdateWorld, readNewJobWorld, type JobReads, type JobStatus, type JobUpdatePayload, type NewJobPayload, type PriceLineLanded, type PriceLinePlan } from '../_shared/devMcpJobs.ts'
 import { getSubmittals, readSubmittalWorld, submittalAppliedWords, submittalDryRun, submittalWrites, type SubmittalPayload } from '../_shared/devMcpSubmittals.ts'
 import { activityNoteAppliedWords, activityNoteDryRun, activityNoteRow, readActivityNoteWorld, type ActivityNotePayload } from '../_shared/devMcpActivityNote.ts'
 import { bookEntryRow, isPaperWordsVerb, paperWordsAppliedWords, paperWordsArgsForLog, paperWordsDryRun, readPaperWordsWorld, type PaperWordsPayload } from '../_shared/devMcpPaperWords.ts'
@@ -147,7 +147,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // The note each server version carries (what it added and why, in the words of the day) lives in
 // docs/dev-mcp/SERVER_NOTES.md, oldest first, and a new version adds its note there. They were comments here until
 // they weighed 44 KB of this function's upload, which the deploy refuses past 5 MB (npm run check:edge-bundles).
-const SERVER_VERSION = '0.134.0'
+const SERVER_VERSION = '0.135.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 /** v2.7987 (punch list #315, upgrade 3a): what a person-file plan takes for the approvals list, and what its description says of it. */
@@ -781,8 +781,8 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_job',
-    description: "Dry-run a new job (v2.6790, punch list #293): the row the New Job form would make — name, address (saved in Title Case as the form saves it), customer, service type, the price (revenue), the line item the price rides on (one line of 1 at the price, named line_name or the job's name, so the Bill tab's lines total the price), the office's numbers, the development, the project, the bid, who the bill goes to, the links, the kind — as you, under the same RLS as the form. The dry run reads the customer (its email and phone fill the job's when left out), the service type, the development, the project and the owner rule's settings, and replies with the row as it will land, the line item it will write, who it belongs to and why, the live jobs on the customer already wearing the name (refused unless allow_duplicate_name), what a bill will still need and what the verb does not do, under a plan_hash; nothing is written.",
-    inputSchema: { type: 'object', properties: { job: { type: 'object', description: '{ job_name, job_address, customer_id (find_customer), service_type_id (read_rows on service_types), revenue? (dollars), line_name? (names the line item the price rides on; the job name when left out), hcp_number?, click_number?, customer_name?, customer_email?, customer_phone?, development_id?, project_id?, bid_id?, kind? (service | project), bill_to_party? (customer | gc), gc_customer_id?, google_drive_link?, job_pictures_link?, job_plans_link?, allow_duplicate_name? }' } }, required: ['job'] },
+    description: "Dry-run a new job (v2.6790, punch list #293): the row the New Job form would make — name, address (saved in Title Case as the form saves it), customer, service type, the price (revenue), the line item the price rides on (one line of 1 at the price, named line_name or the job's name, so the Bill tab's lines total the price), the office's numbers, the development, the project, the bid, who the bill goes to, the links, the kind — as you, under the same RLS as the form. The dry run reads the customer (its email and phone fill the job's when left out), the service type, the development, the project and the owner rule's settings, and replies with the row as it will land, the line item it will write, who it belongs to and why, the live jobs on the customer already wearing the name (refused unless allow_duplicate_name), what a bill will still need and what the verb does not do, under a plan_hash; nothing is written. An all-digit hcp_number or click_number above the office's next number (next_job_number_suggestion: the highest all-digit number on any job, plus one) is refused unless allow_number_jump is true (0.135.0), since every job made after it would be offered the number after it; a test job takes a number with a letter in it.",
+    inputSchema: { type: 'object', properties: { job: { type: 'object', description: '{ job_name, job_address, customer_id (find_customer), service_type_id (read_rows on service_types), revenue? (dollars), line_name? (names the line item the price rides on; the job name when left out), hcp_number?, click_number?, customer_name?, customer_email?, customer_phone?, development_id?, project_id?, bid_id?, kind? (service | project), bill_to_party? (customer | gc), gc_customer_id?, google_drive_link?, job_pictures_link?, job_plans_link?, allow_duplicate_name?, allow_number_jump? }' } }, required: ['job'] },
   },
   {
     name: 'apply_job',
@@ -791,8 +791,8 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_job_update',
-    description: "Dry-run a change to a job (v2.6793, punch list #293): the Edit Job form's columns — name, address, the office's numbers, customer, customer name / email / phone, service type, development, project, bid, who the bill goes to, the links, the account manager, the price (revenue), the percent complete, the kind — as one write under the form's own RLS, and the status as the Pipeline moves it, through update_job_status one step at a time (waiting → working → ready_to_bill → billed → paid, and each step back; a step back from Ready to Bill deletes the job's Ready to Bill lines, as the Pipeline's send-back does). The price moves the job's line item with it (v2.8555), since the Bill tab writes a job's price as the sum of its lines: a job with no line item gets one line of 1 at the price (named line_name, else the job's name), written even when the price itself does not change, which gives a job made before v2.8555 the line its price never had; a job with one unbilled work line of 1 that totals the price has that line repriced; any other job (several lines, a line on a bill, a count over 1, a discount, a fee riding on the price) is refused in words, and its lines are changed on the Bill tab. The dry run reads the job, every row a new id names and the job's line items when revenue is in set, and replies with each column before → after (a column already holding its value is dropped; a plan that changes nothing is refused), the line item it will write or reprice, the status steps in order, and what the verb does not do, under a plan_hash committed to the columns' before values, the status and updated_at; nothing is written.",
-    inputSchema: { type: 'object', properties: { update: { type: 'object', description: '{ job_id (find_job), set? ({ column: value }; null clears a column that may be blank), status? (waiting | working | ready_to_bill | billed | paid), reason?, line_name? (with set.revenue on a job with no line item: the new line item\'s name) }' } }, required: ['update'] },
+    description: "Dry-run a change to a job (v2.6793, punch list #293): the Edit Job form's columns — name, address, the office's numbers, customer, customer name / email / phone, service type, development, project, bid, who the bill goes to, the links, the account manager, the price (revenue), the percent complete, the kind — as one write under the form's own RLS, and the status as the Pipeline moves it, through update_job_status one step at a time (waiting → working → ready_to_bill → billed → paid, and each step back; a step back from Ready to Bill deletes the job's Ready to Bill lines, as the Pipeline's send-back does). The price moves the job's line item with it (v2.8555), since the Bill tab writes a job's price as the sum of its lines: a job with no line item gets one line of 1 at the price (named line_name, else the job's name), written even when the price itself does not change, which gives a job made before v2.8555 the line its price never had; a job with one unbilled work line of 1 that totals the price has that line repriced; any other job (several lines, a line on a bill, a count over 1, a discount, a fee riding on the price) is refused in words, and its lines are changed on the Bill tab. A number that changes stays findable (0.135.0): an hcp_number or click_number the plan replaces is kept on the job's prior numbers ('HCP 550' / 'C# 543', the list the job search matches and the screens read as \"also 550\"), unless keep_old_number is false, and prior_numbers: { add?, remove? } puts a number on that list or takes one off on a job whose number already changed. An all-digit number set above the office's next number is refused unless allow_number_jump is true, as on plan_job. The dry run reads the job, every row a new id names, the job's line items when revenue is in set and the jobs wearing a number it adds, and replies with each column before → after (a column already holding its value is dropped; a plan that changes nothing is refused), the line item it will write or reprice, the prior numbers before and after, the status steps in order, and what the verb does not do, under a plan_hash committed to the columns' before values, the status and updated_at; nothing is written.",
+    inputSchema: { type: 'object', properties: { update: { type: 'object', description: '{ job_id (find_job), set? ({ column: value }; null clears a column that may be blank), status? (waiting | working | ready_to_bill | billed | paid), reason?, line_name? (with set.revenue on a job with no line item: the new line item\'s name), prior_numbers? ({ add?: [\'C# 543\'], remove?: [\'HCP 550\'] }), keep_old_number? (false: a number set replaces is not kept as a prior number), allow_number_jump? }' } }, required: ['update'] },
   },
   {
     name: 'apply_job_update',
@@ -986,8 +986,8 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_sub_labor',
-    description: "Dry-run a sub labor sheet on a job (v2.6944), as Jobs → Subs → Pay's New Sub Labor and Edit window write it, as you under RLS. Three actions. add makes a sheet for one person on one job, anyone the form's Paid to step offers (a subcontractor, a primary, or one of the Office Team: a master technician, an assistant, an estimator, a superintendent): its day (date, with through when the work ran several days), its lines (each a flat amount, or hours at a rate — one way a sheet, as the form's switch holds it), a note, and stated: { source } when the days come from a record outside the app and not a punch. A sheet has no column for a note, a span or a source, so a line's day and the stated mark ride in the line's own words (\"2026-10-14 · Rough-in (stated, their own day log)\") and the note, the span and the source land on the job's activity as a note by you. change moves a sheet's day, replaces its lines whole (the Edit window's save) or moves the sheet to another job with job_id (the Edit window's change beside the job: the sheet takes that job, its number and its address, its payments go with it, and the plan shows both jobs' sub labor and profit before and after). remove deletes a sheet, held while it carries a payment (the screen would delete those without a trace). The plan is the server's read: the job and the person as they stand (refused for a helper or anyone else the form's Paid to step does not offer; for an archived person, a sub on the bench, a job with no address; a teammate's sheet is their own, which the Pay ledger counts as owed to them on top of their wages, and the plan says so), the sheet and each line as it would land with what it owes them and what it costs the job, their other sheets on the job (a sheet of theirs on the same days refuses the plan unless second_sheet_ok), every sheet on the job, the job's sub labor before and after from the Job window's own kernel and the profit band before and after as get_job works it out, the job's allocated bank rows that may be this same pay (the same dollars would count twice: as a card charge and as sub labor), what it sets off and what it does not do. The hash commits to all of it but the profit band, so a sheet added or changed on the job since refuses the apply. It tells nobody and records no payment: plan_sub_labor_payment does that.",
-    inputSchema: { type: 'object', properties: { labor: { type: 'object', description: "{ action?: 'add', job_id (find_job), person (a people.id, a users.id or one person's whole name), date (YYYY-MM-DD, never ahead of today), through?, lines: [{ what, day?, amount } | { what, day?, hours, rate, count? }] (1 to 40, all flat or all hours at a rate), note?, stated?: { source }, second_sheet_ok? } | { action: 'change', sheet_id, job_id? (move the sheet to this job), date?, lines? (replaces every line), stated?, reason? } | { action: 'remove', sheet_id, reason }" } }, required: ['labor'] },
+    description: "Dry-run a sub labor sheet on a job (v2.6944), as Jobs → Subs → Pay's New Sub Labor and Edit window write it, as you under RLS. Three actions. add makes a sheet for one person on one job, anyone the form's Paid to step offers (a subcontractor, a primary, or one of the Office Team: a master technician, an assistant, an estimator, a superintendent): its day (date, with through when the work ran several days), its lines (each a flat amount, or hours at a rate — one way a sheet, as the form's switch holds it), a note, and stated: { source } when the days come from a record outside the app and not a punch. A sheet has no column for a note, a span or a source, so a line's day and the stated mark ride in the line's own words (\"2026-10-14 · Rough-in (stated, their own day log)\") and the note, the span and the source land on the job's activity as a note by you. change moves a sheet's day, replaces its lines whole (the Edit window's save) or moves the sheet to another job with job_id (the Edit window's change beside the job: the sheet takes that job, its number and its address, its payments go with it, and the plan shows both jobs' sub labor and profit before and after); job_id naming the sheet's own job brings the sheet's number up to date when the job's has changed under it (0.135.0: the sheet stays on its job by its link, the number is the text it is listed under, and the plan is refused when the new number leads to another job, since the table follows a sheet's number). remove deletes a sheet, held while it carries a payment (the screen would delete those without a trace). The plan is the server's read: the job and the person as they stand (refused for a helper or anyone else the form's Paid to step does not offer; for an archived person, a sub on the bench, a job with no address; a teammate's sheet is their own, which the Pay ledger counts as owed to them on top of their wages, and the plan says so), the sheet and each line as it would land with what it owes them and what it costs the job, their other sheets on the job (a sheet of theirs on the same days refuses the plan unless second_sheet_ok), every sheet on the job, the job's sub labor before and after from the Job window's own kernel and the profit band before and after as get_job works it out, the job's allocated bank rows that may be this same pay (the same dollars would count twice: as a card charge and as sub labor), what it sets off and what it does not do. The hash commits to all of it but the profit band, so a sheet added or changed on the job since refuses the apply. It tells nobody and records no payment: plan_sub_labor_payment does that.",
+    inputSchema: { type: 'object', properties: { labor: { type: 'object', description: "{ action?: 'add', job_id (find_job), person (a people.id, a users.id or one person's whole name), date (YYYY-MM-DD, never ahead of today), through?, lines: [{ what, day?, amount } | { what, day?, hours, rate, count? }] (1 to 40, all flat or all hours at a rate), note?, stated?: { source }, second_sheet_ok? } | { action: 'change', sheet_id, job_id? (move the sheet to this job; the sheet's own job brings its number up to date), date?, lines? (replaces every line), stated?, reason? } | { action: 'remove', sheet_id, reason }" } }, required: ['labor'] },
   },
   {
     name: 'apply_sub_labor',
@@ -2645,6 +2645,12 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
           if (!res.ok) throw new Error(restError(res.status, res.body))
           return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
         },
+        // 0.135.0: the office's next number (next_job_number_suggestion, STABLE, so over GET), read when the plan sets an all-digit number.
+        value: async (path, query) => {
+          const res = await restGet(session, path, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return res.body
+        },
       }
       let world
       try {
@@ -2694,7 +2700,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       // columns, the price, the percent and the kind as one PATCH under RLS as the dev, then the status through the
       // Pipeline's own update_job_status one step at a time. No wrapper RPC: the dry run is this server's read of the job
       // and of every row a new id names (devMcpJobs.ts), hashed with the payload; apply reads again and writes only when
-      // the hash still matches. Never as anyone else.
+      // the hash still matches. Never as anyone else. 0.135.0: the same PATCH carries prior_numbers, the number a
+      // column gives up and what the plan adds or takes off, so a number that changed is still found by.
       if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
       const built = writeRpcBody(name, args)
       if (!built.ok) return refused(built.error)
@@ -2705,6 +2712,12 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
           const res = await restGet(session, table, query)
           if (!res.ok) throw new Error(restError(res.status, res.body))
           return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+        // 0.135.0: the office's next number (next_job_number_suggestion, STABLE, so over GET), read when the plan sets an all-digit number.
+        value: async (path, query) => {
+          const res = await restGet(session, path, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return res.body
         },
       }
       const errored = (text: string): Outcome => ({ log: { status: 'error', target: built.target, error: text }, text, isError: true })
@@ -2745,7 +2758,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         // return=minimal says nothing about rows RLS kept: read the columns back and say what landed.
         const back = await restGet(session, 'jobs_ledger', `select=${Object.keys(patch).join(',')}&id=eq.${job.id}`)
         const row = (back.ok && Array.isArray(back.body) ? back.body[0] : null) as Record<string, unknown> | null
-        const stuck = planned.filter((c) => row && String(row[c.column] ?? '') !== String(c.after ?? ''))
+        const stuck = planned.filter((c) => row && !landedSame(row[c.column], c.after))
         landed = { changes: planned.filter((c) => !stuck.includes(c)), held: stuck.length ? `This account could not change ${stuck.map((c) => c.column).join(', ')} on this job (RLS let no row through).` : null }
       }
       let status: { from: JobStatus; steps: Array<{ to: JobStatus; ok: boolean; error?: string | null; deleted_ready_to_bill_invoices?: number }> } | null = null
@@ -3664,6 +3677,13 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
           if (!res.ok) throw new Error(restError(res.status, res.body))
           return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
         },
+        // 0.135.0: where a job's number leads (resolve_job_ledger_id_by_number, STABLE, so over GET), read before a
+        // sheet's stale number is brought up to date, since the sheet table follows the number to its job.
+        value: async (path, query) => {
+          const res = await restGet(session, path, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return res.body
+        },
         // The profit band is shown on the plan only; the apply's hash does not hold it, so the apply skips the read.
         ...(built.step === 'plan'
           ? {
@@ -3743,7 +3763,9 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         const row = (back.ok && Array.isArray(back.body) ? back.body[0] : null) as SheetRow | null
         const asPlanned = !!row && Object.entries(patch).every(([k, v]) => (k === 'labor_rate' ? Number((row as unknown as Record<string, unknown>)[k]) === Number(v) : String((row as unknown as Record<string, unknown>)[k] ?? '') === String(v ?? '')))
         if (!asPlanned) return ok(subLaborAppliedWords(p, label, { ok: false, error: `${noRow}${landed.length ? ` Written before that: ${landed.join(', ')}.` : ''}` }), { target })
-        detail = { sheet_id: p.sheet_id, landed, sheet: { who: row!.assigned_to_name, day: row!.job_date, sheet_rate: row!.labor_rate == null ? null : Number(row!.labor_rate) } }
+        // A number written alone is followed by the table to its job: the plan read where it leads, and this says so if the link moved anyway.
+        if (!('job_ledger_id' in patch) && (row!.job_ledger_id ?? null) !== (world.sheet?.job_ledger_id ?? null)) return errored(`The sheet's number was written and the table moved the sheet's job with it: it was on ${world.sheet?.job_ledger_id ?? 'no job'} and is on ${row!.job_ledger_id ?? 'no job'} now. Put it back with plan_sub_labor { action: 'change', sheet_id, job_id } naming the job it belongs on.`, target)
+        detail = { sheet_id: p.sheet_id, landed, sheet: { who: row!.assigned_to_name, day: row!.job_date, job_number: row!.job_number, sheet_rate: row!.labor_rate == null ? null : Number(row!.labor_rate) } }
       } else {
         const gone = await restDelete(session, 'people_labor_jobs', `id=eq.${p.sheet_id}`)
         if (!gone.ok) return errored(restError(gone.status, gone.body), target)
