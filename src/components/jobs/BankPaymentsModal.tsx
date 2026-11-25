@@ -34,7 +34,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { retainageReleaseDraft, type RetainageHeldLine } from '../../lib/ar/retainageHeld'
 import { draftRetainageReleaseBill } from '../../lib/ar/retainageHeldIo'
 import { depositClearsYmd } from '../../lib/jobs/checkClearing'
-import { arApplyClosesReplacedCase, arCaseDay, arCaseMoney, arCaseThisReplaces, arCombinedReplacementFor, arMadeGoodAfterApply, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
+import { arApplyClosesReplacedCase, arCaseAfterClose, arCaseDay, arCaseMoney, arCaseThisReplaces, arCombinedReplacementFor, arMadeGoodAfterApply, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
 import { arCaseFeeOffer, type ArCaseFeeRow } from '../../lib/jobs/arReturnCaseFee'
 import { listArReturnCaseFees } from '../../lib/jobs/arReturnCaseFeeIo'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
@@ -452,6 +452,11 @@ export default function BankPaymentsModal({
   )
   /** The case ids, for the selection writers that would otherwise fall back to the first deposit. */
   const caseIdsRef = useRef<Set<string>>(new Set())
+  /** True after a close that left no other case (punch list #76): the pane holds nothing until a row is picked, and no read or filter picks the first deposit for it. */
+  const holdNothingRef = useRef(false)
+  useEffect(() => {
+    if (!open) holdNothingRef.current = false
+  }, [open])
   useEffect(() => {
     caseIdsRef.current = new Set(caseViews.map((v) => v.id))
   }, [caseViews])
@@ -522,6 +527,7 @@ export default function BankPaymentsModal({
   const [mobilePane, setMobilePane] = useState(false)
   const narrow = bodyWidth != null && bodyWidth > 0 && bodyWidth < 640
   const selectRow = useCallback((id: string) => {
+    holdNothingRef.current = false
     setSelectedId(id)
     setMobilePane(true)
   }, [])
@@ -960,6 +966,7 @@ export default function BankPaymentsModal({
       setSelectedId((prev) => {
         if (prev && rows.some((r) => r.mercury_transaction_id === prev)) return prev
         if (prev && caseIdsRef.current.has(prev)) return prev
+        if (!prev && holdNothingRef.current) return null
         const first = rows[0]
         return first?.mercury_transaction_id ?? null
       })
@@ -1612,6 +1619,7 @@ export default function BankPaymentsModal({
       if (prev && filteredCandidates.some((r) => r.mercury_transaction_id === prev)) return prev
       if (prev && foundElsewhere.some((r) => r.mercury_transaction_id === prev)) return prev
       if (prev && caseViews.some((v) => v.id === prev)) return prev
+      if (!prev && holdNothingRef.current) return null
       return orderedFiltered[0]?.mercury_transaction_id ?? foundElsewhere[0]?.mercury_transaction_id ?? caseViewsShown[0]?.id ?? null
     })
   }, [open, filteredCandidates, orderedFiltered, foundElsewhere, caseViews, caseViewsShown])
@@ -2124,6 +2132,16 @@ export default function BankPaymentsModal({
     }
   }
 
+  /** After a case closes the pane lands on the next case, or holds nothing when none is left (`arCaseAfterClose`). */
+  function landAfterCaseClose(closedId: string) {
+    const next = arCaseAfterClose(
+      caseViewsShown.map((v) => v.id),
+      closedId,
+    )
+    holdNothingRef.current = next == null
+    setSelectedId(next)
+  }
+
   async function closeCase(reason: ArCaseCloseReason, note: string) {
     if (!selectedCaseView || !canApply) return
     setCaseBusy('close')
@@ -2142,7 +2160,7 @@ export default function BankPaymentsModal({
         return
       }
       showToast(reason === 'settled_other_way' ? 'Closed as settled another way.' : 'Closed as not coming.', 'success')
-      setSelectedId(null)
+      landAfterCaseClose(selectedCaseView.id)
       await afterCaseWrite(false)
     } finally {
       setCaseBusy(null)
@@ -2176,7 +2194,7 @@ export default function BankPaymentsModal({
         setCaseError(err)
         return
       }
-      setSelectedId(null)
+      landAfterCaseClose(selectedCaseView.id)
       void refreshList()
     } finally {
       setCaseBusy(null)
@@ -2234,7 +2252,7 @@ export default function BankPaymentsModal({
       const sync = jobId ? await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, jobId) : { ok: true as const }
       const warning = typeof res.data?.warning === 'string' ? res.data.warning : !sync.ok ? sync.message : null
       showToast(warning ? `The bill is back, but: ${warning}` : `${arCaseMoney(view.amount)} is off the job. Bill it again from Ready to Bill.`, warning ? 'error' : 'success')
-      setSelectedId(null)
+      landAfterCaseClose(view.id)
       await afterCaseWrite(true)
     } finally {
       setCaseBusy(null)
