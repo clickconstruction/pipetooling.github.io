@@ -2,7 +2,7 @@
 name: "Messages: file the mail we already have onto its jobs, for the record"
 number: 332
 group: gated
-status: un-parked 2026-11-13 on the owner's word ("let's also do #332") · the contact step built and the run rehearsed against a made-up seat (v2.7144) · recounted, read-only · nothing filed · the pilot waits on the never-tag list, calls 11 to 13 and a yes
+status: un-parked 2026-11-13 on the owner's word ("let's also do #332") · the contact step built and the run rehearsed against a made-up seat (v2.7144) · recounted, read-only · nothing filed · the pilot's plan has a yes, answered 2026-11-25 (UTC) in the managing session: prepare the plan, file nothing until the user says apply, and the office's never-tag list comes first · the pilot waits on the never-tag list, calls 11 to 13 and a yes for its apply
 summary: >
   The office's mail about a job sits in thirteen separate mailboxes. Punch list #324 made it safe to
   file old mail onto a job: it lands at its own date and asks nobody for a reply. This card is the
@@ -12,9 +12,10 @@ summary: >
   which about a quarter match by the customer's address alone, and a single-job customer holds 4
   to 13 conversations. The hard part is not the cost. It is picking the right job for a customer
   who has several, and keeping private mail out.
-next: Start at the section Pick up here. The owner answers calls 11 to 13, the office names the never-tag list, someone opens the pilot customer's thread, then the pilot on one job outside office hours.
+next: Start at the section Pick up here. The office names the never-tag list, which comes first. Then the pilot's plan is prepared for the user to read, and nothing is filed until the user says apply. The owner still answers calls 11 to 13, and someone opens the pilot customer's thread.
 size: M; left: the runs, then call 12's rule if it is a yes (S)
-blocker: The never-tag list, which only the office can name, the owner's calls 11 to 13, and a named yes for the pilot's plan and apply.
+blocker: The never-tag list, which only the office can name and which comes before the plan. Then the owner's calls 11 to 13, and a yes for the pilot's apply. The pilot's plan has its yes.
+ask: office · decide · Name the never-tag list: every address or domain whose mail is private and must never be filed onto a job.
 ver: v2.7144
 opinion: run the pilot — the rule is sure of 94 and the app can name the senders of 17 today, 34 after five presses; who the app knows is now the limit, ahead of which job
 mockup: not required — a data run through the dev seat; no screen changes
@@ -287,6 +288,7 @@ The owner lifted the park on 2026-11-13. Everything that can be done without a w
 2. **The office names the never-tag list.** One address or `@domain` a line, in `never-tag.txt` in the run's folder: the attorneys, the accountant, payroll, the bank, insurers, anyone whose mail is private. The app holds no law-firm addresses, so `seed` wrote an empty one twice.
 3. **Someone who knows the pilot job is named,** to read its plan sheet and then its Activity.
 4. **A yes for the pilot's `plan`,** which reads every mail it would file, and **a yes for its `apply`,** outside office hours.
+   **The plan's yes was given on 2026-11-25 (UTC) in the managing session.** The question: may the pilot's plan be prepared for the user to read before any apply? The answer, quoted from that session's record of the user's answers: *Yes, prepare the plan. Nothing is filed until the user says apply; the office's never-tag list comes first.* The apply has no yes yet. Step 2 still comes before the plan, and `plan` refuses without the list.
 5. **The pilot on one job.** `plan --job <n>`, read the sheet, do the presses it names, plan again, `apply --job <n> --approved`. The reader opens the job's Activity. Check that New and the badge did not move. Then `undo` once and file it again.
 6. **The rest of the ready conversations,** a few jobs a batch, each sheet approved first. After the five presses that is 34 of the 94.
 7. **The 60 held for a contact nobody has.** See below.
