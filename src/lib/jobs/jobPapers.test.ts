@@ -201,3 +201,21 @@ describe('the way back from the signing page', () => {
     }
   })
 })
+
+describe('the GC’s own form (#389 step 7)', () => {
+  it('only a form with words and no settings can be the GC’s own', async () => {
+    const { canBeGcOwn } = await import('./jobPapers')
+    expect(canBeGcOwn({ isForm: true, built: false, hasWords: true })).toBe(true)
+    expect(canBeGcOwn({ isForm: true })).toBe(true)
+    expect(canBeGcOwn({ isForm: false, built: false, hasWords: true })).toBe(false)
+    expect(canBeGcOwn({ isForm: true, built: true, hasWords: true })).toBe(false)
+    expect(canBeGcOwn({ isForm: true, built: false, hasWords: false })).toBe(false)
+  })
+
+  it('says what the tick did, and that nobody signs again', async () => {
+    const { GC_OWN_FORM, gcOwnToast } = await import('./jobPapers')
+    expect(GC_OWN_FORM.tick).toBe('This is the GC’s own form')
+    expect(gcOwnToast('Sample GC form', true)).toBe('Sample GC form is marked as the GC’s own form. Nobody signs again.')
+    expect(gcOwnToast('Sample GC form', false)).toBe('Sample GC form is no longer marked as the GC’s own form. Nobody signs again.')
+  })
+})

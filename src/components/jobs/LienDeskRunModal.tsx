@@ -10,6 +10,7 @@ import { lienRunGuideCode } from '../../lib/jobs/lienHelpGuideCode'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
 import { runEnvelopeHold, runMailing, type RunMailing } from '../../lib/jobs/lienRunPaper'
 import { runLabelCsv, runLabelFilename, runLabelRows, runLabelSavedWords } from '../../lib/jobs/lienRunLabels'
+import { lienNoticesPrintSnapshot } from '../../lib/jobs/lienPrintSworn'
 import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticePrintRefusal, runNoticeProblems, runOpening, runPacketHtml, runPagesHtml, runPayPageBlocks, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -721,7 +722,7 @@ export default function LienDeskRunModal({
     if (ns.length === 0) return
     // A print counts as a send (docs/SENT_COPIES.md): the packet is filed as it printed, on every job in it.
     const packetJobIds = ns.flatMap((n) => (partsOf(n) ?? [{ jobId: n.jobId }]).map((p) => p.jobId))
-    const filing = { kind: 'lien_notice_packet', title: ns.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${ns.length} notices`, jobIds: packetJobIds }
+    const filing = { kind: 'lien_notice_packet', title: ns.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${ns.length} notices`, jobIds: packetJobIds, sourceSnapshot: lienNoticesPrintSnapshot(ns) }
     // The sheet still lists in red what stayed out: the stopped notices' envelopes, each with its reason.
     if (!printAndFile(runPacketHtml(ns, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob, lienRunGuideCode(), which === 'ready' ? mailing.held : []), filing)) {
       showToast('Popup blocked — allow popups to print the packet.', 'error')
@@ -738,7 +739,7 @@ export default function LienDeskRunModal({
       showToast(refused, 'error')
       return
     }
-    const filing = { kind: 'lien_notice', title: `${n.label} · copy for ${r.label.toLowerCase()}`, jobIds: partsIds(n).map((p) => p.jobId), recipientName: r.name || null }
+    const filing = { kind: 'lien_notice', title: `${n.label} · copy for ${r.label.toLowerCase()}`, jobIds: partsIds(n).map((p) => p.jobId), recipientName: r.name || null, sourceSnapshot: lienNoticesPrintSnapshot([n]) }
     if (!printAndFile(runCopyHtml(n, r, invoiceSectionsByJob, payPagesByJob), filing)) {
       showToast('Popup blocked — allow popups to print the copy.', 'error')
       return
@@ -752,7 +753,7 @@ export default function LienDeskRunModal({
       showToast(refused, 'error')
       return
     }
-    const filing = { kind: 'lien_notice', title: `Envelope ${env.n} · ${env.label} ${env.name}`.trim(), jobIds: inside.flatMap((n) => partsIds(n).map((p) => p.jobId)), recipientName: env.name || null }
+    const filing = { kind: 'lien_notice', title: `Envelope ${env.n} · ${env.label} ${env.name}`.trim(), jobIds: inside.flatMap((n) => partsIds(n).map((p) => p.jobId)), recipientName: env.name || null, sourceSnapshot: lienNoticesPrintSnapshot(inside) }
     if (!printAndFile(runEnvelopeHtml(env, invoiceSectionsByJob, payPagesByJob), filing)) {
       showToast('Popup blocked — allow popups to print the envelope.', 'error')
       return

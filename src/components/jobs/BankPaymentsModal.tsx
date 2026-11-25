@@ -26,7 +26,7 @@ import {
 import { ArDepositRow } from './ar/ArDepositRow'
 import { ArReturnCaseRow } from './ar/ArReturnCaseRow'
 import { ArReturnCasePane, type ArCaseCloseReason } from './ar/ArReturnCasePane'
-import { ArClosedTestCases } from './ar/ArClosedTestCases'
+import { ArClosedCases } from './ar/ArClosedCases'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { useArReturnCases } from '../../hooks/useArReturnCases'
 import { useRetainageHeld } from '../../hooks/useRetainageHeld'
@@ -453,10 +453,14 @@ export default function BankPaymentsModal({
   )
   /** The case ids, for the selection writers that would otherwise fall back to the first deposit. */
   const caseIdsRef = useRef<Set<string>>(new Set())
-  /** True after a close that left no other case (punch list #76): the pane holds nothing until a row is picked, and no read or filter picks the first deposit for it. */
-  const holdNothingRef = useRef(false)
+  /**
+   * True while the pane holds nothing until a row is picked: no read, filter or toggle picks the first deposit for it.
+   * Set when the window opens (punch list #437: Apply starts from a row someone chose) and after a close that left no
+   * other case (punch list #76). Pressing a row clears it.
+   */
+  const holdNothingRef = useRef(open)
   useEffect(() => {
-    if (!open) holdNothingRef.current = false
+    holdNothingRef.current = open
   }, [open])
   useEffect(() => {
     caseIdsRef.current = new Set(caseViews.map((v) => v.id))
@@ -1155,7 +1159,9 @@ export default function BankPaymentsModal({
             setSelectedId((sel) =>
               next.some((r) => r.mercury_transaction_id === sel) || (sel != null && caseIdsRef.current.has(sel))
                 ? sel
-                : next[0]?.mercury_transaction_id ?? null,
+                : sel == null && holdNothingRef.current
+                  ? null
+                  : next[0]?.mercury_transaction_id ?? null,
             )
           })
           return next
@@ -2795,8 +2801,8 @@ export default function BankPaymentsModal({
               {listError && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{listError}</p>
               )}
-              {/* Punch list #443, row 5: a dev's list of closed cases on test jobs, with Reopen. It draws nothing for anyone else. */}
-              {includeHiddenArDeposits ? null : <ArClosedTestCases role={authRole} allCases={returnCases.allCases} onReopened={() => afterCaseWrite(false)} />}
+              {/* Punch list #443, row 5: the office's list of closed cases, with Reopen. It draws nothing for anyone else. */}
+              {includeHiddenArDeposits ? null : <ArClosedCases role={authRole} allCases={returnCases.allCases} todayYmd={todayYmd} onReopened={() => afterCaseWrite(false)} />}
               {caseViewsShown.length > 0 ? (
                 <div data-testid="ar-came-back-group">
                   <div

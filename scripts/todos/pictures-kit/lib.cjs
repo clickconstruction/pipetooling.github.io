@@ -1,5 +1,5 @@
 // Shooter for the punch-list pictures (punch list #438): every page is a sealed lens frame on the local dev server.
-// Run a script from the repo root: NODE_PATH=$PWD/node_modules node to-dos/punch-list-answers-and-pictures/draw/<group>/<script>.cjs
+// Run a script from the repo root: NODE_PATH=$PWD/node_modules node scripts/todos/pictures-kit/<group>/<script>.cjs
 // Pictures land in PIC_OUT, or in a folder under the system's temp folder. Nothing is written into the repo.
 const { chromium } = require('playwright')
 const fs = require('fs')

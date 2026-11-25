@@ -9,6 +9,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderSettled } from '../../test/renderSmokeMocks'
+import { pickArDeposit } from '../../test/pickArDeposit'
 import BankPaymentsModal from './BankPaymentsModal'
 import { buildBilledStageRows } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -110,6 +111,7 @@ describe('BankPaymentsModal · a check that came back pays no bill (render smoke
 
   it('a plain deposit still gets the allocation lines', async () => {
     await open()
+    await pickArDeposit(/250\.00 from DLF/)
     await waitFor(() => expect(screen.getAllByTestId('ar-allocation-row').length).toBeGreaterThan(0))
     expect(screen.queryByTestId('ar-came-back-note')).toBeNull()
   })

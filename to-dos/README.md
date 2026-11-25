@@ -34,7 +34,9 @@ PR like any other.
    notes and `docs/recent-features/` carry the record from then on.
 2. **A mock-up is a file beside the to-do** — `mockup.html`, `before-after-pr2.html`, any `.html`
    in the folder (for a flat to-do, a top-level page named after it:
-   `<slug>-earned-revenue.html`). Nothing declares it: the board's links line lists every such
+   `<slug>-earned-revenue.html`). The card's pictures page is not one (`pictures.html`, or
+   `<slug>-pictures.html` for a flat to-do): it shows the screen and has a chip of its own.
+   Nothing declares it: the board's links line lists every such
    file on the next build. An artifact link written anywhere in the
    prose (`*Office Days* — https://claude.ai/artifact/…`) is picked up the same way. **A to-do
    with no `.html` beside it reads *waiting on a mock-up*** on the board (and the board has a

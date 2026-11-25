@@ -372,6 +372,18 @@ export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, us
               <ValueSentence text={print.press.foot} />
             </p>
           ) : null}
+          {print.stopped.length > 0 ? (
+            <>
+              <ul data-lien-run-print-stopped style={{ ...small, margin: '6px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 4 }}>
+                {print.stopped.map((s) => (
+                  <li key={s.itemId} data-lien-run-print-stopped-row={s.kind}>
+                    <WorkedOutValue>{s.label}</WorkedOutValue> {s.why}
+                  </li>
+                ))}
+              </ul>
+              {print.stopped.some((s) => s.kind === 'held') ? <p style={{ ...small, margin: '6px 0 0' }}>{PRINT.stoppedDoor}</p> : null}
+            </>
+          ) : null}
           {run.counts.leftOut > 0 ? (
             <p style={{ ...small, margin: '6px 0 0' }}>
               <WorkedOutValue>{String(run.counts.leftOut)}</WorkedOutValue> left out of this run {run.counts.leftOut === 1 ? 'does' : 'do'} not print. {run.counts.leftOut === 1 ? 'It is' : 'They are'} listed below.

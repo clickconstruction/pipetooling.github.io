@@ -654,6 +654,8 @@ describe('LienDeskRunModal · print one item (v2.4853)', () => {
     expect(html).toContain('copy for owner of record</title>')
     expect(html).not.toContain('Lowbeck Contracting</title>')
     expect(filing).toMatchObject({ kind: 'lien_notice', title: '650 · AXO Schertz · copy for owner of record', jobIds: ['j650'], recipientName: 'Elwick Holdings LLC' })
+    // Step 7: a copy printed alone keeps what the notice said, as the packet does.
+    expect(filing).toMatchObject({ sourceSnapshot: { lienPrint: { v: 1, papers: [{ kind: 'notice', jobIds: ['j650'] }] } } })
     // Half a notice is not in the mail yet.
     expect(printed).toEqual([])
     expect(screen.getByTestId('run-print-j650-owner').textContent).toContain('Printed ✓')

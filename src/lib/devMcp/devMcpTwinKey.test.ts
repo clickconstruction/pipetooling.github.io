@@ -215,7 +215,7 @@ describe('a twin\'s keys from the dev seat (v2.7900)', () => {
     expect(SERVER.match(/rest(Rows|Post)\(session, '(PATCH|POST|DELETE)', 'twin_credentials'/g)).toHaveLength(2) // two writes of the table: this one, and the archive pair's revoke of a twin's live keys before archive-user (v2.7970, devMcpTwinArchive.test.ts)
     expect(branch).not.toContain('token_hash')
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.134.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.135.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else')
     expect(SERVER).toContain('plan_twin_key_revoke → apply_twin_key_revoke (a twin')
     expect(README).toContain('| `read_twin_keys(twin?)` · `plan_twin_key_revoke(revoke)` · `apply_twin_key_revoke(revoke, plan_hash)` |')

@@ -2,7 +2,7 @@
 name: "Task Mode: the refresh and the doer's tools"
 number: 369
 group: close
-status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · all fifteen steps live on main 2026-11-17, A1 to D3 (v2.7533 to v2.7551) · both migrations pushed and checked on prod · eight small presses from the browser walk of 2026-11-21 in v2.8230 · walked in an iPhone simulator 2026-11-25: the page and its presses hold, and one fault was found, a helper's done line names nobody when a dev gave the task · that fault mended in v2.8560 · Manage's Delete, which said nothing, says what happened in v2.8572 · left: the simulator's look at the names mend, a look at the delete's line, and a walk on a real phone
+status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · all fifteen steps live on main 2026-11-17, A1 to D3 (v2.7533 to v2.7551) · both migrations pushed and checked on prod · eight small presses from the browser walk of 2026-11-21 in v2.8230 · walked in an iPhone simulator 2026-11-25: the page and its presses hold, and one fault was found, a helper's done line names nobody when a dev gave the task · that fault mended in v2.8560 · Manage's Delete, which said nothing, says what happened in v2.8572 · left: the simulator's look at the names mend, a look at the delete's line, and a walk on a real phone · both looks made in the simulator on 2026-11-25, and both hold: the done line names who hears, a task with Tell me off has no such line, and Manage's delete reads *Task deleted.* · seen on that look and not built: the New task window misbehaved twice, once each way, with no cause found in the code, and the done row gives its words a narrow column on a phone
 summary: >
   The owner sent a screenshot of Task Mode and asked for a visual refresh in the family of the New task
   window, and for tools that let the person doing tasks act without waiting on someone. Checklist → Today
@@ -11,7 +11,7 @@ summary: >
   card: move a task to another day, say you cannot do it, say it no longer applies, go through the old
   ones, add proof as you finish, add your own task or a follow-up, hand a task on, and draw a map or leave
   a point on one.
-next: The simulator looks at a helper's done line once v2.8560 is live, to see it name who hears. A walker deletes one ZZ Test task from Manage once v2.8572 is live and reads *Task deleted.* Then someone walks Task Mode on a real phone.
+next: A second look at the New task window on a quiet day, each send on its own yes: five sends in a row from Manage, each followed by ＋ New task at once, to see whether it ever fails to open or opens holding the task just sent. Weigh the done row on a phone, where four presses leave the words about 75 points. Then someone walks Task Mode on a real phone.
 size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S), built; left: a look at the names mend (XS), a look at the delete's line (XS) and a walk on a phone (XS)
 blocker: a person at a phone for the walk.
 ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545 · v2.7546 · v2.7547 · v2.7548 · v2.7549 · v2.7550 · v2.7551 · v2.8560 · v2.8572

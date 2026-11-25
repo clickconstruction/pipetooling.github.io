@@ -10,6 +10,7 @@ import type { LienAffidavitFields } from '../../lib/jobsDocuments/lienFilingDocu
 import { lienAffidavitPrintRun } from '../../lib/jobs/lienAffidavitBatch'
 import type { RunNotice } from '../../lib/jobs/lienDeskRun'
 import type { LienGetItRight, LienRunLine } from '../../lib/jobs/lienGetItRight'
+import { lienPrintSnapshotPapers } from '../../lib/jobs/lienPrintSworn'
 import { LIEN_STACK_CLASS } from '../../lib/jobs/lienRunStack'
 import { useLienRunPrint, type LienRunPrintHookInput } from './useLienRunPrint'
 
@@ -95,6 +96,20 @@ describe('useLienRunPrint', () => {
     expect(openMock).not.toHaveBeenCalled()
   })
 
+  it('a right notice the run window holds is named with its reason, and the press does not call the run not right', async () => {
+    // The checklist counts job j1's notice as right from the Board's chip. The run window holds it for a signature.
+    const NOTICE_ONLY = runOf({ right: [line({ kind: 'notice', jobId: 'j1' })], settle: [line({ kind: 'notice', jobId: 'j9', standing: 'settle' })] })
+    const view = mount({ run: NOTICE_ONLY, noticesFor: () => [{ ...notice(1), signature: null }] })
+    await waitFor(() => expect(view.result.current!.stopped).toHaveLength(1))
+    expect(view.result.current!.stopped).toEqual([{ itemId: 'it1', jobId: 'j1', label: '1001 · ZZ Shop 1', kind: 'held', why: 'It waits on the leader’s signature.' }])
+    expect(view.result.current!.press).toMatchObject({ dead: true, papers: 0 })
+    expect(view.result.current!.press.foot).not.toContain('No paper is right yet')
+    expect(view.result.current!.press.foot).toContain('No paper prints now.')
+    view.result.current!.print()
+    expect(openMock).not.toHaveBeenCalled()
+    expect(fileMock).not.toHaveBeenCalled()
+  })
+
   it('the press prints one stack, files each paper as its own press files it, and stamps the run’s notices printed', async () => {
     const view = mount()
     await waitFor(() => expect(view.result.current!.press.dead).toBe(false))
@@ -109,10 +124,15 @@ describe('useLienRunPrint', () => {
     expect(html).toContain('ZZ Shop 1')
     expect(html).not.toContain('ZZ Shop 2')
     // One packet for the notices, on its job, and each affidavit alone on its job.
-    expect(fileMock.mock.calls.map((c) => c[0])).toEqual([
+    expect(fileMock.mock.calls.map((c) => c[0])).toMatchObject([
       { kind: 'lien_notice_packet', title: '§ 53.056 notice packet', jobIds: ['j1'], how: 'print' },
       { kind: 'lien_affidavit', title: 'Lien Affidavit — Job J700', jobIds: ['job-1'], how: 'print' },
     ])
+    // Step 7: each filed copy keeps what its paper said as it printed, the notice with its desk item.
+    const kept = fileMock.mock.calls.map((c) => lienPrintSnapshotPapers((c[0] as { sourceSnapshot?: Record<string, unknown> }).sourceSnapshot))
+    expect(kept.map((papers) => papers.map((p) => [p.kind, p.jobIds]))).toEqual([[['notice', ['j1']]], [['affidavit', ['job-1']]]])
+    expect(kept[0]![0]!.itemIds).toHaveLength(1)
+    expect(kept[1]![0]!.fields.unpaidAmount).toBe('2000.00')
     // Each filed copy is the paper alone, never the stack.
     for (const c of fileMock.mock.calls) expect((c[1] as { html: string }).html).not.toContain(LIEN_STACK_CLASS.divider)
     expect(stampMock).toHaveBeenCalledWith(['it1'], 'u1')

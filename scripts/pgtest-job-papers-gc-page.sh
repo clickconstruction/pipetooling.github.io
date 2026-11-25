@@ -5,12 +5,13 @@
 #   npm run test:pg:job-papers-gc-page
 #
 # The same bed as scripts/pgtest-job-papers-lists.sh: the Supabase Postgres image with every file in
-# supabase/migrations applied in order, then its three migrations a second time, which must change nothing. The scenario,
+# supabase/migrations applied in order, then its four migrations a second time, which must change nothing. The scenario,
 # inside one transaction that rolls back: the service key reads a job's paper built from settings as its level, its
 # plain words, the count over the office's own roster and each sub business with its day; a helper is never named; a
 # change after a signature starts the count again; a job with a prose paper or none is left out; nobody signed in reads
 # it; the office's roster answers as before; and the office sets what the GC sees, the count alone, the businesses
-# or every signer by name, which the next row keeps. It raises on its first failed assertion and ends with
+# or every signer by name, which the next row keeps; and the office marks a required form as the GC's own, which the
+# service key then reads in a list of its own. It raises on its first failed assertion and ends with
 # "job_papers_gc_page PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from
 # scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -20,7 +21,7 @@ PORT="${PGTEST_PORT:-55917}"
 NAME="pgtest-job-papers-gc-page"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # In order: each replaces a function the one before made, so run backwards the bed would test an older one.
-WRITES="$(ls supabase/migrations/*_job_papers_gc_page.sql) $(ls supabase/migrations/*_job_paper_gc_view.sql) $(ls supabase/migrations/*_job_paper_gc_proposals.sql)"
+WRITES="$(ls supabase/migrations/*_job_papers_gc_page.sql) $(ls supabase/migrations/*_job_paper_gc_view.sql) $(ls supabase/migrations/*_job_paper_gc_proposals.sql) $(ls supabase/migrations/*_job_paper_gc_own.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

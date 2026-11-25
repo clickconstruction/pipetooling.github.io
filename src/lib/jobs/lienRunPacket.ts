@@ -24,6 +24,7 @@ import { lienRunChecklistRows } from './lienRunChecklist'
 import { runEnvelopeHold, runMailing } from './lienRunPaper'
 import { lienRunParts, type LienRunPartKey } from './lienRunParts'
 import { noticeInvoicePrintSections, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
+import { lienNoticesPrintSnapshot } from './lienPrintSworn'
 import { runEnvelopes, type RunEnvelope } from './runEnvelopes'
 
 /** A job's pay page: its rows, and the codes drawn for the ones that can be paid. */
@@ -70,8 +71,8 @@ export type LienRunReadyPacket = {
   notices: CombinedRunNotice[]
   /** The whole print document. */
   html: string
-  /** How the print is filed as a sent copy: one packet on every job in it. */
-  filing: { kind: 'lien_notice_packet'; title: string; jobIds: string[] }
+  /** How the print is filed as a sent copy: one packet on every job in it, with what each notice said (step 7). */
+  filing: { kind: 'lien_notice_packet'; title: string; jobIds: string[]; sourceSnapshot: Record<string, unknown> }
   /** The copies the packet printed, `runCopyKey` each. */
   copyKeys: string[]
   /** The desk items whose every copy printed: what the print stamps printed. */
@@ -90,8 +91,28 @@ export type LienRunReadyPacketInput = {
   guideCode?: string
 }
 
+/** A notice of the run that the packet does not print now, with the reason in a sentence. */
+export type LienRunNoticeStopped = { itemId: string; jobId: string; label: string; why: string; /** `paperless`: no copy of it is paper, so nothing is wrong with it. `held`: something stops it, and the run window settles it. */ kind: 'paperless' | 'held' }
+
+/** Why a notice the checklist counts as right does not print from the run's one press. */
+export const LIEN_RUN_STOPPED_WORDS = {
+  docsmit: 'Its copies went by Docsmit, so no paper prints.',
+  paperless: 'None of its copies goes on paper.',
+  signature: 'It waits on the leader’s signature.',
+  other: 'The run window holds it.',
+} as const
+
+const asSentence = (why: string): string => {
+  const w = why.trim()
+  if (!w) return LIEN_RUN_STOPPED_WORDS.other
+  const led = w.charAt(0).toUpperCase() + w.slice(1)
+  return /[.!?]$/.test(led) ? led : `${led}.`
+}
+
+type ReadySelection = { shown: CombinedRunNotice[]; ns: CombinedRunNotice[]; held: Array<{ env: RunEnvelope; why: string }>; stopped: LienRunNoticeStopped[] }
+
 /** The notices the packet prints and the envelopes it leaves out, as the window sorts them. No document is built. */
-function readySelection(notices: ReadonlyArray<RunNotice>): { shown: CombinedRunNotice[]; ns: CombinedRunNotice[]; held: Array<{ env: RunEnvelope; why: string }> } {
+function readySelection(notices: ReadonlyArray<RunNotice>): ReadySelection {
   const shown = combineNoticesByProperty(notices, { combine: false })
   const rows = lienRunChecklistRows({ notices: [...notices], printedNow: new Map() })
   const together = shown.flatMap((n) => (n.parts && n.parts.length > 1 ? [n.parts.map((p) => p.itemId)] : []))
@@ -109,7 +130,33 @@ function readySelection(notices: ReadonlyArray<RunNotice>): { shown: CombinedRun
   const held = [...going.held, ...stopped].map((h, i) => ({ env: { ...h.env, n: going.mailed.length + i + 1 }, why: h.why }))
 
   const paperShown = shown.map((n) => ({ ...n, recipients: n.recipients.filter((r) => !recipientViaDocsmit(r)) })).filter((n) => n.recipients.length > 0)
-  return { shown, ns: paperShown.filter((n) => lienRunStackOf(partOf.get(n.itemId)) === 'ready'), held }
+  const ns = paperShown.filter((n) => lienRunStackOf(partOf.get(n.itemId)) === 'ready')
+
+  // Every notice handed in that the packet leaves out and that has not printed, with the run window's own reason
+  // for it. The press's count is `ns`; without this a notice dropped here was dropped in silence.
+  const printing = new Set(ns.map((n) => n.itemId))
+  const rowOf = new Map(rows.map((r) => [r.itemId, r]))
+  const leftOut = shown.flatMap((n): LienRunNoticeStopped[] => {
+    const row = rowOf.get(n.itemId)
+    if (printing.has(n.itemId) || !row || row.printed) return []
+    const part = partOf.get(n.itemId)
+    const base = { itemId: n.itemId, jobId: n.jobId, label: n.label }
+    if (part === 'held') return [{ ...base, kind: 'held', why: asSentence(row.held ?? '') }]
+    if (part === 'wait') return [{ ...base, kind: 'held', why: LIEN_RUN_STOPPED_WORDS.signature }]
+    if (n.recipients.length > 0 && n.recipients.every((r) => recipientViaDocsmit(r))) return [{ ...base, kind: 'paperless', why: LIEN_RUN_STOPPED_WORDS.docsmit }]
+    if (row.paperless) return [{ ...base, kind: 'paperless', why: LIEN_RUN_STOPPED_WORDS.paperless }]
+    return [{ ...base, kind: 'held', why: LIEN_RUN_STOPPED_WORDS.other }]
+  })
+  return { shown, ns, held, stopped: leftOut }
+}
+
+/**
+ * The run's notices the packet does not print now, each with its reason, in the run's order. A notice that already
+ * printed is not one. The checklist counts a notice as right from the Board's chip alone; the run window knows more
+ * (an address, a signature, a copy that goes by Docsmit), and this is how the card says so.
+ */
+export function lienRunNoticesStopped(notices: ReadonlyArray<RunNotice>): LienRunNoticeStopped[] {
+  return readySelection(notices).stopped
 }
 
 /** The notices the packet would print, in the packet's order: its count before any document is built. */
@@ -133,7 +180,7 @@ export function lienRunReadyPacket(input: LienRunReadyPacketInput): LienRunReady
   return {
     notices: ns,
     html: runPacketHtml(ns, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob, guideCode, held),
-    filing: { kind: 'lien_notice_packet', title: ns.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${ns.length} notices`, jobIds },
+    filing: { kind: 'lien_notice_packet', title: ns.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${ns.length} notices`, jobIds, sourceSnapshot: lienNoticesPrintSnapshot(ns) },
     copyKeys,
     stampIds: noticesFullyPrinted(notices, new Set(copyKeys)).map((n) => n.itemId),
     held,

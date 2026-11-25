@@ -9,6 +9,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { pickArDeposit } from '../../test/pickArDeposit'
 import BankPaymentsModal from './BankPaymentsModal'
 
 const scenario = vi.hoisted(() => ({
@@ -91,6 +92,7 @@ describe('BankPaymentsModal · Book it as Income (render smoke)', () => {
     renderWithProviders(
       <BankPaymentsModal open onClose={() => {}} authUserId="smoke-auth-user-1" authRole="assistant" billedRows={[]} onApplied={() => {}} />,
     )
+    await pickArDeposit(/from City of Sefton/)
     const box = await screen.findByTestId('ar-applied-income-fix')
     expect(box.textContent).toContain('Banking books it as Taxes and Licenses. It paid a bill, so it is income.')
     await waitFor(() => {
