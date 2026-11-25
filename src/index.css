@@ -7036,6 +7036,14 @@ tr[data-stages-row-stamped] {
   display: none !important;
 }
 
+/* A thread's reply box folded to one row (punch list #348): its grey words keep to that one line and end in dots where
+   a long name will not fit. Wrapped, the second line was cut at the box's foot. */
+[data-reply-fold='folded'] textarea::placeholder {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .thread-beside {
   flex: 0 0 min(360px, 38%);
   min-height: 0;

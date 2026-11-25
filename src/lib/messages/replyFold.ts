@@ -40,3 +40,13 @@ export function replyBoxFolded(f: ReplyFoldFacts): boolean {
   const free = !f.inJob && !f.woke && f.files === 0 && !f.opensWithWords && !f.textWaits && !f.blocked
   return free && ((f.foldBox && f.blank) || f.foldedByPress)
 }
+
+/**
+ * The box's grey words before anything is typed. Whole, it says who the words go to and then its hint. Folded, it
+ * says who alone: the two sentences wrapped to a second line beside a name of some length, and a one-row box cut that
+ * line at its foot (the simulator's walk of 2026-11-25, punch list #348). A press into the box opens it, and the hint
+ * is back.
+ */
+export function boxGreyWords(lead: string, hint: string | null, folded: boolean): string {
+  return hint && !folded ? `${lead} ${hint}` : lead
+}

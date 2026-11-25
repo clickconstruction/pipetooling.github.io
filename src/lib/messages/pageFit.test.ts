@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LANE_LIST, LONG_NAME_FIT, ONE_COLUMN, WAITING_ACTS_FIT, WAITING_NAME_FIT, WAITING_NAME_ROOM, WAITING_ROW_FIT, WENT_OUT_NAME_FIT, WENT_OUT_NAME_ROOM, WENT_OUT_ROW_FIT, WENT_OUT_WHEN_FIT } from './pageFit'
+import { LANE_LIST, LONG_NAME_FIT, ONE_COLUMN, SEARCH_HIT_ROW_FIT, SEARCH_HIT_WHEN_FIT, SEARCH_HIT_WORDS_FIT, SEARCH_WORDS_ROOM, WAITING_ACTS_FIT, WAITING_NAME_FIT, WAITING_NAME_ROOM, WAITING_ROW_FIT, WENT_OUT_NAME_FIT, WENT_OUT_NAME_ROOM, WENT_OUT_ROW_FIT, WENT_OUT_WHEN_FIT } from './pageFit'
 
 describe('pageFit', () => {
   it('names a column that takes the room it is given, not the room its widest child wants', () => {
@@ -36,5 +36,22 @@ describe('pageFit', () => {
 
   it('lets a name with no space in it break inside its column', () => {
     expect(LONG_NAME_FIT).toEqual({ overflowWrap: 'anywhere', minWidth: 0 })
+  })
+
+  it('gives a search hit a column that takes the room it is given, and lets the row wrap', () => {
+    expect(SEARCH_HIT_ROW_FIT.flexWrap).toBe('wrap')
+    expect(SEARCH_WORDS_ROOM).toBe('11rem')
+    expect([SEARCH_HIT_WORDS_FIT.display, SEARCH_HIT_WORDS_FIT.gridTemplateColumns, SEARCH_HIT_WORDS_FIT.flex, SEARCH_HIT_WORDS_FIT.minWidth]).toEqual(['grid', 'minmax(0, 1fr)', '1 1 11rem', 0])
+    // The date stays one line and sits at the right, beside the words or on the line under them.
+    expect(SEARCH_HIT_WHEN_FIT).toEqual({ marginLeft: 'auto', whiteSpace: 'nowrap' })
+  })
+
+  it('keeps a search hit\'s date beside its words at 402 px, and drops it under them at 320', () => {
+    const rem = 16
+    const gap = 0.6 * rem
+    // A row is the page less 56 px of margins, and its own border and padding take 29 px. A date is about 75 px.
+    const room = (page: number) => page - 56 - 29
+    expect(11 * rem + gap + 75).toBeLessThanOrEqual(room(402))
+    expect(11 * rem + gap + 75).toBeGreaterThan(room(320))
   })
 })

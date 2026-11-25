@@ -44,7 +44,7 @@ import { needsYouCount } from '../lib/followUp/queue'
 import { JUMP_LANE_ANCHOR, QUEUE_LANES, type JumpCounts, type JumpLane } from '../lib/messages/jumpStrip'
 import { keepWeekOpen, readWeekOpen } from '../lib/messages/topBar'
 import { EVERYONE_WORDS } from '../lib/messages/everyone'
-import { ONE_COLUMN } from '../lib/messages/pageFit'
+import { LANE_LIST, LONG_NAME_FIT, ONE_COLUMN, SEARCH_HIT_ROW_FIT, SEARCH_HIT_WHEN_FIT, SEARCH_HIT_WORDS_FIT } from '../lib/messages/pageFit'
 import { QUEUES_FOLD_WORDS, queuesFolded } from '../lib/messages/queuesFold'
 import { queryOf, searchLines, SEARCH_MIN, SEARCH_WORDS, withQuery } from '../lib/messages/searchLines'
 import { useMatchMedia } from '../hooks/useMatchMedia'
@@ -60,7 +60,7 @@ import { tabOf, viewOf, withTab, withView, type MessagesTab } from '../lib/myMai
 /** Search every message (v2.5701): the box under the pills, a hit's row, and the lane's one-line answers. */
 const searchBox: CSSProperties = { padding: '0.55rem 0.8rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: '0.95rem', maxWidth: 560, width: '100%', boxSizing: 'border-box' }
 const searchAnswer: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.85rem', color: 'var(--text-muted)', fontSize: '0.9rem' }
-const searchHit: CSSProperties = { display: 'flex', gap: '0.6rem', alignItems: 'baseline', border: '1px solid var(--border)', borderRadius: 10, padding: '0.55rem 0.85rem', background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', width: '100%', boxSizing: 'border-box', font: 'inherit' }
+const searchHit: CSSProperties = { display: 'flex', ...SEARCH_HIT_ROW_FIT, alignItems: 'baseline', border: '1px solid var(--border)', borderRadius: 10, padding: '0.55rem 0.85rem', background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', width: '100%', boxSizing: 'border-box', font: 'inherit' }
 const searchMark: CSSProperties = { background: 'var(--bg-amber-100)', color: 'inherit', borderRadius: 3, padding: '0 2px' }
 
 export default function Messages() {
@@ -288,7 +288,8 @@ export default function Messages() {
                 <h3 style={{ margin: 0, fontSize: '1rem' }}>{SEARCH_WORDS.title(found?.total ?? 0)}</h3>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{SEARCH_WORDS.note}</span>
               </div>
-              <div style={{ display: 'grid', gap: '0.5rem' }}>
+              {/* Punch list #348: the list names its one column, so a hit's long link cannot set the width of every row. */}
+              <div style={LANE_LIST} data-testid="search-list">
                 {host.problem ? (
                   <div style={searchAnswer}>{host.problem}</div>
                 ) : !found ? (
@@ -301,17 +302,19 @@ export default function Messages() {
                   <>
                     {found.hits.map((h) => (
                       <button key={h.id} type="button" onClick={() => thread.openThread(h.contactId, h.id)} data-testid="search-hit" style={searchHit}>
-                        <span style={{ display: 'grid', gap: '0.1rem', minWidth: 0 }}>
-                          <span>
+                        <span style={SEARCH_HIT_WORDS_FIT} data-search-words>
+                          <span style={LONG_NAME_FIT}>
                             <span style={{ fontWeight: 600 }}>{h.name}</span> <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>· {h.who}</span>
                           </span>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                          <span style={{ ...LONG_NAME_FIT, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                             {h.before}
                             <mark style={searchMark}>{h.match}</mark>
                             {h.after}
                           </span>
                         </span>
-                        <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{h.when}</span>
+                        <span style={{ ...SEARCH_HIT_WHEN_FIT, color: 'var(--text-muted)', fontSize: '0.8rem' }} data-search-when>
+                          {h.when}
+                        </span>
                       </button>
                     ))}
                     {found.total > found.hits.length && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{SEARCH_WORDS.more(found.total - found.hits.length)}</div>}

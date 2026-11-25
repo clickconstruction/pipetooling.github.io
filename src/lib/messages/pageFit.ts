@@ -17,7 +17,13 @@
  * nothing. That row wraps the same way, with `WENT_OUT_NAME_ROOM` for the name, and its last line may break. A short
  * *9:58 AM · Sam* still sits beside the name on a phone.
  *
- * Pure: the styles the page and its two lanes draw.
+ * A row under *Lines that match* in the search was left out of that mend (the simulator's walk of 2026-11-25, punch
+ * list #348). Its list was the same grid with no column named, and a hit's words may hold one long run with no space
+ * in it: a link, an address, a long number. At 402 px one such hit stood every row 77 px past the right edge, its
+ * date with it, and 159 px at 320. The list is now `LANE_LIST`. The words keep `SEARCH_WORDS_ROOM` and may break
+ * where they must, and when the date does not fit beside them it drops to a line of its own, at the right.
+ *
+ * Pure: the styles the page, its two lanes and its search draw.
  */
 import type { CSSProperties } from 'react'
 
@@ -56,3 +62,15 @@ export const WENT_OUT_WHEN_FIT: CSSProperties = { marginLeft: 'auto', minWidth: 
  * break where it must. At 320 px such a name stood 34 px out of its row.
  */
 export const LONG_NAME_FIT: CSSProperties = { overflowWrap: 'anywhere', minWidth: 0 }
+
+/** The room a search hit's words keep before its date moves to a line of its own. */
+export const SEARCH_WORDS_ROOM = '11rem'
+
+/** Laid over a search hit's own row: it may wrap, with less air between its two lines than between its columns. */
+export const SEARCH_HIT_ROW_FIT: CSSProperties = { flexWrap: 'wrap', gap: '0.2rem 0.6rem' }
+
+/** A hit's name over its words, in a column that takes the room it is given and no more. */
+export const SEARCH_HIT_WORDS_FIT: CSSProperties = { display: 'grid', gridTemplateColumns: ONE_COLUMN, gap: '0.1rem', flex: `1 1 ${SEARCH_WORDS_ROOM}`, minWidth: 0 }
+
+/** When the line was sent: one line, at the right, beside the words or under them. */
+export const SEARCH_HIT_WHEN_FIT: CSSProperties = { marginLeft: 'auto', whiteSpace: 'nowrap' }

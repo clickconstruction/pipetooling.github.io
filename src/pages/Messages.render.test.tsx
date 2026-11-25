@@ -253,6 +253,15 @@ describe('/messages: Follow up with the kind pills', () => {
     const greg = hits.find((h) => h.textContent?.includes('Addendum 1'))!
     expect(greg).toBeTruthy()
     expect(within(greg).getByText('detention').tagName).toBe('MARK')
+    // Punch list #348: the list names its one column, the row may wrap, and the words may break, so a hit with a long
+    // link in it cannot stand every row past a phone's right edge.
+    expect(screen.getByTestId('search-list').style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+    expect(greg.style.flexWrap).toBe('wrap')
+    const words = greg.querySelector('[data-search-words]') as HTMLElement
+    expect([words.style.gridTemplateColumns, words.style.minWidth]).toEqual(['minmax(0, 1fr)', '0'])
+    expect([...words.children].map((c) => (c as HTMLElement).style.overflowWrap)).toEqual(['anywhere', 'anywhere'])
+    const when = greg.querySelector('[data-search-when]') as HTMLElement
+    expect([when.style.whiteSpace, when.style.marginLeft]).toEqual(['nowrap', 'auto'])
     expect(screen.queryByText(GREG)).toBeNull()
     expect(screen.queryByTestId('went-out-today')).toBeNull()
     fireEvent.click(greg)

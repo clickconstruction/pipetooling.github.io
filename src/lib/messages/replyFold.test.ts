@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { replyBoxFolded, type ReplyFoldFacts } from './replyFold'
+import { boxGreyWords, replyBoxFolded, type ReplyFoldFacts } from './replyFold'
 
 const quiet: ReplyFoldFacts = { foldBox: true, foldedByPress: false, inJob: false, woke: false, blank: true, files: 0, opensWithWords: false, textWaits: false, blocked: false }
 
@@ -56,5 +56,20 @@ describe('a press outside the box folds it on any window (v2.6504)', () => {
     expect(replyBoxFolded({ ...tall, foldedByPress: true, opensWithWords: true })).toBe(false)
     expect(replyBoxFolded({ ...tall, foldedByPress: true, inJob: true })).toBe(false)
     expect(replyBoxFolded({ ...tall, foldedByPress: true, blocked: true })).toBe(false)
+  })
+})
+
+describe('the box\'s grey words (punch list #348)', () => {
+  it('whole, says who the words go to and then the hint', () => {
+    expect(boxGreyWords('Write to Dana Whitfield…', 'Type / for a quick reply.', false)).toBe('Write to Dana Whitfield… Type / for a quick reply.')
+  })
+
+  it('folded, says who alone, so one row holds it', () => {
+    expect(boxGreyWords('Write to Dana Whitfield…', 'Type / for a quick reply.', true)).toBe('Write to Dana Whitfield…')
+  })
+
+  it('a note or a call has no hint, folded or whole', () => {
+    expect(boxGreyWords('A note only the team sees…', null, false)).toBe('A note only the team sees…')
+    expect(boxGreyWords('A note only the team sees…', null, true)).toBe('A note only the team sees…')
   })
 })
