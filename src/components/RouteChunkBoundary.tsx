@@ -128,8 +128,8 @@ function UpdatingApp({ stalled }: { stalled: React.ReactNode }) {
  * Layout's outlet. A stale-chunk import failure (old build's hashed asset 404s after a
  * deploy) triggers one guarded automatic reload instead of a white screen; repeated
  * failures and non-chunk errors get a visible fallback with a manual reload path. While a
- * recovery reload started anywhere is on its way it draws "Updating app…", and the fallback
- * in its place once that reload has stalled (`UpdatingApp`).
+ * recovery reload started anywhere is on its way it draws `UpdatingApp`: the screen that says
+ * the app is updating, then the fallback in its place once that reload has stalled.
  */
 export class RouteChunkBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
