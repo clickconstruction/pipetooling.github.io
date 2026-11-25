@@ -13,8 +13,8 @@
  * failing test in 15, one had no failing test (vitest died closing) and one was a flake in a test the change
  * did not touch.
  *
- * The rule is fail-safe: no files, a list cut at the compare API's cap, a change to what every test runs on, or
- * a graph that did not build means the whole suite runs.
+ * The rule is fail-safe: no files, a list cut at the compare API's cap, a change to what every test runs on or
+ * to what picks the tests, or a graph that did not build means the whole suite runs.
  */
 
 import { COMPARE_FILE_CAP } from './docsOnlyChange.mjs'
@@ -78,6 +78,12 @@ export const WHOLE_SUITE_PATTERNS = [
   /^tsconfig[^/]*\.json$/, // esbuild reads it when it turns a test into JS
   /^\.npmrc$/,
   /^\.nvmrc$/,
+  // What decides which tests run. A change to the picker is not a change the picker should narrow.
+  /^\.github\/workflows\/ci\.yml$/,
+  /^scripts\/ci-near-tests\.mjs$/,
+  /^scripts\/lib\/nearTests\.mjs$/,
+  /^scripts\/ci-docs-only\.mjs$/,
+  /^scripts\/lib\/docsOnlyChange\.mjs$/,
 ]
 
 /** `typescript/lib/x` is `typescript`; `@scope/name/x` is `@scope/name`. */

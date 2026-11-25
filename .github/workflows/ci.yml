@@ -216,9 +216,11 @@ jobs:
     # leg, the tests near the change.
     name: test ${{ matrix.part }}
     runs-on: ubuntu-latest
-    # A shard is 12 to 20 minutes, a pull request's pick about 10. The one long case is a pull request that
-    # changes what every test runs on (package.json, vite.config.ts, a tsconfig): its leg runs the whole suite
-    # on this one runner, 22 to 37 minutes, as every run did until 2026-11-25.
+    # A shard is 12 to 20 minutes by the old step's times. A pull request's pick took 3.5 on its first run
+    # (2026-11-25, 334 files: the install 0.7, the picker 0.7, the tests 1.8) and grows with what is near. The
+    # one long case is a pull request that changes what every test runs on (package.json, vite.config.ts, a
+    # tsconfig) or what picks the tests (this file, the picker): its leg runs the whole suite on this one
+    # runner, 22 to 37 minutes, as every run did until 2026-11-25.
     timeout-minutes: 60
     permissions:
       contents: read

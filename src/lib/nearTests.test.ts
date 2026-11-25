@@ -64,10 +64,15 @@ describe('readsDisk', () => {
 
 describe('wholeSuiteReason', () => {
   it('is null for an ordinary change', () => {
-    expect(k.wholeSuiteReason(['src/lib/jobs/lienDesk.ts', 'docs/GLOSSARY.md', 'supabase/functions/drive-link/index.ts', '.github/workflows/ci.yml'])).toBeNull()
+    expect(k.wholeSuiteReason(['src/lib/jobs/lienDesk.ts', 'docs/GLOSSARY.md', 'supabase/functions/drive-link/index.ts', '.github/workflows/deploy.yml', 'scripts/check-todos.ts'])).toBeNull()
   })
   it('runs everything when the change is to what every test runs on, and names the file', () => {
     for (const f of ['package.json', 'package-lock.json', 'vite.config.ts', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.tests-lib.json', '.npmrc']) {
+      expect(k.wholeSuiteReason(['src/a.ts', f]), f).toContain(f)
+    }
+  })
+  it('runs everything when the change is to what picks the tests', () => {
+    for (const f of ['.github/workflows/ci.yml', 'scripts/ci-near-tests.mjs', 'scripts/lib/nearTests.mjs', 'scripts/ci-docs-only.mjs', 'scripts/lib/docsOnlyChange.mjs']) {
       expect(k.wholeSuiteReason(['src/a.ts', f]), f).toContain(f)
     }
   })
