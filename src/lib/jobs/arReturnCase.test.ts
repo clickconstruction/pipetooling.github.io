@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arApplyClosesReplacedCase, arCaseDay, arCaseTakeOff, arCaseThisReplaces, arCombinedReplacementFor, arMadeGoodAfterApply, arPayerCameBackNote, arPayerKey, arReplacementFor, arReturnCaseView, type ArReplacementDeposit, type ArReturnCaseRow } from './arReturnCase'
+import { arApplyClosesReplacedCase, arCaseAfterClose, arCaseDay, arCaseTakeOff, arCaseThisReplaces, arCombinedReplacementFor, arMadeGoodAfterApply, arPayerCameBackNote, arPayerKey, arReplacementFor, arReturnCaseView, type ArReplacementDeposit, type ArReturnCaseRow } from './arReturnCase'
 import type { ArDepositTrailRow } from './arDepositTrail'
 import { helpGuidePlainWordsFailures } from '../plainWords'
 
@@ -468,5 +468,21 @@ describe('v2.5891: the new check inside a bigger payment', () => {
     expect(arMadeGoodAfterApply([waiting()], bigDeposit, new Map([['job-878', 5000]]))).toEqual([])
     expect(arMadeGoodAfterApply([waiting()], { ...bigDeposit, counterparty_name: 'Lowbeck' }, new Map([['job-878', 34200]]))).toEqual([])
     expect(arMadeGoodAfterApply([waiting()], { ...bigDeposit, posted_at: '2026-09-20T14:00:00Z' }, new Map([['job-878', 34200]]))).toEqual([])
+  })
+})
+
+
+describe('where the pane lands after a case is closed (punch list #76)', () => {
+  it('lands on the case that followed, or the one before when it was the last', () => {
+    expect(arCaseAfterClose(['a', 'b', 'c'], 'a')).toBe('b')
+    expect(arCaseAfterClose(['a', 'b', 'c'], 'b')).toBe('c')
+    expect(arCaseAfterClose(['a', 'b', 'c'], 'c')).toBe('b')
+  })
+  it('holds nothing when no other case is left, so no deposit is picked for it', () => {
+    expect(arCaseAfterClose(['a'], 'a')).toBeNull()
+    expect(arCaseAfterClose([], 'a')).toBeNull()
+  })
+  it('lands on the first case when a search hid the closed one', () => {
+    expect(arCaseAfterClose(['b', 'c'], 'a')).toBe('b')
   })
 })

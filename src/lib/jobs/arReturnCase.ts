@@ -648,3 +648,18 @@ export function arPayerCameBackNote(
   const month = MONTHS[Number(last.slice(5, 7)) - 1] ?? ''
   return `${count} came back · ${last.slice(0, 4) === todayYmd.slice(0, 4) ? month : `${month} ${last.slice(0, 4)}`}`
 }
+
+/**
+ * Where the pane lands after a case is closed (punch list #76, the owner's pick of 2026-11-24): on the next case in
+ * the list as drawn, or on the one before when the closed case was the last. Null when no other case is left: the
+ * pane then holds nothing, and never picks the first deposit by itself, whose **Apply** is live. `shownIds` is the
+ * Came back list before the close, in its order. A case that is not in the list (a search hid it) lands on the first.
+ */
+export function arCaseAfterClose(shownIds: ReadonlyArray<string>, closedId: string): string | null {
+  const left = shownIds.filter((id) => id !== closedId)
+  if (left.length === 0) return null
+  const at = shownIds.indexOf(closedId)
+  if (at < 0) return left[0] ?? null
+  // The case that followed it takes its place; with none after it, the one before.
+  return left[Math.min(at, left.length - 1)] ?? null
+}

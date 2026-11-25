@@ -90,7 +90,7 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
   const combinedDay = combined?.appliedYmd ? (combined.appliedYmd === todayYmd ? 'today' : arCaseDay(combined.appliedYmd, todayYmd)) : ''
 
   return (
-    <div data-testid="ar-return-case-pane" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: '0.875rem' }}>
+    <div data-testid="ar-return-case-pane" data-case-id={props.view.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: '0.875rem' }}>
       {props.onBack ? (
         <button type="button" onClick={props.onBack} style={{ ...btn(false), alignSelf: 'flex-start', border: 'none', padding: '0.25rem 0', color: 'var(--text-link)' }}>
           ‹ Deposits

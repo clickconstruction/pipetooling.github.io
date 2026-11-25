@@ -269,6 +269,9 @@ describe('BankPaymentsModal · checks that came back are cases (render smoke)', 
     await waitFor(() =>
       expect(calls.rpc).toEqual([{ fn: 'close_ar_return_case', args: { p_mercury_transaction_id: 'mtx-sp', p_reason: 'not_coming', p_note: 'Written off with the owner', p_replaced_by: null } }]),
     )
+    // After the close the pane lands on another case (punch list #76), never on a deposit, whose Apply is live.
+    await waitFor(() => expect(screen.getByTestId('ar-return-case-pane').getAttribute('data-case-id')).not.toBe('mtx-sp'))
+    expect(screen.getByTestId('ar-return-case-pane').getAttribute('data-case-id')).toBeTruthy()
   })
 
   it('a check typed in by hand that was never deposited: its own words, no new check offered, and More closes its own case (v2.4902)', async () => {
