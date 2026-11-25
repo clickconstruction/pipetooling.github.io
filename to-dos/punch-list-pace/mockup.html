@@ -70,11 +70,12 @@
   .q .num { font-variant-numeric: tabular-nums; color: var(--text-strong); font-weight: 600; white-space: nowrap; }
   .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 1px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-muted); color: var(--text-base); white-space: nowrap; }
   .chip i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
-  .chip.run { background: var(--bg-amber-tint); border-color: var(--border-amber); color: var(--text-amber-800); }
+  .chip.run { background: var(--bg-blue-tint); border-color: var(--border-blue); color: var(--text-blue-700); }
   .chip.ready { background: var(--bg-green-tint); border-color: var(--border-green); color: var(--text-green-700); }
   .foot { padding: 9px 14px; color: var(--text-muted); font-size: 13px; }
   .foot a, .lnk { color: var(--text-link); text-decoration: none; }
-  .today { display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap; padding: 10px 14px 12px; border-bottom: 1px solid var(--border); }
+  .today { display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap; padding: 10px 14px 12px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
+  .fact .sub { font-size: 12px; color: var(--text-muted); }
   .fact { display: grid; gap: 0; }
   .fact .lbl { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
   .fact .big { font-size: 22px; font-weight: 700; color: var(--text-strong); line-height: 1.2; font-variant-numeric: tabular-nums; }
@@ -143,19 +144,19 @@
       </div>
       <p class="asof">As of 2:41 PM. The order changes go live in, the top one next.</p>
       <div class="card">
-        <div class="today">
-          <div class="fact"><span class="lbl">Merged today</span><span class="big">49</span></div>
-          <div class="fact"><span class="lbl">In the last hour</span><span class="big">6</span></div>
-          <div class="hours">
-            <span class="lbl eyebrow">Merges, hour by hour today</span>
-            <div id="hours-wide"></div>
-          </div>
-        </div>
         <div class="q hd"><span>Place</span><span>Change</span><span>State</span><span>In the queue</span><span>To go</span></div>
         <div class="q"><span class="place">1st</span><span class="title">Jobs: the stage bar keeps its place on a phone</span><span><span class="chip run"><i></i>Checks running</span></span><span class="num">9 minutes</span><span class="num">about 3 minutes</span></div>
         <div class="q"><span class="place">2nd</span><span class="title">Bills sent: the list of ways takes a thumb</span><span><span class="chip run"><i></i>Checks running</span></span><span class="num">8 minutes</span><span class="num">about 8 minutes</span></div>
         <div class="q"><span class="place">3rd</span><span class="title">A card's history opens on its newest change</span><span><span class="chip ready"><i></i>Ready</span></span><span class="num">6 minutes</span><span class="num">about 13 minutes</span></div>
         <div class="q"><span class="place">4th</span><span class="title">docs: a walk's two findings, written on their card</span><span><span class="chip"><i></i>Waiting its turn</span></span><span class="num">2 minutes</span><span class="num">about 18 minutes</span></div>
+        <div class="today">
+          <div class="fact"><span class="lbl">Merged today</span><span class="big">49</span><span class="sub">since midnight</span></div>
+          <div class="fact"><span class="lbl">Merges an hour</span><span class="big">6.2</span><span class="sub">over the last 6 hours</span></div>
+          <div class="hours">
+            <span class="lbl eyebrow">Merges, hour by hour today</span>
+            <div id="hours-wide"></div>
+          </div>
+        </div>
         <div class="foot">3 more are armed and waiting on their checks. 1 of them is held by a red check or a conflict. 12 are open and not yet asked to merge. <a href="#queue">How fast a change ships</a></div>
       </div>
     </section>
@@ -166,7 +167,7 @@
         <span class="mono">121 open · 540 points</span>
         <button type="button" class="pill">Hide the burndown</button>
       </div>
-      <p class="say"><span class="v">121</span> cards are open, <span class="v">540</span> points of work. In the last 21 days <span class="v">96</span> new cards came in and <span class="v">71</span> closed. That is <span class="v">4.6</span> new and <span class="v">3.4</span> closed a day, so the list is <span class="grow">growing by 1.2 a day</span>. With no new cards it clears by Dec 30. At this pace it does not clear, because new cards arrive faster than old ones close.</p>
+      <p class="say"><span class="v">121</span> cards are open, <span class="v">540</span> points of work. In the last 21 days <span class="v">96</span> new cards came in and <span class="v">71</span> closed. That is <span class="v">4.6</span> new and <span class="v">3.4</span> closed a day, so the list is <span class="grow">growing by 1.2 a day</span>. With no new cards it clears by Dec 30.</p>
       <div class="ctl">
         <span class="eyebrow">Look at</span>
         <select class="sel" aria-label="Look at">
@@ -196,7 +197,7 @@
   <ul class="notes">
     <li><span class="tag">new</span> <b>In the merge queue</b> on this page. It reads the row Settings → How fast a change ships reads, so the two cannot disagree.</li>
     <li><span class="tag">new</span> The <b>State</b> of each change: <i>Checks running</i>, <i>Ready</i>, <i>Waiting its turn</i>, <i>Merging now</i> or <i>Will not merge</i>. This is the one piece that needs the function redeployed.</li>
-    <li><span class="tag">new</span> <b>Merged today</b>, <b>In the last hour</b> and the day's merges hour by hour.</li>
+    <li><span class="tag">new</span> <b>Merged today</b>, <b>Merges an hour</b> and the day's merges hour by hour, under the line.</li>
     <li><span class="tag">new</span> <b>The last 21 days</b> under Look at. Its columns are whole days.</li>
     <li><span class="tag">new</span> The sentence's third sentence: the rate a day, and how fast the list grows or shrinks.</li>
   </ul>
@@ -204,7 +205,7 @@
   <h2 class="sec">2 · Folded</h2>
   <p class="why"><b>Each section folds to one line, and the line still answers.</b> The device remembers each fold. Today the folded Burndown says only how many cards are open.</p>
   <div class="frame">
-    <div class="fold"><h2>In the merge queue</h2><span class="mono">4 in line · the next one in about 3 minutes · 49 merged today</span><button type="button" class="pill">Show the queue</button></div>
+    <div class="fold"><h2>In the merge queue</h2><span class="mono">4 in line · the next one in about 3 minutes · 6.2 merges an hour</span><button type="button" class="pill">Show the queue</button></div>
     <div class="fold" style="margin-top:14px"><h2>Burndown</h2><span class="mono">121 open · 540 points · <span class="grow">growing by 4.0 a day</span> in the last 7 days</span><button type="button" class="pill">Show the burndown</button></div>
   </div>
 
@@ -218,7 +219,7 @@
   </table>
 
   <h2 class="sec">4 · The queue's other states</h2>
-  <p class="why"><b>An empty queue is the good state, and it says so in one line.</b> The day's merges stay, since they are the proof the queue is moving.</p>
+  <p class="why"><b>An empty queue is the good state, and it says so in one line.</b> The day's merges stay, since they are the proof the queue is moving. An old read keeps its line and turns its as-of words amber.</p>
   <div class="frames">
     <div>
       <p class="cap">Nothing in line</p>
@@ -226,8 +227,8 @@
         <div class="head"><h2>In the merge queue</h2><span class="mono">0 in line</span></div>
         <p class="asof">As of 2:41 PM.</p>
         <div class="card">
-          <div class="today"><div class="fact"><span class="lbl">Merged today</span><span class="big">49</span></div><div class="fact"><span class="lbl">In the last hour</span><span class="big">6</span></div></div>
-          <div class="empty"><b>Nothing waiting on the queue.</b> 3 are armed and waiting on their checks. 12 are open and not yet asked to merge.</div>
+          <div class="empty" style="border-bottom:1px solid var(--border)"><b>Nothing waiting on the queue.</b> 3 are armed and waiting on their checks. 12 are open and not yet asked to merge.</div>
+          <div class="today" style="border-bottom:0"><div class="fact"><span class="lbl">Merged today</span><span class="big">49</span><span class="sub">since midnight</span></div><div class="fact"><span class="lbl">Merges an hour</span><span class="big">6.2</span><span class="sub">over the last 6 hours</span></div></div>
         </div>
       </div>
     </div>
@@ -235,8 +236,12 @@
       <p class="cap">The read is old</p>
       <div class="frame">
         <div class="head"><h2>In the merge queue</h2><span class="mono">4 in line</span></div>
-        <p class="asof old">As of 1:02 PM, 1 hour 39 minutes ago. The reader may be stuck.</p>
-        <div class="card"><div class="retry"><span>A dev can read GitHub at once.</span><span class="btn">Read GitHub now</span></div><div class="foot">The line below is as it stood at 1:02 PM.</div></div>
+        <p class="asof old">As of 1:02 PM, 1 hour 39 minutes ago. The reader may be stuck. <span class="btn" style="margin-left:6px">Read GitHub now</span></p>
+        <div class="card">
+          <div class="q" style="grid-template-columns:2.6rem minmax(0,1fr)"><span class="place">1st</span><span class="title">Jobs: the stage bar keeps its place on a phone</span></div>
+          <div class="q" style="grid-template-columns:2.6rem minmax(0,1fr)"><span class="place">2nd</span><span class="title">Bills sent: the list of ways takes a thumb</span></div>
+          <div class="foot">The line stays as it stood at 1:02 PM. A dev sees the press. Everyone else is told to ask a dev.</div>
+        </div>
       </div>
     </div>
     <div>
@@ -262,15 +267,27 @@
     <div class="head"><h2>In the merge queue</h2><span class="mono">4 in line</span></div>
     <p class="asof">As of 2:41 PM.</p>
     <div class="card">
-      <div class="today"><div class="fact"><span class="lbl">Merged today</span><span class="big">49</span></div><div class="fact"><span class="lbl">In the last hour</span><span class="big">6</span></div><div class="hours"><div id="hours-phone"></div></div></div>
       <div class="q"><span class="place">1st</span><span class="title">Jobs: the stage bar keeps its place on a phone</span><span><span class="chip run"><i></i>Checks running</span></span><span class="num">9 minutes in the queue · about 3 to go</span></div>
       <div class="q"><span class="place">2nd</span><span class="title">Bills sent: the list of ways takes a thumb</span><span><span class="chip run"><i></i>Checks running</span></span><span class="num">8 minutes in the queue · about 8 to go</span></div>
       <div class="q"><span class="place">3rd</span><span class="title">A card's history opens on its newest change</span><span><span class="chip ready"><i></i>Ready</span></span><span class="num">6 minutes in the queue · about 13 to go</span></div>
+      <div class="today"><div class="fact"><span class="lbl">Merged today</span><span class="big">49</span><span class="sub">since midnight</span></div><div class="fact"><span class="lbl">Merges an hour</span><span class="big">6.2</span><span class="sub">over the last 6 hours</span></div><div class="hours"><div id="hours-phone"></div></div></div>
       <div class="foot">3 more are armed and waiting on their checks. 12 are open and not yet asked to merge.</div>
     </div>
     <div class="fold" style="margin-top:20px"><h2>Burndown</h2><span class="mono">121 open · 540 points</span></div>
     <p class="say" style="margin-top:6px">121 cards are open, 540 points of work. In the last 7 days 47 new cards came in and 19 closed. That is 6.7 new and 2.7 closed a day, so the list is <span class="grow">growing by 4.0 a day</span>.</p>
   </div>
+
+  <h2 class="sec">6 · The second look</h2>
+  <p class="why"><b>Is this the best version?</b> The first drawing was looked at again before any code. Five things changed.</p>
+  <table class="ba">
+    <tr><th style="width:13rem">What</th><th>First drawing</th><th>Now, and why</th></tr>
+    <tr><td><b>The order inside the queue block</b></td><td>The day's merges on top, the line under them.</td><td>The line on top. The first question is what is in line and where a change stands. Whether the queue is moving comes second.</td></tr>
+    <tr><td><b>Merges an hour</b></td><td><i>In the last hour</i>, one hour's count.</td><td><i>Merges an hour</i> over the last 6 hours. One hour swings between 2 and 9. Six hours is the stretch the Settings tab already reads, and an average for the whole day would be dragged down by the night.</td></tr>
+    <tr><td><b>Checks running</b></td><td>An amber chip.</td><td>A blue chip. Checks running is the usual state, and amber reads as a warning. Red is kept for <i>Will not merge</i>.</td></tr>
+    <tr><td><b>An old read</b></td><td>The line was replaced by a note and a press.</td><td>The line stays as it stood. The as-of words turn amber and carry the press. An old line still tells the reader more than no line.</td></tr>
+    <tr><td><b>The sentence</b></td><td>It kept <i>At this pace it does not clear, because new cards arrive faster than old ones close.</i></td><td>That sentence goes when the list is growing or holding level. <i>Growing by 1.2 a day</i> already says it.</td></tr>
+  </table>
+  <p class="why" style="margin-top:10px">Weighed and left as drawn: the queue above the Burndown, and new above the line with closed below it. The card says why under <i>Not picked</i>.</p>
 </div>
 
 <script>
