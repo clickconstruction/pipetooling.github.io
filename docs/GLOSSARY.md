@@ -6955,6 +6955,7 @@ a way is **taken off** the list, never deleted, and can be brought back.
 The form opens on the day the bill was made, with **Today** one press away (`byHandDayOffered`, `byHandDayPicks`, v2.7349);
 it lists the same customer's other bills with no send on record to tick, files one record a bill and counts them on its button, *Record how 3 bills went*, a refused bill staying in the strip with its reason while the rest save (`byHandOthers`, `byHandRecordLabel`, `byHandOutcome`, v2.7350);
 and it reads the record back above the button before the press, *The record will read:* (`byHandReadBack`, v2.7351), since a record cannot be changed once saved.
+A dev alone reads **Delete this record…** under a by-hand line on a bill's record, for a record of a test bill (`byHandRecordDeleteProblem`, `byHandRowDeleteProblem`, v2.8564, punch list #443).
 **Did not arrive** (v2.7053) is a send the mail service bounced, or a text that failed, on a bill not paid with no later send that arrived.
 An email the mail service has only called *sent* counts the days once `BILLS_SENT_NO_ANSWER_DAYS` (2) have passed, *No answer from their mail server in 14 days*, with *Check the address* on a bill still open, and it never joins **Did not arrive** (v2.8424).
 A send whose bill is no longer on the job carries the note `BILLS_SENT_GONE_NOTE`, that the bill was taken back or replaced after it went, and counts in no total (v2.8427).

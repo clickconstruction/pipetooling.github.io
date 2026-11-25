@@ -64,6 +64,7 @@ import {
 import { readBillHandWays, readBillsSent, recordBillByHand } from '../../lib/billing/billsSentIo'
 import { billHandWaysOrBuiltIn } from '../../lib/billing/billHandWays'
 import { BillHandWayPicker, type BillHandWaysCtl } from './BillHandWays'
+import { ByHandRecordDelete } from './ByHandRecordDelete'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { openSentCopy } from '../../lib/sent/sentCopiesIo'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
@@ -724,8 +725,11 @@ function GapStrip({ open, paid, every, expanded, waysCtl, onSaved, test = false 
   )
 }
 
-/** One bill's record: every send of it, newest first, with the copy of each and a print of the whole. */
-function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onOpen: (line: BillsSentLine) => void; onPrint: () => void }) {
+/**
+ * One bill's record: every send of it, newest first, with the copy of each and a print of the whole. A dev also
+ * reads a delete on a by-hand record (punch list #443, row 4: `ByHandRecordDelete`, which draws nothing for anyone else).
+ */
+function RecordPanel({ record, onOpen, onPrint, onChanged }: { record: BillsSentRecord; onOpen: (line: BillsSentLine) => void; onPrint: () => void; /** A record was deleted: read the page again. */ onChanged: () => void }) {
   const phone = useIsMobile()
   return (
     <div data-testid="bills-sent-record" style={{ ...lineBox, display: 'block', padding: '0.7rem 0.8rem' }}>
@@ -785,6 +789,7 @@ function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onO
                 </button>
               ) : null}
             </div>
+            <ByHandRecordDelete line={e.line} head={e.head} when={e.when} onGone={onChanged} />
           </div>
         ))
       )}
@@ -935,7 +940,7 @@ export function BillsSentLedger() {
         {data == null && !failure ? (
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
         ) : record ? (
-          <RecordPanel record={record} onOpen={(l) => void open(l)} onPrint={printRecord} />
+          <RecordPanel record={record} onOpen={(l) => void open(l)} onPrint={printRecord} onChanged={retry} />
         ) : data != null ? (
           <EmptyState main="That bill is not on this list." next={{ label: 'See all bills sent', to: BILLS_SENT_PATH }} />
         ) : null}

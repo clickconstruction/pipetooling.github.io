@@ -253,6 +253,8 @@ The line says *Recorded by hand*, with your name and the day you recorded it. Th
 
 A record made by hand cannot be changed once saved. Read the line above the button before you press.
 
+Only the developer can delete a record made by hand. It must be a record of a test bill.
+
 No chip may fit how the bill went. Then add a way to the list. See [Change the list of ways](#change-the-list-of-ways).
 
 ## Say how several bills went at once
