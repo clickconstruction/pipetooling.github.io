@@ -24,7 +24,7 @@
  *   - a job of ci.yml that typechecks or lints without restoring the cache first, or by another key;
  *   - the `checks` gate missing, not running under always(), or not needing every other job of ci.yml and
  *     asking each for 'success': a leg outside the gate could fail and the build still merge;
- *   - the merge queue's shard list not being every shard of one count ("1/2", "2/2"), or no step running
+ *   - the merge queue's shard list not being every shard of one count ("1/3", "2/3", "3/3"), or no step running
  *     `--shard=${{ matrix.part }}`: a missing shard is a part of the suite no build runs.
  */
 import fs from 'node:fs'
@@ -186,7 +186,7 @@ function ciJobProblems() {
     shards = null
   }
   if (!Array.isArray(shards) || shards.length === 0) {
-    out.push("ci.yml: no `part:` matrix line gives the merge queue its shards (github.event_name == 'merge_group' && '[\"1/2\", \"2/2\"]').")
+    out.push("ci.yml: no `part:` matrix line gives the merge queue its shards (github.event_name == 'merge_group' && '[\"1/3\", \"2/3\", \"3/3\"]').")
   } else {
     const n = shards.length
     const want = Array.from({ length: n }, (_, i) => `${i + 1}/${n}`)

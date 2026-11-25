@@ -70,10 +70,13 @@ export const DISK_PACKAGES = [
   'execa',
 ]
 
-/** A change to one of these changes how every test runs, so no pick is safe. */
+/**
+ * A change to one of these changes how every test runs, so no pick is safe. package.json is the one with an
+ * exception: a change to its script lines alone (`scriptsOnlyPatch`) keeps the pick.
+ */
 export const WHOLE_SUITE_PATTERNS = [
   /^package\.json$/,
-  /^package-lock\.json$/,
+  /^package-lock\.json$/, // every change to a dependency lands here too: `npm ci` refuses a lock out of step
   /^vite\.config\.ts$/, // the test config, the aliases and the plugins behind the `virtual:` modules
   /^tsconfig[^/]*\.json$/, // esbuild reads it when it turns a test into JS
   /^\.npmrc$/,
@@ -85,6 +88,52 @@ export const WHOLE_SUITE_PATTERNS = [
   /^scripts\/ci-docs-only\.mjs$/,
   /^scripts\/lib\/docsOnlyChange\.mjs$/,
 ]
+
+/** package.json's own fields whose value is a string. A changed line that names one is not a script. */
+export const PACKAGE_TOP_FIELDS = [
+  'name',
+  'version',
+  'type', // module or commonjs: how every .js file loads
+  'main',
+  'module',
+  'browser',
+  'types',
+  'typings',
+  'license',
+  'description',
+  'author',
+  'homepage',
+  'packageManager',
+]
+
+/**
+ * Whether a package.json patch (the compare API's `patch` for the file) changes script lines alone.
+ * Every SQL bed adds one `"test:pg:<name>": "bash scripts/pgtest-<name>.sh"` line, and on the first evening of
+ * the pick (2026-11-25) that line sent a bed's pull request through the whole suite on its own run: all 26
+ * changes to package.json in the six days before were script lines, 3.5% of the 739 merges. A script line
+ * cannot change how a test runs, and a test that reads package.json reads the disk, so it runs anyway.
+ * Yes only when every changed line is one `"key": "string"` entry whose key is not one of package.json's own
+ * fields. A dependency line has that shape too, and is safe for another reason: its change is in
+ * package-lock.json as well, which always runs the whole suite. No patch (a file too large for the API to
+ * show) is no.
+ */
+export function scriptsOnlyPatch(patch) {
+  if (typeof patch !== 'string' || patch.length === 0) return false
+  const changed = patch.split('\n').filter((l) => /^[+-]/.test(l) && !/^(\+\+\+|---)/.test(l))
+  if (changed.length === 0) return false
+  return changed.every((line) => {
+    const m = /^[+-]\s*"([^"]+)":\s*"(?:[^"\\]|\\.)*",?\s*$/.exec(line)
+    return m !== null && !PACKAGE_TOP_FIELDS.includes(m[1])
+  })
+}
+
+/** Each file's patch in a compare API body, by name; an empty map for anything that is not one. */
+export function patchesOfCompare(body) {
+  const out = new Map()
+  if (!body || typeof body !== 'object' || !Array.isArray(body.files)) return out
+  for (const f of body.files) if (f && typeof f.filename === 'string' && typeof f.patch === 'string') out.set(f.filename, f.patch)
+  return out
+}
 
 /** `typescript/lib/x` is `typescript`; `@scope/name/x` is `@scope/name`. */
 export function packageOf(specifier) {
@@ -122,14 +171,15 @@ export function snapshotOwner(path) {
 /**
  * Why the whole suite must run, or null when a pick is safe.
  * @param {string[]} changed every path the PR changes against its base (a rename counts both names)
- * @param {{ cap?: number }} [opts]
+ * @param {{ cap?: number, patches?: Map<string, string> }} [opts] `patches` from `patchesOfCompare`
  */
 export function wholeSuiteReason(changed, opts = {}) {
   const cap = opts.cap ?? COMPARE_FILE_CAP
   const list = Array.from(new Set((changed ?? []).filter((f) => typeof f === 'string' && f.length > 0)))
   if (list.length === 0) return 'no files listed, so the whole suite runs'
   if (list.length >= cap) return `${list.length} files, at the compare cap, so the whole suite runs`
-  const hit = list.find((f) => WHOLE_SUITE_PATTERNS.some((re) => re.test(f)))
+  const scriptsOnly = (f) => f === 'package.json' && scriptsOnlyPatch(opts.patches?.get('package.json'))
+  const hit = list.find((f) => WHOLE_SUITE_PATTERNS.some((re) => re.test(f)) && !scriptsOnly(f))
   if (hit) return `${hit} changes how every test runs, so the whole suite runs`
   return null
 }

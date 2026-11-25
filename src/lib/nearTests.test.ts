@@ -19,7 +19,10 @@ const k = kernel as {
   packageOf: (s: string) => string
   readsDisk: (s: string, builtins?: Iterable<string>) => boolean
   snapshotOwner: (p: string) => string | null
-  wholeSuiteReason: (changed: string[], opts?: { cap?: number }) => string | null
+  wholeSuiteReason: (changed: string[], opts?: { cap?: number; patches?: Map<string, string> }) => string | null
+  scriptsOnlyPatch: (patch: unknown) => boolean
+  patchesOfCompare: (body: unknown) => Map<string, string>
+  PACKAGE_TOP_FIELDS: string[]
   nearTests: (input: { tests: string[]; importsOf: Map<string, string[]>; readerModules: string[]; changed: string[] }) => Pick
   nearOutputs: (plan: { mode: 'near' | 'all'; list?: string }) => string[]
   nearWords: (n: { total: number; near: number; readers: number; selected: number }) => string
@@ -67,6 +70,7 @@ describe('wholeSuiteReason', () => {
     expect(k.wholeSuiteReason(['src/lib/jobs/lienDesk.ts', 'docs/GLOSSARY.md', 'supabase/functions/drive-link/index.ts', '.github/workflows/deploy.yml', 'scripts/check-todos.ts'])).toBeNull()
   })
   it('runs everything when the change is to what every test runs on, and names the file', () => {
+    // package.json with no patch handed in: the exception for its script lines is its own describe below
     for (const f of ['package.json', 'package-lock.json', 'vite.config.ts', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.tests-lib.json', '.npmrc']) {
       expect(k.wholeSuiteReason(['src/a.ts', f]), f).toContain(f)
     }
@@ -85,6 +89,55 @@ describe('wholeSuiteReason', () => {
     const many = Array.from({ length: 300 }, (_, i) => `src/f${i}.ts`)
     expect(k.wholeSuiteReason(many)).toContain('cap')
     expect(k.wholeSuiteReason(many, { cap: 1000 })).toBeNull()
+  })
+})
+
+describe('a change to package.json', () => {
+  const bed = [
+    '@@ -212,6 +212,7 @@',
+    '     "test:pg:lien-run-left-out": "bash scripts/pgtest-lien-run-left-out.sh",',
+    '+    "test:pg:lien-print-stands": "bash scripts/pgtest-lien-print-stands.sh",',
+    '     "test:pg:customer-sends-trail": "bash scripts/pgtest-customer-sends-trail.sh",',
+  ].join('\n')
+  const patches = (patch: string) => new Map([['package.json', patch]])
+
+  it('a new bed’s script line keeps the pick', () => {
+    expect(k.scriptsOnlyPatch(bed)).toBe(true)
+    expect(k.wholeSuiteReason(['package.json', 'src/a.ts'], { patches: patches(bed) })).toBeNull()
+  })
+  it('a script changed, with its quotes and its last-line comma or none, keeps the pick', () => {
+    const edited = ['-    "lint": "eslint src --cache",', '+    "lint": "eslint src --cache && npm run lint:config",', '+    "say": "echo \\"hi\\""'].join('\n')
+    expect(k.scriptsOnlyPatch(edited)).toBe(true)
+  })
+  it('the whole suite runs with no patch, an empty one, or one with no changed line', () => {
+    expect(k.wholeSuiteReason(['package.json'])).toContain('package.json')
+    expect(k.wholeSuiteReason(['package.json'], { patches: new Map() })).toContain('package.json')
+    expect(k.scriptsOnlyPatch('')).toBe(false)
+    expect(k.scriptsOnlyPatch(undefined)).toBe(false)
+    expect(k.scriptsOnlyPatch('@@ -1,2 +1,2 @@\n   "name": "x",')).toBe(false)
+  })
+  it('the whole suite runs when a line is one of package.json’s own fields, or is not a string entry', () => {
+    for (const line of ['+  "type": "commonjs",', '-  "version": "0.0.1",', '+  "private": false,', '+  "overrides": {', '+    "node": ">=20"', '+  },', '+  "engines": { "node": ">=20" },']) {
+      const expected = line === '+    "node": ">=20"' // alone it reads as a string entry; the lines around it do not
+      expect(k.scriptsOnlyPatch(line), line).toBe(expected)
+    }
+    expect(k.scriptsOnlyPatch(['+  "engines": {', '+    "node": ">=20"', '+  },'].join('\n'))).toBe(false)
+    expect(k.wholeSuiteReason(['package.json'], { patches: patches('+  "type": "commonjs",') })).toContain('package.json')
+  })
+  it('a dependency line reads as a string entry, and the lock beside it runs the whole suite', () => {
+    const dep = '-    "vitest": "^2.1.9",\n+    "vitest": "^3.0.0",'
+    expect(k.scriptsOnlyPatch(dep)).toBe(true)
+    expect(k.wholeSuiteReason(['package.json', 'package-lock.json'], { patches: patches(dep) })).toContain('package-lock.json')
+  })
+  it('reads each file’s patch off a compare body, and nothing off a non-body', () => {
+    const body = { files: [{ filename: 'package.json', patch: bed }, { filename: 'public/big.gif' }, { filename: 'src/a.ts', patch: '+x' }] }
+    expect([...k.patchesOfCompare(body).keys()]).toEqual(['package.json', 'src/a.ts'])
+    expect(k.patchesOfCompare(null).size).toBe(0)
+    expect(k.patchesOfCompare({ message: 'Not Found' }).size).toBe(0)
+  })
+  it('the script that builds the graph hands the patches to the rule', () => {
+    const script = readFileSync(join(ROOT, 'scripts/ci-near-tests.mjs'), 'utf8')
+    expect(script).toContain('wholeSuiteReason(changed, { patches: patchesOfCompare(body) })')
   })
 })
 

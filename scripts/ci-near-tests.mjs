@@ -9,7 +9,8 @@
  * to $GITHUB_OUTPUT (stdout when unset). The rule is scripts/lib/nearTests.mjs: the tests whose imports reach a
  * changed file, and every test whose imports reach a module that reads files. Anything it cannot tell (the
  * compare unreadable, a list at the cap, a change to what every test runs on, a graph that did not build, a
- * test file the graph never saw) is `mode=all`, and the step after it runs the whole suite.
+ * test file the graph never saw) is `mode=all`, and the step after it runs the whole suite. A change to
+ * package.json's script lines alone keeps the pick: every SQL bed adds one.
  *
  * The graph is Vite's own: each test file is transformed as vitest would transform it and its imports are
  * resolved by the same plugins, so an alias, an `import.meta.glob` and a `?raw` import are followed exactly as
@@ -22,7 +23,7 @@ import { builtinModules } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { filesOfCompare } from './lib/docsOnlyChange.mjs'
-import { nearOutputs, nearTests, nearWords, readsDisk, wholeSuiteReason } from './lib/nearTests.mjs'
+import { nearOutputs, nearTests, nearWords, patchesOfCompare, readsDisk, wholeSuiteReason } from './lib/nearTests.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const rel = (abs) => path.relative(ROOT, abs).split(path.sep).join('/')
@@ -104,7 +105,7 @@ async function main() {
     body = null
   }
   const changed = filesOfCompare(body)
-  const whole = body ? wholeSuiteReason(changed) : 'the compare did not read, so the whole suite runs'
+  const whole = body ? wholeSuiteReason(changed, { patches: patchesOfCompare(body) }) : 'the compare did not read, so the whole suite runs'
   if (whole) {
     finish({ mode: 'all' }, `whole suite: ${whole}`)
     return 0
