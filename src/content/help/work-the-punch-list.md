@@ -31,6 +31,8 @@ Cards in **Needs an owner decision** and **Waiting on time or usage** do not clo
 
 - The list is the order the changes go live in. The top one is next.
 - **Place** is where a change stands in line.
+- **State** says what the change is doing. **Checks running** means the queue is testing it. **Ready** means its checks passed.
+- **Waiting its turn** means the queue has not started on it. **Will not merge** means GitHub is about to drop it.
 - **In the queue** is how long the change has waited.
 - **To go** is about how long is left. GitHub works that time out.
 - **Merged today** counts the changes that reached the app since midnight.

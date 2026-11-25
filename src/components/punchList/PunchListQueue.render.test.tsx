@@ -39,9 +39,9 @@ const merged = (at: string): PacePr => {
 const PRS = [merged('2026-11-02T12:10:00Z'), merged('2026-11-02T15:05:00Z'), merged('2026-11-02T15:20:00Z'), merged('2026-11-02T19:10:00Z'), merged('2026-11-02T20:30:00Z')]
 
 const ENTRIES: PaceQueueEntryInput[] = [
-  { number: 9001, title: 'v2.9001 Jobs: the stage bar keeps its place on a phone', position: 1, enqueuedAt: minutesAgo(9), estimatedSeconds: 180 },
-  { number: 9002, title: 'v2.9002 Bills sent: the list of ways takes a thumb', position: 2, enqueuedAt: minutesAgo(8), estimatedSeconds: 480 },
-  { number: 9003, title: 'docs: a walk’s two findings, written on their card', position: 3, enqueuedAt: minutesAgo(2), estimatedSeconds: null },
+  { number: 9001, title: 'v2.9001 Jobs: the stage bar keeps its place on a phone', position: 1, enqueuedAt: minutesAgo(9), estimatedSeconds: 180, state: 'AWAITING_CHECKS' },
+  { number: 9002, title: 'v2.9002 Bills sent: the list of ways takes a thumb', position: 2, enqueuedAt: minutesAgo(8), estimatedSeconds: 480, state: 'MERGEABLE' },
+  { number: 9003, title: 'docs: a walk’s two findings, written on their card', position: 3, enqueuedAt: minutesAgo(2), estimatedSeconds: null, state: 'QUEUED' },
 ]
 
 function picture(over: { now?: string; entries?: PaceQueueEntryInput[]; queue?: null } = {}): ShipPacePicture {
@@ -78,10 +78,12 @@ describe('PunchListQueue', () => {
     expect(screen.getByTestId('queue-count').textContent).toBe('3 in line')
     expect(screen.getByTestId('queue-as-of').textContent).toBe(`As of 2:41 PM. ${W.order}`)
     expect(rowText()).toEqual([
-      ['1st', 'Jobs: the stage bar keeps its place on a phone', '9 minutes', 'about 3 minutes'],
-      ['2nd', 'Bills sent: the list of ways takes a thumb', '8 minutes', 'about 8 minutes'],
-      ['3rd', 'docs: a walk’s two findings, written on their card', '2 minutes', W.noEstimate],
+      ['1st', 'Jobs: the stage bar keeps its place on a phone', 'Checks running', '9 minutes', 'about 3 minutes'],
+      ['2nd', 'Bills sent: the list of ways takes a thumb', 'Ready', '8 minutes', 'about 8 minutes'],
+      ['3rd', 'docs: a walk’s two findings, written on their card', 'Waiting its turn', '2 minutes', W.noEstimate],
     ])
+    // Each state is a chip with its tone: work under way, good to go, plain waiting.
+    expect(screen.getAllByTestId('queue-state').map((c) => c.getAttribute('data-tone'))).toEqual(['running', 'ready', 'waiting'])
     // The place and the two times are worked-out values; the title is words.
     expect([...screen.getAllByTestId('queue-row')[0]!.querySelectorAll('[data-value="worked-out"]')].map((v) => v.textContent)).toEqual(['1st', '9 minutes', 'about 3 minutes'])
     const today = screen.getByTestId('queue-today')
@@ -95,6 +97,15 @@ describe('PunchListQueue', () => {
     expect(screen.getByRole('link', { name: W.door }).getAttribute('href')).toBe('/settings?tab=settings-ship-pace')
     // A master reads the row as the cron left it: no press, no read of GitHub.
     expect(screen.queryByRole('button', { name: SHIP_PACE_WORDS.readNow })).toBeNull()
+  })
+
+  it('draws a row written before the state was read with no State column', async () => {
+    const before = ENTRIES.map(({ state: _state, ...rest }) => rest)
+    renderWithProviders(<PunchListQueue role="master_technician" io={fakeIo({ load: vi.fn(async () => picture({ entries: before })) })} now={nowMs} />)
+    await waitFor(() => expect(screen.getAllByTestId('queue-row')).toHaveLength(3))
+    expect(rowText()[0]).toEqual(['1st', 'Jobs: the stage bar keeps its place on a phone', '9 minutes', 'about 3 minutes'])
+    expect(screen.queryByTestId('queue-state')).toBeNull()
+    expect(screen.queryByText(W.state)).toBeNull()
   })
 
   it('says nothing is waiting on an empty queue, and keeps the day', async () => {

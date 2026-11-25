@@ -34,7 +34,7 @@ Four tiles follow the chart. **Opened today** and **Merged today** count the day
 
 ## Find your change in line
 
-A change is a pull request. The title of a pull request says what it is in plain words. The card **In line now** lists the pull requests in the merge queue. The list is the order they go live in. The top one is next. Each line says its place, how long it has waited, and about how long is left. Find your change by its title.
+A change is a pull request. The title of a pull request says what it is in plain words. The card **In line now** lists the pull requests in the merge queue. The list is the order they go live in. The top one is next. Each line says its place, how long it has waited, and about how long is left. A line also says *checks running* while the queue tests the change, and *ready* once its checks passed. Find your change by its title.
 
 A change still on its checks is not in line yet. The line under the list counts those changes. The same line counts the changes nobody has asked to merge yet. The list shows the first ten. *and 4 more* means four more wait behind them.
 
