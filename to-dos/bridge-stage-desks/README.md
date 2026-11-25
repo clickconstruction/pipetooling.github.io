@@ -1,8 +1,8 @@
 ---
 name: "The Bridge: a desk behind every stage card"
 number: 192
-group: gated
-status: built 2026-10-26 to 10-27 · the four desks shipped as v2.5929 Build (#6253), v2.5930 Bill (#6252), v2.5931 Market (#6254) and v2.5932 Sales (#6255), read-only, to the defaults drawn below, with the first live look's fixes as v2.5938; the Collect desk is live (v2.5848–v2.5858) and its card door shipped (v2.5890) · left: the owner's look, and the thresholds as his numbers · 2026-11-09: the drawn thresholds are the owner's numbers; the two new writes wait on mock-ups he asked to see before answering
+group: ready
+status: built 2026-10-26 to 10-27 · the four desks shipped as v2.5929 Build (#6253), v2.5930 Bill (#6252), v2.5931 Market (#6254) and v2.5932 Sales (#6255), read-only, to the defaults drawn below, with the first live look's fixes as v2.5938; the Collect desk is live (v2.5848–v2.5858) and its card door shipped (v2.5890) · left: the owner's look, and the thresholds as his numbers · 2026-11-09: the drawn thresholds are the owner's numbers; the two new writes wait on mock-ups he asked to see before answering · 2026-11-25 (UTC): write A answered yes in the managing session, not built; write B is not on that record
 summary: >
   The owner asked for a desk behind every stage card, one press from the card, the way the
   Collect desk opens. The first drafts cloned the Collect desk's call-sheet anatomy onto all
@@ -14,9 +14,10 @@ summary: >
   Every figure traces to columns that exist today; no desk needs a migration. The folder
   carries the four approved prototypes, the eight concept wireframes and the three review
   files.
-next: The owner answers the two yes-or-no lines under § The two writes, drawn (he kept the drawn thresholds as his numbers on 2026-11-09 and asked for mock-ups before answering the writes); a yes on write A is one small PR with a migration, a yes on write B one migration and a strip on four desks.
-size: M per desk — a kernel, a loader widening and the desk component each; no migration except the optional bridge_calls kind marker
-blocker: The owner's yes or no on each of the two writes, drawn as mock-ups beside this card (2026-11-09). The thresholds are settled as his numbers.
+next: Build write A, a Build job marked waits, with a reason, as one PR with a migration (S to M). The owner still answers write B's yes-or-no line under § The two writes, drawn; a yes on write B is one migration and a strip on four desks.
+size: M per desk — a kernel, a loader widening and the desk component each; no migration except the optional bridge_calls kind marker; the four desks are built; left: write A (S to M)
+blocker: Nothing for write A. The owner's yes or no on write B is open, drawn as a mock-up beside this card (2026-11-09), and the card recommends no for now. The thresholds are settled as his numbers.
+ask: owner · decide · Write B: record a desk's plan on bridge_calls with a kind marker, or keep recording with the lit link only?
 opinion: Built one desk per PR, in parallel from one shared contract, to the drawn defaults, so the owner's numbers drop into the constants without a redesign; retire this folder once he has looked and the thresholds are his.
 ---
 
@@ -101,7 +102,7 @@ the new-name span stays 91 days. The exported constants under *Where it stands* 
 built; nothing moves.
 
 **New writes to decide:** whether a Build job can be marked *waits, with a reason* so the ledger
-stops counting it (no such write exists); whether desk plans ride `bridge_calls` with a kind
+stops counting it (no such write exists), **answered yes on 2026-11-25**; whether desk plans ride `bridge_calls` with a kind
 marker (a migration) or recording stays with the lit link only. Both are drawn under
 [§ The two writes, drawn](#the-two-writes-drawn) with a yes-or-no line each.
 
@@ -159,8 +160,13 @@ he planned on a desk that was not the link.
 
 - Write A: can a Build job be marked *waits, with a reason*, so the desk stops counting it against
   the crew? Yes or no.
+  **Answered 2026-11-25 (UTC) in the managing session:** *Yes.*
+  It is quoted from that session's record of the user's answers.
+  Write A is not built, and it is the piece to build next, as drawn above.
+  The card calls it one small PR, and its list is a table with the four fences, the desk's write, a fifth group in `buildDesk.ts` and the chip and fact row on two job surfaces, so it is sized S to M here.
 - Write B: record a desk's plan on `bridge_calls` with a kind marker, or keep recording with the
   lit link only? Yes or no.
+  Still open: it is not on the record of 2026-11-25.
 
 ## What is in this folder
 
