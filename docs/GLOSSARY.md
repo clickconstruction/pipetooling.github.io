@@ -1746,6 +1746,7 @@ The open tab is kept whole in view with the start of the next tab beside it (`ac
 The page's own title is left undrawn only while the one-row bar names the page (`PhoneBarPageNameContext`), so under the role dock's row, which names no page, the title stays.
 Under the tick Needs you is a one-line door on the Dashboard and opens on Walk the list where it is worked, since v2.8289 (→ *Needs You card*).
 Under the tick the Job Mode press bar is one row, the tabs stand 52 px tall with their words, and the Home Screen offer is a quiet row of the Dashboard in place of the line above every page.
+With the tick off a phone draws that line on the Dashboard alone since v2.8573, and a wider screen keeps it above every page (`addTaskOfferPlace`, `lib/phoneLayout/addTaskOffer.ts`).
 **The phone job card** is the Job Mode card under the tick, since v2.8286 (`lib/phoneLayout/jobCard.ts`, `phoneJobCardOn`): the same pieces, each once, in a thumb's order.
 It opens on **Call**, **Directions** and **Text**, 44 px each, under the job's name and address.
 **Text** is the card's own Message the customer door in that shape, drawn only where the door is offered today (`jobModeMessagesOffered`, on the job the person is clocked onto).
