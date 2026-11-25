@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-24
+last_updated: 2026-11-25
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -1723,7 +1723,7 @@ until v2.8059 the rows sat in the order they were added.
 Who sees which page is unchanged and is one object in `Layout.tsx`, `gearPages`;
 a label is drawn only over a group with a row in it.
 **Help and settings** holds My logbook, Help and Settings.
-Sign out and the reloads sit last, under a grey band and no label.
+Sign out and Hard Reload sit last, under a grey band and no label (a dev's Global Reload left the menu for Settings → Advanced in v2.8527).
 The wrench's press, where a narrow phone's header had no room for it, stays the first row, above every label.
 The phone dock's More sheet uses the same four labels: its last group read **Settings** until v2.8059.
 Display-only — no role's menu gained or lost a row.

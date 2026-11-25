@@ -35,7 +35,7 @@ Set it when a company asks for Spanish on a call.
 
 About lists what helps you decide whether to ask or award them.
 
-- **Quotes** counts how many asks they answered with a quote.
+- **Quotes** counts how many asks they answered with a quote. An ask we took back is left out.
 - **Vetting** says who approved them, the day and any limit.
 - **Drives from** gives their address and how far they go.
 - **Insurance** shows when their insurance runs out, once we have the day.

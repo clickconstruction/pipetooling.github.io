@@ -22,6 +22,8 @@ Every statement is safe to run twice.
 | *This job no longer requires that paper.* | The row is gone or taken off |
 | *That job is not one you are the general contractor on.* | The job's `gc_customer_id` is not the link's customer |
 | *That paper is not built from settings.* | A paper in prose |
+| *That paper is no longer built from settings. Ask our office.* | The Contract Book entry it was built from has no settings list any more |
+| *A proposal goes with its settings.* | The settings sent are not an object |
 | *Pick (a topic).* | A topic left out, or a choice the list does not have |
 | *Nothing is stricter yet.* | The same picks as the job's |
 | *A proposal can only make the paper stricter.* | Any topic looser, by `contract_paper_picks_change` |
@@ -63,3 +65,5 @@ The portal function hands the page a list with names and plain words only (`gcPr
 ## The bed
 
 `npm run test:pg:job-paper-gc-proposals` (`supabase/tests/job_paper_gc_proposals/20_scenario.sql`): only the service key proposes; each refusal above; a proposal that stands changes no paper; a newer one, the office's own change and the paper coming off each overtake the one waiting; a decline keeps who and why; a take in place and a take after a signature; the GC's page reads the picks, the list and the last proposal; a helper reads no row and answers nothing. `job-papers-gc-page` applies this migration a second time too.
+
+**Applied** to prod by 2026-11-25: `npm run check:migration-drift` read 1,490 local files and 1,490 remote versions, fully applied (read in the docs pass after #9739); the types for `job_paper_proposals`, `job_paper_propose` and `job_paper_proposal_decide` are in #9802, open when this was read.

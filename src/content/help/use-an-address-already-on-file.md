@@ -39,4 +39,4 @@ Keeping yours makes a new place. You can still save either way. The form never s
 
 A different house number is a different place. So is a different unit or building number. The form stays quiet about those.
 
-For two jobs that are already at one address, see [combine duplicate jobs](/help/combine-duplicate-jobs).
+For two jobs that are already at one address, see [combine duplicate jobs](/help/combine-duplicate-jobs). For one place already on file under two spellings, see [answer addresses that look alike](/help/answer-addresses-that-look-alike).

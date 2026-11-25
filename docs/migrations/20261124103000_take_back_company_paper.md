@@ -6,6 +6,7 @@ Taking back a trade company's own paper: one function, `take_back_company_paper(
 - **What it does**: deletes the paper's row. The signing link lives on the row, so it ends with it. Nobody is emailed. It answers `taken`; `signed` when the paper was signed or received before the press, and is kept; `gone` when it is not there any more, which is what a second press reads.
 - **What it refuses**, in words:
   - a paper that is not a trade company's own (*That paper is not a trade company's own, so it is not taken back here.*): a party's paper is taken back on its own line, under the table's policy;
+  - a paper whose status is neither `unsent` nor `sent`, once a signed or received one has answered `signed` and been kept: *‹paper› stays with ‹company›, since it is neither waiting nor unsent.*;
   - a paper a job requires (`job_id` or `job_required_paper_id`): *‹paper› stays with ‹company›, since a job requires it. It comes off on the job.*;
   - a copy a newer one replaced (`supersedes_person_contract_document_id` names it): *… since a newer copy replaced it. The newer copy is the live paper.*;
   - a paper GC mode is waiting on: *… since GC mode asked for it by ‹Nov 30›. It is GC mode's paper to chase.*

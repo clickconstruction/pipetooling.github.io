@@ -199,7 +199,7 @@ A check typed in by hand reads paid on its job the moment you save it. Sometimes
 
 A customer who paid a Stripe bill by card can dispute the charge with their bank. Stripe takes the money back while the dispute runs. The bill still reads paid. The app opens a case the moment Stripe says so. It reads *card disputed* and names the bill and their reason. Press {{button:blue|Open the dispute in Stripe}} and answer it there before the day the case names. When Stripe decides for us, the case closes on its own.
 
-If the customer wins, the case reads *dispute lost*. The money is gone, and the job still reads paid. Press {{button:red|Put the bill back}}. It shows what changes before anything moves. The payment comes off the job, and the job's history keeps who did it. The bill goes back to Ready to Bill. Bill the customer again from there, with a new Stripe bill.
+If the customer wins, the case reads *dispute lost*. The money is gone, and the job still reads paid. Press {{button:red|Put the bill back}}. It shows what changes before anything moves. The payment comes off the job, and the job's history keeps who did it. The bill goes back to Ready to Bill. Bill the customer again from there, with a new Stripe bill. The case closes, and the next case opens after it.
 
 A bank payment through Stripe can fail days after the customer pressed Pay. The case reads *bank payment failed*. The bill is still open, but the customer may think it is paid. Ask them for another payment, and press **They said…** when they give a day. The case closes when the bill is paid or voided.
 
