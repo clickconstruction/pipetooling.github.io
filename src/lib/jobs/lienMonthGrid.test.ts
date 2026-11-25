@@ -139,6 +139,8 @@ describe('the Months card with no month (punch list #415)', () => {
     expect(withPress).toBe('No months on this job yet. Set the last day of work gives the job its first month.')
     expect(plainWordsFailures(withPress)).toEqual([])
     expect(plainWordsFailures(told)).toEqual([])
+    // The words name every way a month comes, the creation month the readers fall back to among them (v2.8580).
+    expect(told).toBe('No months on this job yet. Approved hours, a sent bill or a last day of work gives the job its first month. A job with none of those takes the month it was created. A month whose window closed long ago is not listed here.')
     // The press ends on the mark every door on the desk ends on.
     expect(LIEN_MONTHS_EMPTY.next.endsWith(' \u203a')).toBe(true)
   })

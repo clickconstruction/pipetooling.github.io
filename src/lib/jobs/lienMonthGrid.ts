@@ -233,10 +233,15 @@ export function lienGridNoticedWords(cells: Readonly<Record<string, LienGridCell
  * comes from approved hours, a sent bill, or the last day of work. The last day of work is the one a person at the desk
  * can set there and then, so it is the press, and it opens the window the path's LAST WORK stop opens. A reader who
  * cannot set the day gets `told`, the words alone. Until then the card said only that it had none.
+ *
+ * `told` names the fourth way too (v2.8580): a job with none of the three takes the month it was created, the readers'
+ * stand-in since v2.3747 (`month_source` *job_created*, a row's `fromCreation`). That month has a window like any
+ * other, and the readers stop listing a month whose window closed long ago. So a job can take that month and still
+ * show this card empty, and the words say why.
  */
 export const LIEN_MONTHS_EMPTY = {
   main: 'No months on this job yet.',
   next: 'Set the last day of work ›',
   tail: 'gives the job its first month.',
-  told: 'Approved hours, a sent bill or a last day of work gives the job its first month.',
+  told: 'Approved hours, a sent bill or a last day of work gives the job its first month. A job with none of those takes the month it was created. A month whose window closed long ago is not listed here.',
 } as const

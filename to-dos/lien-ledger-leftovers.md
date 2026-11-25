@@ -16,7 +16,7 @@ summary: >
   Neither build has been seen live: walk 7 is the look at both, in one sitting. Walks 3, 5 and 6 were not staged and wait on live cases. The two
   ZZ Test filings the walks left are voided. The cents and the pinned strip were seen on the live desk on 2026-11-24 and read as built. The empty
   card's next press has no live case to be seen on.
-next: Walk 7 can be read: both builds are deployed (v2.8541 and v2.8554, 2026-11-24). It is read in one sitting with the path's look. It needs a new record by hand on a ZZ Test job, since the first one is voided. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
+next: The owner says whether counsel's grid shows the day each § 53.056 notice went, written under *Found after the walks*, and the build follows a yes. Walk 7 can be read: both builds are deployed (v2.8541 and v2.8554, 2026-11-24). It is read in one sitting with the path's look. It needs a new record by hand on a ZZ Test job, since the first one is voided. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
 size: four walks (XS each): 7 is ready to read on a ZZ Test job, 3, 5 and 6 wait on live cases
 blocker: None. Both builds are deployed, and one record by hand serves both looks.
 ---
@@ -248,6 +248,20 @@ that says sent, and the reader drops a noticed month a week after its notice day
 live record names as sent, on the day it went, as the Lien window's path always has. No date moved. On prod that
 day, by count: two billed sub jobs had a notice on record that the path could not see, and three more had a record
 that named more months than their sent paper. Not seen live yet.
+
+~~**The empty Months card's words left out the creation month.**~~ **Shipped v2.8580.** A docs pass read it on
+2026-11-25 in the words v2.8535 shipped. A reader with no press read three ways a job gets its first month, and the
+readers still have a fourth: a job with no hours, no dated unpaid bill and no last day set takes the month it was
+created (v2.3747). The fallback was read first and it stands, so the words now name it. They also say a month whose
+window closed long ago is not listed, which is how such a job can still show the card empty. The press shape lists
+nothing and is unchanged. Not seen live: no notice looked at has a job with no month.
+
+**Counsel's grid does not read the § 53.056 notices.** Found by the same docs pass on 2026-11-25, read in the code,
+not seen live, **not built**. The firm's portal reads a job's filings of two kinds, the affidavit and the release
+of record (`supabase/functions/legal-portal/index.ts`). The app's own book has read the recorded notices too since
+v2.7485 (`useLienTimelineBook.ts`). So a notice kept by hand and every recorded notice is missing from what counsel
+sees. It changes what an outside firm reads, so it waits on the owner's answer. The build is an edge function, S,
+with one deploy on its own yes. The function is near the upload limit, so the bundle check runs before its PR.
 
 ## How to retire it
 
