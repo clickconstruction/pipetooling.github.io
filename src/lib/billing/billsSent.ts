@@ -146,6 +146,8 @@ export interface BillsSentUnsent {
   amount: number | null
   status: string
   billedAtIso: string
+  /** *test* for a bill made in Stripe's test mode. The read keeps those, and the mode is what tells them apart. */
+  stripeMode?: string | null
 }
 
 /** What the mail service last said of one sent copy, and the day its bill was paid (`bill_send_marks`). */
@@ -796,22 +798,27 @@ function gapOf(u: BillsSentUnsent, input: Pick<BillsSentInput, 'jobs' | 'paid'>)
   }
 }
 
-/** The bills with no line on the list, the newest first, each with whether its job is a ZZ test job. */
+/**
+ * The bills with no line on the list, the newest first, each with whether it is a test (`isBillsTestRow`): made in
+ * Stripe's test mode, or on a ZZ test job. The bill's own mode is read here, not the job's name alone. Before
+ * v2.8559 the row was marked by its job, and the read dropped every test-mode bill, so the box of test bills could
+ * hold none of the bills a walk is cleared to make.
+ */
 function unsentNewestFirst(input: Pick<BillsSentInput, 'unsent' | 'jobs'>, lines: ReadonlyArray<Pick<BillsSentLine, 'billId'>>) {
   const sent = new Set(lines.map((l) => l.billId).filter((id): id is string => !!id))
   return (input.unsent ?? [])
     .filter((u) => !sent.has(u.billId))
     .slice()
     .sort((a, b) => (a.billedAtIso < b.billedAtIso ? 1 : a.billedAtIso > b.billedAtIso ? -1 : 0))
-    .map((u) => ({ u, test: isBillsTestRow(null, u.jobId ? input.jobs.get(u.jobId) : undefined) }))
+    .map((u) => ({ u, test: isBillsTestRow({ stripeMode: u.stripeMode }, u.jobId ? input.jobs.get(u.jobId) : undefined) }))
 }
 
 /**
  * The bills that were made and have no send of any kind on record: no email, no text, no print. The open ones are
  * the ones to look at; the paid ones are told apart, since a bill paid at the door needed no send. A bill with a
- * line on the list is never a gap, whatever its stamp says. A bill on a ZZ test job is never one either: it is a
- * test (`isBillsTestRow`), and the read already leaves out a bill made in Stripe's test mode. A dev who shows ZZ
- * test jobs reads those apart (`billsSentTestGaps`).
+ * line on the list is never a gap, whatever its stamp says. A test bill is never one either (`isBillsTestRow`): one
+ * made in Stripe's test mode, or one on a ZZ test job. The read hands both over with the rest, and this is where
+ * they are left out. A dev who shows ZZ test jobs reads those apart (`billsSentTestGaps`).
  *
  * A bill is paid here as it is on the list: by its status, or by payments on record that leave nothing out
  * (`billPaidState`). A check typed in and held leaves the bill billed, and the box once called that bill not paid.
@@ -824,11 +831,11 @@ export function billsSentGaps(input: Pick<BillsSentInput, 'unsent' | 'jobs' | 'p
 }
 
 /**
- * The test bills with no send on record: the ones on a ZZ test job, which `billsSentGaps` leaves out. One list,
- * paid or not, the newest first. They are in no total and no tile, and the page draws them in a box of their own
- * for a dev who shows ZZ test jobs (`useZzTestJobsHidden`), so **Say how it went…** can be tried on a test bill.
- * Found on the live walk of punch list #340: with the test bills out of the yellow box, no door opened the form
- * on one.
+ * The test bills with no send on record: the ones made in Stripe's test mode and the ones on a ZZ test job, which
+ * `billsSentGaps` leaves out. One list, paid or not, the newest first. They are in no total and no tile, and the
+ * page draws them in a box of their own for a dev who shows ZZ test jobs (`useZzTestJobsHidden`), so **Say how it
+ * went…** can be tried on a test bill. Found on the live walk of punch list #340: with the test bills out of the
+ * yellow box, no door opened the form on one.
  */
 export function billsSentTestGaps(input: Pick<BillsSentInput, 'unsent' | 'jobs' | 'paid'>, lines: ReadonlyArray<Pick<BillsSentLine, 'billId'>>): BillsSentGap[] {
   return unsentNewestFirst(input, lines)

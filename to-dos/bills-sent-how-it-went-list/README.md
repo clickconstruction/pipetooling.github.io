@@ -2,7 +2,7 @@
 name: "Bills sent: the office adds to and edits the list under How the bill went"
 number: 340
 group: close
-status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, and took calls 2 to 5 as suggested, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 (the list's own table) in v2.7166, migration `20261114060000` pushed 2026-11-14 · PR 3 (the chips and the window) in v2.7167 · Taunya picked Build all three for calls 6 to 8 on 2026-11-15 · R1 (the day offers the day the bill was made) in v2.7349 · R2 (several bills to one person at once) in v2.7350 · R3 (the form reads the record back) in v2.7351 · R1 to R3 read on the live page on 2026-11-15 with nothing saved · walked live 2026-11-24: the list's presses hold on ZZ-named ways and the form reads right, and the write could not be staged, because v2.8445 took test bills out of the yellow box · v2.8540 gives a dev who shows ZZ test jobs a box of test bills · left: the write walk on a ZZ Test bill
+status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, and took calls 2 to 5 as suggested, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 (the list's own table) in v2.7166, migration `20261114060000` pushed 2026-11-14 · PR 3 (the chips and the window) in v2.7167 · Taunya picked Build all three for calls 6 to 8 on 2026-11-15 · R1 (the day offers the day the bill was made) in v2.7349 · R2 (several bills to one person at once) in v2.7350 · R3 (the form reads the record back) in v2.7351 · R1 to R3 read on the live page on 2026-11-15 with nothing saved · walked live 2026-11-24: the list's presses hold on ZZ-named ways and the form reads right, and the write could not be staged, because v2.8445 took test bills out of the yellow box · v2.8540 gives a dev who shows ZZ test jobs a box of test bills · walked again 2026-11-25: the presses hold at 44 px and that box never drew, because the read dropped every bill made in Stripe's test mode · v2.8559 mends the read and stands the form's typed boxes 44 px · left: the look at the box, then the write walk on a test bill
 summary: >
   Bills sent has one form, Say how it went…, with a list of four fixed ways a bill can go. The
   owner asked that the people who open the page can add to that list and edit it, and to be shown
@@ -11,11 +11,11 @@ summary: >
   off and never deleted, and every way counts under Recorded by hand. The mock-up draws the form
   as it is, three ways to edit the list from where the person stands, and three separate fixes to
   the form itself. I suggest the chips.
-next: As a dev, turn on ZZ test jobs on the Pipeline and open Bills sent. In the box of test bills, record a ZZ Test bill with a ZZ-named way, rename the way, and read the older line. Record two ZZ Test bills to one customer in one press.
+next: Once v2.8559 is live, as a dev turn on ZZ test jobs on the Pipeline and open Bills sent. The box of test bills should draw, and the yellow box's count should not move. Then, on a yes, record a test bill with a ZZ-named way, rename the way, and read the older line. Record two test bills to one customer in one press.
 size: M as a train of three (S · M · M), then three small ones for the form's own fixes (S each); left: the live walk (S)
-blocker: v2.8540 on the live site, and two ZZ Test bills to one ZZ Test customer with no send on record.
+blocker: v2.8559 on the live site, then a yes for the write walk, since a record made by hand cannot be taken back. Two test bills to one ZZ Test customer with no send on record.
 opinion: walk it live, then retire the card
-ver: v2.7145 · v2.7166 · v2.7167 · v2.7349 · v2.7350 · v2.7351 · v2.8540
+ver: v2.7145 · v2.7166 · v2.7167 · v2.7349 · v2.7350 · v2.7351 · v2.8540 · v2.8559
 ---
 
 # Bills sent: the list under *How the bill went* (#340)
@@ -147,10 +147,10 @@ Walked on clicktooling.com as the dev, at 730 px and 380 px, in light, on the de
 
 **Could not be walked, and why.** The write: record a bill with a way, read the older line after a rename, and record two bills in one press. Since v2.8445 (#422) a bill on a ZZ test job is out of the yellow box, and **Say how it went…** opens only from a row of that box. So the form opened on no test bill. v2.8540 closes that: a dev who shows ZZ test jobs on the Pipeline sees the test bills with no send in a box of their own, each with **Say how it went…**.
 
-**Still to walk, once v2.8540 is live.**
+**Still to walk, once v2.8559 is live.**
 
-1. As a dev: Pipeline → Hide groups… → **ZZ test jobs** on. Open `/bills-sent`. The box *N test bills have no send on record* stands under the yellow box.
-2. Record a ZZ Test bill with a ZZ-named way. Its line reads the way's words and *A test bill. It is in no total.*, and shows under **Recorded by hand**.
+1. As a dev: Pipeline → Hide groups… → **ZZ test jobs** on. Open `/bills-sent`. The box *N test bills have no send on record* stands under the yellow box. v2.8540's box did not draw here on 2026-11-25. See [the second walk](#the-second-walk-of-2026-11-25).
+2. Record a test bill with a ZZ-named way. Its line reads the way's words and *A test bill. It is in no total.*, and shows under **Recorded by hand**.
 3. Rename the way. The older line, its record page, **Print** and the CSV keep the old words.
 4. Record two ZZ Test bills to one ZZ Test customer in one press. Each gets its own line.
 5. **Done 2026-11-24.** As the sample assistant with training mode turned on for the walk and off again after, **＋ Add a way** took a name and **Add to the list** added nothing: no chip, the count stayed *4 of 12*, and no row was made. The reason shows as a toast at the press (`BillHandWays.tsx`), which the walk's hidden browser did not draw, and the page's own training mode banner says the same.
@@ -159,6 +159,29 @@ Walked on clicktooling.com as the dev, at 730 px and 380 px, in light, on the de
 A record made in steps 2 and 4 cannot be changed or deleted, and neither can a way once added. Both are on the list of presses nothing takes back (#443). The walk of 2026-11-24 left two ZZ-named ways under *Taken off*.
 
 **Small things seen, not this card's.** In the list window at 380 px, **Rename**, **Take off**, **Bring back**, **Show** and **Hide** stand 36 px high, ▲ and ▼ 40 px, and the form's chips 40 px. That was under the 44 px of #414, and v2.8543 stands each 44 px on a phone. After a rename the row still reads *Added by*, and nothing says who renamed it.
+
+## The second walk of 2026-11-25
+
+Walked on clicktooling.com as the dev at 380 px, on the deploy that holds v2.8540 and v2.8543. Nothing was typed and nothing was recorded.
+
+**Holds.**
+
+- v2.8543's presses, seen live. Every press on `/bills-sent` stands 44 px or more, and the page does not scroll sideways.
+- Inside the opened form: **Say how it went…**, every bill's row, every way chip, **＋ Add a way**, **Edit list**, both day chips, **Record how it went** and **Cancel** stand 44 px.
+
+**Two faults, both mended in v2.8559.**
+
+- **The box of test bills did not draw.** With **ZZ test jobs** shown, `/bills-sent` drew no box. The ZZ jobs held eight bills. Six were made in Stripe's test mode, and two carry a send stamp. The page's read of bills with no send left out every test-mode bill at the database, and the kernel marked a row a test by its job's name alone. Stripe's test mode is the only way a walk is cleared to make a bill, so the box could hold none of them. v2.8559 keeps those bills in the read with their mode, and a row is a test when its bill is test mode or its job is a ZZ job. The yellow box, the **No send on record** chip and the **Not paid** tile still hold neither kind.
+- **Two typed boxes of the form stood under 44 px.** The name box read 34 px and the day box 36. v2.8559 stands the name, the day and the note boxes 44 px on a phone.
+
+**The look v2.8559 is owed.** Read only, as the dev.
+
+1. Pipeline → Hide groups… → **ZZ test jobs** on. Open `/bills-sent`. The box *N test bills have no send on record* stands under the yellow box. N was 6 on 2026-11-25, unless a test bill was made or sent since.
+2. Read the yellow box's count and the **Not paid** tile before and after the deploy. Neither moves.
+3. Turn **ZZ test jobs** off. The box is gone. As the sample assistant through **View as**, there is no box and the tiles read as before.
+4. At 380 px, open **Say how it went…** on a row of the box and close it with **Cancel**. The name, the day and the note boxes stand 44 px.
+
+Then steps 2 to 4 and 6 of the first walk can be made on a test bill. Steps 2 and 4 write records nothing takes back (#443), so that walk needs its own yes.
 
 ## The calls
 

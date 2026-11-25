@@ -548,17 +548,19 @@ function ByHandForm({ gap, others, waysCtl, onSaved, onRan, onClose }: { gap: Bi
       else next.delete(billId)
       return next
     })
+  // The three typed boxes stand a fingertip tall on a phone (punch list #414): the name box read 34 px and the day box 36.
+  const typedField: CSSProperties = phone ? { ...field, minHeight: THUMB } : field
   return (
     <div data-testid="bills-sent-by-hand" style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: '0.5rem', marginTop: '0.4rem', padding: '0.5rem', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <BillHandWayPicker ctl={waysCtl} value={draft.how} onPick={(key) => setDraft((d) => ({ ...d, how: key }))} />
       <label style={fieldLabel}>
         Who it went to
-        <input type="text" value={draft.toWhom} onChange={(ev) => setDraft((d) => ({ ...d, toWhom: ev.target.value }))} placeholder="A name, and an address if you have one" style={field} />
+        <input type="text" value={draft.toWhom} onChange={(ev) => setDraft((d) => ({ ...d, toWhom: ev.target.value }))} placeholder="A name, and an address if you have one" style={typedField} />
       </label>
       <div style={{ display: 'grid', gap: '0.3rem', minWidth: 0, alignContent: 'start' }}>
         <label style={fieldLabel}>
           The day it went
-          <input type="date" value={draft.wentOnYmd} max={today} onChange={(ev) => setDraft((d) => ({ ...d, wentOnYmd: ev.target.value }))} style={field} />
+          <input type="date" value={draft.wentOnYmd} max={today} onChange={(ev) => setDraft((d) => ({ ...d, wentOnYmd: ev.target.value }))} style={typedField} />
         </label>
         <div role="group" aria-label="Days one press away" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
           {byHandDayPicks(gap.billedYmd, today).map((p) => (
@@ -570,7 +572,7 @@ function ByHandForm({ gap, others, waysCtl, onSaved, onRan, onClose }: { gap: Bi
       </div>
       <label style={fieldLabel}>
         A note, if you want one
-        <input type="text" value={draft.note} onChange={(ev) => setDraft((d) => ({ ...d, note: ev.target.value }))} style={field} />
+        <input type="text" value={draft.note} onChange={(ev) => setDraft((d) => ({ ...d, note: ev.target.value }))} style={typedField} />
       </label>
       {others.length > 0 ? (
         <div data-testid="bills-sent-by-hand-others" style={{ gridColumn: '1 / -1', display: 'grid', gap: '0.2rem', minWidth: 0, padding: '0.45rem 0.55rem', borderRadius: 6, background: 'var(--bg-subtle)', fontSize: '0.8125rem', color: 'var(--text-700)', maxHeight: '15rem', overflowY: 'auto' }}>

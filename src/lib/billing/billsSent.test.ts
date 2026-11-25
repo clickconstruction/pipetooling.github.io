@@ -675,6 +675,42 @@ describe('billsSent — who paid, when and how (punch list #422)', () => {
       expect([1, 2].map(billsSentTestGapHeading)).toEqual(['1 test bill has no send on record', '2 test bills have no send on record'])
     })
 
+    it('reads a bill made in Stripe’s test mode as a test bill, on a ZZ test job or not', () => {
+      // v2.8540's box marked a row by its job's name alone, and the read dropped every test-mode bill before it.
+      const BILL_T = 'eeeeeeee-7777-4777-8777-777777777771'
+      const BILL_TZ = 'eeeeeeee-7777-4777-8777-777777777772'
+      const BILL_L = 'eeeeeeee-7777-4777-8777-777777777773'
+      const withModes: BillsSentInput = {
+        ...whole,
+        unsent: [
+          ...unsent,
+          // T: test mode, on a job that is no ZZ job. TZ: test mode, on the ZZ job. L: live mode, a real gap.
+          { billId: BILL_T, jobId: JOB_A, amount: 310, status: 'billed', billedAtIso: '2026-11-12T15:00:00.000Z', stripeMode: 'test' },
+          { billId: BILL_TZ, jobId: JOB_Z, amount: 40, status: 'paid', billedAtIso: '2026-11-12T16:00:00.000Z', stripeMode: 'test' },
+          { billId: BILL_L, jobId: JOB_A, amount: 90, status: 'billed', billedAtIso: '2026-11-12T17:00:00.000Z', stripeMode: 'live' },
+        ],
+      }
+      // The box of test bills: both test-mode bills and the ZZ job's bill, each once, the newest first, paid or not.
+      expect(billsSentTestGaps(withModes, lines).map((g) => [g.billId, g.paid])).toEqual([
+        [BILL_TZ, true],
+        [BILL_T, false],
+        [BILL_Z, false],
+      ])
+      // The yellow box holds neither test-mode bill, open or paid, and gains the live one alone.
+      const mixed = billsSentGaps(withModes, lines)
+      const ids = (g: { open: Array<{ billId: string }>; paid: Array<{ billId: string }> }) => [...g.open, ...g.paid].map((x) => x.billId).sort()
+      expect(ids(mixed)).toEqual([...ids(gaps), BILL_L].sort())
+      // The Not paid tile and the No send on record chip move by the live bill and nothing else.
+      const before = billsSentOut(lines, gaps.open, '2026-11-12')
+      const after = billsSentOut(lines, mixed.open, '2026-11-12')
+      expect([after.noSend.bills - before.noSend.bills, after.noSend.total - before.noSend.total]).toEqual([1, 90])
+      expect([after.all.bills - before.all.bills, after.all.total - before.all.total]).toEqual([1, 90])
+      // A test-mode bill with a line on the list is no gap of either kind.
+      expect(billsSentTestGaps(withModes, [...lines, { billId: BILL_T }]).map((g) => g.billId)).toEqual([BILL_TZ, BILL_Z])
+      // The mode is read whole: an empty or missing mode on a real job is a real gap.
+      expect(billsSentTestGaps({ jobs: whole.jobs, unsent: [{ billId: BILL_L, jobId: JOB_A, amount: 90, status: 'billed', billedAtIso: '2026-11-12T17:00:00.000Z', stripeMode: null }] }, lines)).toEqual([])
+    })
+
     it('calls a bill with no send paid when the payments on record cover it, and keeps what is left of a part-paid one', () => {
       expect(gaps.open.map((g) => [g.billId, g.out])).toEqual([
         [BILL_G, 0],
