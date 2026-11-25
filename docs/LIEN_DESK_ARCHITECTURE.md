@@ -272,6 +272,7 @@ last_updated: 2026-11-25
 > Since v2.8125 the column of this notice is drawn only where a month can be ticked or one is ticked already (`thisShown` in `LienDeskMonths`), so a missed notice with nothing due has none, as a sent notice has none since v2.8064.
 > The empty card goes through `EmptyState`.
 > Since **v2.8535** (punch list #415) the empty card says what gives the job a month (`LIEN_MONTHS_EMPTY`, `lienMonthGrid.ts`), and the office's press there, *Set the last day of work ›*, opens `LienLastWorkDayWindow` as the path's LAST WORK stop does.
+> Since v2.8580 its words for a reader with no press name the creation month too, the readers' stand-in for a job with no hours, bill or last day, and say a month whose window closed long ago is not listed.
 > `LienDeskMonths.render.test.tsx` holds the order, the words, the hooks and the doors.
 > A width observer fires only when a frame is drawn, so a measurement in a hidden browser pane reloads at each width.
 

@@ -259,7 +259,7 @@ describe('LienDeskMonths, the ledger (#361)', () => {
   it('a job with no months says so through EmptyState, with no grid and no lead line, and says what gives it one', () => {
     const { card } = mount({ papers: [thisPaper('A', [])], rows: [], earliestOpen: null, lateUntil: null })
     // A reader who cannot set the day gets the words alone: what gives the job a month.
-    expect((card.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No months on this job yet. Approved hours, a sent bill or a last day of work gives the job its first month.')
+    expect((card.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No months on this job yet. Approved hours, a sent bill or a last day of work gives the job its first month. A job with none of those takes the month it was created. A month whose window closed long ago is not listed here.')
     expect(card.querySelector('[data-empty-state] button')).toBeNull()
     expect(card.querySelector('table')).toBeNull()
     expect(card.querySelector('[data-lien-ledger-lead]')).toBeNull()
