@@ -31,7 +31,7 @@ The bids you had open and did not change. Each row has an empty box.
 
 Every row reads the same way. First the size, then the tab. {{chip:gray|3 hours · Takeoffs and Pricing}}
 
-The sizes are rough. They are rounded, and nobody is billed by them.
+The sizes are rough. The sizes are rounded, and nobody is billed by a size.
 
 ## Fix the list
 
@@ -46,7 +46,7 @@ The sizes are rough. They are rounded, and nobody is billed by them.
 
 ## Clock out
 
-With one bid on the list, {{button:red|Complete clock out}} is ready at once. It says how many bids it keeps.
+With one bid on the list, {{button:red|Complete clock out}} is ready at once. The button says how many bids it keeps.
 
 **Anything else?** is for work the app cannot see, such as a call or a site walk. You can leave it empty.
 
@@ -56,9 +56,9 @@ The sheet says **The app saw no bid today.** Add the bids you worked on, or type
 
 ## What the app can see
 
-The app sees a bid you change. It also sees a bid you have open on the Bids page while you press, type or scroll.
+The app sees a bid you change. The app also sees a bid you have open on the Bids page while you press, type or scroll.
 
-It does not see a takeoff in CountTooling, a call, or plans on paper. Add those bids yourself.
+The app does not see a takeoff in CountTooling, a call, or plans on paper. Add those bids yourself.
 
 ## Who sees your list
 

@@ -4351,15 +4351,22 @@ It is off, with the reason said, when a later change hangs on a row it added.
 
 ### Bids of the day (the Clock out sheet's list)
 The list of bids a person worked on in a day, read from what the app already records and never typed (punch list #445, `to-dos/clock-out-bids-of-the-day/`).
-The ground is live since v2.8605, and the beat is sent since v2.8609.
-Nothing on screen reads either yet.
+The ground is live since v2.8605, the beat is sent since v2.8609, and the Clock out sheet draws the list since v2.8610.
+The sheet (`ClockOutBidDay.tsx` over `useClockOutBidDay`) shows it to anyone whose day held a bid, and to an estimator every day.
+**Your day** is a strip from the first clock in to now, one colour a bid, with the line *Grey is time the app did not see.*
+**Bids you worked on today** holds the bids the person changed, each with a tick in its colour: a press takes the bid off, another puts it back.
+**Opened, nothing changed** holds a bid that was in front a minute or more with nothing of the person's changed, each an empty box a press ticks onto the list.
+**Add a bid the app missed** offers the bids on the person's Working board, and a bid picked in the sheet's own search joins the list too.
+Every row reads the size, then the tab, as *3 hours · Takeoffs and Pricing*.
+With a bid on the list the note is **Anything else?** and may stay empty, the press reads *Complete clock out · 4 bids*, and the note the session carries is the list, one line a bid, then what the person typed.
+A read that fails shows no list, and the sheet asks for the note as it always has.
 A **beat** is up to 60 seconds added to `user_bid_activity` for the bid in front, in a five-minute bucket, only while the person is at work on it.
 The **bid in front** is the bid in the Bids page's address (`/bids?tab=pricing&bidId=…`) on a visible tab, read by `bidInFrontFromLocation`.
 **At work** is a press, a key or a scroll in the last five minutes, so a tab left in front on a second screen stops counting.
 The **kept list** is the list as the person left it at clock out, in `bid_day_entries`: each bid kept or taken off, read by the app or added by the person.
 A size on the list is rough and is never a figure to bill by.
 
-**Database**: `user_bid_activity`, `bid_day_entries`, `bump_user_bid_activity`, `get_my_bid_day`, `save_my_bid_day` · kernel `lib/bids/bidInFront.ts` · hook `useBidActivityBeat`
+**Database**: `user_bid_activity`, `bid_day_entries`, `bump_user_bid_activity`, `get_my_bid_day`, `save_my_bid_day` · kernels `lib/bids/bidInFront.ts`, `lib/clock/bidDay.ts` · hooks `useBidActivityBeat`, `useClockOutBidDay` · guide `/help/clock-out-with-the-bids-of-the-day`
 
 ### Utilization · hours you can work (People)
 The Utilization train (punch list #284, a design spike the owner ran on 2026-11-08): the hours each person said they can work against what the clock recorded, so a dev sees when to add people or use people more.
