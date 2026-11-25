@@ -213,7 +213,7 @@ export function fragmentHref(version: string): string {
 }
 
 export interface LinkChip {
-  kind: 'mockup' | 'artifact' | 'history' | 'folder'
+  kind: 'mockup' | 'pictures' | 'artifact' | 'history' | 'folder'
   label: string
   href: string
   /** For a mock-up, its repo path (the title attribute). */
@@ -223,6 +223,8 @@ export interface LinkChip {
 export function linkChips(item: BoardItem): LinkChip[] {
   const chips: LinkChip[] = [
     ...item.mockups.map((m) => ({ kind: 'mockup' as const, label: mockupLabel(item, m), href: mockupHref(m), title: m })),
+    // The pictures page is not a mock-up (punch list #438), so it has a chip of its own and keeps its door.
+    ...(item.pictures?.page ? [{ kind: 'pictures' as const, label: 'pictures', href: mockupHref(item.pictures.page), title: item.pictures.page }] : []),
     ...item.artifacts.map((a) => ({ kind: 'artifact' as const, label: a.label, href: a.url })),
     { kind: 'history', label: 'history', href: historyHref(item) },
   ]

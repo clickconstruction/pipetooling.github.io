@@ -140,10 +140,14 @@ export interface MockupDoor {
   title: string
 }
 
-/** The compact row's one door to the drawings: the first mock-up, and how many more the open card lists. */
-export function mockupDoor(item: Pick<BoardItem, 'mockups'>): MockupDoor | null {
+/**
+ * The compact row's one door to the drawings: the first mock-up, and how many more the open card lists. A card
+ * with a pictures page and no mock-up keeps a door, named for what it is (punch list #438).
+ */
+export function mockupDoor(item: Pick<BoardItem, 'mockups' | 'pictures'>): MockupDoor | null {
   const first = item.mockups[0]
-  if (!first) return null
+  const page = item.pictures?.page
+  if (!first) return page ? { href: mockupHref(page), label: 'pictures', title: page } : null
   const more = item.mockups.length - 1
   return {
     href: mockupHref(first),
