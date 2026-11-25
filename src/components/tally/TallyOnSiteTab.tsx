@@ -205,6 +205,22 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   // line is about to be pressed against, and another phone may have changed it.
   const openBoxId = view.kind === 'container' ? view.id : null
   useEffect(() => { if (jobId && openBoxId) refreshJob(jobId, ON_SITE_BOX_REFRESH_AFTER_MS) }, [jobId, openBoxId])
+  // Back from a box shows that box's row (punch list #398): the list used to open at its top, a long way from the
+  // box on a job of many. The row is found by the mark `OnSiteBoxRow` carries. A box the list no longer draws, one
+  // retired or filtered out, moves nothing.
+  const viewBoxId = view.kind === 'containers' ? null : view.id
+  const cameFromBox = useRef<string | null>(null)
+  useEffect(() => {
+    if (viewBoxId) {
+      cameFromBox.current = viewBoxId
+      return
+    }
+    const id = cameFromBox.current
+    cameFromBox.current = null
+    if (!id) return
+    const row = [...document.querySelectorAll<HTMLElement>('[data-box-card]')].find((el) => el.getAttribute('data-box-card') === id)
+    if (row && typeof row.scrollIntoView === 'function') row.scrollIntoView({ block: 'center' })
+  }, [viewBoxId])
   const [sheet, setSheet] = useState<Sheet>(null)
   // Take from a box (v2.7824): the run on screen. It is kept on the phone on every change (`takeRunMemory.ts`), since
   // a phone can drop the page while its camera is open; `takeRef` is the run as the camera's answer must read it.

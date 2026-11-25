@@ -4,6 +4,10 @@
  * (`StickerNewSheet.tsx`) needed it too.
  */
 import { useEffect, type CSSProperties, type ReactNode } from 'react'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { useVisualViewportBox } from '../../hooks/useVisualViewportBox'
+import { visibleBand } from '../../lib/visibleBand'
+import { onSiteSheetScrim } from '../../lib/materials/onSiteSheetScrim'
 
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.85rem' }
 
@@ -36,8 +40,12 @@ export function Sheet({ title, sub, children, onClose, footer, fill }: { title: 
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+  // On a phone the scrim is the part of the page that shows, so the sheet's foot stands on the keyboard's top.
+  const phone = useIsMobile()
+  const shows = visibleBand(useVisualViewportBox())
+  const band = phone ? shows : null
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 800, background: 'rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-end', paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={onClose}>
+    <div data-on-site-sheet={band ? 'band' : 'page'} style={onSiteSheetScrim(band)} onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={title} style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderTopLeftRadius: 16, borderTopRightRadius: 16, ...(fill ? { flex: '1 1 auto', minHeight: 0 } : { maxHeight: '90%' }), overflow: 'hidden', display: 'flex', flexDirection: 'column', maxWidth: 480, width: '100%', margin: '0 auto' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ flex: 'none', padding: '0.6rem 1rem 0', display: 'grid', gap: '0.4rem' }}>
           <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border-strong)', margin: '0 auto' }} />

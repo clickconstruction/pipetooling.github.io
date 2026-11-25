@@ -7,7 +7,7 @@
  * It draws and tells; every write and every sheet is the tab's (`TallyOnSiteTab.tsx`). The words and the rules are
  * `lib/materials/boxScreen.ts`.
  */
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { EmptyState } from '../EmptyState'
 import { boxKindWords } from '../../lib/materials/editBox'
 import { countWalkKeys } from '../../lib/materials/countWalk'
@@ -82,8 +82,15 @@ export default function OnSiteBoxScreen({ container, lines, stickers, said, now,
   const photo = photoTileFact({ label: container.label, photos, after, now })
   const kinds = lines.filter((l) => l.onHand > 0).length
   const cols = narrow ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))'
+  // A box opens at its own top (punch list #398): opened from a list that was scrolled, the page kept the list's
+  // place and the box's name was off the top of the screen. A box that opens below the top of the screen is left.
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = root.current
+    if (el && typeof el.scrollIntoView === 'function' && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start' })
+  }, [container.id])
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.75rem' }} data-testid="on-site-box-screen">
+    <div ref={root} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.75rem', scrollMarginTop: 'var(--app-top-chrome, 0px)' }} data-testid="on-site-box-screen">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
         <button type="button" aria-label={backLabel} onClick={onBack} style={{ ...btn, width: TOUCH_MIN, padding: 0, fontSize: '1.25rem', flex: 'none' }}>‹</button>
         <div style={{ minWidth: 0, display: 'grid' }}>

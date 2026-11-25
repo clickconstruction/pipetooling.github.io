@@ -66,6 +66,30 @@ describe('BoxPhotos', () => {
     expect((screen.getByRole('button', { name: 'Share instead' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
+  it('a filed photo whose file is gone says why under its words, where a phone can read it (punch list #398)', async () => {
+    readBoxPhotoBytes.mockResolvedValue(null)
+    const gone: PhotoNote = { ...filed, failWhy: 'The file is in the folder’s trash.' }
+    renderWithProviders(<BoxPhotos photos={[gone]} canAct={false} />)
+    // The frame is empty and dashed, and the reason is words on the screen, not a title a thumb never sees.
+    await waitFor(() => expect(screen.getByTestId('box-photo-reason').textContent).toBe('The file is in the folder’s trash.'))
+    expect(screen.getByTestId('box-photo-none')).toBeTruthy()
+    cleanup()
+    // With no reason kept, the frame's own words stand in.
+    renderWithProviders(<BoxPhotos photos={[{ ...filed, failWhy: null }]} canAct={false} />)
+    await waitFor(() => expect(screen.getByTestId('box-photo-reason').textContent).toBe('The picture did not open from the job’s folder.'))
+  })
+
+  it('a filed photo whose picture draws says no reason, and none while the picture is still being read', async () => {
+    let land: (v: unknown) => void = () => {}
+    readBoxPhotoBytes.mockReturnValue(new Promise((res) => { land = res }))
+    renderWithProviders(<BoxPhotos photos={[{ ...filed, failWhy: 'The file is in the folder’s trash.' }]} canAct={false} />)
+    await waitFor(() => expect(readBoxPhotoBytes).toHaveBeenCalled())
+    expect(screen.queryByTestId('box-photo-reason')).toBeNull()
+    await act(async () => { land({ url: 'blob:thumb-p1', blob: null, source: 'drive' }) })
+    await screen.findByAltText(filed.fileName)
+    expect(screen.queryByTestId('box-photo-reason')).toBeNull()
+  })
+
   it('reads a square’s picture only once the square is near the screen', async () => {
     const obs = standInObserver()
     const far: PhotoNote = { ...filed, id: 'p9', driveFileId: 'drive-9', fileName: '2026-11-02 Priya · G40.jpg', words: 'G40' }

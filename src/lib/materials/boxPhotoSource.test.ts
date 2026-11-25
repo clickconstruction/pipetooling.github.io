@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boxPhotoIsFiled, boxPhotoMissingWords, boxPhotoOpenLabel, boxPhotoSource, phoneCopiesToDrop } from './boxPhotoSource'
+import { boxPhotoIsFiled, boxPhotoMissingWords, boxPhotoOpenLabel, boxPhotoReasonWords, boxPhotoSource, phoneCopiesToDrop } from './boxPhotoSource'
 
 describe('where a box photo is read from', () => {
   it('reads a filed shot from the job’s folder even on the phone that still holds it', () => {
@@ -72,5 +72,26 @@ describe('the words on an empty square and on the press', () => {
   it('names the photo the press opens', () => {
     expect(boxPhotoOpenLabel({ words: 'A1 after Count', fileName: '2026-10-28 Jordan · A1 after Count.jpg' })).toBe('Open the photo of A1 after Count')
     expect(boxPhotoOpenLabel({ words: '', fileName: 'x.jpg' })).toBe('Open the photo of x.jpg')
+  })
+})
+
+describe('the reason under a photo (punch list #398)', () => {
+  const trashed = 'The file is in the folder’s trash.'
+
+  it('a filed photo whose picture did not come says why, in the sweep’s own words when it left some', () => {
+    expect(boxPhotoReasonWords({ status: 'filed', driveFileId: 'd1', failWhy: trashed }, true)).toBe(trashed)
+    expect(boxPhotoReasonWords({ status: 'filed', driveFileId: 'd1', failWhy: null }, true)).toBe('The picture did not open from the job’s folder.')
+    expect(boxPhotoReasonWords({ status: 'filed', driveFileId: 'd1', failWhy: '  ' }, true)).toBe('The picture did not open from the job’s folder.')
+  })
+
+  it('a filed photo whose picture draws has no line, whatever an old reason says', () => {
+    expect(boxPhotoReasonWords({ status: 'filed', driveFileId: 'd1', failWhy: trashed }, false)).toBeNull()
+    expect(boxPhotoReasonWords({ status: 'filed', driveFileId: 'd1', failWhy: null }, false)).toBeNull()
+  })
+
+  it('a shot that still waits says its reason with or without its picture, as before', () => {
+    expect(boxPhotoReasonWords({ status: 'sending', driveFileId: null, failWhy: 'The folder refused it.' }, false)).toBe('The folder refused it.')
+    expect(boxPhotoReasonWords({ status: 'on-phone', driveFileId: null, failWhy: null }, false)).toBeNull()
+    expect(boxPhotoReasonWords({ status: 'on-phone', driveFileId: null, failWhy: null }, true)).toBe('The picture is still on the phone that took it.')
   })
 })

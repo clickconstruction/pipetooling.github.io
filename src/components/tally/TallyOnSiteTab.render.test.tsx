@@ -265,6 +265,22 @@ describe('TallyOnSiteTab · the faster load (v2.8284)', () => {
     vi.mocked(storeMock.addMovement).mockClear()
   })
 
+  it('Back from a box shows that box’s row in the list (punch list #398)', async () => {
+    const seen: Array<{ box: string | null; how: ScrollIntoViewOptions | undefined }> = []
+    const proto = Element.prototype as unknown as { scrollIntoView?: (o?: ScrollIntoViewOptions) => void }
+    const was = proto.scrollIntoView
+    proto.scrollIntoView = function (this: Element, o) { seen.push({ box: this.getAttribute('data-box-card'), how: o }) }
+    try {
+      open()
+      fireEvent.click(await screen.findByRole('button', { name: 'Back to the containers' }))
+      // The list is back, and the row of the box just left is brought to the middle of the screen.
+      await waitFor(() => expect(seen.filter((s) => s.box === 'a2')).toEqual([{ box: 'a2', how: { block: 'center' } }]))
+      expect(document.querySelector('[data-box-card="a2"]')).not.toBeNull()
+    } finally {
+      proto.scrollIntoView = was
+    }
+  })
+
   it('a box opened from the Materials desk goes back there, under that name', () => {
     const onBack = vi.fn()
     renderWithProviders(<TallyOnSiteTab jobs={jobs} jobsLoading={false} selectedJobId="j1" onPickJob={() => {}} byUserId="u1" byName="Mateo" searchParts={async () => []} initialContainerId="a2" boxBack={{ label: 'Back to Materials', onBack }} />)
