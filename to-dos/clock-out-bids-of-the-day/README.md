@@ -1,18 +1,17 @@
 ---
 name: "Clock out: the bids of the day"
 number: 445
-group: gated
-status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · nothing is built
+group: ready
+status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · the owner's go the same day (I like it, build it) · the ground is PR #9878, armed · the beat and the sheet's list are built and wait on the types
 summary: >
   An estimator works one bid at a time, and the app already records most of that work without being asked.
   This card reads those records into a list at clock out: the bids the person worked on today, with nothing
   to type. The person takes one off or adds one the app missed in one press. Step 1 needs no new table. The
   later steps add one small beat so the list also holds bids a person read and did not change.
-next: The owner looks at `mockup.html` and answers the six calls. Then build step 1, which needs no migration.
-ask: owner · decide · Open the mock-up, then answer the six calls on the card. Is the pick the one to build?
-size: L as a train of six (S · M · M · S · S · M)
-blocker: The owner's look at the mock-up and the six calls. Steps 2 and 3 each owe a migration and its push.
-opinion: build step 1 now — it reads what the app already keeps and takes the typing away on most days
+next: Push PR #9878's migration at its merge, then the types PR, then the beat and the sheet's list as two PRs. Then walk it live.
+size: L as a train of six (S · M · M · S · S · M); left: the push, the beat and the sheet's list (M · S · M), then the Bid Board, the My Time card and CountTooling (S · S · M)
+blocker: None. The push of PR #9878's migration has the owner's yes and goes at its merge.
+opinion: build — the owner said build it, and the first three pieces are written and tested
 ---
 
 # Clock out: the bids of the day (#445)
@@ -189,8 +188,8 @@ with a **J1007** chip. An estimator cannot read most job rows, so the bid's name
    grows by about 8,000 a month, so the read is fine for a year and wants an index in step 2.
 2. **The beat names the bid.** The same 60-second call carries the bid from the address, and counts only
    while the person has pressed, typed or scrolled in the last five minutes. It writes one row a person,
-   a day and a bid, on the company's day. *Cost:* one table, one function changed, about ten rows a
-   person a day, no new request. The ledger's new index is built `CONCURRENTLY`, as its table comment asks. *Proves:* a bid was open and in use, with no change needed. *Risk:* it
+   a day and a bid, on the company's day. *Cost:* one table, one function, about a hundred small rows a
+   person a day, and one more small request a minute while a bid is open. The ledger's new index is built `CONCURRENTLY`, as its table comment asks. *Proves:* a bid was open and in use, with no change needed. *Risk:* it
    is a new measure of a person, so who reads it is call 4.
 3. **The list, with corrections.** The sheet draws the pick: the strip, two shelves, a tick on every row and the
    board's bids as chips. The press saves the list the person left. *Cost:* one table for the kept list,
@@ -299,7 +298,28 @@ The six calls below are not answered yet.
 
 ## The calls
 
-Six calls for the owner, each with a pick.
+Six calls for the owner, each with a pick. **All six are answered: the picks stand.**
+
+On 2026-11-25 the owner said of the mock-up's pick, with its strip and its tick:
+
+> I like it, build it, let me know when it's live
+
+That is taken as the picks standing on calls 1, 2, 3, 5 and 6. Call 4, who reads a person's day, was put to
+the owner by name before anything was pushed, as three statements on one sheet, with the push itself. The
+question was *Do the three picks stand, and may #9878's migration be pushed after it merges?* The owner's
+words, relayed by the managing session:
+
+> Yes, push it
+
+The three statements the owner read:
+
+1. **The clock-out list** (`bid_day_entries`) is read by the person, a dev, anyone with payroll access and
+   the office. A lead does not read it.
+2. **The trace under it** (`user_bid_activity`) is read by the person, the owner, a dev and only those on
+   the Activity tab's viewer list. The office does not read it unless granted.
+3. **The trace is kept with no end date.**
+
+The calls as they were asked:
 
 1. **Which way?** *Pick: the pick in the mock-up, the list with two shelves.* Step 1 ships way A first,
    since it needs no table, and step 3 replaces it.
@@ -349,6 +369,39 @@ and the sheet's section.
 Each step ships its help guide, release note and docs the usual way. Step 1 stands alone and answers the
 ask on most days. Steps 2 and 3 each push right after the merge.
 
+### The build as it runs
+
+The owner asked for the pick itself, so the train was re-cut around one migration. Steps 1 to 3 above ship
+as four PRs:
+
+| PR | What | Owes |
+|---|---|---|
+| The ground, PR #9878 | `20261125223610_bid_day_ground.sql`: the beat's table `user_bid_activity` in five-minute buckets, the kept list `bid_day_entries`, and `bump_user_bid_activity`, `get_my_bid_day`, `save_my_bid_day`. Its SQL bed is `npm run test:pg:bid-day`. | The push, at the merge |
+| The types | `npm run gen-types:linked` | Nothing |
+| The beat | `useBidActivityBeat` in the layout reads the bid from the address and sends at most a minute a minute, only while the person pressed, typed or scrolled in the last five minutes | Nothing |
+| The list | The kernel `src/lib/clock/bidDay.ts`, the sheet's section `ClockOutBidDay.tsx`, the wiring in `ClockInOutButton.tsx` and the guide | Nothing |
+
+What changed from the plan while building:
+
+- **Five-minute buckets, not a row a day.** The strip needs to know where in the day a bid sat. A row a
+  day could not say. The day a bucket belongs to is worked out at read time in the company's zone, which
+  also mends the day line of hole 7.
+- **No new index on the ledger.** The read walks the ledger's key backwards to the day's first row, so
+  the write path stays as light as #73 left it.
+- **The beat is its own small request**, not a ride on the app-time beat. Changing that function's shape
+  would have touched every signed-in person's minute.
+- **The office reads the list in the note.** With a bid on the list, the note the clock session carries is
+  the list, one line a bid, then anything the person typed. So the office reads it where it reads the
+  note today, with no new screen.
+- **No second search box.** A bid picked in the sheet's own **Search to choose other job or bid** joins
+  the list.
+- **An opened bid shows after a minute in front.** A bid passed through on the way to another is left out.
+- **A size with no beat.** A change proves a moment. A lone change is a minute, a bucket inside a run of
+  changes is five, and each end of a run is half.
+
+Steps 4, 5 and 6 are as planned and not built: the Bid Board naming a bid, the My Time card for a person
+with no clock out, and CountTooling's beat.
+
 ## How to verify
 
 - **Step 1, by test.** The kernel takes rows and returns the list. Fixtures cover a worked bid, a touch,
@@ -365,5 +418,6 @@ ask on most days. Steps 2 and 3 each push right after the merge.
 
 ## Where it stands
 
-Read and measured on 2026-11-25. The mock-up is drawn. Nothing is built. The card waits on the owner's
-look and the six calls.
+Read and measured on 2026-11-25, and the mock-up drawn and changed three times on the owner's looks the
+same day. The owner said to build it. The ground is PR #9878, armed, with its SQL bed green. The beat and
+the sheet's list are written and tested and wait on the types PR. Nothing is live yet.
