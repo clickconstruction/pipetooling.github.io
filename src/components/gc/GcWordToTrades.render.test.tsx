@@ -10,11 +10,14 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { GcWordToTrades } from './GcWordToTrades'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { GC_TRADE_EMAIL_REFUSALS } from '../../lib/gc/tradeEmail'
-import type { WordRecipient } from '../../lib/gc/wordToTrades'
+import { keepWord, WORD_AGAIN_WORDS, type WordRecipient } from '../../lib/gc/wordToTrades'
 import type { WordToTrades } from '../../lib/gc/wordToTradesIo'
 import { plainWordsFailures } from '../../lib/plainWords'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  keepWord('fairoaksd', null)
+})
 
 const s = initialGcState()
 const fairOaks = s.projects.find((x) => x.id === 'fairoaksd')!
@@ -30,6 +33,8 @@ describe('GcWordToTrades: one email to every company on the job', () => {
       ],
       already: [{ companyId: 'summit', company: 'Summit Roofing' }],
       refused: [{ companyId: 'coolbreeze', company: 'Cool Breeze Mechanical', words: GC_TRADE_EMAIL_REFUSALS.noEmail }],
+      held: [],
+      emails: 4,
     }
     const onSend = vi.fn((_r: WordRecipient[], _subject: string, _text: string) => Promise.resolve(answer))
     const onClose = vi.fn()
@@ -65,6 +70,68 @@ describe('GcWordToTrades: one email to every company on the job', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('names a person the mail service refused under a company the word reached, counts emails, and keeps the words for a second press', async () => {
+    const HELD = 'The email did not go out. The mail service said: Invalid `to` field.'
+    // Summit's one message was refused: two of its people got the word alone, and one was held.
+    const first: WordToTrades = {
+      sent: [
+        { companyId: 'tricounty', company: 'Tri-County Site' },
+        { companyId: 'summit', company: 'Summit Roofing' },
+      ],
+      already: [],
+      refused: [],
+      held: [{ companyId: 'summit', company: 'Summit Roofing', name: 'Marcus Hale', words: HELD }],
+      emails: 3,
+    }
+    // The second press of the same words: the one who was held gets it alone, and nobody else gets it twice.
+    const second: WordToTrades = { sent: [{ companyId: 'summit', company: 'Summit Roofing' }], already: [{ companyId: 'tricounty', company: 'Tri-County Site' }], refused: [], held: [], emails: 1 }
+    const onSend = vi.fn<(r: WordRecipient[], subject: string, text: string) => Promise<WordToTrades>>().mockResolvedValueOnce(first).mockResolvedValueOnce(second)
+    const view = render(<GcWordToTrades state={s} project={fairOaks} onSend={onSend} onClose={vi.fn()} />)
+    let dialog = screen.getByRole('dialog', { name: 'Word to every trade' })
+    fireEvent.change(within(dialog).getByLabelText('The word'), { target: { value: 'The site is closed Friday for the pour.' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Tell 6 companies' }))
+    await waitFor(() => expect(dialog.querySelector('[data-word-result]')).toBeTruthy())
+    let result = dialog.querySelector('[data-word-result]')!.textContent!
+    expect(result).toContain('Sent 3 emails. 1 did not send.')
+    expect(result).toContain('Sent to Tri-County Site and Summit Roofing.')
+    expect(result).toContain('1 email did not send. It stays here with the reason.')
+    expect([...dialog.querySelectorAll('[data-word-held]')].map((el) => el.textContent)).toEqual([`Summit Roofing, Marcus Hale: ${HELD}`])
+    expect(result).toContain(WORD_AGAIN_WORDS)
+
+    // Closed and opened again, as the office does to mend the address: the window opens on the same words.
+    view.unmount()
+    render(<GcWordToTrades state={s} project={fairOaks} onSend={onSend} onClose={vi.fn()} />)
+    dialog = screen.getByRole('dialog', { name: 'Word to every trade' })
+    expect((within(dialog).getByLabelText('The word') as HTMLTextAreaElement).value).toBe('The site is closed Friday for the pour.')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Tell 6 companies' }))
+    await waitFor(() => expect(dialog.querySelector('[data-word-result]')).toBeTruthy())
+    expect(onSend.mock.calls[1]![2]).toBe(onSend.mock.calls[0]![2])
+    result = dialog.querySelector('[data-word-result]')!.textContent!
+    expect(result).toContain('Sent 1 email.')
+    expect(result).toContain('Sent to Summit Roofing.')
+    expect(result).toContain('Tri-County Site already had these words. Nothing was sent again.')
+    expect(dialog.querySelector('[data-word-held]')).toBeNull()
+    expect(result).not.toContain(WORD_AGAIN_WORDS)
+    // Everything went, so the words are let go and there is nothing to go back to.
+    expect(within(dialog).queryByRole('button', { name: 'Back to the words' })).toBeNull()
+    cleanup()
+    render(<GcWordToTrades state={s} project={fairOaks} onSend={onSend} onClose={vi.fn()} />)
+    expect((screen.getByLabelText('The word') as HTMLTextAreaElement).value).toBe('')
+  })
+
+  it('goes back to the words from an outcome that left someone out', async () => {
+    const onSend = vi.fn(() => Promise.resolve<WordToTrades>({ sent: [], already: [], refused: [{ companyId: 'summit', company: 'Summit Roofing', words: GC_TRADE_EMAIL_REFUSALS.sendFailed }], held: [], emails: 0 }))
+    render(<GcWordToTrades state={s} project={fairOaks} onSend={onSend} onClose={vi.fn()} />)
+    const dialog = screen.getByRole('dialog', { name: 'Word to every trade' })
+    fireEvent.change(within(dialog).getByLabelText('The word'), { target: { value: 'Park on the north lot.' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Tell 6 companies' }))
+    await waitFor(() => expect(dialog.querySelector('[data-word-result]')).toBeTruthy())
+    expect(dialog.querySelector('[data-word-result]')!.textContent).toContain('Nothing sent. 1 did not send.')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Back to the words' }))
+    expect((within(dialog).getByLabelText('The word') as HTMLTextAreaElement).value).toBe('Park on the north lot.')
+    expect((within(dialog).getByRole('button', { name: 'Tell 6 companies' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
   it('is dead with nobody awarded, and says so', () => {
     const none = { ...fairOaks, packages: fairOaks.packages.map((k) => ({ ...k, awardedInviteId: null })) }
     render(<GcWordToTrades state={s} project={none} onSend={vi.fn()} onClose={vi.fn()} />)
@@ -88,6 +155,7 @@ describe('GcWordToTrades: one email to every company on the job', () => {
       'Nothing was sent again.',
       'No company is awarded a trade on this job yet.',
       'Award one first.',
+      WORD_AGAIN_WORDS,
     ]
     for (const words of said) expect(plainWordsFailures(words), words).toEqual([])
   })

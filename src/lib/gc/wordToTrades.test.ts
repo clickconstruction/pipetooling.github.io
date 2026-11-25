@@ -2,9 +2,10 @@
  * Punch list #205, PR 6: a word to every trade on a job, on main's test state. Fair Oaks Shops, Building D has six
  * companies awarded a trade; a bidding job has none.
  */
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import { plainWordsFailures } from '../plainWords'
 import { initialGcState } from './schedule/testState'
-import { andList, wordEmailKey, wordLines, wordRecipients, wordSubject } from './wordToTrades'
+import { andList, keepWord, keptWord, WORD_AGAIN_WORDS, wordEmailKey, wordHeldLine, wordLines, wordOutcomeCounts, wordRecipients, wordSubject } from './wordToTrades'
 
 const s = initialGcState()
 const fairOaks = s.projects.find((p) => p.id === 'fairoaksd')!
@@ -53,5 +54,31 @@ describe('the email', () => {
     expect(andList([])).toBe('')
     expect(andList(['Summit Roofing'])).toBe('Summit Roofing')
     expect(andList(['Summit Roofing', 'Cool Breeze Mechanical', 'Pecan Valley Electric'])).toBe('Summit Roofing, Cool Breeze Mechanical and Pecan Valley Electric')
+  })
+})
+
+describe('one email a person: what the window counts, lists and keeps (punch list #205)', () => {
+  afterEach(() => keepWord('fairoaksd', null))
+
+  it('counts emails: each that went, each company not reached and each person the mail service refused', () => {
+    const held = [{ companyId: 'summit', company: 'Summit Roofing', name: 'Marcus Hale', words: 'The email did not go out. The mail service said: Invalid `to` field.' }]
+    const refused = [{ companyId: 'coolbreeze', company: 'Cool Breeze Mechanical', words: 'No one at the company has an email for this kind of message. Call them.' }]
+    expect(wordOutcomeCounts({ emails: 5, refused, held })).toEqual({ done: 5, failed: 2 })
+    expect(wordOutcomeCounts({ emails: 0, refused: [], held })).toEqual({ done: 0, failed: 1 })
+    expect(wordOutcomeCounts({ emails: 3, refused: [], held: [] })).toEqual({ done: 3, failed: 0 })
+    expect(wordHeldLine(held[0]!)).toBe('Summit Roofing, Marcus Hale: The email did not go out. The mail service said: Invalid `to` field.')
+  })
+
+  it('says how to send to the ones missed in plain words', () => {
+    expect(plainWordsFailures(WORD_AGAIN_WORDS)).toEqual([])
+  })
+
+  it('keeps the words of a press that left someone out, by job, and forgets them when told', () => {
+    expect(keptWord('fairoaksd')).toBeNull()
+    keepWord('fairoaksd', { subject: 'A word', text: 'The site is closed Friday.' })
+    expect(keptWord('fairoaksd')).toEqual({ subject: 'A word', text: 'The site is closed Friday.' })
+    expect(keptWord('other')).toBeNull()
+    keepWord('fairoaksd', null)
+    expect(keptWord('fairoaksd')).toBeNull()
   })
 })

@@ -2,7 +2,8 @@
  * Punch list #205, row 2 (PR 6): a word to every trade on a job. JobTread's GC wrote one thread to every trade at once;
  * ours sent one company at a time by hand. The press on the project's card sends one email per awarded company through
  * `gc-trade-email` (kind `nudge`, the job's mail group), and each lands in `gc_trade_messages`, so every company's
- * thread in its portal shows it (PR 5). Pure: who gets it, the email's key, the lines from the text and the default subject.
+ * thread in its portal shows it (PR 5). Who gets it, the email's key, the lines from the text, the default subject, and
+ * since one email a person (v2.8608) the outcome's counts, a held person's line and the words kept for a second press.
  */
 import { GC_COMPANY } from './company'
 import type { TradeEmailLine } from './tradeEmail'
@@ -54,6 +55,39 @@ export async function wordEmailKey(projectId: string, subject: string, text: str
   const bytes = new TextEncoder().encode(`${subject.trim()}\n${text.trim()}`)
   const digest = await crypto.subtle.digest('SHA-256', bytes)
   return `word:${projectId}:${[...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')}`
+}
+
+/**
+ * What the press came to, as the window counts it (punch list #205, one email a person). The count is of emails: each one
+ * that went, each company that was not reached, and each person the mail service refused while the rest of the company
+ * got the word. `batchOutcomeWords` says the line from these two numbers.
+ */
+export function wordOutcomeCounts(result: { emails: number; refused: readonly unknown[]; held: readonly unknown[] }): { done: number; failed: number } {
+  return { done: result.emails, failed: result.refused.length + result.held.length }
+}
+
+/** A person the mail service refused, as the window lists them: the company, the person, then why. */
+export function wordHeldLine(held: { company: string; name: string; words: string }): string {
+  return `${held.company}, ${held.name}: ${held.words}`
+}
+
+/** What the window says under the ones that did not go: how to send to them alone. The same words give the same key. */
+export const WORD_AGAIN_WORDS = 'Mend what is named. Then send the same words again. They go only to who did not get them.'
+
+/**
+ * The words of a press that left someone out, kept by job while the page is open (in memory, never saved). The window
+ * closes before the office mends an address in the company's window, and the retry needs the same words to the letter:
+ * they give the email its key. A press where everything went forgets them.
+ */
+const keptWords = new Map<string, { subject: string; text: string }>()
+
+export function keptWord(projectId: string): { subject: string; text: string } | null {
+  return keptWords.get(projectId) ?? null
+}
+
+export function keepWord(projectId: string, word: { subject: string; text: string } | null): void {
+  if (word) keptWords.set(projectId, word)
+  else keptWords.delete(projectId)
 }
 
 /** "a, b and c" */
