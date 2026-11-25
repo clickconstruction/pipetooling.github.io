@@ -175,6 +175,8 @@ A bill made in Stripe's test mode is a test bill too.
 
 The send stays on the list. The line reads *A test bill. It is in no total.*
 
+No copy of a test send is kept. Voiding the test bill takes its line off the list.
+
 A test bill has no stamp. It is in no day's total, no tile and neither payment chip.
 
 The second view, By day paid, leaves a test payment out.

@@ -62,6 +62,13 @@ export const MAKE_BILL_SEND_LATER_PRESS = 'Make the bill, send later'
 
 const PEOPLE = ['person', 'people'] as const
 
+/**
+ * What the box says of Bills sent on a test bill (punch list #343, the live walk of 2026-11-24). A test send files no
+ * copy, and its line on Bills sent rides the bill, so a voided test bill leaves nothing. The box had said *Every send
+ * is kept in Bills sent* on Test as on Live.
+ */
+export const TEST_SEND_KEPT_LINES = ['Bills sent lists a test send as a test and keeps no copy.', 'Voiding the test bill takes that line off.'] as const
+
 export function theyWillGet(input: TheyWillGetInput): TheyWillGet {
   const who = (input.name ?? '').trim() || null
   const email = (input.email ?? '').trim()
@@ -84,7 +91,7 @@ export function theyWillGet(input: TheyWillGetInput): TheyWillGet {
       press,
       pressTitle: `When you press ${press}`,
       pressLines: email
-        ? ['The bill is made and marked billed.', goes, ...(copies > 0 ? [copyLine] : []), 'A text is your choice on the next screen.', 'Every send is kept in Bills sent.']
+        ? ['The bill is made and marked billed.', goes, ...(copies > 0 ? [copyLine] : []), 'A text is your choice on the next screen.', ...(input.testMode ? TEST_SEND_KEPT_LINES : ['Every send is kept in Bills sent.'])]
         : ['A Stripe bill goes by email. Add an email above first.'],
       later: { press: MAKE_BILL_SEND_LATER_PRESS, line: `${MAKE_BILL_SEND_LATER_PRESS} makes the bill and sends nothing. Use it for a bill you hand over or text.` },
     }
