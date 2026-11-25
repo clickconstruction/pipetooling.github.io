@@ -1,8 +1,8 @@
 ---
 name: "A lien payoff: one check in, every lien at the place released"
 number: 435
-group: gated
-status: asked 2026-11-24 by Diane, when a property owner paid off every lien at one place with one check · what exists read in the code, the law read in the published Code, a first draw, a critique as Grace would give it and a second draw, all the same day · the same day she asked where the door was and for the product to do the thinking, and said to build pieces 1 and 2 · the door and each lien's next press in v2.8504 · the release that waits for the money and takes the county's stamp in v2.8508, with no migration · on her *Yes, build 3* the same day, one check recorded over every bill it pays in v2.8510, with no migration either · calls 2 to 4 answered 2026-11-25 (UTC) in the managing session, each the card's pick: one release for each lien, a receipt that names the instruments and nothing signed that waives, and the affidavit's signer signs · call 1 is not on that record · pieces 4 to 7 are not built
+group: ready
+status: asked 2026-11-24 by Diane, when a property owner paid off every lien at one place with one check · what exists read in the code, the law read in the published Code, a first draw, a critique as Grace would give it and a second draw, all the same day · the same day she asked where the door was and for the product to do the thinking, and said to build pieces 1 and 2 · the door and each lien's next press in v2.8504 · the release that waits for the money and takes the county's stamp in v2.8508, with no migration · on her *Yes, build 3* the same day, one check recorded over every bill it pays in v2.8510, with no migration either · calls 2 to 4 answered 2026-11-25 (UTC) in the managing session, each the card's pick: one release for each lien, a receipt that names the instruments and nothing signed that waives, and the affidavit's signer signs · call 1 answered later the same day in the managing session: it is settled by #437, and **The bank confirmed the funds** goes to a leader, a controller or a dev · pieces 4 to 7 are not built
 summary: >
   A payoff of the liens at one place runs today through three jobs, one bill and one tab at a time:
   about fifty presses for three liens, the check number typed four times, and nothing that ties a
@@ -11,10 +11,9 @@ summary: >
   against its total, one release for each filed lien the money covers, each held until the check
   clears and shown with the day it is due, printed in the desk's one run, and kept on the desk until
   the county has recorded it and the copies are out.
-next: The owner says whether call 1 is settled by #437. Then piece 4 (M), the payoff card with its five stops. The office still walks a real payoff through Payoffs, check and release, and says what still reads wrong.
+next: Piece 4 (M), the payoff card with its five stops, is ready to build: call 1 is settled by #437, answered 2026-11-25. The office still walks a real payoff through Payoffs, check and release, and says what still reads wrong.
 size: L as a train of seven (S · M · M · M · M · S · S); pieces 1 to 3 built; left: pieces 4 to 7 (M · M · S · S)
-blocker: The owner's call 1, the last of his four still open. #437's call 1 and v2.8525 look to settle it, and nobody has said so. Counsel's answers gate piece 7 and the words on the papers.
-ask: owner · decide · Is call 1 settled by #437: a release waits for the bank's named day, and its early press goes to a leader, a controller or a dev?
+blocker: Nothing for piece 4: all four of the owner's calls are answered. Counsel's answers gate piece 7 and the words on the papers.
 opinion: build — the door, the one check and the safe release are built in pieces 1 to 3; the card with five stops waits on the picks
 ver: v2.8504 · v2.8508 · v2.8510
 ---
@@ -179,7 +178,7 @@ Left from pieces 1 to 3, each small:
 
 **For the company's owner**
 
-1. Does a release wait for the check to clear? Pick: yes, the app's seven days, with a leader's press when the bank confirms the funds. **Still open: it is not on the record of 2026-11-25.** [#437](../held-check/README.md) says it answers this call for the owner. Its call 1, answered 2026-11-24, makes cleared the bank's named day, and its piece 1 (v2.8525) holds a release until then. Its call 4, answered 2026-11-25, names a leader, a controller or a dev for a release before that. Whether that closes this call, and whether **The bank confirmed the funds** goes to the same three, has been put to the managing session and is not decided here.
+1. Does a release wait for the check to clear? Pick: yes, the app's seven days, with a leader's press when the bank confirms the funds. It was not on the first record of 2026-11-25. [#437](../held-check/README.md) says it answers this call for the owner. Its call 1, answered 2026-11-24, makes cleared the bank's named day, and its piece 1 (v2.8525) holds a release until then. Its call 4, answered 2026-11-25, names a leader, a controller or a dev for a release before that. **Answered 2026-11-25 (UTC) in the managing session**, later the same day, each answer quoted from that session's record of the user's answers. Asked *#435 call 1: is it settled by #437?*, the answer was "Yes, settled by #437". Asked whether *Count it now*, the sooner release for a payer whose check came back and **The bank confirmed the funds** go to a leader, a controller or a dev, as the early release does, the answer was "Yes, the same three". So a release waits for the bank's named day, as v2.8525 holds it, and **The bank confirmed the funds** is a leader's, a controller's or a dev's press. The pick's seven days give way to the bank's named day. What it frees: piece 4, drawn with that press for the three and not for a leader alone. What it leaves open: counsel's answers, which gate piece 7 and the words on the papers.
 2. One release for each lien, or one paper for the place? Pick: one for each lien. Each matches one record at the clerk, and one can be held while the others go. **Answered 2026-11-25:** *One for each lien.*
 3. What does the payer get on the day of the check? Pick: a receipt that names the instruments. Nothing signed that waives. **Answered 2026-11-25:** *A receipt that names the instruments, nothing signed that waives.*
 4. Who signs a release? Pick: the affidavit's signer. **Answered 2026-11-25:** *The affidavit's signer.*
