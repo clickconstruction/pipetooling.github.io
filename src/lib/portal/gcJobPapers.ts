@@ -3,7 +3,7 @@
  * shapes and the readers live in `supabase/functions/_shared/portalJobPapers.ts`, so the function that makes the
  * answer and the page that draws it read one file. This adds the page's words. Pure.
  */
-import type { GcJobPaper, GcPaperBusiness, GcPaperSigner } from '../../../supabase/functions/_shared/portalJobPapers'
+import type { GcJobPaper, GcOwnForm, GcPaperBusiness, GcPaperSigner } from '../../../supabase/functions/_shared/portalJobPapers'
 import { formatPortalDate } from './portalPayload'
 
 export * from '../../../supabase/functions/_shared/portalJobPapers'
@@ -19,8 +19,8 @@ export function gcPaperLevel(paper: Pick<GcJobPaper, 'level'>): { chip: string; 
   return { chip: paper.level.label, line: paper.level.alignedWith || null }
 }
 
-/** How many have signed, as the head of the signed card, and how full its meter is. */
-export function gcPaperSigned(paper: Pick<GcJobPaper, 'signed' | 'total'>): { head: string; percent: number } {
+/** How many have signed, as the head of the signed card, and how full its meter is. A paper or the GC's own form. */
+export function gcPaperSigned(paper: Pick<GcJobPaper | GcOwnForm, 'signed' | 'total'>): { head: string; percent: number } {
   if (paper.total === 0) return { head: 'Nobody is on this job yet', percent: 0 }
   const verb = paper.total === 1 ? 'has' : 'have'
   return { head: `${paper.signed} of ${people(paper.total)} ${verb} signed`, percent: Math.round((paper.signed / paper.total) * 100) }
@@ -72,4 +72,18 @@ export function gcPaperSampleUrl(functionsUrl: string, token: string, paperId: s
 /** The line under the title that says a change started the count again. Null on a paper nobody has changed. */
 export function gcPaperRevisionLine(paper: Pick<GcJobPaper, 'settingsRevision'>): string | null {
   return paper.settingsRevision > 1 ? `These settings are revision ${paper.settingsRevision} on this job. Everyone signs each revision.` : null
+}
+
+/** The GC's own form on a job (step 7): the block's title, in place of the title of a paper built from settings. */
+export const GC_OWN_FORM_TITLE = 'Subs sign your own form'
+
+/** Under the title: whose form it is, and when people sign it. */
+export function gcOwnFormLead(company: string): string {
+  return `Every person ${company || 'our company'} brings onto this job signs the form you gave us before they see the job.`
+}
+
+/** The small print of the GC's own form: what it does not change. */
+export function gcOwnFormFine(company: string): string {
+  const co = company || 'our company'
+  return `This is your form. It does not change the agreement between ${co} and you.`
 }

@@ -5,6 +5,8 @@
 -- named. A change after a signature starts the count again on the new row. A job with no such paper is left out.
 -- The office sets what the GC sees (migration *_job_paper_gc_view): the count alone, the businesses too, or every
 -- signer by name, in place whoever has signed, and the next row keeps it.
+-- The office marks a required form as the GC's own (migration *_job_paper_gc_own): a job with only such a form is
+-- answered, the form sits in a list of its own with its count and its sub businesses, and the mark comes off in place.
 -- Nobody signed in reads it, and the office's roster answers as it did. Every word is a made-up placeholder. The
 -- fixture is made as postgres; presses run as each user; everything rolls back. Raises on the first failed
 -- assertion; ends with "job_papers_gc_page PASSED". See scripts/pgtest-job-papers-gc-page.sh. Never against prod.
@@ -84,6 +86,24 @@ CREATE FUNCTION jgc.seen(p_job uuid) RETURNS text LANGUAGE sql AS $$
 $$;
 CREATE FUNCTION jgc.kept(p_row uuid) RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
   SELECT coalesce(r.gc_view, 'null') || '|' || coalesce(r.gc_view_set_by::text, 'nobody') || '|' || (r.gc_view_set_at IS NOT NULL)::text FROM public.job_required_papers r WHERE r.id = p_row
+$$;
+-- A job's own forms, as the service key reads them: how many papers sit beside them, then each form as
+-- name ; signed ; each business as name people/signed/day.
+CREATE FUNCTION jgc.own(p_job uuid) RETURNS text LANGUAGE sql AS $$
+  SELECT coalesce((
+    SELECT jsonb_array_length(j -> 'papers') || ' papers ; ' || coalesce((
+      SELECT string_agg((f ->> 'paper_name') || ' ; ' || (f ->> 'signed') || ' signed ; '
+        || coalesce((SELECT string_agg((b ->> 'name') || ' ' || (b ->> 'people') || '/' || (b ->> 'signed') || '/' || CASE WHEN b ->> 'signed_on' IS NULL THEN '-' WHEN b ->> 'signed_on' = public.app_today()::text THEN 'today' ELSE 'another day' END, ', ' ORDER BY bat) FROM jsonb_array_elements(f -> 'businesses') WITH ORDINALITY AS t(b, bat)), 'no business'), ' | ' ORDER BY fat)
+      FROM jsonb_array_elements(j -> 'own_forms') WITH ORDINALITY AS o(f, fat)), 'no own form')
+    FROM jsonb_array_elements(public.job_papers_gc_page(ARRAY[p_job])) AS j
+  ), 'nothing')
+$$;
+CREATE FUNCTION jgc.own_kept(p_row uuid) RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT r.gc_own::text || '|' || coalesce(r.gc_own_set_by::text, 'nobody') || '|' || (r.gc_own_set_at IS NOT NULL)::text FROM public.job_required_papers r WHERE r.id = p_row
+$$;
+-- What accept-contract does to a form's copy when its person signs.
+CREATE FUNCTION jgc.sign_form(p_row uuid, p_person uuid) RETURNS void LANGUAGE sql AS $$
+  UPDATE public.person_contract_documents d SET status = 'signed', signed_at = public.app_today() WHERE d.id = jgc.copy_of(p_row, p_person)
 $$;
 GRANT USAGE ON SCHEMA jgc TO authenticated, anon, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA jgc TO authenticated, anon, service_role;
@@ -268,10 +288,111 @@ SELECT jgc.same('a paper taken off the job is not read', jgc.page(jgc.id('e1')),
 RESET ROLE;
 SELECT jgc.signed_out();
 
+-- The GC's own form. The first job now requires no paper built from settings. Dana requires a form on it, and a form
+-- nobody marked is not read.
+INSERT INTO public.contract_form_templates (id, name, pdf_storage_path, status, doc_type, published_at) VALUES
+  (jgc.id('cf'), 'GC page bed GC form', 'bed/gc-form.pdf', 'published', 'agreement', now());
+INSERT INTO public.contract_template_documents (id, template_id, document_name, form_template_id) VALUES
+  (jgc.id('c3'), jgc.id('c0'), 'GC page bed GC form (test)', jgc.id('cf'));
+SELECT jgc.as_user(jgc.id('a2'));
+SET LOCAL ROLE authenticated;
+SELECT jgc.same('Dana requires a form on the first job', public.job_papers_require(jgc.id('e1'), ARRAY[jgc.id('c3')])::text, '1');
+SELECT jgc.same('every row starts unmarked, set by nobody', jgc.own_kept(jgc.row_of(jgc.id('e1'), jgc.id('c3'))), 'false|nobody|false');
+RESET ROLE;
+SELECT jgc.as_service();
+SET LOCAL ROLE service_role;
+SELECT jgc.same('a form nobody marked is not read', jgc.own(jgc.id('e1')), 'nothing');
+RESET ROLE;
+
+-- Who marks it, and what takes the mark.
+SELECT jgc.as_user(jgc.id('a4'));
+SET LOCAL ROLE authenticated;
+SELECT jgc.refused('a helper does not mark a form', format($q$SELECT public.job_paper_set_gc_own(%L, true)$q$, jgc.row_of(jgc.id('e1'), jgc.id('c3'))), 'Only the office sets the papers a job requires');
+RESET ROLE;
+SELECT jgc.signed_out();
+SET LOCAL ROLE anon;
+SELECT jgc.refused('signed out, nobody marks a form', format($q$SELECT public.job_paper_set_gc_own(%L, true)$q$, jgc.row_of(jgc.id('e1'), jgc.id('c3'))), 'permission denied');
+RESET ROLE;
+SELECT jgc.as_user(jgc.id('a2'));
+SET LOCAL ROLE authenticated;
+SELECT jgc.refused('a paper in prose is not a form', format($q$SELECT public.job_paper_set_gc_own(%L, true)$q$, jgc.row_of(jgc.id('e2'), jgc.id('c2'))), 'is not a form');
+SELECT jgc.refused('the mark is yes or no', format($q$SELECT public.job_paper_set_gc_own(%L, NULL)$q$, jgc.row_of(jgc.id('e1'), jgc.id('c3'))), 'Say whether');
+SELECT jgc.refused('a row that is gone takes no mark', format($q$SELECT public.job_paper_set_gc_own(%L, true)$q$, jgc.id('99')), 'no longer requires');
+SELECT jgc.same('Dana marks the form as the GC''s own', public.job_paper_set_gc_own(jgc.row_of(jgc.id('e1'), jgc.id('c3')), true)::text, 'true');
+SELECT jgc.same('and the row keeps who set it', jgc.own_kept(jgc.row_of(jgc.id('e1'), jgc.id('c3'))), 'true|' || jgc.id('a2')::text || '|true');
+RESET ROLE;
+SELECT jgc.refused('the table holds the mark to a form, whatever writes it', format($q$UPDATE public.job_required_papers SET gc_own = true WHERE id = %L$q$, jgc.row_of(jgc.id('e2'), jgc.id('c2'))), 'job_required_papers_gc_own_is_a_form');
+
+-- The service key reads the job now, though it requires no paper built from settings.
+SELECT jgc.as_service();
+SET LOCAL ROLE service_role;
+SELECT jgc.same('a marked form is read with nobody signed: its name, the count and each sub business', jgc.own(jgc.id('e1')),
+  '0 papers ; GC page bed GC form (test) ; 0 signed ; Pine Ridge Excavating Jgc 2/0/-, Sam Sole Jgc 1/0/-');
+SELECT jgc.same('an own form says its name, its count and its businesses, and nothing of settings',
+  (SELECT string_agg(k, ',' ORDER BY k) FROM jsonb_array_elements(public.job_papers_gc_page(ARRAY[jgc.id('e1')])) AS j, jsonb_array_elements(j -> 'own_forms') AS f, jsonb_object_keys(f) AS k),
+  'businesses,id,paper_name,signed,total');
+SELECT jgc.same('its total is the office''s own roster', (SELECT (f ->> 'total') FROM jsonb_array_elements(public.job_papers_gc_page(ARRAY[jgc.id('e1')])) AS j, jsonb_array_elements(j -> 'own_forms') AS f), (SELECT n::text FROM jgc_roster));
+SELECT jgc.same('a helper is still never named', (public.job_papers_gc_page(ARRAY[jgc.id('e1')])::text LIKE '%Hector%')::text, 'false');
+SELECT jgc.same('the prose job is still left out', jgc.own(jgc.id('e2')), 'nothing');
+RESET ROLE;
+
+-- Sam and the helper sign the form.
+SELECT jgc.as_user(jgc.id('a2'));
+SET LOCAL ROLE authenticated;
+SELECT jgc.same('Dana starts two copies of the form', (public.job_paper_start(jgc.row_of(jgc.id('e1'), jgc.id('c3')), jgc.id('b9')) IS NOT NULL
+  AND public.job_paper_start(jgc.row_of(jgc.id('e1'), jgc.id('c3')), jgc.id('b4')) IS NOT NULL)::text, 'true');
+RESET ROLE;
+SELECT jgc.signed_out();
+SELECT jgc.sign_form(jgc.row_of(jgc.id('e1'), jgc.id('c3')), jgc.id('b9'));
+SELECT jgc.sign_form(jgc.row_of(jgc.id('e1'), jgc.id('c3')), jgc.id('b4'));
+SELECT jgc.as_service();
+SET LOCAL ROLE service_role;
+SELECT jgc.same('two signed: the sole sub reads its day, and the helper''s signature counts', jgc.own(jgc.id('e1')),
+  '0 papers ; GC page bed GC form (test) ; 2 signed ; Pine Ridge Excavating Jgc 2/0/-, Sam Sole Jgc 1/1/today');
+RESET ROLE;
+
+-- A paper built from settings beside it: each sits in its own list.
+SELECT jgc.as_user(jgc.id('a2'));
+SET LOCAL ROLE authenticated;
+SELECT jgc.same('Dana requires the paper built from settings again', public.job_papers_require(jgc.id('e1'), ARRAY[jgc.id('c1')],
+  jsonb_build_object(jgc.id('c1')::text, '{"settings":{"photos":"standard","term":"short"},"basis":"standard"}'::jsonb))::text, '1');
+RESET ROLE;
+SELECT jgc.as_service();
+SET LOCAL ROLE service_role;
+SELECT jgc.same('the job answers one paper and one own form', jgc.own(jgc.id('e1')),
+  '1 papers ; GC page bed GC form (test) ; 2 signed ; Pine Ridge Excavating Jgc 2/0/-, Sam Sole Jgc 1/1/today');
+SELECT jgc.same('the form is never among the papers', (SELECT string_agg(p ->> 'paper_name', ',') FROM jsonb_array_elements(public.job_papers_gc_page(ARRAY[jgc.id('e1')])) AS j, jsonb_array_elements(j -> 'papers') AS p), 'GC page bed paper (test)');
+RESET ROLE;
+
+-- The mark comes off in place, though two have signed. The job then answers its paper alone.
+SELECT jgc.as_user(jgc.id('a2'));
+SET LOCAL ROLE authenticated;
+SELECT jgc.same('Dana takes the mark off', public.job_paper_set_gc_own(jgc.row_of(jgc.id('e1'), jgc.id('c3')), false)::text, 'false');
+SELECT jgc.same('taken off twice, it answers the same', public.job_paper_set_gc_own(jgc.row_of(jgc.id('e1'), jgc.id('c3')), false)::text, 'false');
+SELECT jgc.same('both signatures are kept', (SELECT count(*) FROM public.person_contract_documents d WHERE d.job_required_paper_id = jgc.row_of(jgc.id('e1'), jgc.id('c3')) AND d.status = 'signed')::text, '2');
+RESET ROLE;
+SELECT jgc.as_service();
+SET LOCAL ROLE service_role;
+SELECT jgc.same('unmarked, the form is not read and the paper still is', jgc.own(jgc.id('e1')), '1 papers ; no own form');
+RESET ROLE;
+
+-- Marked again and the form taken off the job: nothing of it is read.
+SELECT jgc.as_user(jgc.id('a2'));
+SET LOCAL ROLE authenticated;
+SELECT public.job_paper_set_gc_own(jgc.row_of(jgc.id('e1'), jgc.id('c3')), true);
+SELECT public.job_paper_remove(jgc.row_of(jgc.id('e1'), jgc.id('c3')));
+SELECT public.job_paper_remove(jgc.row_of(jgc.id('e1'), jgc.id('c1')));
+RESET ROLE;
+SELECT jgc.as_service();
+SET LOCAL ROLE service_role;
+SELECT jgc.same('a marked form taken off the job is not read', jgc.own(jgc.id('e1')), 'nothing');
+RESET ROLE;
+SELECT jgc.signed_out();
+
 SELECT jgc.same('who may call what', (
   SELECT string_agg(p.proname || ':' || has_function_privilege('authenticated', p.oid, 'EXECUTE') || '/' || has_function_privilege('anon', p.oid, 'EXECUTE') || '/' || has_function_privilege('service_role', p.oid, 'EXECUTE'), ' ' ORDER BY p.proname)
-  FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('job_papers_roster', 'job_papers_roster_now', 'job_papers_gc_page', 'job_paper_set_gc_view')),
-  'job_paper_set_gc_view:true/false/true job_papers_gc_page:false/false/true job_papers_roster:true/false/true job_papers_roster_now:false/false/false');
+  FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('job_papers_roster', 'job_papers_roster_now', 'job_papers_gc_page', 'job_paper_set_gc_view', 'job_paper_set_gc_own')),
+  'job_paper_set_gc_own:true/false/true job_paper_set_gc_view:true/false/true job_papers_gc_page:false/false/true job_papers_roster:true/false/true job_papers_roster_now:false/false/false');
 
 DO $$ BEGIN RAISE NOTICE 'job_papers_gc_page PASSED'; END $$;
 ROLLBACK;

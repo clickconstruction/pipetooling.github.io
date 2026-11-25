@@ -2138,6 +2138,9 @@ It refuses picks that loosen any topic or change nothing, and it writes `job_pap
 `job_paper_proposal_decide(proposal, take, why)` is the office's alone, never a twin, an archived account or training, and a take saves through `job_paper_set_settings` under that function's own rules.
 The office reads `job_paper_proposals` and writes it only through that function, and no other role reads a row.
 The Needs You line for a waiting proposal (v2.8558, the source `jobPaperProposals`) is the same office set's, and it reads the table under that policy, so no other role has the line.
+**The GC's own form** (v2.8571, `20261125180000_job_paper_gc_own.sql`): `job_paper_set_gc_own(required paper, own)` is the office's alone, never a twin, an archived account or training, and the row keeps who set it and when.
+It refuses a paper that is not a form, and a check on the table holds the mark to a form whatever writes the row.
+`job_papers_gc_page` answers a job that requires a marked form to the same service role alone, with the count and each sub business and never a signer by name.
 The GC's page gets a settings list with names and plain words only: the lines the office reads beside a choice never leave the portal function.
 The roster's body is `job_papers_roster_now`, granted to nobody, and `job_papers_roster` stays the office's alone.
 **A job's sample** (v2.8506, `open-job-paper-sample`) opens with no login for the GC on that job alone: the portal link must show their GC jobs, and the paper must be one that job requires now.
@@ -2161,7 +2164,7 @@ From the prompt the office can open the job's papers and who has signed, so a pa
 The section **Papers before this job opens** on the job window's Documents tab and the chip in the job's head are drawn for the office roles alone (`isOfficeRole`: dev, master technician, assistant, controller).
 `job_required_papers` holds the papers a job requires of everyone who opens it.
 The office (dev, master technician, assistant, controller) reads it through `is_office_staff()`.
-It has no write policy and no write grant: rows are written only by `job_papers_require`, `job_paper_set_settings` and `job_paper_remove`, all office only.
+It has no write policy and no write grant: rows are written only by `job_papers_require`, `job_paper_set_settings`, `job_paper_remove` and the setters of a row's marks (`job_paper_set_basis`, `job_paper_set_gc_view`, `job_paper_set_gc_own`), all office only.
 A job's settings for a paper built from settings (v2.8145) are the office's to set and never a digital twin's: `job_paper_set_settings` also refuses an archived account and a training account itself, and `job_paper_clauses`, the job's paper as the database reads it, answers the office and the service role alone.
 Once a copy is signed nobody changes that row's settings, the database's owner included (`job_paper_settings_locked`).
 The office's change after that signature, tighter or looser, makes a new row that everyone signs again (v2.8182).

@@ -31,6 +31,10 @@ export interface JobPapersIo {
   ownSigningLink(requiredPaperId: string): Promise<string>
   /** The jobs that wait on the caller's signature and are theirs to open. */
   readNeedingMe(): Promise<JobNeedingMe[]>
+  /** The ids of the job's required forms the office marked as the GC's own (#389 step 7). Office only. */
+  readGcOwn(jobId: string): Promise<string[]>
+  /** Mark a required form as the GC's own, or take the mark off. In place: it changes no form and nobody signs again. */
+  setGcOwn(requiredPaperId: string, own: boolean): Promise<void>
 }
 
 async function jwt(): Promise<string> {
@@ -104,6 +108,23 @@ export const supabaseJobPapersIo: JobPapersIo = {
   },
   async readNeedingMe() {
     return parseJobsNeedingMe(await withSupabaseRetry(() => supabase.rpc('job_papers_needing_me' as never), 'read the jobs that wait on your signature'))
+  },
+  async readGcOwn(jobId) {
+    // The column and the function below are not in the generated types until the types PR that follows the push.
+    const rows = await withSupabaseRetry(
+      () =>
+        supabase
+          .from('job_required_papers' as never)
+          .select('id')
+          .eq('job_id' as never, jobId as never)
+          .is('removed_at' as never, null as never)
+          .eq('gc_own' as never, true as never) as never,
+      'read which forms are the GC’s own',
+    )
+    return ((rows as unknown as Array<{ id: string }> | null) ?? []).map((r) => r.id)
+  },
+  async setGcOwn(requiredPaperId, own) {
+    await withSupabaseRetry(() => supabase.rpc('job_paper_set_gc_own' as never, { p_required_paper_id: requiredPaperId, p_own: own } as never) as never, 'mark the form', { maxRetries: 0 })
   },
   async countRequired(jobId) {
     const res = await supabase
