@@ -2,7 +2,7 @@
 name: "Presses nothing takes back: the standing list"
 number: 443
 group: gated
-status: standing list opened 2026-11-24 on the owner's word of that day · nine rows: the Lien desk, Bills sent, Accounts Receivable, Bill Customer, a person's card and the job form's address · nothing is built and no build is approved
+status: standing list opened 2026-11-24 on the owner's word of that day · eleven rows: the Lien desk, Bills sent, Accounts Receivable, Bill Customer, a person's card, the job form's address, a job's papers and a customer's portal · nothing is built and no build is approved
 summary: >
   Every press a walk or a thread meets that nothing takes back, one row each: what was pressed, on which
   screen, what it left, and what would take it back. The owner asked for the note on 2026-11-24, when he
@@ -58,6 +58,8 @@ rows, ids and counts only. Name no real customer, job, address or amount.
 | 7 | **Void invoice**, from **Void Stripe invoice…**. | Bill Customer. | The bill's row is deleted from the job (`void-stripe-invoice-for-revert`), and the rows of its sends go with it. Stripe keeps the invoice as void. | Nothing short of making the bill again. Keeping the row as voided, in place of deleting it, would leave the record and its sends to read. | M, an edge function and likely a migration | The WALKING thread, 2026-11-24, on card #343. Checked the same day: the function deletes the row, and the send rows cascade. |
 | 8 | **Save the photo**. | **Card and footer**, from People → Users on a person's row, and **Your card and footer** in Settings (`YourCardCard`). | The person's photo and its crop on their account, and one file in the photo bucket. A photo can be changed, never taken off. | A **Remove the photo** press that clears the two columns and deletes the file. | S, likely no migration | The WALKING thread, 2026-11-24, on card #313. Checked the same day: `CardIo` has no call that clears a photo, and the only file removals are the old file on a change and the new one when the save fails. |
 | 9 | An address typed in the **Job Address** box, then the box left. No press: leaving the box, or a pause of about a second on a whole address, starts the look-up. | Jobs → Pipeline → **New job**, and a job's Edit tab (`JobFormAddressPin`). | One `address_geocodes` row under the address as typed, kept by `geocode-one`. It stays when the form is closed with **Discard** and no job is made. | A line in Settings for the dev that lists the map's kept addresses no job and no bid is written under, and removes them. The table already has a delete policy for the map's roles. No screen calls it. | S, no migration | The #439 thread, 2026-11-24. Checked the same day: `geocode-one` upserts the row, and nothing in `src/` deletes from the table. |
+| 10 | **Take off** on a paper's row, then **Take the paper off**. | A job's window, Documents, *Papers before this job opens*. | `removed_at` set on the `job_required_papers` row. The row is kept by design, since signatures hang on it. | A delete for the dev on a taken-off row that no signed copy points at. | S | The #389 thread, 2026-11-24. Checked the same day: nothing in `src/` deletes from the table. The policies were not read. |
+| 11 | **Turn off**, then **Turn the portal off**. | A customer's portal window, from the globe on Customers, under Advanced settings, Reset. | `revoked_at` set on the `customer_portal_links` row. The row is kept for the window's History. | A delete for the dev on a turned-off link of a ZZ Test customer. | S | The #389 thread, 2026-11-24. Checked the same day: nothing in `src/` deletes from the table. The policies were not read. |
 
 Row 2 has one exception, and it is not a gap. A line that applied a paper already on record reads **Undo**
 in place of **Void**, and its notice goes back on the desk (v2.7508).
@@ -78,6 +80,9 @@ in place of **Void**, and its notice goes back on the desk (v2.7508).
   on 2026-11-24, because of rows 6 and 7.
 - One kept address in the map's cache, a made-up spelling of the ZZ Test address that no job is written
   under, from the #439 thread's look at the New job form on 2026-11-24, because of row 9.
+- Eight taken-off papers on one ZZ test job, the newest from the #389 thread's walk of 2026-11-24, because
+  of row 10. `to-dos/sub-nda-builder/README.md` lists them by id under its loose ends.
+- Four turned-off portal links on one ZZ Test customer, the newest from the same walk, because of row 11.
 - A photo on one ZZ Test person, saved by the walk of #313 on 2026-11-24, because of row 8. The team's
   batch of cards leaves ZZ Test people out since the fix that walk asked for.
 
