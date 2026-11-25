@@ -6,7 +6,8 @@ import { SVG_STYLE } from './plumbingTokens'
 /**
  * Where water meets air (Intro to HVAC, lesson 18): a heat pump water heater, the tank below and the small cooling
  * loop on top, room air in and cooler air out, the heat going into the water, and the condensate it makes on its
- * way to a drain.
+ * way to a drain. The two labels inside the tank sit on its tints, so they take the darker `--text-600` the cutaway's
+ * own labels take there: the muted grey read 3.96 to 1 on them (punch list #419).
  */
 export function WaterMeetsAir({ titleId }: FigureProps) {
   return (
@@ -34,10 +35,10 @@ export function WaterMeetsAir({ titleId }: FigureProps) {
       <Label x={150} y={14} anchor="middle" bold color="currentColor" size={8}>
         a sealed loop on top
       </Label>
-      <Label x={150} y={104} anchor="middle" size={7}>
+      <Label x={150} y={104} anchor="middle" size={7} color="var(--text-600)">
         the heat goes
       </Label>
-      <Label x={150} y={126} anchor="middle" size={7}>
+      <Label x={150} y={126} anchor="middle" size={7} color="var(--text-600)">
         into the water
       </Label>
       <Label x={90} y={112} anchor="end" bold color="currentColor" size={7.5}>
