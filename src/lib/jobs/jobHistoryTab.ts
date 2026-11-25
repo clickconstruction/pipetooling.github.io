@@ -19,6 +19,11 @@ export const JOB_WINDOW_TABS = ['job', 'edit', 'bill', 'costs', 'history', 'docu
 export type JobWindowTabKey = (typeof JOB_WINDOW_TABS)[number]
 export const JOB_WINDOW_TAB_LABELS: Record<JobWindowTabKey, string> = { job: 'Job', edit: 'Edit', bill: 'Bill', costs: 'Costs', history: 'History', documents: 'Documents', materials: 'Materials', map: 'Map' }
 
+/** The tab a `?jobDetail=<id>&jobTab=<tab>` door names, or null for a name the window has no tab for. */
+export function jobWindowTabFromParam(value: string | null | undefined): JobWindowTabKey | null {
+  return JOB_WINDOW_TABS.find((t) => t === value) ?? null
+}
+
 /** The embedded form pane shows on Edit / Bill / Costs (one region at a time); the Job pane's body only on Job. */
 export function jobWindowFormPaneHidden(tab: JobWindowTabKey): boolean {
   return tab === 'job' || tab === 'history' || tab === 'documents' || tab === 'materials' || tab === 'map'

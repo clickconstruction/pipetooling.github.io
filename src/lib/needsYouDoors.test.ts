@@ -99,4 +99,10 @@ describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
     expect(needsYouDoor({ key: 'stages-done-not-billed' }, { role: 'assistant', stagesDoneFirstJobId: 'j1' }, 'quickfill')).toEqual({ kind: 'href', href: '/jobs?tab=stages&jobDetail=j1' })
     expect(needsYouDoor({ key: 'stages-done-not-billed' }, { role: 'assistant' }, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=stages' })
   })
+
+  it('job-paper-proposals opens the first proposal’s job on Documents, and the Pipeline when there is none (punch list #389, step 6)', () => {
+    expect(needsYouDoor({ key: 'job-paper-proposals' }, { role: 'assistant', paperProposalFirstJobId: 'j1' }, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=stages&jobDetail=j1&jobTab=documents' })
+    expect(needsYouDoor({ key: 'job-paper-proposals' }, { role: 'assistant', paperProposalFirstJobId: 'j1' }, 'quickfill')).toEqual({ kind: 'href', href: '/jobs?tab=stages&jobDetail=j1&jobTab=documents' })
+    expect(needsYouDoor({ key: 'job-paper-proposals' }, { role: 'assistant' }, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=stages' })
+  })
 })

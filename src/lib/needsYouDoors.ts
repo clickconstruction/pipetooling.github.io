@@ -12,6 +12,7 @@ import { lookAlikesHref } from './research/permitsLink'
 import { materialsNeedsHref } from './needsYou/materialsOnSite'
 import { RECEIPT_CHASE_TEAM_HREF } from './needsYou/fillInReceipts'
 import { stagesDoneHref } from './needsYou/stagesDone'
+import { paperProposalsHref } from './needsYou/paperProposals'
 import { startOwedHref } from './needsYou/startAnswersOwed'
 import type { UserRole } from '../hooks/useAuth'
 
@@ -78,6 +79,8 @@ export type NeedsYouDoorData = {
   inKindCreditFirst?: { customerId: string | null; arrangementId: string; month: string } | null
   /** The job that holds the first stage at 100% with no bill (punch list #397, PR 7). */
   stagesDoneFirstJobId?: string | null
+  /** The job whose paper holds the GC's proposal that has waited longest (punch list #389, step 6). */
+  paperProposalFirstJobId?: string | null
   /** The first site that owes us answers before a stage (punch list #382, PR 6): its site, or its job when it is on none. */
   startOwedFirst?: { developmentId: string | null; jobId: string } | null
 }
@@ -103,6 +106,9 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'> & Partial<Pick<Need
     case 'tagged-notes':
       // Tagged job notes (punch list #363): the list in place, since the crew has no Pipeline to open.
       return { kind: 'window', window: 'tagged-notes' }
+    case 'job-paper-proposals':
+      // The job that holds the proposal, its window open on Documents (punch list #389, step 6). It answers nothing.
+      return href(paperProposalsHref(d.paperProposalFirstJobId))
     case 'while-off':
       // While you were off (v2.6060): the first line still waiting, at the line; Messages when none was read.
       return href(d.whileOffFirst ? messagesThreadHref(d.whileOffFirst.contactId, d.whileOffFirst.messageId) : '/messages')

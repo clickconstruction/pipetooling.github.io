@@ -2134,6 +2134,7 @@ Under the count alone the function sends no business, and it sends the signers o
 It refuses picks that loosen any topic or change nothing, and it writes `job_paper_proposals` and never the paper.
 `job_paper_proposal_decide(proposal, take, why)` is the office's alone, never a twin, an archived account or training, and a take saves through `job_paper_set_settings` under that function's own rules.
 The office reads `job_paper_proposals` and writes it only through that function, and no other role reads a row.
+The Needs You line for a waiting proposal (v2.8558, the source `jobPaperProposals`) is the same office set's, and it reads the table under that policy, so no other role has the line.
 The GC's page gets a settings list with names and plain words only: the lines the office reads beside a choice never leave the portal function.
 The roster's body is `job_papers_roster_now`, granted to nobody, and `job_papers_roster` stays the office's alone.
 **A job's sample** (v2.8506, `open-job-paper-sample`) opens with no login for the GC on that job alone: the portal link must show their GC jobs, and the paper must be one that job requires now.
