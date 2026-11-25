@@ -707,8 +707,10 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
           </>
         ) : (
           <>
+            {/* The empty words wait for the read (punch list #398): while it runs, or after it failed, nobody knows the job is empty, and Add a container on a job that has boxes is the harm. */}
             {containers.length === 0 ? (
-              <div style={{ ...card, display: 'grid', gap: '0.6rem' }}>
+              !load.loaded ? null : (
+              <div style={{ ...card, display: 'grid', gap: '0.6rem' }} data-testid="on-site-empty-job">
                 {/* An empty job says where the boxes are (punch list #304): it used to read as if no box existed anywhere. */}
                 <EmptyState compact={others.length > 0} main={others.length > 0 ? 'No containers on this job yet.' : 'No containers on this site yet.'} next={{ label: 'Add a container', onPress: () => setSheet({ kind: 'add-container', moveAfter: null }) }} tail="adds the first with its stencil. A delivery the office lands shows here as Unsorted." />
                 {others.length > 0 ? (
@@ -726,6 +728,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
                   </div>
                 ) : null}
               </div>
+              )
             ) : (
               groups.map((g) => (
                 <div key={g.place?.id ?? (g.containers[0]?.kind === 'unsorted' ? 'unsorted' : 'none')} style={{ display: 'grid', gap: '0.5rem' }}>
