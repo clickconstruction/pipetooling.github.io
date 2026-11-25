@@ -2,15 +2,15 @@
 name: "The Bid Board's missing-address sheet says why, the day, and offers Try again"
 number: 441
 group: ready
-status: built 2026-11-24 as v2.8539 on claude/bid-board-sheet-reason-8700fe · left: the live walk on a ZZ test bid, then this card is retired
+status: built 2026-11-24 as v2.8539 · walked live 2026-11-25 on a ZZ Test bid at 1280 and 375 px, and it holds · left: the owner's word on which rows offer Try again, and two small mends the walk asked for
 summary: >
   The Bid Board's *N bids have no map location yet* line opens a sheet of its own, where a missing
   address is typed in place (v2.3205). For a bid whose address no map service could place, the row
   says only that the map could not find it. The Map page's list says why, the day it was checked
   and when the app asks again, and has **Try again** (v2.8479). This card gives the Bid Board's
   sheet the same three, from the same kernel.
-next: Walk it on the live site after the deploy, on a ZZ test bid alone, at a desk width and a phone width. Then delete this card.
-size: XS
+next: The owner says whether Try again stays on every unplaced row, as built, or only on a row with a kept miss. Two small mends from the walk, the client alone: plain words where a row's reason shows a map service's error code, and four presses that are under 44 px on a phone. Then delete this card.
+size: XS, built; left: two mends (XS each)
 blocker: None.
 opinion: build when someone is next in the Bid Board's map, small — one bid is unplaced today, so few people meet it
 mockup: not required — the lines and the press exist on the Map page's list, and this sheet borrows them
@@ -64,3 +64,25 @@ point. So one row would show the new lines today.
   with no address does not.
 - On a ZZ test bid alone: give it made-up words, open the sheet, read the day line, press
   **Try again** once, and put the address back.
+
+## The live walk of 2026-11-25
+
+Walked on clicktooling.com as the dev, on the build that holds v2.8539, at 1280 and 375 px.
+
+**Holds, the whole recipe.**
+
+- Read only first. The sheet *Bids the map can't place* read 55 bids without an address and 1 the map could not place. The 55 have **Save** and **Edit bid**, some **Use it**, and none has a day line or **Try again**. The 1 has the row's own words, the reason, *Checked Nov 24. The app asks again by itself on Dec 24.* with both days bold, and **Try again** beside **Save**.
+- Then on a ZZ Test bid, its address set through the dev seat to made-up words. Its row read the same lines, with the company's day and the day 30 days on. **Try again**, pressed once: the press read *Asking the map services…* and was dead, one call went, and the row added *Still no match. Fix the address in the box and save to place it.*
+- At 1280 px the box, **Save** and **Try again** are on one line. At 375 px **Try again** wraps under the box at 44 px, and nothing passes the sheet's edge.
+- The address was put back and read back as found.
+
+**Not pressed.** **Save** in the sheet, **Use it**, **Check on Google Maps ↗** and **Edit bid**.
+
+**Two small things the walk asked for, read in the code the same day, not built.** Each is the client alone.
+
+1. **A map service's error code is in a line a person reads.** The one real row's reason ends its first part with a service's name and *HTTP 403*. Those words are old: that service is no longer asked (v2.8512), and a miss kept before then holds them until its address is asked again. The line is put together where it is drawn (`geocodeErrorMessage.ts`), and the Map page's list and five other screens draw the same line. Plain words there mend all of them and every kept row at once.
+2. **Four presses are under 44 px at 375 px.** *Check on Google Maps ↗*, **Edit bid** and **Use it** are 19 px high, and the bid's number press 21.
+
+**The open call.** **Try again** is on every unplaced row the map is done looking for, with or without a kept miss, as the Map page's list has it. The plan above said *a row with a miss*. The walk could not see the difference, since both rows with an address had a kept miss.
+
+**Left on the live site.** One kept miss for the made-up address, which nothing deletes by hand and which stops standing after 30 days. Two lines on the ZZ Test bid's History, for the address set and put back.

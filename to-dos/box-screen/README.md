@@ -2,7 +2,7 @@
 name: "A box's own screen: the parts first, four tiles that carry their facts, the rare presses behind More"
 number: 398
 group: close
-status: asked 2026-11-18 with a screenshot of a box on the Tally's On site tab · walked read-only and drawn the same day · the six calls taken as picked, then a second pass on his ask (is this the best we can do) · the owner's go the same day (I like it, build it all) · built 2026-11-18 as v2.7873, one PR (#8831), on top of Take from a box (v2.7824, v2.7828), on main
+status: asked 2026-11-18 with a screenshot of a box on the Tally's On site tab · walked read-only and drawn the same day · the six calls taken as picked, then a second pass on his ask (is this the best we can do) · the owner's go the same day (I like it, build it all) · built 2026-11-18 as v2.7873, one PR (#8831), on top of Take from a box (v2.7824, v2.7828), on main · walked in an iPhone simulator 2026-11-25 on a box with five kinds of part: the screen's presses hold, five small faults were found, and two things wait on the owner's word
 mockup: to-dos/box-screen/mockup.html
 summary: >
   A crew member at a cage asks two things: is this the box in front of me, and what is in it.
@@ -14,7 +14,7 @@ summary: >
   it?), then photos and takes, with Take from a box's press at the bottom as the only blue one.
   Edit, Say it better, Move box, the three paper presses and Retire go behind one More press.
   Eight presses in place of 22, every one 48 high or more.
-next: The owner sees the screen on a phone. The walks the build could not make go with that look, a crew member's own screen, the camera and a box with several kinds of part. Then retire the card.
+next: Mend the five small faults the simulator's walk found (the client alone). The owner answers two calls from that walk: whether one added part should mark the whole box counted, and what gives way so the four tiles fit. Then the owner sees the screen on a phone, with a crew member's own screen and the camera, which no walk has made. Box ZZ4 on the test job now holds five kinds of part for that look.
 size: M as two client-only PRs (S · M), built as one; left: the owner's look on a phone (XS)
 ver: v2.7873
 blocker: None. The screen is built and live. The owner's look on a phone is all that is left.
@@ -103,8 +103,9 @@ What the second pass found in the first:
    - **Photo**: *1 so far, Nov 17*. For the ten minutes after a count, an added part or a put
      away it is outlined blue and reads *Of G12 as you counted it*, in place of today's chip that
      turns blue and says nothing.
-   - **Add a part**: *1 kind in G12 now*. Not drawn on an empty box, whose empty state has the
-     press.
+   - **Add a part**: *1 kind in G12 now*. On an empty box it is still drawn, and reads *The first
+     part in G12*. The empty state has no press of its own, so the press is offered once. This
+     line said the opposite until 2026-11-25. The code and its test have always done this.
    - **Where is it?**: the place, the where line and the pin's state.
 6. *Photos and takes*: the box's photos and its last takes with their pairs, in one strip. A photo
    still on the phone keeps its amber words and **Send now**. A filed one has no words.
@@ -186,7 +187,9 @@ screen on a phone.
 **Not verified by the look**: no crew role's screen was walked, and no crew member was asked. The
 closed row is a bet: Can't find was pressed once when it stood in plain sight. A real mixed box
 was not walked; the test job holds one box with one part and two empty ones. Five kinds of part
-fit one drawn screen with 6 px to spare and every row closed. Not walked at 320 wide or with large
+fit one drawn screen with 6 px to spare and every row closed. That was measured on this card's
+own drawing, a phone 744 px tall with one bar. A real phone does not fit them: see the walk of
+2026-11-25. Not walked at 320 wide or with large
 text.
 
 **Left alone on purpose**: Damaged and Back to the supply house sit under Move to…, where a person
@@ -204,3 +207,26 @@ Read by the walk and left as they are:
 - **The sheet read *Say it better* where this card said *Say what is in it*.** Both are the screen's own words: *Say it better* over a box that has a line, *Say what is in it* on a box with none yet. The sentence above now says both.
 
 This card still waits on the screen in the owner's hand.
+
+### Walked in a simulator (2026-11-25)
+
+Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in dark, as the dev, on the live site. It is a simulator and not a real phone, so the owner's look still stands. Walked on the test job's boxes: ZZ1 with one part, ZZ2 and ZZ4 empty, then ZZ4 with five ZZ Test parts added on the phone. No crew member's screen was seen and no photo was taken.
+
+**Holds.** The name row, the parts as closed rows, the muted line, the tiles, photos and takes, then the Take press. A tap opens **Used**, **Move to…**, **Can't find** and **Ask for more**, two by two, each 52 tall, one row open at a time. **More** lists its six rows with **Retire** apart. **Where is it?** opens its sheet. **Photo** opens the camera in one press. **Count** opens the count and × leaves it with nothing saved. An empty box shows no Count tile and the quiet link. **Add a part** keeps its field above the keys.
+
+**Five small faults, read in the code the same day, none built.** Each is the client alone.
+
+1. **A filed photo whose file is gone draws an empty dashed frame and no reason.** ZZ2 has one: filed, then lost in Drive. The strip shows a reason only for a photo not yet filed, and the frame's own words sit where a phone never shows them (`PhotoPress.tsx`). The rule above, *a filed one has no words*, needs this one exception. XS.
+2. **The list's Count chip counts an empty box.** It read *Count 2* for two empty boxes, and neither box offers a count. The chip asks only how old a box's last count is (`flowRow.ts`), and the tile asks whether there is a part to count. XS.
+3. **The Add a part sheet does not follow the keyboard.** With the number pad up, Safari's address pill sat on **Add 1 and another part** and the keyboard's bar covered **Pick a different part**. The On site sheets are pinned to the page (`OnSiteSheet.tsx`), where the app's other phone sheets size to what shows. S, and it mends every On site sheet.
+4. **Back from a box lands at the top of the list,** not at the box's row. S.
+5. **Rows show through under the pinned Take bar,** behind Safari's glass bar. Nothing is out of reach. XS, to weigh.
+
+**Two things for the owner's word.**
+
+1. **One added part marks the whole box counted today.** An add writes *added on site* and *counted as added*, by the owner's call in v2.8284, which speaks of that part's line. But a box's last count is the newest count of any line in it. So after one add ZZ4 read *Counted today*, and it left the list of boxes due a count. On an overdue box, one added part would clear the amber for parts nobody counted. The pick: the add counts its own line and not the box.
+2. **Five kinds of part: the four tiles are not above the Take bar.** The first pair's top edge showed at about 665 points down, and the Take press covers 686 to 742. A scroll of about 108 points brings all four onto the screen. Above the screen's own parts stand the phone's status bar, the app's bar, the orange Add Task banner at 53 points, and Safari's two bars. The pick: take the caption off the Take bar, then measure again.
+
+**Seen, and it is as built or the phone's own.** The Photo tile counts the box's own photos, and **Where is it?** shows the newest photo of any kind, a take's included, so the two can name different photos. Scrolled, the app's top bar slides under the phone's status bar, which is Safari's doing on a page whose bar is not pinned.
+
+**Left on the live site.** Box ZZ4 holds five ZZ Test parts: ten ledger rows, five *added on site* and five *counted as added*. A dev can take a press back from Jobs → Materials, in the look by person, so they are not on the list of presses nothing takes back (#443). They are kept for the owner's look at a box with several kinds.
