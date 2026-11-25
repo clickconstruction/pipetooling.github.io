@@ -1,8 +1,8 @@
 ---
 name: "A text when a charge lands on your card, with a place to photograph the receipt"
 number: 299
-group: gated
-status: asked 2026-11-09 by Diane while looking at #295 · her five calls taken the same hour · the feed, the card links and two weeks of charges read in prod · drawn as seven frames · Grace said build on 2026-11-12, the five calls at the mock-up's foot taken at the card's own defaults · PR 1 (the request and the link, v2.7101, #7888) live on clicktooling.com and walked there on 2026-11-13 · the owner said finish building on 2026-11-13 · PR 2 (the text, v2.7142, #7951) built and merged the same day, switched off: the switch on Settings, the sweep receipt-request, the Team queue's line · its migration pushed and receipt-request deployed the same afternoon on the owner's yes · the switch reads off and no text has gone · the office's Needs you items (v2.7148) and PR 3 (the guide, the charge row on Banking and Job Summary, v2.7152) built the same day · the Worker rule for the short link live 2026-11-14 (v2.7286) · calls 1, 3, 4 and 5 answered 2026-11-14: one text for each charge (v2.7299), text only with no push · the whole train is built; a first text waits on the switch's first press
+group: ready
+status: asked 2026-11-09 by Diane while looking at #295 · her five calls taken the same hour · the feed, the card links and two weeks of charges read in prod · drawn as seven frames · Grace said build on 2026-11-12, the five calls at the mock-up's foot taken at the card's own defaults · PR 1 (the request and the link, v2.7101, #7888) live on clicktooling.com and walked there on 2026-11-13 · the owner said finish building on 2026-11-13 · PR 2 (the text, v2.7142, #7951) built and merged the same day, switched off: the switch on Settings, the sweep receipt-request, the Team queue's line · its migration pushed and receipt-request deployed the same afternoon on the owner's yes · the switch reads off and no text has gone · the office's Needs you items (v2.7148) and PR 3 (the guide, the charge row on Banking and Job Summary, v2.7152) built the same day · the Worker rule for the short link live 2026-11-14 (v2.7286) · calls 1, 3, 4 and 5 answered 2026-11-14: one text for each charge (v2.7299), text only with no push · the whole train is built; a first text waits on the switch's first press · Text again answered 2026-11-25 (UTC) in the managing session: yes, build it, not built
 mockup: to-dos/ticket-text/mockup.html
 summary: >
   The second door on the supply house ticket (#295). When a card charge posts to a card assigned
@@ -11,9 +11,10 @@ summary: >
   or day. It writes the same ticket record as the Tally press and the office reads both the same
   way. A holder with no cell on file, a card tied to no one, or a holder who replied STOP becomes
   a Needs you item for the office instead of a text.
-next: the owner's first press of the switch on one card (Only me, to try it first) with Send texts on; her word on Text again; calls 1, 3, 4 and 5 are answered (2026-11-14, under Where it stands). The /r/ rule on the short host's Worker is live since 2026-11-14 (v2.7286), so the text carries the short link.
-size: M as a train of three (M · M · S), after #295's PR 3 has shipped
-blocker: nothing blocks the build. A first text waits on the owner's press of the switch on one card. Call 4 is answered: text only, no push. The Worker rule is live (v2.7286).
+next: build Text again (S), the office's press for a second text on a charge texted twice with no receipt; the owner's first press of the switch on one card (Only me, to try it first) with Send texts on; calls 1, 3, 4 and 5 are answered (2026-11-14, under Where it stands). The /r/ rule on the short host's Worker is live since 2026-11-14 (v2.7286), so the text carries the short link.
+size: M as a train of three (M · M · S), after #295's PR 3 has shipped; the three are built; left: Text again (S)
+ask: owner · use · Press the receipt text switch on one card, Only me, to try it first.
+blocker: nothing blocks the build of Text again. A first text waits on the owner's press of the switch on one card. Call 4 is answered: text only, no push. The Worker rule is live (v2.7286).
 opinion: build, after #295's third PR — the text turns the charge's own arrival into the ask, and the office stops chasing paper by hand
 ---
 
@@ -230,3 +231,5 @@ Messages and on the Needs you list.
 2026-11-14, the Worker rule: the owner asked for it in the main session and a session added it through his Chrome, signed in to Cloudflare (`portal-link-shell`, version `fe6488e1`), checked it live and mirrored it in `scripts/cloudflare/portal-link-shell.worker.js`; `RECEIPT_SHORT_ORIGIN` is the short host since v2.7286, so the text and Copy the receipt link carry `my.clickplumbing.com/r/<code>`. Both functions are redeployed after the merge.
 
 2026-11-14, the four calls, answered by Micah in the main session: call 1, the day's jobs offered on the page and skippable, as built; call 3, **one text per charge**, so the hour's fold of v2.7142 is undone in v2.7299 (one text and one reminder a charge, each with its own link); call 4, text only, no push, nothing to build; call 5, every linked card, the office's own included, as built. Left: his word on Text again, and the switch's first press.
+
+2026-11-25 (UTC), in the managing session: should the office get a Text again press after two texts with no receipt? The answer, quoted from that session's record of the user's answers: *Yes, build it.* Text again is not built. It is the press drawn in frame T7 on the Needs you row for a charge texted twice with no receipt. Its size, S, is this note's estimate and not the card's. Left: that build, and the switch's first press.

@@ -2,7 +2,7 @@
 name: "The parts book filled from Reece and Ferguson, with a page on every price so it can be checked again"
 number: 311
 group: gated
-status: asked 2026-11-11 by the estimator · the parts book, the house numbers table, the matcher and card #308 read on main at v2.6929 the same day · the book counted in prod through the dev seat, reads only · each house's robots file read once and its terms of use read by a research pass · a sample of twenty parts already in the book checked with no page opened and nothing written · nothing built, no page of either house read by a tool, no bulk run · later that day the estimator chose to ask Ferguson for a price file by email and for its word on a tool by phone, and parked the ask on this card
+status: asked 2026-11-11 by the estimator · the parts book, the house numbers table, the matcher and card #308 read on main at v2.6929 the same day · the book counted in prod through the dev seat, reads only · each house's robots file read once and its terms of use read by a research pass · a sample of twenty parts already in the book checked with no page opened and nothing written · nothing built, no page of either house read by a tool, no bulk run · later that day the estimator chose to ask Ferguson for a price file by email and for its word on a tool by phone, and parked the ask on this card · call 4 answered 2026-11-25 (UTC) in the managing session: a house's page for a part is kept beside the house's number for the part
 mockup: to-dos/parts-book-house-links/mockup.html
 summary: >
   The estimator asked to scrape Reece's and Ferguson's websites to fill the parts book, and to keep
@@ -17,8 +17,9 @@ summary: >
   a check knows which house it is checking. The book already holds 113 Reece pages and 7 Ferguson
   pages pasted by hand, and their addresses carry the house's number, so the first PR teaches those
   with no page opened at all.
-next: Ferguson's answer to the estimator's ask (the email and the call under The ask to Ferguson), which settles call 2. The owner's calls 1 to 5 below, then the estimator's first list — one list downloaded from the Reece account with pricing, and one Ferguson list printed to a PDF with the account's price, both read privately to measure. PR 1 needs neither and can start on the owner's word.
+next: Ferguson's answer to the estimator's ask (the email and the call under The ask to Ferguson), which settles call 2. The owner's calls 1, 2, 3 and 5 below, call 4 being answered, then the estimator's first list — one list downloaded from the Reece account with pricing, and one Ferguson list printed to a PDF with the account's price, both read privately to measure. PR 1 needs neither and can start on the owner's word.
 size: L as a train of six (S · M · S · M · S · S); a seventh (M) waits on a supply house's written word
+ask: owner · decide · Answer calls 1, 2, 3 and 5 on the parts book: each house's route, Reece's written word, and what the fill covers.
 blocker: the owner's calls on the route for each house, and a first real list from each account; reading either house's pages with a tool waits on that house's written word, and Ferguson's terms forbid it today
 opinion: build, without a scraper — use each house's own list, and keep the page beside the house's number; the address of a page already says the house's number, so the 120 pages on file teach themselves
 ---
@@ -409,6 +410,11 @@ worth it where the link is kept, and with the list the link is free.
 3. **Ask Reece for its written word, or leave it.** *Default:* ask once, in the same email that
    asks about the list. A yes opens PR 7. Nothing waits on the answer.
 4. **Where the page lives and what the part's link means.** *Default:* picks 1 and 2 above.
+   **Answered 2026-11-25 (UTC) in the managing session:** *Beside the house's number for the part.*
+   It is quoted from that session's record of the user's answers, and it is pick 1.
+   The question asked was where a supply house's page for a part is kept.
+   Pick 2, that the part's own link then means the part's own page, was not asked in so many words.
+   Whether the answer carries pick 2 has been put to the managing session and is not decided here.
 5. **What the fill covers.** *Default:* A, then B, then C on a press, and no category poured in.
 6. **How often.** *Default:* monthly for open bids and top spend, quarterly for a whole house.
 7. **Who may file a check.** *Default:* the roles that edit the parts book today.
