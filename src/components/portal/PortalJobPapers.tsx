@@ -4,7 +4,8 @@
  * comes to, how many of the people who can open the job have signed, and each sub business with its day. No worker
  * is named unless the office set the job to show every signer by name, and it can set the count alone. What the
  * setting hides never reaches the page. Read only: its one press downloads a sample, and nothing a GC does changes
- * the paper.
+ * the paper. Since step 6 a GC may propose a stricter setting under it, which changes nothing until the office takes
+ * it (`PortalJobPaperPropose`).
  *
  * The words are `lib/portal/gcJobPapers.ts`. Its title is its own: the Document builder's block on this page reads
  * *Secrecy on this job* and shows a builder the office sent, which is another thing. Light always, as their page is.
@@ -13,10 +14,11 @@ import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { GC_PAPER_SAMPLE, GC_PAPER_SIGNERS_HEAD, GC_PAPER_TITLE, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSampleUrl, gcPaperSigned, gcPaperSigner, type GcJobPaper, type GcJobPapers } from '../../lib/portal/gcJobPapers'
 import { CARD, HAIR, INK, MUTED, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
 import { Chip } from '../gc/gcUi'
+import { PortalJobPaperPropose } from './PortalJobPaperPropose'
 
 const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1`
 
-function PaperBlock({ paper, company, sampleUrl }: { paper: GcJobPaper; company: string; sampleUrl: string | null }) {
+function PaperBlock({ paper, company, sampleUrl, token, phone }: { paper: GcJobPaper; company: string; sampleUrl: string | null; token: string; phone: string | null }) {
   const level = gcPaperLevel(paper)
   const signed = gcPaperSigned(paper)
   const revision = gcPaperRevisionLine(paper)
@@ -98,6 +100,8 @@ function PaperBlock({ paper, company, sampleUrl }: { paper: GcJobPaper; company:
         </div>
       ) : null}
 
+      <PortalJobPaperPropose paper={paper} token={token} phone={phone} />
+
       <div style={{ fontSize: '0.8rem', color: MUTED }}>{gcPaperFine(company)}</div>
     </div>
   )
@@ -105,9 +109,10 @@ function PaperBlock({ paper, company, sampleUrl }: { paper: GcJobPaper; company:
 
 /**
  * Every job's papers on the page, each under its job's name. Draws nothing for a customer whose jobs require none.
- * `token` is the page's own link: with it each paper offers its sample. The sample statement's made-up tokens offer none.
+ * `token` is the page's own link: with it each paper offers its sample and a proposal. The sample statement's made-up
+ * tokens offer neither. `phone` is the office's number, for a send that fails.
  */
-export function PortalJobPapers({ jobs, company, token = '' }: { jobs: GcJobPapers[]; company: string; token?: string }) {
+export function PortalJobPapers({ jobs, company, token = '', phone = null }: { jobs: GcJobPapers[]; company: string; token?: string; phone?: string | null }) {
   if (jobs.length === 0) return null
   const real = token && !sampleStateFromToken(token) ? token : ''
   return (
@@ -116,7 +121,7 @@ export function PortalJobPapers({ jobs, company, token = '' }: { jobs: GcJobPape
         <div key={job.jobId} data-portal-job-papers-job={job.jobId} style={{ display: 'grid', gap: '0.4rem' }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MUTED, borderBottom: `1px solid ${HAIR}`, paddingBottom: 4 }}>{job.jobLabel || 'Job'}</div>
           {job.papers.map((paper) => (
-            <PaperBlock key={paper.id} paper={paper} company={company} sampleUrl={real ? gcPaperSampleUrl(FUNCTIONS_URL, real, paper.id) : null} />
+            <PaperBlock key={paper.id} paper={paper} company={company} sampleUrl={real ? gcPaperSampleUrl(FUNCTIONS_URL, real, paper.id) : null} token={real} phone={phone} />
           ))}
         </div>
       ))}
