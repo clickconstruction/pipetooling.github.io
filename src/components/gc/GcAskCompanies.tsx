@@ -6,7 +6,7 @@ import { GC_COMPANY } from '../../lib/gc/company'
 import { currentRev, planLabel } from '../../lib/gc/lookups'
 import { inviteMessage, portalQuoteDue } from '../../lib/gc/portal'
 import { pt, type PortalLang } from '../../lib/gc/portalI18n'
-import type { AnswerRecord } from '../../lib/gc/reliability'
+import { asksToAnswer, type AnswerRecord } from '../../lib/gc/reliability'
 import type { GcState, Invite } from '../../lib/gc/types'
 import { daysUntil, weekdayDate } from '../../lib/gc/words'
 import { Btn, Chip, type Tone } from './gcUi'
@@ -152,7 +152,7 @@ export function GcAskCompanies({
           <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.3rem' }}>
             <Chip tone={record.tone}>
               {record.word}
-              {c.partner.invited > 0 ? ` · ${c.partner.bids} of ${c.partner.invited}` : ''}
+              {asksToAnswer(c.partner) > 0 ? ` · ${c.partner.bids} of ${asksToAnswer(c.partner)}` : ''}
             </Chip>
             {c.travel && <Chip tone={c.inZone ? 'grey' : 'amber'}>{c.travel}</Chip>}
             {langs[c.partner.id] === 'es' && <Chip tone="grey">Español</Chip>}

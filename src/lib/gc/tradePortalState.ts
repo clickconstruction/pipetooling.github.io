@@ -46,6 +46,8 @@ function partnerOf(slice: TradePortalSlice): Partner {
   const status = strOrNull(c.vetting_status)
   // Its vetting form (P5b-1): only the day it sent it passes, so portalVetting reads it as being checked.
   const formOn = slice.vettingForm ? strOrNull(slice.vettingForm.sent_on) : null
+  // The asks we took back after they heard (v2.8518): out of the rate of asks they answered, as on the board.
+  const tookBack = slice.invites.filter((i) => str(i.status) === 'declined' && str(i.declined_why) === 'withdrawn').length
   return {
     id: str(c.id),
     company: str(c.name),
@@ -59,6 +61,7 @@ function partnerOf(slice: TradePortalSlice): Partner {
       str(c.id),
     ),
     invited: slice.invites.length,
+    ...(tookBack > 0 ? { tookBack } : {}),
     bids: new Set(slice.quotes.map((q) => str(q.invite_id))).size,
     // The trades it won: its own asks the slice names as awarded (another company's award reads AWARDED_ELSEWHERE).
     won: slice.packages.filter((p) => slice.invites.some((i) => str(i.id) === str(p.awarded_invite_id))).length,

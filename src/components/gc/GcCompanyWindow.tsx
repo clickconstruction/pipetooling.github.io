@@ -8,7 +8,7 @@ import { paperStep, type PaperStep } from '../../lib/gc/paperSend'
 import { paperSendable, type CompanyPaperEntries, type PaperSendOutcome } from '../../lib/gc/papersIo'
 import type { PortalLang } from '../../lib/gc/portalI18n'
 import { insuranceRenewalWords, insuranceRenewals } from '../../lib/gc/promises'
-import { answerRecord, type AnswerRecord } from '../../lib/gc/reliability'
+import { answerRecord, quotedWords, type AnswerRecord } from '../../lib/gc/reliability'
 import type { GcState, Partner } from '../../lib/gc/types'
 import { vettingOf } from '../../lib/gc/vetting'
 import { money, shortDate } from '../../lib/gc/words'
@@ -309,7 +309,7 @@ function About({ state, partner, onOpenProject }: { state: GcState; partner: Par
   const renewal = insuranceRenewals(state).find((r) => r.partner.id === partner.id)
   const vetting = vettingOf(partner)
   const lines: { label: string; text: string }[] = [
-    { label: 'Quotes', text: partner.invited === 0 ? 'never asked yet' : `quoted ${partner.bids} of ${partner.invited} asks` },
+    { label: 'Quotes', text: quotedWords(partner, 'never asked yet') },
     {
       label: 'Vetting',
       text:

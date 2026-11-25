@@ -105,7 +105,7 @@ The ask is deleted. The company reads as never asked on that trade. You can ask 
 
 The company opened the ask in its portal. Or we emailed them, called them or sent them a text about it.
 
-The ask is kept, and the ask closes. Its chip reads {{chip:gray|we took it back}}. The close is ours. The close does not count as a pass on the company's record.
+The ask is kept, and the ask closes. Its chip reads {{chip:gray|we took it back}}. The close is ours. The close does not count as a pass on the company's record. The company's count of quotes leaves the ask out.
 
 The company's portal says we took the invitation back. No email goes to them. Call the company when they should know today.
 
