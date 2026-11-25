@@ -2,7 +2,7 @@
 name: "Lien desk: what the ledger (#361) left, to do later"
 number: 415
 group: residual
-status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454 · loose ends 1, 2, 4 and 6 built the same day on the picks from the pictures, v2.8537, v2.8535 and v2.8538, and loose end 5 answered · walk 2 done on a staged ZZ Test job, walk 7's record written and its reading not seen, which left a finding with no decision yet · v2.8537 and v2.8538 seen on the live desk the same day, read-only, and they read as built; v2.8535's empty card has no live case · walk 4 done on the ZZ Test job staged again, and the two ZZ Test filings voided after it, the same day, on the owner's standing yes for ZZ Test rows · the finding decided the same day, the owner's pick: draw the card from the job's stand-in month, in PR #9754
+status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454 · loose ends 1, 2, 4 and 6 built the same day on the picks from the pictures, v2.8537, v2.8535 and v2.8538, and loose end 5 answered · walk 2 done on a staged ZZ Test job, walk 7's record written and its reading not seen, which left a finding with no decision yet · v2.8537 and v2.8538 seen on the live desk the same day, read-only, and they read as built; v2.8535's empty card has no live case · walk 4 done on the ZZ Test job staged again, and the two ZZ Test filings voided after it, the same day, on the owner's standing yes for ZZ Test rows · the finding decided the same day, the owner's pick: draw the card from the job's stand-in month, shipped v2.8541 and deployed that night · a second finding of walk 7, the path that forgot a notice only on record, shipped v2.8554 and deployed the same night, on the owner's yes · walk 7 and the path's look written as one sitting on a ZZ Test job, and handed to the walker
 summary: >
   Punch list #361 rebuilt the Lien desk's Months on this job as one card, the ledger, and closed on
   2026-11-21 once every choice made with it was built and live. Its last night left a handful of
@@ -11,12 +11,14 @@ summary: >
   for a thumb with a long chip that fits (v2.8538). The five things for Grace were answered that day.
   Seven walks were owed. Walks 1, 2 and 4 are done. Walk 7's record was written on a ZZ Test job and its
   reading was not seen, and that left a finding: the affidavit pane draws its months card only for a
-  job with approved clock hours. The owner picked the way on 2026-11-24, and its build is in PR #9754. Walks 3, 5 and 6 were not staged and wait on live cases. The two
+  job with approved clock hours. The owner picked the way on 2026-11-24, and its build shipped that night as v2.8541.
+  The same walk left a second finding, a path that forgot a notice only on record, and its build shipped as v2.8554.
+  Neither build has been seen live: walk 7 is the look at both, in one sitting. Walks 3, 5 and 6 were not staged and wait on live cases. The two
   ZZ Test filings the walks left are voided. The cents and the pinned strip were seen on the live desk on 2026-11-24 and read as built. The empty
   card's next press has no live case to be seen on.
-next: Walk 7 can be read once the finding's build is live (PR #9754, the owner's pick of 2026-11-24). It needs a new record by hand on a ZZ Test job, since the first one is voided. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
-size: one build in its PR (the finding, S) · four walks (XS each): 7 waits on that build, 3, 5 and 6 wait on live cases
-blocker: None. Walk 7 waits on the finding's build going live.
+next: Walk 7 can be read: both builds are deployed (v2.8541 and v2.8554, 2026-11-24). It is read in one sitting with the path's look. It needs a new record by hand on a ZZ Test job, since the first one is voided. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
+size: four walks (XS each): 7 is ready to read on a ZZ Test job, 3, 5 and 6 wait on live cases
+blocker: None. Both builds are deployed, and one record by hand serves both looks.
 ---
 
 # Lien desk: what the ledger (#361) left, to do later (#415)
@@ -207,8 +209,9 @@ ZZ Test rows that day. What walks 3 and 5 need is that day's session's reading, 
   seat's verb both refuse a paper with no months. It waits on a live case, and there may never be one.
 - **Walk 7** is half done. Record it… on the months card opened the by-hand form with the closed month ticked,
   and one record was written: one new filing and nothing else. The affidavit pane then drew no *Months the
-  affidavit claims* card, and its path read *§ 53.056 notice · no work month yet*. Its reading waits on the
-  finding's build, PR #9754, going live.
+  affidavit claims* card, and its path read *§ 53.056 notice · no work month yet*. The build for the card,
+  v2.8541, is live since 2026-11-24, and so is the path's own build, v2.8554. The reading waits on a new record
+  by hand, made in one sitting with the look at the path.
 
 ## Found on the walks
 
@@ -219,7 +222,8 @@ its creation never showed it, whatever notice was on record. The card now takes 
 span for such a job. Each month says what it rests on in place of its hours, and its notice is read against it
 as for a clock month. The other way, to leave the rule and say so in one quiet line, was not taken. Not seen
 live yet: walk 7 is its look, and it needs a new record by hand on a ZZ Test job, since the first one is voided.
-Walk 7 also read *no work month yet* on the path's § 53.056 stop. That reading was not looked into.
+Walk 7 also read *no work month yet* on the path's § 53.056 stop. That reading was looked into after, and is the
+finding under *Found after the walks*, shipped v2.8554.
 
 ## Left on prod
 
