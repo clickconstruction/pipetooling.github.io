@@ -14,6 +14,7 @@ vi.mock('../../hooks/useNarrowViewport640', () => ({ useNarrowViewport640: () =>
 import { PeopleHoursGrid } from './PeopleHoursGrid'
 import type { UserRow } from '../../hooks/usePeopleRoster'
 import { pendingByCellKey, type PeopleHoursPendingByCellMap } from '../../lib/peopleHoursPendingByCell'
+import { hoursGridLiveCellKey } from '../../lib/people/hoursGridLiveByCell'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
 const PERSON = 'Alex Doe'
@@ -47,7 +48,7 @@ describe('PeopleHoursGrid mobile day sheet', () => {
         hoursDays={[DAY]}
         showPeopleForHours={[PERSON]}
         peopleHoursPendingByCellMap={pendingMap}
-        liveByWorkDate={new Map()}
+        liveByCell={new Map()}
         jobHighlightPeople={new Set()}
         jobHighlightCells={new Set()}
         hoursFlashWorkDate={null}
@@ -90,5 +91,58 @@ describe('PeopleHoursGrid mobile day sheet', () => {
     expect(openHoursMyTimeForGridCell).toHaveBeenCalledWith(PERSON, DAY)
     // My Time closes the sheet.
     expect(screen.queryByRole('dialog', { name: `Day actions for ${PERSON} on ${DAY}` })).toBeNull()
+  })
+
+  it('a cell for someone on the clock opens My Time and never the sheet with its hours box (punch list #446)', () => {
+    const openHoursMyTimeForGridCell = vi.fn()
+    const saveHours = vi.fn()
+    vi.useFakeTimers({ toFake: ['Date'] })
+    // 20:00 UTC is 3:00 PM in the company's zone on the day in the column.
+    const now = new Date('2026-07-27T20:00:00Z').getTime()
+    vi.setSystemTime(now)
+    try {
+      const key = hoursGridLiveCellKey(PERSON, DAY)
+      const { container } = renderWithProviders(
+        <PeopleHoursGrid
+          hoursTableScrollRef={createRef<HTMLDivElement>()}
+          hoursGridFirstColW={160}
+          hoursDays={[DAY]}
+          showPeopleForHours={[PERSON]}
+          peopleHoursPendingByCellMap={new Map()}
+          liveByCell={new Map([[key, { personName: PERSON, workDate: DAY, clockInsMs: [now - 90 * 60_000] }]])}
+          jobHighlightPeople={new Set()}
+          jobHighlightCells={new Set()}
+          hoursFlashWorkDate={null}
+          hoursFlashPersonName={null}
+          hoursDaysCorrect={new Set()}
+          users={[{ id: 'u-1', email: null, name: PERSON, role: 'helpers', notes: null, phone: null, login_attached_at: '2026-10-01T12:00:00Z' } satisfies UserRow]}
+          canEditCrewJobs={true}
+          canAccessHours={true}
+          canAccessPay={true}
+          hasUnassignedCorrectDays={() => false}
+          canEditHours={() => true}
+          isCorrectDayMissingJob={() => false}
+          getHoursGridDisplayHours={() => 0}
+          moveHoursRow={() => {}}
+          setHoursUnassignedModal={() => {}}
+          setHoursDayAuditModal={() => {}}
+          openHoursMyTimeForGridCell={openHoursMyTimeForGridCell}
+          setPendingCellPopover={() => {}}
+          toggleHoursDayCorrect={() => {}}
+          saveHours={saveHours}
+          openManualHoursDraftFromBlur={() => {}}
+        />,
+      )
+      expect(screen.queryByRole('button', { name: `Open day actions for ${PERSON} on ${DAY}` })).toBeNull()
+      const box = container.querySelector<HTMLButtonElement>(`button[data-hours-live-cell="${key}"]`)
+      if (!box) throw new Error('the on-the-clock cell was not drawn')
+      expect(box.textContent).toBe('1:30on the clock')
+      fireEvent.click(box)
+      expect(openHoursMyTimeForGridCell).toHaveBeenCalledWith(PERSON, DAY)
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(saveHours).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

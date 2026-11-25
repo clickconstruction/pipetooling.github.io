@@ -131,7 +131,7 @@ import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
 import { MatchClockSessionsModal, fetchUnassignedClockSessionCount } from '../components/people/MatchClockSessionsModal'
 import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal'
 import { PeopleHoursDashboardClockStrip } from '../components/people/PeopleHoursDashboardClockStrip'
-import { buildHoursGridLiveByWorkDate } from '../lib/people/hoursGridLiveByCell'
+import { buildHoursGridLiveByCell } from '../lib/people/hoursGridLiveByCell'
 import { buildHoursGridRoster, EMPTY_HOURS_ROSTER_MESSAGE, payConfigRowsForRoster } from '../lib/people/hoursGridRoster'
 import { EmptyState } from '../components/EmptyState'
 import { jobHighlightEmptyWords } from '../lib/people/peopleEmptyWords'
@@ -1738,15 +1738,14 @@ export default function People() {
     for (const [id, stamp] of pendingTypedStamps) if (needsSecondLook(stamp)) out.add(id)
     return out
   }, [pendingTypedStamps])
-  /** People → Hours (J7-4): open sessions per day column, so the header can say "+N on the clock" next to a closed-sessions-only total. */
-  const hoursGridLiveByWorkDate = useMemo(
+  /** People → Hours (punch list #446): who is on the clock, cell by cell. The grid draws each as a green press that opens My Time and reads the clock itself. */
+  const hoursGridLiveByCell = useMemo(
     () =>
-      buildHoursGridLiveByWorkDate({
+      buildHoursGridLiveByCell({
         activeClockSessions,
         peopleNames: showPeopleForHours,
         workDates: hoursDays,
         users,
-        nowMs: Date.now(),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- showPeopleForHours is rebuilt each render; payConfig/archived/roster/order are its inputs
     [activeClockSessions, hoursDays, users, payConfig, archivedRoster, payRoster, hoursDisplayOrder],
@@ -2553,7 +2552,8 @@ export default function People() {
                 hoursDays={hoursDays}
                 showPeopleForHours={showPeopleForHours}
                 peopleHoursPendingByCellMap={peopleHoursPendingByCellMap}
-                liveByWorkDate={hoursGridLiveByWorkDate}
+                liveByCell={hoursGridLiveByCell}
+                myTimeOpen={hoursMyTimeEditor != null}
                 jobHighlightPeople={jobHighlightPeople}
                 jobHighlightCells={jobHighlightCells}
                 hoursFlashWorkDate={hoursFlashWorkDate}
