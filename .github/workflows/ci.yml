@@ -3,7 +3,17 @@ name: CI
 # Every pull request push and every merge-queue build, never main itself. Nothing reaches main except through
 # the queue (ruleset "main merge queue", no bypass actors), so a run on main repeated the queue's run on the
 # same content: until 2026-10-27 it did, 28 minutes of runner time a merge, 60 merges a day. The typecheck and
-# lint caches this job restores are saved on main by warm-caches.yml.
+# lint caches the static job restores are saved on main by warm-caches.yml.
+#
+# Three jobs since 2026-11-25. Until then one `checks` job ran the typecheck (1 to 17 minutes) and then the
+# whole suite (22 to 37) on one runner, 27 to 59 minutes a run, and every code PR paid it twice.
+#   static  typecheck, lint, every check and the doc-reading tests. One runner, both events.
+#   test    the suite. In the merge queue, the whole of it in shards, a runner each. On a pull request, one
+#           runner with the tests near the change and every test that reads files (scripts/lib/nearTests.mjs).
+#   checks  the gate, and the one name branch protection requires.
+# The queue is the only way onto main and still runs everything; a PR's own run is the quick answer first.
+# Runners: the org runs 20 jobs at once. A queue build takes 3 and the queue builds 6 at once, so 18 at its
+# fullest; a pull request's run takes 2. A leg waits for a runner when they are all out, it does not fail.
 on:
   pull_request:
   # Merge-queue builds: the queue re-runs "checks" on the speculative merge
@@ -18,13 +28,15 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  checks:
+  static:
+    name: typecheck, lint and the checks
     runs-on: ubuntu-latest
-    # Normally 26 to 41 minutes warm (2026-11-24, the tests 22 to 35 of them); a stalled check fails instead of
-    # hanging the queue. A cold run, the first after the cache key changes, adds 14 to 17 minutes of typecheck
-    # and 3 of lint: 57 and 61 minutes on 2026-11-24, when the limit was 60 and the queue's build of the change
-    # that made the key was cancelled inside its tests.
-    timeout-minutes: 90
+    # Normally 5 to 21 minutes warm (2026-11-25: the install and the checks 4, the typecheck 1 to 17 by how far
+    # the restored cache is behind the build); a stalled check fails instead of hanging the queue. A cold run,
+    # the first after the cache key changes, adds 14 to 17 minutes of typecheck and 3 of lint. The limit was 90
+    # while this job also ran the suite: at 60 the queue's build of the change that made a new key was cancelled
+    # inside its tests (2026-11-24).
+    timeout-minutes: 45
     # pull-requests: write lets check:calls-ahead label a PR whose client calls ahead of its migration.
     permissions:
       contents: read
@@ -54,6 +66,8 @@ jobs:
       # merge-queue build that is every entry in the group, so a code PR ahead in the group keeps the full suite.
       # scripts/lib/docsOnlyChange.mjs decides, fail-safe: no files, an unreadable body, a list cut at the API's
       # cap, or one file outside the patterns runs everything. Typecheck, lint and the house checks run either way.
+      # Each test leg asks the same question for itself and stops before its install when the answer is docs-only;
+      # this job only prints the answer and reads the list of doc-reading tests from it.
       - name: Which files changed (a docs-only change runs the doc-reading tests alone)
         id: changed
         env:
@@ -185,23 +199,105 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Test
-        if: steps.changed.outputs.docs_only != 'true'
-        run: npm test
-        env:
-          # The whole suite (5,750 files on 2026-11-23) passed twice in the merge queue and then vitest's own process died
-          # of "JavaScript heap out of memory" while closing, with node's default cap near 2 GB. The runner has room.
-          NODE_OPTIONS: --max-old-space-size=6144
-          # Unit tests don't hit Supabase, but src/lib/supabase.ts throws at import
-          # if these are unset. Dummy non-empty values satisfy the guard.
-          VITE_SUPABASE_URL: https://example.supabase.co
-          VITE_SUPABASE_ANON_KEY: ci-dummy-anon-key
-
       # The five tests that read docs/, to-dos/, .claude/ or the release notes from disk — the list is the
-      # step's output, kept by src/lib/docsOnlyChange.test.ts, so there is no second copy here to drift.
-      - name: Test the doc readers (a docs-only change)
-        if: steps.changed.outputs.docs_only == 'true'
+      # step's output, kept by src/lib/docsOnlyChange.test.ts, so there is no second copy here to drift. They run
+      # here on every build, about half a minute, and not only on a docs-only one: the test legs decide docs-only
+      # for themselves, and a leg that skips must never be the only place these would have run.
+      - name: Test the doc readers
         run: npx vitest run ${{ steps.changed.outputs.doc_tests }}
         env:
           VITE_SUPABASE_URL: https://example.supabase.co
           VITE_SUPABASE_ANON_KEY: ci-dummy-anon-key
+
+  test:
+    # In the merge queue: the whole suite, dealt by vitest into shards of equal size, a runner each (5,940 files
+    # took one runner 22 to 37 minutes on 2026-11-25; two take 12 to 20 each). check-workflow-parity.mjs holds the
+    # list to every shard of one count, so a third of the suite cannot drop out by a typo. On a pull request: one
+    # leg, the tests near the change.
+    name: test ${{ matrix.part }}
+    runs-on: ubuntu-latest
+    # A shard is 12 to 20 minutes, a pull request's pick about 10. The one long case is a pull request that
+    # changes what every test runs on (package.json, vite.config.ts, a tsconfig): its leg runs the whole suite
+    # on this one runner, 22 to 37 minutes, as every run did until 2026-11-25.
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      # A red shard does not stop the others: the run then names every failing test, not the first shard's.
+      fail-fast: false
+      matrix:
+        part: ${{ fromJSON(github.event_name == 'merge_group' && '["1/2", "2/2"]' || '["near the change"]') }}
+    env:
+      # The whole suite (5,750 files on 2026-11-23) passed twice in the merge queue and then vitest's own process died
+      # of "JavaScript heap out of memory" while closing, with node's default cap near 2 GB. The runner has room.
+      NODE_OPTIONS: --max-old-space-size=6144
+      # Unit tests don't hit Supabase, but src/lib/supabase.ts throws at import
+      # if these are unset. Dummy non-empty values satisfy the guard.
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_ANON_KEY: ci-dummy-anon-key
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The static job's question, asked again here so no job waits on another for a runner. A docs-only change
+      # ends this leg in seconds, before its install: the static job runs the doc-reading tests on every build.
+      # The answer is fail-safe, so a compare that does not read here runs this leg's tests.
+      - name: Which files changed (a docs-only change runs no test here)
+        id: changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/compare/${BASE}...${HEAD}?per_page=300" > "$RUNNER_TEMP/compare.json" || true
+          node scripts/ci-docs-only.mjs < "$RUNNER_TEMP/compare.json"
+
+      - name: Setup Node.js
+        if: steps.changed.outputs.docs_only != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: steps.changed.outputs.docs_only != 'true'
+        run: npm ci
+
+      # A pull request's own run. scripts/lib/nearTests.mjs has the rule and its reasons: the tests whose imports
+      # reach a changed file, by Vite's own import graph, and every test whose imports reach a module that reads
+      # files (the source-scan tests: no graph can say which files they open). Anything the picker cannot tell
+      # answers mode=all, and the step after the next runs the whole suite on this runner.
+      - name: Which tests are near the change (a pull request)
+        id: near
+        if: github.event_name == 'pull_request' && steps.changed.outputs.docs_only != 'true'
+        run: node scripts/ci-near-tests.mjs "$RUNNER_TEMP/near-tests.txt" < "$RUNNER_TEMP/compare.json"
+
+      - name: Test near the change (a pull request)
+        if: github.event_name == 'pull_request' && steps.changed.outputs.docs_only != 'true' && steps.near.outputs.mode == 'near'
+        run: npx vitest run $(cat "$RUNNER_TEMP/near-tests.txt")
+
+      - name: Test the whole suite (a pull request the picker could not narrow)
+        if: github.event_name == 'pull_request' && steps.changed.outputs.docs_only != 'true' && steps.near.outputs.mode != 'near'
+        run: npm test
+
+      - name: Test this shard of the whole suite (the merge queue)
+        if: github.event_name != 'pull_request' && steps.changed.outputs.docs_only != 'true'
+        run: npx vitest run --shard=${{ matrix.part }}
+
+  # The one check branch protection requires, under the name it has always had. It runs only to fail, as
+  # sql-beds.yml's gate does: a skipped job takes no runner and counts as passing, so a green build never
+  # waits behind the backlog for a job of seconds. check-workflow-parity.mjs holds `needs` to every other job
+  # of this file, so a leg added later cannot be left outside the gate.
+  checks:
+    needs: [static, test]
+    # always() is what holds a red leg out: without a status function GitHub adds success(), a failed leg then
+    # skips this job, and a skip passes. A cancelled or timed-out leg is not 'success' either, so it fails here.
+    if: always() && !(needs.static.result == 'success' && needs.test.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: A leg did not pass
+        shell: bash
+        run: |
+          echo 'static: ${{ needs.static.result }} · test: ${{ needs.test.result }}'
+          exit 1

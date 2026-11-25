@@ -5,7 +5,7 @@ name: Warm the typecheck and lint caches
 # scripts/lib/typecheckParts.mjs). It runs no check the queue did not just
 # run on this exact content, and nothing waits on it: it is not a gate, and deploy.yml does not need it. A
 # cache saved on a branch is visible to that branch alone, which is why the save lives on main and not in
-# ci.yml's checks job. Budget (2026-11-24): about a minute warm, fourteen cold.
+# ci.yml's static job. Budget (2026-11-24): about a minute warm, fourteen cold.
 on:
   push:
     branches:
