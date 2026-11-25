@@ -17,6 +17,7 @@ import {
   withOperationTimeout,
   withSupabaseRetry,
 } from '../../utils/errorHandling'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type {
   StripeInvoiceLinesSnapshot,
   StripeInvoiceLineSource,
@@ -204,12 +205,12 @@ function billCustomerTopTabButtonStyle(active: boolean): CSSProperties {
   }
 }
 
+/**
+ * Today as the company's calendar has it, never the browser's own date: the window's sent day and due day start here,
+ * and the bill is made on the company's day (punch list #343, `docs/TIME_AND_ZONES.md`).
+ */
 function todayIsoDate(): string {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return todayYmdInAppTz()
 }
 
 /** Matches Edge `buildStripeInvoiceItemsFromFixtures` billable rows (Specific Work on the job). */

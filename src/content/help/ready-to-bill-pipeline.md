@@ -222,7 +222,7 @@ Someone records a $500 payment while you're looking at a $2,630 bill. When you p
 
 On a Stripe bill, **What Dana will get** has three faces. The faces are **The bill**, **The email** and **The text**. Looking at a face sends nothing.
 
-**The email** is the message the customer will read. The face shows From, To and Subject, then the amount, the due day and the Pay now button. The Pay now button works once the bill is made. Stripe's PDF rides along.
+**The email** is the message the customer will read. The face shows From, To and Subject, then the amount, the due day and the Pay now button. The made bill is due on the day the window shows. A bill due today is due today. The Pay now button works once the bill is made. Stripe's PDF rides along.
 
 **The text** is the words a text would carry, with the number it would go to. The link shown is a sample. A text is your choice on the next screen. With no phone number on file, the face says so.
 

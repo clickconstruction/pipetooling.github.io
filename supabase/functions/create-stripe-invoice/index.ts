@@ -14,6 +14,7 @@ import {
 } from '../_shared/stripeStaleCustomer.ts'
 import { stripeInvoiceSnapshotForResponse } from '../_shared/stripeInvoiceSnapshot.ts'
 import { STRIPE_INVOICE_FOOTER_MAX_CHARS } from '../_shared/stripeInvoiceFooter.ts'
+import { isStripeDueDateRefusal, stripeBillDue, stripeBillDueFallbackDays } from '../_shared/stripeBillDueDate.ts'
 import {
   stripeInvoiceDescriptionFromStripe,
   stripeInvoiceFooterFromStripe,
@@ -93,13 +94,6 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
-}
-
-function daysUntilDue(isoDate: string): number {
-  const due = new Date(isoDate + 'T12:00:00Z')
-  const now = new Date()
-  const ms = due.getTime() - now.getTime()
-  return Math.max(1, Math.ceil(ms / (86400 * 1000)))
 }
 
 function isStripeDuplicateInvoiceNumberError(e: unknown): boolean {
@@ -577,14 +571,15 @@ serve(async (req) => {
         )
     const footerForStripe = stripeInvoiceFooter(footerTrimmedForStripe, portalReturnUrl)
 
-    const d = daysUntilDue(due_date.trim())
+    // #343: the due day itself, as an instant on that day, never a count of days from this minute. A count never
+    // under 1 made a bill due today fall due tomorrow. Only a day already over still gets a count (`stripeBillDueDate.ts`).
+    const due = stripeBillDue(due_date.trim(), Date.now())
 
-    let invoice: Stripe.Invoice
-    try {
-      invoice = await stripe.invoices.create({
+    const createInvoiceDue = (dueParams: { due_date: number } | { days_until_due: number }) =>
+      stripe.invoices.create({
         customer: stripeCustomerId!,
         collection_method: 'send_invoice',
-        days_until_due: d,
+        ...dueParams,
         // v2.1001: service address leads the memo (the Stripe email summary
         // card shows the memo but not custom_fields, so the address must be
         // here too). Office-typed memo text follows unchanged.
@@ -611,6 +606,19 @@ serve(async (req) => {
           pipetooling_job_id: invRow.job_id,
         },
       })
+
+    let invoice: Stripe.Invoice
+    try {
+      try {
+        invoice = await createInvoiceDue('due_date' in due ? { due_date: due.due_date } : { days_until_due: due.days_until_due })
+      } catch (e) {
+        // Stripe refusing the due day must never stop the bill: it is made on a count of days, as every bill was
+        // before #343, and the log says so. Nothing was made by the refused call, so the number is still free.
+        if (!('due_date' in due) || !isStripeDueDateRefusal(e)) throw e
+        const days = stripeBillDueFallbackDays(due_date.trim(), Date.now())
+        console.warn(`create-stripe-invoice: Stripe refused due_date ${due.due_date} (${due.rule}); made on days_until_due ${days} —`, e instanceof Error ? e.message : String(e))
+        invoice = await createInvoiceDue({ days_until_due: days })
+      }
     } catch (e) {
       if (isStripeDuplicateInvoiceNumberError(e)) {
         return jsonResponse(

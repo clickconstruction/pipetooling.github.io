@@ -5218,6 +5218,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 
 ### create-stripe-invoice
 
+> **v2.8551 — the due day itself, never a count of days** (punch list #343, the live walk of 2026-11-24): the function sent `days_until_due`, worked out from noon UTC of the due day and never under 1, and Stripe adds the count to the minute the bill is made. A bill due today came out due tomorrow at any hour, and a bill made between midnight and 6 AM Central came out a day late. It now sends **`due_date`**, one instant on the due day, from the pure [`stripeBillDueDate.ts`](../supabase/functions/_shared/stripeBillDueDate.ts) (`stripeBillDue(dueYmd, nowMs)`): 23:59:59 UTC of the day when that is at least ten minutes ahead (about 6 PM Central, the due day in the company's zone and in UTC alike); else the last second of the day in `APP_CALENDAR_TZ` when that is ahead (an evening press of a bill due today); else the day is over and the bill is made on `days_until_due: 1` as before, since Stripe takes no past due day (a recorded bill turned into a Stripe bill lands here). If Stripe refuses the `due_date` (`isStripeDueDateRefusal`), the bill is made on a count of civil days in the company's zone, never under 1 (`stripeBillDueFallbackDays`), and the log says so: a refusal never stops a bill. Every reader of the made bill prints the instant in the company's zone (the bill email and its copies, the made-bill panel, the split window), so each says the day the window showed. The body's `due_date` is unchanged. Tests: `src/lib/billing/stripeBillDueDate.test.ts`. **Redeploy required.**
+
 > **v2.5408 — `deno check` passes again**: `_shared/stripeInvoiceSnapshot.ts`, which only this function bundles, read each line's `description` and `amount` off `unknown` (TS18046 ×3). Stripe from `esm.sh/stripe@16.12.0?target=deno` is `any` to the checker, and under TypeScript 6.0.3 (deno 2.9.6) `stripeInvoiceLinesDataForFixtureOrderDisplay<T>(data: T[])` given an `any` infers `T` as `unknown`. The call names the line type now, `<Stripe.InvoiceLineItem>`. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.6769 — the bill's short code** (punch list #290): after the row is written the function calls `bill_pay_code(p_invoice_id)` as the service role, best effort, so a new bill carries its ten-letter `pay_code` from the first draw of the share row (the row asks again when it draws; a mint that fails is logged and PR 1's `/pay/<id>` link stands). Migration `20261109033000_bill_pay_codes`.
@@ -5273,7 +5275,7 @@ interface CreateStripeInvoiceBody {
   amount_dollars: number
   customer_email: string
   customer_name: string
-  due_date: string // YYYY-MM-DD (local calendar day; server derives days_until_due)
+  due_date: string // YYYY-MM-DD, the company's calendar day; sent to Stripe as an instant on that day (`stripeBillDueDate.ts`), a count of days only when the day is over
   memo?: string
   /** Optional: Stripe Invoice `footer` (max **5000** chars). Omit or empty = Stripe account default footer. */
   footer?: string
