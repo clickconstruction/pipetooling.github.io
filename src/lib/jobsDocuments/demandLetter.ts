@@ -513,6 +513,8 @@ export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: stri
         break
       case 'amountBox': {
         // With the letter's one pay code (letter-first) the box has a third cell and the two values step down to make room.
+        // The cell has no *Pay online* label over its words (punch list #333, the owner's look): the code, *Scan to pay* and
+        // the address say it, and the box is a line shorter where the words sit under the code.
         const c = b.code
         const cell = (label: string, value: string, rule: boolean) =>
           `<td style="width:${c ? '31%' : '50%'};padding:${c ? '0.6em 0.6em' : '0.6em 0.9em'};${rule ? `border-right:1px solid ${INK};` : ''}font-family:${SANS}">` +
@@ -521,7 +523,7 @@ export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: stri
           ? // The words wrap under the code on a narrow screen, so the box never runs wider than a phone.
             `<td data-demand-pay-code="${esc(c.invoiceId)}" style="padding:0.5em 0.6em;font-family:${SANS};vertical-align:middle"><div style="display:flex;flex-wrap:wrap;gap:0.3em 0.7em;align-items:center">` +
             `<div style="flex:0 0 72px;width:72px;height:72px;line-height:0">${c.svg ? sizedSvg(c.svg, 72) : `<div style="width:72px;height:72px;border:1px dashed ${MUTED};box-sizing:border-box"></div>`}</div>` +
-            `<div style="flex:1 1 5.5em;min-width:0"><div style="font-size:0.75em;color:${MUTED}">Pay online</div><div style="font-size:1.05em;font-weight:700;line-height:1.3">Scan to pay</div>` +
+            `<div style="flex:1 1 5.5em;min-width:0"><div style="font-size:1.05em;font-weight:700;line-height:1.3">Scan to pay</div>` +
             `<div style="font-size:0.68em;color:${MUTED};line-height:1.3;word-break:break-all">or go to ${esc(c.address)}</div></div></div></td>`
           : ''
         parts.push(`<table data-demand-amount-box style="border-collapse:collapse;width:100%;border:1px solid ${INK};margin:0 0 1.1em 0"><tr>${cell('Balance due', b.balance, true)}${cell('Pay in full by', b.deadline, Boolean(c))}${codeCell}</tr></table>`)
@@ -921,18 +923,15 @@ function drawDemandLetterPdf(JsPDF: Awaited<ReturnType<typeof loadJsPDF>>, block
             doc.rect(cx + 3, top + 3, qr, qr)
           }
           const tx = cx + qr + 6
-          doc.setFont('helvetica', 'normal')
-          doc.setFontSize(8)
-          muted()
-          doc.text('Pay online', tx, top + 5.6 + drop)
+          // No *Pay online* label over the words (punch list #333): the two lines sit where the three did, a line higher.
           doc.setFont('helvetica', 'bold')
           doc.setFontSize(11)
           ink()
-          doc.text('Scan to pay', tx, top + 11 + drop)
+          doc.text('Scan to pay', tx, top + 7.5 + drop)
           doc.setFont('helvetica', 'normal')
           doc.setFontSize(6.5)
           muted()
-          ;(doc.splitTextToSize(`or go to ${b.code.address}`, codeW - qr - 9) as string[]).slice(0, 3).forEach((l, i) => doc.text(l, tx, top + 15 + drop + i * 2.8))
+          ;(doc.splitTextToSize(`or go to ${b.code.address}`, codeW - qr - 9) as string[]).slice(0, 3).forEach((l, i) => doc.text(l, tx, top + 11.5 + drop + i * 2.8))
           ink()
         }
         y = top + h + 8

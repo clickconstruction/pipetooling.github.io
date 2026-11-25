@@ -2,16 +2,16 @@
 name: Demand letter — the letter on one page, the account behind it
 number: 333
 group: close
-status: LIVE 2026-11-13 (v2.7086, PR #7870), on the owner's word *Yes, build it* · left: her look, and counsel's eye on the one changed phrase
+status: LIVE 2026-11-13 (v2.7086, PR #7870), on the owner's word *Yes, build it* · the owner looked on 2026-11-24 and had one comment, the small Pay online label in the amount box, taken out in v2.8549 · left: a look at the shorter box, and counsel's eye on the one changed phrase
 summary: >
   A demand letter from the Lien window runs about a page and a half. It breaks after the statement of account, so the
   demand and the signature land on page 2. The suggestion puts the whole letter on page 1, signed, with the pay code in
   the amount box, and moves the statement of account, the notice history and the enclosures to page 2. All of it on one
   sheet was measured and does not fit.
-next: The owner opens Settings → What customers see → Lien letters → Final demand letter and reads both pages. Then delete the folder.
+next: A look at the shorter amount box once v2.8549 is live, in Settings → What customers see → Lien letters → Final demand letter and in its PDF. Then the owner says whether counsel's eye on the changed phrase is still owed, and the folder goes.
 size: XS
-blocker: The owner's look.
-ver: v2.7086
+blocker: v2.8549 on the live site, then the owner's word on counsel's eye.
+ver: v2.7086 · v2.8549
 opinion: build — it is built; the look is hers
 ---
 
@@ -105,6 +105,8 @@ measurements and what was not checked. Left: her look, and counsel's eye on the 
 Live 2026-11-13 07:05Z. Walked on clicktooling.com with every write refused: the sample's *Open the PDF* press makes
 two pages, the letter signed on page 1 with the pay code drawn in the amount box as a picture (v2.7090), and the
 statement of account, the notice history and the enclosures on page 2. The code was not read back by a scanner.
+
+**The owner's look, 2026-11-24.** He saw the letter as *What customers see* draws it and had one comment: *the "pay online" words on this particular final demand letter could be removed, reducing the total height.* v2.8549 takes the small *Pay online* label out of the amount box, on the page, in the email and in the PDF. The code, *Scan to pay* and the address stay. The box is a line shorter where the words sit under the code. In the PDF the code sets the box's height, so it is as tall as it was, and the letter is still signed on page 1. Two things on this card are still not answered: counsel's eye on the changed phrase, and the statement table on a narrow page, under the next heading.
 
 ## Seen on the live walk, for later
 
