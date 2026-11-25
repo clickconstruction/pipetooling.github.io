@@ -2,7 +2,7 @@
 name: "Task Mode: the refresh and the doer's tools"
 number: 369
 group: close
-status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · all fifteen steps live on main 2026-11-17, A1 to D3 (v2.7533 to v2.7551) · both migrations pushed and checked on prod · eight small presses from the browser walk of 2026-11-21 in v2.8230 · walked in an iPhone simulator 2026-11-25: the page and its presses hold, and one fault was found, a helper's done line names nobody when a dev gave the task · that fault mended in v2.8560 · left: the simulator's look at the mend, and a walk on a real phone
+status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · all fifteen steps live on main 2026-11-17, A1 to D3 (v2.7533 to v2.7551) · both migrations pushed and checked on prod · eight small presses from the browser walk of 2026-11-21 in v2.8230 · walked in an iPhone simulator 2026-11-25: the page and its presses hold, and one fault was found, a helper's done line names nobody when a dev gave the task · that fault mended in v2.8560 · Manage's Delete, which said nothing, says what happened in v2.8572 · left: the simulator's look at the names mend, a look at the delete's line, and a walk on a real phone
 summary: >
   The owner sent a screenshot of Task Mode and asked for a visual refresh in the family of the New task
   window, and for tools that let the person doing tasks act without waiting on someone. Checklist → Today
@@ -11,10 +11,10 @@ summary: >
   card: move a task to another day, say you cannot do it, say it no longer applies, go through the old
   ones, add proof as you finish, add your own task or a follow-up, hand a task on, and draw a map or leave
   a point on one.
-next: The simulator looks at a helper's done line once v2.8560 is live, to see it name who hears. Then someone walks Task Mode on a real phone.
-size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S), built; left: a look at the names mend (XS) and a walk on a phone (XS)
+next: The simulator looks at a helper's done line once v2.8560 is live, to see it name who hears. A walker deletes one ZZ Test task from Manage once v2.8572 is live and reads *Task deleted.* Then someone walks Task Mode on a real phone.
+size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S), built; left: a look at the names mend (XS), a look at the delete's line (XS) and a walk on a phone (XS)
 blocker: a person at a phone for the walk.
-ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545 · v2.7546 · v2.7547 · v2.7548 · v2.7549 · v2.7550 · v2.7551 · v2.8560
+ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545 · v2.7546 · v2.7547 · v2.7548 · v2.7549 · v2.7550 · v2.7551 · v2.8560 · v2.8572
 opinion: build — the refresh changes no data, each tool is one small press on the card, and the one migration is additive
 ---
 
@@ -170,4 +170,6 @@ Seen in the code on the way, and not built: a task's activity panel and the Hist
 **Not walked.** **Exit** on the Task Mode strip: with *Modes at open* ticked a row of three modes stands in its place. **Go through them**: it needs an old task, and the test account has none.
 
 **Left on the live site.** One done ZZ test task and its day row. Both presses have a way back, so neither is on the list of presses nothing takes back (#443): the done line's own press reads **Mark not done**, and Checklist → Manage → **Delete** removes the task with its day rows for a dev, a master or an assistant. The walk did not delete it.
+
+**Manage's Delete said nothing, seen on the walk of 2026-11-25 that cleaned that task up. Mended in v2.8572.** The task was deleted and no line said so: the row leaving the list was the only sign. Read in the code beside it: a failure drew the database's own words at the page's foot, and a delete the row rules refuse closed the window in silence. The press now says each end in a toast: *Task deleted.*, the task was not deleted with its reason, or the task was not deleted because it is someone else's or already gone. Not seen on the live site. The look writes one ZZ Test task and deletes it.
 
