@@ -663,3 +663,17 @@ export function arCaseAfterClose(shownIds: ReadonlyArray<string>, closedId: stri
   // The case that followed it takes its place; with none after it, the one before.
   return left[Math.min(at, left.length - 1)] ?? null
 }
+
+/**
+ * Whether the pane moves when the offer shown after an apply closes a case (punch list #76, `offerMadeGood`). The
+ * offer stays up while the person works on, so the pane may be on anything by the time it is pressed.
+ *
+ * - The pane is on the case the offer closes: it lands as after any other close (`arCaseAfterClose`). Left there, the
+ *   pane held a case that had just left the list, and the next read of the list picked the first deposit by itself,
+ *   whose **Apply** is live: the fault v2.8552 mended for the pane's own three closes.
+ * - The pane is on anything else, a deposit the person went on to or another case: it stays. The close happened
+ *   beside their work, and moving them off a deposit they are matching would lose their place.
+ */
+export function arOfferCloseMovesPane(selectedId: string | null | undefined, closedCaseId: string): boolean {
+  return selectedId != null && selectedId === closedCaseId
+}
