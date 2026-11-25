@@ -125,7 +125,7 @@ function TagCard({ tag, today, onOpenJob, onOpenTask, taskOpens }: { tag: MyTag;
   const offer = useMemo(() => [{ userId: tag.taggerUserId, name: tag.taggerName, says: 'asked you' }], [tag.taggerUserId, tag.taggerName])
   const task = tagIsTask(tag)
   const where = tagWhere(tag)
-  const tagBox = useNoteTagBox({ jobId: task ? '' : tag.jobId, taskInstanceId: task ? tag.instanceId : null, draft, setDraft, inputRef, enabled: true, askerId: tag.taggerUserId, offer, place: narrow ? 'above' : 'below' })
+  const tagBox = useNoteTagBox({ jobId: task ? '' : tag.jobId, taskInstanceId: task ? tag.instanceId : null, draft, setDraft, inputRef, enabled: true, askerId: tag.taggerUserId, offer, place: narrow ? 'above' : 'below', bigAt: narrow })
   const posted = calendarYmdInAppTzFromIso(tag.noteCreatedAt)
   const late = tagIsLate(posted, today)
   const age = tagAgeWords(posted, today)
@@ -208,14 +208,15 @@ function TagCard({ tag, today, onOpenJob, onOpenTask, taskOpens }: { tag: MyTag;
               aria-label={`Answer ${asker} on ${task ? where : tag.jobName.trim() || 'the job'}`}
               disabled={busy != null}
               maxLength={2000}
-              style={{ position: 'relative', flex: 1, minWidth: 0, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-strong)', fontSize: '0.8125rem' }}
+              // A thumb's height on a phone (the live walk of punch list #363 measured the box 22 px, Post 26 and No reply needed 30).
+              style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: phoneTall(22), background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-strong)', fontSize: '0.8125rem' }}
             />
             {tagBox.atButton}
             <button
               type="button"
               onClick={() => void post()}
               disabled={busy != null}
-              style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 999, padding: '5px 16px', fontSize: '0.78rem', fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+              style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 999, padding: '5px 16px', minHeight: phoneTall(26), fontSize: '0.78rem', fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer', flexShrink: 0 }}
             >
               {busy === 'post' ? '…' : 'Post'}
             </button>
@@ -225,7 +226,7 @@ function TagCard({ tag, today, onOpenJob, onOpenTask, taskOpens }: { tag: MyTag;
           type="button"
           onClick={() => void done()}
           disabled={busy != null}
-          style={{ fontSize: '0.78rem', fontWeight: 600, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: busy ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+          style={{ fontSize: '0.78rem', fontWeight: 600, padding: '6px 12px', minHeight: phoneTall(30), borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: busy ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
         >
           No reply needed
         </button>
