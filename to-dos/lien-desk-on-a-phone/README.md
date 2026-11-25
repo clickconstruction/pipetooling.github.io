@@ -2,7 +2,7 @@
 name: "The Lien desk on a phone: one list of jobs with the money and the days, in place of a header that takes the screen"
 number: 352
 group: close
-status: the owner picked A, the one list, 2026-11-13 · the whole train is built and walked · PR 0 to PR 7 are on main (v2.7196, v2.7200, v2.7217, v2.7222, v2.7234, v2.7236, v2.7238, v2.7242) · the three small leftovers in v2.7378 (Taunya picked Build one small PR, 2026-11-15), and the Steps and Windows switch in v2.7392 · seven small presses from the walk of 2026-11-21 in v2.8221 · left: the owner's look on his own phone
+status: the owner picked A, the one list, 2026-11-13 · the whole train is built and walked · PR 0 to PR 7 are on main (v2.7196, v2.7200, v2.7217, v2.7222, v2.7234, v2.7236, v2.7238, v2.7242) · the three small leftovers in v2.7378 (Taunya picked Build one small PR, 2026-11-15), and the Steps and Windows switch in v2.7392 · seven small presses from the walk of 2026-11-21 in v2.8221 · left: the owner's look on his own phone · walked in an iPhone simulator 2026-11-25: the desk's own header holds, and a pinned strip added since leaves the list a small window, written under *Walked in a simulator*
 summary: >
   The owner used the Lien desk on his phone, recorded the screen and called it terrible. The desk
   was laid out for a wide screen: a fixed header, and a list that scrolls in a window under it. On
@@ -213,3 +213,13 @@ Read by the walk and left as they are, for the owner's look:
 - A pile's title and an open paper's section titles are presses 38 px tall in a 40 px bar. The walk did not name them.
 
 This card still waits on the desk in the owner's hand.
+
+## Walked in a simulator (2026-11-25)
+
+Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in dark, as the dev, on the live site. It is a simulator and not a real phone, so the owner's look on his own phone still stands. Nothing was pressed that saves.
+
+**Holds.** To do scrolls under one header row with **More**. By date's chips and the Lien affidavits' pile chips slide inside their own strip, and the page does not. An open notice has **← Notices** and it returns to the list. A job's own screen has its way back. A job's Lien window fills the whole screen, and its close returns.
+
+**One fault found, read in the code the same day, not built: the list has a window of about 355 of 874 points on every view of the desk.** The desk's own header is as this card built it. Above it now stand the orange banner about the Add Task icon and the **Payoffs** strip with **Someone paid ›**, which is pinned over an open paper and over a job's own screen too. Card #428 has the two causes and the call each mend turns on.
+
+**Seen, and it is as built.** In a job's Lien window the row of tabs runs past the right edge and its fourth tab is cut. With four tabs the row slides sideways on purpose, and the cut edge is faded until the end is in view (`LienInstrumentsModal.tsx`, v2.4398).
