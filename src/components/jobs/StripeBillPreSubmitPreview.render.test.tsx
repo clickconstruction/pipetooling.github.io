@@ -79,6 +79,22 @@ describe('StripeBillPreSubmitPreview', () => {
     expect(screen.queryByText('Water heater install')).toBeNull()
   })
 
+  it('the memo opens with the service address line the made bill carries (punch list #343)', () => {
+    render(<StripeBillPreSubmitPreview {...baseProps} memo="Mail checks to PO Box 1." serviceAddress="100 Sample St, Austin, TX" stripePreview={null} localPreview={snapshot()} />)
+    const memo = screen.getByText(/Service address: 100 Sample St, Austin, TX/)
+    expect(memo.textContent).toBe('Service address: 100 Sample St, Austin, TX\n\nMail checks to PO Box 1.')
+    expect(memo.style.whiteSpace).toBe('pre-line')
+  })
+
+  it('an address with no memo still draws the Memo row, and neither draws none', () => {
+    const { unmount } = render(<StripeBillPreSubmitPreview {...baseProps} serviceAddress="100 Sample St" stripePreview={null} localPreview={snapshot()} />)
+    expect(screen.getByText('Memo')).toBeTruthy()
+    expect(screen.getByText('Service address: 100 Sample St')).toBeTruthy()
+    unmount()
+    render(<StripeBillPreSubmitPreview {...baseProps} stripePreview={null} localPreview={snapshot()} />)
+    expect(screen.queryByText('Memo')).toBeNull()
+  })
+
   it('with neither, the old draft line stays', () => {
     render(<StripeBillPreSubmitPreview {...baseProps} stripePreview={null} localPreview={null} previewIdleHint="Preparing billing line…" />)
     expect(screen.getByText(/Draft line: Custom service\./)).toBeTruthy()

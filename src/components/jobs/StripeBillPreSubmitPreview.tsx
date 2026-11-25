@@ -4,6 +4,7 @@ import { anyLineSegmentsStartWithLowercase } from '../../lib/invoiceLineDescript
 import type { StripeInvoiceLineSource, StripeInvoicePreviewSuccess } from '../../lib/stripeInvoicePreview'
 import { formatStripeCents } from '../../lib/stripeInvoicePreview'
 import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
+import { stripeBillMemoWithServiceAddress } from '../../../supabase/functions/_shared/stripeBillMemo'
 import { MoneyText } from '../Money'
 
 export type StripeBillPreSubmitPreviewProps = {
@@ -14,6 +15,11 @@ export type StripeBillPreSubmitPreviewProps = {
   amountLabel: string
   dueDateYmd: string
   memo: string
+  /**
+   * The job's service address. The made bill's memo opens with it (`stripeBillMemoWithServiceAddress`), so the face
+   * shows the same line (punch list #343). A caller that passes nothing draws the office's memo alone.
+   */
+  serviceAddress?: string | null
   /** Optional Stripe invoice footer; shown in preview meta only (not from Stripe createPreview). */
   footer?: string
   localLineDescription: string
@@ -140,6 +146,8 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
   // Stripe's answer when it exists; otherwise the bill built from the job's lines.
   const local = sp == null ? (p.localPreview ?? null) : null
   const view = sp ?? local
+  // The memo as the made bill will hold it: the service address line first, then the office's words.
+  const memoOnBill = stripeBillMemoWithServiceAddress(p.serviceAddress, p.memo)
   const showDraftLine = !view && (p.stripePreviewError != null || (!p.stripePreviewLoading && !p.stripePreviewError))
   const emphasize = Boolean(p.emphasizeLowercaseLeadingDescriptions)
 
@@ -276,10 +284,10 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
                     {view.invoice_number?.trim() ? `#${view.invoice_number.trim()}` : '—'}
                   </td>
                 </tr>
-                {p.memo.trim() ? (
+                {memoOnBill ? (
                   <tr>
                     <td style={metaLabel}>Memo</td>
-                    <td style={metaValue}>{p.memo.trim()}</td>
+                    <td style={{ ...metaValue, whiteSpace: 'pre-line' }}>{memoOnBill}</td>
                   </tr>
                 ) : null}
                 {(p.footer ?? '').trim() ? (

@@ -3003,6 +3003,7 @@ export default function SendRecordInvoiceModal({
                     }
                     dueDateYmd={stripeDueDate}
                     memo={stripeMemo}
+                    serviceAddress={job.job_address}
                     footer={stripeFooterSectionOpen ? stripeInvoiceFooter : ''}
                     localLineDescription={
                       stripeLineDescription.trim() || defaultStripeLineDescriptionFromJob(job)
