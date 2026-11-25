@@ -2,7 +2,7 @@
 name: "Share this map: a sheet a person on site can use almost without reading"
 number: 394
 group: close
-status: asked 2026-11-18 with a phone screenshot of the sheet · designed, drawn and rendered the same day (seven rows of sheets at a phone's width and a desk's, light and dark) · shown to the owner with seven calls, each with a pick · the owner's word the same day (*Build it*), every call at the pick · the kernel built (v2.7788) and the sheet over it (v2.7790) the same day · walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark, with a stand-in for the link's calls · not yet tried on a real phone or with a real link · walked 2026-11-18 on an iPhone simulator (iOS 26.4, Safari) against a local server signed in as the dev, with real links on a made-up map on no job, thrown away after: all three presses work after the wait for the link, and the walk found the sheet saying Messages had not opened when it had, fixed in v2.7863 · the owner's word the same evening (*Build all the steps*): step 3 built in v2.7877, the phone picks the link's code and Messages opens inside the press · merged and `painted-map-link` deployed the same night, then walked on the iPhone simulator against the deployed function: the first press opened Messages with no question from Safari, and the server held the code the phone picked
+status: asked 2026-11-18 with a phone screenshot of the sheet · designed, drawn and rendered the same day (seven rows of sheets at a phone's width and a desk's, light and dark) · shown to the owner with seven calls, each with a pick · the owner's word the same day (*Build it*), every call at the pick · the kernel built (v2.7788) and the sheet over it (v2.7790) the same day · walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark, with a stand-in for the link's calls · not yet tried on a real phone or with a real link · walked 2026-11-18 on an iPhone simulator (iOS 26.4, Safari) against a local server signed in as the dev, with real links on a made-up map on no job, thrown away after: all three presses work after the wait for the link, and the walk found the sheet saying Messages had not opened when it had, fixed in v2.7863 · the owner's word the same evening (*Build all the steps*): step 3 built in v2.7877, the phone picks the link's code and Messages opens inside the press · merged and `painted-map-link` deployed the same night, then walked on the iPhone simulator against the deployed function: the first press opened Messages with no question from Safari, and the server held the code the phone picked · the walk on a real Android phone was taken off on the owner's word of 2026-11-25 and was never done on a real phone · what is left is one look, by the one in the office who asked for the name sentence, at the one line that stands for it
 summary: >
   The owner asked how to offer a painted map's Share sheet with fewer words, so a person does not
   have to read so much. Today the sheet shows 163 words before a link exists and its one live press,
@@ -12,9 +12,11 @@ summary: >
   Copy the link, Make a picture and Send it another way…. Print and the two files fold behind one
   press. What a reader meets is one line with a press that opens today's four sentences, word for
   word. The same sheet is 43 words before a link and 65 after, and the map still shows behind it.
-next: Two looks, then delete this card. An Android phone has not been tried at all, so press Text it from my phone…, Send it another way… and Copy the link on one, each before a link is out, on the live app with a made-up map. And Taunya sees the one line that stands for her name sentence.
+next: >
+  One look, then delete this card. The one in the office who asked for the name sentence sees the one line that stands for it.
 size: M as a train of three (S · M · S), all built, with the fix the walk found (XS); left: an Android phone and Taunya's look (XS)
-blocker: An Android phone in a hand. Call 4 was taken at the pick on the owner's word, and the name sentence was Taunya's ask, so she should see the one line that stands for it.
+blocker: >
+  Call 4 was taken at the pick on the owner's word, and the name sentence was asked for in the office, so the one who asked should see the one line that stands for it.
 ver: v2.7788 · 7790 · 7863 · 7877 · 7894
 opinion: built as carded, step 3 included and walked on an iPhone simulator — an Android phone is the one thing nobody has seen
 ---
@@ -322,3 +324,7 @@ nothing from the Dashboard press.
 The `/way` page and what a reader is asked there. Who may make a link. The words a text carries.
 The Saved band on the map, which is #392's. The marking tools and the place sheet. How a link
 draws its preview in a text thread.
+
+## The walk on a real phone, taken off
+
+**Taken off, 2026-11-25.** The walk on a real Android phone (Text it from my phone…, Send it another way… and Copy the link, each before a link is out) was taken off on the owner's word and was never done on a real phone. The walks on the iPhone simulator of 2026-11-18 still stand. One look is still owed: the one in the office who asked for the name sentence sees the one line that stands for it.

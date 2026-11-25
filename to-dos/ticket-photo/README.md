@@ -2,7 +2,7 @@
 name: "A photo of the supply house ticket, taken at the counter"
 number: 295
 group: close
-status: asked 2026-11-09 · Tally read on main, in prod and live · three shapes put to Diane, the second picked for a mock-up the same day · drawn as thirteen frames · her "is this the best we can do, did we cover the edge cases" the same day: the cases checked against the code and redrawn as fifteen frames · Diane said build as drawn the same day, with the picks she was shown on the calls · PR 1 (the ground, v2.6812) merged, pushed and the sweep deployed 2026-11-09 · PR 2 (the tech's press, v2.6815), PR 3 (the match and the office's queue, v2.6818) and PR 4 (the other doors, v2.6821) built the same day, all four merged 2026-11-09 and on prod (the ledger read level 2026-11-12) · the text door is its own card, #299, whose PR 1 (a receipt link, v2.7101) writes the same ticket with source = link
+status: asked 2026-11-09 · Tally read on main, in prod and live · three shapes put to Diane, the second picked for a mock-up the same day · drawn as thirteen frames · her "is this the best we can do, did we cover the edge cases" the same day: the cases checked against the code and redrawn as fifteen frames · Diane said build as drawn the same day, with the picks she was shown on the calls · PR 1 (the ground, v2.6812) merged, pushed and the sweep deployed 2026-11-09 · PR 2 (the tech's press, v2.6815), PR 3 (the match and the office's queue, v2.6818) and PR 4 (the other doors, v2.6821) built the same day, all four merged 2026-11-09 and on prod (the ledger read level 2026-11-12) · the text door is its own card, #299, whose PR 1 (a receipt link, v2.7101) writes the same ticket with source = link · the owner's look with a real ticket at a supply house counter was taken off on the owner's word of 2026-11-25 and was never done on a real phone · what is left is call 6, which is the owner's, and the residuals as wanted
 mockup: to-dos/ticket-photo/mockup.html
 summary: >
   Two papers leave a supply house counter. A card receipt is the only list of what was bought, and
@@ -17,9 +17,11 @@ summary: >
   Generator code and later the bill. The Team queue shows the ticket on the charge, offers its job
   first, and lists the tickets that have no charge. Reading the ticket's lines
   with the bill reader is a later step.
-next: the owner's look with a real ticket at a counter; then the residuals below as wanted (the uploaded_photos branch, the combine, the window measured).
+next: >
+  The owner answers call 6, whether a cash ticket means money owed to the tech. Then the residuals as wanted (the uploaded_photos branch, the combine, the window measured).
 size: L as a train of four (M · M · M · S), the reading step apart
-blocker: None for the build. Call 6 (does a cash ticket mean money owed to the tech) is still the owner's; the build only records how such a ticket was paid.
+blocker: >
+  Call 6 (does a cash ticket mean money owed to the tech) is still the owner's; the build only records how such a ticket was paid.
 opinion: build — it is the only shape a tech can press at the counter, and it turns the office's guess into a fact
 ---
 
@@ -227,3 +229,7 @@ A ZZ test job, a sample field account and a sample card are needed for a live wa
 cannot be made for a test, so PR 3's walk matches a ticket to a settled ZZ-safe charge on the dev's
 own linked card and takes the match off again with *Not this charge*. With no signal: the pane's
 offline switch, the ticket reads *On this phone*, then sends on its own when the switch is lifted.
+
+## The walk on a real phone, taken off
+
+**Taken off, 2026-11-25.** The owner's look with a real ticket at a supply house counter was taken off on the owner's word and was never done on a real phone. Call 6 still stands and is the owner's: does a ticket paid in cash, or with the tech's own money, mean money owed to the tech? The residuals stay as wanted.
