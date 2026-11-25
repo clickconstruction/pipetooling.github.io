@@ -63,6 +63,7 @@ export function PersonDeskHeader({
   onOpenFlow,
   onBringBack,
   hideClose = false,
+  pinName = false,
 }: {
   personKey: PersonKey | null
   user: PersonDeskUserRow | null
@@ -79,6 +80,11 @@ export function PersonDeskHeader({
   onBringBack?: () => void
   /** PR 3: the page variant has no close button. */
   hideClose?: boolean
+  /**
+   * A phone's drawer (punch list #365): the head is drawn inside the desk's one scrolling box, so it scrolls away
+   * with the sections, and the name's row with its × stays pinned at the top.
+   */
+  pinName?: boolean
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const { user: authUser } = useAuth()
@@ -256,15 +262,15 @@ export function PersonDeskHeader({
     mayOpenFlow: Boolean(onOpenFlow && viewer.canAccessPay && personKey),
   })
 
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr)', gap: '0.7rem 0.85rem', padding: '0.85rem 1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+  const avatar = (
       <div
         aria-hidden
         style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', fontWeight: 800, display: 'grid', placeItems: 'center', fontSize: '0.9375rem', border: '1px solid #93c5fd' }}
       >
         {initials(name)}
       </div>
-      <div style={{ minWidth: 0 }}>
+  )
+  const nameRow = (
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--text-strong)' }}>{name}</span>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -277,7 +283,8 @@ export function PersonDeskHeader({
             </button>
           )}
         </div>
-        {personKey ? (
+  )
+  const idDots = personKey ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.9rem', fontSize: '0.75rem', color: 'var(--text-700)', marginTop: '0.2rem' }}>
             <IdDot ok={Boolean(personKey.userId)}>
               {personKey.userId && user?.login_attached_at !== null ? (
@@ -295,9 +302,9 @@ export function PersonDeskHeader({
               {personKey.payName ? `Pay name "${personKey.payName}"` : 'No pay name'}
             </IdDot>
           </div>
-        ) : null}
-      </div>
-      {/* v2.7015: the bands, chips and presses span under the avatar too, so a phone gives them the panel's whole width. */}
+        ) : null
+  {/* v2.7015: the bands, chips and presses span under the avatar too, so a phone gives them the panel's whole width. */}
+  const below = (
       <div style={{ gridColumn: '1 / -1', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
         {personKey && personKey.gaps.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -391,9 +398,43 @@ export function PersonDeskHeader({
           </div>
         ) : null}
       </div>
+  )
+
+  // On a phone's drawer the head scrolls away with the sections and the name's row stays (punch list #365): the
+  // simulator's walk of 2026-11-25 measured the head at about 445 of 874 points, with the sections in what was left.
+  if (pinName) {
+    return (
+      <>
+        <div data-desk-head-pinned style={PINNED_NAME_ROW}>
+          {avatar}
+          {nameRow}
+        </div>
+        {personKey || presses.length > 0 ? (
+          <div data-desk-head-rest style={PINNED_REST}>
+            {idDots}
+            {below}
+          </div>
+        ) : null}
+      </>
+    )
+  }
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr)', gap: '0.7rem 0.85rem', padding: '0.85rem 1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+      {avatar}
+      <div style={{ minWidth: 0 }}>
+        {nameRow}
+        {idDots}
+      </div>
+      {below}
     </div>
   )
 }
+
+/** The name's row, pinned over the desk's scrolling box. The aim at a section clears it (`deskSectionAim.ts`). */
+const PINNED_NAME_ROW: CSSProperties = { position: 'sticky', top: 0, zIndex: 3, display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr)', alignItems: 'center', gap: '0 0.85rem', padding: '0.6rem 1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }
+/** The rest of the head under it: the three dots, the bands, the chips and the presses. It scrolls away. */
+const PINNED_REST: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.6rem 1rem 0.85rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }
 
 function IdDot({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (

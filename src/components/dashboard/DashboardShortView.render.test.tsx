@@ -101,6 +101,30 @@ describe('ShortDashboardBody', () => {
     expect(container.querySelector('[data-short-count]')).toBeNull()
   })
 
+  it('while the read is out, the office’s line is not drawn and the door shows no count that would then change', () => {
+    // The counts as they stand a second into the read: none from the office yet, two of his own.
+    const { container } = draw({ waiting: [], read: 'reading', office: 0, alsoYours: 2 })
+    expect(container.querySelector('[data-short-office]')).toBeNull()
+    expect(screen.queryByText('Nothing else is open.')).toBeNull()
+    expect(container.querySelector('[data-short-door-note]')?.textContent).toBe('Money, crew, jobs and the full Dashboard.')
+    expect(container.textContent).not.toMatch(/\d+ more of yours/)
+    cleanup()
+    // A superintendent's door keeps his own words while it reads.
+    const sup = draw({ waiting: [], read: 'reading', office: 4, alsoYours: 3, role: 'superintendent' })
+    expect(sup.container.querySelector('[data-short-door-note]')?.textContent).toBe('Clock In, your hours, your crew and the full Dashboard.')
+    cleanup()
+    // Once the read is in, both say their counts.
+    const ready = draw({ waiting: [], read: 'ready', office: 23, alsoYours: 13 })
+    expect(ready.container.querySelector('[data-short-office]')?.textContent).toBe('The office is handling 23 other things.')
+    expect(ready.container.querySelector('[data-short-door-note]')?.textContent).toBe('13 more of yours are in there.')
+  })
+
+  it('a read that failed is not whole either: no office line and no count on the door', () => {
+    const { container } = draw({ waiting: [tagItem], read: 'failed', office: 5, alsoYours: 2 })
+    expect(container.querySelector('[data-short-office]')).toBeNull()
+    expect(container.querySelector('[data-short-door-note]')?.textContent).toBe('Money, crew, jobs and the full Dashboard.')
+  })
+
   it('says a failed read in words, shows what did arrive, and never says nothing waits', () => {
     const { props, container } = draw({ waiting: [tagItem], read: 'failed' })
     expect(screen.getByRole('alert').textContent).toBe('The Lien desk could not be read, so this list may be short. Open the Lien desk')

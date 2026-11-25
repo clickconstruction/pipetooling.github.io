@@ -67,6 +67,10 @@ export function ShortDashboardBody({ firstName, hour, waiting, alsoYours, role, 
   const rows = waiting.length + (onRateCrew ? 1 : 0)
   // The count is a promise that the list is whole, so it waits for a read that is in.
   const countLine = read === 'ready' ? w.count(rows) : ''
+  // Every count on the page is of the one read (the simulator's walk of 2026-11-25: the office's line and the door's
+  // note drew from the counts as they stood, so they changed under the reader when the read landed). Until it is in,
+  // the office's line is left out and the door says what it opens, with no count.
+  const whole = read === 'ready'
 
   return (
     <div data-short-dashboard data-read={read} style={{ maxWidth: 560, margin: '0 auto' }}>
@@ -137,9 +141,12 @@ export function ShortDashboardBody({ firstName, hour, waiting, alsoYours, role, 
 
       {schedule}
 
-      <p data-short-office style={{ margin: '0.25rem 0 0.6rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-        {w.office(office)}
-      </p>
+      {/* The office's count is a count of the same read, so it waits for it too: before, it read "Nothing else is open." for the seconds the read took. */}
+      {whole ? (
+        <p data-short-office style={{ margin: '0.25rem 0 0.6rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+          {w.office(office)}
+        </p>
+      ) : null}
       <button
         type="button"
         data-short-door
@@ -149,7 +156,7 @@ export function ShortDashboardBody({ firstName, hour, waiting, alsoYours, role, 
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: '1rem', fontWeight: 700 }}>{w.door}</span>
           <span data-short-door-note style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            {w.doorNote(alsoYours, role)}
+            {w.doorNote(whole ? alsoYours : 0, role)}
           </span>
         </span>
         <span aria-hidden="true" style={{ fontSize: '1.25rem', color: 'var(--text-link)' }}>

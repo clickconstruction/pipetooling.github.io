@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { PersonDeskPushSection } from './sections/PersonDeskPushSection'
 import { deskSectionDomId } from '../../lib/people/personDeskSections'
+import { startDeskSectionAim } from '../../lib/people/deskSectionAim'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { usePeopleAccess } from '../../hooks/usePeopleAccess'
 import { usePersonDesk } from '../../hooks/usePersonDesk'
 import type { PersonDeskOpenArgs } from '../../contexts/PersonDeskContext'
@@ -47,6 +49,10 @@ export function PersonDeskBody({
   const { key, user, person, loading, error } = usePersonDesk(payload, changeKey)
   const [serviceTypeNames, setServiceTypeNames] = useState<Map<string, string>>(() => new Map())
   const [flow, setFlow] = useState<'start' | 'end' | 'bring_back' | null>(null)
+  // A phone's drawer has one scrolling box for the head and the sections, with the name's row pinned over it
+  // (punch list #365). At a desk, and on the People page, the head stands above the sections as it did.
+  const isMobile = useIsMobile()
+  const pinName = variant === 'drawer' && isMobile
 
   const viewer: PersonDeskViewer = useMemo(
     () => ({
@@ -88,23 +94,13 @@ export function PersonDeskBody({
     setFlow('bring_back')
   }, [payload.flow, bringBackOffered, key])
 
-  // v2.2810: a door that named a section scrolls the Desk there once the sections exist,
-  // with a short ring so the eye lands on it.
+  // v2.2810: a door that named a section scrolls the Desk there, with a short ring so the eye lands on it. The aim is
+  // held while the sections above it settle and waits for a section that draws late (punch list #365).
   const keyUserId = key?.userId ?? null
   const keyPersonId = key?.personId ?? null
   useEffect(() => {
     if (!payload.section || (!keyUserId && !keyPersonId)) return
-    const el = document.getElementById(deskSectionDomId(payload.section))
-    if (!el) return
-    const t0 = setTimeout(() => el.scrollIntoView({ block: 'start', behavior: 'smooth' }), 50)
-    el.style.boxShadow = '0 0 0 2px var(--border-blue)'
-    const t1 = setTimeout(() => {
-      el.style.boxShadow = ''
-    }, 1800)
-    return () => {
-      clearTimeout(t0)
-      clearTimeout(t1)
-    }
+    return startDeskSectionAim(deskSectionDomId(payload.section))
   }, [payload.section, keyUserId, keyPersonId])
 
   return (
@@ -114,7 +110,9 @@ export function PersonDeskBody({
           Training mode: you can look, but every change is blocked for your account.
         </div>
       ) : null}
+      <DeskScroll on={pinName}>
       <PersonDeskHeader
+        pinName={pinName}
         personKey={key}
         user={user}
         person={person}
@@ -130,8 +128,8 @@ export function PersonDeskBody({
       />
       <div
         style={{
-          overflow: variant === 'drawer' ? 'auto' : undefined,
-          flex: variant === 'drawer' ? 1 : undefined,
+          overflow: variant === 'drawer' && !pinName ? 'auto' : undefined,
+          flex: variant === 'drawer' && !pinName ? 1 : undefined,
           display: 'grid',
           gridTemplateColumns: variant === 'page' ? 'repeat(auto-fit, minmax(340px, 1fr))' : '1fr',
           alignItems: 'start',
@@ -167,8 +165,22 @@ export function PersonDeskBody({
           </>
         ) : null}
       </div>
+      </DeskScroll>
       {flow && flow !== 'bring_back' && key ? <PersonDeskLifecycleModal mode={flow} personKey={key} viewer={viewer} viewerUserId={viewerUserId} userEmail={user?.email ?? null} userHasLogin={user?.login_attached_at != null} onClose={() => setFlow(null)} onChanged={onChanged} /> : null}
       {flow === 'bring_back' && key ? <PersonDeskBringBackModal personKey={key} viewer={viewer} viewerUserId={viewerUserId} onClose={() => setFlow(null)} onChanged={onChanged} /> : null}
     </>
+  )
+}
+
+/**
+ * A phone's drawer: the one box that scrolls the head and the sections together. Off, it draws nothing of its own,
+ * so the head stands outside the sections' box as before.
+ */
+function DeskScroll({ on, children }: { on: boolean; children: ReactNode }) {
+  if (!on) return <>{children}</>
+  return (
+    <div data-desk-scroll style={{ flex: 1, minHeight: 0, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      {children}
+    </div>
   )
 }

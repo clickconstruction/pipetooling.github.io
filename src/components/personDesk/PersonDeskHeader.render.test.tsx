@@ -65,7 +65,7 @@ const account = {
   login_attached_at: '2026-09-01T12:00:00Z',
 } as unknown as PersonDeskUserRow
 
-async function draw(p: { viewer?: PersonDeskViewer; user?: PersonDeskUserRow | null; personKey?: PersonKey } = {}) {
+async function draw(p: { viewer?: PersonDeskViewer; user?: PersonDeskUserRow | null; personKey?: PersonKey; pinName?: boolean } = {}) {
   renderWithProviders(
     <PersonDeskHeader
       personKey={p.personKey ?? key}
@@ -78,6 +78,7 @@ async function draw(p: { viewer?: PersonDeskViewer; user?: PersonDeskUserRow | n
       onClose={() => {}}
       placeholderName={null}
       onOpenFlow={() => {}}
+      pinName={p.pinName}
     />,
   )
   await settle()
@@ -135,5 +136,36 @@ describe('PersonDeskHeader, the row of presses', () => {
     cleanup()
     const second = await draw({ user: null, personKey: rosterOnly, viewer: { ...dev, isDev: false, canAccessPay: false } })
     expect(second.row).toBeNull()
+  })
+})
+
+describe('PersonDeskHeader on a phone’s drawer (punch list #365)', () => {
+  it('pins the name’s row with its × and lets the rest of the head scroll away', async () => {
+    await draw({ pinName: true, personKey: { ...key, gaps: ['no_pay_config'] } })
+    const pinned = document.querySelector<HTMLElement>('[data-desk-head-pinned]')!
+    expect(pinned.style.position).toBe('sticky')
+    expect(pinned.style.top).toBe('0px')
+    // The row is drawn over the sections that pass under it.
+    expect(pinned.style.background).toBe('var(--surface)')
+    expect(within(pinned).getByText('Kai Moss')).toBeTruthy()
+    expect(within(pinned).getByRole('button', { name: 'Close' })).toBeTruthy()
+    // What takes the room is under it, in the part that scrolls: the dots, the amber band and the presses.
+    const rest = document.querySelector<HTMLElement>('[data-desk-head-rest]')!
+    expect(rest.style.position).toBe('')
+    expect(within(rest).getByText('Roster row')).toBeTruthy()
+    expect(rest.querySelector('[data-desk-head-presses]')).not.toBeNull()
+    expect(pinned.querySelector('[data-desk-head-presses]')).toBeNull()
+    expect(pinned.textContent).not.toContain('Roster row')
+    // The two are siblings, so the pinned row holds for the whole scroll and not just its own block.
+    expect(rest.previousElementSibling).toBe(pinned)
+  })
+
+  it('at a desk the head is one block, as before', async () => {
+    const { row } = await draw()
+    expect(document.querySelector('[data-desk-head-pinned]')).toBeNull()
+    expect(document.querySelector('[data-desk-head-rest]')).toBeNull()
+    expect(row).not.toBeNull()
+    expect(screen.getByText('Kai Moss')).toBeTruthy()
+    expect(screen.getByText('Roster row')).toBeTruthy()
   })
 })

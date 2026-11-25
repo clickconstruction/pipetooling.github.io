@@ -2,7 +2,7 @@
 name: "The leader's Dashboard, distilled"
 number: 365
 group: close
-status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way · the short page walked there the same day on the dev's own account, where it holds but for two lines that are wrong for about three seconds on a fresh open
+status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way · the short page walked there the same day on the dev's own account, where it holds but for two lines that are wrong for about three seconds on a fresh open · all three faults mended in v2.8581, not yet seen in the simulator
 summary: >
   One leader has been given too much on his Dashboard. He will not look at any of it, uses the app only on
   his phone, and hands even small updates to his assistants. The assessment counted 44 cards, strips and
@@ -15,7 +15,7 @@ summary: >
 next: Set the leader to Short on his People desk, then walk his page with him on his phone. Nothing else is owed until the owner asks for the text or the four tabs.
 size: M as a train of four (M · S · M · S); built: PRs 1 and 2 and the first half of 4; set aside by the owner's answers: PR 3 (M) and the four tabs (S)
 blocker: None in the code. Setting the leader to Short is the owner's or the office's press.
-ver: v2.7568
+ver: v2.7568, v2.8581
 opinion: build — the first PR changes nobody's page until the office presses Short, so the risk is in what the short page hides, and that is the owner's call to make with the leader beside him
 ---
 
@@ -189,9 +189,9 @@ not been set to Short: every leader's and dev's row reads Full. That press is th
 Read on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, as the dev, on the live site. Nothing of the short page was seen, and nothing was pressed: setting an account to Short is a write the walk was not cleared to make.
 
 - **Both places the view is set read as built.** Settings → Your dashboard → **Dashboard view** offers **Short** and **Full** with their one line each, Full lit. The sample leader's desk has the same two, Full lit, with the line that the office can set it for them.
-- **Two small faults on a person's desk on a phone, read in the code the same day, not built.** Each is the client alone, S.
-  1. **The link to this section lands one swipe short.** A link that ends `&section=dashboard_view` opened the desk at Licenses and Your week. The desk scrolls to the section once, before the sections above it have loaded and grown (`PersonDeskBody.tsx`).
-  2. **The desk's pinned head takes about half the screen.** On that account, with two amber notices, the head took about 445 of 874 points and the sections scrolled in a window of about 315. The head sits outside the scrolling part and nothing folds it.
+- **Two small faults on a person's desk on a phone, read in the code the same day. Mended in v2.8581, not yet seen in the simulator.** Each is the client alone, S.
+  1. **The link to this section lands one swipe short.** A link that ends `&section=dashboard_view` opened the desk at Licenses and Your week. The desk scrolled to the section once, before the sections above it had loaded and grown (`PersonDeskBody.tsx`). v2.8581: the aim is held for a second and a half while they settle, waits for a section that draws late, and lets go at a touch.
+  2. **The desk's pinned head takes about half the screen.** On that account, with two amber notices, the head took about 445 of 874 points and the sections scrolled in a window of about 315. The head sat outside the scrolling part and nothing folded it. v2.8581: on a phone the head scrolls away with the sections and the name's row with its × stays pinned. The amber bands are not folded into one line, which is a bigger change and a call.
 - **Still owed.** The short page itself, **Everything else**, **Back to the short Dashboard** and the bar's Dashboard tab, on an account set to Short.
 
 ## The short page, walked in a simulator (2026-11-25)
@@ -200,7 +200,7 @@ Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in 
 
 **Holds.** **Short** saves at once. The page reads the greeting, the count, *Waiting on you* with its rows, the office's line, **Everything else** with its count, then Training. It draws no top row, no Clock In, no money cards and no Needs you card, and nothing runs off the side. **Everything else** opens the full page with **‹ Back to the short Dashboard** on top, and its Needs you card counts what waits plus the door's count. **Back** returns. A fresh open of the Dashboard lands on the short page. **Full** puts it back.
 
-**One fault found, not built: two lines are wrong while the list is read.** On a fresh open the list reads *Reading what waits on you…*, which is right. For about three seconds the line under it reads *Nothing else is open.* and the door reads a count far under the true one. Once the read ends both are right. The list holds a reading state, and these two lines do not: they are drawn from the counts as they stand while the sources come in (`DashboardShortView.tsx`). The mend is the client alone, XS: while the list is read, the office's line is not drawn and the door says its words without a count.
+**One fault found, mended in v2.8581 and not yet seen: two lines were wrong while the list is read.** On a fresh open the list reads *Reading what waits on you…*, which is right. For about three seconds the line under it reads *Nothing else is open.* and the door reads a count far under the true one. Once the read ends both are right. The list holds a reading state, and these two lines do not: they are drawn from the counts as they stand while the sources come in (`DashboardShortView.tsx`). The mend is the client alone, XS: while the list is read, the office's line is not drawn and the door says its words without a count.
 
 **For the owner's look.**
 

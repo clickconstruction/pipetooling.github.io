@@ -37,7 +37,7 @@ Or you open the **People → Person** tab. It is the same desk as a page, with a
 - **Schedule** shows today's schedule blocks and clock. It is the same view the *Day · week · month* button opens.
 - **Access & account** holds everything about their login. It shows their name, email, role, trades and last sign-in. A dev changes each one right there. That is {{button:outline|Edit}} for the name and {{button:outline|Change…}} for the email they sign in with. Then come {{button:outline|Trades…}}, {{button:outline|Send sign-in email}} and {{button:outline|Set password…}}. Helpers and subs have the **Supervision** row. Office roles and estimators have **Extra access** for the Hiring board and Prospects. It shows training mode, and Active / Archived with {{button:red|Archive…}}. Archive opens **End employment** below. So the final report, the salary schedule, customers, the account and the roster row are all finished in one place.
 
-Links can land on one section. You add `&section=paperwork` to a `?person=` link and the Desk opens scrolled there. Other sections are `hours`, `pay`, `push`, `access` and more.
+Links can land on one section. You add `&section=paperwork` to a `?person=` link and the Desk opens scrolled there. The Desk holds that place for a moment while the sections above it load. Other sections are `hours`, `pay`, `push`, `access` and more.
 
 ## Your week
 
@@ -76,5 +76,7 @@ A controller sees the role with a {{chip:gray|dev only}} tag beside it — the v
 For office roles the clock strip's name now opens the desk. The desk has *Day · week · month* in its header. Supervisors without office access keep the schedule review they had.
 
 ## On a phone
+
+A person's desk fills the screen on a phone. Scroll it and the notices and the presses at the top move away. The person's name and the **×** stay at the top, so you can close the desk from anywhere.
 
 People → Users is a directory on a phone. It has one line per person, grouped by kind. You **tap a row** to open their desk. You **swipe a row left** for the row's actions. Those are {{button:blue|Desk}}, {{button:purple|Imitate}} and {{button:gray|More}}. Imitate is devs only, one tap. More holds Invite, Edit, Link account, Combine and Archive. Search and {{button:blue|+ Add}} sit at the top. Team leads and Archived are under the ⋯ button. The **Needs you** and **Hours** chips say how many people are waiting.
