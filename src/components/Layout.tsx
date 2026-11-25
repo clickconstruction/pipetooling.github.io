@@ -67,7 +67,9 @@ import {
 } from './HeaderGlobalSearch'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
+import { useBidActivityBeat } from '../hooks/useBidActivityBeat'
 import { appActivityPageKey } from '../lib/appActivityPage'
+import { bidInFrontFromLocation, bidInFrontKey } from '../lib/bids/bidInFront'
 import { hardReloadFromRoot } from '../lib/hardReload'
 import { ReloadingScreen } from './ReloadingScreen'
 import { askReloadOverWords } from '../lib/reloadOverWords'
@@ -195,6 +197,9 @@ export default function Layout() {
   const ownLogbookShown = useOwnLogbookShown(authUser?.id)
   const { theme, override: themeOverride, setOverride: setThemeOverride } = useTheme()
   useAppActivityHeartbeat(authUser?.id, appActivityPageKey(location.pathname, location.search))
+  // The bids of the day (punch list #445): the bid in the Bids page's address, while the person is at work on it.
+  const bidInFront = bidInFrontFromLocation(location.pathname, location.search)
+  useBidActivityBeat(authUser?.id, bidInFront, bidInFrontKey(bidInFront))
   // T5-08 (X16): alert dismissals follow the person — mirror saves to the server, seed this device at sign-in.
   useEffect(() => {
     if (!authUser?.id) return
