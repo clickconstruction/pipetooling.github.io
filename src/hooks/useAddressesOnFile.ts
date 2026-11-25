@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { addressesOnFile, type AddressOnFile, type AddressRow } from '../lib/addresses/addressesOnFile'
 
@@ -10,7 +11,8 @@ import { addressesOnFile, type AddressOnFile, type AddressRow } from '../lib/add
  * It is a hint, never a gate: a read that fails answers an empty list and the box works as it did before, the
  * way Google's suggestions degrade (`useAddressSuggestions`).
  */
-type Read = { rows: AddressRow[]; developments: Map<string, string> }
+export type AddressesRead = { rows: AddressRow[]; developments: Map<string, string> }
+type Read = AddressesRead
 
 const FRESH_MS = 60_000
 const PAGE = 1000
@@ -22,13 +24,13 @@ let reading: Promise<Read> | null = null
 type Page = { data: unknown; error: unknown }
 
 /** Every row of a table, a thousand at a time, since one read answers a thousand at most. */
-async function everyRow(table: 'jobs_ledger' | 'bids' | 'developments', select: string): Promise<Record<string, unknown>[]> {
+export async function everyRow(table: string, select: string, orderBy = 'id'): Promise<Record<string, unknown>[]> {
   const out: Record<string, unknown>[] = []
   for (let from = 0; ; from += PAGE) {
-    const { data, error } = (await supabase
+    const { data, error } = (await (supabase as unknown as SupabaseClient)
       .from(table)
       .select(select)
-      .order('id', { ascending: true })
+      .order(orderBy, { ascending: true })
       .range(from, from + PAGE - 1)) as Page
     if (error) throw error
     const rows = Array.isArray(data) ? (data as Record<string, unknown>[]) : []
@@ -39,15 +41,23 @@ async function everyRow(table: 'jobs_ledger' | 'bids' | 'developments', select: 
 
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null)
 
-async function readAddresses(): Promise<Read> {
+/** One fresh read of every job's and bid's address. Throws with the reason: for a caller that must not mistake a failed read for an empty list. */
+export async function readAddresses(): Promise<Read> {
   const [jobs, bids, developments] = await Promise.all([
-    everyRow('jobs_ledger', 'id, job_address, development_id'),
-    everyRow('bids', 'id, address, development_id'),
+    everyRow('jobs_ledger', 'id, job_address, development_id, hcp_number, click_number'),
+    everyRow('bids', 'id, address, development_id, bid_number'),
     everyRow('developments', 'id, name'),
   ])
   const rows: AddressRow[] = []
-  for (const j of jobs) if (typeof j.id === 'string') rows.push({ kind: 'job', id: j.id, address: text(j.job_address), developmentId: text(j.development_id) })
-  for (const b of bids) if (typeof b.id === 'string') rows.push({ kind: 'bid', id: b.id, address: text(b.address), developmentId: text(b.development_id) })
+  for (const j of jobs) {
+    if (typeof j.id !== 'string') continue
+    const number = text(j.hcp_number) ?? text(j.click_number)
+    rows.push({ kind: 'job', id: j.id, address: text(j.job_address), developmentId: text(j.development_id), label: number ? `J${number.trim()}` : null })
+  }
+  for (const b of bids) {
+    if (typeof b.id !== 'string') continue
+    rows.push({ kind: 'bid', id: b.id, address: text(b.address), developmentId: text(b.development_id), label: text(b.bid_number)?.trim() ?? null })
+  }
   const names = new Map<string, string>()
   for (const d of developments) {
     const name = text(d.name)
@@ -56,8 +66,8 @@ async function readAddresses(): Promise<Read> {
   return { rows, developments: names }
 }
 
-/** The shared read: the kept one while it is fresh, else one new read however many boxes ask at once. */
-function addressesRead(): Promise<Read> {
+/** The shared read: the kept one while it is fresh, else one new read however many boxes ask at once. A read that fails answers nothing. */
+export function addressesRead(): Promise<Read> {
   if (kept && Date.now() - kept.at < FRESH_MS) return Promise.resolve(kept.read)
   if (!reading) {
     reading = readAddresses()

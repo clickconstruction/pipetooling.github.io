@@ -58,6 +58,11 @@ const SUFFIXES: Readonly<Record<string, string>> = {
   w: 'west',
 }
 
+/** The street words an address's suffix cleans to (`road`, `street`, `trail`…), compass points left out. */
+export const ADDRESS_STREET_WORDS: ReadonlySet<string> = new Set(
+  Object.values(SUFFIXES).filter((w) => !['north', 'south', 'east', 'west'].includes(w)),
+)
+
 /**
  * One address as a comparison key: lowercase, letters and digits only, one space between
  * words, a trailing zip code (12345 or 12345-6789) dropped, suffixes spelled out. Empty for a

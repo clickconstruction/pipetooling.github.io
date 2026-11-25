@@ -14,7 +14,7 @@ import { normalizeAddressKey } from '../developments/notInIt'
 import { val } from '../valuesInPlace'
 
 /** A job or a bid as the list reads it. `id` is unique within its kind. */
-export type AddressRow = { kind: 'job' | 'bid'; id: string; address: string | null; developmentId: string | null }
+export type AddressRow = { kind: 'job' | 'bid'; id: string; address: string | null; developmentId: string | null; /** `J1340` or `B214`, for a list that names what is at an address. */ label?: string | null }
 
 /** One address the company already has, under its cleaned key. */
 export type AddressOnFile = {
@@ -22,6 +22,10 @@ export type AddressOnFile = {
   key: string
   /** The address as most of its jobs and bids write it. A tie goes to the one read first. */
   address: string
+  /** Every way it is written, the first one read first. The map keeps a point for each. */
+  spellings: string[]
+  /** What is here, by its label (`J1340`, `B214`), in the order read. */
+  labels: string[]
   jobs: number
   bids: number
   /** The development, when every job and bid here that has one has the same one. */
@@ -45,7 +49,7 @@ export function addressesOnFile(
   developmentNames: ReadonlyMap<string, string>,
   except?: { kind: 'job' | 'bid'; id: string } | null,
 ): AddressOnFile[] {
-  type Bucket = { key: string; spellings: Map<string, number>; order: string[]; jobs: number; bids: number; developments: Set<string> }
+  type Bucket = { key: string; spellings: Map<string, number>; order: string[]; jobs: number; bids: number; developments: Set<string>; labels: string[] }
   const buckets = new Map<string, Bucket>()
   for (const row of rows) {
     if (except && row.kind === except.kind && row.id === except.id) continue
@@ -54,7 +58,7 @@ export function addressesOnFile(
     if (!key) continue
     let b = buckets.get(key)
     if (!b) {
-      b = { key, spellings: new Map(), order: [], jobs: 0, bids: 0, developments: new Set() }
+      b = { key, spellings: new Map(), order: [], jobs: 0, bids: 0, developments: new Set(), labels: [] }
       buckets.set(key, b)
     }
     if (!b.spellings.has(address)) b.order.push(address)
@@ -62,13 +66,14 @@ export function addressesOnFile(
     if (row.kind === 'job') b.jobs += 1
     else b.bids += 1
     if (row.developmentId) b.developments.add(row.developmentId)
+    if (row.label) b.labels.push(row.label)
   }
   const out: AddressOnFile[] = []
   for (const b of buckets.values()) {
     let address = b.order[0] ?? ''
     for (const spelling of b.order) if ((b.spellings.get(spelling) ?? 0) > (b.spellings.get(address) ?? 0)) address = spelling
     const only = b.developments.size === 1 ? [...b.developments][0] : undefined
-    out.push({ key: b.key, address, jobs: b.jobs, bids: b.bids, developmentName: (only && developmentNames.get(only)) || null })
+    out.push({ key: b.key, address, spellings: [...b.order], labels: b.labels, jobs: b.jobs, bids: b.bids, developmentName: (only && developmentNames.get(only)) || null })
   }
   return out
 }
@@ -175,17 +180,19 @@ const houseAndRest = (key: string): { house: string; rest: string } | null => {
   return m ? { house: m[1] ?? '', rest: m[2] ?? '' } : null
 }
 
-/** The words of an address as written, each marked when its cleaned form is not among the other side's. */
-function markedWords(address: string, other: string): { text: string; differs: boolean }[] {
-  const theirs = new Set(normalizeAddressKey(other).split(' ').filter(Boolean))
-  return address
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((text) => {
-      const cleaned = normalizeAddressKey(text)
-      return { text, differs: cleaned !== '' && !cleaned.split(' ').every((w) => theirs.has(w)) }
-    })
+const writtenWords = (address: string): string[] => address.trim().split(/\s+/).filter(Boolean)
+
+/**
+ * The words of an address as written, each marked when its cleaned form is not among the other side's. Both sides
+ * are cleaned a word at a time: the whole address's key drops a zip code at its end, so read against the key a zip
+ * both addresses share was marked as a difference.
+ */
+export function markedWords(address: string, other: string): { text: string; differs: boolean }[] {
+  const theirs = new Set(writtenWords(other).flatMap((w) => normalizeAddressKey(w).split(' ')).filter(Boolean))
+  return writtenWords(address).map((text) => {
+    const cleaned = normalizeAddressKey(text)
+    return { text, differs: cleaned !== '' && !cleaned.split(' ').every((w) => theirs.has(w)) }
+  })
 }
 
 /**

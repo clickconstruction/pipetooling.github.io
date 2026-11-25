@@ -6,6 +6,7 @@ import {
   addressesOnFile,
   closeOnFile,
   closeOnFileFoot,
+  markedWords,
   onFileCountWords,
   onFileEntry,
   onFileMatches,
@@ -140,6 +141,14 @@ describe('closeOnFile', () => {
     expect(close?.entry.address).toBe('118 Old Quarry Trl, Sampleton, TX')
     expect(close?.typed.filter((w) => w.differs).map((w) => w.text)).toEqual(['Quary'])
     expect(close?.onFile.filter((w) => w.differs).map((w) => w.text)).toEqual(['Quarry'])
+  })
+
+  it('leaves a zip code both addresses share unmarked, and marks one only one of them has', () => {
+    const marks = (a: string, b: string) => markedWords(a, b).filter((w) => w.differs).map((w) => w.text)
+    expect(marks('412 Larkspurr Lane, Sampleton, TX 78000', '412 Larkspur Lane, Sampleton, TX 78000')).toEqual(['Larkspurr'])
+    expect(marks('412 Larkspur Ln, Sampleton, TX 78000-1234', '412 Larkspur Lane, Sampleton, TX 78000-1234')).toEqual([])
+    expect(marks('412 Larkspur Lane, Sampleton, TX 78000', '412 Larkspur Lane, Sampleton, TX')).toEqual(['78000'])
+    expect(marks('412 Larkspur Lane, Sampleton, TX 78000', '412 Larkspur Lane, Sampleton, TX 78001')).toEqual(['78000'])
   })
 
   it('asks about a space that is missing or added', () => {
