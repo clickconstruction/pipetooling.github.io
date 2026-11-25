@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { confirmPressSize } from '../lib/confirmDialogPress'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 /**
  * In-app replacement for window.confirm (owner request 2026-08-19: "all
@@ -26,6 +27,9 @@ import { confirmPressSize } from '../lib/confirmDialogPress'
  *   if (name === null) return  // cancelled — same contract as window.prompt
  *
  * Resolves the entered string on confirm (Enter submits), null on cancel.
+ *
+ * `required: true` is for an answer the act cannot go without, such as the reason of a decline:
+ * the confirm press is dead and Enter does nothing until the box holds words.
  */
 
 export type ConfirmDialogOptions = {
@@ -53,6 +57,8 @@ export type PromptDialogOptions = {
   /** Pre-filled input value (window.prompt's second argument). */
   defaultValue?: string
   placeholder?: string
+  /** The answer must hold words: the confirm press is dead, and Enter does nothing, while the box is empty or holds spaces alone. */
+  required?: boolean
 }
 
 type ConfirmFn = (options: ConfirmDialogOptions) => Promise<boolean>
@@ -119,6 +125,8 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
 
   const settleConfirm = useCallback(() => {
     const current = pendingRef.current
+    // A required answer with no words stays open: the press is dead, and this holds Enter to the same rule.
+    if (current?.kind === 'prompt' && current.options.required && !(inputRef.current?.value ?? '').trim()) return
     if (current) {
       if (current.kind === 'confirm') current.resolve(true)
       else current.resolve(inputRef.current?.value ?? '')
@@ -145,6 +153,8 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   const safeCancel = pending?.kind === 'confirm' && pending.options.cancelIsSafe === true
   /** 44 px presses at a phone's width, the desk look unchanged (`confirmPressSize`). */
   const pressSize = confirmPressSize(narrow)
+  /** A required answer that holds no words yet: the confirm press is dead. */
+  const needsWords = pending?.kind === 'prompt' && pending.options.required === true && !inputValue.trim()
 
   return (
     <ConfirmDialogContext.Provider value={confirm}>
@@ -202,6 +212,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                     }
                   }}
                   placeholder={pending.options.placeholder}
+                  aria-required={pending.options.required ? true : undefined}
                   style={{
                     marginTop: '0.75rem',
                     width: '100%',
@@ -237,15 +248,16 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                   ref={confirmButtonRef}
                   type="button"
                   onClick={settleConfirm}
+                  disabled={needsWords}
                   style={{
                     ...pressSize,
-                    background: pending.kind === 'confirm' && pending.options.danger ? '#dc2626' : '#2563eb',
+                    background: needsWords ? DEAD_PRESS_FILL : pending.kind === 'confirm' && pending.options.danger ? '#dc2626' : '#2563eb',
                     border: 'none',
                     borderRadius: 6,
-                    color: 'white',
+                    color: needsWords ? DEAD_PRESS_TEXT : 'white',
                     fontWeight: 600,
                     fontSize: '0.875rem',
-                    cursor: 'pointer',
+                    cursor: needsWords ? 'not-allowed' : 'pointer',
                   }}
                 >
                   {pending.options.confirmLabel}

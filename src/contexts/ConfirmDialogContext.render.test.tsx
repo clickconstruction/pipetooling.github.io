@@ -7,7 +7,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { installModalBackdropGuard } from '../lib/modalBackdropGuard'
-import { ConfirmDialogProvider, useConfirmDialog } from './ConfirmDialogContext'
+import { ConfirmDialogProvider, useConfirmDialog, usePromptDialog } from './ConfirmDialogContext'
 
 let answer: boolean | null = null
 function Asker() {
@@ -19,11 +19,22 @@ function Asker() {
   )
 }
 
+let typed: string | null | undefined = undefined
+function Prompter({ required }: { required?: boolean }) {
+  const promptDialog = usePromptDialog()
+  return (
+    <button type="button" onClick={() => void promptDialog({ title: 'Why?', message: 'Say why.', confirmLabel: 'Send the reason', required }).then((v) => (typed = v))}>
+      Ask why
+    </button>
+  )
+}
+
 let uninstall: () => void = () => undefined
 afterEach(() => {
   uninstall()
   cleanup()
   answer = null
+  typed = undefined
 })
 
 describe('ConfirmDialogProvider', () => {
@@ -94,5 +105,53 @@ describe('ConfirmDialogProvider · the presses', () => {
       expect(press.style.minHeight).toBe('')
       expect(press.style.padding).toBe('0.5rem 1rem')
     }
+  })
+
+  it('a required answer keeps its press dead and Enter still until the box holds words', async () => {
+    render(
+      <ConfirmDialogProvider>
+        <Prompter required />
+      </ConfirmDialogProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Ask why' }))
+    const box = screen.getByRole('textbox')
+    const press = screen.getByRole<HTMLButtonElement>('button', { name: 'Send the reason' })
+    expect(box.getAttribute('aria-required')).toBe('true')
+    expect(press.disabled).toBe(true)
+    fireEvent.keyDown(box, { key: 'Enter' })
+    fireEvent.change(box, { target: { value: '   ' } })
+    expect(press.disabled).toBe(true)
+    fireEvent.keyDown(box, { key: 'Enter' })
+    await act(async () => {})
+    expect(screen.getByRole('dialog', { name: 'Why?' })).toBeTruthy()
+    expect(typed).toBeUndefined()
+
+    fireEvent.change(box, { target: { value: 'A placeholder reason' } })
+    expect(press.disabled).toBe(false)
+    fireEvent.keyDown(box, { key: 'Enter' })
+    await act(async () => {})
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(typed).toBe('A placeholder reason')
+  })
+
+  it('an answer that is not required still goes through empty, and Cancel answers null either way', async () => {
+    render(
+      <ConfirmDialogProvider>
+        <Prompter />
+        <Prompter required />
+      </ConfirmDialogProvider>,
+    )
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ask why' })[0]!)
+    const press = screen.getByRole<HTMLButtonElement>('button', { name: 'Send the reason' })
+    expect(press.disabled).toBe(false)
+    expect(screen.getByRole('textbox').getAttribute('aria-required')).toBeNull()
+    fireEvent.click(press)
+    await act(async () => {})
+    expect(typed).toBe('')
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ask why' })[1]!)
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await act(async () => {})
+    expect(typed).toBeNull()
   })
 })

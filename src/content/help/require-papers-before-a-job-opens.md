@@ -127,7 +127,7 @@ A proposal shows under the paper's row. It names who proposed and the day. Each 
 
 1. Read each line.
 2. Press {{button:blue|Take it}} to use the stricter settings.
-3. To say no, press {{button:outline|Decline…}} and type why.
+3. To say no, press {{button:outline|Decline…}} and type why. {{button:blue|Decline the proposal}} stays grey until you type a reason.
 
 The GC reads your reason on their page.
 
