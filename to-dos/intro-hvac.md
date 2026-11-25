@@ -2,7 +2,7 @@
 name: "Intro to HVAC: built and on for everyone; the licensed read, the learner walks and one redeploy are left"
 number: 419
 group: close
-status: built and live 2026-11-21 in six PRs (v2.8158, v2.8163, v2.8168, v2.8169, v2.8209, v2.8239); On in Settings → Training since 2026-11-22 01:43Z on Taunya's word, offered to every role and required of nobody · left: a licensed HVAC reader's read and the walks below
+status: built and live 2026-11-21 in six PRs (v2.8158, v2.8163, v2.8168, v2.8169, v2.8209, v2.8239); On in Settings → Training since 2026-11-22 01:43Z on Taunya's word, offered to every role and required of nobody · left: a licensed HVAC reader's read and the walks below · read live 2026-11-24 in dark at 1280, 768 and 390 px: all thirty lessons and their 47 drawings hold; light is not walked
 summary: >
   The fourth training course, thirty five-minute lessons on how a house is cooled and heated,
   where the heat, the air and the water go, for the people who work on it or beside it. HVAC is
@@ -75,3 +75,11 @@ Not the same on:
 - **What the facts stand on.** The plan asked for a code section with its edition, the textbook, or the reader on every lesson. Eighteen lessons rest in whole or part on trade knowledge not yet checked.
 - **How the drawings were pictured.** Plumbing's were shot at 375, 768 and 1280 px in both themes. These were shot at 420 px in light and 340 px in dark, then read live at 390 px. The first walk above closes that.
 - **The stance.** Plumbing instructs and electrical stops at *do not touch it*. This course instructs, as plumbing does, on Taunya's word that HVAC is the company's trade. One rule is held by test: work on a refrigerant loop names the carded technician.
+
+## Read live (2026-11-24)
+
+Read on clicktooling.com as the dev at `/training/intro-hvac`, in dark, at 1280, 768 and 390 px. No answer was picked and nothing was saved.
+
+- **Holds, the same at each width.** Thirty lessons opened and 47 drawings drawn. No sideways scroll, no drawing off the screen, no label outside its drawing, no two labels over each other, no raw markup. Every lesson has four *Check yourself* questions with four choices, and none runs off the right edge.
+- **How.** Each lesson was opened in turn and the page measured. At 390 px the lessons open from the *Lessons* list, since **Next lesson** is dead until a lesson is passed.
+- **Not covered, still owed.** Light, at any width: the theme is a saved preference on the account, so it was left. The colours of the drawings, and a person's read of each question's words: the measure checks boxes, not sense. The final check, the learner's pass, each role's Dashboard card, a real phone, and the licensed reader.
