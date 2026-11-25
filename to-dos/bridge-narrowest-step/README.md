@@ -1,8 +1,8 @@
 ---
 name: "The Bridge lights the narrowest step"
 number: 321
-group: gated
-status: drawn 2026-11-12 after a review of the Bridge once Market read on the won rates (#318) · nothing is built · waits on the owner's answer to what the scaling function is
+group: ready
+status: drawn 2026-11-12 after a review of the Bridge once Market read on the won rates (#318) · nothing is built · 2026-11-25 (UTC): the meaning answered in the managing session, the scaling function is the narrowest step, the one that moves the fewest dollars a week
 mockup: to-dos/bridge-narrowest-step/mockup.html
 summary: >
   The Bridge lights the step with the most weeks of work waiting. With all five steps on one scale, that rule can
@@ -10,9 +10,10 @@ summary: >
   sells. The steps that hold the company back are the one that moves the fewest dollars a week, and the one whose
   pile grows. The drawing puts today's reading beside one that lights the narrowest step and says on each row
   whether its pile grows or shrinks. It is a question for the owner, since it changes the page's rule.
-next: show the owner the drawing and ask what he means by the scaling function; build nothing before his answer
+next: PR 1 (S), each row's direction on the pipe, which changes no rule. PR 2 changes the rule the page lights by, and waits on that being put to the owner in so many words.
 size: M as three parts (S · M · S); the row directions alone are S
-blocker: The owner's answer. It changes which step the page lights.
+blocker: Nothing for PR 1. PR 2 and PR 3 wait on the owner's word that the page should light the narrowest step, which the answer on the meaning points to and does not say.
+ask: owner · decide · Should the Bridge light the narrowest step, in place of the step with the most weeks of work waiting?
 opinion: build the row directions first; they add no new rule and let him see both readings on his own numbers
 ---
 
@@ -27,7 +28,8 @@ to find the limiting factors of his company. The owner's own words for that purp
 > "the goal of my recent changes were to get the Bridge more useful so I can narrow in on the scaling function as it
 > is the limiting factor"
 
-He has not said what *the scaling function* is.
+On 2026-11-25 (UTC) the managing session asked him: by *the scaling function*, did you mean the narrowest step?
+The answer, quoted from that session's record of the user's answers: *Yes, the narrowest step, the one that moves the fewest dollars a week.*
 
 ## What the review found
 
@@ -49,7 +51,10 @@ and the narrowest one means something.
 
 ## The decision
 
-Not made. It is the owner's, because it changes the rule the page opens on.
+Half made. It is the owner's, because it changes the rule the page opens on.
+His answer of 2026-11-25 settles what *the scaling function* means: the narrowest step.
+He was asked what he meant, and was not asked whether the page should change its rule.
+By this card's own reading, below, that meaning makes the suggestion the page's rule, so the question has been put to the managing session and is not decided here.
 
 - **Now**: light the step with the most weeks of work waiting.
 - **Suggested**: light the step that moves the fewest dollars a week. On each row, say whether its pile grows or
@@ -83,7 +88,8 @@ Nothing is built. What exists:
 
 ## The plan
 
-Only after the owner answers.
+PR 1 can start: the meaning is answered, and it changes no rule.
+PR 2 and PR 3 wait on the owner's word on the rule itself.
 
 | PR | What | Size |
 |---|---|---|
@@ -109,4 +115,4 @@ Only after the owner answers.
 
 ## Where it stands
 
-Drawn, not built. The next move is a conversation with the owner, with the drawing open.
+Drawn, not built. The meaning was answered on 2026-11-25. The next move is PR 1, and one question to the owner on the rule before PR 2.
