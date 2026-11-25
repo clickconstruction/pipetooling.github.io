@@ -10,6 +10,8 @@ import {
   versionNumber,
   toPlainText,
   openItemCount,
+  newestVersionCited,
+  picturesAreStale,
   picturesFilesFor,
   picturesFor,
   picturesPageFacts,
@@ -570,7 +572,7 @@ describe('the ask a card waits on (punch list #438)', () => {
 
 describe("a card's pictures (punch list #438)", () => {
   const FOLDER = 'to-dos/pace-card-shown/README.md'
-  const PAGE = '<!-- Made by a script on 2026-11-24 (punch list #438). -->\n<figure class="pic is-phone" style="x">a</figure><figure class="pic is-desk">b</figure><figure class="frame">not one</figure>'
+  const PAGE = '<!-- Made by a script on 2026-11-24 (punch list #438), with main at v2.3400. -->\n<figure class="pic is-phone" style="x">a</figure><figure class="pic is-desk">b</figure><figure class="frame">not one</figure>'
 
   it('finds a folder card\'s page and its built lead by name', () => {
     const siblings = ['to-dos/pace-card-shown/README.md', 'to-dos/pace-card-shown/pictures.html', 'to-dos/pace-card-shown/pictures-lead.webp', 'to-dos/pace-card-shown/mockup.html']
@@ -593,8 +595,8 @@ describe("a card's pictures (punch list #438)", () => {
   })
 
   it('counts the pictures on a page and reads the day it was made', () => {
-    expect(picturesPageFacts(PAGE)).toEqual({ count: 2, drawn: '2026-11-24' })
-    expect(picturesPageFacts('<p>nothing</p>')).toEqual({ count: 0, drawn: '' })
+    expect(picturesPageFacts(PAGE)).toEqual({ count: 2, drawn: '2026-11-24', drawnAt: 'v2.3400' })
+    expect(picturesPageFacts('<p>nothing</p>')).toEqual({ count: 0, drawn: '', drawnAt: '' })
   })
 
   it('gives a card with neither a page nor a lead no pictures', () => {
@@ -605,9 +607,23 @@ describe("a card's pictures (punch list #438)", () => {
     const siblings = ['to-dos/x.md', 'to-dos/x-pictures.html', 'to-dos/x-pictures-lead.webp']
     const doc = readTodoDoc('to-dos/x.md', fileWith(META), siblings, PAGE)
     if (isParseError(doc)) throw new Error(doc.problem)
-    const want = { page: 'to-dos/x-pictures.html', count: 2, drawn: '2026-11-24', lead: { kind: 'built', path: 'to-dos/x-pictures-lead.webp' } }
+    const want = { page: 'to-dos/x-pictures.html', count: 2, drawn: '2026-11-24', drawnAt: 'v2.3400', stale: true, lead: { kind: 'built', path: 'to-dos/x-pictures-lead.webp' } }
     expect(doc.pictures).toEqual(want)
     expect(renderBoardData([doc], { date: '2026-11-24', version: 'v2.8521' }).items[0]!.pictures).toEqual(want)
     expect(renderBoardData([DOC], { date: '2026-11-24', version: 'v2.8521' }).items[0]!.pictures).toBeNull()
+  })
+
+  it('calls pictures old when the card cites a version shipped after they were drawn', () => {
+    expect(newestVersionCited('built v2.8337 · v2.8464, then v2.8370')).toBe('v2.8464')
+    expect(newestVersionCited('no version here')).toBe('')
+    expect(picturesAreStale('v2.8442', 'v2.8464')).toBe(true)
+    expect(picturesAreStale('v2.8442', 'v2.8442')).toBe(false)
+    expect(picturesAreStale('v2.8442', 'v2.7910')).toBe(false)
+    // A page that does not say what main was at is never called old.
+    expect(picturesAreStale('', 'v2.8464')).toBe(false)
+    // META cites v2.3469 · 3470 and its status none newer; the page was made at v2.3400, so they are old.
+    const siblings = ['to-dos/x.md', 'to-dos/x-pictures.html']
+    expect(picturesFor('to-dos/x.md', siblings, PAGE, 'v2.3469 · 3470')!.stale).toBe(true)
+    expect(picturesFor('to-dos/x.md', siblings, PAGE, 'v2.3300')!.stale).toBe(false)
   })
 })

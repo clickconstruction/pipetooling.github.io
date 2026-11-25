@@ -141,7 +141,14 @@
    }
   ],
   "where": "training",
-  "group": "The owner's look, read or walk"
+  "group": "The owner's look, read or walk",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "111-119-284/s111a.cjs",
+   "111-119-284/s111b.cjs",
+   "111-119-284/s111c.cjs"
+  ]
  },
  {
   "number": 119,
@@ -228,7 +235,12 @@
    }
   ],
   "where": "intro-plumbing",
-  "group": "The owner's look, read or walk"
+  "group": "The owner's look, read or walk",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "111-119-284/s119b.cjs"
+  ]
  },
  {
   "number": 125,
@@ -291,7 +303,13 @@
     "theme": "light",
     "caption": "See all, with the Customer filter on: the contract's lines beside the texts, Tie to this job and Another job… on the untied email, and Reply opened under Replying to Sam's text. The picture is cut above the reply box's own words.",
     "w": 1494,
-    "h": 908
+    "h": 908,
+    "crop": [
+     0,
+     0,
+     1494,
+     908
+    ]
    },
    {
     "file": "125-phone-row-phone-light.webp",
@@ -317,7 +335,13 @@
    }
   ],
   "where": "pipeline-customer-conversation",
-  "group": "The owner's look, read or walk"
+  "group": "The owner's look, read or walk",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "125-421-375/final125.cjs",
+   "125-421-375/final125b.cjs"
+  ]
  },
  {
   "number": 284,
@@ -430,7 +454,14 @@
    }
   ],
   "where": "people-utilization",
-  "group": "The owner's look, read or walk"
+  "group": "The owner's look, read or walk",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "111-119-284/s284b.cjs",
+   "111-119-284/s284d.cjs",
+   "111-119-284/s284c.cjs"
+  ]
  },
  {
   "number": 396,
@@ -521,7 +552,13 @@
    }
   ],
   "where": "pace-card-shown",
-  "group": "The owner's look, read or walk"
+  "group": "The owner's look, read or walk",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "396-426-189/pace2.cjs track light",
+   "396-426-189/pace2.cjs behind dark"
+  ]
  },
  {
   "number": 426,
@@ -628,7 +665,14 @@
    }
   ],
   "where": "my-bids-refresh",
-  "group": "The owner's look, read or walk"
+  "group": "The owner's look, read or walk",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "396-426-189/bids2.cjs light",
+   "396-426-189/bids2.cjs dark",
+   "396-426-189/reports1.cjs master_technician light"
+  ]
  },
  {
   "number": 188,
@@ -754,7 +798,12 @@
    }
   ],
   "where": "dev-gates",
-  "group": "The owner's look, read or walk"
+  "group": "The owner's look, read or walk",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "350-329-188/f188.cjs"
+  ]
  },
  {
   "number": 189,
@@ -865,7 +914,12 @@
    }
   ],
   "where": "phone-first",
-  "group": "The owner's look, read or walk"
+  "group": "The owner's look, read or walk",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "396-426-189/ph4.cjs card omw report stepper window"
+  ]
  },
  {
   "number": 421,
@@ -950,7 +1004,12 @@
    }
   ],
   "where": "messages-heard-day.md",
-  "group": "A walk that writes on prod, with a person at hand"
+  "group": "A walk that writes on prod, with a person at hand",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "125-421-375/final421.cjs"
+  ]
  },
  {
   "number": 375,
@@ -1061,7 +1120,12 @@
    }
   ],
   "where": "task-note-tags",
-  "group": "A walk that writes on prod, with a person at hand"
+  "group": "A walk that writes on prod, with a person at hand",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "125-421-375/final375.cjs"
+  ]
  },
  {
   "number": 350,
@@ -1202,7 +1266,13 @@
    }
   ],
   "where": "sub-papers-statement-of-account",
-  "group": "Counsel or Grace"
+  "group": "Counsel or Grace",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "350-329-188/c350.cjs",
+   "350-329-188/d350.cjs"
+  ]
  },
  {
   "number": 329,
@@ -1371,7 +1441,16 @@
    }
   ],
   "where": "stickers-before-boxes",
-  "group": "A walk of the site first"
+  "group": "A walk of the site first",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "350-329-188/e329.cjs",
+   "350-329-188/f329.cjs",
+   "350-329-188/g329.cjs",
+   "350-329-188/h329.cjs",
+   "350-329-188/m329.cjs"
+  ]
  },
  {
   "number": 302,
@@ -1493,7 +1572,12 @@
    }
   ],
   "where": "permit-skim",
-  "group": "Use, then a look"
+  "group": "Use, then a look",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "302-298-411/s302.cjs"
+  ]
  },
  {
   "number": 298,
@@ -1609,7 +1693,12 @@
    }
   ],
   "where": "supply-bill-lines",
-  "group": "Use, then a look"
+  "group": "Use, then a look",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "302-298-411/s298.cjs"
+  ]
  },
  {
   "number": 411,
@@ -1725,6 +1814,11 @@
    }
   ],
   "where": "state-roll",
-  "group": "A stale next line"
+  "group": "A stale next line",
+  "drawn": "2026-11-24",
+  "drawnAt": "v2.8442",
+  "draw": [
+   "302-298-411/s411.cjs"
+  ]
  }
 ]

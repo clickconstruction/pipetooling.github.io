@@ -63,6 +63,7 @@ The **View** row has a pill for those cards. The pill reads **Waiting on me** wi
 - The card's name is under the question. You press the name to open the card.
 - A small picture shows the built screen. You press it, or **See all**, to open every picture.
 - A card that is not built shows **Today** beside **If built**. The second picture is a mock-up.
+- A row says so when its pictures are old. The line reads *The screen changed after these were drawn.*
 
 You answer on the row with {{button:green|Go ahead}}, {{button:amber|Change}} or {{button:gray|Not now}}.
 

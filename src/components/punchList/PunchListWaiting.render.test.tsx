@@ -33,7 +33,7 @@ const WALK = row({
   name: 'The pace card, shown',
   file: 'to-dos/pace-card-shown/README.md',
   ask: { who: 'owner', kind: 'walk', question: 'Walk the pace card with one superintendent, on his own phone.' },
-  pictures: { page: 'to-dos/pace-card-shown/pictures.html', count: 5, drawn: '2026-11-24', lead: { kind: 'built', path: 'to-dos/pace-card-shown/pictures-lead.webp' } },
+  pictures: { page: 'to-dos/pace-card-shown/pictures.html', count: 5, drawn: '2026-11-24', drawnAt: '', stale: false, lead: { kind: 'built', path: 'to-dos/pace-card-shown/pictures-lead.webp' } },
 })
 const DECIDE = row({
   slug: 'stickers-before-boxes',
@@ -45,6 +45,8 @@ const DECIDE = row({
     page: 'to-dos/stickers-before-boxes/pictures.html',
     count: 9,
     drawn: '2026-11-24',
+    drawnAt: '',
+    stale: false,
     lead: { kind: 'pair', today: 'to-dos/stickers-before-boxes/pictures-today.webp', ifBuilt: 'to-dos/stickers-before-boxes/pictures-if-built.webp' },
   },
 })
@@ -126,6 +128,13 @@ describe('PunchListWaiting', () => {
     draw({ [WALK.slug]: rec('do', 'An older question.') })
     expect(screen.getByTestId('punch-waiting-row-396')).toBeTruthy()
     expect(within(screen.getByTestId('punch-answer-396')).getByRole('button', { name: 'Go ahead' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('says so on a row whose pictures are older than the card\'s newest shipped work', () => {
+    const old = { ...WALK, pictures: { ...WALK.pictures!, drawnAt: 'v2.8442', stale: true } }
+    render(<PunchListWaiting items={[old, DECIDE]} visible={() => true} picks={{}} onSave={vi.fn()} role="master_technician" firstName="Max" />)
+    expect(screen.getByTestId('punch-waiting-stale-396').textContent).toBe('The screen changed after these were drawn.')
+    expect(screen.queryByTestId('punch-waiting-stale-329')).toBeNull()
   })
 
   it("shows one person's questions on their pill, and remembers the pill", () => {
