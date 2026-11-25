@@ -2130,6 +2130,11 @@ A locked job is found by its number and never by its name, its address or its de
 It answers a count over the office's own roster and each sub business by name, and a helper's, a crew member's or an office person's name only on a paper the office set to show every signer by name.
 **What the GC sees** (v2.8533, `20261124170000_job_paper_gc_view.sql`): `job_paper_set_gc_view(required paper, view)` is the office's alone, never a twin, an archived account or training, and the row keeps who set it and when.
 Under the count alone the function sends no business, and it sends the signers only under every signer by name, so what the setting hides never reaches the page.
+**A GC's proposal** (v2.8553, `20261125023655_job_paper_gc_proposals.sql`): `job_paper_propose` runs for the service role alone, for the `submit-portal-request` function, and holds the job to the link's customer as its GC.
+It refuses picks that loosen any topic or change nothing, and it writes `job_paper_proposals` and never the paper.
+`job_paper_proposal_decide(proposal, take, why)` is the office's alone, never a twin, an archived account or training, and a take saves through `job_paper_set_settings` under that function's own rules.
+The office reads `job_paper_proposals` and writes it only through that function, and no other role reads a row.
+The GC's page gets a settings list with names and plain words only: the lines the office reads beside a choice never leave the portal function.
 The roster's body is `job_papers_roster_now`, granted to nobody, and `job_papers_roster` stays the office's alone.
 **A job's sample** (v2.8506, `open-job-paper-sample`) opens with no login for the GC on that job alone: the portal link must show their GC jobs, and the paper must be one that job requires now.
 It carries a made-up job and signer, and every other paper answers one refusal.

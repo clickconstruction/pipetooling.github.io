@@ -12,8 +12,8 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The two walks left in *Left to do and to walk*, each a person's, with a real phone: a person's own Read and sign, and a finger on the sliders. Three were walked on 2026-11-24 and passed. Before a real job, the real wording in the Contract Book's entry, with its breach and site lines, and an attorney's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Step 5 was walked on the live site on 2026-11-24 and passed: the GC's page, its sample's address, and the office's setting for what a GC sees. Steps 1 to 5 are built. Step 6 waits on the owner's call on how a GC proposes. Beside them, the last steps of the Document builder tab, #404, and Taunya's read, box by box, of the grid in this card's mock-up. Then the open calls below, with the wider calls still open in *The wider look*.
-ver: v2.8014 · v2.8019 · v2.8020 · v2.8145 · v2.8154 · v2.8156 · v2.8182 · v2.8183 · v2.8184 · v2.8229 · v2.8275 · v2.8462 · v2.8467 · v2.8503 · v2.8506 · v2.8533
+next: The two walks left in *Left to do and to walk*, each a person's, with a real phone: a person's own Read and sign, and a finger on the sliders. Three were walked on 2026-11-24 and passed. Before a real job, the real wording in the Contract Book's entry, with its breach and site lines, and an attorney's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Step 5 was walked on the live site on 2026-11-24 and passed: the GC's page, its sample's address, and the office's setting for what a GC sees. Steps 1 to 5 are built, and step 6's first part: a GC proposes a stricter setting and the office takes it or declines. Then its push and three deploys, a walk of it on the live site, and how the office hears of a proposal. Beside them, the last steps of the Document builder tab, #404, and Taunya's read, box by box, of the grid in this card's mock-up. Then the open calls below, with the wider calls still open in *The wider look*.
+ver: v2.8014 · v2.8019 · v2.8020 · v2.8145 · v2.8154 · v2.8156 · v2.8182 · v2.8183 · v2.8184 · v2.8229 · v2.8275 · v2.8462 · v2.8467 · v2.8503 · v2.8506 · v2.8533 · v2.8553
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -370,8 +370,20 @@ paper until an entry has a settings list, and the first one is a test entry.
      database sends no business, and it sends the signers only under every signer by name.
      `20261124170000_job_paper_gc_view.sql`, `jobPaperGcView.ts`. Walked on the live site on 2026-11-24, each of
      the three choices, and passed. No signer's name was seen there, since nobody had signed.
-6. **The GC proposes (M).** The proposal kind, stricter-only checked on the server, the office's take
-   and confirm, the record of who and when.
+6. **The GC proposes (M), in two parts.** The proposal with the office's take or decline, then how the office
+   hears of one.
+   - **The proposal. Built, v2.8553.** On the GC's block, **Propose a stricter setting** opens the office's own
+     sliders with every stop looser than the job's greyed, the notice with its box, a typed name and **Send the
+     proposal**. It is built on this card's pick, *the same sliders*, which the owner chose on 2026-11-24 on a
+     question card in the session that manages the threads. A proposal writes `job_paper_proposals` and never the
+     paper. The server holds it to the job's own GC, to stricter only, to a name, to the notice's tick and to six
+     an hour. It waits under the paper's row on the job's Documents tab, where **Take it** says who signs again
+     and saves through the office's own door, and **Decline…** keeps a reason the GC reads. A newer proposal, the
+     office's own change and the paper coming off each set a waiting one aside. The row keeps who proposed, who
+     answered and when. `20261125023655_job_paper_gc_proposals.sql`, `jobPaperProposal.ts`,
+     `PortalJobPaperPropose.tsx`, `JobPaperProposalCard.tsx`. Not walked on the live site yet.
+   - **How the office hears of one.** Not started. A proposal shows only on the job's Documents tab today. This
+     card's design gives it a Needs you line, and it sends no push and no email.
 7. **Their own form (S).** *Theirs* points at a Form Studio form the gate already accepts.
 8. **A second kind of paper (M).** The company's own secrecy paper to a vendor, partner or customer. It
    is one-way or mutual, tied to a relationship and not a job, and needs its own approved clause set.
