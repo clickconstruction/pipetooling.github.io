@@ -1,4 +1,4 @@
-import { CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
+import { CATALOG_RPCS, CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
 import type { BankAllocationRow, BankLineRow, BankRow, JobMoney, LaborJobRow, LaborPersonRow, LaborUserRow, SheetItemRow, SheetPayRow, SheetRow, SubLaborReads } from '../../../supabase/functions/_shared/devMcpSubLabor'
 
 /**
@@ -148,6 +148,20 @@ export function fakeRest(data: Record<string, Row[]>, money: JobMoney | null = M
     rows: async (table, query) => {
       asked.push(`${table}?${query}`)
       return match(table, query)
+    },
+    // A function that answers one value, held to the catalog's name and arguments. The one the kernel calls is the
+    // number resolver (resolve_job_ledger_id_by_number): the HCP number before the Click number, trimmed, any case.
+    value: async (path, query) => {
+      asked.push(`${path}?${query}`)
+      const name = path.replace(/^rpc\//, '')
+      const args = Object.fromEntries(query.split('&').filter(Boolean).map((pair) => [pair.slice(0, pair.indexOf('=')), decodeURIComponent(pair.slice(pair.indexOf('=') + 1))]))
+      const known = CATALOG_RPCS[name]?.[0]?.args
+      if (!known) throw new Error(`function ${name} is not in the catalog`)
+      for (const k of Object.keys(args)) if (!(k in known) && !(`${k}?` in known)) throw new Error(`${name} takes no argument ${k}`)
+      if (name !== 'resolve_job_ledger_id_by_number') throw new Error(`fakeRest: no function ${name}`)
+      const n = String(args.p_number ?? '').trim().toLowerCase()
+      const wears = (col: string) => (data.jobs_ledger ?? []).find((r) => String(r[col] ?? '').trim().toLowerCase() === n)
+      return n ? ((wears('hcp_number') ?? wears('click_number'))?.id ?? null) : null
     },
     ...(money ? { money: async () => money } : {}),
   }

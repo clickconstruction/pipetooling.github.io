@@ -24,6 +24,13 @@ import { titleCaseAddress } from './gcKernels/lib/addressTitleCase.ts'
 // writes it after the job; plan_job_update reads the job's lines whenever `revenue` is in set and moves the line with
 // the price, writes the line a price never had, or refuses in words where the lines are not its to change.
 
+// v2.8570 / 0.135.0 (punch list #293, the renumber of 2026-11-25): a job's old number stays findable. The combine
+// was the one writer of jobs_ledger.prior_numbers ('HCP 550' / 'C# 543'), so a number changed through this verb was
+// gone from every search, and a bill already sent under it led to no job. plan_job_update now keeps the outgoing
+// number there when it replaces one (keep_old_number: false leaves it out, for a mistyped number), and takes
+// prior_numbers: { add?, remove? } for a job whose number already changed. search_jobs_ledger matches the list, so
+// find_job and the Pipeline's search find the job by it, and the screens read "also 550" under the number.
+
 export const JOB_VERBS = ['plan_job', 'apply_job', 'plan_job_update', 'apply_job_update'] as const
 export type JobVerb = (typeof JOB_VERBS)[number]
 
@@ -512,9 +519,30 @@ export type JobUpdatePayload = {
   reason?: string
   /** The name of the line item a price with no line is written as; the job's name when left out. */
   line_name?: string
+  /** Numbers the job answered to before, to put on or take off its list (`jobs_ledger.prior_numbers`). */
+  prior_numbers?: { add?: string[]; remove?: string[] }
+  /** false: a number this plan replaces is not kept as a prior number (a mistyped one). */
+  keep_old_number?: false
 }
 
-const UPDATE_SHAPE = `needs update — { job_id (a jobs_ledger.id — find_job), set? ({ column: value } over the Edit Job form's columns: ${UPDATE_COLUMNS.join(', ')}; null clears one that may be blank), status? (${JOB_STATUSES.join(' | ')} — the Pipeline's own move, one step at a time), reason?, line_name? (with revenue on a job that has no line item: the name of the line the price is written as; the job's name when left out) }. One of set or status at least. revenue moves the job's line item with it: a job with no line gets one line of 1 at the price, a job with one unbilled line of 1 has that line repriced, and any other job is refused, since the Bill tab writes the price as the sum of its lines.`
+/** Prior numbers a plan may add or take off at once. */
+export const PRIOR_NUMBERS_MAX = 10
+/** A prior number as the database holds it (src/lib/jobs/priorNumbers.ts priorNumberEntry): 'HCP 550' or 'C# 543'. */
+const PRIOR_RE = /^(HCP|C#) [^\s"\\,()][^"\\,()]*$/
+
+/** One prior number, shaped: the tag in capitals, one space, the number trimmed. `false` when it is neither shape. */
+export function priorNumberOf(raw: unknown): string | false {
+  if (typeof raw !== 'string') return false
+  const m = raw.replace(/\s+/g, ' ').trim().match(/^(hcp|c#) (.+)$/i)
+  if (!m) return false
+  const entry = `${m[1]!.toUpperCase()} ${m[2]!.trim()}`
+  return PRIOR_RE.test(entry) && m[2]!.trim().length <= NUMBER_MAX ? entry : false
+}
+
+/** The bare number of an entry: 'C# 543' → '543'. */
+export const priorNumberBare = (entry: string): string => entry.replace(/^(HCP|C#) /, '')
+
+const UPDATE_SHAPE = `needs update — { job_id (a jobs_ledger.id — find_job), set? ({ column: value } over the Edit Job form's columns: ${UPDATE_COLUMNS.join(', ')}; null clears one that may be blank), status? (${JOB_STATUSES.join(' | ')} — the Pipeline's own move, one step at a time), reason?, line_name? (with revenue on a job that has no line item: the name of the line the price is written as; the job's name when left out), prior_numbers? ({ add?: [...], remove?: [...] } — numbers the job answered to before, each 'C# 543' or 'HCP 550', up to ${PRIOR_NUMBERS_MAX} a list; the job search finds the job by them), keep_old_number? (false with hcp_number or click_number in set: the number being replaced is not kept as a prior number) }. One of set, status or prior_numbers at least. revenue moves the job's line item with it: a job with no line gets one line of 1 at the price, a job with one unbilled line of 1 has that line repriced, and any other job is refused, since the Bill tab writes the price as the sum of its lines. A number set replaces keeps the old one as a prior number.`
 
 /** One column's value, checked as the form checks it; `undefined` means refused with the words. */
 function checkColumn(verb: string, column: UpdateColumn, raw: unknown): { ok: true; value: string | number | null } | { ok: false; error: string } {
@@ -586,7 +614,32 @@ export function jobUpdateInput(verb: JobVerb, input: Json): JobUpdateInput {
     if (!(JOB_STATUSES as readonly string[]).includes(status)) return { ok: false, error: `${verb}: status is one of ${JOB_STATUSES.join(', ')}.` }
     p.status = status as JobStatus
   }
-  if (!Object.keys(p.set).length && !p.status) return { ok: false, error: `${verb}: nothing to change — give set, status, or both. ${UPDATE_SHAPE}` }
+  if (src.prior_numbers !== undefined && src.prior_numbers !== null) {
+    const asked = obj(src.prior_numbers)
+    const priorShape = `prior_numbers is { add?: [...], remove?: [...] }, each entry a number the job answered to before, written 'C# 543' (a Click number) or 'HCP 550' (an HCP number), up to ${PRIOR_NUMBERS_MAX} a list.`
+    if (!asked) return { ok: false, error: `${verb}: ${priorShape}` }
+    const lists: { add?: string[]; remove?: string[] } = {}
+    for (const k of ['add', 'remove'] as const) {
+      const raw = asked[k]
+      if (raw === undefined || raw === null) continue
+      if (!Array.isArray(raw) || raw.length > PRIOR_NUMBERS_MAX) return { ok: false, error: `${verb}: ${priorShape}` }
+      const entries: string[] = []
+      for (const one of raw) {
+        const entry = priorNumberOf(one)
+        if (!entry) return { ok: false, error: `${verb}: ${JSON.stringify(one)} is not a prior number: ${priorShape}` }
+        if (!entries.includes(entry)) entries.push(entry)
+      }
+      if (entries.length) lists[k] = entries
+    }
+    const both = (lists.add ?? []).find((e) => (lists.remove ?? []).includes(e))
+    if (both) return { ok: false, error: `${verb}: ${both} is in both add and remove. Name it in one.` }
+    if (lists.add || lists.remove) p.prior_numbers = lists
+  }
+  if (src.keep_old_number === false) {
+    if (p.set.hcp_number === undefined && p.set.click_number === undefined) return { ok: false, error: `${verb}: keep_old_number: false is about a number this plan replaces — give set.hcp_number or set.click_number with it.` }
+    p.keep_old_number = false
+  }
+  if (!Object.keys(p.set).length && !p.status && !p.prior_numbers) return { ok: false, error: `${verb}: nothing to change — give set, status, prior_numbers, or several. ${UPDATE_SHAPE}` }
   const reason = typeof src.reason === 'string' ? src.reason.trim() : ''
   if (reason) {
     if (reason.length > 500) return { ok: false, error: `${verb}: reason is under 500 characters.` }
@@ -607,16 +660,18 @@ export function jobUpdateInput(verb: JobVerb, input: Json): JobUpdateInput {
   return { ok: true, p, target: jobId, planHash }
 }
 
-export type JobRow = { id: string; status: string | null; updated_at: string | null; master_user_id: string | null } & Partial<Record<UpdateColumn, string | number | null>>
+export type JobRow = { id: string; status: string | null; updated_at: string | null; master_user_id: string | null; prior_numbers?: string[] | null } & Partial<Record<UpdateColumn, string | number | null>>
 export type JobUpdateWorld = {
   job: JobRow | null
   /** The rows the new ids name, by column: null when not visible. */
   named: Partial<Record<UpdateColumn, NamedRow | null>>
   /** The job's line items in order, read when `revenue` is in set; null when the plan does not touch the price. */
   lines: JobLineRow[] | null
+  /** The other jobs wearing a number today that this plan adds as a prior number, by entry. Left out when none is added. */
+  wearing?: Record<string, SameNameJob[]>
 }
 
-const JOB_COLS = ['id', 'status', 'updated_at', 'master_user_id', ...UPDATE_COLUMNS].join(',')
+const JOB_COLS = ['id', 'status', 'updated_at', 'master_user_id', ...UPDATE_COLUMNS, 'prior_numbers'].join(',')
 
 /** The reads the dry run needs: the job, each row a new id names, and the job's line items when the price is in set. */
 export async function readJobUpdateWorld(reads: JobReads, p: JobUpdatePayload): Promise<JobUpdateWorld> {
@@ -638,7 +693,16 @@ export async function readJobUpdateWorld(reads: JobReads, p: JobUpdatePayload): 
       named[column as UpdateColumn] = row ? { id: String(row.id), name: typeof row[nameCol] === 'string' ? (row[nameCol] as string) : null } : null
     }),
   ])
-  return { job, named, lines }
+  // A number added as a prior number may be one another job wears today: the plan says so, since a search finds both.
+  let wearing: Record<string, SameNameJob[]> | undefined
+  if (p.prior_numbers?.add?.length) {
+    wearing = {}
+    await Promise.all(p.prior_numbers.add.map(async (entry) => {
+      const quoted = encodeURIComponent(`"${priorNumberBare(entry)}"`)
+      wearing![entry] = (await reads.rows('jobs_ledger', `select=${SAME_NAME_COLS}&id=neq.${p.job_id}&or=(click_number.eq.${quoted},hcp_number.eq.${quoted})&limit=5`)) as SameNameJob[]
+    }))
+  }
+  return { job, named, lines, ...(wearing ? { wearing } : {}) }
 }
 
 /**
@@ -660,12 +724,84 @@ const labelOf = (job: JobRow): string => jobShortLabel({ click_number: job.click
 
 const same = (a: unknown, b: unknown): boolean => (a ?? null) === (b ?? null) || (typeof a === 'number' && typeof b === 'string' && Number(b) === a) || (typeof a === 'string' && typeof b === 'number' && Number(a) === b)
 
+/** The job's prior numbers as the row holds them, blanks dropped. */
+const priorList = (job: JobRow): string[] => (Array.isArray(job.prior_numbers) ? job.prior_numbers : []).filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+
+const NUMBER_TAGS = [['hcp_number', 'HCP'], ['click_number', 'C#']] as const
+type JobNumbers = { hcp_number: string; click_number: string }
+
+export type PriorNumbersPlan = {
+  before: string[]
+  after: string[]
+  /** The numbers this plan replaces, newly on the list. */
+  kept: string[]
+  added: string[]
+  removed: string[]
+  /** Entries taken off because the job wears that number again after the plan. */
+  dropped: string[]
+  /** The numbers this plan replaces and does not keep (`keep_old_number: false`). */
+  not_kept: string[]
+  moved: boolean
+}
+
+/**
+ * The job's prior numbers after a plan, in the combine's shape (`priorNumbersAfter` in devMcpJobCombine.ts): the list
+ * as it stands less what the plan takes off, then the number each column gives up ('HCP 550' / 'C# 543') unless
+ * `keepOld` is false, then what the plan adds, each once. A plan that changes a number also drops an entry the job
+ * wears again afterwards. Refuses a take-off that is not on the list and an add of the job's own number.
+ */
+export function priorNumbersPlan(args: { label: string; list: readonly string[]; old: JobNumbers; now: JobNumbers; keepOld: boolean; add: readonly string[]; remove: readonly string[] }): { ok: true; plan: PriorNumbersPlan } | { ok: false; refused: string } {
+  const { label, list, old, now, add, remove } = args
+  const own = NUMBER_TAGS.filter(([c]) => now[c]).map(([c, tag]) => `${tag} ${now[c]}`)
+  const outgoing = NUMBER_TAGS.filter(([c]) => old[c] && old[c] !== now[c]).map(([c, tag]) => `${tag} ${old[c]}`)
+  const numberMoves = NUMBER_TAGS.some(([c]) => old[c] !== now[c])
+  const missing = remove.find((e) => !list.includes(e))
+  if (missing) return { ok: false, refused: `${missing} is not among ${label}'s prior numbers (${list.length ? list.join(', ') : 'it has none'}), so there is nothing to take off.` }
+  const mine = add.find((e) => own.includes(e))
+  if (mine) return { ok: false, refused: `${mine} is ${label}'s own number today. A prior number is one the job answered to before.` }
+  const all = [...list.filter((e) => !remove.includes(e)), ...(args.keepOld ? outgoing : []), ...add]
+  const once = all.filter((e, i) => all.indexOf(e) === i)
+  const dropped = numberMoves ? once.filter((e) => own.includes(e)) : []
+  const after = once.filter((e) => !dropped.includes(e))
+  return {
+    ok: true,
+    plan: {
+      before: [...list],
+      after,
+      kept: args.keepOld ? outgoing.filter((e) => after.includes(e) && !list.includes(e)) : [],
+      added: add.filter((e) => !list.includes(e)),
+      removed: [...remove],
+      dropped,
+      not_kept: args.keepOld ? [] : outgoing.filter((e) => !after.includes(e)),
+      moved: JSON.stringify(after) !== JSON.stringify(list),
+    },
+  }
+}
+
+/** What the plan says of the list: before and after, why each entry moves, and what follows. */
+function priorNumbersWords(plan: PriorNumbersPlan): Json {
+  return {
+    before: plan.before,
+    after: plan.after,
+    ...(plan.kept.length ? { keeps: `${plan.kept.join(', ')} — the number this plan replaces, kept so a search for it still finds the job (keep_old_number: false leaves it out)` } : {}),
+    ...(plan.added.length ? { adds: plan.added } : {}),
+    ...(plan.removed.length ? { removes: plan.removed } : {}),
+    ...(plan.dropped.length ? { drops: `${plan.dropped.join(', ')} — the job's own number again after this plan, so no longer a prior one` } : {}),
+    ...(plan.not_kept.length ? { not_kept: `${plan.not_kept.join(', ')} — keep_old_number is false: after the apply no search for it finds this job` } : {}),
+    sets_off: 'The job search (search_jobs_ledger: find_job, the Pipeline\'s search) finds the job by every number on the list, and the screens read "also <number>" under the job\'s own. The list itself writes no line on the job\'s Activity.',
+  }
+}
+
+/** A value read back after the PATCH against the one planned: a list entry by entry, anything else as text. */
+export const landedSame = (got: unknown, planned: unknown): boolean => (Array.isArray(planned) ? JSON.stringify(Array.isArray(got) ? got : []) === JSON.stringify(planned) : String(got ?? '') === String(planned ?? ''))
+
 /**
  * What the plan says and what the hash commits to: the job as it stands (its label, status, updated_at), every column
- * before → after with the no-ops dropped, the status steps in the RPC's order with the one that deletes Ready to Bill
- * lines named, the line item a price writes or moves (`priceLinePlan`), and what the verb does not do. Refuses a job
- * not visible, an id whose row is not visible, a price beside lines that are not this verb's to change, and a plan
- * that changes nothing.
+ * before → after with the no-ops dropped, the prior numbers before → after (`priorNumbersPlan`), the status steps in
+ * the RPC's order with the one that deletes Ready to Bill lines named, the line item a price writes or moves
+ * (`priceLinePlan`), and what the verb does not do. Refuses a job not visible, an id whose row is not visible, a price
+ * beside lines that are not this verb's to change, a prior number that is not there to take off or is the job's own,
+ * and a plan that changes nothing.
  */
 export function jobUpdateDryRun(p: JobUpdatePayload, world: JobUpdateWorld): DryRun {
   const job = world.job
@@ -684,6 +820,30 @@ export function jobUpdateDryRun(p: JobUpdatePayload, world: JobUpdateWorld): Dry
     const row = world.named[column as UpdateColumn]
     changes.push({ column, before, after: value, ...(row ? { named: row.name } : {}) })
   }
+  // The prior numbers (0.135.0): the number a column gives up, and what the plan adds or takes off.
+  const numberOf = (v: unknown): string => (v == null ? '' : String(v).trim())
+  const prior = priorNumbersPlan({
+    label: labelOf(job),
+    list: priorList(job),
+    old: { hcp_number: numberOf(job.hcp_number), click_number: numberOf(job.click_number) },
+    now: { hcp_number: numberOf('hcp_number' in patch ? patch.hcp_number : job.hcp_number), click_number: numberOf('click_number' in patch ? patch.click_number : job.click_number) },
+    keepOld: p.keep_old_number !== false,
+    add: p.prior_numbers?.add ?? [],
+    remove: p.prior_numbers?.remove ?? [],
+  })
+  if (!prior.ok) return prior
+  const warnings: string[] = []
+  if (prior.plan.added.length) {
+    if (!world.wearing) return { ok: false, refused: `The jobs wearing ${prior.plan.added.join(', ')} today were not read, so the prior numbers cannot be planned. Plan again.` }
+    for (const entry of prior.plan.added) {
+      const others = world.wearing[entry] ?? []
+      if (others.length) warnings.push(`${priorNumberBare(entry)} is the number ${others.map((j) => `${(j.job_name ?? '').trim() || 'a job'} (${j.id}, ${j.status ?? 'no status'})`).join(' and ')} ${others.length === 1 ? 'wears' : 'wear'} today. A search for it will find ${others.length === 1 ? 'both jobs' : 'all of them'}.`)
+    }
+  }
+  if (prior.plan.moved) {
+    patch.prior_numbers = prior.plan.after
+    changes.push({ column: 'prior_numbers', before: prior.plan.before, after: prior.plan.after })
+  }
   let line: PriceLinePlan | null = null
   if (p.set.revenue !== undefined) {
     if (!world.lines) return { ok: false, refused: `${labelOf(job)}'s line items were not read, so its price cannot be planned. Plan again.` }
@@ -696,6 +856,10 @@ export function jobUpdateDryRun(p: JobUpdatePayload, world: JobUpdateWorld): Dry
   const from = (job.status ?? 'waiting') as JobStatus
   const steps = p.status ? statusSteps(from, p.status) : []
   if (!changes.length && !steps.length && !line) {
+    if (p.prior_numbers) {
+      const reads = [p.status ? `it is at ${STATUS_WORDS[from]}` : '', Object.keys(p.set).length ? 'every column in set already holds its value' : '', `its prior numbers already read ${prior.plan.before.length ? prior.plan.before.join(', ') : 'none'}`].filter(Boolean)
+      return { ok: false, refused: `${labelOf(job)} already reads that way: ${reads.join(', ')}. Nothing to apply.` }
+    }
     return { ok: false, refused: p.status ? `${labelOf(job)} already reads that way: it is at ${STATUS_WORDS[from]} and every column in set already holds its value. Nothing to apply.` : `${labelOf(job)} already reads that way: every column in set already holds its value. Nothing to apply.` }
   }
   const stepWords = steps.map((to, i) => {
@@ -711,12 +875,15 @@ export function jobUpdateDryRun(p: JobUpdatePayload, world: JobUpdateWorld): Dry
       changes,
       patch,
       line_item: line,
+      prior_numbers: prior.plan.moved || prior.plan.not_kept.length ? priorNumbersWords(prior.plan) : null,
       status: p.status ? { from, to: p.status, steps: stepWords } : null,
       reason: p.reason ?? null,
+      ...(warnings.length ? { warnings } : {}),
       not_done: [
         'the job\'s other line items, a discount and its payments — the Bill tab\'s, or a later verb\'s',
         'the dispatch request the form closes when a phone or pictures link goes from blank to set',
         'the bid outcome the database derives when bid_id changes is written by its trigger, not said here',
+        ...('hcp_number' in patch || 'click_number' in patch ? ['a sub labor sheet on the job keeps the number it was written under: plan_sub_labor { action: "change", sheet_id, job_id (the sheet\'s own job) } brings it up to date'] : []),
       ],
     },
   }
