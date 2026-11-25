@@ -162,9 +162,9 @@ the words on it.
   - **Left on prod, by design.** Six pay log lines for ZZ Test Hand and three `person_available_hours` rows each
     for ZZ Test Hand and ZZ Test Learner. Both tables keep every save. ZZ Test Hand reads as before the run:
     hourly, the same wage, 8 h days, no workday template, no working hours. ZZ Test Learner's hours are off.
-- **2026-11-25, the fault mended in the code as v2.8607, not yet pushed.** Taking working hours off a salaried
-  person now puts the standard week back on pay, with a reason on the pay log. Step 6 is its walk. Until the
-  migration is pushed, step 5's workaround above still stands.
+- **2026-11-25, the fault mended as v2.8607, live at 23:45 UTC.** Taking working hours off a salaried person now
+  puts the standard week back on pay, with a reason on the pay log. The migration is applied. Step 6 is its
+  walk, and nobody has walked it. Step 5's workaround above is no longer needed.
 - **2026-11-25, the same session, step 2.5 alone.** Clean at 380 px: the Working hours row and its window hold at a
   phone's width, with nothing sliding sideways. The hours were set for the look and taken off after.
   - **Still not walked.** The second half of 4.3, the window as anyone but a dev: the recipe does not reach it
