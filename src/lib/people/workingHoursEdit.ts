@@ -2,9 +2,11 @@
  * The Working hours row's field (punch list #429, PR 3): what the open line would save, said before Keep. A line
  * of days changes whole, its start and its end together, and every save is a whole week. For a salaried person a
  * change to a day's length moves pay: that starts this week, since pay carries no date, and needs a reason for the
- * pay log. A change of times alone moves no pay and may start next week. Pure; the row draws it and the door
- * (`set_working_hours`) holds the same rules.
+ * pay log. A change of times alone moves no pay and may start next week. Taking the hours off a salaried person
+ * puts their week on pay back on the standard week, which is a change to pay like any other (`workingHoursTakeOffPlan`).
+ * Pure; the row draws it and the door (`set_working_hours`) holds the same rules.
  */
+import { SALARIED_DEFAULT_WEEK, salariedWeekWords } from '../salariedEffectiveHours'
 import { val } from '../valuesInPlace'
 import type { Segment, WeekDays } from './weekAvailability'
 import { formatHours, withWorkingDays, workingChangeSentence, workingHoursMovePay, workingHoursStarts, workingWeekHours, workingWeekProblem } from './workingHours'
@@ -92,6 +94,49 @@ export function workingHoursFieldPlan(facts: WorkingHoursFacts, open: WorkingHou
   else keep = { ok: true }
 
   return { week, sentence, pay, startLocked: moves, effectiveFrom, needsReason: moves, keep }
+}
+
+/** What **Take working hours off** would do, said before the press. */
+export type WorkingHoursTakeOffPlan = {
+  /** The Sunday the take-off starts on: this week's, since a change to pay carries no date. */
+  effectiveFrom: string
+  /** A salaried person's week on pay goes back to the standard week. */
+  movesPay: boolean
+  /** Pay moves, so the window asks why and the reason goes on the pay log. */
+  needsReason: boolean
+  /** The window's words. */
+  message: string
+  /** The line the row says once it is done. */
+  done: string
+}
+
+/**
+ * Taking working hours off (punch list #429). For a salaried person whose week on pay is not the standard week,
+ * the door puts the standard week back, 8 hours Monday to Friday: the hours that set the week are gone, so the week
+ * goes with them, and it is never left at the hours last set or at no paid hours. That moves pay, so it asks for a
+ * reason. Anyone else has no pay side to a take-off.
+ */
+export function workingHoursTakeOffPlan(facts: WorkingHoursFacts, displayName: string): WorkingHoursTakeOffPlan {
+  const paid = facts.isSalary ? facts.paidWeek : null
+  const movesPay = facts.current != null && paid != null && SALARIED_DEFAULT_WEEK.some((h, d) => Math.abs(h - (Number(paid[d]) || 0)) > 0.001)
+  const standard = salariedWeekWords(SALARIED_DEFAULT_WEEK)
+  const lines = [`Take working hours off ${displayName}?`, 'From this week nothing holds them to a start and an end.']
+  if (movesPay && paid) {
+    const weeks = weeksWithoutReport(facts.lastReportEndYmd, facts.todayYmd)
+    lines.push(`Their set week on pay is ${salariedWeekWords(paid)} today.`, `It goes back to the standard week, ${standard}.`)
+    if (weeks > 0) lines.push(`${weeks === 1 ? 'One earlier week has' : `${weeks} earlier weeks have`} no pay report, and will be priced at the standard week.`)
+    lines.push('Say why. The reason goes on the pay log.')
+  } else if (paid) {
+    lines.push(`Their pay stays on the standard week, ${standard}.`)
+  }
+  lines.push('What the hours were is kept under Earlier hours.')
+  return {
+    effectiveFrom: workingHoursStarts(facts.todayYmd).thisWeek,
+    movesPay,
+    needsReason: movesPay,
+    message: lines.join(' '),
+    done: movesPay ? 'Working hours taken off. Pay is back on the standard week.' : 'Working hours taken off',
+  }
 }
 
 /** "Sun Nov 22": the Sunday hours hold from, as the row prints it. */

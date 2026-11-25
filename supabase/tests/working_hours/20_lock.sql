@@ -103,7 +103,7 @@ SELECT whl.same('the office still answers for a person with no working hours', (
 SELECT whl.as_user('00000000-0000-0000-0000-00000000f002');
 SELECT whl.same('hours for next week are set for Ivy', (SELECT r ->> 'status' FROM public.set_working_hours('00000000-0000-0000-0000-00000000f006', '[[],[[420,900]],[[420,900]],[[420,900]],[[420,900]],[[420,900]],[]]', whl.sunday() + 7) r), 'set');
 SELECT whl.same('they are not in force yet', public.has_working_hours('00000000-0000-0000-0000-00000000f006')::text, 'false');
-SELECT whl.same('Hal''s hours are taken off', (SELECT r ->> 'cleared' FROM public.set_working_hours('00000000-0000-0000-0000-00000000f005', NULL, whl.sunday()) r), 'true');
+SELECT whl.same('Hal''s hours are taken off', (SELECT r ->> 'cleared' FROM public.set_working_hours('00000000-0000-0000-0000-00000000f005', NULL, whl.sunday(), 'The class is over') r), 'true');
 SELECT whl.same('and he has none in force', public.has_working_hours('00000000-0000-0000-0000-00000000f005')::text, 'false');
 SELECT whl.as_user('00000000-0000-0000-0000-00000000f005');
 SET LOCAL ROLE authenticated;

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { sentenceParts } from '../valuesInPlace'
 import type { Segment, WeekDays } from './weekAvailability'
-import { FIRST_WORKING_DAYS, FIRST_WORKING_RANGE, workingHoursFieldPlan, workingSundayWords, type WorkingHoursFacts, type WorkingHoursOpen } from './workingHoursEdit'
+import { FIRST_WORKING_DAYS, FIRST_WORKING_RANGE, workingHoursFieldPlan, workingHoursTakeOffPlan, workingSundayWords, type WorkingHoursFacts, type WorkingHoursOpen } from './workingHoursEdit'
 
 const weekdays = (...segs: Segment[]): WeekDays => [[], segs, segs, segs, segs, segs, []]
 const SIX_TO_NOON = weekdays([360, 720])
@@ -74,6 +74,49 @@ describe('workingHoursFieldPlan', () => {
 
   it('says every sentence in plain words', () => {
     for (const s of ['Say why first. The reason goes on the pay log.', 'Give at least one day its hours.', 'Each day keeps its length, so pay does not move.', plain(workingHoursFieldPlan({ ...salaried, lastReportEndYmd: '2026-11-07' }, open({ dows: [5], segs: [[360, 615]] })).pay!.words)]) expect(plainWordsFailures(s)).toEqual([])
+  })
+})
+
+describe('workingHoursTakeOffPlan', () => {
+  it('puts a salaried person back on the standard week, from this week, and asks why', () => {
+    const off = workingHoursTakeOffPlan(salaried, 'Wes Calloway')
+    expect([off.movesPay, off.needsReason, off.effectiveFrom]).toEqual([true, true, '2026-11-22'])
+    expect(off.message).toBe(
+      'Take working hours off Wes Calloway? From this week nothing holds them to a start and an end. Their set week on pay is 6 h Mon to Fri today. It goes back to the standard week, 8 h Mon to Fri. Say why. The reason goes on the pay log. What the hours were is kept under Earlier hours.',
+    )
+    expect(off.done).toBe('Working hours taken off. Pay is back on the standard week.')
+  })
+
+  it('says how many weeks with no pay report the standard week prices again', () => {
+    expect(workingHoursTakeOffPlan({ ...salaried, lastReportEndYmd: '2026-11-07' }, 'Wes Calloway').message).toContain('2 earlier weeks have no pay report, and will be priced at the standard week.')
+    expect(workingHoursTakeOffPlan({ ...salaried, lastReportEndYmd: '2026-11-14' }, 'Wes Calloway').message).toContain('One earlier week has no pay report, and will be priced at the standard week.')
+  })
+
+  it('moves no pay for a salaried person already on the standard week, and asks for no reason', () => {
+    const off = workingHoursTakeOffPlan({ ...salaried, current: weekdays([420, 900]), paidWeek: [0, 8, 8, 8, 8, 8, 0] }, 'Wes Calloway')
+    expect([off.movesPay, off.needsReason]).toEqual([false, false])
+    expect(off.message).toBe('Take working hours off Wes Calloway? From this week nothing holds them to a start and an end. Their pay stays on the standard week, 8 h Mon to Fri. What the hours were is kept under Earlier hours.')
+    expect(off.done).toBe('Working hours taken off')
+  })
+
+  it('has no pay side for an hourly person', () => {
+    const off = workingHoursTakeOffPlan(hourly, 'Wes Calloway')
+    expect([off.movesPay, off.needsReason]).toEqual([false, false])
+    expect(off.message).toBe('Take working hours off Wes Calloway? From this week nothing holds them to a start and an end. What the hours were is kept under Earlier hours.')
+  })
+
+  it('reads a week with a short day as a week of its own', () => {
+    const off = workingHoursTakeOffPlan({ ...salaried, paidWeek: [0, 8, 8, 8, 8, 4.25, 0] }, 'Wes Calloway')
+    expect(off.movesPay).toBe(true)
+    expect(off.message).toContain('Their set week on pay is 8 h Mon to Thu, 4.25 h Fri today.')
+  })
+
+  it('says every sentence in plain words', () => {
+    for (const facts of [salaried, { ...salaried, lastReportEndYmd: '2026-11-07' }, { ...salaried, paidWeek: [0, 8, 8, 8, 8, 8, 0] }, hourly]) {
+      const off = workingHoursTakeOffPlan(facts, 'Wes Calloway')
+      expect(plainWordsFailures(off.message)).toEqual([])
+      expect(plainWordsFailures(off.done)).toEqual([])
+    }
   })
 })
 
