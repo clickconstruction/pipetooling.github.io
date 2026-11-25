@@ -773,6 +773,8 @@ describe('letter-first: the letter on page 1, the account behind it (v2.7086, pu
     expect(box).toContain('<svg style="width:72px;height:72px;display:block" data-code viewBox="0 0 1 1"></svg>')
     expect(box).toContain('Scan to pay')
     expect(box).toContain('or go to clicktooling.com/pay/inv-a')
+    // The owner's look (punch list #333): no small Pay online label over those two lines, so the box is shorter.
+    expect(box).not.toContain('Pay online')
     expect(html).not.toContain('data-demand-pay-codes')
     expect(html.indexOf('Sincerely,')).toBeLessThan(html.indexOf('data-demand-page-break'))
     expect(html.indexOf('data-demand-page-break')).toBeLessThan(html.indexOf('Statement of account'))

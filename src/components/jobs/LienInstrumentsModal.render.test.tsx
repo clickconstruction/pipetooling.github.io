@@ -467,7 +467,8 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     const code = document.querySelector('[data-demand-amount-box] [data-demand-pay-code]') as HTMLElement
     expect(code).toBeTruthy()
     expect(document.querySelector('[data-demand-pay-codes]')).toBeNull()
-    expect(code.textContent).toContain('Pay online')
+    // The box's code has no small Pay online label since v2.8549 (punch list #333): the code, Scan to pay and the address.
+    expect(code.textContent).not.toContain('Pay online')
     expect(code.textContent).toContain('Scan to pay')
     expect(code.textContent).toContain('clicktooling.com/pay/inv-4102')
     // The letter ends before the account: the signature, then the break, then the statement.
