@@ -160,6 +160,14 @@ describe('the header and the row’s doors', () => {
     expect(three?.title).toContain('the other 2')
   })
 
+  it('a card with a pictures page and no mock-up keeps a door, named pictures (punch list #438)', () => {
+    const pictures = { page: 'to-dos/a/pictures.html', count: 5, drawn: '2026-11-24', drawnAt: 'v2.8442', stale: false, lead: null }
+    expect(mockupDoor(row({ pictures }))).toEqual({ href: '/to-dos/a/pictures.html', label: 'pictures', title: 'to-dos/a/pictures.html' })
+    // With a mock-up too, the door is the mock-up's.
+    expect(mockupDoor(row({ mockups: ['to-dos/a/mockup.html'], pictures }))?.label).toBe('mock-up')
+    expect(mockupDoor(row({ pictures: { ...pictures, page: null } }))).toBeNull()
+  })
+
   it('draws the version chip only for a card that shipped something', () => {
     expect(hasShippedVersion('v2.7042 · 7043')).toBe(true)
     expect(hasShippedVersion('—')).toBe(false)
