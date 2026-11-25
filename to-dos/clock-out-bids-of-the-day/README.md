@@ -2,7 +2,7 @@
 name: "Clock out: the bids of the day"
 number: 445
 group: gated
-status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's two looks the same day, one line shape for every row and the colour strip on the pick · nothing is built
+status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · nothing is built
 summary: >
   An estimator works one bid at a time, and the app already records most of that work without being asked.
   This card reads those records into a list at clock out: the bids the person worked on today, with nothing
@@ -192,7 +192,7 @@ with a **J1007** chip. An estimator cannot read most job rows, so the bid's name
    a day and a bid, on the company's day. *Cost:* one table, one function changed, about ten rows a
    person a day, no new request. The ledger's new index is built `CONCURRENTLY`, as its table comment asks. *Proves:* a bid was open and in use, with no change needed. *Risk:* it
    is a new measure of a person, so who reads it is call 4.
-3. **The list, with corrections.** The sheet draws the pick: two shelves, **Take off**, **Add** and the
+3. **The list, with corrections.** The sheet draws the pick: the strip, two shelves, a tick on every row and the
    board's bids as chips. The press saves the list the person left. *Cost:* one table for the kept list,
    the sheet's new section. *Proves:* the person saw the list and let it stand or changed it.
    *Risk:* a press is not proof of a read.
@@ -225,10 +225,11 @@ and a day the app saw nothing. The rows and buttons work.
 
 - The day as a strip on top, one colour a bid, with the grey named. Added on the owner's second look.
 - Two shelves. **Bids you worked on today** holds bids the person changed. **Opened, nothing changed**
-  holds the rest, each with one **Add** press.
+  holds the rest, each one press away from the list.
 - Every row's line reads the same way: the size, then the tab, as **2 hours · Pricing** or
   **5 minutes · Counts**. The size is rounded, and one line under the list says the sizes are rough.
-- **Take off** leaves the row in place, struck through, with **Put back**.
+- Taking a bid off is one press on the row's tick. The row stays in place, struck through, and one more
+  press puts it back.
 - **Add a bid the app missed** offers the bids on the person's board as one-press chips, then the search
   the sheet already has.
 - **Complete clock out** is live the moment the list holds one bid, and says the count. The note becomes
@@ -273,6 +274,26 @@ It was not too late. What changed in `mockup.html`:
 
 What the strip needs: the blocks come from the same rows as the list. Step 1 can place a block from a run
 of changes. An opened bid's block needs the beat of step 2. So the strip ships with the list in step 3.
+
+A third look the same day:
+
+> "Take off" takes up a large amount of space. How can we make that smaller? Or an icon instead?
+
+Measured on a phone row, the words were a press 78 px wide beside a name that then wrapped to two lines.
+`mockup.html` now draws three ways behind a **Take off, on the pick** switch:
+
+- **A tick, the pick.** The row's colour mark becomes the control, a box 22 px wide in a 44 px press. A
+  ticked box is a bid that counts today. Pressing it takes the bid off: the box empties, the name is struck
+  and the block on the strip turns to an outline. Pressing again puts it back. An opened bid is an empty
+  box in its own colour, and ticking it adds it. No control is left on the right, so the name gets the
+  whole row and wraps less.
+- **An ×.** A 44 px press with no frame on the right, and a turn-back arrow once the bid is off. Smaller
+  than the words, and it still costs the row 44 px.
+- **Words.** As it was, to compare.
+
+Why the tick: it is the smallest, it needs no second icon for putting a bid back, and it means the same
+thing the strip already shows, filled for kept and outline for not. Its one weakness is that a box does
+not say *take off* in words. The press carries the words for a screen reader and on hover.
 
 The six calls below are not answered yet.
 
@@ -320,7 +341,7 @@ and the sheet's section.
 |---|---|---|---|
 | 1 | The kernel that reads the day's bids, and the note that fills from it for anyone whose day held a bid | S | Nothing |
 | 2 | The beat names the bid and counts only an active person, with its table, its read rule and an index on the ledger by person | M | A migration and its push |
-| 3 | The pick in the sheet: the strip, the two shelves, **Take off**, **Add**, the chips, the kept list saved at the press | M | A migration and its push |
+| 3 | The pick in the sheet: the strip, the two shelves, the tick that takes a bid off or adds it, the chips, the kept list saved at the press | M | A migration and its push |
 | 4 | The Bid Board sets the bid in front | S | Nothing |
 | 5 | The list on the My Time card, and where the office reads it beside the hours | S | Nothing |
 | 6 | CountTooling sends the beat | M | A change in the other app, and a function deploy if it comes through a function |
@@ -337,8 +358,8 @@ ask on most days. Steps 2 and 3 each push right after the merge.
 - **Step 2, walked.** Open a ZZ Test bid on Pricing for three minutes and change nothing. The bid appears
   under **Opened, nothing changed**. Leave the tab in front and untouched for ten minutes: the size does
   not grow.
-- **Step 3, walked on a phone and a desktop.** **Take off**, **Put back**, **Add** from a chip, **Add**
-  from the search, the count in the button, the empty day, and the saved list read back after the press.
+- **Step 3, walked on a phone and a desktop.** A tick off, a tick back on, an opened bid ticked, a bid
+  added from a chip and from the search, the count in the button, the empty day, and the saved list read back after the press.
 - **The count again.** Run the counts in this card once more a month after step 2. The share of the day
   a trace can vouch for should rise, most of all for the days that held no change.
 
