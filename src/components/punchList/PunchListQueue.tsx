@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { Link } from 'react-router-dom'
 import { paceAsOfWords, paceFreshness, queueBucketsWords, queueMoreWords, type ShipPacePicture } from '../../../supabase/functions/_shared/shipPace'
 import type { UserRole } from '../../hooks/useAuth'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { emptyWords } from '../../lib/emptyWords'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import { PHONE_PRESS_MIN_HEIGHT, thumbInLine } from '../../lib/phonePress'
 import { type ShipPaceIo, shipPaceIo } from '../../lib/settings/shipPaceIo'
 import { SHIP_PACE_WORDS } from '../../lib/settings/shipPaceWords'
 import { canSeeShipPace } from '../../lib/settingsGroups'
@@ -44,6 +46,8 @@ type Props = {
  */
 export function PunchListQueue({ role = null, io = shipPaceIo, now = Date.now }: Props) {
   const [open, setOpen] = useState<boolean>(() => readOpen())
+  // On a phone the fold and the dev's press stand a fingertip tall (the walk of 2026-11-25 measured 24 and 29 px).
+  const isMobile = useIsMobile()
   // undefined while the first read runs; null when there is no row yet.
   const [picture, setPicture] = useState<ShipPacePicture | null | undefined>(undefined)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
@@ -142,7 +146,7 @@ export function PunchListQueue({ role = null, io = shipPaceIo, now = Date.now }:
             </span>
           ) : null}
         </span>
-        <button type="button" onClick={toggle} aria-expanded={open} aria-controls="queue-body" style={{ ...pill, marginLeft: 'auto' }}>
+        <button type="button" onClick={toggle} aria-expanded={open} aria-controls="queue-body" style={{ ...pill, marginLeft: 'auto', ...(isMobile ? PHONE_TALL : null) }}>
           {open ? PUNCH_QUEUE_WORDS.hide : PUNCH_QUEUE_WORDS.show}
         </button>
       </div>
@@ -163,7 +167,7 @@ export function PunchListQueue({ role = null, io = shipPaceIo, now = Date.now }:
                 type="button"
                 onClick={() => void readNow()}
                 disabled={reading}
-                style={{ fontFamily: 'inherit', fontSize: '0.85rem', padding: '0.3rem 0.75rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', cursor: reading ? 'default' : 'pointer', opacity: reading ? 0.7 : 1 }}
+                style={{ fontFamily: 'inherit', fontSize: '0.85rem', padding: '0.3rem 0.75rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', cursor: reading ? 'default' : 'pointer', opacity: reading ? 0.7 : 1, ...(isMobile ? PHONE_TALL : null) }}
               >
                 {reading ? SHIP_PACE_WORDS.reading : SHIP_PACE_WORDS.readNow}
               </button>
@@ -181,6 +185,7 @@ export function PunchListQueue({ role = null, io = shipPaceIo, now = Date.now }:
 }
 
 function Body({ picture, nowMs, role }: { picture: ShipPacePicture; nowMs: number; role: UserRole | null }) {
+  const isMobile = useIsMobile()
   const stale = paceFreshness(picture.asOf, nowMs).stale
   const queue = picture.queue
   const rows = queue ? queueRows(queue.entries, nowMs) : []
@@ -254,7 +259,7 @@ function Body({ picture, nowMs, role }: { picture: ShipPacePicture; nowMs: numbe
         <p data-testid="queue-buckets" style={{ margin: 0, padding: '0.6rem 0.9rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           {queue ? `${queueBucketsWords(queue)} ` : ''}
           {canSeeShipPace(role) ? (
-            <Link to="/settings?tab=settings-ship-pace" style={{ color: 'var(--text-link)' }}>
+            <Link to="/settings?tab=settings-ship-pace" style={{ color: 'var(--text-link)', ...(isMobile ? DOOR_PHONE : null) }}>
               {PUNCH_QUEUE_WORDS.door}
             </Link>
           ) : null}
@@ -329,6 +334,12 @@ const pill: CSSProperties = {
   color: 'var(--text-base)',
   cursor: 'pointer',
 }
+/** A button of the block on a phone: a fingertip tall, its words still centred. */
+const PHONE_TALL: CSSProperties = { minHeight: PHONE_PRESS_MIN_HEIGHT }
+/** The line the door sits in: 0.85rem words at the page's 1.5 line height. */
+const DOOR_LINE = 20
+/** The door on a phone: a fingertip tall inside its line of words, and the line stays as tall as it was drawn. */
+const DOOR_PHONE: CSSProperties = { display: 'inline-flex', alignItems: 'center', ...thumbInLine(DOOR_LINE) }
 
 const OPEN_KEY = 'punchListQueueOpen'
 

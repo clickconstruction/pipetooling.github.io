@@ -2,7 +2,7 @@
 name: "Punch list: the pace of the list and the merge queue, on one page"
 number: 444
 group: close
-status: asked 2026-11-24 · all four PRs are merged · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is live as v2.8546 · PR 3 (In the merge queue on the page) is live as v2.8547 · PR 4 (each line's state) merged as v2.8550 on 2026-11-25 and ship-pace was redeployed the same hour · all three were walked on the live page on 2026-11-25 and hold · of the five State chips only the blue one was seen · left: four presses under 44 px on a phone, found by the first walk
+status: asked 2026-11-24 · all four PRs are merged · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is live as v2.8546 · PR 3 (In the merge queue on the page) is live as v2.8547 · PR 4 (each line's state) merged as v2.8550 on 2026-11-25 and ship-pace was redeployed the same hour · all three were walked on the live page on 2026-11-25 and hold · of the five State chips only the blue one was seen · the four presses the first walk found under 44 px on a phone stand a fingertip tall in v2.8574, not yet seen on a phone · left: a look at those four, and a chip that is not blue
 summary: >
   The owner asked to see the merge queue and how fast punch-list cards are being closed. Most of it
   is already live in two places. The Burndown at the top of /punch-list counts cards opened and closed
@@ -10,10 +10,10 @@ summary: >
   of GitHub every 15 minutes. This card joins them on /punch-list and fills four gaps. The Burndown has
   no three-week stretch. Its sentence gives no rate a day. The queue is on another page. A change in
   the queue does not say whether its checks are running or it is ready.
-next: Stand the four small presses of the queue block and the Burndown 44 px high on a phone (the first walk's finding). One more look at the State column when a line is waiting its turn or ready, to see a chip that is not blue. Then the card closes.
+next: Read the four small presses of the queue block and the Burndown at 390 px once v2.8574 is live: each 44 px high, folded and open. One more look at the State column when a line is waiting its turn or ready, to see a chip that is not blue. Then the card closes.
 size: M as a train of four (XS · S · S · S); left: three walks
-ver: v2.8546, v2.8547, v2.8550
-blocker: None. The build is done and its three walks hold. The small presses are a client-only mend.
+ver: v2.8546, v2.8547, v2.8550, v2.8574
+blocker: None. The build is done and its three walks hold. The small presses are mended in v2.8574 and wait for a look.
 opinion: build — the history, the read of GitHub and its token already exist, so this is three small changes to screens and one field more on a read.
 ---
 
@@ -238,7 +238,8 @@ Nothing here writes a row a person made. The one write is the function's own row
 - 2026-11-25, walked on the live page as a dev, in three sittings. **The queue block (v2.8547) holds.** On
   a row over five minutes old a dev's opening made one read of the row, one call to `ship-pace` and one
   more read. At 390 px four presses stand under 44 px: **Hide the queue**, **Read GitHub now**, **Hide
-  the burndown** and the link *How fast a change ships*. That mend is not built.
+  the burndown** and the link *How fast a change ships*. That mend is built in v2.8574: on a phone each
+  stands 44 px, and the link gives its line back what it grew by. Not yet seen on a phone.
 - **The Burndown's 21 days (v2.8546) hold**, on all three steps of the look.
 - **The State column (v2.8550) holds, with one tone of five seen.** It sits between the title and **In
   the queue**. Five lines each drew a blue **Checks running** chip, the same five changes in the same

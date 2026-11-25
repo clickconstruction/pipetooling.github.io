@@ -5,6 +5,11 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { PunchListBurndown } from './PunchListBurndown'
 import { EMPTY_HISTORY, historyFromStates, type HistoryCard, type PunchListHistory } from '../../lib/todos/punchListHistory'
 import type { BoardItem } from '../../lib/todos/todoBoard'
+import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
+
+/** The width the block is drawn at: a desk unless a case says a phone. */
+const screenIs = vi.hoisted(() => ({ phone: false }))
+vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => screenIs.phone }))
 
 const row = (over: Partial<BoardItem>): BoardItem => ({
   slug: 'a',
@@ -57,7 +62,21 @@ beforeAll(() => {
 })
 
 describe('PunchListBurndown', () => {
-  beforeEach(() => window.localStorage.clear())
+  beforeEach(() => {
+    window.localStorage.clear()
+    screenIs.phone = false
+  })
+
+  it('on a phone the fold stands a fingertip tall, open and folded, and keeps its drawn size at a desk', () => {
+    const desk = render(<PunchListBurndown history={history} items={items} now={() => NOW} />)
+    expect(screen.getByRole('button', { name: 'Hide the burndown' }).style.minHeight).toBe('')
+    desk.unmount()
+    screenIs.phone = true
+    render(<PunchListBurndown history={history} items={items} now={() => NOW} />)
+    expect(screen.getByRole('button', { name: 'Hide the burndown' }).style.minHeight).toBe(`${PHONE_PRESS_MIN_HEIGHT}px`)
+    fireEvent.click(screen.getByRole('button', { name: 'Hide the burndown' }))
+    expect(screen.getByRole('button', { name: 'Show the burndown' }).style.minHeight).toBe(`${PHONE_PRESS_MIN_HEIGHT}px`)
+  })
 
   it('says what is open, what the stretch did and when the list clears', () => {
     render(<PunchListBurndown history={history} items={items} now={() => NOW} />)
