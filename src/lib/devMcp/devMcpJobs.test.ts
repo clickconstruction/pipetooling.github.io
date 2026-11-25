@@ -18,11 +18,17 @@ import {
   jobUpdateAppliedWords,
   jobUpdateDryRun,
   jobUpdateInput,
+  lineNameOf,
+  linesTotalDollars,
   newJobDryRun,
   newJobRow,
+  priceLinePlan,
+  priceLineRow,
   readJobUpdateWorld,
   readNewJobWorld,
   statusSteps,
+  usd,
+  type JobLineRow,
   type JobReads,
   type JobRow,
   type JobUpdatePayload,
@@ -34,6 +40,9 @@ import { JOB_KINDS as APP_JOB_KINDS } from '../jobs/jobKind'
 import { COMPANY_OWNER_USER_ID_KEY as APP_COMPANY_KEY } from '../companyOwner'
 import { chooseJobOwnerFromOverrideRows, JOB_OWNER_OVERRIDE_DEFAULT_KEY as APP_DEFAULT_KEY } from '../resolveEffectiveJobMasterUserId'
 import { titleCaseAddress } from '../addressTitleCase'
+import { fixtureInsertRows } from '../jobs/jobFormAutosaveSlices'
+import { jobFormRevenueDollars } from '../jobs/jobFormMoneyTotals'
+import { revenueDollarsFromFixtures } from '../revenueFromJobFixtures'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const README = readFileSync('docs/dev-mcp/README.md', 'utf8')
@@ -309,6 +318,7 @@ describe('the update verbs (v2.6793, PR 2)', () => {
     development_id: null, project_id: null, bid_id: null, bill_to_party: 'customer', gc_customer_id: null, google_drive_link: null, job_pictures_link: null, job_plans_link: null, account_manager_user_id: null, revenue: 1, pct_complete: 0, kind: null,
     ...over,
   })
+  const LINE: JobLineRow = { id: 'line-1', name: 'ZZ TEST seat walk', count: 1, line_unit_price: 1, line_kind: 'work', invoice_id: null, sequence_order: 0 }
   const up = (over: Record<string, unknown>): JobUpdatePayload => {
     const built = jobUpdateInput('plan_job_update', { update: { job_id: JOBID, ...over } })
     if (!built.ok) throw new Error(built.error)
@@ -360,7 +370,7 @@ describe('the update verbs (v2.6793, PR 2)', () => {
     expect(statusSteps('waiting', 'paid')).toEqual(['working', 'ready_to_bill', 'billed', 'paid'])
   })
   it('the plan shows before → after with the no-ops dropped, the steps with the send-back warning, and refuses a plan that changes nothing', () => {
-    const dry = jobUpdateDryRun(up({ set: { revenue: 25, job_name: 'ZZ TEST seat walk', customer_phone: '5125550199' }, status: 'ready_to_bill' }), { job: row(), named: {} })
+    const dry = jobUpdateDryRun(up({ set: { revenue: 25, job_name: 'ZZ TEST seat walk', customer_phone: '5125550199' }, status: 'ready_to_bill' }), { job: row(), named: {}, lines: [] })
     if (!dry.ok) throw new Error(dry.refused)
     expect(dry.reply).toMatchObject({
       action: 'update',
@@ -369,28 +379,28 @@ describe('the update verbs (v2.6793, PR 2)', () => {
       patch: { revenue: 25, customer_phone: '5125550199' },
       status: { from: 'waiting', to: 'ready_to_bill', steps: [{ to: 'working', words: 'Waiting → Working' }, { to: 'ready_to_bill', words: 'Working → Ready to Bill' }] },
     })
-    const back = jobUpdateDryRun(up({ status: 'working' }), { job: row({ status: 'ready_to_bill' }), named: {} })
+    const back = jobUpdateDryRun(up({ status: 'working' }), { job: row({ status: 'ready_to_bill' }), named: {}, lines: null })
     if (!back.ok) throw new Error(back.refused)
     expect(String((back.reply.status as { steps: Array<{ words: string }> }).steps[0]?.words)).toContain('deletes the job')
-    const billed = jobUpdateDryRun(up({ status: 'billed' }), { job: row({ status: 'ready_to_bill' }), named: {} })
+    const billed = jobUpdateDryRun(up({ status: 'billed' }), { job: row({ status: 'ready_to_bill' }), named: {}, lines: null })
     if (!billed.ok) throw new Error(billed.refused)
     expect(String((billed.reply.status as { steps: Array<{ words: string }> }).steps[0]?.words)).toContain('plan_bill')
     // A price typed as the row holds it is a no-op; so is the status it already has.
-    expect(jobUpdateDryRun(up({ set: { revenue: '1' }, status: 'waiting' }), { job: row(), named: {} })).toMatchObject({ ok: false, refused: expect.stringContaining('already reads that way') })
-    expect(jobUpdateDryRun(up({ set: { job_name: 'ZZ TEST seat walk' } }), { job: row(), named: {} })).toMatchObject({ ok: false, refused: expect.stringContaining('Nothing to apply') })
+    expect(jobUpdateDryRun(up({ set: { revenue: '1' }, status: 'waiting' }), { job: row(), named: {}, lines: [LINE] })).toMatchObject({ ok: false, refused: expect.stringContaining('already reads that way') })
+    expect(jobUpdateDryRun(up({ set: { job_name: 'ZZ TEST seat walk' } }), { job: row(), named: {}, lines: [] })).toMatchObject({ ok: false, refused: expect.stringContaining('Nothing to apply') })
   })
   it('refuses a job or a named row not visible, a GC bill-to with no GC, and names the new row’s name in the change', () => {
-    expect(jobUpdateDryRun(up({ status: 'working' }), { job: null, named: {} })).toMatchObject({ ok: false, refused: expect.stringContaining('find_job') })
-    expect(jobUpdateDryRun(up({ set: { bid_id: BID } }), { job: row(), named: { bid_id: null } })).toMatchObject({ ok: false, refused: expect.stringContaining('find_bid') })
-    expect(jobUpdateDryRun(up({ set: { bill_to_party: 'gc' } }), { job: row(), named: {} })).toMatchObject({ ok: false, refused: expect.stringContaining('gc_customer_id') })
-    const dry = jobUpdateDryRun(up({ set: { bid_id: BID } }), { job: row(), named: { bid_id: { id: BID, name: 'Oak Hill' } } })
+    expect(jobUpdateDryRun(up({ status: 'working' }), { job: null, named: {}, lines: null })).toMatchObject({ ok: false, refused: expect.stringContaining('find_job') })
+    expect(jobUpdateDryRun(up({ set: { bid_id: BID } }), { job: row(), named: { bid_id: null }, lines: null })).toMatchObject({ ok: false, refused: expect.stringContaining('find_bid') })
+    expect(jobUpdateDryRun(up({ set: { bill_to_party: 'gc' } }), { job: row(), named: {}, lines: [] })).toMatchObject({ ok: false, refused: expect.stringContaining('gc_customer_id') })
+    const dry = jobUpdateDryRun(up({ set: { bid_id: BID } }), { job: row(), named: { bid_id: { id: BID, name: 'Oak Hill' } }, lines: null })
     expect(dry).toMatchObject({ ok: true, reply: { changes: [{ column: 'bid_id', before: null, after: BID, named: 'Oak Hill' }] } })
   })
   it('hashes the before values and updated_at, so a row changed since refuses the apply', async () => {
     const p1 = up({ set: { revenue: 25 } })
-    const a = jobUpdateDryRun(p1, { job: row(), named: {} })
-    const b = jobUpdateDryRun(p1, { job: row({ updated_at: '2026-11-09T15:01:00+00:00' }), named: {} })
-    const c = jobUpdateDryRun(p1, { job: row({ revenue: 2 }), named: {} })
+    const a = jobUpdateDryRun(p1, { job: row(), named: {}, lines: [] })
+    const b = jobUpdateDryRun(p1, { job: row({ updated_at: '2026-11-09T15:01:00+00:00' }), named: {}, lines: [] })
+    const c = jobUpdateDryRun(p1, { job: row({ revenue: 2 }), named: {}, lines: [] })
     if (!a.ok || !b.ok || !c.ok) throw new Error('refused')
     const ha = await planHash('plan_job_update', p1, a.reply)
     expect(await planHash('plan_job_update', p1, a.reply)).toBe(ha)
@@ -416,5 +426,161 @@ describe('the update verbs (v2.6793, PR 2)', () => {
     expect(SERVER).toContain("name: 'apply_job_update',")
     expect(SERVER).toContain("await restRows(session, 'PATCH', 'jobs_ledger', `id=eq.${job.id}`, patch)")
     expect(SERVER).toContain("await restPost(session, 'rpc/update_job_status', { p_job_id: job.id, p_to_status: to })")
+  })
+})
+
+describe('the line item the price rides on (v2.8555, punch list #293)', () => {
+  const JOBID = '99999999-1111-4111-8111-111111111111'
+  const LINE: JobLineRow = { id: 'line-1', name: 'ZZ TEST seat walk', count: 1, line_unit_price: 1, line_kind: 'work', invoice_id: null, sequence_order: 0 }
+  const row = (over: Partial<JobRow> = {}): JobRow => ({ id: JOBID, status: 'billed', updated_at: '2026-11-24T15:00:00+00:00', master_user_id: OWNER, job_name: 'ZZ TEST seat walk', hcp_number: '', click_number: '9293', revenue: 1, ...over })
+  const up = (over: Record<string, unknown>): JobUpdatePayload => {
+    const built = jobUpdateInput('plan_job_update', { update: { job_id: JOBID, ...over } })
+    if (!built.ok) throw new Error(built.error)
+    return built.p
+  }
+
+  it('the row is the form’s own for one named work line, and the form sums it to the price', () => {
+    const formRow = fixtureInsertRows(JOBID, [{ id: 'minted-by-the-form', name: 'ZZ TEST seat walk', count: 1, line_unit_price: 12.5, line_description: '', invoice_id: null }])[0]
+    const { id: _formId, ...formColumns } = formRow as Record<string, unknown>
+    expect(priceLineRow(JOBID, 'ZZ TEST seat walk', 12.5)).toEqual(formColumns)
+    // What the Bill tab's save would write as the price with that line on the form: the price, not 0.
+    expect(jobFormRevenueDollars([{ name: 'ZZ TEST seat walk', count: 1, line_unit_price: 12.5 }], 0)).toBe(12.5)
+    expect(jobFormRevenueDollars([], 0)).toBe(0)
+    // A price of 0 is written as no price, as the form writes it.
+    expect(priceLineRow(JOBID, 'x', 0).line_unit_price).toBeNull()
+  })
+  it('sums the lines as the form does', () => {
+    const cases: JobLineRow[][] = [
+      [],
+      [LINE],
+      [{ ...LINE, count: 3, line_unit_price: '19.99' }, { ...LINE, id: 'l2', name: ' ', line_unit_price: 500 }],
+      [{ ...LINE, count: 0, line_unit_price: 40 }, { ...LINE, id: 'l2', name: 'Loyalty', line_kind: 'discount', line_unit_price: -4 }, { ...LINE, id: 'l3', line_unit_price: null }],
+    ]
+    for (const lines of cases) {
+      expect(linesTotalDollars(lines)).toBe(revenueDollarsFromFixtures(lines.map((l) => ({ name: l.name ?? '', count: Number(l.count), line_unit_price: l.line_unit_price == null ? null : Number(l.line_unit_price) }))))
+    }
+    expect(linesTotalDollars(cases[2] as JobLineRow[])).toBe(59.97)
+  })
+  it('says dollars plainly and names a line as the form saves the name', () => {
+    expect([usd(1), usd(12.5), usd(1250), usd(0)]).toEqual(['$1', '$12.50', '$1,250', '$0'])
+    expect(lineNameOf('  Water   heater  swap ')).toBe('Water heater swap')
+    expect(lineNameOf(undefined)).toBeNull()
+    expect(lineNameOf('  ')).toBeNull()
+    expect(lineNameOf(7)).toBe(false)
+    expect(lineNameOf('x'.repeat(201))).toBe(false)
+  })
+  it('plan_job plans one line of 1 at the price, named line_name or the job’s name, and none at a price of 0', async () => {
+    const dry = newJobDryRun(p(), world())
+    if (!dry.ok) throw new Error(dry.refused)
+    expect(dry.reply.line_item).toEqual({ write: 'insert', name: 'ZZ TEST seat walk', count: 1, line_unit_price: 1, words: 'one line item, "ZZ TEST seat walk", 1 × $1 — the Bill tab\'s lines total the price' })
+    const named = newJobDryRun(p({ line_name: ' Water  heater swap ', revenue: 1250 }), world())
+    if (!named.ok) throw new Error(named.refused)
+    expect(named.reply.line_item).toMatchObject({ name: 'Water heater swap', line_unit_price: 1250, words: expect.stringContaining('1 × $1,250') })
+    for (const none of [newJobDryRun(p({ revenue: 0 }), world()), newJobDryRun(p({ revenue: undefined }), world())]) {
+      if (!none.ok) throw new Error(none.refused)
+      expect(none.reply.line_item).toBeNull()
+    }
+    // The line is in what the hash commits to.
+    expect(await planHash('plan_job', p(), dry.reply)).not.toBe(await planHash('plan_job', p(), { ...dry.reply, line_item: null }))
+    expect(String((dry.reply.not_done as string[])[0])).toContain('more line items')
+  })
+  it('plan_job refuses a line_name with no price, and one that is not text', () => {
+    expect(jobInput('plan_job', { job: { ...JOB, revenue: 0, line_name: 'Swap' } })).toMatchObject({ ok: false, error: expect.stringContaining('give revenue') })
+    expect(jobInput('plan_job', { job: { ...JOB, revenue: undefined, line_name: 'Swap' } })).toMatchObject({ ok: false, error: expect.stringContaining('give revenue') })
+    expect(jobInput('plan_job', { job: { ...JOB, line_name: 5 } })).toMatchObject({ ok: false, error: expect.stringContaining('line_name') })
+    expect(jobInput('plan_job', { job: { ...JOB, line_name: 'Swap' } })).toMatchObject({ ok: true, p: { line_name: 'Swap' } })
+  })
+  it('a price with no line under it gets its line, even when the price does not change', () => {
+    const same = priceLinePlan({ label: 'JP9293', jobName: 'ZZ TEST seat walk', priceBefore: 1, priceAfter: 1, lines: [] })
+    expect(same).toMatchObject({ ok: true, line: { write: 'insert', name: 'ZZ TEST seat walk', count: 1, line_unit_price: 1, words: expect.stringContaining('has a price and no line item') } })
+    const moved = priceLinePlan({ label: 'JP9293', jobName: 'ZZ TEST seat walk', priceBefore: 1, priceAfter: 25, lines: [], lineName: 'Swap' })
+    expect(moved).toMatchObject({ ok: true, line: { write: 'insert', name: 'Swap', line_unit_price: 25, words: expect.stringContaining('1 × $25') } })
+    expect(priceLinePlan({ label: 'JP9293', jobName: 'x', priceBefore: 1, priceAfter: 0, lines: [] })).toEqual({ ok: true, line: null })
+    expect(priceLinePlan({ label: 'JP9293', jobName: 'x', priceBefore: 0, priceAfter: 0, lines: [] })).toEqual({ ok: true, line: null })
+  })
+  it('one plain unbilled line of 1 that totals the price moves with it; a price of 0 clears its price', () => {
+    expect(priceLinePlan({ label: 'JP9293', jobName: 'x', priceBefore: 1, priceAfter: 25, lines: [LINE] })).toEqual({
+      ok: true,
+      line: { write: 'update', id: 'line-1', name: 'ZZ TEST seat walk', count: 1, before: 1, line_unit_price: 25, words: 'the line item "ZZ TEST seat walk" goes from $1 to $25 with the price, so the Bill tab\'s lines still total it' },
+    })
+    expect(priceLinePlan({ label: 'JP9293', jobName: 'x', priceBefore: 1, priceAfter: 0, lines: [{ ...LINE, line_unit_price: '1.00' }] })).toMatchObject({ ok: true, line: { write: 'update', before: 1, line_unit_price: null } })
+    // The price as the job holds it touches no line, whatever the lines are.
+    expect(priceLinePlan({ label: 'JP9293', jobName: 'x', priceBefore: 1, priceAfter: 1, lines: [LINE, { ...LINE, id: 'l2' }] })).toEqual({ ok: true, line: null })
+  })
+  it('refuses a price beside lines that are not its to change, each with its reason and the Bill tab as the door', () => {
+    const plan = (lines: JobLineRow[], priceBefore = 1) => priceLinePlan({ label: 'JP9293', jobName: 'x', priceBefore, priceAfter: 25, lines })
+    expect(plan([LINE, { ...LINE, id: 'l2', line_unit_price: 4 }], 5)).toMatchObject({ ok: false, refused: expect.stringContaining('carries 2 line items totalling $5') })
+    expect(plan([{ ...LINE, invoice_id: 'inv-1' }])).toMatchObject({ ok: false, refused: expect.stringContaining('is on a bill') })
+    expect(plan([{ ...LINE, count: 2, line_unit_price: 0.5 }])).toMatchObject({ ok: false, refused: expect.stringContaining('is 2 of a unit price') })
+    expect(plan([{ ...LINE, line_kind: 'discount', line_unit_price: -1 }], -1)).toMatchObject({ ok: false, refused: expect.stringContaining('is a discount') })
+    expect(plan([LINE], 36)).toMatchObject({ ok: false, refused: expect.stringContaining('totals $1 while the job\'s price is $36') })
+    expect(plan([{ ...LINE, name: ' ' }])).toMatchObject({ ok: false, refused: expect.stringContaining('has no name') })
+    for (const refused of [plan([LINE, { ...LINE, id: 'l2' }], 2), plan([{ ...LINE, invoice_id: 'inv-1' }])]) {
+      expect(refused).toMatchObject({ ok: false, refused: expect.stringContaining("Change the lines on the job's Bill tab") })
+    }
+  })
+  it('plan_job_update reads the job’s lines only when the price is in set', async () => {
+    const seen: string[] = []
+    const reads: JobReads = { rows: async (table, query) => { seen.push(`${table}?${query}`); return table === 'jobs_ledger' ? [row()] : table === 'jobs_ledger_fixtures' ? [LINE] : [] } }
+    const withPrice = await readJobUpdateWorld(reads, up({ set: { revenue: 25 } }))
+    expect(seen).toContain(`jobs_ledger_fixtures?select=id,name,count,line_unit_price,line_kind,invoice_id,sequence_order&job_id=eq.${JOBID}&order=sequence_order.asc,id.asc`)
+    expect(withPrice.lines).toEqual([LINE])
+    seen.length = 0
+    const without = await readJobUpdateWorld(reads, up({ status: 'paid' }))
+    expect(seen.some((q) => q.startsWith('jobs_ledger_fixtures'))).toBe(false)
+    expect(without.lines).toBeNull()
+  })
+  it('the plan for a job the seat made before: the same price, the line it never had, and nothing else', async () => {
+    const dry = jobUpdateDryRun(up({ set: { revenue: 1 } }), { job: row(), named: {}, lines: [] })
+    if (!dry.ok) throw new Error(dry.refused)
+    expect(dry.reply).toMatchObject({ changes: [], patch: {}, status: null, line_item: { write: 'insert', name: 'ZZ TEST seat walk', count: 1, line_unit_price: 1, words: expect.stringContaining('JP9293 has a price and no line item') } })
+    // With the line down the same call is a no-op again, and the hash follows the lines.
+    expect(jobUpdateDryRun(up({ set: { revenue: 1 } }), { job: row(), named: {}, lines: [LINE] })).toMatchObject({ ok: false, refused: expect.stringContaining('Nothing to apply') })
+    const moved = jobUpdateDryRun(up({ set: { revenue: 25 } }), { job: row(), named: {}, lines: [LINE] })
+    const movedOther = jobUpdateDryRun(up({ set: { revenue: 25 } }), { job: row(), named: {}, lines: [{ ...LINE, id: 'line-2' }] })
+    if (!moved.ok || !movedOther.ok) throw new Error('refused')
+    expect(moved.reply).toMatchObject({ changes: [{ column: 'revenue', before: 1, after: 25 }], patch: { revenue: 25 }, line_item: { write: 'update', id: 'line-1', before: 1, line_unit_price: 25 } })
+    const p1 = up({ set: { revenue: 25 } })
+    expect(await planHash('plan_job_update', p1, moved.reply)).not.toBe(await planHash('plan_job_update', p1, movedOther.reply))
+    expect(String((moved.reply.not_done as string[])[0])).toContain('line items')
+  })
+  it('the plan refuses lines it may not change, lines it did not read, and a line_name with no line to name', () => {
+    expect(jobUpdateDryRun(up({ set: { revenue: 25 } }), { job: row({ revenue: 5 }), named: {}, lines: [LINE, { ...LINE, id: 'l2', line_unit_price: 4 }] })).toMatchObject({ ok: false, refused: expect.stringContaining('JP9293 carries 2 line items') })
+    expect(jobUpdateDryRun(up({ set: { revenue: 25 } }), { job: row(), named: {}, lines: null })).toMatchObject({ ok: false, refused: expect.stringContaining('were not read') })
+    expect(jobUpdateDryRun(up({ set: { revenue: 25 }, line_name: 'Swap' }), { job: row(), named: {}, lines: [LINE] })).toMatchObject({ ok: false, refused: expect.stringContaining('already has its line items') })
+    expect(jobUpdateDryRun(up({ set: { revenue: 0 }, line_name: 'Swap' }), { job: row(), named: {}, lines: [] })).toMatchObject({ ok: false, refused: expect.stringContaining('no line at a price of 0') })
+    expect(jobUpdateInput('plan_job_update', { update: { job_id: JOBID, status: 'paid', line_name: 'Swap' } })).toMatchObject({ ok: false, error: expect.stringContaining('give set.revenue') })
+    expect(up({ set: { revenue: 25 }, line_name: ' The  swap ' })).toMatchObject({ line_name: 'The swap' })
+    expect(jobUpdateDryRun(up({ set: { revenue: 25 }, line_name: 'Swap' }), { job: row(), named: {}, lines: [] })).toMatchObject({ ok: true, reply: { line_item: { write: 'insert', name: 'Swap', line_unit_price: 25 } } })
+  })
+  it('the words after say the line that was written, or that it was not and the door', () => {
+    const job = { id: JOBID, job_name: 'ZZ TEST seat walk', click_number: '9293' }
+    const made = jobAppliedWords(job, { asked: null, saved: false }, { write: 'insert', name: 'ZZ TEST seat walk', line_unit_price: 1, saved: true, id: 'line-1' })
+    expect(made.line_item).toEqual({ wrote: 'insert', id: 'line-1', name: 'ZZ TEST seat walk', count: 1, line_unit_price: 1 })
+    expect(String(made.next)).toContain('plan_bill')
+    const missed = jobAppliedWords(job, { asked: null, saved: false }, { write: 'insert', name: 'ZZ TEST seat walk', line_unit_price: 1, saved: false, why: 'RLS let no row through' })
+    expect(missed.line_item).toBe('not saved: RLS let no row through')
+    expect(String(missed.next)).toContain('NO line item')
+    expect(String(missed.next)).toContain('plan_job_update { job_id, set: { revenue: 1 } }')
+    expect(jobAppliedWords(job, { asked: null, saved: false }).line_item).toBeNull()
+    const moved = jobUpdateAppliedWords(job, { changes: [{ column: 'revenue', before: 1, after: 25 }], held: null }, null, { write: 'update', name: 'ZZ TEST seat walk', line_unit_price: 25, saved: true, id: 'line-1' })
+    expect(moved.line_item).toEqual({ wrote: 'update', id: 'line-1', name: 'ZZ TEST seat walk', count: 1, line_unit_price: 25 })
+    expect(jobUpdateAppliedWords(job, { changes: [], held: null }, null).line_item).toBeNull()
+  })
+  it('the server writes the line after the job on a create, and before the price on an update', () => {
+    const create = SERVER.slice(SERVER.indexOf("case 'apply_job': {"), SERVER.indexOf("case 'plan_job_update':"))
+    const jobInsert = create.indexOf("await restRows(session, 'POST', 'jobs_ledger', 'select=id,click_number,hcp_number,job_name', row)")
+    const lineInsert = create.indexOf("await restRows(session, 'POST', 'jobs_ledger_fixtures', 'select=id', priceLineRow(job.id, linePlan.name, linePlan.line_unit_price ?? 0))")
+    expect(jobInsert).toBeGreaterThan(-1)
+    expect(lineInsert).toBeGreaterThan(jobInsert)
+    expect(create).toContain('jobAppliedWords(job, kind, line)')
+    const update = SERVER.slice(SERVER.indexOf("case 'apply_job_update': {"), SERVER.indexOf("case 'plan_bill':"))
+    const lineWrite = update.indexOf("await restRows(session, 'PATCH', 'jobs_ledger_fixtures', `id=eq.${linePlan.id}&job_id=eq.${job.id}&select=id`, { line_unit_price: linePlan.line_unit_price }, 'return=representation')")
+    const pricePatch = update.indexOf("await restRows(session, 'PATCH', 'jobs_ledger', `id=eq.${job.id}`, patch)")
+    expect(lineWrite).toBeGreaterThan(-1)
+    expect(pricePatch).toBeGreaterThan(lineWrite)
+    expect(update).toContain('The line item was not written, so nothing was changed')
+    expect(update).toContain('jobUpdateAppliedWords(job, landed, status, line)')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.134.0'")
   })
 })
