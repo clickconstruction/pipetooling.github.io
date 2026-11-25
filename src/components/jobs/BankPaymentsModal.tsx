@@ -453,10 +453,14 @@ export default function BankPaymentsModal({
   )
   /** The case ids, for the selection writers that would otherwise fall back to the first deposit. */
   const caseIdsRef = useRef<Set<string>>(new Set())
-  /** True after a close that left no other case (punch list #76): the pane holds nothing until a row is picked, and no read or filter picks the first deposit for it. */
-  const holdNothingRef = useRef(false)
+  /**
+   * True while the pane holds nothing until a row is picked: no read, filter or toggle picks the first deposit for it.
+   * Set when the window opens (punch list #437: Apply starts from a row someone chose) and after a close that left no
+   * other case (punch list #76). Pressing a row clears it.
+   */
+  const holdNothingRef = useRef(open)
   useEffect(() => {
-    if (!open) holdNothingRef.current = false
+    holdNothingRef.current = open
   }, [open])
   useEffect(() => {
     caseIdsRef.current = new Set(caseViews.map((v) => v.id))
@@ -1155,7 +1159,9 @@ export default function BankPaymentsModal({
             setSelectedId((sel) =>
               next.some((r) => r.mercury_transaction_id === sel) || (sel != null && caseIdsRef.current.has(sel))
                 ? sel
-                : next[0]?.mercury_transaction_id ?? null,
+                : sel == null && holdNothingRef.current
+                  ? null
+                  : next[0]?.mercury_transaction_id ?? null,
             )
           })
           return next

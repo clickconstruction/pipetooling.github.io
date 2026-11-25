@@ -17,6 +17,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderSettled } from '../../test/renderSmokeMocks'
+import { pickArDeposit } from '../../test/pickArDeposit'
 import BankPaymentsModal from './BankPaymentsModal'
 
 const calls = vi.hoisted(() => ({
@@ -152,6 +153,7 @@ async function openWithSuggestedReason(): Promise<HTMLElement> {
     <BankPaymentsModal open onClose={() => {}} authUserId="smoke-auth-user-1" authRole="assistant" billedRows={[]} onApplied={() => {}} />,
     {
       loaded: async () => {
+        await pickArDeposit(/from Ferguson Enterprises/)
         const el = await screen.findByTestId('ar-close-out')
         await waitFor(() => expect(pressedReason()).not.toBeNull())
         await waitFor(() => expect(screen.getByTestId('ar-close-out-footer').textContent).not.toContain('Reading how Banking'))

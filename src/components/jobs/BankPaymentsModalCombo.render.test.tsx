@@ -17,6 +17,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { pickArDeposit } from '../../test/pickArDeposit'
 import BankPaymentsModal from './BankPaymentsModal'
 import { buildBilledStageRows } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -105,6 +106,7 @@ describe('BankPaymentsModal combo chip (render smoke)', () => {
         onApplied={() => {}}
       />,
     )
+    await pickArDeposit(/from RELWYN HEALTH PROVIDERS/)
 
     const combo = await screen.findByRole(
       'button',

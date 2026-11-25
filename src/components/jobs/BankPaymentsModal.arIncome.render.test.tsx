@@ -9,6 +9,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { pickArDeposit } from '../../test/pickArDeposit'
 import BankPaymentsModal from './BankPaymentsModal'
 import { buildBilledStageRows } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -107,6 +108,7 @@ async function pickTheBill() {
   renderWithProviders(
     <BankPaymentsModal open onClose={() => {}} authUserId="smoke-auth-user-1" authRole="assistant" billedRows={billedRows} onApplied={() => {}} />,
   )
+  await pickArDeposit(/from City of Sefton/)
   await screen.findByTestId('ar-allocation-row')
   fireEvent.click(screen.getByRole('button', { name: /Apply allocation: \$1,625\.00 · 908/ }))
   await waitFor(() => {
@@ -130,6 +132,7 @@ describe('BankPaymentsModal · applied means income (render smoke)', () => {
     renderWithProviders(
       <BankPaymentsModal open onClose={() => {}} authUserId="smoke-auth-user-1" authRole="assistant" billedRows={[]} onApplied={() => {}} />,
     )
+    await pickArDeposit(/from City of Sefton/)
     await screen.findByText(/Closed out · Vendor refund/)
     expect(screen.queryByTestId('ar-bank-label-note')).toBeNull()
     scenario.closed = false
