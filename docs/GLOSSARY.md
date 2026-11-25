@@ -6763,6 +6763,8 @@ Since v2.8474 (punch list #362, step 5) one line over that list is the door to *
 Since v2.8536 (punch list #362, step 6) the checklist's second card is **Print the run**: one press prints every paper of the run that is right as **one stack**, the notices by envelope, a divider page, then the affidavits by county clerk (`lienRunPrint.ts`, `lienRunStack.ts`, `useLienRunPrint.ts`).
 Since v2.8593 (punch list #362, step 7) a card **Changed since printed** stands over that press when a printed paper of the run would say another thing today: it names the paper, when it printed and by whom, and each statement that moved with both values.
 A right affidavit whose newest print says the same today is not printed again by **Print the run**, and the card says how many.
+Since v2.8595 each paper on that card has three presses: **Reprint this one**, **It stands as printed** and **Take it out of the run**.
+**It stands as printed** is kept on record with who, when and what had changed, it answers for that one change, and **Take back** undoes it.
 A paper left out of the run never prints from that press, and the Board's own two prints are unchanged.
 A line of the checklist is one paper that cannot print as it stands, with its bin in the Board's words, the one thing it waits on and its To do row's own press;
 a paper that can print or is printed is **right**.

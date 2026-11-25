@@ -8,6 +8,8 @@ import { lienAffidavitPrintFields, lienPrintKey, type LienPrintFact } from '../.
 
 const loadMock = vi.hoisted(() => vi.fn())
 vi.mock('../../lib/jobs/lienPrintsIo', () => ({ loadLienNewestPrints: (jobIds: readonly string[]) => loadMock(jobIds) }))
+const standsMock = vi.hoisted(() => ({ read: vi.fn(), write: vi.fn() }))
+vi.mock('../../lib/jobs/lienPrintStandsIo', () => ({ readLienPrintStands: () => standsMock.read(), writeLienPrintStands: (w: unknown) => standsMock.write(w) }))
 
 import { useLienRunPrinted, type LienRunPrintedHookInput } from './useLienRunPrinted'
 
@@ -31,6 +33,8 @@ const mount = (over: Partial<LienRunPrintedHookInput> = {}) => renderHook((p: Li
 
 beforeEach(() => {
   loadMock.mockReset().mockResolvedValue({ prints: new Map(), whole: true })
+  standsMock.read.mockReset().mockResolvedValue([])
+  standsMock.write.mockReset().mockResolvedValue({ changed: true })
   noticesFor.mockClear()
   affidavitsFor.mockClear()
 })
@@ -93,6 +97,37 @@ describe('useLienRunPrinted', () => {
     await act(async () => release({ prints: new Map(), whole: true }))
     await waitFor(() => expect(view.result.current!.reading).toBe(false))
     expect(view.result.current!.printedSame.size).toBe(0)
+  })
+
+  it('It stands is kept under the paper’s own difference, then the paper is no longer asked about', async () => {
+    loadMock.mockResolvedValue({ prints: new Map([fact('affidavit', 'job-1', lienAffidavitPrintFields({ ...AF, unpaidAmount: '2300.00' }))]), whole: true })
+    const view = mount()
+    await waitFor(() => expect(view.result.current!.changed).toHaveLength(1))
+    const paper = view.result.current!.changed[0]!
+    // The next read finds the row the press wrote.
+    standsMock.read.mockResolvedValue([{ id: 's1', jobId: 'job-1', paper: 'affidavit', changeKey: paper.changeKey, changes: [], sentDocumentId: 'c1', stoodBy: 'u1', stoodAt: '2026-11-25T20:00:00Z' }])
+    await act(async () => view.result.current!.markStands(paper))
+    expect(standsMock.write).toHaveBeenCalledWith({ jobId: 'job-1', paper: 'affidavit', stands: true, changeKey: paper.changeKey, changes: [{ key: 'unpaidAmount', label: 'The amount unpaid', printed: '$2,300.00', now: '$2,000.00' }], sentDocumentId: 'c1' })
+    await waitFor(() => expect(view.result.current!.stood).toHaveLength(1))
+    expect(view.result.current!.changed).toEqual([])
+    expect([...view.result.current!.stoodAffidavits]).toEqual(['job-1'])
+    // Taken back, it asks again.
+    standsMock.read.mockResolvedValue([])
+    await act(async () => view.result.current!.takeBackStands(paper))
+    expect(standsMock.write).toHaveBeenLastCalledWith({ jobId: 'job-1', paper: 'affidavit', stands: false })
+    await waitFor(() => expect(view.result.current!.changed).toHaveLength(1))
+    expect(view.result.current!.stood).toEqual([])
+  })
+
+  it('a refused answer rejects with the reason and reads nothing again, and answers that cannot be read are none', async () => {
+    standsMock.read.mockResolvedValue(null)
+    loadMock.mockResolvedValue({ prints: new Map([fact('affidavit', 'job-1', lienAffidavitPrintFields({ ...AF, unpaidAmount: '2300.00' }))]), whole: true })
+    const view = mount()
+    await waitFor(() => expect(view.result.current!.changed).toHaveLength(1))
+    expect(view.result.current!.failed).toBe(false)
+    standsMock.write.mockRejectedValue(new Error('Not authorized to say a lien paper stands as printed'))
+    await expect(view.result.current!.markStands(view.result.current!.changed[0]!)).rejects.toThrow('Not authorized')
+    expect(loadMock).toHaveBeenCalledTimes(1)
   })
 
   it('says an instant as a day and a time, and nothing for no instant', () => {

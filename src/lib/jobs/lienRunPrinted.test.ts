@@ -3,6 +3,7 @@ import type { LienAffidavitFields } from '../jobsDocuments/lienAffidavitFieldsTy
 import type { LienNoticeFields } from '../jobsDocuments/lienNoticeFieldsType'
 import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
+import type { LienPrintStandsRow } from './lienPrintStands'
 import { lienAffidavitPrintFields, lienNoticePrintFields, lienPrintKey, type LienPrintFact, type LienPrintFields, type LienPrintPaperKind } from './lienPrintSworn'
 import { LIEN_RUN_PRINTED_NONE, LIEN_RUN_PRINTED_WORDS, lienNoticeNowFields, lienRunChanges, lienRunPrinted, lienRunPrintedByWords, lienRunPrintedSameWords, lienRunPrintedUnreadWords, type LienRunPrintedLine } from './lienRunPrinted'
 
@@ -111,6 +112,43 @@ describe('lienRunPrinted', () => {
     // One paper that spoke for several jobs is no match for one job's paper: the stored notice stands in there too.
     const combined = lienRunPrinted({ lines: [line('notice', 'j1', true)], notices: [moved], affidavits: [], prints: new Map([fact('notice', 'j1', lienNoticePrintFields({ ...NOTICE, claimAmount: '99999.00' }), ['j1', 'j2'])]) })
     expect(combined.changed.map((p) => [p.standIn, plainSentence(p.changes[0]!.words)])).toEqual([[true, 'The claim: printed $18,400.00, now $6,150.00.']])
+  })
+
+  it('a changed paper a person said stands is no longer asked about, and an affidavit that stands does not print again', () => {
+    const today = { ...AFFIDAVIT, paidAmount: '39690.00', unpaidAmount: '310.00' }
+    const input = { lines: [line('affidavit', 'j1')], notices: [], affidavits: [{ jobId: 'j1', fields: today }], prints: new Map([fact('affidavit', 'j1', lienAffidavitPrintFields(AFFIDAVIT))]) }
+    const asks = lienRunPrinted(input)
+    expect(asks.changed).toHaveLength(1)
+    expect(asks.changed[0]).toMatchObject({ copyId: 'c-j1', itemId: null })
+    expect(asks.changed[0]!.changeKey).toMatch(/^affidavit:2:/)
+    const stand: LienPrintStandsRow = { id: 's1', jobId: 'j1', paper: 'affidavit', changeKey: asks.changed[0]!.changeKey, changes: [], sentDocumentId: 'c-j1', stoodBy: 'u1', stoodAt: '2026-11-25T20:00:00Z' }
+    const out = lienRunPrinted({ ...input, stands: [stand] })
+    expect(out.changed).toEqual([])
+    expect(out.stood.map((p) => [p.key, p.stand.id])).toEqual([['affidavit:j1', 's1']])
+    expect([...out.stoodAffidavits]).toEqual(['j1'])
+    // It is not "printed the same": the card says it stands, not that it says the same today.
+    expect(out.printedSame.size).toBe(0)
+  })
+
+  it('a second change asks again: the answer was for the first difference alone', () => {
+    const first = { ...AFFIDAVIT, unpaidAmount: '310.00' }
+    const prints = new Map([fact('affidavit', 'j1', lienAffidavitPrintFields(AFFIDAVIT))])
+    const key = lienRunPrinted({ lines: [line('affidavit', 'j1')], notices: [], affidavits: [{ jobId: 'j1', fields: first }], prints }).changed[0]!.changeKey
+    const stand: LienPrintStandsRow = { id: 's1', jobId: 'j1', paper: 'affidavit', changeKey: key, changes: [], sentDocumentId: null, stoodBy: 'u1', stoodAt: '2026-11-25T20:00:00Z' }
+    const again = lienRunPrinted({ lines: [line('affidavit', 'j1')], notices: [], affidavits: [{ jobId: 'j1', fields: { ...first, unpaidAmount: '110.00' } }], prints, stands: [stand] })
+    expect(again.stood).toEqual([])
+    expect(again.changed).toHaveLength(1)
+    expect(again.stoodAffidavits.size).toBe(0)
+    // Nor does an answer for another job's paper, or for this job's notice, stand in.
+    const other = lienRunPrinted({ lines: [line('affidavit', 'j1')], notices: [], affidavits: [{ jobId: 'j1', fields: first }], prints, stands: [{ ...stand, jobId: 'j2' }, { ...stand, paper: 'notice' }] })
+    expect(other.changed).toHaveLength(1)
+  })
+
+  it('a changed notice carries its desk item for the run window, and a stand-in names no filed print', () => {
+    const moved = { jobId: 'j1', itemId: 'it1', fields: NOTICE, printedAt: '2026-11-20T15:00:00Z', moneyNow: { claimAmount: '6150.00' } }
+    const out = lienRunPrinted({ lines: [line('notice', 'j1', true)], notices: [moved], affidavits: [], prints: new Map() })
+    expect(out.changed[0]).toMatchObject({ itemId: 'it1', copyId: null, standIn: true })
+    expect(out.changed[0]!.changeKey).toMatch(/^notice:1:/)
   })
 
   it('a notice not yet printed is never changed since printed: it prints as it stands', () => {

@@ -13,6 +13,7 @@ import {
   lienNoticePrintFields,
   lienNoticePrintPaper,
   lienNoticesPrintSnapshot,
+  lienPrintChangeKey,
   lienPrintChangeWords,
   lienPrintKey,
   lienPrintSnapshotPapers,
@@ -162,6 +163,29 @@ describe('lienChangedSincePrint', () => {
   it('does not compare a field the print did not keep', () => {
     const { claimAmount: _dropped, ...older } = printed
     expect(lienChangedSincePrint('notice', older, lienNoticePrintFields({ ...NOTICE, claimAmount: '1.00' }))).toEqual([])
+  })
+})
+
+describe('lienPrintChangeKey', () => {
+  const printed = lienNoticePrintFields(NOTICE)
+  const diff = (now: Partial<LienNoticeFields>) => lienChangedSincePrint('notice', printed, lienNoticePrintFields({ ...NOTICE, ...now }))
+
+  it('is the same for the same difference, however the values are written', () => {
+    const a = lienPrintChangeKey('notice', diff({ claimAmount: '6150.00' }))
+    expect(a).toMatch(/^notice:1:[0-9a-z]+$/)
+    expect(lienPrintChangeKey('notice', diff({ claimAmount: '$6,150.00' }))).toBe(a)
+    expect(a.length).toBeLessThanOrEqual(200)
+  })
+
+  it('is another key when a statement moves again, or another one moves', () => {
+    const a = lienPrintChangeKey('notice', diff({ claimAmount: '6150.00' }))
+    expect(lienPrintChangeKey('notice', diff({ claimAmount: '5000.00' }))).not.toBe(a)
+    expect(lienPrintChangeKey('notice', diff({ claimAmount: '6150.00', originalContractorName: 'ZZ Other Builders' }))).not.toBe(a)
+    // The same fields in another order are one difference.
+    const two = diff({ claimAmount: '6150.00', originalContractorName: 'ZZ Other Builders' })
+    expect(lienPrintChangeKey('notice', [...two].reverse())).toBe(lienPrintChangeKey('notice', two))
+    // No difference has no key, so nothing can be said to stand through it.
+    expect(lienPrintChangeKey('notice', [])).toBe('')
   })
 })
 

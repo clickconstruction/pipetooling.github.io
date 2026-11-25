@@ -1375,7 +1375,10 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
   A notice's today is its stored paper with `RunNotice.moneyNow` over it, the money the desk would draw now, so a bill corrected after the print counts.
   An affidavit whose newest print says the same today is left out of the run's print (`printedAffidavitJobIds` on `useLienRunPrint`), and the Board's own print still takes it.
   A notice whose print kept no values is read against its stored paper, and its line says a stand-in was read.
-  The three presses on a changed paper are not built: *It stands* needs a table of its own.
+  Since v2.8595 a changed paper has three presses on the card, drawn for the lien office: *Reprint this one* (`reprintAffidavit` on `useLienRunPrint`, or the run window on one notice), *It stands as printed* and *Take it out of the run*, which is the run's own Leave out.
+  *It stands* is a row of `lien_print_stands` (migration `20261125210500`), written by `set_lien_print_stands` through [`lienPrintStandsIo.ts`](../src/lib/jobs/lienPrintStandsIo.ts) and kept under `lienPrintChangeKey`, the key of the difference it answers for.
+  `lienRunPrinted` puts a changed paper with a standing row under the same key in `stood`, and one whose difference has moved again back in `changed`.
+  An affidavit that stands is left out of the run's print through `stoodAffidavitJobIds`.
 - **Why the router stays:** it turns a row's target into 23 of the desk's setters across every view.
 - **Next:** `actOnNextUp` as a kernel that names the target and a thin switch that calls the setters.
 

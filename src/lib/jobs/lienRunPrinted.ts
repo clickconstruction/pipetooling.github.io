@@ -21,10 +21,11 @@ import type { LienAffidavitFields } from '../jobsDocuments/lienAffidavitFieldsTy
 import type { LienNoticeFields } from '../jobsDocuments/lienNoticeFieldsType'
 import { val } from '../valuesInPlace'
 import type { LienNoticeMoney } from './lienNoticeParted'
-import { LIEN_SWORN_FIELDS, lienAffidavitPrintFields, lienChangedSincePrint, lienNoticePrintFields, lienPrintKey, lienPrintStanding, type LienPrintChange, type LienPrintFact, type LienPrintFields, type LienPrintPaperKind, type LienSwornAs } from './lienPrintSworn'
+import { lienPrintStandsFor, type LienPrintStandsRow } from './lienPrintStands'
+import { LIEN_SWORN_FIELDS, lienAffidavitPrintFields, lienChangedSincePrint, lienNoticePrintFields, lienPrintChangeKey, lienPrintKey, lienPrintStanding, type LienPrintChange, type LienPrintFact, type LienPrintFields, type LienPrintPaperKind, type LienSwornAs } from './lienPrintSworn'
 
 /** A notice of the run, as much of it as this reads. */
-export type LienRunPrintedNotice = { jobId: string; fields: LienNoticeFields; printedAt?: string | null; printedBy?: string | null; moneyNow?: LienNoticeMoney | null }
+export type LienRunPrintedNotice = { jobId: string; /** The notice's desk item: the run window opens on it. */ itemId?: string; fields: LienNoticeFields; printedAt?: string | null; printedBy?: string | null; moneyNow?: LienNoticeMoney | null }
 
 /** An affidavit of the run as the batch would print it now. */
 export type LienRunPrintedAffidavit = { jobId: string; fields: LienAffidavitFields }
@@ -48,18 +49,31 @@ export type LienRunChangedPaper = {
   changes: LienRunChange[]
   /** The print kept no values: the notice as stored was read in its place. */
   standIn: boolean
+  /** The key of this difference (`lienPrintChangeKey`): an answer that it stands is kept under it. */
+  changeKey: string
+  /** The filed print it is read against; null when the stored notice stood in. */
+  copyId: string | null
+  /** A notice's desk item, for the run window; null for an affidavit or when the builder gave none. */
+  itemId: string | null
 }
 
+/** A changed paper a person said stands as printed, with that answer. */
+export type LienRunStoodPaper = LienRunChangedPaper & { stand: LienPrintStandsRow }
+
 export type LienRunPrinted = {
-  /** The printed papers a statement of which has moved, in the run's order. */
+  /** The printed papers a statement of which has moved and nobody has answered for, in the run's order. */
   changed: LienRunChangedPaper[]
+  /** The changed papers a person said stand as printed through this very difference. */
+  stood: LienRunStoodPaper[]
+  /** The affidavits among those: the run does not print them again. */
+  stoodAffidavits: ReadonlySet<string>
   /** The affidavits whose newest print says the same today: the run does not print them again. */
   printedSame: ReadonlySet<string>
   /** The affidavits printed before a print kept its values: nothing to compare, so they count as to print. */
   unread: number
 }
 
-export const LIEN_RUN_PRINTED_NONE: LienRunPrinted = { changed: [], printedSame: new Set(), unread: 0 }
+export const LIEN_RUN_PRINTED_NONE: LienRunPrinted = { changed: [], stood: [], stoodAffidavits: new Set(), printedSame: new Set(), unread: 0 }
 
 /** A notice as it would print today: the stored paper, with the money the desk would draw now over it. */
 export function lienNoticeNowFields(n: Pick<LienRunPrintedNotice, 'fields' | 'moneyNow'>): LienPrintFields {
@@ -116,6 +130,8 @@ export type LienRunPrintedInput = {
   affidavits: ReadonlyArray<LienRunPrintedAffidavit>
   /** Each job's newest filed print (`loadLienNewestPrints`), or null when it is not read: then nothing is said. */
   prints: ReadonlyMap<string, LienPrintFact> | null
+  /** The answers that stand (`readLienPrintStands`); absent or empty = none, and every changed paper asks. */
+  stands?: ReadonlyArray<LienPrintStandsRow>
 }
 
 /** The run's printed papers against today. With the prints not read it answers nothing: never "nothing printed". */
@@ -125,8 +141,19 @@ export function lienRunPrinted(input: LienRunPrintedInput): LienRunPrinted {
   const noticeOf = new Map(input.notices.map((n) => [n.jobId, n]))
   const affidavitOf = new Map(input.affidavits.map((a) => [a.jobId, a]))
   const changed: LienRunChangedPaper[] = []
+  const stood: LienRunStoodPaper[] = []
+  const stoodAffidavits = new Set<string>()
   const printedSame = new Set<string>()
   let unread = 0
+  const stands = input.stands ?? []
+  // A changed paper goes to one list: the ones a person answered for through this very difference, or the ones that ask.
+  const place = (paper: Omit<LienRunChangedPaper, 'changeKey' | 'changes'>, raw: ReadonlyArray<LienPrintChange>) => {
+    const whole: LienRunChangedPaper = { ...paper, changes: lienRunChanges(paper.kind, raw), changeKey: lienPrintChangeKey(paper.kind, raw) }
+    const stand = lienPrintStandsFor(stands, paper.kind, paper.jobId, whole.changeKey)
+    if (!stand) return void changed.push(whole)
+    stood.push({ ...whole, stand })
+    if (paper.kind === 'affidavit') stoodAffidavits.add(paper.jobId)
+  }
 
   for (const line of input.lines) {
     const base = { key: `${line.kind}:${line.jobId}`, kind: line.kind, jobId: line.jobId, label: line.label, title: line.title }
@@ -138,11 +165,11 @@ export function lienRunPrinted(input: LienRunPrintedInput): LienRunPrinted {
       const now = lienNoticeNowFields(n)
       const standing = lienPrintStanding('notice', fact, now)
       if (standing.state === 'changed') {
-        changed.push({ ...base, printedAt: standing.fact.printedAt, printedBy: standing.fact.printedBy, changes: lienRunChanges('notice', standing.changes), standIn: false })
+        place({ ...base, printedAt: standing.fact.printedAt, printedBy: standing.fact.printedBy, standIn: false, copyId: standing.fact.copyId, itemId: n.itemId ?? null }, standing.changes)
       } else if (standing.state !== 'printed') {
         // The print kept no values (it is older, or one paper spoke for several jobs): the stored notice stands in.
         const changes = lienChangedSincePrint('notice', lienNoticePrintFields(n.fields), now)
-        if (changes.length > 0) changed.push({ ...base, printedAt: n.printedAt ?? fact?.printedAt ?? '', printedBy: n.printedBy ?? fact?.printedBy ?? '', changes: lienRunChanges('notice', changes), standIn: true })
+        if (changes.length > 0) place({ ...base, printedAt: n.printedAt ?? fact?.printedAt ?? '', printedBy: n.printedBy ?? fact?.printedBy ?? '', standIn: true, copyId: null, itemId: n.itemId ?? null }, changes)
       }
       continue
     }
@@ -151,9 +178,9 @@ export function lienRunPrinted(input: LienRunPrintedInput): LienRunPrinted {
     const standing = lienPrintStanding('affidavit', fact, lienAffidavitPrintFields(a.fields))
     if (standing.state === 'printed') printedSame.add(line.jobId)
     else if (standing.state === 'unread') unread += 1
-    else if (standing.state === 'changed') changed.push({ ...base, printedAt: standing.fact.printedAt, printedBy: standing.fact.printedBy, changes: lienRunChanges('affidavit', standing.changes), standIn: false })
+    else if (standing.state === 'changed') place({ ...base, printedAt: standing.fact.printedAt, printedBy: standing.fact.printedBy, standIn: false, copyId: standing.fact.copyId, itemId: null }, standing.changes)
   }
-  return { changed, printedSame, unread }
+  return { changed, stood, stoodAffidavits, printedSame, unread }
 }
 
 /** The words the card, its smokes and the guide share. */
@@ -162,8 +189,8 @@ export const LIEN_RUN_PRINTED_WORDS = {
   lead: 'Each paper here left the printer saying one thing. It would say another today.',
   standIn: 'This print kept no values, so the notice as stored was read in its place.',
   /** What happens next to a changed paper, by kind. */
-  affidavitNext: 'A changed affidavit prints again with the run.',
-  noticeNext: 'The Board’s Print and mail press opens the run window, where a printed notice is taken back and printed again.',
+  affidavitNext: 'A changed affidavit prints again with the run, unless someone says it stands.',
+  noticeNext: 'A changed notice is taken back and printed again in the run window.',
   /** Under the print press, when the newest prints could not be read. */
   failed: 'What printed before could not be read. Every right affidavit counts as to print.',
   retry: 'Read again',
