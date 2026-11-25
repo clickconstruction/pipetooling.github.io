@@ -21,4 +21,4 @@ const verdict = body ? docsOnlyVerdict(files) : { docsOnly: false, reason: 'the 
 const lines = docsOnlyOutputs(verdict)
 if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, lines.join('\n') + '\n')
 else console.log(lines.join('\n'))
-console.log(`${verdict.docsOnly ? 'docs-only' : 'full suite'} — ${verdict.reason}`)
+console.log(`${verdict.docsOnly ? 'docs-only' : 'not docs-only'} — ${verdict.reason}`)
