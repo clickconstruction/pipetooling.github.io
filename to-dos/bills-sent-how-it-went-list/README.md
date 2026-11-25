@@ -2,7 +2,7 @@
 name: "Bills sent: the office adds to and edits the list under How the bill went"
 number: 340
 group: close
-status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, and took calls 2 to 5 as suggested, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 (the list's own table) in v2.7166, migration `20261114060000` pushed 2026-11-14 · PR 3 (the chips and the window) in v2.7167 · Taunya picked Build all three for calls 6 to 8 on 2026-11-15 · R1 (the day offers the day the bill was made) in v2.7349 · R2 (several bills to one person at once) in v2.7350 · R3 (the form reads the record back) in v2.7351 · R1 to R3 read on the live page on 2026-11-15 with nothing saved · walked live 2026-11-24: the list's presses hold on ZZ-named ways and the form reads right, and the write could not be staged, because v2.8445 took test bills out of the yellow box · v2.8540 gives a dev who shows ZZ test jobs a box of test bills · walked again 2026-11-25: the presses hold at 44 px and that box never drew, because the read dropped every bill made in Stripe's test mode · v2.8559 mends the read and stands the form's typed boxes 44 px · the box read on the live site 2026-11-25 on v2.8559: it draws four test bills, the totals do not move, and the form's boxes stand 44 px · left: the write walk on a test bill · seen as the sample assistant on 2026-11-25, through View as: no test box, and every total reads the same as the dev's
+status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, and took calls 2 to 5 as suggested, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 (the list's own table) in v2.7166, migration `20261114060000` pushed 2026-11-14 · PR 3 (the chips and the window) in v2.7167 · Taunya picked Build all three for calls 6 to 8 on 2026-11-15 · R1 (the day offers the day the bill was made) in v2.7349 · R2 (several bills to one person at once) in v2.7350 · R3 (the form reads the record back) in v2.7351 · R1 to R3 read on the live page on 2026-11-15 with nothing saved · walked live 2026-11-24: the list's presses hold on ZZ-named ways and the form reads right, and the write could not be staged, because v2.8445 took test bills out of the yellow box · v2.8540 gives a dev who shows ZZ test jobs a box of test bills · walked again 2026-11-25: the presses hold at 44 px and that box never drew, because the read dropped every bill made in Stripe's test mode · v2.8559 mends the read and stands the form's typed boxes 44 px · the box read on the live site 2026-11-25 on v2.8559: it draws four test bills, the totals do not move, and the form's boxes stand 44 px · left: the write walk on a test bill · seen as the sample assistant on 2026-11-25, through View as: no test box, and every total reads the same as the dev's · the write walk made on 2026-11-25, on a yes for each step: a bill recorded with a ZZ way, the way renamed and the older line kept, two bills in one press, and the arrows moving two ZZ ways against each other, a second ZZ way being the owner's yes of that day · every record and both ways deleted after, read back as gone · every step of the card is now walked
 summary: >
   Bills sent has one form, Say how it went…, with a list of four fixed ways a bill can go. The
   owner asked that the people who open the page can add to that list and edit it, and to be shown
@@ -11,9 +11,9 @@ summary: >
   off and never deleted, and every way counts under Recorded by hand. The mock-up draws the form
   as it is, three ways to edit the list from where the person stands, and three separate fixes to
   the form itself. I suggest the chips.
-next: On a yes, as a dev with ZZ test jobs shown, record a test bill from the box with a ZZ-named way, rename the way, and read the older line. Record two test bills to one customer in one press. Then delete the records with the dev's own press (#443 row 4, v2.8564).
+next: Every step is walked and nothing of the walk is left on prod. The card can close on the owner's word. One line of How to verify was wrong and is corrected: the filter chips carry no count.
 size: M as a train of three (S · M · M), then three small ones for the form's own fixes (S each); left: the live walk (S)
-blocker: A yes for the write walk. A record made by hand is taken back only by a dev, on a test bill (v2.8564). The box holds the rows the walk needs: two test bills to one customer with no send on record.
+blocker: None. The owner's word to close it.
 opinion: walk it live, then retire the card
 ver: v2.7145 · v2.7166 · v2.7167 · v2.7349 · v2.7350 · v2.7351 · v2.8540 · v2.8559
 ---
@@ -128,7 +128,7 @@ PR 2's client reads a table only the migration creates, so it is pushed right af
 ## How to verify, when built
 
 - Record a bill as *Mailed*. Rename *Mailed*. The older line, its record page, Print and the CSV still say *Mailed*.
-- Add a way and record a bill with it. The line is under **Recorded by hand**, the count there rises by one, and no other chip's count moves.
+- Add a way and record a bill with it. The line is under **Recorded by hand**. The chips carry no count, so there is no number to read (seen on the walk of 2026-11-25).
 - Take the way off. The chip leaves the form and the line keeps its words. Bring it back.
 - As an assistant in training mode, press **＋ Add a way**. The press is refused with its reason.
 - As an estimator, open `/bills-sent`. Bids opens, as it does for every page closed to an estimator. **Seen live 2026-11-24.**
