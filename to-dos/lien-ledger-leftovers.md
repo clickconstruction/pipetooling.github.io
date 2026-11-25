@@ -234,6 +234,17 @@ nothing takes back:
 - A voided record cannot be un-voided, and nothing deletes a filing. Both rows stay in the table, voided.
 - Each by-hand record left one line on the job's activity, and the void does not take the line off.
 
+## Found after the walks
+
+~~**The desk's path forgets a notice that is only on record.**~~ **Shipped v2.8554**, on the owner's yes of
+2026-11-24. Walk 7 read *§ 53.056 notice · no work month yet* on the path of a job with a notice on record. It was
+not about clock hours. The desk's path took its notice months from the month reader and from desk papers that read
+sent, and never from the notices on record. A notice recorded by hand on a job with no live paper leaves no paper
+that says sent, and the reader drops a noticed month a week after its notice day. The path now reads every month a
+live record names as sent, on the day it went, as the Lien window's path always has. No date moved. On prod that
+day, by count: two billed sub jobs had a notice on record that the path could not see, and three more had a record
+that named more months than their sent paper. Not seen live yet.
+
 ## How to retire it
 
 Strike each piece as it ships, with its version. Delete the card when the five builds are shipped or

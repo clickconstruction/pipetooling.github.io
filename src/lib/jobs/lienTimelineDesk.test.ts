@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienTimelineFromDesk, buildLienTimelineFromWindow, lienTimelineMonthsFromDesk, lienWindowDeskAffidavit, lienWindowDeskNotice } from './lienTimelineDesk'
+import { buildLienTimelineFromDesk, buildLienTimelineFromWindow, lienTimelineMonthsFromDesk, lienTimelineMonthsWithNoticeRecords, lienWindowDeskAffidavit, lienWindowDeskNotice } from './lienTimelineDesk'
 import type { LienAffidavitEntry, LienAffidavitGateKey } from './lienDeskAffidavits'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
 import { filingDeadlineForMonth, type JobLienFilingRow } from './lienDeadlines'
@@ -358,5 +358,63 @@ describe('the month that dates a job on the desk’s strip (v2.7711)', () => {
     // July closed with nothing noted, August's notice went and its window closed: August is still the last month of work.
     const t = strip([row('2026-07', '2026-09-15', 'hours')], [sentFor(['2026-08'], '2026-10-01T20:00:00Z')], { job: { created_at: '2026-06-02T15:00:00Z', lien_last_work_on: null, invoices: [] } })
     expect(lastWork(t)).toMatchObject({ dateWords: 'Aug 2026', words: 'clock hours' })
+  })
+})
+
+describe('the desk’s path reads the notices on record (punch list #415)', () => {
+  // A sub job dated by a hand day in September, on a house: September's notice day is Nov 16.
+  const NOV24 = '2026-11-24'
+  const affidavit = { jobId: 'j1', isSub: true, lastMonth: '2026-09', lastMonthFromCreation: false, lastMonthByHand: true, deadline: '2026-12-15', daysLeft: 21, pile: 'to_draft', gates: [], item: null } as unknown as LienAffidavitEntry
+  const byHand = filing({ id: 'f1', months_covered: ['2026-09'], filed_at: null, created_at: '2026-11-13T22:30:00Z', sends: [{ recipient: 'owner', method: 'hand', sent_on: '2026-11-12' }, { recipient: 'original_contractor', method: 'hand', sent_on: '2026-11-13' }] as never })
+  const src = { rows: [] as LienNoticeMonthRow[], items: [] as LienDeskItemRow[], entry: null, affidavit, isSub: true, propertyKind: '', openBalance: 1_200, todayYmd: NOV24, job: { id: 'j1', created_at: '2026-09-02T00:00:00Z', last_work_date: null, lien_last_work_on: '2026-09-10' } as never }
+  const stops = (t: ReturnType<typeof buildLienTimelineFromDesk>) => t.steps.filter((s) => s.kind === 'notice').map((s) => `${s.label} · ${s.state} · ${s.words}`)
+  const affidavitStop = (t: ReturnType<typeof buildLienTimelineFromDesk>) => t.steps.find((s) => s.kind === 'affidavit')!
+
+  it('a notice recorded by hand with no desk paper keeps its month once the reader has dropped it', () => {
+    // The reader returns a noticed month only until its notice day is a week past, and no paper on the desk reads sent.
+    const t = buildLienTimelineFromDesk('j1', { ...src, filings: [byHand] })
+    expect(stops(t)).toEqual(['§ 53.056 · Sep · done · sent Nov 12'])
+    expect(affidavitStop(t).opensWords).not.toBe('opens when the notice is mailed')
+    expect(affidavitStop(t).opensOn).toBe('2026-11-12')
+    // Last work is dated as it was: the record dates nothing.
+    expect(t.steps.find((s) => s.kind === 'last_work')).toMatchObject({ dateWords: 'Sep 2026', words: 'last day set by hand' })
+    expect(t.next.kind).toBe('affidavit')
+  })
+
+  it('with no record the path reads as before, and a voided record counts for nothing', () => {
+    expect(stops(buildLienTimelineFromDesk('j1', { ...src, filings: [] }))).toEqual(['§ 53.056 notice · undated · no work month yet'])
+    expect(stops(buildLienTimelineFromDesk('j1', { ...src, filings: [{ ...byHand, voided_at: '2026-11-20T00:00:00Z' }] }))).toEqual(['§ 53.056 notice · undated · no work month yet'])
+    // Another job's record, and an affidavit's, name no notice month here.
+    expect(lienTimelineMonthsWithNoticeRecords([], [filing({ kind: 'affidavit', months_covered: ['2026-09'] })])).toEqual([])
+  })
+
+  it('the same job reads the same on both sides of that week', () => {
+    const row = { job_id: 'j1', work_month: '2026-09', approved_hours: 0, deadline: '2026-11-16', noticed: true, month_source: 'hand' } as unknown as LienNoticeMonthRow
+    const before = buildLienTimelineFromDesk('j1', { ...src, rows: [row], filings: [byHand], todayYmd: '2026-11-20' })
+    const after = buildLienTimelineFromDesk('j1', { ...src, filings: [byHand] })
+    expect(stops(before)).toEqual(stops(after))
+  })
+
+  it('a record that names several months gives each its stop, and a paper’s own send day stands', () => {
+    const many = filing({ id: 'f2', months_covered: ['2026-06', '2026-07', '2026-08', 'soon'], filed_at: null, created_at: '2026-10-06T20:43:00Z', sends: [{ recipient: 'owner', method: 'certified_mail', sent_on: '2026-10-05' }] as never })
+    const sentPaper = { id: 'i1', job_id: 'j1', kind: 'notice_53_056', status: 'sent', months: ['2026-08'], sent_at: '2026-10-02T15:00:00Z', voided_at: null, created_at: '2026-09-30T00:00:00Z', fields: {} } as unknown as LienDeskItemRow
+    const months = lienTimelineMonthsWithNoticeRecords(lienTimelineMonthsFromDesk('j1', [], [sentPaper], NOV24, ''), [many], { propertyKind: '' })
+    expect(months.map((m) => [m.key, m.outcome, m.at, m.deadline])).toEqual([
+      ['2026-06', 'sent', '2026-10-05', '2026-08-17'],
+      ['2026-07', 'sent', '2026-10-05', '2026-09-15'],
+      ['2026-08', 'sent', '2026-10-02', '2026-10-15'],
+    ])
+  })
+
+  it('the record is the fact: a month a paper calls missed reads sent once a live notice names it', () => {
+    const missed = { id: 'i2', job_id: 'j1', kind: 'notice_53_056', status: 'missed', months: ['2026-09'], sent_at: null, voided_at: null, created_at: '2026-11-17T00:00:00Z', updated_at: '2026-11-17T00:00:00Z', fields: {} } as unknown as LienDeskItemRow
+    expect(stops(buildLienTimelineFromDesk('j1', { ...src, items: [missed], filings: [] }))[0]).toMatch(/^§ 53\.056 · Sep · missed · window closed/)
+    expect(stops(buildLienTimelineFromDesk('j1', { ...src, items: [missed], filings: [byHand] }))).toEqual(['§ 53.056 · Sep · done · sent Nov 12'])
+  })
+
+  it('a stand-in month a record names says where the month came from, as the reader’s row would', () => {
+    const fromBill = { ...affidavit, lastMonthFromCreation: true, lastMonthFromBill: true, lastMonthByHand: false } as unknown as LienAffidavitEntry
+    const t = buildLienTimelineFromDesk('j1', { ...src, affidavit: fromBill, job: { id: 'j1', created_at: '2026-09-02T00:00:00Z', last_work_date: null, lien_last_work_on: null } as never, filings: [byHand] })
+    expect(stops(t)).toEqual(['§ 53.056 · Sep · done · sent Nov 12 · dated from the bill'])
   })
 })

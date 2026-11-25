@@ -4,7 +4,7 @@ import { lienAffidavitOwnerSends } from './lienAffidavitNotices'
 import type { LienPublicStanding } from './lienPublicProperty'
 import type { JobLienFilingRow } from './lienDeadlines'
 import type { JobDemandLetterRow } from './demandLetterTracking'
-import { buildLienTimelineFromDesk, lienTimelineMonthsFromDesk } from './lienTimelineDesk'
+import { buildLienTimelineFromDesk, lienTimelineMonthsFromDesk, lienTimelineMonthsWithNoticeRecords } from './lienTimelineDesk'
 import { lienDateWords, lienThirtyDayClock, type LienTimeline, type LienTimelineMonth } from './lienTimeline'
 import { workMonthShort } from './forecastWorkMonths'
 import { formatUsdNoCents } from './jobFormatting'
@@ -136,7 +136,7 @@ export function buildLienTimelineBook(input: LienTimelineBookInput): LienTimelin
       demandLetters: input.demandLettersByJob?.[jobId] ?? null,
     })
     const noticeSentOn = lienAffidavitOwnerSends(input.filingsByJob[jobId]).map((s) => s.sentOn)
-    rows.push({ jobId, job, timeline, months: lienTimelineMonthsFromDesk(jobId, input.rows, input.items, todayYmd), lens: lensFor(timeline), sortDate: timeline.next.date, notice: entry, affidavit, noticeSentOn, ownerFacts: ownerFacts[jobId] ?? null })
+    rows.push({ jobId, job, timeline, months: lienTimelineMonthsWithNoticeRecords(lienTimelineMonthsFromDesk(jobId, input.rows, input.items, todayYmd), (input.filingsByJob[jobId] ?? []).filter((f) => f.job_id === jobId), { propertyKind: job.propertyKind }), lens: lensFor(timeline), sortDate: timeline.next.date, notice: entry, affidavit, noticeSentOn, ownerFacts: ownerFacts[jobId] ?? null })
   }
   rows.sort((a, b) => {
     const da = a.sortDate || '9999-99-99'

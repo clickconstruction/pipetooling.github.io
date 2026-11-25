@@ -15,6 +15,7 @@ import { lienClockMonths, lienHoursAfterHandDay } from './lienLastWorkDay'
 import type { JobWorkMonths } from './forecastWorkMonths'
 import { noticeDeadlineForMonth } from './lienDeadlines'
 import type { LienApprover } from './lienApprovalWait'
+import { earliestSendDay } from './lienSentAt'
 
 /**
  * The Lien desk's view of a job, folded into the timeline kernel's input
@@ -157,6 +158,58 @@ export function lienTimelineMonthsFromDesk(jobId: string, rows: ReadonlyArray<Li
   return [...byKey.values()].sort((a, b) => a.key.localeCompare(b.key))
 }
 
+const WORK_MONTH = /^\d{4}-\d{2}$/
+
+/**
+ * The desk's months with every month a live § 53.056 record names read as sent (punch list #415, the owner's yes of
+ * 2026-11-24). `lienTimelineMonthsFromDesk` knows a sent month from the reader's row or from a desk paper that reads
+ * sent, and from nothing else. A notice recorded by hand on a job with no live paper leaves no paper that says sent,
+ * and the reader drops a noticed month once its notice day is a week past. From that day the path had no month for
+ * the job: its § 53.056 stop read *no work month yet* and its affidavit stop *opens when the notice is mailed*, over a
+ * notice on record. The Lien window's path has always read the record (`buildLienTimelineFromWindow`), so the two
+ * could disagree.
+ *
+ * The record is the fact: a month it names is sent, on the day its packet left (`earliestSendDay`, else the day it
+ * was recorded), whatever a paper or the reader says of it. A month a paper already reads sent keeps that paper's
+ * day, and one the reader alone calls noticed takes the record's day. `standIn` marks a month added here as the
+ * job's stand-in month, so its stop says where the month came from as the reader's own row would.
+ */
+export function lienTimelineMonthsWithNoticeRecords(
+  months: ReadonlyArray<LienTimelineMonth>,
+  filings: ReadonlyArray<Pick<JobLienFilingRow, 'kind' | 'voided_at' | 'months_covered' | 'sends' | 'created_at'>>,
+  opts: { propertyKind?: string; standIn?: { month: string; fromBill: boolean } | null } = {},
+): LienTimelineMonth[] {
+  const sentOn = new Map<string, string>()
+  for (const f of filings) {
+    if (f.kind !== 'notice_53_056' || f.voided_at != null) continue
+    const day = earliestSendDay(f.sends) ?? calendarYmdInAppTzFromIso(f.created_at)
+    for (const m of f.months_covered ?? []) {
+      if (!WORK_MONTH.test(m)) continue
+      const prev = sentOn.get(m)
+      if (prev == null || (day && day < prev)) sentOn.set(m, day)
+    }
+  }
+  if (sentOn.size === 0) return [...months]
+  const byKey = new Map(months.map((m) => [m.key, m] as const))
+  for (const [key, day] of sentOn) {
+    const prev = byKey.get(key)
+    if (prev?.outcome === 'sent') {
+      if (!prev.at && day) byKey.set(key, { ...prev, at: day })
+      continue
+    }
+    const standIn = !prev && opts.standIn?.month === key ? opts.standIn : null
+    byKey.set(key, {
+      key,
+      deadline: prev?.deadline || noticeDeadlineForMonth(`${key}-01`, opts.propertyKind ?? ''),
+      fromCreation: prev?.fromCreation ?? Boolean(standIn),
+      ...(prev?.fromBill || standIn?.fromBill ? { fromBill: true } : {}),
+      outcome: 'sent',
+      at: day,
+    })
+  }
+  return [...byKey.values()].sort((a, b) => a.key.localeCompare(b.key))
+}
+
 /**
  * What dates a job on the desk's strip (v2.7711): the month LAST WORK names, which the affidavit's last day and the year to
  * sue count from. The strip's months are the clock's months and every month a past notice named, so the notice stops can
@@ -187,8 +240,9 @@ function lienDeskDatingMonth(jobId: string, months: ReadonlyArray<LienTimelineMo
 }
 
 export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSource): LienTimeline {
-  const months = lienTimelineMonthsFromDesk(jobId, src.rows, src.items, src.todayYmd, src.propertyKind)
-  const dating = lienDeskDatingMonth(jobId, months, src)
+  // What dates the job is read off the desk's own months, as it was: a month only a record names dates nothing.
+  const deskMonths = lienTimelineMonthsFromDesk(jobId, src.rows, src.items, src.todayYmd, src.propertyKind)
+  const dating = lienDeskDatingMonth(jobId, deskMonths, src)
   const fromRows = dating.fromRows
   const fromLedger = (src.lastWorkDate ?? '').slice(0, 7)
   // The day set by hand counts (v2.7193, punch list #335, row 1): the desk's RPC marks its month, and the ledger's later hours do not move it.
@@ -202,6 +256,8 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
   const lastMonthByHand = src.affidavit ? src.affidavit.lastMonthByHand : Boolean(handMonth) && handMonth === lastMonth
 
   const live = src.filings.filter((f) => f.job_id === jobId && f.voided_at == null)
+  // The notice stops read the notices on record too (punch list #415): a month a live record names is sent.
+  const months = lienTimelineMonthsWithNoticeRecords(deskMonths, live, { propertyKind: src.propertyKind, standIn: lastMonthFromCreation && lastMonth ? { month: lastMonth, fromBill: lastMonthFromBill } : null })
   const affidavitFiling = live.filter((f) => f.kind === 'affidavit' && f.filed_at).sort((a, b) => (b.filed_at ?? '').localeCompare(a.filed_at ?? ''))[0] ?? null
   const releaseFiling = live.filter((f) => f.kind === 'release_of_record').sort((a, b) => (b.filed_at ?? b.created_at).localeCompare(a.filed_at ?? a.created_at))[0] ?? null
 

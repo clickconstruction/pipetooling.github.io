@@ -6443,3 +6443,21 @@ describe('LienDesk — the closed end on the Board (the owner’s pick of 2026-1
     expect((win.querySelector('[data-lien-closed-press="keep"]') as HTMLButtonElement).disabled).toBe(false)
   })
 })
+
+describe('LienDesk affidavits · the path reads the notices on record (punch list #415)', () => {
+  it('a notice recorded by hand with no desk paper keeps its month on the path after the reader drops it', () => {
+    // May's notice day is long past, so the reader returns no row, and no paper on the desk reads sent.
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: true, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null, month_source: 'hand' }
+    const d = data([])
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    d.filingsByJob = { j650: [{ id: 'f1', job_id: 'j650', kind: 'notice_53_056', months_covered: ['2026-05'], sends: [{ recipient: 'owner', method: 'hand', sent_on: '2026-07-10' }], filed_at: null, created_at: '2026-07-10T18:00:00Z', voided_at: null, by_hand: true }] } as unknown as LienDeskData['filingsByJob']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    const stop = document.querySelector('[data-lien-timeline-step="notice:2026-05"]')
+    expect(stop).not.toBeNull()
+    expect(stop!.textContent).toContain('sent')
+    expect(document.querySelector('[data-lien-timeline-step="notice"]')).toBeNull()
+    expect(document.body.textContent).not.toContain('no work month yet')
+    expect(document.body.textContent).not.toContain('opens when the notice is mailed')
+  })
+})
