@@ -111,7 +111,8 @@ describe('what the app remembers about an address it could not place (punch list
     const [, row] = compose({ misses: new Map([[KEY, { ...miss, detail: 'no match from Google; no match from US Census' }]]) })
     expect(row!.miss?.checked_at).toBe('2026-11-20T18:00:00Z')
     const memory = missingAddressMemory(row!, NOW)!
-    expect(memory.reason).toBe('Address not found — no match from Google; no match from US Census')
+    // The services' own account of the look-up is not drawn: one plain sentence.
+    expect(memory.reason).toBe('No map service could find this address.')
     expect(plainSentence(memory.checked)).toBe('Checked Nov 20. The app asks again by itself on Dec 20.')
     // The row's own words stay above them.
     expect(missingAddressStatus(row!).text).toMatch(/couldn’t find this address/)
@@ -125,9 +126,9 @@ describe('what the app remembers about an address it could not place (punch list
 
   it('a Try again that kept the miss again moves the day, and gives a row with no reason its reason', () => {
     const [, bare] = compose()
-    const kept = { kind: 'missed', reason: 'Address not found', checkedAt: NOW } as const
+    const kept = { kind: 'missed', reason: 'No map service could find this address.', checkedAt: NOW } as const
     const after = missingAddressMemory(bare!, NOW, kept)!
-    expect(after.reason).toBe('Address not found')
+    expect(after.reason).toBe('No map service could find this address.')
     expect(plainSentence(after.checked)).toBe('Checked Nov 24. The app asks again by itself on Dec 24.')
     const [, row] = compose({ misses: new Map([[KEY, miss]]) })
     expect(plainSentence(missingAddressMemory(row!, NOW, kept)!.checked)).toBe('Checked Nov 24. The app asks again by itself on Dec 24.')
@@ -135,9 +136,9 @@ describe('what the app remembers about an address it could not place (punch list
 
   it('a Try again that kept nothing, or could not ask, leaves the day the app already had', () => {
     const [, row] = compose({ misses: new Map([[KEY, miss]]) })
-    for (const tried of [{ kind: 'missed', reason: 'Google Geocoding quota exceeded', checkedAt: null }, { kind: 'failed', reason: 'Lost signal.' }] as const) {
+    for (const tried of [{ kind: 'missed', reason: 'Google is taking no more look-ups right now. Try again later.', checkedAt: null }, { kind: 'failed', reason: 'Lost signal.' }] as const) {
       const memory = missingAddressMemory(row!, NOW, tried)!
-      expect(memory.reason).toBe('Address not found')
+      expect(memory.reason).toBe('No map service could find this address.')
       expect(plainSentence(memory.checked)).toBe('Checked Nov 20. The app asks again by itself on Dec 20.')
     }
   })

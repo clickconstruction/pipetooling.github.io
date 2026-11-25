@@ -50,7 +50,7 @@ describe('what Try again found', () => {
 
   it('still no match, and the function kept the miss again: the day is the one it answered with', () => {
     const o = tryAgainOutcome({ results: [], failures: [{ address_normalized: KEY, error_code: 'not_found', detail: 'OpenStreetMap (Nominatim) HTTP 403; no match from Google; no match from US Census', checked_at: NOW }] }, KEY)
-    expect(o).toEqual({ kind: 'missed', reason: 'Address not found — OpenStreetMap (Nominatim) HTTP 403; no match from Google; no match from US Census', checkedAt: NOW })
+    expect(o).toEqual({ kind: 'missed', reason: 'No map service could find this address.', checkedAt: NOW })
     expect(tryAgainWords(o)).toBe('Still no match. Open the record and fix the address to place it.')
     // The row's own line carries the new day.
     expect(plainSentence(missCheckedSentence(o.kind === 'missed' ? o.checkedAt : null, NOW))).toBe('Checked Nov 24. The app asks again by itself on Dec 24.')
@@ -58,8 +58,8 @@ describe('what Try again found', () => {
 
   it('Google or the Census did not answer: nothing was kept, and the words say so with the reason', () => {
     const o = tryAgainOutcome({ results: [], failures: [{ address_normalized: KEY, error_code: 'google_over_query' }] }, KEY)
-    expect(o).toEqual({ kind: 'missed', reason: 'Google Geocoding quota exceeded', checkedAt: null })
-    expect(tryAgainWords(o)).toBe('Not placed. Nothing was kept, so the app asks again on the next open. Google Geocoding quota exceeded')
+    expect(o).toEqual({ kind: 'missed', reason: 'Google is taking no more look-ups right now. Try again later.', checkedAt: null })
+    expect(tryAgainWords(o)).toBe('Not placed. Nothing was kept, so the app asks again on the next open. Google is taking no more look-ups right now. Try again later.')
   })
 
   it('a not found with no day kept nothing either: a training account, or a function that predates the day', () => {
@@ -83,11 +83,11 @@ describe('what Try again found', () => {
 describe('Try again on a row that carries its own address box (punch list #441)', () => {
   it('points at the box, since the row opens no record to fix', () => {
     expect(tryAgainWords({ kind: 'placed' }, 'box')).toBe('Placed. Its pin is on the map.')
-    expect(tryAgainWords({ kind: 'missed', reason: 'Address not found', checkedAt: NOW }, 'box')).toBe('Still no match. Fix the address in the box and save to place it.')
+    expect(tryAgainWords({ kind: 'missed', reason: 'No map service could find this address.', checkedAt: NOW }, 'box')).toBe('Still no match. Fix the address in the box and save to place it.')
   })
 
   it('says a miss nobody kept and a failed ask in the list\'s own words', () => {
-    const notKept = { kind: 'missed', reason: 'Google Geocoding quota exceeded', checkedAt: null } as const
+    const notKept = { kind: 'missed', reason: 'Google is taking no more look-ups right now. Try again later.', checkedAt: null } as const
     expect(tryAgainWords(notKept, 'box')).toBe(tryAgainWords(notKept))
     const failed = { kind: 'failed', reason: 'Lost signal.' } as const
     expect(tryAgainWords(failed, 'box')).toBe(tryAgainWords(failed))

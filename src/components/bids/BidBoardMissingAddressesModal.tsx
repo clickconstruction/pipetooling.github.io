@@ -4,6 +4,7 @@ import { addressDraftReady, missingAddressMemory, missingAddressStatus, missingA
 import { tryAgainWords, type TryAgainOutcome } from '../../lib/map/unplacedMemory'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { thumbInLine } from '../../lib/phonePress'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 
 type Props = {
@@ -120,7 +121,7 @@ export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, o
                     <span aria-hidden style={{ width: 9, height: 9, borderRadius: 999, background: BID_BOARD_MAP_SECTION_COLOR[r.bid.section] }} />
                     {BID_BOARD_MAP_SECTION_LABEL[r.bid.section]}
                   </span>
-                  <button type="button" onClick={() => onFocusRow(r.bid.id)} title="Show this bid's row" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'var(--text-strong)', cursor: 'pointer', fontVariantNumeric: 'tabular-nums' }}>
+                  <button type="button" onClick={() => onFocusRow(r.bid.id)} title="Show this bid's row" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'var(--text-strong)', cursor: 'pointer', fontVariantNumeric: 'tabular-nums', ...(isMobile ? NUMBER_PHONE : null) }}>
                     {r.bid.numberLabel}
                   </button>
                   <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: '1 1 12rem' }}>{r.bid.projectName}</span>
@@ -163,11 +164,11 @@ export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, o
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
                   <span style={{ color: TONE[status.tone], flex: '1 1 14rem' }}>{status.text}</span>
                   {draft.trim().length >= 3 ? (
-                    <button type="button" onClick={() => openInExternalBrowser(bidBoardMapDirectionsUrl(draft))} style={LINK} title="Open this address in Google Maps to check it">
+                    <button type="button" onClick={() => openInExternalBrowser(bidBoardMapDirectionsUrl(draft))} style={isMobile ? LINK_PHONE : LINK} title="Open this address in Google Maps to check it">
                       Check on Google Maps ↗
                     </button>
                   ) : null}
-                  <button type="button" onClick={() => { onClose(); onEditBid(r.bid) }} style={LINK}>Edit bid</button>
+                  <button type="button" onClick={() => { onClose(); onEditBid(r.bid) }} style={isMobile ? LINK_PHONE : LINK}>Edit bid</button>
                 </div>
                 {memory && (memory.reason || memory.checked) ? (
                   <div data-miss-memory style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '0.15rem 0.6rem' }}>
@@ -187,7 +188,7 @@ export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, o
                 {r.customerAddress ? (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <span>{r.bid.gcName ?? 'Customer'}’s address on file: {r.customerAddress}</span>
-                    <button type="button" onClick={() => setDrafts((p) => ({ ...p, [r.bid.id]: r.customerAddress ?? '' }))} style={LINK} title="Fill the box with the customer's address — only right when the job is at their address">
+                    <button type="button" onClick={() => setDrafts((p) => ({ ...p, [r.bid.id]: r.customerAddress ?? '' }))} style={isMobile ? LINK_PHONE : LINK} title="Fill the box with the customer's address — only right when the job is at their address">
                       Use it
                     </button>
                   </div>
@@ -220,3 +221,11 @@ const LINK: React.CSSProperties = {
   cursor: 'pointer',
   whiteSpace: 'nowrap',
 }
+
+/**
+ * On a phone the sheet's text presses stand a fingertip tall inside their line (the walk of 2026-11-25 at 375 px:
+ * *Check on Google Maps ↗*, **Edit bid** and **Use it** 19 px high, the bid's number 21). `thumbInLine` gives each
+ * line back what the press grew by, so no row of the sheet moves.
+ */
+const LINK_PHONE: React.CSSProperties = { ...LINK, display: 'inline-flex', alignItems: 'center', ...thumbInLine(19) }
+const NUMBER_PHONE: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', ...thumbInLine(21) }
