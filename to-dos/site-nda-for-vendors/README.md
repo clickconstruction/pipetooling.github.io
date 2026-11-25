@@ -158,7 +158,14 @@ and the held state at every other send (piece 6).
   the cursor in the address box and nothing typed. The row under **Already on file** shows above Google's
   with its count, and the line under the box says how many jobs and bids are there. Do not type there: the
   Edit tab saves the address by itself a moment after a keystroke, and leaving the box with an address the
-  map does not hold looks it up and keeps the answer. The question about an address one letter off is held
-  by the form's render tests and was not seen live.
+  map does not hold looks it up and keeps the answer.
+  The question about an address one letter off was seen live on 2026-11-24 at both widths, on the New Job
+  form with a made-up address, so no job was written. The form was closed with **Discard**. Leaving the box
+  kept one map-cache row under the made-up spelling, which nothing in the app removes.
+- **Piece 2.** The answers' table was pushed on 2026-11-24. Seen live the same day at 375 px and 1200 px,
+  as a dev, answering nothing: the count on the Pipeline's tools button, the item under **Combine /
+  Separate…** with the same count, and the window with its line of counts and four tabs. Differing words are
+  marked, a shared zip code is not, and nothing runs off the screen. **Same place**, **Not the same**,
+  **Undo** and **Fix the spelling…** were not pressed live: each writes on a real pair.
 - **Pieces 3 to 7.** ZZ Test jobs, a ZZ Test supply house with a sink address, and a ZZ Test paper only.
   Nothing goes to a real vendor before an attorney has read the wording.
