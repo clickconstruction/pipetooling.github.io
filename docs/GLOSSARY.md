@@ -1073,6 +1073,9 @@ A **sub business** there is the trade company a sub works for, or the sub's own 
 A helper and an office person count in the total and are named only when the office sets the job to show every signer by name.
 **What the GC sees** (v2.8533) is the office's setting on the job's settings page for that block: how many have signed, how many and each sub business with its day, which is how every paper starts, or those and every signer by name (`jobPaperGcView.ts`, `job_paper_set_gc_view`).
 It marks the GC's page and never the paper, so nobody signs again, and a new version of the paper keeps it.
+**A GC's proposal** (v2.8553) is a set of stricter settings a GC sends from that block with **Propose a stricter setting**, on the office's own sliders with every stop looser than the job's greyed (`PortalJobPaperPropose.tsx`, `gcPaperPropose.ts`, `job_paper_proposals`).
+It changes no paper: it waits under the paper's row on the job's Documents tab, where the office presses **Take it** or **Decline…** (`JobPaperProposalCard.tsx`, `jobPaperProposal.ts`).
+A proposal is **waiting**, **taken**, **declined** or **overtaken**, and overtaken means a newer proposal, a change of the paper's settings, or the paper coming off the job.
 The Document builder's block on the same page, *Secrecy on your jobs*, is another thing: a builder the office sent to look at, tied to no job's paper.
 A job's **sample** (v2.8506) is the paper for that job's settings as a PDF, with a made-up job and signer and SAMPLE across each page, drawn by `open-job-paper-sample` from the same assembly a signer reads.
 It is the GC's to download from that block, and it is never for signing.

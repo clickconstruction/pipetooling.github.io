@@ -9,6 +9,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { type BookPaperRow, type JobPapersRoster, parseJobPapersRoster } from '../../lib/jobs/jobPapers'
 import type { JobPapersIo } from '../../lib/jobs/jobPapersIo'
+import type { JobPaperProposal, JobPaperProposalsIo } from '../../lib/jobs/jobPaperProposalsIo'
 import type { JobPaperSettingsIo } from '../../lib/jobs/jobPaperSettingsIo'
 import { parseSettingsDef, type SettingsDef } from '../../lib/contracts/paperSettings'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -87,6 +88,13 @@ function fakeSettingsIo(over: Partial<JobPaperSettingsIo> = {}): JobPaperSetting
     ...over,
   }
 }
+
+// What the job's GC proposed and the office has not answered (step 6). Made-up name.
+const PROPOSAL: JobPaperProposal = { id: 'prop-1', requiredPaperId: 'row-set', byName: 'Greta Sample', proposedAt: '2026-11-24T18:00:00+00:00', fromPicks: { photos: 'ask' }, picks: { photos: 'none' } }
+function fakeProposalsIo(over: Partial<JobPaperProposalsIo> = {}): JobPaperProposalsIo {
+  return { readWaiting: vi.fn(async () => [PROPOSAL]), decide: vi.fn(async (_id: string, take: boolean) => ({ took: take, signAgain: 0 })), ...over }
+}
+const builtPaper = (signed: number) => [{ requiredPaperId: 'row-set', bookDocumentId: 'book-set', picks: { photos: 'ask' }, typed: null, basis: 'standard', gcView: 'businesses' as const, settingsRevision: 1, bookRevision: 2, signed }]
 
 afterEach(() => cleanup())
 
@@ -208,4 +216,67 @@ describe('JobDocumentsRequiredPapers', () => {
     expect(await screen.findByText(/Only the office reads who has signed/)).toBeTruthy()
     expect(screen.queryByText('Nothing has to be signed before this job opens.')).toBeNull()
   })
+
+  it('a GC’s proposal waits under its paper, and Take it says who signs again before it saves', async () => {
+    const io = fakeIo({ readRoster: vi.fn(async () => withBuilt) })
+    const settingsIo = fakeSettingsIo({ readSettingsPapers: vi.fn(async () => builtPaper(2)) })
+    const proposalsIo = fakeProposalsIo({ decide: vi.fn(async () => ({ took: true, signAgain: 2 })) })
+    renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} settingsIo={settingsIo} proposalsIo={proposalsIo} />)
+    const card = await screen.findByRole('group', { name: 'A proposal on Sample secrecy paper' })
+    expect(proposalsIo.readWaiting).toHaveBeenCalledWith('job-1')
+    expect(within(card).getByText('Greta Sample proposed stricter settings on Nov 24, 2026')).toBeTruthy()
+    // Each topic it moves, from the job's choice to the stricter one, with that choice's plain words.
+    await within(card).findByText('Photos and video')
+    expect(card.textContent).toContain('Ask first to None')
+    expect(card.textContent).toContain('No photos at all.')
+    expect(within(card).getByText('The paper stays as it is until you take it.')).toBeTruthy()
+    const take = within(card).getByRole('button', { name: 'Take it, and ask 2 people to sign again' })
+    expect(take.style.minHeight).toBe('44px')
+    fireEvent.click(take)
+    // The confirm names the act and says what it does.
+    expect(await screen.findByText(/2 people have signed this paper\. Each signs the new version again/)).toBeTruthy()
+    expect(proposalsIo.decide).not.toHaveBeenCalled()
+    // The card's press and the confirm's share their words: the confirm's is the last one drawn.
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Take it, and ask 2 people to sign again' })).toHaveLength(2))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Take it, and ask 2 people to sign again' }).pop()!)
+    await waitFor(() => expect(proposalsIo.decide).toHaveBeenCalledWith('prop-1', true, undefined))
+    expect(await screen.findByText('The proposal is taken. 2 people sign the new version again.')).toBeTruthy()
+    // The section reads again after the answer.
+    await waitFor(() => expect(io.readRoster).toHaveBeenCalledTimes(2))
+  })
+
+  it('Decline asks for a reason the GC reads, and a paper with no proposal draws no card', async () => {
+    const io = fakeIo({ readRoster: vi.fn(async () => withBuilt) })
+    const settingsIo = fakeSettingsIo({ readSettingsPapers: vi.fn(async () => builtPaper(0)) })
+    const proposalsIo = fakeProposalsIo()
+    renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} settingsIo={settingsIo} proposalsIo={proposalsIo} />)
+    const card = await screen.findByRole('group', { name: 'A proposal on Sample secrecy paper' })
+    // Nobody has signed, so the take is plain.
+    expect(within(card).getByRole('button', { name: 'Take it' })).toBeTruthy()
+    // One card: the paper in prose beside it takes no proposal.
+    expect(screen.getAllByRole('group', { name: /^A proposal on / })).toHaveLength(1)
+    fireEvent.click(within(card).getByRole('button', { name: 'Decline…' }))
+    const box = await screen.findByRole('textbox')
+    fireEvent.change(box, { target: { value: '  Placeholder reason.  ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Decline the proposal' }))
+    await waitFor(() => expect(proposalsIo.decide).toHaveBeenCalledWith('prop-1', false, 'Placeholder reason.'))
+    expect(await screen.findByText('The proposal is declined. The GC’s page says so.')).toBeTruthy()
+  })
+
+  it('a refused answer says its reason on the card, and a failed read of proposals draws none', async () => {
+    const io = fakeIo({ readRoster: vi.fn(async () => withBuilt) })
+    const settingsIo = fakeSettingsIo({ readSettingsPapers: vi.fn(async () => builtPaper(0)) })
+    const proposalsIo = fakeProposalsIo({ decide: vi.fn(async () => Promise.reject(new Error('That proposal is no longer waiting.'))) })
+    const { unmount } = renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} settingsIo={settingsIo} proposalsIo={proposalsIo} />)
+    const card = await screen.findByRole('group', { name: 'A proposal on Sample secrecy paper' })
+    fireEvent.click(within(card).getByRole('button', { name: 'Take it' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Take the proposal' }))
+    expect(await within(card).findByRole('alert')).toBeTruthy()
+    expect(card.textContent).toContain('That proposal is no longer waiting.')
+    unmount()
+    renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} settingsIo={settingsIo} proposalsIo={fakeProposalsIo({ readWaiting: vi.fn(async () => Promise.reject(new Error('offline'))) })} />)
+    await screen.findByText('Built from this job’s settings')
+    expect(screen.queryByRole('group', { name: /^A proposal on / })).toBeNull()
+  })
 })
+

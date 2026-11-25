@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { gcPageAnswer, gcPagePhotoSign } from '../_shared/startChecksPortal.ts'
+import { gcPaperPropose } from '../_shared/portalJobPaperPropose.ts'
 import { askProblem } from '../_shared/stageAsk.ts'
 import { gcPortalStages, loadGcStageInputs, type GcStageAdmin } from '../_shared/gcStages.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
@@ -93,6 +94,7 @@ serve(async (req) => {
       : body.kind === 'portal_message' ? 'portal_message'
       : body.kind === 'start_check_answer' ? 'start_check_answer'
       : body.kind === 'start_check_photo' ? 'start_check_photo'
+      : body.kind === 'job_paper_proposal' ? 'job_paper_proposal'
       : null
     const description = typeof body.description === 'string' ? body.description.trim() : ''
     const availability = typeof body.availability === 'string' ? body.availability.trim().slice(0, 300) : ''
@@ -105,7 +107,7 @@ serve(async (req) => {
     }
     const gcPress = kind === 'gc_change_order_answer' || kind === 'gc_accept_work' || kind === 'gc_owner_contract_sign'
     const startCheck = kind === 'start_check_answer' || kind === 'start_check_photo'
-    if (kind !== 'stage_window' && kind !== 'payment_promise' && kind !== 'share_bill_ask' && kind !== 'portal_message' && !gcPress && !startCheck && (description.length < 5 || description.length > 2000)) {
+    if (kind !== 'stage_window' && kind !== 'payment_promise' && kind !== 'share_bill_ask' && kind !== 'portal_message' && kind !== 'job_paper_proposal' && !gcPress && !startCheck && (description.length < 5 || description.length > 2000)) {
       return jsonResponse({ error: 'Please tell us a little more about what you need (a sentence or two).' }, 400)
     }
     if (plansLink && !/^https:\/\//.test(plansLink)) {
@@ -137,6 +139,13 @@ serve(async (req) => {
     // adds a photo, or gives the day it will be ready. Held to what their page shows right now; no line to Dispatch. ──
     if (startCheck) {
       const reply = kind === 'start_check_photo' ? await gcPagePhotoSign(admin, link, jobId, body) : await gcPageAnswer(admin, link, jobId, body)
+      return jsonResponse(reply.json, reply.status)
+    }
+
+    // ── job_paper_proposal (punch list #389, step 6): the GC proposes a stricter setting for a job's paper. It changes
+    // no paper and waits for the office. The database holds it to their own job and to stricter only; no line to Dispatch. ──
+    if (kind === 'job_paper_proposal') {
+      const reply = await gcPaperPropose(admin, link, body)
       return jsonResponse(reply.json, reply.status)
     }
 

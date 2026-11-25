@@ -109,7 +109,11 @@ You can change how much they see of who has signed. Set the paper to the count a
 
 **Download a sample** opens the job's paper with made-up names. SAMPLE is printed across each page. It shows the words a signer reads, and no signer.
 
-The GC can read only. Nothing they press changes the paper. Setting the paper up is in [require papers before a job opens](/help/require-papers-before-a-job-opens#what-the-gc-sees).
+**Propose a stricter setting** opens the same sliders you use. Every stop looser than the job's is grey. The GC moves a topic, types their name and presses **Send the proposal**.
+
+Nothing the GC presses changes the paper. A proposal waits for you to take it or decline. Their page says where it stands. A decline shows your reason.
+
+Answering one is in [require papers before a job opens](/help/require-papers-before-a-job-opens#when-the-gc-proposes-a-stricter-setting). Setting the paper up is in [the same guide](/help/require-papers-before-a-job-opens#what-the-gc-sees).
 
 ## More on the portal
 

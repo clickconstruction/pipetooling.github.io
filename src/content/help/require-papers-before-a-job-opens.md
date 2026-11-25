@@ -2,7 +2,7 @@
 title: require papers before a job opens
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: papers before a job opens, NDA, site rules, required papers, sign before the job, job documents, contract book, signing link, roster, who has signed, built from settings, job settings, basis, level, sign again
+keywords: papers before a job opens, propose, proposal, stricter setting, take it, decline, NDA, site rules, required papers, sign before the job, job documents, contract book, signing link, roster, who has signed, built from settings, job settings, basis, level, sign again
 order: 76
 ---
 A job can require papers. An NDA, site rules or a GC's own form are common ones. Everyone signs each paper, the office too. You set them on the job's **Documents** tab.
@@ -99,6 +99,27 @@ You choose how much of that they see. Open **Settings** on the paper's row and f
 Then press {{button:blue|Save what the GC sees}}. This changes their page and never the paper. Nobody signs again. A new version of the paper keeps your choice.
 
 A paper written in prose does not show there. What their page looks like is in [see what a customer sees on their portal](/help/see-what-a-customer-sees-on-their-portal#a-paper-a-job-requires).
+
+## When the GC proposes a stricter setting
+
+The GC can propose a stricter setting from their page. It changes nothing until you take it.
+
+A proposal shows under the paper's row. It names who proposed and the day. Each topic it moves has a line, such as *Ask first to None*.
+
+1. Read each line.
+2. Press {{button:blue|Take it}} to use the stricter settings.
+3. To say no, press {{button:outline|Decline…}} and type why.
+
+The GC reads your reason on their page.
+
+The blue button says who signs again before you press it.
+
+- While nobody has signed, the settings are saved in place.
+- After someone has signed, the take makes a new version. Everyone signs the new version again.
+
+A GC can only make a topic stricter. One proposal waits on a paper at a time. A newer one takes its place.
+
+Your own change of the settings sets a waiting proposal aside. Taking the paper off does the same.
 
 ## Text someone their signing link
 
