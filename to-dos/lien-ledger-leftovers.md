@@ -212,19 +212,14 @@ ZZ Test rows that day. What walks 3 and 5 need is that day's session's reading, 
 
 ## Found on the walks
 
-**The affidavit pane draws *Months the affidavit claims* only for a job with approved clock hours.** Found on
-walk 7, 2026-11-24, and read again in the code that day. The pane builds the card when the job's clock months are
-not empty (`LienDeskAffidavitPane.tsx`, `monthRows`, `workMonths.months.length`). A job dated by hand, by a bill
-or by its creation has no clock month, so it never shows the card, whatever notice is on record. The notice pane
-reads such a job's month from `list_lien_notice_months` and draws it. **Not decided, and nothing is built.** Two
-ways it could go:
-
-- **Leave the rule and say so.** The card stays a list of months worked by the clock. A job with no approved
-  hours gets one quiet line in its place that says no month has approved hours, so the reader knows the card is
-  absent and not lost.
-- **Draw the card from the months the notice pane reads.** A job dated by hand, by a bill or by its creation
-  shows its stand-in month, marked as a stand-in, with its notice read against it as for a clock month. Walk 7
-  could then be read on the ZZ Test job as it stands.
+~~**The affidavit pane draws *Months the affidavit claims* only for a job with approved clock hours.**~~ **Shipped
+v2.8541**, on the owner's pick of 2026-11-24: draw the card from the job's stand-in month. Found on walk 7 that
+day. The pane built the card when the job's clock months were not empty, so a job dated by hand, by a bill or by
+its creation never showed it, whatever notice was on record. The card now takes the months of the paper's own
+span for such a job. Each month says what it rests on in place of its hours, and its notice is read against it
+as for a clock month. The other way, to leave the rule and say so in one quiet line, was not taken. Not seen
+live yet: walk 7 is its look, and it needs a new record by hand on a ZZ Test job, since the first one is voided.
+Walk 7 also read *no work month yet* on the path's § 53.056 stop. That reading was not looked into.
 
 ## Left on prod
 
