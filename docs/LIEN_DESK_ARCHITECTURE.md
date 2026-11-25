@@ -986,6 +986,9 @@ last_updated: 2026-11-21
 > A job with clock hours keeps a worked month the reader no longer returns.
 > The two panes hand `job`.
 > The By job book and the firm's grid hand none, since their job read (`LIEN_BOOK_JOB_COLUMNS`) carries no bills.
+> **v2.8554 (the path reads the notices on record, punch list #415):** `lienTimelineMonthsWithNoticeRecords` in the same file adds every month a live § 53.056 record names to the path's months as sent, on the day its packet left.
+> Until then a notice recorded by hand on a job with no live desk paper dropped off the path once the reader stopped returning its month, and the § 53.056 stop read *no work month yet*.
+> `lienDeskDatingMonth` still reads the desk's own months, so a month only a record names dates nothing, and `lienTimelineBook.ts` reads its rows' months the same way.
 > **v2.7741 (the reason comes with the day):** the desk's job read (`LIEN_DESK_JOB_COLUMNS` in `useLienDeskData.ts`) names `lien_last_work_note`, `lien_last_work_set_at` and `lien_last_work_set_by` beside the day, as the Lien window's job carries them.
 > On the desk `LienLastWorkDayLine` then draws the reason and the day it was set, and `LienLastWorkDayWindow` opens from the press on the stored reason.
 > `useGcOnNoticeData` builds its job read on the same list.
