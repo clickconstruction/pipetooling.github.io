@@ -2,7 +2,7 @@
 name: "A held check: recorded the day it comes, counted the day the bank makes it good"
 number: 437
 group: ready
-status: asked 2026-11-24 by Diane, with a payer's check deposited and not yet good at the bank · every place a typed check counts was read in the code, and everything the app knows about a check clearing · a first draw, a critique and a second draw the same day · the same day she asked for a badge on the Pipeline card and for the path when a check fails, both added · piece 1 is built as v2.8525, no release before the bank clears the check, and it found that the bank posts a check days before the day it names · call 1 answered the same day: cleared is the bank's named day · calls 2 to 6 answered 2026-11-25 (UTC) in the managing session: the bank's posting counts a check with no press, every check, a leader, a controller or a dev may release before the bank clears it (the card's pick, a leader only, overturned), a payer whose check came back waits six more days, and the payer's page keeps the drawn words · pieces 2 to 7 are not built
+status: asked 2026-11-24 by Diane, with a payer's check deposited and not yet good at the bank · every place a typed check counts was read in the code, and everything the app knows about a check clearing · a first draw, a critique and a second draw the same day · the same day she asked for a badge on the Pipeline card and for the path when a check fails, both added · piece 1 is built as v2.8525, no release before the bank clears the check, and it found that the bank posts a check days before the day it names · call 1 answered the same day: cleared is the bank's named day · calls 2 to 6 answered 2026-11-25 (UTC) in the managing session: the bank's posting counts a check with no press, every check, a leader, a controller or a dev may release before the bank clears it (the card's pick, a leader only, overturned), a payer whose check came back waits six more days, and the payer's page keeps the drawn words · the two questions those answers left were answered later the same day in the managing session: the other early presses go to the same three, and By day paid shows a counted check on the day the bank names · pieces 2 to 7 are not built
 summary: >
   A paper check typed on a bill counts everywhere the moment it is saved: the bill reads Paid, the
   customer's page says all paid up, chasing stops, the job leaves the lien lists. Only three things
@@ -13,8 +13,7 @@ summary: >
   and the bank's posting counts it and tells the office which liens to release.
 next: Two small pieces can start. The mend to piece 1 (S) holds its early release to a leader, a controller or a dev. Piece 2 (S) puts the bank's own day on Money in. Then the screens of pieces 3 to 7, drawn on the day the bank posts, are redrawn on the bank's named day before piece 3 is built.
 size: L as a train of seven (S · S · M · M · S · S · M)
-blocker: Nothing for the two small pieces. Two questions the answers left open wait on the owner before pieces 3 and 4, both under The calls. Counsel's three questions gate nothing in the build.
-ask: owner · decide · Do Count it now and the sooner release for a returned payer go to a leader, a controller or a dev, as the early release does?
+blocker: Nothing waits on a person for the build. The two questions the answers left open are answered, both under The calls. Counsel's three questions gate nothing in the build.
 opinion: build — one rule for every check, made from what the bank already tells the app; piece 1 closes a hole in #435 as built
 ---
 
@@ -212,10 +211,12 @@ A Stripe bill paid whole by check is a ledger row, and Stripe closes it seven da
 Calls 2 to 6 were answered on 2026-11-25 (UTC) in the managing session.
 Each answer above is quoted from that session's record of the user's answers.
 
-Two questions the answers leave open, both put to the managing session and neither decided here:
+Two questions the answers left open. Both were answered on 2026-11-25 (UTC) in the managing session, later than calls 2 to 6, and each answer is quoted from that session's record of the user's answers:
 
 - **Who presses the other early presses.** Call 4 names a leader, a controller or a dev for a release before the bank clears a check. The card gives *Count it now* (call 3) and the sooner release for a payer whose check came back (call 6) to a leader, and the answer to call 6 names nobody. Do those two go to the same three? The same is asked of **The bank confirmed the funds** on [#435](../lien-payoff/README.md).
+  - **Answered 2026-11-25.** Asked *Do Count it now, the sooner release for a payer whose check came back, and The bank confirmed the funds go to a leader, a controller or a dev, as the early release does?*, the answer was "Yes, the same three". So every early press on a held check is a leader's, a controller's or a dev's, with its typed reason. What it frees: pieces 3 and 4 no longer wait on it. Not built.
 - **Which of the bank's two days a counted check is shown on.** Call 1 counts a check on the bank's named day, about a week after the bank posts it. Call 1 of [#440](../one-day-of-money-two-screens.md) was answered the same day: *The day the bank posts it, the same rule as #437.* Once a check is counted, does By day paid show it on the day the bank posted it, where Money in shows the deposit, or on the named day? *How the count works* above dates the payment the day the bank posted, and was written before call 1 was answered.
+  - **Answered 2026-11-25.** Asked *Once a check counts, which day does By day paid show it on?*, the answer was typed: "The day the bank names because sometimes checks clear instantly". Side by side with #440's call 1 as it was written earlier that day: *The day the bank posts it, the same rule as #437.* The two differ, the typed answer is the later one, and #440 is amended to it. A check the bank clears at once has one day, so the two agree there. What it frees: pieces 3 to 7 are redrawn on the bank's named day, as Next says, with By day paid on that day too. What it leaves open: the question was asked of By day paid alone. Money in shows a deposit on the day it posts, and nobody was asked whether that moves. #440's pieces 3 and 4 weigh it before one rule feeds both screens.
 
 **For the office**
 
