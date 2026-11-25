@@ -1521,6 +1521,7 @@ The **card** is 3.5 × 2 inches: the front carries the logo, the back the photo,
 The **name on the card** is the full name a customer should read;
 the account name stands in when it is empty.
 The **ring** is where the photo sits: the photo is kept whole and three numbers place it.
+A photo is added and changed by its person or the office, and a dev alone reads **Remove the photo…**, for a test person whose name starts with ZZ (`photoRemoveProblem`, v2.8565, punch list #443).
 The **print file** is a PDF for a print shop, front and back with bleed and crop marks;
 the **sheet of ten** is a letter page for card stock.
 A **look** is one footer, one card back and one card front that go together: the same layouts in other colours.

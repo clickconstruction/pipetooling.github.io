@@ -49,6 +49,7 @@ function fakeIo(load: CardLoad, looks: CardLooksSetting = ONE_LOOK, sizes: CardS
     photo: vi.fn(async () => ({ href: 'data:image/jpeg;base64,AAAA', w: 400, h: 600 })),
     savePhoto: vi.fn(async () => 'u-marisol/photo-2.jpg'),
     saveCrop: vi.fn(async () => undefined),
+    removePhoto: vi.fn(async () => ({ fileGone: true })),
     saveFacts: vi.fn(async () => undefined),
     looks: vi.fn(async () => looks),
     saveLook: vi.fn(async () => undefined),
@@ -213,6 +214,82 @@ describe('YourCardCard', () => {
     expect(await screen.findByRole('alert')).toBeTruthy()
     expect(screen.getByRole('radio', { name: /Classic/ })).toHaveProperty('ariaChecked', 'true')
     expect(footer()).toContain('fill="#000000"')
+  })
+
+  // Punch list #443, row 8: the take-back of Save the photo, for a dev on a test person alone.
+  const ZZ: CardLoad = { ...MARISOL, facts: { ...MARISOL.facts, name: 'ZZ Test Learner', card_name: null }, photoPath: 'u-zz/photo-1.jpg' }
+
+  it('offers nobody but a dev the removal of a photo', async () => {
+    for (const role of ['master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'helpers'] as const) {
+      renderWithProviders(<YourCardCard role={role} userId="u-zz" teammate="ZZ Test Learner" io={fakeIo(ZZ)} renderer={fakeRenderer()} />)
+      await screen.findByRole('button', { name: 'Change the photo' })
+      expect(screen.queryByRole('button', { name: 'Remove the photo…' })).toBeNull()
+      expect(document.querySelector('[data-your-card-remove-photo]')).toBeNull()
+      cleanup()
+    }
+  })
+
+  it('lets a dev remove a test person’s photo, after a confirm that names the act', async () => {
+    const io = fakeIo(ZZ)
+    renderWithProviders(<YourCardCard role="dev" userId="u-zz" teammate="ZZ Test Learner" io={io} renderer={fakeRenderer()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove the photo…' }))
+    const yes = await screen.findByRole('button', { name: 'Remove the photo' })
+    expect(screen.getByText('Remove the photo of ZZ Test Learner?')).toBeTruthy()
+    expect(screen.getByText('The photo comes off the card and the footer, and its file is deleted. It cannot be brought back.')).toBeTruthy()
+    expect(io.removePhoto).not.toHaveBeenCalled()
+    fireEvent.click(yes)
+    // The person is read again before the write, and the photo that read names is the one removed.
+    await waitFor(() => expect(io.removePhoto).toHaveBeenCalledWith('u-zz', 'u-zz/photo-1.jpg'))
+    expect(io.load).toHaveBeenCalledTimes(2)
+    expect(await screen.findByText('The photo was removed.')).toBeTruthy()
+    // The card reads as one with no photo: the press adds one, and the removal is gone with the photo.
+    expect(await screen.findByRole('button', { name: 'Add a photo' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Remove the photo…' })).toBeNull()
+  })
+
+  it('removes nothing when the confirm is cancelled', async () => {
+    const io = fakeIo(ZZ)
+    renderWithProviders(<YourCardCard role="dev" userId="u-zz" teammate="ZZ Test Learner" io={io} renderer={fakeRenderer()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove the photo…' }))
+    await screen.findByRole('button', { name: 'Remove the photo' })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Remove the photo' })).toBeNull())
+    expect(io.removePhoto).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Change the photo' })).toBeTruthy()
+  })
+
+  it('keeps a real person’s photo for a dev too: a dead press, and the reason under it', async () => {
+    const io = fakeIo(MARISOL)
+    renderWithProviders(<YourCardCard role="dev" userId="u-marisol" teammate="Marisol" io={io} renderer={fakeRenderer()} />)
+    const press = (await screen.findByRole('button', { name: 'Remove the photo…' })) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    expect(document.querySelector('[data-your-card-remove-photo]')?.textContent).toContain('Only a test person’s photo can be removed. Their name must start with ZZ.')
+    fireEvent.click(press)
+    expect(screen.queryByRole('button', { name: 'Remove the photo' })).toBeNull()
+    expect(io.removePhoto).not.toHaveBeenCalled()
+  })
+
+  it('offers a dev no removal where there is no photo', async () => {
+    renderWithProviders(<YourCardCard role="dev" userId="u-zz" teammate="ZZ Test Learner" io={fakeIo({ ...ZZ, photoPath: null })} renderer={fakeRenderer()} />)
+    await screen.findByRole('button', { name: 'Add a photo' })
+    expect(screen.queryByRole('button', { name: 'Remove the photo…' })).toBeNull()
+  })
+
+  it('says the reason and keeps the photo when the removal is refused, and says so when the file stayed', async () => {
+    const refused = fakeIo(ZZ)
+    refused.removePhoto.mockRejectedValueOnce(new Error('The photo was not removed. You may not have leave to change this account, or the photo was changed meanwhile.'))
+    renderWithProviders(<YourCardCard role="dev" userId="u-zz" teammate="ZZ Test Learner" io={refused} renderer={fakeRenderer()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove the photo…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove the photo' }))
+    expect(await screen.findByText('The photo was not removed. You may not have leave to change this account, or the photo was changed meanwhile.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Change the photo' })).toBeTruthy()
+    cleanup()
+    const left = fakeIo(ZZ)
+    left.removePhoto.mockResolvedValueOnce({ fileGone: false })
+    renderWithProviders(<YourCardCard role="dev" userId="u-zz" teammate="ZZ Test Learner" io={left} renderer={fakeRenderer()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove the photo…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove the photo' }))
+    expect(await screen.findByText('The photo came off the card. Its file could not be deleted.')).toBeTruthy()
   })
 
   it('shows a subcontractor no card', () => {

@@ -46,6 +46,12 @@ export interface CardIo {
   /** Uploads a new photo into the person's folder, points their row at it with its crop, and removes the old one. Returns the new path. */
   savePhoto(userId: string, blob: Blob, crop: KitCrop, oldPath: string | null): Promise<string>
   saveCrop(userId: string, crop: KitCrop): Promise<void>
+  /**
+   * Takes the photo at `path` off the person's row, with its crop, then deletes its file (punch list #443, row 8).
+   * Throws when the row is refused or no longer names that photo. `fileGone` is false when the row was cleared and
+   * the bucket kept the file. Who may ask is `photoRemove.ts`: this is the write alone.
+   */
+  removePhoto(userId: string, path: string): Promise<{ fileGone: boolean }>
   saveFacts(userId: string, facts: { card_name: string; title: string }): Promise<void>
   /** Which looks the owner offers, and the default. With nothing on file, the look in use alone. */
   looks(): Promise<CardLooksSetting>
@@ -144,6 +150,15 @@ export function supabaseCardIo(client: unknown = supabase): CardIo {
       const saved = await db.from('users').update({ photo_crop: crop }).eq('id', userId).select('id')
       checkSupabaseError(saved, 'save the photo')
       if (!saved.data?.length) throw new Error('The photo was not saved. You may not have leave to change this account.')
+    },
+    async removePhoto(userId, path) {
+      // The row first, and only while it still names this photo, so no account is left pointing at a file that is gone.
+      const saved = await db.from('users').update({ photo_path: null, photo_crop: null }).eq('id', userId).eq('photo_path', path).select('id')
+      checkSupabaseError(saved, 'remove the photo')
+      if (!saved.data?.length) throw new Error('The photo was not removed. You may not have leave to change this account, or the photo was changed meanwhile.')
+      // A file the bucket's policy refuses comes back as no error and no file, so the count is what says it went.
+      const gone = await db.storage.from(PERSON_PHOTOS_BUCKET).remove([path]).catch(() => null)
+      return { fileGone: !!gone && !gone.error && (gone.data?.length ?? 0) > 0 }
     },
     looks: () => readLooks(db),
     async saveLook(userId, look) {
