@@ -137,6 +137,8 @@ type GhQueueEntry = {
   position: number
   enqueuedAt: string
   estimatedTimeToMerge: number | null
+  /** `MergeQueueEntryState`: AWAITING_CHECKS, MERGEABLE, QUEUED, LOCKED or UNMERGEABLE (punch list #444). */
+  state: string | null
   pullRequest: { number: number; title: string } | null
 }
 type GhOpenPr = {
@@ -162,7 +164,7 @@ type GhQueueAnswer = {
 const QUEUE_QUERY = `query($owner: String!, $name: String!, $after: String, $withQueue: Boolean!) {
   repository(owner: $owner, name: $name) {
     mergeQueue(branch: "main") @include(if: $withQueue) {
-      entries(first: 100) { totalCount nodes { position enqueuedAt estimatedTimeToMerge pullRequest { number title } } }
+      entries(first: 100) { totalCount nodes { position state enqueuedAt estimatedTimeToMerge pullRequest { number title } } }
     }
     pullRequests(states: OPEN, first: 100, after: $after) {
       pageInfo { hasNextPage endCursor }
@@ -199,7 +201,7 @@ async function readQueue(token: string, repo: string): Promise<PaceQueueInput | 
         total = q.totalCount
         for (const e of q.nodes ?? []) {
           if (!e?.pullRequest) continue
-          entries.push({ number: e.pullRequest.number, title: e.pullRequest.title, position: e.position, enqueuedAt: e.enqueuedAt, estimatedSeconds: e.estimatedTimeToMerge })
+          entries.push({ number: e.pullRequest.number, title: e.pullRequest.title, position: e.position, enqueuedAt: e.enqueuedAt, estimatedSeconds: e.estimatedTimeToMerge, state: e.state ?? null })
         }
       }
       for (const p of repoData.pullRequests.nodes ?? []) {

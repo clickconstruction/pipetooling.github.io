@@ -7,7 +7,8 @@
  * queue's own rules and words stay in `supabase/functions/_shared/shipPace.ts`; this file adds what the punch list
  * draws differently:
  *
- * - A line of the queue as its values apart: the place, the title, how long in the queue, and what is left.
+ * - A line of the queue as its values apart: the place, the title, its state (checks running, ready), how long in
+ *   the queue, and what is left. A row written before the function read the state has none, and draws no column.
  * - Merges an hour: the merges of the picture's recent stretch (six hours) over its hours, to one decimal. One hour
  *   swings too much, and a whole day's average is dragged down by the night.
  * - The day hour by hour: the merges of each hour of the app calendar's today, midnight first; an hour that has
@@ -18,9 +19,12 @@
 import {
   ordinalWords,
   queueSpanWords,
+  queueStateTone,
+  queueStateWords,
   queueTitleWords,
   SHIP_PACE_QUEUE_SHOWN,
   type PaceQueueEntry,
+  type PaceQueueStateTone,
   type ShipPacePicture,
 } from '../../../supabase/functions/_shared/shipPace'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -38,6 +42,7 @@ export const PUNCH_QUEUE_WORDS = {
   loading: 'Reading the queue…',
   place: 'Place',
   change: 'Change',
+  state: 'State',
   waited: 'In the queue',
   toGo: 'To go',
   noEstimate: 'no estimate yet',
@@ -57,6 +62,10 @@ export interface QueueRow {
   place: string
   /** The title after its version, cut on a word. */
   title: string
+  /** *Checks running*, *Ready*, *Waiting its turn*, *Merging now*, *Will not merge*; empty when the row has no state. */
+  state: string
+  /** How the state's chip is toned; null with no state. */
+  tone: PaceQueueStateTone | null
   /** *9 minutes*, *1 hour 5 minutes*, *under a minute*. */
   waited: string
   /** *about 3 minutes*, *under a minute*, or null when GitHub gave no estimate. */
@@ -72,10 +81,17 @@ export function queueRows(entries: readonly PaceQueueEntry[], nowMs: number): Qu
       number: e.number,
       place: ordinalWords(e.position),
       title: queueTitleWords(e.title),
+      state: queueStateWords(e.state),
+      tone: queueStateTone(e.state),
       waited: queueSpanWords(waited),
       toGo: e.estimatedMinutes == null ? null : e.estimatedMinutes < 1 ? queueSpanWords(0) : `about ${queueSpanWords(e.estimatedMinutes)}`,
     }
   })
+}
+
+/** Whether the State column draws: some row has a state. A row from before the read has none, and the column stays away. */
+export function rowsHaveState(rows: readonly QueueRow[]): boolean {
+  return rows.some((r) => r.state !== '')
 }
 
 /** How many are in line: the queue's own count when it was read, else the entries listed; null when the queue was not read. */

@@ -59,13 +59,21 @@ export type PaceQueueRun = {
   conclusion: string | null
 }
 
-/** One entry of the merge queue as GraphQL lists it: `estimatedSeconds` is GitHub's `estimatedTimeToMerge`, null when it has none. */
+/** GitHub's five states of a merge-queue entry (`MergeQueueEntryState`). */
+export const PACE_QUEUE_STATES = ['AWAITING_CHECKS', 'MERGEABLE', 'QUEUED', 'LOCKED', 'UNMERGEABLE'] as const
+export type PaceQueueState = (typeof PACE_QUEUE_STATES)[number]
+
+/**
+ * One entry of the merge queue as GraphQL lists it: `estimatedSeconds` is GitHub's `estimatedTimeToMerge`, null when
+ * it has none; `state` is the entry's `state` as GitHub spells it (punch list #444), missing from a read that did not ask.
+ */
 export type PaceQueueEntryInput = {
   number: number
   title: string
   position: number
   enqueuedAt: string
   estimatedSeconds: number | null
+  state?: string | null
 }
 
 /** One open pull request as GraphQL lists it: whether auto-merge is on, whether it sits in the queue, its checks and its mergeability. */
@@ -138,13 +146,18 @@ export type PaceRecent = {
   since: string | null
 }
 
-/** One pull request in line: its position, its title as GitHub has it, when it entered and GitHub's estimate in whole minutes. */
+/**
+ * One pull request in line: its position, its title as GitHub has it, when it entered, GitHub's estimate in whole
+ * minutes, and its state. The state is null for one GitHub gave none or a word this build does not know, and missing
+ * on a row written before the function read it, so a line then draws without it.
+ */
 export type PaceQueueEntry = {
   number: number
   title: string
   position: number
   enqueuedAt: string
   estimatedMinutes: number | null
+  state?: PaceQueueState | null
 }
 
 /** The queue's line and the buckets around it. */
@@ -304,6 +317,11 @@ export function shipPacePicture(input: PaceInput): ShipPacePicture {
   }
 }
 
+/** GitHub's word as one of the five states; null for no word or one this build does not know. */
+export function queueStateOf(raw: string | null | undefined): PaceQueueState | null {
+  return (PACE_QUEUE_STATES as readonly string[]).includes(raw ?? '') ? (raw as PaceQueueState) : null
+}
+
 /** A red check or a conflict: waiting will not move this pull request. */
 function isHeld(p: PaceOpenPr): boolean {
   return p.checks === 'FAILURE' || p.checks === 'ERROR' || p.mergeable === 'CONFLICTING'
@@ -324,6 +342,7 @@ export function paceQueue(input: PaceQueueInput): PaceQueue {
       position: e.position,
       enqueuedAt: e.enqueuedAt,
       estimatedMinutes: e.estimatedSeconds == null || !Number.isFinite(e.estimatedSeconds) ? null : Math.max(0, Math.round(e.estimatedSeconds / 60)),
+      state: queueStateOf(e.state),
     }))
   let armedWaiting = 0
   let armedHeld = 0
@@ -458,15 +477,44 @@ export function queueSpanWords(minutes: number): string {
 
 /**
  * One entry's words: *3rd in line, in the queue 25 minutes, about 12 minutes to go*; with no estimate from GitHub,
- * *3rd in line, in the queue 25 minutes*; an estimate under a minute says *under a minute to go*.
+ * *3rd in line, in the queue 25 minutes*; an estimate under a minute says *under a minute to go*. An entry with a
+ * state says it after its place: *3rd in line, checks running, in the queue 25 minutes*.
  */
-export function queueLineWords(entry: Pick<PaceQueueEntry, 'position' | 'enqueuedAt' | 'estimatedMinutes'>, nowMs: number): string {
+export function queueLineWords(entry: Pick<PaceQueueEntry, 'position' | 'enqueuedAt' | 'estimatedMinutes' | 'state'>, nowMs: number): string {
   const sinceMs = msOf(entry.enqueuedAt)
   const waited = Number.isFinite(sinceMs) ? Math.max(0, (nowMs - sinceMs) / 60_000) : 0
-  const head = `${ordinalWords(entry.position)} in line, in the queue ${queueSpanWords(waited)}`
+  const state = queueStateWords(entry.state)
+  const head = `${ordinalWords(entry.position)} in line, ${state ? `${state.charAt(0).toLowerCase()}${state.slice(1)}, ` : ''}in the queue ${queueSpanWords(waited)}`
   if (entry.estimatedMinutes == null) return head
   if (entry.estimatedMinutes < 1) return `${head}, under a minute to go`
   return `${head}, about ${queueSpanWords(entry.estimatedMinutes)} to go`
+}
+
+const QUEUE_STATE_WORDS: Record<PaceQueueState, string> = {
+  AWAITING_CHECKS: 'Checks running',
+  MERGEABLE: 'Ready',
+  QUEUED: 'Waiting its turn',
+  LOCKED: 'Merging now',
+  UNMERGEABLE: 'Will not merge',
+}
+
+/**
+ * An entry's state in the words a line draws: *Checks running* (the queue is building it), *Ready* (its checks passed
+ * and it waits on the ones ahead), *Waiting its turn* (not yet built), *Merging now*, *Will not merge* (GitHub is
+ * about to drop it from the line). Empty for no state, so a row written before the read draws no word.
+ */
+export function queueStateWords(state: PaceQueueState | null | undefined): string {
+  return state ? QUEUE_STATE_WORDS[state] : ''
+}
+
+/** How a state's chip is toned: work under way, good to go, plain waiting, or stopped. Null for no state. */
+export type PaceQueueStateTone = 'running' | 'ready' | 'waiting' | 'stopped'
+export function queueStateTone(state: PaceQueueState | null | undefined): PaceQueueStateTone | null {
+  if (!state) return null
+  if (state === 'AWAITING_CHECKS') return 'running'
+  if (state === 'MERGEABLE' || state === 'LOCKED') return 'ready'
+  if (state === 'UNMERGEABLE') return 'stopped'
+  return 'waiting'
 }
 
 /** The title the office reads: the leading `v2.NNNN ` dropped, and cut on a word at `max` characters with an ellipsis. */

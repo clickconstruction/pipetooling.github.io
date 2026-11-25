@@ -17,6 +17,7 @@ import {
   queueRows,
   recentStretchWords,
   rowAgeMinutes,
+  rowsHaveState,
   shouldReadOnOpen,
 } from './punchListQueue'
 
@@ -32,9 +33,9 @@ const merged = (at: string): PacePr => {
 }
 
 const ENTRIES: PaceQueueEntryInput[] = [
-  { number: 9002, title: 'v2.9002 Bills sent: the list of ways takes a thumb', position: 2, enqueuedAt: minutesAgo(8), estimatedSeconds: 480 },
-  { number: 9001, title: 'v2.9001 Jobs: the stage bar keeps its place on a phone', position: 1, enqueuedAt: minutesAgo(9), estimatedSeconds: 180 },
-  { number: 9003, title: 'docs: a walk’s two findings, written on their card', position: 3, enqueuedAt: minutesAgo(65), estimatedSeconds: null },
+  { number: 9002, title: 'v2.9002 Bills sent: the list of ways takes a thumb', position: 2, enqueuedAt: minutesAgo(8), estimatedSeconds: 480, state: 'MERGEABLE' },
+  { number: 9001, title: 'v2.9001 Jobs: the stage bar keeps its place on a phone', position: 1, enqueuedAt: minutesAgo(9), estimatedSeconds: 180, state: 'AWAITING_CHECKS' },
+  { number: 9003, title: 'docs: a walk’s two findings, written on their card', position: 3, enqueuedAt: minutesAgo(65), estimatedSeconds: null, state: 'QUEUED' },
   { number: 9004, title: 'v2.9004 A card’s history opens on its newest change', position: 4, enqueuedAt: minutesAgo(0.2), estimatedSeconds: 20 },
 ]
 
@@ -59,11 +60,16 @@ const PICTURE: ShipPacePicture = shipPacePicture({
 describe('queueRows', () => {
   it('draws a line as its values apart, in the order the queue gave', () => {
     expect(queueRows(PICTURE.queue!.entries, nowMs)).toEqual([
-      { number: 9001, place: '1st', title: 'Jobs: the stage bar keeps its place on a phone', waited: '9 minutes', toGo: 'about 3 minutes' },
-      { number: 9002, place: '2nd', title: 'Bills sent: the list of ways takes a thumb', waited: '8 minutes', toGo: 'about 8 minutes' },
-      { number: 9003, place: '3rd', title: 'docs: a walk’s two findings, written on their card', waited: '1 hour 5 minutes', toGo: null },
-      { number: 9004, place: '4th', title: 'A card’s history opens on its newest change', waited: 'under a minute', toGo: 'under a minute' },
+      { number: 9001, place: '1st', title: 'Jobs: the stage bar keeps its place on a phone', state: 'Checks running', tone: 'running', waited: '9 minutes', toGo: 'about 3 minutes' },
+      { number: 9002, place: '2nd', title: 'Bills sent: the list of ways takes a thumb', state: 'Ready', tone: 'ready', waited: '8 minutes', toGo: 'about 8 minutes' },
+      { number: 9003, place: '3rd', title: 'docs: a walk’s two findings, written on their card', state: 'Waiting its turn', tone: 'waiting', waited: '1 hour 5 minutes', toGo: null },
+      // The fourth came with no state: its line draws without a chip.
+      { number: 9004, place: '4th', title: 'A card’s history opens on its newest change', state: '', tone: null, waited: 'under a minute', toGo: 'under a minute' },
     ])
+    expect(rowsHaveState(queueRows(PICTURE.queue!.entries, nowMs))).toBe(true)
+    // A row written before the function read the state: no entry has one, so the column stays away.
+    const before = PICTURE.queue!.entries.map(({ state: _state, ...rest }) => rest)
+    expect(rowsHaveState(queueRows(before, nowMs))).toBe(false)
   })
 
   it('lists the first ten, and never a negative wait', () => {
