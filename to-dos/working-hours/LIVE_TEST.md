@@ -115,3 +115,21 @@ the words on it.
   as this sheet says. Step 1.2, `apply_pay_setup` on ZZ Test Learner, was refused by that session's auto mode,
   so it stopped and asked, as the rules above say. Step 1.5's four refusals each answered in words. Steps 1.3,
   1.4, 2, 3.3 and 4 were not run, and nothing was written.
+- **2026-11-24, the same session, after the user allowed the seat's apply verbs there and said yes to step 4.** Clean.
+  Steps 1.1 to 1.5, 2.1 to 2.4, 3.2 to 3.5, 4.1, 4.2, 4.3 as the dev, 4.5 and 5 pass, at 1280 px.
+  - **Not walked.** 2.5, the row at a phone's width: the hours were taken off first. The second half of 4.3, the
+    window as anyone but a dev. 4.4, on purpose: it needs the person left salaried overnight.
+  - **A fault found, read in the code the same day.** `set_working_hours` writes a salaried person's seven hour
+    numbers on pay (`salaried_week_hours`) when a week is set. Taking the hours off writes nothing there. So the
+    numbers stay as the hours last set them. In step 4.2 they read 6 h a day, and step 5's undo, Salaried off, would
+    have left an hourly person carrying a week of 6 h days that nobody set, where they stood at 8 before. The run
+    set the hours to 6:00 AM to 2:00 PM while the person was still salaried, so the numbers read 8 again, then
+    undid. **Do the same in step 5 until the fault is mended.** What taking the hours off should leave is a call
+    nobody has made: the week as it stood before the first set, or the usual 8 h days.
+  - **Two small things seen, not read in the code.** The Workday schedule window on a teammate's sheet speaks to
+    the reader as the person: *You are marked salaried… Define your usual 8-hour day*. The way back from View as
+    reads *Exit impersonation* with the name at a desk and *Exit* with the name at 730 px, where the guide says
+    Exit.
+  - **Left on prod, by design.** Six pay log lines for ZZ Test Hand and three `person_available_hours` rows each
+    for ZZ Test Hand and ZZ Test Learner. Both tables keep every save. ZZ Test Hand reads as before the run:
+    hourly, the same wage, 8 h days, no workday template, no working hours. ZZ Test Learner's hours are off.
