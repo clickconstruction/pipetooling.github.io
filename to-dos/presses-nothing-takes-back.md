@@ -2,16 +2,18 @@
 name: "Presses nothing takes back: the standing list"
 number: 443
 group: gated
-status: standing list opened 2026-11-24 on the owner's word of that day · seventeen rows: the Lien desk, Bills sent, Accounts Receivable, Bill Customer, a person's card, the job form's address, a job's papers, a customer's portal, a person's desk, a job's notes, a painted map, an address the map could not place and View as · nothing is built and no build is approved
+status: standing list opened 2026-11-24 on the owner's word of that day · seventeen rows: the Lien desk, Bills sent, Accounts Receivable, Bill Customer, a person's card, the job form's address, a job's papers, a customer's portal, a person's desk, a job's notes, a painted map, an address the map could not place and View as · the owner said yes on 2026-11-25 to the six take-backs that need the client alone, one small PR each · none is built yet · the ones that need a migration go back to him one by one
 summary: >
   Every press a walk or a thread meets that nothing takes back, one row each: what was pressed, on which
   screen, what it left, and what would take it back. The owner asked for the note on 2026-11-24, when he
-  approved ZZ Test rows for anything in the app even where a press cannot be revoked. Building the
-  take-backs is a later decision, and each would be a card of its own.
-next: Add a row each time a walk or a thread reports such a press. When the owner says to build, each take-back becomes a card of its own and its row here names it.
-ask: owner · decide · Say when the take-backs on this list may be built, and which comes first.
+  approved ZZ Test rows for anything in the app even where a press cannot be revoked. On 2026-11-25
+  he said yes to the six take-backs that need the client alone, each a small PR under this card,
+  seen by a dev alone and refusing a row that is not a test row. The ones that need a migration
+  go back to him one by one.
+next: Build the six client-only take-backs, smallest first, one small PR each: rows 3, 4, 8, 5, row 1's record, and row 9. Strike a row as its take-back ships. Add a row each time a walk or a thread reports such a press. The take-backs that need a migration or a function go back to the owner one by one.
+ask: owner · decide · Are Remove the photo and Reopen a closed case for everyone who uses the screen, or for a dev on a test row alone?
 size: a standing list · each take-back is sized on its own row
-blocker: The owner's go to build. Adding a row waits on nothing.
+blocker: None for the six client-only take-backs. The rest wait on the owner's word, one by one. Adding a row waits on nothing.
 mockup: not required — a standing list of presses, no screen
 pointer: true
 ---
@@ -27,6 +29,24 @@ The owner, on 2026-11-24, giving a standing yes for test rows:
 > setting in settings for the dev user)
 
 This card is that note. It is one list, kept in one place, so the same press is not written down on six cards.
+
+## The go to build, 2026-11-25
+
+The owner was asked: *Card #443 lists presses nothing takes back. Build the six client-only take-backs
+now?* He answered:
+
+> Yes, the six small ones
+
+The option he picked read: one small PR each, invisible to every non-dev, refusing any row that is not
+a test row or that a real record depends on. The ones that need a migration come back to him one by
+one.
+
+The six, smallest first: delete a way nobody used (row 3), delete a by-hand record of a test bill (row
+4), **Remove the photo** (row 8), **Reopen** a closed case (row 5), delete a by-hand notice record (row
+1, the record alone), and clear a kept address nothing is written under (row 9).
+
+Still his to say: whether rows 8 and 5 are for everyone who may use the screen. Until he does, both are
+built for a dev on a test row alone.
 
 ## What counts
 
@@ -103,6 +123,11 @@ nothing. Row 9's own leftover may be a miss and not a kept address: row 16 says 
 - Three notes on the ZZ Test walk job, posted by the walk of #363 on 2026-11-24, because of row 13.
 - One kept miss for a made-up address, from the walk of #441 on 2026-11-25, because of row 16. It stops
   counting on its own after 30 days.
+- Five ZZ Test parts in box ZZ4 on the ZZ Test walk job, ten ledger rows, added by the simulator's walk of
+  #398 on 2026-11-25. No row of this list holds them there: a dev can take each press back. They are kept
+  on the owner's word of 2026-11-25, *Keep them*, for his look at a box with several kinds of part.
+- One View as record for each look a walk makes as someone else, because of row 17. The owner said yes
+  to those looks on 2026-11-25, *Yes, looks only*.
 - Nothing because of rows 12, 14 and 15. The made-up person is gone, as the press means. The walk of #345
   ended a link and threw a map away that it had made for the look.
 
