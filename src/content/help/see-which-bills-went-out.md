@@ -253,6 +253,8 @@ The line says *Recorded by hand*, with your name and the day you recorded it. Th
 
 A record made by hand cannot be changed once saved. Read the line above the button before you press.
 
+Only the developer can delete a record made by hand. It must be a record of a test bill.
+
 No chip may fit how the bill went. Then add a way to the list. See [Change the list of ways](#change-the-list-of-ways).
 
 ## Say how several bills went at once
@@ -294,6 +296,8 @@ Each change saves when you press it. Press {{button:blue|Done}} to close the win
 A bill already recorded keeps the words it was recorded with. A new name changes the chip and no older line.
 
 The list holds 12 ways at most. The list always keeps one way.
+
+A way taken off stays in the window under *Taken off*. Only the developer can delete one. It must be a test way that no bill was recorded with.
 
 Every way counts under the **Recorded by hand** chip, whatever its words.
 

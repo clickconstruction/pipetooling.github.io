@@ -2134,6 +2134,7 @@ Under the count alone the function sends no business, and it sends the signers o
 It refuses picks that loosen any topic or change nothing, and it writes `job_paper_proposals` and never the paper.
 `job_paper_proposal_decide(proposal, take, why)` is the office's alone, never a twin, an archived account or training, and a take saves through `job_paper_set_settings` under that function's own rules.
 The office reads `job_paper_proposals` and writes it only through that function, and no other role reads a row.
+The Needs You line for a waiting proposal (v2.8558, the source `jobPaperProposals`) is the same office set's, and it reads the table under that policy, so no other role has the line.
 The GC's page gets a settings list with names and plain words only: the lines the office reads beside a choice never leave the portal function.
 The roster's body is `job_papers_roster_now`, granted to nobody, and `job_papers_roster` stays the office's alone.
 **A job's sample** (v2.8506, `open-job-paper-sample`) opens with no login for the GC on that job alone: the portal link must show their GC jobs, and the paper must be one that job requires now.
@@ -4086,7 +4087,7 @@ Row 97's signal is held by the database too since v2.8532: on the private Realti
 | 80 | Settings rail → **View as…** · `/settings#view-as` | dev (not while imitating) | imitation is a real session as another person, with their writes |
 | 81 | Settings → Your account → **Dev MCP keys** · `/settings#settings-dev-mcp-keys` | dev | a key lets a coding agent read the app as the dev |
 | 82 | Settings → Your account → **Export all backup** (the title's trailing icon) | dev | a full JSON pull of the company's data |
-| 83 | Settings → **Data & recovery**: JSON backups, **ZZ test jobs**, **Recently deleted**, **Bulk-deletion alert** · `/settings?tab=settings-data` | dev | restores rows across 86 tables and pulls every table; rows 74 and 77 are the two sweeps inside worth a confirm |
+| 83 | Settings → **Data & recovery**: JSON backups, **ZZ test jobs**, **Kept map addresses**, **Recently deleted**, **Bulk-deletion alert** · `/settings?tab=settings-data` | dev | restores rows across 86 tables and pulls every table; rows 74 and 77 are the two sweeps inside worth a confirm |
 | 84 | Settings → **Email templates & testing** (Open Templates, dispatch phone, Tally minimum date, workflow email test, notification and email templates, report review, Easter eggs) | dev | test sends, template HTML and the catalog: plumbing |
 | 85 | Settings → **Digital twins & samples** (fleet admin, sample accounts, the walk tester) | dev | mints robot keys and sample accounts |
 | 86 | Settings → People & teams → **Pay approved leaders** (and Show in Hours) | dev | grants wage visibility; the trigger enforces it, so a client change alone would not open it |

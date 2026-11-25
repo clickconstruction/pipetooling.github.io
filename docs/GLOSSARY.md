@@ -1076,6 +1076,7 @@ It marks the GC's page and never the paper, so nobody signs again, and a new ver
 **A GC's proposal** (v2.8553) is a set of stricter settings a GC sends from that block with **Propose a stricter setting**, on the office's own sliders with every stop looser than the job's greyed (`PortalJobPaperPropose.tsx`, `gcPaperPropose.ts`, `job_paper_proposals`).
 It changes no paper: it waits under the paper's row on the job's Documents tab, where the office presses **Take it** or **Decline…** (`JobPaperProposalCard.tsx`, `jobPaperProposal.ts`).
 A proposal is **waiting**, **taken**, **declined** or **overtaken**, and overtaken means a newer proposal, a change of the paper's settings, or the paper coming off the job.
+Since v2.8558 a waiting proposal is a line on the office's Needs You, *A GC proposed stricter settings* (`job-paper-proposals`, `needsYou/paperProposals.ts`), whose press **Open the job** opens that job's window on Documents and answers nothing.
 The Document builder's block on the same page, *Secrecy on your jobs*, is another thing: a builder the office sent to look at, tied to no job's paper.
 A job's **sample** (v2.8506) is the paper for that job's settings as a PDF, with a made-up job and signer and SAMPLE across each page, drawn by `open-job-paper-sample` from the same assembly a signer reads.
 It is the GC's to download from that block, and it is never for signing.
@@ -1521,6 +1522,7 @@ The **card** is 3.5 × 2 inches: the front carries the logo, the back the photo,
 The **name on the card** is the full name a customer should read;
 the account name stands in when it is empty.
 The **ring** is where the photo sits: the photo is kept whole and three numbers place it.
+A photo is added and changed by its person or the office, and a dev alone reads **Remove the photo…**, for a test person whose name starts with ZZ (`photoRemoveProblem`, v2.8565, punch list #443).
 The **print file** is a PDF for a print shop, front and back with bleed and crop marks;
 the **sheet of ten** is a letter page for card stock.
 A **look** is one footer, one card back and one card front that go together: the same layouts in other colours.
@@ -2836,6 +2838,7 @@ Unticking a check the bank returned is refused.
 a case's pane tells the story, the stake (*#878 owes the $13,680 again*) and one next step — **Take it off the job** (one press, every job, read back first), **They said…** (the promise on the job), or deposit a rejected check again — and offers **Use it as the new check** when a same-payer, same-amount, untouched deposit lands;
 since v2.5891 it also notices the new check inside a bigger same-payer payment — one posted after the bounce whose live money on the check's own jobs covers the check (`arCombinedReplacementFor`, over the trails the window already reads) — and **This payment made it good** closes the case as *replaced* naming it, read back first with the $30 fee's state said, the same offer following an Apply that covers a waiting check (`arMadeGoodAfterApply`);
 a partial make-good keeps the case open.
+A case the office closed under More has no press that reopens it, and a dev alone reads **Closed test cases** at the top of the list, with **Reopen…** for a case on a ZZ test job closed as settled another way or as not coming (`arCaseReopenProblem`, v2.8566, punch list #443).
 **Since v2.4902** a check typed in by hand that never reached the bank is a case too, source *unbanked*: a payment typed as a check with no deposit linked after ten days (`AR_UNBANKED_CHECK_DAYS`, its own clock, not the seven a deposited check takes to clear).
 Its row is `ar_unbanked_check_cases`, keyed by the payment, and it shows under Came back as *never deposited*.
 It closes itself when the payment is linked to its deposit or comes off the job, or by hand under More.
@@ -5833,6 +5836,7 @@ Cache of **normalized address key** → **latitude** / **longitude** (and source
 delete for the five `/map` roles, **`dev`**, **`master_technician`**, **`assistant`**, **`controller`** (since v2.3898) and **`estimator`** (**`20270520120000_address_geocodes_estimator_map_access.sql`**).
 Written by Edge Functions **`geocode-one`** and **`geocode-address-batch`** (see [EDGE_FUNCTIONS.md](EDGE_FUNCTIONS.md)).
 Client: [`useMapPageData.ts`](../src/hooks/useMapPageData.ts).
+A row is deleted from one place, a dev's **Kept map addresses** block on Settings → Data & recovery, and only when no record in any address column holds its street line (`KEPT_ADDRESS_SOURCES`, `keptAddressClearProblem`, v2.8568, punch list #443).
 See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) **Key Features** §16.
 
 ### address_geocode_misses
@@ -6474,6 +6478,8 @@ a closed month is a row with *Note it as missed*, not a strip.
 Since **v2.7989** (punch list #361) the card is one ledger read top to bottom: the last day of work as its first row, the grid, the claim as the total line with the bills behind it as its lines, then the quiet notes.
 A notice printed here and mailed by hand is recorded after the fact from the pane's *Already mailed?
 Record it…* or the Lien window's *Already sent — record it…* (**v2.3770**): one filing per job the paper covered, on one `packet_id`, `by_hand`, the paper's `printed_claim` beside the job's amount.
+A by-hand record is voided, never deleted by the office, and a dev alone reads **Voided by-hand notice records** in the job's Lien window, with **Delete…** for a record on a ZZ test job that nothing points at (`lienByHandDeleteProblem`, `lienByHandTiesProblem`, v2.8567, punch list #443).
+The line the record put on the job's Activity stays when the record is deleted.
 The run can print the jobs at one property as **one notice** on purpose (*Combine the jobs at one property into one notice*, **v2.3777**, off by default): the claims summed and the months joined on the form, still one filing per job on one `packet_id`, each with its share and the paper's `printed_claim`.
 **Affidavits** (v2.3412): the second kind — one § 53.052 window per job (4th month after the last month worked;
 3rd residential, `list_lien_affidavit_windows()`), the gate (a private owner of record · county + legal description · the GC's address and a recorded notice on sub jobs · not a homestead, and on a house the homestead question answered;
@@ -6954,10 +6960,12 @@ Not a record of its own: each line is a [sent copy](#sent-copies) of a bill-like
 **a day's total** counts a bill once, on the day it first went, so a resend and a statement are listed and never added.
 **Recorded by hand** (v2.7057) is a person's word that a bill went when the app sent nothing: one sent copy of kind `bill_by_hand` with no copy body and no address, drawn on the day they named, reading the words of the way as they were picked (kept on the record since v2.7145).
 **A way** is one line of the form's list under *How the bill went*, a row of `bill_hand_ways` since v2.7166, which the office adds to and edits from the form since v2.7167;
-a way is **taken off** the list, never deleted, and can be brought back.
+a way is **taken off** the list, never deleted by the office, and can be brought back.
+A dev alone reads **Delete…** under *Taken off*, for a test way (its words start with ZZ) that no bill was recorded with (`handWayDeleteProblem`, `handWayDeleteUsedProblem`, v2.8561, punch list #443).
 The form opens on the day the bill was made, with **Today** one press away (`byHandDayOffered`, `byHandDayPicks`, v2.7349);
 it lists the same customer's other bills with no send on record to tick, files one record a bill and counts them on its button, *Record how 3 bills went*, a refused bill staying in the strip with its reason while the rest save (`byHandOthers`, `byHandRecordLabel`, `byHandOutcome`, v2.7350);
 and it reads the record back above the button before the press, *The record will read:* (`byHandReadBack`, v2.7351), since a record cannot be changed once saved.
+A dev alone reads **Delete this record…** under a by-hand line on a bill's record, for a record of a test bill (`byHandRecordDeleteProblem`, `byHandRowDeleteProblem`, v2.8564, punch list #443).
 **Did not arrive** (v2.7053) is a send the mail service bounced, or a text that failed, on a bill not paid with no later send that arrived.
 An email the mail service has only called *sent* counts the days once `BILLS_SENT_NO_ANSWER_DAYS` (2) have passed, *No answer from their mail server in 14 days*, with *Check the address* on a bill still open, and it never joins **Did not arrive** (v2.8424).
 A send whose bill is no longer on the job carries the note `BILLS_SENT_GONE_NOTE`, that the bill was taken back or replaced after it went, and counts in no total (v2.8427).
@@ -6983,6 +6991,7 @@ Since v2.8524 the bank is never asked from before the org's Accounts Receivable 
 Stripe's fee is not taken off, a refund made in Stripe is not seen, a credit in kind is listed and never added, and a test bill's payment is left out.
 **A test bill** (v2.8445) is one made in Stripe's test mode or one on a ZZ test job (`isBillsTestRow`, `src/lib/billing/billTestRows.ts`): By day sent keeps its send on the list with a mark that says it is in no total, and neither view adds it to a day, a tile, a chip or a paid count.
 A test bill with no send on record is out of the yellow box, and a dev who shows ZZ test jobs (the Pipeline's switch) reads those in a box of their own with **Say how it went…** on each row (`billsSentTestGaps`, v2.8540).
+Since v2.8559 the read of bills with no send hands over the ones made in Stripe's test mode with their mode, so that box holds them too and the yellow box still holds none.
 The chips narrow the month to one way of paying, **Stripe** first, and **one deposit** that paid several bills is drawn once with its bills under it.
 A payment is named by who its bill was sent to, and by the job's customer only when no send names one, so both views say one name (v2.8425).
 The tile *Next Stripe payout to the bank* is drawn on any answer, *None on its way* or *Stripe did not answer* standing where the amount would (`billsPaidPayoutOf`), and a day with a credit in kind and no money reads *1 credit* in its cell (v2.8426), *credit* alone on a phone (`billsPaidCellCredit`, v2.8443).

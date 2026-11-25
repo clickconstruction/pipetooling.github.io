@@ -15,6 +15,7 @@ import { accountsThatLeft, linkedAccountIds, withAccountArchived } from '../lib/
 import { legalDeskRedirect } from '../lib/legal/legalDeskRoute'
 import { lienDeskRedirect } from '../lib/lien/lienDeskRoute'
 import { jobsPageTabs } from '../lib/jobs/jobsPageTabs'
+import { jobWindowTabFromParam } from '../lib/jobs/jobHistoryTab'
 import { phoneTabRows } from '../lib/phoneLayout/phoneTabRows'
 import { JobsPageTabStrip } from '../components/jobs/JobsPageTabStrip'
 import { useNewPhoneLayout } from '../hooks/useNewPhoneLayout'
@@ -1016,6 +1017,8 @@ export default function Jobs() {
   }, [editJobId, jobs, jobsListLoading, jobsListRefreshing, tryOpenEditJob, loadJobs, setSearchParams, searchParams])
 
   const jobDetailId = searchParams.get('jobDetail')
+  // `&jobTab=documents` lands the window on that tab (punch list #389: a GC's proposal waits on Documents).
+  const jobDetailTab = jobWindowTabFromParam(searchParams.get('jobTab')) ?? undefined
   useEffect(() => {
     if (!jobDetailId || !jobDetailModal) return
     const job = jobs.find((j) => j.id === jobDetailId)
@@ -1026,6 +1029,7 @@ export default function Jobs() {
         prefillRowLabel: `${(job.hcp_number ?? '').trim() || '—'} · ${(job.job_name ?? '').trim() || 'Job'}`,
         prefillAddress: (job.job_address ?? '').trim() || null,
         onEditJobSaved: () => void loadJobs(),
+        initialTab: jobDetailTab,
       })
     } else {
       jobDetailModal.openJobDetail({
@@ -1033,15 +1037,17 @@ export default function Jobs() {
         prefillRowLabel: prefill?.prefillRowLabel ?? null,
         prefillAddress: prefill?.prefillAddress ?? null,
         onEditJobSaved: () => void loadJobs(),
+        initialTab: jobDetailTab,
       })
     }
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
       next.delete('jobDetail')
+      next.delete('jobTab')
       return next
     }, { replace: true })
     navigate('.', { replace: true, state: {} })
-  }, [jobDetailId, jobs, jobDetailModal, loadJobs, setSearchParams, navigate, location.state])
+  }, [jobDetailId, jobDetailTab, jobs, jobDetailModal, loadJobs, setSearchParams, navigate, location.state])
 
   // `?stagesWeekly=` deep link (v2.1436): open the Weekly movement modal.
   // Same gating class as openBankPayments — wait for the imperative handle

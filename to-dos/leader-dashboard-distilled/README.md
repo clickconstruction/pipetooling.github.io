@@ -2,7 +2,7 @@
 name: "The leader's Dashboard, distilled"
 number: 365
 group: close
-status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way
+status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way · the short page walked there the same day on the dev's own account, where it holds but for two lines that are wrong for about three seconds on a fresh open
 summary: >
   One leader has been given too much on his Dashboard. He will not look at any of it, uses the app only on
   his phone, and hands even small updates to his assistants. The assessment counted 44 cards, strips and
@@ -193,3 +193,21 @@ Read on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, as th
   1. **The link to this section lands one swipe short.** A link that ends `&section=dashboard_view` opened the desk at Licenses and Your week. The desk scrolls to the section once, before the sections above it have loaded and grown (`PersonDeskBody.tsx`).
   2. **The desk's pinned head takes about half the screen.** On that account, with two amber notices, the head took about 445 of 874 points and the sections scrolled in a window of about 315. The head sits outside the scrolling part and nothing folds it.
 - **Still owed.** The short page itself, **Everything else**, **Back to the short Dashboard** and the bar's Dashboard tab, on an account set to Short.
+
+## The short page, walked in a simulator (2026-11-25)
+
+Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in dark, on the live site, on the dev's own account set to Short for three and a half minutes and put back to Full, on the owner's yes. It is a simulator and not the leader's phone. The leader's own account was not set to Short.
+
+**Holds.** **Short** saves at once. The page reads the greeting, the count, *Waiting on you* with its rows, the office's line, **Everything else** with its count, then Training. It draws no top row, no Clock In, no money cards and no Needs you card, and nothing runs off the side. **Everything else** opens the full page with **‹ Back to the short Dashboard** on top, and its Needs you card counts what waits plus the door's count. **Back** returns. A fresh open of the Dashboard lands on the short page. **Full** puts it back.
+
+**One fault found, not built: two lines are wrong while the list is read.** On a fresh open the list reads *Reading what waits on you…*, which is right. For about three seconds the line under it reads *Nothing else is open.* and the door reads a count far under the true one. Once the read ends both are right. The list holds a reading state, and these two lines do not: they are drawn from the counts as they stand while the sources come in (`DashboardShortView.tsx`). The mend is the client alone, XS: while the list is read, the office's line is not drawn and the door says its words without a count.
+
+**For the owner's look.**
+
+- Training is the lower half of the page: four **Start** presses under the door on that account.
+- **Write someone up** stands above *Waiting on you*. It came later, with #410.
+- The header's home press does not leave Everything else. Only **‹ Back to the short Dashboard** returns. That is as v2.7572 built it: only the bottom bar's Dashboard tab carries the mark that returns.
+
+**Not seen.** His day: the account had nothing on its schedule. The folds behind Everything else. The bottom bar's Dashboard tab on Short, since that account has no bottom bar. The leader on Short, and the office's Waiting on card.
+
+**As the sample leader and the sample assistant, looking only.** The leader's bottom bar has Dispatch Mode's home under its Dashboard tab, not the Dashboard: the *two homes* this card names.

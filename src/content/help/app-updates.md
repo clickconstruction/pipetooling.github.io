@@ -43,7 +43,7 @@ Two other presses ask the same way. One is **Hard Reload** in the gear menu. The
 
 ## If a page ever fails to load
 
-Right after an update, a page can occasionally fail to load its files. The app fixes this itself. You briefly see **Updating app…** and it reloads once automatically. If something is still saving, it waits for that first. If it still can't load, it shows a **Reload** button.
+Right after an update, a page can occasionally fail to load its files. The app fixes this itself. You briefly see **Updating app…** and it reloads once automatically. If something is still saving, it waits for that first. If it still can't load, it shows a **Reload** button. The same button shows when the reload has not finished after ten seconds.
 
 The app never reloads by itself over words you typed. A message or a report you have not sent stays on the screen. It stays until you send it or clear it. While it is there, the app shows the **Reload** button and waits for you.
 

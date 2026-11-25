@@ -64,6 +64,7 @@ import {
 import { readBillHandWays, readBillsSent, recordBillByHand } from '../../lib/billing/billsSentIo'
 import { billHandWaysOrBuiltIn } from '../../lib/billing/billHandWays'
 import { BillHandWayPicker, type BillHandWaysCtl } from './BillHandWays'
+import { ByHandRecordDelete } from './ByHandRecordDelete'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { openSentCopy } from '../../lib/sent/sentCopiesIo'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
@@ -548,17 +549,19 @@ function ByHandForm({ gap, others, waysCtl, onSaved, onRan, onClose }: { gap: Bi
       else next.delete(billId)
       return next
     })
+  // The three typed boxes stand a fingertip tall on a phone (punch list #414): the name box read 34 px and the day box 36.
+  const typedField: CSSProperties = phone ? { ...field, minHeight: THUMB } : field
   return (
     <div data-testid="bills-sent-by-hand" style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(11rem, 1fr))', gap: '0.5rem', marginTop: '0.4rem', padding: '0.5rem', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <BillHandWayPicker ctl={waysCtl} value={draft.how} onPick={(key) => setDraft((d) => ({ ...d, how: key }))} />
       <label style={fieldLabel}>
         Who it went to
-        <input type="text" value={draft.toWhom} onChange={(ev) => setDraft((d) => ({ ...d, toWhom: ev.target.value }))} placeholder="A name, and an address if you have one" style={field} />
+        <input type="text" value={draft.toWhom} onChange={(ev) => setDraft((d) => ({ ...d, toWhom: ev.target.value }))} placeholder="A name, and an address if you have one" style={typedField} />
       </label>
       <div style={{ display: 'grid', gap: '0.3rem', minWidth: 0, alignContent: 'start' }}>
         <label style={fieldLabel}>
           The day it went
-          <input type="date" value={draft.wentOnYmd} max={today} onChange={(ev) => setDraft((d) => ({ ...d, wentOnYmd: ev.target.value }))} style={field} />
+          <input type="date" value={draft.wentOnYmd} max={today} onChange={(ev) => setDraft((d) => ({ ...d, wentOnYmd: ev.target.value }))} style={typedField} />
         </label>
         <div role="group" aria-label="Days one press away" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
           {byHandDayPicks(gap.billedYmd, today).map((p) => (
@@ -570,7 +573,7 @@ function ByHandForm({ gap, others, waysCtl, onSaved, onRan, onClose }: { gap: Bi
       </div>
       <label style={fieldLabel}>
         A note, if you want one
-        <input type="text" value={draft.note} onChange={(ev) => setDraft((d) => ({ ...d, note: ev.target.value }))} style={field} />
+        <input type="text" value={draft.note} onChange={(ev) => setDraft((d) => ({ ...d, note: ev.target.value }))} style={typedField} />
       </label>
       {others.length > 0 ? (
         <div data-testid="bills-sent-by-hand-others" style={{ gridColumn: '1 / -1', display: 'grid', gap: '0.2rem', minWidth: 0, padding: '0.45rem 0.55rem', borderRadius: 6, background: 'var(--bg-subtle)', fontSize: '0.8125rem', color: 'var(--text-700)', maxHeight: '15rem', overflowY: 'auto' }}>
@@ -724,8 +727,11 @@ function GapStrip({ open, paid, every, expanded, waysCtl, onSaved, test = false 
   )
 }
 
-/** One bill's record: every send of it, newest first, with the copy of each and a print of the whole. */
-function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onOpen: (line: BillsSentLine) => void; onPrint: () => void }) {
+/**
+ * One bill's record: every send of it, newest first, with the copy of each and a print of the whole. A dev also
+ * reads a delete on a by-hand record (punch list #443, row 4: `ByHandRecordDelete`, which draws nothing for anyone else).
+ */
+function RecordPanel({ record, onOpen, onPrint, onChanged }: { record: BillsSentRecord; onOpen: (line: BillsSentLine) => void; onPrint: () => void; /** A record was deleted: read the page again. */ onChanged: () => void }) {
   const phone = useIsMobile()
   return (
     <div data-testid="bills-sent-record" style={{ ...lineBox, display: 'block', padding: '0.7rem 0.8rem' }}>
@@ -785,6 +791,7 @@ function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onO
                 </button>
               ) : null}
             </div>
+            <ByHandRecordDelete line={e.line} head={e.head} when={e.when} onGone={onChanged} />
           </div>
         ))
       )}
@@ -935,7 +942,7 @@ export function BillsSentLedger() {
         {data == null && !failure ? (
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
         ) : record ? (
-          <RecordPanel record={record} onOpen={(l) => void open(l)} onPrint={printRecord} />
+          <RecordPanel record={record} onOpen={(l) => void open(l)} onPrint={printRecord} onChanged={retry} />
         ) : data != null ? (
           <EmptyState main="That bill is not on this list." next={{ label: 'See all bills sent', to: BILLS_SENT_PATH }} />
         ) : null}

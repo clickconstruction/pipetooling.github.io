@@ -302,6 +302,20 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ startAnswersOwedEnabled: true, startAnswersOwed: null }))).toEqual([])
   })
 
+  it('a GC’s proposal that waits on the office (punch list #389, step 6): one amber line, gated by the flag', () => {
+    const row = (proposalId: string, jobLabel = '#900 ZZ Test Oak') => ({ proposalId, jobId: 'j1', jobLabel, byName: 'ZZ Test Pat', proposedAt: '2026-11-20T15:00:00Z' })
+    const one = buildNeedsYouItems(inputs({ jobPaperProposalsEnabled: true, jobPaperProposals: { rows: [row('p1')] } }))
+    expect(one.map((i) => i.key)).toEqual(['job-paper-proposals'])
+    expect(one[0]).toMatchObject({ severity: 'amber', kicker: 'Papers before a job opens', title: 'A GC proposed stricter settings', figure: '1', actionLabel: 'Open the job' })
+    expect(one[0]!.detail).toBe('ZZ Test Pat proposed them for the paper on #900 ZZ Test Oak. Nothing changes until you answer. Open the job to take it or decline.')
+    const two = buildNeedsYouItems(inputs({ jobPaperProposalsEnabled: true, jobPaperProposals: { rows: [row('p1'), row('p2', '#901 ZZ Test Elm')] } }))
+    expect(two[0]).toMatchObject({ title: '2 GC proposals wait on an answer', figure: '2' })
+    expect(NEEDS_YOU_RANK['job-paper-proposals']).toBe(40)
+    expect(buildNeedsYouItems(inputs({ jobPaperProposalsEnabled: false, jobPaperProposals: { rows: [row('p1')] } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ jobPaperProposalsEnabled: true, jobPaperProposals: { rows: [] } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ jobPaperProposalsEnabled: true, jobPaperProposals: null }))).toEqual([])
+  })
+
   it('working jobs with no kind (punch list #238): one gray hygiene line, gated by the flag', () => {
     const one = buildNeedsYouItems(inputs({ jobKindGapsEnabled: true, jobKindGaps: { count: 1 } }))
     expect(one.map((i) => i.key)).toEqual(['jobs-no-kind'])

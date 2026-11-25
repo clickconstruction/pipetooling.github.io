@@ -143,6 +143,18 @@ describe('a press outside the reply box folds it (v2.6504)', () => {
     expect(t.field().value).toBe('Rusty,')
   })
 
+  it('folded, the grey words are the first sentence alone, and a press into the box brings the hint back (punch list #348)', () => {
+    const t = thread({ short: true })
+    expect(t.folded()).toBe(true)
+    expect(t.field().rows).toBe(1)
+    // Two sentences wrapped to a second line on a phone, and a one-row box cut that line at its foot.
+    expect(t.field().placeholder).toBe('Write to Greg Paulk…')
+    fireEvent.click(t.field())
+    expect(t.folded()).toBe(false)
+    expect(t.field().rows).toBe(3)
+    expect(t.field().placeholder).toBe('Write to Greg Paulk… Type / for a quick reply.')
+  })
+
   it('a press on Attach, on a file in its sheet and on the chip’s × never folds it', async () => {
     const t = thread()
     t.type('Rusty,')

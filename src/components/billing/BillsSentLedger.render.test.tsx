@@ -66,6 +66,11 @@ vi.mock('../../lib/billing/billsPaidIo', () => ({
   // The second view's best-effort read of the bank deposits on no bill: none here.
   readDepositsOnNoBill: async () => ({ state: 'read', days: new Map() }),
 }))
+// The delete of a by-hand record (punch list #443, row 4): what the press asked to delete.
+const byHandDelete = vi.hoisted(() => ({ asked: [] as string[] }))
+vi.mock('../../lib/billing/byHandRecordDeleteIo', () => ({
+  deleteByHandRecord: async (id: string) => void byHandDelete.asked.push(id),
+}))
 vi.mock('../../lib/storageSave', () => ({
   saveBlobAs: (blob: Blob, name: string) => void io.saved.push({ name, type: blob.type }),
 }))
@@ -447,6 +452,33 @@ describe('BillsSentLedger', () => {
     opener.mockRestore()
   })
 
+  it('offers a dev the delete of a by-hand record on a test bill’s record, and nobody else', async () => {
+    byHandDelete.asked.length = 0
+    const byHand = copy({ id: 'h1', kind: 'bill_by_hand', how: 'hand', recipientEmails: [], copyPath: null, copyType: '', copyHash: '', resendEmailId: null, sentAt: '2026-11-10T16:00:00.000Z', sourceSnapshot: { by_hand: true, how: 'handed', how_label: 'Handed over', went_on: '2026-11-10', note: '' } })
+    const zz = (): BillsSentInput => ({ ...data([byHand, copy({ id: 'c1' })]), jobs: new Map([[JOB, { id: JOB, hcp_number: '1412', click_number: null, job_name: 'ZZ Test walk job', job_address: '1 Test Street', customer_name: 'ZZ Test Customer' }]]) })
+    // The office reads the record as it did: no delete on any line.
+    io.data = zz()
+    const office = renderWithProviders(<BillsSentLedger />, { route: `/bills-sent?bill=${BILL}` })
+    await screen.findByTestId('bills-sent-record')
+    expect(screen.getAllByTestId('bills-sent-record-event')).toHaveLength(2)
+    expect(screen.queryByTestId('bills-sent-by-hand-delete')).toBeNull()
+    office.unmount()
+    // A dev reads it on the by-hand line alone, never on the email.
+    who.role = 'dev'
+    io.data = zz()
+    renderWithProviders(<BillsSentLedger />, { route: `/bills-sent?bill=${BILL}` })
+    await screen.findByTestId('bills-sent-record')
+    const offers = screen.getAllByTestId('bills-sent-by-hand-delete')
+    expect(offers).toHaveLength(1)
+    expect(offers[0]!.closest('[data-testid="bills-sent-record-event"]')?.textContent).toContain('Handed over')
+    const asks = io.asks.length
+    fireEvent.click(within(offers[0]!).getByRole('button', { name: 'Delete this record…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete the record' }))
+    await waitFor(() => expect(byHandDelete.asked).toEqual(['h1']))
+    // The page reads again, so the record draws without the line once it is gone.
+    await waitFor(() => expect(io.asks.length).toBeGreaterThan(asks))
+  })
+
   it('leads a record opened from a day of By day paid back to that day, by name', async () => {
     io.data = data([copy({})])
     renderWithProviders(<BillsSentLedger />, { route: `/bills-sent?bill=${BILL}&view=paid&day=2026-11-03&how=stripe` })
@@ -656,6 +688,9 @@ describe('BillsSentLedger', () => {
     const tall = (el: HTMLElement) => el.style.minHeight || el.style.height
     // The chips, ＋ Add a way and Edit list: none is under 44 px.
     expect(within(picker).getAllByRole('button').map(tall)).toEqual(within(picker).getAllByRole('button').map(() => '44px'))
+    // The three typed boxes of the form stand as tall: the name, the day and the note (the live walk read 34 and 36 px).
+    const typedBoxes = [...screen.getByTestId('bills-sent-by-hand').querySelectorAll<HTMLInputElement>('input[type="text"], input[type="date"]')]
+    expect(typedBoxes.map(tall)).toEqual(['44px', '44px', '44px'])
     fireEvent.click(within(picker).getByRole('button', { name: 'Edit list' }))
     const win = await screen.findByTestId('bill-hand-ways-window')
     for (const name of ['Rename Handed over', 'Take Handed over off the list', 'Move Handed over up', 'Move Handed over down']) {
@@ -943,5 +978,37 @@ describe('BillsSentLedger', () => {
     expect(screen.queryByTestId('bills-sent-tile-unpaid')).toBeNull()
     fireEvent.click(within(box).getByRole('button', { name: 'Say how it went…' }))
     expect(await within(box).findByRole('button', { name: 'Record how it went' })).toBeTruthy()
+  })
+  it('puts a bill made in Stripe’s test mode in the box of test bills, on a job that is no ZZ job, and in no yellow box', async () => {
+    const TEST_BILL = 'aaaaaaaa-7777-4777-8777-777777777772'
+    const REAL_GAP = 'aaaaaaaa-7777-4777-8777-777777777773'
+    io.data = {
+      ...data([]),
+      unsent: [
+        { billId: TEST_BILL, jobId: JOB, amount: 310, status: 'billed', billedAtIso: '2026-11-10T21:26:00.000Z', stripeMode: 'test' },
+        { billId: REAL_GAP, jobId: JOB, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z', stripeMode: 'live' },
+      ],
+    }
+    // The office: the yellow box holds the live bill alone, and no box of test bills.
+    setDevShowsZzTestJobs(true)
+    const office = renderWithProviders(<BillsSentLedger />, { route: '/bills-sent' })
+    expect((await screen.findByTestId('bills-sent-gaps')).textContent).toContain('1 bill is billed with no send on record')
+    expect(screen.getAllByTestId('bills-sent-gap')).toHaveLength(1)
+    expect(screen.queryByTestId('bills-sent-test-gaps')).toBeNull()
+    const officeTile = screen.getByTestId('bills-sent-tile-unpaid').textContent
+    office.unmount()
+
+    // A dev who shows ZZ test jobs: the same yellow box and the same tile, and the test-mode bill in its own box.
+    who.role = 'dev'
+    renderWithProviders(<BillsSentLedger />, { route: '/bills-sent' })
+    const box = await screen.findByTestId('bills-sent-test-gaps')
+    expect(box.textContent).toContain('1 test bill has no send on record')
+    expect(within(box).getAllByTestId('bills-sent-gap')).toHaveLength(1)
+    expect(within(screen.getByTestId('bills-sent-gaps')).getAllByTestId('bills-sent-gap')).toHaveLength(1)
+    expect(screen.getByTestId('bills-sent-tile-unpaid').textContent).toBe(officeTile)
+    // The form on the test bill offers no real bill of the same customer to tick.
+    fireEvent.click(within(box).getByRole('button', { name: 'Say how it went…' }))
+    expect(await within(box).findByRole('button', { name: 'Record how it went' })).toBeTruthy()
+    expect(within(box).queryByTestId('bills-sent-by-hand-others')).toBeNull()
   })
 })

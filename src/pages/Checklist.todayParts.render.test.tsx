@@ -12,7 +12,18 @@ import { taskModeStorageKey } from '../lib/taskModeToggle'
 installDomShims()
 
 type Row = Record<string, unknown>
-const H = vi.hoisted(() => ({ today: [] as Record<string, unknown>[], older: [] as Record<string, unknown>[], updates: [] as Array<{ id: string; patch: Record<string, unknown> }>, refuseIds: [] as string[] }))
+const H = vi.hoisted(() => ({
+  today: [] as Record<string, unknown>[],
+  older: [] as Record<string, unknown>[],
+  updates: [] as Array<{ id: string; patch: Record<string, unknown> }>,
+  refuseIds: [] as string[],
+  /** What the names function answers. It answers any signed-in person, for a person who has left too. */
+  names: [
+    { id: 'u-imani', name: 'Imani', role: 'dev', archived: false },
+    { id: 'u-gone', name: 'Dana', role: 'master_technician', archived: true },
+  ],
+  nameAsks: [] as string[][],
+}))
 
 vi.mock('../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../test/renderSmokeMocks')
@@ -44,7 +55,15 @@ vi.mock('../lib/supabase', async () => {
     supabase: {
       ...stub,
       from: (table: string) =>
-        table === 'users' ? { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { role: 'helpers' }, error: null }) }), in: () => Promise.resolve({ data: [{ id: 'u-imani', name: 'Imani' }], error: null }) }) } : table === 'checklist_instances' ? instances() : stub.from(),
+        // The people table gives a helper no row for a dev, nor for a master who has not adopted them: its read of names
+        // answers nothing here, so a name on the page came through the names function.
+        table === 'users' ? { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { role: 'helpers' }, error: null }) }), in: () => Promise.resolve({ data: [], error: null }) }) } : table === 'checklist_instances' ? instances() : stub.from(),
+      rpc: (fn: string, args: { p_user_ids?: string[] }) => {
+        if (fn !== 'get_user_display_names') return stub.rpc()
+        const ids = args.p_user_ids ?? []
+        H.nameAsks.push(ids)
+        return Promise.resolve({ data: H.names.filter((n) => ids.includes(n.id)), error: null })
+      },
     },
   }
 })
@@ -81,6 +100,7 @@ beforeEach(() => {
   H.older = []
   H.updates = []
   H.refuseIds = []
+  H.nameAsks = []
   localStorage.clear()
 })
 
@@ -105,6 +125,43 @@ describe('Checklist → Today, the day in parts', () => {
     // the full app keeps its tab strip and its title
     expect(screen.getByRole('heading', { name: 'Checklist' })).toBeTruthy()
     expect(document.querySelector('[data-task-day-bar]')).toBeNull()
+  })
+
+  it('a helper given a task by a dev with Tell me lit reads who hears, before the start and on the done line', async () => {
+    H.today = [
+      row('a', 'Check the truck fluids', {}, { notify_creator_on_complete: true }),
+      row('c', 'Match the payments to their bills', { completed_at: new Date().toISOString() }, { notify_creator_on_complete: true }),
+    ]
+    renderWithProviders(<Checklist />)
+    await screen.findByText('Check the truck fluids')
+    await waitFor(() => expect(document.querySelector('[data-fresh-before]')?.textContent).toBe('Imani hears when it is done.'))
+    expect(document.querySelector('[data-fresh-done]')?.textContent).toMatch(/^Done .+\. Imani hears it is done\.$/)
+    // the names were asked of the names function
+    expect(H.nameAsks.flat()).toContain('u-imani')
+  })
+
+  it('a task with Tell me off reads no line about who hears', async () => {
+    H.today = [row('a', 'Check the truck fluids'), row('c', 'Match the payments to their bills', { completed_at: new Date().toISOString() })]
+    renderWithProviders(<Checklist />)
+    await screen.findByText('Check the truck fluids')
+    // the giver's name is read for the tools' sheets, and still no line says they hear
+    await waitFor(() => expect(H.nameAsks.flat()).toContain('u-imani'))
+    await waitFor(() => expect(document.querySelector('[data-fresh-done]')?.textContent).toMatch(/^Done [^.]+\.$/))
+    expect(document.querySelector('[data-fresh-before]')).toBeNull()
+    expect(document.body.textContent).not.toContain('hears')
+  })
+
+  it('a giver who has left is not named as hearing', async () => {
+    H.today = [
+      row('a', 'Check the truck fluids', {}, { notify_creator_on_complete: true, created_by_user_id: 'u-gone' }),
+      row('c', 'Match the payments to their bills', { completed_at: new Date().toISOString() }, { notify_on_complete_user_id: 'u-gone' }),
+    ]
+    renderWithProviders(<Checklist />)
+    await screen.findByText('Check the truck fluids')
+    await waitFor(() => expect(H.nameAsks.flat()).toContain('u-gone'))
+    await waitFor(() => expect(document.querySelector('[data-fresh-done]')?.textContent).toMatch(/^Done [^.]+\.$/))
+    expect(document.querySelector('[data-fresh-before]')).toBeNull()
+    expect(document.body.textContent).not.toContain('Dana')
   })
 
   it('with today finished, Next is the oldest task still open, and it leaves the list under it', async () => {

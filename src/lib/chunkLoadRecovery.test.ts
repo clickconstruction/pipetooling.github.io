@@ -2,11 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   CHUNK_RECOVERY_KEY,
   CHUNK_RECOVERY_MIN_INTERVAL_MS,
+  CHUNK_RELOAD_LAND_MAX_MS,
   CHUNK_RELOAD_SETTLE_MS,
   CHUNK_RELOAD_TYPED_LOOK_MS,
   CHUNK_RELOAD_WAIT_MAX_MS,
   chunkBoundaryView,
+  chunkRecoveryReloadStalled,
   chunkRecoveryReloadStarted,
+  chunkReloadStalled,
   errorIsForChunkBoundary,
   decideChunkReloadWait,
   forgetChunkRecoveryReload,
@@ -16,6 +19,7 @@ import {
   tryClaimChunkRecoveryReload,
   type WriteWatch,
 } from './chunkLoadRecovery'
+import { WIPE_DEADLINE_MS } from './hardReload'
 
 function fakeStorage(initial: Record<string, string> = {}) {
   const store = new Map(Object.entries(initial))
@@ -311,6 +315,75 @@ describe('startChunkRecoveryReload with a write in flight', () => {
     writes.set(0)
     vi.advanceTimersByTime(60_000)
     expect(reloads).toBe(1)
+  })
+})
+
+describe('a recovery reload that fired and never landed (punch list #406)', () => {
+  beforeEach(() => {
+    forgetChunkRecoveryReload()
+    vi.useFakeTimers()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('chunkReloadStalled: never before the reload fires, and from the limit on', () => {
+    expect(chunkReloadStalled(null)).toBe(false)
+    expect(chunkReloadStalled(0)).toBe(false)
+    expect(chunkReloadStalled(CHUNK_RELOAD_LAND_MAX_MS - 1)).toBe(false)
+    expect(chunkReloadStalled(CHUNK_RELOAD_LAND_MAX_MS)).toBe(true)
+  })
+
+  it('is not stalled before any reload was started', () => {
+    expect(chunkRecoveryReloadStalled()).toBe(false)
+    vi.advanceTimersByTime(60_000)
+    expect(chunkRecoveryReloadStalled()).toBe(false)
+  })
+
+  it('is stalled once the reload fired and the page is still here past the limit, and stays on its way until then', () => {
+    let reloads = 0
+    expect(startChunkRecoveryReload(Date.now(), fakeStorage(), () => reloads++, undefined, false, () => false)).toBe(true)
+    expect(reloads).toBe(1)
+    vi.advanceTimersByTime(CHUNK_RELOAD_LAND_MAX_MS - 1)
+    expect(chunkRecoveryReloadStalled()).toBe(false)
+    vi.advanceTimersByTime(1)
+    expect(chunkRecoveryReloadStalled()).toBe(true)
+    // The reload was still started: what the other boundaries read has not changed.
+    expect(chunkRecoveryReloadStarted()).toBe(true)
+  })
+
+  it('the wait before the reload fires is not counted: typed words can hold it for longer than the limit', () => {
+    let typed = true
+    let reloads = 0
+    // Words typed after the start hold the reload: the start's own look finds none, and each look after it does.
+    let looks = 0
+    const look = () => looks++ > 0 && typed
+    expect(startChunkRecoveryReload(Date.now(), fakeStorage(), () => reloads++, undefined, false, look)).toBe(true)
+    expect(reloads).toBe(0)
+    vi.advanceTimersByTime(CHUNK_RELOAD_LAND_MAX_MS * 3)
+    expect(reloads).toBe(0)
+    expect(chunkRecoveryReloadStalled()).toBe(false)
+    typed = false
+    vi.advanceTimersByTime(CHUNK_RELOAD_TYPED_LOOK_MS)
+    expect(reloads).toBe(1)
+    expect(chunkRecoveryReloadStalled()).toBe(false)
+    vi.advanceTimersByTime(CHUNK_RELOAD_LAND_MAX_MS)
+    expect(chunkRecoveryReloadStalled()).toBe(true)
+  })
+
+  it('a new try a minute later is a new wait: not stalled until it has fired and run past the limit itself', () => {
+    const storage = fakeStorage()
+    let reloads = 0
+    startChunkRecoveryReload(Date.now(), storage, () => reloads++, undefined, false, () => false)
+    vi.advanceTimersByTime(CHUNK_RECOVERY_MIN_INTERVAL_MS)
+    expect(chunkRecoveryReloadStalled()).toBe(true)
+    expect(startChunkRecoveryReload(Date.now(), storage, () => reloads++, undefined, false, () => false)).toBe(true)
+    expect(reloads).toBe(2)
+    expect(chunkRecoveryReloadStalled()).toBe(false)
+    vi.advanceTimersByTime(CHUNK_RELOAD_LAND_MAX_MS)
+    expect(chunkRecoveryReloadStalled()).toBe(true)
+  })
+
+  it('gives the page longer than the reload’s own wait before it leaves', () => {
+    expect(CHUNK_RELOAD_LAND_MAX_MS).toBeGreaterThan(WIPE_DEADLINE_MS)
   })
 })
 

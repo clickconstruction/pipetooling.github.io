@@ -159,6 +159,7 @@ function reloadWhenWritesSettle(reload: () => void, writes: WriteWatch, typed: (
     if (wait.act === 'reload') {
       fired = true
       unsubscribe()
+      recoveryReloadFiredAt = at
       reload()
       return
     }
@@ -175,6 +176,30 @@ function reloadWhenWritesSettle(reload: () => void, writes: WriteWatch, typed: (
 
 /** True once a recovery reload has been started in this document. The page is leaving. */
 let recoveryReloadStarted = false
+
+/** When the started reload was handed to `reload`, null while it still waits on a write or on typed words. */
+let recoveryReloadFiredAt: number | null = null
+
+/**
+ * How long a reload that has fired may take to leave the page (punch list #406). The reload itself waits
+ * three seconds at most before it navigates (`WIPE_DEADLINE_MS` in `hardReload.ts`), and the rest is the
+ * new page's own load. Past this the screen that says *Updating app…* gives way to the fallback and its
+ * press. The wait before the reload fires, on a write or on typed words, is not counted: it has its own end.
+ */
+export const CHUNK_RELOAD_LAND_MAX_MS = 10_000
+
+/** True when a reload that fired `msSinceFired` ago should have left the page by now. Null is one that has not fired. */
+export function chunkReloadStalled(msSinceFired: number | null): boolean {
+  return msSinceFired != null && msSinceFired >= CHUNK_RELOAD_LAND_MAX_MS
+}
+
+/**
+ * True when the recovery reload started here fired and the page is still here past `CHUNK_RELOAD_LAND_MAX_MS`.
+ * Until v2.8562 only the page leaving ended *Updating app…*, so a reload that never landed left it up for good.
+ */
+export function chunkRecoveryReloadStalled(now: number = Date.now()): boolean {
+  return chunkReloadStalled(recoveryReloadFiredAt == null ? null : now - recoveryReloadFiredAt)
+}
 
 /** The browser's own word on the network. Only a plain `false` is offline: a browser that cannot say counts as online. */
 export function browserSaysOffline(): boolean {
@@ -208,6 +233,8 @@ export function startChunkRecoveryReload(
   if (typed()) return false
   if (!tryClaimChunkRecoveryReload(now, storage)) return false
   recoveryReloadStarted = true
+  // A second try, a minute or more after one that never landed, is a new wait with its own limit.
+  recoveryReloadFiredAt = null
   reloadWhenWritesSettle(reload, writes, typed)
   return true
 }
@@ -230,6 +257,7 @@ export function chunkRecoveryReloadStarted(): boolean {
 /** Tests only: forget a started reload, since a test's document never leaves. */
 export function forgetChunkRecoveryReload(): void {
   recoveryReloadStarted = false
+  recoveryReloadFiredAt = null
 }
 
 /** What a chunk boundary draws: the page, "Updating app…", or one of its two fallbacks. */

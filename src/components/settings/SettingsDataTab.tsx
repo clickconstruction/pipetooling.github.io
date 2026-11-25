@@ -1,7 +1,7 @@
 /** Settings → Data & recovery tab: dev-only JSON backup exporters + the draft-bills-on-paid-jobs sweep + the deleted-records archive.
  * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props.
  * Punch list #188 (v2.6766): the tab opens to the controller and the owner for their sweeps, so each block gates itself —
- * the backups, ZZ test jobs, Recently deleted and the bulk-deletion alert a dev's, Draft bills the controller's, Link jobs the owner's.
+ * the backups, ZZ test jobs, Kept map addresses (punch list #443), Recently deleted and the bulk-deletion alert a dev's, Draft bills the controller's, Link jobs the owner's.
  * Exception: DeletedRecordsSection is self-contained (owns its state via useDeletedRecordsArchive) —
  * it is single-surface, so threading its state through Settings.tsx would add props for no benefit. */
 import type { Dispatch, SetStateAction } from 'react'
@@ -12,6 +12,7 @@ import BulkDeleteAlertSettingsBlock from './BulkDeleteAlertSettingsBlock'
 import BidJobBackfillSettingsBlock from './BidJobBackfillSettingsBlock'
 import StaleDraftBillsOnPaidJobsSection from './StaleDraftBillsOnPaidJobsSection'
 import ZzTestJobSweepSection from './ZzTestJobSweepSection'
+import KeptMapAddressesBlock from './KeptMapAddressesBlock'
 
 export default function SettingsDataTab({
   myRole,
@@ -187,6 +188,7 @@ export default function SettingsDataTab({
     )}
     {isControllerOrDev(myRole) && <StaleDraftBillsOnPaidJobsSection />}
     {isDev && <ZzTestJobSweepSection />}
+    {isDev && <KeptMapAddressesBlock role={myRole} />}
     {isDev && <DeletedRecordsSection />}
     {isDev && <BulkDeleteAlertSettingsBlock />}
     {isOwnerOrDev(myRole) && <BidJobBackfillSettingsBlock />}

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { CHUNK_RECOVERY_KEY, forgetChunkRecoveryReload, startChunkRecoveryReload } from '../lib/chunkLoadRecovery'
-import { ROUTE_RELOAD_CHECKING_WORDS, ROUTE_RELOAD_NO_SIGNAL_WORDS } from '../lib/routeReload'
+import { CHUNK_RECOVERY_KEY, CHUNK_RELOAD_LAND_MAX_MS, forgetChunkRecoveryReload, startChunkRecoveryReload } from '../lib/chunkLoadRecovery'
+import { ROUTE_RELOAD_CHECKING_WORDS, ROUTE_RELOAD_LAND_MAX_MS, ROUTE_RELOAD_NO_SIGNAL_WORDS, ROUTE_RELOAD_STALLED_WORDS } from '../lib/routeReload'
 import { __resetReloadAskForTests } from '../lib/reloadOverWords'
 import { __forgetTypedTextForTests } from '../lib/typedText'
 import { ReloadOverWordsBar } from './ReloadOverWordsBar'
@@ -252,6 +252,108 @@ describe('RouteChunkBoundary', () => {
     expect(screen.getByText('Updating app…')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Reload' })).toBeNull()
     expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
+  })
+
+  describe('a reload that never lands (punch list #406)', () => {
+    beforeEach(() => vi.useFakeTimers())
+    afterEach(() => vi.useRealTimers())
+
+    it('Reload: the press comes back with a line, and a second press asks and reloads again', async () => {
+      const fetcher = vi.fn(async () => icon())
+      vi.stubGlobal('fetch', fetcher)
+      const press = drawFallback()
+      fireEvent.click(press)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
+      // The page is leaving: dead for as long as a reload may take.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(ROUTE_RELOAD_LAND_MAX_MS - 1)
+      })
+      expect(press.disabled).toBe(true)
+      expect(screen.getByRole('status').textContent).toBe(ROUTE_RELOAD_CHECKING_WORDS)
+      // It never left.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1)
+      })
+      expect(press.disabled).toBe(false)
+      expect(screen.getByRole('status').textContent).toBe(ROUTE_RELOAD_STALLED_WORDS)
+      expect(screen.getByRole('link', { name: 'Fix app' })).toBeTruthy()
+      fireEvent.click(press)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(fetcher).toHaveBeenCalledTimes(2)
+      expect(hardReloadFromRoot).toHaveBeenCalledTimes(2)
+      expect(press.disabled).toBe(true)
+    })
+
+    it('Reload: a page that left before the limit leaves no timer to fire', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => icon()))
+      const press = drawFallback()
+      fireEvent.click(press)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
+      cleanup()
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('Updating app… gives way to the fallback and its press once the reload has fired and not landed', () => {
+      render(
+        <RouteChunkBoundary>
+          <Throws error={lostChunk()} />
+        </RouteChunkBoundary>,
+      )
+      expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
+      act(() => {
+        vi.advanceTimersByTime(CHUNK_RELOAD_LAND_MAX_MS - 1_000)
+      })
+      expect(screen.getByText('Updating app…')).toBeTruthy()
+      expect(screen.queryByRole('button', { name: 'Reload' })).toBeNull()
+      act(() => {
+        vi.advanceTimersByTime(1_000)
+      })
+      expect(screen.queryByText('Updating app…')).toBeNull()
+      expect(screen.getByText(/This page could not load/)).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy()
+      expect(screen.getByRole('link', { name: 'Fix app' }).getAttribute('href')).toBe('/fix-cache.html')
+      // It reloaded once by itself. The next one is the person's press.
+      expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
+    })
+
+    it('what a cancelled preload leaves behind gives way to the same fallback, in a lost page’s words', () => {
+      expect(startChunkRecoveryReload(Date.now(), sessionStorage, hardReloadFromRoot)).toBe(true)
+      render(
+        <RouteChunkBoundary>
+          <Throws error={emptyLazy()} />
+        </RouteChunkBoundary>,
+      )
+      expect(screen.getByText('Updating app…')).toBeTruthy()
+      act(() => {
+        vi.advanceTimersByTime(CHUNK_RELOAD_LAND_MAX_MS)
+      })
+      expect(screen.getByText(/This page could not load/)).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy()
+    })
+
+    it('Updating app… stays while a save holds the reload, however long past the limit', () => {
+      const counting = wrapFetchCountingWrites(() => new Promise<Response>(() => undefined))
+      void counting('https://x/rest/v1/clock_sessions', { method: 'POST' })
+      render(
+        <RouteChunkBoundary>
+          <Throws error={lostChunk()} />
+        </RouteChunkBoundary>,
+      )
+      act(() => {
+        vi.advanceTimersByTime(CHUNK_RELOAD_LAND_MAX_MS * 2)
+      })
+      // The reload has not fired, so nothing has stalled.
+      expect(hardReloadFromRoot).not.toHaveBeenCalled()
+      expect(screen.getByText('Updating app…')).toBeTruthy()
+    })
   })
 
   it('clears a caught error when the route changes, so the next page draws', () => {
