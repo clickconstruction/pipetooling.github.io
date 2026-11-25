@@ -388,9 +388,25 @@ describe('Layout: the new phone layout', () => {
   })
 
   describe('the Home Screen offer', () => {
-    it('switch off: the line above the header, on every page', async () => {
+    it('switch off, on a phone: the line above the header, on the Dashboard alone (punch list #428)', async () => {
       offer.show = true
       setUp({ role: 'helpers', phone: true, switchOn: false, mode: 'job' })
+      const { container } = await renderShell('/dashboard')
+      const line = container.querySelector('.appTopBanner[aria-label="Add Task home screen shortcut"]')
+      expect(line).toBeTruthy()
+      expect(container.querySelector('main')!.contains(line)).toBe(false)
+    })
+
+    it('switch off, on a phone: not drawn on any other page', async () => {
+      offer.show = true
+      setUp({ role: 'helpers', phone: true, switchOn: false, mode: 'job' })
+      const { container } = await renderShell('/job-mode/schedule')
+      expect(container.querySelector('[aria-label="Add Task home screen shortcut"]')).toBeNull()
+    })
+
+    it('at a desk: the line above the header, on every page, as it was', async () => {
+      offer.show = true
+      setUp({ role: 'helpers', phone: false, switchOn: false, mode: 'job' })
       const { container } = await renderShell('/job-mode/schedule')
       const line = container.querySelector('.appTopBanner[aria-label="Add Task home screen shortcut"]')
       expect(line).toBeTruthy()

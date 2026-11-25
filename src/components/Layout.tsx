@@ -17,6 +17,7 @@ import { NAV_ROW_GAP_REM, NAV_ROW_ICON_HOLD, NAV_ROW_TIGHT_GAP_REM, navRowPressG
 import { useTheme } from '../contexts/ThemeContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import AddTaskShortcutBanner from './AddTaskShortcutBanner'
+import { addTaskOfferPlace } from '../lib/phoneLayout/addTaskOffer'
 import { CustomerWaitingBanner } from './CustomerWaitingBanner'
 import { AppHealthStrip } from './AppHealthStrip'
 import { useOutboxReplay } from '../hooks/useOutboxReplay'
@@ -339,6 +340,8 @@ export default function Layout() {
   const newPhoneLayout = useNewPhoneLayout()
   const phoneBars = newPhoneLayout.on
   const phoneBarOneRow = phoneBars && !phoneDockActive
+  // The Home Screen offer for the Add Task icon: a phone draws it on the Dashboard alone, as a line or as the new layout's quiet row.
+  const addTaskOffer = addTaskOfferPlace({ phoneBars, narrow: viewportNarrow, pathname: location.pathname })
   const newPhoneLayoutTick = Boolean(authUser?.id) && newPhoneLayoutTickShown({ role, stored: newPhoneLayout.stored, phoneWidth: viewportNarrow })
   // The phone's row is one line, always (`lib/navRowFit.ts`, the owner's ask of 2026-11-18): when it has no room
   // the wrench, then the people press, then the customers press become rows of the gear menu. The row is measured,
@@ -1049,7 +1052,8 @@ export default function Layout() {
         onLand={(to) => navigate(to)}
         atOpen={modeRowAtOpen}
       />
-      {phoneBars ? null : <AddTaskShortcutBanner role={role} />}
+      {/* Keyed by the role, which lands after the first draw, so the offer is decided once the role is known. */}
+      {addTaskOffer === 'line' ? <AddTaskShortcutBanner key={role ?? 'no-role'} role={role} /> : null}
       {isDigitalTwin && (
         <AppTopBanner
           role="status"
@@ -2305,7 +2309,7 @@ export default function Layout() {
         <AssistantReadyToBillBanner />
         {/* The new phone layout: the Add Task offer left the top of every page for one quiet row of the Dashboard.
             Keyed by the role, which lands after the first draw, so the offer is decided once the role is known. */}
-        {phoneBars && location.pathname === '/dashboard' ? <AddTaskShortcutBanner key={role ?? 'no-role'} role={role} quiet /> : null}
+        {addTaskOffer === 'quiet' ? <AddTaskShortcutBanner key={role ?? 'no-role'} role={role} quiet /> : null}
         <div
           style={{
             flex: 1,
