@@ -10,9 +10,13 @@
  * owner offers (`src/lib/brandKit/`). A size changes the card's back alone. The previews on
  * the page and the files a press makes are the same drawing. With `userId` and `teammate` the
  * office opens the same card for someone else (People → Users).
+ *
+ * A dev, and nobody else, also reads **Remove the photo…** under the photo's press (punch list #443, row 8): the
+ * take-back of **Save the photo**, for a test person. The rule and its refusals are `lib/brandKit/photoRemove.ts`.
  */
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
@@ -22,7 +26,8 @@ import { CARD_NAME_MAX, cardWordsFor } from '../../lib/brandKit/cardWords'
 import { stagePlacement } from '../../lib/brandKit/cropMath'
 import { drawKit, printPage, sheetOfTen, type KitDrawOptions } from '../../lib/brandKit/draw'
 import { DEFAULT_CARD_LOOKS, THEMES, lookLayouts, resolveLook, type CardLooksSetting, type KitLookId } from '../../lib/brandKit/looks'
-import { cardHold, kitFileSlug, kitPersonFromUser, type KitCrop } from '../../lib/brandKit/person'
+import { cardHold, kitFileSlug, kitPersonFromUser, readCrop, type KitCrop } from '../../lib/brandKit/person'
+import { PHOTO_REMOVED, PHOTO_REMOVED_FILE_LEFT, photoRemoveConfirm, photoRemoveDrawn, photoRemoveProblem, removeTestPersonPhoto } from '../../lib/brandKit/photoRemove'
 import { browserKitRenderer, type KitRenderer } from '../../lib/brandKit/render'
 import { DEFAULT_CARD_SIZES, SIZES, cardBackFor, resolveSize, type CardSizesSetting, type KitSizeId } from '../../lib/brandKit/sizes'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -67,6 +72,7 @@ export function YourCardCard({
   sheetZIndex?: number
 }) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const { user } = useAuth()
   const userId = userIdProp ?? user?.id ?? null
   const W = useMemo(() => cardWordsFor(teammate), [teammate])
@@ -91,6 +97,7 @@ export function YourCardCard({
   const [making, setMaking] = useState<Making>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [removing, setRemoving] = useState(false)
   const live = useRef(true)
   useEffect(() => {
     live.current = true
@@ -239,6 +246,28 @@ export function YourCardCard({
     showToast(W.photoSaved, 'success')
   }
 
+  // A dev's take-back of Save the photo, on a test person alone. Everyone else reads nothing new.
+  const removeDrawn = !!loaded && photoRemoveDrawn(role, loaded)
+  const removeProblem = loaded && removeDrawn ? photoRemoveProblem(loaded) : ''
+  const removePhoto = async () => {
+    if (!userId || !loaded || !removeDrawn || removeProblem || removing) return
+    if (!(await confirmDialog({ ...photoRemoveConfirm(loaded.facts.card_name || loaded.facts.name || ''), danger: true }))) return
+    setRemoving(true)
+    try {
+      const { fileGone } = await removeTestPersonPhoto(io, userId)
+      if (!live.current) return
+      setLoaded({ ...loaded, photoPath: null })
+      setPhoto(null)
+      // the crop an account with no photo reads with, so Add a photo opens its sheet as on a new account
+      setCrop(readCrop(null))
+      showToast(fileGone ? PHOTO_REMOVED : PHOTO_REMOVED_FILE_LEFT, fileGone ? 'success' : 'warning')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The photo was not removed.'), 'error')
+    } finally {
+      if (live.current) setRemoving(false)
+    }
+  }
+
   /** The drawings at their real size, for a file: the previews are drawn to fill their box. */
   const forFile = () => {
     if (!person || !kit) return null
@@ -315,6 +344,19 @@ export function YourCardCard({
                   {photo ? W.changePhoto : W.addPhoto}
                 </button>
                 {!photo ? <p style={{ ...muted, marginTop: '0.35rem' }}>{W.ringEmpty}</p> : null}
+                {removeDrawn ? (
+                  <div data-your-card-remove-photo style={{ marginTop: '0.45rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => void removePhoto()}
+                      disabled={!!removeProblem || removing}
+                      style={{ fontFamily: 'inherit', fontSize: '0.8125rem', border: 'none', background: 'transparent', padding: 0, minHeight: wide ? undefined : 44, cursor: removeProblem || removing ? 'default' : 'pointer', color: removeProblem ? 'var(--text-muted)' : 'var(--text-red-700)', textDecoration: removeProblem ? 'none' : 'underline', textUnderlineOffset: 2 }}
+                    >
+                      {removing ? 'Removing…' : 'Remove the photo…'}
+                    </button>
+                    <p style={{ ...muted, fontSize: '0.75rem' }}>{removeProblem || 'Only a developer sees this. It is for a test person’s photo.'}</p>
+                  </div>
+                ) : null}
               </div>
             </div>
 

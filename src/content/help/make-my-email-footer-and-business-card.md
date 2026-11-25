@@ -25,6 +25,8 @@ Press {{button:blue|Save the photo}}.
 
 The photo is kept whole. You can open the sheet again and move it at any time. The office can see your photo. Nobody else can until you send a footer.
 
+You can change your photo at any time. Only the developer can remove a photo, and only a test person's.
+
 ## Check your words
 
 **Name on the card** is your full name, as a customer should read it. Your account name stands in when you leave it empty.
