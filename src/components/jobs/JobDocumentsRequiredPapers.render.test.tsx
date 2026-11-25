@@ -60,6 +60,8 @@ function fakeIo(over: Partial<JobPapersIo> = {}): JobPapersIo {
     readMine: vi.fn(async () => ({ jobNumber: 'J2391', linked: true, papers: [] })),
     ownSigningLink: vi.fn(async () => 'https://example.test/sign/own'),
     readNeedingMe: vi.fn(async () => []),
+    readGcOwn: vi.fn(async () => []),
+    setGcOwn: vi.fn(async () => undefined),
     ...over,
   }
 }
@@ -278,5 +280,89 @@ describe('JobDocumentsRequiredPapers', () => {
     await screen.findByText('Built from this job’s settings')
     expect(screen.queryByRole('group', { name: /^A proposal on / })).toBeNull()
   })
-})
 
+  // The GC's own form (punch list #389 step 7).
+  it('a tick beside a form’s line picks it as the GC’s own, and the save requires it and then marks it', async () => {
+    const readRoster = vi.fn<JobPapersIo['readRoster']>().mockResolvedValueOnce(empty).mockResolvedValue(saved)
+    const io = fakeIo({ readRoster, requirePapers: vi.fn(async () => 1), readGcOwn: vi.fn(async () => ['nda']) })
+    const { container } = renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a paper' }))
+    // Only a form takes the tick: the paper in prose and the entry with no words have none.
+    const tick = await screen.findByRole('checkbox', { name: 'Ridgeway Builders NDA: This is the GC’s own form' })
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1)
+    expect((tick.closest('label') as HTMLElement).style.minHeight).toBe('44px')
+    fireEvent.click(tick)
+    // It moves up to the unsaved rows with its tick on, and says whose form it is.
+    const row = container.querySelector('[data-job-paper="pending"]') as HTMLElement
+    expect(within(row).getByText('The GC’s own form')).toBeTruthy()
+    expect((within(row).getByRole('checkbox') as HTMLInputElement).checked).toBe(true)
+    expect(screen.getByText('not saved yet')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Require 1 paper' }))
+    await waitFor(() => expect(io.requirePapers).toHaveBeenCalledWith('job-1', ['book-nda']))
+    await waitFor(() => expect(io.setGcOwn).toHaveBeenCalledWith('nda', true))
+    // Saved: the required row says it and keeps the tick.
+    await waitFor(() => expect(container.querySelector('[data-job-paper="live"] [data-job-paper-from]')?.textContent).toBe('The GC’s own form'))
+    expect((screen.getByRole('checkbox', { name: 'Ridgeway Builders NDA: This is the GC’s own form' }) as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('a form picked by its line is not marked, and the unsaved row’s tick can change that', async () => {
+    const readRoster = vi.fn<JobPapersIo['readRoster']>().mockResolvedValueOnce(empty).mockResolvedValue(saved)
+    const io = fakeIo({ readRoster, requirePapers: vi.fn(async () => 1) })
+    const { container } = renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a paper' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Ridgeway Builders NDA/ }))
+    const row = container.querySelector('[data-job-paper="pending"]') as HTMLElement
+    expect(within(row).getByText('A form from the Contract Book')).toBeTruthy()
+    const tick = within(row).getByRole('checkbox') as HTMLInputElement
+    expect(tick.checked).toBe(false)
+    fireEvent.click(tick)
+    expect(within(row).getByText('The GC’s own form')).toBeTruthy()
+    fireEvent.click(tick)
+    fireEvent.click(screen.getByRole('button', { name: 'Require 1 paper' }))
+    await waitFor(() => expect(io.requirePapers).toHaveBeenCalledWith('job-1', ['book-nda']))
+    await screen.findByTestId('job-papers-summary')
+    expect(io.setGcOwn).not.toHaveBeenCalled()
+  })
+
+  it('a required form’s tick saves in place and comes off the same way, and a paper in prose has none', async () => {
+    const readGcOwn = vi.fn<JobPapersIo['readGcOwn']>().mockResolvedValueOnce([]).mockResolvedValueOnce(['nda']).mockResolvedValue([])
+    const io = fakeIo({ readRoster: vi.fn(async () => saved), readGcOwn })
+    const { container } = renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} />)
+    const tick = (await screen.findByRole('checkbox', { name: 'Ridgeway Builders NDA: This is the GC’s own form' })) as HTMLInputElement
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1)
+    expect(tick.checked).toBe(false)
+    fireEvent.click(tick)
+    await waitFor(() => expect(io.setGcOwn).toHaveBeenCalledWith('nda', true))
+    await screen.findByText('Ridgeway Builders NDA is marked as the GC’s own form. Nobody signs again.')
+    await waitFor(() => expect(container.querySelector('[data-job-paper="live"] [data-job-paper-from]')?.textContent).toBe('The GC’s own form'))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ridgeway Builders NDA: This is the GC’s own form' }))
+    await waitFor(() => expect(io.setGcOwn).toHaveBeenLastCalledWith('nda', false))
+    await screen.findByText('Ridgeway Builders NDA is no longer marked as the GC’s own form. Nobody signs again.')
+    await waitFor(() => expect(container.querySelector('[data-job-paper="live"] [data-job-paper-from]')?.textContent).toBe('A form from the Contract Book'))
+  })
+
+  it('a mark that fails leaves the form required and names it, and a refused tick says why', async () => {
+    const readRoster = vi.fn<JobPapersIo['readRoster']>().mockResolvedValueOnce(empty).mockResolvedValue(saved)
+    const setGcOwn = vi.fn(async () => Promise.reject(new Error('Training mode is read-only. Nothing was changed.')))
+    const io = fakeIo({ readRoster, requirePapers: vi.fn(async () => 1), setGcOwn })
+    renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a paper' }))
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Ridgeway Builders NDA: This is the GC’s own form' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Require 1 paper' }))
+    await screen.findByText('Required, but not marked as the GC’s own form. Tick it on the paper’s row.')
+    expect(screen.getByText('Ridgeway Builders NDA: Training mode is read-only. Nothing was changed.')).toBeTruthy()
+    // The form is on the job all the same, with its tick still off.
+    const tick = (await screen.findByRole('checkbox', { name: 'Ridgeway Builders NDA: This is the GC’s own form' })) as HTMLInputElement
+    expect(tick.checked).toBe(false)
+    fireEvent.click(tick)
+    await waitFor(() => expect(screen.getAllByRole('alert').some((a) => a.textContent === 'Training mode is read-only. Nothing was changed.')).toBe(true))
+  })
+
+  it('a read of the marks that fails draws no tick on a required row, never a wrong one', async () => {
+    const io = fakeIo({ readRoster: vi.fn(async () => saved), readGcOwn: vi.fn(async () => Promise.reject(new Error('column gc_own does not exist'))) })
+    renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} />)
+    await screen.findByTestId('job-papers-summary')
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(screen.getByText('A form from the Contract Book')).toBeTruthy()
+  })
+})

@@ -275,6 +275,29 @@ export function pickablePapers(book: readonly BookPaperRow[], live: readonly Job
     })
 }
 
+/**
+ * The GC's own form (punch list #389 step 7). A GC that requires its own secrecy form hands it to the office, which
+ * keeps it as a form in the Contract Book. The office says so with a tick on the form's line, and the GC's page then
+ * says the subs sign the GC's own form.
+ */
+export const GC_OWN_FORM = {
+  tick: 'This is the GC’s own form',
+  from: 'The GC’s own form',
+  fine: 'Tick a form the GC handed you. Their page then says the subs sign the GC’s own form.',
+  /** Over the names of the forms that were required but took no mark. */
+  notMarked: 'Required, but not marked as the GC’s own form. Tick it on the paper’s row.',
+} as const
+
+/** Only a form with words and no settings can be the GC's own. */
+export function canBeGcOwn(p: { isForm: boolean; built?: boolean; hasWords?: boolean }): boolean {
+  return p.isForm && p.built !== true && p.hasWords !== false
+}
+
+/** The toast after the tick on a required form's row is saved. The mark changes no form. */
+export function gcOwnToast(paperName: string, own: boolean): string {
+  return own ? `${paperName} is marked as the GC’s own form. Nobody signs again.` : `${paperName} is no longer marked as the GC’s own form. Nobody signs again.`
+}
+
 /** A job that waits on the caller's signature, from `job_papers_needing_me()`. */
 export interface JobNeedingMe {
   jobId: string
