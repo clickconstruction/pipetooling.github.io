@@ -287,9 +287,10 @@ describe('on a phone', () => {
 })
 
 /** The one print as `useLienRunPrint` hands it over, with its press watched. */
-function printState(over: { notices: number; affidavits: number; held: number; reading?: boolean; mode?: 'one' | 'two'; printed?: boolean }): LienRunPrintState & { print: ReturnType<typeof vi.fn> } {
+function printState(over: { notices: number; affidavits: number; held: number; reading?: boolean; mode?: 'one' | 'two'; printed?: boolean; stopped?: LienRunPrintState['stopped'] }): LienRunPrintState & { print: ReturnType<typeof vi.fn> } {
   return {
-    press: lienRunPrintPress({ notices: over.notices, affidavits: over.affidavits, held: over.held, reading: over.reading ?? false }),
+    press: lienRunPrintPress({ notices: over.notices, affidavits: over.affidavits, held: over.held, reading: over.reading ?? false, stopped: over.stopped?.length ?? 0 }),
+    stopped: over.stopped ?? [],
     order: lienStackOrderWords(over.notices, over.affidavits),
     mode: over.mode ?? 'one',
     twoWhy: over.mode === 'two' ? 'This browser cannot print both kinds as one stack. Print each with its own press.' : null,
@@ -365,11 +366,38 @@ describe('step 2: the one print (punch list #362, step 6)', () => {
     expect(all('[data-lien-run-print]').map((el) => el.getAttribute('data-lien-run-print'))).toEqual(['notice', 'affidavit'])
   })
 
+  it('names a right notice that does not print, with its reason, and never says no paper is right beside it', () => {
+    const held = { itemId: 'it1', jobId: 'j1', label: '1001 · ZZ Sample Shop', why: 'It waits on the leader’s signature.', kind: 'held' as const }
+    const paperless = { itemId: 'it2', jobId: 'j2', label: '1002 · ZZ Other Shop', why: 'Its copies went by Docsmit, so no paper prints.', kind: 'paperless' as const }
+    mount(BEFORE, { print: printState({ notices: 0, affidavits: 0, held: 4, stopped: [held, paperless] }) })
+    expect((q('[data-lien-run-print="run"]') as HTMLButtonElement).disabled).toBe(true)
+    expect(text('[data-lien-run-print-foot]')).toBe('No paper prints now. 2 right notices do not print here. Each is named below with its reason. 4 more wait on step 1 above.')
+    expect(all('[data-lien-run-print-stopped] li').map((li) => [li.getAttribute('data-lien-run-print-stopped-row'), li.textContent])).toEqual([
+      ['held', '1001 · ZZ Sample Shop It waits on the leader’s signature.'],
+      ['paperless', '1002 · ZZ Other Shop Its copies went by Docsmit, so no paper prints.'],
+    ])
+    // A held one has a door: the run window, by the Board's own press.
+    expect(q('[data-lien-run-card="print"]')!.textContent).toContain('The Board’s Print and mail press opens the run window')
+    cleanup()
+    // One that goes with no paper is not held: no door is named, and a live press stays live.
+    mount(READY, { print: printState({ notices: 1, affidavits: 1, held: 0, stopped: [paperless] }) })
+    expect((q('[data-lien-run-print="run"]') as HTMLButtonElement).disabled).toBe(false)
+    expect(text('[data-lien-run-print-foot]')).toBe('1 right notice does not print here. It is named below with its reason.')
+    expect(q('[data-lien-run-card="print"]')!.textContent).not.toContain('opens the run window')
+    cleanup()
+    mount(READY, { print: printState({ notices: 1, affidavits: 1, held: 0 }) })
+    expect(q('[data-lien-run-print-stopped]')).toBeNull()
+  })
+
   it('on a phone every press of the card is 44 px tall', () => {
     mount(READY, { isMobile: true, print: printState({ notices: 6, affidavits: 10, held: 0, mode: 'two' }) })
     expect(all('[data-lien-run-card="print"] button').map((b) => b.style.minHeight)).toEqual(['44px', '44px'])
     cleanup()
     mount(READY, { isMobile: true, print: printState({ notices: 1, affidavits: 1, held: 0 }) })
     expect(all('[data-lien-run-card="print"] button').map((b) => b.style.minHeight)).toEqual(['44px'])
+    cleanup()
+    // A dead press is as tall as a live one.
+    mount(BEFORE, { isMobile: true, print: printState({ notices: 0, affidavits: 0, held: 4 }) })
+    expect(all('[data-lien-run-card="print"] button').map((b) => [(b as HTMLButtonElement).disabled, b.style.minHeight])).toEqual([[true, '44px']])
   })
 })

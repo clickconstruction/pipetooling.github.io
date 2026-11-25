@@ -96,6 +96,20 @@ describe('useLienRunPrint', () => {
     expect(openMock).not.toHaveBeenCalled()
   })
 
+  it('a right notice the run window holds is named with its reason, and the press does not call the run not right', async () => {
+    // The checklist counts job j1's notice as right from the Board's chip. The run window holds it for a signature.
+    const NOTICE_ONLY = runOf({ right: [line({ kind: 'notice', jobId: 'j1' })], settle: [line({ kind: 'notice', jobId: 'j9', standing: 'settle' })] })
+    const view = mount({ run: NOTICE_ONLY, noticesFor: () => [{ ...notice(1), signature: null }] })
+    await waitFor(() => expect(view.result.current!.stopped).toHaveLength(1))
+    expect(view.result.current!.stopped).toEqual([{ itemId: 'it1', jobId: 'j1', label: '1001 · ZZ Shop 1', kind: 'held', why: 'It waits on the leader’s signature.' }])
+    expect(view.result.current!.press).toMatchObject({ dead: true, papers: 0 })
+    expect(view.result.current!.press.foot).not.toContain('No paper is right yet')
+    expect(view.result.current!.press.foot).toContain('No paper prints now.')
+    view.result.current!.print()
+    expect(openMock).not.toHaveBeenCalled()
+    expect(fileMock).not.toHaveBeenCalled()
+  })
+
   it('the press prints one stack, files each paper as its own press files it, and stamps the run’s notices printed', async () => {
     const view = mount()
     await waitFor(() => expect(view.result.current!.press.dead).toBe(false))

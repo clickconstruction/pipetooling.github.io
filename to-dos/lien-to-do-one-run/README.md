@@ -399,6 +399,11 @@ pages sat where it sits alone, at printer margins of 0 and 0.4 in. Where a brows
 page its own margins the card shows two presses. Not seen: the live desk, a real printer, Safari,
 Firefox. No print is recorded for an affidavit yet, so after a reload a printed affidavit still counts
 as to print: step 7 is next and gives it that fact.
+A look at the live card on 2026-11-25 met a dead press that read *No paper is right yet* over a line
+that read *5 papers are right, 1 notice to print*. The press counts the notices the packet prints.
+The checklist counts a notice as right from the Board's chip, and the run window can still hold it,
+or its copies can have gone by Docsmit. Mended, v2.8591: the card names each such notice under the
+press with the run window's reason. The strip's *1 notice to print* still counts it.
 
 The look at step 6 is written as a recipe in three parts, and no part is walked yet as of 2026-11-25.
 The first reads the card on the live desk and writes nothing. The second presses with the print window

@@ -84,6 +84,28 @@ describe('the press', () => {
     expect(lienRunPrintPress({ notices: 0, affidavits: 0, held: 0, reading: false })).toEqual({ label: 'Print the run', dead: true, foot: null, papers: 0 })
   })
 
+  it('says a right notice that does not print, and never calls the run not right beside one', () => {
+    // The live desk of 2026-11-25: one right notice the packet does not print, eleven to settle, no affidavit.
+    const one = lienRunPrintPress({ notices: 0, affidavits: 0, held: 11, reading: false, stopped: 1 })
+    expect(one).toMatchObject({ label: 'Print the run ▸', dead: true, papers: 0 })
+    expect(plainSentence(one.foot!)).toBe('No paper prints now. 1 right notice does not print here. It is named below with its reason. 11 more wait on step 1 above.')
+    expect(one.foot).not.toContain('No paper is right yet')
+    const alone = lienRunPrintPress({ notices: 0, affidavits: 0, held: 0, reading: false, stopped: 2 })
+    expect(alone.dead).toBe(true)
+    expect(plainSentence(alone.foot!)).toBe('No paper prints now. 2 right notices do not print here. Each is named below with its reason.')
+    expect(plainSentence(lienRunPrintPress({ notices: 0, affidavits: 0, held: 1, reading: false, stopped: 1 }).foot!)).toContain('1 more waits on step 1 above.')
+    // With papers to print the press is live and still says the ones it does not print.
+    const some = lienRunPrintPress({ notices: 3, affidavits: 1, held: 0, reading: false, stopped: 1 })
+    expect(some).toMatchObject({ label: 'Print the run · 4 papers', dead: false })
+    expect(plainSentence(some.foot!)).toBe('1 right notice does not print here. It is named below with its reason.')
+    const both = lienRunPrintPress({ notices: 3, affidavits: 1, held: 2, reading: false, stopped: 1 })
+    expect(both.dead).toBe(false)
+    expect(plainSentence(both.foot!)).toBe('2 papers are not right yet. Settle each above, or leave it out. The 4 that are right print now. 1 right notice does not print here. It is named below with its reason.')
+    // None stopped is the press as it was.
+    expect(lienRunPrintPress({ notices: 3, affidavits: 1, held: 0, reading: false, stopped: 0 })).toEqual(lienRunPrintPress({ notices: 3, affidavits: 1, held: 0, reading: false }))
+    for (const f of [one.foot!, alone.foot!, some.foot!, both.foot!, LIEN_RUN_PRINT_WORDS.stoppedDoor]) for (const sentence of plainSentence(f).split(/(?<=\.)\s+/)) expect(plainWordsFailures(sentence)).toEqual([])
+  })
+
   it('waits for the notices’ bills: a notice never prints without its enclosures', () => {
     const p = lienRunPrintPress({ notices: 6, affidavits: 10, held: 0, reading: true })
     expect(p.dead).toBe(true)
