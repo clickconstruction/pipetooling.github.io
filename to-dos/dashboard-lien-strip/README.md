@@ -2,7 +2,7 @@
 name: "Lien information on the Dashboard: two sightings, one answer"
 number: 423
 group: close
-status: asked by the owner 2026-11-23 with phone screenshots, first of the strip alone, then of the strip and the lien month card together · read in the code and drawn as a before and after the same day · the owner picked option 1 on 2026-11-23, *I like your new After option 1, recommended, one place, let's log that in to build* · built and live the same day: the Lien desk card beside Needs you in v2.8339 and the lien month card dropped in v2.8342, both looked at by hand on a dev server · the office's word for the leader, the one piece of the plan left out, built in v2.8372 on the owner's *Yes, fix it here* · left: the owner's look on his own phone
+status: asked by the owner 2026-11-23 with phone screenshots, first of the strip alone, then of the strip and the lien month card together · read in the code and drawn as a before and after the same day · the owner picked option 1 on 2026-11-23, *I like your new After option 1, recommended, one place, let's log that in to build* · built and live the same day: the Lien desk card beside Needs you in v2.8339 and the lien month card dropped in v2.8342, both looked at by hand on a dev server · the office's word for the leader, the one piece of the plan left out, built in v2.8372 on the owner's *Yes, fix it here* · left: the owner's look on his own phone · walked in an iPhone simulator 2026-11-25, where it holds; the owner's look on his own phone is still owed
 summary: >
   A leader's Dashboard shows Lien desk information twice: a strip at the top of the Needs you card and
   the lien month card far below, after the Billing pipeline. The owner does not like the strip's look
@@ -314,3 +314,12 @@ are gone on a phone, where the flow takes the bins' place (v2.8346). Row 3, the 
 - The Board at 320 px, and the other three views of the desk.
 - An earlier drawing put the strip inside the Needs you card, under its title. The mock-up keeps one frame of it for comparison.
 - An earlier idea, the strip as one 44 px line, is no longer drawn. It gave up the run's count, which the 2026-11-22 call keeps.
+
+## Walked in a simulator (2026-11-25)
+
+Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in dark, as the dev, on the live site. It is a simulator and not a real phone, so the owner's look on his own phone still stands. Nothing was pressed that saves.
+
+- **Holds.** The card is one label line, *Lien desk* at the left and **The Board ›** at the right, three values side by side and one red line under. *Needs you* starts with its title. The whole Dashboard was scrolled to **Back to top**, and no lien month card stands on it. **The Board ›** opened the Lien desk on To do. Nothing slid sideways.
+- **Walked as the dev,** not as the sample leader, so the card read *wait on you*, as built.
+- **Seen once, cause not known.** Mid-scroll the Dashboard went back to its top by itself. The bundle had not changed.
+- **The orange banner** about the one-tap Add Task icon stands above the page in Safari on every screen, about 56 points tall. It is older than this card and can be dismissed. Cards #428 and #352 say what it costs the Lien desk.

@@ -2,7 +2,7 @@
 name: "The Lien desk's To do on a phone: the flow on one screen with a way back, and one press at the right of every row"
 number: 428
 group: close
-status: asked by the owner 2026-11-23, first *show me that on mobile and let me know if we should improve it*, then the flow as a new priority · looked at live by hand at 430 px the same day, read in the code and drawn twice · the owner picked the flow's shape, *One screen, pinned line*, and gave the go for all of it the same day, *Awesome, I like it, let's do it. Please build everything we talked about today* · the rows and the tiles built in v2.8341 and looked at by hand at 430 px · the flow built in v2.8346, the switch, the counts, the pinned line and the phone's Back · both live 2026-11-23, and both looked at by hand at 430 px in dark on a dev server
+status: asked by the owner 2026-11-23, first *show me that on mobile and let me know if we should improve it*, then the flow as a new priority · looked at live by hand at 430 px the same day, read in the code and drawn twice · the owner picked the flow's shape, *One screen, pinned line*, and gave the go for all of it the same day, *Awesome, I like it, let's do it. Please build everything we talked about today* · the rows and the tiles built in v2.8341 and looked at by hand at 430 px · the flow built in v2.8346, the switch, the counts, the pinned line and the phone's Back · both live 2026-11-23, and both looked at by hand at 430 px in dark on a dev server · walked in an iPhone simulator 2026-11-25: the rows hold, and two things added since stand in the way of the flow, written under *Walked in a simulator*
 summary: >
   The Board ›, the Dashboard's door to the Lien desk, lands on To do. On a phone that screen opens
   cleanly: four tiles, the bins folded, one list by the day each paper is due. The rows are where it
@@ -217,3 +217,21 @@ Not on a real phone.
 - The list as a leader sees it. The look was as the dev.
 - The other three views of the desk, and the job screen a row opens.
 - 320 px on the live page.
+
+## Walked in a simulator (2026-11-25)
+
+Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in dark, as the dev, on the live site. It is a simulator and not a real phone, so the owner's look on his own phone still stands. Nothing was pressed that saves.
+
+**Holds.** On some thirty rows the words are at the left and one press is at the right, at one width and one right edge. The second way out is a quiet line. Another square moves the pick with no new step in Back. A job opened from a stage, then Back twice: first the stage's papers under the line, then the flow with the stage lit.
+
+**Two faults found, read in the code the same day. Neither is built, and each turns on a call.**
+
+1. **The flow no longer stands on one screen.** This card measured both columns of stages on one screen. The walk saw 5 of 8 stages a column, with the list in a window of about 355 of 874 points.
+   - Two things stand above the desk's own header. The orange banner about the Add Task icon, about 56 points, is older than this card and shows in Safari until it is dismissed (`AddTaskShortcutBanner`). The **Payoffs** strip with **Someone paid ›**, about 85 points, came the day after this card's measure (v2.8504, punch list #435). It is the first row of the desk's page and never scrolls (`LienDeskPage.tsx`), and it shows whenever any filed lien exists.
+   - The call: on a phone, does Payoffs stay pinned on every view of the desk, scroll away with the list, or shrink to a chip? And should the banner show anywhere but the Dashboard? Each mend is the client alone, XS to S.
+2. **A pressed stage's rows are not right under its line.** The pinned line is right. Under it come the find box, then the *This run* line with **Get it right ›**, then the rows (`LienDesk.tsx`). *This run* came the day after this card's measure too (v2.8474). So one row's first line shows at the foot of the screen.
+   - The call: while a stage is picked on a phone, do the find box and *This run* stay, move under the rows, or go? The mend is the client alone, XS to S.
+
+**Seen, and it is as built.** Under a Monthly notices stage the list also held an affidavit's row with **Enter mail numbers**. A picked stage narrows the list to its jobs, and every row of a picked job is in (`lienBoard.ts`). The affidavit's job has a notice in that stage.
+
+**For the three calls of this card:** To do opened on the list by day the first time, and on **The flow** once the flow had been used.
