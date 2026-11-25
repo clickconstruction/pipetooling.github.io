@@ -1,8 +1,8 @@
 ---
 name: "Punch list: the pace of the list and the merge queue, on one page"
 number: 444
-group: ready
-status: asked 2026-11-24 · PR 3 (In the merge queue on the page) is live as v2.8547 · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is #9763, in the merge queue · PR 4 (each line's state) is open as #9787 and not armed, since it owes one deploy of ship-pace after its merge and waits on a yes for that
+group: close
+status: asked 2026-11-24 · all four PRs are merged · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is live as v2.8546 · PR 3 (In the merge queue on the page) is live as v2.8547 · PR 4 (each line's state) merged as v2.8550 on 2026-11-25 and ship-pace was redeployed the same hour · none of the three has been walked on the live page
 summary: >
   The owner asked to see the merge queue and how fast punch-list cards are being closed. Most of it
   is already live in two places. The Burndown at the top of /punch-list counts cards opened and closed
@@ -10,10 +10,10 @@ summary: >
   of GitHub every 15 minutes. This card joins them on /punch-list and fills four gaps. The Burndown has
   no three-week stretch. Its sentence gives no rate a day. The queue is on another page. A change in
   the queue does not say whether its checks are running or it is ready.
-next: The yes for PR 4 (#9787), then its merge and the deploy of ship-pace. The walk of PR 3 on the live page can run now. The walk of PR 2 follows its merge.
-size: M as a train of four (XS · S · S · S); left: PR 4 (S) and two walks
-ver: v2.8547
-blocker: PR 4 is armed only on a yes, because one edge function is redeployed after its merge.
+next: Three walks on the live page. The queue block and the Burndown's 21 days can be walked now. The State chips can be walked once the deploy that holds v2.8550 has finished.
+size: M as a train of four (XS · S · S · S); left: three walks
+ver: v2.8546, v2.8547, v2.8550
+blocker: None. The build is done. The card closes on its walks.
 opinion: build — the history, the read of GitHub and its token already exist, so this is three small changes to screens and one field more on a read.
 ---
 
@@ -228,7 +228,12 @@ Nothing here writes a row a person made. The one write is the function's own row
 - PR 4 leaves the `/punch-list` line of `docs/PROJECT_DOCUMENTATION.md` as main has it. #438's last PR
   (#9757) writes the same line, and two PRs on one line drop each other from the merge queue. The State
   column goes onto that line in a docs follow-up once both have merged.
-- PR 2 (#9763) is still in the merge queue. It has not been seen on the live page.
+- 2026-11-25: PR 2 merged as #9763 and is live as v2.8546. It has not been walked on the live page yet.
+- 2026-11-25: PR 4 merged as #9787, v2.8550, on the owner's yes. `ship-pace` was redeployed from main
+  two minutes after the merge, and the drift check read every function current. The State chips have
+  not been seen on the live page.
+- 2026-11-25: the State column is on the `/punch-list` line of `docs/PROJECT_DOCUMENTATION.md`, in the
+  follow-up that also moved this card to Close out.
 
 Found while building, and kept:
 
