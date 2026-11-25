@@ -2,7 +2,7 @@
 name: "Intro to HVAC: built and on for everyone; the licensed read, the learner walks and one redeploy are left"
 number: 419
 group: close
-status: built and live 2026-11-21 in six PRs (v2.8158, v2.8163, v2.8168, v2.8169, v2.8209, v2.8239); On in Settings → Training since 2026-11-22 01:43Z on Taunya's word, offered to every role and required of nobody · left: a licensed HVAC reader's read and the walks below · read live 2026-11-24 in dark at 1280, 768 and 390 px: all thirty lessons and their 47 drawings hold · read in light 2026-11-25 at 1280, 768 and 390 px: the same holds, and two labels in lesson 18's drawing are too pale on their shapes
+status: built and live 2026-11-21 in six PRs (v2.8158, v2.8163, v2.8168, v2.8169, v2.8209, v2.8239); On in Settings → Training since 2026-11-22 01:43Z on Taunya's word, offered to every role and required of nobody · left: a licensed HVAC reader's read and the walks below · read live 2026-11-24 in dark at 1280, 768 and 390 px: all thirty lessons and their 47 drawings hold · read in light 2026-11-25 at 1280, 768 and 390 px: the same holds, and the two labels in lesson 18's drawing that were too pale on their shapes are darker in v2.8569, not yet read on a screen
 summary: >
   The fourth training course, thirty five-minute lessons on how a house is cooled and heated,
   where the heat, the air and the water go, for the people who work on it or beside it. HVAC is
@@ -10,13 +10,13 @@ summary: >
   names the carded technician. Taunya asked for it on 2026-11-20 and said to build it whole
   with no card. This card opened on 2026-11-22 at her ask to record what is left to walk.
 next: >
-  Darken the two pale labels in lesson 18's drawing (XS, one lesson file). The read-only walks are
-  done in dark and in light at 1280, 768 and 390 px, below. Still owed: a person's read of each
+  Read lesson 18's drawing once more in light and in dark: its two pale labels are darker in v2.8569.
+  The read-only walks are done in dark and in light at 1280, 768 and 390 px, below. Still owed: a person's read of each
   question's words, the final check read live, each role's Dashboard card, a real phone, and the
   licensed reader. The learner walk on a test account is done, below.
 size: S as walks and loose ends; the reader's corrections are unsized until the read
 blocker: A licensed HVAC reader, not yet named.
-ver: v2.8158 · 8163 · 8168 · 8169 · 8209 · 8239
+ver: v2.8158 · 8163 · 8168 · 8169 · 8209 · 8239 · 8569
 opinion: your call — the course is built, checked by its tests and read live; what is left is a licensed read and walks as a learner
 mockup: not required — walks and loose ends only; the course page is built and live
 ---
@@ -91,6 +91,6 @@ Read on clicktooling.com at `/training/intro-hvac` in light, at 1280, 768 and 39
 
 - **Holds, at each width.** Thirty lessons, each with its five sections. 47 drawings and the 538 labels in them. Four questions of four choices in every *Check yourself*, none empty. No sideways scroll, no label outside its drawing, no two labels over each other, no raw markup. At 390 px the rail folds to one press, *Lessons · 0 of 30*, and a pick closes it.
 - **Lesson 29's step discs in dark: clean.** The disc turns pale and its number turns dark, about 13 to 1.
-- **One fault found, small, not built: two labels in lesson 18's drawing are under 4.5 to 1.** In *Where water meets air*, the two small labels inside the tank, *the heat goes* and *into the water*, are drawn in the muted grey on tinted shapes, a pale red and a pale blue. Each measures 3.96 to 1 in light. In dark *into the water* measures the same and *the heat goes* passes. Every other label of the 538 measures 4.5 to 1 or more against the shape under it, and so do the words outside the drawings. The mend is the lesson's own file, `18-where-water-meets-air.md`: the two labels take the darker text token the drawing's other labels use.
+- **One fault found, small, mended in v2.8569 and not yet read on a screen: two labels in lesson 18's drawing were under 4.5 to 1.** In *Where water meets air*, the two small labels inside the tank, *the heat goes* and *into the water*, are drawn in the muted grey on tinted shapes, a pale red and a pale blue. Each measures 3.96 to 1 in light. In dark *into the water* measures the same and *the heat goes* passes. Every other label of the 538 measures 4.5 to 1 or more against the shape under it, and so do the words outside the drawings. The mend was in the drawing's own file, `WaterMeetsAir.tsx`, not the lesson's: the two labels take `--text-600`, the darker token the other tank drawing gives its labels on the same tints, about 6 to 1 in light by the sum.
 - **To weigh, not a fault against this card's words.** At 768 px each *Check yourself* choice is 32 px high, and 44 px or more at 390. A tablet held upright is 768 wide and takes a thumb, and the app's rule elsewhere is 44 px (#414).
 
