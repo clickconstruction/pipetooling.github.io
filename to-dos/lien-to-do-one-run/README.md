@@ -2,7 +2,7 @@
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
 group: ready
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483 · the title bar's run door retired, v2.7490 · the run window redrawn for notices and built, v2.7477 (one count, three steps, one press); the liens' lane is drawn and not approved · step 5, the Get it right checklist with Leave out, built v2.8474 on Diane's word of 2026-11-24, with its one call written to flip · step 6, the one print, built v2.8536 on Diane's two answers of 2026-11-24 (live for what is right; the Board's prints unchanged), merged and live 2026-11-25 (pull request 9814) · six calls on the run's defaults written up for the owner 2026-11-25 and all answered the same day: each stands as built, and the first real press is the office's · step 7, changed since printed: every lien print keeps what its paper said (v2.8589), and on the owner's two answers of 2026-11-25 the checklist names a printed paper that changed (v2.8593) and *It stands* is built on its own branch with a migration, not merged
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483 · the title bar's run door retired, v2.7490 · the run window redrawn for notices and built, v2.7477 (one count, three steps, one press); the liens' lane is drawn and not approved · step 5, the Get it right checklist with Leave out, built v2.8474 on Diane's word of 2026-11-24, with its one call written to flip · step 6, the one print, built v2.8536 on Diane's two answers of 2026-11-24 (live for what is right; the Board's prints unchanged), merged and live 2026-11-25 (pull request 9814) · six calls on the run's defaults written up for the owner 2026-11-25 and all answered the same day: each stands as built, and the first real press is the office's · step 7, changed since printed: every lien print keeps what its paper said (v2.8589), and on the owner's two answers of 2026-11-25 the checklist names a printed paper that changed (v2.8593) and each has three presses, with *It stands* kept on record (v2.8595, one migration, its push asked for by name)
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -13,10 +13,10 @@ summary: >
   under it, about three rows. The mock-up draws today's desk and three answers with the Board in
   place: B (one page, clearer rows), A (the list follows the Board's bins) and D (one run in three
   steps, opened from the Board's first tile). Each is the start of the next.
-next: Step 7's last part, the three presses on a changed paper with *It stands* kept on record: built on its own branch, and it waits on its PR, then on the push of its migration, asked for by name. A look at the *Changed since printed* card on the live desk, by a walker. Then step 8, mail and file (M). The six calls on the run's defaults are answered, each as built, under *Open questions*. The first real press is the office's, at its own printer. A guarded press, with the print window held shut, has its own yes of 2026-11-25 and is the walker's, on a live press alone. A print of the run on a real printer has not been seen.
-size: L for D as five steps (M · M · M · S · M); B, the first three, step 4, the list by bin, step 5, the checklist, and step 6, the one print, are built; left: steps 7 and 8 (S · M)
+next: The push of `20261125210500_lien_print_stands.sql`, asked for by name, right after this build merges: until then a press on *It stands* says the server's reason and writes nothing. Then the types, and a look at the *Changed since printed* card and its three presses on the live desk, by a walker. Then step 8, mail and file (M). The six calls on the run's defaults are answered, each as built, under *Open questions*. The first real press is the office's, at its own printer. A guarded press, with the print window held shut, has its own yes of 2026-11-25 and is the walker's, on a live press alone. A print of the run on a real printer has not been seen.
+size: L for D as five steps (M · M · M · S · M); B, the first three, step 4, the list by bin, step 5, the checklist, step 6, the one print, and step 7, changed since printed, are built; left: step 8 (M)
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474 · v2.8536 · v2.8589 · v2.8593
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474 · v2.8536 · v2.8589 · v2.8593 · v2.8595
 ---
 
 # Lien desk To do: one run (#362)
@@ -180,7 +180,9 @@ by itself.
    (`lienPrintSworn.ts`, `lienPrintsIo.ts`). The checklist reads it since v2.8593: a card,
    *Changed since printed*, names each printed paper that would say another thing today, and an
    affidavit that printed the same is not printed again (`lienRunPrinted.ts`,
-   `useLienRunPrinted.ts`). The three presses are built on their own branch and not merged.
+   `useLienRunPrinted.ts`). Since v2.8595 each changed paper has three presses, *Reprint this one*,
+   *It stands as printed* and *Take it out of the run*, and *It stands* is a row of
+   `lien_print_stands` (`lienPrintStands.ts`, migration `20261125210500`).
 8. **Mail and file** (M): step 3's two cards and the tally, over the record steps that exist today.
 
 ## The two prints on the Board (built, v2.7470; moved under the tiles, v2.7483)
@@ -292,9 +294,13 @@ Read in the code on 2026-11-25, with step 6 on `main`.
   print, and the Board's own print still takes it. Not seen live.
 - A paper printed before v2.8589 has no values kept. Such an affidavit counts as to print, as
   before. Such a notice is read against the notice as stored, and its line says so.
-- The three presses on a changed paper, *Reprint this one*, *It stands as printed* and *Take it out
-  of the run*: built on their own branch on the second answer below, and not merged. *It stands* is
-  a row of a new table, so that PR carries a migration whose push is asked for by name.
+- ~~The three presses on a changed paper.~~ Built, v2.8595, on the second answer below. *Reprint
+  this one* prints an affidavit again alone, and opens a notice in the run window. *It stands as
+  printed* writes one row of `lien_print_stands` with who, when and what had changed, kept under a
+  key of that difference, so a second change asks again, and *Take back* stamps it. *Take it out of
+  the run* is the run's own Leave out. An affidavit that stands does not print again with the run.
+  The migration is `20261125210500_lien_print_stands.sql`, and its push is asked for by name. Until
+  it is pushed a press on *It stands* says the server's reason and writes nothing. Not seen live.
 - ~~**Which fields count as sworn on each paper.**~~ Answered 2026-11-25. Asked: *"a printed notice
   or affidavit reads as changed when anything it states has moved since it printed: the money, the
   parties, the property, the work and its months. Its date, its contact person and the county an
