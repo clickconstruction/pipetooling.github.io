@@ -2741,7 +2741,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       let landed: { changes: Array<{ column: string; before: unknown; after: unknown }>; held: string | null } = { changes: [], held: null }
       if (Object.keys(patch).length) {
         const res = await restRows(session, 'PATCH', 'jobs_ledger', `id=eq.${job.id}`, patch)
-        if (!res.ok) return errored(restError(res.status, res.body))
+        if (!res.ok) return errored(`${line ? `The line item "${line.name}" was written and the job's own columns were not, so plan again from the job as it reads now: ` : ''}${restError(res.status, res.body)}`)
         // return=minimal says nothing about rows RLS kept: read the columns back and say what landed.
         const back = await restGet(session, 'jobs_ledger', `select=${Object.keys(patch).join(',')}&id=eq.${job.id}`)
         const row = (back.ok && Array.isArray(back.body) ? back.body[0] : null) as Record<string, unknown> | null
