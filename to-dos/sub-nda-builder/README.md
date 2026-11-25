@@ -12,7 +12,7 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The two walks left in *Left to do and to walk*, each a person's, with a real phone: a person's own Read and sign, and a finger on the sliders. Three were walked on 2026-11-24 and passed. Before a real job, the real wording in the Contract Book's entry, with its breach and site lines, and an attorney's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Then a walk of step 5 on the live site: the GC's page, its sample, and the office's setting for what a GC sees. Steps 1 to 5 are built. Beside them, the last steps of the Document builder tab, #404, and Taunya's read, box by box, of the grid in this card's mock-up. Then the open calls below, with the wider calls still open in *The wider look*.
+next: The two walks left in *Left to do and to walk*, each a person's, with a real phone: a person's own Read and sign, and a finger on the sliders. Three were walked on 2026-11-24 and passed. Before a real job, the real wording in the Contract Book's entry, with its breach and site lines, and an attorney's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Step 5 was walked on the live site on 2026-11-24 and passed: the GC's page, its sample's address, and the office's setting for what a GC sees. Steps 1 to 5 are built. Step 6 waits on the owner's call on how a GC proposes. Beside them, the last steps of the Document builder tab, #404, and Taunya's read, box by box, of the grid in this card's mock-up. Then the open calls below, with the wider calls still open in *The wider look*.
 ver: v2.8014 · v2.8019 · v2.8020 · v2.8145 · v2.8154 · v2.8156 · v2.8182 · v2.8183 · v2.8184 · v2.8229 · v2.8275 · v2.8462 · v2.8467 · v2.8503 · v2.8506 · v2.8533
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
@@ -358,16 +358,18 @@ paper until an entry has a settings list, and the first one is a test entry.
      roster have signed, and each sub business with the day it finished signing. No worker is named. It is
      titled *How we bind everyone we bring onto this job*, since the Document builder's block there already reads
      *Secrecy on your jobs*. `20261124160000_job_papers_gc_page.sql`, `_shared/portalJobPapers.ts`,
-     `PortalJobPapers.tsx`. Not walked on the live site yet.
+     `PortalJobPapers.tsx`. Walked on the live site on 2026-11-24 at 1100 px and 375 px, and passed.
    - **The sample PDF. Built, v2.8506.** **Download a sample** on that block opens the paper for the job's
      settings with a made-up job and signer and SAMPLE across each page. A new function, `open-job-paper-sample`,
-     draws it from the same assembly a signer reads, for the GC on that job alone. Not walked on the live site yet.
+     draws it from the same assembly a signer reads, for the GC on that job alone. Walked on the live site on
+     2026-11-24: the press's address answered with a PDF. Its words were not read.
    - **What a GC sees, set by the office. Built, v2.8533.** Settled 4 lets a job show the count only, or every
      signer by name. **What the GC sees** on the paper's one page of settings has the three choices, and every
      paper starts on the count and the businesses. It is saved in place whoever has signed, nobody signs again,
      and a new version of the paper keeps it. The row keeps who set it and when. Under the count alone the
      database sends no business, and it sends the signers only under every signer by name.
-     `20261124170000_job_paper_gc_view.sql`, `jobPaperGcView.ts`. Not walked on the live site yet.
+     `20261124170000_job_paper_gc_view.sql`, `jobPaperGcView.ts`. Walked on the live site on 2026-11-24, each of
+     the three choices, and passed. No signer's name was seen there, since nobody had signed.
 6. **The GC proposes (M).** The proposal kind, stricter-only checked on the server, the office's take
    and confirm, the record of who and when.
 7. **Their own form (S).** *Theirs* points at a Form Studio form the gate already accepts.
@@ -682,10 +684,25 @@ They are not owed, and neither was walked.
 Both were tried in the iPhone simulator that day. It takes no typed text in a page's field, and the sign-in and the signature's name box each need a typed name.
 Nothing was written for them: no login was made, nobody was put on the job and no paper was required.
 
+Step 5 walked on prod on 2026-11-24, about 20:05 Central (02:05 UTC on the 25th), at the owner's yes of that day, by hand in the app's browser pane, in light:
+
+- **The setup.** A Contract Book entry `ZZ Test GC page walk paper` in the packet `Job papers (test only)`, made through the dev seat's plan and apply. By hand on Contracts and clauses: one clause with the blank `{party}`, a settings list of two topics with two choices each, the blank and two levels, and a second clause tied to one choice. The card read *Built from settings*, *Revision 3, not read by an attorney* and *Every choice has its wording.* Every word was a placeholder.
+- **The ZZ GC's portal.** The Customers page hides a ZZ customer until the Pipeline's ZZ test jobs switch shows them, so the switch was shown for the walk and hidden after. **Turn portal back on** made a new link and sent nothing.
+- **The flow.** Six steps on `ZZ TEST sink`, the basis on the first level. On Review **Require this paper** was dead over *Type Party first.* until the blank was typed.
+- **What a GC reads. Passed.** Under the job's own head the block read its title, the level, the paper's name, each topic with its choice and its plain words, *0 of 7 people have signed*, the line on what a signature opens, **Download a sample** and the two lines of fine print. At 1100 px and at 375 px nothing scrolled sideways. At 375 px the block was 343 px wide and the press 44 px tall. No business line and no list of signers showed, since no sub is on the job and nobody had signed.
+- **The sample. Passed as far as it was read.** The press's own address answered 200 with `application/pdf`, 1,512 bytes that open as a PDF. Its words and the SAMPLE mark were not read.
+- **What the GC sees. Passed.** The control sits under the blanks, 44 px tall, on *How many, and each sub business with its day*. Set to the count alone, the button read **Save what the GC sees**, 44 px tall, over *This marks the GC's page, never the paper. Nobody signs again.* The row then held the choice, who set it and when, and the page of settings opened on it again. Set to every signer by name, the toast read *What the GC sees is set. Nobody signs again.* The GC's page read the same after each, with no list under either.
+- **A change of settings beside it. Passed.** One topic moved to the stricter choice and the view set back in one save. The button read **Save the settings** over *This makes the paper stricter.* and *Nobody has signed yet, so nobody signs again.* It was saved in place, on the same row. The GC's page then read *A mix of its own* for the level and the topic's new choice.
+- **The undo.** **Take off** and its confirm opened the job, and the block left the GC's page. The portal was turned off and its link read *no longer active*. The entry was deleted in the Contract library, and its two clauses and its settings list went with it.
+- **How long the job was shut.** 2 minutes 47 seconds, from 02:03:49 to 02:06:36 UTC. The roster was the 7 office accounts. Nothing was sent to anyone, and the job's activity took no line.
+- **Not seen.** A signer's name or a sub business on the GC's page, and a count above zero: each needs a person on the job who signs. A new version of the paper keeping the setting, which needs a signature first. The control at 375 px, the dark theme and the sample's words.
+- **The pane held an older build.** Its service worker served the build before v2.8533 after the deploy had succeeded. One update of the worker and a reload loaded the new one, and the walk began after the release notes there read v2.8533.
+
 Loose ends:
 
 - **Test rows left on prod**, which the app cannot delete, all read again on 2026-11-22. Five `job_required_papers` rows on `ZZ TEST sink`, all taken off: `b80915f9-9aee-4040-912a-53c603aa84ae`, `1e55c6f4-e8df-4208-a236-e74d5d83de58`, `88defbb0-808d-44c9-9cc6-37c87778028c`, `e8ea5b7b-8502-4afb-8b55-0a0f6ef1358c` and `2cc82c28-66c8-4a1e-9d2b-2e48ea20e6d7`. One `esign_consents` row from the ZZ signature, `13235afd-0074-4dc0-984c-1045cbe754af`. Each goes with one guarded SQL delete by id, on the owner's go. The six lines are in the side-session note.
 - **Rows the 2026-11-24 walks left**, which the app cannot delete, read again after the walks. Two more taken-off `job_required_papers` rows on `ZZ TEST sink`: `c0436647-9527-4e18-828a-c84b680fea28` and its revision `e2024940-7354-47e1-b6ad-cb246ee90156`. One `esign_consents` row from the ZZ sub's signature, `0368f251-3ee3-4cb8-8ee2-d3127a2e217d`. One `sub_portal_links` row for the ZZ sub, turned off, `de46e9da-2586-4a33-98c1-6283c08cc01d`. They wait for the same guarded delete. The dev seat also left its own note on the job's activity when the sheet was removed, `c55ee96b-e664-4067-9004-50c10a855e15`, and the removed sheet is kept in `deleted_records`, as the seat does for every sheet.
+- **Rows the step 5 walk left**, which the app cannot delete, read after it. One more taken-off `job_required_papers` row on `ZZ TEST sink`, `817d6fc9-e5ad-442b-b0f1-7d3a5372d11a`. One `customer_portal_links` row for the ZZ GC customer, turned off, `f030c598-4754-4863-ab2a-341c0d71d4fd`. They wait for the same guarded delete. After the walk no paper is required on the job, the packet holds no ZZ entry, and no clause names the deleted one.
 - **Read back after the walks.** No paper is required on `ZZ TEST sink` and it is open to its roster of 7 office accounts. The Contract Book entry `ZZ Test three walks paper` is deleted with its two clauses and its settings list. The sub's signed copy is deleted. The sheet is gone and the portal is off. The ZZ sub's account and roster row are archived, and they are gone from the Subs list.
 - **A dash of the step bar** is 37.6 px wide at 375 px with seven steps, and about 22 px with the real paper's eleven. The bar is 287 px wide there, so seven 44 px dashes cannot fit. It is 44 px tall, a real press on one lands, and **Back** and **Next** do the same job at full size.
 - ~~**The shared confirm window's buttons** are 35.5 px tall at both widths.~~ Fixed by v2.8397: 44 px at a phone's width (640 px and under), the desk look unchanged, in `ConfirmDialogContext` alone. The older `ConfirmDialog` (14 files) keeps its two-press form's height; it is a separate call.
