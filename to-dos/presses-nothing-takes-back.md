@@ -2,7 +2,7 @@
 name: "Presses nothing takes back: the standing list"
 number: 443
 group: gated
-status: standing list opened 2026-11-24 on the owner's word of that day · seventeen rows: the Lien desk, Bills sent, Accounts Receivable, Bill Customer, a person's card, the job form's address, a job's papers, a customer's portal, a person's desk, a job's notes, a painted map, an address the map could not place and View as · the six take-backs that need the client alone are built and live, v2.8561 and v2.8564 to v2.8568, each for a dev on a test row · five were walked on 2026-11-25, each on its own yes: rows 3, 8, 9 and the record of row 1 read back as gone, and row 5 reopened two cases and closed them again · row 4 has nothing to press yet · on 2026-11-25 the owner said rows 8 and 5 go wider, and that all eight that need a migration or a function are to be built, each on its own yes · the same day he said row 16 joins them as a ninth, its push on its own yes
+status: standing list opened 2026-11-24 on the owner's word of that day · seventeen rows: the Lien desk, Bills sent, Accounts Receivable, Bill Customer, a person's card, the job form's address, a job's papers, a customer's portal, a person's desk, a job's notes, a painted map, an address the map could not place and View as · the six take-backs that need the client alone are built and live, v2.8561 and v2.8564 to v2.8568, each for a dev on a test row · all six were walked on 2026-11-25, each on its own yes: rows 3, 4, 8, 9 and the record of row 1 read back as gone, and row 5 reopened two cases and closed them again · row 8 is wider since v2.8586, not walked · on 2026-11-25 the owner said rows 8 and 5 go wider, and that all eight that need a migration or a function are to be built, each on its own yes · the same day he said row 16 joins them as a ninth, its push on its own yes
 summary: >
   Every press a walk or a thread meets that nothing takes back, one row each: what was pressed, on which
   screen, what it left, and what would take it back. The owner asked for the note on 2026-11-24, when he
@@ -11,9 +11,9 @@ summary: >
   seen by a dev alone and refusing a row that is not a test row. All six are live. The same day he
   said two of them go wider, and that all eight that need a migration or a function are to be
   built, each on its own yes.
-next: Widen rows 8 and 5 as the owner answered. Walk row 4 once a walk of #340 leaves a by-hand record on a test bill, on its own yes. Then build the nine take-backs that need a migration or a function, row 16 among them, one at a time, each push or deploy on its own yes. Add a row each time a walk or a thread reports such a press.
+next: Walk row 8 as it now stands, for whoever may change a photo. Widen row 5 as the owner answered. Then build the nine take-backs that need a migration or a function, row 16 among them, one at a time, each push or deploy on its own yes. Add a row each time a walk or a thread reports such a press.
 size: a standing list · each take-back is sized on its own row
-blocker: Row 4's walk waits on a by-hand record on a test bill, and on its own yes. Each migration or function waits on its own yes at the time. Adding a row waits on nothing.
+blocker: Each migration or function waits on its own yes at the time. Adding a row waits on nothing.
 mockup: not required — a standing list of presses, no screen
 pointer: true
 ---
@@ -47,8 +47,8 @@ The six, smallest first: delete a way nobody used (row 3), delete a by-hand reco
 
 All six are built and live: row 3 in v2.8561, row 4 in v2.8564, row 8 in v2.8565, row 5 in v2.8566, row
 1's record in v2.8567 and row 9 in v2.8568. Each is drawn for a dev alone and refuses a row that is not
-a test row. Five were pressed on the live site on 2026-11-25, each on its own yes: see *Walked, 2026-11-25* under
-the list. Row 4 has nothing to press yet.
+a test row. All six were pressed on the live site on 2026-11-25, each on its own yes: see *Walked, 2026-11-25*
+under the list.
 
 ## Two more answers, 2026-11-25
 
@@ -79,6 +79,10 @@ The row read: *#443: row 16 (delete a kept miss, a migration) joins the eight ta
 its own yes*, and the pick was yes. It is a yes to the build joining the list. Its push still needs its
 own yes.
 
+One more, for row 5 as it goes wider. Asked the same question of round 3, *"Do all the picks on round 3, rows 1 to 11, stand?"*,
+he answered "Yes, all picks". The row read: *#443: cases closed as replaced are counted under the list and
+not drawn*, and the pick was to keep it so.
+
 ## What counts
 
 A press belongs here when all three are true.
@@ -103,11 +107,11 @@ rows, ids and counts only. Name no real customer, job, address or amount.
 | 1 | A § 53.056 notice recorded by hand: **Record it…**, the by-hand form, then save. The dev seat's `apply_notice_by_hand` writes the same row. | Lien desk, Notices, the job, *Months on this job*. The job's Lien window has the same door (`LienNoticeByHandPane`). | One `job_lien_filings` row, which counts as a live notice for its months until it is voided. One line on the job's Activity as well, written by the trigger `job_lien_filings_to_activity_ins` on the insert. | The record: built in v2.8567. A dev reads the folded line *Voided by-hand notice records · N* under *Filings on this job* in the job's Lien window, with **Delete…**, on a voided record of a ZZ test job that nothing points at. Walked 2026-11-25: three records deleted and read back as gone, with their three Activity lines left. The Activity line: still to build. The Activity table lets a signed-in person only read, so taking the line with the record needs a function. | The record: done, no migration. The Activity line: S to M, a migration (read 2026-11-25). | The #415 thread, 2026-11-24. Checked the same day: no `.delete()` on the table anywhere in `src/`, no seat verb for it, and the trigger fires on insert only. |
 | 2 | **Void** on a filing, then **Confirm void**. The toast reads *Record voided.* **Take it back** on *Back from the clerk* does the same write. | A job's Lien window, the record's own line on its tab (`LienFilingTabs`). | `voided_at` set on the filing, and the record leaves the tab's list. Where a desk paper was tied to it, the database puts that paper back on the Lien desk in the same step. The Activity line of row 1 stays, and nothing on the Activity says the record was voided. | A press for the dev that puts the record back: clear `voided_at`, and where a paper was tied, undo what the void did to that paper. The second half is why this is more than one write. A line on the Activity that says the record was voided would close the other gap. | M, likely a migration beside `job_lien_filing_void_restores_paper` | The #415 thread, 2026-11-24. Checked the same day: `voidLienFiling` writes `voided_at` only, and nothing in `src/` clears it on a filing. |
 | 3 | ~~**Add to the list**, in the **Edit list** window or from **＋ Add a way** in the form.~~ | ~~Bills sent, **Say how it went…**, the list under *How the bill went* (`BillHandWays`).~~ | ~~One `bill_hand_ways` row. **Take off** retires it and never deletes it, so it stands under *Taken off* for everyone who opens **Edit list**, for good.~~ | ~~A delete for the dev on a way no record was ever made with. The table already lets a dev delete (`bill_hand_ways_delete_dev`). No screen and no verb calls it.~~ | Built in v2.8561: **Delete…** beside **Bring back** on a taken-off way, for a dev, on a way named ZZ that no bill was recorded with. Walked 2026-11-25: both ZZ ways deleted and read back as gone. | The WALKING thread, 2026-11-24, on card #340. Checked the same day: the office's writes on the table are insert and update, and nothing in `src/` deletes a way. |
-| 4 | ~~**Record how it went**, on one bill or on several at once.~~ | ~~Bills sent, the form under **Say how it went…** on a bill with no send on record (`ByHandForm`).~~ | ~~One `sent_documents` row a bill, kind `bill_by_hand`. The table has no update policy, so the record cannot be changed, by design. The bill leaves the box and gets a line on the list.~~ | ~~A delete for the dev on a by-hand record of a ZZ test job's bill. The table already lets a dev delete (`sent_documents_delete_dev`). No screen and no verb calls it. A second record that says the first was wrong is the office's take-back, and card #340 lists it as not drawn.~~ | Built in v2.8564: **Delete this record…** under a by-hand line of a bill's record, for a dev, on a test bill. Not walked: no by-hand record stands on a test bill yet. | The WALKING thread, 2026-11-24, on card #340. Not pressed yet: the form opens on no ZZ test bill until the fix the walk asked for is live, and the walk that presses it is still owed. Checked the same day: the table's policies are select, insert and a dev's delete. |
+| 4 | ~~**Record how it went**, on one bill or on several at once.~~ | ~~Bills sent, the form under **Say how it went…** on a bill with no send on record (`ByHandForm`).~~ | ~~One `sent_documents` row a bill, kind `bill_by_hand`. The table has no update policy, so the record cannot be changed, by design. The bill leaves the box and gets a line on the list.~~ | ~~A delete for the dev on a by-hand record of a ZZ test job's bill. The table already lets a dev delete (`sent_documents_delete_dev`). No screen and no verb calls it. A second record that says the first was wrong is the office's take-back, and card #340 lists it as not drawn.~~ | Built in v2.8564: **Delete this record…** under a by-hand line of a bill's record, for a dev, on a test bill. Walked 2026-11-25: three records the walk of #340 made, each deleted and read back as gone. | The WALKING thread, 2026-11-24, on card #340. Not pressed yet: the form opens on no ZZ test bill until the fix the walk asked for is live, and the walk that presses it is still owed. Checked the same day: the table's policies are select, insert and a dev's delete. |
 | 5 | ~~**Close it as settled** or **Close it as not coming**, under **More** on a case, with *Settled another way…* or *Not coming…*.~~ | ~~Accounts Receivable, **Came back**, a case's pane (`ArReturnCasePane`, `closeCase` in `BankPaymentsModal.tsx`).~~ | ~~The case closed with its reason and note. It leaves **Came back** and no screen lists it again.~~ | ~~A **Reopen** press on a closed case. Three functions are in the database, open to the office, and have no caller: `reopen_ar_stripe_case`, `reopen_ar_return_case` and `reopen_ar_unbanked_check_case` (the third read 2026-11-25). The page already loads closed cases. The release note of v2.5891 says *Reopen still undoes it*, and no press does.~~ | Built in v2.8566: the folded line *Closed test cases · N* at the top of the window's list, with **Reopen…**, for a dev, on a case of a ZZ test job closed as settled or as not coming. Walked 2026-11-25: two cases reopened, read back open, and closed again. Wider is owed: for the office (the owner, 2026-11-25). | The WALKING thread, 2026-11-24, on card #76. Checked the same day: the only callers of either function are the database's own tests. |
 | 6 | **Make the bill and email**. | Bill Customer, the Stripe tab. | A bill in Stripe and on the job, and an email to the customer. In test mode the email goes to the sender alone. | The bill can be voided (row 7). An email cannot be called back, so there is nothing to build for it. The row is here so a walk presses it in test mode only. | none | The WALKING thread, 2026-11-24, on card #343. |
 | 7 | **Void invoice**, from **Void Stripe invoice…**. | Bill Customer. | The bill's row is deleted from the job (`void-stripe-invoice-for-revert`), and the rows of its sends go with it. Stripe keeps the invoice as void. | Nothing short of making the bill again. Keeping the row as voided, in place of deleting it, would leave the record and its sends to read. | M, an edge function and likely a migration | The WALKING thread, 2026-11-24, on card #343. Checked the same day: the function deletes the row, and the send rows cascade. |
-| 8 | ~~**Save the photo**.~~ | ~~**Card and footer**, from People → Users on a person's row, and **Your card and footer** in Settings (`YourCardCard`).~~ | ~~The person's photo and its crop on their account, and one file in the photo bucket. A photo can be changed, never taken off.~~ | ~~A **Remove the photo** press that clears the two columns and deletes the file.~~ | Built in v2.8565: **Remove the photo…** under **Change the photo**, for a dev, on a ZZ Test person. Walked 2026-11-25: the photo removed and its two columns read back empty. Wider is owed: for whoever may change that photo (the owner, 2026-11-25). | The WALKING thread, 2026-11-24, on card #313. Checked the same day: `CardIo` has no call that clears a photo, and the only file removals are the old file on a change and the new one when the save fails. |
+| 8 | ~~**Save the photo**.~~ | ~~**Card and footer**, from People → Users on a person's row, and **Your card and footer** in Settings (`YourCardCard`).~~ | ~~The person's photo and its crop on their account, and one file in the photo bucket. A photo can be changed, never taken off.~~ | ~~A **Remove the photo** press that clears the two columns and deletes the file.~~ | Built in v2.8565: **Remove the photo…** under **Change the photo**, for a dev, on a ZZ Test person. Walked 2026-11-25: the photo removed and its two columns read back empty. Wider since v2.8586, for whoever may change that photo (the owner, 2026-11-25). The wider press is not walked. | The WALKING thread, 2026-11-24, on card #313. Checked the same day: `CardIo` has no call that clears a photo, and the only file removals are the old file on a change and the new one when the save fails. |
 | 9 | ~~An address typed in the **Job Address** box, then the box left. No press: leaving the box, or a pause of about a second on a whole address, starts the look-up.~~ | ~~Jobs → Pipeline → **New job**, and a job's Edit tab (`JobFormAddressPin`).~~ | ~~One `address_geocodes` row under the address as typed, kept by `geocode-one`. It stays when the form is closed with **Discard** and no job is made.~~ | ~~A line in Settings for the dev that lists the map's kept addresses no job and no bid is written under, and removes them. The table already has a delete policy for the map's roles. No screen calls it.~~ | Built in v2.8568: the folded block *Kept map addresses (dev)* in Settings, Data & recovery, with **Clear…**, for a dev, on a kept address no record holds. Walked 2026-11-25: the made-up address cleared and read back as gone, and a real address refused with its reason. | The #439 thread, 2026-11-24. Checked the same day: `geocode-one` upserts the row, and nothing in `src/` deletes from the table. |
 | 10 | **Take off** on a paper's row, then **Take the paper off**. | A job's window, Documents, *Papers before this job opens*. | `removed_at` set on the `job_required_papers` row. The row is kept by design, since signatures hang on it. | A delete for the dev on a taken-off row that no person's copy points at. The table lets a signed-in person only read, and every write goes through a function, so the delete is a new function. The pane does not list a taken-off row, so the dev needs a list of them as well. | M, a migration | The #389 thread, 2026-11-24. Checked the same day: nothing in `src/` deletes from the table. The policies read 2026-11-25: one read policy, and insert, update and delete revoked. |
 | 11 | **Turn off**, then **Turn the portal off**. | A customer's portal window, from the globe on Customers, under Advanced settings, Reset. | `revoked_at` set on the `customer_portal_links` row. The row is kept for the window's History. | A delete for the dev on a turned-off link of a ZZ Test customer. The table has no delete policy and no delete grant, so the press needs both first. | S, a migration | The #389 thread, 2026-11-24. Checked the same day: nothing in `src/` deletes from the table. The policies read 2026-11-25: one read policy, and select, insert and update granted. |
@@ -145,13 +149,18 @@ row was read through the dev seat before its press and after it.
 - **Row 5.** **Reopen…** on the two cases of one ZZ TEST job. Both read back open, with the closing
   reason and note cleared, and stood under **Came back** for 86 seconds. Both were then closed again as
   settled another way. *Closed test cases* reads 4 again.
-- **As the sample assistant,** through View as, looking only: none of the five presses is drawn.
-  Settings has no **Data & recovery** tab. Accounts Receivable has no *Closed test cases* line. A
+- **Row 4.** The walk of #340 recorded three test bills by hand that day. **Delete this record…** on each.
+  The confirm names the record, says it is a record of a test bill, and says it cannot be brought back.
+  The page then reads *This bill has no send on record.* No by-hand record is left on prod. The refusal
+  on a real bill cannot be shown: the only by-hand records on prod were those three.
+- **As the sample assistant,** through View as, looking only: none of the six presses is drawn.
+  Settings has no **Data & recovery** tab. A by-hand line has no **Delete this record…**. Accounts
+  Receivable has no *Closed test cases* line. A
   taken-off way has **Bring back** and no **Delete…**. The ZZ Test person's card has no **Remove the
   photo…**. The ZZ test job's Lien window has no *Voided by-hand notice records* line.
 
-Small, seen on that walk: the live **Remove the photo…** is 16 px tall on a desk. Its height on a phone
-was not measured.
+Small, seen on those walks: the live **Remove the photo…** and **Delete this record…** are each 16 px tall
+on a desk. Their height on a phone was not measured.
 
 Checked and left off the list, 2026-11-25. **Send** on a new task and **Mark done** both have a way back. A done
 task's own press reads **Mark not done**, History has **Reopen**, and Checklist → Manage → **Delete** removes a
@@ -180,8 +189,8 @@ by line after that day's walk of five of them.
   reopen each from *Closed test cases* (row 5, v2.8566). That line reads *Closed test cases · 4* on
   the live site: the fourth is a test case put back on 2026-11-09, no walk's leftover, and its
   **Reopen…** is dead with the reason.
-- No by-hand record on a test bill. Row 4's delete (v2.8564) has nothing to press until a walk of #340
-  makes one.
+- No by-hand record on a test bill. The walk of #340 made three on 2026-11-25, and row 4's press
+  (v2.8564) deleted each. The two ZZ ways that walk added were deleted with row 3's press after it.
 - Three test emails to the sender and three voided test invoices in Stripe's test mode, because of
   rows 6 and 7. One of each is from the walk of #343 on 2026-11-24, and one of each from each of its
   two walks of 2026-11-25. The newest invoice's number ends `2611251255`.
@@ -193,18 +202,24 @@ by line after that day's walk of five of them.
 - No photo on the ZZ Test person. The one the walk of #313 saved was removed on 2026-11-25 with row
   8's press (v2.8565). The team's batch of cards leaves ZZ Test people out since the fix that walk
   asked for.
-- Three notes on the ZZ Test walk job, posted by the walk of #363 on 2026-11-24, because of row 13.
+- Notes on the ZZ Test walk job, because of row 13. The walk of #363 posted three on 2026-11-24 and one
+  more on 2026-11-25, which its walker counts as the fifth walk note on that job.
 - One kept miss for a made-up address, from the walk of #441 on 2026-11-25, because of row 16. It stops
   counting on its own after 30 days.
 - Five ZZ Test parts in box ZZ4 on the ZZ Test walk job, ten ledger rows, added by the simulator's walk of
   #398 on 2026-11-25. No row of this list holds them there: a dev can take each press back. They are kept
   on the owner's word of 2026-11-25, *Keep them*, for his look at a box with several kinds of part.
 - One View as record for each look a walk makes as someone else, because of row 17. The owner said yes
-  to those looks on 2026-11-25, *Yes, looks only*. The simulator's looks of that day left three, and the
-  walk of the take-backs left one more, on the sample assistant. The
+  to those looks on 2026-11-25, *Yes, looks only*. By the end of that day the simulator's looks had left six
+  and the pane's walks four. The
   table holds one for every use by anyone, so its own count is far higher and is not a walk's leftover.
 - Nothing because of rows 12, 14 and 15. The made-up person is gone, as the press means. The walk of #345
   ended a link and threw a map away that it had made for the look.
+- One word to a trade on the GC test project, with its sent copy and its mail log line, to a sink
+  address alone, from the walk of #205 on 2026-11-25. One person added to the GC test trade company for
+  that walk and removed after it: the row stays, marked removed. No row of this list holds them.
+- One clock session of 85 seconds, of the sample superintendent on the ZZ test job, from the walk of #234
+  on 2026-11-25. Whether a screen takes a clock session back was not read.
 
 ## When a take-back is built
 

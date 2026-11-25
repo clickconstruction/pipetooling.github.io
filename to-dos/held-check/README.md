@@ -222,6 +222,7 @@ Two questions the answers left open. Both were answered on 2026-11-25 (UTC) in t
 
 - *#437: Accounts Receivable's window opens with nothing picked.* The pick was yes. Today the window picks the first deposit by itself, and **Apply** is live with no press made. The mend is the client alone. Briefed, not built.
 - *#76: after an Apply closes a case while the pane is on a deposit, the pane stays on the deposit.* The pick was to keep it so. The offer after an Apply moves the pane to the next case only when the pane is on the case it closes.
+- Asked later the same day, *"Do all the picks on round 3, rows 1 to 11, stand?"*, the answer was "Yes, all picks", quoted from that session's record of the user's answers. The row read: *#437: a window closed and opened again on the same page keeps the row pressed before*, and the pick was to leave it. The same was answered in the builder's own chat: "Leave it".
 
 **For the office**
 

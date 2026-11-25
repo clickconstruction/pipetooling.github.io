@@ -2,7 +2,7 @@
 name: "Tasks on a phone: what the New task walk left"
 number: 348
 group: close
-status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · the name's room in that header built 2026-11-22 as v2.8300 · walked in an iPhone simulator 2026-11-25: the Messages sheets and the Dispatch job picker stay on screen with the keyboard up, and two small things were seen in Messages beside them · both mended in v2.8563 · both mends held in the simulator the same day, at 402 points and at 125% text, with one new fault at 125% in the open reply box, read in the code and mended in v2.8585, merged 2026-11-25, not yet seen in the simulator · left: the look at that mend, the look at 375 points, a small phone in a hand, and Grace's two notes
+status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · the name's room in that header built 2026-11-22 as v2.8300 · walked in an iPhone simulator 2026-11-25: the Messages sheets and the Dispatch job picker stay on screen with the keyboard up, and two small things were seen in Messages beside them · both mended in v2.8563 · both mends held in the simulator the same day, at 402 points and at 125% text, with one new fault at 125% in the open reply box, read in the code and mended in v2.8585, merged 2026-11-25, held in the simulator the same day at 125%, 115% and 100% text · left: the look at 375 points, a small phone in a hand, and Grace's two notes
 summary: >
   Punch list #331 redrew the window that gives a task, and its close-out walk in the iPhone
   simulator fixed the one thing that broke it: the window leaving the top of the screen when the
@@ -11,7 +11,7 @@ summary: >
   reached. Three sheets are still pinned to the page the way the task window was. The rest are
   words that read wrongly and rows that run past one phone screen. Two notes of Grace's from #331
   ride along, waiting on her word. No database change in any of it.
-next: The simulator looks at the open reply box at 125% text, where v2.8585 holds the caption to one line. The look at 375 points waits on leave to use the small simulator. A small phone in a hand has not seen the sheets. Grace's two notes wait on her word.
+next: The look at 375 points waits on leave to use the small simulator. A small phone in a hand has not seen the sheets, and should say whether **Send text…** sits under Safari's bar at 125% text. Grace's two notes wait on her word.
 size: M as five small PRs (S · S · XS · S · S), built; left: a look at the two mends in Messages (XS) and a walk on a small phone
 blocker: a person at a phone for the walk, and Grace's word for her two notes.
 ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203 · v2.8267 · v2.8300 · v2.8563 · v2.8585
@@ -197,5 +197,6 @@ Measured in Chromium and in WebKit at phone width, on the page's own markup with
 - **One fault at 125%, in the open box, mended in v2.8585.** The grey words wrap to two lines, and so does the caption about the company number. The caption's first line sits on the grey words' second line. The caption is drawn over the box's foot with no limit to one line (`ReplyBox.tsx`). At 100% it is one line and clears them. The client alone, XS.
 - **Seen, to weigh.** At 125% with the keyboard up, the row with *Tie to*, **Attach** and **Send text…** is under Safari's keyboard bar.
 - **The mend, v2.8585, merged 2026-11-25.** The caption is held to one line, with dots where it is cut. The box was not made taller: with the caption on one line the grey words clear it, and a taller box would push the send row further under the keyboard bar. Not yet seen in the simulator.
+- **The mend held, the same day.** In the simulator the caption is one line at 125%, 115% and 100% text, and clears the grey words. Still so, and not the mend's: at 125% with the box open, **Send text…** sits under Safari's bar with the keyboard up, and half under it with the keyboard down. To weigh on a real phone.
 
 **Left from this walk.** The look at 375 points: a small simulator is made and waits on leave to use it.
