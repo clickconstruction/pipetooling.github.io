@@ -214,6 +214,8 @@ export function useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, sign
   const affPapersAll = useMemo((): LienAffidavitPrintPaper[] => (data ? affPapersOf(data.affidavits.entries) : []), [data, affPapersOf])
   /** How many papers the run's print takes for these jobs: the count on its press, before any document is built. */
   const runAffidavitCount = (jobIds: ReadonlySet<string>) => affPapersAll.filter((p) => jobIds.has(p.jobId)).length
+  /** Those papers as the batch would print them now: *changed since printed* sets each beside its newest print (step 7). */
+  const runAffidavitPapers = (jobIds: ReadonlySet<string>) => affPapersAll.filter((p) => jobIds.has(p.jobId))
   // Which of them take a second sheet (v2.6930): each paper as its own Lien window lays it out, read under the press.
   const affSheetPapers = useMemo(() => lienAffidavitSheetPapers(affPrintPapers), [affPrintPapers])
   const affNoticeCopyCount = useMemo(() => lienAffidavitBatchNoticeCopyCount(affPrintPapers), [affPrintPapers])
@@ -292,6 +294,7 @@ export function useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, sign
     printReadyAffidavits,
     readyAffidavitsRun,
     runAffidavitCount,
+    runAffidavitPapers,
     affPrintFolded,
     toggleAffPrintFold,
   }
