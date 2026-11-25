@@ -84,6 +84,41 @@ export type Database = {
         }
         Relationships: []
       }
+      address_place_answers: {
+        Row: {
+          answered_at: string
+          answered_by: string | null
+          by_name: string
+          key_a: string
+          key_b: string
+          same: boolean
+        }
+        Insert: {
+          answered_at?: string
+          answered_by?: string | null
+          by_name?: string
+          key_a: string
+          key_b: string
+          same: boolean
+        }
+        Update: {
+          answered_at?: string
+          answered_by?: string | null
+          by_name?: string
+          key_a?: string
+          key_b?: string
+          same?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "address_place_answers_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           key: string
@@ -23718,6 +23753,9 @@ export type Database = {
           canonical_document_url: string | null
           fields: Json | null
           form_template_id: string | null
+          gc_view: string | null
+          gc_view_set_at: string | null
+          gc_view_set_by: string | null
           id: string
           job_id: string
           notice_read_at: string | null
@@ -23742,6 +23780,9 @@ export type Database = {
           canonical_document_url?: string | null
           fields?: Json | null
           form_template_id?: string | null
+          gc_view?: string | null
+          gc_view_set_at?: string | null
+          gc_view_set_by?: string | null
           id?: string
           job_id: string
           notice_read_at?: string | null
@@ -23766,6 +23807,9 @@ export type Database = {
           canonical_document_url?: string | null
           fields?: Json | null
           form_template_id?: string | null
+          gc_view?: string | null
+          gc_view_set_at?: string | null
+          gc_view_set_by?: string | null
           id?: string
           job_id?: string
           notice_read_at?: string | null
@@ -23794,6 +23838,13 @@ export type Database = {
             columns: ["form_template_id"]
             isOneToOne: false
             referencedRelation: "contract_form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_required_papers_gc_view_set_by_fkey"
+            columns: ["gc_view_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -36096,6 +36147,7 @@ export type Database = {
       }
       punch_list_picks: {
         Row: {
+          answers_ask: string
           note: string
           pick: string
           slug: string
@@ -36103,6 +36155,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          answers_ask?: string
           note?: string
           pick?: string
           slug: string
@@ -36110,6 +36163,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          answers_ask?: string
           note?: string
           pick?: string
           slug?: string
@@ -49538,6 +49592,10 @@ export type Database = {
       }
       job_paper_set_basis: {
         Args: { p_basis: string; p_required_paper_id: string }
+        Returns: string
+      }
+      job_paper_set_gc_view: {
+        Args: { p_required_paper_id: string; p_view: string }
         Returns: string
       }
       job_paper_set_settings: {
