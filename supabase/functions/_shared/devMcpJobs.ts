@@ -31,6 +31,11 @@ import { titleCaseAddress } from './gcKernels/lib/addressTitleCase.ts'
 // prior_numbers: { add?, remove? } for a job whose number already changed. search_jobs_ledger matches the list, so
 // find_job and the Pipeline's search find the job by it, and the screens read "also 550" under the number.
 
+// The same version guards the number itself. The office's next number is the highest all-digit HCP or Click number
+// on any job plus one (next_job_number_suggestion), so one test job numbered far above the run sent every job made
+// after it there. plan_job and plan_job_update now read the suggestion when they set an all-digit number and refuse
+// one above it, naming a number with a letter in it for a test job; allow_number_jump: true says the number is meant.
+
 export const JOB_VERBS = ['plan_job', 'apply_job', 'plan_job_update', 'apply_job_update'] as const
 export type JobVerb = (typeof JOB_VERBS)[number]
 
@@ -79,11 +84,13 @@ export type NewJobPayload = {
   job_pictures_link?: string
   job_plans_link?: string
   allow_duplicate_name?: boolean
+  /** true: an all-digit number above the office's next number is meant. */
+  allow_number_jump?: true
 }
 
 export type JobInput = { ok: true; p: NewJobPayload; target: string; planHash: string | null } | { ok: false; error: string }
 
-const SHAPE = `needs job — { job_name (under ${NAME_MAX}), job_address, customer_id (a customers.id — find_customer), service_type_id (a service_types.id — read_rows on service_types), revenue? (dollars, the price; 0 when left out; a price over 0 is written as one line item of 1 at that price), line_name? (that line item's name; the job's name when left out), hcp_number?, click_number? (the office's numbers, blank allowed), customer_name? / customer_email? / customer_phone? (the customer's own when left out), development_id? (a developments.id), project_id? (a projects.id), bid_id? (a bids.id — find_bid), kind? (service | project), bill_to_party? (customer | gc; gc needs gc_customer_id), gc_customer_id?, google_drive_link? / job_pictures_link? / job_plans_link? (https://…), allow_duplicate_name? (a live job already wearing the name on this customer refuses the plan unless true) }.`
+const SHAPE = `needs job — { job_name (under ${NAME_MAX}), job_address, customer_id (a customers.id — find_customer), service_type_id (a service_types.id — read_rows on service_types), revenue? (dollars, the price; 0 when left out; a price over 0 is written as one line item of 1 at that price), line_name? (that line item's name; the job's name when left out), hcp_number?, click_number? (the office's numbers, blank allowed), customer_name? / customer_email? / customer_phone? (the customer's own when left out), development_id? (a developments.id), project_id? (a projects.id), bid_id? (a bids.id — find_bid), kind? (service | project), bill_to_party? (customer | gc; gc needs gc_customer_id), gc_customer_id?, google_drive_link? / job_pictures_link? / job_plans_link? (https://…), allow_duplicate_name? (a live job already wearing the name on this customer refuses the plan unless true), allow_number_jump? (an all-digit hcp_number or click_number above the office's next number refuses the plan unless true; a test job takes a number with a letter in it) }.`
 
 /** A line item's name as the form saves it (normalizeFixtureDisplayName): inner whitespace collapsed, trimmed. */
 export function lineNameOf(raw: unknown): string | null | false {
@@ -174,6 +181,7 @@ export function jobInput(verb: JobVerb, input: Json): JobInput {
     p[k] = v
   }
   if (src.allow_duplicate_name === true) p.allow_duplicate_name = true
+  if (src.allow_number_jump === true) p.allow_number_jump = true
   let planHash: string | null = null
   if (verb === 'apply_job') {
     const h = typeof input.plan_hash === 'string' ? input.plan_hash.trim().toLowerCase() : ''
@@ -188,6 +196,45 @@ export function jobInput(verb: JobVerb, input: Json): JobInput {
 export type JobReads = {
   /** GET /rest/v1/<table>?<query> as the dev; the rows. Throws on a refused read. */
   rows(table: string, query: string): Promise<Json[]>
+  /** GET /rest/v1/<path>?<query> as the dev, the body as it came: a function that answers one value. */
+  value?(path: string, query: string): Promise<unknown>
+}
+
+// ── the number guard (v2.8570) ───────────────────────────────────────────────────────────────────────────────────
+
+/** The function the New Job form prefills its number from: the highest all-digit HCP or Click number on any job, plus one. */
+export const NEXT_NUMBER_RPC = 'next_job_number_suggestion'
+/** A number that function counts: all digits once trimmed (its own test, `~ '^[0-9]+$'`). */
+const ALL_DIGITS = /^[0-9]+$/
+export type GuardedNumber = { column: 'hcp_number' | 'click_number'; value: string }
+
+/** The numbers among these that the office's next number would follow: the all-digit ones. */
+export function guardedNumbers(numbers: { hcp_number?: unknown; click_number?: unknown }): GuardedNumber[] {
+  return (['hcp_number', 'click_number'] as const).flatMap((column) => {
+    const value = typeof numbers[column] === 'string' ? (numbers[column] as string).trim() : ''
+    return ALL_DIGITS.test(value) ? [{ column, value }] : []
+  })
+}
+
+/** The office's next number as read; null when the answer is not a number, undefined when there is no reader. */
+export async function readNextNumber(reads: JobReads): Promise<string | null | undefined> {
+  if (!reads.value) return undefined
+  const got = await reads.value(`rpc/${NEXT_NUMBER_RPC}`, '')
+  return typeof got === 'string' && ALL_DIGITS.test(got.trim()) ? got.trim() : null
+}
+
+/**
+ * Why a plan may not set these numbers, or null when it may. An all-digit number above the office's next number
+ * becomes the highest on any job, and every job made after it is offered the number after that. A number the plan
+ * could not check is refused too, since the guard is the point of the read.
+ */
+export function numberJumpRefusal(numbers: readonly GuardedNumber[], next: string | null | undefined, allow: boolean): string | null {
+  if (allow || !numbers.length) return null
+  const first = numbers[0]!
+  if (!next) return `The office's next number was not read, so ${first.column} ${first.value} cannot be checked against it. Plan again, or with allow_number_jump: true when the number is meant.`
+  const over = numbers.find((n) => BigInt(n.value) > BigInt(next))
+  if (!over) return null
+  return `${over.column} ${over.value} is above ${next}, the next number the office would be offered. A new job's number is the highest all-digit number on any job plus one (${NEXT_NUMBER_RPC}), so this one would send every job made after it to ${(BigInt(over.value) + BigInt(1)).toString()} and up. A test job takes a number with a letter in it, such as ZZ${over.value}. If the office means this number, plan again with allow_number_jump: true.`
 }
 
 export type CustomerRow = { id: string; name: string | null; customer_type: string | null; contact_info: Json | null }
@@ -208,6 +255,8 @@ export type NewJobWorld = {
   settings: SettingRow[]
   /** Jobs on the customer wearing the same name (case-insensitive), not yet paid. */
   sameName: SameNameJob[]
+  /** The office's next number, read when the job sets an all-digit number and does not say it is meant. */
+  nextNumber?: string | null
 }
 
 const CUSTOMER_COLS = 'id,name,customer_type,contact_info'
@@ -216,7 +265,7 @@ const SAME_NAME_COLS = 'id,job_name,status,click_number,hcp_number'
 /** The reads the dry run needs, in one place, so the test pins the queries the door will see. */
 export async function readNewJobWorld(reads: JobReads, p: NewJobPayload, me: { userId: string; name: string | null }): Promise<NewJobWorld> {
   const one = async <T>(table: string, query: string): Promise<T | null> => ((await reads.rows(table, query))[0] as T | undefined) ?? null
-  const [customer, gcCustomer, serviceType, development, project, bid, settings, sameName] = await Promise.all([
+  const [customer, gcCustomer, serviceType, development, project, bid, settings, sameName, nextNumber] = await Promise.all([
     one<CustomerRow>('customers', `select=${CUSTOMER_COLS}&id=eq.${p.customer_id}`),
     p.gc_customer_id ? one<CustomerRow>('customers', `select=${CUSTOMER_COLS}&id=eq.${p.gc_customer_id}`) : Promise.resolve(null),
     one<NamedRow>('service_types', `select=id,name&id=eq.${p.service_type_id}`),
@@ -225,8 +274,9 @@ export async function readNewJobWorld(reads: JobReads, p: NewJobPayload, me: { u
     p.bid_id ? one<BidRow>('bids', `select=id,bid_number,project_name&id=eq.${p.bid_id}`) : Promise.resolve(null),
     reads.rows('app_settings', `select=key,value_text&key=in.(${COMPANY_OWNER_USER_ID_KEY},job_owner_override_${me.userId},${JOB_OWNER_OVERRIDE_DEFAULT_KEY})`) as Promise<SettingRow[]>,
     reads.rows('jobs_ledger', `select=${SAME_NAME_COLS}&customer_id=eq.${p.customer_id}&status=neq.paid&job_name=ilike.${encodeURIComponent(p.job_name.replace(/[%*]/g, ''))}`) as Promise<SameNameJob[]>,
+    !p.allow_number_jump && guardedNumbers(p).length ? readNextNumber(reads) : Promise.resolve(undefined),
   ])
-  return { me, customer, gcCustomer, serviceType, development, project, bid, settings, sameName: sameName.filter((j) => (j.job_name ?? '').trim().toLowerCase() === p.job_name.toLowerCase()) }
+  return { me, customer, gcCustomer, serviceType, development, project, bid, settings, sameName: sameName.filter((j) => (j.job_name ?? '').trim().toLowerCase() === p.job_name.toLowerCase()), ...(nextNumber === undefined ? {} : { nextNumber }) }
 }
 
 // ── the owner rule and the row ───────────────────────────────────────────────────────────────────────────────────
@@ -321,6 +371,8 @@ export function newJobDryRun(p: NewJobPayload, world: NewJobWorld): DryRun {
     const names = world.sameName.map((j) => `${jobShortLabel(j)} (${j.status ?? 'no status'})`).join(', ')
     return { ok: false, refused: `A live job on ${world.customer.name ?? 'this customer'} already wears the name "${p.job_name}": ${names}. Plan with allow_duplicate_name: true if you mean a second one, or update that job (plan_job_update).` }
   }
+  const jump = numberJumpRefusal(guardedNumbers(p), world.nextNumber, p.allow_number_jump === true)
+  if (jump) return { ok: false, refused: jump }
   const row = newJobRow(p, world)
   const master = jobMasterUser(world, p)
   const price = row.revenue as number
@@ -523,6 +575,8 @@ export type JobUpdatePayload = {
   prior_numbers?: { add?: string[]; remove?: string[] }
   /** false: a number this plan replaces is not kept as a prior number (a mistyped one). */
   keep_old_number?: false
+  /** true: an all-digit number above the office's next number is meant. */
+  allow_number_jump?: true
 }
 
 /** Prior numbers a plan may add or take off at once. */
@@ -542,7 +596,7 @@ export function priorNumberOf(raw: unknown): string | false {
 /** The bare number of an entry: 'C# 543' → '543'. */
 export const priorNumberBare = (entry: string): string => entry.replace(/^(HCP|C#) /, '')
 
-const UPDATE_SHAPE = `needs update — { job_id (a jobs_ledger.id — find_job), set? ({ column: value } over the Edit Job form's columns: ${UPDATE_COLUMNS.join(', ')}; null clears one that may be blank), status? (${JOB_STATUSES.join(' | ')} — the Pipeline's own move, one step at a time), reason?, line_name? (with revenue on a job that has no line item: the name of the line the price is written as; the job's name when left out), prior_numbers? ({ add?: [...], remove?: [...] } — numbers the job answered to before, each 'C# 543' or 'HCP 550', up to ${PRIOR_NUMBERS_MAX} a list; the job search finds the job by them), keep_old_number? (false with hcp_number or click_number in set: the number being replaced is not kept as a prior number) }. One of set, status or prior_numbers at least. revenue moves the job's line item with it: a job with no line gets one line of 1 at the price, a job with one unbilled line of 1 has that line repriced, and any other job is refused, since the Bill tab writes the price as the sum of its lines. A number set replaces keeps the old one as a prior number.`
+const UPDATE_SHAPE = `needs update — { job_id (a jobs_ledger.id — find_job), set? ({ column: value } over the Edit Job form's columns: ${UPDATE_COLUMNS.join(', ')}; null clears one that may be blank), status? (${JOB_STATUSES.join(' | ')} — the Pipeline's own move, one step at a time), reason?, line_name? (with revenue on a job that has no line item: the name of the line the price is written as; the job's name when left out), prior_numbers? ({ add?: [...], remove?: [...] } — numbers the job answered to before, each 'C# 543' or 'HCP 550', up to ${PRIOR_NUMBERS_MAX} a list; the job search finds the job by them), keep_old_number? (false with hcp_number or click_number in set: the number being replaced is not kept as a prior number), allow_number_jump? (an all-digit hcp_number or click_number above the office's next number refuses the plan unless true) }. One of set, status or prior_numbers at least. revenue moves the job's line item with it: a job with no line gets one line of 1 at the price, a job with one unbilled line of 1 has that line repriced, and any other job is refused, since the Bill tab writes the price as the sum of its lines. A number set replaces keeps the old one as a prior number.`
 
 /** One column's value, checked as the form checks it; `undefined` means refused with the words. */
 function checkColumn(verb: string, column: UpdateColumn, raw: unknown): { ok: true; value: string | number | null } | { ok: false; error: string } {
@@ -639,6 +693,7 @@ export function jobUpdateInput(verb: JobVerb, input: Json): JobUpdateInput {
     if (p.set.hcp_number === undefined && p.set.click_number === undefined) return { ok: false, error: `${verb}: keep_old_number: false is about a number this plan replaces — give set.hcp_number or set.click_number with it.` }
     p.keep_old_number = false
   }
+  if (src.allow_number_jump === true) p.allow_number_jump = true
   if (!Object.keys(p.set).length && !p.status && !p.prior_numbers) return { ok: false, error: `${verb}: nothing to change — give set, status, prior_numbers, or several. ${UPDATE_SHAPE}` }
   const reason = typeof src.reason === 'string' ? src.reason.trim() : ''
   if (reason) {
@@ -669,6 +724,8 @@ export type JobUpdateWorld = {
   lines: JobLineRow[] | null
   /** The other jobs wearing a number today that this plan adds as a prior number, by entry. Left out when none is added. */
   wearing?: Record<string, SameNameJob[]>
+  /** The office's next number, read when set carries an all-digit number and the plan does not say it is meant. */
+  nextNumber?: string | null
 }
 
 const JOB_COLS = ['id', 'status', 'updated_at', 'master_user_id', ...UPDATE_COLUMNS, 'prior_numbers'].join(',')
@@ -702,7 +759,8 @@ export async function readJobUpdateWorld(reads: JobReads, p: JobUpdatePayload): 
       wearing![entry] = (await reads.rows('jobs_ledger', `select=${SAME_NAME_COLS}&id=neq.${p.job_id}&or=(click_number.eq.${quoted},hcp_number.eq.${quoted})&limit=5`)) as SameNameJob[]
     }))
   }
-  return { job, named, lines, ...(wearing ? { wearing } : {}) }
+  const nextNumber = !p.allow_number_jump && guardedNumbers(p.set).length ? await readNextNumber(reads) : undefined
+  return { job, named, lines, ...(wearing ? { wearing } : {}), ...(nextNumber === undefined ? {} : { nextNumber }) }
 }
 
 /**
@@ -820,6 +878,9 @@ export function jobUpdateDryRun(p: JobUpdatePayload, world: JobUpdateWorld): Dry
     const row = world.named[column as UpdateColumn]
     changes.push({ column, before, after: value, ...(row ? { named: row.name } : {}) })
   }
+  // The number guard (0.135.0): a number this plan changes, never one the job already wears.
+  const jump = numberJumpRefusal(guardedNumbers({ ...('hcp_number' in patch ? { hcp_number: patch.hcp_number } : {}), ...('click_number' in patch ? { click_number: patch.click_number } : {}) }), world.nextNumber, p.allow_number_jump === true)
+  if (jump) return { ok: false, refused: jump }
   // The prior numbers (0.135.0): the number a column gives up, and what the plan adds or takes off.
   const numberOf = (v: unknown): string => (v == null ? '' : String(v).trim())
   const prior = priorNumbersPlan({

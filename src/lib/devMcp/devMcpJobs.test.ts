@@ -18,11 +18,14 @@ import {
   jobUpdateAppliedWords,
   jobUpdateDryRun,
   jobUpdateInput,
+  guardedNumbers,
   landedSame,
   lineNameOf,
   linesTotalDollars,
+  NEXT_NUMBER_RPC,
   newJobDryRun,
   newJobRow,
+  numberJumpRefusal,
   PRIOR_NUMBERS_MAX,
   priceLinePlan,
   priceLineRow,
@@ -31,6 +34,7 @@ import {
   priorNumbersPlan,
   readJobUpdateWorld,
   readNewJobWorld,
+  readNextNumber,
   statusSteps,
   usd,
   type JobLineRow,
@@ -47,7 +51,7 @@ import { chooseJobOwnerFromOverrideRows, JOB_OWNER_OVERRIDE_DEFAULT_KEY as APP_D
 import { titleCaseAddress } from '../addressTitleCase'
 import { parsePriorNumber, priorNumberEntry } from '../jobs/priorNumbers'
 import { priorNumbersAfter } from '../../../supabase/functions/_shared/devMcpJobCombine'
-import { CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
+import { CATALOG_RPCS, CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
 import { fixtureInsertRows } from '../jobs/jobFormAutosaveSlices'
 import { jobFormRevenueDollars } from '../jobs/jobFormMoneyTotals'
 import { revenueDollarsFromFixtures } from '../revenueFromJobFixtures'
@@ -267,7 +271,7 @@ describe('newJobDryRun — the plan', () => {
     expect(readiness.status).toContain('plan_job_update')
     // v2.6826: a Stripe bill is numbered from the HCP or Click number, and the plan says when the job has none.
     expect(readiness.number).toContain('none')
-    const numbered = newJobDryRun(p({ click_number: '9293' }), world())
+    const numbered = newJobDryRun(p({ click_number: '9293' }), world({ nextNumber: '9293' }))
     if (!numbered.ok) throw new Error(numbered.refused)
     expect((numbered.reply.readiness as Record<string, string>).number).toBe('9293')
     expect(dry.reply.not_done).toHaveLength(3)
@@ -737,5 +741,92 @@ describe('a number that changed is still found by (v2.8570, punch list #293)', (
     expect(SERVER).toContain('keep_old_number? (false: a number set replaces is not kept as a prior number)')
     expect(README).toContain('prior_numbers: { add?, remove? }')
     expect(README).toContain('keep_old_number: false')
+  })
+})
+
+describe('the number guard: an all-digit number above the office’s next one (v2.8570, punch list #293)', () => {
+  const JOBID = '99999999-1111-4111-8111-111111111111'
+  const row = (over: Partial<JobRow> = {}): JobRow => ({
+    id: JOBID, status: 'working', updated_at: '2026-11-25T15:00:00+00:00', master_user_id: OWNER,
+    job_name: 'ZZ TEST seat walk', job_address: '123 Main St, Austin TX 78701', hcp_number: '', click_number: '40', customer_id: CUSTOMER, customer_name: 'ZZ Test Customer', customer_email: 'zz@example.com', customer_phone: null, service_type_id: SERVICE,
+    development_id: null, project_id: null, bid_id: null, bill_to_party: 'customer', gc_customer_id: null, google_drive_link: null, job_pictures_link: null, job_plans_link: null, account_manager_user_id: null, revenue: 1, pct_complete: 0, kind: null, prior_numbers: [],
+    ...over,
+  })
+  const up = (over: Record<string, unknown>): JobUpdatePayload => {
+    const built = jobUpdateInput('plan_job_update', { update: { job_id: JOBID, ...over } })
+    if (!built.ok) throw new Error(built.error)
+    return built.p
+  }
+  it('counts the numbers the suggestion counts: all digits once trimmed, in either column', () => {
+    expect(guardedNumbers({ hcp_number: ' 550 ', click_number: '42' })).toEqual([{ column: 'hcp_number', value: '550' }, { column: 'click_number', value: '42' }])
+    expect(guardedNumbers({ hcp_number: 'ZZ9001', click_number: '42-B' })).toEqual([])
+    expect(guardedNumbers({ hcp_number: '', click_number: null })).toEqual([])
+    // The function's own test, so the guard and the suggestion agree on what a number is.
+    const SQL = readFileSync('supabase/migrations/20260619170000_next_job_number_suggestion.sql', 'utf8')
+    expect(SQL).toContain("WHERE trim(COALESCE(jl.click_number, '')) ~ '^[0-9]+$'")
+    expect(SQL).toContain('SELECT (COALESCE(MAX(n), 0) + 1)::text')
+    expect(CATALOG_RPCS[NEXT_NUMBER_RPC]![0]).toEqual({ args: {}, returns: 'string' })
+  })
+  it('lets a number at or under the next one through, refuses one above it with the way out, and refuses what it could not check', () => {
+    const n = (value: string) => [{ column: 'click_number' as const, value }]
+    expect(numberJumpRefusal(n('42'), '42', false)).toBeNull()
+    expect(numberJumpRefusal(n('7'), '42', false)).toBeNull()
+    expect(numberJumpRefusal([], undefined, false)).toBeNull()
+    expect(numberJumpRefusal(n('9001'), '42', true)).toBeNull()
+    expect(numberJumpRefusal(n('9001'), '42', false)).toBe(
+      'click_number 9001 is above 42, the next number the office would be offered. A new job\'s number is the highest all-digit number on any job plus one (next_job_number_suggestion), so this one would send every job made after it to 9002 and up. A test job takes a number with a letter in it, such as ZZ9001. If the office means this number, plan again with allow_number_jump: true.',
+    )
+    expect(numberJumpRefusal(n('43'), '42', false)).toContain('43 is above 42')
+    // Longer than a 53-bit integer holds: compared as whole numbers.
+    expect(numberJumpRefusal(n('90071992547409931'), '90071992547409930', false)).toContain('is above')
+    expect(numberJumpRefusal(n('42'), undefined, false)).toContain('was not read')
+    expect(numberJumpRefusal(n('42'), null, false)).toContain('allow_number_jump: true')
+  })
+  it('reads the suggestion over GET, and only when a plan sets an all-digit number it does not say is meant', async () => {
+    const asked: string[] = []
+    const reads = (answer: unknown): JobReads => ({
+      rows: async (table, query) => (table === 'jobs_ledger' && query.includes('id=eq.') ? [row()] : []),
+      value: async (path, query) => { asked.push(`${path}?${query}`); return answer },
+    })
+    expect(await readNextNumber(reads('42'))).toBe('42')
+    expect(await readNextNumber(reads({ message: 'no' }))).toBeNull()
+    expect(await readNextNumber({ rows: async () => [] })).toBeUndefined()
+    asked.length = 0
+    expect((await readNewJobWorld(reads('42'), p({ click_number: '41' }), ME)).nextNumber).toBe('42')
+    expect((await readJobUpdateWorld(reads('42'), up({ set: { hcp_number: '41' } }))).nextNumber).toBe('42')
+    expect(asked).toEqual(['rpc/next_job_number_suggestion?', 'rpc/next_job_number_suggestion?'])
+    asked.length = 0
+    expect((await readNewJobWorld(reads('42'), p({ click_number: 'ZZ9001' }), ME)).nextNumber).toBeUndefined()
+    expect((await readNewJobWorld(reads('42'), p({ click_number: '9001', allow_number_jump: true }), ME)).nextNumber).toBeUndefined()
+    expect((await readNewJobWorld(reads('42'), p(), ME)).nextNumber).toBeUndefined()
+    expect((await readJobUpdateWorld(reads('42'), up({ set: { job_name: 'x' } }))).nextNumber).toBeUndefined()
+    expect((await readJobUpdateWorld(reads('42'), up({ set: { click_number: '9001' }, allow_number_jump: true }))).nextNumber).toBeUndefined()
+    expect(asked).toEqual([])
+  })
+  it('plan_job refuses a number above the next one, takes a lettered one, and takes the number when it is said to be meant', () => {
+    expect(newJobDryRun(p({ click_number: '9001' }), world({ nextNumber: '42' }))).toMatchObject({ ok: false, refused: expect.stringContaining('such as ZZ9001') })
+    expect(newJobDryRun(p({ hcp_number: '9001' }), world({ nextNumber: '42' }))).toMatchObject({ ok: false, refused: expect.stringContaining('hcp_number 9001 is above 42') })
+    expect(newJobDryRun(p({ click_number: '9001' }), world())).toMatchObject({ ok: false, refused: expect.stringContaining('was not read') })
+    expect(newJobDryRun(p({ click_number: '42' }), world({ nextNumber: '42' })).ok).toBe(true)
+    expect(newJobDryRun(p({ click_number: 'ZZ9001' }), world()).ok).toBe(true)
+    const meant = p({ click_number: '9001', allow_number_jump: true })
+    expect(meant.allow_number_jump).toBe(true)
+    expect(newJobDryRun(meant, world()).ok).toBe(true)
+    expect(p({ allow_number_jump: 'yes' }).allow_number_jump).toBeUndefined()
+  })
+  it('plan_job_update guards a number it changes, never the one the job already wears', () => {
+    const dry = (over: Record<string, unknown>, job: JobRow, nextNumber?: string | null) => jobUpdateDryRun(up(over), { job, named: {}, lines: null, ...(nextNumber === undefined ? {} : { nextNumber }) })
+    expect(dry({ set: { click_number: '9001' } }, row(), '42')).toMatchObject({ ok: false, refused: expect.stringContaining('click_number 9001 is above 42') })
+    expect(dry({ set: { click_number: '9001' } }, row())).toMatchObject({ ok: false, refused: expect.stringContaining('was not read') })
+    expect(dry({ set: { click_number: '41' } }, row(), '42')).toMatchObject({ ok: true, reply: { patch: { click_number: '41', prior_numbers: ['C# 40'] } } })
+    expect(dry({ set: { click_number: '9001' }, allow_number_jump: true }, row())).toMatchObject({ ok: true, reply: { patch: { click_number: '9001' } } })
+    expect(dry({ set: { click_number: 'ZZ9001' } }, row())).toMatchObject({ ok: true })
+    // A job that already wears a number above the run is not held for it: the name changes, the number is not touched.
+    expect(dry({ set: { click_number: '9001', job_name: 'ZZ TEST seat walk two' } }, row({ click_number: '9001' }), '42')).toMatchObject({ ok: true, reply: { patch: { job_name: 'ZZ TEST seat walk two' } } })
+  })
+  it('the server reads the suggestion for both verbs, and its words and the README name the way out', () => {
+    expect(SERVER.split("value: async (path, query) => {").length - 1).toBeGreaterThanOrEqual(2)
+    expect(SERVER).toContain('is refused unless allow_number_jump is true')
+    expect(README).toContain('allow_number_jump: true')
   })
 })

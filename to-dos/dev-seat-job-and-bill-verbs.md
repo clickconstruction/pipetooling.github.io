@@ -171,6 +171,7 @@ The look opened the seat's ZZ TEST job. The Bill tab drew its line items as one 
 1. `plan_job_update` keeps the number a column gives up on the job's prior numbers, in the same write. `keep_old_number: false` leaves it out.
 2. `plan_job_update` takes `prior_numbers: { add?, remove? }` for a job whose number already changed. The take-off is the way back.
 3. `plan_sub_labor` with a `change` naming the sheet's own job brings the sheet's number up to date. It reads where the new number leads first and is refused unless that is the sheet's own job, because the sheet table follows a sheet's number to its job.
+4. **The guard, its own commit in that change.** `plan_job` and `plan_job_update` refuse an all-digit number above `next_job_number_suggestion()` unless the plan says `allow_number_jump: true`, and say a test job takes a number with a letter in it. It is the one thing that stops the same jump. It was asked for in this card's own thread on 2026-11-25, where the press was *Build with guard*, and it is kept as its own commit so it can come out without a rework.
 
 **Owed on prod after the merge, each on its own yes, none asked yet.**
 
