@@ -4,7 +4,7 @@ A picture here is the real app on a local dev server, in a sealed lens frame (pu
 with invented rows. No file under `src/` is changed, the live site is never opened, and nothing is
 written to the database. 88 pictures of fifteen cards were drawn this way on 2026-11-24.
 
-## The pieces, in `draw/`
+## The pieces, in this folder
 
 - **`vite.config.ts`**: the repo's own Vite config plus one plugin. The plugin wraps
   `buildLensWorld` in `src/lib/lens/world/lensWorld.ts` as the dev server serves it, so a sealed
@@ -35,16 +35,16 @@ A page says the day its pictures were drawn and what main was at: *Made by a scr
 By hand, the same steps:
 
 1. Start the dev server with the kit's config, on a port of its own, from the repo root:
-   `npx vite --config to-dos/punch-list-answers-and-pictures/draw/vite.config.ts --port 5187 --strictPort`.
+   `npx vite --config scripts/todos/pictures-kit/vite.config.ts --port 5187 --strictPort`.
    In a Claude session, use a launch entry and `preview_start`, and close the tab it opens: that tab is not sealed.
    A fresh worktree needs `.env.local` first, or the app does not start.
 2. Run a script from the repo root:
-   `NODE_PATH=$PWD/node_modules node to-dos/punch-list-answers-and-pictures/draw/396-426-189/pace2.cjs`.
+   `NODE_PATH=$PWD/node_modules node scripts/todos/pictures-kit/396-426-189/pace2.cjs`.
    A capture takes 6 to 15 seconds. Pictures land in `PIC_OUT`, or in a folder under the system's temp folder.
 3. Look at every picture before keeping it: the Lens badge or the right screen, no error box, no
    real name, and that it shows what its caption says.
 4. Convert each PNG: `cwebp -q 80 -m 6 picture.png -o picture.webp`.
-5. Write the pages: `node to-dos/punch-list-answers-and-pictures/draw/pages/make-pages.cjs <folder of .webp>`.
+5. Write the pages: `node scripts/todos/pictures-kit/pages/make-pages.cjs <folder of .webp>`.
    It needs every picture named in `cards.json`. With `--card <number>` it writes that one card's page and needs that card's pictures alone. To change only a page's words, edit the page: the
    words are plain HTML above the pictures.
 

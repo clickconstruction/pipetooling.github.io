@@ -2,7 +2,7 @@
 /**
  * `npm run todo:pictures -- <card number>` draws one punch-list card's pictures again and rewrites its
  * pictures page (punch list #438, PR 3). The pictures are the real app in a sealed lens frame on a local
- * dev server, with invented rows: `to-dos/punch-list-answers-and-pictures/how-the-pictures-were-drawn.md`.
+ * dev server, with invented rows: `scripts/todos/pictures-kit/how-the-pictures-were-drawn.md`.
  *
  * What it does, in order:
  *   1. reads the card from the kit's `pages/cards.json`: its pictures and the scripts that draw them (`draw`,
@@ -27,7 +27,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const KIT = join(ROOT, 'to-dos/punch-list-answers-and-pictures/draw')
+const KIT = join(ROOT, 'scripts/todos/pictures-kit')
 const CARDS_FILE = join(KIT, 'pages/cards.json')
 const PORT = 5187
 
