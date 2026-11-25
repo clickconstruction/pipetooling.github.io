@@ -2,7 +2,7 @@
 title: work the punch list of unfinished projects
 category: Office
 roles: dev, master_technician
-keywords: punch list, waiting on me, questions to answer, answer a card, go ahead, change, not now, answered, who a card waits on, working on it, tick a card, claim a card, who is working on it, taken, free to pick up, tick cleared, my tick is gone, 12 hours, checkbox, my ticks, what am I working on, search the punch list, find a card, search cards, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
+keywords: punch list, waiting on me, questions to answer, answer a card, go ahead, change, not now, answered, who a card waits on, working on it, tick a card, claim a card, who is working on it, taken, free to pick up, tick cleared, my tick is gone, 12 hours, checkbox, my ticks, what am I working on, search the punch list, find a card, search cards, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, merge queue, in line, merges an hour, merged today, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
 order: 95
 ---
 The **Punch list** is the board of every project that was designed or partly built but is not finished. The board is the same list that lives in the repo's `to-dos/` folder, rendered in the app.
@@ -24,6 +24,26 @@ A card is open while its file is in the folder. A card closes when it leaves the
 Cards in **Needs an owner decision** and **Waiting on time or usage** do not close by building. The sentence over the chart counts them for that reason.
 
 **Hide the burndown** folds it to one line. This device remembers the choice.
+
+## See the merge queue
+
+**In the merge queue** sits above the Burndown. It lists every change that is on its way to the app.
+
+- The list is the order the changes go live in. The top one is next.
+- **Place** is where a change stands in line.
+- **In the queue** is how long the change has waited.
+- **To go** is about how long is left. GitHub works that time out.
+- **Merged today** counts the changes that reached the app since midnight.
+- **Merges an hour** is the pace over the last six hours.
+- The small columns show the day's merges hour by hour.
+
+The line under the list counts the changes still on their checks. It also counts the changes nobody has asked to merge yet.
+
+The app reads GitHub every 15 minutes. The words over the list say when it last read. A dev's page reads GitHub once more when that read is over five minutes old. That read takes about twenty seconds, and the press says **Reading GitHub…** while it runs. A dev can also press {{button:outline|Read GitHub now}}.
+
+**Hide the queue** folds it to one line. The line still says how many are in line. This device remembers the choice.
+
+The same list is on [How fast a change ships](/settings?tab=settings-ship-pace). See [see how fast a change ships](/help/see-how-fast-a-change-ships).
 
 ## Answer the questions that wait on you
 
