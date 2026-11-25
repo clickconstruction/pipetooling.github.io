@@ -42,6 +42,7 @@ import {
   changeAskEmailKey,
   GC_TRADE_EMAIL_REFUSALS,
   gcTradeEmailRefusal,
+  gcTradeEmailRefusalWords,
   inviteEmailLines,
   readTradeEmailAnswer,
   readTradeEmailTestAnswer,
@@ -355,6 +356,11 @@ describe('the office’s side', () => {
     expect(Object.keys(GC_TRADE_EMAIL_REFUSALS).sort()).toEqual(Object.keys(TRADE_EMAIL_ERRORS).sort())
     expect(gcTradeEmailRefusal('noEmail')).toBe(GC_TRADE_EMAIL_REFUSALS.noEmail)
     expect(gcTradeEmailRefusal('somethingNew')).toBe(GC_TRADE_EMAIL_REFUSALS.failed)
+    // A send the mail service refused says the service's own reason (punch list #205), on one line and cut short.
+    expect(gcTradeEmailRefusalWords({ key: 'sendFailed', detail: ' Invalid `to` field.\n Use a real address. ' })).toBe('The email did not go out. The mail service said: Invalid `to` field. Use a real address.')
+    expect(gcTradeEmailRefusalWords({ key: 'sendFailed', detail: 'x'.repeat(300) })).toHaveLength('The email did not go out. The mail service said: '.length + 200)
+    expect(gcTradeEmailRefusalWords({ key: 'sendFailed', detail: null })).toBe(GC_TRADE_EMAIL_REFUSALS.sendFailed)
+    expect(gcTradeEmailRefusalWords({ key: 'noEmail', detail: 'ignored' })).toBe(GC_TRADE_EMAIL_REFUSALS.noEmail)
   })
 
   it('reads a send, a send made before, and a refusal', () => {

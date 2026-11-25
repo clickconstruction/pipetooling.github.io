@@ -4,7 +4,7 @@
  * words (`wordEmailKey`), so a second press of the same words sends nothing. It keeps going past a refusal and names each
  * company with why afterwards, as every batch does. It never throws.
  */
-import { gcTradeEmailRefusal, tradeMailLang } from './tradeEmail'
+import { gcTradeEmailRefusalWords, tradeMailLang } from './tradeEmail'
 import { sendGcTradeEmail } from './tradeEmailIo'
 import type { GcProject } from './types'
 import { wordEmailKey, wordLines, type WordRecipient } from './wordToTrades'
@@ -27,7 +27,7 @@ export const sendWordToTrades: SendWordToTrades = async (project, recipients, su
   for (const r of recipients) {
     const who = { companyId: r.partner.id, company: r.partner.company }
     const answer = await sendGcTradeEmail({ companyId: r.partner.id, kind: 'nudge', groups: ['job'], key, projectId: project.id, lang: tradeMailLang(r.partner.lang), subject: subject.trim(), lines })
-    if (!answer.ok) out.refused.push({ ...who, words: gcTradeEmailRefusal(answer.key) })
+    if (!answer.ok) out.refused.push({ ...who, words: gcTradeEmailRefusalWords(answer) })
     else if (answer.already) out.already.push(who)
     else out.sent.push(who)
   }
