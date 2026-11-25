@@ -2,7 +2,7 @@
 name: "The leader's Dashboard, distilled"
 number: 365
 group: close
-status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet
+status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way
 summary: >
   One leader has been given too much on his Dashboard. He will not look at any of it, uses the app only on
   his phone, and hands even small updates to his assistants. The assessment counted 44 cards, strips and
@@ -183,3 +183,13 @@ PR 1 is on `main` (v2.7466) and its migration is pushed (2026-11-16). PR 2 (v2.7
 Waiting on card, client only. The first half of PR 4 (v2.7572) is on `main`. The owner answered the seven
 calls on 2026-11-17 and every default stands, so the text and the four tabs are not built. The leader has
 not been set to Short: every leader's and dev's row reads Full. That press is the owner's or the office's.
+
+## Read in a simulator (2026-11-25)
+
+Read on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, as the dev, on the live site. Nothing of the short page was seen, and nothing was pressed: setting an account to Short is a write the walk was not cleared to make.
+
+- **Both places the view is set read as built.** Settings → Your dashboard → **Dashboard view** offers **Short** and **Full** with their one line each, Full lit. The sample leader's desk has the same two, Full lit, with the line that the office can set it for them.
+- **Two small faults on a person's desk on a phone, read in the code the same day, not built.** Each is the client alone, S.
+  1. **The link to this section lands one swipe short.** A link that ends `&section=dashboard_view` opened the desk at Licenses and Your week. The desk scrolls to the section once, before the sections above it have loaded and grown (`PersonDeskBody.tsx`).
+  2. **The desk's pinned head takes about half the screen.** On that account, with two amber notices, the head took about 445 of 874 points and the sections scrolled in a window of about 315. The head sits outside the scrolling part and nothing folds it.
+- **Still owed.** The short page itself, **Everything else**, **Back to the short Dashboard** and the bar's Dashboard tab, on an account set to Short.

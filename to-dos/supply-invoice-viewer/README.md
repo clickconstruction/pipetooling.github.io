@@ -2,7 +2,7 @@
 name: "Supply house invoices: flip through them in place, share one by a link, search them"
 number: 431
 group: close
-status: asked 2026-11-23 · built the same day as a train of ten PRs · nine are on main, the last (#9569, bills in the header search) is armed · the migration is pushed, the three functions and the dev seat are deployed, the sweep is keeping each bill's words · walked on real bills on a local server on 2026-11-24 · left: the owner's own look on the live app · looked at live 2026-11-24 on one job's list, where it holds; most of the recipe is not walked, since no ZZ test bill exists yet
+status: asked 2026-11-23 · built the same day as a train of ten PRs · nine are on main, the last (#9569, bills in the header search) is armed · the migration is pushed, the three functions and the dev seat are deployed, the sweep is keeping each bill's words · walked on real bills on a local server on 2026-11-24 · left: the owner's own look on the live app · looked at live 2026-11-24 on one job's list, where it holds · the card's own recipe walked clean on two made-up ZZ bills the same day, at 1280 and 375 px in dark · left: light, the link signed out, a bill with no PDF, and the owner's own look
 mockup: to-dos/supply-invoice-viewer/mockup.html
 summary: >
   The Job Summary lists every supply house invoice on a job, and each invoice number opens its PDF
@@ -261,3 +261,16 @@ Looked at on clicktooling.com as the dev, at 1280 px, in dark. No ZZ test bill e
 - **Holds.** Job Summary, a row, Parts Cost, *Invoices from Supply Houses*: the search box, the chips with their counts, a copy-link press and an invoice-number press on each row. A press opens the bill over the page with the job's list beside the paper. It reads its place in the list, **Previous** is dead on the first, **Next** and the right arrow key step on, the paper's lines show, **Close** works, and nothing scrolls sideways.
 - **Not walked.** 375 px, the light theme, the link three ways, *Search every bill*, and a bill with no PDF.
 - **To walk the rest:** two made-up bills from `src/test/fixtures/bills/` recorded on the ZZ Test supply house against a ZZ test job, then this card's own recipe on those. A walking session has that to do.
+
+## The recipe on two made-up bills (2026-11-24)
+
+Walked on clicktooling.com as the dev, at 1280 and 375 px, in dark. Two made-up bills from `src/test/fixtures/bills/` were recorded on the ZZ Test supply house against the ZZ Test walk job, walked, then deleted: a recorded bill has **Edit**, **Delete** and a confirm. No row is left.
+
+- **Holds.** The viewer with its place in the list, *1 of 2*, and **Previous** and **Next**. The facts and the five lines read from the paper. The copy link, and the link opened as the dev. The link refused to a role that may not open the bill. At 375 px the presses are 44 px. **Search every bill** finds a bill by its number and by a part's words.
+- **Not walked.** The light theme. The link opened signed out. A bill with no PDF.
+- **Four small things seen, none read in the code.**
+  1. Job Summary does not list a job that was never billed, so the walk opened the bills from the supply house's own list. A ZZ job that Job Summary lists would let the card's own door be walked.
+  2. The link's page shows the bill alone, with no list beside it and no **Previous** or **Next**. The guide says the job's list sits beside it.
+  3. While imitating through View as, the refused page has no **Exit** press. View as is punch list #417's.
+  4. The delete's confirm does not say what goes with the bill: the kept PDF and the lines.
+

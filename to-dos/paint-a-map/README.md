@@ -909,7 +909,7 @@ Read 2026-11-13.
 
 ## A link made in the evening, looked at live (2026-11-24)
 
-On clicktooling.com at 1280 px, on the ZZ Test Walk Project job, at about 9:35 PM in the company's time, which was already the next day in UTC.
+On clicktooling.com at 1280 px, on the ZZ Test Walk Project job, between 8:50 and 9:10 PM in the company's time, which was already the next day in UTC. The time was first written as about 9:35 PM, a guess, and the verdict does not turn on it.
 
 - **Holds.** **＋ Paint a map**, **Draw it by hand**, three presses on the map, **Save the map**. The map read *Painted by* the dev *on Nov 24*. **Share**, **Copy the link** made a link, and the sheet read *One link is out, since Nov 24* with the day it ends by itself. So the day is the company's day, not the UTC day.
 - The walk's browser could not copy, and the sheet said so in its own fallback words, with the link under it.
