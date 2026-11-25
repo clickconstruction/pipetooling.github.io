@@ -225,6 +225,34 @@ The two prints on the Board work as before. They print every ready paper on the 
 
 Only the lien office sees **Print the run**.
 
+## Changed since printed
+
+A paper can be right at the printer and wrong a week later. A bill is corrected. An owner's name is fixed. A day of work is added.
+
+The checklist watches for that. Each lien print keeps what the paper said. The desk sets that beside what the paper would say today.
+
+When a printed paper of the run has changed, a card named **Changed since printed** stands over **Print the run**. The card names the paper. It says when the paper printed and who printed it. Under that, each line is one thing that moved, with the value printed and the value now.
+
+:::example A changed affidavit
+{{chip:gray|Affidavit}} **1052 · ZZ Service Visit**
+
+Printed Nov 25, 10:02 AM by Rosa.
+
+The amount unpaid: printed $610.00, now $310.00.
+:::
+
+Anything the paper states counts: the money, the parties, the property, the work and its months. Three things do not count. They are a notice's date, its contact person, and the county an affidavit is signed in.
+
+A printed notice is read against the bills as they stand. So a bill corrected after the print counts, even when nobody redrew the notice.
+
+A changed affidavit prints again with the run. For a changed notice, press **Print and mail** on the Board. The run window opens. Take the printed notice back there and print it again.
+
+An affidavit that printed and says the same today does not print again with the run. A line under the press says how many. The Board's **Print for notarization** still prints them.
+
+A paper printed before the desk kept these values has nothing to compare. Such an affidavit prints again. Such a notice is read against the notice as stored, and its line says so.
+
+Only the lien office sees this card.
+
 ## Held papers and retainage
 
 A held paper stands in the bin of the stage it is stopped at. Its chip has a dashed edge and a ‖ mark after its number. It stands after the chips that can move. No bin is named Held.

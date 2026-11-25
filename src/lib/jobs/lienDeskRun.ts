@@ -2,7 +2,7 @@ import { lienRunStreetBeside } from './lienRunStreet'
 import { buildLienNoticeBlocks, FILING_PRINT_TIGHT_LEADING, FILING_SIGNATURE_FONT_LINK, filingDocHtml, filingHtmlHasTypedSignature, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienNoticeFields, type LienNoticeInstrument } from '../jobsDocuments/lienFilingDocuments'
 import { filingDocumentPayload } from './lienFilingDocumentLink'
 import { claimSplit, claimSplitWords, correctedClaim } from './lienClaimCorrection'
-import { lienNoticeParted, lienNoticePartedHold, runNoticePrintRefusal, type LienNoticeParted } from './lienNoticeParted'
+import { lienNoticeParted, lienNoticePartedHold, runNoticePrintRefusal, type LienNoticeMoney, type LienNoticeParted } from './lienNoticeParted'
 import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -134,6 +134,12 @@ export type RunNotice = {
    * absent = they agree, or the builder had no stored paper to compare.
    */
   parted?: LienNoticeParted | null
+  /**
+   * The money the desk would draw on this notice today (punch list #362, step 7): the claim, and on a § 53.056 notice
+   * its split by month and its retainage. `parted` is this set beside the stored paper; *changed since printed* sets
+   * it beside what the paper said at the printer. Absent = the builder had no figures to give.
+   */
+  moneyNow?: LienNoticeMoney | null
 }
 
 /** Where the run opens (v2.4823): on printing when any notice has not printed, else on recording the mailing, with the newest print as the day it printed. */
@@ -245,6 +251,7 @@ export function buildLienDeskRun(
       leader: opts?.leaderFor?.(job?.master_user_id ?? null) ?? null,
       rowFields: item.fields,
       parted: draft?.notice ? lienNoticeParted(draft.notice, jobFields, claimNow.corrected ? 'hand' : 'bills') : null,
+      moneyNow: { claimAmount: jobFields.claimAmount, claimSplit: jobFields.claimSplit ?? '', retainageIncluded: jobFields.retainageIncluded ?? '' },
       label: name ? `${jobNumber} · ${name}` : jobNumber,
       jobNumber,
       months,
@@ -331,6 +338,7 @@ export function buildLienRetainageRun(
       rowFields: item.fields,
       // The claim alone: a § 53.057 form carries no split and no retainage line of its own.
       parted: draft?.notice ? lienNoticeParted({ claimAmount: draft.notice.claimAmount }, { claimAmount: jobFields.claimAmount }) : null,
+      moneyNow: { claimAmount: jobFields.claimAmount },
       label: name ? `${jobNumber} · ${name}` : jobNumber,
       jobNumber,
       months: [],
