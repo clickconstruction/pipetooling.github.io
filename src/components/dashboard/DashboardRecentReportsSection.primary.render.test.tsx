@@ -274,4 +274,49 @@ describe('DashboardRecentReportsSection — one heading row, a foot, and Opened 
       restore()
     }
   })
+
+  it('at a desk, Mark unread from Opened says what it did, and Undo marks the report opened again (v2.8603)', async () => {
+    try {
+      await open(filed(2))
+      fireEvent.click(screen.getByRole('button', { name: 'Mark 2 opened' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Opened, 2 reports' }))
+      expect(screen.getByText('You marked these opened. Mark unread puts one back.')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Mark unread, Maple Court Lot 1' }))
+      expect(await screen.findByText('Marked unread: Maple Court Lot 1.')).toBeTruthy()
+      await waitFor(() => expect(screen.getByLabelText('1 new report')).toBeTruthy())
+      // The toast of Mark 2 opened is about both reports and still stands. The newest Undo is this report's.
+      const undos = screen.getAllByRole('button', { name: 'Undo' })
+      fireEvent.click(undos[undos.length - 1]!)
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Opened, 2 reports' })).toBeTruthy())
+      expect(screen.queryByLabelText('1 new report')).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+
+  it('on a device held in the hand, an opened report has no press: a swipe to the right marks it unread (v2.8603)', async () => {
+    device.handHeld = true
+    const pointer = (el: Element, type: string, x: number) => fireEvent(el, new window.MouseEvent(type, { bubbles: true, clientX: x, clientY: 10, button: 0 }))
+    try {
+      await open(filed(2))
+      fireEvent.click(screen.getByRole('button', { name: 'Mark 2 opened' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Opened, 2 reports' }))
+      expect(screen.getByText('You marked these opened. Swipe one right to mark it unread.')).toBeTruthy()
+      expect(document.querySelectorAll('[data-swipe-away-press]').length).toBe(0)
+      const slide = document.querySelector('[data-reports-opened] [data-report-row="n0"] [data-swipe-away-slide]') as HTMLElement
+      expect(slide.closest('[data-swipe-away-row]')?.getAttribute('data-swipe-away-row')).toBe('right')
+      pointer(slide, 'pointerdown', 100)
+      pointer(slide, 'pointermove', 120)
+      pointer(slide, 'pointermove', 250)
+      pointer(slide, 'pointerup', 250)
+      expect(await screen.findByText('Marked unread: Maple Court Lot 1.')).toBeTruthy()
+      await waitFor(() => expect(screen.getByLabelText('1 new report')).toBeTruthy())
+      expect(screen.getByRole('button', { name: 'Opened, 1 report' })).toBeTruthy()
+      // The swipe did not also open the report.
+      expect(screen.queryByText(/How complete is the job/)).toBeNull()
+    } finally {
+      device.handHeld = false
+      restore()
+    }
+  })
 })

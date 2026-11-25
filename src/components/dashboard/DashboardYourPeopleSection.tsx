@@ -8,6 +8,11 @@ import { YOUR_PEOPLE_ACTS, YOUR_PEOPLE_NAME, YOUR_PEOPLE_ROW } from '../../lib/d
 import { DashboardGroupCard } from './DashboardGroupCard'
 import { TaskRing } from '../checklist/TaskRing'
 import { PeopleWeekSheet } from '../checklist/PeopleWeekSheet'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { thumbInLine } from '../../lib/phonePress'
+
+/** How tall **Remind** is drawn at a desk. On a phone it stands a thumb tall and gives the difference back to its row. */
+const REMIND_DRAWN = 27
 
 /**
  * Your people (punch list #273, PR 3c): the office's morning read of the people's open one-off cards, under My Inbox.
@@ -21,6 +26,8 @@ export function DashboardYourPeopleSection({ authUserId, enabled, onVisibleChang
   const { showToast } = useToastContext()
   const [remindingId, setRemindingId] = useState<string | null>(null)
   const [weekOpen, setWeekOpen] = useState(false)
+  // Remind stood about 27 px on a phone (punch list #365, the simulator's sitting of 2026-11-25).
+  const phone = useIsMobile()
   const visible = enabled && (loading || rows.length > 0)
   useEffect(() => {
     onVisibleChange?.(visible)
@@ -101,7 +108,7 @@ export function DashboardYourPeopleSection({ authUserId, enabled, onVisibleChang
                 onClick={() => void remind(row)}
                 disabled={remindingId !== null}
                 aria-label={`Remind ${row.name}`}
-                style={{ fontSize: '0.78rem', fontWeight: 600, padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: remindingId ? 'not-allowed' : 'pointer' }}
+                style={{ fontSize: '0.78rem', fontWeight: 600, padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: remindingId ? 'not-allowed' : 'pointer', ...(phone ? { display: 'inline-flex', alignItems: 'center', ...thumbInLine(REMIND_DRAWN) } : {}) }}
               >
                 {remindingId === row.userId ? '…' : '🔔 Remind'}
               </button>

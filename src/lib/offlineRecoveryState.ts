@@ -1,4 +1,4 @@
-import { errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../utils/errorHandling'
+import { errorKindOf, formatErrorMessage, isAuthLockStolenError, type DatabaseErrorKind } from '../utils/errorHandling'
 import { OFFLINE_ERROR_MESSAGE } from './networkErrorMessage'
 
 /**
@@ -26,7 +26,10 @@ export const OFFLINE_READ_MESSAGE = 'No connection, so this could not load. Noth
  * into what the panel shows. Only a `network`-kind error (the fetch layer never
  * reached the server — v2.2843's class, never message text) gets the offline
  * treatment; any other failure renders its own sentence with no Retry, because
- * a refused write or a broken link does not heal by trying again. Auto-retry is
+ * a refused write or a broken link does not heal by trying again. The one
+ * exception is a request that was never sent (`neverSent`, punch list #406): the
+ * sign-in lock was taken first, its words end *Try again*, and it gets a Retry
+ * with no offline words. Auto-retry is
  * offered ONLY for idempotent actions (reads): a clock punch or a report
  * submit that failed at the fetch layer never reached the server, but the
  * person should still be the one who re-sends it.
@@ -46,6 +49,12 @@ export type OfflineRecoveryLastError = {
   kind: DatabaseErrorKind
   /** The already-formatted, user-facing sentence (from `formatErrorMessage`). */
   message: string
+  /**
+   * The request never left this device: the sign-in lock was taken before it was sent
+   * (`isAuthLockStolenError`). Sending it again is safe, so the panel offers Retry. It is not a lost
+   * signal, so the kind stays what `errorKindOf` says and no offline words are drawn.
+   */
+  neverSent?: boolean
 }
 
 export type OfflineRecoveryInput = {
@@ -93,7 +102,9 @@ export function offlineRecoveryState(input: OfflineRecoveryInput): OfflineRecove
   const reconnected = input.reconnected === true
   if (!lastError) return { phase: 'idle', message: '', showRetry: false, retryLabel: 'Retry', autoRetry: false }
   if (lastError.kind !== 'network') {
-    return { phase: 'failed', message: lastError.message, showRetry: false, retryLabel: 'Retry', autoRetry: false }
+    // A request that was never sent gets its Retry. It does not run again by itself: the words draw only after
+    // the caller's own retries ran out, and a read that clears its error as it starts would loop on a held lock.
+    return { phase: 'failed', message: lastError.message, showRetry: lastError.neverSent === true, retryLabel: 'Retry', autoRetry: false }
   }
   // The browser flag only ever proves offline; a fetch that failed while the
   // flag said "online" (dead wifi, unreachable server) is still offline until
@@ -134,6 +145,7 @@ export function recoveryFailureFromError(
   message?: string,
 ): OfflineRecoveryLastError {
   const kind = errorKindOf(error)
-  if (message != null) return { kind, message }
-  return { kind, message: formatErrorMessage(error, fallbackMessage) }
+  const neverSent = isAuthLockStolenError(error) ? { neverSent: true as const } : {}
+  if (message != null) return { kind, message, ...neverSent }
+  return { kind, message: formatErrorMessage(error, fallbackMessage), ...neverSent }
 }

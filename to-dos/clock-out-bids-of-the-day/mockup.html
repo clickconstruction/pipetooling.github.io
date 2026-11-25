@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clock out: the bids of the day</title>
+<style>
+  /* Clock out: the bids of the day (punch list #445). Every bid, job number, time and count in these frames is made
+     up. The frames use the app's own token names with the app's light and dark values (src/index.css). The page is
+     one file on purpose: the board copies only the .html. */
+  :root {
+    color-scheme: light;
+    --paper: #eceae4; --ink: #1f2937;
+    --surface: #ffffff; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #9ca3af;
+    --text-strong: #111827; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-green-700: #15803d; --bg-green-tint: #f0fdf4; --border-green: #bbf7d0;
+    --bg-blue-tint: #eff6ff; --border-blue: #bfdbfe; --bg-amber-tint: #fffbeb; --border-amber: #fde68a; --text-amber-800: #92400e;
+    --backdrop: #4b5563; --dead: #9ca3af;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    --fw: 375px; --sheet: 90%;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --paper: #0b1220; --ink: #d1d5db;
+      --surface: #1f2937; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #6b7280;
+      --text-strong: #f9fafb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+      --text-green-700: #4ade80; --bg-green-tint: #12301f; --border-green: #166534;
+      --bg-blue-tint: #172554; --border-blue: #1e40af; --bg-amber-tint: #3a2a0a; --border-amber: #92400e; --text-amber-800: #fcd34d;
+      --backdrop: #030712; --dead: #6b7280;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--font); }
+  main { max-width: 1680px; margin: 0 auto; padding: 20px 16px 80px; }
+  h1 { font-size: 26px; margin: 0 0 6px; color: var(--text-strong); }
+  h2 { font-size: 20px; margin: 44px 0 6px; color: var(--text-strong); }
+  p { margin: 6px 0; max-width: 78ch; }
+  .lede { color: var(--text-700); }
+  .madeup { display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 999px; background: var(--bg-amber-tint); border: 1px solid var(--border-amber); color: var(--text-amber-800); font-size: 13px; }
+  .bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; margin: 16px -16px 0; padding: 10px 16px; background: var(--paper); border-bottom: 1px solid var(--border); }
+  .bar .grp { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .bar .lab { font-size: 13px; color: var(--text-muted); }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+  .seg button { font: inherit; font-size: 14px; min-height: 40px; padding: 6px 12px; border: 0; background: var(--surface); color: var(--text-700); cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--border-strong); }
+  .seg button[aria-pressed="true"] { background: #2563eb; color: #fff; }
+  .row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-top: 14px; }
+  .frame { width: var(--fw); max-width: 100%; }
+  .cap { display: flex; align-items: baseline; gap: 8px; margin: 0 0 6px; }
+  .cap b { color: var(--text-strong); font-size: 15px; }
+  .cap span { color: var(--text-muted); font-size: 13px; }
+  .device { background: var(--backdrop); border-radius: 18px; padding: 22px 0; min-height: 560px; display: flex; align-items: flex-start; justify-content: center; }
+  .sheet { width: var(--sheet); max-width: 480px; background: var(--surface); color: var(--text-strong); border-radius: 8px; padding: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,.35); font-size: 15px; }
+  .sheet h3 { margin: 0 0 14px; text-align: center; font-size: 18px; }
+  .lbl { display: block; font-weight: 500; margin: 0 0 4px; }
+  .sheet textarea, .sheet input[type=text], .card input[type=text] { width: 100%; font: inherit; color: inherit; padding: 8px; border: 2px solid #64748b; border-radius: 6px; background: var(--surface); }
+  .sheet textarea { resize: vertical; }
+  .hint { display: block; margin-top: 4px; font-size: 13px; color: var(--text-muted); }
+  .pickrow { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; font: inherit; color: inherit; min-height: 44px; padding: 6px 10px; margin-top: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-muted); cursor: pointer; }
+  .tag { padding: 1px 6px; border-radius: 4px; background: #2563eb; color: #fff; font-size: 11px; font-weight: 500; }
+  .foot { display: flex; gap: 8px; justify-content: space-between; margin-top: 16px; }
+  .btn { font: inherit; min-height: 44px; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); cursor: pointer; }
+  .btn.red { background: #dc2626; border-color: #dc2626; color: #fff; }
+  .btn.red:disabled { background: var(--dead); border-color: var(--dead); color: var(--surface); cursor: not-allowed; }
+  .foot .btn.red { padding: 8px 10px; }
+  .btn.small { min-height: 44px; padding: 6px 12px; font-size: 14px; white-space: nowrap; }
+  .btn.add { border-color: #2563eb; color: var(--text-link); }
+  .sec { margin-top: 14px; }
+  .sec > .head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-weight: 600; }
+  .sec > .head .n { font-weight: 700; }
+  .sub { color: var(--text-muted); font-size: 13px; margin: 2px 0 0; }
+  ul.bids { list-style: none; margin: 6px 0 0; padding: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  ul.bids li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--surface); }
+  ul.bids li + li { border-top: 1px solid var(--border); }
+  ul.bids .who { flex: 1; min-width: 0; }
+  ul.bids .name { font-weight: 600; overflow-wrap: anywhere; }
+  ul.bids .what { color: var(--text-700); font-size: 13.5px; }
+  ul.bids .size { font-weight: 700; color: var(--text-strong); }
+  ul.bids li.off .name { text-decoration: line-through; color: var(--text-muted); font-weight: 500; }
+  ul.bids li.weak { background: var(--bg-muted); }
+  .jobchip { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 4px; background: var(--bg-green-tint); border: 1px solid var(--border-green); color: var(--text-green-700); font-size: 12px; font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chip { font: inherit; font-size: 14px; min-height: 44px; padding: 6px 10px; border-radius: 999px; border: 1px dashed #2563eb; background: var(--bg-blue-tint); color: var(--text-link); cursor: pointer; }
+  .empty { margin-top: 6px; padding: 14px; border: 1px dashed var(--border-strong); border-radius: 8px; background: var(--bg-muted); }
+  .empty b { display: block; }
+  .strip { position: relative; height: 26px; margin-top: 8px; border-radius: 6px; background: var(--bg-200); overflow: hidden; }
+  .strip i { position: absolute; top: 0; bottom: 0; min-width: 4px; }
+  .dot.none { background: var(--border-strong); }
+  /* Take off as an icon: a 44 px press with no frame, so the row keeps its width for the name. */
+  .icn { flex: none; width: 44px; height: 44px; margin: -4px -6px -4px 0; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--text-muted); cursor: pointer; }
+  .icn:hover, .icn:focus-visible { background: var(--bg-muted); color: var(--text-strong); }
+  .icn svg { width: 18px; height: 18px; }
+  /* Take off as a tick: the row's colour mark is the control. Ticked is kept. */
+  .tick { flex: none; width: 44px; height: 44px; margin: -4px -8px -4px -10px; display: grid; place-items: center; border: 0; background: none; cursor: pointer; }
+  .tick span { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 5px; border: 2px solid var(--c); background: var(--c); color: #fff; }
+  .tick span svg { width: 14px; height: 14px; }
+  .tick[aria-checked="false"] span { background: transparent; }
+  .tick[aria-checked="false"] span svg { visibility: hidden; }
+  .ticks { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; flex: none; }
+  .cbx { width: 22px; height: 22px; flex: none; accent-color: #2563eb; }
+  .total { margin-top: 8px; padding: 8px 10px; border-radius: 6px; background: var(--bg-muted); font-size: 14px; }
+  .notes { margin-top: 10px; font-size: 14px; color: var(--text-700); }
+  .notes li { margin: 3px 0; }
+  .good { color: var(--text-green-700); font-weight: 600; }
+  .weakpt { color: var(--text-amber-800); font-weight: 600; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; color: var(--text-strong); }
+  .card h4 { margin: 0 0 2px; font-size: 16px; }
+  table.pass { border-collapse: collapse; margin-top: 10px; max-width: 980px; background: var(--surface); }
+  table.pass th, table.pass td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; font-size: 14px; }
+  table.pass th { background: var(--bg-muted); color: var(--text-strong); }
+  body.desk { --fw: 620px; --sheet: 480px; }
+  body.desk .device { min-height: 520px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Clock out: the bids of the day</h1>
+  <p class="lede">Today an estimator types what they worked on before <b>Complete clock out</b> lights. The app already knows most of it. This page draws the clock-out as it is, three ways it could read the day by itself, and the one we would build.</p>
+  <span class="madeup">Every bid, job number, time and count here is made up.</span>
+
+  <div class="bar" role="toolbar" aria-label="What the frames show">
+    <div class="grp"><span class="lab">Width</span>
+      <span class="seg" id="segW">
+        <button type="button" data-w="phone" aria-pressed="true">Phone</button><button type="button" data-w="desk" aria-pressed="false">Desktop</button>
+      </span>
+    </div>
+    <div class="grp"><span class="lab">The day</span>
+      <span class="seg" id="segD">
+        <button type="button" data-d="usual" aria-pressed="true">A usual day</button><button type="button" data-d="touches" aria-pressed="false">Small touches only</button><button type="button" data-d="nothing" aria-pressed="false">The app saw nothing</button>
+      </span>
+    </div>
+    <div class="grp"><span class="lab">Take off, on the pick</span>
+      <span class="seg" id="segO">
+        <button type="button" data-o="tick" aria-pressed="true">A tick</button><button type="button" data-o="x" aria-pressed="false">An ×</button><button type="button" data-o="words" aria-pressed="false">Words</button>
+      </span>
+    </div>
+  </div>
+
+  <h2>Today, and three ways to change it</h2>
+  <p>The sheet is the same window on a phone and on a desktop. Press the rows and buttons: they work.</p>
+  <div class="row">
+    <div class="frame"><div class="cap"><b>Today</b><span>the person types it</span></div><div class="device"><div class="sheet" id="f-today"></div></div>
+      <ul class="notes"><li>The note is required. One of our two estimators types a single word most days.</li><li>The sheet takes one job or one bid for the whole day.</li></ul></div>
+    <div class="frame"><div class="cap"><b>A</b><span>the note writes itself</span></div><div class="device"><div class="sheet" id="f-a"></div></div>
+      <ul class="notes"><li><span class="good">Smallest.</span> No new table. It reads the bid history the app already keeps.</li><li><span class="weakpt">Weak.</span> A correction is typing. Nothing downstream can count a note.</li></ul></div>
+    <div class="frame"><div class="cap"><b>B</b><span>a list with the minutes</span></div><div class="device"><div class="sheet" id="f-b"></div></div>
+      <ul class="notes"><li><span class="good">Good.</span> One row a bid. A tick takes one off.</li><li><span class="weakpt">Weak.</span> Minutes and change counts read like a stopwatch, and the app cannot stand behind them.</li></ul></div>
+    <div class="frame"><div class="cap"><b>C</b><span>the day as a strip</span></div><div class="device"><div class="sheet" id="f-c"></div></div>
+      <ul class="notes"><li><span class="good">Good.</span> The shape of the day shows at a glance.</li><li><span class="weakpt">Weak.</span> The grey reads as time not worked. Most of it is work the app cannot see. The pick keeps the strip and says so under it.</li></ul></div>
+  </div>
+
+  <h2>Is this the best we can do?</h2>
+  <p>No, not yet. Each version gets one thing right and one thing wrong. The pick below keeps the right things.</p>
+  <table class="pass">
+    <tr><th>What was weak</th><th>What the pick does</th></tr>
+    <tr><td>A bid opened for two minutes sat beside one worked all morning.</td><td>Two shelves. <b>Worked on</b> holds bids the person changed. <b>Opened, nothing changed</b> holds the rest, each one press away from the list.</td></tr>
+    <tr><td>Exact minutes and change counts claim more than the app knows.</td><td>Every row reads the same way: the size, then the tab, as <b>2 hours · Pricing</b> or <b>5 minutes · Counts</b>. The size is rounded, and one line under the list says so. Never a total against the clock.</td></tr>
+    <tr><td>The list could hold up clock out.</td><td><b>Complete clock out</b> is live the moment the list holds one bid. The note becomes optional.</td></tr>
+    <tr><td>Taking one off by mistake.</td><td>A bid taken off stays in place, struck through, and one press puts it back.</td></tr>
+    <tr><td>Work the app cannot see: a takeoff in CountTooling, a call, a set of plans on paper.</td><td><b>Add a bid the app missed</b> offers the bids on the person's board as one-press chips, then the search the sheet already has.</td></tr>
+    <tr><td>A day the app saw nothing.</td><td>The sheet says so and offers the bids on the person's board to add. It asks for the note as it does today.</td></tr>
+    <tr><td>The strip's grey read as time not worked.</td><td>The strip stays, since the owner asked for it. One line under it reads <b>Grey is time the app did not see.</b> It shows the start and now, and no time on a block.</td></tr>
+    <tr><td>The colour had to mean one thing.</td><td>One colour a bid, on its block and on its row. A kept bid is filled. An opened bid, or one taken off, is an outline. <b>Add</b> fills it.</td></tr>
+    <tr><td>The words <b>Take off</b> took a third of a phone row.</td><td>The row's colour mark is the control. A ticked box is a bid that counts today. Pressing it takes the bid off and leaves the box empty, and pressing again puts it back. An opened bid is an empty box, and ticking it adds it. The switch above also draws an × and the words, to compare.</td></tr>
+    <tr><td>A bid that became a job.</td><td>The row keeps the bid's name and shows the job number beside it.</td></tr>
+  </table>
+  <p>What is still weak, said plainly. A press on <b>Complete clock out</b> does not prove the person read the list. Time in CountTooling stays unseen until that app sends its own beat. A salaried person has no clock-out, so their list sits on the Dashboard instead.</p>
+
+  <h2>The pick</h2>
+  <div class="row">
+    <div class="frame"><div class="cap"><b>Today</b><span>for comparison</span></div><div class="device"><div class="sheet" id="f-today2"></div></div></div>
+    <div class="frame"><div class="cap"><b>The pick</b><span>read from the day, nothing to type</span></div><div class="device"><div class="sheet" id="f-pick"></div></div></div>
+    <div class="frame"><div class="cap"><b>No clock-out</b><span>a salaried person's Dashboard card</span></div>
+      <div class="device" style="align-items:flex-start;"><div style="width:var(--sheet);max-width:480px;" id="f-card"></div></div>
+      <ul class="notes"><li>The same list, on the My Time card. It also holds yesterday's list when the person never opened the sheet.</li></ul></div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var COLORS = ['#2563eb', '#0f766e', '#6d28d9', '#b45309', '#be123c', '#0369a1'];
+  var DAYS = {
+    usual: {
+      clock: 'Clocked in 7:02. 7 h 36 min so far.',
+      worked: [
+        { id: 'b412', name: 'B412 · ZZ Test Ridgeway Clinic', what: 'Takeoffs and Pricing', rough: '3 hours', exact: '2 h 52 min · 45 changes', seg: [8, 38], word: 'takeoffs, pricing' },
+        { id: 'b398', name: 'B398 · ZZ Test Harbor Lofts', what: 'Pricing and Cover Letter', rough: '2 hours', exact: '1 h 56 min · 181 changes', seg: [48, 25], word: 'pricing, cover letter' },
+        { id: 'b377', name: 'B377 · ZZ Test Cedar Row Homes', job: 'J1007', what: 'Submittals', rough: '30 minutes', exact: '28 min · 6 changes', seg: [80, 6], word: 'submittals' },
+        { id: 'b420', name: 'B420 · ZZ Test Lakeside Dental', what: 'Bid Board', rough: '1 minute', exact: '1 min · 1 change', seg: [93, 0.6], word: 'follow-up set' }
+      ],
+      opened: [
+        { id: 'b425', name: 'B425 · ZZ Test Mill Street Bakery', rough: '2 minutes', what: '', seg: [75, 0.6] },
+        { id: 'b431', name: 'B431 · ZZ Test Orchard School', rough: '5 minutes', what: 'Counts', seg: [88, 1.1] }
+      ]
+    },
+    touches: {
+      clock: 'Clocked in 8:10. 5 h 20 min so far.',
+      worked: [
+        { id: 'b420', name: 'B420 · ZZ Test Lakeside Dental', what: 'Bid Board', rough: '1 minute', exact: '1 min · 1 change', seg: [29, 0.6], word: 'follow-up set' },
+        { id: 'b425', name: 'B425 · ZZ Test Mill Street Bakery', what: 'Submission & Followup', rough: '2 minutes', exact: '2 min · 3 changes', seg: [35, 0.6], word: 'marked sent' },
+        { id: 'b436', name: 'B436 · ZZ Test Quarry Road Shops', what: 'Bid Board', rough: '1 minute', exact: '1 min · 1 change', seg: [71, 0.6], word: 'due date changed' }
+      ],
+      opened: [
+        { id: 'b412', name: 'B412 · ZZ Test Ridgeway Clinic', rough: '40 minutes', what: 'Takeoffs', seg: [45, 12.5] }
+      ]
+    },
+    nothing: { clock: 'Clocked in 7:30. 6 h 05 min so far.', worked: [], opened: [] }
+  };
+  var BOARD = [
+    { id: 'b440', name: 'B440 · ZZ Test Fairview Annex' },
+    { id: 'b444', name: 'B444 · ZZ Test Dry Creek Depot' }
+  ];
+  var state = { day: 'usual', offStyle: 'tick', off: {}, added: {}, bOff: {}, note: '', todayNote: '', aNote: null, cardOk: false };
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function nameHtml(b) { return esc(b.name) + (b.job ? '<span class="jobchip" title="This bid is now job ' + b.job + '">' + b.job + '</span>' : ''); }
+  function day() { return DAYS[state.day]; }
+  /* Every row's line reads the same way: the size, then the tab. A row with no size shows its one fact alone. */
+  function lineHtml(b) {
+    if (!b.rough) return '<span class="what">' + esc(b.what) + '</span>';
+    return '<span class="size">' + esc(b.rough) + '</span>' + (b.what ? '<span class="what"> · ' + esc(b.what) + '</span>' : '');
+  }
+
+  /* ---- Today: the sheet as it is (ClockInOutButton.tsx, the Clock out window) ---- */
+  function todayHtml(key) {
+    var v = state[key] || '';
+    return '<h3>Clock out</h3>' +
+      '<label><span class="lbl">What did you work on?</span>' +
+      '<textarea rows="3" data-note="' + key + '" placeholder="e.g. Trim set at 456 Oak Ave">' + esc(v) + '</textarea></label>' +
+      '<div class="sec"><span class="lbl">What Job or Bid were you working on?</span>' +
+      '<button type="button" class="pickrow"><span class="tag">PLUM</span>B440 · ZZ Test Fairview Annex</button>' +
+      '<input type="text" style="margin-top:6px" placeholder="Search to choose other job or bid"></div>' +
+      '<div class="foot"><button type="button" class="btn">Cancel</button>' +
+      '<button type="button" class="btn red"' + (v.trim() ? '' : ' disabled') + '>Complete clock out</button></div>';
+  }
+
+  /* ---- A: the note writes itself ---- */
+  function aText() {
+    return day().worked.map(function (b) { return b.name.replace(' · ', ' ') + ': ' + b.word; }).join('\n');
+  }
+  function aHtml() {
+    var filled = aText();
+    var v = state.aNote === null ? filled : state.aNote;
+    return '<h3>Clock out</h3>' +
+      '<label><span class="lbl">What did you work on?</span>' +
+      '<textarea rows="' + Math.max(3, day().worked.length * 2) + '" data-note="aNote" placeholder="e.g. Trim set at 456 Oak Ave">' + esc(v) + '</textarea>' +
+      (filled && state.aNote === null ? '<span class="hint">Filled from today’s bids. Edit it if you like.</span>' : '') + '</label>' +
+      '<div class="sec"><span class="lbl">What Job or Bid were you working on?</span>' +
+      '<button type="button" class="pickrow"><span class="tag">PLUM</span>B440 · ZZ Test Fairview Annex</button>' +
+      '<input type="text" style="margin-top:6px" placeholder="Search to choose other job or bid"></div>' +
+      '<div class="foot"><button type="button" class="btn">Cancel</button>' +
+      '<button type="button" class="btn red"' + (v.trim() ? '' : ' disabled') + '>Complete clock out</button></div>';
+  }
+
+  /* ---- B: a list with the minutes ---- */
+  function bHtml() {
+    var d = day(), all = d.worked.concat(d.opened);
+    var rows = all.map(function (b) {
+      var on = !state.bOff[b.id];
+      return '<li' + (b.exact ? '' : ' class="weak"') + '><input class="cbx" type="checkbox" data-b="' + b.id + '"' + (on ? ' checked' : '') + ' aria-label="Keep ' + esc(b.name) + '">' +
+        '<span class="who"><span class="name">' + nameHtml(b) + '</span><br><span class="what">' + esc(b.exact || 'Open ' + b.rough + (b.what ? ' on ' + b.what : '') + ' · 0 changes') + '</span></span></li>';
+    }).join('');
+    var n = all.filter(function (b) { return !state.bOff[b.id]; }).length;
+    return '<h3>Clock out</h3>' +
+      '<div class="sec"><div class="head"><span>Bids today</span><span class="n">' + n + '</span></div>' +
+      (all.length ? '<ul class="bids">' + rows + '</ul><div class="total">On bids <b>' + (state.day === 'usual' ? '5 h 24 min' : '44 min') + '</b> of <b>' + (state.day === 'usual' ? '7 h 36 min' : '5 h 20 min') + '</b> clocked</div>'
+        : '<div class="empty"><b>No bids today.</b></div>') + '</div>' +
+      '<div class="sec"><input type="text" placeholder="Search to choose other job or bid"></div>' +
+      '<div class="foot"><button type="button" class="btn">Cancel</button><button type="button" class="btn red"' + (n ? '' : ' disabled') + '>Complete clock out</button></div>';
+  }
+
+  /* ---- C: the day as a strip ---- */
+  function cHtml() {
+    var d = day();
+    var segs = d.worked.map(function (b, i) { return '<i style="left:' + b.seg[0] + '%;width:' + b.seg[1] + '%;background:' + COLORS[i % 4] + '" title="' + esc(b.name) + '"></i>'; }).join('');
+    var rows = d.worked.map(function (b, i) {
+      return '<li><span class="dot" style="background:' + COLORS[i % 4] + '"></span><span class="who"><span class="name">' + nameHtml(b) + '</span><br><span class="what">' + esc(b.what) + '</span></span><span class="size">' + esc(b.rough) + '</span></li>';
+    }).join('');
+    return '<h3>Clock out</h3>' +
+      '<div class="sec"><div class="head"><span>Your day</span></div>' +
+      '<div class="strip" role="img" aria-label="The day, one block a bid">' + segs + '</div>' +
+      '<div class="ticks"><span>' + d.clock.split(' ')[2].replace('.', '') + '</span><span>now</span></div>' +
+      (rows ? '<ul class="bids">' + rows + '</ul>' : '<div class="empty"><b>Nothing to show.</b></div>') + '</div>' +
+      '<label class="sec" style="display:block"><span class="lbl">What did you work on?</span><textarea rows="2" placeholder="e.g. Trim set at 456 Oak Ave"></textarea></label>' +
+      '<div class="foot"><button type="button" class="btn">Cancel</button><button type="button" class="btn red"' + (rows ? '' : ' disabled') + '>Complete clock out</button></div>';
+  }
+
+  /* ---- The pick ---- */
+  /* One colour a bid, the same on the strip and on its row. A bid the person kept is filled. A bid that was only
+     opened, or was taken off, is an outline. A bid the app never saw has no block, so its dot is grey. */
+  function colorOf(id) {
+    var d = day(), all = d.worked.concat(d.opened), i;
+    for (i = 0; i < all.length; i++) if (all[i].id === id) return COLORS[i % COLORS.length];
+    return null;
+  }
+  function dotHtml(b, filled) {
+    var c = colorOf(b.id);
+    if (!c) return '<span class="dot none"></span>';
+    return '<span class="dot" style="' + (filled ? 'background:' + c : 'box-shadow:inset 0 0 0 2px ' + c) + '"></span>';
+  }
+  function dayStripHtml() {
+    var d = day();
+    var segs = d.worked.concat(d.opened).map(function (b) {
+      var c = colorOf(b.id), filled = !state.off[b.id] && (d.worked.indexOf(b) >= 0 || state.added[b.id]);
+      return '<i style="left:' + b.seg[0] + '%;width:' + b.seg[1] + '%;' + (filled ? 'background:' + c : 'opacity:.55;box-shadow:inset 0 0 0 2px ' + c) + '" title="' + esc(b.name) + '"></i>';
+    }).join('');
+    return '<div class="sec"><div class="head"><span>Your day</span></div>' +
+      '<div class="strip" role="img" aria-label="Your day, one block a bid">' + segs + '</div>' +
+      '<div class="ticks"><span>' + d.clock.split(' ')[2].replace('.', '') + '</span><span>now</span></div>' +
+      '<p class="sub">Grey is time the app did not see.</p></div>';
+  }
+  var SVG_X = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>';
+  var SVG_BACK = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4L3 8l4 4"/><path d="M3 8h8.5a4.5 4.5 0 010 9H8"/></svg>';
+  var SVG_TICK = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg>';
+  /* A worked row, drawn the way the Take off switch says: an ×, a tick or the words. */
+  function workedRowHtml(b) {
+    var off = !!state.off[b.id], act = off ? 'back' : 'off', verb = off ? 'Put back' : 'Take off';
+    var who = '<span class="who"><span class="name">' + nameHtml(b) + '</span><br>' + (off ? '<span class="what">Taken off</span>' : lineHtml(b)) + '</span>';
+    var open = '<li class="' + (off ? 'off' : '') + '">';
+    if (state.offStyle === 'tick') {
+      return open + '<button type="button" class="tick" role="checkbox" aria-checked="' + !off + '" aria-label="' + esc(b.name) + '" title="' + verb + '" data-' + act + '="' + b.id + '" style="--c:' + (colorOf(b.id) || 'var(--border-strong)') + '"><span>' + SVG_TICK + '</span></button>' + who + '</li>';
+    }
+    if (state.offStyle === 'x') {
+      return open + dotHtml(b, !off) + who + '<button type="button" class="icn" aria-label="' + verb + ' ' + esc(b.name) + '" title="' + verb + '" data-' + act + '="' + b.id + '">' + (off ? SVG_BACK : SVG_X) + '</button></li>';
+    }
+    return open + dotHtml(b, !off) + who + '<button type="button" class="btn small" data-' + act + '="' + b.id + '">' + verb + '</button></li>';
+  }
+  function pickLists() {
+    var d = day();
+    var worked = d.worked.slice();
+    /* A bid added from the lower shelf keeps its own line. One the app never saw says who added it. */
+    d.opened.forEach(function (b) { if (state.added[b.id]) worked.push(b); });
+    BOARD.forEach(function (b) { if (state.added[b.id]) worked.push({ id: b.id, name: b.name, what: 'Added by you', rough: '' }); });
+    var opened = d.opened.filter(function (b) { return !state.added[b.id]; });
+    var board = BOARD.filter(function (b) { return !state.added[b.id]; });
+    var kept = worked.filter(function (b) { return !state.off[b.id]; }).length;
+    return { worked: worked, opened: opened, board: board, kept: kept };
+  }
+  function pickBody(inCard) {
+    var L = pickLists();
+    var h = dayStripHtml();
+    h += '<div class="sec"><div class="head"><span>Bids you worked on today</span><span class="n">' + L.kept + '</span></div>';
+    if (L.worked.length) {
+      h += '<ul class="bids">' + L.worked.map(workedRowHtml).join('') + '</ul>';
+      if (!inCard) h += '<p class="sub">Read from what you opened and changed today. Sizes are rough.</p>';
+    } else {
+      h += '<div class="empty"><b>The app saw no bid today.</b>Add the bids you worked on, or say what you did below.</div>';
+    }
+    h += '</div>';
+    if (L.opened.length) {
+      h += '<div class="sec"><div class="head"><span>Opened, nothing changed</span><span class="n">' + L.opened.length + '</span></div><ul class="bids">' +
+        L.opened.map(function (b) {
+          var who = '<span class="who"><span class="name">' + nameHtml(b) + '</span><br>' + lineHtml(b) + '</span>';
+          /* With the tick, an opened bid is an empty box in its own colour: ticking it adds it. */
+          if (state.offStyle === 'tick') return '<li class="weak"><button type="button" class="tick" role="checkbox" aria-checked="false" aria-label="' + esc(b.name) + '" title="Add" data-add="' + b.id + '" style="--c:' + colorOf(b.id) + '"><span>' + SVG_TICK + '</span></button>' + who + '</li>';
+          return '<li class="weak">' + dotHtml(b, false) + who + '<button type="button" class="btn small add" data-add="' + b.id + '">Add</button></li>';
+        }).join('') + '</ul></div>';
+    }
+    h += '<div class="sec"><div class="head"><span>Add a bid the app missed</span></div>' +
+      (L.board.length ? '<p class="sub">On your board:</p><div class="chips">' + L.board.map(function (b) { return '<button type="button" class="chip" data-add="' + b.id + '">+ ' + esc(b.name) + '</button>'; }).join('') + '</div>' : '') +
+      '<input type="text" style="margin-top:8px" placeholder="Search to choose other job or bid"></div>';
+    return { html: h, kept: L.kept };
+  }
+  function pickHtml() {
+    var p = pickBody(false);
+    var need = p.kept === 0;
+    var ok = !need || state.note.trim() !== '';
+    return '<h3>Clock out</h3>' + p.html +
+      '<label class="sec" style="display:block"><span class="lbl">' + (need ? 'What did you work on?' : 'Anything else?') + '</span>' +
+      '<textarea rows="2" data-note="note" placeholder="e.g. Site walk at ZZ Test Harbor Lofts">' + esc(state.note) + '</textarea>' +
+      (need ? '' : '<span class="hint">You can leave this empty.</span>') + '</label>' +
+      '<div class="foot"><button type="button" class="btn">Cancel</button><button type="button" class="btn red"' + (ok ? '' : ' disabled') + '>Complete clock out' + (p.kept ? ' · ' + p.kept + (p.kept === 1 ? ' bid' : ' bids') : '') + '</button></div>';
+  }
+  function cardHtml() {
+    var p = pickBody(true);
+    return '<div class="card"><h4>My Time</h4><p class="sub" style="margin-bottom:0">Today</p>' + p.html +
+      '<div class="foot" style="justify-content:flex-end">' +
+      (state.cardOk ? '<span class="good" style="align-self:center">Kept for today.</span>'
+        : p.kept ? '<button type="button" class="btn" style="background:#15803d;border-color:#15803d;color:#fff" data-cardok="1">Keep ' + p.kept + (p.kept === 1 ? ' bid' : ' bids') + ' for today</button>' : '') +
+      '</div></div>';
+  }
+
+  function draw(keepFocus) {
+    var active = document.activeElement, key = active && active.getAttribute && active.getAttribute('data-note'), host = key && active.closest('.sheet,.card'), pos = key ? active.selectionStart : 0;
+    var set = function (id, html) { var el = document.getElementById(id); if (keepFocus && host && el.contains(host)) return; el.innerHTML = html; };
+    set('f-today', todayHtml('todayNote')); set('f-today2', todayHtml('todayNote'));
+    set('f-a', aHtml()); set('f-b', bHtml()); set('f-c', cHtml()); set('f-pick', pickHtml()); set('f-card', cardHtml());
+    if (keepFocus && host) {
+      /* The typed-in sheet was left alone so the caret holds; only its button state is refreshed. */
+      var btn = host.querySelector('.btn.red');
+      if (btn && key === 'note') btn.disabled = pickLists().kept === 0 && state.note.trim() === '';
+      else if (btn) btn.disabled = active.value.trim() === '';
+      void pos;
+    }
+  }
+
+  document.addEventListener('input', function (e) {
+    var k = e.target.getAttribute && e.target.getAttribute('data-note');
+    if (!k) return;
+    state[k] = e.target.value; draw(true);
+  });
+  document.addEventListener('change', function (e) {
+    var b = e.target.getAttribute && e.target.getAttribute('data-b');
+    if (!b) return;
+    state.bOff[b] = !e.target.checked; draw(false);
+  });
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.off) { state.off[t.dataset.off] = true; state.cardOk = false; return draw(false); }
+    if (t.dataset.back) { delete state.off[t.dataset.back]; state.cardOk = false; return draw(false); }
+    if (t.dataset.add) { state.added[t.dataset.add] = true; state.cardOk = false; return draw(false); }
+    if (t.dataset.cardok) { state.cardOk = true; return draw(false); }
+    if (t.dataset.w) {
+      document.body.classList.toggle('desk', t.dataset.w === 'desk');
+      [].forEach.call(document.querySelectorAll('#segW button'), function (b) { b.setAttribute('aria-pressed', String(b === t)); });
+      return;
+    }
+    if (t.dataset.o) {
+      state.offStyle = t.dataset.o;
+      [].forEach.call(document.querySelectorAll('#segO button'), function (b) { b.setAttribute('aria-pressed', String(b === t)); });
+      return draw(false);
+    }
+    if (t.dataset.d) {
+      state.day = t.dataset.d; state.off = {}; state.added = {}; state.bOff = {}; state.note = ''; state.aNote = null; state.cardOk = false;
+      [].forEach.call(document.querySelectorAll('#segD button'), function (b) { b.setAttribute('aria-pressed', String(b === t)); });
+      return draw(false);
+    }
+  });
+  draw(false);
+})();
+</script>
+</body>
+</html>

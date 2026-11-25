@@ -24,7 +24,7 @@ vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: (...a: unknown[]) =
 import OfflineRetryPanel from './OfflineRetryPanel'
 import { renderWithProviders, settle } from '../test/renderSmokeMocks'
 import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
-import { OFFLINE_READ_MESSAGE } from '../lib/offlineRecoveryState'
+import { OFFLINE_READ_MESSAGE, recoveryFailureFromError } from '../lib/offlineRecoveryState'
 import { BACK_ONLINE_AUTO_MESSAGE, BACK_ONLINE_MESSAGE } from '../lib/offlineRecoveryState'
 
 const NETWORK = { kind: 'network' as const, message: OFFLINE_ERROR_MESSAGE }
@@ -141,6 +141,24 @@ describe('OfflineRetryPanel', () => {
     await settle()
     expect(screen.getByText("You don't have permission to clock in.")).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+  })
+
+  it('a request that was never sent: its own words, a Retry that runs the action, and no run by itself (punch list #406)', async () => {
+    const onRetry = vi.fn()
+    const words = 'The app was busy renewing your sign-in, so this did not load. Try again.'
+    // Built as the tally builds it, from the read's raw error: supabase-js writes the thrown error as name and message.
+    const failure = recoveryFailureFromError({ message: 'AbortError: Lock was stolen by another request', details: '', hint: '', code: '' }, 'The boxes on this job did not load.')
+    renderWithProviders(<OfflineRetryPanel failure={failure} onRetry={onRetry} surface="materials-on-site-phone" idempotent />)
+    await settle()
+    expect(screen.getByText(words)).toBeTruthy()
+    expect(screen.queryByText(/No connection/)).toBeNull()
+    expect(onRetry).not.toHaveBeenCalled()
+    act(() => {
+      window.dispatchEvent(new Event('online'))
+    })
+    expect(onRetry).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(onRetry).toHaveBeenCalledTimes(1)
   })
 
   it('hides the button while the action is busy', async () => {

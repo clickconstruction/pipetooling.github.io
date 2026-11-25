@@ -1,13 +1,28 @@
-import { type Dispatch, type RefObject, type SetStateAction, useRef, useState } from 'react'
+import { type Dispatch, type RefObject, type SetStateAction, useEffect, useMemo, useRef, useState } from 'react'
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import type { UserRow } from '../../hooks/usePeopleRoster'
 import { HOURS_GRID_FIRST_COL_LABEL } from '../../constants/hoursGridFirstCol'
-import { decimalToHms, hmsToDecimal } from '../../lib/people/hoursGridTime'
+import { decimalToHm, decimalToHms, hmsToDecimal } from '../../lib/people/hoursGridTime'
 import { shouldOfferManualHoursSession } from '../../lib/people/shouldOfferManualHoursSession'
 import { formatDaySheetDayLabel, hoursGridCellStatus } from '../../lib/people/hoursGridDaySheet'
-import { type HoursGridLiveByWorkDate, liveDayChipLabel, liveDayChipTitle } from '../../lib/people/hoursGridLiveByCell'
+import {
+  type HoursGridLiveByCell,
+  hoursGridLiveCellKey,
+  hoursGridLiveCellView,
+  leftOpenDayChipLabel,
+  leftOpenDayChipTitle,
+  liveCellAddedHours,
+  liveDayChipLabel,
+  liveDayChipTitle,
+  liveTotalSubLabel,
+  liveTotalTitle,
+  summarizeHoursGridLiveDays,
+} from '../../lib/people/hoursGridLiveByCell'
 import { pendingCellChipAriaLabel, pendingCellChipTitle } from '../../lib/people/hoursGridPendingChipCopy'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { useIntervalNowMs } from '../../hooks/useIntervalNowMs'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { PeopleHoursGridLiveBox } from './PeopleHoursGridLiveBox'
 import { TYPED_PENCIL } from '../clock/TypedHoursStamp'
 import {
   type PeopleHoursPendingByCellMap,
@@ -18,6 +33,11 @@ import {
 } from '../../lib/peopleHoursPendingByCell'
 
 type PendingCellPopover = { anchorEl: HTMLElement; entry: PeopleHoursPendingCellEntry } | null
+
+/** How often a green box and the totals it feeds read the clock again. They show whole minutes. */
+const LIVE_TICK_MS = 30_000
+/** A total with running time in it: green, to the minute, so it reads apart from a settled one. */
+const RUNNING_TOTAL_STYLE = { color: 'var(--text-green-700)', fontVariantNumeric: 'tabular-nums' } as const
 
 export interface PeopleHoursGridProps {
   hoursTableScrollRef: RefObject<HTMLDivElement>
@@ -31,8 +51,10 @@ export interface PeopleHoursGridProps {
   approvedClockHoursForCell?: (personName: string, workDate: string) => number
   /** The stop: the day has clocked hours a typed 0 would take out of pay without touching the clock. */
   onTypedOverClockHours?: (personName: string, workDate: string, clockHours: number) => void
-  /** Open sessions per day column (J7-4): the header says "+N on the clock" because the cells count closed sessions only. */
-  liveByWorkDate: HoursGridLiveByWorkDate
+  /** Who is on the clock, cell by cell (punch list #446): that cell is a green press that opens My Time, never a field, and the head says "+N on the clock". */
+  liveByCell: HoursGridLiveByCell
+  /** My Time is open over the grid. When it closes, focus goes back to the green box that opened it. */
+  myTimeOpen?: boolean
   jobHighlightPeople: Set<string>
   jobHighlightCells: Set<string>
   hoursFlashWorkDate: string | null
@@ -65,7 +87,8 @@ export function PeopleHoursGrid({
   hoursDays,
   showPeopleForHours,
   peopleHoursPendingByCellMap,
-  liveByWorkDate,
+  liveByCell,
+  myTimeOpen,
   jobHighlightPeople,
   jobHighlightCells,
   hoursFlashWorkDate,
@@ -102,6 +125,24 @@ export function PeopleHoursGrid({
   const isNarrow = useNarrowViewport640()
   const [daySheetCell, setDaySheetCell] = useState<{ personName: string; workDate: string } | null>(null)
   const [daySheetHoursValue, setDaySheetHoursValue] = useState('')
+  // Punch list #446: a person still on the clock. The clock is read again on a slow tick, since
+  // the boxes and the totals show whole minutes.
+  const nowMs = useIntervalNowMs(LIVE_TICK_MS)
+  const todayYmd = todayYmdInAppTz(new Date(nowMs))
+  const liveByWorkDate = useMemo(() => summarizeHoursGridLiveDays(liveByCell, nowMs, todayYmd), [liveByCell, nowMs, todayYmd])
+  /** Running time a cell adds to the totals: none for a salaried day or a session left open. */
+  const liveAddedHours = (personName: string, workDate: string) =>
+    liveByCell.size === 0
+      ? 0
+      : liveCellAddedHours(liveByCell.get(hoursGridLiveCellKey(personName, workDate)), { nowMs, todayYmd, salaryOnly: !canEditHours(personName) })
+  // The keyboard carries on from the box that was pressed once My Time closes.
+  const lastLivePressRef = useRef<HTMLButtonElement | null>(null)
+  useEffect(() => {
+    if (myTimeOpen) return
+    const el = lastLivePressRef.current
+    lastLivePressRef.current = null
+    if (el && document.contains(el)) el.focus()
+  }, [myTimeOpen])
 
   return (
     <div ref={hoursTableScrollRef} style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
@@ -176,7 +217,24 @@ export function PeopleHoursGrid({
                     />
                   ) : null}
                 </span>
-                {liveDay ? (
+                {liveDay && liveDay.leftOpen > 0 ? (
+                  <span
+                    title={leftOpenDayChipTitle(liveDay)}
+                    aria-label={leftOpenDayChipTitle(liveDay)}
+                    style={{
+                      display: 'block',
+                      marginTop: 2,
+                      fontSize: '0.65rem',
+                      fontWeight: 600,
+                      lineHeight: 1.2,
+                      color: 'var(--text-amber-800)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {leftOpenDayChipLabel(liveDay)}
+                  </span>
+                ) : null}
+                {liveDay && liveDay.people > 0 ? (
                   <span
                     title={liveDayChipTitle(liveDay)}
                     aria-label={liveDayChipTitle(liveDay)}
@@ -283,7 +341,9 @@ export function PeopleHoursGrid({
                 const missingJobTitle = 'Correct day with hours but no job assignment — assign in Crew Jobs / Bids'
                 const gridDisplayHrs = getHoursGridDisplayHours(personName, d)
                 const hoursRowUser = users.find((x) => (x.name ?? '').trim() === personName.trim())
-                const showMyTimeCorner = gridDisplayHrs > 0 && !!hoursRowUser?.id
+                // Still on the clock: the whole cell is one press to My Time, so it needs no corner of its own.
+                const liveCell = liveByCell.get(hoursGridLiveCellKey(personName, d))
+                const showMyTimeCorner = gridDisplayHrs > 0 && !!hoursRowUser?.id && !liveCell
                 const pendingEntry = peopleHoursPendingByCellMap.get(pendingByCellKey(personName, d))
                 const showPendingBadge = !!pendingEntry && (canAccessHours || canAccessPay)
                 const pendingHasTyped = !!pendingEntry && !!typedPendingSessionIds && pendingEntry.sessionIds.some((id) => typedPendingSessionIds.has(id))
@@ -318,7 +378,18 @@ export function PeopleHoursGrid({
                         : {}),
                     }}
                   >
-                    {isNarrow ? (
+                    {liveCell ? (
+                      <PeopleHoursGridLiveBox
+                        view={hoursGridLiveCellView({ cell: liveCell, settledHours: gridDisplayHrs, salaryOnly: !canEdit, nowMs, todayYmd })}
+                        cellKey={hoursGridLiveCellKey(personName, d)}
+                        narrow={isNarrow}
+                        besideBadge={!isNarrow && showPendingBadge}
+                        onOpen={(e) => {
+                          lastLivePressRef.current = e.currentTarget
+                          openHoursMyTimeForGridCell(personName, d)
+                        }}
+                      />
+                    ) : isNarrow ? (
                       (() => {
                         const status = hoursGridCellStatus({
                           pendingCount: showPendingBadge && pendingEntry ? pendingEntry.count : 0,
@@ -567,10 +638,25 @@ export function PeopleHoursGrid({
               })}
               {(() => {
                 const personPendingHours = personPendingExcessHours(peopleHoursPendingByCellMap, personName)
+                const rowSettled = hoursDays.reduce((s, d) => s + getHoursGridDisplayHours(personName, d), 0)
+                const rowRunning = hoursDays.reduce((s, d) => s + liveAddedHours(personName, d), 0)
                 return (
                   <>
-                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
-                      {decimalToHms(hoursDays.reduce((s, d) => s + getHoursGridDisplayHours(personName, d), 0)) || '-'}
+                    <td
+                      data-hours-row-total={rowRunning > 0 ? 'running' : 'settled'}
+                      title={rowRunning > 0 ? liveTotalTitle(rowSettled, rowRunning) : undefined}
+                      style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}
+                    >
+                      {rowRunning > 0 ? (
+                        <>
+                          <span style={RUNNING_TOTAL_STYLE}>{decimalToHm(rowSettled + rowRunning)}</span>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-green-700)', lineHeight: 1.1, marginTop: 1, whiteSpace: 'nowrap' }}>
+                            {liveTotalSubLabel(rowRunning)}
+                          </div>
+                        </>
+                      ) : (
+                        decimalToHms(rowSettled) || '-'
+                      )}
                       {personPendingHours > 0 ? (
                         <div
                           style={{
@@ -587,7 +673,7 @@ export function PeopleHoursGrid({
                       ) : null}
                     </td>
                     <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
-                      {(hoursDays.reduce((s, d) => s + getHoursGridDisplayHours(personName, d), 0)).toFixed(2)}
+                      {rowRunning > 0 ? <span style={RUNNING_TOTAL_STYLE}>{(rowSettled + rowRunning).toFixed(2)}</span> : rowSettled.toFixed(2)}
                     </td>
                   </>
                 )
@@ -599,6 +685,8 @@ export function PeopleHoursGrid({
       <tfoot style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
         {(() => {
           const grandTotal = showPeopleForHours.reduce((s, p) => s + hoursDays.reduce((ds, d) => ds + getHoursGridDisplayHours(p, d), 0), 0)
+          const dayRunning = (d: string) => showPeopleForHours.reduce((s, p) => s + liveAddedHours(p, d), 0)
+          const grandRunning = hoursDays.reduce((s, d) => s + dayRunning(d), 0)
           return (
             <>
               <tr>
@@ -617,9 +705,11 @@ export function PeopleHoursGrid({
                 </td>
                 {hoursDays.map((d) => {
                   const daySum = showPeopleForHours.reduce((s, p) => s + getHoursGridDisplayHours(p, d), 0)
+                  const running = dayRunning(d)
                   return (
                     <td
                       key={d}
+                      title={running > 0 ? liveTotalTitle(daySum, running) : undefined}
                       style={{
                         padding: '0.5rem 0.5rem',
                         textAlign: 'center',
@@ -629,12 +719,15 @@ export function PeopleHoursGrid({
                           : {}),
                       }}
                     >
-                      {decimalToHms(daySum) || '-'}
+                      {running > 0 ? <span style={RUNNING_TOTAL_STYLE}>{decimalToHm(daySum + running)}</span> : decimalToHms(daySum) || '-'}
                     </td>
                   )
                 })}
-                <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
-                  {decimalToHms(grandTotal) || '-'}
+                <td
+                  title={grandRunning > 0 ? liveTotalTitle(grandTotal, grandRunning) : undefined}
+                  style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid var(--border)' }}
+                >
+                  {grandRunning > 0 ? <span style={RUNNING_TOTAL_STYLE}>{decimalToHm(grandTotal + grandRunning)}</span> : decimalToHms(grandTotal) || '-'}
                 </td>
                 <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid var(--border)' }}>-</td>
               </tr>
@@ -654,6 +747,7 @@ export function PeopleHoursGrid({
                 </td>
                 {hoursDays.map((d) => {
                   const daySum = showPeopleForHours.reduce((s, p) => s + getHoursGridDisplayHours(p, d), 0)
+                  const running = dayRunning(d)
                   return (
                     <td
                       key={d}
@@ -666,13 +760,13 @@ export function PeopleHoursGrid({
                           : {}),
                       }}
                     >
-                      {daySum.toFixed(2)}
+                      {running > 0 ? <span style={RUNNING_TOTAL_STYLE}>{(daySum + running).toFixed(2)}</span> : daySum.toFixed(2)}
                     </td>
                   )
                 })}
                 <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid var(--border)' }}>-</td>
                 <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
-                  {grandTotal.toFixed(2)}
+                  {grandRunning > 0 ? <span style={RUNNING_TOTAL_STYLE}>{(grandTotal + grandRunning).toFixed(2)}</span> : grandTotal.toFixed(2)}
                 </td>
               </tr>
               <tr>
@@ -731,6 +825,8 @@ export function PeopleHoursGrid({
       const dayLocked = hoursDaysCorrect.has(workDate)
       const canEdit = canEditHours(personName)
       const sheetUser = users.find((x) => (x.name ?? '').trim() === personName.trim())
+      // The person clocked in while this sheet was open: the hours box goes, as it has on the grid.
+      const sheetLiveCell = liveByCell.get(hoursGridLiveCellKey(personName, workDate))
       const rowBtn = (tone: 'amber' | 'teal' | 'plain'): React.CSSProperties => ({
         width: '100%',
         minHeight: 52,
@@ -796,7 +892,11 @@ export function PeopleHoursGrid({
                 ✕
               </button>
             </div>
-            {canEdit && !dayLocked ? (
+            {sheetLiveCell ? (
+              <div data-testid="day-sheet-on-the-clock" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-green-700)', marginBottom: '0.75rem' }}>
+                {hoursGridLiveCellView({ cell: sheetLiveCell, settledHours: getHoursGridDisplayHours(personName, workDate), salaryOnly: !canEdit, nowMs, todayYmd }).title}
+              </div>
+            ) : canEdit && !dayLocked ? (
               <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
                 <input
                   type="text"

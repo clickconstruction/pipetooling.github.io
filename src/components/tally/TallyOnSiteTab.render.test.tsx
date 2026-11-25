@@ -40,7 +40,9 @@ vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
   return useAuthModuleMock({ role: 'helpers', user: { id: 'u1', email: 'mateo@example.com' }, profileName: 'Mateo' })
 })
-vi.mock('../../hooks/useOnSiteStore', () => ({ useOnSiteJob: () => ({ loaded: true, loading: false, error: null, raw: null, retry: () => {} }), useOnSiteStoreVersion: () => 0 }))
+// The job's read, as the test sets it: in, by default (punch list #398 reads it running and failed).
+const jobLoad = vi.hoisted(() => ({ state: { loaded: true, loading: false, error: null as string | null, raw: null as unknown } }))
+vi.mock('../../hooks/useOnSiteStore', () => ({ useOnSiteJob: () => ({ ...jobLoad.state, retry: () => {} }), useOnSiteStoreVersion: () => 0 }))
 vi.mock('../../hooks/useAddressGeocodeCoords', () => ({ useAddressGeocodeCoords: () => ({ coords: new Map() }) }))
 // The site's boxes for the name rule (punch list #351): the test hands none, so the job's own boxes are the check.
 vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: [], siteId: null, loaded: true }) }))
@@ -95,6 +97,7 @@ const otherLine = { containerId: 'b1', partKey: 'text:zz test tee', partId: null
 const otherJob = { jobId: 'j2', label: '973 · ZZ Test Two', containers: [otherBox], lines: [otherLine], places: [] }
 
 beforeEach(() => {
+  jobLoad.state = { loaded: true, loading: false, error: null, raw: null }
   store.containers = [box]
   store.movements = [mv({ reason: 'delivered', quantity: 10, at: '2026-11-01T10:00:00Z', toContainerId: 'a2' }), mv({ reason: 'counted', quantity: 8, at: '2026-11-08T10:00:00Z', fromContainerId: 'a2' })]
   io.send.mockClear()
@@ -208,6 +211,37 @@ describe('TallyOnSiteTab · past one job (punch list #304)', () => {
     list()
     expect(screen.queryByTestId('on-site-other-jobs')).toBeNull()
     expect(document.querySelector('[data-empty-state]')?.textContent).toContain('No containers on this site yet.')
+  })
+
+  it('draws only the loading line while the boxes are read: no empty words and no Add a container (punch list #398)', () => {
+    store.containers = []
+    store.movements = []
+    jobLoad.state = { loaded: false, loading: true, error: null, raw: null }
+    list()
+    expect(screen.getByText('Loading the boxes…')).toBeTruthy()
+    expect(screen.queryByTestId('on-site-empty-job')).toBeNull()
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Add a container' })).toBeNull()
+  })
+
+  it('draws the failure and no empty words after a read failed (punch list #398)', () => {
+    store.containers = []
+    store.movements = []
+    jobLoad.state = { loaded: false, loading: false, error: 'The boxes on this job did not load.', raw: { message: 'TypeError: Failed to fetch' } }
+    list()
+    // A lost signal's own words, on the retry panel.
+    expect(document.body.textContent).toContain('No connection')
+    expect(screen.queryByTestId('on-site-empty-job')).toBeNull()
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Add a container' })).toBeNull()
+  })
+
+  it('says the job is empty once the read is in', () => {
+    store.containers = []
+    store.movements = []
+    list()
+    expect(screen.getByTestId('on-site-empty-job')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Add a container' })).toBeTruthy()
   })
 
   it('a box prints its label and its manifest here, with no link to the office page', async () => {

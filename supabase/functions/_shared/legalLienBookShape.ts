@@ -23,8 +23,22 @@ type Row = Record<string, unknown>
 
 /** `job_lien_desk_items`: which months are noticed, held or sent. Never `fields`, the hold reason, the GC's word or who did what. */
 export const LIEN_BOOK_DESK_ITEM_COLUMNS = ['id', 'job_id', 'kind', 'status', 'months', 'sent_at', 'sent_filing_id', 'hold_until', 'created_at', 'voided_at'] as const
-/** `job_lien_filings`: the public record — what was filed, when, where, for how much. Never the office's note on the copy, the sends or the link. */
-export const LIEN_BOOK_FILING_COLUMNS = ['id', 'job_id', 'kind', 'filed_at', 'served_at', 'serve_due', 'months_covered', 'county', 'amount', 'recording_number', 'created_at', 'voided_at'] as const
+/**
+ * `job_lien_filings`: the public record — what was filed, when, where, for how much. Never the office's note on the
+ * copy or the link. `sends` is read for one thing and cut before it travels (`counselSends`): on a recorded § 53.056
+ * notice, who each copy went to, how and on which day. No mail number, no name, no address. On every other kind it
+ * travels as null.
+ */
+export const LIEN_BOOK_FILING_COLUMNS = ['id', 'job_id', 'kind', 'filed_at', 'served_at', 'serve_due', 'months_covered', 'county', 'amount', 'recording_number', 'created_at', 'voided_at', 'sends'] as const
+/**
+ * The kinds of filing the firm's book reads: the affidavits and the releases (the tail), and the recorded § 53.056
+ * notices (punch list #415, the owner's yes of 2026-11-25), so the grid says the day each notice went as the app's
+ * own book has since v2.7485. A notice kept by hand has no desk paper, and the months reader drops a noticed month a
+ * week after its day, so without the record the firm read no notice where one is on file.
+ */
+export const LIEN_BOOK_FILING_KINDS = ['affidavit', 'release_of_record', 'notice_53_056'] as const
+/** What of one send the firm may hold. */
+export const LIEN_BOOK_SEND_KEYS = ['recipient', 'method', 'sent_on'] as const
 /** `job_property_owners`: the owner of record and where to serve. Never the owner's email. */
 export const LIEN_BOOK_OWNER_COLUMNS = ['job_id', 'owner_mode', 'owner_name', 'company_name', 'mailing_address'] as const
 /** `customer_addresses`: the property record, with its justice precinct and the on-the-line note (v2.4771). Never the office's note or the record's bookkeeping. */
@@ -68,6 +82,18 @@ function pick(row: unknown, keys: ReadonlyArray<string>): Row {
  */
 function isZzName(name: unknown): boolean {
   return typeof name === 'string' && /^zz/i.test(name.trim())
+}
+
+/**
+ * A filing's sends as the firm may hold them: on a recorded § 53.056 notice, each send cut to who, how and the day,
+ * and a send with no day dropped. Null on every other kind, where `served_at` already says what the grid draws.
+ */
+function counselSends(row: unknown): Row[] | null {
+  const r = row && typeof row === 'object' ? (row as Row) : {}
+  if (r.kind !== 'notice_53_056' || !Array.isArray(r.sends)) return null
+  return r.sends
+    .filter((s): s is Row => !!s && typeof s === 'object' && typeof (s as Row).sent_on === 'string' && /^\d{4}-\d{2}-\d{2}$/.test((s as Row).sent_on as string))
+    .map((s) => ({ recipient: typeof s.recipient === 'string' ? s.recipient : '', method: typeof s.method === 'string' ? s.method : '', sent_on: s.sent_on }))
 }
 
 function jobIdOf(row: unknown): unknown {
@@ -119,7 +145,7 @@ export function shapeLienBookForCounsel(raw: { rows?: unknown[]; affidavitRows?:
     rows: kept(raw.rows),
     affidavitRows: kept(raw.affidavitRows),
     items: kept(raw.items).map((r) => pick(r, LIEN_BOOK_DESK_ITEM_COLUMNS)),
-    filings: kept(raw.filings).map((r) => pick(r, LIEN_BOOK_FILING_COLUMNS)),
+    filings: kept(raw.filings).map((r) => ({ ...pick(r, LIEN_BOOK_FILING_COLUMNS), sends: counselSends(r) })),
     jobs: jobs.map((j) => { const job = { ...j }; for (const k of LIEN_BOOK_JOB_RULE_COLUMNS) delete job[k]; return job }),
     gcs: gcsRead.filter((g) => !zzGcIds.has(g.id) && !droppedGcIds.has(g.id)).map((r) => pick(r, LIEN_BOOK_GC_COLUMNS)),
     addresses: ((raw.addresses ?? []) as Row[]).filter((a) => !droppedAddressIds.has(a.id)).map((r) => pick(r, LIEN_BOOK_ADDRESS_COLUMNS)),

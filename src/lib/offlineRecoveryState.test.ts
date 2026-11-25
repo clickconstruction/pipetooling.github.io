@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { OFFLINE_ERROR_MESSAGE } from './networkErrorMessage'
 import { plainWordsFailures } from './plainWords'
-import { DatabaseError, OperationTimeoutError } from '../utils/errorHandling'
+import { AUTH_LOCK_ERROR_MESSAGE, DatabaseError, OperationTimeoutError } from '../utils/errorHandling'
 import {
   BACK_ONLINE_AUTO_MESSAGE,
   BACK_ONLINE_MESSAGE,
@@ -113,6 +113,23 @@ describe('offlineRecoveryState', () => {
     expect(s.showRetry).toBe(false)
   })
 
+  it('a request that was never sent is offered a Retry, with its own words and no offline copy (punch list #406)', () => {
+    const lock = { kind: 'unknown' as const, message: AUTH_LOCK_ERROR_MESSAGE, neverSent: true }
+    for (const online of [true, false]) {
+      for (const idempotent of [true, false]) {
+        const s = offlineRecoveryState({ online, lastError: lock, attempts: 0, idempotent, reconnected: true })
+        expect(s.phase).toBe('failed')
+        expect(s.message).toBe(AUTH_LOCK_ERROR_MESSAGE)
+        expect(s.showRetry).toBe(true)
+        expect(s.retryLabel).toBe('Retry')
+        // Never by itself: the caller's own retries ran out before these words drew.
+        expect(s.autoRetry).toBe(false)
+      }
+    }
+    // The second press is offered too.
+    expect(offlineRecoveryState({ online: true, lastError: lock, attempts: 3, idempotent: true }).showRetry).toBe(true)
+  })
+
   it('a read may say a lost signal in its own words, which win over the shared read sentence; Back online reads as before (v2.6198)', () => {
     const words = 'No connection, so the clock could not load. It loads again when the signal is back.'
     const first = offlineRecoveryState({ online: false, lastError: NETWORK, attempts: 0, idempotent: true, offlineMessage: words })
@@ -182,5 +199,24 @@ describe('recoveryFailureFromError', () => {
   it('a message override never changes the class', () => {
     const f = recoveryFailureFromError(new TypeError('Failed to fetch'), 'x', 'custom')
     expect(f).toEqual({ kind: 'network', message: 'custom' })
+  })
+
+  it('a stolen sign-in lock is marked never sent, keeps its class and reads in plain words (punch list #406)', () => {
+    // As supabase-js hands it back from a result: a plain object, the thrown error written as name and message.
+    const asResult = recoveryFailureFromError({ message: 'AbortError: Lock was stolen by another request', details: '', hint: '', code: '' }, 'The boxes on this job did not load.')
+    expect(asResult).toEqual({ kind: 'unknown', message: AUTH_LOCK_ERROR_MESSAGE, neverSent: true })
+    // As Chrome throws it.
+    const thrown = recoveryFailureFromError(Object.assign(new Error("Lock broken by another request with the 'steal' option."), { name: 'AbortError' }), 'x')
+    expect(thrown.neverSent).toBe(true)
+    expect(thrown.message).toBe(AUTH_LOCK_ERROR_MESSAGE)
+    expect(offlineRecoveryState({ online: true, lastError: asResult, attempts: 0, idempotent: true }).showRetry).toBe(true)
+    // A caller's own words do not hide that it was never sent.
+    expect(recoveryFailureFromError({ message: 'AbortError: Lock was stolen by another request' }, 'x', 'custom')).toEqual({ kind: 'unknown', message: 'custom', neverSent: true })
+  })
+
+  it('no other failure is marked never sent: a refusal, a lost signal, a plain abort', () => {
+    expect('neverSent' in recoveryFailureFromError({ message: 'permission denied', code: '42501' }, 'x')).toBe(false)
+    expect('neverSent' in recoveryFailureFromError(new TypeError('Failed to fetch'), 'x')).toBe(false)
+    expect('neverSent' in recoveryFailureFromError(Object.assign(new Error('The user aborted a request.'), { name: 'AbortError' }), 'x')).toBe(false)
   })
 })

@@ -7,14 +7,15 @@ import type { UserRole } from '../../hooks/useAuth'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { formatReportFieldValueInlineList } from '../../lib/reportSignatureField'
 import {
-  RECENT_REPORTS_OPENED_GLOSS,
   RECENT_REPORTS_OPENED_HEADING,
   buildRecentReportsCard,
   formatReportRowWhen,
   isDashboardRecentReportsRole,
   markedOpenedWords,
+  markedUnreadWords,
   readIdsWithOwnReports,
   recentReportsNewWords,
+  recentReportsOpenedGloss,
   recentReportsOpenedMoreWords,
   recentReportsWindowStartIso,
   reportsInWindow,
@@ -314,7 +315,8 @@ export function DashboardRecentReportsSection({
           dropMarks(wereNew)
         },
       },
-      { durationMs: 10000 },
+      // One toast a report: one marked opened and then unread inside the ten seconds keeps the newer line and its Undo.
+      { durationMs: 10000, key: reports.length === 1 ? `report:${ids[0]}` : undefined },
     )
   }
 
@@ -323,6 +325,26 @@ export function DashboardRecentReportsSection({
     setSessionOpenedIds((prev) => withIds(prev, [reportId], false))
     setExpandedReportId((prev) => (prev === reportId ? null : prev))
     dropMarks([reportId])
+  }
+
+  /**
+   * Mark unread from **Opened**, by the swipe to the right on a device held in the hand or the word press at a
+   * desk (v2.8603). The report goes back up into the list as new, so a toast says it with Undo for ten seconds.
+   * Undo marks it opened again and says nothing.
+   */
+  const bringBack = (r: RecentReportRow) => {
+    markUnread(r.id)
+    showActionToast(
+      markedUnreadWords(r.job_display_name),
+      {
+        label: 'Undo',
+        onClick: () => {
+          setReadReportIds((prev) => withIds(prev, [r.id], true))
+          saveMarks([r.id])
+        },
+      },
+      { durationMs: 10000, key: `report:${r.id}` },
+    )
   }
 
   const showRecent = isDashboardRecentReportsRole(role)
@@ -410,13 +432,20 @@ export function DashboardRecentReportsSection({
             )}
           </SwipeAwayRow>
         ) : (
-          <div style={rowBox}>
-            {mark}
-            {words}
-            <button type="button" onClick={() => markUnread(r.id)} aria-label={`Mark unread, ${name}`} style={wordPress}>
-              Mark unread
-            </button>
-          </div>
+          // The way back is the same row turned round: a swipe to the right on a device held in the hand, the word press at a desk.
+          <SwipeAwayRow label="Mark unread" name={name} swipe={swipes} side="right" onAway={() => bringBack(r)}>
+            {(press) => (
+              <div style={rowBox}>
+                {mark}
+                {words}
+                {press ?? (
+                  <span aria-hidden style={{ flexShrink: 0, color: 'var(--text-muted)', fontSize: '1.2rem', lineHeight: 1 }}>
+                    {isExpanded ? '▾' : '›'}
+                  </span>
+                )}
+              </div>
+            )}
+          </SwipeAwayRow>
         )}
         {isExpanded && (
           <div style={{ padding: '0 0 0.85rem 1.3rem', fontSize: '0.875rem' }}>
@@ -544,7 +573,7 @@ export function DashboardRecentReportsSection({
                             <span style={{ fontSize: '0.9375rem', fontWeight: 700 }}>{RECENT_REPORTS_OPENED_HEADING}</span>
                             <span style={{ fontSize: '0.8125rem', fontWeight: 700, padding: '0 0.45rem', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>{card.openedCount}</span>
                           </span>
-                          {openedGroupOpen ? <span style={{ gridColumn: 2, fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }}>{RECENT_REPORTS_OPENED_GLOSS}</span> : null}
+                          {openedGroupOpen ? <span style={{ gridColumn: 2, fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }}>{recentReportsOpenedGloss(swipes)}</span> : null}
                         </button>
                       </h3>
                       {openedGroupOpen ? (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decimalToHms, hmsToDecimal } from './hoursGridTime'
+import { decimalToHm, decimalToHms, hmsToDecimal } from './hoursGridTime'
 
 describe('decimalToHms', () => {
   it('returns empty string for zero, negative, or NaN', () => {
@@ -53,5 +53,20 @@ describe('hmsToDecimal', () => {
 
   it('round-trips with decimalToHms for colon-formatted values', () => {
     expect(hmsToDecimal(decimalToHms(2.125))).toBeCloseTo(2.125, 10)
+  })
+})
+
+describe('decimalToHm', () => {
+  it('reads running time to the minute, floored, with no seconds', () => {
+    expect(decimalToHm(7 + 38 / 60)).toBe('7:38')
+    expect(decimalToHm(7 + 38 / 60 + 59 / 3600)).toBe('7:38')
+    expect(decimalToHm(23.5)).toBe('23:30')
+    expect(decimalToHm(0.05)).toBe('0:03')
+  })
+
+  it('reads 0:00 for none, a negative or a number that is not one', () => {
+    expect(decimalToHm(0)).toBe('0:00')
+    expect(decimalToHm(-2)).toBe('0:00')
+    expect(decimalToHm(NaN)).toBe('0:00')
   })
 })

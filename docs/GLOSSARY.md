@@ -1265,6 +1265,9 @@ To stop operators from running payroll on phantom hours, every grid cell where p
 clicking opens **`PeopleHoursPendingCellPopover`** with per-row reject and a one-click **Approve all (n)** that calls **`approve_clock_sessions`**.
 A week-strip roll-up banner above the grid surfaces the org-wide gap (**`Pending: N people · H h not yet in payroll`**) with a **Review & approve** bulk modal (**`PeopleHoursBulkApprovePendingModal`**).
 Day-column headers get an amber dot and person rows get a `+X.XX pending` subline below the total.
+**On-the-clock box** (v2.8602, punch list #446): the Hours grid cell of a person with an open session is a green press that reads the day so far to the minute with the words *on the clock*, opens that person's My Time for the day and is never a field, so nothing can be typed under a running session.
+The row, day and week totals count the running time, drawn in green to the minute with the running part named under a row's total, and a salaried day keeps its set hours.
+A session still open on a day before today was missed by the 11:59 PM closer: its box is amber, reads *left open*, and adds no time.
 Detection lives in pure helpers in **[`src/lib/peopleHoursPendingByCell.ts`](../src/lib/peopleHoursPendingByCell.ts)** (closed sessions only, excluding rejected / revoked, salary-only people skipped).
 **Revoked filter on the cell display sum (v2.537)**: `loadPendingClockSessions` queries `approved_at IS NULL AND rejected_at IS NULL`, which still returns **revoked** rows (revoke clears **`approved_at`** but leaves **`rejected_at`** null and sets **`revoked_at`**).
 The same helper module now exports **`sumClosedPendingClockHoursForCell`** and **`pendingUnapprovedCountsByWorkDate`**, both of which explicitly skip **`rejected_at || revoked_at`**, so the cell value (`max(people_hours, pendingSum)`) drops revoked hours immediately after **`revoke_clock_sessions`** subtracts them from **`people_hours`** (this also fed the cost-matrix **Unapproved** column until the cost matrix was fully retired on 2026-07-15 — migrations `20260715090000` / `20260715120000`).
@@ -4346,6 +4349,15 @@ It is off, with the reason said, when a later change hangs on a row it added.
 
 **Database**: `bid_changes`, `list_bid_history` · kernel `lib/bids/bidHistory.ts`
 
+### Bids of the day (the Clock out sheet's list)
+The list of bids a person worked on in a day, read from what the app already records and never typed (punch list #445, `to-dos/clock-out-bids-of-the-day/`).
+The ground is live since v2.8605 and nothing on screen reads it yet.
+A **beat** is up to 60 seconds added to `user_bid_activity` for the bid in front, in a five-minute bucket, only while the person is at work on it.
+The **kept list** is the list as the person left it at clock out, in `bid_day_entries`: each bid kept or taken off, read by the app or added by the person.
+A size on the list is rough and is never a figure to bill by.
+
+**Database**: `user_bid_activity`, `bid_day_entries`, `bump_user_bid_activity`, `get_my_bid_day`, `save_my_bid_day`
+
 ### Utilization · hours you can work (People)
 The Utilization train (punch list #284, a design spike the owner ran on 2026-11-08): the hours each person said they can work against what the clock recorded, so a dev sees when to add people or use people more.
 PR 1 (v2.6707) is the answers table alone, `person_available_hours` — one append-only row per answer: `hours_per_week`, `days` (the week as drawn, seven arrays Sunday first of start–end minute pairs on the company clock, null for a number alone), `effective_from` (the Sunday it holds from), `note`, `set_by`;
@@ -6188,6 +6200,7 @@ CI/CD automation running workflows on GitHub events.
 
 **Steps**: `ci.yml` typechecks, lints, links every edge function with esbuild (`check:edge-bundles`, v2.6315: a missing named export fails the PR, not the boot;
 since v2.7256 an upload past 4.5 MB does too, not the deploy) and tests from the `.cache` main saved;
+since v2.8596 it is three jobs, `static` (the typecheck, lint and every check), `test` (the whole suite in three shards in the merge queue, two until v2.8606, and on a pull request the tests near its change with every test that reads files, `scripts/lib/nearTests.mjs`) and `checks`, the gate branch protection requires, which is skipped when both passed;
 `deploy.yml` installs, builds (`tsc -b && vite build`;
 the build fails when a precached file passes the cap in `vite.config.ts`, 10 MiB since 2026-11-20 when the main chunk crossed 9 MiB;
 `src/lib/entryGraph.repo.test.ts` holds the entry's eager imports to a budget in PR CI, so a PR that grows the main chunk fails before a deploy does) and deploys to GitHub Pages;

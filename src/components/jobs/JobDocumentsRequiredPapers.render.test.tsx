@@ -5,7 +5,7 @@
  * roster shows who has signed and copies a person's signing links; a paper comes off after the confirm; a failed
  * read draws the retry panel. Made-up names only.
  */
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { type BookPaperRow, type JobPapersRoster, parseJobPapersRoster } from '../../lib/jobs/jobPapers'
 import type { JobPapersIo } from '../../lib/jobs/jobPapersIo'
@@ -247,7 +247,7 @@ describe('JobDocumentsRequiredPapers', () => {
     await waitFor(() => expect(io.readRoster).toHaveBeenCalledTimes(2))
   })
 
-  it('Decline asks for a reason the GC reads, and a paper with no proposal draws no card', async () => {
+  it('Decline asks for a reason the GC reads and does not go through without one, and a paper with no proposal draws no card', async () => {
     const io = fakeIo({ readRoster: vi.fn(async () => withBuilt) })
     const settingsIo = fakeSettingsIo({ readSettingsPapers: vi.fn(async () => builtPaper(0)) })
     const proposalsIo = fakeProposalsIo()
@@ -259,8 +259,20 @@ describe('JobDocumentsRequiredPapers', () => {
     expect(screen.getAllByRole('group', { name: /^A proposal on / })).toHaveLength(1)
     fireEvent.click(within(card).getByRole('button', { name: 'Decline…' }))
     const box = await screen.findByRole('textbox')
+    // The reason is required (finding 125): the press is dead on an empty box and on spaces alone, and Enter sends nothing.
+    const press = screen.getByRole<HTMLButtonElement>('button', { name: 'Decline the proposal' })
+    expect(press.disabled).toBe(true)
+    fireEvent.click(press)
+    fireEvent.keyDown(box, { key: 'Enter' })
+    fireEvent.change(box, { target: { value: '   ' } })
+    expect(press.disabled).toBe(true)
+    fireEvent.keyDown(box, { key: 'Enter' })
+    await act(async () => {})
+    expect(screen.getByRole('dialog', { name: 'Decline the GC’s proposal?' })).toBeTruthy()
+    expect(proposalsIo.decide).not.toHaveBeenCalled()
     fireEvent.change(box, { target: { value: '  Placeholder reason.  ' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Decline the proposal' }))
+    expect(press.disabled).toBe(false)
+    fireEvent.click(press)
     await waitFor(() => expect(proposalsIo.decide).toHaveBeenCalledWith('prop-1', false, 'Placeholder reason.'))
     expect(await screen.findByText('The proposal is declined. The GC’s page says so.')).toBeTruthy()
   })

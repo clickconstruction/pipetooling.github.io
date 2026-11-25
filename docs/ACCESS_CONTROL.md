@@ -1054,6 +1054,7 @@ the service role (the `lien-pay-offer` function) passes.
 `list_lien_notice_months()`, `list_lien_affidavit_windows()` (SECURITY DEFINER, v2.3412) and `list_gc_unpaid_months(p_gc_customer_id)` (v2.3470, *Put a GC on notice* — every job with unpaid work under one GC, no lead window;
 the modal's three doors show for the same office set, Approve all for master / dev, the spoken word for assistant · controller · dev) return rows only to the same office set — and, for the first two, to the **service role** (v2.3789: the `legal-portal` function reads the Timeline book for counsel's grid);
 every other role gets an empty result.
+Since v2.8594 (punch list #415) counsel's grid also reads a job's recorded § 53.056 notices through `legal-portal`: the months each covers and, of each send, who it went to, how and on which day, never a mail number, a name or an address.
 The Dashboard's `lien-notice-approve` card shows to master / dev;
 `lien-notice-draft` to the office set.
 The Board at the top of To do (v2.7332) is drawn for everyone who opens the desk;
@@ -2359,6 +2360,17 @@ A training-mode account cannot sign, since starting a paper is a write.
   **A removed row** (v2.5079, migration `20261010017000`): `list_bid_removed_rows` and `restore_bid_removed_row` (SECURITY DEFINER) read the delete archive for one bid and put one of its rows back, only for someone `can_edit_bid` admits, the bids update policy as one check (its roles, a primary's own bids, not training mode, a twin's own bids).
   The archive's own read stays dev-only, and a whole bid stays the dev's restore.
   **Undo a whole action** (v2.5098, no new function): offered only when `can_edit_bid` says yes, and every write goes through the two functions above or, for a row the action added, a plain delete by id under the presser's own RLS on that table, tagged `put-back`, from archived tables only.
+
+### The bids of the day: the beat by bid and the kept list (v2.8605, `20261125223610_bid_day_ground.sql`)
+- **What**: two tables under the Clock out sheet's list of the day's bids (punch list #445).
+- **`user_bid_activity`** holds the seconds a bid was in front while the person was at work on it, one row a person, a bid, a Bids tab and a five-minute bucket.
+- It follows the Activity tab's rule and goes no wider: the person reads their own rows, the owner and a dev read every row, and so does anyone on `user_app_activity_viewers`.
+- No client writes it: `bump_user_bid_activity()` writes it as the caller, never raises, and writes nothing under View as, in training mode or for a digital twin.
+- **`bid_day_entries`** holds the list a person left at clock out, one row a person, a company day and a bid, kept or taken off.
+- It is read by whoever may read the person's clock sessions: the person, a dev, payroll access and the office (`is_assistant()`, so the controller too).
+- A person writes only their own rows, for today or yesterday by the company's day, on a bid they can read, and no one deletes a row.
+- **`save_my_bid_day()`** and **`get_my_bid_day()`** are `SECURITY INVOKER`, so both run under the caller's own row policies and an archived caller reads nothing.
+- **Test**: `npm run test:pg:bid-day` (`supabase/tests/bid_day/`).
 
 ### Stripe out-of-band payment unwind (v2.362, refinements v2.363)
 - **Who**: **`dev`**, **`master_technician`**, **`assistant`**, and **`primary`** with the same job-access pattern as **`mark_invoice_paid`** (RPC **`revert_stripe_oob_invoice_payment`** enforces this).

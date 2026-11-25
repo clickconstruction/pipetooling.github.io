@@ -8,6 +8,8 @@ import {
   formatReportRowTime,
   formatReportRowWhen,
   markedOpenedWords,
+  markedUnreadWords,
+  recentReportsOpenedGloss,
   recentReportsNewWords,
   recentReportsOpenedMoreWords,
   recentReportsWindowStartIso,
@@ -184,7 +186,12 @@ describe('the card since punch list #426: one put-away state, a list that refill
     expect(recentReportsNewWords(0)).toBe('Every report here is opened.')
     expect(markedOpenedWords(['Okafor Gas Test'])).toBe('Marked opened: Okafor Gas Test.')
     expect(markedOpenedWords(['a', 'b', 'c'])).toBe('3 reports marked opened.')
-    for (const words of [RECENT_REPORTS_OPENED_GLOSS, recentReportsNewWords(0), recentReportsOpenedMoreWords(8, 10) ?? '']) expect(plainWordsFailures(words), words).toEqual([])
+    for (const words of [RECENT_REPORTS_OPENED_GLOSS, recentReportsOpenedGloss(true), recentReportsNewWords(0), recentReportsOpenedMoreWords(8, 10) ?? '']) expect(plainWordsFailures(words), words).toEqual([])
+    // The way back, as the device has it: the swipe in the hand, the press at a desk (v2.8603).
+    expect(recentReportsOpenedGloss(true)).toBe('You marked these opened. Swipe one right to mark it unread.')
+    expect(recentReportsOpenedGloss(false)).toBe(RECENT_REPORTS_OPENED_GLOSS)
+    expect(markedUnreadWords('Okafor Gas Test')).toBe('Marked unread: Okafor Gas Test.')
+    expect(markedUnreadWords('')).toBe('Marked unread: report.')
   })
 })
 

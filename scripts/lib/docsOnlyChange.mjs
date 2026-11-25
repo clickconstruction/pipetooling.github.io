@@ -1,6 +1,7 @@
 /**
  * Decides whether a CI build can skip the full test suite because every changed file is documentation.
- * Plain JS with no dependencies: ci.yml runs it right after `npm ci`, and src/lib/docsOnlyChange.test.ts pins it.
+ * Plain JS with no dependencies: ci.yml runs it on bare Node, in each test leg before its install, and
+ * src/lib/docsOnlyChange.test.ts pins it.
  *
  * On 2026-11-02 the suite took 13 to 21 of the checks job's 25 minutes, 16 of the day's 74 merges touched
  * only docs/, to-dos/ or a release note, and the merge queue ran three builds at a time — so a docs-only build
