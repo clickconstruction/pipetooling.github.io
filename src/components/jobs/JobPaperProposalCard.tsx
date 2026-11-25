@@ -61,8 +61,9 @@ export function JobPaperProposalCard({
   // The list words each change. Without it the card still answers: it says how many topics move.
   useEffect(() => {
     let on = true
-    settingsIo
-      .readBookPaper(paper.bookDocumentId)
+    // A paper whose Book entry is gone has no list to read.
+    const read = paper.bookDocumentId ? settingsIo.readBookPaper(paper.bookDocumentId) : Promise.resolve(null)
+    read
       .then((b) => {
         if (on) setBook(b)
       })
