@@ -35,7 +35,7 @@ function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05)
 }
 
-/** `var(--name)` → `--name`. */
+/** The token a fill names, without its `var()`. */
 function tokenOf(fill: string | null): string {
   const m = /^var\((--[a-z0-9-]+)\)$/.exec(fill ?? '')
   expect(m, `a theme token, got ${fill}`).not.toBeNull()
@@ -51,8 +51,8 @@ describe('WaterMeetsAir', () => {
     const label = [...container.querySelectorAll('text')].find((t) => t.textContent?.trim() === words)
     expect(label).toBeDefined()
     // The tank: the blue body is the first filled rect, the red top is the path drawn over it.
-    const body = container.querySelector('rect[fill^="var(--bg-blue"]')
-    const top = container.querySelector('path[fill^="var(--bg-red"]')
+    const body = container.querySelector('rect[fill="var(--bg-blue-200)"]')
+    const top = container.querySelector('path[fill="var(--bg-red-100)"]')
     const under = tint === 'red' ? top : body
     const text = tokenValues(tokenOf(label?.getAttribute('fill') ?? null))
     const ground = tokenValues(tokenOf(under?.getAttribute('fill') ?? null))
