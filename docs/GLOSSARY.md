@@ -4351,12 +4351,15 @@ It is off, with the reason said, when a later change hangs on a row it added.
 
 ### Bids of the day (the Clock out sheet's list)
 The list of bids a person worked on in a day, read from what the app already records and never typed (punch list #445, `to-dos/clock-out-bids-of-the-day/`).
-The ground is live since v2.8605 and nothing on screen reads it yet.
+The ground is live since v2.8605, and the beat is sent since v2.8609.
+Nothing on screen reads either yet.
 A **beat** is up to 60 seconds added to `user_bid_activity` for the bid in front, in a five-minute bucket, only while the person is at work on it.
+The **bid in front** is the bid in the Bids page's address (`/bids?tab=pricing&bidId=…`) on a visible tab, read by `bidInFrontFromLocation`.
+**At work** is a press, a key or a scroll in the last five minutes, so a tab left in front on a second screen stops counting.
 The **kept list** is the list as the person left it at clock out, in `bid_day_entries`: each bid kept or taken off, read by the app or added by the person.
 A size on the list is rough and is never a figure to bill by.
 
-**Database**: `user_bid_activity`, `bid_day_entries`, `bump_user_bid_activity`, `get_my_bid_day`, `save_my_bid_day`
+**Database**: `user_bid_activity`, `bid_day_entries`, `bump_user_bid_activity`, `get_my_bid_day`, `save_my_bid_day` · kernel `lib/bids/bidInFront.ts` · hook `useBidActivityBeat`
 
 ### Utilization · hours you can work (People)
 The Utilization train (punch list #284, a design spike the owner ran on 2026-11-08): the hours each person said they can work against what the clock recorded, so a dev sees when to add people or use people more.
