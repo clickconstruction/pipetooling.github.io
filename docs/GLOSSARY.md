@@ -6951,7 +6951,8 @@ Not a record of its own: each line is a [sent copy](#sent-copies) of a bill-like
 **a day's total** counts a bill once, on the day it first went, so a resend and a statement are listed and never added.
 **Recorded by hand** (v2.7057) is a person's word that a bill went when the app sent nothing: one sent copy of kind `bill_by_hand` with no copy body and no address, drawn on the day they named, reading the words of the way as they were picked (kept on the record since v2.7145).
 **A way** is one line of the form's list under *How the bill went*, a row of `bill_hand_ways` since v2.7166, which the office adds to and edits from the form since v2.7167;
-a way is **taken off** the list, never deleted, and can be brought back.
+a way is **taken off** the list, never deleted by the office, and can be brought back.
+A dev alone reads **Delete…** under *Taken off*, for a test way (its words start with ZZ) that no bill was recorded with (`handWayDeleteProblem`, `handWayDeleteUsedProblem`, v2.8561, punch list #443).
 The form opens on the day the bill was made, with **Today** one press away (`byHandDayOffered`, `byHandDayPicks`, v2.7349);
 it lists the same customer's other bills with no send on record to tick, files one record a bill and counts them on its button, *Record how 3 bills went*, a refused bill staying in the strip with its reason while the rest save (`byHandOthers`, `byHandRecordLabel`, `byHandOutcome`, v2.7350);
 and it reads the record back above the button before the press, *The record will read:* (`byHandReadBack`, v2.7351), since a record cannot be changed once saved.

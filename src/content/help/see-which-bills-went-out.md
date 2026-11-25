@@ -295,6 +295,8 @@ A bill already recorded keeps the words it was recorded with. A new name changes
 
 The list holds 12 ways at most. The list always keeps one way.
 
+A way taken off stays in the window under *Taken off*. Only the developer can delete one. It must be a test way that no bill was recorded with.
+
 Every way counts under the **Recorded by hand** chip, whatever its words.
 
 You may see no **＋ Add a way** chip. Then the list did not load. Open the page again.
