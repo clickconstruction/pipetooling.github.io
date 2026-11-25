@@ -2,7 +2,7 @@
 name: "Tag a teammate in a job note, with a count above Jobs"
 number: 363
 group: close
-status: asked 2026-11-15 by Taunya, who settled its eight calls that day and asked for the whole train · built 2026-11-15 and 16 in six PRs (v2.7384, v2.7385, v2.7400, v2.7407, v2.7410, v2.7412) and one fix (v2.7426) · the job window's Note sheet on a phone tags too since v2.8223, found without tags on the owner's phone walk of 2026-11-21 · both migrations pushed and proved · `notify-note-tag` deployed on her go · live on prod · the sender's side walked on prod on a ZZ Test job, from the Pipeline row and from the job window · the tagged person's side not walked · the tagged person's side walked live 2026-11-24 as a helper at 380 px: it holds inside the Inbox tab, a helper is told nowhere else, and the small presses of Tagged notes are raised in v2.8556
+status: asked 2026-11-15 by Taunya, who settled its eight calls that day and asked for the whole train · built 2026-11-15 and 16 in six PRs (v2.7384, v2.7385, v2.7400, v2.7407, v2.7410, v2.7412) and one fix (v2.7426) · the job window's Note sheet on a phone tags too since v2.8223, found without tags on the owner's phone walk of 2026-11-21 · both migrations pushed and proved · `notify-note-tag` deployed on her go · live on prod · the sender's side walked on prod on a ZZ Test job, from the Pipeline row and from the job window · the tagged person's side not walked · the tagged person's side walked live 2026-11-24 as a helper at 380 px: it holds inside the Inbox tab, a helper is told nowhere else, and the small presses of Tagged notes are raised in v2.8556 · one more note on the ZZ test job, to measure the raised answer box at a phone's width, was given a yes on 2026-11-25 (UTC) in the managing session, asked again at the time
 summary: >
   Taunya asked to type @name in a job note on a Pipeline row and have it reach that person, on
   their to-do list, in Messages or in a new Tagged Job Notes section in Jobs, with a red count above
@@ -426,5 +426,7 @@ Walked on clicktooling.com on the ZZ Test Walk Project job, as the dev and, thro
 **What would mend it,** not built, and the pick is open. My pick is the first: the Inbox tab of Job Mode's bottom bar carries the count of tags that wait. It is the client alone, size S, and the bar already takes a count. The other way is a line on Job Mode's own Dashboard.
 
 **Mended: the small presses.** At 380 px the answer box was 22 px high, **@** 20, **Post** 26 and **No reply needed** 30. v2.8556 stands each a thumb tall on a phone, in the window, on the Pipeline and on the Checklist.
+
+**The measure of that mend has a yes of 2026-11-25 (UTC), given in the managing session.** Asked *May the walker post one note on the ZZ test job tagged to the sample helper, to re-measure the answer box at phone width? A posted note cannot be deleted.*, the answer was "Yes, one note", quoted from that session's record of the user's answers. It is history: the note is a row on prod that nothing deletes, so the yes is asked again at the time. It would be a fourth note left on that job. Not posted.
 
 **A posted note cannot be deleted,** so the walk's last step, deleting its notes, could not be done. Three notes are left on that ZZ job. It is on the list of presses nothing takes back (#443).
