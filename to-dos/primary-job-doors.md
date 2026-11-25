@@ -2,8 +2,8 @@
 name: "A primary's job doors: the ones the scope never reached"
 number: 400
 mockup: not required — it narrows database doors and changes no screen
-group: gated
-status: live on prod 2026-11-19 · seven PRs merged and pushed, `job-photos` deployed · two families left open, each a call for the owner
+group: ready
+status: live on prod 2026-11-19 · seven PRs merged and pushed, `job-photos` deployed · two families left open, each a call for the owner · both calls answered 2026-11-25 (UTC) in the managing session: own jobs' payers only, and fence the stage checklist (the card's pick, leave it open, overturned) · neither piece is built
 summary: >
   A primary has been held to their own jobs since v2.2177, but only where the tables' restrictive
   policies can see. Functions that run as the owner, and the policies that call them, still ask
@@ -11,10 +11,10 @@ summary: >
   named. Through them a primary on no job reads another job's money lines, photos and test
   papers, and can write down or delete its bill. No screen of theirs asks, so this is a hole at
   the API. The card lists every door, what it gives, and the predicate proposed for it.
-next: The owner answers the two new calls under What was built.
-size: L as a train of five (M · M · S · M · S)
-blocker: The owner's two new calls.
-opinion: leave the stage checklist as it is; ask the owner about the payers, since that read is company-wide
+next: Two pieces, in either order. The rule over payers (M): a primary reads pay speeds, promises and returned checks only for the payers of their own jobs, in the four reads PR 5 left open. The stage checklist fence (M): the report form writes its checklist through a function of its own, and the tables are fenced behind it.
+size: L as a train of five (M · M · S · M · S), all built; left: the rule over payers and the stage checklist fence (M · M)
+blocker: Nothing. Both of the owner's calls are answered.
+opinion: build both; the reviewer's pick was to leave the stage checklist as it is, and the answer of 2026-11-25 overturned it
 ---
 
 # A primary's job doors: the ones the scope never reached
@@ -265,9 +265,27 @@ Two new calls for the owner come out of that.
 
 - **The stage checklist on a job that is not theirs.** Holding it means the report form writes its checklist
   answers through a function of its own, so the table can be fenced behind it. Is that worth building?
+  **Answered 2026-11-25 (UTC) in the managing session:** *Yes, fence it.*
+  The card's own pick, leave it open, was overturned.
 - **Every payer's pay speed, promise and returned check.** A primary reads them for the whole company, to date
   the bills on their own jobs. Should they read only the payers of their own jobs? That needs a rule over
   payers, which does not exist yet.
+  **Answered 2026-11-25 (UTC) in the managing session, in the user's own words:** *"Own jobs payers only"*.
+  The rule: a primary reads only their own jobs' payers.
+  The company keeps the role to its own jobs on purpose.
+
+Both answers are quoted from the managing session's record of the user's answers.
+Each is a piece to build, and nothing of either is built.
+
+The stage checklist fence gives the report form's photo checklist a function of its own to read the job's skips and the live answer row and to write an answer.
+Then `stage_checklist_answers`, `stage_checklist_records` and `stage_checklist_skips` take the fence family 4 proposed, so a primary still reports on any job and reads the checklist only where family 4's rule lets them.
+Whether the `stage-checklist-photos` bucket takes the same clause is for the build to read, since family 4 named it and PR 3 left it alone.
+
+The rule over payers holds the four reads PR 5 left open to the payers of a primary's own jobs: `get_billed_customer_pay_speeds`,
+`list_job_promised_pay_dates`, `can_read_payment_promises()` and `list_ar_returned_check_payers`.
+It needs the rule over payers written first, then one migration with its page and a bed, as each PR of the train had.
+Suggested, for the build to confirm: a primary's own jobs are the ones family 2 already reads by, `is_job_people`.
+The size of each, M, is this note's estimate and not the card's.
 
 ## The five calls for the owner
 

@@ -1,8 +1,8 @@
 ---
 name: "Lien desk: a filed lien's copy is the signed scan — no print without one, and the scan's pages go in the envelope"
 number: 378
-group: gated
-status: asked and designed 2026-11-17, not started · the owner holds it until the split of LienDesk.tsx has landed
+group: ready
+status: asked and designed 2026-11-17, not started · the go to start and both picks answered 2026-11-25 (UTC) in the managing session: yes, start, retire the redrawn COPY page, and any saved scan passes the gate · PR #8539 merged 2026-11-17 as v2.7635
 summary: >
   After a lien affidavit is filed, § 53.055 has the claimant send a copy of it to the owner, and to the
   original contractor when there is one, by the fifth day. Filed liens, copies to mail prints a page the
@@ -12,9 +12,9 @@ summary: >
   So the rule changes. A filed lien prints its copies only when a scan of the signed affidavit is saved
   on it, and the scan's own pages are the copy in the envelope. The office already adds those scans
   (Add the stamped scans); nothing reads one back from Drive yet.
-next: Wait for the split of LienDesk.tsx to land and for PR #8539 (the upload function names its reasons) to merge. Then the owner confirms the two open picks, a mock-up of the window's rows is drawn, and PR 1 starts.
+next: PR 1 (S to M). The `drive-link` function reads one scan back from the job's own folder, and a kernel turns it into pages, with nothing on screen. The mock-up of the window's rows is drawn before PR 2.
 size: M as a train of two (S to M · M)
-blocker: The owner's word to start, after the split of LienDesk.tsx lands. PR 1 edits the same function as PR #8539, so that merges first.
+blocker: Nothing for PR 1. The mock-up of the window's rows is owed before PR 2.
 ---
 
 # A filed lien's copy is the signed scan (#378)
@@ -77,19 +77,19 @@ What is new:
 - **What the job keeps.** The letter and a link to the scan, never the page pictures: a stored print must stay small.
 - **A failed read.** The reason comes from the function's own words and offers Try again where a second try can help, as an upload does since v2.7635.
 
-## Open picks for the owner
+## The owner's picks
 
-Recommended, not yet confirmed:
+Both were answered on 2026-11-25 (UTC) in the managing session, and each answer is quoted from that session's record of the user's answers:
 
-1. **Retire the redrawn COPY page from the envelope.** The letter already names the county, the day and the document number, and two copies in one envelope invite the question of which is the copy. The alternative keeps it as a cover page in front of the scan.
-2. **Any saved scan passes the gate**, stamped by the clerk or signed before filing. The app cannot tell them apart, and the row shows what the file was saved as. The alternative asks the office to say which it is and holds an unstamped one.
+1. **Retire the redrawn COPY page from the envelope.** The letter already names the county, the day and the document number, and two copies in one envelope invite the question of which is the copy. The alternative keeps it as a cover page in front of the scan. **Answered 2026-11-25:** *Retire it.*
+2. **Any saved scan passes the gate**, stamped by the clerk or signed before filing. The app cannot tell them apart, and the row shows what the file was saved as. The alternative asks the office to say which it is and holds an unstamped one. **Answered 2026-11-25:** *Any saved scan passes.*
 
 Counsel's question 1 on #366 stays open and is no longer a blocker: a photocopy is a copy either way. If counsel says the redrawn page counts, the gate is still the owner's rule.
 
 ## The plan
 
-1. **Read a scan back, and turn it into pages** (S to M). The new action on `supabase/functions/drive-link/index.ts` with its section in `docs/EDGE_FUNCTIONS.md`; the kernel and its io half with tests; nothing on screen. **Deploy**: `supabase functions deploy drive-link`. Starts after v2.7635 merges, since both edit that function.
-2. **The gate and the stack** (M). `lienServeHolds` gains the hold; `lienServePackets.ts` and the window print the scan's pages and list what is held; the single press follows the same rule; the mail sheet shows page counts; the COPY page goes or stays by pick 1; the guide `file-a-lien-and-never-miss-its-deadlines` and the #366 card are amended; `LIEN_SERVED_COPY_READ_BY_COUNSEL` and its amber line go with the COPY page. Release note and fragment.
+1. **Read a scan back, and turn it into pages** (S to M). The new action on `supabase/functions/drive-link/index.ts` with its section in `docs/EDGE_FUNCTIONS.md`; the kernel and its io half with tests; nothing on screen. **Deploy**: `supabase functions deploy drive-link`. v2.7635 merged on 2026-11-17, and both edit that function, so this starts from main as it is now.
+2. **The gate and the stack** (M). `lienServeHolds` gains the hold; `lienServePackets.ts` and the window print the scan's pages and list what is held; the single press follows the same rule; the mail sheet shows page counts; the COPY page goes, by pick 1; the guide `file-a-lien-and-never-miss-its-deadlines` and the #366 card are amended; `LIEN_SERVED_COPY_READ_BY_COUNSEL` and its amber line go with the COPY page. Release note and fragment.
 
 Later, its own card when asked: Docsmit mails the scan's PDF itself (#366 lists the two server fixes that come first).
 
@@ -102,3 +102,5 @@ Later, its own card when asked: Docsmit mails the scan's PDF itself (#366 lists 
 ## Where it stands
 
 2026-11-17: designed in a session with the owner, nothing built. The ten liens filed the day before all have a saved scan, so they would print under this rule; until it is built the office prints those scans from Drive by hand.
+
+2026-11-25 (UTC): the managing session asked whether the build may start, its two waits having landed, and the answer was *Yes, start*. The two waits were the split of LienDesk.tsx and PR #8539, which merged on 2026-11-17 as v2.7635. Both picks were answered the same day. Nothing is built, and PR 1 is next.
