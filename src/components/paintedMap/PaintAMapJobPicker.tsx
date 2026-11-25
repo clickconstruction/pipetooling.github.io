@@ -27,7 +27,7 @@ import { PAINTED_MAP_SHEET_Z } from '../../lib/windowLayers'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
-import { paintedSheetFrame, usePaintedSheetDesk } from './paintedSheetFrame'
+import { paintedSheetFrame, usePaintedSheetBand, usePaintedSheetDesk } from './paintedSheetFrame'
 
 const SEARCH_DEBOUNCE_MS = 250
 
@@ -89,6 +89,8 @@ export function PaintAMapJobRow({ row, onPick }: { row: PickerRow; onPick: (job:
 export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null, onPick, onClose, onLater, lists: given = null, io = realIo }: Props) {
   const isTopmost = useModalStackEntry()
   const desk = usePaintedSheetDesk()
+  // A phone's scrim fills what shows: above Safari's bar, and above the keyboard.
+  const shows = usePaintedSheetBand()
   const [lists, setLists] = useState<PickerLists | null>(given)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [reading, setReading] = useState(!given)
@@ -191,7 +193,7 @@ export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null,
   const last = (sections?.last ?? []).filter((r) => !nearIds.has(r.job.id))
   /** A search is typed: what it found takes the lists' place, under the box. */
   const typed = q.trim().length >= 2
-  const frame = paintedSheetFrame(desk)
+  const frame = paintedSheetFrame(desk, shows)
   const head = mode === 'move' ? W.moveHead : mode === 'change' ? W.changeHead : W.head
   const lead = mode === 'move' ? W.moveLead : mode === 'change' ? W.changeLead : W.lead
 

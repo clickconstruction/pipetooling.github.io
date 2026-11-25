@@ -14,8 +14,8 @@ summary: >
   Messages with the link written. A map that takes seven presses and two bouts of typing today
   takes four.
 next: >
-  Mend the start sheet's height, so both of its presses stand above Safari's bar (S, the client alone). Give Dispatch Mode's home the Dashboard's top row, on the answer of 2026-11-25 (S, the client alone). Walk it on a real iPhone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band. The owner answers call 11, the two short pages. Then delete this card.
-size: L as a train of five (S · M · S · L · S), all built, with the changed jobs and Coming up after it (S with one index); left: the start sheet's height (S), the top row on Dispatch Mode's home (S), the walk on a real iPhone (XS) and call 11
+  The simulator looks at the start sheet once v2.8578 is live: it ends above Safari's bar and scrolls to both presses. Give Dispatch Mode's home the Dashboard's top row, on the answer of 2026-11-25 (S, the client alone). Walk it on a real iPhone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band. The owner answers call 11, the two short pages. Then delete this card.
+size: L as a train of five (S · M · S · L · S), all built, with the changed jobs and Coming up after it (S with one index); left: a look at the start sheet's mend (XS), the top row on Dispatch Mode's home (S), the walk on a real iPhone (XS) and call 11
 blocker: >
   A real iPhone in a hand, and the owner's answer to call 11.
 ver: v2.7859 · 7866 · 7868 · 7869 · 7915 · 7920 · 7933
@@ -382,7 +382,7 @@ sits, and that is not yet tried on a real phone.
    job, with a job the person may not paint on listed grey with its reason. *For* leads the start
    sheet with **Change the job**. *Leave it on no job* is gone from every door. **Move it to another
    job…** joins *Rename this map*, and **Put it on a job…** opens the same picker. **Draw it by hand**
-   and **Start with a place** are above the fold at 812: the sheet is 775 tall. That was measured in a desk browser. On an iPhone the foot sits under Safari's bar: see the walk of 2026-11-25.
+   and **Start with a place** are above the fold at 812: the sheet is 775 tall. That was measured in a desk browser, where the page box and what shows are the same. On an iPhone the foot sat under Safari's bar until v2.8578, which ends the sheet at the bar and lets it scroll: see the walk of 2026-11-25.
    One way onto no job is kept, and it is not in call 3: with no signal the lists cannot be read,
    and a person on site must still be able to paint. The picker then offers **Paint now and pick
    the job later**, and the map waits for **Put it on a job…**.
@@ -443,7 +443,7 @@ Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in 
 
 **Holds.** The press is on the Dashboard with no clock-in and nothing on the schedule, in a top row that fits the screen. One press opens the start sheet with a job set, the line that says why, and **Change the job**. The picker has the search, **Near me** and *Your last jobs*. **Near me** lists the nearest jobs first, each with its distance, and a job listed there is not said again below. **Draw it by hand** opens the picture at the job's address, and the screen says the map is saved on **Save the map** and not before. The **Saved** band has its one blue press. **Text it from my phone…** opened Messages in that one press with the words and the link written. **Throw this map away** asks first.
 
-**One fault found, read in the code the same day, not built: the start sheet's foot is under Safari's bar.** On a plain job **Start with a place** is cut, with only its top edge showing. On a job in a development, which adds a row of two chips, **Draw it by hand** sits at the fold and **Start with a place** is out of sight. The sheet is sized to the whole page box, which on an iPhone runs under Safari's bottom bar (`paintedSheetFrame.ts`), so a sheet shorter than that box has nothing to scroll. The plan's line that both presses are above the fold at 812 was measured in a desk browser, where the two are the same. The mend is the client alone, S, and the job picker shares the frame.
+**One fault found, read in the code the same day, mended in v2.8578 and not yet seen in the simulator: the start sheet's foot was under Safari's bar.** On a plain job **Start with a place** is cut, with only its top edge showing. On a job in a development, which adds a row of two chips, **Draw it by hand** sits at the fold and **Start with a place** is out of sight. The sheet is sized to the whole page box, which on an iPhone runs under Safari's bottom bar (`paintedSheetFrame.ts`), so a sheet shorter than that box has nothing to scroll. The plan's line that both presses are above the fold at 812 was measured in a desk browser, where the two are the same. The mend is the client alone, and the job picker shares the frame: on a phone the scrim is now the part of the page that shows, so the sheet ends at Safari's bar, and at the keyboard, and scrolls inside. The sheet itself is no shorter, so a plain job's last press may still take a short scroll.
 
 **Seen, and it is as built or the phone's own.** **Near me** asks twice the first time, Safari's own question and then the site's. The short orange bar at the top of the **Paint a map** square is the painted line's own mark, the same bar that marks a painted map in every list.
 
