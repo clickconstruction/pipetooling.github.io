@@ -7,9 +7,16 @@
  * edit. Rows the person fixes stay in the list for the session so they can
  * watch the pin land ("Placed ✓") instead of the row simply vanishing.
  *
+ * A row whose address no map service could place says why, the day it was checked and the day the
+ * app asks again by itself, and offers **Try again** (punch list #441). Those words are the Map
+ * page list's own, from `src/lib/map/unplacedMemory.ts`.
+ *
  * Pure module — no React, no Supabase.
  */
 import type { BidBoardMapBid, BidBoardMapPin } from './bidBoardMap'
+import type { GeocodeMissRow } from '../../../supabase/functions/_shared/geocodeMissMemory'
+import { mapGeocodeErrorMessage } from '../map/geocodeErrorMessage'
+import { missCheckedSentence, type TryAgainOutcome } from '../map/unplacedMemory'
 
 export type MissingAddressReason = 'no-address' | 'unplaced' | 'placed'
 
@@ -19,6 +26,8 @@ export interface MissingAddressRow {
   reason: MissingAddressReason
   /** For a bid that already has an address: is the geocoder still looking? */
   checking: boolean
+  /** The miss the app remembers for this bid's address (punch list #441); null when none was kept, and for a row that is not unplaced. */
+  miss: GeocodeMissRow | null
   /** The customer's / GC's address on file, when it differs from the bid's — a one-tap suggestion, never applied on its own. */
   customerAddress: string | null
 }
@@ -42,22 +51,24 @@ export function composeMissingAddressRows(input: {
   pins: readonly BidBoardMapPin[]
   resolving: boolean
   keepIds: ReadonlySet<string>
+  /** The misses that still stand, by address key (`useAddressGeocodeCoords`). */
+  misses?: ReadonlyMap<string, GeocodeMissRow>
 }): MissingAddressRow[] {
   const rows: MissingAddressRow[] = []
   const seen = new Set<string>()
   for (const b of input.noAddress) {
     seen.add(b.id)
-    rows.push({ bid: b, reason: 'no-address', checking: false, customerAddress: customerAddressHint(b) })
+    rows.push({ bid: b, reason: 'no-address', checking: false, miss: null, customerAddress: customerAddressHint(b) })
   }
   for (const b of input.unmapped) {
     if (seen.has(b.id)) continue
     seen.add(b.id)
-    rows.push({ bid: b, reason: 'unplaced', checking: input.resolving, customerAddress: customerAddressHint(b) })
+    rows.push({ bid: b, reason: 'unplaced', checking: input.resolving, miss: input.misses?.get(b.addressKey) ?? null, customerAddress: customerAddressHint(b) })
   }
   for (const p of input.pins) {
     if (!input.keepIds.has(p.id) || seen.has(p.id)) continue
     seen.add(p.id)
-    rows.push({ bid: p, reason: 'placed', checking: false, customerAddress: null })
+    rows.push({ bid: p, reason: 'placed', checking: false, miss: null, customerAddress: null })
   }
   return rows
 }
@@ -93,4 +104,25 @@ export function missingAddressStatus(row: MissingAddressRow): { text: string; to
     case 'placed':
       return { text: `Placed ✓${row.bid.distanceMiles != null ? ` · ${Math.round(row.bid.distanceMiles)} mi from the office` : ''}`, tone: 'ok' }
   }
+}
+
+/** What the app remembers about an address it could not place: the lines under the row's address box. */
+export type MissingAddressMemory = {
+  /** The map services' reason. '' when no miss was kept. */
+  reason: string
+  /** *Checked ⟪Nov 24⟫. The app asks again by itself on ⟪Dec 24⟫.*, each day marked as a value. '' when no day was kept. */
+  checked: string
+}
+
+/**
+ * The memory lines for a row, and whether the row offers **Try again** at all: null for a bid with no
+ * address, for one the map is still looking for, and for one that is placed. `tried` is what this
+ * row's last **Try again** found. A try that kept the miss again moves the day to the one the
+ * function answered with, and gives a row that had no reason its reason.
+ */
+export function missingAddressMemory(row: MissingAddressRow, nowIso: string, tried?: TryAgainOutcome | null): MissingAddressMemory | null {
+  if (row.reason !== 'unplaced' || row.checking) return null
+  const keptAgain = tried?.kind === 'missed' && tried.checkedAt ? tried : null
+  const reason = keptAgain ? keptAgain.reason : row.miss ? mapGeocodeErrorMessage(row.miss.error_code, row.miss.detail ?? undefined) : ''
+  return { reason, checked: missCheckedSentence(keptAgain?.checkedAt ?? row.miss?.checked_at, nowIso) }
 }

@@ -8,7 +8,7 @@
  */
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { val } from '../valuesInPlace'
-import { geocodeMissAsksAgainAt } from '../../../supabase/functions/_shared/geocodeMissMemory'
+import { geocodeMissAsksAgainAt, type GeocodeMissRow } from '../../../supabase/functions/_shared/geocodeMissMemory'
 import { mapGeocodeErrorMessage } from './geocodeErrorMessage'
 
 /** The Map page opens its list of records it cannot place when its address carries this. */
@@ -73,18 +73,40 @@ export function tryAgainOutcome(data: unknown, addressKey: string): TryAgainOutc
   return { kind: 'missed', reason, checkedAt: kept }
 }
 
+/**
+ * Where the address is fixed from the row that offers **Try again**: on the `record` the row opens, as
+ * on the Map page's list, or in the `box` the row itself carries, as on the Bid Board's sheet (#441).
+ */
+export type TryAgainFixIn = 'record' | 'box'
+
 /** The words under the row after a **Try again**. The row's own line carries the new day. */
-export function tryAgainWords(outcome: TryAgainOutcome): string {
+export function tryAgainWords(outcome: TryAgainOutcome, fixIn: TryAgainFixIn = 'record'): string {
   switch (outcome.kind) {
     case 'placed':
-      return 'Placed. The map is reloading with it.'
+      return fixIn === 'box' ? 'Placed. Its pin is on the map.' : 'Placed. The map is reloading with it.'
     case 'missed':
-      return outcome.checkedAt
-        ? 'Still no match. Open the record and fix the address to place it.'
-        : `Not placed. Nothing was kept, so the app asks again on the next open. ${outcome.reason}`
+      if (!outcome.checkedAt) return `Not placed. Nothing was kept, so the app asks again on the next open. ${outcome.reason}`
+      return fixIn === 'box' ? 'Still no match. Fix the address in the box and save to place it.' : 'Still no match. Open the record and fix the address to place it.'
     case 'failed':
       return `Could not ask the map services. ${outcome.reason}`
   }
+}
+
+/**
+ * The misses `geocode-address-batch` kept while it answered, as rows of the memory (punch list #441).
+ * A failure carries `checked_at` only when its miss was kept, or was remembered from before (v2.8484),
+ * so a screen that just asked can say the day without reading the table again.
+ */
+export function keptMissesInAnswer(data: unknown): GeocodeMissRow[] {
+  const answer = (data && typeof data === 'object' ? data : {}) as BatchAnswer
+  const failures = Array.isArray(answer.failures) ? answer.failures : []
+  const out: GeocodeMissRow[] = []
+  for (const f of failures) {
+    if (!f || typeof f.address_normalized !== 'string' || typeof f.error_code !== 'string') continue
+    if (typeof f.checked_at !== 'string' || !Number.isFinite(Date.parse(f.checked_at))) continue
+    out.push({ address_normalized: f.address_normalized, error_code: f.error_code, detail: typeof f.detail === 'string' ? f.detail : null, checked_at: f.checked_at })
+  }
+  return out
 }
 
 /** After the list's *Nothing waiting on an address.* when nothing is left to fix: what that good state means. */

@@ -2,14 +2,14 @@
 name: "The Bid Board's missing-address sheet says why, the day, and offers Try again"
 number: 441
 group: ready
-status: found 2026-11-24 while building #408, which gave the Map page's list these three and left this sheet as it was · filed the same day when #408 was retired
+status: built 2026-11-24 as v2.8539 on claude/bid-board-sheet-reason-8700fe · left: the live walk on a ZZ test bid, then this card is retired
 summary: >
   The Bid Board's *N bids have no map location yet* line opens a sheet of its own, where a missing
   address is typed in place (v2.3205). For a bid whose address no map service could place, the row
   says only that the map could not find it. The Map page's list says why, the day it was checked
   and when the app asks again, and has **Try again** (v2.8479). This card gives the Bid Board's
   sheet the same three, from the same kernel.
-next: Build it. Read the standing miss for each unplaced row and draw the Map page list's own lines under the row's address box.
+next: Walk it on the live site after the deploy, on a ZZ test bid alone, at a desk width and a phone width. Then delete this card.
 size: XS
 blocker: None.
 opinion: build when someone is next in the Bid Board's map, small — one bid is unplaced today, so few people meet it

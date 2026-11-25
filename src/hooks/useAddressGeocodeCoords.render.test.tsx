@@ -6,7 +6,7 @@
  * second, with the miss kept, asks nothing. Every address is made up.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, renderHook, waitFor } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { useAddressGeocodeCoords, type AddressToGeocode } from './useAddressGeocodeCoords'
 import { GEOCODE_MISS_STANDS_DAYS } from '../../supabase/functions/_shared/geocodeMissMemory'
 
@@ -103,6 +103,37 @@ describe('useAddressGeocodeCoords and the memory of a miss (punch list #408)', (
     const view = await open([PLACED])
     await waitFor(() => expect(view.result.current.coords.has(PLACED.key)).toBe(true))
     expect(db.reads).toEqual(['address_geocodes'])
+    expect(db.invoke).not.toHaveBeenCalled()
+  })
+})
+
+describe('useAddressGeocodeCoords hands back what it remembers (punch list #441)', () => {
+  it('a miss that stands comes back by its key, with nothing asked', async () => {
+    db.misses = [miss(daysAgo(4))]
+    const view = await open([WORDS])
+    await waitFor(() => expect(view.result.current.misses.get(WORDS.key)?.error_code).toBe('not_found'))
+    expect(view.result.current.misses.get(WORDS.key)?.checked_at).toBe(db.misses[0]!.checked_at)
+    expect(db.invoke).not.toHaveBeenCalled()
+  })
+
+  it('a miss the function kept while it answered comes back with its day, and one it did not keep does not', async () => {
+    const day = daysAgo(0)
+    db.invoke.mockResolvedValue({
+      data: { results: [], failures: [{ address_normalized: WORDS.key, error_code: 'not_found', checked_at: day }, { address_normalized: PLACED.key, error_code: 'google_over_query' }] },
+      error: null,
+    })
+    const view = await open([PLACED, WORDS])
+    await waitFor(() => expect(view.result.current.misses.get(WORDS.key)?.checked_at).toBe(day))
+    expect(view.result.current.misses.has(PLACED.key)).toBe(false)
+  })
+
+  it('reread picks up a point saved since, as after a Try again that placed the address', async () => {
+    db.misses = [miss(daysAgo(4))]
+    const view = await open([WORDS])
+    expect(view.result.current.coords.has(WORDS.key)).toBe(false)
+    db.points = [{ address_normalized: WORDS.key, lat: 30.1, lng: -97.9 }]
+    act(() => view.result.current.reread())
+    await waitFor(() => expect(view.result.current.coords.get(WORDS.key)).toEqual({ lat: 30.1, lng: -97.9 }))
     expect(db.invoke).not.toHaveBeenCalled()
   })
 })
