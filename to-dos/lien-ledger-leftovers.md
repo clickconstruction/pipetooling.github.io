@@ -16,7 +16,7 @@ summary: >
   Neither build has been seen live: walk 7 is the look at both, in one sitting. Walks 3, 5 and 6 were not staged and wait on live cases. The two
   ZZ Test filings the walks left are voided. The cents and the pinned strip were seen on the live desk on 2026-11-24 and read as built. The empty
   card's next press has no live case to be seen on.
-next: The owner says whether counsel's grid shows the day each § 53.056 notice went, written under *Found after the walks*, and the build follows a yes. Walk 7 can be read: both builds are deployed (v2.8541 and v2.8554, 2026-11-24). It is read in one sitting with the path's look. It needs a new record by hand on a ZZ Test job, since the first one is voided. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
+next: Counsel's grid reading the § 53.056 notices is built (v2.8594) on the owner's yes of 2026-11-25 and waits on the deploy of `legal-portal`, asked for by name. Then a look at the firm's grid by a walker. Walk 7 can be read: both builds are deployed (v2.8541 and v2.8554, 2026-11-24). It is read in one sitting with the path's look. It needs a new record by hand on a ZZ Test job, since the first one is voided. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
 size: four walks (XS each): 7 is ready to read on a ZZ Test job, 3, 5 and 6 wait on live cases
 blocker: None. Both builds are deployed, and one record by hand serves both looks.
 ---
@@ -256,12 +256,23 @@ created (v2.3747). The fallback was read first and it stands, so the words now n
 window closed long ago is not listed, which is how such a job can still show the card empty. The press shape lists
 nothing and is unchanged. Not seen live: no notice looked at has a job with no month.
 
-**Counsel's grid does not read the § 53.056 notices.** Found by the same docs pass on 2026-11-25, read in the code,
-not seen live, **not built**. The firm's portal reads a job's filings of two kinds, the affidavit and the release
-of record (`supabase/functions/legal-portal/index.ts`). The app's own book has read the recorded notices too since
-v2.7485 (`useLienTimelineBook.ts`). So a notice kept by hand and every recorded notice is missing from what counsel
-sees. It changes what an outside firm reads, so it waits on the owner's answer. The build is an edge function, S,
-with one deploy on its own yes. The function is near the upload limit, so the bundle check runs before its PR.
+**Counsel's grid does not read the § 53.056 notices.** Found by the same docs pass on 2026-11-25, read in the code.
+The firm's portal read a job's filings of two kinds, the affidavit and the release of record
+(`supabase/functions/legal-portal/index.ts`). The app's own book has read the recorded notices too since v2.7485
+(`useLienTimelineBook.ts`). So a notice kept by hand, which has no desk paper, was missing from what counsel sees
+once the months reader dropped its month.
+
+Asked of the owner on 2026-11-25, since it changes what an outside firm reads: *"counsel's grid shows the day each
+§ 53.056 notice went, as the app's own book does. It changes what an outside firm reads, and it owes a deploy of
+`legal-portal`, asked for by name later"*. The pick was yes. Asked whether every pick on that sheet stands, the
+answer was *Yes, all picks*.
+
+**Built, v2.8594, and not deployed.** The function's read takes the recorded notices too. Of a notice's sends the
+firm gets who each copy went to, how and on which day, and nothing else: no mail number, no name, no address. The
+page needed no change, since it folds the rows with the app's own book. A test builds the firm's book for a job
+whose month the reader has dropped: with the old read it holds no month, with the new one the month reads sent on
+the day its packet left. The yes was to build. The deploy of `legal-portal` is asked for by name, and until it is
+made the firm's grid reads as before. Not seen live.
 
 ## How to retire it
 
