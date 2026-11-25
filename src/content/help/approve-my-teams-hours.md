@@ -90,7 +90,7 @@ The owner or a dev sets the numbers at Settings → People & teams → *Bulk hou
 
 Office roles approve from more than the My Team card. Those roles are assistant, controller and leader. Every one of these places adds the hours to payroll the same way, through the same rule:
 
-- **People → Hours** has four places. The amber banner's {{button:amber|Review & approve}} covers the week on screen. The {{button:outline-amber|All weeks}} queue covers every week. The {{chip:yellow|+9.5 h pending}} chip sits on a grid cell. Its tooltip says *click to review*. It opens a small popover, and the Approve button is in there. The per-session {{button:green|Approve}} sits in the Clock sessions list. While people are still clocked in, the day's column header adds a green **+3 on the clock** line. Each of those people has a green box on that day, described under [A green box on the grid](#a-green-box-on-the-grid).
+- **People → Hours** has four places. The amber banner's {{button:amber|Review & approve}} covers the week on screen. The {{button:outline-amber|All weeks}} queue covers every week. The {{chip:yellow|+9.5 h pending}} chip sits on a grid cell. The chip's tooltip says *click to review*. The chip opens a small popover, and the Approve button is in there. The per-session {{button:green|Approve}} sits in the Clock sessions list. While people are still clocked in, the day's column header adds a green **+3 on the clock** line. Each of those people has a green box on that day, described under [A green box on the grid](#a-green-box-on-the-grid).
 - **The clock strip** is on the Dashboard, People → Hours, and Quickfill → People Hours. Use the small square pill beside a finished session. A short click asks first. It reads *"Approve Paige's session (7:12 AM – 3:40 PM)? This adds the hours to payroll."*. So a slip on the tiny pill never writes silently. Long-press still opens **Session actions** for Approve, Reject, Edit. Shift+click does the same.
 - **People → Users**: the hours cell on a person's row opens their all-weeks queue.
 - **Moneyfill → Sessions pending approval** shows the same Sunday to Saturday pay week Draft Payroll opens to.
@@ -102,7 +102,7 @@ Office roles approve from more than the My Team card. Those roles are assistant,
 
 ## A green box on the grid
 
-On **People → Hours**, a person who is still clocked in has a green box on that day. The box is a press. It is not a field, so you cannot type hours under a session that is still running.
+On **People → Hours**, a person who is still clocked in has a green box on that day. The box is a press. The box is not a field, so you cannot type hours under a session that is still running.
 
 :::example Wed 11/25, three people on the clock
 {{chip:green|7:38 on the clock}} Avery clocked in at 7:02 AM and has nothing else saved today.
@@ -112,14 +112,14 @@ On **People → Hours**, a person who is still clocked in has a green box on tha
 {{chip:yellow|left open since 7:30 AM}} Devon never clocked out yesterday.
 :::
 
-- **The time** is the whole day so far, to the minute. It counts the sessions already closed that day and the one still running. It moves on by itself while the page is open.
-- **A press** opens that person's **My Time** for the day. That is the same card they see on their own Dashboard. Opening it changes nothing.
+- **The time** is the whole day so far, to the minute. The time counts the sessions already closed that day and the one still running. The time moves on by itself while the page is open.
+- **A press** opens that person's **My Time** for the day. My Time is the same card the person sees on their own Dashboard. Opening My Time changes nothing.
 - **In My Time** you can put the session on a job, adjust its times, or use **Force clock out**. Each of those opens its own window and asks before it saves.
 - **The totals** count the running time. A row total with running time in it is green and names the running part under it. A total with no running time stays black and shows its seconds.
 - **A salaried person** keeps the day's set hours in grey. The box still turns green and says *on the clock*.
-- **An amber box that says left open** is a session nobody clocked out of on an earlier day. It adds no time. Press it and use **Force clock out** in My Time.
+- **An amber box that says left open** is a session nobody clocked out of on an earlier day. The amber box adds no time. Press the amber box and use **Force clock out** in My Time.
 
-When the person clocks out, the box turns back into an ordinary one within a few seconds. Their session then waits for approval like any other.
+When the person clocks out, the box turns back into an ordinary one within a few seconds. The session then waits for approval like any other.
 
 ## Everything else
 
