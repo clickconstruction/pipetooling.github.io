@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-export type JobFormFocusField = 'status' | 'pct'
+export type JobFormFocusField = 'status' | 'pct' | 'address'
 
 /**
  * The Job form's highlight and focus doors (the Job form map's second pass, cut 5; out of `JobFormModal`): the
@@ -12,7 +12,7 @@ export type JobFormFocusField = 'status' | 'pct'
  * - **Billing customer**: scrolls to the customer block; clears once the job has a customer.
  * - **Line items**: scrolls to ① Line Items; fades after 2.5 s.
  * - **Payments received** (v2.3795): waits for the block to have a size, scrolls it to the middle, fades 4 s later.
- * - **Status or % done** (v2.3819, the GC run's chips): the same wait, fading 4.5 s later.
+ * - **Status, % done or the address box** (v2.3819, the GC run's chips; punch list #439): the same wait, fading 4.5 s later.
  * - **Customer Pictures link**: scrolls to the box, focuses and selects it; fades after 2.5 s.
  */
 export function useJobFormHighlights({ customerId, focusFieldInitial }: { customerId: string | null; focusFieldInitial: JobFormFocusField | null }) {

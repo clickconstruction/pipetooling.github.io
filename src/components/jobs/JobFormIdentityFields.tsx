@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import type { CSSProperties, RefObject } from 'react'
+import type { CSSProperties, Ref, RefObject } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 import JobFormAddressNudge from './JobFormAddressNudge'
 import JobFormAddressOnFile from './JobFormAddressOnFile'
@@ -77,6 +77,10 @@ type JobFormIdentityFieldsProps = {
   setJobAddress: (v: string) => void
   /** The job being edited, so it is not counted among the jobs already at its own address (punch list #439). Absent on a new job. */
   editingJobId?: string | null
+  /** The form was opened on the address box (punch list #439: an address with no street number): the ring's element. */
+  addressFocusRef?: Ref<HTMLDivElement>
+  /** Ring the address box for a moment. It is never focused by the form: a focus reads the lists, and a blur may ask the map. */
+  addressFocusFlash?: boolean
   formServiceTypeId: string
   setFormServiceTypeId: (v: string) => void
   /** Shell's `jobFormServiceTypeSelectOptions` memo (role-filtered + current type injected in edit mode). */
@@ -118,6 +122,8 @@ export function JobFormIdentityFields({
   jobAddress,
   setJobAddress,
   editingJobId = null,
+  addressFocusRef,
+  addressFocusFlash = false,
   formServiceTypeId,
   setFormServiceTypeId,
   serviceTypeOptions,
@@ -330,7 +336,11 @@ export function JobFormIdentityFields({
         </div>
       ) : null}
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
+        <div
+          ref={addressFocusRef}
+          data-job-form-focus={addressFocusFlash ? 'address' : undefined}
+          style={{ flex: 1, minWidth: 200, ...(addressFocusFlash ? { borderRadius: 8, background: 'var(--bg-blue-tint)', outline: '2px solid #93c5fd', outlineOffset: 4 } : {}) }}
+        >
           <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Address <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
           <div style={{ ...JOB_FIELD_CLIPBOARD_WRAPPER_STYLE, position: 'relative' }}>
             <input

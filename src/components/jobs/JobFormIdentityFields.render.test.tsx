@@ -111,6 +111,38 @@ describe('JobFormIdentityFields address autocomplete', () => {
   })
 })
 
+describe('JobFormIdentityFields address ring (punch list #439)', () => {
+  it('rings the address box when the form is opened on it, and never focuses it', () => {
+    render(
+      <JobFormIdentityFields
+        hcpNumber=""
+        setHcpNumber={() => {}}
+        clickNumber="1031"
+        setClickNumber={() => {}}
+        jobName="Quarry Trail Shop"
+        setJobName={() => {}}
+        jobAddress="Old Quarry Trail, Sampleton, TX"
+        setJobAddress={() => {}}
+        addressFocusFlash
+        formServiceTypeId=""
+        setFormServiceTypeId={() => {}}
+        serviceTypeOptions={[{ id: 'p', name: 'Plumbing' }]}
+        tradePill={null}
+        onTradePillClick={() => {}}
+      />,
+    )
+    const ring = document.querySelector('[data-job-form-focus="address"]') as HTMLElement
+    expect(ring.querySelector('input[role="combobox"]')).toBeTruthy()
+    expect(ring.style.outline).toContain('2px solid')
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it('draws no ring otherwise', () => {
+    render(<Harness />)
+    expect(document.querySelector('[data-job-form-focus="address"]')).toBeNull()
+  })
+})
+
 describe('JobFormIdentityFields kind control (punch list #238)', () => {
   function KindHarness({ onPress, read, busy }: { onPress: (k: 'service' | 'project') => void; read: ReturnType<typeof jobKind>; busy?: boolean }) {
     return (

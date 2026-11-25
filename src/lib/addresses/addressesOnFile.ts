@@ -16,6 +16,9 @@ import { val } from '../valuesInPlace'
 /** A job or a bid as the list reads it. `id` is unique within its kind. */
 export type AddressRow = { kind: 'job' | 'bid'; id: string; address: string | null; developmentId: string | null; /** `J1340` or `B214`, for a list that names what is at an address. */ label?: string | null }
 
+/** One job or bid at an address, as written on it: what a press that opens it or rewrites it needs. */
+export type AddressThing = { kind: 'job' | 'bid'; id: string; label: string | null; address: string }
+
 /** One address the company already has, under its cleaned key. */
 export type AddressOnFile = {
   /** The cleaned form: two addresses with the same key are the same address. */
@@ -26,6 +29,8 @@ export type AddressOnFile = {
   spellings: string[]
   /** What is here, by its label (`J1340`, `B214`), in the order read. */
   labels: string[]
+  /** Every job and bid here, in the order read, each with the address as it writes it. */
+  things: AddressThing[]
   jobs: number
   bids: number
   /** The development, when every job and bid here that has one has the same one. */
@@ -49,7 +54,7 @@ export function addressesOnFile(
   developmentNames: ReadonlyMap<string, string>,
   except?: { kind: 'job' | 'bid'; id: string } | null,
 ): AddressOnFile[] {
-  type Bucket = { key: string; spellings: Map<string, number>; order: string[]; jobs: number; bids: number; developments: Set<string>; labels: string[] }
+  type Bucket = { key: string; spellings: Map<string, number>; order: string[]; jobs: number; bids: number; developments: Set<string>; labels: string[]; things: AddressThing[] }
   const buckets = new Map<string, Bucket>()
   for (const row of rows) {
     if (except && row.kind === except.kind && row.id === except.id) continue
@@ -58,7 +63,7 @@ export function addressesOnFile(
     if (!key) continue
     let b = buckets.get(key)
     if (!b) {
-      b = { key, spellings: new Map(), order: [], jobs: 0, bids: 0, developments: new Set(), labels: [] }
+      b = { key, spellings: new Map(), order: [], jobs: 0, bids: 0, developments: new Set(), labels: [], things: [] }
       buckets.set(key, b)
     }
     if (!b.spellings.has(address)) b.order.push(address)
@@ -67,13 +72,14 @@ export function addressesOnFile(
     else b.bids += 1
     if (row.developmentId) b.developments.add(row.developmentId)
     if (row.label) b.labels.push(row.label)
+    b.things.push({ kind: row.kind, id: row.id, label: row.label ?? null, address })
   }
   const out: AddressOnFile[] = []
   for (const b of buckets.values()) {
     let address = b.order[0] ?? ''
     for (const spelling of b.order) if ((b.spellings.get(spelling) ?? 0) > (b.spellings.get(address) ?? 0)) address = spelling
     const only = b.developments.size === 1 ? [...b.developments][0] : undefined
-    out.push({ key: b.key, address, spellings: [...b.order], labels: b.labels, jobs: b.jobs, bids: b.bids, developmentName: (only && developmentNames.get(only)) || null })
+    out.push({ key: b.key, address, spellings: [...b.order], labels: b.labels, things: b.things, jobs: b.jobs, bids: b.bids, developmentName: (only && developmentNames.get(only)) || null })
   }
   return out
 }
