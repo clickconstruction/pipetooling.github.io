@@ -2,7 +2,7 @@
 name: "Intro to HVAC: built and on for everyone; the licensed read, the learner walks and one redeploy are left"
 number: 419
 group: close
-status: built and live 2026-11-21 in six PRs (v2.8158, v2.8163, v2.8168, v2.8169, v2.8209, v2.8239); On in Settings → Training since 2026-11-22 01:43Z on Taunya's word, offered to every role and required of nobody · left: a licensed HVAC reader's read and the walks below · read live 2026-11-24 in dark at 1280, 768 and 390 px: all thirty lessons and their 47 drawings hold · read in light 2026-11-25 at 1280, 768 and 390 px: the same holds, and the two labels in lesson 18's drawing that were too pale on their shapes are darker in v2.8569, not yet read on a screen
+status: built and live 2026-11-21 in six PRs (v2.8158, v2.8163, v2.8168, v2.8169, v2.8209, v2.8239); On in Settings → Training since 2026-11-22 01:43Z on Taunya's word, offered to every role and required of nobody · left: a licensed HVAC reader's read and the walks below · read live 2026-11-24 in dark at 1280, 768 and 390 px: all thirty lessons and their 47 drawings hold · read in light 2026-11-25 at 1280, 768 and 390 px: the same holds, and the two labels in lesson 18's drawing that were too pale on their shapes are darker in v2.8569, read on the live site the same day: 6.19 to 1 in light at 768 and 390 px, and 9.5 and 6.82 to 1 in dark
 summary: >
   The fourth training course, thirty five-minute lessons on how a house is cooled and heated,
   where the heat, the air and the water go, for the people who work on it or beside it. HVAC is
@@ -10,7 +10,7 @@ summary: >
   names the carded technician. Taunya asked for it on 2026-11-20 and said to build it whole
   with no card. This card opened on 2026-11-22 at her ask to record what is left to walk.
 next: >
-  Read lesson 18's drawing once more in light and in dark: its two pale labels are darker in v2.8569.
+  Lesson 18's two labels were read again on 2026-11-25, in light and in dark, and both hold.
   The read-only walks are done in dark and in light at 1280, 768 and 390 px, below. Still owed: a person's read of each
   question's words, the final check read live, each role's Dashboard card, a real phone, and the
   licensed reader. The learner walk on a test account is done, below.

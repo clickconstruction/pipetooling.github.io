@@ -2,14 +2,14 @@
 name: "The Bid Board's missing-address sheet says why, the day, and offers Try again"
 number: 441
 group: ready
-status: built 2026-11-24 as v2.8539 · walked live 2026-11-25 on a ZZ Test bid at 1280 and 375 px, and it holds · answered 2026-11-25 (UTC) in the managing session: Try again stays on every unplaced row, as built · the two small mends the walk asked for are built in v2.8576 · left: a look at them, then the card's delete
+status: built 2026-11-24 as v2.8539 · walked live 2026-11-25 on a ZZ Test bid at 1280 and 375 px, and it holds · answered 2026-11-25 (UTC) in the managing session: Try again stays on every unplaced row, as built · the two small mends the walk asked for are built in v2.8576 · looked at on the live site 2026-11-25 and both hold: the reason is one plain sentence with no code, on the sheet and on the Map's list, and the four presses stand 44 px at 375 px · left: the card's delete, on the owner's word
 summary: >
   The Bid Board's *N bids have no map location yet* line opens a sheet of its own, where a missing
   address is typed in place (v2.3205). For a bid whose address no map service could place, the row
   says only that the map could not find it. The Map page's list says why, the day it was checked
   and when the app asks again, and has **Try again** (v2.8479). This card gives the Bid Board's
   sheet the same three, from the same kernel.
-next: A read-only look once v2.8576 is live: the row's reason is a plain sentence with no error code, on the sheet and on the Map page's list, and the four small presses measure 44 px at 375 px. Then delete this card.
+next: Every look is made and holds. Delete this card on the owner's word.
 size: XS, built, with its two mends; left: one look (XS)
 blocker: None.
 opinion: build when someone is next in the Bid Board's map, small — one bid is unplaced today, so few people meet it
