@@ -2,16 +2,15 @@
 name: "My Bids and Recent Reports on the Dashboard: one swipe to put a row away"
 number: 426
 group: ready
-status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · the walk's two small presses and the frame's lost page mended in v2.8464, the bid window's own small presses in v2.8496 · Recent Reports' swipe walked on clicktooling.com as a sample account 2026-11-24, and it held · a real phone and a hide on a second device not walked
+status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · the walk's two small presses and the frame's lost page mended in v2.8464, the bid window's own small presses in v2.8496 · Recent Reports' swipe walked on clicktooling.com as a sample account 2026-11-24, and it held · tried on a real iPhone 2026-11-25 by the person who runs the session, and the swipe held · that try asked for two more things, a sign that a row can be swiped and a swipe back for a put-away row, neither drawn yet · a hide on a second device not walked
 summary: >
   The owner wants the eye icon on each My Bids row replaced by a swipe and the bids grouped by state.
   He wants Recent Reports' heading back on one row, its presses moved to the foot, and the same swipe
   to mark a report opened, so a person can clear work off a list. The plan is one swipe for both
   cards: left, a strip that names the act, Undo, and a folded group at the foot that holds what was
   put away. The reading also found things neither ask named, listed below for each card.
-next: The owner tries the swipe on his phone. Then retire the card.
-ask: owner · look · Try the swipe on My Bids, on your phone.
-size: L as a train of six (S · M · M · M · S · S); left: the owner's try
+next: Draw the sign that a row can be swiped and the swipe back in a mock-up, two or three ways each. Build after the pick, then retire the card.
+size: L as a train of six (S · M · M · M · S · S); left: a mock-up, then the sign and the swipe back as two PRs (S · S)
 blocker: None.
 opinion: build — the owner said go on every recommendation
 ---
@@ -27,7 +26,8 @@ the shared swipe on My Bids, is the fourth. Step 5, the swipe on Recent Reports,
 PRs: the migration, #9494, merged and pushed on 2026-11-23, and the client that reads and writes it, #9495.
 All six are merged and live. My Bids was walked on clicktooling.com on 2026-11-24, in the lens frame, and what
 was seen is under *The walk in the lens frame* below. Recent Reports' swipe was walked the same day as a sample
-account, under *Recent Reports, walked as a sample account*. The swipe has not been tried on a real phone.
+account, under *Recent Reports, walked as a sample account*. The swipe was tried on a real phone on 2026-11-25
+and held, under *The try on a real phone*. That try asked for two more things, and they are what is left.
 
 The mock-up is [`mockup.html`](mockup.html). For each card it draws the card as it is beside the card as
 planned at 430 px and at 320 px, the swipe in three frames, and the desk. Two frames work under a finger or
@@ -169,7 +169,7 @@ missing on the Dashboard: `my_customer_words` and `my_week`. On the pass that al
 
 - **Recent Reports.** The frame's Recent Reports is empty, so its swipe, **Opened** and **Mark unread** were not
   walked in the frame. They were walked later the same day as a sample account, in the next section.
-- **A real phone.** A thumb, a real scroll that drifts and the phone's own Back swipe are still the owner's try.
+- **A real phone.** Not in this walk. It was tried on 2026-11-25, under *The try on a real phone* below.
 - **Hidden on a second device.** The frame keeps nothing between two windows, so step 6 was not walked. A sample
   account cannot walk it either: in View as the card keeps a hide in the browser and sends nothing, by design
   (`isImpersonationSessionActive` in `DashboardMyBidsSection.tsx`). It takes a sign-in that is not View as. The card
@@ -224,6 +224,58 @@ real phone.
 
 **What the walk left on prod.** Three View as records. The deleted report, in Recently deleted. One
 `field_presses` row for the filing, the Sample assistant's. Nothing else.
+
+### The try on a real phone, 2026-11-25
+
+The person who runs the session tried the swipe on their own iPhone at about 21:17 UTC and sent two
+screenshots. The bid they hid was a `ZZ Test` bid. The screenshots show other bids
+and reports by name, so they are not in the repo.
+
+**What the screenshots show.**
+
+- **The swipe.** A bid in **Unsent** was pulled left. A grey strip under it read **Hide**. The picture was
+  taken short of the mark, so the strip had not turned blue.
+- **After letting go.** A green toast at the foot read *Hidden:* and the bid's name, with **Undo** and a ×.
+  The count in the card's title dropped by one, and so did **Unsent**'s.
+- **Hidden.** A **Hidden** group stood at the foot of the card with 1, open, under the line *You hid these.
+  Show again puts one back.* It drew the bid with its state, *Unsent*, and **Show again**.
+- **The foot.** *Swipe a bid left to hide it.* with **Bid Board ›** beside it.
+
+So the try held: the swipe hid a bid, the toast offered **Undo**, and **Hidden** kept the bid with
+**Show again**.
+
+**Two things the pictures show that the walks did not.**
+
+1. **A long name breaks inside a word in Hidden.** **Show again** takes 100 px of the box, and the name beside
+   it wrapped in the middle of its date. The same name stands on one line in **Unsent**, where the box has no
+   press.
+2. **A pulled row loses the start of its name.** The row slides off the card's left edge, so the first word or
+   two of the name are cut while the strip shows. That is how the swipe was planned, and it is what any hint
+   that slides a row would show too.
+
+**Their words, the same day.**
+
+> There is a swipe function on my bids that I was able to test. There is a card associated with this in the
+> punch list. We can close that card, but I think we need to make it clear to our user that they have the
+> option to swipe on my bids. Maybe we should make it reactive in some way so a user knows that when they
+> scroll down to my bids, they can swipe to hide? As well, when looking at a hidden bid, I would like a swipe
+> to put back from the other direction. Can we mock this up and then add it after you're sure this is the best
+> we can do?
+
+**What is left.** The card can close, in their words, and the same words ask for two more things on this
+surface. A finding counts against the card that surfaced it, so the card stays open for both.
+
+1. **A sign that a row can be swiped.** Today the only sign is the foot line, under the whole list. They ask
+   for something that shows when a person scrolls down to My Bids. Recent Reports has the same swipe and the
+   same foot line, so the sign must serve both cards.
+2. **A swipe back.** A row in **Hidden** has only **Show again**. They ask for a swipe from the other
+   direction to put a bid back. Recent Reports' **Opened** rows have only **Mark unread**, and take the same
+   answer. A right swipe that starts at the screen's left edge is the phone's own Back, which the plan under
+   *The swipe, stated once* kept clear of by going left only. The mock-up has to say where a right swipe may
+   start.
+
+Both are drawn first, two or three ways each beside the screen as it is, and built after the pick. Nothing
+of either is built.
 
 ## The asks
 
