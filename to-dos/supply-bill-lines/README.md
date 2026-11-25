@@ -1,8 +1,8 @@
 ---
 name: "Every supply house bill's lines as rows: what we buy, how often, at what price"
 number: 298
-group: gated
-status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · PR 1 (v2.6817) and PR 1b (v2.6819) on main 2026-11-09 · step 0 done 2026-11-10 (the bills' folder shared with the app's account as a viewer) · PR 2 (v2.6882) on main, its migration pushed and `bill-lines-sweep` deployed 2026-11-10 · the backfill ran the same evening: lines read on 469 of 539 bills, 433 of them adding up, 51 held, 19 with no PDF · the measure is on the card (*The measure*, below) · the suffix match (v2.6897, the owner's yes) merged and deployed the same night, and the 23 bills it was for took their papers: lines read on 492 of 539 bills, 28 held · PR 1c (v2.7103) live 2026-11-13: the four check rules and a fifth the measure found again, its migration pushed and the sweep's functions deployed; the sweep checked the 44 off bills again on prod and turned 23 green, so 475 of 496 bills read add up and 21 wait for a person, as the read-only measure said · PR 3 (v2.7110) live 2026-11-13: one line under Accounts payable and the window *Bill lines*, every waiting bill by reason with its door · PR 4a (v2.7114) live 2026-11-13: Materials → What we buy, on the house's code, checked to the dollar against a hand sum · PR 4b (v2.7116) live 2026-11-13: Price over time, a row's purchases as points with the book's price beside them · PR 4c (v2.7118) live 2026-11-13: What to stock, ranked by trips, with the two limits on the page · PR 2a (v2.7121) live 2026-11-13: Codes with no part on the Parts Book, by dollars, with the book's offers and the four presses · left: the price offered from a bill (2b), the estimator's read of the views (call 7), then stage 5's joins
+group: ready
+status: asked 2026-11-09 · researched in the code and in prod the same day · the owner said build it, so the mock-up was drawn the same day as nine frames A to I · a measurement run on real bills the same evening answered the Drive question and reshaped the reader's checks and the order of the PRs · the owner approved the frames and the two gating calls stand on their defaults · PR 1 (v2.6817) and PR 1b (v2.6819) on main 2026-11-09 · step 0 done 2026-11-10 (the bills' folder shared with the app's account as a viewer) · PR 2 (v2.6882) on main, its migration pushed and `bill-lines-sweep` deployed 2026-11-10 · the backfill ran the same evening: lines read on 469 of 539 bills, 433 of them adding up, 51 held, 19 with no PDF · the measure is on the card (*The measure*, below) · the suffix match (v2.6897, the owner's yes) merged and deployed the same night, and the 23 bills it was for took their papers: lines read on 492 of 539 bills, 28 held · PR 1c (v2.7103) live 2026-11-13: the four check rules and a fifth the measure found again, its migration pushed and the sweep's functions deployed; the sweep checked the 44 off bills again on prod and turned 23 green, so 475 of 496 bills read add up and 21 wait for a person, as the read-only measure said · PR 3 (v2.7110) live 2026-11-13: one line under Accounts payable and the window *Bill lines*, every waiting bill by reason with its door · PR 4a (v2.7114) live 2026-11-13: Materials → What we buy, on the house's code, checked to the dollar against a hand sum · PR 4b (v2.7116) live 2026-11-13: Price over time, a row's purchases as points with the book's price beside them · PR 4c (v2.7118) live 2026-11-13: What to stock, ranked by trips, with the two limits on the page · PR 2a (v2.7121) live 2026-11-13: Codes with no part on the Parts Book, by dollars, with the book's offers and the four presses · left: the price offered from a bill (2b), the estimator's read of the views (call 7), then stage 5's joins · call 7 answered 2026-11-25 (UTC) in the managing session: estimators too, which overturns the office-only default as built; not built
 mockup: to-dos/supply-bill-lines/mockup.html
 summary: >
   A supply house bill is recorded with its total, its job and a link to its PDF. The lines on the
@@ -14,7 +14,7 @@ summary: >
   backfill reads the 539 bills on file, about 520 of which link a PDF. Three views follow: what we
   buy by month, price over time, and what to stock. Deliveries on a job and the order log join in
   later stages.
-next: someone who keeps the Parts Book presses *Match 105 offered codes* and works the first forty rows of *Codes with no part*, about a third of the dollars. Then PR 2b, the price offered from a bill, which the card holds to an offer for its first month. The owner's two open calls are in *The calls the measure raises*.
+next: The estimator's read of What we buy (S to M), which widens the bill lines' read policy to an estimator with a migration and shows the tab. Beside it, someone who keeps the Parts Book presses *Match 105 offered codes* and works the first forty rows of *Codes with no part*, about a third of the dollars. Then PR 2b, the price offered from a bill, which the card holds to an offer for its first month. The owner's two open calls are in *The calls the measure raises*.
 ask: office · use · Press Match 105 offered codes, then work the first forty rows of Codes with no part.
 size: XL as a train of about nine (PR 1 M · PR 2 M · then measure · 1b M · 2a M · 2b S · 4a M · 4b M · 4c S), the parsers optional and the joins of stage 5 apart
 blocker: None. The sweep runs every ten minutes and reads a new bill within minutes of Save.
@@ -472,6 +472,11 @@ Later:
 6. **Freight, fuel and fees.** *Default:* counted as spend under *Charges*, never as a part.
 7. **Who sees the views.** *Default:* the owner, a dev, the office roles and an estimator. No field
    role.
+   **Answered 2026-11-25 (UTC) in the managing session:** should an estimator see What we buy, *Estimators too*.
+   It is quoted from that session's record of the user's answers.
+   It overturns the office-only default as built, and it widens who reads the bill lines.
+   Not built: see *PR 4a* under *Where it stands*.
+   The question named What we buy, and Price over time and What to stock read the same bill lines.
 8. **Ship tickets, quotes and acknowledgements.** *Default:* bills and credits only through stage
    4. The other papers are read in stage 5.
 9. **Ask the houses for a file of lines.** *Default:* not now. Ask the house with the most bills
@@ -704,7 +709,7 @@ roles. A row is a part, or a house and its code where no part is matched; the fi
 months; the sort is spend, quantity or how often. Its live check: the page's parts, charges, bill count and top
 three rows equalled a hand sum from the tables. Two of the card's calls are open on it. **Call 7 is half built**:
 the office sees the page and an estimator does not, because the papers' read policy is the office's and widening it
-opens accounts payable's lines to estimators. **The service type filter waits for the matching list**, since no
+opens accounts payable's lines to estimators. Call 7 was answered on 2026-11-25, *Estimators too*, so that widening is now the piece to build: the read policy on the papers and their lines, the tab for an estimator, and `docs/ACCESS_CONTROL.md`. Its size, S to M, is this note's estimate. **The service type filter waits for the matching list**, since no
 bill line has a part yet.
 
 **PR 3 (v2.7110) is live** (2026-11-13): Materials → Supply houses has one line under Accounts payable that says
