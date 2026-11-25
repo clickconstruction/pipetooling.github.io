@@ -635,6 +635,30 @@ describe('BillsSentLedger', () => {
     expect((screen.getByRole('button', { name: 'Record how it went' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
+  it('stands every press of the list a thumb tall on a phone: the chips, Edit list, the arrows and the word presses', async () => {
+    io.phone = true
+    io.ways = officeList()
+    io.data = { ...data([copy({})]), unsent: [{ billId: GAP_BILL, jobId: JOB, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }] }
+    renderWithProviders(<BillsSentLedger />)
+    // On a phone the box is one folded line until it is pressed.
+    fireEvent.click(await screen.findByTestId('bills-sent-gaps-fold'))
+    await screen.findByTestId('bills-sent-gap')
+    fireEvent.click(screen.getByRole('button', { name: 'Say how it went…' }))
+    await screen.findByRole('button', { name: '＋ Add a way' })
+    const picker = screen.getByRole('group', { name: 'How the bill went' })
+    const tall = (el: HTMLElement) => el.style.minHeight || el.style.height
+    // The chips, ＋ Add a way and Edit list: none is under 44 px.
+    expect(within(picker).getAllByRole('button').map(tall)).toEqual(within(picker).getAllByRole('button').map(() => '44px'))
+    fireEvent.click(within(picker).getByRole('button', { name: 'Edit list' }))
+    const win = await screen.findByTestId('bill-hand-ways-window')
+    for (const name of ['Rename Handed over', 'Take Handed over off the list', 'Move Handed over up', 'Move Handed over down']) {
+      expect(tall(within(win).getByRole('button', { name }))).toBe('44px')
+    }
+    // A short word press is a thumb wide too.
+    expect(within(win).getByRole('button', { name: 'Rename Handed over' }).style.minWidth).toBe('44px')
+    expect(within(win).getByRole('button', { name: 'Move Handed over up' }).style.width).toBe('44px')
+  })
+
   it('edits the list in its window: rename, move, take off, bring back, and the last way stays', async () => {
     io.ways = officeList()
     const picker = await openForm()
