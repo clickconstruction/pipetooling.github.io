@@ -284,7 +284,6 @@ export async function readBillsSent(opts: { limit: number }): Promise<BillsSentI
         .in('status', ['billed', 'paid'])
         .is('sent_to_customer_at', null)
         .eq('external_send_channel', 'stripe')
-        .or('stripe_mode.is.null,stripe_mode.neq.test')
         .order('billed_at', { ascending: false })
         .limit(cap),
     ),
@@ -299,7 +298,9 @@ export async function readBillsSent(opts: { limit: number }): Promise<BillsSentI
   )
   const unsent: BillsSentUnsent[] = unsentRows.flatMap((r) => {
     const bill = billOf(r)
-    return bill ? [{ billId: bill.id, jobId: bill.jobId, amount: bill.amount, status: bill.status, billedAtIso: text(r.billed_at) || text(r.created_at) }] : []
+    // A bill made in Stripe's test mode comes with the rest and carries its mode: the kernel leaves it out of the
+    // yellow box and every total, and a dev who shows ZZ test jobs reads it in the box of test bills (`isBillsTestRow`).
+    return bill ? [{ billId: bill.id, jobId: bill.jobId, amount: bill.amount, status: bill.status, billedAtIso: text(r.billed_at) || text(r.created_at), stripeMode: bill.stripeMode }] : []
   })
   const known: BillRow[] = [...stampRows, ...unsentRows].map(billOf).filter((b): b is BillRow => b != null)
 
