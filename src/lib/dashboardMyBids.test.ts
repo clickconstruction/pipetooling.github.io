@@ -15,6 +15,8 @@ import {
   MY_BID_STATE_WORDS,
   MY_BIDS_CUT_WORDS,
   MY_BIDS_HIDDEN_GLOSS,
+  myBidShownAgainWords,
+  myBidsHiddenGloss,
   MY_BIDS_DASHBOARD_ROW_LIMIT,
   MY_BIDS_NOT_LOST_FILTER,
   MY_BIDS_ON_THE_BOARD_FILTER,
@@ -479,7 +481,11 @@ describe('buildMyBidsCard', () => {
 
 describe('the card\'s own words', () => {
   it('are plain words', () => {
-    for (const words of [...Object.values(MY_BID_STATE_GLOSS), MY_BIDS_HIDDEN_GLOSS, MY_BIDS_CUT_WORDS]) expect(plainWordsFailures(words), words).toEqual([])
+    for (const words of [...Object.values(MY_BID_STATE_GLOSS), MY_BIDS_HIDDEN_GLOSS, myBidsHiddenGloss(true), MY_BIDS_CUT_WORDS]) expect(plainWordsFailures(words), words).toEqual([])
+    // The line names the way back the device has: the swipe in the hand, the press at a desk (v2.8603).
+    expect(myBidsHiddenGloss(true)).toBe('You hid these. Swipe one right to show it again.')
+    expect(myBidsHiddenGloss(false)).toBe(MY_BIDS_HIDDEN_GLOSS)
+    expect(myBidShownAgainWords('88 Quarry Rd Ste 100')).toBe('Shown again: 88 Quarry Rd Ste 100.')
     expect(myBidHiddenWords('88 Quarry Rd Ste 100')).toBe('Hidden: 88 Quarry Rd Ste 100.')
   })
 })

@@ -1,4 +1,5 @@
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { swipeBackHint } from './swipeAway'
 
 /**
  * Dashboard Recent Reports inbox kernel (v2.1469; one put-away state since punch list #426).
@@ -133,6 +134,19 @@ export function buildRecentReportsCard(
 /** The group at the card's foot that holds what was put away. */
 export const RECENT_REPORTS_OPENED_HEADING = 'Opened'
 export const RECENT_REPORTS_OPENED_GLOSS = 'You marked these opened. Mark unread puts one back.'
+
+/**
+ * The line under **Opened**'s heading. On a device held in the hand an opened report has no press: it
+ * comes back with a swipe to the right, so the line says the swipe (v2.8603). A desk keeps the press.
+ */
+export function recentReportsOpenedGloss(swipes: boolean): string {
+  return swipes ? `You marked these opened. ${swipeBackHint('mark it unread')}` : RECENT_REPORTS_OPENED_GLOSS
+}
+
+/** The toast after a report is marked unread from **Opened**, with Undo beside it (v2.8603). */
+export function markedUnreadWords(jobName: string): string {
+  return `Marked unread: ${jobName || 'report'}.`
+}
 
 /** Under the Opened group when it holds more than it draws. */
 export function recentReportsOpenedMoreWords(shown: number, total: number): string | null {

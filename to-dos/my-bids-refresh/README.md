@@ -2,16 +2,15 @@
 name: "My Bids and Recent Reports on the Dashboard: one swipe to put a row away"
 number: 426
 group: ready
-status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · the walk's two small presses and the frame's lost page mended in v2.8464, the bid window's own small presses in v2.8496 · Recent Reports' swipe walked on clicktooling.com as a sample account 2026-11-24, and it held · tried on a real iPhone 2026-11-25 by the person who runs the session, and the swipe held · that try asked for two more things, a sign that a row can be swiped and a swipe back for a put-away row, both drawn the same day in `swipe-sign-and-back.html` and waiting on the pick · a hide on a second device not walked
+status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · the walk's two small presses and the frame's lost page mended in v2.8464, the bid window's own small presses in v2.8496 · Recent Reports' swipe walked on clicktooling.com as a sample account 2026-11-24, and it held · tried on a real iPhone 2026-11-25 by the person who runs the session, and the swipe held · that try asked for two more things, a sign that a row can be swiped and a swipe back for a put-away row, both drawn the same day in `swipe-sign-and-back.html` · their pick the same day, *A and no press* · the swipe back built on both cards (v2.8603), not walked · the sign is next · a hide on a second device not walked
 summary: >
   The owner wants the eye icon on each My Bids row replaced by a swipe and the bids grouped by state.
   He wants Recent Reports' heading back on one row, its presses moved to the foot, and the same swipe
   to mark a report opened, so a person can clear work off a list. The plan is one swipe for both
   cards: left, a strip that names the act, Undo, and a folded group at the foot that holds what was
   put away. The reading also found things neither ask named, listed below for each card.
-next: The pick from the mock-up. Then the swipe back on each card and the sign as three small PRs, a walk in the simulator, and retire the card.
-ask: owner · decide · Pick how a row shows it swipes, and whether a put-away row keeps its press on a phone, from the mock-up.
-size: L as a train of six (S · M · M · M · S · S); left: the swipe back on each card and the sign as three PRs (S · S · S)
+next: The sign, way A, as the next PR. Then a walk of the swipe back and the sign in the simulator, and retire the card.
+size: L as a train of six (S · M · M · M · S · S); left: the sign (S) and the simulator's walk
 blocker: None.
 opinion: build — the owner said go on every recommendation
 ---
@@ -375,8 +374,18 @@ and 1400 in 1400. No error was logged. A mock-up is not the app, so none of this
 4. **How often the sign plays.** Recommended: up to three times, once a day, ending at the person's own swipe.
    The other answer is once.
 
-**The build, after the pick.** Three small PRs, each with its kernel and tests first, its guide and its release
-note. The client only: no migration and no function.
+**The pick, 2026-11-25.** Shown the mock-up and asked *Which sign, and does a put-away row keep its press on a
+phone?*, the person who runs the session answered:
+
+> A and no press
+
+So the sign is way A and a put-away row has no press on a phone, way 1. The answer named picks 1 and 2. Picks 3
+and 4 were not answered, and each is built as recommended: a toast with **Undo** when a row comes back, and a
+sign that plays up to three times. Either is a small change if the answer differs.
+
+**The build, after the pick.** Planned as three small PRs, each with its kernel and tests first, its guide and
+its release note. The client only: no migration and no function. Steps 1 and 2 shipped as one PR, v2.8603,
+since the second is the same shared row on the other card and a few lines of it.
 
 1. **The swipe back on My Bids.** `swipeAway.ts` and `useSwipeRow` learn a side, and `SwipeAwayRow` draws either.
    **Hidden**'s rows swipe right, with the toast, the 32 px rule and the answer to a wrong-way swipe.
@@ -385,6 +394,11 @@ note. The client only: no migration and no function.
 
 Each one needs a walk in the simulator before the card closes: a right swipe from the screen's edge, a scroll
 that drifts, and the sign with a finger on its way down.
+
+**The swipe back as built, v2.8603.** As drawn, with one thing the mock-up did not have. A bid hidden and shown
+again inside ten seconds would have stacked two toasts with two **Undo** presses, so a toast may now name what
+it is about and a newer one about the same bid or report takes the older one's place. Held by tests, not seen
+on a phone. Not walked: the right swipe on a real screen's edge and whether 32 px is the right number.
 
 ## The asks
 
@@ -414,12 +428,13 @@ ten seconds. The group's own press brings it back at any time.
 | My Bids | **Hide** | **Hidden** | **Show again** | In the phone's browser today (pick 4) |
 | Recent Reports | **Mark opened** | **Opened** | **Mark unread** | In the database, per person |
 
-- **One direction, left.** People's phone rows already slide left to show their presses. The Pipeline's
-  phone rows slide right to move a job forward. Left keeps one meaning across the app. A right swipe does
-  nothing.
+- **Left puts a row away.** People's phone rows already slide left to show their presses. The Pipeline's
+  phone rows slide right to move a job forward. Left keeps one meaning across the app. Since v2.8603 right
+  brings a put-away row back, and a swipe the wrong way only shows the row's strip.
 - **Scroll and Back.** The row carries `touch-action: pan-y` and the kernel decides swipe or scroll at 6 px
   (`classifySwipe`), so a touch that moves up or down scrolls the page. The phone's Back swipe starts at the
-  left edge and moves right. A left swipe never starts it.
+  left edge and moves right. A left swipe never starts it. A right swipe counts only when it starts 32 px or
+  more from that edge.
 - **Hard to do by accident.** The strip is 160 px wide. The row must travel 112 px before the strip turns
   blue. Short of that the row springs back.
 - **Undo.** A toast names the row with **Undo** for ten seconds (`showActionToast`, which exists).
