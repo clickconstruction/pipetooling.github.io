@@ -6,6 +6,8 @@ import {
   billsSentGapHeading,
   billsSentGapStands,
   billsSentGaps,
+  billsSentTestGapHeading,
+  billsSentTestGaps,
   BILLS_SENT_CSV_HEAD,
   billsSentAgainWords,
   billsSentByWords,
@@ -661,6 +663,17 @@ describe('billsSent — who paid, when and how (punch list #422)', () => {
       ]),
     }
     const gaps = billsSentGaps(whole, lines)
+
+    it('reads the test bills with no send apart, for a dev who shows ZZ test jobs', () => {
+      // The yellow box never holds the ZZ test job's bill, and the list of test bills holds that one alone.
+      expect([...gaps.open, ...gaps.paid].map((g) => g.billId)).not.toContain(BILL_Z)
+      const test = billsSentTestGaps(whole, lines)
+      expect(test.map((g) => [g.billId, g.payer, g.out, g.paid])).toEqual([[BILL_Z, 'ZZ Test Customer', 75, false]])
+      // A test bill with a line on the list is no gap of either kind.
+      expect(billsSentTestGaps(whole, [...lines, { billId: BILL_Z }])).toEqual([])
+      expect(billsSentTestGaps({ jobs: whole.jobs }, lines)).toEqual([])
+      expect([1, 2].map(billsSentTestGapHeading)).toEqual(['1 test bill has no send on record', '2 test bills have no send on record'])
+    })
 
     it('calls a bill with no send paid when the payments on record cover it, and keeps what is left of a part-paid one', () => {
       expect(gaps.open.map((g) => [g.billId, g.out])).toEqual([
