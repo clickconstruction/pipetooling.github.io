@@ -772,45 +772,77 @@ export interface BillsSentGap {
   haystack: string
 }
 
+/** One bill with no send, as the strip draws it. */
+function gapOf(u: BillsSentUnsent, input: Pick<BillsSentInput, 'jobs' | 'paid'>): BillsSentGap {
+  const job = u.jobId ? input.jobs.get(u.jobId) : undefined
+  const jobWords = u.jobId ? sentCopyJobLabel(u.jobId, job) : ''
+  const payer = (job?.customer_name ?? '').trim()
+  const ymd = Number.isFinite(Date.parse(u.billedAtIso)) ? calendarYmdInAppTzFromIso(u.billedAtIso) : ''
+  const billedWords = ymd ? `Billed ${formatWorkDateYmdWeekdayShortFriendly(ymd)} at ${billsSentTime(u.billedAtIso)}.` : 'Billed.'
+  const state = input.paid?.get(u.billId)
+  const paid = u.status === 'paid' || state?.kind === 'paid'
+  return {
+    billId: u.billId,
+    jobId: u.jobId,
+    jobWords,
+    jobTo: u.jobId ? `/jobs?edit=${encodeURIComponent(u.jobId)}` : null,
+    payer,
+    amount: u.amount,
+    paid,
+    out: paid ? 0 : state ? state.outAmount : (u.amount ?? 0),
+    billedWords,
+    billedYmd: ymd,
+    haystack: [jobWords, payer, (job?.job_address ?? '').trim()].filter(Boolean).join(' ').toLowerCase(),
+  }
+}
+
+/** The bills with no line on the list, the newest first, each with whether its job is a ZZ test job. */
+function unsentNewestFirst(input: Pick<BillsSentInput, 'unsent' | 'jobs'>, lines: ReadonlyArray<Pick<BillsSentLine, 'billId'>>) {
+  const sent = new Set(lines.map((l) => l.billId).filter((id): id is string => !!id))
+  return (input.unsent ?? [])
+    .filter((u) => !sent.has(u.billId))
+    .slice()
+    .sort((a, b) => (a.billedAtIso < b.billedAtIso ? 1 : a.billedAtIso > b.billedAtIso ? -1 : 0))
+    .map((u) => ({ u, test: isBillsTestRow(null, u.jobId ? input.jobs.get(u.jobId) : undefined) }))
+}
+
 /**
  * The bills that were made and have no send of any kind on record: no email, no text, no print. The open ones are
  * the ones to look at; the paid ones are told apart, since a bill paid at the door needed no send. A bill with a
  * line on the list is never a gap, whatever its stamp says. A bill on a ZZ test job is never one either: it is a
- * test (`isBillsTestRow`), and the read already leaves out a bill made in Stripe's test mode.
+ * test (`isBillsTestRow`), and the read already leaves out a bill made in Stripe's test mode. A dev who shows ZZ
+ * test jobs reads those apart (`billsSentTestGaps`).
  *
  * A bill is paid here as it is on the list: by its status, or by payments on record that leave nothing out
  * (`billPaidState`). A check typed in and held leaves the bill billed, and the box once called that bill not paid.
  */
 export function billsSentGaps(input: Pick<BillsSentInput, 'unsent' | 'jobs' | 'paid'>, lines: ReadonlyArray<Pick<BillsSentLine, 'billId'>>): { open: BillsSentGap[]; paid: BillsSentGap[] } {
-  const sent = new Set(lines.map((l) => l.billId).filter((id): id is string => !!id))
-  const gaps = (input.unsent ?? [])
-    .filter((u) => !sent.has(u.billId) && !isBillsTestRow(null, u.jobId ? input.jobs.get(u.jobId) : undefined))
-    .slice()
-    .sort((a, b) => (a.billedAtIso < b.billedAtIso ? 1 : a.billedAtIso > b.billedAtIso ? -1 : 0))
-    .map((u): BillsSentGap => {
-      const job = u.jobId ? input.jobs.get(u.jobId) : undefined
-      const jobWords = u.jobId ? sentCopyJobLabel(u.jobId, job) : ''
-      const payer = (job?.customer_name ?? '').trim()
-      const ymd = Number.isFinite(Date.parse(u.billedAtIso)) ? calendarYmdInAppTzFromIso(u.billedAtIso) : ''
-      const billedWords = ymd ? `Billed ${formatWorkDateYmdWeekdayShortFriendly(ymd)} at ${billsSentTime(u.billedAtIso)}.` : 'Billed.'
-      const state = input.paid?.get(u.billId)
-      const paid = u.status === 'paid' || state?.kind === 'paid'
-      return {
-        billId: u.billId,
-        jobId: u.jobId,
-        jobWords,
-        jobTo: u.jobId ? `/jobs?edit=${encodeURIComponent(u.jobId)}` : null,
-        payer,
-        amount: u.amount,
-        paid,
-        out: paid ? 0 : state ? state.outAmount : (u.amount ?? 0),
-        billedWords,
-        billedYmd: ymd,
-        haystack: [jobWords, payer, (job?.job_address ?? '').trim()].filter(Boolean).join(' ').toLowerCase(),
-      }
-    })
+  const gaps = unsentNewestFirst(input, lines)
+    .filter((r) => !r.test)
+    .map((r) => gapOf(r.u, input))
   return { open: gaps.filter((g) => !g.paid), paid: gaps.filter((g) => g.paid) }
 }
+
+/**
+ * The test bills with no send on record: the ones on a ZZ test job, which `billsSentGaps` leaves out. One list,
+ * paid or not, the newest first. They are in no total and no tile, and the page draws them in a box of their own
+ * for a dev who shows ZZ test jobs (`useZzTestJobsHidden`), so **Say how it went…** can be tried on a test bill.
+ * Found on the live walk of punch list #340: with the test bills out of the yellow box, no door opened the form
+ * on one.
+ */
+export function billsSentTestGaps(input: Pick<BillsSentInput, 'unsent' | 'jobs' | 'paid'>, lines: ReadonlyArray<Pick<BillsSentLine, 'billId'>>): BillsSentGap[] {
+  return unsentNewestFirst(input, lines)
+    .filter((r) => r.test)
+    .map((r) => gapOf(r.u, input))
+}
+
+/** Over the box of test bills: *2 test bills have no send on record*. */
+export function billsSentTestGapHeading(n: number): string {
+  return n === 1 ? '1 test bill has no send on record' : `${n} test bills have no send on record`
+}
+
+/** Under that heading: who sees the box, and that it counts nowhere. */
+export const BILLS_SENT_TEST_GAPS_NOTE = 'You see these because you show ZZ test jobs. They are in no total.'
 
 /**
  * Where a bill with no send stands, as its row and the print say it: *Not paid.*, *Paid since.*, or *Part paid,

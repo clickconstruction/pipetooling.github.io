@@ -6978,6 +6978,7 @@ Since v2.8524 the bank is never asked from before the org's Accounts Receivable 
 **A day's figure** is each payment at what it took off its bill, on the payment's own day: a Stripe payment the day the customer paid, a matched deposit the day it posted at the bank, a typed payment the day the person named;
 Stripe's fee is not taken off, a refund made in Stripe is not seen, a credit in kind is listed and never added, and a test bill's payment is left out.
 **A test bill** (v2.8445) is one made in Stripe's test mode or one on a ZZ test job (`isBillsTestRow`, `src/lib/billing/billTestRows.ts`): By day sent keeps its send on the list with a mark that says it is in no total, and neither view adds it to a day, a tile, a chip or a paid count.
+A test bill with no send on record is out of the yellow box, and a dev who shows ZZ test jobs (the Pipeline's switch) reads those in a box of their own with **Say how it went…** on each row (`billsSentTestGaps`, v2.8540).
 The chips narrow the month to one way of paying, **Stripe** first, and **one deposit** that paid several bills is drawn once with its bills under it.
 A payment is named by who its bill was sent to, and by the job's customer only when no send names one, so both views say one name (v2.8425).
 The tile *Next Stripe payout to the bank* is drawn on any answer, *None on its way* or *Stripe did not answer* standing where the amount would (`billsPaidPayoutOf`), and a day with a credit in kind and no money reads *1 credit* in its cell (v2.8426), *credit* alone on a phone (`billsPaidCellCredit`, v2.8443).

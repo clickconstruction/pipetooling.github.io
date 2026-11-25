@@ -179,6 +179,10 @@ A test bill has no stamp. It is in no day's total, no tile and neither payment c
 
 The second view, By day paid, leaves a test payment out.
 
+A test bill with no send is not in the yellow box.
+
+A developer who shows ZZ test jobs on the Pipeline sees those bills in a box of their own. That box has **Say how it went…** on each row.
+
 ## Statements and other papers
 
 A statement to a general contractor is one line, marked {{chip:yellow|Statement}}. The line shows the statement's total and how many jobs the statement lists.

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { Link, useSearchParams } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { useAuth } from '../../hooks/useAuth'
 import {
   BILLS_SENT_GAP_LABEL,
@@ -18,6 +19,9 @@ import {
   billsSentFilter,
   billsSentGapFilter,
   billsSentGapHeading,
+  billsSentTestGapHeading,
+  billsSentTestGaps,
+  BILLS_SENT_TEST_GAPS_NOTE,
   billsSentGapStands,
   billsSentGaps,
   billsSentLines,
@@ -661,7 +665,7 @@ function GapRow({ gap, others, why, waysCtl, onSaved, onRan }: { gap: BillsSentG
  * The strip above the days: the open bills with no send on record, then the paid ones behind a press. A bill may
  * have been handed over on site or sent from someone's own mailbox, and the strip says the app cannot know.
  */
-function GapStrip({ open, paid, every, expanded, waysCtl, onSaved }: { open: BillsSentGap[]; paid: BillsSentGap[]; every: BillsSentGap[]; expanded: boolean; waysCtl: BillHandWaysCtl; onSaved: () => void }) {
+function GapStrip({ open, paid, every, expanded, waysCtl, onSaved, test = false }: { open: BillsSentGap[]; paid: BillsSentGap[]; every: BillsSentGap[]; expanded: boolean; waysCtl: BillHandWaysCtl; onSaved: () => void; /** The box of test bills, for a dev who shows ZZ test jobs: its own heading, and its bills in no total. */ test?: boolean }) {
   const phone = useIsMobile()
   // The strip's own word presses (Show all, Show them) stand a fingertip tall on a phone.
   const wordPress: CSSProperties = { ...press, ...linePress(phone) }
@@ -687,9 +691,13 @@ function GapStrip({ open, paid, every, expanded, waysCtl, onSaved }: { open: Bil
   const row = (g: BillsSentGap) => <GapRow key={g.billId} gap={g} others={byHandOthers(g, every)} why={notRecorded[g.billId]} waysCtl={waysCtl} onSaved={onSaved} onRan={onRan} />
   const shown = all || expanded ? open : open.slice(0, GAPS_SHOWN)
   return (
-    <div style={gapBox} data-testid="bills-sent-gaps">
-      <b style={{ color: 'var(--text-amber-800)' }}>{open.length > 0 ? billsSentGapHeading(open.length) : 'Every open bill has a send on record'}</b>
-      {open.length > 0 ? <div style={{ color: 'var(--text-700)' }}>The app made these bills and sent nothing for them. One may have been handed over or sent from a mailbox the app cannot see.</div> : null}
+    <div style={gapBox} data-testid={test ? 'bills-sent-test-gaps' : 'bills-sent-gaps'}>
+      <b style={{ color: 'var(--text-amber-800)' }}>{test ? billsSentTestGapHeading(open.length) : open.length > 0 ? billsSentGapHeading(open.length) : 'Every open bill has a send on record'}</b>
+      {test ? (
+        <div style={{ color: 'var(--text-700)' }}>{BILLS_SENT_TEST_GAPS_NOTE}</div>
+      ) : open.length > 0 ? (
+        <div style={{ color: 'var(--text-700)' }}>The app made these bills and sent nothing for them. One may have been handed over or sent from a mailbox the app cannot see.</div>
+      ) : null}
       {stayed > 0 ? (
         <div data-testid="bills-sent-not-recorded-head" style={{ marginTop: '0.3rem', color: 'var(--text-red-700)', fontWeight: 600 }}>
           {byHandOutcome(0, stayed).head}
@@ -794,6 +802,9 @@ function RecordPanel({ record, onOpen, onPrint }: { record: BillsSentRecord; onO
 export function BillsSentLedger() {
   const { showToast } = useToastContext()
   const phone = useIsMobile()
+  const { role } = useAuth()
+  /** ZZ test jobs' bills off the page's boxes for every role but a dev who shows them (punch list #61's switch). */
+  const hideZzTestJobs = useZzTestJobsHidden(role)
   const [params, setParams] = useSearchParams()
   const billParam = params.get('bill')
   // The page's two views behind one switch (punch list #422): bills by the day they went, money by the day it came.
@@ -884,6 +895,10 @@ export function BillsSentLedger() {
   // Every bill with no send, whatever the search leaves: the form offers a person's other bills from all of them.
   const everyGap = useMemo(() => [...gaps.open, ...gaps.paid], [gaps])
   const gapsShown = useMemo(() => ({ open: billsSentGapFilter(gaps.open, typed), paid: billsSentGapFilter(gaps.paid, typed) }), [gaps, typed])
+  // The test bills with no send, for a dev who shows ZZ test jobs (the Pipeline's switch): a box of their own, in no
+  // total, so the form can be tried on a test bill. Everyone else, and a dev who hides them, reads none.
+  const testGaps = useMemo(() => (data && !hideZzTestJobs ? billsSentTestGaps(data, lines) : []), [data, lines, hideZzTestJobs])
+  const testGapsShown = useMemo(() => billsSentGapFilter(testGaps, typed), [testGaps, typed])
   // The strip rides with every bill (All) and is the whole list under its own chip; a route chip shows that route alone.
   const stripVisible = (route === 'all' || route === 'gap') && gapsShown.open.length + gapsShown.paid.length > 0
   const narrowed = route !== 'all' || typed.trim() !== ''
@@ -1039,6 +1054,7 @@ export function BillsSentLedger() {
       ) : stripVisible ? (
         <GapStrip open={gapsShown.open} paid={gapsShown.paid} every={everyGap} expanded={route === 'gap'} waysCtl={waysCtl} onSaved={retry} />
       ) : null}
+      {(route === 'all' || route === 'gap') && testGapsShown.length > 0 ? <GapStrip test open={testGapsShown} paid={[]} every={testGaps} expanded waysCtl={waysCtl} onSaved={retry} /> : null}
       {data == null && !failure ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : route === 'gap' && stripVisible ? null : data != null && shown.length === 0 ? (
