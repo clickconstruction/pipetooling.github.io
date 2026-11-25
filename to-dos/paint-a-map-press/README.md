@@ -448,3 +448,14 @@ Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in 
 **Seen, and it is as built or the phone's own.** **Near me** asks twice the first time, Safari's own question and then the site's. The short orange bar at the top of the **Paint a map** square is the painted line's own mark, the same bar that marks a painted map in every list.
 
 **Not walked.** A tech's shape in Job Mode and the office's quiet link, which need View as. The two short pages of call 11. A text that is sent.
+
+## As a leader, the office and a helper, in a simulator (2026-11-25)
+
+Seen on 2026-11-25 in the same simulator through View as the sample leader, the sample assistant and the sample helper, looking only, on the owner's yes.
+
+- **Holds on the Dashboard as the leader.** The row reads Tally, **Clock In**, **Job Report**, **Paint a map**, as call 10 drew it.
+- **Holds on the office's phone.** **Clock In**, then three quiet links, **Paint a map** the third.
+- **Holds in Job Mode.** The helper's row is four named squares, **Paint a map** among them. This card describes a wide press with a second line that says where the map will land. The square has no second line.
+- **Holds for call 11.** The short page has no Paint a map. Behind **Everything else** it is one press away.
+- **For the owner's word: a leader on Dispatch Mode meets no press on the page his bar calls Dashboard.** The bar's Dashboard tab opens Dispatch Mode's home, which starts with **Clock In**, My Schedule and the money cards. The press is on the Dashboard itself, which he reaches by the header's home press. The owner's first rule was a press that is always there. Read in the code the same day: Dispatch Mode's home draws the clock, My Schedule and the money cards, with no top row, as built. The Dashboard's own row can stand there. S, the client alone, once the owner says.
+- **Seen, and it is as built.** A leader with no clock and no schedule, and one job that is only *changed*, got the picker first, with that job as its one row. The sheet opens with no question only on a job the person clocked onto or had on their schedule, never on one they only changed, which says nothing of when they were there (`paintedMapJobPicker.ts`).
