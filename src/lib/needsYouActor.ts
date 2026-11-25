@@ -30,6 +30,8 @@ export const NEEDS_YOU_ITEM_ACTOR: Record<NeedsYouItem['key'], NeedsYouActor> = 
   'tagged-notes': 'anyone',
   // Papers before a job opens: the viewer's own signature, whoever they are.
   'job-papers': 'anyone',
+  // A GC's proposal for a job's paper (punch list #389, step 6): the office takes it or declines, whoever reads it first.
+  'job-paper-proposals': 'anyone',
   // The review ask (v2.5946): whoever reads it calls; the owner may want the call himself.
   'rating-low': 'anyone',
   'gc-review-weekly': 'assistant',

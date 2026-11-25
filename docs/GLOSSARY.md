@@ -1076,6 +1076,7 @@ It marks the GC's page and never the paper, so nobody signs again, and a new ver
 **A GC's proposal** (v2.8553) is a set of stricter settings a GC sends from that block with **Propose a stricter setting**, on the office's own sliders with every stop looser than the job's greyed (`PortalJobPaperPropose.tsx`, `gcPaperPropose.ts`, `job_paper_proposals`).
 It changes no paper: it waits under the paper's row on the job's Documents tab, where the office presses **Take it** or **Decline…** (`JobPaperProposalCard.tsx`, `jobPaperProposal.ts`).
 A proposal is **waiting**, **taken**, **declined** or **overtaken**, and overtaken means a newer proposal, a change of the paper's settings, or the paper coming off the job.
+Since v2.8558 a waiting proposal is a line on the office's Needs You, *A GC proposed stricter settings* (`job-paper-proposals`, `needsYou/paperProposals.ts`), whose press **Open the job** opens that job's window on Documents and answers nothing.
 The Document builder's block on the same page, *Secrecy on your jobs*, is another thing: a builder the office sent to look at, tied to no job's paper.
 A job's **sample** (v2.8506) is the paper for that job's settings as a PDF, with a made-up job and signer and SAMPLE across each page, drawn by `open-job-paper-sample` from the same assembly a signer reads.
 It is the GC's to download from that block, and it is never for signing.

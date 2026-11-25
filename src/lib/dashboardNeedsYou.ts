@@ -58,6 +58,7 @@ import { STALE_COUNT_DAYS } from './materials/onSite'
 import { nudgeWords } from './research/permitBuilders'
 import { lookAlikeNudgeWords } from './research/lookAlikeWorklist'
 import { STAGES_DONE_ACTION, stagesDoneDetail, stagesDoneTitle, type StagesDone } from './needsYou/stagesDone'
+import { PAPER_PROPOSALS_ACTION, paperProposalsDetail, paperProposalsTitle, type PaperProposalsWaiting } from './needsYou/paperProposals'
 import { START_OWED_ACTION, startOwedDetail, startOwedTitle, type StartAnswersOwed } from './needsYou/startAnswersOwed'
 
 /**
@@ -122,6 +123,7 @@ export type NeedsYouItem = {
     | 'while-off'
     | 'tagged-notes'
     | 'job-papers'
+    | 'job-paper-proposals'
     | 'rating-low'
     | 'gc-review-weekly'
     | 'bulk-delete'
@@ -277,6 +279,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'tagged-notes': 40,
   // Papers before a job opens: a job stays shut to the viewer until they sign, so it sits above the chasing tier.
   'job-papers': 30,
+  // A GC waits on the office's answer to a proposal for a job's paper (punch list #389, step 6), beside the customers who wait.
+  'job-paper-proposals': 40,
   // The same tier: a customer who gave three stars or fewer and nobody has called (the review ask, v2.5946).
   'rating-low': 40,
   // Revenue chasing tier: a call somebody promised a GC for a day, due or missed.
@@ -851,6 +855,9 @@ export type NeedsYouInputs = {
   /** Papers before a job opens: the jobs that wait on the viewer's own signature, worded by `jobPapersNeedsYou`. */
   jobPapersEnabled?: boolean
   jobPapers?: { title: string; detail: string; figure: string } | null
+  /** A GC's proposals of stricter settings that wait on the office, the longest wait first (punch list #389, step 6). */
+  jobPaperProposalsEnabled?: boolean
+  jobPaperProposals?: Pick<PaperProposalsWaiting, 'rows'> | null
   /**
    * The review ask (v2.5946, punch list #185): the answers at three stars or fewer that nobody has called, inside thirty
    * days, as `useLowRatings` reads them (`ratings/ratingsOffice.ts` → `lowRatingsNeed`). The GC office team, as Today's
@@ -1630,6 +1637,22 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: j.detail,
       figure: j.figure,
       actionLabel: 'Sign',
+    })
+  }
+
+  // A GC proposed stricter settings for a job's paper (punch list #389, step 6): amber, the GC waits on the office.
+  // The press opens the job, where a person takes it or declines. Nothing changes on the paper until then.
+  if (inputs.jobPaperProposalsEnabled && (inputs.jobPaperProposals?.rows.length ?? 0) > 0) {
+    const d = inputs.jobPaperProposals!
+    const n = d.rows.length
+    items.push({
+      key: 'job-paper-proposals',
+      severity: 'amber',
+      kicker: 'Papers before a job opens',
+      title: paperProposalsTitle(n),
+      detail: paperProposalsDetail(d),
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: PAPER_PROPOSALS_ACTION,
     })
   }
 

@@ -104,6 +104,8 @@ A paper written in prose does not show there. What their page looks like is in [
 
 The GC can propose a stricter setting from their page. It changes nothing until you take it.
 
+The office hears of it on the Needs you card. The line reads *A GC proposed stricter settings*. {{button:outline|Open the job}} opens the job on its Documents tab. Nobody gets a push or an email.
+
 A proposal shows under the paper's row. It names who proposed and the day. Each topic it moves has a line, such as *Ask first to None*.
 
 1. Read each line.

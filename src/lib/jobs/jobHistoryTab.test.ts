@@ -5,6 +5,7 @@ import {
   jobHistoryChannelName,
   jobWindowFormPaneHidden,
   jobWindowFormRegionForTab,
+  jobWindowTabFromParam,
   singleJobHistoryRange,
 } from './jobHistoryTab'
 
@@ -30,6 +31,17 @@ describe('job window tabs (T5-05)', () => {
     expect(JOB_WINDOW_TAB_LABELS.map).toBe('Map')
     expect(jobWindowFormPaneHidden('edit')).toBe(false)
     expect(jobWindowFormPaneHidden('bill')).toBe(false)
+  })
+})
+
+describe('the tab a door names (punch list #389)', () => {
+  it('reads a tab the window has, and nothing else', () => {
+    expect(jobWindowTabFromParam('documents')).toBe('documents')
+    expect(jobWindowTabFromParam('bill')).toBe('bill')
+    expect(jobWindowTabFromParam('Documents')).toBeNull()
+    expect(jobWindowTabFromParam('papers')).toBeNull()
+    expect(jobWindowTabFromParam('')).toBeNull()
+    expect(jobWindowTabFromParam(null)).toBeNull()
   })
 })
 

@@ -91,6 +91,8 @@ export type NeedsYouSource =
   | 'taggedNotes'
   // Papers before a job opens: the jobs that wait on the viewer's signature, whoever they are.
   | 'jobPapers'
+  // A GC's proposal of stricter settings for a job's paper that waits on an answer (punch list #389, step 6), the office's.
+  | 'jobPaperProposals'
 
 export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'tally',
@@ -152,6 +154,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'todaysSends',
   'taggedNotes',
   'jobPapers',
+  'jobPaperProposals',
 ]
 
 /** The office set: the owner, the assistant and the controller. Most company lines are theirs. */
@@ -208,6 +211,7 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'inKindCredits':
     case 'baselineGaps':
     case 'stagesDone':
+    case 'jobPaperProposals':
     case 'startAnswersOwed':
     case 'receiptChases':
     case 'materialsOnSite':

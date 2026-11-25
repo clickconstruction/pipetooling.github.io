@@ -43,6 +43,7 @@ import { useJobKindGaps } from './useJobKindGaps'
 import { useInKindCreditsDue } from './useInKindCreditsDue'
 import { useBaselineGaps } from './useBaselineGaps'
 import { useStagesDone } from './useStagesDone'
+import { usePaperProposalsWaiting } from './usePaperProposalsWaiting'
 import { useStartAnswersOwed } from './useStartAnswersOwed'
 import { useReceiptChases } from './useReceiptChases'
 import { receiptChaseDetail } from '../lib/needsYou/fillInReceipts'
@@ -283,6 +284,9 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const jobPapersEnabled = on('jobPapers')
   const jobsNeedingMe = useJobsNeedingMe(jobPapersEnabled)
   const jobPapers = useMemo(() => jobPapersNeedsYou(jobsNeedingMe), [jobsNeedingMe])
+  // A GC's proposal of stricter settings for a job's paper that waits on the office (punch list #389, step 6).
+  const jobPaperProposalsEnabled = on('jobPaperProposals')
+  const { waiting: jobPaperProposals } = usePaperProposalsWaiting(jobPaperProposalsEnabled)
   // The day back (punch list #256 PR 9): an Away note's countdown has ended and the office asked to be told.
   const awayBackDayEnabled = on('awayBackDay')
   const awayBackDay = useAwayBackDay(awayBackDayEnabled)
@@ -401,6 +405,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     taggedNotes,
     jobPapersEnabled,
     jobPapers,
+    jobPaperProposalsEnabled,
+    jobPaperProposals,
     awayBackDayEnabled,
     awayBackDay: awayBackDay.need,
     lowRatingsEnabled,
@@ -493,6 +499,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     lookAlikeCity: lookAlikes?.city ?? null,
     awayBackFirstUserId: awayBackDay.need?.first.userId ?? null,
     stagesDoneFirstJobId: stagesDone?.rows[0]?.jobId ?? null,
+    paperProposalFirstJobId: jobPaperProposals?.rows[0]?.jobId ?? null,
     startOwedFirst: startAnswersOwed?.sites[0] ? { developmentId: startAnswersOwed.sites[0].developmentId, jobId: startAnswersOwed.sites[0].jobId } : null,
     materialsStaleJobId: materialsOnSite?.staleJobId ?? null,
     materialsMissingJobId: materialsOnSite?.missingJobId ?? null,
