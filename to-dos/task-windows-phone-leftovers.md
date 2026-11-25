@@ -2,7 +2,7 @@
 name: "Tasks on a phone: what the New task walk left"
 number: 348
 group: close
-status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · the name's room in that header built 2026-11-22 as v2.8300 · left: a walk of two sheets on a phone, and Grace's two notes
+status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · the name's room in that header built 2026-11-22 as v2.8300 · walked in an iPhone simulator 2026-11-25: the Messages sheets and the Dispatch job picker stay on screen with the keyboard up, and two small things were seen in Messages beside them · left: those two, a small phone in a hand, and Grace's two notes
 summary: >
   Punch list #331 redrew the window that gives a task, and its close-out walk in the iPhone
   simulator fixed the one thing that broke it: the window leaving the top of the screen when the
@@ -11,8 +11,8 @@ summary: >
   reached. Three sheets are still pinned to the page the way the task window was. The rest are
   words that read wrongly and rows that run past one phone screen. Two notes of Grace's from #331
   ride along, waiting on her word. No database change in any of it.
-next: Someone at a phone opens a Messages sheet and the Dispatch job picker with the keyboard up, to see each stay on screen. Grace's two notes wait on her word.
-size: M as five small PRs (S · S · XS · S · S), built; left: a walk on a phone
+next: Mend the two small things the simulator saw in Messages: the search rows that run past the right edge, and the folded reply box's cut grey words (XS each, the client alone). A small phone in a hand has not seen the sheets. Grace's two notes wait on her word.
+size: M as five small PRs (S · S · XS · S · S), built; left: two small mends in Messages (XS each) and a walk on a small phone
 blocker: a person at a phone for the walk, and Grace's word for her two notes.
 ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203 · v2.8267 · v2.8300
 opinion: close it after the walk — every row that could be built is built, and the two sheets left unwalked take the same two numbers the walked ones do
@@ -163,3 +163,17 @@ xcrun simctl spawn <udid> defaults write com.apple.Preferences AutomaticMinimiza
 
 Run Vite with `--host 127.0.0.1`, since the simulator's Safari does not reach `localhost`. For a
 narrow room on one device, Safari's page menu has a larger-text press: 125% is 322 px wide.
+
+### Walked in a simulator (2026-11-25)
+
+Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in dark, as the dev, on the live site. It is a simulator and not a real phone. Nothing was sent.
+
+**Holds, row 5.** With the keyboard up, the sheet stays on screen in **Email**, in **Text**, on *Put a job on*, and in the Dispatch job picker. The keyboard came up and a field took typed words, against the earlier note that the simulator's keyboard could not be raised.
+
+**Not walked.** A small iPhone.
+
+**Two small things seen in Messages, read in the code the same day, not built.**
+
+1. **Under *Lines that match* in the search, each row's box and its date run past the right edge.** The list of hits is a grid that names no column, so one hit with a long unbroken run in it, such as a link, sets the width of every row (`Messages.tsx`). It is the fault v2.8232 mended for the lanes (`pageFit.ts`), and the search list was not given the mend. XS, the client alone.
+2. **With the keyboard down, the reply box's grey words are cut at the foot.** Folded, the box is one row high and its grey words are two sentences, which wrap to a second line beside a name of some length (`ReplyBox.tsx`). This is the likely cause, read and not seen drawn. XS, the client alone.
+
