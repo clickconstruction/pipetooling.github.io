@@ -32,7 +32,8 @@ import { lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords } from '.
 import { lienAffidavitNoticeStanding } from '../../lib/jobs/lienAffidavitNoticeStanding'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { affidavitMonthRows, affidavitMonthsSentence } from '../../lib/jobs/affidavitMonths'
+import { affidavitMonthRows, affidavitMonthRowsWithoutHours, affidavitMonthsSentence, affidavitNoHoursSource } from '../../lib/jobs/affidavitMonths'
+import { noticeDeadlineForMonth } from '../../lib/jobs/lienDeadlines'
 import { claimDeltaWords, correctedClaim, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { holdUntilFor, isLienLeader, isLienOffice, monthFromBill, monthIsStandIn } from '../../lib/jobs/lienDesk'
@@ -514,12 +515,19 @@ export default function LienDeskAffidavitPane({
     }
   }
   // Which months the lien will cover (v2.3681), lifted out of the months section so its head can count the months worked with no notice (v2.7320); null when the pane draws no months.
-  const monthRows = entry.isSub && workMonths && workMonths.months.length ? (() => {
+  // A job with no approved clock month draws the card from the months its paper's span reads (punch list #415): until then it drew none.
+  const monthRows = entry.isSub ? (() => {
     const rpcMonths = data.rows
       .filter((r) => r.job_id === entry.jobId)
       .map((r) => ({ key: r.work_month, approvedHours: Number(r.approved_hours) || 0, deadline: r.deadline, daysLeft: daysBetweenYmd(todayYmd, r.deadline) ?? 0, noticed: r.noticed, fromCreation: monthIsStandIn(r), ...(monthFromBill(r) ? { fromBill: true } : {}) }))
-    const rows = affidavitMonthRows(workMonths.months, buildLienMonthHistory(entry.jobId, data.items, rpcMonths))
-    return { rows, unsecured: rows.filter((r) => r.status === 'unsecured') }
+    const history = buildLienMonthHistory(entry.jobId, data.items, rpcMonths)
+    const noHours = affidavitNoHoursSource({ lastMonthFromCreation: entry.lastMonthFromCreation, lastMonthFromBill: entry.lastMonthFromBill, lastMonthByHand: entry.lastMonthByHand, firstWorkDate: job?.first_work_date, lastWorkDate: job?.last_work_date })
+    const rows = workMonths && workMonths.months.length
+      ? affidavitMonthRows(workMonths.months, history)
+      : noHours
+        ? affidavitMonthRowsWithoutHours({ months: workMonthKeys, source: noHours, named: namedMonthKeys, history, deadlineOf: (m) => noticeDeadlineForMonth(`${m}-01`, entry.propertyKind), todayYmd })
+        : []
+    return rows.length ? { rows, unsecured: rows.filter((r) => r.status === 'unsecured') } : null
   })() : null
   // The pane's stacked heads (v2.7320, the owner's ask of 2026-11-15): the notice pane's grey bars, one per section, where the boxes wore a tiny caption.
   const paneRef = useRef<HTMLDivElement | null>(null)
