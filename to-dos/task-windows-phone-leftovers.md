@@ -2,7 +2,7 @@
 name: "Tasks on a phone: what the New task walk left"
 number: 348
 group: close
-status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · the name's room in that header built 2026-11-22 as v2.8300 · walked in an iPhone simulator 2026-11-25: the Messages sheets and the Dispatch job picker stay on screen with the keyboard up, and two small things were seen in Messages beside them · both mended in v2.8563 · left: the simulator's look at the two mends, a small phone in a hand, and Grace's two notes
+status: carried from #331 when it closed 2026-11-13 · built the same day on the owner's word *build the leftovers* · PRs 1 to 4 merged as v2.7185 (#8003), v2.7188 (#8008), v2.7189 (#8009) and v2.7190 (#8012) · rows 9 and 10 built in v2.7203 (#8025) on the owner's word *Yes, build both* · all five on main by 2026-11-14 · the thread window's header under the keyboard built 2026-11-21 as v2.8267 · the name's room in that header built 2026-11-22 as v2.8300 · walked in an iPhone simulator 2026-11-25: the Messages sheets and the Dispatch job picker stay on screen with the keyboard up, and two small things were seen in Messages beside them · both mended in v2.8563 · both mends held in the simulator the same day, at 402 points and at 125% text, with one new fault at 125% in the open reply box, read in the code and not built · left: that fault, the look at 375 points, a small phone in a hand, and Grace's two notes
 summary: >
   Punch list #331 redrew the window that gives a task, and its close-out walk in the iPhone
   simulator fixed the one thing that broke it: the window leaving the top of the screen when the
@@ -11,7 +11,7 @@ summary: >
   reached. Three sheets are still pinned to the page the way the task window was. The rest are
   words that read wrongly and rows that run past one phone screen. Two notes of Grace's from #331
   ride along, waiting on her word. No database change in any of it.
-next: The simulator looks at the Messages search rows and the folded reply box once v2.8563 is live. A small phone in a hand has not seen the sheets. Grace's two notes wait on her word.
+next: Mend the open reply box's caption at large text, the client alone. The look at 375 points waits on leave to use the small simulator. A small phone in a hand has not seen the sheets. Grace's two notes wait on her word.
 size: M as five small PRs (S · S · XS · S · S), built; left: a look at the two mends in Messages (XS) and a walk on a small phone
 blocker: a person at a phone for the walk, and Grace's word for her two notes.
 ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203 · v2.8267 · v2.8300 · v2.8563
@@ -190,4 +190,11 @@ Measured in Chromium and in WebKit at phone width, on the page's own markup with
 | The date | 63 px past the edge | whole, beside the words | 145 px past | whole, on its own line under the words |
 | The folded box's grey words, beside a name of 23 letters | two lines, the second cut | one line | two lines, the second cut | one line |
 
-**Left from this walk.** The simulator's look at both once v2.8563 is live, and a small iPhone if one can be booted.
+**The simulator's look at both, 2026-11-25, on the live site.** At 402 points and again with the text at 125%, as the dev, with nothing sent.
+
+- **The search rows hold.** Every row ends inside the screen and the date shows whole. At 125% the date drops to its own line under the words.
+- **The folded box holds.** One whole grey line at both sizes.
+- **One fault at 125%, in the open box, not built.** The grey words wrap to two lines, and so does the caption about the company number. The caption's first line sits on the grey words' second line. The caption is drawn over the box's foot with no limit to one line (`ReplyBox.tsx`). At 100% it is one line and clears them. The client alone, XS.
+- **Seen, to weigh.** At 125% with the keyboard up, the row with *Tie to*, **Attach** and **Send text…** is under Safari's keyboard bar.
+
+**Left from this walk.** The look at 375 points: a small simulator is made and waits on leave to use it.
