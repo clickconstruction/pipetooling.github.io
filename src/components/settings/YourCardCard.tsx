@@ -27,7 +27,7 @@ import { stagePlacement } from '../../lib/brandKit/cropMath'
 import { drawKit, printPage, sheetOfTen, type KitDrawOptions } from '../../lib/brandKit/draw'
 import { DEFAULT_CARD_LOOKS, THEMES, lookLayouts, resolveLook, type CardLooksSetting, type KitLookId } from '../../lib/brandKit/looks'
 import { cardHold, kitFileSlug, kitPersonFromUser, readCrop, type KitCrop } from '../../lib/brandKit/person'
-import { PHOTO_REMOVED, PHOTO_REMOVED_FILE_LEFT, photoRemoveConfirm, photoRemoveDrawn, photoRemoveProblem, removeTestPersonPhoto } from '../../lib/brandKit/photoRemove'
+import { PHOTO_REMOVED, PHOTO_REMOVED_FILE_LEFT, photoRemoveConfirm, photoRemoveDrawn, removePersonPhoto } from '../../lib/brandKit/photoRemove'
 import { browserKitRenderer, type KitRenderer } from '../../lib/brandKit/render'
 import { DEFAULT_CARD_SIZES, SIZES, cardBackFor, resolveSize, type CardSizesSetting, type KitSizeId } from '../../lib/brandKit/sizes'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
@@ -85,6 +85,8 @@ export function YourCardCard({
   const [loaded, setLoaded] = useState<CardLoad | null | undefined>(undefined)
   const [kit, setKit] = useState<Required<Pick<KitDrawOptions, 'assets' | 'measure'>> | null>(null)
   const [photo, setPhoto] = useState<CardPhoto | null>(null)
+  /** The row names a photo and its picture has not come yet. */
+  const [photoReading, setPhotoReading] = useState(false)
   const [crop, setCrop] = useState<KitCrop | null>(null)
   const [draft, setDraft] = useState({ cardName: '', title: '' })
   // which looks the owner offers, and this person's pick among them
@@ -125,10 +127,16 @@ export function YourCardCard({
         setCrop(row.crop)
         setDraft({ cardName: row.facts.card_name ?? '', title: row.facts.title ?? '' })
         if (row.photoPath) {
+          // The drawings wait for the picture: drawn at once they read "No photo yet" for the moment it took.
+          setPhotoReading(true)
           const pic = await io.photo(row.photoPath).catch(() => null)
-          if (on) setPhoto(pic)
+          if (on) {
+            setPhoto(pic)
+            setPhotoReading(false)
+          }
         } else {
           setPhoto(null)
+          setPhotoReading(false)
         }
       } catch (e) {
         if (!on) return
@@ -153,14 +161,14 @@ export function YourCardCard({
   const back = cardBackFor(lookId, sizeId)
 
   const drawings = useMemo(() => {
-    if (!person || !kit) return null
+    if (!person || !kit || photoReading) return null
     const opts = { assets: kit.assets, measure: kit.measure }
     return {
       footer: drawKit(look.footer, person, { ...opts, width: '100%', id: `${clipId}f` }),
       front: drawKit(look.front, null, { ...opts, width: '100%' }),
       back: drawKit(back, person, { ...opts, width: '100%', id: `${clipId}b` }),
     }
-  }, [person, kit, clipId, look, back])
+  }, [person, kit, clipId, look, back, photoReading])
 
   /** The footer in each look the owner offers, drawn with this person's own facts, for the picker. */
   const offered = useMemo(() => {
@@ -246,15 +254,17 @@ export function YourCardCard({
     showToast(W.photoSaved, 'success')
   }
 
-  // A dev's take-back of Save the photo, on a test person alone. Everyone else reads nothing new.
-  const removeDrawn = !!loaded && photoRemoveDrawn(role, loaded)
-  const removeProblem = loaded && removeDrawn ? photoRemoveProblem(loaded) : ''
+  // The take-back of Save the photo, for whoever may change the photo: it stands beside Change the photo.
+  const removeDrawn = !!loaded && photoRemoveDrawn(loaded)
+  // Whether the person has a photo is the row's to say, not the picture's: the picture takes a moment to load, and
+  // the press read Add a photo and the ring's line read No photo yet for that moment (the walk of 2026-11-25).
+  const hasPhoto = !!loaded?.photoPath
   const removePhoto = async () => {
-    if (!userId || !loaded || !removeDrawn || removeProblem || removing) return
+    if (!userId || !loaded || !removeDrawn || removing) return
     if (!(await confirmDialog({ ...photoRemoveConfirm(loaded.facts.card_name || loaded.facts.name || ''), danger: true }))) return
     setRemoving(true)
     try {
-      const { fileGone } = await removeTestPersonPhoto(io, userId)
+      const { fileGone } = await removePersonPhoto(io, userId)
       if (!live.current) return
       setLoaded({ ...loaded, photoPath: null })
       setPhoto(null)
@@ -341,20 +351,19 @@ export function YourCardCard({
               </div>
               <div>
                 <button type="button" onClick={() => setSheetOpen(true)} style={quiet}>
-                  {photo ? W.changePhoto : W.addPhoto}
+                  {hasPhoto ? W.changePhoto : W.addPhoto}
                 </button>
-                {!photo ? <p style={{ ...muted, marginTop: '0.35rem' }}>{W.ringEmpty}</p> : null}
+                {!hasPhoto ? <p style={{ ...muted, marginTop: '0.35rem' }}>{W.ringEmpty}</p> : null}
                 {removeDrawn ? (
                   <div data-your-card-remove-photo style={{ marginTop: '0.45rem' }}>
                     <button
                       type="button"
                       onClick={() => void removePhoto()}
-                      disabled={!!removeProblem || removing}
-                      style={{ fontFamily: 'inherit', fontSize: '0.8125rem', border: 'none', background: 'transparent', padding: 0, minHeight: wide ? undefined : 44, cursor: removeProblem || removing ? 'default' : 'pointer', color: removeProblem ? 'var(--text-muted)' : 'var(--text-red-700)', textDecoration: removeProblem ? 'none' : 'underline', textUnderlineOffset: 2 }}
+                      disabled={removing}
+                      style={{ fontFamily: 'inherit', fontSize: '0.8125rem', border: 'none', background: 'transparent', padding: 0, minHeight: wide ? undefined : 44, cursor: removing ? 'default' : 'pointer', color: 'var(--text-red-700)', textDecoration: 'underline', textUnderlineOffset: 2 }}
                     >
                       {removing ? 'Removing…' : 'Remove the photo…'}
                     </button>
-                    <p style={{ ...muted, fontSize: '0.75rem' }}>{removeProblem || 'Only a developer sees this. It is for a test person’s photo.'}</p>
                   </div>
                 ) : null}
               </div>

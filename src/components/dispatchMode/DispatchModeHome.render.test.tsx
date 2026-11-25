@@ -2,7 +2,7 @@
 /**
  * Render smoke for Dispatch Mode → Home's Job Pipeline (v2.5962): a lost signal reads the offline
  * sentence with Retry and Retry reads the pipeline again; a refused read shows its sentence with no
- * Retry. The schedule, the clock and the money above it are stubbed: their own smokes cover them.
+ * Retry. The top row, the schedule, the clock and the money above it are stubbed: their own smokes cover them.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -39,6 +39,8 @@ vi.mock('../../hooks/useDashboardSubSchedule', () => ({
 vi.mock('../../hooks/useFirstAssistantDispatchPhone', () => ({ useFirstAssistantDispatchPhone: () => null }))
 vi.mock('../dashboard/DashboardMyScheduleSection', () => ({ DashboardMyScheduleSection: () => null }))
 vi.mock('../ClockInOutButton', () => ({ default: () => null }))
+// The Dashboard's top row stands where the bare clock did (punch list #392): its own smoke is `DispatchModeHome.topRow.render.test.tsx`.
+vi.mock('../dashboard/DashboardPinnedQuickRow', () => ({ DashboardPinnedQuickRow: () => null }))
 vi.mock('../DashboardFinancialsSection', () => ({ default: () => null }))
 vi.mock('../AdditionalReportModal', () => ({ default: () => null }))
 

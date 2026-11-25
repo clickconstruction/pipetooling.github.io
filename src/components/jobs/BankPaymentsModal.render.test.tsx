@@ -8,6 +8,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
+import { pickArDeposit } from '../../test/pickArDeposit'
 installDomShims()
 import BankPaymentsModal from './BankPaymentsModal'
 import { buildBilledStageRows } from '../../lib/jobsStagesBoard'
@@ -89,6 +90,7 @@ describe('BankPaymentsModal (render smoke)', () => {
         onApplied={() => {}}
       />,
     )
+    await pickArDeposit(/from WELBY SERVICES LLC/)
 
     // Variant A: payer-matched chips lead the allocation line.
     await waitFor(() => {
@@ -145,7 +147,9 @@ describe('BankPaymentsModal (render smoke)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back to a window' }))
     expect(panel.style.borderRadius).toBe('8px')
     expect(window.localStorage.getItem('modal_full_screen_accounts-receivable')).toBeNull()
-    await waitFor(() => expect(screen.getByText(/their open bills/)).toBeTruthy())
+    // Let the list land before the test ends. The window opens with nothing picked (punch list #437).
+    await screen.findByRole('button', { name: /from WELBY SERVICES LLC/ })
+    expect(screen.getByText('Select a bank transaction.')).toBeTruthy()
   })
 })
 

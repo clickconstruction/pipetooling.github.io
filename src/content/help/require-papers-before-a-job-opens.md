@@ -2,7 +2,7 @@
 title: require papers before a job opens
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: papers before a job opens, propose, proposal, stricter setting, take it, decline, NDA, site rules, required papers, sign before the job, job documents, contract book, signing link, roster, who has signed, built from settings, job settings, basis, level, sign again
+keywords: papers before a job opens, GC's own form, their own form, propose, proposal, stricter setting, take it, decline, NDA, site rules, required papers, sign before the job, job documents, contract book, signing link, roster, who has signed, built from settings, job settings, basis, level, sign again
 order: 76
 ---
 A job can require papers. An NDA, site rules or a GC's own form are common ones. Everyone signs each paper, the office too. You set them on the job's **Documents** tab.
@@ -30,6 +30,23 @@ The line under the button counts the people who can open the job today. That is 
 :::example A paper that cannot be picked
 A paper with no words is grey in the list. Write it in the Contract Book first. A third-party PDF becomes a form in the Form Studio.
 :::
+
+## When the paper is the GC's own form
+
+A GC may hand you a form of their own. Their PDF becomes a form in the Form Studio. Once the form is in the Contract Book, it shows in the **Add a paper** list.
+
+1. Press {{button:outline|Add a paper}}.
+2. Find the form's line.
+3. Tick **This is the GC's own form** beside it. The form joins the list as *not saved yet*, with its tick on.
+4. Press the blue button, such as {{button:blue|Require 1 paper}}.
+
+The form's row then reads *The GC's own form*. The GC's page says the subs sign the GC's own form. It shows how many people have signed and each sub business with its day.
+
+The tick stays on the form's row. Tick it or clear it there at any time. It is saved at once.
+
+The tick changes what the GC's page says and never the form. Nobody signs again.
+
+Only a form takes the tick. A paper built from settings has none. A paper in prose has none.
 
 ## Set a job's settings for a paper
 
@@ -98,7 +115,7 @@ You choose how much of that they see. Open **Settings** on the paper's row and f
 
 Then press {{button:blue|Save what the GC sees}}. This changes their page and never the paper. Nobody signs again. A new version of the paper keeps your choice.
 
-A paper written in prose does not show there. What their page looks like is in [see what a customer sees on their portal](/help/see-what-a-customer-sees-on-their-portal#a-paper-a-job-requires).
+A paper written in prose does not show there. The GC's own form shows there once you tick it. What their page looks like is in [see what a customer sees on their portal](/help/see-what-a-customer-sees-on-their-portal#a-paper-a-job-requires).
 
 ## When the GC proposes a stricter setting
 

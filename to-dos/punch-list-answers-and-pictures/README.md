@@ -2,7 +2,7 @@
 name: "Punch list: what is still to answer and what it looks like, on every card"
 number: 438
 group: ready
-status: asked 2026-11-24 by Diane · the same day fifteen built cards that waited on a person were drawn in the lens frame with invented data, and each got a pictures page beside it with what it waits on and what to say · the kit that drew them is in this folder · the board's own view drawn the same day on Diane's word, as a canvas of seven frames with a refined cut D and a static copy here · her word on it the same day, *Build D*, on the seven picks · PR 1 built as v2.8519, the question on the card, its migration pushed · PR 2 built as v2.8521, Waiting on me · PR 3 built as v2.8528, a row says when its pictures are old and one command draws a card again · the three questions the build left were answered the same day, *Keep the old picks on #438* · seen on the live site as a dev the same day, read only · PR 3's line on an old picture seen live 2026-11-25, on #426's row alone, and at a phone's width · left: the owner's look
+status: asked 2026-11-24 by Diane · the same day fifteen built cards that waited on a person were drawn in the lens frame with invented data, and each got a pictures page beside it with what it waits on and what to say · the kit that drew them moved to scripts/todos/pictures-kit on 2026-11-25, so the pictures command outlives this card · the board's own view drawn the same day on Diane's word, as a canvas of seven frames with a refined cut D and a static copy here · her word on it the same day, *Build D*, on the seven picks · PR 1 built as v2.8519, the question on the card, its migration pushed · PR 2 built as v2.8521, Waiting on me · PR 3 built as v2.8528, a row says when its pictures are old and one command draws a card again · the three questions the build left were answered the same day, *Keep the old picks on #438* · seen on the live site as a dev the same day, read only · PR 3's line on an old picture seen live 2026-11-25, on #426's row alone, and at a phone's width · left: the owner's look
 summary: >
   Diane wants the Punch list page to make two things easy for a person. First, the questions that
   person still has to answer. Second, what a card looks like before and after it is built. Today the
@@ -46,8 +46,9 @@ could go down them and say what to go ahead on and what to change.
 - **One page over all fifteen**, [`waiting-2026-11-24.html`](waiting-2026-11-24.html): each card
   with what it waits on, what to say, and a door to its pictures. It is a snapshot of that day and
   does not follow the cards.
-- **The kit that drew them**, in [`draw/`](draw/), and how to use it:
-  [`how-the-pictures-were-drawn.md`](how-the-pictures-were-drawn.md).
+- **The kit that drew them**, in `scripts/todos/pictures-kit/`, and how to use it:
+  `how-the-pictures-were-drawn.md` in that folder. Both moved out of this card's folder on
+  2026-11-25, so `npm run todo:pictures` goes on working when this card retires.
 - The first form of the same thing, one long page: *Punch List Pictures* —
   https://claude.ai/artifact/PQzoJpjACF82H5BXfir6nw (private to Diane's account).
 
@@ -193,6 +194,10 @@ pills and are not on the owner's own list.
 `npm run todo:pictures` was run for #396 alone. The other fourteen cards' draw lines were written
 from the scripts' names and have not been run through the command. A card whose line is wrong stops
 the command, which then writes nothing.
+
+**The kit has a home of its own, 2026-11-25 (UTC).** The command read its kit from this card's folder, so retiring this card would have broken it for every card. The kit and its how-to are now in `scripts/todos/pictures-kit/`, and the sixteen pictures pages and the day's page name the how-to there. `npm run todo:pictures -- 396` was run from the new home on a local server: two scripts, five pictures, the page written. That redraw was not kept, so #396's page is as it was.
+
+Two things stay in this folder and go with it when the card retires. The day's page, `waiting-2026-11-24.html`, is one. Every pictures page links back to it, and the page maker writes that link. The other is the page maker's full run, which writes the day's page here and stops if the folder is gone. A run for one card does not write it. Whoever retires this card settles both: move the day's page, or take the link out of the page maker and the pages.
 
 **How the look cards still unanswered are put to the user, answered 2026-11-25 (UTC) in the managing session.** The last run's index counts 19 look cards pictured for the user, with one answered and 18 left. Asked *The 18 look cards still unanswered: how do you want to answer them?*, the answer was "Bring them here, four at a time", quoted from that session's record of the user's answers. *Here* is the managing session's own question cards. What it frees: a session brings the 18 in fours, each with its pictures and the question its `ask:` line holds. What it leaves open: all 18 answers. None has been brought yet.
 

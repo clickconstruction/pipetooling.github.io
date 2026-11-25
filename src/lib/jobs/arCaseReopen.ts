@@ -2,27 +2,29 @@
  * Reopening a closed case (punch list #443, row 5): the take-back of **Close it as settled** and **Close it as not
  * coming** on Accounts Receivable.
  *
- * A closed case leaves **Came back** and no screen listed it again, so a test case a walk closed stood closed for
- * good. Three functions that reopen one have been in the database with no caller (`reopen_ar_return_case`,
- * `reopen_ar_stripe_case`, `reopen_ar_unbanked_check_case`). This is the rule for the press that calls them. Pure:
- * the fresh read and the call are `arCaseReopenIo.ts`, the list and the press `components/jobs/ar/ArClosedTestCases.tsx`.
+ * A closed case leaves **Came back** and no screen listed it again, so a case closed by mistake stood closed for
+ * good. Three functions reopen one (`reopen_ar_return_case`, `reopen_ar_stripe_case`,
+ * `reopen_ar_unbanked_check_case`). This is the rule for the press that calls them. Pure: the fresh read and the
+ * call are `arCaseReopenIo.ts`, the list and the press `components/jobs/ar/ArClosedCases.tsx`.
  *
- * - The list and the press are drawn for a dev and for nobody else.
- * - Only a case on a test job is listed and reopened: it names a job, and every job it names is a ZZ test job
- *   (`isZzTestJob`). A case that names no job cannot be told from a real one, so it stays closed.
- * - Only a case the office closed by hand reopens: *settled another way* or *not coming*. A case closed because a
- *   new check replaced it, or by Stripe's own answer, stays. The returned-check function would reopen any closed
- *   case and clear its replacement, so this rule is the one that holds it to the two reasons.
- *
- * The functions already let the office in. Drawing this for the office on any case is the owner's call, not made.
+ * - The list and the press are drawn for the office: a dev, a master, an assistant and a controller, the four
+ *   roles the three functions let in. It was a dev alone on a test job's case until the owner's answer of
+ *   2026-11-25, *Wider*.
+ * - Only a case the office closed by hand is listed and reopened: *settled another way* or *not coming*. A case
+ *   closed because a new check replaced it, or by Stripe's own answer, stays, and is counted, not listed. The
+ *   returned-check function would reopen any closed case and clear its replacement, so this rule is the one that
+ *   holds it to the two reasons.
+ * - The list grows for good, so it shows the cases closed in the last 90 days and folds the older ones.
  */
-import { isZzTestJob } from '../../../supabase/functions/_shared/zzTestJob'
-import { calendarYmdInAppTzFromIso, formatWorkDateYmdWeekdayShortFriendly } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatWorkDateYmdWeekdayShortFriendly, ymdDaysBetween } from '../../utils/dateUtils'
 import type { ArReturnCaseRow } from './arReturnCase'
 
-/** Who is offered the list of closed test cases: a dev. Every other role sees nothing new. */
+/** The roles the three reopen functions let in. */
+export const AR_CASE_REOPEN_ROLES: ReadonlyArray<string> = ['dev', 'master_technician', 'assistant', 'controller']
+
+/** Who is offered the list of closed cases: the office. Every other role sees nothing. */
 export function arCaseReopenDrawn(role: string | null | undefined): boolean {
-  return role === 'dev'
+  return AR_CASE_REOPEN_ROLES.includes(role ?? '')
 }
 
 /** The reasons the office closes a case with by hand, the only ones a reopen undoes. */
@@ -40,19 +42,10 @@ export function arCaseJobs(row: Pick<ArReturnCaseRow, 'live_payments' | 'last_jo
   return [...seen.values()]
 }
 
-/** True when the case names at least one job and every job it names is a ZZ test job. */
-export function arCaseIsOnTestJobs(row: Pick<ArReturnCaseRow, 'live_payments' | 'last_job' | 'recorded_payment' | 'stripe_case'>): boolean {
-  const jobs = arCaseJobs(row)
-  return jobs.length > 0 && jobs.every((j) => isZzTestJob({ job_name: j.job_name }))
-}
-
 /** Why this case cannot be reopened; '' when it can. Null is a case that is no longer there. */
 export function arCaseReopenProblem(row: ArCaseReopenRow | null | undefined): string {
   if (!row) return 'The case is not there any more. Read the page again.'
   if (!row.closed_at) return 'This case is open already.'
-  const jobs = arCaseJobs(row)
-  if (jobs.length === 0) return 'This case names no job, so it cannot be told from a real one. It stays closed.'
-  if (!jobs.every((j) => isZzTestJob({ job_name: j.job_name }))) return 'Only a case on a test job can be reopened. This one names a real job.'
   if (!AR_CASE_REOPEN_REASONS.includes(row.closed_reason ?? '')) return 'Only a case closed as settled another way or as not coming can be reopened.'
   return ''
 }
@@ -64,21 +57,24 @@ export function arCaseReopenCall(row: Pick<ArReturnCaseRow, 'mercury_transaction
   return { fn: 'reopen_ar_return_case', args: { p_mercury_transaction_id: row.mercury_transaction_id } }
 }
 
-/** One closed test case as the dev's list draws it. */
-export interface ArClosedTestCaseLine {
+/** How far back the list shows before it folds the rest, in days. */
+export const AR_CLOSED_CASES_RECENT_DAYS = 90
+
+/** One closed case as the office's list draws it. */
+export interface ArClosedCaseLine {
   id: string
   /** Who the money was from; *No name on record* when the case holds none. */
   payer: string
   amount: number | null
   /** *Closed as not coming on Mon, Nov 23.*, with the note the office typed after it. */
   closedWords: string
-  /** The jobs it names, by name. */
+  /** The jobs it names, by name; '' when it names none. */
   jobWords: string
-  /** Why it cannot be reopened; '' when it can. */
-  problem: string
+  /** Closed more than 90 days ago, so the list folds it until **Show older** is pressed. */
+  older: boolean
 }
 
-const REASON_WORDS: Readonly<Record<string, string>> = { settled_other_way: 'settled another way', not_coming: 'not coming', replaced: 'replaced by a new payment' }
+const REASON_WORDS: Readonly<Record<string, string>> = { settled_other_way: 'settled another way', not_coming: 'not coming' }
 
 const amountOf = (v: number | string | null | undefined): number | null => {
   const n = typeof v === 'string' ? Number(v) : v
@@ -86,17 +82,17 @@ const amountOf = (v: number | string | null | undefined): number | null => {
 }
 
 /**
- * The closed cases on test jobs, newest closed first, for the dev's list, and how many closed cases were left out
- * because they are on a real job or name none. A test case closed for a reason a reopen does not undo is listed
- * with why it stays.
+ * The closed cases a reopen undoes, newest closed first, and how many closed cases were left out because they
+ * were closed another way. A case closed more than 90 days before `todayYmd` is marked `older`.
  */
-export function arClosedTestCases(all: ReadonlyArray<ArReturnCaseRow>): { lines: ArClosedTestCaseLine[]; others: number } {
+export function arClosedCases(all: ReadonlyArray<ArReturnCaseRow>, todayYmd: string): { lines: ArClosedCaseLine[]; others: number } {
   const closed = all.filter((r) => !!r.closed_at)
-  const test = closed.filter(arCaseIsOnTestJobs).sort((a, b) => (b.closed_at ?? '').localeCompare(a.closed_at ?? ''))
-  const lines = test.map((r): ArClosedTestCaseLine => {
+  const listed = closed.filter((r) => arCaseReopenProblem(r) === '').sort((a, b) => (b.closed_at ?? '').localeCompare(a.closed_at ?? ''))
+  const lines = listed.map((r): ArClosedCaseLine => {
     const ymd = r.closed_at && Number.isFinite(Date.parse(r.closed_at)) ? calendarYmdInAppTzFromIso(r.closed_at) : ''
     const reason = REASON_WORDS[r.closed_reason ?? ''] ?? ''
     const note = (r.closed_note ?? '').trim()
+    const age = ymd ? ymdDaysBetween(ymd, todayYmd) : null
     return {
       id: r.mercury_transaction_id,
       payer: (r.counterparty_name ?? '').trim() || 'No name on record',
@@ -106,23 +102,38 @@ export function arClosedTestCases(all: ReadonlyArray<ArReturnCaseRow>): { lines:
         .map((j) => (j.job_name ?? '').trim())
         .filter(Boolean)
         .join(', '),
-      problem: arCaseReopenProblem(r),
+      older: age != null && age > AR_CLOSED_CASES_RECENT_DAYS,
     }
   })
-  return { lines, others: closed.length - test.length }
+  return { lines, others: closed.length - listed.length }
+}
+
+/**
+ * The lines the list draws now. The older ones stay folded until **Show older** is pressed. When every case is
+ * an older one, all of them are drawn, since a fold with nothing above it would hide the whole list.
+ */
+export function arClosedCasesShown(lines: ReadonlyArray<ArClosedCaseLine>, showOlder: boolean): { shown: ArClosedCaseLine[]; folded: number } {
+  const recent = lines.filter((l) => !l.older)
+  if (showOlder || recent.length === 0) return { shown: [...lines], folded: 0 }
+  return { shown: recent, folded: lines.length - recent.length }
+}
+
+/** The press that draws the folded ones, with its count. */
+export function arClosedOlderLabel(folded: number): string {
+  return folded === 1 ? 'Show 1 older case' : `Show ${folded} older cases`
 }
 
 /** The line under the list that says what it leaves out, and why. '' when it leaves nothing out. */
 export function arClosedOthersWords(others: number): string {
   if (others <= 0) return ''
-  return `${others === 1 ? '1 closed case is' : `${others} closed cases are`} not listed. Only a case on a test job can be reopened here.`
+  return `${others === 1 ? '1 closed case is' : `${others} closed cases are`} not listed. A case closed by a new payment or by Stripe’s answer stays closed.`
 }
 
 /** The confirm window's words. The button names the act. */
-export function arCaseReopenConfirm(line: Pick<ArClosedTestCaseLine, 'payer'>): { title: string; message: string; confirmLabel: string } {
+export function arCaseReopenConfirm(line: Pick<ArClosedCaseLine, 'payer'>): { title: string; message: string; confirmLabel: string } {
   return {
     title: `Reopen the case of ${line.payer}?`,
-    message: 'The case goes back under Came back, for everyone who opens Accounts Receivable. Its closing reason and note are cleared.',
+    message: 'The case goes back under Came back, for everyone who opens Accounts Receivable. It stands open there until someone closes it again. Its closing reason and note are cleared.',
     confirmLabel: 'Reopen the case',
   }
 }

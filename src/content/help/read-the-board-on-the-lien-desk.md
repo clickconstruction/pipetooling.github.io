@@ -231,7 +231,7 @@ A paper can be right at the printer and wrong a week later. A bill is corrected.
 
 The checklist watches for that. Each lien print keeps what the paper said. The desk sets that beside what the paper would say today.
 
-When a printed paper of the run has changed, a card named **Changed since printed** stands over **Print the run**. The card names the paper. It says when the paper printed and who printed it. Under that, each line is one thing that moved, with the value printed and the value now.
+When a printed paper of the run has changed, a card named **Changed since printed** stands over **Print the run**. The card names the paper. The card says when the paper printed and who printed it. Each line under the paper is one thing that moved, with the value printed and the value now.
 
 :::example A changed affidavit
 {{chip:gray|Affidavit}} **1052 · ZZ Service Visit**
@@ -241,7 +241,7 @@ Printed Nov 25, 10:02 AM by Rosa.
 The amount unpaid: printed $610.00, now $310.00.
 :::
 
-Anything the paper states counts: the money, the parties, the property, the work and its months. Three things do not count. They are a notice's date, its contact person, and the county an affidavit is signed in.
+Anything the paper states counts: the money, the parties, the property, the work and its months. Three things do not count. A notice's date does not count. A notice's contact person does not count. The county an affidavit is signed in does not count.
 
 A printed notice is read against the bills as they stand. So a bill corrected after the print counts, even when nobody redrew the notice.
 

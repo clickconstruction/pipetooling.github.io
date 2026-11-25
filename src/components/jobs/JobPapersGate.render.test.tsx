@@ -45,6 +45,8 @@ function fakeIo(over: Partial<JobPapersIo> = {}): JobPapersIo {
     readMine: vi.fn(async () => owed),
     ownSigningLink: vi.fn(async (paperId: string) => `https://example.test/contract/accept?t=${paperId}`),
     readNeedingMe: vi.fn(async () => []),
+    readGcOwn: vi.fn(async () => []),
+    setGcOwn: vi.fn(async () => undefined),
     ...over,
   }
 }

@@ -817,7 +817,7 @@ const verChip: CSSProperties = {
   borderRadius: 3,
   padding: '0 5px',
 }
-function chipStyle(kind: 'mockup' | 'artifact' | 'history' | 'folder'): CSSProperties {
+function chipStyle(kind: 'mockup' | 'pictures' | 'artifact' | 'history' | 'folder'): CSSProperties {
   const quiet = kind === 'history' || kind === 'folder'
   return {
     display: 'inline-block',

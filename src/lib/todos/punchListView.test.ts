@@ -113,6 +113,15 @@ describe('links', () => {
     expect(linkChips(FLAT).map((c) => c.kind)).toEqual(['history'])
   })
 
+  it('the pictures page has a chip of its own after the mock-ups, so it keeps its door (punch list #438)', () => {
+    const pictures = { page: 'to-dos/gc-on-notice/pictures.html', count: 5, drawn: '2026-11-24', drawnAt: 'v2.8442', stale: false, lead: null }
+    const chips = linkChips({ ...A, pictures })
+    expect(chips.map((c) => `${c.kind}:${c.label}`)).toEqual(['mockup:mockup', 'pictures:pictures', 'artifact:design canvas', 'history:history', 'folder:folder'])
+    expect(chips[1]).toEqual({ kind: 'pictures', label: 'pictures', href: '/to-dos/gc-on-notice/pictures.html', title: 'to-dos/gc-on-notice/pictures.html' })
+    // A lead picture with no page draws no chip.
+    expect(linkChips({ ...A, pictures: { ...pictures, page: null } }).some((c) => c.kind === 'pictures')).toBe(false)
+  })
+
   it('splits a version chip so each v2.NNNN links and the rest stays text', () => {
     expect(versionSegments('hook v2.3434 · hide for me v2.3524')).toEqual([
       { text: 'hook ', version: null },

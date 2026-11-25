@@ -25,6 +25,9 @@ import {
   parseGcCardBillBegun,
   parseGcCardBillRequest,
 } from '../../../supabase/functions/_shared/gcCardBill'
+import { STRIPE_BILL_DUE_MARGIN_MS, stripeBillDue } from '../../../supabase/functions/_shared/stripeBillDueDate'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { stripeUnixToAppYmd } from '../stripeInvoiceFacts'
 import { GC_MONEY_TEAM } from './access'
 
 const ROOT = resolve(__dirname, '../../..')
@@ -129,6 +132,72 @@ describe('the Stripe invoice', () => {
     expect(gcCardBillDue('2026-10-10', '2026-09-01', 30)).toEqual({ dueYmd: '2026-10-10', daysUntilDue: 0 })
     expect(gcCardBillDue('2026-10-10', '2026-10-09', null)).toEqual({ dueYmd: '2026-10-10', daysUntilDue: 0 })
     expect(gcCardBillDue('2026-10-10', null, 30)).toEqual({ dueYmd: '2026-10-10', daysUntilDue: 0 })
+  })
+
+  describe('the due day Stripe is given (punch list #343)', () => {
+    /** What the function sends at `nowMs`: the contract's day or today, then the kernel `create-stripe-invoice` uses. */
+    const sent = (nowMs: number, certifiedOn: string | null, payDays: number | null) => {
+      const { dueYmd, daysUntilDue } = gcCardBillDue(todayYmdInAppTz(new Date(nowMs)), certifiedOn, payDays)
+      return { dueYmd, daysUntilDue, due: stripeBillDue(dueYmd, nowMs) }
+    }
+    const utcYmd = (sec: number) => new Date(sec * 1000).toISOString().slice(0, 10)
+    const MORNING = Date.parse('2026-11-24T15:00:00Z') // 9 AM Central on Nov 24
+    const EVENING = Date.parse('2026-11-25T01:24:00Z') // 7:24 PM Central on Nov 24
+
+    it('the old count made a bill due today fall due the second it was made, and an evening press read tomorrow in UTC', () => {
+      const { dueYmd, daysUntilDue } = sent(EVENING, '2026-09-01', 30)
+      expect(dueYmd).toBe('2026-11-24')
+      expect(daysUntilDue).toBe(0)
+      // Stripe adds the count to the minute the bill is made.
+      const oldInstant = EVENING + daysUntilDue * 86_400_000
+      expect(oldInstant).toBe(EVENING)
+      expect(utcYmd(oldInstant / 1000)).toBe('2026-11-25')
+    })
+
+    it('a card bill due today is due at the end of today, whatever the hour of the press', () => {
+      const morning = sent(MORNING, '2026-09-01', 30).due
+      expect(morning).toEqual({ due_date: Date.parse('2026-11-24T23:59:59Z') / 1000, rule: 'utc_day_end' })
+      const evening = sent(EVENING, null, null).due
+      // 11:59:59 PM Central.
+      expect(evening).toEqual({ due_date: Date.parse('2026-11-25T05:59:59Z') / 1000, rule: 'app_day_end' })
+      for (const [now, due] of [[MORNING, morning], [EVENING, evening]] as const) {
+        if (!('due_date' in due)) throw new Error('expected a due day')
+        expect(stripeUnixToAppYmd(due.due_date)).toBe('2026-11-24')
+        expect(due.due_date * 1000).toBeGreaterThanOrEqual(now + STRIPE_BILL_DUE_MARGIN_MS)
+      }
+    })
+
+    it('a contract day that is ahead reads as that day in the company zone and in UTC, an evening press included', () => {
+      for (const now of [Date.parse('2026-11-24T09:00:00Z'), MORNING, EVENING]) {
+        // Certified Nov 10 on 30 days: due Dec 10.
+        const { dueYmd, due } = sent(now, '2026-11-10', 30)
+        expect(dueYmd).toBe('2026-12-10')
+        if (!('due_date' in due)) throw new Error('expected a due day')
+        expect(due.rule).toBe('utc_day_end')
+        expect(stripeUnixToAppYmd(due.due_date)).toBe('2026-12-10')
+        expect(utcYmd(due.due_date)).toBe('2026-12-10')
+      }
+    })
+
+    it('minutes from midnight a bill due today is due one day on, never 0 days', () => {
+      // 11:55 PM Central: no instant left on the day that Stripe would take.
+      expect(sent(Date.parse('2026-11-25T05:55:00Z'), null, null).due).toEqual({ days_until_due: 1, rule: 'day_is_over' })
+    })
+
+    it('the function sends the kernel’s answer from one read of the clock, and falls back on a count if Stripe refuses the day', () => {
+      expect(FUNCTION).toContain("from '../_shared/stripeBillDueDate.ts'")
+      expect(FUNCTION).toContain('const nowMs = Date.now()')
+      expect(FUNCTION).toContain('gcCardBillDue(todayYmdInAppTz(new Date(nowMs)), begun.certifiedOn, begun.ownerPayDays)')
+      expect(FUNCTION).toContain('stripeBillDue(dueYmd, nowMs)')
+      expect(FUNCTION).toContain("createInvoiceDue('due_date' in due ? { due_date: due.due_date } : { days_until_due: due.days_until_due })")
+      expect(FUNCTION).toContain('isStripeDueDateRefusal(e)')
+      expect(FUNCTION).toContain('stripeBillDueFallbackDays(dueYmd, Date.now())')
+      expect(FUNCTION).toContain('createInvoiceDue({ days_until_due: days })')
+      // The kernel's own count is never what Stripe is given.
+      expect(FUNCTION).not.toContain('days_until_due: daysUntilDue')
+      // A refused due day makes nothing, so `made` is set only once an invoice exists.
+      expect(FUNCTION.indexOf('made = invoice.id')).toBeGreaterThan(FUNCTION.indexOf('createInvoiceDue({ days_until_due: days })'))
+    })
   })
 
   it('has two lines in cents: the bill as certified, then the fee on its own', () => {

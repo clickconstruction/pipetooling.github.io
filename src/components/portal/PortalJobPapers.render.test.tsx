@@ -121,4 +121,38 @@ describe('PortalJobPapers', () => {
     render(<PortalJobPapers jobs={JOBS} company="Made-up Plumbing" token="sample-gc" />)
     expect(document.querySelectorAll('[data-portal-job-paper-sample]').length).toBe(0)
   })
+
+  it('the GC’s own form says whose it is and who has signed, with no level, sample or proposal', () => {
+    const jobs = parseGcJobPapers([
+      {
+        jobId: 'job-3',
+        jobLabel: 'J300 · Quarry',
+        papers: [],
+        ownForms: [{ id: 'row-f', name: 'Sample GC form', signed: 1, total: 4, businesses: [{ name: 'Pine Ridge Excavating', people: 2, signed: 2, signedOn: '2026-11-24' }, { name: 'Sam Sole', people: 1, signed: 0, signedOn: null }] }],
+      },
+    ])
+    const { container } = render(<PortalJobPapers jobs={jobs} company="Sample Plumbing" token="a-real-token" />)
+    const job = container.querySelector('[data-portal-job-papers-job="job-3"]') as HTMLElement
+    expect(within(job).getByText('J300 · Quarry')).toBeTruthy()
+    const block = job.querySelector('[data-portal-job-own-form="row-f"]') as HTMLElement
+    expect(within(block).getByText('Subs sign your own form')).toBeTruthy()
+    expect(within(block).getByText('Sample GC form')).toBeTruthy()
+    expect(within(block).getByText('Every person Sample Plumbing brings onto this job signs the form you gave us before they see the job.')).toBeTruthy()
+    expect(within(block).getByText('1 of 4 people have signed')).toBeTruthy()
+    expect(block.querySelectorAll('[data-portal-job-paper-business]')).toHaveLength(2)
+    expect(within(block).getByText('This is your form. It does not change the agreement between Sample Plumbing and you.')).toBeTruthy()
+    // A form has no settings: nothing to download as a sample, nothing to propose, and no block of a paper.
+    expect(container.querySelector('[data-portal-job-paper-sample]')).toBeNull()
+    expect(container.querySelector('[data-portal-job-paper]')).toBeNull()
+    expect(within(block).queryByRole('button')).toBeNull()
+    expect(within(block).queryByText('How we bind everyone we bring onto this job')).toBeNull()
+  })
+
+  it('a job with a paper and the GC’s own form draws both under the one job name', () => {
+    const jobs = parseGcJobPapers([{ ...JSON.parse(JSON.stringify(JOBS[0])), ownForms: [{ id: 'row-f', name: 'Sample GC form', signed: 0, total: 9, businesses: [] }] }])
+    const { container } = render(<PortalJobPapers jobs={jobs} company="Sample Plumbing" />)
+    expect(container.querySelectorAll('[data-portal-job-papers-job]')).toHaveLength(1)
+    expect(container.querySelectorAll('[data-portal-job-own-form]')).toHaveLength(1)
+    expect(container.querySelectorAll('[data-portal-job-paper]')).toHaveLength(1)
+  })
 })

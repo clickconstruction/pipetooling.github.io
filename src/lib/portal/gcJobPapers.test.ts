@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GC_PAPER_SAMPLE, gcJobPapersFromSql, gcProposalAsk, gcProposeDef, gcJobPapersOrNone, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSampleUrl, gcPaperSigned, gcPaperSigner, gcPaperViewOf, parseGcJobPapers } from './gcJobPapers'
+import { GC_OWN_FORM_TITLE, GC_PAPER_SAMPLE, gcJobPapersFromSql, gcOwnFormFine, gcOwnFormLead, gcProposalAsk, gcProposeDef, gcJobPapersOrNone, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSampleUrl, gcPaperSigned, gcPaperSigner, gcPaperViewOf, parseGcJobPapers } from './gcJobPapers'
 
 // What the database answers for one job, with made-up words.
 const SQL = [
@@ -59,6 +59,7 @@ describe('gcJobPapers · what a GC reads about a job’s papers', () => {
             proposal: null,
           },
         ],
+        ownForms: [],
       },
     ])
   })
@@ -183,6 +184,64 @@ describe('gcJobPapers · what a GC reads about a job’s papers', () => {
     expect(calls).toHaveLength(1)
     const refused = { rpc: async () => ({ data: null, error: { message: 'no such function' } }) }
     expect(await gcJobPapersOrNone(refused, GC_JOBS)).toEqual([])
+  })
+})
+
+// The GC's own form (step 7): what the database answers for a job that requires one, with made-up words.
+const OWN_SQL = [
+  {
+    job_id: 'job-1',
+    papers: [],
+    own_forms: [
+      { id: 'row-f', paper_name: 'Sample GC form', signed: 12, total: 4, businesses: [{ name: 'Pine Ridge Excavating', people: 2, signed: 2, signed_on: '2026-11-24' }, { name: 'Nobody Co', people: 0, signed: 0, signed_on: null }] },
+      { id: '', paper_name: 'No id, so it is dropped' },
+    ],
+  },
+  { job_id: 'job-2', papers: SQL[0]!.papers, own_forms: [{ id: 'row-g', paper_name: 'Another sample form', signed: 0, total: 0, businesses: [] }] },
+]
+
+describe('gcJobPapers · the GC’s own form', () => {
+  it('keeps a job that requires only the GC’s own form, with the form in a list of its own', () => {
+    expect(gcJobPapersFromSql(OWN_SQL, GC_JOBS)).toEqual([
+      { jobId: 'job-2', jobLabel: 'J200 · Marsh', papers: gcJobPapersFromSql(SQL, GC_JOBS)[0]!.papers, ownForms: [{ id: 'row-g', name: 'Another sample form', signed: 0, total: 0, businesses: [] }] },
+      {
+        jobId: 'job-1',
+        jobLabel: 'J100 · Cedar Bluff',
+        papers: [],
+        // Never more signed than there are people, and a business with nobody on it is dropped.
+        ownForms: [{ id: 'row-f', name: 'Sample GC form', signed: 4, total: 4, businesses: [{ name: 'Pine Ridge Excavating', people: 2, signed: 2, signedOn: '2026-11-24' }] }],
+      },
+    ])
+  })
+
+  it('reads the forms back on the page as sent', () => {
+    const sent = gcJobPapersFromSql(OWN_SQL, GC_JOBS)
+    expect(parseGcJobPapers(JSON.parse(JSON.stringify(sent)))).toEqual(sent)
+  })
+
+  it('an answer from before the step, with no such list, reads as no own form', () => {
+    expect(gcJobPapersFromSql(SQL, GC_JOBS)[0]!.ownForms).toEqual([])
+    expect(parseGcJobPapers([{ jobId: 'job-1', jobLabel: 'J100', papers: [{ id: 'row-1', name: 'Sample paper' }] }])[0]!.ownForms).toEqual([])
+  })
+
+  it('drops a job whose lists are both empty, and a form with no name', () => {
+    expect(gcJobPapersFromSql([{ job_id: 'job-1', papers: [], own_forms: [] }], GC_JOBS)).toEqual([])
+    expect(parseGcJobPapers([{ jobId: 'job-1', papers: [], ownForms: [{ id: 'row-f', name: '' }] }])).toEqual([])
+  })
+
+  it('never puts a form among the papers, whatever the answer carries', () => {
+    const jobs = gcJobPapersFromSql(OWN_SQL, GC_JOBS)
+    expect(jobs.flatMap((j) => j.papers.map((x) => x.name))).toEqual(['Sample paper'])
+    // A form carries no level, no plain words, no sample and no proposal: the shape has no place for them.
+    expect(Object.keys(jobs[1]!.ownForms[0]!).sort()).toEqual(['businesses', 'id', 'name', 'signed', 'total'])
+  })
+
+  it('says whose form it is, and counts as a paper counts', () => {
+    expect(GC_OWN_FORM_TITLE).toBe('Subs sign your own form')
+    expect(gcOwnFormLead('Sample Plumbing')).toBe('Every person Sample Plumbing brings onto this job signs the form you gave us before they see the job.')
+    expect(gcOwnFormLead('')).toBe('Every person our company brings onto this job signs the form you gave us before they see the job.')
+    expect(gcOwnFormFine('Sample Plumbing')).toBe('This is your form. It does not change the agreement between Sample Plumbing and you.')
+    expect(gcPaperSigned({ signed: 2, total: 4 })).toEqual({ head: '2 of 4 people have signed', percent: 50 })
   })
 })
 

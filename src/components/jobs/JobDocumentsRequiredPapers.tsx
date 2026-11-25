@@ -9,10 +9,13 @@ import {
   type JobPaperPerson,
   type JobPapersRoster,
   type PickablePaper,
+  GC_OWN_FORM,
   NO_PAPERS_WORDS,
+  canBeGcOwn,
   cellFor,
   cellWords,
   copyLinksLabel,
+  gcOwnToast,
   lockStageNote,
   noLinkReason,
   owedPapers,
@@ -45,7 +48,17 @@ const deadPress: CSSProperties = { background: DEAD_PRESS_FILL, color: DEAD_PRES
 const stateChip: CSSProperties = { display: 'inline-block', fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.5rem', borderRadius: 999, whiteSpace: 'nowrap' }
 const note: CSSProperties = { ...muted, padding: '0.45rem 0.6rem', borderLeft: '3px solid var(--text-amber-800)', background: 'var(--bg-amber-tint)', color: 'var(--text-700)', borderRadius: '0 6px 6px 0' }
 
-type Busy = 'save' | `remove:${string}` | `links:${string}` | null
+type Busy = 'save' | `remove:${string}` | `links:${string}` | `own:${string}` | null
+
+/** The tick that says a form is the GC's own (#389 step 7). A control of its own beside the form's line, a finger tall. */
+function OwnTick({ paperName, checked, disabled, onChange }: { paperName: string; checked: boolean; disabled: boolean; onChange: (next: boolean) => void }) {
+  return (
+    <label data-job-paper-own-tick="" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', minHeight: 44, padding: '0 0.4rem', fontSize: '0.8125rem', color: 'var(--text-700)', cursor: disabled ? 'not-allowed' : 'pointer' }}>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} aria-label={`${paperName}: ${GC_OWN_FORM.tick}`} style={{ width: 18, height: 18, margin: 0 }} />
+      {GC_OWN_FORM.tick}
+    </label>
+  )
+}
 
 /**
  * Papers before this job opens (step 2 of seven): on the job window's Documents tab the office picks papers from
@@ -53,6 +66,9 @@ type Busy = 'save' | `remove:${string}` | `links:${string}` | null
  * line under it says how many people it reaches. Below, the roster: each person against each paper, with a press
  * that copies their signing links to text them. Whoever saves owes the papers too: the job's prompt asks them at once
  * (`JobPapersGateModal`). Taking a paper off keeps every signature. Office only: the caller draws it for an office role.
+ *
+ * A form can be the GC's own (#389 step 7): a tick beside the form's line in the picker picks it marked, the unsaved
+ * row keeps the tick, and a required form's row saves it in place. The mark changes what the GC's page says and no form.
  */
 export function JobDocumentsRequiredPapers({
   job,
@@ -78,6 +94,9 @@ export function JobDocumentsRequiredPapers({
   const [bookFailure, setBookFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [adding, setAdding] = useState(false)
   const [pending, setPending] = useState<PickablePaper[]>([])
+  // The unsaved forms ticked as the GC's own, by Book entry, and the required forms that carry the mark. Null: not read.
+  const [pendingOwn, setPendingOwn] = useState<string[]>([])
+  const [ownIds, setOwnIds] = useState<string[] | null>([])
   const [busy, setBusy] = useState<Busy>(null)
   const [error, setError] = useState<string | null>(null)
   const [held, setHeld] = useState<{ head: string; lines: string[] } | null>(null)
@@ -107,6 +126,9 @@ export function JobDocumentsRequiredPapers({
       // Only a paper built from settings takes a proposal. A read of them that fails shows none, and the rest still draws.
       const waiting = built.length > 0 ? await proposalsIo.readWaiting(job.id).catch(() => []) : []
       if (live.current) setProposals(waiting)
+      // Only a form can be the GC's own. A read that fails draws no tick on a required row, never a wrong one.
+      const own = next.papers.some((p) => p.isForm) ? await io.readGcOwn(job.id).catch(() => null) : []
+      if (live.current) setOwnIds(own)
     } catch (e) {
       if (live.current) setFailure(recoveryFailureFromError(e, 'Couldn’t read this job’s papers'))
     } finally {
@@ -166,11 +188,29 @@ export function JobDocumentsRequiredPapers({
     setBusy('save')
     setError(null)
     try {
+      const own = pending.filter((p) => pendingOwn.includes(p.bookDocumentId))
       const added = await io.requirePapers(job.id, pending.map((p) => p.bookDocumentId))
       if (!live.current) return
+      // A form is required first and marked second. A mark that fails leaves the form required, and is named below.
+      const unmarked: string[] = []
+      if (own.length > 0) {
+        const next = await io.readRoster(job.id).catch(() => null)
+        for (const p of own) {
+          const row = next?.papers.find((x) => x.bookDocumentId === p.bookDocumentId)
+          try {
+            if (!row) throw new Error('the form was not found on the job.')
+            await io.setGcOwn(row.id, true)
+          } catch (e) {
+            unmarked.push(`${p.paperName}: ${formatErrorMessage(e, 'the mark was not saved.')}`)
+          }
+        }
+        if (!live.current) return
+      }
       setPending([])
+      setPendingOwn([])
       setAdding(false)
       showToast(requiredToast(added), 'success')
+      setHeld(unmarked.length > 0 ? { head: GC_OWN_FORM.notMarked, lines: unmarked } : null)
       told()
       await reload()
     } catch (e) {
@@ -200,6 +240,23 @@ export function JobDocumentsRequiredPapers({
       await reload()
     } catch (e) {
       if (live.current) setError(formatErrorMessage(e, 'The paper was not taken off.'))
+    } finally {
+      if (live.current) setBusy(null)
+    }
+  }
+
+  /** The tick on a required form's row, saved in place. It marks the GC's page and no form, so it asks nothing first. */
+  const markOwn = async (paper: { id: string; paperName: string }, own: boolean) => {
+    if (busy) return
+    setBusy(`own:${paper.id}`)
+    setError(null)
+    try {
+      await io.setGcOwn(paper.id, own)
+      if (!live.current) return
+      showToast(gcOwnToast(paper.paperName, own), 'success')
+      await reload()
+    } catch (e) {
+      if (live.current) setError(formatErrorMessage(e, 'The mark was not saved.'))
     } finally {
       if (live.current) setBusy(null)
     }
@@ -275,13 +332,15 @@ export function JobDocumentsRequiredPapers({
               {papers.map((p) => {
                 const set = settingsPapers.find((x) => x.requiredPaperId === p.id)
                 const proposal = set ? proposals.find((x) => x.requiredPaperId === p.id) : undefined
+                const own = ownIds?.includes(p.id) ?? false
                 return (
                 <Fragment key={p.id}>
                 <div style={paperRow} data-job-paper="live">
                   <b style={{ color: 'var(--text-strong)', fontWeight: 600, fontSize: '0.875rem' }}>{p.paperName}</b>
-                  <span style={muted}>{set ? 'Built from this job’s settings' : p.isForm ? 'A form from the Contract Book' : 'From the Contract Book'}</span>
+                  <span style={muted} data-job-paper-from="">{set ? 'Built from this job’s settings' : own ? GC_OWN_FORM.from : p.isForm ? 'A form from the Contract Book' : 'From the Contract Book'}</span>
                   {/* The row's presses wrap together on a narrow screen, never one alone on a line of its own. */}
                   <span style={rowPresses}>
+                    {ownIds && !set && p.isForm ? <OwnTick paperName={p.paperName} checked={own} disabled={busy != null} onChange={(next) => void markOwn(p, next)} /> : null}
                     {set ? (
                       <button type="button" style={linkPress} disabled={busy != null} onClick={() => openSettings({ kind: 'change', paper: set, paperName: p.paperName })} aria-label={`Settings of ${p.paperName}`}>
                         Settings
@@ -313,10 +372,29 @@ export function JobDocumentsRequiredPapers({
               {pending.map((p) => (
                 <div key={p.bookDocumentId} style={{ ...paperRow, borderStyle: 'dashed' }} data-job-paper="pending">
                   <b style={{ color: 'var(--text-strong)', fontWeight: 600, fontSize: '0.875rem' }}>{p.paperName}</b>
-                  <span style={muted}>{p.from}</span>
-                  <button type="button" style={{ ...linkPress, marginLeft: 'auto', color: 'var(--text-muted)', fontWeight: 500 }} disabled={busy != null} onClick={() => setPending((cur) => cur.filter((x) => x.bookDocumentId !== p.bookDocumentId))} aria-label={`Take ${p.paperName} off`}>
-                    Take off
-                  </button>
+                  <span style={muted}>{pendingOwn.includes(p.bookDocumentId) ? GC_OWN_FORM.from : p.from}</span>
+                  <span style={rowPresses}>
+                    {canBeGcOwn(p) ? (
+                      <OwnTick
+                        paperName={p.paperName}
+                        checked={pendingOwn.includes(p.bookDocumentId)}
+                        disabled={busy != null}
+                        onChange={(next) => setPendingOwn((cur) => (next ? [...cur.filter((x) => x !== p.bookDocumentId), p.bookDocumentId] : cur.filter((x) => x !== p.bookDocumentId)))}
+                      />
+                    ) : null}
+                    <button
+                      type="button"
+                      style={{ ...linkPress, color: 'var(--text-muted)', fontWeight: 500 }}
+                      disabled={busy != null}
+                      onClick={() => {
+                        setPending((cur) => cur.filter((x) => x.bookDocumentId !== p.bookDocumentId))
+                        setPendingOwn((cur) => cur.filter((x) => x !== p.bookDocumentId))
+                      }}
+                      aria-label={`Take ${p.paperName} off`}
+                    >
+                      Take off
+                    </button>
+                  </span>
                 </div>
               ))}
 
@@ -335,21 +413,37 @@ export function JobDocumentsRequiredPapers({
                   ) : pickable.length === 0 ? (
                     <EmptyState compact main="Every paper in the Contract Book is already on this job." next={{ label: 'Open the Contract Book', to: '/people?tab=contracts' }} tail="to write a new one." />
                   ) : (
+                    <>
                     <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                       {pickable.map((p) => (
-                        <li key={p.bookDocumentId}>
+                        // A line is one whole press, so a form's tick sits beside it and never inside it.
+                        <li key={p.bookDocumentId} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.1rem 0.4rem' }}>
                           <button
                             type="button"
                             disabled={!p.hasWords}
                             onClick={() => (p.built ? openSettings({ kind: 'first', bookDocumentId: p.bookDocumentId, paperName: p.paperName }) : setPending((cur) => [...cur, p]))}
-                            style={{ ...paperRow, width: '100%', textAlign: 'left', cursor: p.hasWords ? 'pointer' : 'not-allowed', font: 'inherit', ...(p.hasWords ? {} : { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT }) }}
+                            style={{ ...paperRow, flex: '1 1 14rem', textAlign: 'left', cursor: p.hasWords ? 'pointer' : 'not-allowed', font: 'inherit', ...(p.hasWords ? {} : { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT }) }}
                           >
                             <b style={{ color: p.hasWords ? 'var(--text-strong)' : DEAD_PRESS_TEXT, fontWeight: 600, fontSize: '0.875rem' }}>{p.paperName}</b>
                             <span style={muted}>{p.from}</span>
                           </button>
+                          {canBeGcOwn(p) ? (
+                            <OwnTick
+                              paperName={p.paperName}
+                              checked={false}
+                              disabled={busy != null}
+                              onChange={() => {
+                                // The tick picks the form already marked: it moves up to the unsaved rows with its tick on.
+                                setPending((cur) => [...cur, p])
+                                setPendingOwn((cur) => [...cur.filter((x) => x !== p.bookDocumentId), p.bookDocumentId])
+                              }}
+                            />
+                          ) : null}
                         </li>
                       ))}
                     </ul>
+                    {pickable.some((p) => canBeGcOwn(p)) ? <p style={muted}>{GC_OWN_FORM.fine}</p> : null}
+                    </>
                   )}
                 </div>
               ) : (
