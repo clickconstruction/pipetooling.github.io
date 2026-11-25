@@ -118,7 +118,7 @@ describe('withJobPaperSettings', () => {
   })
 })
 
-describe('the two functions that hand out a signing link', () => {
+describe('the two functions that hand out a signing link, and the one that reminds', () => {
   const read = (name: string) => readFileSync(resolve(__dirname, `../../supabase/functions/${name}/index.ts`), 'utf8')
 
   it('send-contract-for-signature reads the job the copy names and asks before it refuses', () => {
@@ -138,5 +138,20 @@ describe('the two functions that hand out a signing link', () => {
     expect(ask).toBeGreaterThan(-1)
     expect(source.indexOf('This paper was made for someone else.')).toBeLessThan(ask)
     expect(source.indexOf('This paper was made for someone else.')).toBeGreaterThan(-1)
+  })
+
+  it('remind-person-papers asks the job’s row before it holds a paper as one with nothing to sign', () => {
+    // Punch list #376, call 1: a job's paper built from settings took a first reminder date at its send, and the
+    // hourly run then held it as a paper with nothing to sign and cleared the date. It asks as the send asks.
+    const source = read('remind-person-papers')
+    expect(source).toMatch(/const DUE_COLUMNS =\s*'[^']*\bjob_required_paper_id\b[^']*'/)
+    const ask = source.indexOf('!hasSigningContent(await withJobPaperSettings(')
+    expect(ask).toBeGreaterThan(-1)
+    expect(source).not.toContain('!hasSigningContent(c)')
+    // The hold comes from the ask alone, and a read that fails is named and left for the next hour, never held.
+    expect(source.indexOf("hold = 'nothing_to_sign'")).toBeGreaterThan(ask)
+    expect(source.split("hold = 'nothing_to_sign'")).toHaveLength(2)
+    const afterAsk = source.slice(ask, source.indexOf('if (hold) {'))
+    expect(afterAsk).toMatch(/catch \(e\) \{\s*failed\.push\([^\n]*\n\s*continue/)
   })
 })
