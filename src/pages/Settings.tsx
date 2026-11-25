@@ -39,6 +39,8 @@ import DevelopmentsSettingsBlock from '../components/settings/DevelopmentsSettin
 import { GuideBrowser } from '../components/GuideBrowser'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import OfflineRetryPanel from '../components/OfflineRetryPanel'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import SettingsTemplatesTab from '../components/settings/SettingsTemplatesTab'
 import DigitalTwinsPanel from '../components/settings/DigitalTwinsPanel'
 import DevMcpKeysCard from '../components/settings/DevMcpKeysCard'
@@ -246,6 +248,8 @@ export default function Settings() {
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  /** The page's first read failed (punch list #406): drawn with its reason and a Retry, never as raw words alone. */
+  const [firstReadFailure, setFirstReadFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [pinsClearSuccess, setPinsClearSuccess] = useState(false)
   const [myPins, setMyPins] = useState<PinnedItem[]>([])
   const [pinsLoading, setPinsLoading] = useState(true)
@@ -714,7 +718,9 @@ export default function Settings() {
       .eq('id', authUser.id)
       .single()
     if (eMe) {
-      setError(eMe.message)
+      const failure = recoveryFailureFromError(eMe, 'Your account did not load.')
+      setError(failure.message)
+      setFirstReadFailure(failure)
       setSelfIsSalariedInPayConfig(false)
       setSelfPaySalaryLoaded(true)
       setLoading(false)
@@ -730,6 +736,7 @@ export default function Settings() {
     } | null
     const role = meRow?.role ?? null
     const loadedName = meRow?.name ?? ''
+    setFirstReadFailure(null)
     applyProfileRow(meRow)
     const estIds = meRow?.estimator_service_type_ids
     setMyRole(role)
@@ -783,7 +790,7 @@ export default function Settings() {
       .select('id, email, name, role, last_sign_in_at, estimator_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
       .is('archived_at', null)
       .order('name')
-    if (eList) setError(eList.message)
+    if (eList) setError(formatErrorMessage(eList, 'The team list did not load.'))
     else setUsers((list as UserRow[]) ?? [])
     }
 
@@ -849,7 +856,7 @@ export default function Settings() {
         if (cancelled) return
         setDailyGoalsLoading(false)
         if (error) {
-          setError(error.message)
+          setError(formatErrorMessage(error, 'The daily goals did not load.'))
           setDailyGoalsRows([])
           return
         }
@@ -1148,7 +1155,19 @@ export default function Settings() {
 
 
   if (loading) return <p>Loading…</p>
-  if (error && !myRole) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
+  if (error && !myRole) {
+    // The first read's failure says its reason and offers Retry where one helps (punch list #406). It was one raw red line.
+    if (firstReadFailure) {
+      const readAgain = () => {
+        setError(null)
+        setFirstReadFailure(null)
+        setLoading(true)
+        void loadData()
+      }
+      return <OfflineRetryPanel failure={firstReadFailure} onRetry={readAgain} surface="settings-first-read" idempotent />
+    }
+    return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
+  }
 
   // For estimators with restrictions, only show approved service types in Material Part/Assembly Types
   // A billing-only type has no materials; the catalog list below keeps every type to edit.
