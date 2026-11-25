@@ -14,8 +14,8 @@ summary: >
   Messages with the link written. A map that takes seven presses and two bouts of typing today
   takes four.
 next: >
-  Mend the start sheet's height, so both of its presses stand above Safari's bar (S, the client alone). Walk it on a real iPhone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band. The owner answers call 11, the two short pages. Then delete this card.
-size: L as a train of five (S · M · S · L · S), all built, with the changed jobs and Coming up after it (S with one index); left: the walk on two real phones (XS) and call 11
+  Mend the start sheet's height, so both of its presses stand above Safari's bar (S, the client alone). Give Dispatch Mode's home the Dashboard's top row, on the answer of 2026-11-25 (S, the client alone). Walk it on a real iPhone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band. The owner answers call 11, the two short pages. Then delete this card.
+size: L as a train of five (S · M · S · L · S), all built, with the changed jobs and Coming up after it (S with one index); left: the start sheet's height (S), the top row on Dispatch Mode's home (S), the walk on a real iPhone (XS) and call 11
 blocker: >
   A real iPhone in a hand, and the owner's answer to call 11.
 ver: v2.7859 · 7866 · 7868 · 7869 · 7915 · 7920 · 7933
@@ -458,4 +458,7 @@ Seen on 2026-11-25 in the same simulator through View as the sample leader, the 
 - **Holds in Job Mode.** The helper's row is four named squares, **Paint a map** among them. This card describes a wide press with a second line that says where the map will land. The square has no second line.
 - **Holds for call 11.** The short page has no Paint a map. Behind **Everything else** it is one press away.
 - **For the owner's word: a leader on Dispatch Mode meets no press on the page his bar calls Dashboard.** The bar's Dashboard tab opens Dispatch Mode's home, which starts with **Clock In**, My Schedule and the money cards. The press is on the Dashboard itself, which he reaches by the header's home press. The owner's first rule was a press that is always there. Read in the code the same day: Dispatch Mode's home draws the clock, My Schedule and the money cards, with no top row, as built. The Dashboard's own row can stand there. S, the client alone, once the owner says.
+  - **Answered 2026-11-25 (UTC) in the managing session.** Asked *A leader on Dispatch Mode: should Dispatch Mode's home take the Dashboard's top row (Tally, Clock In, Job Report, Paint a map)?*, the answer was "Yes, add the row (Recommended)", quoted from that session's record of the user's answers. The other way was to leave it, since the header's home press reaches the row.
+  - **What it frees.** The build: the row in place of the bare clock on Dispatch Mode's home, a render smoke as a leader, and the guide for Dispatch Mode. S, the client alone, with no migration and no function. Not built.
+  - **What it leaves open.** Call 11, the two short pages, and the walk on a real iPhone.
 - **Seen, and it is as built.** A leader with no clock and no schedule, and one job that is only *changed*, got the picker first, with that job as its one row. The sheet opens with no question only on a job the person clocked onto or had on their schedule, never on one they only changed, which says nothing of when they were there (`paintedMapJobPicker.ts`).
