@@ -2,7 +2,7 @@
 name: "The Bridge lights the narrowest step"
 number: 321
 group: ready
-status: drawn 2026-11-12 after a review of the Bridge once Market read on the won rates (#318) · nothing is built · 2026-11-25 (UTC): the meaning answered in the managing session, the scaling function is the narrowest step, the one that moves the fewest dollars a week
+status: drawn 2026-11-12 after a review of the Bridge once Market read on the won rates (#318) · nothing is built · 2026-11-25 (UTC): the meaning answered in the managing session, the scaling function is the narrowest step, the one that moves the fewest dollars a week · the rule itself answered later the same day: the Bridge lights the narrowest step, so PR 2 and PR 3 are no longer held
 mockup: to-dos/bridge-narrowest-step/mockup.html
 summary: >
   The Bridge lights the step with the most weeks of work waiting. With all five steps on one scale, that rule can
@@ -10,10 +10,9 @@ summary: >
   sells. The steps that hold the company back are the one that moves the fewest dollars a week, and the one whose
   pile grows. The drawing puts today's reading beside one that lights the narrowest step and says on each row
   whether its pile grows or shrinks. It is a question for the owner, since it changes the page's rule.
-next: PR 1 (S), each row's direction on the pipe, which changes no rule. PR 2 changes the rule the page lights by, and waits on that being put to the owner in so many words.
+next: PR 1 (S), each row's direction on the pipe, which changes no rule. Then PR 2 (M), the rule the page lights by, and PR 3 (S), on the answer of 2026-11-25: the page lights the narrowest step.
 size: M as three parts (S · M · S); the row directions alone are S
-blocker: Nothing for PR 1. PR 2 and PR 3 wait on the owner's word that the page should light the narrowest step, which the answer on the meaning points to and does not say.
-ask: owner · decide · Should the Bridge light the narrowest step, in place of the step with the most weeks of work waiting?
+blocker: Nothing. The rule was answered on 2026-11-25 in so many words, so all three PRs can be built, in order.
 opinion: build the row directions first; they add no new rule and let him see both readings on his own numbers
 ---
 
@@ -30,6 +29,10 @@ to find the limiting factors of his company. The owner's own words for that purp
 
 On 2026-11-25 (UTC) the managing session asked him: by *the scaling function*, did you mean the narrowest step?
 The answer, quoted from that session's record of the user's answers: *Yes, the narrowest step, the one that moves the fewest dollars a week.*
+
+That answer said what the words mean and not what the page should do, so the rule was asked in so many words later the same day.
+Asked *Should the Bridge light the narrowest step in place of the most weeks waiting?*, the answer was "Yes, the narrowest step", quoted from that session's record of the user's answers.
+What it frees: PR 2 and PR 3, after PR 1. What it leaves open: nothing on this card waits on a person.
 
 ## What the review found
 
@@ -89,7 +92,7 @@ Nothing is built. What exists:
 ## The plan
 
 PR 1 can start: the meaning is answered, and it changes no rule.
-PR 2 and PR 3 wait on the owner's word on the rule itself.
+PR 2 and PR 3 waited on the word on the rule itself. It came on 2026-11-25, "Yes, the narrowest step", so both follow PR 1.
 
 | PR | What | Size |
 |---|---|---|
@@ -115,4 +118,4 @@ PR 2 and PR 3 wait on the owner's word on the rule itself.
 
 ## Where it stands
 
-Drawn, not built. The meaning was answered on 2026-11-25. The next move is PR 1, and one question to the owner on the rule before PR 2.
+Drawn, not built. The meaning was answered on 2026-11-25. The next move is PR 1. The rule was answered the same day, so PR 2 and PR 3 follow it.
