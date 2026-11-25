@@ -937,9 +937,12 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       ) : null}
           {(
         containers.length === 0 ? (
-          <div style={sec}>
+          // The empty words wait for the read (punch list #398): while it runs, or after it failed, nobody knows the job is empty.
+          !load.loaded ? null : (
+          <div style={sec} data-testid="materials-empty-job">
             <EmptyState main="No containers on this site yet." next={{ label: 'Add a container', onPress: () => setAdding(true) }} tail="adds the first with its stencil. Then a crew presses Count this box on each, and the first count is the truth." />
           </div>
+          )
         ) : (
           <div style={{ display: 'grid', gap: '1rem' }}>
             {groupByPlace(shownContainers, places).map((g) => (
