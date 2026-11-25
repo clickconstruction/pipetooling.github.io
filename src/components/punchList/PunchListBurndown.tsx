@@ -32,6 +32,8 @@ import {
   type StageRow,
   type WaveBin,
 } from '../../lib/todos/punchListHistory'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 import type { BoardItem } from '../../lib/todos/todoBoard'
 import { EmptyState } from '../EmptyState'
 import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
@@ -59,6 +61,8 @@ export function PunchListBurndown({ history, items, now = Date.now }: { history:
   const bin = waveHours(range, rows.length)
   const waves = useMemo(() => waveBins(rows, range, measure, bin), [rows, range, measure, bin])
   const stages = useMemo(() => stageRows(rows, cards, range, measure), [rows, cards, range, measure])
+  // On a phone the fold stands a fingertip tall (the walk of 2026-11-25 measured 28 px).
+  const isMobile = useIsMobile()
   const toggle = () => {
     const next = !open
     setOpen(next)
@@ -91,7 +95,7 @@ export function PunchListBurndown({ history, items, now = Date.now }: { history:
             </span>
           ) : null}
         </span>
-        <button type="button" onClick={toggle} aria-expanded={open} aria-controls="burndown-body" style={{ ...pill(false), marginLeft: 'auto', fontSize: '0.8rem', padding: '0.2rem 0.6rem' }}>
+        <button type="button" onClick={toggle} aria-expanded={open} aria-controls="burndown-body" style={{ ...pill(false), marginLeft: 'auto', fontSize: '0.8rem', padding: '0.2rem 0.6rem', ...(isMobile ? { minHeight: PHONE_PRESS_MIN_HEIGHT } : null) }}>
           {open ? 'Hide the burndown' : 'Show the burndown'}
         </button>
       </div>

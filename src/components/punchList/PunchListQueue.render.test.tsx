@@ -3,13 +3,15 @@
  * In the merge queue on /punch-list (punch list #444) over a fake io: the line with each value apart, the day's merges
  * and the merges an hour, the buckets line and the door to Settings; an empty queue's words; the one line when the
  * queue was not read; no row; a read that fails with Retry; a dev's one read of GitHub on an old row, and none for a
- * fresh row or a master; the press; Hide, which the device remembers and which still says the count.
+ * fresh row or a master; the press; Hide, which the device remembers and which still says the count; and on a phone
+ * the fold, the dev's press and the door each a fingertip tall (the walk of 2026-11-25 measured 24, 29 and 36 px).
  */
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { shipPacePicture, type PacePr, type PaceQueueEntryInput, type ShipPacePicture } from '../../../supabase/functions/_shared/shipPace'
 import type { ShipPaceIo } from '../../lib/settings/shipPaceIo'
 import { SHIP_PACE_WORDS } from '../../lib/settings/shipPaceWords'
+import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 import { PUNCH_QUEUE_WORDS as W } from '../../lib/todos/punchListQueue'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { PunchListQueue } from './PunchListQueue'
@@ -23,7 +25,14 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
-afterEach(cleanup)
+/** The width the block is drawn at: a desk unless a case says a phone. */
+const screenIs = vi.hoisted(() => ({ phone: false }))
+vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => screenIs.phone }))
+
+afterEach(() => {
+  cleanup()
+  screenIs.phone = false
+})
 beforeEach(() => window.localStorage.clear())
 
 /** Monday 2:41 PM on the app calendar. */
@@ -218,5 +227,32 @@ describe('PunchListQueue', () => {
     renderWithProviders(<PunchListQueue role="master_technician" io={fakeIo()} now={nowMs} />)
     await waitFor(() => expect(screen.getByTestId('queue-count').textContent).toContain('3 in line'))
     expect(screen.getByRole('button', { name: W.show })).toBeTruthy()
+  })
+
+  it('on a phone the fold, the dev’s press and the door each stand a fingertip tall, folded and open', async () => {
+    screenIs.phone = true
+    renderWithProviders(<PunchListQueue role="dev" io={fakeIo()} now={nowMs} />)
+    await waitFor(() => expect(screen.getAllByTestId('queue-row')).toHaveLength(3))
+    expect(screen.getByRole('button', { name: W.hide }).style.minHeight).toBe(`${PHONE_PRESS_MIN_HEIGHT}px`)
+    expect(screen.getByRole('button', { name: SHIP_PACE_WORDS.readNow }).style.minHeight).toBe(`${PHONE_PRESS_MIN_HEIGHT}px`)
+    // The door sits in a line of words: it takes the height and gives the line back what it grew by.
+    const door = screen.getByRole('link', { name: W.door })
+    expect(door.style.minHeight).toBe(`${PHONE_PRESS_MIN_HEIGHT}px`)
+    expect(door.style.display).toBe('inline-flex')
+    expect(door.style.alignItems).toBe('center')
+    expect(parseFloat(door.style.marginTop)).toBeLessThan(0)
+    expect(door.style.marginTop).toBe(door.style.marginBottom)
+    fireEvent.click(screen.getByRole('button', { name: W.hide }))
+    expect(screen.getByRole('button', { name: W.show }).style.minHeight).toBe(`${PHONE_PRESS_MIN_HEIGHT}px`)
+  })
+
+  it('at a desk the same three keep their drawn size', async () => {
+    renderWithProviders(<PunchListQueue role="dev" io={fakeIo()} now={nowMs} />)
+    await waitFor(() => expect(screen.getAllByTestId('queue-row')).toHaveLength(3))
+    expect(screen.getByRole('button', { name: W.hide }).style.minHeight).toBe('')
+    expect(screen.getByRole('button', { name: SHIP_PACE_WORDS.readNow }).style.minHeight).toBe('')
+    const door = screen.getByRole('link', { name: W.door })
+    expect(door.style.minHeight).toBe('')
+    expect(door.style.display).toBe('')
   })
 })
