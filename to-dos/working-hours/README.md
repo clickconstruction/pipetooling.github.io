@@ -2,17 +2,17 @@
 name: "Working hours: a start and an end for each day, set for a person"
 number: 429
 group: close
-status: asked 2026-11-23 · a plan and a mock-up, then a second pass · the owner's go the same day, *build it all*, with every pick kept · built and live the same day: the database door, the kernel and Utilization, the Working hours row with its lock and the line on My Time, the clock with the usual day's lock, and the dev seat · the live test run on 2026-11-24 by an outside session, clean, with three steps not walked and one fault found · step 2.5 walked clean at 380 px on 2026-11-25 · left: that fault, two steps, then the helper's hours set on his sheet · the fault's call answered 2026-11-25 (UTC) in the managing session: taking working hours off clears the week's hours too · asked again the same day what that leaves: the standard week, not zero paid hours · briefed, not built
+status: asked 2026-11-23 · a plan and a mock-up, then a second pass · the owner's go the same day, *build it all*, with every pick kept · built and live the same day: the database door, the kernel and Utilization, the Working hours row with its lock and the line on My Time, the clock with the usual day's lock, and the dev seat · the live test run on 2026-11-24 by an outside session, clean, with three steps not walked and one fault found · step 2.5 walked clean at 380 px on 2026-11-25 · left: that fault, two steps, then the helper's hours set on his sheet · the fault's call answered 2026-11-25 (UTC) in the managing session: taking working hours off clears the week's hours too · asked again the same day what that leaves: the standard week, not zero paid hours · the mend built the same day as v2.8607, held for its migration's push
 summary: >
   A new helper works 6:00 AM to 12:00 PM on five days, 30 hours. The app should let a dev or the
   controller set those hours for a person, in 15-minute blocks. Today three things describe a
   person's week and none of them is that. The plan makes one of them the truth: a week with a start
   and an end for each day. Pay hours and the clock's own sessions are worked out from it. Built and
   live on 2026-11-23, in five PRs.
-next: Build the two answers of 2026-11-25: taking working hours off a salaried person clears the week's own hours on their pay row, and the person falls to the standard week (a change to `set_working_hours`, a migration, pushed on its own yes at the time). The brief is written and no builder has it yet. Walk the two steps the live test left: the second half of 4.3, which needs a way to the window as anyone but a dev, and 4.4. Both are in [`LIVE_TEST.md`](LIVE_TEST.md) under Runs. Then a dev or the controller sets the helper's hours on his sheet, and the card closes.
+next: Push the take-off's migration, `20261125225108_working_hours_take_off.sql`, on its own yes at the time, after v2.8607's PR merges and its client deploys. Then walk the take-off on a ZZ Test person, step 6 of [`LIVE_TEST.md`](LIVE_TEST.md). The dev seat's `plan_pay_setup` still plans a take-off as moving no pay, and its planner wants the same rule in a `dev-mcp` version of its own. Walk the two steps the live test left: the second half of 4.3, which needs a way to the window as anyone but a dev, and 4.4. Both are in `LIVE_TEST.md` under Runs. Then a dev or the controller sets the helper's hours on his sheet, and the card closes.
 size: L as a train of five (S · S · M · M · S), built as five, with the clock and the usual day's lock in one PR and the dev seat as the fifth
-blocker: A builder for the fault the live test found, whose call is answered, and a yes at the time for its migration's push.
-ver: v2.8345 · v2.8350 · v2.8353 · v2.8356 · v2.8357 · v2.8358
+blocker: A yes at the time for the push of the take-off's migration, `20261125225108`.
+ver: v2.8345 · v2.8350 · v2.8353 · v2.8356 · v2.8357 · v2.8358 · v2.8607
 opinion: close — built and live; an outside session's test and the helper's own hours are left
 ---
 
@@ -57,8 +57,23 @@ the answer was "Yes, all picks", quoted from the managing session's record of th
 row read: *#429: clearing a salaried person's working hours leaves the standard week, not zero paid
 hours*, and the pick was *The standard week*. Side by side: the week's own hours are cleared, and the
 person falls to the standard week, 8 hours Monday to Friday, which every reader already takes for a
-week with no numbers. Both answers are history: the migration's push is asked by name at the time. Not
-built.
+week with no numbers. Both answers are history: the migration's push is asked by name at the time.
+
+**The mend, v2.8607, built 2026-11-25 and held for its push.** Migration
+`20261125225108_working_hours_take_off.sql` replaces `set_working_hours`.
+
+- Taking working hours off a salaried person writes the standard week on their pay row, `{0,8,8,8,8,8,0}`,
+  the column's own default. It is never the hours last set and never zero paid hours.
+- It is a change to pay like any other. It starts this week, it asks for a reason, and it leaves one line on
+  the pay log with the week before and after.
+- **Take working hours off** on the sheet says what the week on pay is today and that it goes back to the
+  standard week. Its press is dead until the reason is typed.
+- A person already on the standard week, and a person paid by the hour, have no pay side to a take-off.
+- A take-off with no set week in force moves no pay. A week typed on pay for a person nobody set hours for
+  stands, the helper's among them until his hours are set.
+- No row on prod was in the fault's state on 2026-11-25, read through the dev seat: no salaried person had
+  a set row. So nothing was corrected.
+- Left: the push, the walk, and the dev seat's planner, which still plans a take-off as moving no pay.
 
 The mock-up is [`mockup.html`](mockup.html). It draws the desk and the phone, in light and in dark,
 and its first panel is the row itself, live. Every name and every figure on it is made up. No wage

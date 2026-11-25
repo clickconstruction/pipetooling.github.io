@@ -2,7 +2,7 @@
 title: set someone's working hours
 category: Office
 roles: dev, controller, master_technician
-keywords: working hours, start and end, set hours, schedule a person, half day, short friday, lunch break, part time, six to noon, set week, fifteen minutes, earlier hours
+keywords: working hours, start and end, set hours, schedule a person, half day, short friday, lunch break, part time, six to noon, set week, fifteen minutes, earlier hours, take hours off, standard week
 order: 22
 ---
 Working hours are the start and the end of each day of a person's week. A dev or the controller sets them on the person's sheet.
@@ -63,6 +63,14 @@ For a person on a set week, pay follows the hours.
 - The reason goes on the pay log.
 
 A person paid by the hour is paid the hours they log. Their working hours change no pay.
+
+## Take working hours off
+
+Press {{button:outline|Take working hours off}} under the lines. The hours end from this week.
+
+For a person on a set week, pay goes back to the standard week. The standard week is 8 hours a day, Monday to Friday. The window says what their week is today. Say why in the box, then press {{button:blue|Take working hours off}}. The reason goes on the pay log.
+
+A person already on the standard week keeps their pay. So does a person paid by the hour.
 
 ## Watch-outs
 

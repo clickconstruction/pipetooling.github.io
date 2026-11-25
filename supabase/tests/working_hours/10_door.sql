@@ -153,11 +153,12 @@ SELECT whd.same('an hourly person, from next week',
   'false false 35.75');
 SELECT whd.same('her pay row is as it was', (SELECT is_salary::text || ' ' || salaried_week_hours::text FROM public.people_pay_config WHERE person_name = 'ZZ Hours Ivy'), 'false {0.00,8.00,8.00,8.00,8.00,8.00,0.00}');
 
--- 11 · Hours taken off again: the row has no week, days answer nothing, and pay stands.
+-- 11 · Hours taken off again: the row has no week, days answer nothing, and a salaried person's pay goes back to
+-- the standard week, with the reason a change to pay asks for. The take-off's own cases are 50_take_off.
 SELECT whd.same('working hours taken off',
-  (SELECT (r ->> 'cleared') || ' ' || (r -> 'pay' ->> 'moved') FROM public.set_working_hours('00000000-0000-0000-0000-00000000d005', NULL, whd.sunday()) r), 'true false');
+  (SELECT (r ->> 'cleared') || ' ' || (r -> 'pay' ->> 'moved') FROM public.set_working_hours('00000000-0000-0000-0000-00000000d005', NULL, whd.sunday(), 'The class is over') r), 'true true');
 SELECT whd.same('a day answers nothing again', coalesce(public.working_hours_on('00000000-0000-0000-0000-00000000d005', whd.sunday() + 1)::text, 'none'), 'none');
-SELECT whd.same('the seven numbers stay where the hours left them', (SELECT salaried_week_hours::text FROM public.people_pay_config WHERE person_name = 'ZZ Hours Hal Roster'), '{0.00,6.00,6.00,6.00,6.00,4.25,0.00}');
+SELECT whd.same('the seven numbers are the standard week again', (SELECT salaried_week_hours::text FROM public.people_pay_config WHERE person_name = 'ZZ Hours Hal Roster'), '{0.00,8.00,8.00,8.00,8.00,8.00,0.00}');
 SELECT whd.same('every save is kept', (SELECT count(*)::text FROM public.person_available_hours WHERE user_id = '00000000-0000-0000-0000-00000000d005' AND kind = 'set'), '4');
 
 -- 12 · The table's own door, as a signed-in person under its policies: an answer saves, in quarter hours, and a
