@@ -2132,7 +2132,7 @@ pipetooling.github.io/
 - Toasts auto-dismiss after 5 seconds; rendered in top-right corner
 
 #### `src/lib/hardReload.ts`
-- **`hardReloadFromRoot()`**: Clears Cache API caches (when available), stores current `pathname` / `search` / `hash` under **`pipetooling-hard-reload-restore`**, then sets **`location`** to **`origin/?nocache=…`**. Used by **Hard Reload** ([`Layout.tsx`](../src/components/Layout.tsx)) and broadcast **force reload** ([`ForceReloadContext.tsx`](../src/contexts/ForceReloadContext.tsx)). The key must stay in sync with the inline script in [`index.html`](../index.html).
+- **`hardReloadFromRoot()`**: Unregisters the service worker and clears Cache API caches (when available), waiting three seconds at most for both (`wipeBeforeLeaving`), stores current `pathname` / `search` / `hash` under **`pipetooling-hard-reload-restore`**, then sets **`location`** to **`origin/?nocache=…`**. Used by **Hard Reload** ([`Layout.tsx`](../src/components/Layout.tsx)) and broadcast **force reload** ([`ForceReloadContext.tsx`](../src/contexts/ForceReloadContext.tsx)). The key must stay in sync with the inline script in [`index.html`](../index.html).
 
 #### `src/components/Layout.tsx`
 - Main navigation bar

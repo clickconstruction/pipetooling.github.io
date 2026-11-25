@@ -100,7 +100,7 @@ import ContractBookPreview from './pages/ContractBookPreview'
 import FileOpen from './pages/FileOpen'
 import TaskShortcut from './pages/TaskShortcut'
 import { LeaveSignIn, SignedOutGate } from './components/SignInReturn'
-import { wipeServiceWorkersAndCaches } from './lib/hardReload'
+import { wipeBeforeLeaving } from './lib/hardReload'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
 import { ConfirmDialogProvider } from './contexts/ConfirmDialogContext'
 import { ThemeProvider } from './contexts/ThemeContext'
@@ -222,8 +222,9 @@ function AuthHandler() {
           } else {
             // Fresh SW + caches, then hard reload (wipe without unregistering would
             // leave the old SW controlling with an empty precache — see hardReload.ts)
+            // The wipe is held to its deadline, so the reload always comes (punch list #406).
             const reload = () => { window.location.reload() }
-            wipeServiceWorkersAndCaches().then(reload, reload)
+            void wipeBeforeLeaving().then(reload)
           }
         })
       }
