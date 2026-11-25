@@ -2,8 +2,8 @@
 name: "A primary's job doors: the ones the scope never reached"
 number: 400
 mockup: not required — it narrows database doors and changes no screen
-group: gated
-status: live on prod 2026-11-19 · seven PRs merged and pushed, `job-photos` deployed · two families left open, each a call for the owner
+group: ready
+status: live on prod 2026-11-19 · seven PRs merged and pushed, `job-photos` deployed · two families left open, each a call for the owner · the payers call answered 2026-11-25 (UTC) in the managing session: own jobs' payers only · the stage checklist call is still open
 summary: >
   A primary has been held to their own jobs since v2.2177, but only where the tables' restrictive
   policies can see. Functions that run as the owner, and the policies that call them, still ask
@@ -11,10 +11,11 @@ summary: >
   named. Through them a primary on no job reads another job's money lines, photos and test
   papers, and can write down or delete its bill. No screen of theirs asks, so this is a hole at
   the API. The card lists every door, what it gives, and the predicate proposed for it.
-next: The owner answers the two new calls under What was built.
-size: L as a train of five (M · M · S · M · S)
-blocker: The owner's two new calls.
-opinion: leave the stage checklist as it is; ask the owner about the payers, since that read is company-wide
+next: Build the rule over payers (M). A primary reads pay speeds, promises and returned checks only for the payers of their own jobs, in the four reads PR 5 left open. The owner still answers the stage checklist call under What was built.
+size: L as a train of five (M · M · S · M · S), all built; left: the rule over payers (M)
+blocker: Nothing for the rule over payers. The stage checklist call is open and gates only that piece.
+ask: owner · decide · Should a primary's report form write its stage checklist through a function of its own, so the tables can be fenced?
+opinion: leave the stage checklist as it is; build the rule over payers, since that call is answered
 ---
 
 # A primary's job doors: the ones the scope never reached
@@ -268,6 +269,17 @@ Two new calls for the owner come out of that.
 - **Every payer's pay speed, promise and returned check.** A primary reads them for the whole company, to date
   the bills on their own jobs. Should they read only the payers of their own jobs? That needs a rule over
   payers, which does not exist yet.
+  **Answered 2026-11-25 (UTC) in the managing session, in the user's own words:** *"Own jobs payers only"*.
+  The rule: a primary reads only their own jobs' payers.
+  The company keeps the role to its own jobs on purpose.
+
+The first call is still open.
+The second is the piece to build next, and nothing of it is built.
+It holds the four reads PR 5 left open to the payers of a primary's own jobs: `get_billed_customer_pay_speeds`,
+`list_job_promised_pay_dates`, `can_read_payment_promises()` and `list_ar_returned_check_payers`.
+It needs the rule over payers written first, then one migration with its page and a bed, as each PR of the train had.
+Suggested, for the build to confirm: a primary's own jobs are the ones family 2 already reads by, `is_job_people`.
+The size, M, is this note's estimate and not the card's.
 
 ## The five calls for the owner
 
