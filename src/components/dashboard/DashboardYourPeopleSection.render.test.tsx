@@ -17,6 +17,9 @@ vi.mock('../../hooks/useDashboardYourPeople', () => ({
   useDashboardYourPeople: () => ({ rows: hookState.rows, headline: hookState.headline, loading: hookState.loading, error: null, reload: vi.fn(), titlesFor: () => ['Clear the floor'] }),
 }))
 
+const view = vi.hoisted(() => ({ phone: false }))
+vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => view.phone }))
+
 import { DashboardYourPeopleSection } from './DashboardYourPeopleSection'
 
 const row = (over: Partial<YourPersonRow>): YourPersonRow => ({
@@ -58,6 +61,23 @@ describe('DashboardYourPeopleSection', () => {
     expect([acts.style.flexShrink, acts.style.maxWidth, acts.style.marginLeft, acts.style.flexWrap]).toEqual(['1', '100%', 'auto', 'wrap'])
     expect(acts.textContent).toContain('nothing moved · oldest 1 days')
     expect(acts.querySelector('button')?.getAttribute('aria-label')).toBe('Remind Mateo')
+  })
+
+  it('stands Remind a thumb tall on a phone and gives the height back to its row, and leaves the desk as it was (punch list #365)', () => {
+    hookState.rows = [row({})]
+    hookState.headline = ''
+    view.phone = true
+    const { unmount } = renderWithProviders(<DashboardYourPeopleSection authUserId="me" enabled />)
+    const press = screen.getByRole('button', { name: 'Remind Mateo' })
+    expect(press.style.minHeight).toBe('44px')
+    // 44 less the 27 it was drawn at, half above and half below: the row is as tall as it was.
+    expect([press.style.marginTop, press.style.marginBottom]).toEqual(['-8.5px', '-8.5px'])
+    unmount()
+    view.phone = false
+    renderWithProviders(<DashboardYourPeopleSection authUserId="me" enabled />)
+    const atDesk = screen.getByRole('button', { name: 'Remind Mateo' })
+    expect(atDesk.style.minHeight).toBe('')
+    expect(atDesk.style.marginTop).toBe('')
   })
 
   it('draws nothing while nobody has an open card, and nothing when not enabled', () => {
