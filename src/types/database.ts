@@ -23140,6 +23140,106 @@ export type Database = {
           },
         ]
       }
+      job_paper_proposals: {
+        Row: {
+          customer_id: string
+          decided_at: string | null
+          decided_by: string | null
+          decided_by_name: string | null
+          decline_why: string | null
+          from_settings: Json
+          id: string
+          job_id: string
+          notice_read: boolean
+          portal_link_id: string | null
+          proposed_at: string
+          proposed_by_name: string
+          required_paper_id: string
+          settings: Json
+          state: string
+          taken_as: string | null
+        }
+        Insert: {
+          customer_id: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_by_name?: string | null
+          decline_why?: string | null
+          from_settings: Json
+          id?: string
+          job_id: string
+          notice_read?: boolean
+          portal_link_id?: string | null
+          proposed_at?: string
+          proposed_by_name: string
+          required_paper_id: string
+          settings: Json
+          state?: string
+          taken_as?: string | null
+        }
+        Update: {
+          customer_id?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_by_name?: string | null
+          decline_why?: string | null
+          from_settings?: Json
+          id?: string
+          job_id?: string
+          notice_read?: boolean
+          portal_link_id?: string | null
+          proposed_at?: string
+          proposed_by_name?: string
+          required_paper_id?: string
+          settings?: Json
+          state?: string
+          taken_as?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_paper_proposals_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_paper_proposals_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_paper_proposals_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_paper_proposals_portal_link_id_fkey"
+            columns: ["portal_link_id"]
+            isOneToOne: false
+            referencedRelation: "customer_portal_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_paper_proposals_required_paper_id_fkey"
+            columns: ["required_paper_id"]
+            isOneToOne: false
+            referencedRelation: "job_required_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_paper_proposals_taken_as_fkey"
+            columns: ["taken_as"]
+            isOneToOne: false
+            referencedRelation: "job_required_papers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_part_renames: {
         Row: {
           at: string
@@ -49580,6 +49680,21 @@ export type Database = {
       job_paper_job_number: { Args: { p_job_id: string }; Returns: string }
       job_paper_picks_clean: {
         Args: { p_def: Json; p_picks: Json }
+        Returns: Json
+      }
+      job_paper_proposal_decide: {
+        Args: { p_proposal_id: string; p_take: boolean; p_why?: string }
+        Returns: Json
+      }
+      job_paper_propose: {
+        Args: {
+          p_customer_id: string
+          p_link_id: string
+          p_name: string
+          p_notice_read?: boolean
+          p_required_paper_id: string
+          p_settings: Json
+        }
         Returns: Json
       }
       job_paper_read_problem: {
