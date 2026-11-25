@@ -2,7 +2,7 @@
 name: "Job pace: the pace card says what it compares, and why"
 number: 406
 group: close
-status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked B, two bars · built as v2.8048, merged and walked in place as the sample superintendent · the Job Budget card's sentence, the last place that said points, built as v2.8058 · both live 2026-11-20 · Still pressed in place on the test project the same day · walked read-only as a real superintendent at a phone's width · the small-job gap fixed as v2.8120 and the card drawn for the next stop as v2.8122, both live the same evening · left: the owner's own look, and four calls
+status: asked 2026-11-20 on the owner's phone walk · assessed and drawn three ways the same day · the owner picked B, two bars · built as v2.8048, merged and walked in place as the sample superintendent · the Job Budget card's sentence, the last place that said points, built as v2.8058 · both live 2026-11-20 · Still pressed in place on the test project the same day · walked read-only as a real superintendent at a phone's width · the small-job gap fixed as v2.8120 and the card drawn for the next stop as v2.8122, both live the same evening · left: the owner's own look, and four calls · walked in an iPhone simulator 2026-11-25, clocked in as the sample superintendent: the card and What is this? hold, and the amber ask was not seen
 summary: >
   The owner circled the pace card's headline, Spending 22 points ahead of the work, and said he did
   not understand the section's place in the app or the word points. The card had no name, a headline
@@ -201,3 +201,13 @@ v2.8122 and v2.8120 merged that evening, and one site deploy carries both. The l
 after it finished: the Dashboard draws the *Next stop* card, and the Projects board counts a gap of a tenth of
 the hours budget. The next stop was not walked again on the live site, because that needs the superintendent
 clocked in with no job linked.
+
+## Walked in a simulator (2026-11-25)
+
+Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in dark, on the live site, through View as the sample superintendent with Job Mode on. It is a simulator and not a real phone, so the owner's own look still stands.
+
+- **Holds.** Clocked onto the ZZ Test walk project, the card reads **Job pace** with its two bars, *Hours used* and *Work done*, and no word *points*. **What is this?** opens and folds.
+- **Not walked: the amber ask.** *Is N% still right?* with **Still N%** needs a project whose percent is older than its last worked day. The test project reads ahead, so the card was green.
+- **What the look cost.** The sample superintendent was clocked in and out for it. That account is a fixture and not a ZZ Test row. It left one clock session of about two minutes on the test project, and a line under **Your record** on that account's Dashboard, *No report on* the test project. **Report** was not pressed, since a saved field report is emailed. The same press had been held as a question for the owner, and he has been told.
+- **Seen beside the card, not this card's.** Right after a site deploy, **Exit** from View as left the page on *Updating app…* for about 80 seconds. A fresh load then read *This page could not load*, and its **Reload** press stayed grey with *Checking for a signal…* until Safari was quit. It is written up as a fault of the reload path, not of the pace card.
+

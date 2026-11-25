@@ -133,3 +133,9 @@ the words on it.
   - **Left on prod, by design.** Six pay log lines for ZZ Test Hand and three `person_available_hours` rows each
     for ZZ Test Hand and ZZ Test Learner. Both tables keep every save. ZZ Test Hand reads as before the run:
     hourly, the same wage, 8 h days, no workday template, no working hours. ZZ Test Learner's hours are off.
+- **2026-11-25, the same session, step 2.5 alone.** Clean at 380 px: the Working hours row and its window hold at a
+  phone's width, with nothing sliding sideways. The hours were set for the look and taken off after.
+  - **Still not walked.** The second half of 4.3, the window as anyone but a dev: the recipe does not reach it
+    through the lens, since the invented roster has nobody on a set week. 4.4, which needs the person left
+    salaried overnight.
+  - **Left on prod, by design.** Two more `person_available_hours` rows, for the set and the take-off.

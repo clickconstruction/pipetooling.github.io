@@ -2,7 +2,7 @@
 name: "Task Mode: the refresh and the doer's tools"
 number: 369
 group: close
-status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · all fifteen steps live on main 2026-11-17, A1 to D3 (v2.7533 to v2.7551) · both migrations pushed and checked on prod · eight small presses from the browser walk of 2026-11-21 in v2.8230 · left: a walk on a real phone
+status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · all fifteen steps live on main 2026-11-17, A1 to D3 (v2.7533 to v2.7551) · both migrations pushed and checked on prod · eight small presses from the browser walk of 2026-11-21 in v2.8230 · walked in an iPhone simulator 2026-11-25: the page and its presses hold, and one fault was found, a helper's done line names nobody when a dev gave the task · left: that fault, and a walk on a real phone
 summary: >
   The owner sent a screenshot of Task Mode and asked for a visual refresh in the family of the New task
   window, and for tools that let the person doing tasks act without waiting on someone. Checklist → Today
@@ -11,8 +11,8 @@ summary: >
   card: move a task to another day, say you cannot do it, say it no longer applies, go through the old
   ones, add proof as you finish, add your own task or a follow-up, hand a task on, and draw a map or leave
   a point on one.
-next: Someone walks Task Mode on a real phone. Nothing in this train was seen drawn in the app.
-size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S), built; left: a walk on a phone (XS)
+next: Mend the names read on the Today page, so a helper's done line names who hears (S, the client alone). Then someone walks Task Mode on a real phone.
+size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S), built; left: the names mend (S) and a walk on a phone (XS)
 blocker: a person at a phone for the walk.
 ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545 · v2.7546 · v2.7547 · v2.7548 · v2.7549 · v2.7550 · v2.7551
 opinion: build — the refresh changes no data, each tool is one small press on the card, and the one migration is additive
@@ -149,3 +149,19 @@ The owner's main session walked Task Mode at 375 px in a browser, signed in as t
 Left as read: the task ring on a Still open row is 36 × 36 and **▶ Upcoming** is 36 px tall. The walk did not name them.
 
 A browser at phone width is not a phone. This card still waits on a walk with a real phone in a hand.
+
+### Walked in a simulator (2026-11-25)
+
+Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in dark, on the live site. It is a simulator and not a real phone, so the walk with a phone in a hand still stands. The dev gave one ZZ test task to ZZ Test Learner with **Tell me** lit, and the page was read through View as that helper.
+
+**Holds.** Today opens on the date, the green sentence and the joined Today and History bar. The **Next** card has **Mark done**, and a press moves the task to **Done today** as a struck line.
+
+**One fault found, read in the code the same day, not built: the done line names nobody.** The line read *Done* and the time. Before the press, the **Next** card had no *hears when it is done* line. The task was saved as told when done.
+
+- The words are right and were handed no name. The Today page reads the names of the people who hear straight from the people table (`Checklist.tsx`). A helper may not read a dev's row there, nor a master's who has not adopted them. So a helper, a sub or a superintendent given a task by one of those reads no name, on a real phone too.
+- The mend is the client alone, S: read the names through the names function every signed-in person may call (`fetchUserDisplayNames`), as other pages do.
+
+**Not walked.** **Exit** on the Task Mode strip: with *Modes at open* ticked a row of three modes stands in its place. **Go through them**: it needs an old task, and the test account has none.
+
+**Left on the live site.** One done ZZ test task and its day row. Both presses have a way back, so neither is on the list of presses nothing takes back (#443): the done line's own press reads **Mark not done**, and Checklist → Manage → **Delete** removes the task with its day rows for a dev, a master or an assistant. The walk did not delete it.
+
