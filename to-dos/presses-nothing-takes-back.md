@@ -2,7 +2,7 @@
 name: "Presses nothing takes back: the standing list"
 number: 443
 group: gated
-status: standing list opened 2026-11-24 on the owner's word of that day · fifteen rows: the Lien desk, Bills sent, Accounts Receivable, Bill Customer, a person's card, the job form's address, a job's papers, a customer's portal, a person's desk, a job's notes and a painted map · nothing is built and no build is approved
+status: standing list opened 2026-11-24 on the owner's word of that day · seventeen rows: the Lien desk, Bills sent, Accounts Receivable, Bill Customer, a person's card, the job form's address, a job's papers, a customer's portal, a person's desk, a job's notes, a painted map, an address the map could not place and View as · nothing is built and no build is approved
 summary: >
   Every press a walk or a thread meets that nothing takes back, one row each: what was pressed, on which
   screen, what it left, and what would take it back. The owner asked for the note on 2026-11-24, when he
@@ -64,6 +64,8 @@ rows, ids and counts only. Name no real customer, job, address or amount.
 | 13 | **Post note** on a job, and **Post** under a note a person was tagged in. | A job's window, Activity and notes (`JobThreadNotesPanel`). Inbox, **Tagged notes** (`TaggedJobNotesSection`). | One `jobs_ledger_thread_notes` row, or one comment on a task's day (`checklist_instance_events`) when the tag was on a task. Its tag rows, and a push to each person tagged. A posted note has no edit and no delete. | A delete for the dev on a note of a ZZ test job, which takes its tag rows with it. Neither table has a delete policy, so the press needs one first. | S, a migration | The WALKING thread, 2026-11-24, on card #363. Checked 2026-11-25: nothing in `src/` deletes or updates either table, their policies are select and insert, and the dev seat only adds a note. |
 | 14 | **End this link now**. The press warns first. | A painted map's share sheet (`PaintedMapShareSheet`). | `ended_at` set on every open link of the map (`painted-map-link`, `desk.end`). The address already sent is dead, and the same code cannot be asked for again. A new link can be made, with a new address. | A reopen for the dev on an ended link that is not past its day: one more action in the same function. | S, an edge function | The WALKING thread, 2026-11-25, on card #345. Checked the same day: the function has no action that clears `ended_at`, and the table lets a client only read. |
 | 15 | **Throw this map away**. The confirm says it cannot be undone. | A painted map's window (`PaintedMapWindow`). | The map's row is deleted, and its lines, places, links and visits go with it. Its photos are taken out of the bucket. A task that carried the map keeps the task and loses the map. | A copy kept on the delete, so Deleted records can put the map back, with the photos held until the copy is cleared. | S to M, a migration | The WALKING thread, 2026-11-25, on card #345. Checked the same day: `deletePaintedMap` deletes the row and then the photo files, and no painted map table keeps a copy on delete. |
+| 16 | An address no map service can place, saved on a bid or a job, or typed in the job form's address box. No press of its own: the first screen that asks the map for it keeps the miss. **Try again** rewrites its day. | The Bid Board's sheet *Bids the map can't place*, the Map page's list, and the job form (row 9). | One `address_geocode_misses` row under the address as typed. It goes by itself when a point is saved for that address, and it stops counting after 30 days, when the address is asked again. Nobody deletes one by hand. | A delete for the dev on a miss whose address no bid and no job is written under. The table has no delete policy and no delete grant, so the press needs both first. | S, a migration | The WALKING thread, 2026-11-25, on card #441. Checked the same day: the table's policies are select, insert and update, and its one remover is the trigger that runs when a point is saved (`20261124091500_address_geocode_misses.sql`). |
+| 17 | **View as**, any use of it. | The gear menu's View as, and every door that opens a sample account or a person. | One `user_imitations` row: who imitated whom, and when (`login-as-user`). It is written before the link is made, and it is kept on purpose: it is how the app refuses to read a person's mail in an imitated session. Nothing deletes one. | Nothing to build. The row is a record by design. It is listed because it held a walk: every look as a crew member, a leader or the office needs it, and the walk stopped to ask. | none | The SIMULATOR thread, 2026-11-25, on cards #398, #392 and #365. Checked the same day: the table lets a dev only read, and only the function writes (`20261101175329_user_imitations.sql`). |
 
 Row 2 has one exception, and it is not a gap. A line that applied a paper already on record reads **Undo**
 in place of **Void**, and its notice goes back on the desk (v2.7508).
@@ -71,6 +73,11 @@ in place of **Void**, and its notice goes back on the desk (v2.7508).
 Checked and left off the list, 2026-11-25. **Send** on a new task and **Mark done** both have a way back. A done
 task's own press reads **Mark not done**, History has **Reopen**, and Checklist → Manage → **Delete** removes a
 task with its day rows for a dev, a master or an assistant. The dev seat has no verb for either.
+
+Checked and left off the list, 2026-11-25. A part added to a box on site, and any other press on the
+materials ledger. The ledger keeps every row, but a dev can take a press back: Jobs → Materials, the
+site, the look by person, the press, **Take it back**. That hides the row from every read and deletes
+nothing. Row 9's own leftover may be a miss and not a kept address: row 16 says what a miss is.
 
 ## What sits on prod because of these
 
@@ -94,6 +101,8 @@ task with its day rows for a dev, a master or an assistant. The dev seat has no 
 - A photo on one ZZ Test person, saved by the walk of #313 on 2026-11-24, because of row 8. The team's
   batch of cards leaves ZZ Test people out since the fix that walk asked for.
 - Three notes on the ZZ Test walk job, posted by the walk of #363 on 2026-11-24, because of row 13.
+- One kept miss for a made-up address, from the walk of #441 on 2026-11-25, because of row 16. It stops
+  counting on its own after 30 days.
 - Nothing because of rows 12, 14 and 15. The made-up person is gone, as the press means. The walk of #345
   ended a link and threw a map away that it had made for the look.
 
