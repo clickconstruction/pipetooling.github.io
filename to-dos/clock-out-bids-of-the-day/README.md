@@ -2,7 +2,7 @@
 name: "Clock out: the bids of the day"
 number: 445
 group: gated
-status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's first look the same day, one line shape for every row · nothing is built
+status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's two looks the same day, one line shape for every row and the colour strip on the pick · nothing is built
 summary: >
   An estimator works one bid at a time, and the app already records most of that work without being asked.
   This card reads those records into a list at clock out: the bids the person worked on today, with nothing
@@ -223,6 +223,7 @@ and a day the app saw nothing. The rows and buttons work.
 
 **Is this the best we can do?** No. Each gets one thing right. The pick keeps those:
 
+- The day as a strip on top, one colour a bid, with the grey named. Added on the owner's second look.
 - Two shelves. **Bids you worked on today** holds bids the person changed. **Opened, nothing changed**
   holds the rest, each with one **Add** press.
 - Every row's line reads the same way: the size, then the tab, as **2 hours · Pricing** or
@@ -254,6 +255,24 @@ What changed in `mockup.html` the same day:
 - **The size is always a number.** *A few minutes* is gone. A size is rounded to the minute under ten
   minutes, to five minutes under an hour and to the half hour above that.
 - A bid added from the lower shelf keeps its own line. A bid the app never saw reads *Added by you*.
+
+Later the same day, with a picture of way C's strip and its coloured rows:
+
+> Is it too late to add a color visual like this to our final refined version?
+
+It was not too late. What changed in `mockup.html`:
+
+- **The pick opens with the strip, under Your day.** It runs from the clock in to now, one block a bid.
+  It shows the start and *now*, and no time on a block.
+- **One colour a bid, on its block and on its row.** A bid the person kept is filled. A bid that was only
+  opened, or was taken off, is an outline. **Add** fills it and **Take off** empties it.
+- **The grey is named.** One line under the strip reads *Grey is time the app did not see.* That answers
+  the weakness the pass found in way C.
+- A bid the app never saw has no block, so its row carries a grey dot.
+- The strip sits on the My Time card too.
+
+What the strip needs: the blocks come from the same rows as the list. Step 1 can place a block from a run
+of changes. An opened bid's block needs the beat of step 2. So the strip ships with the list in step 3.
 
 The six calls below are not answered yet.
 
@@ -301,7 +320,7 @@ and the sheet's section.
 |---|---|---|---|
 | 1 | The kernel that reads the day's bids, and the note that fills from it for anyone whose day held a bid | S | Nothing |
 | 2 | The beat names the bid and counts only an active person, with its table, its read rule and an index on the ledger by person | M | A migration and its push |
-| 3 | The pick in the sheet: the two shelves, **Take off**, **Add**, the chips, the kept list saved at the press | M | A migration and its push |
+| 3 | The pick in the sheet: the strip, the two shelves, **Take off**, **Add**, the chips, the kept list saved at the press | M | A migration and its push |
 | 4 | The Bid Board sets the bid in front | S | Nothing |
 | 5 | The list on the My Time card, and where the office reads it beside the hours | S | Nothing |
 | 6 | CountTooling sends the beat | M | A change in the other app, and a function deploy if it comes through a function |

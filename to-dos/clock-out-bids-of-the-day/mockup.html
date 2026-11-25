@@ -85,7 +85,8 @@
   .empty { margin-top: 6px; padding: 14px; border: 1px dashed var(--border-strong); border-radius: 8px; background: var(--bg-muted); }
   .empty b { display: block; }
   .strip { position: relative; height: 26px; margin-top: 8px; border-radius: 6px; background: var(--bg-200); overflow: hidden; }
-  .strip i { position: absolute; top: 0; bottom: 0; min-width: 3px; }
+  .strip i { position: absolute; top: 0; bottom: 0; min-width: 4px; }
+  .dot.none { background: var(--border-strong); }
   .ticks { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; flex: none; }
   .cbx { width: 22px; height: 22px; flex: none; accent-color: #2563eb; }
@@ -132,7 +133,7 @@
     <div class="frame"><div class="cap"><b>B</b><span>a list with the minutes</span></div><div class="device"><div class="sheet" id="f-b"></div></div>
       <ul class="notes"><li><span class="good">Good.</span> One row a bid. A tick takes one off.</li><li><span class="weakpt">Weak.</span> Minutes and change counts read like a stopwatch, and the app cannot stand behind them.</li></ul></div>
     <div class="frame"><div class="cap"><b>C</b><span>the day as a strip</span></div><div class="device"><div class="sheet" id="f-c"></div></div>
-      <ul class="notes"><li><span class="good">Good.</span> The shape of the day shows at a glance.</li><li><span class="weakpt">Weak.</span> The grey reads as time not worked. Most of it is work the app cannot see.</li></ul></div>
+      <ul class="notes"><li><span class="good">Good.</span> The shape of the day shows at a glance.</li><li><span class="weakpt">Weak.</span> The grey reads as time not worked. Most of it is work the app cannot see. The pick keeps the strip and says so under it.</li></ul></div>
   </div>
 
   <h2>Is this the best we can do?</h2>
@@ -145,6 +146,8 @@
     <tr><td>Taking one off by mistake.</td><td><b>Take off</b> leaves the row in place, struck through, with <b>Put back</b>.</td></tr>
     <tr><td>Work the app cannot see: a takeoff in CountTooling, a call, a set of plans on paper.</td><td><b>Add a bid the app missed</b> offers the bids on the person's board as one-press chips, then the search the sheet already has.</td></tr>
     <tr><td>A day the app saw nothing.</td><td>The sheet says so and offers the bids on the person's board to add. It asks for the note as it does today.</td></tr>
+    <tr><td>The strip's grey read as time not worked.</td><td>The strip stays, since the owner asked for it. One line under it reads <b>Grey is time the app did not see.</b> It shows the start and now, and no time on a block.</td></tr>
+    <tr><td>The colour had to mean one thing.</td><td>One colour a bid, on its block and on its row. A kept bid is filled. An opened bid, or one taken off, is an outline. <b>Add</b> fills it.</td></tr>
     <tr><td>A bid that became a job.</td><td>The row keeps the bid's name and shows the job number beside it.</td></tr>
   </table>
   <p>What is still weak, said plainly. A press on <b>Complete clock out</b> does not prove the person read the list. Time in CountTooling stays unseen until that app sends its own beat. A salaried person has no clock-out, so their list sits on the Dashboard instead.</p>
@@ -161,7 +164,7 @@
 
 <script>
 (function () {
-  var COLORS = ['#2563eb', '#0f766e', '#6d28d9', '#b45309'];
+  var COLORS = ['#2563eb', '#0f766e', '#6d28d9', '#b45309', '#be123c', '#0369a1'];
   var DAYS = {
     usual: {
       clock: 'Clocked in 7:02. 7 h 36 min so far.',
@@ -172,8 +175,8 @@
         { id: 'b420', name: 'B420 · ZZ Test Lakeside Dental', what: 'Bid Board', rough: '1 minute', exact: '1 min · 1 change', seg: [93, 0.6], word: 'follow-up set' }
       ],
       opened: [
-        { id: 'b425', name: 'B425 · ZZ Test Mill Street Bakery', rough: '2 minutes', what: '' },
-        { id: 'b431', name: 'B431 · ZZ Test Orchard School', rough: '5 minutes', what: 'Counts' }
+        { id: 'b425', name: 'B425 · ZZ Test Mill Street Bakery', rough: '2 minutes', what: '', seg: [75, 0.6] },
+        { id: 'b431', name: 'B431 · ZZ Test Orchard School', rough: '5 minutes', what: 'Counts', seg: [88, 1.1] }
       ]
     },
     touches: {
@@ -184,7 +187,7 @@
         { id: 'b436', name: 'B436 · ZZ Test Quarry Road Shops', what: 'Bid Board', rough: '1 minute', exact: '1 min · 1 change', seg: [71, 0.6], word: 'due date changed' }
       ],
       opened: [
-        { id: 'b412', name: 'B412 · ZZ Test Ridgeway Clinic', rough: '40 minutes', what: 'Takeoffs' }
+        { id: 'b412', name: 'B412 · ZZ Test Ridgeway Clinic', rough: '40 minutes', what: 'Takeoffs', seg: [45, 12.5] }
       ]
     },
     nothing: { clock: 'Clocked in 7:30. 6 h 05 min so far.', worked: [], opened: [] }
@@ -269,6 +272,29 @@
   }
 
   /* ---- The pick ---- */
+  /* One colour a bid, the same on the strip and on its row. A bid the person kept is filled. A bid that was only
+     opened, or was taken off, is an outline. A bid the app never saw has no block, so its dot is grey. */
+  function colorOf(id) {
+    var d = day(), all = d.worked.concat(d.opened), i;
+    for (i = 0; i < all.length; i++) if (all[i].id === id) return COLORS[i % COLORS.length];
+    return null;
+  }
+  function dotHtml(b, filled) {
+    var c = colorOf(b.id);
+    if (!c) return '<span class="dot none"></span>';
+    return '<span class="dot" style="' + (filled ? 'background:' + c : 'box-shadow:inset 0 0 0 2px ' + c) + '"></span>';
+  }
+  function dayStripHtml() {
+    var d = day();
+    var segs = d.worked.concat(d.opened).map(function (b) {
+      var c = colorOf(b.id), filled = !state.off[b.id] && (d.worked.indexOf(b) >= 0 || state.added[b.id]);
+      return '<i style="left:' + b.seg[0] + '%;width:' + b.seg[1] + '%;' + (filled ? 'background:' + c : 'opacity:.55;box-shadow:inset 0 0 0 2px ' + c) + '" title="' + esc(b.name) + '"></i>';
+    }).join('');
+    return '<div class="sec"><div class="head"><span>Your day</span></div>' +
+      '<div class="strip" role="img" aria-label="Your day, one block a bid">' + segs + '</div>' +
+      '<div class="ticks"><span>' + d.clock.split(' ')[2].replace('.', '') + '</span><span>now</span></div>' +
+      '<p class="sub">Grey is time the app did not see.</p></div>';
+  }
   function pickLists() {
     var d = day();
     var worked = d.worked.slice();
@@ -282,12 +308,12 @@
   }
   function pickBody(inCard) {
     var L = pickLists();
-    var h = '';
+    var h = dayStripHtml();
     h += '<div class="sec"><div class="head"><span>Bids you worked on today</span><span class="n">' + L.kept + '</span></div>';
     if (L.worked.length) {
       h += '<ul class="bids">' + L.worked.map(function (b) {
         var off = !!state.off[b.id];
-        return '<li class="' + (off ? 'off' : '') + '"><span class="who"><span class="name">' + nameHtml(b) + '</span><br>' +
+        return '<li class="' + (off ? 'off' : '') + '">' + dotHtml(b, !off) + '<span class="who"><span class="name">' + nameHtml(b) + '</span><br>' +
           (off ? '<span class="what">Taken off</span>' : lineHtml(b)) + '</span>' +
           '<button type="button" class="btn small" data-' + (off ? 'back' : 'off') + '="' + b.id + '">' + (off ? 'Put back' : 'Take off') + '</button></li>';
       }).join('') + '</ul>';
@@ -298,7 +324,7 @@
     h += '</div>';
     if (L.opened.length) {
       h += '<div class="sec"><div class="head"><span>Opened, nothing changed</span><span class="n">' + L.opened.length + '</span></div><ul class="bids">' +
-        L.opened.map(function (b) { return '<li class="weak"><span class="who"><span class="name">' + nameHtml(b) + '</span><br>' + lineHtml(b) + '</span><button type="button" class="btn small add" data-add="' + b.id + '">Add</button></li>'; }).join('') + '</ul></div>';
+        L.opened.map(function (b) { return '<li class="weak">' + dotHtml(b, false) + '<span class="who"><span class="name">' + nameHtml(b) + '</span><br>' + lineHtml(b) + '</span><button type="button" class="btn small add" data-add="' + b.id + '">Add</button></li>'; }).join('') + '</ul></div>';
     }
     h += '<div class="sec"><div class="head"><span>Add a bid the app missed</span></div>' +
       (L.board.length ? '<p class="sub">On your board:</p><div class="chips">' + L.board.map(function (b) { return '<button type="button" class="chip" data-add="' + b.id + '">+ ' + esc(b.name) + '</button>'; }).join('') + '</div>' : '') +
