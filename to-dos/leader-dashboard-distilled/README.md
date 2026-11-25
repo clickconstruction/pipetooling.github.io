@@ -2,7 +2,7 @@
 name: "The leader's Dashboard, distilled"
 number: 365
 group: close
-status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way · the short page walked there the same day on the dev's own account, where it holds but for two lines that are wrong for about three seconds on a fresh open · all three faults mended in v2.8581, not yet seen in the simulator
+status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way · the short page walked there the same day on the dev's own account, where it holds but for two lines that are wrong for about three seconds on a fresh open · all three faults mended · a fourth sitting the same day saw the two counts move ten seconds after they drew, which is not mended and is larger than a small fix, and a small Remind press on the office's Team's open tasks, mended in v2.8600 in v2.8581, not yet seen in the simulator
 summary: >
   One leader has been given too much on his Dashboard. He will not look at any of it, uses the app only on
   his phone, and hands even small updates to his assistants. The assessment counted 44 cards, strips and
@@ -211,3 +211,13 @@ Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in 
 **Not seen.** His day: the account had nothing on its schedule. The folds behind Everything else. The bottom bar's Dashboard tab on Short, since that account has no bottom bar. The leader on Short, and the office's Waiting on card.
 
 **As the sample leader and the sample assistant, looking only.** The leader's bottom bar has Dispatch Mode's home under its Dashboard tab, not the Dashboard: the *two homes* this card names.
+
+## The simulator's fourth sitting (2026-11-25)
+
+As the sample leader set to Short for the look.
+
+**The two counts move after they draw. Not mended.** The page read *23 other things* and *4 more of yours*, and ten seconds later *24* and *6*. v2.8581 made the two lines wait for the page's read, but that read asks about the two lien reads alone (`shortDashboardRead`). The counts come from every source of the Needs you card. `useNeedsYouInputs` reads 67 sources, and about sixty of them hand back no word on whether they are still reading. So making the counts wait for all of them means a loading flag on about sixty hooks. That is a medium piece of work with a call in it, not a small fix, and it was sent back on 2026-11-25. The list under *Waiting on you* did not move.
+
+**Remind on the office's *Team's open tasks* stood about 27 points tall on a phone. Mended in v2.8600.** It stands 44 on a phone now and gives the difference back to its row, so the row is as tall as it was. At a desk it is as it was. Not yet seen in the simulator.
+
+**Which card *Waiting on* means.** Not *Team's open tasks*. It is the card under **Needs you** titled *Waiting on* and the leader's first name, drawn only when a leader has lien rows waiting. A look at it needs a ZZ lien paper waiting on a leader, which is a write and its own yes.

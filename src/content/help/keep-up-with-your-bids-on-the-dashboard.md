@@ -2,7 +2,7 @@
 title: keep up with your bids on the dashboard
 category: Office
 roles: dev, master_technician, assistant, controller, estimator, primary
-keywords: my bids, dashboard, swipe, swipe to hide, undo, unsent, not yet won or lost, won, started or complete, hidden, hide bid, show again, past due, no due date, unread updates, mark read, bid board, estimator, account manager, new bid
+keywords: my bids, dashboard, swipe, swipe to hide, swipe right, swipe back, bid moves by itself, reduce motion, undo, unsent, not yet won or lost, won, started or complete, hidden, hide bid, show again, past due, no due date, unread updates, mark read, bid board, estimator, account manager, new bid
 order: 69
 ---
 The My Bids card on the Dashboard lists the bids where you are the estimator or the account manager. You open the ones you are working on. You hide the ones you do not need to see.
@@ -47,9 +47,35 @@ Hiding changes nothing on the bid. Nobody else sees a difference.
 
 A hidden bid follows you. Hide it on your phone and it is hidden on the computer too. If a hide cannot be saved, the bid stays hidden on that device and a note says why.
 
-To bring one back, open **Hidden** and press {{button:outline|Show again}}.
+## Show a hidden bid again
+
+Open **Hidden** at the bottom of the card.
+
+On a phone, swipe the bid to the right. A strip under the bid reads **Show again**. Keep going until the strip turns blue, then let go. A shorter swipe springs back and shows nothing.
+
+Start the swipe on the bid, away from the left edge of the screen. A swipe from that edge is your phone's own Back.
+
+On a computer, press {{button:outline|Show again}} on the bid.
+
+The bid goes back to its group. A note at the bottom of the screen says which bid came back. Press **Undo** on the note within ten seconds to hide it again.
 
 A hidden bid comes back by itself when someone writes a note on it. The bid stays in its group until you press {{button:outline-amber|Mark read}}.
+
+## How the card shows you the swipe
+
+On a phone, the first bid on the card moves by itself the first time you scroll down to it. The bid slides to the left, shows **Hide** for a second and slides back. Nothing is hidden. The card is showing you that a bid swipes.
+
+Touch the screen and the bid goes straight back. A press still opens the bid.
+
+The card does this once a day at most and three times at most. It stops for good the first time you swipe a bid yourself. It follows you, so a new phone does not start over.
+
+The first bid in **Hidden** does the same to the right, to show the way back.
+
+If your phone is set to reduce motion, no bid moves. The card writes *Swipe a bid left to hide it.* under the group's heading for that visit.
+
+## If you swipe the wrong way
+
+Left hides a bid. Right shows a hidden bid again. Swipe the other way and nothing happens to the bid. The bid slides a little by itself and shows its strip. The strip is on the side the bid really goes.
 
 ## Unread updates
 

@@ -181,3 +181,4 @@ dev-query-plan
 address-geocode-misses
 lien-run-left-out
 global-reload-dev-only
+bid-day

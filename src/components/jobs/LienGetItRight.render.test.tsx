@@ -19,6 +19,8 @@ import { lienRunPrintedWords, lienRunPrintPress } from '../../lib/jobs/lienRunPr
 import { lienStackOrderWords } from '../../lib/jobs/lienRunStack'
 import LienGetItRightHost from './LienGetItRightHost'
 import type { LienRunPrintState } from './useLienRunPrint'
+import type { LienRunPrintedState } from './useLienRunPrinted'
+import { lienRunChanges } from '../../lib/jobs/lienRunPrinted'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -57,7 +59,7 @@ const AFTER = {
   affidavits: [] as LienAffidavitEntry[],
 }
 
-function mount(desk: { notices: LienDeskEntry[]; affidavits: LienAffidavitEntry[] }, over: { leftOut?: LienLeftOutRow[]; open?: boolean; office?: boolean; isMobile?: boolean; failure?: boolean; noRun?: boolean; print?: LienRunPrintState; onLeaveOut?: (line: LienRunLine, reason: string, note: string) => Promise<void>; onPutBack?: (line: LienRunLine) => Promise<void> } = {}) {
+function mount(desk: { notices: LienDeskEntry[]; affidavits: LienAffidavitEntry[] }, over: { leftOut?: LienLeftOutRow[]; open?: boolean; office?: boolean; isMobile?: boolean; failure?: boolean; noRun?: boolean; print?: LienRunPrintState; printed?: LienRunPrintedState; onLeaveOut?: (line: LienRunLine, reason: string, note: string) => Promise<void>; onPutBack?: (line: LienRunLine) => Promise<void> } = {}) {
   const board = buildLienBoard({ ...desk, retainage: [], todayYmd: TODAY, jobNumber: (id) => `ZZ-${id}`, jobName: (id) => `ZZ ${id}`, gcName: () => 'ZZ Builders', leaderName: 'Sam' })
   const rows = buildLienNextUp({ ...desk, retainage: [], letterTwoByJob: {}, role: 'assistant', todayYmd: TODAY, jobTitle: (id) => `ZZ ${id}`, gcName: () => 'ZZ Builders', leaderName: () => 'Sam' })
   const run = over.noRun || over.failure ? null : buildLienGetItRight({ board, rows, leftOut: over.leftOut ?? [], todayYmd: TODAY, jobTitle: (id) => `ZZ ${id}`, leaderName: () => 'Sam' })
@@ -79,6 +81,7 @@ function mount(desk: { notices: LienDeskEntry[]; affidavits: LienAffidavitEntry[
       onLeaveOut={spies.onLeaveOut}
       onPutBack={spies.onPutBack}
       print={over.print}
+      printed={over.printed}
       prints={[{ key: 'notice', label: 'Print and mail 1 notice', left: null, dead: false, onPress: spies.onPrint }, { key: 'affidavit', label: 'Print 1 for notarization', left: '1 held', dead: false, onPress: spies.onPrint }]}
     >
       <div data-the-list>the list</div>
@@ -287,10 +290,11 @@ describe('on a phone', () => {
 })
 
 /** The one print as `useLienRunPrint` hands it over, with its press watched. */
-function printState(over: { notices: number; affidavits: number; held: number; reading?: boolean; mode?: 'one' | 'two'; printed?: boolean; stopped?: LienRunPrintState['stopped'] }): LienRunPrintState & { print: ReturnType<typeof vi.fn> } {
+function printState(over: { notices: number; affidavits: number; held: number; reading?: boolean; mode?: 'one' | 'two'; printed?: boolean; stopped?: LienRunPrintState['stopped']; affidavitsPrinted?: number }): LienRunPrintState & { print: ReturnType<typeof vi.fn> } {
   return {
     press: lienRunPrintPress({ notices: over.notices, affidavits: over.affidavits, held: over.held, reading: over.reading ?? false, stopped: over.stopped?.length ?? 0 }),
     stopped: over.stopped ?? [],
+    affidavitsPrinted: over.affidavitsPrinted ?? 0,
     order: lienStackOrderWords(over.notices, over.affidavits),
     mode: over.mode ?? 'one',
     twoWhy: over.mode === 'two' ? 'This browser cannot print both kinds as one stack. Print each with its own press.' : null,
@@ -387,6 +391,52 @@ describe('step 2: the one print (punch list #362, step 6)', () => {
     cleanup()
     mount(READY, { print: printState({ notices: 1, affidavits: 1, held: 0 }) })
     expect(q('[data-lien-run-print-stopped]')).toBeNull()
+  })
+
+  it('names each printed paper that would say another thing today, with both values and what comes next', () => {
+    const printed: LienRunPrintedState = {
+      changed: [
+        { key: 'affidavit:j9', kind: 'affidavit', jobId: 'j9', label: '1052', title: 'ZZ Service Visit', printedAt: '2026-11-25T16:02:00Z', printedBy: 'ZZ Rosa', standIn: false, changes: lienRunChanges('affidavit', [{ key: 'unpaidAmount', label: 'the amount unpaid', printed: '610.00', now: '310.00' }]) },
+        { key: 'notice:j8', kind: 'notice', jobId: 'j8', label: '1048', title: '', printedAt: '', printedBy: '', standIn: true, changes: lienRunChanges('notice', [{ key: 'claimAmount', label: 'the claim', printed: '18400.00', now: '6150.00' }]) },
+      ],
+      printedSame: new Set(['j7']),
+      unread: 2,
+      reading: false,
+      failed: false,
+      reload: vi.fn(),
+      whenWords: (iso) => (iso ? 'Nov 25, 10:02 AM' : ''),
+    }
+    mount(READY, { print: printState({ notices: 1, affidavits: 1, held: 0, affidavitsPrinted: 1 }), printed })
+    expect(text('[data-lien-run-card="changed"] h3')).toBe('Changed since printed2 papers')
+    const rows = all('[data-lien-run-changed]')
+    expect(rows.map((r) => r.getAttribute('data-lien-run-changed'))).toEqual(['affidavit:j9', 'notice:j8'])
+    expect(rows[0]!.textContent).toContain('Affidavit1052 · ZZ Service Visit')
+    expect(rows[0]!.textContent).toContain('Printed Nov 25, 10:02 AM by ZZ Rosa.')
+    expect(rows[0]!.textContent).toContain('The amount unpaid: printed $610.00, now $310.00.')
+    expect(rows[1]!.textContent).toContain('Notice1048Printed.')
+    expect(rows[1]!.textContent).toContain('Printed. This print kept no values, so the notice as stored was read in its place.')
+    expect(rows[1]!.textContent).toContain('The claim: printed $18,400.00, now $6,150.00.')
+    const card = q('[data-lien-run-card="changed"]')!.textContent!
+    expect(card).toContain('A changed affidavit prints again with the run.')
+    expect(card).toContain('The Board’s Print and mail press opens the run window')
+    // The changed papers stand over the print, so they are read before the press.
+    expect(q('[data-lien-run-card="changed"]')!.compareDocumentPosition(q('[data-lien-run-card="print"]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Under the press: what did not print again, and what could not be compared.
+    expect(text('[data-lien-run-printed-same]')).toBe('1 affidavit printed already and says the same today. It does not print again here. The Board’s Print for notarization press still prints it.')
+    expect(text('[data-lien-run-printed-unread]')).toBe('2 affidavits printed before the desk kept what a paper said. They print again.')
+    expect(q('[data-lien-run-printed-failed]')).toBeNull()
+  })
+
+  it('draws no changed card with nothing changed, and says a failed read with the way to read again', () => {
+    const reload = vi.fn()
+    const printed: LienRunPrintedState = { changed: [], printedSame: new Set(), unread: 0, reading: false, failed: true, reload, whenWords: () => '' }
+    mount(READY, { print: printState({ notices: 1, affidavits: 1, held: 0 }), printed })
+    expect(q('[data-lien-run-card="changed"]')).toBeNull()
+    expect(q('[data-lien-run-printed-same]')).toBeNull()
+    expect(q('[data-lien-run-printed-unread]')).toBeNull()
+    expect(text('[data-lien-run-printed-failed]')).toBe('What printed before could not be read. Every right affidavit counts as to print. Read again')
+    fireEvent.click(q('[data-lien-run-printed-failed] button')!)
+    expect(reload).toHaveBeenCalledTimes(1)
   })
 
   it('on a phone every press of the card is 44 px tall', () => {

@@ -1,6 +1,7 @@
 import { getSubmissionSectionKey } from './bids/submissionSections'
 import { compareBidsForBidBoardDueDate, compareBidsForBidBoardPendingRecency } from './compareBidsForBidBoardDueDate'
 import { bidBoardDueCellParts, bidBoardNoDueDateParts } from './bids/bidBoardDateCells'
+import { swipeBackHint } from './swipeAway'
 
 /**
  * Pure kernel for the Dashboard "My Bids" section (extracted from
@@ -426,9 +427,22 @@ export const MY_BID_STATE_GLOSS: Record<MyBidState, string> = {
 export const MY_BIDS_HIDDEN_HEADING = 'Hidden'
 export const MY_BIDS_HIDDEN_GLOSS = 'You hid these. Show again puts one back.'
 
+/**
+ * The line under **Hidden**'s heading. On a device held in the hand a hidden bid has no press: it comes
+ * back with a swipe to the right, so the line says the swipe (v2.8603). A desk keeps the press and its words.
+ */
+export function myBidsHiddenGloss(swipes: boolean): string {
+  return swipes ? `You hid these. ${swipeBackHint('show it again')}` : MY_BIDS_HIDDEN_GLOSS
+}
+
 /** The toast after a bid is hidden, with Undo beside it. */
 export function myBidHiddenWords(name: string): string {
   return `Hidden: ${name}.`
+}
+
+/** The toast after a hidden bid is shown again, with Undo beside it (v2.8603). */
+export function myBidShownAgainWords(name: string): string {
+  return `Shown again: ${name}.`
 }
 
 /** The line under the groups when the read came back full (`myBidsReadIsCut`). */

@@ -1371,7 +1371,11 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
   `LIEN_SWORN_FIELDS` names the values a change in which counts, a shorter list than the snapshot keeps, so the list can grow and still read the prints already filed.
   `lienChangedSincePrint` answers each change with both values, and `lienPrintStanding` answers *never*, *printed*, *changed* or *unread*, the last for a print filed before this version and for a notice combined at one property.
   [`lienPrintsIo.ts`](../src/lib/jobs/lienPrintsIo.ts) reads each job's newest filed print through `loadSentPrintsForJobs`, and a read that fails is `null`, never no prints.
-  Nothing on the desk reads it yet: the three presses on a changed paper wait on two calls.
+  Since v2.8593 the checklist reads it: [`lienRunPrinted.ts`](../src/lib/jobs/lienRunPrinted.ts) sets the run's printed notices and its right affidavits beside today, and [`useLienRunPrinted.ts`](../src/components/jobs/useLienRunPrinted.ts) reads the newest prints while the checklist is open and again once a print's copies are filed.
+  A notice's today is its stored paper with `RunNotice.moneyNow` over it, the money the desk would draw now, so a bill corrected after the print counts.
+  An affidavit whose newest print says the same today is left out of the run's print (`printedAffidavitJobIds` on `useLienRunPrint`), and the Board's own print still takes it.
+  A notice whose print kept no values is read against its stored paper, and its line says a stand-in was read.
+  The three presses on a changed paper are not built: *It stands* needs a table of its own.
 - **Why the router stays:** it turns a row's target into 23 of the desk's setters across every view.
 - **Next:** `actOnNextUp` as a kernel that names the target and a thin switch that calls the setters.
 

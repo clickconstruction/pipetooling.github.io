@@ -2,7 +2,7 @@
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
 group: ready
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483 · the title bar's run door retired, v2.7490 · the run window redrawn for notices and built, v2.7477 (one count, three steps, one press); the liens' lane is drawn and not approved · step 5, the Get it right checklist with Leave out, built v2.8474 on Diane's word of 2026-11-24, with its one call written to flip · step 6, the one print, built v2.8536 on Diane's two answers of 2026-11-24 (live for what is right; the Board's prints unchanged), merged and live 2026-11-25 (pull request 9814) · six calls on the run's defaults written up for the owner 2026-11-25 and all answered the same day: each stands as built, and the first real press is the office's
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483 · the title bar's run door retired, v2.7490 · the run window redrawn for notices and built, v2.7477 (one count, three steps, one press); the liens' lane is drawn and not approved · step 5, the Get it right checklist with Leave out, built v2.8474 on Diane's word of 2026-11-24, with its one call written to flip · step 6, the one print, built v2.8536 on Diane's two answers of 2026-11-24 (live for what is right; the Board's prints unchanged), merged and live 2026-11-25 (pull request 9814) · six calls on the run's defaults written up for the owner 2026-11-25 and all answered the same day: each stands as built, and the first real press is the office's · step 7, changed since printed: every lien print keeps what its paper said (v2.8589), and on the owner's two answers of 2026-11-25 the checklist names a printed paper that changed (v2.8593) and *It stands* is built on its own branch with a migration, not merged
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -13,10 +13,10 @@ summary: >
   under it, about three rows. The mock-up draws today's desk and three answers with the Board in
   place: B (one page, clearer rows), A (the list follows the Board's bins) and D (one run in three
   steps, opened from the Board's first tile). Each is the start of the next.
-next: Step 7, changed since printed (S), which also gives an affidavit a printed fact. Its first part needs no call and no migration: the sworn fields on the filed copy, the kernel that compares, and the read of each job's newest filed print. Its three presses wait on two calls, which fields count as sworn on each paper and where *It stands* is kept. Then step 8, mail and file (M). The six calls on the run's defaults are answered, each as built, under *Open questions*. The first real press is the office's, at its own printer, and nobody presses *Print the run* on real papers before that, a guarded press included. A print of the run on a real printer has not been seen.
+next: Step 7's last part, the three presses on a changed paper with *It stands* kept on record: built on its own branch, and it waits on its PR, then on the push of its migration, asked for by name. A look at the *Changed since printed* card on the live desk, by a walker. Then step 8, mail and file (M). The six calls on the run's defaults are answered, each as built, under *Open questions*. The first real press is the office's, at its own printer. A guarded press, with the print window held shut, has its own yes of 2026-11-25 and is the walker's, on a live press alone. A print of the run on a real printer has not been seen.
 size: L for D as five steps (M · M · M · S · M); B, the first three, step 4, the list by bin, step 5, the checklist, and step 6, the one print, are built; left: steps 7 and 8 (S · M)
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474 · v2.8536 · v2.8589
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474 · v2.8536 · v2.8589 · v2.8593
 ---
 
 # Lien desk To do: one run (#362)
@@ -177,7 +177,10 @@ by itself.
 7. **Changed since printed** (S): a fingerprint of each paper's sworn fields at print, compared on
    every read after. The first part is built, v2.8589: every lien print's filed copy keeps what the
    paper said, with the kernel that compares and the read of each job's newest print
-   (`lienPrintSworn.ts`, `lienPrintsIo.ts`). Nothing on the desk reads it yet.
+   (`lienPrintSworn.ts`, `lienPrintsIo.ts`). The checklist reads it since v2.8593: a card,
+   *Changed since printed*, names each printed paper that would say another thing today, and an
+   affidavit that printed the same is not printed again (`lienRunPrinted.ts`,
+   `useLienRunPrinted.ts`). The three presses are built on their own branch and not merged.
 8. **Mail and file** (M): step 3's two cards and the tally, over the record steps that exist today.
 
 ## The two prints on the Board (built, v2.7470; moved under the tiles, v2.7483)
@@ -253,7 +256,11 @@ Two things he agreed to in direction the same day, both built since:
   real press of Print the run is the office's, at its own printer"*. The pick was yes.
   Asked whether every pick on that sheet stands, the answer was *Yes, all picks*.
   So nobody else presses *Print the run* on real papers first. A press with the print window held
-  shut counts too, and waits for a yes of its own by name.
+  shut counts too, and needed a yes of its own by name.
+  It has one, 2026-11-25. Asked: *"May walking make the guarded press of Print the run on the real
+  Lien desk?"*. The answer was *"Yes, press it"*. It is the walker's: one press, on a live press
+  alone, with the guard in the same script line. Nobody settles a question or leaves a paper out on
+  the real desk to make the press live.
   The press cannot be kept to a test job: it takes every right paper of the run, and no tick, filter or
   find narrows it. One real press stamps every notice in it printed and files a copy on every job in
   it, and a filed copy is never deleted. It does not ask first, as the run window's own print does
@@ -278,14 +285,25 @@ Read in the code on 2026-11-25, with step 6 on `main`.
   yet printed to its bills.
 - ~~A read of each job's newest filed print.~~ Built, v2.8589 (`src/lib/jobs/lienPrintsIo.ts`). A read
   that fails is never read as nothing printed.
-- Not built: anything on the desk that reads it. The checklist does not say *changed since printed*
-  yet, and a printed affidavit still counts as to print after a reload. Both follow the first call,
-  since the list of fields decides which printed paper reads as the same today.
-- A paper printed before v2.8589 has no values kept. It reads as printed with nothing to compare.
-- The drawing's three presses on a changed paper: *Reprint*, *It stands*, *Take it out*. *It stands*
-  has to be remembered somewhere. That is the one piece that may need a migration.
-- Two calls to ask before it is built: which fields count as sworn on each paper, and where *It
-  stands* is kept.
+- ~~The checklist says *changed since printed*, and a printed affidavit stops counting as to
+  print.~~ Built, v2.8593, on the first answer below. A card over *Print the run* names each printed
+  paper that would say another thing today, with both values. A printed notice is read against the
+  bills as they stand. An affidavit whose newest print says the same today is left out of the run's
+  print, and the Board's own print still takes it. Not seen live.
+- A paper printed before v2.8589 has no values kept. Such an affidavit counts as to print, as
+  before. Such a notice is read against the notice as stored, and its line says so.
+- The three presses on a changed paper, *Reprint this one*, *It stands as printed* and *Take it out
+  of the run*: built on their own branch on the second answer below, and not merged. *It stands* is
+  a row of a new table, so that PR carries a migration whose push is asked for by name.
+- ~~**Which fields count as sworn on each paper.**~~ Answered 2026-11-25. Asked: *"a printed notice
+  or affidavit reads as changed when anything it states has moved since it printed: the money, the
+  parties, the property, the work and its months. Its date, its contact person and the county an
+  affidavit is signed in do not count"*. The pick was every statement the paper makes.
+  Asked whether every pick on that sheet stands, the answer was *Yes, all picks*.
+- ~~**Where *It stands* is kept.**~~ Answered 2026-11-25. Asked: *"It stands is put on record, with
+  who, when and what had changed. Every office seat sees it, and a second change asks again. This
+  costs one migration, whose push I ask for by name later"*. The pick was on record, in a table of
+  its own. Asked whether every pick on that sheet stands, the answer was *Yes, all picks*.
 
 **Step 8, mail and file (M).** It goes after step 7, since its tally needs the affidavits' printed
 fact.
@@ -414,7 +432,8 @@ real press, a real printer and Safari, and is the office's own on a day it means
 The six calls on the run's defaults were answered on 2026-11-25, and each stands as built: which run,
 Leave out, what Leave out holds back, the gate, and the stack's order. The first real press is the
 office's, at its own printer. The words asked and the answer are under *Open questions*. The second
-part of the look, the guarded press, is not covered by that answer and is not walked.
+part of the look, the guarded press, is not covered by that answer. It has its own yes of the same day
+(*Who makes the first real press*, above) and is not walked yet.
 
 The mock-up still draws all three; its B is what shipped, but for two things the build changed: the bin's name stands where the
 mock-up dropped the four dots, and *Print N for notarization ›* (*Print N affidavits ›* until v2.7398, renamed to the button it opens) opens the affidavits list at Ready to file

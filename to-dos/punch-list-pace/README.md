@@ -2,7 +2,7 @@
 name: "Punch list: the pace of the list and the merge queue, on one page"
 number: 444
 group: close
-status: asked 2026-11-24 · all four PRs are merged · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is live as v2.8546 · PR 3 (In the merge queue on the page) is live as v2.8547 · PR 4 (each line's state) merged as v2.8550 on 2026-11-25 and ship-pace was redeployed the same hour · all three were walked on the live page on 2026-11-25 and hold · of the five State chips only the blue one was seen · the four presses the first walk found under 44 px on a phone stand a fingertip tall in v2.8574, not yet seen on a phone · left: a look at those four, and a chip that is not blue · the owner, 2026-11-25: the card retires after that look
+status: asked 2026-11-24 · all four PRs are merged · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is live as v2.8546 · PR 3 (In the merge queue on the page) is live as v2.8547 · PR 4 (each line's state) merged as v2.8550 on 2026-11-25 and ship-pace was redeployed the same hour · all three were walked on the live page on 2026-11-25 and hold · of the five State chips only the blue one was seen · the four presses the first walk found under 44 px on a phone stand a fingertip tall in v2.8574, not yet seen on a phone · left: a look at those four, and a chip that is not blue · the owner, 2026-11-25: the card retires after that look · that look made the same day and it holds: the four presses stand 44 px at 390 px, folded too, and four lines drew the green **Ready** chip · so both of the owner's conditions are met, and the card can close on his word
 summary: >
   The owner asked to see the merge queue and how fast punch-list cards are being closed. Most of it
   is already live in two places. The Burndown at the top of /punch-list counts cards opened and closed
@@ -10,10 +10,10 @@ summary: >
   of GitHub every 15 minutes. This card joins them on /punch-list and fills four gaps. The Burndown has
   no three-week stretch. Its sentence gives no rate a day. The queue is on another page. A change in
   the queue does not say whether its checks are running or it is ready.
-next: Read the four small presses of the queue block and the Burndown at 390 px once v2.8574 is live: each 44 px high, folded and open. One more look at the State column when a line is waiting its turn or ready, to see a chip that is not blue. Then the card closes.
+next: Both looks are made and hold: the four small presses at 390 px, and a chip that is not blue. The card can close on the owner's word. The grey and the red chip have still not been seen.
 size: M as a train of four (XS · S · S · S); left: three walks
 ver: v2.8546, v2.8547, v2.8550, v2.8574
-blocker: None. The build is done and its three walks hold. The small presses are mended in v2.8574 and wait for a look.
+blocker: None. The owner's word to close it.
 opinion: build — the history, the read of GitHub and its token already exist, so this is three small changes to screens and one field more on a read.
 ---
 

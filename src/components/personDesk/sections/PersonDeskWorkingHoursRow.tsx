@@ -2,13 +2,15 @@
  * Working hours on a person's sheet (punch list #429, PR 3): a start and an end for each day, set by a dev or the
  * controller in 15-minute blocks. Days that share their hours are one line, and a line changes whole: a press on
  * its hours opens the line's own field there, with its start, its end, when it starts and what the change comes
- * to, pay included. Anyone else who reads the sheet sees the same lines with no press and a tag that says who can.
+ * to, pay included. Taking the hours off a salaried person puts their week on pay back on the standard week, and
+ * the window says so and asks why. Anyone else who reads the sheet sees the same lines with no press and a tag that
+ * says who can.
  *
  * The rules are `workingHours.ts` and `workingHoursEdit.ts`; the door is `set_working_hours` through
  * `workingHoursIo.ts`. The looks are the `.vip…` classes (values in place) and the `.wh…` classes in `index.css`.
  */
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
-import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
+import { useConfirmDialog, usePromptDialog } from '../../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../../utils/dateUtils'
@@ -35,7 +37,7 @@ import {
   workingWeekLineWords,
   type WorkingHoursLine,
 } from '../../../lib/people/workingHours'
-import { FIRST_WORKING_DAYS, FIRST_WORKING_RANGE, NO_WORKING_WEEK, workingHoursFieldPlan, workingSundayWords, type WorkingHoursFacts } from '../../../lib/people/workingHoursEdit'
+import { FIRST_WORKING_DAYS, FIRST_WORKING_RANGE, NO_WORKING_WEEK, workingHoursFieldPlan, workingHoursTakeOffPlan, workingSundayWords, type WorkingHoursFacts } from '../../../lib/people/workingHoursEdit'
 import { supabaseWorkingHoursIo, type WorkingHoursIo } from '../../../lib/people/workingHoursIo'
 import { salariedWeekWords } from '../../../lib/salariedEffectiveHours'
 import { ValueSentence, WorkedOutValue } from '../../valuesInPlace/ValuesInPlace'
@@ -79,6 +81,7 @@ export function PersonDeskWorkingHoursRow({
   const io = useMemo(() => ioIn ?? supabaseWorkingHoursIo(), [ioIn])
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
+  const promptDialog = usePromptDialog()
   const todayYmd = todayIn ?? todayYmdInAppTz()
   const [rows, setRows] = useState<AvailableHoursAnswer[] | undefined>(undefined)
   const [names, setNames] = useState<Record<string, string>>({})
@@ -141,13 +144,17 @@ export function PersonDeskWorkingHoursRow({
     }
   }
 
+  /** Taking the hours off a salaried person puts their week on pay back on the standard week: the window says so and asks why. */
   async function takeOff() {
-    const ok = await confirmDialog({
-      message: `Take working hours off ${displayName}? From this week nothing holds them to a start and an end.${pay?.isSalary ? ' Their set week on pay stays as it is.' : ''} What the hours were is kept under Earlier hours.`,
-      confirmLabel: 'Take working hours off',
-      danger: true,
-    })
-    if (ok) await save(null, starts.thisWeek, null, 'Working hours taken off')
+    const off = workingHoursTakeOffPlan(facts, displayName)
+    if (off.needsReason) {
+      const why = await promptDialog({ message: off.message, confirmLabel: 'Take working hours off', placeholder: 'Why. It goes on the pay log', required: true })
+      if (why === null) return
+      await save(null, off.effectiveFrom, why.trim(), off.done)
+      return
+    }
+    const ok = await confirmDialog({ message: off.message, confirmLabel: 'Take working hours off', danger: true })
+    if (ok) await save(null, off.effectiveFrom, null, off.done)
   }
 
   const lock = canSet ? null : <LockTag label="dev or controller" title="A dev or the controller sets working hours. They are shown so you know where they stand." />

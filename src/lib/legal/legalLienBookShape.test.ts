@@ -5,7 +5,10 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { LIEN_BOOK_COUNSEL_SELECT, LIEN_BOOK_JOB_COLUMNS_SENT, LIEN_BOOK_OWNER_CALL_SELECT, shapeLienBookForCounsel } from './legalLienBookShape'
+import { LIEN_BOOK_COUNSEL_SELECT, LIEN_BOOK_FILING_KINDS, LIEN_BOOK_JOB_COLUMNS_SENT, LIEN_BOOK_OWNER_CALL_SELECT, LIEN_BOOK_SEND_KEYS, shapeLienBookForCounsel } from './legalLienBookShape'
+import { lienAffidavitOwnerSends } from '../jobs/lienAffidavitNotices'
+import { lienTimelineMonthsWithNoticeRecords } from '../jobs/lienTimelineDesk'
+import { buildLienTimelineBook } from '../jobs/lienTimelineBook'
 import { assembleLienBookInput, LIEN_BOOK_JOB_COLUMNS, parseLienBookRaw } from '../jobs/lienTimelineBookAssemble'
 
 const deskItem = {
@@ -56,6 +59,61 @@ describe('shapeLienBookForCounsel', () => {
     expect(shaped.ownerFacts).toEqual({})
     expect(LIEN_BOOK_OWNER_CALL_SELECT).toBe('job_id, kind, voided_at, fields')
     expect(LIEN_BOOK_COUNSEL_SELECT.deskItems).not.toContain('fields')
+  })
+
+  it('a recorded § 53.056 notice travels with the day each copy went, and nothing else of its sends (punch list #415)', () => {
+    const notice = {
+      ...filing,
+      id: 'n1',
+      kind: 'notice_53_056',
+      filed_at: null,
+      recording_number: null,
+      months_covered: ['2026-08'],
+      created_at: '2026-09-16T15:00:00Z',
+      sends: [
+        { recipient: 'owner', method: 'certified_mail', tracking: '9407 1118 0000', sent_on: '2026-09-14', name: 'Sam Owner', address: '1 Main St', email: 'owner@example.com' },
+        { recipient: 'original_contractor', method: 'hand', tracking: '', sent_on: '2026-09-15', name: 'Pat at Sample Contracting' },
+        { recipient: 'owner', method: 'certified_mail', tracking: '9407 2222', sent_on: 'later' },
+        null,
+      ],
+    }
+    const out = shapeLienBookForCounsel({ rows: [], affidavitRows: [], items: [], filings: [notice, filing], jobs: [], gcs: [], addresses: [], owners: [] })
+    expect(out.filings[0]).toMatchObject({ id: 'n1', kind: 'notice_53_056', months_covered: ['2026-08'] })
+    // Who, how and the day. A send with no day is dropped: it says nothing the grid draws.
+    expect(out.filings[0]!.sends).toEqual([
+      { recipient: 'owner', method: 'certified_mail', sent_on: '2026-09-14' },
+      { recipient: 'original_contractor', method: 'hand', sent_on: '2026-09-15' },
+    ])
+    // No other kind's sends travel.
+    expect(out.filings[1]!.sends).toBeNull()
+    const flat = JSON.stringify(out)
+    for (const secret of ['9407', 'Sam Owner', '1 Main St', 'owner@example.com', 'Pat at Sample', 'tracking', 'blue folder', 'drive.example']) expect(flat, secret).not.toContain(secret)
+    expect(LIEN_BOOK_FILING_KINDS).toEqual(['affidavit', 'release_of_record', 'notice_53_056'])
+    expect(LIEN_BOOK_SEND_KEYS).toEqual(Object.keys((out.filings[0]!.sends as Array<Record<string, unknown>>)[0]!))
+
+    // On the client the same kernels the app's book runs read it: the month is sent on the day its packet left.
+    const cut = JSON.parse(JSON.stringify(out.filings)) as Parameters<typeof lienTimelineMonthsWithNoticeRecords>[1]
+    expect(lienTimelineMonthsWithNoticeRecords([], cut)).toMatchObject([{ key: '2026-08', outcome: 'sent', at: '2026-09-14' }])
+    expect(lienAffidavitOwnerSends(cut as Parameters<typeof lienAffidavitOwnerSends>[0])).toEqual([{ method: 'certified_mail', sentOn: '2026-09-14' }])
+  })
+
+  it('the firm’s book says the notice went, on a job whose month the reader has dropped (punch list #415)', () => {
+    // A notice kept by hand: no desk paper, and the months reader drops a noticed month a week after its day. The job
+    // is still in the book through its affidavit window.
+    const job = { id: 'j1', hcp_number: '1042', click_number: null, job_name: 'Tenant finish-out', job_address: '200 Sample Pkwy', gc_customer_id: 'g1', customer_address_id: 'a1', revenue: 18400, payments_made: 4000, last_work_date: '2026-08-29', lien_payment_bond: null, lien_contract_ended_on: null }
+    const window = { job_id: 'j1', last_month: '2026-08', deadline: '2026-12-15', is_sub: true, noticed: true, filed: false, open_balance: 14400, customer_id: 'c1', gc_customer_id: 'g1', property_kind: 'non_residential', has_owner: true, has_legal: true, homestead: false }
+    const notice = { ...filing, id: 'n1', kind: 'notice_53_056', filed_at: null, recording_number: null, months_covered: ['2026-08'], created_at: '2026-09-16T15:00:00Z', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1118', sent_on: '2026-09-14' }] }
+    const bookOf = (filings: unknown[]) => {
+      const out = shapeLienBookForCounsel({ rows: [], affidavitRows: [window], items: [], filings, jobs: [job], gcs: [gc], addresses: [address], owners: [owner] })
+      return buildLienTimelineBook(assembleLienBookInput(parseLienBookRaw(JSON.parse(JSON.stringify(out)))!, '2026-11-25'))
+    }
+    // As the function read it before: affidavits and releases alone, so no month and no day.
+    const before = bookOf([]).rows.find((r) => r.jobId === 'j1')!
+    expect(before.months).toEqual([])
+    expect(before.noticeSentOn).toEqual([])
+    const after = bookOf([notice]).rows.find((r) => r.jobId === 'j1')!
+    expect(after.months).toMatchObject([{ key: '2026-08', outcome: 'sent', at: '2026-09-14' }])
+    expect(after.noticeSentOn).toEqual(['2026-09-14'])
   })
 
   it('names the same columns in the selects the function runs', () => {

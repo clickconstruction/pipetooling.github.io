@@ -306,6 +306,119 @@ describe('DashboardMyBidsSection — hiding a bid (punch list #426, step 4)', ()
     fireEvent.click(screen.getByText('Restroom Stalls'))
     expect(openBidPreview).toHaveBeenCalledWith('b2')
   })
+
+  it('on a device held in the hand, the card\'s first bid alone carries the sign, and the person\'s own swipe ends it (v2.8604)', async () => {
+    device.handHeld = true
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    const signed = [...document.querySelectorAll('[data-swipe-away-sign]')]
+    expect(signed.length).toBe(1)
+    expect(signed[0]!.closest('[data-my-bid]')?.getAttribute('data-my-bid')).toBe('b1')
+    expect(localStorage.getItem('pipetooling.swipeSign.me')).toBeNull()
+    const slide = document.querySelector('[data-my-bid="b1"] [data-swipe-away-slide]') as HTMLElement
+    pointer(slide, 'pointerdown', 300)
+    pointer(slide, 'pointermove', 280)
+    pointer(slide, 'pointermove', 150)
+    pointer(slide, 'pointerup', 150)
+    expect(await screen.findByText('Hidden: Fire Cabinet Installation.')).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('pipetooling.swipeSign.me') ?? 'null')?.away?.learned).toBe(true)
+    // The next bid is the first now, and it carries the sign, which may no longer play.
+    await waitFor(() => expect(document.querySelector('[data-my-bid="b2"] [data-swipe-away-sign]')).not.toBeNull())
+    // Hidden's first bid carries the way back.
+    fireEvent.click(await screen.findByRole('button', { name: 'Hidden, 1 bid' }))
+    expect(document.querySelector('[data-my-bid="b1"] [data-swipe-away-sign]')).not.toBeNull()
+    expect(JSON.parse(localStorage.getItem('pipetooling.swipeSign.me') ?? 'null')?.back?.learned).toBe(false)
+  })
+
+  it('a person who asked for less motion reads the gesture under the group\'s heading for that visit (v2.8604)', async () => {
+    device.handHeld = true
+    const realMedia = window.matchMedia
+    window.matchMedia = ((q: string) => ({ matches: q.includes('prefers-reduced-motion'), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
+    // jsdom has no IntersectionObserver: this one says every watched row is in full view.
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(private cb: IntersectionObserverCallback) {}
+        observe() {
+          queueMicrotask(() => this.cb([{ isIntersecting: true, intersectionRatio: 1 } as IntersectionObserverEntry], this as unknown as IntersectionObserver))
+        }
+        unobserve() {}
+        disconnect() {}
+      },
+    )
+    try {
+      renderWithProviders(section('estimator'))
+      await loadedHeading()
+      expect(document.querySelector('[data-my-bids-sign-words]')).toBeNull()
+      await waitFor(() => expect(document.querySelector('[data-my-bids-sign-words]')?.textContent).toBe('Swipe a bid left to hide it.'), { timeout: 2000 })
+      // No row moved, and the visit is counted.
+      expect((document.querySelector('[data-my-bid="b1"] [data-swipe-away-slide]') as HTMLElement).style.transform).toBe('translateX(0px)')
+      expect(JSON.parse(localStorage.getItem('pipetooling.swipeSign.me') ?? 'null')?.away?.plays).toBe(1)
+    } finally {
+      vi.unstubAllGlobals()
+      window.matchMedia = realMedia
+    }
+  })
+
+  it('at a desk no bid carries the sign (v2.8604)', async () => {
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    expect(document.querySelector('[data-swipe-away-sign]')).toBeNull()
+  })
+
+  it('at a desk, Show again says what it did, and Undo hides the bid again and says nothing more (v2.8603)', async () => {
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide, Fire Cabinet Installation' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Hidden, 1 bid' }))
+    // A desk keeps the press, and the line under the heading names it.
+    expect(screen.getByText('You hid these. Show again puts one back.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show again, Fire Cabinet Installation' }))
+    expect(await screen.findByText('Shown again: Fire Cabinet Installation.')).toBeTruthy()
+    expect(await loadedHeading()).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(await screen.findByRole('button', { name: 'Hidden, 1 bid' })).toBeTruthy()
+    // One Undo does not raise another.
+    expect(screen.queryByText('Hidden: Fire Cabinet Installation.')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
+  })
+
+  it('on a device held in the hand, a hidden bid has no press: a swipe to the right shows it again (v2.8603)', async () => {
+    device.handHeld = true
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    const out = document.querySelector('[data-my-bid="b1"] [data-swipe-away-slide]') as HTMLElement
+    pointer(out, 'pointerdown', 300)
+    pointer(out, 'pointermove', 280)
+    pointer(out, 'pointermove', 150)
+    pointer(out, 'pointerup', 150)
+    fireEvent.click(await screen.findByRole('button', { name: 'Hidden, 1 bid' }))
+    // The line over the rows says the move, and the row draws no word press.
+    expect(screen.getByText('You hid these. Swipe one right to show it again.')).toBeTruthy()
+    expect(document.querySelectorAll('[data-swipe-away-press]').length).toBe(0)
+    expect(document.querySelector('[data-my-bid="b1"] [data-swipe-away-row]')?.getAttribute('data-swipe-away-row')).toBe('right')
+    // A keyboard and a screen reader still have a real press: the strip.
+    expect(screen.getByRole('button', { name: 'Show again, Fire Cabinet Installation' }).getAttribute('data-swipe-away-strip')).toBe('rest')
+    const back = document.querySelector('[data-my-bid="b1"] [data-swipe-away-slide]') as HTMLElement
+    // A short swipe right springs back.
+    pointer(back, 'pointerdown', 100)
+    pointer(back, 'pointermove', 120)
+    pointer(back, 'pointermove', 180)
+    pointer(back, 'pointerup', 180)
+    expect(screen.getByRole('button', { name: 'Hidden, 1 bid' })).toBeTruthy()
+    // Past the mark it shows the bid again, with Undo.
+    pointer(back, 'pointerdown', 100)
+    pointer(back, 'pointermove', 120)
+    pointer(back, 'pointermove', 250)
+    pointer(back, 'pointerup', 250)
+    expect(await screen.findByText('Shown again: Fire Cabinet Installation.')).toBeTruthy()
+    expect(await loadedHeading()).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Hidden/ })).toBeNull()
+    // Neither swipe opened the bid.
+    expect(openBidPreview).not.toHaveBeenCalled()
+    // The person's row is written twice: hidden, then shown again.
+    await waitFor(() => expect(readStateWrites.map((w) => w.rows.map((r) => [r.bid_id, r.hidden_at === null ? 'null' : typeof r.hidden_at]))).toEqual([[['b1', 'string']], [['b1', 'null']]]))
+  })
 })
 
 describe('DashboardMyBidsSection — a hidden bid follows the person (punch list #426, step 6)', () => {

@@ -13,7 +13,6 @@ import {
   MY_BID_STATE_WORDS,
   MY_BIDS_CUT_WORDS,
   MY_BIDS_DASHBOARD_ROW_LIMIT,
-  MY_BIDS_HIDDEN_GLOSS,
   MY_BIDS_HIDDEN_HEADING,
   MY_BIDS_NOT_LOST_FILTER,
   MY_BIDS_ON_THE_BOARD_FILTER,
@@ -29,6 +28,8 @@ import {
   myBidGroupLabel,
   myBidHiddenHereOnlyWords,
   myBidHiddenWords,
+  myBidShownAgainWords,
+  myBidsHiddenGloss,
   myBidHiddenWrite,
   myBidsHiddenInReadState,
   myBidsHiddenStorageKey,
@@ -54,6 +55,7 @@ import { NEEDS_YOU_RAIL } from '../../lib/dashboard/needsYouPalette'
 import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { SwipeAwayRow } from '../shared/SwipeAwayRow'
 import { handHeld } from '../../lib/paintedMap/handHeld'
+import { useSwipeSign } from '../../hooks/useSwipeSign'
 import { swipeAwayHint } from '../../lib/swipeAway'
 import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 
@@ -103,6 +105,9 @@ export function DashboardMyBidsSection({
   const { showToast, showActionToast } = useToastContext()
   /** On a device held in the hand a bid is hidden with a swipe; at a desk, with a word press (punch list #426). */
   const swipes = useMemo(() => handHeld(), [])
+  /** The sign that a row swipes (v2.8604): the card's first bid shows its strip by itself, and Hidden's first bid the way back. */
+  const awaySign = useSwipeSign(authUserId, 'away')
+  const backSign = useSwipeSign(authUserId, 'back')
   const bidPreview = useBidPreview()
 
   const [myBids, setMyBids] = useState<MyBidRow[]>([])
@@ -317,11 +322,13 @@ export function DashboardMyBidsSection({
   /**
    * Hide says what it did, with Undo for ten seconds, and keeps the hide in the person's own row so it follows
    * them to every device. A refused write keeps the bid hidden on this device alone, and says why. While View
-   * as is on, the hide is this browser's alone.
+   * as is on, the hide is this browser's alone. `quiet` is the Undo of a Show again: it hides the bid again and
+   * says nothing, so one Undo does not raise another.
    */
-  const hideBid = (b: MyBidRow) => {
+  const hideBid = (b: MyBidRow, quiet = false) => {
     addHidden(b.id)
-    showActionToast(myBidHiddenWords(b.project_name || 'Untitled'), { label: 'Undo', onClick: () => unhideBid(b.id) }, { durationMs: 10000 })
+    // One toast a bid: a bid hidden and shown again inside the ten seconds keeps the newer line and its Undo.
+    if (!quiet) showActionToast(myBidHiddenWords(b.project_name || 'Untitled'), { label: 'Undo', onClick: () => unhideBid(b.id) }, { durationMs: 10000, key: `my-bid:${b.id}` })
     if (!authUserId) return
     const uid = authUserId
     inTurn(b.id, async () => {
@@ -337,6 +344,16 @@ export function DashboardMyBidsSection({
         showToast(myBidHiddenHereOnlyWords(formatErrorMessage(e, 'The hide was not saved')), 'warning')
       }
     })
+  }
+
+  /**
+   * Show again, by the swipe to the right on a device held in the hand or the word press at a desk (v2.8603).
+   * The bid leaves **Hidden** for its own group, which may be off the screen, so a toast says it with Undo
+   * for ten seconds.
+   */
+  const showBidAgain = (b: MyBidRow) => {
+    unhideBid(b.id)
+    showActionToast(myBidShownAgainWords(b.project_name || 'Untitled'), { label: 'Undo', onClick: () => hideBid(b, true) }, { durationMs: 10000, key: `my-bid:${b.id}` })
   }
 
   const markMyBidNotesReadAsViewed = useCallback(
@@ -562,6 +579,10 @@ export function DashboardMyBidsSection({
    * pick of 2026-11-23, one press per bid), which has a door to every tab of it. The word press on the right
    * hides it, or shows it again.
    */
+  /** The first group that draws a bid, and its first bid: the one row that shows the sign. */
+  const signGroup = card.groups.find((g) => (openGroups.has(g.state) ? g.bids : g.unread).length > 0)
+  const signBidId = signGroup ? (openGroups.has(signGroup.state) ? signGroup.bids : signGroup.unread)[0]?.id : undefined
+
   const bidBox = (b: MyBidRow, mode: 'shown' | 'hidden') => {
     const when = myBidWhen(b)
     const name = b.project_name || 'Untitled'
@@ -617,7 +638,7 @@ export function DashboardMyBidsSection({
       <li key={b.id} data-my-bid={b.id}>
         {mode === 'shown' ? (
           // A swipe to the left hides the bid on a device held in the hand; at a desk the same act is the word press.
-          <SwipeAwayRow label="Hide" name={name} swipe={swipes} radius={8} onAway={() => hideBid(b)}>
+          <SwipeAwayRow label="Hide" name={name} swipe={swipes} radius={8} onAway={() => hideBid(b)} sign={b.id === signBidId ? awaySign.sign : undefined} onOwnSwipe={awaySign.learned}>
             {(press) => (
               <div style={box}>
                 {words}
@@ -630,12 +651,28 @@ export function DashboardMyBidsSection({
             )}
           </SwipeAwayRow>
         ) : (
-          <div style={box}>
-            {words}
-            <button type="button" onClick={() => unhideBid(b.id)} aria-label={`Show again, ${name}`} style={wordPress}>
-              Show again
-            </button>
-          </div>
+          // The way back is the same row turned round: a swipe to the right on a device held in the hand, the word press at a desk.
+          <SwipeAwayRow
+            label="Show again"
+            name={name}
+            swipe={swipes}
+            side="right"
+            radius={8}
+            onAway={() => showBidAgain(b)}
+            sign={b.id === card.hidden[0]?.id ? backSign.sign : undefined}
+            onOwnSwipe={backSign.learned}
+          >
+            {(press) => (
+              <div style={box}>
+                {words}
+                {press ?? (
+                  <span aria-hidden style={{ flexShrink: 0, color: 'var(--text-muted)', fontSize: '1.2rem', lineHeight: 1 }}>
+                    ›
+                  </span>
+                )}
+              </div>
+            )}
+          </SwipeAwayRow>
         )}
         {mode === 'shown' && myBidHasUnread(b) ? unreadBox(b) : null}
       </li>
@@ -770,6 +807,12 @@ export function DashboardMyBidsSection({
                         {g.unread.length > 0 ? <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-amber-800)' }}>{g.unread.length} unread</span> : null}
                       </>,
                     )}
+                    {/* A person who asked for less motion reads the gesture here, for the visit the sign would have shown it. */}
+                    {swipes && awaySign.wordsUp && g.state === signGroup?.state ? (
+                      <p data-my-bids-sign-words style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
+                        {swipeAwayHint('bid', 'hide it')}
+                      </p>
+                    ) : null}
                     {open && g.bids.length === 0 ? <EmptyState compact {...(card.shown > 0 ? MY_BIDS_UNSENT_EMPTY : MY_BIDS_ONLY_HIDDEN_EMPTY)} /> : null}
                     {drawn.length > 0 ? <ul style={bidList}>{drawn.map((b) => bidBox(b, 'shown'))}</ul> : null}
                   </div>
@@ -777,7 +820,7 @@ export function DashboardMyBidsSection({
               })}
               {card.hidden.length > 0 ? (
                 <div style={groupLine(false)}>
-                  {groupHead('hidden', MY_BIDS_HIDDEN_HEADING, card.hidden.length, `${MY_BIDS_HIDDEN_HEADING}, ${card.hidden.length} ${card.hidden.length === 1 ? 'bid' : 'bids'}`, MY_BIDS_HIDDEN_GLOSS, null)}
+                  {groupHead('hidden', MY_BIDS_HIDDEN_HEADING, card.hidden.length, `${MY_BIDS_HIDDEN_HEADING}, ${card.hidden.length} ${card.hidden.length === 1 ? 'bid' : 'bids'}`, myBidsHiddenGloss(swipes), null)}
                   {openGroups.has('hidden') ? <ul style={bidList}>{card.hidden.map((b) => bidBox(b, 'hidden'))}</ul> : null}
                 </div>
               ) : null}

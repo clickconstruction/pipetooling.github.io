@@ -4349,6 +4349,15 @@ It is off, with the reason said, when a later change hangs on a row it added.
 
 **Database**: `bid_changes`, `list_bid_history` · kernel `lib/bids/bidHistory.ts`
 
+### Bids of the day (the Clock out sheet's list)
+The list of bids a person worked on in a day, read from what the app already records and never typed (punch list #445, `to-dos/clock-out-bids-of-the-day/`).
+The ground is live since v2.8605 and nothing on screen reads it yet.
+A **beat** is up to 60 seconds added to `user_bid_activity` for the bid in front, in a five-minute bucket, only while the person is at work on it.
+The **kept list** is the list as the person left it at clock out, in `bid_day_entries`: each bid kept or taken off, read by the app or added by the person.
+A size on the list is rough and is never a figure to bill by.
+
+**Database**: `user_bid_activity`, `bid_day_entries`, `bump_user_bid_activity`, `get_my_bid_day`, `save_my_bid_day`
+
 ### Utilization · hours you can work (People)
 The Utilization train (punch list #284, a design spike the owner ran on 2026-11-08): the hours each person said they can work against what the clock recorded, so a dev sees when to add people or use people more.
 PR 1 (v2.6707) is the answers table alone, `person_available_hours` — one append-only row per answer: `hours_per_week`, `days` (the week as drawn, seven arrays Sunday first of start–end minute pairs on the company clock, null for a number alone), `effective_from` (the Sunday it holds from), `note`, `set_by`;
@@ -6191,7 +6200,7 @@ CI/CD automation running workflows on GitHub events.
 
 **Steps**: `ci.yml` typechecks, lints, links every edge function with esbuild (`check:edge-bundles`, v2.6315: a missing named export fails the PR, not the boot;
 since v2.7256 an upload past 4.5 MB does too, not the deploy) and tests from the `.cache` main saved;
-since v2.8596 it is three jobs, `static` (the typecheck, lint and every check), `test` (the whole suite in two shards in the merge queue, and on a pull request the tests near its change with every test that reads files, `scripts/lib/nearTests.mjs`) and `checks`, the gate branch protection requires, which is skipped when both passed;
+since v2.8596 it is three jobs, `static` (the typecheck, lint and every check), `test` (the whole suite in three shards in the merge queue, two until v2.8606, and on a pull request the tests near its change with every test that reads files, `scripts/lib/nearTests.mjs`) and `checks`, the gate branch protection requires, which is skipped when both passed;
 `deploy.yml` installs, builds (`tsc -b && vite build`;
 the build fails when a precached file passes the cap in `vite.config.ts`, 10 MiB since 2026-11-20 when the main chunk crossed 9 MiB;
 `src/lib/entryGraph.repo.test.ts` holds the entry's eager imports to a budget in PR CI, so a PR that grows the main chunk fails before a deploy does) and deploys to GitHub Pages;
@@ -6768,6 +6777,8 @@ The reminder covers everything that waits on him: a retainage notice since v2.74
 Since v2.7456 a computer's list under the Board is one group a bin, under the bin's own name and in the Board's order, papers that share one act folded into one row with the press that takes them all, and everything not due inside the week under **Later** (`lienNextUpByBin.ts`).
 Since v2.8474 (punch list #362, step 5) one line over that list is the door to **the run**: every paper the first tile counts, written out as the checklist **Get it right** (`lienGetItRight.ts`, `LienGetItRight.tsx`), which takes the list's place under the Board while it is open.
 Since v2.8536 (punch list #362, step 6) the checklist's second card is **Print the run**: one press prints every paper of the run that is right as **one stack**, the notices by envelope, a divider page, then the affidavits by county clerk (`lienRunPrint.ts`, `lienRunStack.ts`, `useLienRunPrint.ts`).
+Since v2.8593 (punch list #362, step 7) a card **Changed since printed** stands over that press when a printed paper of the run would say another thing today: it names the paper, when it printed and by whom, and each statement that moved with both values.
+A right affidavit whose newest print says the same today is not printed again by **Print the run**, and the card says how many.
 A paper left out of the run never prints from that press, and the Board's own two prints are unchanged.
 A line of the checklist is one paper that cannot print as it stands, with its bin in the Board's words, the one thing it waits on and its To do row's own press;
 a paper that can print or is printed is **right**.

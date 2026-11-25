@@ -12,8 +12,9 @@ name: CI
 #           runner with the tests near the change and every test that reads files (scripts/lib/nearTests.mjs).
 #   checks  the gate, and the one name branch protection requires.
 # The queue is the only way onto main and still runs everything; a PR's own run is the quick answer first.
-# Runners: the org runs 20 jobs at once. A queue build takes 3 and the queue builds 6 at once, so 18 at its
-# fullest; a pull request's run takes 2. A leg waits for a runner when they are all out, it does not fail.
+# Runners: the org runs 20 jobs at once. A queue build takes 4 and the queue builds 6 at once, so 24 at its
+# fullest, past the cap (the owner's call, 2026-11-25, for the shorter build); a pull request's run takes 2.
+# A leg waits for a runner when they are all out, it does not fail.
 on:
   pull_request:
   # Merge-queue builds: the queue re-runs "checks" on the speculative merge
@@ -211,16 +212,18 @@ jobs:
 
   test:
     # In the merge queue: the whole suite, dealt by vitest into shards of equal size, a runner each (5,940 files
-    # took one runner 22 to 37 minutes on 2026-11-25; two take 12 to 20 each). check-workflow-parity.mjs holds the
-    # list to every shard of one count, so a third of the suite cannot drop out by a typo. On a pull request: one
-    # leg, the tests near the change.
+    # took one runner 22 to 37 minutes on 2026-11-25). A shard is not its share of that: half the tests still
+    # import nearly every module, so each runner pays about 3.5 minutes of transform whatever its share. Two
+    # shards took 15 to 21 minutes each on the first five builds, every build 20 to 21, so there are three.
+    # check-workflow-parity.mjs holds the list to every shard of one count, so a third of the suite cannot drop
+    # out by a typo. On a pull request: one leg, the tests near the change.
     name: test ${{ matrix.part }}
     runs-on: ubuntu-latest
-    # A shard is 12 to 20 minutes by the old step's times. A pull request's pick took 3.5 on its first run
-    # (2026-11-25, 334 files: the install 0.7, the picker 0.7, the tests 1.8) and grows with what is near. The
-    # one long case is a pull request that changes what every test runs on (package.json, vite.config.ts, a
-    # tsconfig) or what picks the tests (this file, the picker): its leg runs the whole suite on this one
-    # runner, 22 to 37 minutes, as every run did until 2026-11-25.
+    # A shard of two was 15 to 21 minutes. A pull request's pick took 3.5 on its first run (2026-11-25, 334
+    # files: the install 0.7, the picker 0.7, the tests 1.8) and 11.3 on a change with 575 near. The one long
+    # case is a pull request that changes what every test runs on (a dependency, vite.config.ts, a tsconfig)
+    # or what picks the tests (this file, the picker): its leg runs the whole suite on this one runner, 22 to
+    # 37 minutes, as every run did until 2026-11-25.
     timeout-minutes: 60
     permissions:
       contents: read
@@ -228,7 +231,7 @@ jobs:
       # A red shard does not stop the others: the run then names every failing test, not the first shard's.
       fail-fast: false
       matrix:
-        part: ${{ fromJSON(github.event_name == 'merge_group' && '["1/2", "2/2"]' || '["near the change"]') }}
+        part: ${{ fromJSON(github.event_name == 'merge_group' && '["1/3", "2/3", "3/3"]' || '["near the change"]') }}
     env:
       # The whole suite (5,750 files on 2026-11-23) passed twice in the merge queue and then vitest's own process died
       # of "JavaScript heap out of memory" while closing, with node's default cap near 2 GB. The runner has room.

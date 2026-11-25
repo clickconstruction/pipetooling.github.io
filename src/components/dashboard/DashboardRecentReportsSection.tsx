@@ -7,14 +7,15 @@ import type { UserRole } from '../../hooks/useAuth'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { formatReportFieldValueInlineList } from '../../lib/reportSignatureField'
 import {
-  RECENT_REPORTS_OPENED_GLOSS,
   RECENT_REPORTS_OPENED_HEADING,
   buildRecentReportsCard,
   formatReportRowWhen,
   isDashboardRecentReportsRole,
   markedOpenedWords,
+  markedUnreadWords,
   readIdsWithOwnReports,
   recentReportsNewWords,
+  recentReportsOpenedGloss,
   recentReportsOpenedMoreWords,
   recentReportsWindowStartIso,
   reportsInWindow,
@@ -39,6 +40,7 @@ import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { SwipeAwayRow } from '../shared/SwipeAwayRow'
 import { handHeld } from '../../lib/paintedMap/handHeld'
+import { useSwipeSign } from '../../hooks/useSwipeSign'
 import { swipeAwayHint } from '../../lib/swipeAway'
 
 /**
@@ -127,6 +129,9 @@ export function DashboardRecentReportsSection({
   const { showToast, showActionToast } = useToastContext()
   /** On a device held in the hand a report is marked opened with a swipe; at a desk, with a word press (punch list #426). */
   const swipes = useMemo(() => handHeld(), [])
+  /** The sign that a row swipes (v2.8604): the list's first report shows its strip by itself, and Opened's first report the way back. */
+  const awaySign = useSwipeSign(authUserId, 'away')
+  const backSign = useSwipeSign(authUserId, 'back')
   /** The reports of the window (`RECENT_REPORTS_WINDOW_DAYS`), newest first. */
   const [recentReports, setRecentReports] = useState<RecentReportRow[]>([])
   /** True once the database answered any report at all, in the window or older: an empty list then means nothing is new. */
@@ -314,7 +319,8 @@ export function DashboardRecentReportsSection({
           dropMarks(wereNew)
         },
       },
-      { durationMs: 10000 },
+      // One toast a report: one marked opened and then unread inside the ten seconds keeps the newer line and its Undo.
+      { durationMs: 10000, key: reports.length === 1 ? `report:${ids[0]}` : undefined },
     )
   }
 
@@ -323,6 +329,26 @@ export function DashboardRecentReportsSection({
     setSessionOpenedIds((prev) => withIds(prev, [reportId], false))
     setExpandedReportId((prev) => (prev === reportId ? null : prev))
     dropMarks([reportId])
+  }
+
+  /**
+   * Mark unread from **Opened**, by the swipe to the right on a device held in the hand or the word press at a
+   * desk (v2.8603). The report goes back up into the list as new, so a toast says it with Undo for ten seconds.
+   * Undo marks it opened again and says nothing.
+   */
+  const bringBack = (r: RecentReportRow) => {
+    markUnread(r.id)
+    showActionToast(
+      markedUnreadWords(r.job_display_name),
+      {
+        label: 'Undo',
+        onClick: () => {
+          setReadReportIds((prev) => withIds(prev, [r.id], true))
+          saveMarks([r.id])
+        },
+      },
+      { durationMs: 10000, key: `report:${r.id}` },
+    )
   }
 
   const showRecent = isDashboardRecentReportsRole(role)
@@ -396,7 +422,7 @@ export function DashboardRecentReportsSection({
       <li key={r.id} data-report-row={r.id} style={{ borderTop: '1px solid var(--border)' }}>
         {mode === 'listed' ? (
           // A swipe to the left marks the report opened on a device held in the hand; at a desk the same act is the word press.
-          <SwipeAwayRow label="Mark opened" name={name} swipe={swipes} onAway={() => putAway([r])}>
+          <SwipeAwayRow label="Mark opened" name={name} swipe={swipes} onAway={() => putAway([r])} sign={r.id === card.listed[0]?.id ? awaySign.sign : undefined} onOwnSwipe={awaySign.learned}>
             {(press) => (
               <div style={rowBox}>
                 {mark}
@@ -410,13 +436,28 @@ export function DashboardRecentReportsSection({
             )}
           </SwipeAwayRow>
         ) : (
-          <div style={rowBox}>
-            {mark}
-            {words}
-            <button type="button" onClick={() => markUnread(r.id)} aria-label={`Mark unread, ${name}`} style={wordPress}>
-              Mark unread
-            </button>
-          </div>
+          // The way back is the same row turned round: a swipe to the right on a device held in the hand, the word press at a desk.
+          <SwipeAwayRow
+            label="Mark unread"
+            name={name}
+            swipe={swipes}
+            side="right"
+            onAway={() => bringBack(r)}
+            sign={r.id === card.opened[0]?.id ? backSign.sign : undefined}
+            onOwnSwipe={backSign.learned}
+          >
+            {(press) => (
+              <div style={rowBox}>
+                {mark}
+                {words}
+                {press ?? (
+                  <span aria-hidden style={{ flexShrink: 0, color: 'var(--text-muted)', fontSize: '1.2rem', lineHeight: 1 }}>
+                    {isExpanded ? '▾' : '›'}
+                  </span>
+                )}
+              </div>
+            )}
+          </SwipeAwayRow>
         )}
         {isExpanded && (
           <div style={{ padding: '0 0 0.85rem 1.3rem', fontSize: '0.875rem' }}>
@@ -519,6 +560,12 @@ export function DashboardRecentReportsSection({
                 <RecentReportsSkeleton />
               ) : (
                 <>
+                  {/* A person who asked for less motion reads the gesture here, for the visit the sign would have shown it. */}
+                  {swipes && awaySign.wordsUp && card.listed.length > 0 ? (
+                    <p data-reports-sign-words style={{ margin: '0.25rem 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
+                      {swipeAwayHint('report', 'mark it opened')}
+                    </p>
+                  ) : null}
                   {card.listed.length > 0 ? (
                     <ul data-reports-list style={{ ...reportList, marginTop: scopeLine ? 0 : '-1px' }}>
                       {card.listed.map((r) => reportRow(r, 'listed'))}
@@ -544,7 +591,7 @@ export function DashboardRecentReportsSection({
                             <span style={{ fontSize: '0.9375rem', fontWeight: 700 }}>{RECENT_REPORTS_OPENED_HEADING}</span>
                             <span style={{ fontSize: '0.8125rem', fontWeight: 700, padding: '0 0.45rem', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>{card.openedCount}</span>
                           </span>
-                          {openedGroupOpen ? <span style={{ gridColumn: 2, fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }}>{RECENT_REPORTS_OPENED_GLOSS}</span> : null}
+                          {openedGroupOpen ? <span style={{ gridColumn: 2, fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }}>{recentReportsOpenedGloss(swipes)}</span> : null}
                         </button>
                       </h3>
                       {openedGroupOpen ? (

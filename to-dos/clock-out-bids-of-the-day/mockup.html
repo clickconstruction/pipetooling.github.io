@@ -85,7 +85,18 @@
   .empty { margin-top: 6px; padding: 14px; border: 1px dashed var(--border-strong); border-radius: 8px; background: var(--bg-muted); }
   .empty b { display: block; }
   .strip { position: relative; height: 26px; margin-top: 8px; border-radius: 6px; background: var(--bg-200); overflow: hidden; }
-  .strip i { position: absolute; top: 0; bottom: 0; min-width: 3px; }
+  .strip i { position: absolute; top: 0; bottom: 0; min-width: 4px; }
+  .dot.none { background: var(--border-strong); }
+  /* Take off as an icon: a 44 px press with no frame, so the row keeps its width for the name. */
+  .icn { flex: none; width: 44px; height: 44px; margin: -4px -6px -4px 0; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--text-muted); cursor: pointer; }
+  .icn:hover, .icn:focus-visible { background: var(--bg-muted); color: var(--text-strong); }
+  .icn svg { width: 18px; height: 18px; }
+  /* Take off as a tick: the row's colour mark is the control. Ticked is kept. */
+  .tick { flex: none; width: 44px; height: 44px; margin: -4px -8px -4px -10px; display: grid; place-items: center; border: 0; background: none; cursor: pointer; }
+  .tick span { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 5px; border: 2px solid var(--c); background: var(--c); color: #fff; }
+  .tick span svg { width: 14px; height: 14px; }
+  .tick[aria-checked="false"] span { background: transparent; }
+  .tick[aria-checked="false"] span svg { visibility: hidden; }
   .ticks { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; flex: none; }
   .cbx { width: 22px; height: 22px; flex: none; accent-color: #2563eb; }
@@ -120,6 +131,11 @@
         <button type="button" data-d="usual" aria-pressed="true">A usual day</button><button type="button" data-d="touches" aria-pressed="false">Small touches only</button><button type="button" data-d="nothing" aria-pressed="false">The app saw nothing</button>
       </span>
     </div>
+    <div class="grp"><span class="lab">Take off, on the pick</span>
+      <span class="seg" id="segO">
+        <button type="button" data-o="tick" aria-pressed="true">A tick</button><button type="button" data-o="x" aria-pressed="false">An ×</button><button type="button" data-o="words" aria-pressed="false">Words</button>
+      </span>
+    </div>
   </div>
 
   <h2>Today, and three ways to change it</h2>
@@ -132,19 +148,22 @@
     <div class="frame"><div class="cap"><b>B</b><span>a list with the minutes</span></div><div class="device"><div class="sheet" id="f-b"></div></div>
       <ul class="notes"><li><span class="good">Good.</span> One row a bid. A tick takes one off.</li><li><span class="weakpt">Weak.</span> Minutes and change counts read like a stopwatch, and the app cannot stand behind them.</li></ul></div>
     <div class="frame"><div class="cap"><b>C</b><span>the day as a strip</span></div><div class="device"><div class="sheet" id="f-c"></div></div>
-      <ul class="notes"><li><span class="good">Good.</span> The shape of the day shows at a glance.</li><li><span class="weakpt">Weak.</span> The grey reads as time not worked. Most of it is work the app cannot see.</li></ul></div>
+      <ul class="notes"><li><span class="good">Good.</span> The shape of the day shows at a glance.</li><li><span class="weakpt">Weak.</span> The grey reads as time not worked. Most of it is work the app cannot see. The pick keeps the strip and says so under it.</li></ul></div>
   </div>
 
   <h2>Is this the best we can do?</h2>
   <p>No, not yet. Each version gets one thing right and one thing wrong. The pick below keeps the right things.</p>
   <table class="pass">
     <tr><th>What was weak</th><th>What the pick does</th></tr>
-    <tr><td>A bid opened for two minutes sat beside one worked all morning.</td><td>Two shelves. <b>Worked on</b> holds bids the person changed. <b>Opened, nothing changed</b> holds the rest, each with one <b>Add</b> press.</td></tr>
-    <tr><td>Minutes claim more than the app knows.</td><td>A rough size in words: <b>A few minutes</b>, <b>About 2 hours</b>. Never a minute count, never a total against the clock.</td></tr>
+    <tr><td>A bid opened for two minutes sat beside one worked all morning.</td><td>Two shelves. <b>Worked on</b> holds bids the person changed. <b>Opened, nothing changed</b> holds the rest, each one press away from the list.</td></tr>
+    <tr><td>Exact minutes and change counts claim more than the app knows.</td><td>Every row reads the same way: the size, then the tab, as <b>2 hours · Pricing</b> or <b>5 minutes · Counts</b>. The size is rounded, and one line under the list says so. Never a total against the clock.</td></tr>
     <tr><td>The list could hold up clock out.</td><td><b>Complete clock out</b> is live the moment the list holds one bid. The note becomes optional.</td></tr>
-    <tr><td>Taking one off by mistake.</td><td><b>Take off</b> leaves the row in place, struck through, with <b>Put back</b>.</td></tr>
+    <tr><td>Taking one off by mistake.</td><td>A bid taken off stays in place, struck through, and one press puts it back.</td></tr>
     <tr><td>Work the app cannot see: a takeoff in CountTooling, a call, a set of plans on paper.</td><td><b>Add a bid the app missed</b> offers the bids on the person's board as one-press chips, then the search the sheet already has.</td></tr>
     <tr><td>A day the app saw nothing.</td><td>The sheet says so and offers the bids on the person's board to add. It asks for the note as it does today.</td></tr>
+    <tr><td>The strip's grey read as time not worked.</td><td>The strip stays, since the owner asked for it. One line under it reads <b>Grey is time the app did not see.</b> It shows the start and now, and no time on a block.</td></tr>
+    <tr><td>The colour had to mean one thing.</td><td>One colour a bid, on its block and on its row. A kept bid is filled. An opened bid, or one taken off, is an outline. <b>Add</b> fills it.</td></tr>
+    <tr><td>The words <b>Take off</b> took a third of a phone row.</td><td>The row's colour mark is the control. A ticked box is a bid that counts today. Pressing it takes the bid off and leaves the box empty, and pressing again puts it back. An opened bid is an empty box, and ticking it adds it. The switch above also draws an × and the words, to compare.</td></tr>
     <tr><td>A bid that became a job.</td><td>The row keeps the bid's name and shows the job number beside it.</td></tr>
   </table>
   <p>What is still weak, said plainly. A press on <b>Complete clock out</b> does not prove the person read the list. Time in CountTooling stays unseen until that app sends its own beat. A salaried person has no clock-out, so their list sits on the Dashboard instead.</p>
@@ -161,30 +180,30 @@
 
 <script>
 (function () {
-  var COLORS = ['#2563eb', '#0f766e', '#6d28d9', '#b45309'];
+  var COLORS = ['#2563eb', '#0f766e', '#6d28d9', '#b45309', '#be123c', '#0369a1'];
   var DAYS = {
     usual: {
       clock: 'Clocked in 7:02. 7 h 36 min so far.',
       worked: [
-        { id: 'b412', name: 'B412 · ZZ Test Ridgeway Clinic', what: 'Takeoffs and Pricing', rough: 'About 3 hours', exact: '2 h 52 min · 45 changes', seg: [8, 38], word: 'takeoffs, pricing' },
-        { id: 'b398', name: 'B398 · ZZ Test Harbor Lofts', what: 'Pricing and Cover Letter', rough: 'About 2 hours', exact: '1 h 56 min · 181 changes', seg: [48, 25], word: 'pricing, cover letter' },
-        { id: 'b377', name: 'B377 · ZZ Test Cedar Row Homes', job: 'J1007', what: 'Submittals', rough: 'About 30 minutes', exact: '28 min · 6 changes', seg: [80, 6], word: 'submittals' },
-        { id: 'b420', name: 'B420 · ZZ Test Lakeside Dental', what: 'Follow-up date set', rough: 'A few minutes', exact: '1 min · 1 change', seg: [93, 0.6], word: 'follow-up set' }
+        { id: 'b412', name: 'B412 · ZZ Test Ridgeway Clinic', what: 'Takeoffs and Pricing', rough: '3 hours', exact: '2 h 52 min · 45 changes', seg: [8, 38], word: 'takeoffs, pricing' },
+        { id: 'b398', name: 'B398 · ZZ Test Harbor Lofts', what: 'Pricing and Cover Letter', rough: '2 hours', exact: '1 h 56 min · 181 changes', seg: [48, 25], word: 'pricing, cover letter' },
+        { id: 'b377', name: 'B377 · ZZ Test Cedar Row Homes', job: 'J1007', what: 'Submittals', rough: '30 minutes', exact: '28 min · 6 changes', seg: [80, 6], word: 'submittals' },
+        { id: 'b420', name: 'B420 · ZZ Test Lakeside Dental', what: 'Bid Board', rough: '1 minute', exact: '1 min · 1 change', seg: [93, 0.6], word: 'follow-up set' }
       ],
       opened: [
-        { id: 'b425', name: 'B425 · ZZ Test Mill Street Bakery', what: 'Open about 2 minutes.' },
-        { id: 'b431', name: 'B431 · ZZ Test Orchard School', what: 'Open about 5 minutes on Counts.' }
+        { id: 'b425', name: 'B425 · ZZ Test Mill Street Bakery', rough: '2 minutes', what: '', seg: [75, 0.6] },
+        { id: 'b431', name: 'B431 · ZZ Test Orchard School', rough: '5 minutes', what: 'Counts', seg: [88, 1.1] }
       ]
     },
     touches: {
       clock: 'Clocked in 8:10. 5 h 20 min so far.',
       worked: [
-        { id: 'b420', name: 'B420 · ZZ Test Lakeside Dental', what: 'Follow-up date set', rough: 'A few minutes', exact: '1 min · 1 change', seg: [29, 0.6], word: 'follow-up set' },
-        { id: 'b425', name: 'B425 · ZZ Test Mill Street Bakery', what: 'Marked sent', rough: 'A few minutes', exact: '2 min · 3 changes', seg: [35, 0.6], word: 'marked sent' },
-        { id: 'b436', name: 'B436 · ZZ Test Quarry Road Shops', what: 'Due date changed', rough: 'A few minutes', exact: '1 min · 1 change', seg: [71, 0.6], word: 'due date changed' }
+        { id: 'b420', name: 'B420 · ZZ Test Lakeside Dental', what: 'Bid Board', rough: '1 minute', exact: '1 min · 1 change', seg: [29, 0.6], word: 'follow-up set' },
+        { id: 'b425', name: 'B425 · ZZ Test Mill Street Bakery', what: 'Submission & Followup', rough: '2 minutes', exact: '2 min · 3 changes', seg: [35, 0.6], word: 'marked sent' },
+        { id: 'b436', name: 'B436 · ZZ Test Quarry Road Shops', what: 'Bid Board', rough: '1 minute', exact: '1 min · 1 change', seg: [71, 0.6], word: 'due date changed' }
       ],
       opened: [
-        { id: 'b412', name: 'B412 · ZZ Test Ridgeway Clinic', what: 'Open about 40 minutes on Takeoffs.' }
+        { id: 'b412', name: 'B412 · ZZ Test Ridgeway Clinic', rough: '40 minutes', what: 'Takeoffs', seg: [45, 12.5] }
       ]
     },
     nothing: { clock: 'Clocked in 7:30. 6 h 05 min so far.', worked: [], opened: [] }
@@ -193,11 +212,16 @@
     { id: 'b440', name: 'B440 · ZZ Test Fairview Annex' },
     { id: 'b444', name: 'B444 · ZZ Test Dry Creek Depot' }
   ];
-  var state = { day: 'usual', off: {}, added: {}, bOff: {}, note: '', todayNote: '', aNote: null, cardOk: false };
+  var state = { day: 'usual', offStyle: 'tick', off: {}, added: {}, bOff: {}, note: '', todayNote: '', aNote: null, cardOk: false };
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function nameHtml(b) { return esc(b.name) + (b.job ? '<span class="jobchip" title="This bid is now job ' + b.job + '">' + b.job + '</span>' : ''); }
   function day() { return DAYS[state.day]; }
+  /* Every row's line reads the same way: the size, then the tab. A row with no size shows its one fact alone. */
+  function lineHtml(b) {
+    if (!b.rough) return '<span class="what">' + esc(b.what) + '</span>';
+    return '<span class="size">' + esc(b.rough) + '</span>' + (b.what ? '<span class="what"> · ' + esc(b.what) + '</span>' : '');
+  }
 
   /* ---- Today: the sheet as it is (ClockInOutButton.tsx, the Clock out window) ---- */
   function todayHtml(key) {
@@ -236,7 +260,7 @@
     var rows = all.map(function (b) {
       var on = !state.bOff[b.id];
       return '<li' + (b.exact ? '' : ' class="weak"') + '><input class="cbx" type="checkbox" data-b="' + b.id + '"' + (on ? ' checked' : '') + ' aria-label="Keep ' + esc(b.name) + '">' +
-        '<span class="who"><span class="name">' + nameHtml(b) + '</span><br><span class="what">' + esc(b.exact || b.what.replace('about ', '').replace('.', '') + ' · 0 changes') + '</span></span></li>';
+        '<span class="who"><span class="name">' + nameHtml(b) + '</span><br><span class="what">' + esc(b.exact || 'Open ' + b.rough + (b.what ? ' on ' + b.what : '') + ' · 0 changes') + '</span></span></li>';
     }).join('');
     var n = all.filter(function (b) { return !state.bOff[b.id]; }).length;
     return '<h3>Clock out</h3>' +
@@ -252,7 +276,7 @@
     var d = day();
     var segs = d.worked.map(function (b, i) { return '<i style="left:' + b.seg[0] + '%;width:' + b.seg[1] + '%;background:' + COLORS[i % 4] + '" title="' + esc(b.name) + '"></i>'; }).join('');
     var rows = d.worked.map(function (b, i) {
-      return '<li><span class="dot" style="background:' + COLORS[i % 4] + '"></span><span class="who"><span class="name">' + nameHtml(b) + '</span><br><span class="what">' + esc(b.what) + '</span></span><span class="size">' + esc(b.rough.replace('About ', '')) + '</span></li>';
+      return '<li><span class="dot" style="background:' + COLORS[i % 4] + '"></span><span class="who"><span class="name">' + nameHtml(b) + '</span><br><span class="what">' + esc(b.what) + '</span></span><span class="size">' + esc(b.rough) + '</span></li>';
     }).join('');
     return '<h3>Clock out</h3>' +
       '<div class="sec"><div class="head"><span>Your day</span></div>' +
@@ -264,10 +288,51 @@
   }
 
   /* ---- The pick ---- */
+  /* One colour a bid, the same on the strip and on its row. A bid the person kept is filled. A bid that was only
+     opened, or was taken off, is an outline. A bid the app never saw has no block, so its dot is grey. */
+  function colorOf(id) {
+    var d = day(), all = d.worked.concat(d.opened), i;
+    for (i = 0; i < all.length; i++) if (all[i].id === id) return COLORS[i % COLORS.length];
+    return null;
+  }
+  function dotHtml(b, filled) {
+    var c = colorOf(b.id);
+    if (!c) return '<span class="dot none"></span>';
+    return '<span class="dot" style="' + (filled ? 'background:' + c : 'box-shadow:inset 0 0 0 2px ' + c) + '"></span>';
+  }
+  function dayStripHtml() {
+    var d = day();
+    var segs = d.worked.concat(d.opened).map(function (b) {
+      var c = colorOf(b.id), filled = !state.off[b.id] && (d.worked.indexOf(b) >= 0 || state.added[b.id]);
+      return '<i style="left:' + b.seg[0] + '%;width:' + b.seg[1] + '%;' + (filled ? 'background:' + c : 'opacity:.55;box-shadow:inset 0 0 0 2px ' + c) + '" title="' + esc(b.name) + '"></i>';
+    }).join('');
+    return '<div class="sec"><div class="head"><span>Your day</span></div>' +
+      '<div class="strip" role="img" aria-label="Your day, one block a bid">' + segs + '</div>' +
+      '<div class="ticks"><span>' + d.clock.split(' ')[2].replace('.', '') + '</span><span>now</span></div>' +
+      '<p class="sub">Grey is time the app did not see.</p></div>';
+  }
+  var SVG_X = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>';
+  var SVG_BACK = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4L3 8l4 4"/><path d="M3 8h8.5a4.5 4.5 0 010 9H8"/></svg>';
+  var SVG_TICK = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg>';
+  /* A worked row, drawn the way the Take off switch says: an ×, a tick or the words. */
+  function workedRowHtml(b) {
+    var off = !!state.off[b.id], act = off ? 'back' : 'off', verb = off ? 'Put back' : 'Take off';
+    var who = '<span class="who"><span class="name">' + nameHtml(b) + '</span><br>' + (off ? '<span class="what">Taken off</span>' : lineHtml(b)) + '</span>';
+    var open = '<li class="' + (off ? 'off' : '') + '">';
+    if (state.offStyle === 'tick') {
+      return open + '<button type="button" class="tick" role="checkbox" aria-checked="' + !off + '" aria-label="' + esc(b.name) + '" title="' + verb + '" data-' + act + '="' + b.id + '" style="--c:' + (colorOf(b.id) || 'var(--border-strong)') + '"><span>' + SVG_TICK + '</span></button>' + who + '</li>';
+    }
+    if (state.offStyle === 'x') {
+      return open + dotHtml(b, !off) + who + '<button type="button" class="icn" aria-label="' + verb + ' ' + esc(b.name) + '" title="' + verb + '" data-' + act + '="' + b.id + '">' + (off ? SVG_BACK : SVG_X) + '</button></li>';
+    }
+    return open + dotHtml(b, !off) + who + '<button type="button" class="btn small" data-' + act + '="' + b.id + '">' + verb + '</button></li>';
+  }
   function pickLists() {
     var d = day();
     var worked = d.worked.slice();
-    d.opened.concat(BOARD).forEach(function (b) { if (state.added[b.id]) worked.push({ id: b.id, name: b.name, what: 'Added by you', rough: '', mine: true }); });
+    /* A bid added from the lower shelf keeps its own line. One the app never saw says who added it. */
+    d.opened.forEach(function (b) { if (state.added[b.id]) worked.push(b); });
+    BOARD.forEach(function (b) { if (state.added[b.id]) worked.push({ id: b.id, name: b.name, what: 'Added by you', rough: '' }); });
     var opened = d.opened.filter(function (b) { return !state.added[b.id]; });
     var board = BOARD.filter(function (b) { return !state.added[b.id]; });
     var kept = worked.filter(function (b) { return !state.off[b.id]; }).length;
@@ -275,15 +340,10 @@
   }
   function pickBody(inCard) {
     var L = pickLists();
-    var h = '';
+    var h = dayStripHtml();
     h += '<div class="sec"><div class="head"><span>Bids you worked on today</span><span class="n">' + L.kept + '</span></div>';
     if (L.worked.length) {
-      h += '<ul class="bids">' + L.worked.map(function (b) {
-        var off = !!state.off[b.id];
-        return '<li class="' + (off ? 'off' : '') + '"><span class="who"><span class="name">' + nameHtml(b) + '</span><br>' +
-          (off ? '<span class="what">Taken off.</span>' : (b.rough ? '<span class="size">' + esc(b.rough) + '</span><span class="what"> · ' + esc(b.what) + '</span>' : '<span class="what">' + esc(b.what) + '</span>')) + '</span>' +
-          '<button type="button" class="btn small" data-' + (off ? 'back' : 'off') + '="' + b.id + '">' + (off ? 'Put back' : 'Take off') + '</button></li>';
-      }).join('') + '</ul>';
+      h += '<ul class="bids">' + L.worked.map(workedRowHtml).join('') + '</ul>';
       if (!inCard) h += '<p class="sub">Read from what you opened and changed today. Sizes are rough.</p>';
     } else {
       h += '<div class="empty"><b>The app saw no bid today.</b>Add the bids you worked on, or say what you did below.</div>';
@@ -291,7 +351,12 @@
     h += '</div>';
     if (L.opened.length) {
       h += '<div class="sec"><div class="head"><span>Opened, nothing changed</span><span class="n">' + L.opened.length + '</span></div><ul class="bids">' +
-        L.opened.map(function (b) { return '<li class="weak"><span class="who"><span class="name">' + nameHtml(b) + '</span><br><span class="what">' + esc(b.what) + '</span></span><button type="button" class="btn small add" data-add="' + b.id + '">Add</button></li>'; }).join('') + '</ul></div>';
+        L.opened.map(function (b) {
+          var who = '<span class="who"><span class="name">' + nameHtml(b) + '</span><br>' + lineHtml(b) + '</span>';
+          /* With the tick, an opened bid is an empty box in its own colour: ticking it adds it. */
+          if (state.offStyle === 'tick') return '<li class="weak"><button type="button" class="tick" role="checkbox" aria-checked="false" aria-label="' + esc(b.name) + '" title="Add" data-add="' + b.id + '" style="--c:' + colorOf(b.id) + '"><span>' + SVG_TICK + '</span></button>' + who + '</li>';
+          return '<li class="weak">' + dotHtml(b, false) + who + '<button type="button" class="btn small add" data-add="' + b.id + '">Add</button></li>';
+        }).join('') + '</ul></div>';
     }
     h += '<div class="sec"><div class="head"><span>Add a bid the app missed</span></div>' +
       (L.board.length ? '<p class="sub">On your board:</p><div class="chips">' + L.board.map(function (b) { return '<button type="button" class="chip" data-add="' + b.id + '">+ ' + esc(b.name) + '</button>'; }).join('') + '</div>' : '') +
@@ -351,6 +416,11 @@
       document.body.classList.toggle('desk', t.dataset.w === 'desk');
       [].forEach.call(document.querySelectorAll('#segW button'), function (b) { b.setAttribute('aria-pressed', String(b === t)); });
       return;
+    }
+    if (t.dataset.o) {
+      state.offStyle = t.dataset.o;
+      [].forEach.call(document.querySelectorAll('#segO button'), function (b) { b.setAttribute('aria-pressed', String(b === t)); });
+      return draw(false);
     }
     if (t.dataset.d) {
       state.day = t.dataset.d; state.off = {}; state.added = {}; state.bOff = {}; state.note = ''; state.aNote = null; state.cardOk = false;

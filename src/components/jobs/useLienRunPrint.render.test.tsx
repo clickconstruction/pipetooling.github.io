@@ -110,6 +110,24 @@ describe('useLienRunPrint', () => {
     expect(fileMock).not.toHaveBeenCalled()
   })
 
+  it('an affidavit that printed and says the same today is not printed again, and the newest prints are read again once the copies are filed', async () => {
+    const onFiled = vi.fn()
+    const view = mount({ printedAffidavitJobIds: new Set(['job-1']), onFiled })
+    await waitFor(() => expect(view.result.current!.press.dead).toBe(false))
+    // The run's one affidavit printed already: the press takes the notice alone, and the card can say why.
+    expect(view.result.current).toMatchObject({ notices: 1, affidavits: 0, affidavitsPrinted: 1, mode: 'one' })
+    expect(view.result.current!.press.label).toBe('Print the run · 1 paper')
+    act(() => view.result.current!.print())
+    expect(affidavitsRun).not.toHaveBeenCalled()
+    expect(fileMock.mock.calls.map((c) => (c[0] as { kind: string }).kind)).toEqual(['lien_notice_packet'])
+    await waitFor(() => expect(onFiled).toHaveBeenCalledTimes(1))
+    cleanup()
+    // With none printed the run is as it was, and says none was held back.
+    const plain = mount()
+    await waitFor(() => expect(plain.result.current!.press.dead).toBe(false))
+    expect(plain.result.current).toMatchObject({ affidavits: 1, affidavitsPrinted: 0 })
+  })
+
   it('the press prints one stack, files each paper as its own press files it, and stamps the run’s notices printed', async () => {
     const view = mount()
     await waitFor(() => expect(view.result.current!.press.dead).toBe(false))

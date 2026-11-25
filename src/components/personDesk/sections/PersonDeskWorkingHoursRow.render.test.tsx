@@ -3,7 +3,8 @@
  * Render smoke for the Working hours row on a person's sheet (punch list #429): a dev or the controller sees each
  * line's hours as a press and changes a whole line at once; a half day on Wednesday is five presses; a change that
  * moves a salaried person's pay says so, starts this week and waits for a reason; the first time, a person on a set
- * week is asked for the start alone; and anyone else reads the same lines with no press.
+ * week is asked for the start alone; taking the hours off a salaried person says pay goes back to the standard week
+ * and waits for a reason; and anyone else reads the same lines with no press.
  */
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -156,6 +157,45 @@ describe('PersonDeskWorkingHoursRow', () => {
     await settle()
     expect((await screen.findByRole('alert')).textContent).toContain('A dev or the controller sets working hours.')
     expect(document.querySelector('[data-working-hours-field]')).toBeTruthy()
+  })
+
+  it('takes the hours off a salaried person: says pay goes back to the standard week, and waits for a reason', async () => {
+    const { save } = row({}, [set()])
+    await settle()
+    press('Take working hours off')
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog.textContent).toContain('Their set week on pay is 6 h Mon to Fri today. It goes back to the standard week, 8 h Mon to Fri.')
+    expect(dialog.textContent).toContain('Say why. The reason goes on the pay log.')
+    expect(dialog.textContent).not.toContain('stays as it is')
+    const go = within(dialog).getByRole('button', { name: 'Take working hours off' }) as HTMLButtonElement
+    expect(go.disabled).toBe(true)
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: ' Back on full days ' } })
+    expect(go.disabled).toBe(false)
+    fireEvent.click(go)
+    await settle()
+    expect(save).toHaveBeenCalledWith({ userId: 'u-wes', days: null, effectiveFrom: '2026-11-22', reason: 'Back on full days' })
+    expect(await screen.findByText('Working hours taken off. Pay is back on the standard week.')).toBeTruthy()
+  })
+
+  it('writes nothing when the take-off is cancelled', async () => {
+    const { save } = row({}, [set()])
+    await settle()
+    press('Take working hours off')
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+    await settle()
+    expect(save).not.toHaveBeenCalled()
+  })
+
+  it('takes the hours off with no reason when pay has nothing to move', async () => {
+    const { save } = row({ pay: EIGHT_HOUR_WEEK }, [set({ hours_per_week: 40, days: weekdays([420, 900]) })])
+    await settle()
+    press('Take working hours off')
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog.textContent).toContain('Their pay stays on the standard week, 8 h Mon to Fri.')
+    expect(within(dialog).queryByRole('textbox')).toBeNull()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Take working hours off' }))
+    await settle()
+    expect(save).toHaveBeenCalledWith({ userId: 'u-wes', days: null, effectiveFrom: '2026-11-22', reason: null })
   })
 
   it('says a roster person with no login has none', async () => {

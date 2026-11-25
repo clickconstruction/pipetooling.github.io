@@ -37,6 +37,10 @@ export type LienRunPrintHookInput = {
   userId: string | null
   /** The desk reads again: the printed notices move to their bin. */
   onChanged: () => void
+  /** The run's affidavits whose newest print says the same today (step 7, `useLienRunPrinted`): they do not print again. */
+  printedAffidavitJobIds?: ReadonlySet<string>
+  /** Every copy of a print is filed, or could not be: the newest prints are read again. */
+  onFiled?: () => void
 }
 
 export type LienRunPrintState = {
@@ -51,6 +55,8 @@ export type LienRunPrintState = {
   parts: { notices: string; affidavits: string }
   notices: number
   affidavits: number
+  /** The run's right affidavits left out of the print because they printed already and say the same today. */
+  affidavitsPrinted: number
   /** The run's right notices the press does not print, each with its reason: the card names them under the press. */
   stopped: LienRunNoticeStopped[]
   /** What the press printed in this sitting, as a sentence; null before a print. */
@@ -67,7 +73,7 @@ const timeWords = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', 
  *
  * The documents are built at the press, never on a render. The count comes from the same kernels with no document.
  */
-export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidavitsRun, issuer, todayYmd, stripeMode, userId, onChanged }: LienRunPrintHookInput): LienRunPrintState | null {
+export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidavitsRun, issuer, todayYmd, stripeMode, userId, onChanged, printedAffidavitJobIds, onFiled }: LienRunPrintHookInput): LienRunPrintState | null {
   const { showToast } = useToastContext()
   const [printed, setPrinted] = useState<LienRunPrintState['printed']>(null)
   const [refused, setRefused] = useState(false)
@@ -88,7 +94,10 @@ export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidav
 
   if (!run || !plan) return null
   const noticeCount = ready.length
-  const affidavits = live && plan.affidavitJobIds.size > 0 ? affidavitCount(plan.affidavitJobIds) : 0
+  // An affidavit that printed and would say the same today is not printed again by the run. The Board's own print still takes it.
+  const affidavitJobIds = printedAffidavitJobIds && printedAffidavitJobIds.size > 0 ? new Set([...plan.affidavitJobIds].filter((id) => !printedAffidavitJobIds.has(id))) : plan.affidavitJobIds
+  const affidavits = live && affidavitJobIds.size > 0 ? affidavitCount(affidavitJobIds) : 0
+  const affidavitsPrinted = live ? plan.affidavitJobIds.size - affidavitJobIds.size : 0
   const reading = noticeCount > 0 && !enclosures.read
   const press = lienRunPrintPress({ notices: noticeCount, affidavits, held: plan.held, reading, stopped: stopped.length })
   const both = noticeCount > 0 && affidavits > 0
@@ -97,7 +106,7 @@ export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidav
   const print = (which: 'all' | 'notices' | 'affidavits' = 'all') => {
     if (reading) return
     const packet = which !== 'affidavits' && notices.length > 0 ? lienRunReadyPacket({ notices, todayYmd, issuer, enclosures, guideCode: lienRunGuideCode() }) : null
-    const batch = which !== 'notices' && plan.affidavitJobIds.size > 0 ? affidavitsRun({ jobIds: plan.affidavitJobIds, leftOut: plan.affidavitLeftOut }) : null
+    const batch = which !== 'notices' && affidavitJobIds.size > 0 ? affidavitsRun({ jobIds: affidavitJobIds, leftOut: plan.affidavitLeftOut }) : null
     if (!packet && !batch) return
     const dayWords = demandDate(todayYmd)
     const html = lienRunStackHtml({
@@ -117,8 +126,11 @@ export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidav
     }
     // A print counts as a send (docs/SENT_COPIES.md). Each paper is filed as its own press files it: the notices as
     // one packet on every job in it, each affidavit alone on its job.
-    if (packet) void fileSentCopy({ ...packet.filing, how: 'print' }, { html: packet.html })
-    if (batch) for (const copy of batch.copies) void fileSentCopy({ ...copy.filing, how: 'print' }, { html: copy.html })
+    const filed: Array<Promise<boolean>> = []
+    if (packet) filed.push(fileSentCopy({ ...packet.filing, how: 'print' }, { html: packet.html }))
+    if (batch) for (const copy of batch.copies) filed.push(fileSentCopy({ ...copy.filing, how: 'print' }, { html: copy.html }))
+    // A filed copy is the affidavit's printed fact (step 7): once each is kept, the newest prints are read again.
+    if (onFiled) void Promise.all(filed).then(onFiled, onFiled)
     setPrinted({
       words: lienRunPrintedWords({ notices: packet?.notices.length ?? 0, affidavits: batch?.copies.length ?? 0, atWords: timeWords(new Date()) }),
       next: packet && batch ? LIEN_RUN_PRINT_WORDS.next : packet ? LIEN_RUN_PRINT_WORDS.nextNotices : LIEN_RUN_PRINT_WORDS.nextAffidavits,
@@ -135,6 +147,7 @@ export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidav
     parts: { notices: countedLabel('Print', noticeCount, ['notice', 'notices']), affidavits: countedLabel('Print', affidavits, ['affidavit', 'affidavits']) },
     notices: noticeCount,
     affidavits,
+    affidavitsPrinted,
     stopped,
     printed,
     print,

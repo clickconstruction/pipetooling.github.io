@@ -8,8 +8,10 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import { Money } from '../Money'
 import OfflineRetryPanel from '../OfflineRetryPanel'
-import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { LIEN_RUN_PRINT_WORDS as PRINT } from '../../lib/jobs/lienRunPrint'
+import { LIEN_RUN_PRINTED_WORDS as PRINTED, lienRunPrintedByWords, lienRunPrintedSameWords, lienRunPrintedUnreadWords } from '../../lib/jobs/lienRunPrinted'
+import type { LienRunPrintedState } from './useLienRunPrinted'
 import { lienKindTagStyle } from './LienDeskNextUp'
 import type { LienRunPrintState } from './useLienRunPrint'
 
@@ -44,6 +46,8 @@ export type LienGetItRightProps = {
   prints?: ReadonlyArray<LienRunPrint>
   /** The run's one print (step 6, `useLienRunPrint`): the lien office's. Absent, the Board's prints stand in. */
   print?: LienRunPrintState | null
+  /** Changed since printed (step 7, `useLienRunPrinted`): the run's printed papers beside today. The lien office's, as the print is. */
+  printed?: LienRunPrintedState | null
 }
 
 const blueBtn: CSSProperties = { padding: '5px 12px', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '0.8125rem', fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }
@@ -189,7 +193,7 @@ function Question({ line }: { line: LienRunLine }) {
   )
 }
 
-export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, userName, onBack, onAct, onOpenLine, onLeaveOut, onPutBack, prints, print }: LienGetItRightProps) {
+export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, userName, onBack, onAct, onOpenLine, onLeaveOut, onPutBack, prints, print, printed }: LienGetItRightProps) {
   const [formFor, setFormFor] = useState<string | null>(null)
   const [putting, setPutting] = useState<string | null>(null)
   const [putWhy, setPutWhy] = useState<{ key: string; why: string } | null>(null)
@@ -339,6 +343,42 @@ export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, us
         </section>
       ) : null}
 
+      {printed && printed.changed.length > 0 ? (
+        <section data-lien-run-card="changed" style={{ ...card, border: '1px solid var(--border-amber)' }}>
+          <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-strong)', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>
+            <span>{PRINTED.head}</span>
+            <span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              <WorkedOutValue>{String(printed.changed.length)}</WorkedOutValue> {printed.changed.length === 1 ? 'paper' : 'papers'}
+            </span>
+          </h3>
+          <p style={{ ...small, margin: '4px 0 8px' }}>{PRINTED.lead}</p>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+            {printed.changed.map((p) => (
+              <li key={p.key} data-lien-run-changed={p.key} style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>
+                  <span style={{ ...lienKindTagStyle(p.kind), marginRight: 6 }}>{lienRunKindWord(p.kind)}</span>
+                  <strong>{p.label}</strong>
+                  {p.title.trim() ? ` · ${p.title.trim()}` : ''}
+                </div>
+                <div style={{ ...small, margin: '2px 0 4px' }}>
+                  <ValueSentence text={lienRunPrintedByWords(p, printed.whenWords(p.printedAt))} />
+                  {p.standIn ? ` ${PRINTED.standIn}` : ''}
+                </div>
+                <ValueLines>
+                  {p.changes.map((c) => (
+                    <div key={c.key} data-lien-run-change={c.key} style={{ fontSize: '0.8125rem', color: 'var(--text-700)', overflowWrap: 'anywhere' }}>
+                      <ValueSentence text={c.words} />
+                    </div>
+                  ))}
+                </ValueLines>
+              </li>
+            ))}
+          </ul>
+          {printed.changed.some((p) => p.kind === 'affidavit') ? <p style={{ ...small, margin: '8px 0 0' }}>{PRINTED.affidavitNext}</p> : null}
+          {printed.changed.some((p) => p.kind === 'notice') ? <p style={{ ...small, margin: '6px 0 0' }}>{PRINTED.noticeNext}</p> : null}
+        </section>
+      ) : null}
+
       {print ? (
         <section data-lien-run-card="print" style={{ ...card, ...(print.press.dead ? null : { border: '1px solid var(--border-blue)' }) }}>
           <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-strong)', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>
@@ -387,6 +427,24 @@ export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, us
           {run.counts.leftOut > 0 ? (
             <p style={{ ...small, margin: '6px 0 0' }}>
               <WorkedOutValue>{String(run.counts.leftOut)}</WorkedOutValue> left out of this run {run.counts.leftOut === 1 ? 'does' : 'do'} not print. {run.counts.leftOut === 1 ? 'It is' : 'They are'} listed below.
+            </p>
+          ) : null}
+          {print.affidavitsPrinted > 0 ? (
+            <p data-lien-run-printed-same style={{ ...small, margin: '6px 0 0' }}>
+              <ValueSentence text={lienRunPrintedSameWords(print.affidavitsPrinted)} />
+            </p>
+          ) : null}
+          {printed && printed.unread > 0 ? (
+            <p data-lien-run-printed-unread style={{ ...small, margin: '6px 0 0' }}>
+              <ValueSentence text={lienRunPrintedUnreadWords(printed.unread)} />
+            </p>
+          ) : null}
+          {printed?.failed ? (
+            <p data-lien-run-printed-failed style={{ ...small, margin: '6px 0 0' }}>
+              {PRINTED.failed}{' '}
+              <button type="button" onClick={printed.reload} style={linkBtn}>
+                {PRINTED.retry}
+              </button>
             </p>
           ) : null}
           {print.printed ? (

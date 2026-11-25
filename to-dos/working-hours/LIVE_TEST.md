@@ -103,6 +103,28 @@ Making a person salaried shows on payroll screens until it is undone, so ask fir
 - Put ZZ Test Hand back on hourly pay if step 4 ran.
 - Close every tab.
 
+## 6. The take-off puts the standard week back (v2.8607)
+
+Walk this after v2.8607's PR is merged, its client is live and migration `20261125225108` is in the seat's
+ledger. It uses the sheet, since the seat's plan for a take-off is behind the door.
+
+1. Make ZZ Test Hand salaried: `plan_pay_setup` with `is_salary: true`, its current `hourly_wage` and
+   `start_date` today, and no `workday_start`, so no session is made. Read their pay row through the seat: 8 h
+   Monday to Friday.
+2. On their sheet, **Pay & schedule**, **Working hours**: press **Set working hours**, then **Set other
+   hours**. Pick 6:00 AM to 12:00 PM, give a reason, and press **Keep**. The pay row reads 6 h Monday to Friday.
+3. Press **Take working hours off**. The window says *Their set week on pay is 6 h Mon to Fri today. It goes
+   back to the standard week, 8 h Mon to Fri.* It asks why, and its press is dead while the box is empty.
+4. Type a reason and press **Take working hours off**. The row says *Working hours taken off. Pay is back on
+   the standard week.*
+5. Read through the seat. The pay row reads 8 h Monday to Friday. The newest `pay_admin_events` line for ZZ
+   Test Hand is `set_pay_config` with your reason, `payload.by` of `set_working_hours`, and the week before
+   and after. The newest set row on `person_available_hours` has no week and carries the reason.
+6. Set 7:00 AM to 3:00 PM, which moves no pay, and take the hours off again. The window has no box and says
+   *Their pay stays on the standard week, 8 h Mon to Fri.* No new line lands on the pay log.
+7. Undo as step 4.5 does: Salaried off. The pay log lines and the `person_available_hours` rows stay, since
+   both tables keep every save. Name them in your report.
+
 ## Report
 
 For each numbered step: what you did, what you saw, and pass or fail. A failure names the screen, the press and
@@ -140,6 +162,9 @@ the words on it.
   - **Left on prod, by design.** Six pay log lines for ZZ Test Hand and three `person_available_hours` rows each
     for ZZ Test Hand and ZZ Test Learner. Both tables keep every save. ZZ Test Hand reads as before the run:
     hourly, the same wage, 8 h days, no workday template, no working hours. ZZ Test Learner's hours are off.
+- **2026-11-25, the fault mended as v2.8607, live at 23:45 UTC.** Taking working hours off a salaried person now
+  puts the standard week back on pay, with a reason on the pay log. The migration is applied. Step 6 is its
+  walk, and nobody has walked it. Step 5's workaround above is no longer needed.
 - **2026-11-25, the same session, step 2.5 alone.** Clean at 380 px: the Working hours row and its window hold at a
   phone's width, with nothing sliding sideways. The hours were set for the look and taken off after.
   - **Still not walked.** The second half of 4.3, the window as anyone but a dev: the recipe does not reach it

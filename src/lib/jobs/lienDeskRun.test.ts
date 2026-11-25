@@ -714,6 +714,10 @@ describe('a notice whose stored paper and bills have parted is held (v2.7517)', 
     expect(n.parted?.parts).toEqual(['claim'])
     expect(n.parted?.paperClaim).toBe(51_000)
     expect(n.parted?.nowClaim).toBe(33_500)
+    // Step 7 (punch list #362): the money the desk would draw today rides on the notice, for *changed since printed*.
+    expect(Number(n.moneyNow?.claimAmount)).toBe(33_500)
+    expect(n.moneyNow).toHaveProperty('claimSplit')
+    expect(n.moneyNow).toHaveProperty('retainageIncluded')
   })
 
   it('a stored paper that agrees with the bills, and an item with no stored paper, are not parted', () => {
