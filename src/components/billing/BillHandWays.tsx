@@ -1,6 +1,10 @@
 import { useState, type CSSProperties } from 'react'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { handWayDeleteConfirm, handWayDeleteDrawn, handWayDeleteProblem, handWayDeleteUsedProblem, handWayDeletedWords } from '../../lib/billing/billHandWayDelete'
+import { countBillHandWayRecords, deleteBillHandWayNobodyUsed } from '../../lib/billing/billHandWayDeleteIo'
 import {
   BILL_HAND_WAY_LABEL_MAX,
   cleanHandWayLabel,
@@ -33,6 +37,10 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
  * Every refusal is said before the database is asked (`handWay…Problem` in `lib/billing/billHandWays.ts`). A change
  * saves when pressed; the window's **Done** only closes it. A record already made keeps the words it was made with
  * (`source_snapshot.how_label`), so nothing pressed here rewords a line on the list of bills.
+ *
+ * A dev, and nobody else, also reads **Delete…** on a way under *Taken off* (punch list #443, row 3): the take-back
+ * of **Add to the list**, for a test way no bill was recorded with. The rule and its refusals are
+ * `lib/billing/billHandWayDelete.ts`.
  */
 
 /** The list as the form holds it: the ways, whether they can be changed, and the read that fetches them again. */
@@ -173,6 +181,11 @@ export function BillHandWaysWindow({ ctl, onClose }: { ctl: BillHandWaysCtl; onC
   const [renaming, setRenaming] = useState<{ id: string; typed: string } | null>(null)
   const [typed, setTyped] = useState('')
   const [showGone, setShowGone] = useState(false)
+  const { role } = useAuth()
+  const confirmDialog = useConfirmDialog()
+  const canDelete = handWayDeleteDrawn(role)
+  /** Why a way stayed when its delete was pressed, by the way's id: the count's answer, kept on its line. */
+  const [stayed, setStayed] = useState<Record<string, string>>({})
   const live = liveBillHandWays(ctl.ways)
   const gone = retiredBillHandWays(ctl.ways)
   const addProblem = handWayAddProblem(typed, ctl.ways)
@@ -204,6 +217,27 @@ export function BillHandWaysWindow({ ctl, onClose }: { ctl: BillHandWaysCtl; onC
   const add = async () => {
     if (addProblem) return
     if (await change(async () => void (await addBillHandWay(cleanHandWayLabel(typed))), 'The new way was not added.')) setTyped('')
+  }
+
+  /** A dev's delete of a way nobody used: the records are counted first, and a way that was used says so and stays. */
+  const remove = async (way: BillHandWay) => {
+    if (busy || handWayDeleteProblem(way)) return
+    setBusy(true)
+    let used: string
+    try {
+      used = handWayDeleteUsedProblem(way, await countBillHandWayRecords(way.key))
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The bills recorded with this way could not be counted. Nothing was deleted.'), 'error')
+      return
+    } finally {
+      setBusy(false)
+    }
+    if (used) {
+      setStayed((s) => ({ ...s, [way.id]: used }))
+      return
+    }
+    if (!(await confirmDialog({ ...handWayDeleteConfirm(way), danger: true }))) return
+    if (await change(() => deleteBillHandWayNobodyUsed(way), 'The way was not deleted.')) showToast(handWayDeletedWords(way), 'success')
   }
 
   const arrow = (dead: boolean): CSSProperties => ({
@@ -339,21 +373,41 @@ export function BillHandWaysWindow({ ctl, onClose }: { ctl: BillHandWaysCtl; onC
             {showGone
               ? gone.map((w) => {
                   const backProblem = handWayBringBackProblem(w, ctl.ways)
+                  // A dev alone reads the delete, and why a way cannot go: not a test way, or a bill was recorded with it.
+                  const deleteProblem = canDelete ? handWayDeleteProblem(w) || stayed[w.id] || '' : ''
                   return (
-                    <div key={w.id} style={{ ...row, gridTemplateColumns: 'minmax(0, 1fr) auto', borderBottom: 'none' }}>
+                    <div key={w.id} style={{ ...row, gridTemplateColumns: 'minmax(0, 1fr) auto', borderBottom: 'none' }} data-testid="bill-hand-way-gone-row">
                       <div style={{ ...words, color: 'var(--text-muted)', fontWeight: 500 }}>
                         <s>{w.label}</s>
                         <span style={under}>{[handWayTakenOffWords(w), backProblem].filter(Boolean).join('. ')}</span>
+                        {deleteProblem ? (
+                          <span style={under} data-testid="bill-hand-way-delete-why">
+                            {deleteProblem}
+                          </span>
+                        ) : null}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => void change(() => setBillHandWayOnList(w.id, true), 'The way was not brought back.')}
-                        disabled={!!backProblem || busy}
-                        style={backProblem ? { ...small, color: 'var(--text-muted)', textDecoration: 'none', cursor: 'default' } : small}
-                        aria-label={`Bring ${w.label} back`}
-                      >
-                        Bring back
-                      </button>
+                      <div style={actions}>
+                        <button
+                          type="button"
+                          onClick={() => void change(() => setBillHandWayOnList(w.id, true), 'The way was not brought back.')}
+                          disabled={!!backProblem || busy}
+                          style={backProblem ? { ...small, color: 'var(--text-muted)', textDecoration: 'none', cursor: 'default' } : small}
+                          aria-label={`Bring ${w.label} back`}
+                        >
+                          Bring back
+                        </button>
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            onClick={() => void remove(w)}
+                            disabled={!!deleteProblem || busy}
+                            style={deleteProblem ? { ...small, color: 'var(--text-muted)', textDecoration: 'none', cursor: 'default' } : { ...small, color: 'var(--text-red-700)' }}
+                            aria-label={`Delete ${w.label}`}
+                          >
+                            Delete…
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
                   )
                 })
