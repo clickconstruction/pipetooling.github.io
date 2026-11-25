@@ -153,12 +153,12 @@ Walked on clicktooling.com as the dev, at 730 px and 380 px, in light, on the de
 2. Record a ZZ Test bill with a ZZ-named way. Its line reads the way's words and *A test bill. It is in no total.*, and shows under **Recorded by hand**.
 3. Rename the way. The older line, its record page, **Print** and the CSV keep the old words.
 4. Record two ZZ Test bills to one ZZ Test customer in one press. Each gets its own line.
-5. As the walk tester, an assistant in training mode (`docs/ACCESS_CONTROL.md`), press **＋ Add a way**. The press is refused with its reason. The sample assistant is not in training mode, so the first walk skipped this.
+5. **Done 2026-11-24.** As the sample assistant with training mode turned on for the walk and off again after, **＋ Add a way** took a name and **Add to the list** added nothing: no chip, the count stayed *4 of 12*, and no row was made. The reason shows as a toast at the press (`BillHandWays.tsx`), which the walk's hidden browser did not draw, and the page's own training mode banner says the same.
 6. ▲ and ▼ on two ZZ-named ways. A move against one of the four first ways changes a real row, so the first walk left it.
 
 A record made in steps 2 and 4 cannot be changed or deleted, and neither can a way once added. Both are on the list of presses nothing takes back (#443). The walk of 2026-11-24 left two ZZ-named ways under *Taken off*.
 
-**Small things seen, not this card's.** In the list window at 380 px, **Rename**, **Take off**, **Bring back**, **Show** and **Hide** stand 36 px high, ▲ and ▼ 40 px, and the form's chips 40 px. That is under the 44 px of #414. After a rename the row still reads *Added by*, and nothing says who renamed it.
+**Small things seen, not this card's.** In the list window at 380 px, **Rename**, **Take off**, **Bring back**, **Show** and **Hide** stand 36 px high, ▲ and ▼ 40 px, and the form's chips 40 px. That was under the 44 px of #414, and v2.8543 stands each 44 px on a phone. After a rename the row still reads *Added by*, and nothing says who renamed it.
 
 ## The calls
 
