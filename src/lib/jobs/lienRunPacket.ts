@@ -24,6 +24,7 @@ import { lienRunChecklistRows } from './lienRunChecklist'
 import { runEnvelopeHold, runMailing } from './lienRunPaper'
 import { lienRunParts, type LienRunPartKey } from './lienRunParts'
 import { noticeInvoicePrintSections, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
+import { lienNoticesPrintSnapshot } from './lienPrintSworn'
 import { runEnvelopes, type RunEnvelope } from './runEnvelopes'
 
 /** A job's pay page: its rows, and the codes drawn for the ones that can be paid. */
@@ -70,8 +71,8 @@ export type LienRunReadyPacket = {
   notices: CombinedRunNotice[]
   /** The whole print document. */
   html: string
-  /** How the print is filed as a sent copy: one packet on every job in it. */
-  filing: { kind: 'lien_notice_packet'; title: string; jobIds: string[] }
+  /** How the print is filed as a sent copy: one packet on every job in it, with what each notice said (step 7). */
+  filing: { kind: 'lien_notice_packet'; title: string; jobIds: string[]; sourceSnapshot: Record<string, unknown> }
   /** The copies the packet printed, `runCopyKey` each. */
   copyKeys: string[]
   /** The desk items whose every copy printed: what the print stamps printed. */
@@ -133,7 +134,7 @@ export function lienRunReadyPacket(input: LienRunReadyPacketInput): LienRunReady
   return {
     notices: ns,
     html: runPacketHtml(ns, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob, guideCode, held),
-    filing: { kind: 'lien_notice_packet', title: ns.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${ns.length} notices`, jobIds },
+    filing: { kind: 'lien_notice_packet', title: ns.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${ns.length} notices`, jobIds, sourceSnapshot: lienNoticesPrintSnapshot(ns) },
     copyKeys,
     stampIds: noticesFullyPrinted(notices, new Set(copyKeys)).map((n) => n.itemId),
     held,

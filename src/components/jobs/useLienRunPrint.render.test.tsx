@@ -10,6 +10,7 @@ import type { LienAffidavitFields } from '../../lib/jobsDocuments/lienFilingDocu
 import { lienAffidavitPrintRun } from '../../lib/jobs/lienAffidavitBatch'
 import type { RunNotice } from '../../lib/jobs/lienDeskRun'
 import type { LienGetItRight, LienRunLine } from '../../lib/jobs/lienGetItRight'
+import { lienPrintSnapshotPapers } from '../../lib/jobs/lienPrintSworn'
 import { LIEN_STACK_CLASS } from '../../lib/jobs/lienRunStack'
 import { useLienRunPrint, type LienRunPrintHookInput } from './useLienRunPrint'
 
@@ -109,10 +110,15 @@ describe('useLienRunPrint', () => {
     expect(html).toContain('ZZ Shop 1')
     expect(html).not.toContain('ZZ Shop 2')
     // One packet for the notices, on its job, and each affidavit alone on its job.
-    expect(fileMock.mock.calls.map((c) => c[0])).toEqual([
+    expect(fileMock.mock.calls.map((c) => c[0])).toMatchObject([
       { kind: 'lien_notice_packet', title: '§ 53.056 notice packet', jobIds: ['j1'], how: 'print' },
       { kind: 'lien_affidavit', title: 'Lien Affidavit — Job J700', jobIds: ['job-1'], how: 'print' },
     ])
+    // Step 7: each filed copy keeps what its paper said as it printed, the notice with its desk item.
+    const kept = fileMock.mock.calls.map((c) => lienPrintSnapshotPapers((c[0] as { sourceSnapshot?: Record<string, unknown> }).sourceSnapshot))
+    expect(kept.map((papers) => papers.map((p) => [p.kind, p.jobIds]))).toEqual([[['notice', ['j1']]], [['affidavit', ['job-1']]]])
+    expect(kept[0]![0]!.itemIds).toHaveLength(1)
+    expect(kept[1]![0]!.fields.unpaidAmount).toBe('2000.00')
     // Each filed copy is the paper alone, never the stack.
     for (const c of fileMock.mock.calls) expect((c[1] as { html: string }).html).not.toContain(LIEN_STACK_CLASS.divider)
     expect(stampMock).toHaveBeenCalledWith(['it1'], 'u1')

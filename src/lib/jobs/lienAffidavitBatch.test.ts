@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { lienAffidavitClerkOrder, lienAffidavitGatedReason, lienAffidavitHiddenWords, lienAffidavitPrintDoorWords, lienAffidavitPrintPlan, lienAffidavitPrintRun, lienAffidavitPrintWords, lienAffidavitSendOutcome, lienAffidavitSendPlan, lienAffidavitSendWords, lienAffidavitSheetFlags, lienAffidavitSheetNext, lienAffidavitSheetPapers, lienAffidavitShownEntries, lienAffidavitSubmitOutcome, type LienAffidavitSendContext, type LienAffidavitSheetReads } from './lienAffidavitBatch'
 import { plainWordsFailures } from '../plainWords'
+import { lienPrintSnapshotPapers } from './lienPrintSworn'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienDeskItemRow } from './lienDesk'
 import type { LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
@@ -141,10 +142,13 @@ describe('print every ready affidavit for the notary (punch list #305, v2.6918)'
     expect(run.html.match(/<div class="filing-keep">/g)).toHaveLength(2)
     expect(run.html.indexOf('12 Sample Rd')).toBeLessThan(run.html.indexOf('14 Other Ln'))
     // Each job files its own paper alone, under the kind and title the Lien window's print files.
-    expect(run.copies.map((c) => c.filing)).toEqual([
+    expect(run.copies.map((c) => c.filing)).toMatchObject([
       { kind: 'lien_affidavit', title: 'Lien Affidavit — Job J700', jobIds: ['job-1'] },
       { kind: 'lien_affidavit', title: 'Lien Affidavit — Job J701', jobIds: ['job-2'] },
     ])
+    // Step 7: each copy keeps what its own paper swore, and no other paper's.
+    const sworn = run.copies.map((c) => lienPrintSnapshotPapers(c.filing.sourceSnapshot))
+    expect(sworn.map((papers) => papers.map((p) => [p.kind, p.jobIds, p.fields.propertyAddress]))).toEqual([[['affidavit', ['job-1'], '12 Sample Rd, San Antonio, TX 78209']], [['affidavit', ['job-2'], '14 Other Ln, San Antonio, TX 78209']]])
     expect(run.copies[0]!.html).toContain('12 Sample Rd')
     expect(run.copies[0]!.html).not.toContain('14 Other Ln')
     expect(run.copies[0]!.html).toContain('line-height: 1.45;')

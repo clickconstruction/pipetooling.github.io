@@ -24,7 +24,7 @@ vi.mock('../../lib/jobsDocuments/printWindow', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobsDocuments/printWindow')>('../../lib/jobsDocuments/printWindow')
   return { ...actual, openHtmlPrintWindow: (html: string) => openPrintMock(html) }
 })
-const fileCopyMock = vi.fn(async (_filing: { kind: string; title: string; how: string; jobIds?: ReadonlyArray<string> }, _body: { html: string }) => true)
+const fileCopyMock = vi.fn(async (_filing: { kind: string; title: string; how: string; jobIds?: ReadonlyArray<string>; sourceSnapshot?: Record<string, unknown> | null }, _body: { html: string }) => true)
 vi.mock('../../lib/sent/sentCopiesIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/sent/sentCopiesIo')>('../../lib/sent/sentCopiesIo')
   return {
@@ -92,6 +92,8 @@ describe('LienFilingTabs · the affidavit prints behind its help sheet (punch li
     // A print counts as a send, and the help sheet is never the paper: the filed copy has none of it.
     expect(fileCopyMock).toHaveBeenCalledTimes(1)
     expect(fileCopyMock.mock.calls[0]![0]).toMatchObject({ kind: 'lien_affidavit', how: 'print', jobIds: ['job-412'] })
+    // Step 7: the copy keeps what the paper swore, as the batch's copy does.
+    expect(fileCopyMock.mock.calls[0]![0].sourceSnapshot).toMatchObject({ lienPrint: { v: 1, papers: [{ kind: 'affidavit', jobIds: ['job-412'], fields: { form: 'short' } }] } })
     expect(fileCopyMock.mock.calls[0]![1].html).not.toContain('lien-help')
     expect(fileCopyMock.mock.calls[0]![1].html).toContain('BEFORE ME')
   })
@@ -296,6 +298,8 @@ describe('LienFilingTabs · a § 53.056 notice prints a set for each envelope be
     expect(fileCopyMock).toHaveBeenCalledTimes(1)
     const [filing, body] = fileCopyMock.mock.calls[0]!
     expect(filing).toMatchObject({ kind: 'lien_notice_53_056', how: 'print', jobIds: ['job-412'] })
+    // Step 7: the notice's copy keeps what it said, with no desk item, since the window draws it fresh from the job.
+    expect(filing.sourceSnapshot).toMatchObject({ lienPrint: { v: 1, papers: [{ kind: 'notice', jobIds: ['job-412'], itemIds: [] }] } })
     expect(body.html).not.toContain('data-run-divider')
     expect(body.html).not.toContain('lien-help')
     expect((body.html.match(/Copy for: /g) ?? []).length).toBe(2)
