@@ -309,6 +309,9 @@ export default function LienDeskPage() {
     [jobs, showToast],
   )
 
+  // A phone's Payoffs strip (punch list #428): the desk's list-top slot, where the strip scrolls away with the list. Null while no list is up.
+  const [payoffsHome, setPayoffsHome] = useState<HTMLElement | null>(null)
+
   // Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run.
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const [gcNoticeRereadKey, setGcNoticeRereadKey] = useState(0)
@@ -331,11 +334,13 @@ export default function LienDeskPage() {
 
   return (
     <div ref={rootRef} data-lien-desk-page-root style={{ height: `calc(100dvh - ${top}px - var(--app-bottom-chrome, 0px) - ${PAGE_BOTTOM_GAP_PX}px)`, minHeight: 360, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)' }}>
-      {/* Payoffs (punch list #435): what waits on a release, and the door for a payer who just paid. Always drawn, so the desk keeps the second row. */}
+      {/* Payoffs (punch list #435): what waits on a release, and the door for a payer who just paid. Always drawn, so the desk keeps the second row.
+          On a phone its strip is drawn at the top of the desk's list and scrolls away with it (punch list #428), so the row here is empty. */}
       <LienPayoffs
         todayYmd={todayYmd}
         refreshKey={data}
         isMobile={isMobile}
+        stripHome={isMobile ? payoffsHome : undefined}
         initiallyOpen={searchParams.get('payoffs') === '1'}
         onOpenBill={(jobId) => openEditJob(jobId, 'bill')}
         onChanged={refetch}
@@ -343,6 +348,7 @@ export default function LienDeskPage() {
       />
       <LienDesk
         layout={isMobile ? 'stacked' : 'columns'}
+        onListTop={isMobile ? setPayoffsHome : undefined}
         onOpenNotice={onOpenNotice}
         onZoomAddress={onZoomAddress}
         onShowList={onShowList}

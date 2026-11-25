@@ -8,6 +8,7 @@ import {
   lienFlowPickedStage,
   lienFlowRail,
   lienFlowStage,
+  lienFlowUnderLine,
   lienFlowStages,
   readLienFlowView,
   writeLienFlowView,
@@ -134,6 +135,18 @@ describe('the pinned line for a picked stage', () => {
     expect(lienFlowPickedStage({ bins: ['notice:to_sign'], words: 'waiting on Sam' })).toBeNull()
     expect(lienFlowPickedStage({ bins: [] })).toBeNull()
     expect(lienFlowPickedStage(null)).toBeNull()
+  })
+
+  it('a picked stage on a phone leaves nothing between its line and its rows (punch list #428)', () => {
+    const stage = { bins: ['notice:to_send' as const] }
+    expect(lienFlowUnderLine({ phone: true, pick: stage, find: '' })).toEqual({ top: false, find: false, run: false })
+    // Words in the find box still narrow the rows, so the box stays where a person can see and clear it.
+    expect(lienFlowUnderLine({ phone: true, pick: stage, find: ' oak ' })).toEqual({ top: false, find: true, run: false })
+    // No stage picked, a tile's line, or a computer: all three stand.
+    const all = { top: true, find: true, run: true }
+    expect(lienFlowUnderLine({ phone: true, pick: null, find: '' })).toEqual(all)
+    expect(lienFlowUnderLine({ phone: true, pick: { bins: ['notice:to_send'], line: 'late' }, find: '' })).toEqual(all)
+    expect(lienFlowUnderLine({ phone: false, pick: stage, find: '' })).toEqual(all)
   })
 
   it('says the column, where the stage stands in it, its name and its count, and lights its cell', () => {

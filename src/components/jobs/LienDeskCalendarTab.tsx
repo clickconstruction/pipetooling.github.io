@@ -97,6 +97,8 @@ export type LienDeskCalendarTabProps = {
   onOpenLastWork?: (jobId: string) => void
   /** Phone: no axis, the column cards and the sentences instead. */
   isMobile?: boolean
+  /** A phone's strip at the top of the list, where it scrolls away with it (Payoffs, punch list #428); nothing on a computer. */
+  top?: ReactNode
   /** Office roles write; everyone else reads (the dot opens the Lien window instead). */
   canWrite?: boolean
   /** Draft the N: the desk narrows its notice list to these jobs. */
@@ -1106,7 +1108,7 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpe
   )
 }
 
-export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJobWindow, onZoomJob, onOpenLastWork, isMobile = false, canWrite = false, onDraft, onRecord, onOpenEditJob, onChanged, supplierMarks }: LienDeskCalendarTabProps) {
+export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJobWindow, onZoomJob, onOpenLastWork, isMobile = false, canWrite = false, onDraft, onRecord, onOpenEditJob, onChanged, supplierMarks, top = null }: LienDeskCalendarTabProps) {
   // The number's door (v2.7333): the zoom to the job's stage on the Board when the desk hands one, else the Job window as before.
   const numberDoor = onZoomJob ?? onOpenJobWindow
   const [query, setQuery] = useState('')
@@ -1219,6 +1221,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
         </div>
       ) : null}
       <div data-lien-cal-list style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0, position: 'relative', scrollbarGutter: 'stable' }}>
+        {top}
         {!rows ? <div style={{ padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Reading the board…</div> : null}
         {rows && board.count === 0 && !query.trim() ? <EmptyState compact {...LIEN_CALENDAR_EMPTY} /> : null}
         {rows && isMobile && (board.count > 0 || query.trim()) ? (

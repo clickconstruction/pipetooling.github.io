@@ -68,6 +68,7 @@ export function LienDeskNoticeList({
   leaderNameFor,
   listLabel,
   onOpenNotice,
+  top = null,
 }: {
   data: LienDeskData | null
   loading: boolean
@@ -110,9 +111,12 @@ export function LienDeskNoticeList({
   /** A row's job label, with the number as the door to the job where the desk has one. */
   listLabel: (jobId: string, kind: LienBoardKind, marked: boolean) => ReactNode
   onOpenNotice?: (jobId: string, pile: LienDeskPile | null) => void
+  /** A phone's strip at the top of the list, where it scrolls away with it (Payoffs, punch list #428); nothing on a computer. */
+  top?: ReactNode
 }) {
   return (
     <div ref={noticeHeads.listRef} onScroll={noticeHeads.onScroll} data-lien-desk-list style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
+      {top}
       {visible.length === 0 && finding && visibleAll.length > 0 && alsoSent.length === 0 ? (
         <div data-testid="lien-desk-find-nothing" style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', display: 'grid', gap: 4 }}>
           <strong style={{ color: 'var(--text-strong)' }}>{lienFindNothingWords(find).head}</strong>

@@ -2049,6 +2049,85 @@ describe('LienDesk', () => {
     }
   })
 
+  it('on a phone the list-top slot leads To do, and a picked stage leaves nothing between its line and its rows (punch list #428)', async () => {
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      window.localStorage.setItem('pipetooling_lien_desk_phone_view', 'flow')
+      const onListTop = vi.fn()
+      const flowDoors = { onOpenFlowStage: vi.fn(), onCloseFlowStage: vi.fn() }
+      const first = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" flowStageKey={null} {...flowDoors} onListTop={onListTop} />)
+      await settle()
+      // No stage picked: the slot is the first thing in the one scroller, over the Board, and the page is told its element.
+      const scroller = document.querySelector<HTMLElement>('[data-lien-do-now]')!
+      const slot = document.querySelector<HTMLElement>('[data-lien-desk-list-top]')!
+      expect(scroller.firstElementChild).toBe(slot)
+      expect(onListTop).toHaveBeenLastCalledWith(slot)
+      expect(document.querySelector('[data-lien-do-now-bar]')).not.toBeNull()
+      expect(document.querySelector('[data-lien-run="door"]')).not.toBeNull()
+      const key = document.querySelector<HTMLElement>('[data-lien-board-phone-flow] [data-lien-board-flow-column="notice"] [data-lien-board-stage]:not([data-empty])')!.getAttribute('data-lien-board-stage')!
+      first.unmount()
+
+      // A stage picked: the pinned line leads the scroller and its rows come right after it.
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" layout="stacked" flowStageKey={key} {...flowDoors} onListTop={onListTop} />)
+      await settle()
+      const line = document.querySelector<HTMLElement>('[data-lien-board-line]')!
+      expect(line.getAttribute('data-lien-board-line')).toBe(key)
+      expect(document.querySelector('[data-lien-desk-list-top]')).toBeNull()
+      expect(onListTop).toHaveBeenLastCalledWith(null)
+      expect(document.querySelector('[data-lien-do-now-bar]')).toBeNull()
+      expect(document.querySelector('[data-lien-run="door"]')).toBeNull()
+      expect(document.querySelectorAll('[data-lien-next-up-row]')).toHaveLength(1)
+      // The scroller holds the Board, which is the pinned line alone, and then the list. Nothing else.
+      const parts = Array.from(document.querySelector<HTMLElement>('[data-lien-do-now]')!.children) as HTMLElement[]
+      expect(parts).toHaveLength(2)
+      expect(parts[0]!.contains(line)).toBe(true)
+      expect(parts[1]!.hasAttribute('data-lien-next-up')).toBe(true)
+    } finally {
+      window.matchMedia = before
+      window.localStorage.clear()
+    }
+  })
+
+  it('on a phone the list-top slot leads every list of the desk, and a computer draws none (punch list #428)', async () => {
+    const before = window.matchMedia
+    const lists: ReadonlyArray<readonly [kind: 'calendar' | 'timeline' | 'notice' | 'affidavit' | 'retainage', scroller: string]> = [
+      ['calendar', '[data-lien-cal-list]'],
+      ['timeline', '[data-lien-desk-timeline-tab]'],
+      ['notice', '[data-lien-desk-list]'],
+      ['affidavit', '[data-lien-affidavit-list]'],
+      ['retainage', '[data-lien-retainage-list]'],
+    ]
+    try {
+      // A computer: no slot on any view, and the page is never told one.
+      const onDesk = vi.fn()
+      for (const [kind] of [['next'], ...lists] as ReadonlyArray<readonly ['next' | 'calendar' | 'timeline' | 'notice' | 'affidavit' | 'retainage', string?]>) {
+        const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind={kind} onListTop={onDesk} />)
+        await settle()
+        expect(document.querySelector('[data-lien-desk-list-top]'), kind).toBeNull()
+        view.unmount()
+      }
+      expect(onDesk.mock.calls.filter(([el]) => el != null)).toHaveLength(0)
+
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+      for (const [kind, scroller] of lists) {
+        const onListTop = vi.fn()
+        const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind={kind} layout="stacked" onListTop={onListTop} />)
+        await settle()
+        const slot = document.querySelector<HTMLElement>('[data-lien-desk-list-top]')
+        expect(slot, kind).not.toBeNull()
+        expect(document.querySelectorAll('[data-lien-desk-list-top]'), kind).toHaveLength(1)
+        expect(document.querySelector<HTMLElement>(scroller)!.firstElementChild, kind).toBe(slot)
+        expect(onListTop, kind).toHaveBeenLastCalledWith(slot)
+        view.unmount()
+        expect(onListTop, kind).toHaveBeenLastCalledWith(null)
+      }
+    } finally {
+      window.matchMedia = before
+      window.localStorage.clear()
+    }
+  })
+
   it('the leader on a phone gets one screen: the money, the mail-by day, the named steps, Approve and Not yet; Details unfolds the rest (v2.4881)', async () => {
     const before = window.matchMedia
     window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia

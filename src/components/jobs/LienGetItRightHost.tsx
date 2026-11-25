@@ -15,6 +15,7 @@ export default function LienGetItRightHost({
   onOpen,
   onRetry,
   scrolls,
+  door = true,
   children,
   ...view
 }: Omit<LienGetItRightProps, 'run'> & {
@@ -24,11 +25,13 @@ export default function LienGetItRightHost({
   failure: OfflineRecoveryLastError | null
   onOpen: () => void
   onRetry: () => void
+  /** Off, the door is not drawn while the run is shut, nor the failed read's line in its place: a phone with a stage picked, where nothing stands between the pinned line and the rows (punch list #428). An open checklist is drawn all the same. */
+  door?: boolean
   /** The list under the Board. */
   children: ReactNode
 }) {
   if (run && open) return <LienGetItRight {...view} run={run} scrolls={scrolls} />
-  if (!run && !failure) return <>{children}</>
+  if (!door || (!run && !failure)) return <>{children}</>
   return (
     <div data-lien-run="host" style={scrolls ? { display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 } : undefined}>
       {failure ? <LienRunReadFailure failure={failure} isMobile={view.isMobile} onRetry={onRetry} /> : run ? <LienRunDoor run={run} isMobile={view.isMobile} onOpen={onOpen} /> : null}

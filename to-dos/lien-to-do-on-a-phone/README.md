@@ -2,7 +2,7 @@
 name: "The Lien desk's To do on a phone: the flow on one screen with a way back, and one press at the right of every row"
 number: 428
 group: close
-status: asked by the owner 2026-11-23, first *show me that on mobile and let me know if we should improve it*, then the flow as a new priority · looked at live by hand at 430 px the same day, read in the code and drawn twice · the owner picked the flow's shape, *One screen, pinned line*, and gave the go for all of it the same day, *Awesome, I like it, let's do it. Please build everything we talked about today* · the rows and the tiles built in v2.8341 and looked at by hand at 430 px · the flow built in v2.8346, the switch, the counts, the pinned line and the phone's Back · both live 2026-11-23, and both looked at by hand at 430 px in dark on a dev server · walked in an iPhone simulator 2026-11-25: the rows hold, and two things added since stand in the way of the flow, written under *Walked in a simulator* · the three calls the walk left were answered 2026-11-25 (UTC) in the managing session, so the phone mend is ready to build
+status: asked by the owner 2026-11-23, first *show me that on mobile and let me know if we should improve it*, then the flow as a new priority · looked at live by hand at 430 px the same day, read in the code and drawn twice · the owner picked the flow's shape, *One screen, pinned line*, and gave the go for all of it the same day, *Awesome, I like it, let's do it. Please build everything we talked about today* · the rows and the tiles built in v2.8341 and looked at by hand at 430 px · the flow built in v2.8346, the switch, the counts, the pinned line and the phone's Back · both live 2026-11-23, and both looked at by hand at 430 px in dark on a dev server · walked in an iPhone simulator 2026-11-25: the rows hold, and two things added since stand in the way of the flow, written under *Walked in a simulator* · the three calls the walk left were answered 2026-11-25 (UTC) in the managing session, so the phone mend is ready to build · the phone mend is built 2026-11-25: Payoffs and the pinned line in v2.8575, the Add Task line in its own pull request 9829 · not walked yet
 summary: >
   The Board ›, the Dashboard's door to the Lien desk, lands on To do. On a phone that screen opens
   cleanly: four tiles, the bins folded, one list by the day each paper is due. The rows are where it
@@ -11,10 +11,10 @@ summary: >
   left. A computer's rows already keep one press column. The mock-up gives a phone the same: words
   at the left, one press at the right, every press one size, the second way out as a quiet line, and
   No day set said once.
-next: Build the phone mend the three answers of 2026-11-25 free, one PR, the client alone: Payoffs scrolls away with the list, nothing stands between a picked stage's line and its rows, and the Add Task banner shows on the Dashboard alone. Then Todd opens the Lien desk on his phone, tries the flow and the way back, and says what reads wrong. Then this card is retired.
-size: M, built: the rows and the tiles (S) and the flow (M, one PR in place of the three planned); left: the phone mend (S) and a look on a phone (XS)
+next: A simulator walks the phone mend once it is live, at 402 by 874 points: count the stages a column on one screen with **The flow** pressed, press a stage and read its first rows under the pinned line, scroll and watch Payoffs leave with the list, open the desk from `?payoffs=1`, and look at 1280 px that nothing moved. Then Todd opens the Lien desk on his phone, tries the flow and the way back, and says what reads wrong. Then this card is retired.
+size: M, built: the rows and the tiles (S) and the flow (M, one PR in place of the three planned); the phone mend (S), built in two PRs; left: a walk of the mend in a simulator (XS) and a look on a phone (XS)
 blocker: none
-ver: v2.8341, v2.8346
+ver: v2.8341, v2.8346, v2.8575
 opinion: close — built and live; what is left is seeing the flow under a thumb
 ---
 
@@ -236,6 +236,21 @@ Walked on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, in 
    - **Answered 2026-11-25.** Asked *While a stage is picked on a phone, what should stand between the pinned line and its rows?*, the answer was "Nothing (Recommended)". The find box and *This run* come back when the stage is let go.
 
 **What the three answers free.** One PR, the client alone, size S by the fix brief's estimate, with no migration and no function. It cites this card, the newer of the two, and edits #352 too. Done looks like: at 402 by 874 points with **The flow** pressed both columns of stages stand on one screen, or the PR says how many do and why. A pressed stage's first rows stand right under its pinned line. A desk at 1280 px is unchanged. **What they leave open:** nothing of the three. The look on a real phone still stands.
+
+**Built 2026-11-25, in two PRs, the client alone.** Neither is walked yet.
+
+- **Payoffs scrolls away with the list** (v2.8575). On a phone the strip is the first thing inside whichever list is on the screen: To do, By date, By job and the three By paper lists. A computer keeps it in its own row over the desk.
+- **Nothing under the pinned line** (v2.8575). With a stage picked the find box and *This run* are not drawn. They come back when the stage is let go.
+- **The Add Task line on the Dashboard alone** (pull request 9829). On a phone with the new layout off, the line stands above the header on the Dashboard and on no other page. A wider screen keeps it on every page.
+
+Where the build went past the answers, each said in its fragment:
+
+- A find box that holds words stays while a stage is picked. Those words still narrow the rows, so a person must see them.
+- Payoffs is not drawn while a stage is picked. A picked stage brings the page to its top, and a strip there would push the rows down again.
+- Payoffs is not drawn over an open paper or a job's own screen, where no list is up. It is at the top of the list on the way back.
+- On the three By paper lists the find box stays pinned over the list, and the strip is the first thing under it.
+
+**Not measured:** how many stages a column stand on one screen at 402 by 874 points. The strip's 85 points now leave with the first scroll and the Add Task line's 56 are gone from the desk. The walk counts them.
 
 **Seen, and it is as built.** Under a Monthly notices stage the list also held an affidavit's row with **Enter mail numbers**. A picked stage narrows the list to its jobs, and every row of a picked job is in (`lienBoard.ts`). The affidavit's job has a notice in that stage.
 

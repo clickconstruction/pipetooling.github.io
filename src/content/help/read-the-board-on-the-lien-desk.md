@@ -120,7 +120,7 @@ Lien affidavits: *Waiting on its notice* **1**, *Filed · copies to mail* **8**
 
 A count is red when a paper in that stage is late, at risk or due within a day. It is amber when one is due this week. It is purple when one waits on the leader.
 
-Tap a stage and its papers are the screen. The flow shrinks to one line that stays at the top while you scroll.
+Tap a stage and its papers are the screen. The flow shrinks to one line that stays at the top while you scroll. The papers start right under that line. The find box and the *This run* line come back when you go back to the flow.
 
 :::example the pinned line
 **‹ The flow** *Monthly notices, stage 4 of 8* **Approved · to sign · 6**

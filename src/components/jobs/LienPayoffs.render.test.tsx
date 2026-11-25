@@ -39,11 +39,11 @@ const facts = (over: Partial<LienPayoffFacts> = {}): LienPayoffFacts => ({
   ...over,
 })
 
-const draw = (over: { read?: () => Promise<LienPayoffFacts>; refreshKey?: unknown; initiallyOpen?: boolean } = {}) => {
+const draw = (over: { read?: () => Promise<LienPayoffFacts>; refreshKey?: unknown; initiallyOpen?: boolean; stripHome?: HTMLElement | null } = {}) => {
   const onOpenBill = vi.fn()
   const onOpenRelease = vi.fn()
   const read = vi.fn(over.read ?? (() => Promise.resolve(facts())))
-  const ui = (key: unknown) => <LienPayoffs todayYmd="2026-11-24" refreshKey={key} onOpenBill={onOpenBill} onOpenRelease={onOpenRelease} read={read} initiallyOpen={over.initiallyOpen} />
+  const ui = (key: unknown) => <LienPayoffs todayYmd="2026-11-24" refreshKey={key} onOpenBill={onOpenBill} onOpenRelease={onOpenRelease} read={read} initiallyOpen={over.initiallyOpen} {...('stripHome' in over ? { stripHome: over.stripHome } : {})} />
   const view = renderWithProviders(ui(over.refreshKey ?? 1))
   return { onOpenBill, onOpenRelease, read, rerender: (key: unknown) => view.rerender(ui(key)) }
 }
@@ -162,6 +162,36 @@ describe('LienPayoffs', () => {
     await waitFor(() => expect(read).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(document.querySelector('[data-lien-payoffs-failure]')).toBeNull())
     expect(rowOf('a1')).not.toBeNull()
+  })
+
+  it('on a phone draws its strip into the list’s own slot, so it scrolls away with the list (punch list #428)', async () => {
+    const home = document.createElement('div')
+    document.body.appendChild(home)
+    try {
+      draw({ stripHome: home })
+      const strip = await found('[data-lien-payoffs-strip]')
+      await waitFor(() => expect(strip.textContent).toContain('1 lien is paid and still on record.'))
+      // One strip, in the slot and not in the row over the desk, which stays as an empty wrapper.
+      expect(document.querySelectorAll('[data-lien-payoffs-strip]')).toHaveLength(1)
+      expect(home.contains(strip)).toBe(true)
+      const wrapper = document.querySelector<HTMLElement>('[data-lien-payoffs]')!
+      expect(wrapper.contains(strip)).toBe(false)
+      expect(wrapper.childElementCount).toBe(0)
+      // The press opens the window, which is the wrapper's own and not the slot's.
+      fireEvent.click(screen.getByRole('button', { name: 'Someone paid ›' }))
+      const win = await found('[data-lien-payoffs-window]')
+      expect(wrapper.contains(win)).toBe(true)
+    } finally {
+      home.remove()
+    }
+  })
+
+  it('on a phone with no list up draws no strip, and a window opened from the address still stands', async () => {
+    const { read } = draw({ stripHome: null, initiallyOpen: true })
+    await waitFor(() => expect(read).toHaveBeenCalled())
+    await found('[data-lien-payoff-row="a1"]')
+    expect(document.querySelector('[data-lien-payoffs-strip]')).toBeNull()
+    expect(document.querySelector('[data-lien-payoffs-window]')).not.toBeNull()
   })
 
   it('draws no strip when no lien is filed, and says so in the window', async () => {

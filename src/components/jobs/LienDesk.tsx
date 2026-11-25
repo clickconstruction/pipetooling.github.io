@@ -80,6 +80,7 @@ import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPa
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { lienRunEntriesFor, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { lienBoardChipFor, lienBoardDoorWords, lienBoardLeaderBinPress, lienBoardPickWords, lienBoardRowInPick, type LienBoardBinKey, type LienBoardChip, type LienBoardKind } from '../../lib/jobs/lienBoard'
+import { lienFlowUnderLine } from '../../lib/jobs/lienBoardFlow'
 import { lienBinFolds } from '../../lib/jobs/lienNextUpByBin'
 import LienClosedWindow, { type LienClosedPaper } from './LienClosedWindow'
 import { buildLienClosedWindow, lienClosedAnswerPress, lienClosedFacts } from '../../lib/jobs/lienClosedEnd'
@@ -313,6 +314,12 @@ export type LienDeskProps = {
   flowStageKey?: string | null
   onOpenFlowStage?: (stageKey: string) => void
   onCloseFlowStage?: () => void
+  /**
+   * A phone's list-top slot (punch list #428): the first thing inside whichever list is on the screen, so what the page
+   * draws there scrolls away with the list. The page is told the slot's element and draws its strip into it (Payoffs).
+   * It is told null while no list is up: an open paper, or a stage of the flow picked. A computer draws no slot.
+   */
+  onListTop?: (el: HTMLElement | null) => void
 }
 
 const PILE_ORDER: LienDeskPile[] = ['needs_owner', 'to_draft', 'awaiting', 'ready', 'printed', 'held', 'sent', 'missed']
@@ -378,6 +385,7 @@ export default function LienDesk({
   flowStageKey,
   onOpenFlowStage,
   onCloseFlowStage,
+  onListTop,
 }: LienDeskProps) {
   const stacked = layout === 'stacked'
   const isMobile = useIsMobile()
@@ -936,6 +944,10 @@ export default function LienDesk({
   }
   // The pinned line's height on a phone, so the list's day headings stick under it (`--lien-pinned-top`).
   const [pinnedTop, setPinnedTop] = useState(0)
+  // What stands around a phone's pinned line (punch list #428): with a stage picked, nothing between the line and its rows.
+  const underLine = lienFlowUnderLine({ phone: isMobile, pick: boardPick, find })
+  // A phone's list-top slot: the page draws its strip here, so the strip scrolls away with the list.
+  const listTop = isMobile && onListTop ? <div ref={onListTop} data-lien-desk-list-top /> : null
   // The windows the Board raises (v2.7588): serve, scans, the public review and its put-back, and a job's lien path.
   const windows = useLienDeskWindows(openScansDoor)
   const { setJobPath, setPublicReview, setServeOpen, setPublicPutBack } = windows
@@ -2042,6 +2054,7 @@ export default function LienDesk({
       leaderNameFor={leaderNameFor}
       listLabel={listLabel}
       onOpenNotice={onOpenNotice}
+      top={listTop}
     />
   )
 
@@ -2572,7 +2585,7 @@ export default function LienDesk({
       affPile={affPile}
       onShowEveryPile={() => setAffPile(null)}
       onShowCalendar={() => setKind('calendar')}
-      pileChips={pileStrip(affPileChips)}
+      pileChips={<>{listTop}{pileStrip(affPileChips)}</>}
       supplierMarks={supplierMarks}
       rowLabel={(jobId) => listLabel(jobId, 'affidavit', false)}
       onPick={(jobId, from) => {
@@ -2644,7 +2657,7 @@ export default function LienDesk({
       find={find}
       onClearFind={() => setFind('')}
       focusJobId={retUnrecordedFocus}
-      pileChips={pileStrip(retPileChips)}
+      pileChips={<>{listTop}{pileStrip(retPileChips)}</>}
       supplierMarks={supplierMarks}
       onPick={(jobId) => {
         setRetSelectedJobId(jobId)
@@ -3133,16 +3146,20 @@ export default function LienDesk({
           })() : null}
           {kind === 'next' ? (
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={pinnedTop > 0 ? { ...doNow.frame, ['--lien-pinned-top' as string]: `${pinnedTop}px` } : doNow.frame}>
+            {underLine.top ? listTop : null}
             {board ? <LienBoard board={board} isMobile={isMobile} binPress={boardBinPress} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} pick={boardPick} shown={nextUpRowsShown.length} onPick={pickBoardBin} onPinned={setPinnedTop} onTile={openBoardTile} onRetainage={openRetainageList} prints={boardPrints ? { ...boardPrints, onPress: onBoardPrint, onLeft: onBoardPrintLeft, onNote: onBoardPrintNote } : null} over={publicLine ? <LienPublicBoardLineView line={publicLine} isMobile={isMobile} onReview={office && publicLine.addressIds.length ? () => setPublicReview(publicLine.addressIds) : null} /> : null} underAffidavits={publicBin || offPathBin ? <div style={{ display: 'grid', gap: 10 }}>{publicBin ? <LienPublicBinView bin={publicBin} isMobile={isMobile} onPutBack={office ? setPublicPutBack : null} /> : null}{offPathBin ? <LienOffPathBinView bin={offPathBin} isMobile={isMobile} onOpenJob={onOpenJob} onPutBack={office ? setJobPath : null} /> : null}</div> : null} /> : <div />}
+            {underLine.find ? (
             <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)} prints={boardPrints ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.short.label, left: side.short.left, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>
-            <LienGetItRightHost run={getItRight.run} open={getItRight.open} failure={getItRight.failure} onOpen={() => getItRight.setOpen(true)} onRetry={() => void getItRight.reload()} scrolls={doNow.listScrolls} isMobile={isMobile} canLeaveOut={office} userName={(id) => leaderNameFor?.(id)?.trim() || null} onBack={() => getItRight.setOpen(false)} onAct={(rowKey) => { const row = nextUpRows.find((r) => r.key === rowKey); if (row) actOnNextUp(row) }} onOpenLine={(line) => zoomFor(line.jobId, line.kind)?.press()} onLeaveOut={getItRight.leaveOut} onPutBack={getItRight.putBack} print={runPrint} prints={boardPrints ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.label, left: side.left?.words ?? null, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
+            ) : null}
+            <LienGetItRightHost door={underLine.run} run={getItRight.run} open={getItRight.open} failure={getItRight.failure} onOpen={() => getItRight.setOpen(true)} onRetry={() => void getItRight.reload()} scrolls={doNow.listScrolls} isMobile={isMobile} canLeaveOut={office} userName={(id) => leaderNameFor?.(id)?.trim() || null} onBack={() => getItRight.setOpen(false)} onAct={(rowKey) => { const row = nextUpRows.find((r) => r.key === rowKey); if (row) actOnNextUp(row) }} onOpenLine={(line) => zoomFor(line.jobId, line.kind)?.press()} onLeaveOut={getItRight.leaveOut} onPutBack={getItRight.putBack} print={runPrint} prints={boardPrints ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.label, left: side.left?.words ?? null, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
             <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} risk={rowRisk} riskLabel={riskLabel} stageFor={rowStage} noticeFor={rowNotice} byBin={board && !isMobile ? { binFor: rowBin, folds: lienBinFolds({ office, serveOwed: serveJobs.length, serveButton: serveDoor, printReady: affPrintPlanAll.ready.length, printButton: lienAffidavitPrintDoorWords(affPrintPlanAll), sendReady: affSendPlanAll.ready.length }), narrowed: Boolean(boardPick) } : null} trackPress={office && !isMobile && affPrintPlanAll.ready.length >= 2 ? { button: lienAffidavitPrintDoorWords(affPrintPlanAll), onPress: () => { setAffHeldOnlyPicked(false); setAffPile('ready'); setKind('affidavit') } } : null} remind={office && reminderWords && waitingRows.length > 0 ? { button: reminderWords.button, dead: reminderWords.dead, busy: reminding, onPress: () => void remindLeader() } : null} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
             </LienGetItRightHost>
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
+              top={listTop}
               rows={calendarRows ?? null}
               supplierMarks={supplierMarks}
               todayYmd={todayYmd}
@@ -3168,6 +3185,7 @@ export default function LienDesk({
             />
           ) : kind === 'timeline' ? (
             <LienDeskTimelineTab
+              top={listTop}
               book={book}
               loading={bookLoading}
               error={bookError}

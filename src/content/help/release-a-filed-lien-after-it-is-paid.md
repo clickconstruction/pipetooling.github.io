@@ -11,7 +11,7 @@ A filed lien stays on the county's record until its release is recorded there. P
 
 ## Open Payoffs
 
-Open the [Lien desk](/lien-desk). A line named **Payoffs** sits above the lists. It says how many liens are paid and still on record. Press {{button:blue|Someone paid ›}}.
+Open the [Lien desk](/lien-desk). A line named **Payoffs** sits above the lists. It says how many liens are paid and still on record. On a phone the line is the first thing in the list and scrolls away with the list. Press {{button:blue|Someone paid ›}}.
 
 A window opens. It lists every filed lien under its place. A place is one property. The line under the place says how much pays its liens off.
 
