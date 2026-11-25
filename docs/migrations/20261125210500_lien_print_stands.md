@@ -46,7 +46,7 @@ Saying a paper stands changes nothing on the paper: no notice, affidavit, filing
 
 ## Bed
 
-`npm run test:pg:lien-print-stands` (`scripts/pgtest-lien-print-stands.sh`, `supabase/tests/lien_print_stands/`): stand-in tables, the migration applied twice, then 43 checks. Who may press and who is refused, each refusal's words, what an answer writes, the same press twice, a second difference beside the first, the same key on the job's other paper, what taking back stamps, who reads the rows, that a signed-in person cannot write the table by hand, the three checks, and that a deleted job takes its rows. It could not be run on the office Mac on 2026-11-25: no local Postgres would start (`shmget`, the machine's shared memory was spent). GitHub's SQL beds job runs it on the PR.
+`npm run test:pg:lien-print-stands` (`scripts/pgtest-lien-print-stands.sh`, `supabase/tests/lien_print_stands/`): stand-in tables, the migration applied twice, then 45 checks. Who may press and who is refused, each refusal's words, what an answer writes, the same press twice, a second difference beside the first, the same key on the job's other paper, what taking back stamps, who reads the rows, that a signed-in person cannot write the table by hand, the three checks, and that a deleted job takes its rows. It could not be run on the office Mac on 2026-11-25: no local Postgres would start (`shmget`, the machine's shared memory was spent). GitHub's SQL beds job ran it on the PR the same day and it passed: 45 of 45.
 
 ## Push
 
