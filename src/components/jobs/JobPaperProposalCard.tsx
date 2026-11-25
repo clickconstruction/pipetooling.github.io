@@ -2,7 +2,8 @@
  * A GC's proposal that waits on a paper a job requires (punch list #389, step 6), under the paper's row in the
  * office's section. It says who proposed and when, and each topic the proposal moves, from the job's choice to the
  * stricter one. Two presses answer it. **Take it** says first who signs again, and saves the proposed settings: in
- * place while nobody has signed, and as a new version once somebody has. **Decline…** asks for a reason the GC reads.
+ * place while nobody has signed, and as a new version once somebody has. **Decline…** asks for a reason the GC reads,
+ * and does not go through without one.
  *
  * The proposal changes no paper until it is taken. The database decides every rule (`jobPaperProposalsIo.ts`), and
  * `jobPaperProposal.ts` says them before the press.
@@ -10,7 +11,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useConfirmDialog, usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
-import { DECLINE_WORDS, decidedWords, proposalChanges, proposalHead, takeWords } from '../../lib/contracts/jobPaperProposal'
+import { DECLINE_WORDS, declineWhy, decidedWords, proposalChanges, proposalHead, takeWords } from '../../lib/contracts/jobPaperProposal'
 import type { JobPaperProposal, JobPaperProposalsIo } from '../../lib/jobs/jobPaperProposalsIo'
 import type { BookSettingsPaper, JobPaperSettingsIo, JobSettingsPaper } from '../../lib/jobs/jobPaperSettingsIo'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdFriendly } from '../../utils/dateUtils'
@@ -89,10 +90,12 @@ export function JobPaperProposalCard({
       onOverlayOpenChange?.(false)
       if (!ok || !live.current) return
     } else {
-      const typed = await promptDialog({ title: DECLINE_WORDS.title, message: `${DECLINE_WORDS.line} ${DECLINE_WORDS.whyLabel}:`, defaultValue: '', confirmLabel: DECLINE_WORDS.confirm })
+      // The reason is required: the window's press is dead until words are typed, and no decline is sent without them.
+      const typed = await promptDialog({ title: DECLINE_WORDS.title, message: `${DECLINE_WORDS.line} ${DECLINE_WORDS.whyLabel}:`, defaultValue: '', confirmLabel: DECLINE_WORDS.confirm, required: true })
       onOverlayOpenChange?.(false)
-      if (typed === null || !live.current) return
-      why = typed.trim() || undefined
+      const words = declineWhy(typed)
+      if (words === null || !live.current) return
+      why = words
     }
     setBusy(took ? 'take' : 'decline')
     setError(null)

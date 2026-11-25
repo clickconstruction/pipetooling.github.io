@@ -392,7 +392,8 @@ paper until an entry has a settings list, and the first one is a test entry.
      question card in the session that manages the threads. A proposal writes `job_paper_proposals` and never the
      paper. The server holds it to the job's own GC, to stricter only, to a name, to the notice's tick and to six
      an hour. It waits under the paper's row on the job's Documents tab, where **Take it** says who signs again
-     and saves through the office's own door, and **Decline…** keeps a reason the GC reads. A newer proposal, the
+     and saves through the office's own door, and **Decline…** keeps a reason the GC reads, and since v2.8601
+     does not go through without one. A newer proposal, the
      office's own change and the paper coming off each set a waiting one aside. The row keeps who proposed, who
      answered and when. `20261125023655_job_paper_gc_proposals.sql`, `jobPaperProposal.ts`,
      `PortalJobPaperPropose.tsx`, `JobPaperProposalCard.tsx`. It merged on 2026-11-24, about 23:25 Central

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DECLINE_WORDS, PROPOSAL_WORDS, decidedWords, proposalChanges, proposalHead, proposalProblem, stricterChoices, takeWords } from './jobPaperProposal'
+import { DECLINE_WORDS, PROPOSAL_WORDS, declineWhy, decidedWords, proposalChanges, proposalHead, proposalProblem, stricterChoices, takeWords } from './jobPaperProposal'
 import { parseSettingsDef, type SettingsDef } from './paperSettings'
 
 /** Made-up words: two topics, the first with a choice that leaves it out. */
@@ -77,5 +77,12 @@ describe('jobPaperProposal · a GC proposes, the office answers', () => {
     expect(proposalHead('Greta Sample', 'Nov 24, 2026')).toBe('Greta Sample proposed stricter settings on Nov 24, 2026')
     expect(proposalHead('  ', null)).toBe('The GC proposed stricter settings')
     expect(DECLINE_WORDS.confirm).toBe('Decline the proposal')
+  })
+
+  it('a decline carries a reason or is not sent: spaces alone and a cancelled window are no reason', () => {
+    expect(declineWhy('  Placeholder reason.  ')).toBe('Placeholder reason.')
+    expect(declineWhy('')).toBeNull()
+    expect(declineWhy('   ')).toBeNull()
+    expect(declineWhy(null)).toBeNull()
   })
 })

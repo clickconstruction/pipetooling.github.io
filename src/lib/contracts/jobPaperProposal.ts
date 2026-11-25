@@ -95,6 +95,16 @@ export const DECLINE_WORDS = {
   confirm: 'Decline the proposal',
 } as const
 
+/**
+ * The reason of a decline, as it is sent: the typed words with the spaces at their ends cut. Null when the window was
+ * cancelled or holds no words. A decline never goes through without one, since the GC's page reads it back (finding
+ * 125 of 2026-11-25: an empty box used to decline with no reason).
+ */
+export function declineWhy(typed: string | null): string | null {
+  const words = (typed ?? '').trim()
+  return words ? words : null
+}
+
 /** The head of the office's card: who proposed, and that it waits. */
 export function proposalHead(byName: string, day: string | null): string {
   const who = byName.trim() || 'The GC'
