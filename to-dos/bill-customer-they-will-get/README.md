@@ -2,7 +2,7 @@
 name: "Bill Customer says what the customer will get: who, by which channel, the real email and text in place, and a press that names its act"
 number: 343
 group: close
-status: the owner said build it all, 2026-11-13; all three built: the words v2.7157, the faces v2.7158, one press v2.7163; walked live 2026-11-24 on a ZZ Test job with one real press in Stripe test mode, and the card's own steps hold; the walk found three faults beside them, and all three are built and merged: the face's Service address line v2.8548, the Test words v2.8545, and the due day v2.8551, whose function is merged and not deployed; left: that deploy, the live read of each fix, the owner's answer on the Test words, and the email to two people
+status: the owner said build it all, 2026-11-13; all three built: the words v2.7157, the faces v2.7158, one press v2.7163; walked live 2026-11-24 on a ZZ Test job with one real press in Stripe test mode, and the card's own steps hold; the walk found three faults beside them, and all three are built and merged: the face's Service address line v2.8548, the Test words v2.8545, and the due day v2.8551, with its function deployed 2026-11-25; left: the live read of each fix, the owner's answer on the Test words, and the email to two people
 summary: >
   The owner asked whether it is clear, when the assistant sends a bill, what the customer is
   receiving. It is not. On the default tab the press reads Create Stripe invoice. It makes the
@@ -12,9 +12,9 @@ summary: >
   send on record that day. The card adds a caption per channel, a Send to line with the name and
   the phone, the real email and text drawn in place, a When you press box, and a press named for
   its act.
-next: deploy `create-stripe-invoice`, which v2.8551 has owed since its merge. Then read each of the three fixes live, take the owner's answer on the Test words, walk the email to two people on a ZZ Test customer with two contacts, and delete this card. See Left to do
-size: M as a train of three (XS · S · M), all built; the walk's three faults (S · XS · XS), all built; left: one deploy and the walks (XS)
-blocker: the due day fix waits on a deploy of `create-stripe-invoice`; a builder session's own permission check refused it on 2026-11-25, so it is the owner's press or his word typed to that session
+next: read each of the three fixes live, the due day first, since Stripe has not yet been seen to take a due day from this function. Then take the owner's answer on the Test words, walk the email to two people on a ZZ Test customer with two contacts, and delete this card. See Left to do
+size: M as a train of three (XS · S · M), all built; the walk's three faults (S · XS · XS), all built; left: the walks (XS)
+blocker: none in the code; the due day's live read is one test-mode press on a ZZ Test job, and the Test words wait on the owner's answer
 opinion: your call — the three faults are built, and the Test words stand on the card's pick until you say whether a test send should be filed as a test copy instead
 ---
 
@@ -216,9 +216,9 @@ Walked on clicktooling.com as the dev, at 730 px and 380 px, on a ZZ Test job. T
    - The made bill gets no due day. `create-stripe-invoice` sends Stripe a count of days (`daysUntilDue`), and the count is never under 1. Stripe adds the count to the minute the bill is made. So a bill due today comes out due tomorrow, at any hour.
    - The fault is wider than the walk saw. The count was taken from noon UTC of the due day and rounded up, so a bill made between midnight and 6 AM Central came out a day late whatever its due day.
    - The window's first day is the browser's own date (`todayIsoDate` in `SendRecordInvoiceModal.tsx`), where the rule is the company's day (`todayYmdInAppTz`, `docs/TIME_AND_ZONES.md`).
-   - **Built in PR #9766, v2.8551, merged 2026-11-25. The function is not deployed.** The function sends the due day itself, as one instant on that day, from the kernel `supabase/functions/_shared/stripeBillDueDate.ts`. First choice is 23:59:59 UTC of the day, when that is ten minutes ahead. Second is the last second of the day in the company's time zone, for an evening press of a bill due today. A day already over is due one day from now, as before. The window takes the company's day.
+   - **Built in PR #9766, v2.8551, merged and its function deployed 2026-11-25.** The function sends the due day itself, as one instant on that day, from the kernel `supabase/functions/_shared/stripeBillDueDate.ts`. First choice is 23:59:59 UTC of the day, when that is ten minutes ahead. Second is the last second of the day in the company's time zone, for an evening press of a bill due today. A day already over is due one day from now, as before. The window takes the company's day.
    - A refusal never stops a bill. The function had never sent Stripe a due day, and the build could not try it against Stripe. If Stripe refuses it, the bill is made on a count of days and the function logs a warning that starts `create-stripe-invoice: Stripe refused due_date`.
-   - It owes one deploy of `create-stripe-invoice`, no migration. Until the deploy the function makes bills as it did, since the window sends it the same request. So the fault stays until then, and nothing new breaks.
+   - `create-stripe-invoice` was deployed on 2026-11-25 at 05:14 UTC, on the owner's word, from `main` with the merge on it. The drift check then read every function current. No migration.
 2. **A test send leaves no line in Bills sent, and the box says every send is kept there.** The sentence is in `billCustomerTheyWillGet.ts` and read the same on Test and on Live.
    - `send-stripe-invoice` files no `sent_documents` copy for a test send, on purpose. It does write the send's own row, which Bills sent reads.
    - The void deletes the bill, and that row goes with it. So a test bill that is voided leaves nothing.
@@ -233,18 +233,17 @@ Walked on clicktooling.com as the dev, at 730 px and 380 px, on a ZZ Test job. T
 
 ## Left to do
 
-1. **Deploy `create-stripe-invoice`.** The owner said yes to it on 2026-11-25, and the builder session's own permission check refused the command. Run `npm run check:edge-drift` first: if it no longer names the function, this step is done. Else run `bash scripts/deploy-functions.sh create-stripe-invoice` from a checkout level with `main`, and trust only the line that starts `Deployed Functions on project`. Then run the drift check again.
-2. **Read each fix live**, on a ZZ Test job with the Stripe toggle on **Test** and read back as on. Never a real job, never Live.
+1. **Read each fix live**, on a ZZ Test job with the Stripe toggle on **Test** and read back as on. Never a real job, never Live.
    - **The face's memo (v2.8548):** open the face **The bill** and read its **Memo** row. It opens *Service address:* and the job's address. No press beyond the toggle, and no row made.
    - **The Test words (v2.8545):** read the *When you press* box on Live, then on Test. No press beyond the toggle, and no row made.
-   - **The due day (v2.8551), after the deploy:** leave the due day on today and press **Make the bill and email**. The made-bill screen's **Customer pay page** line, the test email and the bill's Stripe page should all name today. Then void the test bill. A press after about 5:50 PM Central takes the kernel's second rule and is worth one look. It leaves one test email to the sender, one line in the email log and one voided invoice in Stripe's test mode.
+   - **The due day (v2.8551):** leave the due day on today and press **Make the bill and email**. The made-bill screen's **Customer pay page** line, the test email and the bill's Stripe page should all name today. Then void the test bill. A press after about 5:50 PM Central takes the kernel's second rule and is worth one look. It leaves one test email to the sender, one line in the email log and one voided invoice in Stripe's test mode.
    - After that first press, read the function's log for a warning that starts `create-stripe-invoice: Stripe refused due_date`. If it is there, the bill was made the old way and the fix did not take.
-3. **The owner's answer on fault 2:** the words as built, or a test copy filed by the function.
-4. **Walk *Email the invoice to 2 people*** on a ZZ Test customer with two contacts. It is the one step of the card the walk of 2026-11-24 could not reach.
-5. **A finding beside the three, read in the code on 2026-11-25 and not built: `gc-card-bill` still sends Stripe a count of days.** It is the only other function that makes a Stripe bill.
+2. **The owner's answer on fault 2:** the words as built, or a test copy filed by the function.
+3. **Walk *Email the invoice to 2 people*** on a ZZ Test customer with two contacts. It is the one step of the card the walk of 2026-11-24 could not reach.
+4. **A finding beside the three, read in the code on 2026-11-25 and not built: `gc-card-bill` still sends Stripe a count of days.** It is the only other function that makes a Stripe bill.
    - It does not carry fault 1 as the walk found it. Its count (`gcCardBillDue`) is whole days from the company's today, and it can be 0, so a card bill due today is not pushed to tomorrow.
    - It carries a smaller one by the same cause. Stripe adds the count to the minute of the press. Read in Central the day is right, but for a press within the hour either side of a clock change. Read in UTC, an evening press lands on the next day. A bill due today falls due the second it is made.
    - Not known from the code: whether Stripe takes a count of 0, and in which zone Stripe's own page prints the day.
    - Nothing reaches it today. The owner's switch for card bills is off, and no card bill has been made.
    - A fix is the same kernel, `stripeBillDue`, in place of the count. One function to deploy, no migration. It should land before the switch is turned on.
-6. Then delete this card.
+5. Then delete this card.
