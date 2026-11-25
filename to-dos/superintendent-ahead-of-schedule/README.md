@@ -2,7 +2,7 @@
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
 group: close
-status: the owner's four calls of 2026-11-09 built and merged as three PRs — v2.6776 (the score reads the hours frozen at award, the lines' sum beside them), v2.6778 (the book falls back by size band, never every size), v2.6779 (the roster's loaded rate prices the labor kept, a $2,500 floor on the deck and the board; its migration pushed, Applied on docs/migrations/20261109040000) — and walked on the dev server on the owner's ZZ Test rows (Where it stands); the train of six and the walks' fixes live since 2026-11-08 (v2.6300, 6646, 6656, 6662, 6665, 6666, 6737); left: the owner's live walk on the deployed site, and slip 9 shown again if it comes back
+status: the owner's four calls of 2026-11-09 built and merged as three PRs — v2.6776 (the score reads the hours frozen at award, the lines' sum beside them), v2.6778 (the book falls back by size band, never every size), v2.6779 (the roster's loaded rate prices the labor kept, a $2,500 floor on the deck and the board; its migration pushed, Applied on docs/migrations/20261109040000) — and walked on the dev server on the owner's ZZ Test rows (Where it stands); the train of six and the walks' fixes live since 2026-11-08 (v2.6300, 6646, 6656, 6662, 6665, 6666, 6737); left: the owner's live walk on the deployed site, and slip 9 shown again if it comes back · looked at live 2026-11-24: the Costs tab and the Scoreboard's rule card hold, and the Job Mode card did not draw for a superintendent who is not clocked in
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
   whether he is on track or ahead of schedule, and so the company can reward superintendents for
@@ -523,3 +523,11 @@ line borrowing the job's percent; PR 1 draws it that way.
 columns read back in the live schema, and the Pages deploy of the merge went out. The
 superintendent's line moved to #242, whose build started from the same spike. Next is PR 1a;
 PR 3's ground and PR 4's reward still wait on the owner's three calls.
+
+## The live look of 2026-11-24
+
+Looked at on clicktooling.com at 1280 px, in dark. Three looks, two of them clean.
+
+- **A job's Costs tab: holds.** The hours read against the baseline frozen at award, with the line that says it is written once and is the one that scores.
+- **The Scoreboard's rule card: holds.** It names the roster's loaded rate and the floor. The sample superintendent's row reads its percent, the hours against the baseline, the days behind the plan and nothing owed back. The rate's arithmetic was not checked.
+- **The Job Mode card through View as: not shown.** As the sample superintendent the Dashboard drew no pace card. The card draws for a superintendent clocked onto a working project in Job Mode, and the sample is not clocked in. Clocking the sample in is a write on an account that is not a ZZ Test row, so it was not pressed. Whether to allow that one clock-in, or to leave this look, is the owner's to say. Card #406 may name the same gap.

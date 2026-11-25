@@ -2,7 +2,7 @@
 name: "Supply house invoices: flip through them in place, share one by a link, search them"
 number: 431
 group: close
-status: asked 2026-11-23 · built the same day as a train of ten PRs · nine are on main, the last (#9569, bills in the header search) is armed · the migration is pushed, the three functions and the dev seat are deployed, the sweep is keeping each bill's words · walked on real bills on a local server on 2026-11-24 · left: the owner's own look on the live app
+status: asked 2026-11-23 · built the same day as a train of ten PRs · nine are on main, the last (#9569, bills in the header search) is armed · the migration is pushed, the three functions and the dev seat are deployed, the sweep is keeping each bill's words · walked on real bills on a local server on 2026-11-24 · left: the owner's own look on the live app · looked at live 2026-11-24 on one job's list, where it holds; most of the recipe is not walked, since no ZZ test bill exists yet
 mockup: to-dos/supply-invoice-viewer/mockup.html
 summary: >
   The Job Summary lists every supply house invoice on a job, and each invoice number opens its PDF
@@ -253,3 +253,11 @@ works. The press floats over every window by design.
 
 No session card was dropped for this work: a hook refuses a worktree session's write into the main
 checkout's `.claude/`. The claims on GitHub are the record.
+
+## The live look of 2026-11-24
+
+Looked at on clicktooling.com as the dev, at 1280 px, in dark. No ZZ test bill exists, so one job's list was read for its shapes and counts only.
+
+- **Holds.** Job Summary, a row, Parts Cost, *Invoices from Supply Houses*: the search box, the chips with their counts, a copy-link press and an invoice-number press on each row. A press opens the bill over the page with the job's list beside the paper. It reads its place in the list, **Previous** is dead on the first, **Next** and the right arrow key step on, the paper's lines show, **Close** works, and nothing scrolls sideways.
+- **Not walked.** 375 px, the light theme, the link three ways, *Search every bill*, and a bill with no PDF.
+- **To walk the rest:** two made-up bills from `src/test/fixtures/bills/` recorded on the ZZ Test supply house against a ZZ test job, then this card's own recipe on those. A walking session has that to do.

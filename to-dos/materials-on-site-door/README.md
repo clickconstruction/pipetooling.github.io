@@ -2,16 +2,18 @@
 name: "Materials on site: a better door on the Job Mode card"
 number: 407
 group: close
-status: assessed, mocked up three ways and built the way the owner picked, v2.8050 · the three doors that turned people away are fixed, v2.8060 · the card says boxes due a count and stickers waiting, v2.8103 · each walked on the dev server on 2026-11-20 · not yet looked at on a crew's phone
+status: assessed, mocked up three ways and built the way the owner picked, v2.8050 · the three doors that turned people away are fixed, v2.8060 · the card says boxes due a count and stickers waiting, v2.8103 · each walked on the dev server on 2026-11-20 · not yet looked at on a crew's phone · the look on a crew's phone on the one site that holds boxes was taken off on the owner's word of 2026-11-25 and was never done on a real phone · what is left is the owner's answer on whether a crew may see the boxes under a site's other jobs, and a real estimator's read
 summary: >
   On the Job Mode card a small underlined link, Materials on site, sat alone between the day's stops
   and the pace card, on every job. Almost no job has material left on site. The owner asked for a whole
   look at where the door belongs. The assessment found the doors each role has, checked his 99% on the
   live data and drew three ways on a phone mock-up. He picked the second: the door stays on every job
   as a proper press beside Job calendar, and it shows a count when the job's site holds boxes.
-next: Ask the owner whether a crew may see the boxes under a site's other jobs, then look at the press on a crew's phone on the one site that holds boxes.
+next: >
+  Ask the owner whether a crew may see the boxes under a site's other jobs. Also left is a real estimator's read, since the walk of the three doors kept the dev's sign-in.
 size: S (one client-only PR)
-blocker: None.
+blocker: >
+  The owner's answer on whether a crew may see the boxes under a site's other jobs.
 ver: v2.8050, v2.8060, v2.8103
 opinion: build — built; the press costs no line on the card and now says when a site holds something
 ---
@@ -123,3 +125,7 @@ which belonged to Way A*.
 - One database function answers the site's boxes, the ones due and the stickers.
 
 The detail is in [`docs/recent-features/v2.8103.md`](../../docs/recent-features/v2.8103.md).
+
+## The walk on a real phone, taken off
+
+**Taken off, 2026-11-25.** The look on a crew's phone, on the one site that holds boxes, was taken off on the owner's word and was never done on a real phone. The owner's question still stands: may a crew see the boxes under a site's other jobs? A real estimator's read is still left too.
