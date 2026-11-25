@@ -8,6 +8,7 @@
  * the row says so.
  */
 import { batchWords, countedLabel, type BatchWords } from '../batchWords'
+import { isZzTestName } from '../jobs/zzTestJobSweep'
 import type { KitPerson } from './draw'
 import { cardHold, kitPersonFromUser, type KitCrop, type KitUserFacts } from './person'
 
@@ -32,9 +33,19 @@ export type TeamCard = {
   leftOff: string[]
 }
 
-/** The team as rows: who is ready, who is held and why, sorted by name. */
+/**
+ * A test person by the ZZ convention (`isZzTestName`): the name on the account, or the name set for the card, starts
+ * with ZZ. A live walk saves a photo on one, and nothing takes a photo off (punch list #443), so the person would
+ * stand ready and ticked in the batch for good.
+ */
+export function isZzTestPerson(facts: Pick<KitUserFacts, 'name' | 'card_name'>): boolean {
+  return isZzTestName(facts.name) || isZzTestName(facts.card_name)
+}
+
+/** The team as rows: who is ready, who is held and why, sorted by name. A ZZ test person is left out, as a sample, a twin and a walk tester are by the read. */
 export function teamCards(rows: TeamCardRow[], officePhone: string): TeamCard[] {
   return rows
+    .filter((row) => !isZzTestPerson(row.facts))
     .map((row): TeamCard => {
       const person = kitPersonFromUser(row.facts, officePhone, null)
       // the photo itself is fetched later; a path on file is what makes a person ready
