@@ -4346,6 +4346,15 @@ It is off, with the reason said, when a later change hangs on a row it added.
 
 **Database**: `bid_changes`, `list_bid_history` · kernel `lib/bids/bidHistory.ts`
 
+### Bids of the day (the Clock out sheet's list)
+The list of bids a person worked on in a day, read from what the app already records and never typed (punch list #445, `to-dos/clock-out-bids-of-the-day/`).
+The ground is live since v2.8605 and nothing on screen reads it yet.
+A **beat** is up to 60 seconds added to `user_bid_activity` for the bid in front, in a five-minute bucket, only while the person is at work on it.
+The **kept list** is the list as the person left it at clock out, in `bid_day_entries`: each bid kept or taken off, read by the app or added by the person.
+A size on the list is rough and is never a figure to bill by.
+
+**Database**: `user_bid_activity`, `bid_day_entries`, `bump_user_bid_activity`, `get_my_bid_day`, `save_my_bid_day`
+
 ### Utilization · hours you can work (People)
 The Utilization train (punch list #284, a design spike the owner ran on 2026-11-08): the hours each person said they can work against what the clock recorded, so a dev sees when to add people or use people more.
 PR 1 (v2.6707) is the answers table alone, `person_available_hours` — one append-only row per answer: `hours_per_week`, `days` (the week as drawn, seven arrays Sunday first of start–end minute pairs on the company clock, null for a number alone), `effective_from` (the Sunday it holds from), `note`, `set_by`;
