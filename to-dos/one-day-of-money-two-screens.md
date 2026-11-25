@@ -2,7 +2,7 @@
 name: "One day of money, two screens: Money in and By day paid from one rule"
 number: 440
 group: gated
-status: found 2026-11-24 on the live test of Bills sent (#422) · the first shared piece, the bank deposits on no bill, built the same day in v2.8493, with a mend for old months in its own PR · nothing else built · four owner calls open
+status: found 2026-11-24 on the live test of Bills sent (#422) · the first shared piece, the bank deposits on no bill, built the same day in v2.8493, with a mend for old months in its own PR · nothing else built · call 1 answered 2026-11-25 (UTC) in the managing session: the day the bank posts it, the same rule as #437 · calls 2 to 4 open
 summary: >
   The Dashboard's Money in bar and Bills sent's By day paid both answer what came in on a day, and
   they can still give two figures for one day. Each is right by its own rule, and neither says how
@@ -10,9 +10,10 @@ summary: >
   names a deposit that is on no bill yet. Four differences are left: the day a check counts on, a
   payment whose check came back, test rows, and the day a week starts. The card lists each one and
   the call it needs, then proposes one rule for a day's money that both screens draw from.
-next: The owner answers the four calls. Piece 1 needs no call and can be built first.
+next: The owner answers calls 2 to 4. Piece 1 (S) needs no call and can be built first. Piece 3 has its answer and waits on #437's held check.
 size: L as a train of four (S · S · M · M)
-blocker: The owner's four calls. Call 1 is the same question as punch list #437, a held check.
+blocker: The owner's calls 2 to 4. Call 1 is answered with #437's rule, and piece 3 waits on #437's piece 3 and on which of the bank's two days By day paid shows.
+ask: owner · decide · Answer calls 2 to 4: a returned check in a day's figure, the day a week starts, and what Money in names.
 opinion: build piece 1 now, since it needs no call; hold pieces 2 to 4 for the calls
 ---
 
@@ -34,7 +35,7 @@ This card follows punch list #422, *Bills sent: who paid, when, and what came in
 | # | The case | Money in | By day paid | State |
 |---|---|---|---|---|
 | 0 | A bank deposit on no bill yet | Counts it the day it posts, *Landed · not applied yet* | Names it under the day, never adds it | Built, v2.8493. One rule, `src/lib/moneyInDeposits.ts` |
-| 1 | A check typed in, not yet at the bank | *In the drawer*, on no day. It lands the day a deposit of the same amount posts | Counts it on the day the person named | Open. Call 1 |
+| 1 | A check typed in, not yet at the bank | *In the drawer*, on no day. It lands the day a deposit of the same amount posts | Counts it on the day the person named | Answered 2026-11-25: the day the bank posts it. Not built. Call 1 |
 | 2 | A payment whose check came back | Never counted as landed while the return case is open | Counted until someone takes it off the job | Open. Call 2 |
 | 3 | A payment on a test bill or a ZZ test job | Counted | Left out (`billTestRows.ts`) | Open. No call needed |
 | 4 | A Sunday payment | In the week that ends that day | In the week that starts that day | Open. Call 3 |
@@ -44,7 +45,7 @@ A Stripe payment, a bank transfer typed by hand and a credit in kind already agr
 
 ## The four calls
 
-1. **Which day does a check count on?** The day it was typed in, or the day the bank posts it. Diane's rule of 2026-11-24 for a held check (#437) is that a check counts when the bank posts it. If that rule holds here, By day paid moves a typed-in check to its deposit's day and shows it apart until then, as Money in's drawer does.
+1. **Which day does a check count on?** The day it was typed in, or the day the bank posts it. Diane's rule of 2026-11-24 for a held check (#437) is that a check counts when the bank posts it. If that rule holds here, By day paid moves a typed-in check to its deposit's day and shows it apart until then, as Money in's drawer does. **Answered 2026-11-25 (UTC) in the managing session:** *The day the bank posts it, the same rule as #437.* That is quoted from that session's record of the user's answers. One question is left open by it, put to the managing session and not decided here: #437's rule has had two days since its own call 1, the day the bank posts a check and the later day the bank names, on which the check is counted. Once a check is counted, does By day paid show it on the day the bank posted it, where Money in shows the deposit, or on the named day? The same question is on [#437](./held-check/README.md).
 2. **Does a payment whose check came back leave a day's figure?** Suggested: By day paid keeps the line, marks it *Came back*, and takes it out of the figure while the return case is open.
 3. **One day for the week to start?** Money in's week runs Monday to Sunday. By day paid's **This week** tile starts on Sunday. Suggested: leave both, since each matches the screen around it, and keep the sentence in the guide that says so.
 4. **Should Money in name what By day paid leaves out, the way By day paid now names deposits?** Suggested: no. Once the cases above are closed there is nothing left to name.
@@ -55,7 +56,7 @@ A Stripe payment, a bank transfer typed by hand and a credit in kind already agr
 |---|---|---|---|
 | 1 | Test rows out of Money in, by the rule By day paid reads (`isBillsTestRow`). A kernel test that feeds both screens one test payment | S | Nothing |
 | 2 | A payment on an open return case is marked in By day paid and left out of its figure, by Money in's own list of such payments (`returnedPaymentIdsOfCases`) | S | Call 2 |
-| 3 | A typed-in check's day. By day paid reads the match Money in makes (`matchMoneyInDeposits`) and places or holds the check by call 1 | M | Call 1, and #437 |
+| 3 | A typed-in check's day. By day paid reads the match Money in makes (`matchMoneyInDeposits`) and places or holds the check by call 1 | M | #437's piece 3, and the question under call 1 |
 | 4 | One pure rule for a day's money: every payment and deposit with the day it counts on and whether it is in the figure. Both screens draw from it, and one test holds their figures equal for a week | M | Pieces 1 to 3 |
 
 ## Is this the best we can do?

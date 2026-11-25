@@ -1,8 +1,8 @@
 ---
 name: "A held check: recorded the day it comes, counted the day the bank makes it good"
 number: 437
-group: gated
-status: asked 2026-11-24 by Diane, with a payer's check deposited and not yet good at the bank · every place a typed check counts was read in the code, and everything the app knows about a check clearing · a first draw, a critique and a second draw the same day · the same day she asked for a badge on the Pipeline card and for the path when a check fails, both added · piece 1 is built as v2.8525, no release before the bank clears the check, and it found that the bank posts a check days before the day it names · call 1 answered the same day: cleared is the bank's named day · pieces 2 to 7 are not built · waiting on the owner's other five calls
+group: ready
+status: asked 2026-11-24 by Diane, with a payer's check deposited and not yet good at the bank · every place a typed check counts was read in the code, and everything the app knows about a check clearing · a first draw, a critique and a second draw the same day · the same day she asked for a badge on the Pipeline card and for the path when a check fails, both added · piece 1 is built as v2.8525, no release before the bank clears the check, and it found that the bank posts a check days before the day it names · call 1 answered the same day: cleared is the bank's named day · calls 2 to 6 answered 2026-11-25 (UTC) in the managing session: the bank's posting counts a check with no press, every check, a leader, a controller or a dev may release before the bank clears it (the card's pick, a leader only, overturned), a payer whose check came back waits six more days, and the payer's page keeps the drawn words · pieces 2 to 7 are not built
 summary: >
   A paper check typed on a bill counts everywhere the moment it is saved: the bill reads Paid, the
   customer's page says all paid up, chasing stops, the job leaves the lien lists. Only three things
@@ -11,9 +11,10 @@ summary: >
   and the day the bank expects it. The card proposes a held check: the Dashboard says a check is at
   the bank and what it fits, one press holds it for those bills, nothing counts while it is held,
   and the bank's posting counts it and tells the office which liens to release.
-next: The owner answers calls 2 to 6. Then the screens of pieces 3 to 7, drawn on the day the bank posts, are redrawn on the bank's named day before piece 3 is built.
+next: Two small pieces can start. The mend to piece 1 (S) holds its early release to a leader, a controller or a dev. Piece 2 (S) puts the bank's own day on Money in. Then the screens of pieces 3 to 7, drawn on the day the bank posts, are redrawn on the bank's named day before piece 3 is built.
 size: L as a train of seven (S · S · M · M · S · S · M)
-blocker: The owner's calls 2 to 6, the second above all. Counsel's three questions gate nothing in the build.
+blocker: Nothing for the two small pieces. Two questions the answers left open wait on the owner before pieces 3 and 4, both under The calls. Counsel's three questions gate nothing in the build.
+ask: owner · decide · Do Count it now and the sooner release for a returned payer go to a leader, a controller or a dev, as the early release does?
 opinion: build — one rule for every check, made from what the bank already tells the app; piece 1 closes a hole in #435 as built
 ---
 
@@ -153,7 +154,7 @@ Lien days stay in view beside the bank's day.
 | Paid in full emails | Sent. | Sent the day the bank posts it. |
 | The Stripe invoice | Closes seven days after the day typed. | Stays open while held. Closes seven days after the bank posts. |
 | The lien lists | The job leaves them. | The job stays, with the chip. No lien day is hidden. |
-| Payoffs and the release tab | Offer the release, with an amber line. | Offer nothing until the bank posts it. A leader may release sooner with a typed reason. |
+| Payoffs and the release tab | Offer the release, with an amber line. | Offer nothing until the bank posts it. A leader, a controller or a dev may release sooner with a typed reason. |
 
 ## What must never happen
 
@@ -184,6 +185,8 @@ Lien days stay in view beside the bank's day.
 Piece 1 is the safety fix for #435 as built, where Payoffs, the release tab and the check pane only warned while a check cleared.
 It is built, v2.8525.
 It also reads the bank's day and the check number, the kernel half of piece 2, and gives Payoffs its waiting step and a line that says a check for a place is at the bank.
+As built, anyone who can open the release tab may release early with a typed reason.
+Call 4's answer of 2026-11-25 holds that to a leader, a controller or a dev, and that mend is not built.
 Pieces 2 and 3 are the plan itself.
 Pieces 4 to 7 follow in any order.
 
@@ -200,11 +203,19 @@ A Stripe bill paid whole by check is a ledger row, and Stripe closes it seven da
 **For the company's owner**
 
 1. What does cleared mean? Answered 2026-11-24 by Diane: the bank's day. The bank does two things on two days. It posts a check within a day or three, and it names a later day, about a week out. A check has cleared when the bank posted it and the bank's day has come, as piece 1 is built. The answer set aside was the day the bank posts it, about a week sooner, with a caution for the days after.
-2. Does the count need a press? Pick: no. The office chose the bills on day one. The bank's posting counts the check, and the Dashboard says it did.
-3. Every check, or only where a lien waits? Pick: every check. One rule is easier to keep than two. A leader keeps *Count it now* with a reason, for a cashier's check or a payer who is always good.
-4. Who may release before the bank clears it? Pick: a leader only, with a typed reason. As built in piece 1, anyone who can open the release tab may, with a typed reason.
-5. What does the payer's page say? Pick: *We have your check. It is clearing.*
-6. A payer whose check came back before. Pick: their next check still counts when the bank posts it. The release waits the six days after, unless a leader releases sooner with a reason.
+2. Does the count need a press? Pick: no. The office chose the bills on day one. The bank's posting counts the check, and the Dashboard says it did. **Answered 2026-11-25:** *The bank's posting. No press.* Call 1 still names the day.
+3. Every check, or only where a lien waits? Pick: every check. One rule is easier to keep than two. A leader keeps *Count it now* with a reason, for a cashier's check or a payer who is always good. **Answered 2026-11-25:** *Every check.*
+4. Who may release before the bank clears it? Pick: a leader only, with a typed reason. As built in piece 1, anyone who can open the release tab may, with a typed reason. **Answered 2026-11-25, in the user's own words:** *"A leader, a controller, or a dev"*. That is neither of the two options the card offered, and it overturns the card's pick of a leader only.
+5. What does the payer's page say? Pick: *We have your check. It is clearing.* **Answered 2026-11-25:** *"We have your check. It is clearing."*
+6. A payer whose check came back before. Pick: their next check still counts when the bank posts it. The release waits the six days after, unless a leader releases sooner with a reason. **Answered 2026-11-25:** *Six more days before a release, unless released with a reason.*
+
+Calls 2 to 6 were answered on 2026-11-25 (UTC) in the managing session.
+Each answer above is quoted from that session's record of the user's answers.
+
+Two questions the answers leave open, both put to the managing session and neither decided here:
+
+- **Who presses the other early presses.** Call 4 names a leader, a controller or a dev for a release before the bank clears a check. The card gives *Count it now* (call 3) and the sooner release for a payer whose check came back (call 6) to a leader, and the answer to call 6 names nobody. Do those two go to the same three? The same is asked of **The bank confirmed the funds** on [#435](../lien-payoff/README.md).
+- **Which of the bank's two days a counted check is shown on.** Call 1 counts a check on the bank's named day, about a week after the bank posts it. Call 1 of [#440](../one-day-of-money-two-screens.md) was answered the same day: *The day the bank posts it, the same rule as #437.* Once a check is counted, does By day paid show it on the day the bank posted it, where Money in shows the deposit, or on the named day? *How the count works* above dates the payment the day the bank posted, and was written before call 1 was answered.
 
 **For the office**
 
