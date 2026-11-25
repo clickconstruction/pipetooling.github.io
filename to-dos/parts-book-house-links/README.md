@@ -2,7 +2,7 @@
 name: "The parts book filled from Reece and Ferguson, with a page on every price so it can be checked again"
 number: 311
 group: gated
-status: asked 2026-11-11 by the estimator · the parts book, the house numbers table, the matcher and card #308 read on main at v2.6929 the same day · the book counted in prod through the dev seat, reads only · each house's robots file read once and its terms of use read by a research pass · a sample of twenty parts already in the book checked with no page opened and nothing written · nothing built, no page of either house read by a tool, no bulk run · later that day the estimator chose to ask Ferguson for a price file by email and for its word on a tool by phone, and parked the ask on this card · call 4 answered 2026-11-25 (UTC) in the managing session: a house's page for a part is kept beside the house's number for the part
+status: asked 2026-11-11 by the estimator · the parts book, the house numbers table, the matcher and card #308 read on main at v2.6929 the same day · the book counted in prod through the dev seat, reads only · each house's robots file read once and its terms of use read by a research pass · a sample of twenty parts already in the book checked with no page opened and nothing written · nothing built, no page of either house read by a tool, no bulk run · later that day the estimator chose to ask Ferguson for a price file by email and for its word on a tool by phone, and parked the ask on this card · call 4 answered 2026-11-25 (UTC) in the managing session: a house's page for a part is kept beside the house's number for the part, and by a later answer of the same day the part's own link then means the part's own page
 mockup: to-dos/parts-book-house-links/mockup.html
 summary: >
   The estimator asked to scrape Reece's and Ferguson's websites to fill the parts book, and to keep
@@ -414,7 +414,9 @@ worth it where the link is kept, and with the list the link is free.
    It is quoted from that session's record of the user's answers, and it is pick 1.
    The question asked was where a supply house's page for a part is kept.
    Pick 2, that the part's own link then means the part's own page, was not asked in so many words.
-   Whether the answer carries pick 2 has been put to the managing session and is not decided here.
+   Whether the answer carries pick 2 was put to the managing session.
+   **Answered later on 2026-11-25 (UTC) in the managing session.** Asked *Does call 4's answer (pick 1, the page beside the house's number) carry pick 2, that the part's own link means the part's own page?*, the answer was "Yes, it carries pick 2", quoted from that session's record of the user's answers.
+   So call 4 is answered whole, on its default. What it leaves open: calls 1, 2, 3 and 5.
 5. **What the fill covers.** *Default:* A, then B, then C on a press, and no category poured in.
 6. **How often.** *Default:* monthly for open bids and top spend, quarterly for a whole house.
 7. **Who may file a check.** *Default:* the roles that edit the parts book today.
