@@ -1,7 +1,7 @@
 /** The words and the Try again outcome behind an address the map cannot place (punch list #408, step 3). */
 import { describe, expect, it } from 'vitest'
 import { plainSentence, sentenceParts } from '../valuesInPlace'
-import { UNPLACED_DOOR_PARAM, UNPLACED_DOOR_PATH, missCheckedSentence, missDayWords, tryAgainOutcome, tryAgainWords } from './unplacedMemory'
+import { UNPLACED_DOOR_PARAM, UNPLACED_DOOR_PATH, keptMissesInAnswer, missCheckedSentence, missDayWords, tryAgainOutcome, tryAgainWords } from './unplacedMemory'
 
 const NOW = '2026-11-24T15:00:00Z'
 const KEY = 'zz the pasture behind the made up barn'
@@ -77,5 +77,44 @@ describe('what Try again found', () => {
   it('placed and failed say what happened', () => {
     expect(tryAgainWords({ kind: 'placed' })).toBe('Placed. The map is reloading with it.')
     expect(tryAgainWords({ kind: 'failed', reason: 'Lost signal.' })).toBe('Could not ask the map services. Lost signal.')
+  })
+})
+
+describe('Try again on a row that carries its own address box (punch list #441)', () => {
+  it('points at the box, since the row opens no record to fix', () => {
+    expect(tryAgainWords({ kind: 'placed' }, 'box')).toBe('Placed. Its pin is on the map.')
+    expect(tryAgainWords({ kind: 'missed', reason: 'Address not found', checkedAt: NOW }, 'box')).toBe('Still no match. Fix the address in the box and save to place it.')
+  })
+
+  it('says a miss nobody kept and a failed ask in the list\'s own words', () => {
+    const notKept = { kind: 'missed', reason: 'Google Geocoding quota exceeded', checkedAt: null } as const
+    expect(tryAgainWords(notKept, 'box')).toBe(tryAgainWords(notKept))
+    const failed = { kind: 'failed', reason: 'Lost signal.' } as const
+    expect(tryAgainWords(failed, 'box')).toBe(tryAgainWords(failed))
+  })
+})
+
+describe('the misses the function kept while it answered (punch list #441)', () => {
+  it('are the failures that carry a day, as rows of the memory', () => {
+    const data = {
+      results: [{ address_normalized: 'a placed key', lat: 1, lng: 2 }],
+      failures: [
+        { address_normalized: KEY, error_code: 'not_found', detail: 'no match from Google; no match from US Census', checked_at: NOW },
+        { address_normalized: 'a second made up key', error_code: 'not_found', checked_at: NOW },
+        // Google did not answer: nothing was kept, so there is no day to say.
+        { address_normalized: 'a third made up key', error_code: 'google_over_query' },
+        { address_normalized: 'a fourth made up key', error_code: 'not_found', checked_at: 'not a day' },
+      ],
+    }
+    expect(keptMissesInAnswer(data)).toEqual([
+      { address_normalized: KEY, error_code: 'not_found', detail: 'no match from Google; no match from US Census', checked_at: NOW },
+      { address_normalized: 'a second made up key', error_code: 'not_found', detail: null, checked_at: NOW },
+    ])
+  })
+
+  it('is empty for an answer nobody can read', () => {
+    for (const data of [null, undefined, {}, 'words', { failures: 'words' }, { failures: [null, { error_code: 'not_found', checked_at: NOW }] }]) {
+      expect(keptMissesInAnswer(data)).toEqual([])
+    }
   })
 })

@@ -5830,6 +5830,7 @@ A point saved to `address_geocodes` deletes its miss through the trigger `addres
 A miss stands 30 days before it is asked again: `GEOCODE_MISS_STANDS_DAYS` in [`geocodeMissMemory.ts`](../supabase/functions/_shared/geocodeMissMemory.ts), the functions' and the readers' rule, not the table's (v2.8477).
 Written by Edge Functions **`geocode-one`** and **`geocode-address-batch`**, only when Google and the Census each answered and neither found the address, whatever OpenStreetMap did (v2.8484).
 Client: `readStandingGeocodeMisses` in [`geocodeMissesIo.ts`](../src/lib/map/geocodeMissesIo.ts), read for the addresses with no saved point, so a standing miss is not sent again.
+`useAddressGeocodeCoords` hands the rows it read back as `misses`, and the Bid Board's missing-address sheet draws the reason, the day and **Try again** from them (v2.8539, punch list #441).
 
 ### Last work date (`jobs_ledger.last_work_date`)
 Cached calendar **`work_date`**: the latest among **approved**, non-rejected, non-revoked **`clock_sessions`** with **`job_ledger_id`** pointing at the job.

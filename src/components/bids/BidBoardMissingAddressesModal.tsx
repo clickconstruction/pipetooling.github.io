@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { BID_BOARD_MAP_SECTION_COLOR, BID_BOARD_MAP_SECTION_LABEL, bidBoardMapDirectionsUrl, type BidBoardMapBid } from '../../lib/bids/bidBoardMap'
-import { addressDraftReady, missingAddressStatus, missingAddressSummary, type MissingAddressRow } from '../../lib/bids/bidBoardMissingAddresses'
+import { addressDraftReady, missingAddressMemory, missingAddressStatus, missingAddressSummary, type MissingAddressRow } from '../../lib/bids/bidBoardMissingAddresses'
+import { tryAgainWords, type TryAgainOutcome } from '../../lib/map/unplacedMemory'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 
 type Props = {
   open: boolean
@@ -10,6 +13,8 @@ type Props = {
   onClose: () => void
   /** Writes the address (and fills a blank distance); resolves true when the row was written. */
   onSave: (bid: BidBoardMapBid, address: string) => Promise<boolean>
+  /** Asks the map services about the bid's saved address past the memory of its miss, and says what they found. */
+  onTryAgain: (bid: BidBoardMapBid) => Promise<TryAgainOutcome>
   onEditBid: (bid: BidBoardMapBid) => void
   onFocusRow: (bidId: string) => void
 }
@@ -24,11 +29,24 @@ const TONE: Record<'muted' | 'warn' | 'ok', string> = {
  * The door behind "N bids have no map location yet" (v2.3205): every bid the
  * map can't place, with its address ready to type or fix in place. A row the
  * person fixes stays until the sheet closes, so they see the pin land.
+ *
+ * An address no map service could place is remembered (punch list #441): its
+ * row says why, the day it was checked and the day the app asks again by
+ * itself, and **Try again** beside **Save** asks now, past that memory. The
+ * words are the Map page list's own (`unplacedMemory.ts`).
  */
-export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, onSave, onEditBid, onFocusRow }: Props) {
+export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, onSave, onTryAgain, onEditBid, onFocusRow }: Props) {
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<string | null>(null)
+  // What each **Try again** found, by bid: the words stay under the row until the sheet closes.
+  const [tried, setTried] = useState<Record<string, { busy: boolean; outcome?: TryAgainOutcome; at?: string }>>({})
   if (!open) return null
+
+  async function tryAgain(r: MissingAddressRow) {
+    setTried((p) => ({ ...p, [r.bid.id]: { busy: true } }))
+    const outcome = await onTryAgain(r.bid)
+    setTried((p) => ({ ...p, [r.bid.id]: { busy: false, outcome, at: new Date().toISOString() } }))
+  }
 
   const draftOf = (r: MissingAddressRow) => drafts[r.bid.id] ?? r.bid.address
 
@@ -86,6 +104,9 @@ export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, o
             const ready = addressDraftReady(draft, r.bid.address)
             const status = missingAddressStatus(r)
             const busy = saving === r.bid.id
+            const st = tried[r.bid.id]
+            // Null for a bid with no address, one still being looked for and one that is placed: no Try again there.
+            const memory = missingAddressMemory(r, st?.at ?? new Date().toISOString(), st?.outcome)
             const inputId = `bid-map-address-${r.bid.id}`
             return (
               <li key={r.bid.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -127,6 +148,17 @@ export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, o
                   >
                     {busy ? 'Saving…' : 'Save'}
                   </button>
+                  {memory ? (
+                    <button
+                      type="button"
+                      onClick={() => void tryAgain(r)}
+                      disabled={st?.busy || busy}
+                      title="Ask the map services about the saved address now"
+                      style={{ ...TRY_AGAIN, ...(st?.busy ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' } : null), minHeight: isMobile ? 44 : undefined }}
+                    >
+                      {st?.busy ? 'Asking the map services…' : 'Try again'}
+                    </button>
+                  ) : null}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
                   <span style={{ color: TONE[status.tone], flex: '1 1 14rem' }}>{status.text}</span>
@@ -137,6 +169,21 @@ export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, o
                   ) : null}
                   <button type="button" onClick={() => { onClose(); onEditBid(r.bid) }} style={LINK}>Edit bid</button>
                 </div>
+                {memory && (memory.reason || memory.checked) ? (
+                  <div data-miss-memory style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '0.15rem 0.6rem' }}>
+                    {memory.reason ? <span data-miss-reason>{memory.reason}</span> : null}
+                    {memory.checked ? (
+                      <span data-miss-checked>
+                        <ValueSentence text={memory.checked} />
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                {st?.outcome ? (
+                  <div data-try-again-result={st.outcome.kind} role="status" style={{ fontSize: '0.78rem', color: st.outcome.kind === 'failed' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                    {tryAgainWords(st.outcome, 'box')}
+                  </div>
+                ) : null}
                 {r.customerAddress ? (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <span>{r.bid.gcName ?? 'Customer'}’s address on file: {r.customerAddress}</span>
@@ -159,6 +206,9 @@ export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, o
     </div>
   )
 }
+
+/** **Try again**: a press beside **Save**, drawn as the Map page list draws its own. */
+const TRY_AGAIN: React.CSSProperties = { padding: '0.45rem 0.85rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.85rem', whiteSpace: 'nowrap' }
 
 const LINK: React.CSSProperties = {
   background: 'none',
