@@ -2,7 +2,7 @@
 name: "Punch list: the pace of the list and the merge queue, on one page"
 number: 444
 group: ready
-status: asked 2026-11-24 · the card and the mock-up · nothing is built
+status: asked 2026-11-24 · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is open as #9763 · PR 3 (In the merge queue on the page) is open as #9764 · PR 4 (each line's state) is built and opens when PR 3 merges · nothing is live yet
 summary: >
   The owner asked to see the merge queue and how fast punch-list cards are being closed. Most of it
   is already live in two places. The Burndown at the top of /punch-list counts cards opened and closed
@@ -10,8 +10,8 @@ summary: >
   of GitHub every 15 minutes. This card joins them on /punch-list and fills four gaps. The Burndown has
   no three-week stretch. Its sentence gives no rate a day. The queue is on another page. A change in
   the queue does not say whether its checks are running or it is ready.
-next: PR 2, client only. The Burndown gains The last 21 days, its sentence gains the rate a day, and the folded line says which way the list is going.
-size: M as a train of four (XS · S · S · S)
+next: Open PR 4 once PR 3 merges, then redeploy ship-pace after PR 4 merges. Then the walk of PR 2 and PR 3 on the live page.
+size: M as a train of four (XS · S · S · S); left: PR 4 (S) and two walks
 blocker: None. PR 4 redeploys one edge function after its merge.
 opinion: build — the history, the read of GitHub and its token already exist, so this is three small changes to screens and one field more on a read.
 ---
@@ -90,7 +90,10 @@ agree with the first for ever. So the Burndown is amended:
   three-week stretch draws opened and closed by day with no new chart.
 - The sentence gains the rate a day: *In the last 7 days 60 new cards came in and 23 closed. That is
   8.6 new and 3.3 closed a day, so the list is growing by 5.3 a day.*
-- The folded section says the direction too: *173 open · 792 points · growing by 5.3 a day*.
+- The sentence that followed, *At this pace it does not clear, because new cards arrive faster than
+  old ones close*, goes. *Growing by 5.3 a day* already says it.
+- The folded section says the direction too: *173 open · 792 points · growing by 5.3 a day in the
+  last 7 days*.
 - The device remembers the stretch picked, as it remembers **Hide the burndown**.
 
 **Item 4 is a block on `/punch-list` that reads the row the app already has.** The choices:
@@ -123,13 +126,26 @@ reads four facts an entry today, and the state is a fifth on the same query.
 The queue read on 2026-11-24 while this card was written held five changes: four `AWAITING_CHECKS` and
 one `MERGEABLE`.
 
-**Merges an hour today** is drawn from the row, which holds each hour's merges: a small column for
-each hour of the day, with **Merged today** and **In the last hour** beside it. One average for the
-day would be dragged down by the night, so no average is shown. The merge queue is the only way onto
+**Merges an hour** is read from the row, which already counts the merges of the last 6 hours for the
+Settings tab: that count divided by six, to one decimal. **Merged today** sits beside it, and a small
+column for each hour of the day draws the day under the line. One hour alone swings too much, and an
+average for the whole day would be dragged down by the night. The merge queue is the only way onto
 main, so a merged pull request is a merge to main.
 
 **Where the block sits.** Above the Burndown, under the page's opening lines. The queue is short, at
 most ten lines, and the Burndown is long. Under the Burndown it would sit two screens down.
+
+## The second look
+
+The mock-up was looked at again after PR 1 and before any code. Five things changed, and section 6 of
+`mockup.html` shows each one.
+
+- Inside the queue block the line is on top and the day's merges are under it. What is in line is the
+  first question.
+- *In the last hour* became **Merges an hour** over the last 6 hours.
+- *Checks running* is a blue chip. It is the usual state, and amber reads as a warning.
+- An old read keeps its line. The as-of words turn amber and carry the press.
+- The sentence lost its last sentence when the list is growing or holding level.
 
 ## Not picked
 
@@ -189,4 +205,27 @@ Nothing here writes a row a person made. The one write is the function's own row
 
 ## Where it stands
 
-- 2026-11-24: the card and the mock-up. Nothing is built.
+- 2026-11-24: the card and the mock-up (PR 1, #9758, merged), then the second look.
+- 2026-11-24: PR 2 is open as #9763. The Burndown has **The last 21 days**, the rate a day in its
+  sentences, the direction on its folded line, and the stretch remembered on the device. Each figure in
+  the sentences is drawn as a value. Seen in a local preview on the real history: at 21 days it reads
+  183 new and 124 closed, the count taken by hand that day.
+- 2026-11-24: PR 3 is open as #9764. **In the merge queue** sits above the Burndown and reads the
+  `ship_pace_v1` row. Each line draws its place, its wait and what is left as values. Seen in a local
+  preview on the live row. On a row six minutes old a dev's opening made one call to `ship-pace` and
+  one more read of the row, and no more after that.
+- PR 2 and PR 3 touch different files, so they were opened side by side and merge in either order.
+  The merge queue ran about 50 minutes a change that evening, and one after the other would have
+  taken three hours.
+- 2026-11-24: PR 4 is built on a branch stacked on PR 3 and not opened. The function reads each entry's
+  `state`, the punch list draws a chip in a **State** column, and the Settings line says it in words.
+  A row written before the redeploy has no state and draws as before.
+- Nothing is live yet. Neither PR has been seen on the live page.
+
+Found while building, and kept:
+
+- A read of GitHub by `ship-pace` takes about twenty seconds. So a dev's opening draws the old line at
+  once, and the press reads *Reading GitHub…* until the new line lands.
+- A read over an hour old uses the Settings tab's own words: *The last read was at 1:02 PM, more than
+  an hour ago. The reader may be stuck. Ask a dev.* The mock-up's wording differs a little.
+- With no state on any line, the **State** column is not drawn at all.
