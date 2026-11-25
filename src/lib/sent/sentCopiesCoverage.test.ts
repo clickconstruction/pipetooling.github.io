@@ -39,6 +39,7 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'lib/sent/sentCopies.ts': 'the Print button of the window a kept copy opens in',
   'lib/sent/sentCopiesIo.ts': 'printAndFile itself: the print that files',
   'lib/jobs/lienNoticePreview.ts': 'the Print button inside a preview page; the send is filed where the notice is sent',
+  'components/jobs/LienGetItRight.tsx': 'the card of the run\'s one print, a door to the press in useLienRunPrint (print.print()), which opens the print window and files each paper\'s copy (punch list #362, step 6, v2.8536); nothing prints here',
   'components/UserReviewModal.tsx': 'our own review of a teammate',
   'components/people/personFile/PersonThemesView.tsx': 'the By theme list a dev prints to read with counsel (punch list #269, v2.6547): a reading of one person’s HR file, dev-only, never in a list the whole office reads',
   'components/logbook/LogbookPrint.tsx': 'one teammate’s licensing record (punch list #255, v2.6472), attached behind the board’s own form: it holds one person’s hours, so it stays out of the list the whole office reads, like a review of a teammate',

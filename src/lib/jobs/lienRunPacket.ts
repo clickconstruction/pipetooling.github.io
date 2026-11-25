@@ -90,9 +90,8 @@ export type LienRunReadyPacketInput = {
   guideCode?: string
 }
 
-/** The packet of the ready notices, or null when no notice is ready to print on paper. */
-export function lienRunReadyPacket(input: LienRunReadyPacketInput): LienRunReadyPacket | null {
-  const { notices, todayYmd, issuer, enclosures, guideCode } = input
+/** The notices the packet prints and the envelopes it leaves out, as the window sorts them. No document is built. */
+function readySelection(notices: ReadonlyArray<RunNotice>): { shown: CombinedRunNotice[]; ns: CombinedRunNotice[]; held: Array<{ env: RunEnvelope; why: string }> } {
   const shown = combineNoticesByProperty(notices, { combine: false })
   const rows = lienRunChecklistRows({ notices: [...notices], printedNow: new Map() })
   const together = shown.flatMap((n) => (n.parts && n.parts.length > 1 ? [n.parts.map((p) => p.itemId)] : []))
@@ -110,7 +109,18 @@ export function lienRunReadyPacket(input: LienRunReadyPacketInput): LienRunReady
   const held = [...going.held, ...stopped].map((h, i) => ({ env: { ...h.env, n: going.mailed.length + i + 1 }, why: h.why }))
 
   const paperShown = shown.map((n) => ({ ...n, recipients: n.recipients.filter((r) => !recipientViaDocsmit(r)) })).filter((n) => n.recipients.length > 0)
-  const ns = paperShown.filter((n) => lienRunStackOf(partOf.get(n.itemId)) === 'ready')
+  return { shown, ns: paperShown.filter((n) => lienRunStackOf(partOf.get(n.itemId)) === 'ready'), held }
+}
+
+/** The notices the packet would print, in the packet's order: its count before any document is built. */
+export function lienRunReadyNotices(notices: ReadonlyArray<RunNotice>): CombinedRunNotice[] {
+  return readySelection(notices).ns
+}
+
+/** The packet of the ready notices, or null when no notice is ready to print on paper. */
+export function lienRunReadyPacket(input: LienRunReadyPacketInput): LienRunReadyPacket | null {
+  const { notices, todayYmd, issuer, enclosures, guideCode } = input
+  const { shown, ns, held } = readySelection(notices)
   if (ns.length === 0) return null
 
   const docsShown = lienRunInvoiceDocsShown(shown, enclosures.invoiceDocsByJob)
