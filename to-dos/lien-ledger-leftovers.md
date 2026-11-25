@@ -2,7 +2,7 @@
 name: "Lien desk: what the ledger (#361) left, to do later"
 number: 415
 group: residual
-status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454 · loose ends 1, 2, 4 and 6 built the same day on the picks from the pictures, v2.8537, v2.8535 and v2.8538, and loose end 5 answered · walk 2 done on a staged ZZ Test job, walk 7's record written and its reading not seen, which left a finding with no decision yet · v2.8537 and v2.8538 seen on the live desk the same day, read-only, and they read as built; v2.8535's empty card has no live case · walk 4 done on the ZZ Test job staged again, and the two ZZ Test filings voided after it, the same day, on the owner's standing yes for ZZ Test rows · the finding decided the same day, the owner's pick: draw the card from the job's stand-in month, shipped v2.8541 and deployed that night · a second finding of walk 7, the path that forgot a notice only on record, shipped v2.8554 and deployed the same night, on the owner's yes · walk 7 and the path's look written as one sitting on a ZZ Test job, and handed to the walker
+status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454 · loose ends 1, 2, 4 and 6 built the same day on the picks from the pictures, v2.8537, v2.8535 and v2.8538, and loose end 5 answered · walk 2 done on a staged ZZ Test job, walk 7's record written and its reading not seen, which left a finding with no decision yet · v2.8537 and v2.8538 seen on the live desk the same day, read-only, and they read as built; v2.8535's empty card has no live case · walk 4 done on the ZZ Test job staged again, and the two ZZ Test filings voided after it, the same day, on the owner's standing yes for ZZ Test rows · the finding decided the same day, the owner's pick: draw the card from the job's stand-in month, shipped v2.8541 and deployed that night · a second finding of walk 7, the path that forgot a notice only on record, shipped v2.8554 and deployed the same night, on the owner's yes · walk 7 and the path's look written as one sitting on a ZZ Test job, and handed to the walker · the owner, 2026-11-25: counsel's grid shows the day each § 53.056 notice went, as the app's own book does, built v2.8594 and not deployed
 summary: >
   Punch list #361 rebuilt the Lien desk's Months on this job as one card, the ledger, and closed on
   2026-11-21 once every choice made with it was built and live. Its last night left a handful of
@@ -262,10 +262,10 @@ The firm's portal read a job's filings of two kinds, the affidavit and the relea
 (`useLienTimelineBook.ts`). So a notice kept by hand, which has no desk paper, was missing from what counsel sees
 once the months reader dropped its month.
 
-Asked of the owner on 2026-11-25, since it changes what an outside firm reads: *"counsel's grid shows the day each
-§ 53.056 notice went, as the app's own book does. It changes what an outside firm reads, and it owes a deploy of
-`legal-portal`, asked for by name later"*. The pick was yes. Asked whether every pick on that sheet stands, the
-answer was *Yes, all picks*.
+**Answered 2026-11-25 (UTC) in the managing session.** Asked *"Do all the picks on round 3, rows 1 to 11, stand?"*,
+the answer was "Yes, all picks", quoted from that session's record of the user's answers. The row read: *#415: counsel's
+grid shows the day each § 53.056 notice went, as the app's own book does*, and the pick was yes. It is history:
+the deploy of `legal-portal` is asked by name at the time.
 
 **Built, v2.8594, and not deployed.** The function's read takes the recorded notices too. Of a notice's sends the
 firm gets who each copy went to, how and on which day, and nothing else: no mail number, no name, no address. The
