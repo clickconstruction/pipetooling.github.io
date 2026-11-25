@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_CROP } from './person'
-import { defaultTicks, teamCards, teamPressWords, type TeamCardRow } from './team'
+import { defaultTicks, isZzTestPerson, teamCards, teamPressWords, type TeamCardRow } from './team'
 
 const row = (id: string, name: string, over: Partial<TeamCardRow['facts']> = {}, photoPath: string | null = `${id}/photo-1.jpg`): TeamCardRow => ({
   id,
@@ -24,6 +24,13 @@ describe('the team’s cards', () => {
     expect(cards.find((c) => c.id === 'l')?.leftOff).toEqual(['No mobile, line left off'])
     expect(cards.find((c) => c.id === 'd')?.leftOff).toEqual(['No title, line left off'])
     expect(cards.find((c) => c.id === 'm')?.leftOff).toEqual([])
+  })
+  it('leaves a ZZ test person out, whatever they have on file', () => {
+    // A live walk saved a photo on one. With a photo and an email they would be ready and ticked.
+    const withTests = teamCards([...team, row('z', 'ZZ Test Learner'), row('y', 'Yolanda', { card_name: 'zz test card' })], '(512) 555-0199')
+    expect(withTests.map((c) => c.id).sort()).toEqual(cards.map((c) => c.id).sort())
+    expect([...defaultTicks(withTests)].sort()).toEqual(['d', 'l', 'm'])
+    expect([isZzTestPerson({ name: ' zz Test Hand', card_name: null }), isZzTestPerson({ name: 'Zara Zimmer', card_name: null }), isZzTestPerson({ name: null, card_name: null })]).toEqual([true, false, false])
   })
   it('ticks everyone who is ready', () => {
     expect([...defaultTicks(cards)].sort()).toEqual(['d', 'l', 'm'])
