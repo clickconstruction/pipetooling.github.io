@@ -58,7 +58,7 @@ it if it was reasonable and to show it to him first if it was not what he said.
 | Crossed midnight | Cannot stay open. The database clocks everyone out at 11:59 PM, and the session lands as pending. |
 | Salaried | The day's set hours stay, in grey, and add nothing to a total. The box is still green and says *on the clock*. |
 | A day outside the week shown | No column, so no box. The clock strip and the phone's Who's in still show the person. |
-| Left open since yesterday | A fault, not time accruing. Amber, *left open*, *since 7:30 AM*, no time added, and a press opens My Time for Force clock out. The head reads *1 left open*. |
+| Left open since yesterday | A fault, not time accruing. Amber, *left open*, *no clock-out*, no time added, and a press opens My Time for Force clock out. When it started is in the tooltip. The head reads *1 left open*. |
 | Phone | A green cell fills the cell and a tap opens My Time with no day sheet between, so there is no hours box. |
 | Read-only users | The same box and the same card. No write is added and one is taken away. |
 | Clocks out while the page is open | The page hears the change and the cell is an ordinary box again in under a second, with the amber pending badge. |

@@ -20,8 +20,8 @@ import { decimalToHm, decimalToHms } from './hoursGridTime'
  *
  * The database clocks every open session out at 11:59 PM of its own day, so one still open
  * on a day before today was missed by that closer. It is a fault and not time accruing: the
- * cell says "left open", adds nothing to a total, and still opens My Time, where Force
- * clock out is.
+ * cell says "left open" and "no clock-out", adds nothing to a total, and still opens My
+ * Time, where Force clock out is. When it started is in the tooltip: the box is 72 wide.
  */
 export type HoursGridLiveCell = {
   personName: string
@@ -119,7 +119,7 @@ export function hoursGridLiveCellView(args: {
     return {
       tone: 'leftOpen',
       figure: 'left open',
-      word: `since ${since}`,
+      word: 'no clock-out',
       figureMuted: false,
       title: `${who}: a session left open since ${since}. It adds no time here. Opens My Time, where Force clock out is.`,
     }

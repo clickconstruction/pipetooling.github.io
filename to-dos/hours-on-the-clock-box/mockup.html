@@ -129,7 +129,7 @@
     <div class="note"><b>ZZ Test Avery: on the clock, nothing saved today</b><p>Today the box is empty and takes typing. After, it is green, reads the time so far to the minute, says <i>on the clock</i>, and a press opens My Time.</p></div>
     <div class="note"><b>ZZ Test Blake: a morning session, then back on the clock</b><p>The box reads the whole day so far: the closed morning and the running afternoon. The amber <i>!1</i> badge for the morning waiting on approval stays and still opens its own list. The figure moves left so the badge does not cover it.</p></div>
     <div class="note"><b>ZZ Test Casey: salaried</b><p>A salaried day counts its set hours whatever the clock reads, so the figure stays grey and does not move. The box still turns green, says <i>on the clock</i> and opens My Time.</p></div>
-    <div class="note"><b>ZZ Test Devon: left open since yesterday</b><p>The app clocks everyone out at 11:59 PM, so this is rare. It is a fault, not time accruing. The box is amber, says <i>left open</i> and when it started, adds no time to any total, and opens My Time, where Force clock out is.</p></div>
+    <div class="note"><b>ZZ Test Devon: left open since yesterday</b><p>The app clocks everyone out at 11:59 PM, so this is rare. It is a fault, not time accruing. The box is amber, says <i>left open</i> and <i>no clock-out</i>, adds no time to any total, and opens My Time, where Force clock out is.</p></div>
     <div class="note"><b>ZZ Test Emery: clocked out</b><p>An ordinary box, as today.</p></div>
     <div class="note"><b>Totals</b><p>A row or a day with running time in it reads in green, to the minute, with the running part named under it. A settled total stays black with its seconds. The head keeps <i>+3 on the clock</i>.</p></div>
   </div>
@@ -246,7 +246,7 @@
 
         if (after && c.run) {
           var fig = c.run.left ? 'left open' : p.salaried ? hms(settled) : hm(c.total);
-          var word = c.run.left ? 'since ' + clock(c.run.since) : 'on the clock';
+          var word = c.run.left ? 'no clock-out' : 'on the clock';
           var kind = (c.run.left ? ' left' : '') + (p.salaried ? ' sal' : '') + (pend && !phone ? ' has-badge' : '');
           var b = el('button', (phone ? 'cell live-cell' : 'live') + kind);
           b.type = 'button';

@@ -109,7 +109,7 @@ On **People → Hours**, a person who is still clocked in has a green box on tha
 
 {{chip:green|6:55 on the clock}} Blake worked a morning session, clocked out, and clocked in again.
 
-{{chip:yellow|left open since 7:30 AM}} Devon never clocked out yesterday.
+{{chip:yellow|left open, no clock-out}} Devon never clocked out yesterday.
 :::
 
 - **The time** is the whole day so far, to the minute. The time counts the sessions already closed that day and the one still running. The time moves on by itself while the page is open.

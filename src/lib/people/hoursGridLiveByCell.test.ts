@@ -142,13 +142,13 @@ describe('hoursGridLiveCellView', () => {
     expect(view.title).toBe('Ana Ruiz, Wed Sep 2: on the clock since 12:45 PM. A salaried day counts its set hours, 8:00:00. Opens My Time.')
   })
 
-  it('a session from a day before today says left open and when it started, with no figure', () => {
+  it('a session from a day before today says left open and no clock-out, with no figure, and when it started in the tooltip', () => {
     const stale = { personName: 'Cy Park', workDate: '2026-09-01', clockInsMs: [new Date('2026-09-01T12:30:00Z').getTime()] }
     const view = hoursGridLiveCellView({ cell: stale, settledHours: 0, salaryOnly: false, nowMs: NOW, todayYmd: TODAY })
     expect(view).toEqual({
       tone: 'leftOpen',
       figure: 'left open',
-      word: 'since 7:30 AM',
+      word: 'no clock-out',
       figureMuted: false,
       title: 'Cy Park, Tue Sep 1: a session left open since 7:30 AM. It adds no time here. Opens My Time, where Force clock out is.',
     })
