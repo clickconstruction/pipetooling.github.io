@@ -2,14 +2,14 @@
 name: "The Bid Board's missing-address sheet says why, the day, and offers Try again"
 number: 441
 group: ready
-status: built 2026-11-24 as v2.8539 · walked live 2026-11-25 on a ZZ Test bid at 1280 and 375 px, and it holds · left: the owner's word on which rows offer Try again, and two small mends the walk asked for
+status: built 2026-11-24 as v2.8539 · walked live 2026-11-25 on a ZZ Test bid at 1280 and 375 px, and it holds · answered 2026-11-25 (UTC) in the managing session: Try again stays on every unplaced row, as built · left: two small mends the walk asked for
 summary: >
   The Bid Board's *N bids have no map location yet* line opens a sheet of its own, where a missing
   address is typed in place (v2.3205). For a bid whose address no map service could place, the row
   says only that the map could not find it. The Map page's list says why, the day it was checked
   and when the app asks again, and has **Try again** (v2.8479). This card gives the Bid Board's
   sheet the same three, from the same kernel.
-next: The owner says whether Try again stays on every unplaced row, as built, or only on a row with a kept miss. Two small mends from the walk, the client alone: plain words where a row's reason shows a map service's error code, and four presses that are under 44 px on a phone. Then delete this card.
+next: Two small mends from the walk, the client alone: plain words where a row's reason shows a map service's error code, and four presses that are under 44 px on a phone. Then delete this card.
 size: XS, built; left: two mends (XS each)
 blocker: None.
 opinion: build when someone is next in the Bid Board's map, small — one bid is unplaced today, so few people meet it
@@ -84,5 +84,7 @@ Walked on clicktooling.com as the dev, on the build that holds v2.8539, at 1280 
 2. **Four presses are under 44 px at 375 px.** *Check on Google Maps ↗*, **Edit bid** and **Use it** are 19 px high, and the bid's number press 21.
 
 **The open call.** **Try again** is on every unplaced row the map is done looking for, with or without a kept miss, as the Map page's list has it. The plan above said *a row with a miss*. The walk could not see the difference, since both rows with an address had a kept miss.
+
+**Answered 2026-11-25 (UTC) in the managing session.** Asked *Try again shows on every unplaced row of the missing-address sheet. Keep it on every row?*, the answer was "Yes, on every row (Recommended)", quoted from that session's record of the user's answers. The screen stays as built, and the plan's words *a row with a miss* give way to it. Nothing is owed to this call. What is left on the card is the two small mends above, and then its delete.
 
 **Left on the live site.** One kept miss for the made-up address, which nothing deletes by hand and which stops standing after 30 days. Two lines on the ZZ Test bid's History, for the address set and put back.
