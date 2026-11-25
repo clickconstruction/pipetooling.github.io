@@ -66,6 +66,11 @@ vi.mock('../../lib/billing/billsPaidIo', () => ({
   // The second view's best-effort read of the bank deposits on no bill: none here.
   readDepositsOnNoBill: async () => ({ state: 'read', days: new Map() }),
 }))
+// The delete of a by-hand record (punch list #443, row 4): what the press asked to delete.
+const byHandDelete = vi.hoisted(() => ({ asked: [] as string[] }))
+vi.mock('../../lib/billing/byHandRecordDeleteIo', () => ({
+  deleteByHandRecord: async (id: string) => void byHandDelete.asked.push(id),
+}))
 vi.mock('../../lib/storageSave', () => ({
   saveBlobAs: (blob: Blob, name: string) => void io.saved.push({ name, type: blob.type }),
 }))
@@ -445,6 +450,33 @@ describe('BillsSentLedger', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Print this record' }))
     expect(printed[0]).toContain('<h1>Bill 1412-0002 · J1412 · Sable Ridge Lot 14</h1>')
     opener.mockRestore()
+  })
+
+  it('offers a dev the delete of a by-hand record on a test bill’s record, and nobody else', async () => {
+    byHandDelete.asked.length = 0
+    const byHand = copy({ id: 'h1', kind: 'bill_by_hand', how: 'hand', recipientEmails: [], copyPath: null, copyType: '', copyHash: '', resendEmailId: null, sentAt: '2026-11-10T16:00:00.000Z', sourceSnapshot: { by_hand: true, how: 'handed', how_label: 'Handed over', went_on: '2026-11-10', note: '' } })
+    const zz = (): BillsSentInput => ({ ...data([byHand, copy({ id: 'c1' })]), jobs: new Map([[JOB, { id: JOB, hcp_number: '1412', click_number: null, job_name: 'ZZ Test walk job', job_address: '1 Test Street', customer_name: 'ZZ Test Customer' }]]) })
+    // The office reads the record as it did: no delete on any line.
+    io.data = zz()
+    const office = renderWithProviders(<BillsSentLedger />, { route: `/bills-sent?bill=${BILL}` })
+    await screen.findByTestId('bills-sent-record')
+    expect(screen.getAllByTestId('bills-sent-record-event')).toHaveLength(2)
+    expect(screen.queryByTestId('bills-sent-by-hand-delete')).toBeNull()
+    office.unmount()
+    // A dev reads it on the by-hand line alone, never on the email.
+    who.role = 'dev'
+    io.data = zz()
+    renderWithProviders(<BillsSentLedger />, { route: `/bills-sent?bill=${BILL}` })
+    await screen.findByTestId('bills-sent-record')
+    const offers = screen.getAllByTestId('bills-sent-by-hand-delete')
+    expect(offers).toHaveLength(1)
+    expect(offers[0]!.closest('[data-testid="bills-sent-record-event"]')?.textContent).toContain('Handed over')
+    const asks = io.asks.length
+    fireEvent.click(within(offers[0]!).getByRole('button', { name: 'Delete this record…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete the record' }))
+    await waitFor(() => expect(byHandDelete.asked).toEqual(['h1']))
+    // The page reads again, so the record draws without the line once it is gone.
+    await waitFor(() => expect(io.asks.length).toBeGreaterThan(asks))
   })
 
   it('leads a record opened from a day of By day paid back to that day, by name', async () => {
