@@ -72,6 +72,6 @@ If all else fails, use the fix-it page:
 
 ## Force a fresh copy any time
 
-Open the {{icon:gear}} **gear menu** in the top-right of the header and choose **Hard Reload**. This clears cached files and reloads the newest version, then returns you to the page you were on.
+Open the {{icon:gear}} **gear menu** in the top-right of the header and choose **Hard Reload**. This clears cached files and reloads the newest version, then returns you to the page you were on. The page reads *Reloading…* from the press until it leaves. That can take three seconds.
 
 **Hard Reload** clears words you typed and have not sent. So it asks first when the page holds such words. See [When you press Reload over words you typed](#when-you-press-reload-over-words-you-typed).

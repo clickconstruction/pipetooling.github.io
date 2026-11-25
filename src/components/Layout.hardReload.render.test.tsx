@@ -76,11 +76,27 @@ describe('Layout: Hard Reload over typed words', () => {
     expect(screen.queryByText('Reloading clears what you typed.')).toBeNull()
   })
 
+  it('says Reloading… over the whole page from the press, since the reload can wait three seconds on the wipe (punch list #406)', async () => {
+    await openGearMenu('')
+    expect(screen.queryByTestId('reloading-screen')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Hard Reload' }))
+    // The reload is a stub here and never leaves: the words are up while the page is still here.
+    const cover = screen.getByTestId('reloading-screen')
+    expect(cover.textContent).toBe('Reloading…')
+    expect(cover.getAttribute('role')).toBe('status')
+    expect(cover.parentElement).toBe(document.body)
+    expect(cover.style.position).toBe('fixed')
+    expect(parseFloat(cover.style.inset)).toBe(0)
+    expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
+  })
+
   it('with a note typed, Hard Reload reloads nothing: the note is ringed, and Reload anyway reloads once it was shown', async () => {
     const note = await openGearMenu('We can start Monday. Call me first.')
     fireEvent.click(screen.getByRole('button', { name: 'Hard Reload' }))
     expect(hardReloadFromRoot).not.toHaveBeenCalled()
     expect(screen.getByText('Reloading clears what you typed.')).toBeTruthy()
+    // Asked, not reloading: the page is not covered while the person decides.
+    expect(screen.queryByTestId('reloading-screen')).toBeNull()
     expect(note.hasAttribute(TYPED_SHOWN_ATTR)).toBe(true)
     // The menu has closed: the page is what the person is shown.
     expect(screen.queryByRole('button', { name: 'Hard Reload' })).toBeNull()
@@ -93,6 +109,7 @@ describe('Layout: Hard Reload over typed words', () => {
     expect(note.value).toBe('We can start Monday. Call me first.')
     fireEvent.click(anyway)
     expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('reloading-screen').textContent).toBe('Reloading…')
   })
 
   it('Not now keeps the note, and nothing reloads', async () => {
@@ -105,6 +122,7 @@ describe('Layout: Hard Reload over typed words', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Not now' }))
     expect(screen.queryByText('Reloading clears what you typed.')).toBeNull()
     expect(hardReloadFromRoot).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('reloading-screen')).toBeNull()
     expect(note.value).toBe('Report: rough-in passed.')
   })
 })

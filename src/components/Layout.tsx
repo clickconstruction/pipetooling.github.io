@@ -69,6 +69,7 @@ import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
 import { appActivityPageKey } from '../lib/appActivityPage'
 import { hardReloadFromRoot } from '../lib/hardReload'
+import { ReloadingScreen } from './ReloadingScreen'
 import { askReloadOverWords } from '../lib/reloadOverWords'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
@@ -261,6 +262,8 @@ export default function Layout() {
     () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
   )
   const [gearOpen, setGearOpen] = useState(false)
+  /** Hard Reload was pressed and the page has not left yet (punch list #406): *Reloading…* stands over it. */
+  const [reloadingNow, setReloadingNow] = useState(false)
   const gearRef = useRef<HTMLDivElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -2245,7 +2248,11 @@ export default function Layout() {
                   onClick={() => {
                     setGearOpen(false)
                     // Over typed words the press is asked first, and the page is walked through each place (v2.8513).
-                    askReloadOverWords(hardReloadFromRoot)
+                    // The reload waits on the wipe for up to three seconds, so the page says so the moment it starts (#406).
+                    askReloadOverWords(() => {
+                      setReloadingNow(true)
+                      hardReloadFromRoot()
+                    })
                   }}
                   style={{
                     display: 'block',
@@ -2264,6 +2271,7 @@ export default function Layout() {
                 </button>
               </div>
             )}
+            {reloadingNow ? <ReloadingScreen /> : null}
           </div>
             )}
           </span>
