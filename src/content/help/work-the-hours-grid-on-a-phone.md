@@ -2,7 +2,7 @@
 title: work the hours grid on a phone
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: hours grid, mobile, phone, day sheet, pending sessions, my time, tap, odometer
+keywords: hours grid, mobile, phone, day sheet, on the clock, green cell, pending sessions, my time, tap, odometer
 ---
 
 On a phone, **People → Hours** opens on three views. One switch stays at the top and moves between them.
@@ -24,6 +24,9 @@ Each cell shows the day's hours with its status as a small word underneath:
 - {{chip:yellow|2 pending}}: sessions on that day are awaiting approval
 - {{chip:red|no job}}: the day is marked Correct but has hours with no job assignment
 - A small teal dot means the day has clock detail to open in My Time
+- {{chip:green|7:38 on the clock}}: the person is still clocked in. The cell is green and shows the day so far.
+
+A green cell does not open the sheet. You tap it and the person's **My Time** opens for that day. So there is no hours box to type in while they are on the clock. The same goes for an amber cell that says *left open*. [A green box on the grid](/help/approve-my-teams-hours#a-green-box-on-the-grid) says what each one means.
 
 ## The day sheet
 
@@ -42,4 +45,4 @@ You tap any cell and a sheet slides up from the bottom for that person and day:
 - **Open My Time** jumps to the person's day detail: sessions, jobs, and the day editor.
 - On days marked **Correct**, the hours box locks and a **view audit** row appears instead.
 
-On desktop nothing changes. The inline hours boxes, the amber pending badge, and the teal corner all work as before.
+On desktop the layout stays as it was. The inline hours boxes, the amber pending badge, and the teal corner all work as before.

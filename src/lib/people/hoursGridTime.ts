@@ -25,3 +25,12 @@ export function hmsToDecimal(str: string): number {
   const [h = 0, m = 0, s = 0] = parts
   return h + m / 60 + s / 3600
 }
+
+/** Running time to the minute, "7:38": whole minutes, floored, and "0:00" for none. A figure
+ * that is still running carries no seconds, which is one of the ways it reads apart from a
+ * settled H:MM:SS beside it on the Hours grid. */
+export function decimalToHm(decimal: number): string {
+  if (!Number.isFinite(decimal) || decimal <= 0) return '0:00'
+  const totalMin = Math.floor(decimal * 60 + 1e-9)
+  return `${Math.floor(totalMin / 60)}:${String(totalMin % 60).padStart(2, '0')}`
+}
