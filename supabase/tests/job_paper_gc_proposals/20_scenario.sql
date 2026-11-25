@@ -107,13 +107,13 @@ INSERT INTO public.people (id, master_user_id, kind, name, account_user_id) VALU
 
 -- Two customers. The first is the GC on the first two jobs. The second is the GC on the third.
 INSERT INTO public.customers (id, name, master_user_id) VALUES
-  (jpp.id('k1'), 'ZZ Test proposing GC', jpp.id('a1')),
-  (jpp.id('k2'), 'ZZ Test other GC', jpp.id('a1'));
+  (jpp.id('91'), 'ZZ Test proposing GC', jpp.id('a1')),
+  (jpp.id('92'), 'ZZ Test other GC', jpp.id('a1'));
 INSERT INTO public.service_types (id, name) VALUES (jpp.id('f9'), 'Job Proposal Bed Work');
 INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name, hcp_number, gc_customer_id) VALUES
-  (jpp.id('e1'), jpp.id('a1'), jpp.id('f9'), 'ZZ Test proposal bed job', 'J920', jpp.id('k1')),
-  (jpp.id('e2'), jpp.id('a1'), jpp.id('f9'), 'ZZ Test prose proposal job', 'J921', jpp.id('k1')),
-  (jpp.id('e3'), jpp.id('a1'), jpp.id('f9'), 'ZZ Test other GC job', 'J922', jpp.id('k2'));
+  (jpp.id('e1'), jpp.id('a1'), jpp.id('f9'), 'ZZ Test proposal bed job', 'J920', jpp.id('91')),
+  (jpp.id('e2'), jpp.id('a1'), jpp.id('f9'), 'ZZ Test prose proposal job', 'J921', jpp.id('91')),
+  (jpp.id('e3'), jpp.id('a1'), jpp.id('f9'), 'ZZ Test other GC job', 'J922', jpp.id('92'));
 INSERT INTO public.jobs_ledger_team_members (job_id, user_id) VALUES (jpp.id('e1'), jpp.id('a4')) ON CONFLICT DO NOTHING;
 
 -- The Contract Book: a paper built from settings that opens on a notice, and site rules in prose.
@@ -149,36 +149,36 @@ SELECT jpp.same('and on the other GC''s job', public.job_papers_require(jpp.id('
 SELECT jpp.same('and the prose paper on another job', public.job_papers_require(jpp.id('e2'), ARRAY[jpp.id('c2')])::text, '1');
 
 -- Only the service key proposes.
-SELECT jpp.refused('the office does not propose for a GC', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1')), 'permission denied');
+SELECT jpp.refused('the office does not propose for a GC', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91')), 'permission denied');
 RESET ROLE;
 SELECT jpp.signed_out();
 SET LOCAL ROLE anon;
-SELECT jpp.refused('signed out, nobody proposes', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1')), 'permission denied');
+SELECT jpp.refused('signed out, nobody proposes', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91')), 'permission denied');
 RESET ROLE;
 
 -- What the service key is refused.
 SELECT jpp.as_service();
 SET LOCAL ROLE service_role;
 SELECT jpp.same('before any proposal the page reads the picks, the basis and the list', jpp.page(jpp.id('e1')), 'r1 standard/short basis standard list 2 ; no proposal');
-SELECT jpp.refused('a looser topic is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"off","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1')), 'can only make the paper stricter');
-SELECT jpp.refused('one topic stricter and one looser is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"off","term":"long"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1')), 'can only make the paper stricter');
-SELECT jpp.refused('the same picks are refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"standard","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1')), 'Nothing is stricter yet');
-SELECT jpp.refused('a choice the list does not have is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"loud","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1')), 'Pick Photos and video');
-SELECT jpp.refused('a topic left out is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1')), 'Pick How long');
-SELECT jpp.refused('no name is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"short"}'::jsonb, '  ', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1')), 'Type your name first');
-SELECT jpp.refused('the notice''s box left empty is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"short"}'::jsonb, 'Greta Gc', false)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1')), 'Tick the box under the notice first');
-SELECT jpp.refused('another customer''s job is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e3'), jpp.id('c1')), jpp.id('k1')), 'not one you are the general contractor on');
-SELECT jpp.refused('a paper in prose has nothing to propose', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e2'), jpp.id('c2')), jpp.id('k1')), 'not built from settings');
+SELECT jpp.refused('a looser topic is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"off","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91')), 'can only make the paper stricter');
+SELECT jpp.refused('one topic stricter and one looser is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"off","term":"long"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91')), 'can only make the paper stricter');
+SELECT jpp.refused('the same picks are refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"standard","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91')), 'Nothing is stricter yet');
+SELECT jpp.refused('a choice the list does not have is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"loud","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91')), 'Pick Photos and video');
+SELECT jpp.refused('a topic left out is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91')), 'Pick How long');
+SELECT jpp.refused('no name is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"short"}'::jsonb, '  ', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91')), 'Type your name first');
+SELECT jpp.refused('the notice''s box left empty is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"short"}'::jsonb, 'Greta Gc', false)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91')), 'Tick the box under the notice first');
+SELECT jpp.refused('another customer''s job is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e3'), jpp.id('c1')), jpp.id('91')), 'not one you are the general contractor on');
+SELECT jpp.refused('a paper in prose has nothing to propose', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"short"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e2'), jpp.id('c2')), jpp.id('91')), 'not built from settings');
 SELECT jpp.same('nothing was written by a refusal', jpp.all_of(jpp.id('e1')), 'none');
 
 -- One that stands. It changes no paper.
-SELECT jpp.same('a stricter topic is taken as a proposal', (public.job_paper_propose(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1'), NULL, '{"photos":"strict","term":"short","extra":"dropped"}'::jsonb, '  Greta Gc  ', true) ? 'id')::text, 'true');
+SELECT jpp.same('a stricter topic is taken as a proposal', (public.job_paper_propose(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91'), NULL, '{"photos":"strict","term":"short","extra":"dropped"}'::jsonb, '  Greta Gc  ', true) ? 'id')::text, 'true');
 SELECT jpp.same('it waits, under the typed name, with only the list''s topics', jpp.all_of(jpp.id('e1')), 'waiting Greta Gc strict/short');
 SELECT jpp.same('the paper is as it was', jpp.picks(jpp.id('e1'), jpp.id('c1')), 'r1 standard/short');
 SELECT jpp.same('the GC''s page reads its own proposal', jpp.page(jpp.id('e1')), 'r1 standard/short basis standard list 2 ; waiting Greta Gc strict/short');
 SELECT jpp.same('the other GC''s job reads none', jpp.page(jpp.id('e3')), 'r1 standard/short basis standard list 2 ; no proposal');
 -- A newer one overtakes it.
-SELECT jpp.same('a second proposal is taken too', (public.job_paper_propose(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1'), NULL, '{"photos":"strict","term":"long"}'::jsonb, 'Greta Gc', true) ? 'id')::text, 'true');
+SELECT jpp.same('a second proposal is taken too', (public.job_paper_propose(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91'), NULL, '{"photos":"strict","term":"long"}'::jsonb, 'Greta Gc', true) ? 'id')::text, 'true');
 SELECT jpp.same('and the first is overtaken', jpp.all_of(jpp.id('e1')), 'overtaken Greta Gc strict/short, waiting Greta Gc strict/long');
 RESET ROLE;
 
@@ -207,7 +207,7 @@ SET LOCAL ROLE service_role;
 SELECT jpp.same('the GC''s page reads the decline and its reason', jpp.page(jpp.id('e1')), 'r1 standard/short basis standard list 2 ; declined Greta Gc strict/long why Placeholder reason.');
 
 -- A take while nobody has signed saves in place.
-SELECT jpp.same('a third proposal', (public.job_paper_propose(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1'), NULL, '{"photos":"strict","term":"short"}'::jsonb, 'Greta Gc', true) ? 'id')::text, 'true');
+SELECT jpp.same('a third proposal', (public.job_paper_propose(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91'), NULL, '{"photos":"strict","term":"short"}'::jsonb, 'Greta Gc', true) ? 'id')::text, 'true');
 RESET ROLE;
 SELECT jpp.as_user(jpp.id('a2'));
 SET LOCAL ROLE authenticated;
@@ -220,7 +220,7 @@ SET LOCAL ROLE service_role;
 SELECT jpp.same('the GC''s page reads the take and the new picks', jpp.page(jpp.id('e1')), 'r1 strict/short basis standard list 2 ; taken Greta Gc strict/short');
 
 -- The office's own change overtakes a proposal that waits.
-SELECT jpp.same('a fourth proposal', (public.job_paper_propose(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1'), NULL, '{"photos":"strict","term":"long"}'::jsonb, 'Greta Gc', true) ? 'id')::text, 'true');
+SELECT jpp.same('a fourth proposal', (public.job_paper_propose(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91'), NULL, '{"photos":"strict","term":"long"}'::jsonb, 'Greta Gc', true) ? 'id')::text, 'true');
 RESET ROLE;
 SELECT jpp.as_user(jpp.id('a2'));
 SET LOCAL ROLE authenticated;
@@ -234,7 +234,7 @@ SELECT jpp.signed_out();
 SELECT jpp.sign(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('b4'));
 SELECT jpp.as_service();
 SET LOCAL ROLE service_role;
-SELECT jpp.same('a fifth proposal, after a signature', (public.job_paper_propose(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1'), NULL, '{"photos":"standard","term":"long"}'::jsonb, 'Greta Gc', true) ? 'id')::text, 'true');
+SELECT jpp.same('a fifth proposal, after a signature', (public.job_paper_propose(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91'), NULL, '{"photos":"standard","term":"long"}'::jsonb, 'Greta Gc', true) ? 'id')::text, 'true');
 RESET ROLE;
 SELECT jpp.as_user(jpp.id('a2'));
 SET LOCAL ROLE authenticated;
@@ -247,8 +247,8 @@ SET LOCAL ROLE service_role;
 SELECT jpp.same('the GC''s page reads the take on the new version', jpp.page(jpp.id('e1')), 'r2 standard/long basis standard list 2 ; taken Greta Gc standard/long');
 
 -- The paper coming off the job overtakes a proposal that waits, and the page says nothing.
-SELECT jpp.same('a sixth proposal', (public.job_paper_propose(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1'), NULL, '{"photos":"strict","term":"long"}'::jsonb, 'Greta Gc', true) ? 'id')::text, 'true');
-SELECT jpp.refused('a seventh in one hour is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"long"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('k1')), 'many proposals in one hour');
+SELECT jpp.same('a sixth proposal', (public.job_paper_propose(jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91'), NULL, '{"photos":"strict","term":"long"}'::jsonb, 'Greta Gc', true) ? 'id')::text, 'true');
+SELECT jpp.refused('a seventh in one hour is refused', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"long"}'::jsonb, 'Greta Gc', true)$q$, jpp.row_of(jpp.id('e1'), jpp.id('c1')), jpp.id('91')), 'many proposals in one hour');
 RESET ROLE;
 SELECT jpp.as_user(jpp.id('a2'));
 SET LOCAL ROLE authenticated;
@@ -259,7 +259,7 @@ RESET ROLE;
 SELECT jpp.as_service();
 SET LOCAL ROLE service_role;
 SELECT jpp.same('a paper taken off the job is not read', jpp.page(jpp.id('e1')), 'nothing');
-SELECT jpp.refused('and takes no proposal', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"long"}'::jsonb, 'Greta Gc', true)$q$, (SELECT x.taken_as FROM public.job_paper_proposals x WHERE x.job_id = jpp.id('e1') AND x.state = 'taken' AND x.settings ->> 'term' = 'long'), jpp.id('k1')), 'no longer requires that paper');
+SELECT jpp.refused('and takes no proposal', format($q$SELECT public.job_paper_propose(%L, %L, NULL, '{"photos":"strict","term":"long"}'::jsonb, 'Greta Gc', true)$q$, (SELECT x.taken_as FROM public.job_paper_proposals x WHERE x.job_id = jpp.id('e1') AND x.state = 'taken' AND x.settings ->> 'term' = 'long'), jpp.id('91')), 'no longer requires that paper');
 RESET ROLE;
 SELECT jpp.signed_out();
 
