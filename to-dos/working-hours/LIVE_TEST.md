@@ -11,6 +11,7 @@ picture). It needs nothing from the session that built them. Read it whole befor
   hours), and #9499 (types). `gh pr view <number> --json state`.
 - `npm run check:migration-drift` reads fully applied, and the dev seat's `check_migration_ledger` lists
   `working_hours_door`, `working_hours_lock`, `working_hours_clock` and `working_hours_schedule_lock`.
+  A worktree with no Supabase sign-in cannot run the first. The seat's ledger read is enough there.
 - The dev seat answers as server 0.129.0 or later, and `find_rpc set_working_hours` finds the door.
 
 **The rules.** Each is in force for the whole test.
@@ -106,3 +107,11 @@ Making a person salaried shows on payroll screens until it is undone, so ask fir
 
 For each numbered step: what you did, what you saw, and pass or fail. A failure names the screen, the press and
 the words on it.
+
+## Runs
+
+- **2026-11-24, an outside session, stopped at step 1.2.** The pre-checks passed: the eight pull requests are
+  merged, the four migrations are in the seat's ledger, and the seat answered as 0.133.0. Step 1.1's plan read
+  as this sheet says. Step 1.2, `apply_pay_setup` on ZZ Test Learner, was refused by that session's auto mode,
+  so it stopped and asked, as the rules above say. Step 1.5's four refusals each answered in words. Steps 1.3,
+  1.4, 2, 3.3 and 4 were not run, and nothing was written.

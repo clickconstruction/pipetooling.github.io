@@ -2,7 +2,7 @@
 name: "My Time: the week and the eight weeks, redrawn"
 number: 427
 group: close
-status: asked 2026-11-23 · five options drawn, then one picture on the owner's word, no quota on this card · his go the same day, *build it all* · the picture in My Time v2.8338 and Job Mode's card v2.8347, with the old hours block retired, both live the same day · left: a look with real hours through View as, as a salaried and an hourly person
+status: asked 2026-11-23 · five options drawn, then one picture on the owner's word, no quota on this card · his go the same day, *build it all* · the picture in My Time v2.8338 and Job Mode's card v2.8347, with the old hours block retired, both live the same day · walked live 2026-11-24 through View as on a ZZ Test person with no hours, where it holds · left: a look with real hours through View as, as a salaried and an hourly person
 summary: >
   On the Dashboard's My Time card, the asker did not like how two parts look: a row of eight small
   bars with a four-colour caption, and seven lines of text for the week's days. Reading them found
@@ -216,3 +216,10 @@ His go of 2026-11-23, *build it all*, kept every pick.
 - After the build: View as a salaried person with a workday schedule, and as an hourly person who
   drew a week. Read the panel on a Monday before the start, mid-week, and on a day after a punch
   was left running. Nothing is written by the walk.
+- **Walked 2026-11-24** on clicktooling.com at 730 px, through **View as** on a ZZ Test person who has no
+  hours: one large number, seven day columns, eight week columns, a week's press opens its days with
+  **Back to this week**, no over or under colours, and no sideways scroll.
+- **Still to walk: the look with real hours.** A salaried person, an hourly person who drew a week, and a
+  day after a punch was left running. No ZZ Test person has hours. Two ways to get there, and the pick is
+  the owner's: **View as** two real people, which writes nothing, as this card's own step has it, or hours
+  put on a ZZ Test person through the dev seat first.
