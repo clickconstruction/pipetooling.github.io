@@ -2,7 +2,7 @@
 name: "Punch list: the pace of the list and the merge queue, on one page"
 number: 444
 group: ready
-status: asked 2026-11-24 · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is open as #9763 · PR 3 (In the merge queue on the page) is open as #9764 · PR 4 (each line's state) is built and opens when PR 3 merges · nothing is live yet
+status: asked 2026-11-24 · PR 3 (In the merge queue on the page) is live as v2.8547 · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is #9763, in the merge queue · PR 4 (each line's state) is open as #9787 and not armed, since it owes one deploy of ship-pace after its merge and waits on a yes for that
 summary: >
   The owner asked to see the merge queue and how fast punch-list cards are being closed. Most of it
   is already live in two places. The Burndown at the top of /punch-list counts cards opened and closed
@@ -10,9 +10,10 @@ summary: >
   of GitHub every 15 minutes. This card joins them on /punch-list and fills four gaps. The Burndown has
   no three-week stretch. Its sentence gives no rate a day. The queue is on another page. A change in
   the queue does not say whether its checks are running or it is ready.
-next: Open PR 4 once PR 3 merges, then redeploy ship-pace after PR 4 merges. Then the walk of PR 2 and PR 3 on the live page.
+next: The yes for PR 4 (#9787), then its merge and the deploy of ship-pace. The walk of PR 3 on the live page can run now. The walk of PR 2 follows its merge.
 size: M as a train of four (XS · S · S · S); left: PR 4 (S) and two walks
-blocker: None. PR 4 redeploys one edge function after its merge.
+ver: v2.8547
+blocker: PR 4 is armed only on a yes, because one edge function is redeployed after its merge.
 opinion: build — the history, the read of GitHub and its token already exist, so this is three small changes to screens and one field more on a read.
 ---
 
@@ -220,7 +221,14 @@ Nothing here writes a row a person made. The one write is the function's own row
 - 2026-11-24: PR 4 is built on a branch stacked on PR 3 and not opened. The function reads each entry's
   `state`, the punch list draws a chip in a **State** column, and the Settings line says it in words.
   A row written before the redeploy has no state and draws as before.
-- Nothing is live yet. Neither PR has been seen on the live page.
+- 2026-11-25: PR 3 merged as #9764 and is live as v2.8547. It has not been walked on the live page yet.
+- 2026-11-25: PR 4 is open as #9787. Its one commit was moved onto main and pushed under a new branch
+  name, so nothing was force-pushed. It is not armed. It waits on a yes, because `ship-pace` is
+  redeployed right after its merge.
+- PR 4 leaves the `/punch-list` line of `docs/PROJECT_DOCUMENTATION.md` as main has it. #438's last PR
+  (#9757) writes the same line, and two PRs on one line drop each other from the merge queue. The State
+  column goes onto that line in a docs follow-up once both have merged.
+- PR 2 (#9763) is still in the merge queue. It has not been seen on the live page.
 
 Found while building, and kept:
 
