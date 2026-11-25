@@ -2,7 +2,7 @@
 name: "Presses nothing takes back: the standing list"
 number: 443
 group: gated
-status: standing list opened 2026-11-24 on the owner's word of that day · two rows, both on the Lien desk and the job's Lien window · nothing is built and no build is approved
+status: standing list opened 2026-11-24 on the owner's word of that day · four rows, two on the Lien desk and two on Bills sent · nothing is built and no build is approved
 summary: >
   Every press a walk or a thread meets that nothing takes back, one row each: what was pressed, on which
   screen, what it left, and what would take it back. The owner asked for the note on 2026-11-24, when he
@@ -51,6 +51,8 @@ rows, ids and counts only. Name no real customer, job, address or amount.
 |---|---|---|---|---|---|---|
 | 1 | A § 53.056 notice recorded by hand: **Record it…**, the by-hand form, then save. The dev seat's `apply_notice_by_hand` writes the same row. | Lien desk, Notices, the job, *Months on this job*. The job's Lien window has the same door (`LienNoticeByHandPane`). | One `job_lien_filings` row, which counts as a live notice for its months until it is voided. One line on the job's Activity as well, written by the trigger `job_lien_filings_to_activity_ins` on the insert. | A delete for the dev on a by-hand record of a ZZ Test job, as a press on the record or as a seat verb, that takes its Activity line with it. The table already lets a dev delete (`job_lien_filings_delete_dev`). No screen and no verb calls it. | S for the delete alone, no migration. The Activity line makes it M if the line is to go too. | The #415 thread, 2026-11-24. Checked the same day: no `.delete()` on the table anywhere in `src/`, no seat verb for it, and the trigger fires on insert only. |
 | 2 | **Void** on a filing, then **Confirm void**. The toast reads *Record voided.* **Take it back** on *Back from the clerk* does the same write. | A job's Lien window, the record's own line on its tab (`LienFilingTabs`). | `voided_at` set on the filing, and the record leaves the tab's list. Where a desk paper was tied to it, the database puts that paper back on the Lien desk in the same step. The Activity line of row 1 stays, and nothing on the Activity says the record was voided. | A press for the dev that puts the record back: clear `voided_at`, and where a paper was tied, undo what the void did to that paper. The second half is why this is more than one write. A line on the Activity that says the record was voided would close the other gap. | M, likely a migration beside `job_lien_filing_void_restores_paper` | The #415 thread, 2026-11-24. Checked the same day: `voidLienFiling` writes `voided_at` only, and nothing in `src/` clears it on a filing. |
+| 3 | **Add to the list**, in the **Edit list** window or from **＋ Add a way** in the form. | Bills sent, **Say how it went…**, the list under *How the bill went* (`BillHandWays`). | One `bill_hand_ways` row. **Take off** retires it and never deletes it, so it stands under *Taken off* for everyone who opens **Edit list**, for good. | A delete for the dev on a way no record was ever made with. The table already lets a dev delete (`bill_hand_ways_delete_dev`). No screen and no verb calls it. | S, no migration | The WALKING thread, 2026-11-24, on card #340. Checked the same day: the office's writes on the table are insert and update, and nothing in `src/` deletes a way. |
+| 4 | **Record how it went**, on one bill or on several at once. | Bills sent, the form under **Say how it went…** on a bill with no send on record (`ByHandForm`). | One `sent_documents` row a bill, kind `bill_by_hand`. The table has no update policy, so the record cannot be changed, by design. The bill leaves the box and gets a line on the list. | A delete for the dev on a by-hand record of a ZZ test job's bill. The table already lets a dev delete (`sent_documents_delete_dev`). No screen and no verb calls it. A second record that says the first was wrong is the office's take-back, and card #340 lists it as not drawn. | S for the dev's delete, no migration | The WALKING thread, 2026-11-24, on card #340. Not pressed yet: the form opens on no ZZ test bill until the fix the walk asked for is live, and the walk that presses it is still owed. Checked the same day: the table's policies are select, insert and a dev's delete. |
 
 Row 2 has one exception, and it is not a gap. A line that applied a paper already on record reads **Undo**
 in place of **Void**, and its notice goes back on the desk (v2.7508).
@@ -63,6 +65,8 @@ in place of **Void**, and its notice goes back on the desk (v2.7508).
   records, because of row 1.
 - Two lines on that job's Activity, one for each record, each saying a lien notice went out by hand. Both
   records are voided and both lines still stand, because of row 2.
+- Two ways on the Bills sent list, both named *ZZ Test*, added and taken off by the walk of #340 on
+  2026-11-24. Both stand under *Taken off* in the **Edit list** window, because of row 3.
 
 ## When a take-back is built
 
