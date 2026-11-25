@@ -32,7 +32,7 @@ import { noticeNumbersAppliedWords, noticeNumbersDryRun, noticeNumbersPlanReply,
 import { LIEN_CLERK_SCAN_NOTE } from '../_shared/gcKernels/lib/jobs/lienScanFile.ts'
 import { filingDocumentPayload } from '../_shared/gcKernels/lib/jobs/lienFilingDocumentLink.ts'
 import { propertyPatch, propertyPatchBody, propertyLienReading, propertyRecordAppliedWords, propertyRecordDryRun, readPropertyWorld, type PropertyRecordPayload, type PropertyReads } from '../_shared/devMcpPropertyRecord.ts'
-import { JOB_STATUSES, jobAppliedWords, jobUpdateAppliedWords, jobUpdateDryRun, newJobDryRun, readJobUpdateWorld, readNewJobWorld, type JobReads, type JobStatus, type JobUpdatePayload, type NewJobPayload } from '../_shared/devMcpJobs.ts'
+import { JOB_STATUSES, jobAppliedWords, jobUpdateAppliedWords, jobUpdateDryRun, newJobDryRun, priceLineRow, readJobUpdateWorld, readNewJobWorld, type JobReads, type JobStatus, type JobUpdatePayload, type NewJobPayload, type PriceLineLanded, type PriceLinePlan } from '../_shared/devMcpJobs.ts'
 import { getSubmittals, readSubmittalWorld, submittalAppliedWords, submittalDryRun, submittalWrites, type SubmittalPayload } from '../_shared/devMcpSubmittals.ts'
 import { activityNoteAppliedWords, activityNoteDryRun, activityNoteRow, readActivityNoteWorld, type ActivityNotePayload } from '../_shared/devMcpActivityNote.ts'
 import { bookEntryRow, isPaperWordsVerb, paperWordsAppliedWords, paperWordsArgsForLog, paperWordsDryRun, readPaperWordsWorld, type PaperWordsPayload } from '../_shared/devMcpPaperWords.ts'
@@ -147,7 +147,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // The note each server version carries (what it added and why, in the words of the day) lives in
 // docs/dev-mcp/SERVER_NOTES.md, oldest first, and a new version adds its note there. They were comments here until
 // they weighed 44 KB of this function's upload, which the deploy refuses past 5 MB (npm run check:edge-bundles).
-const SERVER_VERSION = '0.133.0'
+const SERVER_VERSION = '0.134.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 /** v2.7987 (punch list #315, upgrade 3a): what a person-file plan takes for the approvals list, and what its description says of it. */
@@ -781,22 +781,22 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_job',
-    description: "Dry-run a new job (v2.6790, punch list #293): the row the New Job form would make — name, address (saved in Title Case as the form saves it), customer, service type, the price (revenue), the office's numbers, the development, the project, the bid, who the bill goes to, the links, the kind — as you, under the same RLS as the form. The dry run reads the customer (its email and phone fill the job's when left out), the service type, the development, the project and the owner rule's settings, and replies with the row as it will land, who it belongs to and why, the live jobs on the customer already wearing the name (refused unless allow_duplicate_name), what a bill will still need and what the verb does not do, under a plan_hash; nothing is written.",
-    inputSchema: { type: 'object', properties: { job: { type: 'object', description: '{ job_name, job_address, customer_id (find_customer), service_type_id (read_rows on service_types), revenue? (dollars), hcp_number?, click_number?, customer_name?, customer_email?, customer_phone?, development_id?, project_id?, bid_id?, kind? (service | project), bill_to_party? (customer | gc), gc_customer_id?, google_drive_link?, job_pictures_link?, job_plans_link?, allow_duplicate_name? }' } }, required: ['job'] },
+    description: "Dry-run a new job (v2.6790, punch list #293): the row the New Job form would make — name, address (saved in Title Case as the form saves it), customer, service type, the price (revenue), the line item the price rides on (one line of 1 at the price, named line_name or the job's name, so the Bill tab's lines total the price), the office's numbers, the development, the project, the bid, who the bill goes to, the links, the kind — as you, under the same RLS as the form. The dry run reads the customer (its email and phone fill the job's when left out), the service type, the development, the project and the owner rule's settings, and replies with the row as it will land, the line item it will write, who it belongs to and why, the live jobs on the customer already wearing the name (refused unless allow_duplicate_name), what a bill will still need and what the verb does not do, under a plan_hash; nothing is written.",
+    inputSchema: { type: 'object', properties: { job: { type: 'object', description: '{ job_name, job_address, customer_id (find_customer), service_type_id (read_rows on service_types), revenue? (dollars), line_name? (names the line item the price rides on; the job name when left out), hcp_number?, click_number?, customer_name?, customer_email?, customer_phone?, development_id?, project_id?, bid_id?, kind? (service | project), bill_to_party? (customer | gc), gc_customer_id?, google_drive_link?, job_pictures_link?, job_plans_link?, allow_duplicate_name? }' } }, required: ['job'] },
   },
   {
     name: 'apply_job',
-    description: 'Make the job you planned: the same job plus the plan_hash from plan_job. Reads the world again first and writes only when it still matches: one insert into jobs_ledger as you (training mode, a twin and an archived account are refused by the table, as on the screen), then the kind when you gave one. Replies with the job id, its label and the next press. The Pipeline shows it at Working at once, where a new job starts; plan_job_update moves it, plan_bill bills it.',
+    description: 'Make the job you planned: the same job plus the plan_hash from plan_job. Reads the world again first and writes only when it still matches: one insert into jobs_ledger as you (training mode, a twin and an archived account are refused by the table, as on the screen), then the line item the price rides on when the price is over 0 (one jobs_ledger_fixtures row, as the form\'s first save writes it; a line the table refuses is named with the door that writes it, and the job stands), then the kind when you gave one. Replies with the job id, its label, the line item and the next press. The Pipeline shows it at Working at once, where a new job starts; plan_job_update moves it, plan_bill bills it.',
     inputSchema: { type: 'object', properties: { job: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['job', 'plan_hash'] },
   },
   {
     name: 'plan_job_update',
-    description: "Dry-run a change to a job (v2.6793, punch list #293): the Edit Job form's columns — name, address, the office's numbers, customer, customer name / email / phone, service type, development, project, bid, who the bill goes to, the links, the account manager, the price (revenue), the percent complete, the kind — as one write under the form's own RLS, and the status as the Pipeline moves it, through update_job_status one step at a time (waiting → working → ready_to_bill → billed → paid, and each step back; a step back from Ready to Bill deletes the job's Ready to Bill lines, as the Pipeline's send-back does). The dry run reads the job and every row a new id names, and replies with each column before → after (a column already holding its value is dropped; a plan that changes nothing is refused), the status steps in order, and what the verb does not do, under a plan_hash committed to the columns' before values, the status and updated_at; nothing is written.",
-    inputSchema: { type: 'object', properties: { update: { type: 'object', description: '{ job_id (find_job), set? ({ column: value }; null clears a column that may be blank), status? (waiting | working | ready_to_bill | billed | paid), reason? }' } }, required: ['update'] },
+    description: "Dry-run a change to a job (v2.6793, punch list #293): the Edit Job form's columns — name, address, the office's numbers, customer, customer name / email / phone, service type, development, project, bid, who the bill goes to, the links, the account manager, the price (revenue), the percent complete, the kind — as one write under the form's own RLS, and the status as the Pipeline moves it, through update_job_status one step at a time (waiting → working → ready_to_bill → billed → paid, and each step back; a step back from Ready to Bill deletes the job's Ready to Bill lines, as the Pipeline's send-back does). The price moves the job's line item with it (v2.8555), since the Bill tab writes a job's price as the sum of its lines: a job with no line item gets one line of 1 at the price (named line_name, else the job's name), written even when the price itself does not change, which gives a job made before v2.8555 the line its price never had; a job with one unbilled work line of 1 that totals the price has that line repriced; any other job (several lines, a line on a bill, a count over 1, a discount, a fee riding on the price) is refused in words, and its lines are changed on the Bill tab. The dry run reads the job, every row a new id names and the job's line items when revenue is in set, and replies with each column before → after (a column already holding its value is dropped; a plan that changes nothing is refused), the line item it will write or reprice, the status steps in order, and what the verb does not do, under a plan_hash committed to the columns' before values, the status and updated_at; nothing is written.",
+    inputSchema: { type: 'object', properties: { update: { type: 'object', description: '{ job_id (find_job), set? ({ column: value }; null clears a column that may be blank), status? (waiting | working | ready_to_bill | billed | paid), reason?, line_name? (with set.revenue on a job with no line item: the new line item\'s name) }' } }, required: ['update'] },
   },
   {
     name: 'apply_job_update',
-    description: 'Change the job you planned: the same update plus the plan_hash from plan_job_update. Reads the job again first and writes only when it still matches — a column changed by anyone since refuses. One PATCH on jobs_ledger as you (read back to confirm it landed; a row RLS kept is said), then update_job_status once per step, stopping at the first step the database refuses and saying where the job stands. Replies with what changed, the steps and the next press.',
+    description: 'Change the job you planned: the same update plus the plan_hash from plan_job_update. Reads the job again first and writes only when it still matches — a column changed by anyone since refuses. The line item first when the plan has one (an insert, or the one line\'s price; a line the table refuses stops the apply with nothing changed), then one PATCH on jobs_ledger as you (read back to confirm it landed; a row RLS kept is said), then update_job_status once per step, stopping at the first step the database refuses and saying where the job stands. Replies with what changed, the line item, the steps and the next press.',
     inputSchema: { type: 'object', properties: { update: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['update', 'plan_hash'] },
   },
   {
@@ -2668,13 +2668,25 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       }
       const job = (Array.isArray(made.body) ? made.body[0] : made.body) as { id: string; click_number?: string | null; hcp_number?: string | null; job_name?: string | null } | null
       if (!job || typeof job.id !== 'string') return { log: { status: 'error', target: built.target, error: 'jobs_ledger returned no row' }, text: 'The insert answered with no row — RLS let nothing through. This account cannot make this job.', isError: true }
+      // v2.8555 (punch list #293): the price rides on a line item, as the form's own first save writes one
+      // (writeNewJobChildRows). Like the form, a line the table refuses does not undo the job: the reply says so and
+      // names the door, since a job with a price and no line reads $0 on its Bill tab.
+      const linePlan = dry.reply.line_item as PriceLinePlan | null
+      let line: PriceLineLanded | null = null
+      if (linePlan) {
+        const wrote = await restRows(session, 'POST', 'jobs_ledger_fixtures', 'select=id', priceLineRow(job.id, linePlan.name, linePlan.line_unit_price ?? 0))
+        const lineRow = (wrote.ok ? (Array.isArray(wrote.body) ? wrote.body[0] : wrote.body) : null) as { id?: string } | null
+        line = lineRow && typeof lineRow.id === 'string'
+          ? { write: 'insert', name: linePlan.name, line_unit_price: linePlan.line_unit_price, saved: true, id: lineRow.id }
+          : { write: 'insert', name: linePlan.name, line_unit_price: linePlan.line_unit_price, saved: false, why: wrote.ok ? 'RLS let no row through' : restError(wrote.status, wrote.body) }
+      }
       // The kind goes on after the row, never in the insert (punch list #238): a kind the table refuses says so and the job stands.
       let kind: { asked: string | null; saved: boolean; why?: string } = { asked: p.kind ?? null, saved: false }
       if (p.kind) {
         const k = await restRows(session, 'PATCH', 'jobs_ledger', `id=eq.${job.id}`, { kind: p.kind })
         kind = k.ok ? { asked: p.kind, saved: true } : { asked: p.kind, saved: false, why: restError(k.status, k.body) }
       }
-      return ok(jobAppliedWords(job, kind), { target: job.id })
+      return ok(jobAppliedWords(job, kind, line), { target: job.id })
     }
     case 'plan_job_update':
     case 'apply_job_update': {
@@ -2712,10 +2724,24 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const job = world.job!
       const patch = dry.reply.patch as Record<string, unknown>
       const planned = dry.reply.changes as Array<{ column: string; before: unknown; after: unknown }>
+      // v2.8555 (punch list #293): the line item goes first. The Bill tab writes the price as the sum of the lines, so a
+      // line that is down under an old price is mended by the tab's next save, and a price down with no line under it
+      // is the fault this closes. A line the table refuses stops the apply before anything else is written.
+      const linePlan = dry.reply.line_item as PriceLinePlan | null
+      let line: PriceLineLanded | null = null
+      if (linePlan) {
+        const wrote = linePlan.write === 'insert'
+          ? await restRows(session, 'POST', 'jobs_ledger_fixtures', 'select=id', priceLineRow(job.id, linePlan.name, linePlan.line_unit_price))
+          : await restRows(session, 'PATCH', 'jobs_ledger_fixtures', `id=eq.${linePlan.id}&job_id=eq.${job.id}&select=id`, { line_unit_price: linePlan.line_unit_price }, 'return=representation')
+        if (!wrote.ok) return errored(`The line item was not written, so nothing was changed: ${restError(wrote.status, wrote.body)}`)
+        const lineRow = (Array.isArray(wrote.body) ? wrote.body[0] : wrote.body) as { id?: string } | null
+        if (!lineRow || typeof lineRow.id !== 'string') return errored("The line item was not written, so nothing was changed: RLS let no row through. This account cannot change this job's line items.")
+        line = { write: linePlan.write, name: linePlan.name, line_unit_price: linePlan.line_unit_price, saved: true, id: lineRow.id }
+      }
       let landed: { changes: Array<{ column: string; before: unknown; after: unknown }>; held: string | null } = { changes: [], held: null }
       if (Object.keys(patch).length) {
         const res = await restRows(session, 'PATCH', 'jobs_ledger', `id=eq.${job.id}`, patch)
-        if (!res.ok) return errored(restError(res.status, res.body))
+        if (!res.ok) return errored(`${line ? `The line item "${line.name}" was written and the job's own columns were not, so plan again from the job as it reads now: ` : ''}${restError(res.status, res.body)}`)
         // return=minimal says nothing about rows RLS kept: read the columns back and say what landed.
         const back = await restGet(session, 'jobs_ledger', `select=${Object.keys(patch).join(',')}&id=eq.${job.id}`)
         const row = (back.ok && Array.isArray(back.body) ? back.body[0] : null) as Record<string, unknown> | null
@@ -2737,7 +2763,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
           status.steps.push({ to, ok: true, ...(body.deleted_ready_to_bill_invoices ? { deleted_ready_to_bill_invoices: body.deleted_ready_to_bill_invoices } : {}) })
         }
       }
-      return ok(jobUpdateAppliedWords(job, landed, status), { target: job.id })
+      return ok(jobUpdateAppliedWords(job, landed, status, line), { target: job.id })
     }
     case 'plan_bill':
     case 'apply_bill': {

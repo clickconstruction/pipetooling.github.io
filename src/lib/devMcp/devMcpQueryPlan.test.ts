@@ -193,7 +193,7 @@ describe('check_query_plan — reading a plan', () => {
 
 describe('check_query_plan — the server, the README and the notes carry it', () => {
   it('the verb is on the server, over the GET door, under its version', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.133.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.134.0'")
     expect(SERVER).toContain("name: 'check_query_plan',")
     const route = SERVER.slice(SERVER.indexOf("case 'check_query_plan': {"), SERVER.indexOf("case 'mint_twin_setup_code': {"))
     expect(route).toContain('restGet(await jwt(), `rpc/${QUERY_PLAN_RPC}`, built.query)')

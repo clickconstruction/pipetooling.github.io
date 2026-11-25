@@ -17,6 +17,13 @@ import { titleCaseAddress } from './gcKernels/lib/addressTitleCase.ts'
 // a time in the RPC's order. The plan shows every column before → after and the steps; it commits to the touched
 // columns' before values, the status and updated_at, so a change since refuses the apply.
 
+// v2.8555 / 0.134.0 (punch list #293, found on the look of 2026-11-24): the price rides on a line item. The form
+// works a job's price out of its lines and the Bill tab's save writes the price as their sum, so a job the seat made
+// with a price and no line read $0.00 on the Bill tab and one edit there would have written 0 over it. plan_job now
+// plans one line item with the price (the row `fixtureInsertRows` writes for one named work line) and apply_job
+// writes it after the job; plan_job_update reads the job's lines whenever `revenue` is in set and moves the line with
+// the price, writes the line a price never had, or refuses in words where the lines are not its to change.
+
 export const JOB_VERBS = ['plan_job', 'apply_job', 'plan_job_update', 'apply_job_update'] as const
 export type JobVerb = (typeof JOB_VERBS)[number]
 
@@ -49,6 +56,7 @@ export type NewJobPayload = {
   customer_id: string
   service_type_id: string
   revenue?: number
+  line_name?: string
   hcp_number?: string
   click_number?: string
   customer_name?: string
@@ -68,7 +76,22 @@ export type NewJobPayload = {
 
 export type JobInput = { ok: true; p: NewJobPayload; target: string; planHash: string | null } | { ok: false; error: string }
 
-const SHAPE = `needs job — { job_name (under ${NAME_MAX}), job_address, customer_id (a customers.id — find_customer), service_type_id (a service_types.id — read_rows on service_types), revenue? (dollars, the price; 0 when left out), hcp_number?, click_number? (the office's numbers, blank allowed), customer_name? / customer_email? / customer_phone? (the customer's own when left out), development_id? (a developments.id), project_id? (a projects.id), bid_id? (a bids.id — find_bid), kind? (service | project), bill_to_party? (customer | gc; gc needs gc_customer_id), gc_customer_id?, google_drive_link? / job_pictures_link? / job_plans_link? (https://…), allow_duplicate_name? (a live job already wearing the name on this customer refuses the plan unless true) }.`
+const SHAPE = `needs job — { job_name (under ${NAME_MAX}), job_address, customer_id (a customers.id — find_customer), service_type_id (a service_types.id — read_rows on service_types), revenue? (dollars, the price; 0 when left out; a price over 0 is written as one line item of 1 at that price), line_name? (that line item's name; the job's name when left out), hcp_number?, click_number? (the office's numbers, blank allowed), customer_name? / customer_email? / customer_phone? (the customer's own when left out), development_id? (a developments.id), project_id? (a projects.id), bid_id? (a bids.id — find_bid), kind? (service | project), bill_to_party? (customer | gc; gc needs gc_customer_id), gc_customer_id?, google_drive_link? / job_pictures_link? / job_plans_link? (https://…), allow_duplicate_name? (a live job already wearing the name on this customer refuses the plan unless true) }.`
+
+/** A line item's name as the form saves it (normalizeFixtureDisplayName): inner whitespace collapsed, trimmed. */
+export function lineNameOf(raw: unknown): string | null | false {
+  if (raw === undefined || raw === null) return null
+  if (typeof raw !== 'string') return false
+  const v = raw.replace(/\s+/g, ' ').trim()
+  if (v.length > NAME_MAX) return false
+  return v || null
+}
+
+/** Dollars as the plan's words say them: $1, $12.50, $1,250. */
+export function usd(n: number): string {
+  const cents = Math.round(n * 100)
+  return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 })}`
+}
 
 /**
  * plan_job / apply_job's input, shaped: ids checked, words trimmed, the price a non-negative number. The address is
@@ -96,6 +119,12 @@ export function jobInput(verb: JobVerb, input: Json): JobInput {
     const n = typeof revenue === 'number' ? revenue : typeof revenue === 'string' && /^\d+(\.\d{1,2})?$/.test(revenue.trim()) ? Number(revenue.trim()) : NaN
     if (!Number.isFinite(n) || n < 0 || n > 99_999_999) return { ok: false, error: `${verb}: revenue is the job's price in dollars, a number of 0 or more.` }
     p.revenue = Math.round(n * 100) / 100
+  }
+  const lineName = lineNameOf(src.line_name)
+  if (lineName === false) return { ok: false, error: `${verb}: line_name is the line item's name, text under ${NAME_MAX} characters.` }
+  if (lineName) {
+    if (!((p.revenue ?? 0) > 0)) return { ok: false, error: `${verb}: line_name names the line item the price rides on — give revenue (over 0) with it.` }
+    p.line_name = lineName
   }
   for (const k of ['hcp_number', 'click_number'] as const) {
     const v = str(k)
@@ -287,6 +316,8 @@ export function newJobDryRun(p: NewJobPayload, world: NewJobWorld): DryRun {
   }
   const row = newJobRow(p, world)
   const master = jobMasterUser(world, p)
+  const price = row.revenue as number
+  const lineItem = price > 0 ? newPriceLine(p.line_name || lineNameOf(p.job_name) || p.job_name, price) : null
   const email = row.customer_email as string | null
   // A Stripe bill is numbered from the HCP number, else the Click number, and needs digits in it (create-stripe-invoice, v2.6826).
   const jobNumber = String(row.hcp_number ?? '').trim() || String(row.click_number ?? '').trim()
@@ -310,11 +341,12 @@ export function newJobDryRun(p: NewJobPayload, world: NewJobWorld): DryRun {
       gc_customer: world.gcCustomer ? { id: world.gcCustomer.id, name: world.gcCustomer.name } : null,
       master_user: master,
       row,
+      line_item: lineItem,
       kind_after: p.kind ?? null,
       same_name_live_jobs: world.sameName.map((j) => ({ id: j.id, label: jobShortLabel(j), status: j.status })),
       readiness,
       not_done: [
-        'the child rows the form can add (payments, materials, fixtures, team) — later verbs',
+        'the other child rows the form can add (payments, materials, more line items, a discount, team) — later verbs',
         'the hours baseline at award and the bid\'s budget carry — the form\'s award step',
         'the Drive folder — job-drive-folders places it on its own',
       ],
@@ -323,14 +355,125 @@ export function newJobDryRun(p: NewJobPayload, world: NewJobWorld): DryRun {
 }
 
 /** The apply's reply: the job, its label, and the next press. */
-export function jobAppliedWords(job: { id: string; click_number?: string | null; hcp_number?: string | null; job_name?: string | null }, kind: { asked: string | null; saved: boolean; why?: string }): Json {
+export function jobAppliedWords(
+  job: { id: string; click_number?: string | null; hcp_number?: string | null; job_name?: string | null },
+  kind: { asked: string | null; saved: boolean; why?: string },
+  line: PriceLineLanded | null = null,
+): Json {
   const label = jobShortLabel(job)
+  const lineMissing = line && !line.saved
   return {
     job_id: job.id,
     label,
     kind: kind.asked ? (kind.saved ? kind.asked : `not saved: ${kind.why ?? 'the row refused the kind'}`) : null,
-    next: `${label} is on the Pipeline at Working (a new job's default); get_job reads it. plan_job_update { job_id, status: "ready_to_bill" } when the work is done, then plan_bill bills it and hands the customer the link.`,
+    line_item: priceLineLandedWords(line),
+    next: lineMissing
+      ? `${label} is on the Pipeline at Working with its price and NO line item, so its Bill tab totals $0. plan_job_update { job_id, set: { revenue: ${line.line_unit_price ?? 0} } } writes the line the price is missing — do that before anyone edits its Bill tab.`
+      : `${label} is on the Pipeline at Working (a new job's default); get_job reads it. plan_job_update { job_id, status: "ready_to_bill" } when the work is done, then plan_bill bills it and hands the customer the link.`,
   }
+}
+
+// ── the line the price rides on (v2.8555) ────────────────────────────────────────────────────────────────────────
+
+/** A job's line item as the plan reads it (jobs_ledger_fixtures). */
+export type JobLineRow = { id: string; name: string | null; count: number | string | null; line_unit_price: number | string | null; line_kind: string | null; invoice_id: string | null; sequence_order: number | null }
+export const JOB_LINE_COLS = 'id,name,count,line_unit_price,line_kind,invoice_id,sequence_order'
+
+/** What the plan says it will do to the job's line items; null when it touches none. */
+export type PriceLinePlan =
+  | { write: 'insert'; name: string; count: 1; line_unit_price: number; words: string }
+  | { write: 'update'; id: string; name: string; count: 1; before: number | null; line_unit_price: number | null; words: string }
+
+/** The line as the apply found it: written with its id, or not, with the reason. */
+export type PriceLineLanded = { write: 'insert' | 'update'; name: string; line_unit_price: number | null; saved: boolean; id?: string | null; why?: string }
+
+/** A new job's one line: 1 of the name at the price, said in the plan's words. */
+export function newPriceLine(name: string, price: number): Extract<PriceLinePlan, { write: 'insert' }> {
+  return { write: 'insert', name, count: 1, line_unit_price: price, words: `one line item, "${name}", 1 × ${usd(price)} — the Bill tab's lines total the price` }
+}
+
+/**
+ * The jobs_ledger_fixtures row for that line — the row New Job's `fixtureInsertRows` writes for one named work line
+ * (src/lib/jobs/jobFormAutosaveSlices.ts), column for column, less the id: the form mints one, here the table does.
+ */
+export function priceLineRow(jobId: string, name: string, price: number): Json {
+  return {
+    job_id: jobId,
+    name,
+    sequence_order: 0,
+    line_description: null,
+    invoice_id: null,
+    count: 1,
+    line_unit_price: price > 0 ? price : null,
+    line_kind: 'work',
+    discount_pct: null,
+    discount_basis_positions: null,
+    discount_reason: null,
+    stage_kind: 'any',
+    shared_with_gc: false,
+    bill_to_party: null,
+  }
+}
+
+/** The lines' total as the form sums it (revenueDollarsFromFixtures): named rows, count × unit price, to the cent. */
+export function linesTotalDollars(lines: readonly JobLineRow[]): number {
+  let s = 0
+  for (const f of lines) {
+    if (!(f.name ?? '').trim()) continue
+    const c = Number(f.count)
+    const qty = Number.isFinite(c) && c > 0 ? c : 1
+    const unit = f.line_unit_price == null ? 0 : Number(f.line_unit_price)
+    s += qty * (Number.isFinite(unit) ? unit : 0)
+  }
+  return Math.round(s * 100) / 100
+}
+
+/**
+ * What a price in `set` does to the job's lines. The Bill tab writes a job's price as the sum of its lines, so a
+ * price set beside lines that do not total it is written back over at the tab's next save:
+ *  - no line and a price over 0: one line of 1 at the price, even when the price itself does not change (the line a
+ *    price never had — a job the seat made before v2.8555);
+ *  - the price as the job holds it, or no line and a price of 0: nothing;
+ *  - one plain work line of 1, on no bill, that totals the price today: that line's price moves with it;
+ *  - anything else is refused in words — the lines are the Bill tab's to change.
+ */
+export function priceLinePlan(args: { label: string; jobName: string; priceBefore: number; priceAfter: number; lines: readonly JobLineRow[]; lineName?: string | null }): { ok: true; line: PriceLinePlan | null } | { ok: false; refused: string } {
+  const { label, lines, priceBefore, priceAfter } = args
+  if (lines.length === 0) {
+    if (!(priceAfter > 0)) return { ok: true, line: null }
+    const name = args.lineName || lineNameOf(args.jobName) || 'Job'
+    const why = priceAfter === priceBefore ? `${label} has a price and no line item, so its Bill tab totals $0` : `${label} has no line item`
+    return { ok: true, line: { ...newPriceLine(name, priceAfter), words: `one line item, "${name}", 1 × ${usd(priceAfter)} — ${why}; with it the tab's lines total the price` } }
+  }
+  if (priceAfter === priceBefore) return { ok: true, line: null }
+  const total = linesTotalDollars(lines)
+  const door = `A job's price is the sum of its line items, and the Bill tab's next save would write that sum back over a price set here. Change the lines on the job's Bill tab; this verb moves the price of a job with no line item, or with one unbilled line of 1.`
+  if (lines.length > 1) return { ok: false, refused: `revenue: ${label} carries ${lines.length} line items totalling ${usd(total)}. ${door}` }
+  const only = lines[0] as JobLineRow
+  const name = (only.name ?? '').trim()
+  const count = Number(only.count)
+  const unit = only.line_unit_price == null ? null : Number(only.line_unit_price)
+  const why = (only.line_kind ?? 'work') !== 'work'
+    ? 'is a discount'
+    : only.invoice_id
+      ? 'is on a bill'
+      : !name
+        ? 'has no name'
+        : count !== 1
+          ? `is ${Number.isFinite(count) ? count : 'a count'} of a unit price`
+          : total !== priceBefore
+            ? `totals ${usd(total)} while the job's price is ${usd(priceBefore)} (a fee rides on the job, or the two already disagree)`
+            : null
+  if (why) return { ok: false, refused: `revenue: ${label}'s one line item${name ? `, "${name}",` : ''} ${why}. ${door}` }
+  const after = priceAfter > 0 ? priceAfter : null
+  return { ok: true, line: { write: 'update', id: only.id, name, count: 1, before: unit, line_unit_price: after, words: `the line item "${name}" goes from ${usd(unit ?? 0)} to ${usd(priceAfter)} with the price, so the Bill tab's lines still total it` } }
+}
+
+/** The reply's line: what was written, or that it was not and why. */
+export function priceLineLandedWords(line: PriceLineLanded | null): Json | string | null {
+  if (!line) return null
+  if (!line.saved) return `not saved: ${line.why ?? 'the table refused the line item'}`
+  return { wrote: line.write, id: line.id ?? null, name: line.name, count: 1, line_unit_price: line.line_unit_price }
 }
 
 // ── the update ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -367,9 +510,11 @@ export type JobUpdatePayload = {
   set: Partial<Record<UpdateColumn, string | number | null>>
   status?: JobStatus
   reason?: string
+  /** The name of the line item a price with no line is written as; the job's name when left out. */
+  line_name?: string
 }
 
-const UPDATE_SHAPE = `needs update — { job_id (a jobs_ledger.id — find_job), set? ({ column: value } over the Edit Job form's columns: ${UPDATE_COLUMNS.join(', ')}; null clears one that may be blank), status? (${JOB_STATUSES.join(' | ')} — the Pipeline's own move, one step at a time), reason? }. One of set or status at least.`
+const UPDATE_SHAPE = `needs update — { job_id (a jobs_ledger.id — find_job), set? ({ column: value } over the Edit Job form's columns: ${UPDATE_COLUMNS.join(', ')}; null clears one that may be blank), status? (${JOB_STATUSES.join(' | ')} — the Pipeline's own move, one step at a time), reason?, line_name? (with revenue on a job that has no line item: the name of the line the price is written as; the job's name when left out) }. One of set or status at least. revenue moves the job's line item with it: a job with no line gets one line of 1 at the price, a job with one unbilled line of 1 has that line repriced, and any other job is refused, since the Bill tab writes the price as the sum of its lines.`
 
 /** One column's value, checked as the form checks it; `undefined` means refused with the words. */
 function checkColumn(verb: string, column: UpdateColumn, raw: unknown): { ok: true; value: string | number | null } | { ok: false; error: string } {
@@ -447,6 +592,12 @@ export function jobUpdateInput(verb: JobVerb, input: Json): JobUpdateInput {
     if (reason.length > 500) return { ok: false, error: `${verb}: reason is under 500 characters.` }
     p.reason = reason
   }
+  const lineName = lineNameOf(src.line_name)
+  if (lineName === false) return { ok: false, error: `${verb}: line_name is the line item's name, text under ${NAME_MAX} characters.` }
+  if (lineName) {
+    if (p.set.revenue === undefined) return { ok: false, error: `${verb}: line_name names the line item a price is written as — give set.revenue with it.` }
+    p.line_name = lineName
+  }
   let planHash: string | null = null
   if (verb === 'apply_job_update') {
     const h = typeof input.plan_hash === 'string' ? input.plan_hash.trim().toLowerCase() : ''
@@ -461,25 +612,33 @@ export type JobUpdateWorld = {
   job: JobRow | null
   /** The rows the new ids name, by column: null when not visible. */
   named: Partial<Record<UpdateColumn, NamedRow | null>>
+  /** The job's line items in order, read when `revenue` is in set; null when the plan does not touch the price. */
+  lines: JobLineRow[] | null
 }
 
 const JOB_COLS = ['id', 'status', 'updated_at', 'master_user_id', ...UPDATE_COLUMNS].join(',')
 
-/** The reads the dry run needs: the job, and each row a new id names. */
+/** The reads the dry run needs: the job, each row a new id names, and the job's line items when the price is in set. */
 export async function readJobUpdateWorld(reads: JobReads, p: JobUpdatePayload): Promise<JobUpdateWorld> {
   const one = async <T>(table: string, query: string): Promise<T | null> => ((await reads.rows(table, query))[0] as T | undefined) ?? null
   const job = await one<JobRow>('jobs_ledger', `select=${JOB_COLS}&id=eq.${p.job_id}`)
   const named: JobUpdateWorld['named'] = {}
-  await Promise.all(
-    Object.entries(p.set).map(async ([column, value]) => {
+  let lines: JobLineRow[] | null = null
+  await Promise.all([
+    p.set.revenue === undefined
+      ? Promise.resolve()
+      : reads.rows('jobs_ledger_fixtures', `select=${JOB_LINE_COLS}&job_id=eq.${p.job_id}&order=sequence_order.asc,id.asc`).then((rows) => {
+          lines = rows as JobLineRow[]
+        }),
+    ...Object.entries(p.set).map(async ([column, value]) => {
       const spec = ID_COLUMNS[column]
       if (!spec || typeof value !== 'string') return
       const nameCol = spec.table === 'bids' ? 'project_name' : 'name'
       const row = await one<Json>(spec.table, `select=id,${nameCol}&id=eq.${value}`)
       named[column as UpdateColumn] = row ? { id: String(row.id), name: typeof row[nameCol] === 'string' ? (row[nameCol] as string) : null } : null
     }),
-  )
-  return { job, named }
+  ])
+  return { job, named, lines }
 }
 
 /**
@@ -504,7 +663,8 @@ const same = (a: unknown, b: unknown): boolean => (a ?? null) === (b ?? null) ||
 /**
  * What the plan says and what the hash commits to: the job as it stands (its label, status, updated_at), every column
  * before → after with the no-ops dropped, the status steps in the RPC's order with the one that deletes Ready to Bill
- * lines named, and what the verb does not do. Refuses a job not visible, an id whose row is not visible, and a plan
+ * lines named, the line item a price writes or moves (`priceLinePlan`), and what the verb does not do. Refuses a job
+ * not visible, an id whose row is not visible, a price beside lines that are not this verb's to change, and a plan
  * that changes nothing.
  */
 export function jobUpdateDryRun(p: JobUpdatePayload, world: JobUpdateWorld): DryRun {
@@ -524,9 +684,18 @@ export function jobUpdateDryRun(p: JobUpdatePayload, world: JobUpdateWorld): Dry
     const row = world.named[column as UpdateColumn]
     changes.push({ column, before, after: value, ...(row ? { named: row.name } : {}) })
   }
+  let line: PriceLinePlan | null = null
+  if (p.set.revenue !== undefined) {
+    if (!world.lines) return { ok: false, refused: `${labelOf(job)}'s line items were not read, so its price cannot be planned. Plan again.` }
+    const priceBefore = Number(job.revenue ?? 0)
+    const planned = priceLinePlan({ label: labelOf(job), jobName: String(job.job_name ?? ''), priceBefore: Number.isFinite(priceBefore) ? priceBefore : 0, priceAfter: Number(p.set.revenue), lines: world.lines, lineName: p.line_name })
+    if (!planned.ok) return planned
+    line = planned.line
+  }
+  if (p.line_name && line?.write !== 'insert') return { ok: false, refused: `line_name names a line item this plan would write, and it writes none: ${labelOf(job)} ${world.lines?.length ? 'already has its line items' : 'gets no line at a price of 0'}. Plan again without line_name.` }
   const from = (job.status ?? 'waiting') as JobStatus
   const steps = p.status ? statusSteps(from, p.status) : []
-  if (!changes.length && !steps.length) {
+  if (!changes.length && !steps.length && !line) {
     return { ok: false, refused: p.status ? `${labelOf(job)} already reads that way: it is at ${STATUS_WORDS[from]} and every column in set already holds its value. Nothing to apply.` : `${labelOf(job)} already reads that way: every column in set already holds its value. Nothing to apply.` }
   }
   const stepWords = steps.map((to, i) => {
@@ -541,9 +710,11 @@ export function jobUpdateDryRun(p: JobUpdatePayload, world: JobUpdateWorld): Dry
       job: { id: job.id, label: labelOf(job), status: from, status_words: STATUS_WORDS[from], updated_at: job.updated_at },
       changes,
       patch,
+      line_item: line,
       status: p.status ? { from, to: p.status, steps: stepWords } : null,
       reason: p.reason ?? null,
       not_done: [
+        'the job\'s other line items, a discount and its payments — the Bill tab\'s, or a later verb\'s',
         'the dispatch request the form closes when a phone or pictures link goes from blank to set',
         'the bid outcome the database derives when bid_id changes is written by its trigger, not said here',
       ],
@@ -556,6 +727,7 @@ export function jobUpdateAppliedWords(
   job: { id: string; click_number?: string | null; hcp_number?: string | null; job_name?: string | null },
   landed: { changes: Array<{ column: string; before: unknown; after: unknown }>; held: string | null },
   status: { from: JobStatus; steps: Array<{ to: JobStatus; ok: boolean; error?: string | null; deleted_ready_to_bill_invoices?: number }> } | null,
+  line: PriceLineLanded | null = null,
 ): Json {
   const label = jobShortLabel(job)
   const lastOk = status ? [...status.steps].reverse().find((s) => s.ok)?.to ?? status.from : null
@@ -571,6 +743,7 @@ export function jobUpdateAppliedWords(
     label,
     changed: landed.changes,
     held: landed.held,
+    line_item: priceLineLandedWords(line),
     status: status ? { from: status.from, now, steps: status.steps } : null,
     next,
   }
