@@ -229,7 +229,7 @@ describe('JobDocumentsRequiredPapers', () => {
     await within(card).findByText('Photos and video')
     expect(card.textContent).toContain('Ask first to None')
     expect(card.textContent).toContain('No photos at all.')
-    expect(within(card).getByText('Nothing changes on the paper until you take it.')).toBeTruthy()
+    expect(within(card).getByText('The paper stays as it is until you take it.')).toBeTruthy()
     const take = within(card).getByRole('button', { name: 'Take it, and ask 2 people to sign again' })
     expect(take.style.minHeight).toBe('44px')
     fireEvent.click(take)

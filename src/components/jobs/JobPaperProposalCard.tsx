@@ -124,7 +124,7 @@ export function JobPaperProposalCard({
       ) : (
         <p style={muted}>{moved === 1 ? '1 topic gets stricter.' : `${moved} topics get stricter.`}</p>
       )}
-      <p style={muted}>Nothing changes on the paper until you take it.</p>
+      <p style={muted}>The paper stays as it is until you take it.</p>
       {error ? (
         <div role="alert" style={{ ...muted, color: 'var(--text-red-700)' }}>
           {error}
