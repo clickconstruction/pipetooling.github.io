@@ -112,6 +112,14 @@ rows, ids and counts only. Name no real customer, job, address or amount.
 Row 2 has one exception, and it is not a gap. A line that applied a paper already on record reads **Undo**
 in place of **Void**, and its notice goes back on the desk (v2.7508).
 
+Read on the live site on 2026-11-25, as the dev, with nothing confirmed and nothing deleted. Rows 3, 5,
+8, 1 and 9 each draw their press where their row says, with the counts under *What sits on prod*. A real
+teammate's **Remove the photo…** is dead with its reason, and so is **Reopen…** on a case closed another
+way. Two refusals cannot be shown on prod: no taken-off way has a name that is not ZZ, and no real job
+holds a voided by-hand record. Row 4 has nothing to press. One small fault beside row 8: while a
+person's photo loads, the card reads **Add a photo** and *No photo yet* for about two seconds. It is
+briefed with the widening of rows 8 and 5.
+
 Checked and left off the list, 2026-11-25. **Send** on a new task and **Mark done** both have a way back. A done
 task's own press reads **Mark not done**, History has **Reopen**, and Checklist → Manage → **Delete** removes a
 task with its day rows for a dev, a master or an assistant. The dev seat has no verb for either.
@@ -140,7 +148,9 @@ been cleaned yet.
 - Three test cases closed on Accounts Receivable, each as settled another way. Two were closed by the
   walk of #76 on 2026-11-24, both on one ZZ TEST job. The third was closed by the walk of v2.8552 on
   2026-11-25, on another ZZ test job. A dev can reopen each from *Closed test cases* (row 5, v2.8566).
-  Not pressed yet, and a reopened case stands open for the office until it is closed again.
+  Not pressed yet, and a reopened case stands open for the office until it is closed again. That line
+  reads *Closed test cases · 4* on the live site: the fourth is a test case put back on 2026-11-09, no
+  walk's leftover, and its **Reopen…** is dead with the reason.
 - No by-hand record on a test bill. Row 4's delete (v2.8564) has nothing to press until a walk of #340
   makes one.
 - Two test emails to the sender and two voided test invoices in Stripe's test mode, one of each from

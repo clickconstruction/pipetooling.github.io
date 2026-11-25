@@ -2,7 +2,7 @@
 name: "Bills sent: the office adds to and edits the list under How the bill went"
 number: 340
 group: close
-status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, and took calls 2 to 5 as suggested, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 (the list's own table) in v2.7166, migration `20261114060000` pushed 2026-11-14 · PR 3 (the chips and the window) in v2.7167 · Taunya picked Build all three for calls 6 to 8 on 2026-11-15 · R1 (the day offers the day the bill was made) in v2.7349 · R2 (several bills to one person at once) in v2.7350 · R3 (the form reads the record back) in v2.7351 · R1 to R3 read on the live page on 2026-11-15 with nothing saved · walked live 2026-11-24: the list's presses hold on ZZ-named ways and the form reads right, and the write could not be staged, because v2.8445 took test bills out of the yellow box · v2.8540 gives a dev who shows ZZ test jobs a box of test bills · walked again 2026-11-25: the presses hold at 44 px and that box never drew, because the read dropped every bill made in Stripe's test mode · v2.8559 mends the read and stands the form's typed boxes 44 px · left: the look at the box, then the write walk on a test bill
+status: asked 2026-11-13 by the owner · the card and the mock-up the same day · he picked Option B, the chips, and took calls 2 to 5 as suggested, the same day · PR 1 (a record keeps its words) in v2.7145 · PR 2 (the list's own table) in v2.7166, migration `20261114060000` pushed 2026-11-14 · PR 3 (the chips and the window) in v2.7167 · Taunya picked Build all three for calls 6 to 8 on 2026-11-15 · R1 (the day offers the day the bill was made) in v2.7349 · R2 (several bills to one person at once) in v2.7350 · R3 (the form reads the record back) in v2.7351 · R1 to R3 read on the live page on 2026-11-15 with nothing saved · walked live 2026-11-24: the list's presses hold on ZZ-named ways and the form reads right, and the write could not be staged, because v2.8445 took test bills out of the yellow box · v2.8540 gives a dev who shows ZZ test jobs a box of test bills · walked again 2026-11-25: the presses hold at 44 px and that box never drew, because the read dropped every bill made in Stripe's test mode · v2.8559 mends the read and stands the form's typed boxes 44 px · the box read on the live site 2026-11-25 on v2.8559: it draws four test bills, the totals do not move, and the form's boxes stand 44 px · left: the write walk on a test bill
 summary: >
   Bills sent has one form, Say how it went…, with a list of four fixed ways a bill can go. The
   owner asked that the people who open the page can add to that list and edit it, and to be shown
@@ -11,9 +11,9 @@ summary: >
   off and never deleted, and every way counts under Recorded by hand. The mock-up draws the form
   as it is, three ways to edit the list from where the person stands, and three separate fixes to
   the form itself. I suggest the chips.
-next: Once v2.8559 is live, as a dev turn on ZZ test jobs on the Pipeline and open Bills sent. The box of test bills should draw, and the yellow box's count should not move. Then, on a yes, record a test bill with a ZZ-named way, rename the way, and read the older line. Record two test bills to one customer in one press.
+next: On a yes, as a dev with ZZ test jobs shown, record a test bill from the box with a ZZ-named way, rename the way, and read the older line. Record two test bills to one customer in one press. Then delete the records with the dev's own press (#443 row 4, v2.8564). The box's look as the sample assistant, through View as, is left too.
 size: M as a train of three (S · M · M), then three small ones for the form's own fixes (S each); left: the live walk (S)
-blocker: v2.8559 on the live site, then a yes for the write walk, since a record made by hand cannot be taken back. Two test bills to one ZZ Test customer with no send on record.
+blocker: A yes for the write walk. A record made by hand is taken back only by a dev, on a test bill (v2.8564). The box holds the rows the walk needs: two test bills to one customer with no send on record.
 opinion: walk it live, then retire the card
 ver: v2.7145 · v2.7166 · v2.7167 · v2.7349 · v2.7350 · v2.7351 · v2.8540 · v2.8559
 ---
@@ -182,6 +182,18 @@ Walked on clicktooling.com as the dev at 380 px, on the deploy that holds v2.854
 4. At 380 px, open **Say how it went…** on a row of the box and close it with **Cancel**. The name, the day and the note boxes stand 44 px.
 
 Then steps 2 to 4 and 6 of the first walk can be made on a test bill. Steps 2 and 4 write records nothing takes back (#443), so that walk needs its own yes.
+
+## The look at the box, 2026-11-25 (v2.8559)
+
+Walked on clicktooling.com as the dev, on the deploy that holds every version through v2.8568. Nothing was typed and nothing was recorded.
+
+- **The box draws.** With **ZZ test jobs** shown, `/bills-sent` reads *4 test bills have no send on record* under the yellow box, with the line *You see these because you show ZZ test jobs. They are in no total.* Each row has **Say how it went…**.
+- **Four, where step 1 above says six.** Six bills stand in Stripe's test mode with no send stamp. Two of them were texted with a pay link in other walks, and the page counts a text that names a bill as a send. So four is right.
+- **The totals do not move.** All six tiles and the yellow box read the same with the switch on and off.
+- **At 380 px the form holds.** The way chips, **＋ Add a way**, **Edit list**, the name box, the day box, both day chips, the note box, **Record how it went** and **Cancel** are 44 px high, and the page does not scroll sideways. The form names one more bill to the same customer, so the two-bills-in-one-press step has its rows.
+- **With the switch off the box is gone.**
+
+**Not walked.** The sample assistant's look through **View as** (step 3's second half). Steps 2 to 4 and 6 of the first walk, which write. A record made on a test bill can now be deleted by a dev (#443 row 4, v2.8564), so that walk can take its own records back.
 
 ## The calls
 
