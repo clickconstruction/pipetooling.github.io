@@ -30,8 +30,10 @@ type ToastContextValue = {
   /**
    * A toast with one inline action (Tier-2 #42): "Imported 12 rows · Undo".
    * `durationMs` is the undo window — the action disappears with the toast.
+   * `key` names what the toast is about (one bid, one report): a newer toast with the same key takes the
+   * older one's place, so a thing put away and brought back within the window shows one Undo, not two (v2.8603).
    */
-  showActionToast: (message: string, action: ToastAction, opts?: { type?: ToastType; durationMs?: number }) => void
+  showActionToast: (message: string, action: ToastAction, opts?: { type?: ToastType; durationMs?: number; key?: string }) => void
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
@@ -46,6 +48,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       anchor?: ToastAnchor
       placement?: ToastPlacement
       action?: ToastAction
+      key?: string
     }>
   >([])
 
@@ -67,9 +70,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   )
 
   const showActionToast = useCallback(
-    (message: string, action: ToastAction, opts?: { type?: ToastType; durationMs?: number }) => {
+    (message: string, action: ToastAction, opts?: { type?: ToastType; durationMs?: number; key?: string }) => {
       const id = Date.now()
-      setToasts((prev) => [...prev, { id, message, type: opts?.type ?? 'success', durationMs: opts?.durationMs ?? 10000, action, placement: 'corner' }])
+      const key = opts?.key
+      setToasts((prev) => [...prev.filter((t) => key == null || t.key !== key), { id, message, type: opts?.type ?? 'success', durationMs: opts?.durationMs ?? 10000, action, placement: 'corner', key }])
     },
     [],
   )

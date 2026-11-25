@@ -2,7 +2,7 @@
 title: read field reports on the dashboard
 category: Office
 roles: dev, master_technician, assistant, primary
-keywords: recent reports, unread, new reports, opened, swipe, mark opened, mark unread, undo, done, mark all opened, report inbox, field report, status report, primary, account manager, superintendent, my jobs, missing reports, whose reports
+keywords: recent reports, unread, new reports, opened, swipe, swipe right, swipe back, mark opened, mark unread, undo, done, mark all opened, report inbox, field report, status report, primary, account manager, superintendent, my jobs, missing reports, whose reports
 order: 86
 ---
 The Dashboard's Recent Reports section is an inbox for the crew's latest field reports. A field report is what a tech files from the job.
@@ -54,7 +54,15 @@ When nothing is new the list says *Nothing new to read.*
 
 ## Bring a report back
 
-Open **Opened** at the bottom of the card. Press {{button:outline|Mark unread}} on the report. The blue dot comes back and the report returns to the list.
+Open **Opened** at the bottom of the card.
+
+On a phone, swipe the report to the right. A strip under the report reads **Mark unread**. Keep going until the strip turns blue, then let go. Start the swipe away from the left edge of the screen, where your phone's own Back starts.
+
+On a computer, press {{button:outline|Mark unread}} on the report.
+
+The blue dot comes back and the report returns to the list. A note at the bottom of the screen says which report came back. Press **Undo** on the note within ten seconds to mark it opened again.
+
+Left marks a report opened. Right brings one back. Swipe the other way and the report only shows its strip.
 
 ## The bottom of the card
 
