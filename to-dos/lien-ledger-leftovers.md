@@ -2,21 +2,21 @@
 name: "Lien desk: what the ledger (#361) left, to do later"
 number: 415
 group: residual
-status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454 · loose ends 1, 2, 4 and 6 built the same day on the picks from the pictures, v2.8537, v2.8535 and v2.8538, and loose end 5 answered · walk 2 done on a staged ZZ Test job, walk 7's record written and its reading not seen, which left a finding with no decision yet · v2.8537 and v2.8538 seen on the live desk the same day, read-only, and they read as built; v2.8535's empty card has no live case
+status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454 · loose ends 1, 2, 4 and 6 built the same day on the picks from the pictures, v2.8537, v2.8535 and v2.8538, and loose end 5 answered · walk 2 done on a staged ZZ Test job, walk 7's record written and its reading not seen, which left a finding with no decision yet · v2.8537 and v2.8538 seen on the live desk the same day, read-only, and they read as built; v2.8535's empty card has no live case · walk 4 done on the ZZ Test job staged again, and the two ZZ Test filings voided after it, the same day, on the owner's standing yes for ZZ Test rows · the finding decided the same day, the owner's pick: draw the card from the job's stand-in month, in PR #9754
 summary: >
   Punch list #361 rebuilt the Lien desk's Months on this job as one card, the ledger, and closed on
   2026-11-21 once every choice made with it was built and live. Its last night left a handful of
   small things. Every build among them shipped on 2026-11-24: the late window read from one source
   (v2.8454), the empty card's next press (v2.8535), the claim's cents (v2.8537), and the pinned strip
   for a thumb with a long chip that fits (v2.8538). The five things for Grace were answered that day.
-  Seven walks were owed. Walks 1 and 2 are done. Walk 7's record was written on a ZZ Test job and its
+  Seven walks were owed. Walks 1, 2 and 4 are done. Walk 7's record was written on a ZZ Test job and its
   reading was not seen, and that left a finding: the affidavit pane draws its months card only for a
-  job with approved clock hours. Walk 4 was staged and not walked. Walks 3, 5 and 6 were not staged
-  and wait on live cases. The cents and the pinned strip were seen on the live desk on 2026-11-24 and read as built. The empty
+  job with approved clock hours. The owner picked the way on 2026-11-24, and its build is in PR #9754. Walks 3, 5 and 6 were not staged and wait on live cases. The two
+  ZZ Test filings the walks left are voided. The cents and the pinned strip were seen on the live desk on 2026-11-24 and read as built. The empty
   card's next press has no live case to be seen on.
-next: The owner decides the finding under *Found on the walks*, since walk 7's reading waits on it. Walk 4 can be staged again on the ZZ Test job on the owner's yes, and it needs the two by-hand papers that are still on that job, so void them after it, not before. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
-size: no build left · one decision (the finding) · five walks (XS each): 4 can be staged, 7 waits on the finding, 3, 5 and 6 wait on live cases
-blocker: The finding waits on the owner's decision. Staging a walk writes on a ZZ Test job, so each waits on the owner's yes.
+next: Walk 7 can be read once the finding's build is live (PR #9754, the owner's pick of 2026-11-24). It needs a new record by hand on a ZZ Test job, since the first one is voided. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
+size: one build in its PR (the finding, S) · four walks (XS each): 7 waits on that build, 3, 5 and 6 wait on live cases
+blocker: None. Walk 7 waits on the finding's build going live.
 ---
 
 # Lien desk: what the ledger (#361) left, to do later (#415)
@@ -127,7 +127,8 @@ pictures. Each struck line names its version, and the fragment of that version h
 
 ## Walks still owed
 
-Walks 1 and 2 are done. Walks 3 to 7 are owed, and *Where the walks stand* under the list says what each needs.
+Walks 1, 2 and 4 are done. Walks 3, 5, 6 and 7 are owed, and *Where the walks stand* under the list says what each
+needs.
 
 Every walk is read-only: open the page, read it, press nothing that saves. On the dev server a save writes prod.
 Sign in with `node scripts/dev-pane-login.mjs`, never a typed password. If the browser pane is in another session's
@@ -166,9 +167,19 @@ line says otherwise. Each is read at 730 px and 380 px, in light and in dark. Na
 3. **A missed notice that can no longer go, with two or more closed months (#9262)**, as the dev. The gates' line
    and the strip's first chip read *Windows closed, the last <day>*, and the months bar reads *<months>, closed*.
    Not walked because the one live case has a single closed month.
-4. **A notice with two or more earlier papers (#9130)**, as the dev, on a draft whose job has two sent notices. At
+4. **Done 2026-11-24, on the staged ZZ Test job. A notice with two or more earlier papers (#9130)**, as the dev, on a draft whose job has two sent notices. At
    730 px the grid slides inside its frame and *This notice* stays pinned at the right edge. At 380 px the earlier
    papers are *A ✓* marks and the tick keeps the right edge. Not walked because no live notice has two earlier papers.
+   - Read on the live desk, pressing nothing that saves. The job's draft named an open month over two earlier
+     papers for one closed month, both recorded by hand.
+   - In a narrow card the two earlier papers are *A ✓* and *B ✓* marks under the month, and the tick keeps the
+     right edge. Nothing runs past the edge. That is the card at a 380 px window, and also at a 730 px window,
+     where the pane is 362 px wide.
+   - In a wide card at a 632 px pane the grid slides inside its frame, by 51 px. *This notice* stays pinned at
+     the right edge and draws its edge line. Neither the pane nor the page slides.
+   - One difference from the words above: at a 732 px pane the grid did not slide. Two short by-hand papers fit
+     it exactly. It slides at that width only when the papers' words are longer.
+   - The widths above are the pane's. The months card takes its narrow shape at 560 px and under.
 5. **A closed month noted by someone with a long name (#9075)**, as the dev, on a notice with a noted closed month.
    At 380 px the *noted by* line wraps inside its column and never runs under the tick. Not walked on a real long
    name; it was seen only on made-up names.
@@ -183,15 +194,13 @@ line says otherwise. Each is read at 730 px and 380 px, in light and in dark. Na
 
 ## Where the walks stand
 
-Read on 2026-11-24. Staging a walk writes on a ZZ Test job through the dev seat, so each waits on the owner's yes.
-What walks 3 and 5 need is that day's session's reading, written here as it left it.
+Read on 2026-11-24. Staging a walk writes on a ZZ Test job through the dev seat. The owner gave a standing yes for
+ZZ Test rows that day. What walks 3 and 5 need is that day's session's reading, written here as it left it.
 
 - **Walk 3** was not staged. Two closed months need approved clock hours in two past months, and hours cannot be
   put in a past month through the app. It waits on a live case.
-- **Walk 4** can be staged, and was once. The ZZ Test job holds two § 53.056 notices recorded by hand for one
-  closed month. With its GC put back and its last day of work set by hand to a day in a month still open, the
-  desk drafts a notice with two earlier papers. That is two writes on the job's row to stage and two to put back.
-  It was staged on 2026-11-24 and the staging was taken back before the look.
+- **Walk 4** is done. It was staged twice: the ZZ Test job's GC set and its last day of work set by hand to a
+  day in a month still open, two writes on the job's row, and both put back after the look.
 - **Walk 5** was not staged: the *noted by* line needs a note made by another account, one with a long name. It
   waits on a live case.
 - **Walk 6** cannot be staged. No press makes a sent record that names no month: the by-hand form and the dev
@@ -199,7 +208,7 @@ What walks 3 and 5 need is that day's session's reading, written here as it left
 - **Walk 7** is half done. Record it… on the months card opened the by-hand form with the closed month ticked,
   and one record was written: one new filing and nothing else. The affidavit pane then drew no *Months the
   affidavit claims* card, and its path read *§ 53.056 notice · no work month yet*. Its reading waits on the
-  finding below.
+  finding's build, PR #9754, going live.
 
 ## Found on the walks
 
@@ -219,15 +228,18 @@ ways it could go:
 
 ## Left on prod
 
-Two § 53.056 notice filings stand on the ZZ Test job of the walks, recorded by hand on 2026-11-24 for one closed
-month at $1 each. Their ids start `b32b3eba` and `ccb70578`, and each note starts *ZZ TEST*. Read back live on
-2026-11-24: neither is voided. Nothing deletes a filing. Void is the press on each record in the job's Lien
-window, and it writes one column on one row. No paper on the desk is tied to either, so the void moves nothing
-else. The job has no GC, so it is on no notice list, and ZZ Test jobs are hidden from the desk and left out of
-the attorney's portal. Walk 4 needs both, so void them after it. Void or leave is the owner's call.
+Nothing live. The two § 53.056 notice filings the walks recorded by hand on the ZZ Test job were voided on
+2026-11-24, after walk 4, with the Void press on each record in the job's Lien window. Their ids start `b32b3eba`
+and `ccb70578`. Each void wrote one column on one row, and no paper was tied to either, so nothing else moved.
+The job reads as before the walks: no GC and no last day of work set by hand.
+
+Two things stay that nothing takes back, and both were sent to punch list #443, the standing list of presses
+nothing takes back:
+
+- A voided record cannot be un-voided, and nothing deletes a filing. Both rows stay in the table, voided.
+- Each by-hand record left one line on the job's activity, and the void does not take the line off.
 
 ## How to retire it
 
 Strike each piece as it ships, with its version. Delete the card when the five builds are shipped or
-dropped by their caller, Grace has heard the five, each walk is done or dropped, the finding is decided, and the
-two ZZ Test filings are voided or left on the owner's word.
+dropped by their caller, Grace has heard the five, each walk is done or dropped, and the finding's build has shipped.
