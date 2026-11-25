@@ -35,7 +35,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { retainageReleaseDraft, type RetainageHeldLine } from '../../lib/ar/retainageHeld'
 import { draftRetainageReleaseBill } from '../../lib/ar/retainageHeldIo'
 import { depositClearsYmd } from '../../lib/jobs/checkClearing'
-import { arApplyClosesReplacedCase, arCaseAfterClose, arCaseDay, arCaseMoney, arCaseThisReplaces, arCombinedReplacementFor, arMadeGoodAfterApply, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
+import { arApplyClosesReplacedCase, arCaseAfterClose, arOfferCloseMovesPane, arCaseDay, arCaseMoney, arCaseThisReplaces, arCombinedReplacementFor, arMadeGoodAfterApply, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
 import { arCaseFeeOffer, type ArCaseFeeRow } from '../../lib/jobs/arReturnCaseFee'
 import { listArReturnCaseFees } from '../../lib/jobs/arReturnCaseFeeIo'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
@@ -2210,6 +2210,8 @@ export default function BankPaymentsModal({
     try {
       const err = await closeMadeGoodCore(o.view.id, o.depositId)
       if (err) showToast(`The case did not close: ${err}`, 'error')
+      // The pane lands as after any close when it is on that case, and stays on whatever else the person went on to.
+      else if (arOfferCloseMovesPane(selectedId, o.view.id)) landAfterCaseClose(o.view.id)
     } finally {
       setMadeGoodBusy(false)
       setMadeGoodOffer(null)

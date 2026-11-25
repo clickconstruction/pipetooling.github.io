@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arApplyClosesReplacedCase, arCaseAfterClose, arCaseDay, arCaseTakeOff, arCaseThisReplaces, arCombinedReplacementFor, arMadeGoodAfterApply, arPayerCameBackNote, arPayerKey, arReplacementFor, arReturnCaseView, type ArReplacementDeposit, type ArReturnCaseRow } from './arReturnCase'
+import { arApplyClosesReplacedCase, arCaseAfterClose, arOfferCloseMovesPane, arCaseDay, arCaseTakeOff, arCaseThisReplaces, arCombinedReplacementFor, arMadeGoodAfterApply, arPayerCameBackNote, arPayerKey, arReplacementFor, arReturnCaseView, type ArReplacementDeposit, type ArReturnCaseRow } from './arReturnCase'
 import type { ArDepositTrailRow } from './arDepositTrail'
 import { helpGuidePlainWordsFailures } from '../plainWords'
 
@@ -484,5 +484,28 @@ describe('where the pane lands after a case is closed (punch list #76)', () => {
   })
   it('lands on the first case when a search hid the closed one', () => {
     expect(arCaseAfterClose(['b', 'c'], 'a')).toBe('b')
+  })
+})
+
+/**
+ * Punch list #76: the offer shown after an apply (*It made the check good — close the case*) closes a case too, and
+ * was the one close that did not land the pane. It stays up while the person works on, so the pane may be anywhere.
+ */
+describe('arOfferCloseMovesPane', () => {
+  it('moves the pane when it is on the case the offer closes, to where any close lands it', () => {
+    expect(arOfferCloseMovesPane('case-a', 'case-a')).toBe(true)
+    // Where it then lands is the same rule as the pane's own three closes.
+    expect(arCaseAfterClose(['case-a', 'case-b'], 'case-a')).toBe('case-b')
+    expect(arCaseAfterClose(['case-a'], 'case-a')).toBeNull()
+  })
+
+  it('leaves the pane on a deposit the person went on to, and on another case', () => {
+    expect(arOfferCloseMovesPane('mtx-next-deposit', 'case-a')).toBe(false)
+    expect(arOfferCloseMovesPane('case-b', 'case-a')).toBe(false)
+  })
+
+  it('moves nothing when the pane holds nothing', () => {
+    expect(arOfferCloseMovesPane(null, 'case-a')).toBe(false)
+    expect(arOfferCloseMovesPane(undefined, 'case-a')).toBe(false)
   })
 })
