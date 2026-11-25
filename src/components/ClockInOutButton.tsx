@@ -33,6 +33,10 @@ import {
 import { denverCalendarDayKey, startOfYmdInAppTzMs, todayYmdInAppTz } from '../utils/dateUtils'
 import { CLOCK_OUT_NOTE_FILLED_LINE, CLOCK_OUT_REVIEW_TITLE, clockOutDayReports, clockOutNoteFromReports, type ClockOutReportInput } from '../lib/clock/clockOutNote'
 import { clockOutJob, clockOutPickOf } from '../lib/clock/clockOutJob'
+import { bidDayPressLabel } from '../lib/clock/bidDay'
+import { saveMyBidDay } from '../lib/clock/bidDayIo'
+import { useClockOutBidDay } from '../hooks/useClockOutBidDay'
+import ClockOutBidDay from './clock/ClockOutBidDay'
 import {
   fetchDispatchScheduledJobsForAssigneeDay,
   type DispatchScheduledJobForAssign,
@@ -323,6 +327,11 @@ export default function ClockInOutButton({
   const [assignedJobsListLoading, setAssignedJobsListLoading] = useState(false)
   const [scheduledDispatchJobs, setScheduledDispatchJobs] = useState<DispatchScheduledJobForAssign[]>([])
   const [workingBoardBidPicks, setWorkingBoardBidPicks] = useState<WorkingBoardClockBidPick[]>([])
+  // The bids of the day (punch list #445): the Clock out sheet lists the bids the person worked on, read from the day.
+  // Only the person's own clock reads it, and a read that fails leaves the sheet as it always was.
+  const bidDay = useClockOutBidDay({ open: clockOutReviewOpen && authUser?.id === userId, userId: authUser?.id, role, prefixMap, boardPicks: workingBoardBidPicks })
+  /** With a bid on the list the note is extra: the list is what the day was. */
+  const clockOutListAnswers = bidDay.show && bidDay.list.keptCount > 0
   const lastDefaultUnifiedResultsRef = useRef<UnifiedSearchResult[]>([])
   const useLastHiddenBySchedule = useMemo(() => {
     if (lastSelectedJobBid?.source !== 'job') return false
@@ -1243,7 +1252,7 @@ export default function ClockInOutButton({
   async function handleCompleteClockOutReview() {
     if (salaryUiActive) return
     if (!openSession) return
-    if (!clockOutReviewNotes.trim()) {
+    if (!clockOutListAnswers && !clockOutReviewNotes.trim()) {
       showToast('Please describe what you intend to accomplish today', 'error')
       return
     }
@@ -1252,7 +1261,9 @@ export default function ClockInOutButton({
     setClockOutReviewFailure(null)
     setError(null)
     try {
-      const notesTrim = clockOutReviewNotes.trim()
+      // With a list, the note the office reads is the list, one line a bid, then what the person typed.
+      const notesTrim = clockOutListAnswers ? bidDay.noteWith(clockOutReviewNotes) : clockOutReviewNotes.trim()
+      const bidDayToKeep = bidDay.show && bidDay.workDate ? { workDate: bidDay.workDate, entries: bidDay.entries() } : null
       // The job the press carries (punch list #228): the pick when the person picked a job or bid or pressed Clear, else
       // the session's own, which the clock knows with no signal. The window's read of that job may never have landed, and
       // the server writes whatever the payload names, so an untouched empty pick must not go out as "no job".
@@ -1278,6 +1289,9 @@ export default function ClockInOutButton({
         localStorage.setItem(`clock_in_last_job_bid_${userId}`, JSON.stringify(selectedAssociation))
         setLastSelectedJobBid(selectedAssociation)
       }
+      // The list the person left, kept beside the session. Best effort: the note already carries its lines, so a
+      // save that fails costs the next clock out of the day its memory of a tick, and never the clock out.
+      if (bidDayToKeep && bidDayToKeep.entries.length > 0) void saveMyBidDay(bidDayToKeep.workDate, bidDayToKeep.entries).catch(() => {})
       setClockOutReviewOpen(false)
       setOpenSession(null)
       if (outcome.kind === 'queued') {
@@ -2490,18 +2504,31 @@ export default function ClockInOutButton({
           >
             <style>{`#clock-out-review-modal textarea:focus,#clock-out-review-modal input[type=text]:focus,#clock-out-review-modal input[type=text]:focus-visible{outline:2px solid #dc2626;outline-offset:2px}`}</style>
             <h3 id="clock-out-review-modal-title" style={{ marginTop: 0, marginBottom: '1rem', textAlign: 'center' }}>{CLOCK_OUT_REVIEW_TITLE}</h3>
+            {bidDay.show ? (
+              <ClockOutBidDay
+                list={bidDay.list}
+                board={bidDay.board}
+                disabled={clockOutSaving}
+                onToggle={bidDay.toggle}
+                onAddFromBoard={(bidId) => {
+                  const pick = workingBoardBidPicks.find((b) => b.id === bidId)
+                  if (pick) bidDay.add(pick)
+                }}
+              />
+            ) : null}
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>What did you work on?</span>
+              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{clockOutListAnswers ? 'Anything else?' : 'What did you work on?'}</span>
               <textarea
                 ref={clockOutNotesRef}
                 value={clockOutReviewNotes}
                 onChange={(e) => setClockOutReviewNotes(e.target.value)}
-                placeholder="e.g. Trim set at 456 Oak Ave"
-                rows={3}
+                placeholder={bidDay.show ? 'e.g. Site walk, calls, plans on paper' : 'e.g. Trim set at 456 Oak Ave'}
+                rows={clockOutListAnswers ? 2 : 3}
                 disabled={clockOutSaving}
                 style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: 'var(--surface)' }}
               />
               {clockOutNoteFilled ? <span style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{CLOCK_OUT_NOTE_FILLED_LINE}</span> : null}
+              {clockOutListAnswers && !clockOutNoteFilled ? <span style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>You can leave this empty.</span> : null}
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ marginBottom: '0.25rem' }}>
@@ -2548,6 +2575,8 @@ export default function ClockInOutButton({
                         type="button"
                         onClick={() => {
                           pickByHand(r)
+                          // A bid picked here is a bid the app missed: it joins the list of the day.
+                          if (bidDay.show && r.source === 'bid') bidDay.add(r)
                           setAssociationChipFromSearch(true)
                           setUnifiedSearchResults([])
                           setUnifiedSearchText('')
@@ -2673,17 +2702,17 @@ export default function ClockInOutButton({
                 onClick={() => {
                   void handleCompleteClockOutReview()
                 }}
-                disabled={!clockOutReviewNotes.trim() || clockOutSaving}
+                disabled={(!clockOutListAnswers && !clockOutReviewNotes.trim()) || clockOutSaving}
                 style={{
                   padding: '0.5rem 1rem',
                   border: '1px solid #dc2626',
                   borderRadius: 4,
                   background: '#dc2626',
                   color: 'white',
-                  cursor: clockOutReviewNotes.trim() && !clockOutSaving ? 'pointer' : 'not-allowed',
+                  cursor: (clockOutListAnswers || clockOutReviewNotes.trim()) && !clockOutSaving ? 'pointer' : 'not-allowed',
                 }}
               >
-                {clockOutSaving ? 'Clocking out…' : 'Complete clock out'}
+                {clockOutSaving ? 'Clocking out…' : bidDayPressLabel('Complete clock out', bidDay.show ? bidDay.list.keptCount : 0)}
               </button>
             </div>
           </div>
