@@ -275,6 +275,33 @@ describe('DashboardRecentReportsSection — one heading row, a foot, and Opened 
     }
   })
 
+  it('on a device held in the hand, the list\'s first report alone carries the sign, and Opened\'s first the way back (v2.8604)', async () => {
+    device.handHeld = true
+    const pointer = (el: Element, type: string, x: number) => fireEvent(el, new window.MouseEvent(type, { bubbles: true, clientX: x, clientY: 10, button: 0 }))
+    try {
+      localStorage.removeItem('pipetooling.swipeSign.me')
+      await open(filed(3))
+      const signed = [...document.querySelectorAll('[data-swipe-away-sign]')]
+      expect(signed.length).toBe(1)
+      expect(signed[0]!.closest('[data-report-row]')?.getAttribute('data-report-row')).toBe('n0')
+      const slide = document.querySelector('[data-report-row="n0"] [data-swipe-away-slide]') as HTMLElement
+      pointer(slide, 'pointerdown', 300)
+      pointer(slide, 'pointermove', 280)
+      pointer(slide, 'pointermove', 150)
+      pointer(slide, 'pointerup', 150)
+      expect(await screen.findByText('Marked opened: Maple Court Lot 1.')).toBeTruthy()
+      // The person swiped a report themselves: the sign is done, the way out.
+      expect(JSON.parse(localStorage.getItem('pipetooling.swipeSign.me') ?? 'null')?.away?.learned).toBe(true)
+      fireEvent.click(screen.getByRole('button', { name: 'Opened, 1 report' }))
+      expect(document.querySelector('[data-reports-opened] [data-report-row="n0"] [data-swipe-away-sign]')).not.toBeNull()
+      expect(document.querySelectorAll('[data-reports-list] [data-swipe-away-sign]').length).toBe(1)
+    } finally {
+      device.handHeld = false
+      localStorage.removeItem('pipetooling.swipeSign.me')
+      restore()
+    }
+  })
+
   it('at a desk, Mark unread from Opened says what it did, and Undo marks the report opened again (v2.8603)', async () => {
     try {
       await open(filed(2))

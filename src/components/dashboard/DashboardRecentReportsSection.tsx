@@ -40,6 +40,7 @@ import { DashboardCardHead, DashboardCardTitle } from './DashboardCardTitle'
 import { WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { SwipeAwayRow } from '../shared/SwipeAwayRow'
 import { handHeld } from '../../lib/paintedMap/handHeld'
+import { useSwipeSign } from '../../hooks/useSwipeSign'
 import { swipeAwayHint } from '../../lib/swipeAway'
 
 /**
@@ -128,6 +129,9 @@ export function DashboardRecentReportsSection({
   const { showToast, showActionToast } = useToastContext()
   /** On a device held in the hand a report is marked opened with a swipe; at a desk, with a word press (punch list #426). */
   const swipes = useMemo(() => handHeld(), [])
+  /** The sign that a row swipes (v2.8604): the list's first report shows its strip by itself, and Opened's first report the way back. */
+  const awaySign = useSwipeSign(authUserId, 'away')
+  const backSign = useSwipeSign(authUserId, 'back')
   /** The reports of the window (`RECENT_REPORTS_WINDOW_DAYS`), newest first. */
   const [recentReports, setRecentReports] = useState<RecentReportRow[]>([])
   /** True once the database answered any report at all, in the window or older: an empty list then means nothing is new. */
@@ -418,7 +422,7 @@ export function DashboardRecentReportsSection({
       <li key={r.id} data-report-row={r.id} style={{ borderTop: '1px solid var(--border)' }}>
         {mode === 'listed' ? (
           // A swipe to the left marks the report opened on a device held in the hand; at a desk the same act is the word press.
-          <SwipeAwayRow label="Mark opened" name={name} swipe={swipes} onAway={() => putAway([r])}>
+          <SwipeAwayRow label="Mark opened" name={name} swipe={swipes} onAway={() => putAway([r])} sign={r.id === card.listed[0]?.id ? awaySign.sign : undefined} onOwnSwipe={awaySign.learned}>
             {(press) => (
               <div style={rowBox}>
                 {mark}
@@ -433,7 +437,15 @@ export function DashboardRecentReportsSection({
           </SwipeAwayRow>
         ) : (
           // The way back is the same row turned round: a swipe to the right on a device held in the hand, the word press at a desk.
-          <SwipeAwayRow label="Mark unread" name={name} swipe={swipes} side="right" onAway={() => bringBack(r)}>
+          <SwipeAwayRow
+            label="Mark unread"
+            name={name}
+            swipe={swipes}
+            side="right"
+            onAway={() => bringBack(r)}
+            sign={r.id === card.opened[0]?.id ? backSign.sign : undefined}
+            onOwnSwipe={backSign.learned}
+          >
             {(press) => (
               <div style={rowBox}>
                 {mark}
@@ -548,6 +560,12 @@ export function DashboardRecentReportsSection({
                 <RecentReportsSkeleton />
               ) : (
                 <>
+                  {/* A person who asked for less motion reads the gesture here, for the visit the sign would have shown it. */}
+                  {swipes && awaySign.wordsUp && card.listed.length > 0 ? (
+                    <p data-reports-sign-words style={{ margin: '0.25rem 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
+                      {swipeAwayHint('report', 'mark it opened')}
+                    </p>
+                  ) : null}
                   {card.listed.length > 0 ? (
                     <ul data-reports-list style={{ ...reportList, marginTop: scopeLine ? 0 : '-1px' }}>
                       {card.listed.map((r) => reportRow(r, 'listed'))}

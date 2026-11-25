@@ -2,15 +2,15 @@
 name: "My Bids and Recent Reports on the Dashboard: one swipe to put a row away"
 number: 426
 group: ready
-status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · the walk's two small presses and the frame's lost page mended in v2.8464, the bid window's own small presses in v2.8496 · Recent Reports' swipe walked on clicktooling.com as a sample account 2026-11-24, and it held · tried on a real iPhone 2026-11-25 by the person who runs the session, and the swipe held · that try asked for two more things, a sign that a row can be swiped and a swipe back for a put-away row, both drawn the same day in `swipe-sign-and-back.html` · their pick the same day, *A and no press* · the swipe back built on both cards (v2.8603), not walked · the sign is next · a hide on a second device not walked
+status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · the walk's two small presses and the frame's lost page mended in v2.8464, the bid window's own small presses in v2.8496 · Recent Reports' swipe walked on clicktooling.com as a sample account 2026-11-24, and it held · tried on a real iPhone 2026-11-25 by the person who runs the session, and the swipe held · that try asked for two more things, a sign that a row can be swiped and a swipe back for a put-away row, both drawn the same day in `swipe-sign-and-back.html` · their pick the same day, *A and no press* · the swipe back built on both cards (v2.8603) and the sign (v2.8604), neither walked on a phone · a hide on a second device not walked
 summary: >
   The owner wants the eye icon on each My Bids row replaced by a swipe and the bids grouped by state.
   He wants Recent Reports' heading back on one row, its presses moved to the foot, and the same swipe
   to mark a report opened, so a person can clear work off a list. The plan is one swipe for both
   cards: left, a strip that names the act, Undo, and a folded group at the foot that holds what was
   put away. The reading also found things neither ask named, listed below for each card.
-next: The sign, way A, as the next PR. Then a walk of the swipe back and the sign in the simulator, and retire the card.
-size: L as a train of six (S · M · M · M · S · S); left: the sign (S) and the simulator's walk
+next: A walk of the swipe back and the sign in the simulator. Then retire the card.
+size: L as a train of six (S · M · M · M · S · S); left: the simulator's walk
 blocker: None.
 opinion: build — the owner said go on every recommendation
 ---
@@ -394,6 +394,21 @@ since the second is the same shared row on the other card and a few lines of it.
 
 Each one needs a walk in the simulator before the card closes: a right swipe from the screen's edge, a scroll
 that drifts, and the sign with a finger on its way down.
+
+**The sign as built, v2.8604.** As drawn in way A, with the rules under *The rules of A* above. The row that
+carries it is the first bid of the first group that draws one, and the first report in the list. **Hidden**'s
+and **Opened**'s first rows carry the way back, with a count of their own. Three things differ from the page:
+
+- The way back shows up to three times, as the way out does. The page showed it once.
+- In View as nothing is kept, so a card shows the sign once while it stays on the page and may show it again
+  on the next load.
+- A new device is seeded at sign-in by one read. A Dashboard that draws before that read answers may show the
+  sign once more there.
+
+Held by tests and seen in a sealed frame on a local server with invented rows: the first bid slid 64 px and
+back 850 ms after a scroll stopped, the count was kept, a scroll away and back did not show it again, **Hidden**'s
+first bid slid 108 px to the right when the group was opened, and a swipe by hand marked the way out as learned.
+With reduced motion no row moved and *Swipe a bid left to hide it.* stood under **Unsent**. Not seen on a phone.
 
 **The swipe back as built, v2.8603.** As drawn, with one thing the mock-up did not have. A bid hidden and shown
 again inside ten seconds would have stacked two toasts with two **Undo** presses, so a toast may now name what

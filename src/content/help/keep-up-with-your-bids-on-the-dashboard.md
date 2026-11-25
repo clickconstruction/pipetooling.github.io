@@ -2,7 +2,7 @@
 title: keep up with your bids on the dashboard
 category: Office
 roles: dev, master_technician, assistant, controller, estimator, primary
-keywords: my bids, dashboard, swipe, swipe to hide, swipe right, swipe back, undo, unsent, not yet won or lost, won, started or complete, hidden, hide bid, show again, past due, no due date, unread updates, mark read, bid board, estimator, account manager, new bid
+keywords: my bids, dashboard, swipe, swipe to hide, swipe right, swipe back, bid moves by itself, reduce motion, undo, unsent, not yet won or lost, won, started or complete, hidden, hide bid, show again, past due, no due date, unread updates, mark read, bid board, estimator, account manager, new bid
 order: 69
 ---
 The My Bids card on the Dashboard lists the bids where you are the estimator or the account manager. You open the ones you are working on. You hide the ones you do not need to see.
@@ -60,6 +60,18 @@ On a computer, press {{button:outline|Show again}} on the bid.
 The bid goes back to its group. A note at the bottom of the screen says which bid came back. Press **Undo** on the note within ten seconds to hide it again.
 
 A hidden bid comes back by itself when someone writes a note on it. The bid stays in its group until you press {{button:outline-amber|Mark read}}.
+
+## How the card shows you the swipe
+
+On a phone, the first bid on the card moves by itself the first time you scroll down to it. The bid slides to the left, shows **Hide** for a second and slides back. Nothing is hidden. The card is showing you that a bid swipes.
+
+Touch the screen and the bid goes straight back. A press still opens the bid.
+
+The card does this once a day at most and three times at most. It stops for good the first time you swipe a bid yourself. It follows you, so a new phone does not start over.
+
+The first bid in **Hidden** does the same to the right, to show the way back.
+
+If your phone is set to reduce motion, no bid moves. The card writes *Swipe a bid left to hide it.* under the group's heading for that visit.
 
 ## If you swipe the wrong way
 

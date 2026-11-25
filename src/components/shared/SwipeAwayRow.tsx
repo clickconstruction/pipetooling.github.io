@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useSwipeRow } from '../people/useSwipeRow'
 import { prefersReducedMotion } from '../../lib/landOn'
+import { SWIPE_SIGN_STILL_MS } from '../../lib/swipeSign'
+import type { SwipeRowSign } from '../../hooks/useSwipeSign'
 import {
   SWIPE_AWAY_ARMED,
   SWIPE_AWAY_REST,
@@ -42,6 +44,11 @@ const WORD_PRESS: CSSProperties = {
  * the row slides by itself to show its strip's word on the side it goes, then slides back. A person
  * who asked their device for less motion gets no such slide.
  *
+ * `sign` makes this row the one that shows a person the swipe (v2.8604, `swipeSign.ts`): once the row
+ * has stood in full view for half a second, with no finger down and the page still, it shows its strip
+ * the same way, if `sign.mayPlay()` still says so. The card gives it to its first row only.
+ * `onOwnSwipe` is called when a finger, not a press, does the act, so the card can stop the sign for good.
+ *
  * `swipe` is true on a device held in the hand. The row then slides over a strip that names the act;
  * past the mark the strip turns blue and letting go calls `onAway`. The strip is a real button, always
  * in the accessibility tree, so Tab reaches it (the row slides aside to show it) and a screen reader
@@ -58,6 +65,8 @@ export function SwipeAwayRow({
   swipe,
   side = 'left',
   radius = 0,
+  sign,
+  onOwnSwipe,
   children,
 }: {
   /** The act: the strip's words and the word press's. */
@@ -70,6 +79,10 @@ export function SwipeAwayRow({
   side?: SwipeAwaySide
   /** The corner of the row's box, so the strip under it is clipped to the same shape. */
   radius?: number
+  /** Given to the one row of a card that shows the sign that rows swipe. Keep its identity still (`useSwipeSign`). */
+  sign?: SwipeRowSign
+  /** A finger did the act. A press on the strip or the word press does not call it. */
+  onOwnSwipe?: () => void
   children: (press: ReactNode) => ReactNode
 }) {
   const [open, setOpen] = useState(false)
@@ -82,16 +95,67 @@ export function SwipeAwayRow({
     setShown(null)
   }, [])
   useEffect(() => () => showTimers.current.forEach(clearTimeout), [])
-  /** Slide out far enough to read the strip's word, hold, slide back. Never as far as the mark. */
-  const showStrip = () => {
-    if (prefersReducedMotion()) return
+  /** Slide out far enough to read the strip's word, hold, slide back. Never as far as the mark. False when the row stayed still. */
+  const showStrip = (): boolean => {
+    if (prefersReducedMotion()) return false
     stopShow()
     setShown({ offset: (side === 'right' ? 1 : -1) * swipeShowReach(label), ms: SWIPE_SHOW_MS.out })
     showTimers.current = [
       setTimeout(() => setShown({ offset: 0, ms: SWIPE_SHOW_MS.back }), SWIPE_SHOW_MS.out + SWIPE_SHOW_MS.hold),
       setTimeout(() => setShown(null), SWIPE_SHOW_MS.out + SWIPE_SHOW_MS.hold + SWIPE_SHOW_MS.back),
     ]
+    return true
   }
+  const showStripNow = useRef(showStrip)
+  showStripNow.current = showStrip
+
+  // The sign: this row shows its strip once it has stood in full view, with no finger down and the page still.
+  const rowRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = rowRef.current
+    if (!swipe || !sign || !el || typeof IntersectionObserver === 'undefined') return
+    let inView = false
+    let fingerDown = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const wait = () => {
+      clearTimeout(timer)
+      if (!inView || fingerDown) return
+      timer = setTimeout(() => {
+        if (!sign.mayPlay()) return
+        sign.played(showStripNow.current())
+      }, SWIPE_SIGN_STILL_MS)
+    }
+    const seen = new IntersectionObserver(
+      (entries) => {
+        const last = entries[entries.length - 1]
+        inView = !!last && last.isIntersecting && last.intersectionRatio >= 0.99
+        wait()
+      },
+      { threshold: [0, 0.99] },
+    )
+    seen.observe(el)
+    const down = () => {
+      fingerDown = true
+      clearTimeout(timer)
+    }
+    const up = () => {
+      fingerDown = false
+      wait()
+    }
+    // A page that moves, or a finger on its way down, starts the wait over: the row never moves under a thumb.
+    window.addEventListener('scroll', wait, { capture: true, passive: true })
+    window.addEventListener('pointerdown', down, true)
+    window.addEventListener('pointerup', up, true)
+    window.addEventListener('pointercancel', up, true)
+    return () => {
+      clearTimeout(timer)
+      seen.disconnect()
+      window.removeEventListener('scroll', wait, true)
+      window.removeEventListener('pointerdown', down, true)
+      window.removeEventListener('pointerup', up, true)
+      window.removeEventListener('pointercancel', up, true)
+    }
+  }, [swipe, sign])
   const drag = useSwipeRow({
     actionsWidth: SWIPE_AWAY_STRIP_WIDTH,
     swipeOpen: open,
@@ -103,8 +167,10 @@ export function SwipeAwayRow({
     onWrongWay: showStrip,
     // A row at rest that settles open was let go past the mark: that is the act. A row a key opened just closes or stays.
     onSwipeChange: (next) => {
-      if (next && !open) onAway()
-      else setOpen(next)
+      if (next && !open) {
+        onOwnSwipe?.()
+        onAway()
+      } else setOpen(next)
     },
   })
   const pressName = swipeAwayPressName(label, name)
@@ -127,7 +193,7 @@ export function SwipeAwayRow({
   // The strip is under the edge the row uncovers: a row that goes left shows it on its right.
   const stripEdge = side === 'right' ? 'left' : 'right'
   return (
-    <div data-swipe-away-row={side} style={{ position: 'relative', overflow: 'clip', borderRadius: radius }}>
+    <div ref={rowRef} data-swipe-away-row={side} data-swipe-away-sign={sign ? 'true' : undefined} style={{ position: 'relative', overflow: 'clip', borderRadius: radius }}>
       <div style={{ position: 'absolute', top: 0, bottom: 0, [stripEdge]: 0, width: SWIPE_AWAY_STRIP_WIDTH, display: 'flex' }}>
         <button
           type="button"
