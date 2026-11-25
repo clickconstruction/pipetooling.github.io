@@ -27,7 +27,7 @@ import { PICKER_WORDS, pickerGuess, pickerGuessWords, pickerHome, pickerSections
 import { loadPickerLists, type PickerLists } from '../../lib/paintedMap/paintedMapJobPickerIo'
 import { PAINTED_MAP_SHEET_Z } from '../../lib/windowLayers'
 import { PaintAMapJobPicker } from './PaintAMapJobPicker'
-import { paintedSheetFrame, usePaintedSheetDesk } from './paintedSheetFrame'
+import { paintedSheetFrame, usePaintedSheetBand, usePaintedSheetDesk } from './paintedSheetFrame'
 import { PAINT_SWATCH } from './paintedMapLook'
 import type { PaintedMapToStart } from './PaintedMapWindow'
 
@@ -55,6 +55,8 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose, loadLists =
   const { user } = useAuth()
   const userId = user?.id ?? null
   const desk = usePaintedSheetDesk()
+  // A phone's scrim fills what shows: above Safari's bar, and above the keyboard.
+  const shows = usePaintedSheetBand()
   // Opened with no job (the Dashboard's press with nothing known, the header's search, the Documents tab): the app guesses the next job or the last, or asks.
   const homeless = !given.jobId && !given.developmentId
   const [picked, setPicked] = useState<PickerJob | null>(null)
@@ -110,7 +112,7 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose, loadLists =
     }
   }, [homeless, userId, loadLists])
 
-  const frame = paintedSheetFrame(desk)
+  const frame = paintedSheetFrame(desk, shows)
 
   const pick = (job: PickerJob) => {
     setPicked(job)

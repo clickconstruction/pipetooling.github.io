@@ -40,6 +40,12 @@ const setDesk = (desk: boolean) => {
   window.matchMedia = ((query: string) => ({ matches: desk && query.includes('min-width'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
 }
 
+/** What the phone says of the page shows, as `window.visualViewport` gives it. jsdom has none, which keeps the page box. */
+const setShows = (box: { height: number; offsetTop: number } | null) => {
+  if (box) Object.defineProperty(window, 'visualViewport', { value: { ...box, addEventListener: () => {}, removeEventListener: () => {} }, configurable: true })
+  else delete (window as unknown as { visualViewport?: unknown }).visualViewport
+}
+
 // jsdom has no geolocation. A phone has, and the sheet offers walking only where there is one.
 const withLocation = (on: boolean) => {
   if (on) Object.defineProperty(navigator, 'geolocation', { value: {}, configurable: true })
@@ -49,6 +55,7 @@ beforeEach(() => withLocation(true))
 afterEach(() => {
   cleanup()
   withLocation(false)
+  setShows(null)
   delete (window as unknown as { matchMedia?: unknown }).matchMedia
 })
 
@@ -185,6 +192,29 @@ describe('PaintAMapStartSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'cancel the picker' }))
     expect(sheet.style.visibility).toBe('')
     expect((screen.getByLabelText('What is it?') as HTMLInputElement).value).toBe('The back gate')
+  })
+
+  it('on a phone the scrim is the part of the page that shows, so the sheet ends above Safari’s bar (the simulator’s walk of 2026-11-25)', async () => {
+    // The phone says 706 px of the page show: the rest is under Safari's bar.
+    setShows({ height: 706, offsetTop: 0 })
+    const phone = render(<PaintAMapStartSheet home={{ jobId: 'j1', developmentId: null, label: 'J100 · First Lot' }} onStart={() => {}} onClose={() => {}} />)
+    const scrim = document.querySelector('[data-paint-a-map-start]') as HTMLElement
+    expect(scrim.style.height).toBe('706px')
+    expect(parseFloat(scrim.style.top)).toBe(0)
+    expect(scrim.style.bottom).toBe('')
+    expect(scrim.style.alignItems).toBe('flex-end')
+    // The sheet is at most as tall as that band and scrolls inside it, so Start with a place is reachable.
+    const sheet = scrim.querySelector('[role=dialog]') as HTMLElement
+    expect(sheet.style.maxHeight).toBe('100%')
+    expect(sheet.style.overflowY).toBe('auto')
+    expect(screen.getByRole('button', { name: /Start with a place/ })).toBeTruthy()
+    phone.unmount()
+    // At a desk the window keeps the page box, whatever shows.
+    setDesk(true)
+    render(<PaintAMapStartSheet home={{ jobId: 'j1', developmentId: null, label: 'J100 · First Lot' }} onStart={() => {}} onClose={() => {}} />)
+    const desk = document.querySelector('[data-paint-a-map-start]') as HTMLElement
+    expect(desk.style.height).toBe('')
+    expect(parseFloat(desk.style.inset)).toBe(0)
   })
 
   it('a job pressed opens the sheet on it, with For at the top, and starts the map there', async () => {

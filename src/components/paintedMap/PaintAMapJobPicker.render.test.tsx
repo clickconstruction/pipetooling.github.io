@@ -266,6 +266,20 @@ describe('PaintAMapJobPicker', () => {
     expect(document.querySelector('[data-picker-today]')).not.toBeNull()
   })
 
+  it('on a phone the scrim is the part of the page that shows, so the list ends above Safari’s bar and above the keyboard (punch list #392)', async () => {
+    // The search has the keyboard: 420 px show, and the phone slid the page 180 px down.
+    Object.defineProperty(window, 'visualViewport', { value: { height: 420, offsetTop: 180, addEventListener: () => {}, removeEventListener: () => {} }, configurable: true })
+    try {
+      render(<PaintAMapJobPicker userId="me" io={makeIo()} lists={LISTS} onPick={() => {}} onClose={() => {}} />)
+      const scrim = document.querySelector('[data-paint-a-map-job-picker]') as HTMLElement
+      expect(scrim.style.top).toBe('180px')
+      expect(scrim.style.height).toBe('420px')
+      expect(scrim.style.bottom).toBe('')
+    } finally {
+      delete (window as unknown as { visualViewport?: unknown }).visualViewport
+    }
+  })
+
   it('is a sheet on a phone with no cursor in the search, and a window at a desk with the cursor in it', async () => {
     const io = makeIo()
     const phone = render(<PaintAMapJobPicker userId="me" io={io} lists={LISTS} onPick={() => {}} onClose={() => {}} />)
