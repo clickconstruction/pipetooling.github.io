@@ -2,7 +2,7 @@
 name: "Clock out: the bids of the day"
 number: 445
 group: gated
-status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · nothing is built
+status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's first look the same day, one line shape for every row · nothing is built
 summary: >
   An estimator works one bid at a time, and the app already records most of that work without being asked.
   This card reads those records into a list at clock out: the bids the person worked on today, with nothing
@@ -206,8 +206,8 @@ with a **J1007** chip. An estimator cannot read most job rows, so the bid's name
    apps and one beat, so the day could count twice.
 
 **How it feels to be measured.** The list is a thing a person confirms about their own day. It is not a
-stopwatch. So the pick shows no minute count and no total against the clock. It says the sizes are
-rough. It lets the person take a bid off with no reason asked. It never blocks clock out.
+stopwatch. So the pick shows a rounded size, no count of changes and no total against the clock. It says
+the sizes are rough. It lets the person take a bid off with no reason asked. It never blocks clock out.
 
 ## The mock-up and the pass
 
@@ -225,7 +225,8 @@ and a day the app saw nothing. The rows and buttons work.
 
 - Two shelves. **Bids you worked on today** holds bids the person changed. **Opened, nothing changed**
   holds the rest, each with one **Add** press.
-- A rough size in words, such as **A few minutes** or **About 2 hours**. Never a minute count.
+- Every row's line reads the same way: the size, then the tab, as **2 hours · Pricing** or
+  **5 minutes · Counts**. The size is rounded, and one line under the list says the sizes are rough.
 - **Take off** leaves the row in place, struck through, with **Put back**.
 - **Add a bid the app missed** offers the bids on the person's board as one-press chips, then the search
   the sheet already has.
@@ -237,6 +238,25 @@ and a day the app saw nothing. The rows and buttons work.
 in CountTooling stays unseen until step 6. The rough sizes can still be wrong on a day with two windows
 open.
 
+## The owner's look
+
+2026-11-25, on the pick, in the owner's words:
+
+> Your pick isn't too bad. I'd think that we could do a better job standardizing what lines are showing. So
+> instead of saying open about five minutes We can remove the words open about.
+
+What changed in `mockup.html` the same day:
+
+- **One line shape for every row, on both shelves: the size, then the tab.** A worked bid reads
+  **3 hours · Takeoffs and Pricing**. An opened bid reads **5 minutes · Counts**. The words *Open about*
+  and *About* are gone.
+- **The tab is always a tab's name.** A line no longer names the act, such as a date that was set.
+- **The size is always a number.** *A few minutes* is gone. A size is rounded to the minute under ten
+  minutes, to five minutes under an hour and to the half hour above that.
+- A bid added from the lower shelf keeps its own line. A bid the app never saw reads *Added by you*.
+
+The six calls below are not answered yet.
+
 ## The calls
 
 Six calls for the owner, each with a pick.
@@ -244,7 +264,8 @@ Six calls for the owner, each with a pick.
 1. **Which way?** *Pick: the pick in the mock-up, the list with two shelves.* Step 1 ships way A first,
    since it needs no table, and step 3 replaces it.
 2. **Bids or jobs in the list?** *Pick: bids. A bid that became a job shows its job number beside it.*
-3. **Does the list show a size?** *Pick: yes, in rough words, and only once step 2 is live. Never minutes.*
+3. **Does the list show a size?** *Pick: yes, rounded, and only once step 2 is live. No total against the
+   clock.*
 4. **Who sees it?** Today the clock-out note is read by the person, the office and anyone with payroll
    access. The app-time beat is read by the person, a dev, the owner and anyone the owner grants
    (`docs/ACCESS_CONTROL.md`, the People page's Activity tab). *Pick: split it the same way. The list the

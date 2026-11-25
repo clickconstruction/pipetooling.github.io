@@ -140,7 +140,7 @@
   <table class="pass">
     <tr><th>What was weak</th><th>What the pick does</th></tr>
     <tr><td>A bid opened for two minutes sat beside one worked all morning.</td><td>Two shelves. <b>Worked on</b> holds bids the person changed. <b>Opened, nothing changed</b> holds the rest, each with one <b>Add</b> press.</td></tr>
-    <tr><td>Minutes claim more than the app knows.</td><td>A rough size in words: <b>A few minutes</b>, <b>About 2 hours</b>. Never a minute count, never a total against the clock.</td></tr>
+    <tr><td>Exact minutes and change counts claim more than the app knows.</td><td>Every row reads the same way: the size, then the tab, as <b>2 hours · Pricing</b> or <b>5 minutes · Counts</b>. The size is rounded, and one line under the list says so. Never a total against the clock.</td></tr>
     <tr><td>The list could hold up clock out.</td><td><b>Complete clock out</b> is live the moment the list holds one bid. The note becomes optional.</td></tr>
     <tr><td>Taking one off by mistake.</td><td><b>Take off</b> leaves the row in place, struck through, with <b>Put back</b>.</td></tr>
     <tr><td>Work the app cannot see: a takeoff in CountTooling, a call, a set of plans on paper.</td><td><b>Add a bid the app missed</b> offers the bids on the person's board as one-press chips, then the search the sheet already has.</td></tr>
@@ -166,25 +166,25 @@
     usual: {
       clock: 'Clocked in 7:02. 7 h 36 min so far.',
       worked: [
-        { id: 'b412', name: 'B412 · ZZ Test Ridgeway Clinic', what: 'Takeoffs and Pricing', rough: 'About 3 hours', exact: '2 h 52 min · 45 changes', seg: [8, 38], word: 'takeoffs, pricing' },
-        { id: 'b398', name: 'B398 · ZZ Test Harbor Lofts', what: 'Pricing and Cover Letter', rough: 'About 2 hours', exact: '1 h 56 min · 181 changes', seg: [48, 25], word: 'pricing, cover letter' },
-        { id: 'b377', name: 'B377 · ZZ Test Cedar Row Homes', job: 'J1007', what: 'Submittals', rough: 'About 30 minutes', exact: '28 min · 6 changes', seg: [80, 6], word: 'submittals' },
-        { id: 'b420', name: 'B420 · ZZ Test Lakeside Dental', what: 'Follow-up date set', rough: 'A few minutes', exact: '1 min · 1 change', seg: [93, 0.6], word: 'follow-up set' }
+        { id: 'b412', name: 'B412 · ZZ Test Ridgeway Clinic', what: 'Takeoffs and Pricing', rough: '3 hours', exact: '2 h 52 min · 45 changes', seg: [8, 38], word: 'takeoffs, pricing' },
+        { id: 'b398', name: 'B398 · ZZ Test Harbor Lofts', what: 'Pricing and Cover Letter', rough: '2 hours', exact: '1 h 56 min · 181 changes', seg: [48, 25], word: 'pricing, cover letter' },
+        { id: 'b377', name: 'B377 · ZZ Test Cedar Row Homes', job: 'J1007', what: 'Submittals', rough: '30 minutes', exact: '28 min · 6 changes', seg: [80, 6], word: 'submittals' },
+        { id: 'b420', name: 'B420 · ZZ Test Lakeside Dental', what: 'Bid Board', rough: '1 minute', exact: '1 min · 1 change', seg: [93, 0.6], word: 'follow-up set' }
       ],
       opened: [
-        { id: 'b425', name: 'B425 · ZZ Test Mill Street Bakery', what: 'Open about 2 minutes.' },
-        { id: 'b431', name: 'B431 · ZZ Test Orchard School', what: 'Open about 5 minutes on Counts.' }
+        { id: 'b425', name: 'B425 · ZZ Test Mill Street Bakery', rough: '2 minutes', what: '' },
+        { id: 'b431', name: 'B431 · ZZ Test Orchard School', rough: '5 minutes', what: 'Counts' }
       ]
     },
     touches: {
       clock: 'Clocked in 8:10. 5 h 20 min so far.',
       worked: [
-        { id: 'b420', name: 'B420 · ZZ Test Lakeside Dental', what: 'Follow-up date set', rough: 'A few minutes', exact: '1 min · 1 change', seg: [29, 0.6], word: 'follow-up set' },
-        { id: 'b425', name: 'B425 · ZZ Test Mill Street Bakery', what: 'Marked sent', rough: 'A few minutes', exact: '2 min · 3 changes', seg: [35, 0.6], word: 'marked sent' },
-        { id: 'b436', name: 'B436 · ZZ Test Quarry Road Shops', what: 'Due date changed', rough: 'A few minutes', exact: '1 min · 1 change', seg: [71, 0.6], word: 'due date changed' }
+        { id: 'b420', name: 'B420 · ZZ Test Lakeside Dental', what: 'Bid Board', rough: '1 minute', exact: '1 min · 1 change', seg: [29, 0.6], word: 'follow-up set' },
+        { id: 'b425', name: 'B425 · ZZ Test Mill Street Bakery', what: 'Submission & Followup', rough: '2 minutes', exact: '2 min · 3 changes', seg: [35, 0.6], word: 'marked sent' },
+        { id: 'b436', name: 'B436 · ZZ Test Quarry Road Shops', what: 'Bid Board', rough: '1 minute', exact: '1 min · 1 change', seg: [71, 0.6], word: 'due date changed' }
       ],
       opened: [
-        { id: 'b412', name: 'B412 · ZZ Test Ridgeway Clinic', what: 'Open about 40 minutes on Takeoffs.' }
+        { id: 'b412', name: 'B412 · ZZ Test Ridgeway Clinic', rough: '40 minutes', what: 'Takeoffs' }
       ]
     },
     nothing: { clock: 'Clocked in 7:30. 6 h 05 min so far.', worked: [], opened: [] }
@@ -198,6 +198,11 @@
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function nameHtml(b) { return esc(b.name) + (b.job ? '<span class="jobchip" title="This bid is now job ' + b.job + '">' + b.job + '</span>' : ''); }
   function day() { return DAYS[state.day]; }
+  /* Every row's line reads the same way: the size, then the tab. A row with no size shows its one fact alone. */
+  function lineHtml(b) {
+    if (!b.rough) return '<span class="what">' + esc(b.what) + '</span>';
+    return '<span class="size">' + esc(b.rough) + '</span>' + (b.what ? '<span class="what"> · ' + esc(b.what) + '</span>' : '');
+  }
 
   /* ---- Today: the sheet as it is (ClockInOutButton.tsx, the Clock out window) ---- */
   function todayHtml(key) {
@@ -236,7 +241,7 @@
     var rows = all.map(function (b) {
       var on = !state.bOff[b.id];
       return '<li' + (b.exact ? '' : ' class="weak"') + '><input class="cbx" type="checkbox" data-b="' + b.id + '"' + (on ? ' checked' : '') + ' aria-label="Keep ' + esc(b.name) + '">' +
-        '<span class="who"><span class="name">' + nameHtml(b) + '</span><br><span class="what">' + esc(b.exact || b.what.replace('about ', '').replace('.', '') + ' · 0 changes') + '</span></span></li>';
+        '<span class="who"><span class="name">' + nameHtml(b) + '</span><br><span class="what">' + esc(b.exact || 'Open ' + b.rough + (b.what ? ' on ' + b.what : '') + ' · 0 changes') + '</span></span></li>';
     }).join('');
     var n = all.filter(function (b) { return !state.bOff[b.id]; }).length;
     return '<h3>Clock out</h3>' +
@@ -252,7 +257,7 @@
     var d = day();
     var segs = d.worked.map(function (b, i) { return '<i style="left:' + b.seg[0] + '%;width:' + b.seg[1] + '%;background:' + COLORS[i % 4] + '" title="' + esc(b.name) + '"></i>'; }).join('');
     var rows = d.worked.map(function (b, i) {
-      return '<li><span class="dot" style="background:' + COLORS[i % 4] + '"></span><span class="who"><span class="name">' + nameHtml(b) + '</span><br><span class="what">' + esc(b.what) + '</span></span><span class="size">' + esc(b.rough.replace('About ', '')) + '</span></li>';
+      return '<li><span class="dot" style="background:' + COLORS[i % 4] + '"></span><span class="who"><span class="name">' + nameHtml(b) + '</span><br><span class="what">' + esc(b.what) + '</span></span><span class="size">' + esc(b.rough) + '</span></li>';
     }).join('');
     return '<h3>Clock out</h3>' +
       '<div class="sec"><div class="head"><span>Your day</span></div>' +
@@ -267,7 +272,9 @@
   function pickLists() {
     var d = day();
     var worked = d.worked.slice();
-    d.opened.concat(BOARD).forEach(function (b) { if (state.added[b.id]) worked.push({ id: b.id, name: b.name, what: 'Added by you', rough: '', mine: true }); });
+    /* A bid added from the lower shelf keeps its own line. One the app never saw says who added it. */
+    d.opened.forEach(function (b) { if (state.added[b.id]) worked.push(b); });
+    BOARD.forEach(function (b) { if (state.added[b.id]) worked.push({ id: b.id, name: b.name, what: 'Added by you', rough: '' }); });
     var opened = d.opened.filter(function (b) { return !state.added[b.id]; });
     var board = BOARD.filter(function (b) { return !state.added[b.id]; });
     var kept = worked.filter(function (b) { return !state.off[b.id]; }).length;
@@ -281,7 +288,7 @@
       h += '<ul class="bids">' + L.worked.map(function (b) {
         var off = !!state.off[b.id];
         return '<li class="' + (off ? 'off' : '') + '"><span class="who"><span class="name">' + nameHtml(b) + '</span><br>' +
-          (off ? '<span class="what">Taken off.</span>' : (b.rough ? '<span class="size">' + esc(b.rough) + '</span><span class="what"> · ' + esc(b.what) + '</span>' : '<span class="what">' + esc(b.what) + '</span>')) + '</span>' +
+          (off ? '<span class="what">Taken off</span>' : lineHtml(b)) + '</span>' +
           '<button type="button" class="btn small" data-' + (off ? 'back' : 'off') + '="' + b.id + '">' + (off ? 'Put back' : 'Take off') + '</button></li>';
       }).join('') + '</ul>';
       if (!inCard) h += '<p class="sub">Read from what you opened and changed today. Sizes are rough.</p>';
@@ -291,7 +298,7 @@
     h += '</div>';
     if (L.opened.length) {
       h += '<div class="sec"><div class="head"><span>Opened, nothing changed</span><span class="n">' + L.opened.length + '</span></div><ul class="bids">' +
-        L.opened.map(function (b) { return '<li class="weak"><span class="who"><span class="name">' + nameHtml(b) + '</span><br><span class="what">' + esc(b.what) + '</span></span><button type="button" class="btn small add" data-add="' + b.id + '">Add</button></li>'; }).join('') + '</ul></div>';
+        L.opened.map(function (b) { return '<li class="weak"><span class="who"><span class="name">' + nameHtml(b) + '</span><br>' + lineHtml(b) + '</span><button type="button" class="btn small add" data-add="' + b.id + '">Add</button></li>'; }).join('') + '</ul></div>';
     }
     h += '<div class="sec"><div class="head"><span>Add a bid the app missed</span></div>' +
       (L.board.length ? '<p class="sub">On your board:</p><div class="chips">' + L.board.map(function (b) { return '<button type="button" class="chip" data-add="' + b.id + '">+ ' + esc(b.name) + '</button>'; }).join('') + '</div>' : '') +
