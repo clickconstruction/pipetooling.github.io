@@ -913,7 +913,9 @@ export function ReplyBox({
             <span
               data-reply-from
               aria-hidden="true"
-              style={{ position: 'absolute', right: '0.6rem', bottom: '0.45rem', fontSize: '0.72rem', color: 'var(--text-muted)', pointerEvents: 'none' }}
+              // One line, whatever its length (punch list #348): at large text it wrapped to two and its first line sat
+              // on the grey words' second. Held to the box's own width, a caption too long for it ends in dots.
+              style={{ position: 'absolute', left: '0.6rem', right: '0.6rem', bottom: '0.45rem', fontSize: '0.72rem', color: 'var(--text-muted)', pointerEvents: 'none', textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
             >
               {fromLine(shown, company, open?.userNames[me] ?? auth?.profileName ?? null).join(' · ')}
             </span>
