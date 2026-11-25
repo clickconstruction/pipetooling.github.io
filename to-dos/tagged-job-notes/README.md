@@ -2,7 +2,7 @@
 name: "Tag a teammate in a job note, with a count above Jobs"
 number: 363
 group: close
-status: asked 2026-11-15 by Taunya, who settled its eight calls that day and asked for the whole train · built 2026-11-15 and 16 in six PRs (v2.7384, v2.7385, v2.7400, v2.7407, v2.7410, v2.7412) and one fix (v2.7426) · the job window's Note sheet on a phone tags too since v2.8223, found without tags on the owner's phone walk of 2026-11-21 · both migrations pushed and proved · `notify-note-tag` deployed on her go · live on prod · the sender's side walked on prod on a ZZ Test job, from the Pipeline row and from the job window · the tagged person's side not walked
+status: asked 2026-11-15 by Taunya, who settled its eight calls that day and asked for the whole train · built 2026-11-15 and 16 in six PRs (v2.7384, v2.7385, v2.7400, v2.7407, v2.7410, v2.7412) and one fix (v2.7426) · the job window's Note sheet on a phone tags too since v2.8223, found without tags on the owner's phone walk of 2026-11-21 · both migrations pushed and proved · `notify-note-tag` deployed on her go · live on prod · the sender's side walked on prod on a ZZ Test job, from the Pipeline row and from the job window · the tagged person's side not walked · the tagged person's side walked live 2026-11-24 as a helper at 380 px: it holds inside the Inbox tab, a helper is told nowhere else, and the small presses of Tagged notes are raised in v2.8556
 summary: >
   Taunya asked to type @name in a job note on a Pipeline row and have it reach that person, on
   their to-do list, in Messages or in a new Tagged Job Notes section in Jobs, with a red count above
@@ -11,9 +11,11 @@ summary: >
   picked from a list under the note box, a tag kept as its own row, a Tagged job notes section at
   the top of the Pipeline counted above Jobs, one line on the Dashboard's Needs you card for the
   roles with no Pipeline, an answer box that posts back on the job, and a push.
-next: Taunya looks at the tag that waits on her, on the ZZ Test Walk Project job, which is the tagged side of the walk. Then the tagged side at a phone width, the floating window's box, and a phone with notices on that takes one. The sender's side in the job window was walked at a phone width on 2026-11-21. Nothing waits to be built.
+next: >
+  Decide where a helper in Job Mode is told of a tag outside the Inbox tab, and build it. Then walk what the walk of 2026-11-24 left: a person who cannot open the job, the superintendent's side, and the keyboard. Taunya's own look at the tag that waits on her still stands.
 size: L as a train of six (S · M · M · M · S · M)
-blocker: none. The tagged side waits on Taunya's own look, which she asked for.
+blocker: >
+  A call on where a helper is told. The card said the Dashboard line is there for a helper, and in Job Mode it is not.
 opinion: build, it is the cheapest way to make a job note reach a person, and the notes are already where the team writes about a job
 ---
 
@@ -405,3 +407,24 @@ Two logins and one test job, nothing live:
 6. Try to tag a person who cannot open the job: the name is not offered.
 7. At 375 wide: the list sits above the keyboard, the menu button carries the count.
 8. Delete every `ZZ Test` note and tag made.
+
+## The tagged side, walked live (2026-11-24)
+
+Walked on clicktooling.com on the ZZ Test Walk Project job, as the dev and, through **View as**, as the sample helper at 380 px.
+
+**Holds.** The dev tags the helper from the job window, and the note reads *waiting on* with the name. As the helper, the Inbox tab reads *Needs you 1* with one job note tagged, and **Open**. Tagged notes fills the screen. An answer posts and the line clears. A second tag clears with **No reply needed**, and the dev's note says so.
+
+**Not walked.** A person who cannot open the job, the superintendent's side, and the keyboard.
+
+**A fault found, read in the code the same day: a helper is told only inside the Inbox tab.**
+
+- This card says *the Dashboard line is there* for a helper. That was wrong when it was written. A helper opens the app in Job Mode, and Job Mode's own Dashboard draws no *Needs you* card (`Dashboard.tsx`, the Job Mode branch).
+- The door that stands in for it shows only on a phone with the new phone layout turned on (`needsYouJobModeDoor`).
+- The menu button's count leaves helpers out on purpose (`Layout.tsx`). The Job Mode bottom bar's Inbox tab can carry a count and is handed none (`DispatchModeFooter`, `inboxBadgeCount`).
+- So a tagged helper sees nothing until they open Inbox.
+
+**What would mend it,** not built, and the pick is open. My pick is the first: the Inbox tab of Job Mode's bottom bar carries the count of tags that wait. It is the client alone, size S, and the bar already takes a count. The other way is a line on Job Mode's own Dashboard.
+
+**Mended: the small presses.** At 380 px the answer box was 22 px high, **@** 20, **Post** 26 and **No reply needed** 30. v2.8556 stands each a thumb tall on a phone, in the window, on the Pipeline and on the Checklist.
+
+**A posted note cannot be deleted,** so the walk's last step, deleting its notes, could not be done. Three notes are left on that ZZ job. It is on the list of presses nothing takes back (#443).

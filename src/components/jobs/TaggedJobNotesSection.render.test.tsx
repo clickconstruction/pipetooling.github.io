@@ -137,6 +137,18 @@ describe('TaggedJobNotesSection', () => {
     await vi.waitFor(() => expect(io.postTaggedNote).toHaveBeenCalledWith('job-1', '@Marcus Hale it came Friday', ['u-marcus']))
   })
 
+  it('stands the answer box, Post and No reply needed a thumb tall on a phone (punch list #363)', async () => {
+    io.tags = [WAITING[0]!]
+    renderWithProviders(<TaggedJobNotesSection variant="pipeline" />)
+    const floor = 'var(--phone-press-min, 0px)'
+    const done = (await screen.findAllByRole('button', { name: 'No reply needed' }))[0] as HTMLButtonElement
+    expect(done.style.minHeight).toContain(floor)
+    const post = screen.getAllByRole('button', { name: 'Post' })[0] as HTMLButtonElement
+    expect(post.style.minHeight).toContain(floor)
+    const box = screen.getAllByRole('textbox')[0] as HTMLInputElement
+    expect(box.style.minHeight).toContain(floor)
+  })
+
   it('clears a tag with No reply needed, with no note', async () => {
     io.tags = [WAITING[0]!]
     renderWithProviders(<TaggedJobNotesSection variant="pipeline" />)

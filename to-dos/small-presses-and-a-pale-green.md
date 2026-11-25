@@ -2,7 +2,7 @@
 name: "Small presses and a pale green: four app-wide things an audit met on the way"
 number: 414
 group: close
-status: found 2026-11-20 by the audit of punch list #382's PR 10 and PR 11 · each was measured on a phone-width screen · none is that card's own, so none was fixed there · written here on Taunya's word of 2026-11-21 · the three sizes shipped 2026-11-23 on her word, the toast at the foot v2.8359, Retry at 44 px v2.8361 and the inbox doors at 44 px v2.8362 · the mock-up of the two greens is beside the card · the sweep landed the same day, green presses filled with `#15803d` v2.8364 (PR #9482) · none of the four has been walked on a phone
+status: found 2026-11-20 by the audit of punch list #382's PR 10 and PR 11 · each was measured on a phone-width screen · none is that card's own, so none was fixed there · written here on Taunya's word of 2026-11-21 · the three sizes shipped 2026-11-23 on her word, the toast at the foot v2.8359, Retry at 44 px v2.8361 and the inbox doors at 44 px v2.8362 · the mock-up of the two greens is beside the card · the sweep landed the same day, green presses filled with `#15803d` v2.8364 (PR #9482) · none of the four has been walked on a phone · measured live 2026-11-24 at 390 px: the green holds; the toast, Retry and the inbox doors were not measured
 summary: >
   The audit of Before we start measured four things that are not its own. The green fill most
   presses use is too pale under white words. A toast covers the heading of the card under it on a
@@ -125,3 +125,11 @@ phone width. The mock-up of the two greens is beside this card. The sweep landed
 green presses fill with `#15803d` under white words, 5.02 to 1 where the pale green read 3.30 to 1. The green was
 not looked at in a browser after the sweep. Left as found: on the dark surface the deeper fill's edge reads 2.93 to
 1, a touch under the 3 to 1 a shape asks, as the press blue's does.
+
+## Measured live (2026-11-24)
+
+On clicktooling.com at 390 px. One of the four was measured.
+
+- **The green: holds.** A green press fills `#15803d` under white words, 5.02 to 1, and stands 44 px high.
+- **Not measured.** The toast at the foot: no press raises one without a save, and the walk's browser may not draw one. **Retry**: it needs a read that fails. The Dispatch inbox's doors: no row was waiting.
+- The walk on a real phone is still owed.
