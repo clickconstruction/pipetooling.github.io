@@ -2,7 +2,7 @@
 name: "Site NDA for vendors: a paper names a job site, vendors sign before anything is sent, and the client is shown who signed"
 number: 439
 group: ready
-status: asked 2026-11-24 · thought through with the owner the same day, each call settled as it came up · drawn as a canvas of sixteen artboards and reviewed as a whole · a door audit added eight doors to the plan · the word to build the whole train, testing along the way, with screenshots at several widths as each piece goes live · piece 1 built and seen live, v2.8520 · piece 2's list and answers built, v2.8529 · Fix the spelling and Open the job built, v2.8542 · 2026-11-25 (UTC) in the managing session: the four calls pieces 3 to 6 stood on were answered, each as the card picks, and the scrub of older public files was chosen, their history too, which waits on its own plan and a yes at the time
+status: asked 2026-11-24 · thought through with the owner the same day, each call settled as it came up · drawn as a canvas of sixteen artboards and reviewed as a whole · a door audit added eight doors to the plan · the word to build the whole train, testing along the way, with screenshots at several widths as each piece goes live · piece 1 built and seen live, v2.8520 · piece 2's list and answers built, v2.8529 · Fix the spelling and Open the job built, v2.8542, and seen live 2026-11-25 with nothing changed · 2026-11-25 (UTC) in the managing session: the four calls pieces 3 to 6 stood on were answered, each as the card picks, and the scrub of older public files was chosen, their history too, which waits on its own plan and a yes at the time
 summary: >
   The company works for a client on a site whose details are secret. Vendors must sign the company's own
   NDA before anything about the site reaches them, and the client must be shown who signed. Today the app
@@ -13,7 +13,7 @@ summary: >
   site asks the company's own people to sign before a job there opens, and holds every send to an outside
   company until it signs. A packet, and later the client's own page, list everyone bound. Outside
   companies see a code name until they sign.
-next: Piece 2's last part, the job form asking about an address written differently at the same map point. Then the train in order, one PR at a time, each tested and seen live at phone and desk width before the next. The live look at piece 2's door, window and Fix the spelling is still owed.
+next: Piece 2's last part, the job form asking about an address written differently at the same map point. Then the train in order, one PR at a time, each tested and seen live at phone and desk width before the next. Fix the spelling and Open the job were seen live on 2026-11-25 with nothing changed. Still owed on piece 2: an answer kept and a spelling changed, on a ZZ Test pair made for it.
 size: L as a train of seven pieces, about fifteen PRs (S to M · M · M · M · S to M · M to L · M)
 ask: counsel · read · Read the vendor NDA's wording before it is sent to a real vendor.
 blocker: None for the build: the four calls pieces 3 to 6 stood on were answered on 2026-11-25. An attorney's read of the vendor NDA's wording comes before it is sent to a real vendor.
@@ -184,5 +184,17 @@ and the held state at every other send (piece 6).
   Separate…** with the same count, and the window with its line of counts and four tabs. Differing words are
   marked, a shared zip code is not, and nothing runs off the screen. **Same place**, **Not the same**,
   **Undo** and **Fix the spelling…** were not pressed live: each writes on a real pair.
+  **Fix the spelling…** and **Open the job** (v2.8542) were seen live on 2026-11-25, as a dev, on three
+  pairs, with no answer pressed and no address changed. The small window opens over the list with the
+  two spellings and the first picked. Every job or bid written the other way is listed and ticked. The
+  button counts its own ticks, **Change 1 address** to **Change 3 addresses**, and is dead as **Change
+  addresses** with none ticked. A pair that differs by a unit carries the amber line that points at
+  **Cancel** and **Not the same**. Escape closes the small window alone and the list stays.
+  Under **No street number**, each row's press is 44 px high and reads **Open the job** or the job's
+  number. It opens the job over the list on its Edit tab with a blue ring on the Job Address box and
+  nothing focused. Escape closes the job alone.
+  Not seen: **Same place**, **Not the same** and **Change N addresses** pressed, a row that fails, the
+  toast with both counts, and a pair leaving the list after a fix. Those need a ZZ Test pair made for
+  the look, and that is a write on its own yes.
 - **Pieces 3 to 7.** ZZ Test jobs, a ZZ Test supply house with a sink address, and a ZZ Test paper only.
   Nothing goes to a real vendor before an attorney has read the wording.

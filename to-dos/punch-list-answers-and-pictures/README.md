@@ -2,7 +2,7 @@
 name: "Punch list: what is still to answer and what it looks like, on every card"
 number: 438
 group: ready
-status: asked 2026-11-24 by Diane · the same day fifteen built cards that waited on a person were drawn in the lens frame with invented data, and each got a pictures page beside it with what it waits on and what to say · the kit that drew them is in this folder · the board's own view drawn the same day on Diane's word, as a canvas of seven frames with a refined cut D and a static copy here · her word on it the same day, *Build D*, on the seven picks · PR 1 built as v2.8519, the question on the card, its migration pushed · PR 2 built as v2.8521, Waiting on me · PR 3 built as v2.8528, a row says when its pictures are old and one command draws a card again · the three questions the build left were answered the same day, *Keep the old picks on #438* · seen on the live site as a dev the same day, read only · left: the owner's look
+status: asked 2026-11-24 by Diane · the same day fifteen built cards that waited on a person were drawn in the lens frame with invented data, and each got a pictures page beside it with what it waits on and what to say · the kit that drew them is in this folder · the board's own view drawn the same day on Diane's word, as a canvas of seven frames with a refined cut D and a static copy here · her word on it the same day, *Build D*, on the seven picks · PR 1 built as v2.8519, the question on the card, its migration pushed · PR 2 built as v2.8521, Waiting on me · PR 3 built as v2.8528, a row says when its pictures are old and one command draws a card again · the three questions the build left were answered the same day, *Keep the old picks on #438* · seen on the live site as a dev the same day, read only · PR 3's line on an old picture seen live 2026-11-25, on #426's row alone, and at a phone's width · left: the owner's look
 summary: >
   Diane wants the Punch list page to make two things easy for a person. First, the questions that
   person still has to answer. Second, what a card looks like before and after it is built. Today the
@@ -163,8 +163,15 @@ Built. PR 2 was seen on the live site on 2026-11-24 as a dev, at 1,280 px, read 
 - Nothing scrolled sideways and no request repeated in the ten seconds after the page opened.
 - No answer was pressed.
 
-Not seen on the live site: the owner's seat, a phone's width, an answer being saved, and PR 3's line on
-an old picture. Those were only seen in the sealed lens frame on a local server.
+PR 3 was seen on the live site on 2026-11-25 as a dev, read only, under **Everyone** with 26 cards:
+
+- Exactly one row carried the amber line, #426's: *The screen changed after these were drawn.*
+- #396's row, the one card drawn again with the command, was on the list and carried no line.
+- At 390 px the line sat inside its row on one line, the six pills were 44 px high and nothing scrolled sideways.
+- No answer was pressed, and the page's own request list held no call to `ship-pace`.
+
+Not seen on the live site: the owner's seat and an answer being saved. Those were only seen in the
+sealed lens frame on a local server.
 
 What the build left out of the mock-up:
 
