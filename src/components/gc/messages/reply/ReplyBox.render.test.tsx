@@ -86,6 +86,19 @@ describe('ReplyBox: the reply box at the foot of a thread (Messages, cut 3)', ()
     expect(within(el).getByRole('button', { name: 'Send text…' })).toBeTruthy()
   })
 
+  it('holds the from line to one line inside the box, so it never climbs onto the grey words (punch list #348)', () => {
+    const from = box().el.querySelector('[data-reply-from]') as HTMLElement
+    // One line: it cannot wrap to a second and sit on the grey words' last line, as it did at 125% text.
+    expect(from.style.whiteSpace).toBe('nowrap')
+    expect(from.style.overflow).toBe('hidden')
+    expect(from.style.textOverflow).toBe('ellipsis')
+    // Held between the box's two sides, at the right, on the foot of the box: a long line ends in dots.
+    expect([from.style.left, from.style.right, from.style.bottom]).toEqual(['0.6rem', '0.6rem', '0.45rem'])
+    expect(from.style.textAlign).toBe('right')
+    // The open box keeps its three rows: two lines of grey words clear the caption's one.
+    expect((within(box().el).getAllByRole('textbox')[0] as HTMLTextAreaElement).rows).toBe(3)
+  })
+
   it('ties a reply to the star, or to the job the thread shows', () => {
     expect(box().el.querySelector('[data-reply-tie]')?.textContent).toBe('#42 Stone Oak Pharmacy · default ▾')
   })
