@@ -13,7 +13,7 @@ import { updatePhoto } from '../../lib/materials/onSiteStore'
 import { shootBoxPhoto } from '../../lib/materials/boxPhotoShoot'
 import { photoStatusWords, photoWords, type PhotoNote } from '../../lib/materials/photo'
 import { readBoxPhotoBytes } from '../../lib/materials/boxPhotoBytesIo'
-import { boxPhotoMissingWords, boxPhotoOpenLabel } from '../../lib/materials/boxPhotoSource'
+import { boxPhotoMissingWords, boxPhotoOpenLabel, boxPhotoReasonWords } from '../../lib/materials/boxPhotoSource'
 import { bytesWords } from '../../lib/materials/photoShrink'
 import { boxPhotoDayWords } from '../../lib/materials/boxScreen'
 import { canSharePhoto, downloadFile, sharePhoto } from '../../lib/materials/photoShare'
@@ -199,6 +199,8 @@ export function BoxPhotos({ photos, canAct, onToast, size = 56, quiet = false }:
       {photos.map((p) => {
         const got = loaded[p.id]
         const words = photoStatusWords(p.status)
+        // Why it is not where it should be: a shot that waits, or a frame whose picture did not come, filed or not.
+        const reason = boxPhotoReasonWords(p, Boolean(missing[p.id]))
         return (
           <div key={p.id} data-photo-id={p.id} ref={(el) => { if (el) squares.current.set(p.id, el); else squares.current.delete(p.id) }} style={{ display: 'grid', gap: 4, justifyItems: 'start', maxWidth: 220 }} title={`${p.fileName} · ${bytesWords(p.bytes)}${p.width ? ` · ${p.width} × ${p.height}` : ''}`}>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -211,7 +213,7 @@ export function BoxPhotos({ photos, canAct, onToast, size = 56, quiet = false }:
               )}
               <span style={{ fontSize: '0.8rem', color: p.status === 'on-phone' ? 'var(--text-amber-700)' : 'var(--text-muted)', fontWeight: p.status === 'on-phone' ? 600 : 500, lineHeight: 1.25 }}>
                 {quiet && p.status === 'filed' ? boxPhotoDayWords(p) : words}
-                {p.failWhy && p.status !== 'filed' ? <><br /><span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>{p.failWhy}</span></> : null}
+                {reason ? <><br /><span data-testid="box-photo-reason" style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>{reason}</span></> : null}
                 <br />
                 <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>{quiet && p.status === 'filed' ? p.byName : `${bytesWords(p.bytes)} · ${p.byName}`}</span>
               </span>

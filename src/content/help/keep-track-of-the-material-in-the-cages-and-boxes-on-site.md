@@ -74,7 +74,7 @@ With no signal the take and its photos are kept on the phone. They send by thems
 
 The app's number never stops you. If you take more than the app counted, the rest is recorded as found.
 
-While a box is open, the Tally's tabs are put away. Tap **‹** to go back to the boxes and the tabs.
+While a box is open, the Tally's tabs are put away. Tap **‹** to go back to the boxes and the tabs. The list opens at the box you were in.
 
 **Used** on a part's line still works. It takes parts out with no photo.
 
@@ -104,7 +104,7 @@ A part put into a box that held none of it is counted as it goes in. The box doe
 
 On a box, tap {{button:outline|Photo}} under the parts. The press says how many photos the box has. For ten minutes after a count, an added part or a put away the press is outlined in blue. The press then says what the photo will show, like Of A1 as you counted it. A put away lights the box the parts went into. The picture is named for what it followed. Shoot and tap Use Photo. The phone shrinks the picture and files it in the job's Drive folder by itself.
 
-The picture shows on the box for everyone on the job. Tap a picture to open it whole. Tap **Close the photo** to go back. A dashed square means the picture is still on the phone that took it. A picture in the job's folder needs signal to show, on every phone.
+The picture shows on the box for everyone on the job. Tap a picture to open it whole. Tap **Close the photo** to go back. A dashed square means the picture is still on the phone that took it. A filed photo can show a dashed square too. Its file is gone then. The amber words beside it say why. A picture in the job's folder needs signal to show, on every phone.
 
 With no signal the photo stays on the phone. It sends by itself when the signal is back. Tap **Send now** to send it at once. Tap **Share instead** to send it another way.
 

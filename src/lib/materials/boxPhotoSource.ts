@@ -49,6 +49,19 @@ export function boxPhotoMissingWords(p: Pick<PhotoNote, 'status' | 'driveFileId'
   return 'The picture is not here yet.'
 }
 
+/**
+ * The amber line under a photo's words: why it is not where it should be (punch list #398). A shot that still waits
+ * says its `failWhy` as before. A frame with no picture says why too, a filed one among them: the simulator's walk of
+ * 2026-11-25 met a filed photo whose file was in the folder's trash, drawn as an empty dashed frame with its reason
+ * in a `title`, which a phone never shows. `missing` is true once the read of the picture has come back empty, never
+ * while it is still being read. A filed photo whose picture draws has no line.
+ */
+export function boxPhotoReasonWords(p: Pick<PhotoNote, 'status' | 'driveFileId' | 'failWhy'>, missing: boolean): string | null {
+  const why = p.failWhy?.trim() || null
+  if (missing) return why ?? boxPhotoMissingWords(p)
+  return why && p.status !== 'filed' ? why : null
+}
+
 /** What the press on a thumbnail says: "Open the photo of A1 after Count". */
 export function boxPhotoOpenLabel(p: Pick<PhotoNote, 'words' | 'fileName'>): string {
   return `Open the photo of ${p.words?.trim() || p.fileName}`

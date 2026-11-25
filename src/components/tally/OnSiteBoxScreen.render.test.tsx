@@ -39,6 +39,31 @@ const draw = (over: Partial<OnSiteBoxScreenProps> = {}) =>
 afterEach(() => { cleanup(); for (const f of Object.values(acts)) f.mockReset() })
 
 describe('OnSiteBoxScreen', () => {
+  it('opens at its own top when the list it came from was scrolled, and stays put when it is already in sight (punch list #398)', () => {
+    const scrolled: Array<ScrollIntoViewOptions | undefined> = []
+    const proto = Element.prototype as unknown as { scrollIntoView?: (o?: ScrollIntoViewOptions) => void; getBoundingClientRect: () => DOMRect }
+    const wasScroll = proto.scrollIntoView
+    const wasRect = proto.getBoundingClientRect
+    proto.scrollIntoView = function (o) { scrolled.push(o) }
+    let top = -340
+    proto.getBoundingClientRect = () => ({ top, bottom: top + 900, left: 0, right: 402, width: 402, height: 900, x: 0, y: top, toJSON: () => ({}) }) as DOMRect
+    try {
+      // Opened from a list scrolled 340 px down: the box's name is off the top of the screen.
+      const first = draw()
+      expect(scrolled).toEqual([{ block: 'start' }])
+      // It clears the status bar where the app is on the Home Screen.
+      expect((screen.getByTestId('on-site-box-screen') as HTMLElement).style.scrollMarginTop).toBe('var(--app-top-chrome, 0px)')
+      first.unmount()
+      // Opened with its top in sight: nothing moves.
+      top = 96
+      draw()
+      expect(scrolled).toHaveLength(1)
+    } finally {
+      proto.scrollIntoView = wasScroll
+      proto.getBoundingClientRect = wasRect
+    }
+  })
+
   it('opens on the name, More and the parts as closed rows with their numbers', () => {
     draw({ said: 'PVC fittings, mixed' })
     expect(screen.getByText('G12')).toBeTruthy()
