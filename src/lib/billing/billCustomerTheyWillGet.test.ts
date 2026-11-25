@@ -36,6 +36,21 @@ describe('theyWillGet · the Stripe bill tab (punch list #343)', () => {
     expect(w.pressLines[2]).toBe('One copy comes to you too. Nobody ticked gets one.')
   })
 
+  it('test mode does not promise that the send is kept: a test send files no copy and a void takes its line off', () => {
+    const w = theyWillGet({ channel: 'stripe', ...dana, copyEmails: [], testMode: true })
+    expect(w.pressLines).toEqual([
+      'The bill is made and marked billed.',
+      'Test mode: the bill email comes to you, not to dana@example.com.',
+      'A text is your choice on the next screen.',
+      'Bills sent lists a test send as a test and keeps no copy.',
+      'Voiding the test bill takes that line off.',
+    ])
+    expect(w.pressLines).not.toContain('Every send is kept in Bills sent.')
+    const live = theyWillGet({ channel: 'stripe', ...dana, copyEmails: [] })
+    expect(live.pressLines[live.pressLines.length - 1]).toBe('Every send is kept in Bills sent.')
+    expect(live.pressLines.some((l) => l.includes('test'))).toBe(false)
+  })
+
   it('no email: the box says what is missing, and a job with no name still gets a press that names its act', () => {
     expect(theyWillGet({ channel: 'stripe', name: 'Dana Whitfield', email: '', copyEmails: [] }).pressLines).toEqual(['A Stripe bill goes by email. Add an email above first.'])
     expect(theyWillGet({ channel: 'stripe', name: null, email: 'x@example.com', copyEmails: [] }).press).toBe('Make the bill and email it')
