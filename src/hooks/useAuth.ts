@@ -274,7 +274,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // the gate's screen reads "The app is slow right now. Keep this open."
     // A wedged auth lock makes no request, so the kernel stays fine and the
     // watchdog gives up at 8 s as before.
+    // Giving up means "nobody told us of a session", not "getSession() has not answered" (punch list #406):
+    // auth-js tells the listener the recovered session before getSession() gets the sign-in lock, which a
+    // renewal can hold past 8 s. A person the listener has handed over stays, and the gate opens on the app.
     let gateSettled = false
+    let listenerHasSession = false
     let gateTimer: ReturnType<typeof setTimeout> | undefined
     const armGate = (ms: number) => {
       gateTimer = setTimeout(() => {
@@ -284,10 +288,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return
         }
         gateSettled = true
+        if (listenerHasSession) {
+          setLoading(false)
+          return
+        }
         setUser(null)
         setRole(null)
         setProfileName(null)
         setSessionExpiresAt(null)
+        // Nobody is signed in, so no role is resolved for anyone: a session that arrives later raises the role
+        // gate, and the person is never landed with no role.
+        roleResolvedForUserIdRef.current = null
         setLoading(false)
       }, ms)
     }
@@ -314,6 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      listenerHasSession = Boolean(session?.user?.id)
       applySession(session)
     })
 
