@@ -2,13 +2,15 @@
  * What a GC reads about the papers a job requires (punch list #389, step 5): one block under each job's name that
  * requires a paper built from settings. It says what the paper asks in the list's own plain words, the level that
  * comes to, how many of the people who can open the job have signed, and each sub business with its day. No worker
- * is named. Read only: its one press downloads a sample, and nothing a GC does changes the paper.
+ * is named unless the office set the job to show every signer by name, and it can set the count alone. What the
+ * setting hides never reaches the page. Read only: its one press downloads a sample, and nothing a GC does changes
+ * the paper.
  *
  * The words are `lib/portal/gcJobPapers.ts`. Its title is its own: the Document builder's block on this page reads
  * *Secrecy on this job* and shows a builder the office sent, which is another thing. Light always, as their page is.
  */
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
-import { GC_PAPER_SAMPLE, GC_PAPER_TITLE, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSampleUrl, gcPaperSigned, type GcJobPaper, type GcJobPapers } from '../../lib/portal/gcJobPapers'
+import { GC_PAPER_SAMPLE, GC_PAPER_SIGNERS_HEAD, GC_PAPER_TITLE, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSampleUrl, gcPaperSigned, gcPaperSigner, type GcJobPaper, type GcJobPapers } from '../../lib/portal/gcJobPapers'
 import { CARD, HAIR, INK, MUTED, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
 import { Chip } from '../gc/gcUi'
 
@@ -62,6 +64,22 @@ function PaperBlock({ paper, company, sampleUrl }: { paper: GcJobPaper; company:
             </div>
           )
         })}
+        {paper.signers.length > 0 ? (
+          <div data-portal-job-paper-signers="" style={{ display: 'grid', gap: 0, paddingTop: '0.45rem', borderTop: `1px solid ${HAIR}` }}>
+            <b style={{ fontSize: '0.86rem' }}>{GC_PAPER_SIGNERS_HEAD}</b>
+            {paper.signers.map((g, at) => {
+              const w = gcPaperSigner(g)
+              return (
+                // Two people can share a name, so the key is the place in the list.
+                <div key={`${at}-${g.name}`} data-portal-job-paper-signer="" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.6rem', alignItems: 'center', padding: '0.35rem 0', fontSize: '0.92rem' }}>
+                  <span>{g.name}</span>
+                  <Chip tone="green">{w.chip}</Chip>
+                  {w.detail ? <span style={{ fontSize: '0.86rem', color: MUTED }}>{w.detail}</span> : null}
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
       </div>
 
       {sampleUrl ? (

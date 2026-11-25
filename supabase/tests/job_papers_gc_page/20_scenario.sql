@@ -3,6 +3,8 @@
 -- on the roster have signed, and each sub business with its day. The count is the office's own roster. A sub's
 -- business is the trade company they work for, or their own roster name with none on file, and a helper is never
 -- named. A change after a signature starts the count again on the new row. A job with no such paper is left out.
+-- The office sets what the GC sees (migration *_job_paper_gc_view): the count alone, the businesses too, or every
+-- signer by name, in place whoever has signed, and the next row keeps it.
 -- Nobody signed in reads it, and the office's roster answers as it did. Every word is a made-up placeholder. The
 -- fixture is made as postgres; presses run as each user; everything rolls back. Raises on the first failed
 -- assertion; ends with "job_papers_gc_page PASSED". See scripts/pgtest-job-papers-gc-page.sh. Never against prod.
@@ -71,6 +73,17 @@ CREATE FUNCTION jgc.page(p_job uuid) RETURNS text LANGUAGE sql AS $$
       || ' ; ' || coalesce((SELECT string_agg((b ->> 'name') || ' ' || (b ->> 'people') || '/' || (b ->> 'signed') || '/' || CASE WHEN b ->> 'signed_on' IS NULL THEN '-' WHEN b ->> 'signed_on' = public.app_today()::text THEN 'today' ELSE 'another day' END, ', ' ORDER BY at) FROM jsonb_array_elements(p -> 'businesses') WITH ORDINALITY AS t(b, at)), 'no sub')
     FROM jsonb_array_elements(public.job_papers_gc_page(ARRAY[p_job])) AS j, jsonb_array_elements(j -> 'papers') AS p
   ), 'nothing')
+$$;
+-- What the office set the GC to see, then each signer as name/business.
+CREATE FUNCTION jgc.seen(p_job uuid) RETURNS text LANGUAGE sql AS $$
+  SELECT coalesce((
+    SELECT (p ->> 'view') || ' ; ' || jsonb_array_length(p -> 'businesses') || ' businesses ; '
+      || coalesce((SELECT string_agg((g ->> 'name') || '/' || coalesce(g ->> 'business', '-') || '/' || CASE WHEN g ->> 'signed_on' = public.app_today()::text THEN 'today' ELSE 'another day' END, ', ' ORDER BY at) FROM jsonb_array_elements(p -> 'signers') WITH ORDINALITY AS t(g, at)), 'no signer')
+    FROM jsonb_array_elements(public.job_papers_gc_page(ARRAY[p_job])) AS j, jsonb_array_elements(j -> 'papers') AS p
+  ), 'nothing')
+$$;
+CREATE FUNCTION jgc.kept(p_row uuid) RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT coalesce(r.gc_view, 'null') || '|' || coalesce(r.gc_view_set_by::text, 'nobody') || '|' || (r.gc_view_set_at IS NOT NULL)::text FROM public.job_required_papers r WHERE r.id = p_row
 $$;
 GRANT USAGE ON SCHEMA jgc TO authenticated, anon, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA jgc TO authenticated, anon, service_role;
@@ -196,6 +209,37 @@ SELECT jgc.same('both signed: the business reads its day, and the helper''s sign
   'GC page bed paper (test) r1 ; Standard (Aligned with a placeholder place) ; Photos and video: Standard, How long: Short ; 3 signed ; Pine Ridge Excavating Jgc 2/2/today, Sam Sole Jgc 1/0/-');
 RESET ROLE;
 
+-- What the GC sees is the office's to set, whoever has signed. Every row starts on the count and the businesses.
+SELECT jgc.as_service();
+SET LOCAL ROLE service_role;
+SELECT jgc.same('a row nobody set shows the businesses and names no signer', jgc.seen(jgc.id('e1')), 'businesses ; 2 businesses ; no signer');
+RESET ROLE;
+SELECT jgc.as_user(jgc.id('a4'));
+SET LOCAL ROLE authenticated;
+SELECT jgc.refused('a helper sets nothing a GC sees', format($q$SELECT public.job_paper_set_gc_view(%L, 'names')$q$, jgc.row_of(jgc.id('e1'), jgc.id('c1'))), 'Only the office sets the papers a job requires');
+RESET ROLE;
+SELECT jgc.as_user(jgc.id('a2'));
+SET LOCAL ROLE authenticated;
+SELECT jgc.same('Dana sets the count alone, on a row three people signed', public.job_paper_set_gc_view(jgc.row_of(jgc.id('e1'), jgc.id('c1')), 'count'), 'count');
+SELECT jgc.same('the row keeps who set it and when', jgc.kept(jgc.row_of(jgc.id('e1'), jgc.id('c1'))), 'count|' || jgc.id('a2')::text || '|true');
+SELECT jgc.refused('a word that is none of the three is refused', format($q$SELECT public.job_paper_set_gc_view(%L, 'everything')$q$, jgc.row_of(jgc.id('e1'), jgc.id('c1'))), 'not one of the three ways');
+SELECT jgc.refused('a paper in prose has nothing a GC reads', format($q$SELECT public.job_paper_set_gc_view(%L, 'count')$q$, jgc.row_of(jgc.id('e2'), jgc.id('c2'))), 'not built from settings');
+RESET ROLE;
+SELECT jgc.as_service();
+SET LOCAL ROLE service_role;
+SELECT jgc.same('under the count alone no business is sent, and the count stays', jgc.seen(jgc.id('e1')) || ' ; ' || (SELECT p ->> 'signed' FROM jsonb_array_elements(public.job_papers_gc_page(ARRAY[jgc.id('e1')])) AS j, jsonb_array_elements(j -> 'papers') AS p), 'count ; 0 businesses ; no signer ; 3');
+RESET ROLE;
+SELECT jgc.as_user(jgc.id('a2'));
+SET LOCAL ROLE authenticated;
+SELECT jgc.same('Dana sets every signer by name', public.job_paper_set_gc_view(jgc.row_of(jgc.id('e1'), jgc.id('c1')), ' Names '), 'names');
+RESET ROLE;
+SELECT jgc.as_service();
+SET LOCAL ROLE service_role;
+SELECT jgc.same('by name: the businesses, and each signer with the company of a sub', jgc.seen(jgc.id('e1')),
+  'names ; 2 businesses ; Hector Helper Jgc/-/today, Tall Pine Jgc/Pine Ridge Excavating Jgc/today, Tia Two Jgc/Pine Ridge Excavating Jgc/today');
+SELECT jgc.same('a person who has not signed is not named', (public.job_papers_gc_page(ARRAY[jgc.id('e1')])::text LIKE '%Sam Sole Jgc%' AND (SELECT count(*) FROM jsonb_array_elements(public.job_papers_gc_page(ARRAY[jgc.id('e1')])) AS j, jsonb_array_elements(j -> 'papers') AS p, jsonb_array_elements(p -> 'signers') AS g WHERE g ->> 'name' = 'Sam Sole Jgc') = 0)::text, 'true');
+RESET ROLE;
+
 -- A change after a signature makes the next row, which nobody has signed, and these picks are no level of the list.
 SELECT jgc.as_user(jgc.id('a2'));
 SET LOCAL ROLE authenticated;
@@ -205,6 +249,12 @@ SELECT jgc.as_service();
 SET LOCAL ROLE service_role;
 SELECT jgc.same('the new row: a mix of its own, a topic left out, and the count starts again', jgc.page(jgc.id('e1')),
   'GC page bed paper (test) r2 ; a mix ; Photos and video: Off out, How long: Short ; 0 signed ; Pine Ridge Excavating Jgc 2/0/-, Sam Sole Jgc 1/0/-');
+SELECT jgc.same('the new row keeps what the GC sees, with nobody to name yet', jgc.seen(jgc.id('e1')), 'names ; 2 businesses ; no signer');
+RESET ROLE;
+SELECT jgc.as_user(jgc.id('a2'));
+SET LOCAL ROLE authenticated;
+SELECT jgc.same('and who set it', jgc.kept(jgc.row_of(jgc.id('e1'), jgc.id('c1'))), 'names|' || jgc.id('a2')::text || '|true');
+SELECT jgc.same('an empty view is the businesses again', public.job_paper_set_gc_view(jgc.row_of(jgc.id('e1'), jgc.id('c1')), '') || '|' || split_part(jgc.kept(jgc.row_of(jgc.id('e1'), jgc.id('c1'))), '|', 1), 'businesses|null');
 RESET ROLE;
 
 -- Taken off, the job says nothing.
@@ -220,8 +270,8 @@ SELECT jgc.signed_out();
 
 SELECT jgc.same('who may call what', (
   SELECT string_agg(p.proname || ':' || has_function_privilege('authenticated', p.oid, 'EXECUTE') || '/' || has_function_privilege('anon', p.oid, 'EXECUTE') || '/' || has_function_privilege('service_role', p.oid, 'EXECUTE'), ' ' ORDER BY p.proname)
-  FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('job_papers_roster', 'job_papers_roster_now', 'job_papers_gc_page')),
-  'job_papers_gc_page:false/false/true job_papers_roster:true/false/true job_papers_roster_now:false/false/false');
+  FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('job_papers_roster', 'job_papers_roster_now', 'job_papers_gc_page', 'job_paper_set_gc_view')),
+  'job_paper_set_gc_view:true/false/true job_papers_gc_page:false/false/true job_papers_roster:true/false/true job_papers_roster_now:false/false/false');
 
 DO $$ BEGIN RAISE NOTICE 'job_papers_gc_page PASSED'; END $$;
 ROLLBACK;

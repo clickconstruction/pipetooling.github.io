@@ -47,6 +47,14 @@ import {
 } from '../../lib/contracts/paperSettings'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import {
+  GC_VIEW_FINE,
+  GC_VIEW_LABEL,
+  gcPaperViewOf,
+  gcViewChoices,
+  pageMarksWords,
+  type GcPaperView,
+} from '../../lib/jobs/jobPaperGcView'
+import {
   PAPER_OFF,
   plural,
   topicFloor,
@@ -493,7 +501,10 @@ function FirstByFlow({
   )
 }
 
-/** One page: every topic, the basis and the blanks. It changes a required paper, and sets a list with no levels. */
+/**
+ * One page: every topic, the basis and the blanks. It changes a required paper, and sets a list with no levels. On a
+ * paper the job already requires it also holds what the GC sees of who has signed, which is no part of the paper.
+ */
 function OnePage({
   job,
   jobRow,
@@ -535,6 +546,9 @@ function OnePage({
         paper.basis)
       : (book.def.levels[0]?.key ?? null),
   )
+  const [gcView, setGcView] = useState<GcPaperView>(
+    () => paper?.gcView ?? 'businesses',
+  )
   const [ticked, setTicked] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -557,8 +571,13 @@ function OnePage({
       })
     : null
   const basisMoved = paper != null && basis !== paper.basis && basis != null
+  const gcViewMoved = paper != null && gcView !== paper.gcView
   const words = plan ? changeWords(plan) : null
-  const onlyBasis = plan?.kind === 'nothing' && basisMoved
+  // No topic, blank or revision changed, and one of the page's own marks did: the press says which.
+  const marks =
+    plan?.kind === 'nothing'
+      ? pageMarksWords({ basis: basisMoved, gcView: gcViewMoved })
+      : null
 
   const pick = (s: PaperSetting, stop: PaperStop) => {
     const choice =
@@ -594,11 +613,12 @@ function OnePage({
         signAgain = saved.state === 'revised' ? saved.signAgain : 0
       }
       if (basisMoved) await io.setBasis(rowId, basis)
+      if (gcViewMoved) await io.setGcView(rowId, gcView)
       onDone(
         signAgain > 0
           ? `The settings are saved. ${plural(signAgain, 'person signs', 'people sign')} the new version again.`
-          : onlyBasis
-            ? 'The basis is moved. Nobody signs again.'
+          : marks
+            ? marks.done
             : 'The settings are saved.',
       )
     } catch (e) {
@@ -614,20 +634,16 @@ function OnePage({
     (paper
       ? held != null ||
         missing.length > 0 ||
-        (words?.dead === true && !onlyBasis)
+        (words?.dead === true && !marks)
       : blockedFirst)
   const press = busy
     ? 'Saving…'
     : !paper
       ? 'Require this paper'
-      : onlyBasis
-        ? 'Save the basis'
+      : marks
+        ? marks.press
         : (words?.press ?? 'Save the settings')
-  const lines = !paper
-    ? []
-    : onlyBasis
-      ? ['The basis marks this page. Nobody signs again.']
-      : (words?.lines ?? [])
+  const lines = !paper ? [] : marks ? [marks.line] : (words?.lines ?? [])
   return (
     <>
       {!fits ? <p style={muted}>{flowUnfit(book.def)}</p> : null}
@@ -729,6 +745,27 @@ function OnePage({
         )
       })}
       <Blanks book={book} picks={picks} typed={typed} onTyped={setTyped} />
+      {paper ? (
+        <label
+          style={{ display: 'grid', gap: '0.25rem', fontSize: '0.85rem' }}
+          data-job-settings-gc-view=""
+        >
+          <span style={{ fontWeight: 600 }}>{GC_VIEW_LABEL}</span>
+          <select
+            aria-label={GC_VIEW_LABEL}
+            value={gcView}
+            onChange={(e) => setGcView(gcPaperViewOf(e.target.value))}
+            style={FIELD}
+          >
+            {gcViewChoices().map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+          <span style={muted}>{GC_VIEW_FINE}</span>
+        </label>
+      ) : null}
       {error ? (
         <div
           role="alert"

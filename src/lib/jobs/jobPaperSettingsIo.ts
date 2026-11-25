@@ -14,6 +14,7 @@ import {
   type PaperPicks,
   type SettingsDef,
 } from '../contracts/paperSettings'
+import { gcPaperViewOf, type GcPaperView } from './jobPaperGcView'
 
 /** A Contract Book entry built from settings, as the page reads it. */
 export interface BookSettingsPaper {
@@ -34,6 +35,8 @@ export interface JobSettingsPaper {
   typed: Record<string, string> | null
   /** The level the office picked before walking the topics, or null. */
   basis: string | null
+  /** What the GC sees of who has signed, on their portal page. */
+  gcView: GcPaperView
   /** The row's number in its chain: 1, then one up for every change made after a signature. */
   settingsRevision: number
   /** The Book revision the settings were set against. */
@@ -86,6 +89,8 @@ export interface JobPaperSettingsIo {
   ): Promise<JobSettingsSaved>
   /** Move a required paper's basis. It marks the page and never the paper. */
   setBasis(requiredPaperId: string, basis: string | null): Promise<void>
+  /** Set what the GC sees of who has signed. It marks the GC's page and never the paper. */
+  setGcView(requiredPaperId: string, view: GcPaperView): Promise<void>
 }
 
 const bag = (v: unknown): Record<string, string> => {
@@ -115,6 +120,7 @@ export function parseJobSettingsPaper(
     picks: bag(row.settings),
     typed: Object.keys(typed).length > 0 ? typed : null,
     basis: typeof row.basis === 'string' && row.basis !== '' ? row.basis : null,
+    gcView: gcPaperViewOf(row.gc_view),
     settingsRevision:
       typeof row.settings_revision === 'number' ? row.settings_revision : 1,
     bookRevision: typeof row.book_revision === 'number' ? row.book_revision : 0,
@@ -180,7 +186,7 @@ export const supabaseJobPaperSettingsIo: JobPaperSettingsIo = {
         supabase
           .from('job_required_papers' as never)
           .select(
-            'id, book_document_id, settings, fields, basis, settings_revision, book_revision' as never,
+            'id, book_document_id, settings, fields, basis, gc_view, settings_revision, book_revision' as never,
           )
           .eq('job_id' as never, jobId as never)
           .is('removed_at' as never, null as never)
@@ -255,5 +261,12 @@ export const supabaseJobPaperSettingsIo: JobPaperSettingsIo = {
       { p_required_paper_id: requiredPaperId, p_basis: basis ?? '' } as never,
     )
     checkSupabaseError(res, 'move the basis')
+  },
+  async setGcView(requiredPaperId, view) {
+    const res = await supabase.rpc(
+      'job_paper_set_gc_view' as never,
+      { p_required_paper_id: requiredPaperId, p_view: view } as never,
+    )
+    checkSupabaseError(res, 'set what the GC sees')
   },
 }

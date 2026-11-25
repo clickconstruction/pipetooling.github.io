@@ -83,6 +83,7 @@ function fakeSettingsIo(over: Partial<JobPaperSettingsIo> = {}): JobPaperSetting
     requireWithSettings: vi.fn(async () => undefined),
     setSettings: vi.fn(async (id: string) => ({ state: 'saved' as const, requiredPaperId: id, signAgain: 0 })),
     setBasis: vi.fn(async () => undefined),
+    setGcView: vi.fn(async () => undefined),
     ...over,
   }
 }
@@ -119,7 +120,7 @@ describe('JobDocumentsRequiredPapers', () => {
 
   it('a required paper built from settings says so, and its Settings press opens the one page', async () => {
     const io = fakeIo({ readRoster: vi.fn(async () => withBuilt) })
-    const settingsIo = fakeSettingsIo({ readSettingsPapers: vi.fn(async () => [{ requiredPaperId: 'row-set', bookDocumentId: 'book-set', picks: { photos: 'ask' }, typed: null, basis: 'standard', settingsRevision: 1, bookRevision: 2, signed: 0 }]) })
+    const settingsIo = fakeSettingsIo({ readSettingsPapers: vi.fn(async () => [{ requiredPaperId: 'row-set', bookDocumentId: 'book-set', picks: { photos: 'ask' }, typed: null, basis: 'standard', gcView: 'businesses' as const, settingsRevision: 1, bookRevision: 2, signed: 0 }]) })
     renderWithProviders(<JobDocumentsRequiredPapers job={{ id: 'job-1' }} io={io} settingsIo={settingsIo} />)
     await screen.findByText('Built from this job’s settings')
     expect(settingsIo.readSettingsPapers).toHaveBeenCalledWith('job-1')

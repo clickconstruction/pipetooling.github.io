@@ -105,6 +105,8 @@ A job can require a paper built from settings before anyone opens it. The GC on 
 
 No worker is named. A helper or an office person counts in the total and has no line. A sub with no company on file shows under their own name.
 
+You can change how much they see of who has signed. Set the paper to the count alone and the business lines are gone. Set it to every signer by name and a list reads **Who has signed**. Each person who has signed is on it with their day. A sub's line also names their company. The setting is **What the GC sees** on the paper's settings page.
+
 **Download a sample** opens the job's paper with made-up names. SAMPLE is printed across each page. It shows the words a signer reads, and no signer.
 
 The GC can read only. Nothing they press changes the paper. Setting the paper up is in [require papers before a job opens](/help/require-papers-before-a-job-opens#what-the-gc-sees).
