@@ -10,6 +10,9 @@ import {
   versionNumber,
   toPlainText,
   openItemCount,
+  picturesFilesFor,
+  picturesFor,
+  picturesPageFacts,
   renderBoardData,
   renderBoardModule,
   parseBoardModule,
@@ -562,5 +565,49 @@ describe('the ask a card waits on (punch list #438)', () => {
     const [row] = renderBoardData([doc], { date: '2026-11-24', version: 'v2.8519' }).items
     expect(row!.ask).toEqual({ who: 'owner', kind: 'look', question: 'Look at the Pipeline row.' })
     expect(renderBoardData([DOC], { date: '2026-11-24', version: 'v2.8519' }).items[0]!.ask).toBeNull()
+  })
+})
+
+describe("a card's pictures (punch list #438)", () => {
+  const FOLDER = 'to-dos/pace-card-shown/README.md'
+  const PAGE = '<!-- Made by a script on 2026-11-24 (punch list #438). -->\n<figure class="pic is-phone" style="x">a</figure><figure class="pic is-desk">b</figure><figure class="frame">not one</figure>'
+
+  it('finds a folder card\'s page and its built lead by name', () => {
+    const siblings = ['to-dos/pace-card-shown/README.md', 'to-dos/pace-card-shown/pictures.html', 'to-dos/pace-card-shown/pictures-lead.webp', 'to-dos/pace-card-shown/mockup.html']
+    expect(picturesFilesFor(FOLDER, siblings)).toEqual({ page: 'to-dos/pace-card-shown/pictures.html', lead: { kind: 'built', path: 'to-dos/pace-card-shown/pictures-lead.webp' } })
+  })
+
+  it('reads today beside if built as a pair, which wins over a built lead', () => {
+    const siblings = ['to-dos/x/pictures-today.webp', 'to-dos/x/pictures-if-built.webp', 'to-dos/x/pictures-lead.webp']
+    expect(picturesFilesFor('to-dos/x/README.md', siblings).lead).toEqual({ kind: 'pair', today: 'to-dos/x/pictures-today.webp', ifBuilt: 'to-dos/x/pictures-if-built.webp' })
+    // Half a pair is no pair.
+    expect(picturesFilesFor('to-dos/x/README.md', ['to-dos/x/pictures-today.webp']).lead).toBeNull()
+  })
+
+  it('names a flat card\'s files after the card', () => {
+    const siblings = ['to-dos/messages-heard-day.md', 'to-dos/messages-heard-day-pictures.html', 'to-dos/messages-heard-day-pictures-lead.webp', 'to-dos/other-pictures.html']
+    expect(picturesFilesFor('to-dos/messages-heard-day.md', siblings)).toEqual({
+      page: 'to-dos/messages-heard-day-pictures.html',
+      lead: { kind: 'built', path: 'to-dos/messages-heard-day-pictures-lead.webp' },
+    })
+  })
+
+  it('counts the pictures on a page and reads the day it was made', () => {
+    expect(picturesPageFacts(PAGE)).toEqual({ count: 2, drawn: '2026-11-24' })
+    expect(picturesPageFacts('<p>nothing</p>')).toEqual({ count: 0, drawn: '' })
+  })
+
+  it('gives a card with neither a page nor a lead no pictures', () => {
+    expect(picturesFor(FOLDER, ['to-dos/pace-card-shown/README.md', 'to-dos/pace-card-shown/mockup.html'])).toBeNull()
+  })
+
+  it('reads them into the card and carries them onto the row', () => {
+    const siblings = ['to-dos/x.md', 'to-dos/x-pictures.html', 'to-dos/x-pictures-lead.webp']
+    const doc = readTodoDoc('to-dos/x.md', fileWith(META), siblings, PAGE)
+    if (isParseError(doc)) throw new Error(doc.problem)
+    const want = { page: 'to-dos/x-pictures.html', count: 2, drawn: '2026-11-24', lead: { kind: 'built', path: 'to-dos/x-pictures-lead.webp' } }
+    expect(doc.pictures).toEqual(want)
+    expect(renderBoardData([doc], { date: '2026-11-24', version: 'v2.8521' }).items[0]!.pictures).toEqual(want)
+    expect(renderBoardData([DOC], { date: '2026-11-24', version: 'v2.8521' }).items[0]!.pictures).toBeNull()
   })
 })

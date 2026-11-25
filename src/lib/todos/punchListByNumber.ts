@@ -12,11 +12,16 @@ import { mockupHref, versionSegments } from './punchListView'
  * page's old default: the groups, and the newest card first.
  */
 
-export type PunchView = 'group' | 'number'
+/**
+ * `waiting` (punch list #438) is the cards that carry a question, each with its answer control: the
+ * questions that wait on a person. The page draws it first and words its pill from the counts
+ * (`lib/todos/punchListWaiting.ts`); the label here is the pill's words when nothing waits on the reader.
+ */
+export type PunchView = 'group' | 'number' | 'waiting'
 export type NumberOrder = 'newest' | 'oldest'
 
-export const PUNCH_VIEWS: readonly PunchView[] = ['group', 'number']
-export const VIEW_LABEL: Record<PunchView, string> = { group: 'By group', number: 'By number' }
+export const PUNCH_VIEWS: readonly PunchView[] = ['waiting', 'group', 'number']
+export const VIEW_LABEL: Record<PunchView, string> = { waiting: 'Waiting on a person', group: 'By group', number: 'By number' }
 
 /** The address's own words for the two choices. */
 export const VIEW_PARAM = 'view'
@@ -27,16 +32,19 @@ export const VIEW_KEY = 'pt-punch-view'
 export const ORDER_KEY = 'pt-punch-number-order'
 
 export function parseView(raw: string | null | undefined): PunchView | null {
-  return raw === 'group' || raw === 'number' ? raw : null
+  return raw === 'group' || raw === 'number' || raw === 'waiting' ? raw : null
 }
 
 export function parseOrder(raw: string | null | undefined): NumberOrder | null {
   return raw === 'newest' || raw === 'oldest' ? raw : null
 }
 
-/** The address wins, then the device, then the groups. A word neither knows reads as absent. */
-export function viewFrom(fromAddress: string | null | undefined, remembered: string | null | undefined): PunchView {
-  return parseView(fromAddress) ?? parseView(remembered) ?? 'group'
+/**
+ * The address wins, then the device, then `fallback`: the groups, or the waiting view for a reader
+ * who has a question waiting on them. A word neither knows reads as absent.
+ */
+export function viewFrom(fromAddress: string | null | undefined, remembered: string | null | undefined, fallback: PunchView = 'group'): PunchView {
+  return parseView(fromAddress) ?? parseView(remembered) ?? fallback
 }
 
 /** The address wins, then the device, then the newest card first. */
@@ -57,6 +65,7 @@ export function searchFor(search: string, view: PunchView, order: NumberOrder): 
     params.set(VIEW_PARAM, 'number')
     if (order === 'oldest') params.set(ORDER_PARAM, 'oldest')
   }
+  if (view === 'waiting') params.set(VIEW_PARAM, 'waiting')
   const out = params.toString()
   return out ? `?${out}` : ''
 }

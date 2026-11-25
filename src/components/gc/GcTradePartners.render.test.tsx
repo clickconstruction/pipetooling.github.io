@@ -15,6 +15,18 @@ function writes(): TradePartnerWrites {
 const hillsideForm = { company_id: 'hillside', license: 'TX 4471', insurance: 'Lone Star Mutual, $1M / $2M', years_in_business: 9, reference_list: 'Ana Ruiz 210-555-0120', past_jobs: 'Two clinics in Boerne', sent_on: '2026-10-04' }
 
 describe('GcTradePartners', () => {
+  it('v2.8518 · a company whose one ask we took back reads so, never as quoted 0 of 1', () => {
+    const base = clinicBoardRows()
+    const rows = clinicBoardRows({ invites: base.invites.map((i) => (i.id === 'i2' ? { ...i, status: 'declined', declined_why: 'withdrawn', declined_on: '2026-10-07' } : i)) })
+    const { unmount } = render(<GcTradePartners state={boardStateFromRows(rows)} writes={writes()} onOpenProject={() => undefined} />)
+    expect(screen.getByText('asked once, and we took it back')).toBeTruthy()
+    expect(screen.queryByText('quoted 0 of 1 asks')).toBeNull()
+    unmount()
+    // As it was, the opened ask counts: they have one ask to answer.
+    render(<GcTradePartners state={boardStateFromRows(base)} writes={writes()} onOpenProject={() => undefined} />)
+    expect(screen.getByText('quoted 0 of 1 asks')).toBeTruthy()
+  })
+
   it('v2.5556 · Call script at the right of the strip opens the window, and scriptOpenAtStart opens it on mount', () => {
     const { unmount } = render(<GcTradePartners state={boardStateFromRows(clinicBoardRows())} writes={writes()} onOpenProject={() => undefined} />)
     expect(screen.queryByRole('dialog', { name: 'Calling a company new to us' })).toBeNull()

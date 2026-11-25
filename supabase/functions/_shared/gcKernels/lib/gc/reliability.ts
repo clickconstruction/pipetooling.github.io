@@ -9,11 +9,31 @@ import type { GcState, Partner } from './types.ts'
 
 export type AnswerRecord = 'new' | 'reliable' | 'mixed' | 'silent'
 
-/** How a company has answered our asks so far. Two asks is the least we judge on. */
+/**
+ * The asks a company had to answer: every ask but the ones we took back after they heard about them (v2.8490). Our
+ * own close is no silence of theirs, so it is out of the rate, as an ask deleted before they heard is.
+ */
+export function asksToAnswer(partner: Pick<Partner, 'invited' | 'tookBack'>): number {
+  return Math.max(0, partner.invited - (partner.tookBack ?? 0))
+}
+
+/** How a company has answered our asks so far. Two asks to answer is the least we judge on. */
 export function answerRecord(partner: Partner): AnswerRecord {
-  if (partner.invited < 2) return 'new'
-  const rate = partner.bids / partner.invited
+  const asked = asksToAnswer(partner)
+  if (asked < 2) return 'new'
+  const rate = partner.bids / asked
   return rate >= 0.75 ? 'reliable' : rate >= 0.4 ? 'mixed' : 'silent'
+}
+
+/**
+ * "quoted 2 of 3 asks", over the asks they had to answer. A company never asked reads `never`, the caller's words.
+ * One whose every ask we took back reads so, never as 0 of 1.
+ */
+export function quotedWords(partner: Pick<Partner, 'invited' | 'tookBack' | 'bids'>, never: string): string {
+  if (partner.invited === 0) return never
+  const asked = asksToAnswer(partner)
+  if (asked === 0) return partner.invited === 1 ? 'asked once, and we took it back' : `asked ${partner.invited} times, and we took each back`
+  return `quoted ${partner.bids} of ${asked} asks`
 }
 
 /** Answers when asked, then answers about half the time, then not judged yet, then mostly silent. */

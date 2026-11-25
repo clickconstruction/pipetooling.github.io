@@ -6,9 +6,14 @@ import {
   picksFromRows,
   withPick,
   type PickMap,
-  type PunchPick,
   type PunchPickRow,
+  type StoredPick,
 } from '../lib/todos/punchListView'
+
+/** What a save may change: the pick, the note, and the question the pick answers (punch list #438). */
+export type PickPatch = Partial<{ pick: StoredPick | ''; note: string; answersAsk: string }>
+
+const PICK_COLUMNS = 'slug, pick, note, answers_ask, updated_at, updated_by, users:updated_by(name)'
 
 /**
  * The Punch list's picks (v2.3559): one `punch_list_picks` row per to-do slug, shared by
@@ -24,7 +29,7 @@ export function usePunchListPicks(enabled: boolean): {
   picks: PickMap
   shared: boolean
   loading: boolean
-  save: (slug: string, patch: Partial<{ pick: PunchPick | ''; note: string }>) => Promise<void>
+  save: (slug: string, patch: PickPatch) => Promise<void>
 } {
   const [picks, setPicks] = useState<PickMap>(() => readLocal())
   const [shared, setShared] = useState(false)
@@ -37,7 +42,7 @@ export function usePunchListPicks(enabled: boolean): {
     try {
       const { data, error } = await supabase
         .from('punch_list_picks')
-        .select('slug, pick, note, updated_at, updated_by, users:updated_by(name)')
+        .select(PICK_COLUMNS)
       if (error) {
         // 42P01 / PGRST205: the table is not there yet — device picks, and say so.
         sharedRef.current = false
@@ -69,7 +74,7 @@ export function usePunchListPicks(enabled: boolean): {
   }, [reload])
 
   const save = useCallback(
-    async (slug: string, patch: Partial<{ pick: PunchPick | ''; note: string }>) => {
+    async (slug: string, patch: PickPatch) => {
       // Optimistic either way; the shared write replaces the row with the server's stamp.
       setPicks((prev) => {
         const next = { ...prev, [slug]: withPick(prev[slug], patch, new Date().toISOString(), prev[slug]?.by ?? '', prev[slug]?.byName ?? '') }
@@ -78,11 +83,16 @@ export function usePunchListPicks(enabled: boolean): {
       })
       if (!sharedRef.current) return
       const current = picks[slug]
-      const row = { slug, pick: patch.pick ?? current?.pick ?? '', note: patch.note ?? current?.note ?? '' }
+      const row = {
+        slug,
+        pick: patch.pick ?? current?.pick ?? '',
+        note: patch.note ?? current?.note ?? '',
+        answers_ask: patch.answersAsk ?? current?.answersAsk ?? '',
+      }
       const { data, error } = await supabase
         .from('punch_list_picks')
         .upsert(row, { onConflict: 'slug' })
-        .select('slug, pick, note, updated_at, updated_by, users:updated_by(name)')
+        .select(PICK_COLUMNS)
         .single()
       if (error || !data) return
       const fresh = picksFromRows([data as unknown as PunchPickRow])

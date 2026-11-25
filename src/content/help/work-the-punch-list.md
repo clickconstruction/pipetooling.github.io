@@ -2,7 +2,7 @@
 title: work the punch list of unfinished projects
 category: Office
 roles: dev, master_technician
-keywords: punch list, working on it, tick a card, claim a card, who is working on it, taken, free to pick up, tick cleared, my tick is gone, 12 hours, checkbox, my ticks, what am I working on, search the punch list, find a card, search cards, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
+keywords: punch list, waiting on me, questions to answer, answer a card, go ahead, change, not now, answered, who a card waits on, working on it, tick a card, claim a card, who is working on it, taken, free to pick up, tick cleared, my tick is gone, 12 hours, checkbox, my ticks, what am I working on, search the punch list, find a card, search cards, by number, newest first, oldest first, sort the cards, burndown, when will it clear, pace, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call, row number, item number, settings
 order: 95
 ---
 The **Punch list** is the board of every project that was designed or partly built but is not finished. The board is the same list that lives in the repo's `to-dos/` folder, rendered in the app.
@@ -25,9 +25,38 @@ Cards in **Needs an owner decision** and **Waiting on time or usage** do not clo
 
 **Hide the burndown** folds it to one line. This device remembers the choice.
 
+## Answer the questions that wait on you
+
+Some cards wait on a person. Such a card carries one question, and says who it waits on.
+
+The **View** row has a pill for those cards. The pill reads **Waiting on me** with a count when a card asks you. The pill reads **Waiting on a person** when no card asks you. The page opens on this view when a card asks you.
+
+- Each row leads with the question. A word in front says what kind of thing is asked.
+- **Look** asks you to open a screen. **Read** asks you to read a text through.
+- **Walk** asks you to be there for a walk. **Decide** asks you to pick an answer.
+- **Use** asks you to use the thing for a while.
+- The card's name is under the question. You press the name to open the card.
+- A small picture shows the built screen. You press it, or **See all**, to open every picture.
+- A card that is not built shows **Today** beside **If built**. The second picture is a mock-up.
+
+You answer on the row with {{button:green|Go ahead}}, {{button:amber|Change}} or {{button:gray|Not now}}.
+
+- **Go ahead** says the work can move on.
+- **Change** opens a box. You type what should change, then leave the box.
+- **Not now** says the question can wait.
+- You press a pressed answer again to take it back.
+
+An answered card leaves the list. The card folds into **Answered** at the foot. You press **Answered** to see those cards and change an answer.
+
+An answer belongs to its question. When a card asks a new question, the card comes back to the list.
+
+The pills over the list show whose questions you see. **Me** is yours. **Everyone** is every question. This device remembers the pill.
+
+A card's own row carries the same question and the same answer. The row carries both in **By group** and in **By number**.
+
 ## Work the cards by number
 
-The page has two views. **By group** is the board in its five groups. **By number** is every card in one list.
+Two more views list every card. **By group** is the board in its five groups. **By number** is every card in one list.
 
 You press **By number** in the **View** row above the list. The newest card is on top. A number is given once, so the highest number is the newest card.
 
@@ -147,4 +176,4 @@ The time of a file change comes from the last deploy. A change made since then c
 
 ## Changing what is on the board
 
-The board is rendered from the to-do files, so it cannot be edited here. To add a project, change a status, or retire a finished one, you change the to-do file in the repo. `to-dos/README.md` says how. The board updates with the next deploy.
+The board is rendered from the to-do files, so it cannot be edited here. To add a project, change a status, or retire a finished one, you change the to-do file in the repo. A card's question is one line in its file, `ask:`. `to-dos/README.md` says how. The board updates with the next deploy.

@@ -585,6 +585,11 @@ export interface Partner {
   coiExpires: string | null
   w9: boolean
   invited: number
+  /**
+   * Of `invited`, the asks we took back after they heard about them (v2.8490, counted since v2.8518). They are asks on the record, and no
+   * ask of ours to answer, so the quote rate leaves them out (`asksToAnswer`, reliability.ts). Unset: none.
+   */
+  tookBack?: number
   bids: number
   won: number
   /** Promises of a quote date before today's live asks: how many they made, how many they kept. */

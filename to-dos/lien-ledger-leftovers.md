@@ -2,7 +2,7 @@
 name: "Lien desk: what the ledger (#361) left, to do later"
 number: 415
 group: residual
-status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454 · loose ends 1, 2, 4 and 6 built the same day on the picks from the pictures, v2.8537, v2.8535 and v2.8538, and loose end 5 answered · walk 2 done on a staged ZZ Test job, walk 7's record written and its reading not seen, which left a finding with no decision yet
+status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454 · loose ends 1, 2, 4 and 6 built the same day on the picks from the pictures, v2.8537, v2.8535 and v2.8538, and loose end 5 answered · walk 2 done on a staged ZZ Test job, walk 7's record written and its reading not seen, which left a finding with no decision yet · v2.8537 and v2.8538 seen on the live desk the same day, read-only, and they read as built; v2.8535's empty card has no live case
 summary: >
   Punch list #361 rebuilt the Lien desk's Months on this job as one card, the ledger, and closed on
   2026-11-21 once every choice made with it was built and live. Its last night left a handful of
@@ -12,9 +12,10 @@ summary: >
   Seven walks were owed. Walks 1 and 2 are done. Walk 7's record was written on a ZZ Test job and its
   reading was not seen, and that left a finding: the affidavit pane draws its months card only for a
   job with approved clock hours. Walk 4 was staged and not walked. Walks 3, 5 and 6 were not staged
-  and wait on live cases. The three builds of v2.8535 to v2.8538 have not been seen live.
-next: The owner decides the finding under *Found on the walks*, since walk 7's reading waits on it. Walk 4 can be staged again on the ZZ Test job on the owner's yes, and it needs the two by-hand papers that are still on that job, so void them after it, not before. A read-only look at the live desk is owed for v2.8535, v2.8537 and v2.8538. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
-size: no build left · one decision (the finding) · one live look · five walks (XS each): 4 can be staged, 7 waits on the finding, 3, 5 and 6 wait on live cases
+  and wait on live cases. The cents and the pinned strip were seen on the live desk on 2026-11-24 and read as built. The empty
+  card's next press has no live case to be seen on.
+next: The owner decides the finding under *Found on the walks*, since walk 7's reading waits on it. Walk 4 can be staged again on the ZZ Test job on the owner's yes, and it needs the two by-hand papers that are still on that job, so void them after it, not before. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
+size: no build left · one decision (the finding) · five walks (XS each): 4 can be staged, 7 waits on the finding, 3, 5 and 6 wait on live cases
 blocker: The finding waits on the owner's decision. Staging a walk writes on a ZZ Test job, so each waits on the owner's yes.
 ---
 
@@ -46,7 +47,9 @@ pictures. Each struck line names its version, and the fragment of that version h
 1. ~~**The claim drops cents while its bills keep them (S).**~~ **Shipped v2.8537**, as B: cents on both, the cents
    small. The pick was answered on 2026-11-24 from the labeled pictures. The claim, the figure under *This notice*,
    the Months title row and the strip's Claim chip now show their cents through `Money`. The list at the left keeps
-   whole dollars, as a column to run the eye down. Not seen live yet. What it was: in Months on this job the claim reads *$12,700* and the
+   whole dollars, as a column to run the eye down. **Seen live 2026-11-24**, on a draft and on a missed notice, at
+   730 px and 380 px: the claim's cents are 15.1 px under 21.6 px dollars, the figure under *This notice* is
+   84.8 px in an 88.1 px column, each bill line shows its cents, and nothing slides sideways. What it was: in Months on this job the claim reads *$12,700* and the
    bill lines under it *$12,700.00*. The claim is `formatUsdNoCents`; the lines are `demandMoney` in
    `LienClaimBills.tsx`. It is older than #361 and was carried over by #8990 (v2.7989). Show cents on both or drop
    them on both. **Grace's call**, since it is how her desk reads money. Draw both ways at 730 px and 380 px first.
@@ -64,8 +67,8 @@ pictures. Each struck line names its version, and the fragment of that version h
      85 px in an 88 px column. The pictures went to Taunya for Grace. They are not in the repo.
 2. ~~**The empty card names no next press (XS).**~~ **Shipped v2.8535.** The empty card now reads *No months on
    this job yet. Set the last day of work › gives the job its first month.*, and the press opens the window the
-   path's LAST WORK stop opens. A reader with no press reads what gives the job a month. Not seen live yet: a
-   notice whose job has no month is rare. What it was: with no month on the job the card reads only *No months on this job
+   path's LAST WORK stop opens. A reader with no press reads what gives the job a month. Not seen live: no
+   notice looked at on 2026-11-24 has a job with no month, and the ZZ Test job opens no pane while it has no GC. What it was: with no month on the job the card reads only *No months on this job
    yet.* (`LienDeskMonths.tsx`, `data-lien-ledger-empty`), from #8990 (v2.7989). The repo's rule is that an empty
    state says what fills it and offers the press (`EmptyState` with `next`). The next step is the row above it, the
    last day of work and its Change ›. **No one's call**: a rule the card breaks. Still so on 2026-11-24:
@@ -81,7 +84,9 @@ pictures. Each struck line names its version, and the fragment of that version h
 4. ~~**The strip's chips are 18 px tall on a phone (S).**~~ **Shipped v2.8538**, as C: one line that slides
    sideways, 44 px tall, with a 44 px touch area on every press and the chips' look unchanged. The pick was
    answered on 2026-11-24 from the labeled pictures. Measured on a harness of the real pane: the strip pins 45 px
-   at 380 px where it pinned 81 px. Chromium only, not seen on a real phone, and not seen live yet. What it was:
+   at 380 px where it pinned 81 px. **Seen live 2026-11-24** at 380 px: one line 45 px
+   tall that slides, no scrollbar, the job's name cut at two fifths, each chip 18 px with its touch area 13 px over
+   and under. Chromium only, not seen on a real phone. What it was:
    the line that pins to the top of a notice pane holds chips
    that are presses (`lienStripChips`, `.lienStripChip`, #8177, v2.7318). At 390 px each is 18 px tall. The owner's
    answer 5 of 2026-11-20 (#9133) grew every press on the months card to 44 px, not the strip's. **The owner's
@@ -110,7 +115,9 @@ pictures. Each struck line names its version, and the fragment of that version h
    - #9211 (v2.8167): a sent notice's strip and months bar name the months it went for, not *No month picked*.
 6. ~~**A long next step runs off the strip (XS).**~~ **Shipped v2.8538**, with loose end 4. At a desk a chip too
    long for the strip wraps inside its own shape, and on a phone C's sliding line holds it. Measured on a harness:
-   the pane slides sideways 0 px where it slid 150 px and 152 px. Not seen live yet. What it was: found on walk 1,
+   the pane slides sideways 0 px where it slid 150 px and 152 px. **Seen live 2026-11-24** on the missed notice of
+   walk 1's kind: at 730 px the red chip wraps to two lines, 36 px tall, inside the strip, and at 380 px it keeps
+   its one line on the sliding strip. Nothing slides sideways at either width. What it was: found on walk 1,
    2026-11-24. The strip's third chip is the path's
    next step. On a missed notice that can no longer go it is a whole sentence in red: *The affidavit window closed
    with nothing filed — the lien is gone; the money is still owed ›*. A chip cannot wrap (`lienRowChipStyle`,
