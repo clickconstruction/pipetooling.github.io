@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { QueueContact } from '../followUp/queue'
-import { boardDotsByJob, boardDotTitle, type BoardDotLine } from './boardDots'
+import { followUpMessagesFromRows, type FollowUpMessageRow } from '../followUp/followUpRows'
+import { boardDotsByJob, boardDotTitle, pipelineDotsByJobId, type BoardDotLine } from './boardDots'
 
 const NOW = new Date('2026-10-12T20:00:00Z')
 const TODAY = '2026-10-12'
@@ -58,5 +59,57 @@ describe('boardDotTitle', () => {
       'Dana · text · 9:05 AM · Can you do Thursday? · Nobody has answered.',
     )
     expect(boardDotTitle({ who: '', channel: 'missed call', when: 'yesterday', line: '', status: 'Nobody has answered.' })).toBe('missed call · yesterday · Nobody has answered.')
+  })
+})
+
+/**
+ * Punch list #125: the join no test crossed. A real `messages` row goes through the same mapping the board's read
+ * uses (`followUpMessagesFromRows`), so its job is a job key, and the Pipeline's map is asked by the bare ledger id.
+ */
+describe('pipelineDotsByJobId, across the real row mapping', () => {
+  const LEDGER = '5b1f0c1e-0000-4000-8000-00000000a125'
+  const BID = '7c2e1d2f-0000-4000-8000-00000000b125'
+  const row = (over: Partial<FollowUpMessageRow>): FollowUpMessageRow => ({
+    id: 'm-ask',
+    contact_id: 'c-dana',
+    channel_id: null,
+    bid_id: null,
+    project_id: null,
+    jobs_ledger_id: null,
+    channel: 'text',
+    direction: 'in',
+    who_user_id: null,
+    who_text: '',
+    at: '2026-10-12T14:05:00Z',
+    subject: null,
+    body: 'Can you do Thursday?',
+    optout_line: null,
+    back_on: null,
+    back_by: null,
+    back_words: null,
+    back_done_at: null,
+    ...over,
+  })
+  const dotsFor = (rows: FollowUpMessageRow[]) => boardDotsByJob([dana], followUpMessagesFromRows(rows, { contacts: [{ id: 'c-dana', name: 'Dana Whitfield', goesBy: null, kind: 'customer' }] }), TODAY, NOW)
+
+  it('a line tied to a Pipeline job is found by that job’s ledger id', () => {
+    const byKey = dotsFor([row({ jobs_ledger_id: LEDGER })])
+    // The kernel's own key is the job key, which a row's bare id never equals: the fault.
+    expect([...byKey.keys()]).toEqual([`pipeline:${LEDGER}`])
+    expect(byKey.get(LEDGER)).toBeUndefined()
+    const dots = pipelineDotsByJobId(byKey)
+    expect(dots.get(LEDGER)).toEqual({ who: 'Dana', channel: 'text', when: '9:05 AM', line: 'Can you do Thursday?', status: 'Nobody has answered.' })
+    expect(dots.size).toBe(1)
+  })
+
+  it('a line tied to a bid or a GC project lights nothing on the Pipeline, whatever its id', () => {
+    expect(pipelineDotsByJobId(dotsFor([row({ bid_id: BID })])).size).toBe(0)
+    expect(pipelineDotsByJobId(dotsFor([row({ project_id: LEDGER })])).has(LEDGER)).toBe(false)
+  })
+
+  it('a line tied to no job, and a key that is not a job key, light nothing', () => {
+    expect(pipelineDotsByJobId(dotsFor([row({})])).size).toBe(0)
+    const hover = { who: 'Dana', channel: 'text', when: '9:05 AM', line: 'x', status: 'Nobody has answered.' as const }
+    expect(pipelineDotsByJobId(new Map([['job-1312', hover], [`bid:${BID}`, hover], [`pipeline:${LEDGER}`, hover]])).size).toBe(1)
   })
 })
