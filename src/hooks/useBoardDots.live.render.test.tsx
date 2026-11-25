@@ -43,7 +43,8 @@ const DANA_WAITS: BoardDotRows = {
     {
       id: 'm-ask',
       contactId: 'c-dana',
-      jobId: 'job-1312',
+      // A line's job is a job key, as `jobKeyOfRow` writes it; the rows ask by the bare ledger id.
+      jobId: 'pipeline:job-1312',
       channel: 'text',
       direction: 'in',
       at: '2026-10-12T14:05:00Z',

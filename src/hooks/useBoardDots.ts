@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMessagesLive } from '../components/gc/messages/useMessagesLive'
 import type { BoardDotHover } from '../lib/flows/stageSends'
-import { boardDotsByJob } from '../lib/messages/boardDots'
+import { boardDotsByJob, pipelineDotsByJobId } from '../lib/messages/boardDots'
 import { loadBoardDotRows, type BoardDotRows } from '../lib/messages/boardDotsIo'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 
@@ -27,6 +27,7 @@ export interface UseBoardDotsOptions {
 }
 
 export interface BoardDots {
+  /** By the job's bare ledger id, `jobs_ledger.id`, which is what a Pipeline row asks with (`get(job.id)`). */
   dotByJobId: ReadonlyMap<string, BoardDotHover>
   reload: () => Promise<void>
 }
@@ -60,7 +61,8 @@ export function useBoardDots({ enabled, refreshKey, load = loadBoardDotRows, tod
 
   const dotByJobId = useMemo(() => {
     if (!enabled || !rows) return NONE
-    return boardDotsByJob(rows.contacts, rows.lines, todayYmd ?? todayYmdInAppTz(), nowIso ? new Date(nowIso) : new Date())
+    // The kernel keys by job key (`pipeline:<id>`); the rows ask by ledger id (punch list #125).
+    return pipelineDotsByJobId(boardDotsByJob(rows.contacts, rows.lines, todayYmd ?? todayYmdInAppTz(), nowIso ? new Date(nowIso) : new Date()))
   }, [enabled, rows, todayYmd, nowIso])
 
   return { dotByJobId, reload }

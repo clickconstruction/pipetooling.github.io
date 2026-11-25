@@ -11,6 +11,7 @@
 import { firstName } from '../contacts/kernel'
 import { boardDot, type BoardDotHover, type BoardDotMessage } from '../flows/stageSends'
 import { needsReply, type QueueContact, type QueueMessage } from '../followUp/queue'
+import { jobRefOf } from './jobKeys'
 
 /** A line as the dot reads it: Follow up's, with the job it is tied to and an email's subject for the hover. */
 export type BoardDotLine = QueueMessage & Pick<BoardDotMessage, 'jobId' | 'subject'>
@@ -19,6 +20,10 @@ export type BoardDotLine = QueueMessage & Pick<BoardDotMessage, 'jobId' | 'subje
  * The dots by job: each Needs a reply row whose newest line is tied to a job puts the job on the map, the row waiting
  * longest first, so of two people waiting on one job the longest-waiting one is the hover's (as `boardDot` orders them).
  * A row whose newest line is tied to no job marks nothing: the dot says "on this job", not "somewhere".
+ *
+ * The map's key is the line's own `jobId`. A line read from the database carries a job KEY there, `pipeline:<id>`,
+ * `bid:<id>` or `project:<id>` (`jobKeyOfRow`, `jobKeys.ts`), never a bare id. A Pipeline row asks by its bare ledger
+ * id, so the board reads this map through `pipelineDotsByJobId`.
  */
 export function boardDotsByJob(
   contacts: readonly QueueContact[],
@@ -35,6 +40,21 @@ export function boardDotsByJob(
     if (!jobId || out.has(jobId)) continue
     const dot = boardDot(rows, lines, names, jobId, now)
     if (dot) out.set(jobId, dot)
+  }
+  return out
+}
+
+/**
+ * The dots as a Pipeline row asks for them: by the job's bare ledger id (punch list #125). `boardDotsByJob` keys by job
+ * key, and from v2.5632 the board handed that map to rows that ask `get(job.id)`, so `pipeline:<id>` never met `<id>`
+ * and no dot ever lit on a real row. A dot on a bid's or a GC project's key is not the Pipeline's and is left out, and
+ * so is a key that is not a job key at all.
+ */
+export function pipelineDotsByJobId(dotsByJobKey: ReadonlyMap<string, BoardDotHover>): ReadonlyMap<string, BoardDotHover> {
+  const out = new Map<string, BoardDotHover>()
+  for (const [key, dot] of dotsByJobKey) {
+    const ref = jobRefOf(key)
+    if (ref?.kind === 'pipeline' && !out.has(ref.id)) out.set(ref.id, dot)
   }
   return out
 }
