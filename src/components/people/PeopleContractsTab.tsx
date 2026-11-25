@@ -73,7 +73,7 @@ import { loadSubCompanies } from '../../lib/people/subCompaniesIo'
 import { SubCompanyFootRow, SubCompanyHeadRow, SubCompanyLines } from './SubCompanyLines'
 import { COMPANY_PAPER_WORDS, companyPaperLines, type CompanyPaperRow } from '../../lib/people/subCompanyPapers'
 import { loadCompanyPapers } from '../../lib/people/subCompanyPapersIo'
-import { companyPaperTakeBackRow, takeBackConfirm, takeBackOutcomeWords } from '../../lib/documents/paperTakeBack'
+import { canTakeBackPapers, companyPaperTakeBackRow, takeBackConfirm, takeBackOutcomeWords } from '../../lib/documents/paperTakeBack'
 import { takeBackCompanyPaper } from '../../lib/documents/paperTakeBackIo'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { SubCompanyPaperWindow } from './SubCompanyPaperWindow'
@@ -1765,9 +1765,10 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
   }, [])
 
   // Take back on a company's paper: the confirm says what goes and that the link stops, then the function deletes
-  // the paper. A paper GC mode is waiting on is refused by the function in words, which the toast says.
+  // the paper. A paper GC mode is waiting on is refused by the function in words, which the toast says. Who may is
+  // Take back's own rule, a dev and the controller (v2.8530), and no longer whoever deletes a paper here.
   const takeBackCompanyPaperPress = async (paper: CompanyPaperRow, companyName: string) => {
-    if (!canDeletePeopleContracts || takingBackCompanyPaperId) return
+    if (!canTakeBackPapers(authRole) || takingBackCompanyPaperId) return
     const row = companyPaperTakeBackRow(paper, companyName)
     const sent = paper.status === 'sent'
     if (!(await confirmDialog(takeBackConfirm(row, sent)))) return
@@ -2334,7 +2335,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                                   markedPaperId={contractsMarkedDocId}
                                   onSend={() => setCompanyPaperWindow({ kind: 'send', companyId: piece.group.company.id })}
                                   onEnter={() => setCompanyPaperWindow({ kind: 'enter', companyId: piece.group.company.id })}
-                                  onTakeBack={canDeletePeopleContracts ? (paper) => void takeBackCompanyPaperPress(paper, piece.group.company.name) : undefined}
+                                  onTakeBack={canTakeBackPapers(authRole) ? (paper) => void takeBackCompanyPaperPress(paper, piece.group.company.name) : undefined}
                                   takingBackId={takingBackCompanyPaperId}
                                 />
                                 {piece.group.workers.map((w) => renderRosterRow(w.name, false, true))}

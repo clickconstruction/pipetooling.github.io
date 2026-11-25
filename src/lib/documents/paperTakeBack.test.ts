@@ -43,13 +43,13 @@ function row(over: Partial<AgreementRow> = {}): AgreementRow {
 }
 
 describe('canTakeBackPapers: who has the press', () => {
-  it('the leader and a dev, the two roles that delete a paper anywhere in the app', () => {
+  it('a dev and the controller', () => {
     expect(canTakeBackPapers('dev')).toBe(true)
-    expect(canTakeBackPapers('master_technician')).toBe(true)
+    expect(canTakeBackPapers('controller')).toBe(true)
   })
 
-  it('nobody else: the app’s own rule for deleting a paper, which is narrower than the database’s', () => {
-    for (const role of ['assistant', 'controller', 'estimator', 'subcontractor', 'helpers', 'primary', 'superintendent', '', null, undefined]) {
+  it('nobody else, the leader among them: the app’s own rule, which is narrower than the database’s', () => {
+    for (const role of ['master_technician', 'assistant', 'estimator', 'subcontractor', 'helpers', 'primary', 'superintendent', '', null, undefined]) {
       expect(canTakeBackPapers(role)).toBe(false)
     }
   })

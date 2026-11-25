@@ -1,4 +1,5 @@
--- Taking back a trade company's own paper (punch list #403, 20261124103000): take_back_company_paper deletes a paper
+-- Taking back a trade company's own paper (punch list #403, 20261124103000, its door since 20261124214500):
+-- take_back_company_paper deletes a paper
 -- that is a trade company's own and is not signed, and answers taken, signed or gone. Who may, each refusal in its
 -- words (a paper that is not a trade company's, one a job requires, one a newer copy replaced, one GC mode is waiting
 -- on), a signed paper and a received certificate kept, the paper gone with nothing else touched, and the same paper
@@ -19,7 +20,7 @@ INSERT INTO public.users (id, email, name, role) VALUES
   ('00000000-0000-0000-0000-0000000b3d03', 'assistant@takeback.test', 'Takeback Assistant', 'assistant'),
   ('00000000-0000-0000-0000-0000000b3d04', 'controller@takeback.test', 'Takeback Controller', 'controller'),
   ('00000000-0000-0000-0000-0000000b3d05', 'estimator@takeback.test', 'Takeback Estimator', 'estimator'),
-  ('00000000-0000-0000-0000-0000000b3d06', 'training@takeback.test', 'Takeback Training Master', 'master_technician'),
+  ('00000000-0000-0000-0000-0000000b3d06', 'training@takeback.test', 'Takeback Training Controller', 'controller'),
   ('00000000-0000-0000-0000-0000000b3d07', 'sub@takeback.test', 'Takeback Sub', 'subcontractor')
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
 UPDATE public.users SET read_only = true WHERE id = '00000000-0000-0000-0000-0000000b3d06';
@@ -113,7 +114,8 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA tbk TO authenticated;
 -- 0 · The fixtures stand as meant: each company's paper took its company from its name.
 SELECT tbk.same('the companies’ papers', (SELECT count(*)::text FROM public.person_contract_documents WHERE company_id::text LIKE '00000000-0000-0000-0000-0000000b31%'), '9');
 
--- 1 · Who may take a paper back: the leader and a dev. Everyone else is refused in words before any write.
+-- 1 · Who may take a paper back: a dev and the controller. Everyone else, the leader among them, is refused in words
+-- before any write.
 SELECT tbk.as_nobody();
 SET LOCAL ROLE authenticated;
 SELECT tbk.refused('nobody signed in', $q$SELECT public.take_back_company_paper('00000000-0000-0000-0000-0000000b3201')$q$, 'Sign in to take a paper back.');
@@ -123,10 +125,10 @@ DECLARE
   r record;
 BEGIN
   FOR r IN SELECT * FROM (VALUES
-    ('an assistant', '00000000-0000-0000-0000-0000000b3d03'::uuid, 'Only the leader or a dev takes a paper back.'),
-    ('a controller', '00000000-0000-0000-0000-0000000b3d04'::uuid, 'Only the leader or a dev takes a paper back.'),
-    ('an estimator', '00000000-0000-0000-0000-0000000b3d05'::uuid, 'Only the leader or a dev takes a paper back.'),
-    ('a sub', '00000000-0000-0000-0000-0000000b3d07'::uuid, 'Only the leader or a dev takes a paper back.'),
+    ('an assistant', '00000000-0000-0000-0000-0000000b3d03'::uuid, 'Only a dev or the controller takes a paper back.'),
+    ('the leader', '00000000-0000-0000-0000-0000000b3d02'::uuid, 'Only a dev or the controller takes a paper back.'),
+    ('an estimator', '00000000-0000-0000-0000-0000000b3d05'::uuid, 'Only a dev or the controller takes a paper back.'),
+    ('a sub', '00000000-0000-0000-0000-0000000b3d07'::uuid, 'Only a dev or the controller takes a paper back.'),
     ('a training account', '00000000-0000-0000-0000-0000000b3d06'::uuid, 'A training account cannot take a paper back.')) AS t(who, id, want)
   LOOP
     PERFORM tbk.as_user(r.id);
@@ -135,15 +137,15 @@ BEGIN
     RESET ROLE;
   END LOOP;
   FOR r IN SELECT * FROM (VALUES
-    ('a dev', '00000000-0000-0000-0000-0000000b3d01'::uuid), ('the leader', '00000000-0000-0000-0000-0000000b3d02'::uuid)) AS t(who, id)
+    ('a dev', '00000000-0000-0000-0000-0000000b3d01'::uuid), ('the controller', '00000000-0000-0000-0000-0000000b3d04'::uuid)) AS t(who, id)
   LOOP
     PERFORM tbk.goes(r.who || ' takes a paper back', r.id);
   END LOOP;
 END $$;
 SELECT tbk.same('every try left the papers as they were', (SELECT count(*)::text FROM public.person_contract_documents WHERE id::text LIKE '00000000-0000-0000-0000-0000000b32%'), '10');
 
--- 2 · Each refusal, in its words, as the leader.
-SELECT tbk.as_user('00000000-0000-0000-0000-0000000b3d02');
+-- 2 · Each refusal, in its words, as the controller.
+SELECT tbk.as_user('00000000-0000-0000-0000-0000000b3d04');
 SET LOCAL ROLE authenticated;
 SELECT tbk.refused('no paper named', $q$SELECT public.take_back_company_paper(NULL)$q$, 'Pick the paper to take back.');
 SELECT tbk.refused('a person’s own paper', $q$SELECT public.take_back_company_paper('00000000-0000-0000-0000-0000000b320a')$q$,
@@ -162,8 +164,8 @@ SELECT tbk.same('a paper that is not there', public.take_back_company_paper('000
 RESET ROLE;
 SELECT tbk.same('nothing taken back by a refusal or a kept paper', (SELECT count(*)::text FROM public.person_contract_documents WHERE id::text LIKE '00000000-0000-0000-0000-0000000b32%'), '10');
 
--- 4 · The leader takes the walk's papers back: the one that is out and the one never sent. A second press reads gone.
-SELECT tbk.as_user('00000000-0000-0000-0000-0000000b3d02');
+-- 4 · The controller takes the walk's papers back: the one that is out and the one never sent. A second press reads gone.
+SELECT tbk.as_user('00000000-0000-0000-0000-0000000b3d04');
 SET LOCAL ROLE authenticated;
 SELECT tbk.same('the paper that is out', public.take_back_company_paper('00000000-0000-0000-0000-0000000b3201'), 'taken');
 SELECT tbk.same('the paper never sent', public.take_back_company_paper('00000000-0000-0000-0000-0000000b3202'), 'taken');

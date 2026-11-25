@@ -5,8 +5,9 @@
 #   bash scripts/pgtest-take-back-company-paper.sh
 #
 # The same bed as scripts/pgtest-gc-take-ask-back.sh: the Supabase Postgres image with every file in
-# supabase/migrations applied in order. The function's migration is then applied a second time, which must change
-# nothing. The scenario takes papers back as the office through RLS, inside one transaction that rolls back: who may,
+# supabase/migrations applied in order. The function's migrations are then applied a second time, which must change
+# nothing. The scenario takes papers back as the office through RLS, inside one transaction that rolls back: who may
+# (a dev and the controller),
 # each refusal in its words (a paper that is not a trade company's, one a job requires, one a newer copy replaced,
 # one GC mode is waiting on), a signed paper and a received certificate kept, the paper gone with the company and GC
 # mode's ask untouched, and the same paper taken back once the ask is kept. It raises on its first failed assertion
@@ -19,7 +20,9 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55934}"
 NAME="pgtest-take-back-company-paper"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_take_back_company_paper.sql)"
+# The function is restated by a later migration (its door, 20261124214500). The two are re-applied in order, so the
+# second run ends on the live one.
+WRITES="$(ls supabase/migrations/*_take_back_company_paper.sql supabase/migrations/*_take_back_dev_and_controller.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

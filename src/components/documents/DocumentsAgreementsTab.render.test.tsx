@@ -513,7 +513,7 @@ describe('DocumentsAgreementsTab', () => {
   })
 
   it('Take back asks first, deletes the paper, says its link no longer works, and reads again', async () => {
-    io.role = 'master_technician'
+    io.role = 'controller'
     io.rows = [partyPaper()]
     renderWithProviders(<DocumentsAgreementsTab />)
     await lines()
@@ -531,7 +531,7 @@ describe('DocumentsAgreementsTab', () => {
   })
 
   it('Cancel on the confirm deletes nothing', async () => {
-    io.role = 'master_technician'
+    io.role = 'controller'
     io.rows = [partyPaper()]
     renderWithProviders(<DocumentsAgreementsTab />)
     await lines()
@@ -542,7 +542,7 @@ describe('DocumentsAgreementsTab', () => {
   })
 
   it('a paper signed a moment before the press is kept, and the office is told why', async () => {
-    io.role = 'master_technician'
+    io.role = 'controller'
     io.rows = [partyPaper()]
     io.takeBackOutcome = { kind: 'signed-since' }
     renderWithProviders(<DocumentsAgreementsTab />)
@@ -556,7 +556,7 @@ describe('DocumentsAgreementsTab', () => {
   })
 
   it('a take-back the database refuses says its reason, and one the account may not make says so', async () => {
-    io.role = 'master_technician'
+    io.role = 'controller'
     io.rows = [partyPaper()]
     io.takeBackFail = new Error('This account is in training and cannot change anything.')
     renderWithProviders(<DocumentsAgreementsTab />)
@@ -573,7 +573,7 @@ describe('DocumentsAgreementsTab', () => {
 
   it('a trade company’s own paper is taken back through its function, and a paper GC mode is waiting on says so', async () => {
     const off = { job_id: null, job_name: null, job_hcp_number: null, job_click_number: null, job_address: null }
-    io.role = 'master_technician'
+    io.role = 'controller'
     io.rows = [row({ id: 'company_agreement:g1', kind: 'company_agreement', source_id: 'g1', state: 'waiting', paper_name: 'Trade agreement', with_name: 'Juniper Mechanical LLC', ...off, facts: { status: 'sent', signer_name: 'Pat Sample' } })]
     renderWithProviders(<DocumentsAgreementsTab />)
     await lines()
@@ -608,23 +608,26 @@ describe('DocumentsAgreementsTab', () => {
     expect(hasTakeBack).toEqual([true, false, false, false, true])
   })
 
-  it('Take back is the leader’s and a dev’s: an assistant and the controller send again and copy a link, and delete nothing', async () => {
+  it('Take back is a dev’s and the controller’s: an assistant and the leader send again and copy a link, and delete nothing', async () => {
     io.rows = [partyPaper()]
-    for (const role of ['assistant', 'controller']) {
+    for (const role of ['assistant', 'master_technician']) {
       io.role = role
       renderWithProviders(<DocumentsAgreementsTab />)
       const rows = await lines()
       expect(Array.from(rows[0]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Send again', 'Copy the signing link'])
       cleanup()
     }
-    io.role = 'master_technician'
-    renderWithProviders(<DocumentsAgreementsTab />)
-    const rows = await lines()
-    expect(Array.from(rows[0]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Send again', 'Copy the signing link', 'Take back'])
+    for (const role of ['controller', 'dev']) {
+      io.role = role
+      renderWithProviders(<DocumentsAgreementsTab />)
+      const rows = await lines()
+      expect(Array.from(rows[0]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Send again', 'Copy the signing link', 'Take back'])
+      cleanup()
+    }
   })
 
-  it('a paper that was made and never sent reads not sent, says its kind, and carries Send, then Take back for the leader', async () => {
-    io.role = 'master_technician'
+  it('a paper that was made and never sent reads not sent, says its kind, and carries Send, then Take back for the controller', async () => {
+    io.role = 'controller'
     io.notSent = 2
     io.rows = [
       partyPaper({ id: 'supply_house_agreement:p7', source_id: 'p7', state: 'not_sent', paper_name: 'Request for taxpayer number', at_day: '2026-11-21', facts: { status: 'unsent', party_kind: 'supply_house', doc_type: 'w9' } }),
