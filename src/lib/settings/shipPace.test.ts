@@ -26,6 +26,9 @@ import {
   queueLineWords,
   queueMoreWords,
   queueSpanWords,
+  queueStateOf,
+  queueStateTone,
+  queueStateWords,
   queueTitleWords,
   SHIP_PACE_KEY,
   SHIP_PACE_NOW_HOURS,
@@ -289,6 +292,32 @@ describe('shipPace — the queue’s line (v2.6401)', () => {
     expect(q.entries[0]).toMatchObject({ number: 7001, title: 'v2.6401 Change 1', enqueuedAt: minutesAgo(59) })
   })
 
+  it('carries each entry’s state as GitHub spells it, and null for none or a word it does not know', () => {
+    const q = paceQueue({
+      total: 4,
+      entries: [entry(1, { state: 'AWAITING_CHECKS' }), entry(2, { state: 'MERGEABLE' }), entry(3, { state: 'SOMETHING_NEW' }), entry(4)],
+      open: [],
+    })
+    expect(q.entries.map((e) => e.state)).toEqual(['AWAITING_CHECKS', 'MERGEABLE', null, null])
+    expect(['AWAITING_CHECKS', 'MERGEABLE', 'QUEUED', 'LOCKED', 'UNMERGEABLE'].map(queueStateOf)).toEqual(['AWAITING_CHECKS', 'MERGEABLE', 'QUEUED', 'LOCKED', 'UNMERGEABLE'])
+    expect([queueStateOf(null), queueStateOf(undefined), queueStateOf('mergeable')]).toEqual([null, null, null])
+  })
+
+  it('says a state in the words a line draws, and tones it', () => {
+    expect((['AWAITING_CHECKS', 'MERGEABLE', 'QUEUED', 'LOCKED', 'UNMERGEABLE'] as const).map(queueStateWords)).toEqual(['Checks running', 'Ready', 'Waiting its turn', 'Merging now', 'Will not merge'])
+    expect((['AWAITING_CHECKS', 'MERGEABLE', 'QUEUED', 'LOCKED', 'UNMERGEABLE'] as const).map(queueStateTone)).toEqual(['running', 'ready', 'waiting', 'ready', 'stopped'])
+    // A row written before the function read the state draws no word and no chip.
+    expect([queueStateWords(null), queueStateWords(undefined), queueStateTone(null), queueStateTone(undefined)]).toEqual(['', '', null, null])
+  })
+
+  it('reads a row written before the state as entries with none', () => {
+    const old = JSON.stringify({ ...shipPacePicture({ now: NOW, prs: [], queueRuns: null, queue: { total: 1, entries: [entry(1)], open: [] } }) }).replace(/,"state":null/g, '')
+    expect(old).not.toContain('state')
+    const back = parseShipPacePicture(old)
+    expect(back?.queue?.entries[0]?.state).toBeUndefined()
+    expect(queueStateWords(back?.queue?.entries[0]?.state)).toBe('')
+  })
+
   it('sorts the open pull requests into their buckets: a draft first, then in line, then armed (held when red or conflicting), then open', () => {
     const q = paceQueue({
       total: 2,
@@ -315,7 +344,7 @@ describe('shipPace — the queue’s line (v2.6401)', () => {
   it('the picture carries the queue block and its count together, and both are null when the queue was not read', () => {
     const p = picture([], { queue: { total: 14, entries: [entry(1)], open: [open(7001, { inQueue: true }), open(8001, { armed: true })] } })
     expect(p.now.queue).toBe(14)
-    expect(p.queue).toEqual({ entries: [{ number: 7001, title: 'v2.6401 Change 1', position: 1, enqueuedAt: minutesAgo(59), estimatedMinutes: 10 }], armedWaiting: 1, armedHeld: 0, openUnarmed: 0, drafts: 0 })
+    expect(p.queue).toEqual({ entries: [{ number: 7001, title: 'v2.6401 Change 1', position: 1, enqueuedAt: minutesAgo(59), estimatedMinutes: 10, state: null }], armedWaiting: 1, armedHeld: 0, openUnarmed: 0, drafts: 0 })
     expect(picture([]).queue).toBeNull()
   })
 
@@ -341,6 +370,10 @@ describe('shipPace — the queue’s line (v2.6401)', () => {
   it('an entry’s words: the position, how long in the queue, and the estimate when GitHub has one', () => {
     expect(queueLineWords({ position: 3, enqueuedAt: minutesAgo(25), estimatedMinutes: 12 }, nowMs)).toBe('3rd in line, in the queue 25 minutes, about 12 minutes to go')
     expect(queueLineWords({ position: 3, enqueuedAt: minutesAgo(25), estimatedMinutes: null }, nowMs)).toBe('3rd in line, in the queue 25 minutes')
+    // With a state, the line says it after the place; with none, or a null one, the line is as it was.
+    expect(queueLineWords({ position: 3, enqueuedAt: minutesAgo(25), estimatedMinutes: 12, state: 'AWAITING_CHECKS' }, nowMs)).toBe('3rd in line, checks running, in the queue 25 minutes, about 12 minutes to go')
+    expect(queueLineWords({ position: 2, enqueuedAt: minutesAgo(25), estimatedMinutes: null, state: 'MERGEABLE' }, nowMs)).toBe('2nd in line, ready, in the queue 25 minutes')
+    expect(queueLineWords({ position: 3, enqueuedAt: minutesAgo(25), estimatedMinutes: null, state: null }, nowMs)).toBe('3rd in line, in the queue 25 minutes')
     expect(queueLineWords({ position: 1, enqueuedAt: minutesAgo(0.3), estimatedMinutes: 0 }, nowMs)).toBe('1st in line, in the queue under a minute, under a minute to go')
     expect(queueLineWords({ position: 17, enqueuedAt: minutesAgo(130), estimatedMinutes: 152 }, nowMs)).toBe('17th in line, in the queue 2 hours 10 minutes, about 2 hours 32 minutes to go')
     // A clock ahead of ours, or a bad stamp, never reads as a negative wait.

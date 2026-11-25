@@ -7656,12 +7656,13 @@ A vitest drift test (`src/lib/releaseNotes.test.ts`) fails CI when the newest ve
 
 ### How fast a change ships
 The Settings tab beside **Release notes** (v2.6399, the office roles: `canSeeShipPace` = `GC_OFFICE_TEAM`) that answers *can I have X* with a number: the median and the 90th percentile of the hours from a pull request opening to its merge over the last 24 hours, said as a sentence (*A change asked for today has been taking about 4 hours to reach the app.
-Nine in ten land inside 9 hours.*), a chart of the last three days by the app calendar's hour (the median of each hour's merges, a gap where none merged), beside it the solid number **Merges are taking** (the median of the last six hours' merges, with how many it stands on and since when), what opened and merged today, what is open now and what is in the merge queue, the merge queue's line under the tiles (**In line now**, v2.6401: the pull requests in the order they go live, each with its title after the version, its place, how long it has been in the queue and GitHub's estimate, the first ten listed and the rest counted;
+Nine in ten land inside 9 hours.*), a chart of the last three days by the app calendar's hour (the median of each hour's merges, a gap where none merged), beside it the solid number **Merges are taking** (the median of the last six hours' merges, with how many it stands on and since when), what opened and merged today, what is open now and what is in the merge queue, the merge queue's line under the tiles (**In line now**, v2.6401: the pull requests in the order they go live, each with its title after the version, its place, since v2.8550 its state as GitHub gives it (*checks running*, *ready*, *waiting its turn*, *merging now*, *will not merge*), how long it has been in the queue and GitHub's estimate, the first ten listed and the rest counted;
 under them the changes armed and waiting on their checks, any held by a red check or a conflict named, and the ones open and not yet asked to merge;
 an empty queue says so, and a queue the cron could not read says so), and *As of 3:37 PM* from the row's stamp.
 The numbers are the `ship-pace` cron's, read from GitHub every 15 minutes into the `app_settings` row `ship_pace_v1` with the kernel `supabase/functions/_shared/shipPace.ts`;
 no office screen reads GitHub.
 The hours count from the pull request opening, not from the ask.
+The same row draws **In the merge queue** on `/punch-list` (v2.8547, dev and master), each state as a chip.
 Guide *see how fast a change ships*.
 
 ### Protected Route

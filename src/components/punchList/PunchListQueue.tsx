@@ -19,9 +19,11 @@ import {
   queueFoldedWords,
   queueRows,
   recentStretchWords,
+  rowsHaveState,
   shouldReadOnOpen,
   type DayHour,
 } from '../../lib/todos/punchListQueue'
+import type { PaceQueueStateTone } from '../../../supabase/functions/_shared/shipPace'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
@@ -119,9 +121,11 @@ export function PunchListQueue({ role = null, io = shipPaceIo, now = Date.now }:
       {/* A line of the queue is five columns at a desk and two rows on a phone; inline styles cannot carry a media query. */}
       <style>{`
         .punch-queue-row { display: grid; grid-template-columns: 3.2rem minmax(0, 1fr) 8rem 9rem; column-gap: 0.75rem; align-items: baseline; }
+        .punch-queue-row[data-with-state] { grid-template-columns: 3.2rem minmax(0, 1fr) 9.5rem 8rem 9rem; }
         .punch-queue-when::before { content: none; }
         @media (max-width: 720px) {
-          .punch-queue-row { grid-template-columns: 2.8rem minmax(0, 1fr); row-gap: 0.1rem; }
+          .punch-queue-row, .punch-queue-row[data-with-state] { grid-template-columns: 2.8rem minmax(0, 1fr); row-gap: 0.1rem; }
+          .punch-queue-row > .punch-queue-state { grid-column: 2; }
           .punch-queue-head { display: none; }
           .punch-queue-row > .punch-queue-when { grid-column: 2; }
           .punch-queue-when::before { content: attr(data-label) ' '; font-weight: 400; color: var(--text-muted); }
@@ -181,6 +185,8 @@ function Body({ picture, nowMs, role }: { picture: ShipPacePicture; nowMs: numbe
   const queue = picture.queue
   const rows = queue ? queueRows(queue.entries, nowMs) : []
   const more = queue ? queueMoreWords(inLineCount(picture) ?? rows.length, rows.length) : ''
+  // A row written before the function read the state has none: the column then stays away.
+  const withState = rowsHaveState(rows) ? '' : undefined
   const hours = dayHours(picture)
   return (
     <>
@@ -199,17 +205,28 @@ function Body({ picture, nowMs, role }: { picture: ShipPacePicture; nowMs: numbe
           </div>
         ) : (
           <>
-            <div className="punch-queue-row punch-queue-head" style={{ ...cell, ...eyebrow, background: 'var(--bg-subtle)' }}>
+            <div className="punch-queue-row punch-queue-head" data-with-state={withState} style={{ ...cell, ...eyebrow, background: 'var(--bg-subtle)' }}>
               <span>{PUNCH_QUEUE_WORDS.place}</span>
               <span>{PUNCH_QUEUE_WORDS.change}</span>
+              {withState === '' ? <span>{PUNCH_QUEUE_WORDS.state}</span> : null}
               <span>{PUNCH_QUEUE_WORDS.waited}</span>
               <span>{PUNCH_QUEUE_WORDS.toGo}</span>
             </div>
             <ol data-testid="queue-list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {rows.map((r) => (
-                <li key={r.number} data-testid="queue-row" className="punch-queue-row" style={cell}>
+                <li key={r.number} data-testid="queue-row" className="punch-queue-row" data-with-state={withState} style={cell}>
                   <WorkedOutValue>{r.place}</WorkedOutValue>
                   <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{r.title}</span>
+                  {withState === '' ? (
+                    <span className="punch-queue-state">
+                      {r.tone ? (
+                        <span data-testid="queue-state" data-tone={r.tone} style={{ ...chip, ...CHIP_TONE[r.tone] }}>
+                          <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
+                          {r.state}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : null}
                   <span className="punch-queue-when" data-label={PUNCH_QUEUE_WORDS.waited} style={when}>
                     <WorkedOutValue>{r.waited}</WorkedOutValue>
                   </span>
@@ -287,6 +304,15 @@ function DayColumns({ hours, mergedToday }: { hours: DayHour[]; mergedToday: num
 
 /** The columns' blue: the app's link blue, lighter on the dark surface, as the Settings chart's line. */
 const BAR = 'var(--text-link)'
+
+const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', fontWeight: 600, padding: '0.05rem 0.55rem', borderRadius: 999, border: '1px solid var(--border)', whiteSpace: 'nowrap' }
+/** Checks running is the usual state, so it is blue and never a warning's amber; red is kept for a change that will not merge. */
+const CHIP_TONE: Record<PaceQueueStateTone, CSSProperties> = {
+  running: { background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' },
+  ready: { background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)', color: 'var(--text-green-700)' },
+  waiting: { background: 'var(--bg-muted)', borderColor: 'var(--border)', color: 'var(--text-base)' },
+  stopped: { background: 'var(--bg-red-tint)', borderColor: 'var(--border-red)', color: 'var(--text-red-700)' },
+}
 
 const mono: CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }
 const eyebrow: CSSProperties = { fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }

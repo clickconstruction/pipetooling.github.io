@@ -46,6 +46,8 @@ const QUEUE_ENTRIES: PaceQueueEntryInput[] = Array.from({ length: 12 }, (_, i) =
   position: i + 1,
   enqueuedAt: new Date(Date.parse(NOW) - (i === 2 ? 25 : 40 - i) * 60_000).toISOString(),
   estimatedSeconds: i === 0 ? null : i === 2 ? 720 : (i + 1) * 600,
+  // The second one's checks are running; the rest came with no state, as a row written before the read of it.
+  ...(i === 1 ? { state: 'AWAITING_CHECKS' } : {}),
 }))
 
 /** The open pull requests around the line: the twelve in it, two armed (one on a red check), three open and unarmed, one draft. */
@@ -116,6 +118,8 @@ describe('SettingsShipPaceSection', () => {
     expect(titles[9]).toBe('Change number 10 in its plain sentence')
     const words = Array.from(document.querySelectorAll('[data-ship-pace-queue-entry-words]')).map((el) => el.textContent)
     expect(words[0]).toBe('1st in line, in the queue 40 minutes')
+    // A change with a state says it after its place (punch list #444).
+    expect(words[1]).toBe('2nd in line, checks running, in the queue 39 minutes, about 20 minutes to go')
     expect(words[2]).toBe('3rd in line, in the queue 25 minutes, about 12 minutes to go')
     expect(text('[data-ship-pace-queue-more]')).toBe('and 2 more')
     expect(text('[data-ship-pace-queue-buckets]')).toBe(
