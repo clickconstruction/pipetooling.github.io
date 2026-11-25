@@ -1003,6 +1003,57 @@ export type Database = {
           },
         ]
       }
+      bid_day_entries: {
+        Row: {
+          bid_id: string
+          changes: number
+          saved_at: string
+          seen_seconds: number | null
+          source: string
+          state: string
+          tabs: string[]
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          bid_id: string
+          changes?: number
+          saved_at?: string
+          seen_seconds?: number | null
+          source: string
+          state: string
+          tabs?: string[]
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          bid_id?: string
+          changes?: number
+          saved_at?: string
+          seen_seconds?: number | null
+          source?: string
+          state?: string
+          tabs?: string[]
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_day_entries_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_day_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_difficulty: {
         Row: {
           bid_id: string
@@ -43953,6 +44004,45 @@ export type Database = {
           },
         ]
       }
+      user_bid_activity: {
+        Row: {
+          active_seconds: number
+          bid_id: string
+          bucket_at: string
+          tab: string
+          user_id: string
+        }
+        Insert: {
+          active_seconds?: number
+          bid_id: string
+          bucket_at: string
+          tab?: string
+          user_id: string
+        }
+        Update: {
+          active_seconds?: number
+          bid_id?: string
+          bucket_at?: string
+          tab?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_bid_activity_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_bid_activity_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_bid_notes_read_state: {
         Row: {
           bid_id: string
@@ -46978,6 +47068,10 @@ export type Database = {
         Args: { p_page?: string; p_seconds?: number }
         Returns: undefined
       }
+      bump_user_bid_activity: {
+        Args: { p_bid: string; p_seconds?: number; p_tab?: string }
+        Returns: undefined
+      }
       call_task_add: {
         Args: {
           p_contact: string
@@ -49286,6 +49380,7 @@ export type Database = {
         }[]
       }
       get_money_waiting_email_payload: { Args: never; Returns: Json }
+      get_my_bid_day: { Args: { p_work_date?: string }; Returns: Json }
       get_my_email_schedule: { Args: never; Returns: Json }
       get_my_partner_job_costing: { Args: { p_job_id: string }; Returns: Json }
       get_my_partner_jobs: { Args: never; Returns: Json }
@@ -53294,6 +53389,10 @@ export type Database = {
       salary_sync_one_user_clock_sessions: {
         Args: { p_now: string; p_user_id: string; p_work_date: string }
         Returns: undefined
+      }
+      save_my_bid_day: {
+        Args: { p_entries: Json; p_work_date: string }
+        Returns: number
       }
       save_my_time_day: {
         Args: {
