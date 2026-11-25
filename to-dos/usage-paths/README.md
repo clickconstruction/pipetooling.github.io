@@ -1,8 +1,8 @@
 ---
 name: "Usage paths: what people do most, how far each press is, and what to move to the front"
 number: 190
-group: gated
-status: PR 1 LIVE 2026-10-27 (v2.5904, #6244). The Pipeline row, the job window and every Call button count their presses, checked on clicktooling.com at desktop, tablet and phone width against the mock-up's frame 5. PR 2 and PR 3 wait on three weeks of those rows. The walk is not taken.
+group: ready
+status: PR 1 LIVE 2026-10-27 (v2.5904, #6244). The Pipeline row, the job window and every Call button count their presses, checked on clicktooling.com at desktop, tablet and phone width against the mock-up's frame 5. PR 2 and PR 3 wait on three weeks of those rows. The walk is not taken. Decision 5 answered 2026-11-25 (UTC) in the managing session: retire the Jobs page's Billing tab, not built.
 summary: >
   The owner asked to look at what people are primarily doing, find the actions with many
   clicks and much navigating, and decide which buttons to move up toward the front. This
@@ -17,9 +17,10 @@ summary: >
   at all: calls, texts and the Pipeline row's own buttons leave no row, so the count
   cannot see them. The plan is three small PRs, the recorder first, and the walk the
   owner was advised to take, which this to-do narrows but cannot replace.
-next: Around 2026-11-17, read three weeks of the new rows in Settings → Usage (the Pipeline row's and the job window's buttons, and the Call surfaces), then the owner decides PR 2 (the row's next move on a desk) and PR 3 (the crew chip's +). Take the walk too: one morning beside an assistant and one beside a tech, counting taps, screens and words retyped.
-size: S as three PRs, XS S S. The walk is two mornings.
-blocker: Three weeks of rows, then the owner's go on PR 2, and two mornings for the walk.
+next: Retire the Jobs page's Billing tab (S), on the answer to decision 5. The three weeks are up, so also read three weeks of the new rows in Settings → Usage (the Pipeline row's and the job window's buttons, and the Call surfaces), then the owner decides PR 2 (the row's next move on a desk) and PR 3 (the crew chip's +). Take the walk too: one morning beside an assistant and one beside a tech, counting taps, screens and words retyped.
+size: S as three PRs, XS S S, and the Billing tab's retirement (S). The walk is two mornings.
+blocker: Nothing for the Billing tab's retirement. PR 2 waits on a read of the rows and then the owner's go, and the walk on two mornings.
+ask: owner · decide · Who takes the two-morning walk, one beside an assistant and one beside a tech, and which mornings?
 ver: v2.5904
 opinion: PR 1 is live; build PR 2 once the rows show the window's stage move pressed most days, and take the walk before moving anything else, since the counts cannot see the slow parts
 mockup: to-dos/usage-paths/mockup.html
@@ -467,6 +468,11 @@ opens a job from the Dashboard's Today list (116) more than from My Schedule (88
    per task, in a notes file in this folder. Who takes it and which mornings.
 5. **The Billing tab** · 0 minutes in 60 days. Retire it, or leave it as the audit view the
    guide *audit job bills on the Billing tab* describes.
+   **Answered 2026-11-25 (UTC) in the managing session:** *Retire it.*
+   It is quoted from that session's record of the user's answers.
+   Not built. The piece is the tab on the Jobs page, its guide with a row for the guide's old address, and the docs that name the tab.
+   The build first lists what only that tab shows, so the retirement says what goes with it.
+   Its size, S, is this note's estimate and not the card's.
 
 ## Where it plugs in
 
@@ -506,3 +512,4 @@ in part 2 was read from the controls, not written.
 | PR 2 · the row's next move | | not started |
 | PR 3 · the crew chip's + | | not started, gated on PR 1's rows |
 | The walk | | not taken |
+| The Billing tab's retirement | | not started; decision 5 answered *Retire it* on 2026-11-25 |
