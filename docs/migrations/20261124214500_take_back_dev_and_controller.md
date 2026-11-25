@@ -10,3 +10,5 @@ Who takes a trade company's own paper back: a dev and the controller. One functi
 - **Types**: the function's name, argument and answer are unchanged, so `src/types/database.ts` does not move.
 - **Bed**: `supabase/tests/take_back_company_paper/20_scenario.sql` (`bash scripts/pgtest-take-back-company-paper.sh`), which re-applies both migrations in order. A dev and the controller take a paper back. The leader, an assistant, an estimator and a sub are refused in the new words, and a training controller in the training words.
 - **Idempotent**: `CREATE OR REPLACE`, so a second run changes nothing. No table is made, so no fence call closes the file.
+
+**Applied** to prod by 2026-11-25: `npm run check:migration-drift` read 1,490 local files and 1,490 remote versions, fully applied (read in the docs pass after #9739); no new name in `database.ts`, since the function is replaced under its own name.

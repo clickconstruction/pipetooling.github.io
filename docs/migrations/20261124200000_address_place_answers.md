@@ -16,3 +16,5 @@ Every statement is safe to run twice.
 The client reads this table, so `check:calls-ahead` labels the PR *push right after the merge*. Until the push, the window says why it could not read and the count on the Pipeline's tools button stays off. Nothing else changes.
 
 An answer changes no job's address.
+
+**Applied** to prod by 2026-11-25: `npm run check:migration-drift` read 1,490 local files and 1,490 remote versions, fully applied (read in the docs pass after #9739); types regenerated in #9751.

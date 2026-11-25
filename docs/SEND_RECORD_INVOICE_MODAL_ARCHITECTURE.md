@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/SendRecordInvoiceModal.tsx
 mapped_at: 2c8830565
 audience: Developers, AI Agents
-last_updated: 2026-11-18
+last_updated: 2026-11-25
 ---
 
 > **Line numbers are as of the tree the v2.7751 cut merges** (`mapped_at` with that cut applied, where the file is 3,216 lines; read from `npm run map -- src/components/jobs/SendRecordInvoiceModal.tsx`). They rot on the next commit — search the symbol; every region below names one.
@@ -117,7 +117,7 @@ Each section lists: render location (state gate + line range **as of the mapped 
 
 Before the component: type `BillCustomerMainTab` (L165); timeout constants `BILL_DB_WRITE_TIMEOUT_MS` (15000) / `BILL_STRIPE_INVOKE_TIMEOUT_MS` (30000) / `BILL_EMAIL_INVOKE_TIMEOUT_MS` (60000) with the v2.1063 hang-class comment (L167–177, **preserve values and comment**); `BILL_CUSTOMER_LEADING_LOWERCASE_HINT` copy + el id + paragraph style (L179–190); `billCustomerTopTabButtonStyle(active)` (L192–202). The 8 `BILL_CUSTOMER_*` `CSSProperties` constants (`BILL_CUSTOMER_FIELD_LABEL_STYLE`, `…_CONTROL_STYLE`, `…_TEXTAREA_STYLE`, `…_DISCLOSURE_TOGGLE_STYLE`, `…_MODIFICATIONS_STACK_STYLE`, `…_INVOICE_MODIFICATIONS_SHELL_STYLE`, `…_TITLE_STYLE`, `…_PHYSICAL_DATE_LINK_BUTTON_STYLE`) and `BILL_CUSTOMER_LINE_ON_BILL_PLACEHOLDER` live in [`billCustomerStyles.ts`](../src/components/jobs/billCustomerStyles.ts) since v2.7725; the parent imports the five it still uses.
 
-Pure functions left inline (Stage-A candidates): `todayIsoDate` (L204–210, browser-local date), `jobHasBillableStripeSpecificWorkFixtures` (L213–236, used ×2, both over `fixturesForInvoiceBill` scoping). Out since v2.7725, each with tests: `billCustomerLineOnBillSummaryLine` and its 48-character max in `lib/billCustomerMemoPresets.ts`, `defaultStripeLineDescriptionFromJob` in `lib/stripeInvoiceLineDescription.ts` (the parent still calls it ×2, the cards ×1 each), `stripeInvoiceFooterSummaryLine` in `lib/stripeInvoiceFooter.ts`. The module component **`BillCustomerMemoPresetRow`** (props-only: `presets`, `valueForHighlight`, `onApplyBoth`; uses `billCustomerMemoActivePresetId`) is its own file since v2.7725. Type `CreateStripeInvoiceFnResponse` (L238–246) stays with the Stripe submit.
+Pure functions left inline (Stage-A candidates): `todayIsoDate` (L212–214, the company's today through `todayYmdInAppTz` since v2.8551), `jobHasBillableStripeSpecificWorkFixtures` (L213–236, used ×2, both over `fixturesForInvoiceBill` scoping). Out since v2.7725, each with tests: `billCustomerLineOnBillSummaryLine` and its 48-character max in `lib/billCustomerMemoPresets.ts`, `defaultStripeLineDescriptionFromJob` in `lib/stripeInvoiceLineDescription.ts` (the parent still calls it ×2, the cards ×1 each), `stripeInvoiceFooterSummaryLine` in `lib/stripeInvoiceFooter.ts`. The module component **`BillCustomerMemoPresetRow`** (props-only: `presets`, `valueForHighlight`, `onApplyBoth`; uses `billCustomerMemoActivePresetId`) is its own file since v2.7725. Type `CreateStripeInvoiceFnResponse` (L238–246) stays with the Stripe submit.
 
 ### Shared substrate: the billing-target and recipient engine
 
@@ -232,7 +232,7 @@ Mapped in [`AR_PAYMENT_MODALS_ARCHITECTURE.md`](./AR_PAYMENT_MODALS_ARCHITECTURE
 | `stripeInvoiceFooterSummaryLine(footer, activePreset)` | was module-level | `lib/stripeInvoiceFooter.ts` (its physical twin already lives in lib) | **done** (v2.7725) — 3 tests |
 | `billCustomerLineOnBillSummaryLine(line)` | was module-level | `lib/billCustomerMemoPresets.ts` + test (whitespace collapse, 48-char ellipsis) | **done** (v2.7725) — 3 tests |
 | `defaultStripeLineDescriptionFromJob(j)` | was module-level | next to `buildStripeInvoiceLineDescription` in `lib/stripeInvoiceLineDescription.ts` | **done** (v2.7725) — 2 tests |
-| `todayIsoDate()` | module-level (L204–210), **browser-local** | keep, or a `dateUtils` local-date helper — `todayYmdInAppTz` is app-TZ, not a drop-in | open |
+| `todayIsoDate()` | module-level (L212–214), app TZ | now a one-line wrapper of `todayYmdInAppTz`, for the sent day and the due day alike | **done** (v2.8551) |
 | `applyBillDiscount` RPC args (basis positions, draft amounts) | inline L1985–1987 | `buildApplyJobDiscountArgs(plan, rows, invoice)` in `lib/jobs/discountLine.ts` + tests | open (new) — money write |
 | `sentAt` noon-local ISO (`new Date(ymd + 'T12:00:00').toISOString()`) | inline ×2 (L1414–1416, L1514) | tiny lib fn + test, or leave — a quirk either way | open |
 

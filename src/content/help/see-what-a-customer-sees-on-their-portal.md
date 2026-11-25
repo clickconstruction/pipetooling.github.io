@@ -103,7 +103,7 @@ A job can require a paper built from settings before anyone opens it. The GC on 
 - A count says how many people have signed, such as *3 of 9 people have signed*.
 - Each sub business has a line. It reads {{chip:green|Signed Nov 24, 2026}} once all of its people have signed. Until then it reads {{chip:yellow|Not yet}}.
 
-No worker is named. A helper or an office person counts in the total and has no line. A sub with no company on file shows under their own name.
+No worker is named unless you set it. A helper or an office person counts in the total and has no line. A sub with no company on file shows under their own name.
 
 You can change how much they see of who has signed. Set the paper to the count alone and the business lines are gone. Set it to every signer by name and a list reads **Who has signed**. Each person who has signed is on it with their day. A sub's line also names their company. The setting is **What the GC sees** on the paper's settings page.
 

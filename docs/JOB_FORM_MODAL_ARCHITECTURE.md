@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobFormModal.tsx
 mapped_at: 6b0b4883a
 audience: Developers, AI Agents
-last_updated: 2026-11-18
+last_updated: 2026-11-25
 ---
 
 ## Overview
@@ -188,7 +188,7 @@ Render regions in JSX order (all line ranges at this re-draw, as of `6b0b4883a`:
 
 ### Highlight / focus doors
 
-Props → state → scroll/flash effects, all in `useJobFormHighlights` since v2.7735 (called at 1949–1965): `billingCustomerHighlight` (clears once `customerId` is set), `fixturesSectionHighlight` and `jobPicturesLinkHighlight` (auto-clear after the flash; pictures focuses the input), `paymentsReceivedHighlight` (v2.3795, rings the 3098 wrapper), `focusFieldFlash: 'status' | 'pct'` (v2.3819, rings the stepper or the % done bar). `propertyRecordFocus` and `focusRow` (fact rows) pass straight to `JobFormEditFactRows`. Since v2.7763 (punch list #391) there is a sixth way in, `pickLineIdsInitial`: once the job has loaded it ticks the lines that can be ticked for *Bill the N picked* and scrolls to that press. Its ref and effect (765–782) stay in the shell beside `selectedSegmentIds`, which the effect writes; they are not in the hook.
+Props → state → scroll/flash effects, all in `useJobFormHighlights` since v2.7735 (called at 1949–1965): `billingCustomerHighlight` (clears once `customerId` is set), `fixturesSectionHighlight` and `jobPicturesLinkHighlight` (auto-clear after the flash; pictures focuses the input), `paymentsReceivedHighlight` (v2.3795, rings the 3098 wrapper), `focusFieldFlash: 'status' | 'pct' | 'address'` (v2.3819, rings the stepper or the % done bar; since v2.8542 `'address'` rings the Job Address box in `JobFormIdentityFields` and never focuses it, the door from Addresses that look alike's **Open the job**). `propertyRecordFocus` and `focusRow` (fact rows) pass straight to `JobFormEditFactRows`. Since v2.7763 (punch list #391) there is a sixth way in, `pickLineIdsInitial`: once the job has loaded it ticks the lines that can be ticked for *Bill the N picked* and scrolls to that press. Its ref and effect (765–782) stay in the shell beside `selectedSegmentIds`, which the effect writes; they are not in the hook.
 
 ---
 

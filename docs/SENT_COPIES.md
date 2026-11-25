@@ -2,7 +2,7 @@
 
 > Every time the company sends someone something, a copy is kept and the office can find it in Documents. This file is the plan, the rules and the list of what is wired; the code is `src/lib/sent/`.
 
-last_updated: 2026-11-21
+last_updated: 2026-11-25
 
 ## The owner's rules
 
@@ -27,7 +27,7 @@ Why it matters: before this, about thirty kinds of paper kept a "sent" date and 
 - **A copy is shown, never run.** A kept page opens inside a frame whose sandbox has scripts, forms and navigation off (`sentCopyFrameHtml`): the file was stored by someone on staff and is treated as a file.
 - **Where it reads.** The bills among the copies also read as a ledger with amounts and day totals at `/bills-sent` (**Bills sent**, v2.7049, `src/lib/billing/billsSent.ts`). The Job window's Documents tab, section **Sent from this job** ([`JobDocumentsSent.tsx`](../src/components/jobs/JobDocumentsSent.tsx)), by `job_ids`; and an estimate's **What went**, the copies filed with it as their source (`loadSentCopiesForSource('estimates', id)`, v2.5997: its `estimate_resent` and `estimate_remailed` letters, one line each). A pay application's workbook (kind `pay_application`) lists under its application instead, in the tab's Pay applications table and in the AIA window's history (v2.4710), and stays out of that section; it also carries the application's figures in `source_snapshot` (v2.4714, `SentFiling.sourceSnapshot`: what the source record said when the copy went, null for every other paper so far), so a later change to the saved application is named against what went. A send that names no job (a GC statement, a price request, a bid letter, a law-firm notice) is found on Documents → **Sent copies** (v2.4573; since v2.6310 under a band per day with a count, each line a title with its facts, attachment chips, the job or bid it is for as a link from `job_ids` / `bid_id` (`sentCopyAbout.ts`), the subject when it says more than the title, and a kind tag coloured by group, `SENT_GROUP_COLORS`; a read that fails draws the retry panel) and waits for the customer page. An email from Messages' reply box (`messages_email`, from `messages-email`) files with its thread line as the source (`source_table = 'messages'`), and the thread's overlay of sent copies skips it, since the line is there with the office's own words.
 
-Who: the office reads (`is_office_staff()`: dev, master, assistant, controller). Staff who send can file (the office, estimators, primary, superintendent). Deletes are dev only.
+Who: the office reads (`is_office_staff()`: dev, master, assistant, controller). Staff who send can file (the office, estimators, primary, superintendent). Deletes are dev only. Since v2.8564 Bills sent's **Delete this record…** is one, a dev's on a by-hand record of a test bill.
 
 ## Wiring a send
 

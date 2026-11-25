@@ -9,7 +9,7 @@ covers:
   - src/components/settings/SettingsDashboardTab.tsx
 mapped_at: 871e06336
 audience: Developers, AI Agents
-last_updated: 2026-11-23
+last_updated: 2026-11-25
 ---
 
 > **Line numbers are exact as of `871e06336`** (from `npm run map -- <file>` fact sheets) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map -- src/pages/Settings.tsx` (or the tab file) before trusting a range.
@@ -156,7 +156,7 @@ Nine runtime roles. `isAssistantLike` = assistant | controller; `isSubcontractor
 | ↳ Estimate customer experience defaults, Public estimate terms, Board value rule (the owner's since v2.6764) | ✓ | ✓ | — | — | — | — | — |
 | People & teams (tab; the office's since v2.6755, each block gated by itself: `ACCESS_CONTROL.md` → *People & teams*) | ✓ | ✓ | ✓ | — | — | — | — |
 | Emails & reports (v2.6753), Usage (v2.6762) | ✓ | ✓ | — | — | — | — | — |
-| Data & recovery (since v2.6766 the owner for Link jobs to their bids, the controller for Draft bills on paid jobs and HCP reconcile; the backups, ZZ test jobs and Recently deleted a dev's) | ✓ | ✓ | controller only | — | — | — | — |
+| Data & recovery (since v2.6766 the owner for Link jobs to their bids, the controller for Draft bills on paid jobs and HCP reconcile; the backups, ZZ test jobs, Kept map addresses and Recently deleted a dev's) | ✓ | ✓ | controller only | — | — | — | — |
 | Email templates & testing, Digital twins & samples | ✓ | — | — | — | — | — | — |
 | Dev doors (v2.5882: every door only a dev or the controller can open today, each a link; punch list #188 is the audit) | ✓ | — | — | — | — | — | — |
 | Difficulty criteria (v2.7275: the scales a GC is rated on, versioned; punch list #357) | ✓ | — | — | — | — | — | — |
@@ -242,7 +242,7 @@ Emails & reports (`SettingsEmailStreamsSection`, `focus` prop from `emailStreamF
 
 ### 10. Data & recovery
 
-- **Render:** 1475–1504, dev, controller or owner → `SettingsDataTab` (since v2.6766 it takes `myRole` and gates each block: the backups, ZZ test jobs, Recently deleted and the bulk-deletion alert a dev's, Draft bills on paid jobs the controller's, Link jobs to their bids the owner's; 24 props: 22 from `useSettingsBackupExports` + `dataBackupSectionOpen`/setter from the parent, 215). Self-contained inside: `DeletedRecordsSection` (`#settings-recently-deleted`), `BulkDeleteAlertSettingsBlock` (`appSettingsBulkDeleteAlert.test.ts`), `BidJobBackfillSettingsBlock` (`#settings-bid-job-backfill`), `StaleDraftBillsOnPaidJobsSection`; after the tab the page mounts `SettingsHcpReconcileSection` for `isControllerOrDev` (v2.6756) in a `SettingsFoldCard` (`#settings-data-hcp-reconcile`, since v2.6631, punch list #261 PR 2, off Jobs, bills and liens; `SettingsHcpReconcileSection.render.test.tsx`).
+- **Render:** 1475–1504, dev, controller or owner → `SettingsDataTab` (since v2.6766 it takes `myRole` and gates each block: the backups, ZZ test jobs, Kept map addresses (`KeptMapAddressesBlock`, after ZZ test jobs, v2.8568), Recently deleted and the bulk-deletion alert a dev's, Draft bills on paid jobs the controller's, Link jobs to their bids the owner's; 24 props: 22 from `useSettingsBackupExports` + `dataBackupSectionOpen`/setter from the parent, 215). Self-contained inside: `DeletedRecordsSection` (`#settings-recently-deleted`), `BulkDeleteAlertSettingsBlock` (`appSettingsBulkDeleteAlert.test.ts`), `BidJobBackfillSettingsBlock` (`#settings-bid-job-backfill`), `StaleDraftBillsOnPaidJobsSection`; after the tab the page mounts `SettingsHcpReconcileSection` for `isControllerOrDev` (v2.6756) in a `SettingsFoldCard` (`#settings-data-hcp-reconcile`, since v2.6631, punch list #261 PR 2, off Jobs, bills and liens; `SettingsHcpReconcileSection.render.test.tsx`).
 - **Approach:** optional — move `dataBackupSectionOpen` into the tab (pure tab-local state); keep the exports hook single-instance while the Account header shares it.
 
 ### 11. Email templates & testing
@@ -251,7 +251,7 @@ Emails & reports (`SettingsEmailStreamsSection`, `focus` prop from `emailStreamF
 
 ### 13. Advanced
 
-- **Render:** 1749–1755, gate `!isSubcontractorLikeRole(myRole)`; props `active`, `isDev`, `onRoleMaybeChanged → loadData`. Self-contained claim-code form (`#settings-claim-code`, `claim-dev` fn) + "Fix app" help.
+- **Render:** 1749–1755, gate `!isSubcontractorLikeRole(myRole)`; props `active`, `isDev`, `onRoleMaybeChanged → loadData`. Self-contained and folded: "Fix app" help, then for a dev `GlobalReloadSettingsCard` (`#settings-global-reload`, whose link opens the fold; out of the gear menu since v2.8527, a signal a dev alone may send since v2.8532) and **Email domain monitoring**, then the claim-code form (`#settings-claim-code`, `claim-dev` fn).
 
 ---
 

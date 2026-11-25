@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: af364443c
 audience: Developers, AI Agents
-last_updated: 2026-11-23
+last_updated: 2026-11-25
 ---
 
 > **Line numbers are as of v2.7774** (2026-11-18). They were carried forward from `58caa94ee` at v2.7719 by the diff's hunks, each checked against its line's text, and every cut since re-stamps them the same way. The per-cluster hook counts in §1 are still the `58caa94ee` census. This is the hottest surface in the repo (260 commits in 90 days on the tab, 52 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -140,7 +140,7 @@ Cluster N's 51 states: 18 single-job opener targets (`activityExpandJob`, `crewM
 ### 2. Command bar + ⋯ tools menu (3179–3251) — extracted
 
 - [`JobsStagesCommandBar.tsx`](../src/components/jobs/JobsStagesCommandBar.tsx) (442 lines, v2.3533): New Job, Follow-ups (+ `followupQueueCount`), Forecast (`canSeeBilledExpectedPay`), search + busy hints, Session notes, the # jump (`jumpToTypedNumber` 2895), applied-filter chips (sort / contract / GC / development / account man / Hide groups); the menu passed as `toolsMenu`. 5 render tests.
-- [`JobsStagesToolsMenu.tsx`](../src/components/jobs/JobsStagesToolsMenu.tsx) (513 lines, v2.3532), 3209–3251: controlled `open` (the whole-board load at 1472–1359 reads it); `filters` = `stagesToolsFilters`; `gates` {lienDesk, legalDesk, jobContracts, officeTools, powerToggles}; `lienDeskCount`, `legalDeskCount`, `legalDeskTo`, `contractSweepCount`; eight doors (Lien desk, the Legal desk as a link to its page since v2.5990, Put a GC on notice, contract sweep, Hide groups, Job Book, Total by Name, Combine / Separate); five `toggles`. 7 render tests.
+- [`JobsStagesToolsMenu.tsx`](../src/components/jobs/JobsStagesToolsMenu.tsx) (513 lines at v2.3532, 630 on 2026-11-25), 3209–3251: controlled `open` (the whole-board load at 1472–1359 reads it); `filters` = `stagesToolsFilters`; `gates` {lienDesk, legalDesk, jobContracts, officeTools, powerToggles}; `lienDeskCount`, `legalDeskCount`, `legalDeskTo`, `contractSweepCount`; ten doors (Lien desk, the Legal desk as a link to its page since v2.5990, the Materials desk as a link to `/jobs?tab=materials`, Put a GC on notice, contract sweep, Hide groups, Job Book, Total by Name, Combine / Separate, and under it **Addresses that look alike…** for `officeTools`, with `lookAlikeCount` on the item and on the ⋯ button while a pair waits, v2.8529); five `toggles`. 12 render tests.
 - **What stays:** every filter / sort / toggle value and setter, the open flags, the counts, the gates.
 
 ### 2b. Map + money overview (3252–3339) — extracted children, tab-side wiring

@@ -11,7 +11,7 @@ Nobody has to read markdown to see what is waiting. You open it from Settings. *
 
 ## Read the burndown
 
-The page opens with the **Burndown**. The Burndown shows how many cards were open at each hour, and when the list could clear.
+The **Burndown** sits under **In the merge queue**. The Burndown shows how many cards were open at each hour, and when the list could clear.
 
 - **Look at** picks the stretch the pace is read from. You can pick a day, three days, one, two or three weeks, or all of it.
 - Pick **The last 21 days** to see three weeks. Each column of **New and closed, in waves** is then one day.
@@ -95,7 +95,7 @@ The heading counts the cards in the list. This device remembers the view and the
 
 ## Find a card with the search
 
-The search field sits beside the **View** choice. You type in it and the cards narrow as you type. The search works in both views.
+The search field sits beside the **View** choice. You type in it and the cards narrow as you type. The search works in all three views.
 
 - A search finds a card by its number. You type *#343* or *343*.
 - A search finds a card by its name, its summary or its **Next** line.
