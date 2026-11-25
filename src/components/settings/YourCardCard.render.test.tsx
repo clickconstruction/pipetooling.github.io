@@ -6,7 +6,7 @@
  * renderer for the picture at the footer's own size; before the columns land the card says it arrives with the next
  * update; a subcontractor sees no card, and the office opens the same card for a teammate.
  */
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { CardIo, CardLoad } from '../../lib/brandKit/cardIo'
 import { guessTextWidth } from '../../lib/brandKit/draw'
@@ -216,30 +216,38 @@ describe('YourCardCard', () => {
     expect(footer()).toContain('fill="#000000"')
   })
 
-  // Punch list #443, row 8: the take-back of Save the photo, for a dev on a test person alone.
+  // Punch list #443, row 8: the take-back of Save the photo. Built for a dev on a test person (v2.8565), and since
+  // v2.8586 drawn for whoever may change the photo, on any person.
   const ZZ: CardLoad = { ...MARISOL, facts: { ...MARISOL.facts, name: 'ZZ Test Learner', card_name: null }, photoPath: 'u-zz/photo-1.jpg' }
 
-  it('offers nobody but a dev the removal of a photo', async () => {
-    for (const role of ['master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'helpers'] as const) {
-      renderWithProviders(<YourCardCard role={role} userId="u-zz" teammate="ZZ Test Learner" io={fakeIo(ZZ)} renderer={fakeRenderer()} />)
+  it('offers the removal beside Change the photo: a person on their own card, and the office on a teammate’s', async () => {
+    // Her own card, in Settings: no teammate is named.
+    renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" io={fakeIo(MARISOL)} renderer={fakeRenderer()} />)
+    await screen.findByRole('button', { name: 'Change the photo' })
+    expect(screen.getByRole('button', { name: 'Remove the photo…' })).toHaveProperty('disabled', false)
+    cleanup()
+    // The office on a teammate's card, a real person's and a test person's alike.
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller'] as const) {
+      renderWithProviders(<YourCardCard role={role} userId="u-marisol" teammate="Marisol" io={fakeIo(MARISOL)} renderer={fakeRenderer()} />)
       await screen.findByRole('button', { name: 'Change the photo' })
-      expect(screen.queryByRole('button', { name: 'Remove the photo…' })).toBeNull()
-      expect(document.querySelector('[data-your-card-remove-photo]')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Remove the photo…' })).toHaveProperty('disabled', false)
+      // The line that said only a developer sees it is gone with the rule.
+      expect(document.querySelector('[data-your-card-remove-photo]')?.textContent).not.toMatch(/developer|test person/)
       cleanup()
     }
   })
 
-  it('lets a dev remove a test person’s photo, after a confirm that names the act', async () => {
-    const io = fakeIo(ZZ)
-    renderWithProviders(<YourCardCard role="dev" userId="u-zz" teammate="ZZ Test Learner" io={io} renderer={fakeRenderer()} />)
+  it('removes a real person’s photo after a confirm that names the act and says what the team’s cards do', async () => {
+    const io = fakeIo(MARISOL)
+    renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" teammate="Marisol" io={io} renderer={fakeRenderer()} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Remove the photo…' }))
     const yes = await screen.findByRole('button', { name: 'Remove the photo' })
-    expect(screen.getByText('Remove the photo of ZZ Test Learner?')).toBeTruthy()
-    expect(screen.getByText('The photo comes off the card and the footer, and its file is deleted. It cannot be brought back.')).toBeTruthy()
+    expect(screen.getByText('Remove the photo of Marisol Vega?')).toBeTruthy()
+    expect(screen.getByText('The photo comes off the card and the footer, and its file is deleted. It cannot be brought back. The team’s cards leave this person out until a new photo is saved.')).toBeTruthy()
     expect(io.removePhoto).not.toHaveBeenCalled()
     fireEvent.click(yes)
     // The person is read again before the write, and the photo that read names is the one removed.
-    await waitFor(() => expect(io.removePhoto).toHaveBeenCalledWith('u-zz', 'u-zz/photo-1.jpg'))
+    await waitFor(() => expect(io.removePhoto).toHaveBeenCalledWith('u-marisol', 'u-marisol/photo-1.jpg'))
     expect(io.load).toHaveBeenCalledTimes(2)
     expect(await screen.findByText('The photo was removed.')).toBeTruthy()
     // The card reads as one with no photo: the press adds one, and the removal is gone with the photo.
@@ -258,18 +266,34 @@ describe('YourCardCard', () => {
     expect(screen.getByRole('button', { name: 'Change the photo' })).toBeTruthy()
   })
 
-  it('keeps a real person’s photo for a dev too: a dead press, and the reason under it', async () => {
+  it('says the database’s refusal when the person may not change this account, and keeps the photo', async () => {
     const io = fakeIo(MARISOL)
-    renderWithProviders(<YourCardCard role="dev" userId="u-marisol" teammate="Marisol" io={io} renderer={fakeRenderer()} />)
-    const press = (await screen.findByRole('button', { name: 'Remove the photo…' })) as HTMLButtonElement
-    expect(press.disabled).toBe(true)
-    expect(document.querySelector('[data-your-card-remove-photo]')?.textContent).toContain('Only a test person’s photo can be removed. Their name must start with ZZ.')
-    fireEvent.click(press)
-    expect(screen.queryByRole('button', { name: 'Remove the photo' })).toBeNull()
-    expect(io.removePhoto).not.toHaveBeenCalled()
+    io.removePhoto.mockRejectedValueOnce(new Error('The photo was not removed. You may not have leave to change this account, or the photo was changed meanwhile.'))
+    renderWithProviders(<YourCardCard role="estimator" userId="u-marisol" teammate="Marisol" io={io} renderer={fakeRenderer()} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove the photo…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove the photo' }))
+    expect(await screen.findByText(/You may not have leave to change this account/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Change the photo' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Remove the photo…' })).toBeTruthy()
   })
 
-  it('offers a dev no removal where there is no photo', async () => {
+  it('a person with a photo reads Change the photo while the picture is still loading, never Add a photo (the walk of 2026-11-25)', async () => {
+    const io = fakeIo(MARISOL)
+    let land: (pic: { href: string; w: number; h: number }) => void = () => {}
+    io.photo.mockImplementationOnce(() => new Promise((res) => { land = res }))
+    renderWithProviders(<YourCardCard role="assistant" userId="u-marisol" teammate="Marisol" io={io} renderer={fakeRenderer()} />)
+    // The row is read and names a photo. Its picture has not come.
+    expect(await screen.findByRole('button', { name: 'Remove the photo…' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Change the photo' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Add a photo' })).toBeNull()
+    expect(document.querySelector('[data-your-card-ring] img')).toBeNull()
+    expect(document.querySelector('[data-your-card]')?.textContent).not.toMatch(/No photo yet/i)
+    await act(async () => { land({ href: 'data:image/jpeg;base64,AAAA', w: 400, h: 600 }) })
+    await waitFor(() => expect(document.querySelector('[data-your-card-ring] img')).not.toBeNull())
+    expect(screen.getByRole('button', { name: 'Change the photo' })).toBeTruthy()
+  })
+
+  it('offers no removal where there is no photo', async () => {
     renderWithProviders(<YourCardCard role="dev" userId="u-zz" teammate="ZZ Test Learner" io={fakeIo({ ...ZZ, photoPath: null })} renderer={fakeRenderer()} />)
     await screen.findByRole('button', { name: 'Add a photo' })
     expect(screen.queryByRole('button', { name: 'Remove the photo…' })).toBeNull()

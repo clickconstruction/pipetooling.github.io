@@ -1,7 +1,7 @@
 // Makes the pictures page beside each punch-list card, and the index page, from cards.json and a folder of
 // WebP pictures (punch list #438). The pictures are not in the repo as files: each page carries its own.
 // Draw them again with the kit one folder up, convert each PNG with `cwebp -q 80 -m 6`, then run from the repo root:
-//   node to-dos/punch-list-answers-and-pictures/draw/pages/make-pages.cjs <folder of .webp pictures> [--card <number>]
+//   node scripts/todos/pictures-kit/pages/make-pages.cjs <folder of .webp pictures> [--card <number>]
 // With --card it writes that one card's page and leaves the rest, so the folder needs that card's pictures alone.
 // Each card in cards.json says the day its pictures were drawn (`drawn`) and the newest version main held that
 // day (`drawnAt`). The page says both, and the board reads them: a card that cites a newer version than its
@@ -94,7 +94,7 @@ ${notes.join('\n')}
 ${pics}
 </section>
 ${LEGEND}
-<footer class="foot"><p>Drawn ${c.drawn} with main at ${c.drawnAt}. Every person, job, customer and amount is invented. The app ran on a local server in the lens frame (punch list #194), which swaps the database for an invented company before the app starts. The live site was not opened and nothing was written. How to draw them again: <code>to-dos/${HOME}/how-the-pictures-were-drawn.md</code>.</p></footer>`, c)
+<footer class="foot"><p>Drawn ${c.drawn} with main at ${c.drawnAt}. Every person, job, customer and amount is invented. The app ran on a local server in the lens frame (punch list #194), which swaps the database for an invented company before the app starts. The live site was not opened and nothing was written. How to draw them again: <code>scripts/todos/pictures-kit/how-the-pictures-were-drawn.md</code>.</p></footer>`, c)
 }
 
 const LEGEND = `<section class="legend" aria-label="What each picture label means">
@@ -113,7 +113,7 @@ function page(title, body, made = { drawn: '2026-11-24', drawnAt: 'v2.8442' }) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <!-- Made by a script on ${made.drawn} (punch list #438), with main at ${made.drawnAt}. Every name, job and amount is invented.
-     To change the words or redraw a picture, see to-dos/${HOME}/how-the-pictures-were-drawn.md. -->
+     To change the words or redraw a picture, see scripts/todos/pictures-kit/how-the-pictures-were-drawn.md. -->
 <style>
 ${CSS}
 </style>

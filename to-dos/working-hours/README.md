@@ -2,14 +2,14 @@
 name: "Working hours: a start and an end for each day, set for a person"
 number: 429
 group: close
-status: asked 2026-11-23 · a plan and a mock-up, then a second pass · the owner's go the same day, *build it all*, with every pick kept · built and live the same day: the database door, the kernel and Utilization, the Working hours row with its lock and the line on My Time, the clock with the usual day's lock, and the dev seat · the live test run on 2026-11-24 by an outside session, clean, with three steps not walked and one fault found · step 2.5 walked clean at 380 px on 2026-11-25 · left: that fault, two steps, then the helper's hours set on his sheet · the fault's call answered 2026-11-25 (UTC) in the managing session: taking working hours off clears the week's hours too
+status: asked 2026-11-23 · a plan and a mock-up, then a second pass · the owner's go the same day, *build it all*, with every pick kept · built and live the same day: the database door, the kernel and Utilization, the Working hours row with its lock and the line on My Time, the clock with the usual day's lock, and the dev seat · the live test run on 2026-11-24 by an outside session, clean, with three steps not walked and one fault found · step 2.5 walked clean at 380 px on 2026-11-25 · left: that fault, two steps, then the helper's hours set on his sheet · the fault's call answered 2026-11-25 (UTC) in the managing session: taking working hours off clears the week's hours too · asked again the same day what that leaves: the standard week, not zero paid hours · briefed, not built
 summary: >
   A new helper works 6:00 AM to 12:00 PM on five days, 30 hours. The app should let a dev or the
   controller set those hours for a person, in 15-minute blocks. Today three things describe a
   person's week and none of them is that. The plan makes one of them the truth: a week with a start
   and an end for each day. Pay hours and the clock's own sessions are worked out from it. Built and
   live on 2026-11-23, in five PRs.
-next: Build the answer of 2026-11-25: taking working hours off a salaried person clears the week's hours on their pay row too (a change to `set_working_hours`, a migration, pushed on its own yes at the time). No brief is written yet. Walk the two steps the live test left: the second half of 4.3, which needs a way to the window as anyone but a dev, and 4.4. Both are in [`LIVE_TEST.md`](LIVE_TEST.md) under Runs. Then a dev or the controller sets the helper's hours on his sheet, and the card closes.
+next: Build the two answers of 2026-11-25: taking working hours off a salaried person clears the week's own hours on their pay row, and the person falls to the standard week (a change to `set_working_hours`, a migration, pushed on its own yes at the time). The brief is written and no builder has it yet. Walk the two steps the live test left: the second half of 4.3, which needs a way to the window as anyone but a dev, and 4.4. Both are in [`LIVE_TEST.md`](LIVE_TEST.md) under Runs. Then a dev or the controller sets the helper's hours on his sheet, and the card closes.
 size: L as a train of five (S · S · M · M · S), built as five, with the clock and the usual day's lock in one PR and the dev seat as the fifth
 blocker: A builder for the fault the live test found, whose call is answered, and a yes at the time for its migration's push.
 ver: v2.8345 · v2.8350 · v2.8353 · v2.8356 · v2.8357 · v2.8358
@@ -49,6 +49,16 @@ check:migration-drift` reads fully applied), and `dev-mcp` 0.129.0 is deployed.
 **The live test.** [`LIVE_TEST.md`](LIVE_TEST.md) is a run sheet for a session that did not build this.
 It checks the seat, the office's row, the person's My Time line, and, on the user's word, the salaried
 path and the next day's clock.
+
+**The fault the live test found, and its two answers.** Taking working hours off a salaried person left
+the week's hours on their pay row as last set. Asked on 2026-11-25 what the take-off should leave, the
+owner answered *"Clear the week's hours too"*. Asked the same day in a second round, *"Do all the picks on round 2, rows 1 to 22, stand?"*,
+the answer was "Yes, all picks", quoted from the managing session's record of the user's answers. The
+row read: *#429: clearing a salaried person's working hours leaves the standard week, not zero paid
+hours*, and the pick was *The standard week*. Side by side: the week's own hours are cleared, and the
+person falls to the standard week, 8 hours Monday to Friday, which every reader already takes for a
+week with no numbers. Both answers are history: the migration's push is asked by name at the time. Not
+built.
 
 The mock-up is [`mockup.html`](mockup.html). It draws the desk and the phone, in light and in dark,
 and its first panel is the row itself, live. Every name and every figure on it is made up. No wage

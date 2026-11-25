@@ -11,6 +11,7 @@ import DashboardFinancialsSection from '../DashboardFinancialsSection'
 import AdditionalReportModal from '../AdditionalReportModal'
 import { submitLinkJobPicturesDispatchRequestForJob } from '../../lib/linkJobPicturesDispatchRequest'
 import ClockInOutButton from '../ClockInOutButton'
+import { DashboardPinnedQuickRow } from '../dashboard/DashboardPinnedQuickRow'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { useAuth } from '../../hooks/useAuth'
@@ -46,7 +47,7 @@ const groupHeaderBtn: CSSProperties = {
   textAlign: 'left',
 }
 
-/** Dispatch Mode → Dashboard tab: clock in/out on top, compact Stages list below. */
+/** Dispatch Mode → Dashboard tab: the Dashboard's top row (Tally, the clock, Job Report, Paint a map), then the day and a compact Stages list. */
 export default function DispatchModeHome() {
   const { user: authUser, profileName, role } = useAuth()
   const isMobile = useIsMobile()
@@ -131,9 +132,30 @@ export default function DispatchModeHome() {
 
   return (
     <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-      {authUser?.id ? (
-        <ClockInOutButton userId={authUser.id} userName={profileName ?? null} />
-      ) : null}
+      {/* The Dashboard's top row (punch list #392, the owner's yes of 2026-11-25): Tally, Clock In, Job Report and
+          Paint a map, where the bare clock stood. A leader on Dispatch Mode reaches this page by his bar's Dashboard
+          tab, and the press that is always on the Dashboard was not on it. `hideBanners`: the notices live in this
+          mode's Inbox tab, and with them hidden the row reads nothing of Needs you. No pins and no quick buttons. */}
+      {/* The row carries its own 1rem under it: taken back, so the page's own gap stands between it and My schedule. */}
+      <div data-dispatch-home-top-row style={{ marginBottom: '-1rem' }}>
+        <DashboardPinnedQuickRow
+          authUserId={authUser?.id}
+          role={role}
+          visiblePins={[]}
+          quickActionDefs={[]}
+          quickButtonsPlacement="top"
+          showDashboardQuickButtons={false}
+          costMatrixTotal={null}
+          billedCount={null}
+          billedTotal={null}
+          supplyHousesAPTotal={null}
+          subLaborDueTotal={null}
+          renderModals
+          hideBanners
+          jobReportFirst
+          clockSlot={authUser?.id ? <ClockInOutButton userId={authUser.id} userName={profileName ?? null} embedded /> : undefined}
+        />
+      </div>
 
       <section aria-label="My schedule">
         <DashboardMyScheduleSection

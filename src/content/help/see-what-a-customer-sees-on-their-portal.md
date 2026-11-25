@@ -115,6 +115,14 @@ Nothing the GC presses changes the paper. A proposal waits for you to take it or
 
 Answering one is in [require papers before a job opens](/help/require-papers-before-a-job-opens#when-the-gc-proposes-a-stricter-setting). Setting the paper up is in [the same guide](/help/require-papers-before-a-job-opens#what-the-gc-sees).
 
+A job can require the GC's own form instead. You tick **This is the GC's own form** on the form's row. The block on their page then reads **Subs sign your own form**.
+
+- It names the form.
+- A count says how many people have signed.
+- Each sub business has a line with its day.
+
+That block has no level and no sample. It has nothing to propose. Marking a form is in [require papers before a job opens](/help/require-papers-before-a-job-opens#when-the-paper-is-the-gc-s-own-form).
+
 ## More on the portal
 
 - The link, the gear and whether they have looked are in [share a customer their portal](/help/share-a-customer-their-portal).

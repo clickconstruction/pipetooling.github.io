@@ -414,13 +414,18 @@ export function dirForFile(file: string): string {
 /**
  * The mock-ups saved beside a to-do. A folder to-do owns every `.html` in its folder; a flat
  * `to-dos/foo.md` owns the top-level pages named after it (`to-dos/foo-earned-revenue.html`).
+ *
+ * The card's pictures page is not one of them (punch list #438). It shows the built screen, or today's
+ * beside the card's drawing, and is not the drawing a card waits on. Counted as a mock-up, it made a card
+ * with pictures and no drawing stop reading *waiting on a mock-up*. `picturesFilesFor` names the page.
  */
 export function mockupsFor(file: string, siblings: readonly string[]): string[] {
   const dir = dirForFile(file)
   const slug = slugForFile(file)
   const isFolder = file.endsWith('/README.md')
+  const picturesPage = picturesFilesFor(file, siblings).page
   return siblings
-    .filter((s) => s.endsWith('.html') && dirForFile(s) === dir)
+    .filter((s) => s.endsWith('.html') && dirForFile(s) === dir && s !== picturesPage)
     .filter((s) => {
       if (isFolder) return true
       const base = s.slice(dir.length + 1, -'.html'.length)

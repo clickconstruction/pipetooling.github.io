@@ -2,7 +2,7 @@
 name: "The dev seat sets up a job, updates it and sends the bill: the first step of MCP doing everything a user can"
 number: 293
 group: close
-status: SHIPPED and LIVE — PR 1 v2.6790 #7463 (0.49.0), PR 2 v2.6793 #7464 (0.53.0), PR 3 v2.6794 #7467 (0.55.0), PR 4 v2.6795 #7470 (0.56.0) merged 2026-11-09/10, each renumbered behind the seat trains that landed first (accounts, submittals, mail pieces, the note verb); dev-mcp deployed from main after each, prod compared first · walked on prod 2026-11-09 late: a ZZ TEST job made, moved to Ready to Bill, billed in test mode and texted · the walk's one gap was fixed by #7520 (plan_bill refuses a job with no number to bill under), merged 2026-11-10 as v2.6826 and in every deploy of the seat since · left: the owner's look · the look of 2026-11-24 found the Bill tab drawing an empty line and a Job Total of $0.00 on the seat's ZZ TEST job: the seat stores a price and no line item, written out under *Found on the look* · mended 2026-11-25 on the owner's yes: v2.8555 #9780 (dev-mcp 0.134.0) merged and deployed from main, and the ZZ TEST job got its one $1 line through the seat, read back · both calls answered 2026-11-25 (UTC) in the managing session: mend all eleven real jobs, carefully, so no price is lost, and no guard · left: the walk of its Bill tab, the owner's look, and the eleven mends, each on a job looked at first and on a yes asked again at the time
+status: SHIPPED and LIVE — PR 1 v2.6790 #7463 (0.49.0), PR 2 v2.6793 #7464 (0.53.0), PR 3 v2.6794 #7467 (0.55.0), PR 4 v2.6795 #7470 (0.56.0) merged 2026-11-09/10, each renumbered behind the seat trains that landed first (accounts, submittals, mail pieces, the note verb); dev-mcp deployed from main after each, prod compared first · walked on prod 2026-11-09 late: a ZZ TEST job made, moved to Ready to Bill, billed in test mode and texted · the walk's one gap was fixed by #7520 (plan_bill refuses a job with no number to bill under), merged 2026-11-10 as v2.6826 and in every deploy of the seat since · left: the owner's look · the look of 2026-11-24 found the Bill tab drawing an empty line and a Job Total of $0.00 on the seat's ZZ TEST job: the seat stores a price and no line item, written out under *Found on the look* · mended 2026-11-25 on the owner's yes: v2.8555 #9780 (dev-mcp 0.134.0) merged and deployed from main, and the ZZ TEST job got its one $1 line through the seat, read back · both calls answered 2026-11-25 (UTC) in the managing session: mend all eleven real jobs, carefully, so no price is lost, and no guard · the renumber's two leftovers were mended 2026-11-25 on the owner's yes: v2.8570 #9834 (dev-mcp 0.135.0) merged and deployed from main, each of the eighteen renumbered jobs holds its old number as a prior number and the one sheet reads its job's number, read back · ten of the eleven jobs got their one line the same day on the owner's yes, read back · left: the walk of its Bill tab, the owner's look, and the one Working job's mend, held until the office says its price is right
 summary: >
   The dev seat read everything and wrote fifty-one named things, but no verb made a job or sent a
   bill, so the short bill link's walk (#290) had to be driven through the app in Chrome. Three
@@ -11,10 +11,10 @@ summary: >
   row do. Every write goes through what the app itself calls, so a verb can do nothing the
   signed-in dev could not do on the screen. The card also carries the road: what a user can do
   against what the seat can do, pair by pair.
-next: the walker opens the ZZ TEST job's Bill tab and reads one line and a Job Total of $1.00 (the recipe is with the walking thread). Then the eleven real jobs that hold a price and no line item are mended one at a time, on the answer of 2026-11-25 under *Found on the look*: each job is looked at first, and each write waits on a yes asked again at the time. Then the owner looks at the ZZ TEST job again (the Pipeline, its Bills tab, the text in the test contact's thread), and the card is retired. The road's next pairs are in The road below.
+next: the office says whether the price is right on the one Working job that still holds a price and no line item; its mend waits on that and on a yes asked at the time. Beside it, the walker opens the ZZ TEST job's Bill tab and reads one line and a Job Total of $1.00 (the recipe is with the walking thread). Then the owner looks at the ZZ TEST job again (the Pipeline, its Bills tab, the text in the test contact's thread), and the card is retired. The renumber's leftovers and ten of the eleven mends are done and read back, under *After the renumber*. The road's next pairs are in The road below.
 size: M as a train of four (S · S · M · S) and one fix (XS)
-ask: owner · decide · May the eleven real jobs that hold a price and no line item each get one line at the price they hold, each looked at first?
-blocker: a yes at the time for each of the eleven mends, since each is a write on a real job; the two calls are answered and nothing is owed on prod
+ask: owner · decide · Is the price right on the one Working job that holds a price and no line item, so that it can get its one line?
+blocker: the office's word that the price is right on the one Working job, then a yes at the time for its mend
 opinion: build in the card's order — each pair stands alone, and the bill needs the status move
 mockup: not required — the verbs have no screen; the plan replies are the design, and the design note holds them in words
 ---
@@ -124,6 +124,8 @@ Next after this train, in the order the call log asks: a free text or email to a
 - 2026-11-09/10: PR 1 to PR 4 merged one at a time, each renumbered behind the seat trains that landed first; dev-mcp deployed from main after each; the walk above passed; fix PR #7520 armed for the gap it found.
 - 2026-11-24: the look's finding built in PR #9780 (dev-mcp 0.134.0): the seat writes a job's line item with its price. Checked against main on 2026-11-25 UTC: the version and the server's number are its own, its checks are green, and it merges clean. It was held with auto-merge off, and nothing was written on prod.
 - 2026-11-25 UTC, on the owner's yes relayed that hour: #9780 merged as v2.8555, `dev-mcp` deployed bundled from main and answering 0.134.0, the drift check clean for the seat. The ZZ TEST job's line was planned, applied and read back, and a second apply of the plan was refused.
+- 2026-11-25 UTC, later: the renumber's two leftovers were read on prod through the seat, read only, and built as v2.8570 (dev-mcp 0.135.0), opened with auto-merge off. Nothing was written on prod. See *After the renumber*.
+- 2026-11-25 UTC, 21:16 to 21:40: v2.8570 merged as PR #9834 and `dev-mcp` 0.135.0 was deployed from main. On the owner's yes of that day, relayed by the managing session, the seat put the old number on each of the eighteen renumbered jobs, brought the one sheet's number up to date and gave ten of the eleven jobs their one line. Each plan was read before its apply, and everything was read back. The one Working job is held. See *After the renumber*.
 
 ## Found on the look (2026-11-24)
 
@@ -145,12 +147,45 @@ The look opened the seat's ZZ TEST job. The Bill tab drew its line items as one 
 2. **The ZZ TEST job has its line.** Written through the seat on 2026-11-25: `plan_job_update { update: { job_id, set: { revenue: 1 } } }` planned no change to the price and one line item to insert, 1 × $1, under the job's name, and `apply_job_update` wrote it. Read back: the job has exactly one line item, a work line of 1 at $1 on no bill, and the job still reads Billed at a price of 1. The Bill tab itself is the walker's to look at.
 3. **A guard, if wanted.** The Bill tab's autosave refuses to write a price of 0 over a job that has a price and no lines. Client only, size S. **Answered 2026-11-25 (UTC) in the managing session.** Asked *Should the Bill tab refuse to save a price of 0 over a job that has a price and no line items?*, the answer was "No guard", quoted from that session's record of the user's answers. It overturns the session's pick, which was to build it. The guard is not built and is not to be built. What that leaves: a job with a price and no line keeps the risk above until it has its line, so the eleven mends below are what closes it.
 
-**The count.** Read only through the seat on 2026-11-24 and again on 2026-11-25, the same both times. 762 jobs carry a price over 0, and 12 of them have no line item. One is the seat's ZZ TEST job. Eleven are real: ten Paid and one Working. None was changed.
+**The count.** Read only through the seat on 2026-11-24 and again on 2026-11-25, the same both times. 762 jobs carry a price over 0, and 12 of them have no line item. One is the seat's ZZ TEST job. Eleven are real: ten Paid and one Working. Neither read changed one.
 
 **The eleven, answered 2026-11-25 (UTC) in the managing session.** Asked *11 real jobs carry a price and no line item (10 Paid, 1 Working). What should be done with them?*, the answer was typed, quoted from that session's record of the user's answers: "Carefully mend all eleven so that we don't lose the price". The session's pick was the one Working job alone, so the answer is wider.
 
 - **What it frees.** The mend of all eleven through the seat, as step 2 mended the ZZ TEST job: `plan_job_update` with `revenue` in `set` at the price the job already holds plans one line item and no change to the price, and `apply_job_update` writes it.
 - **What it leaves open.** Each mend is a write on a real job. The answer is history and is not a yes to any write. Each job is looked at first: its price, its bills and its payments, and that the plan reads one line at the price and nothing else. The yes is asked again at the time, through the session that manages the threads. Ten of the eleven are Paid, and what one new line does to a Paid job's Bill tab was not read here.
-- **Not done.** No real job was changed. No plan was made for one.
+- **Done for ten on 2026-11-25, on a yes asked that day.** Each of the ten Paid jobs has its one line, under *After the renumber*. The one Working job is held until the office says its price is right.
 
 **Not read.** The tab was not opened again after the rows were read.
+
+## After the renumber (2026-11-25)
+
+**What happened.** The walk on this card gave its ZZ TEST job an all-digit number far above the office's run. `next_job_number_suggestion()` answers the highest all-digit number on any job plus one, so every job made after it took a number in the wrong range. Eighteen real jobs were renumbered through the seat on 2026-11-25, and the test job was given a number with letters in it. The finding counts against this card, which surfaced it.
+
+**What was left, read again that day through the seat, read only.**
+
+- The eighteen jobs read their new numbers and the suggestion answers the next one in the office's run.
+- `prior_numbers` is empty on each of the eighteen, so a search for an old number finds no job. Ten of them carry a bill already sent under the old number.
+- One sub labor sheet still reads its job's old number. It is on the right job by its link. Since migration `20260914240000` a sheet's stage reaches its job's Activity by that link, so nothing is broken. The number is what the office reads the sheet under.
+
+**What mends it: v2.8570, `dev-mcp` 0.135.0, no migration, no new verb.** Merged 2026-11-25 as PR #9834 on the owner's yes, and deployed from main within the hour.
+
+1. `plan_job_update` keeps the number a column gives up on the job's prior numbers, in the same write. `keep_old_number: false` leaves it out.
+2. `plan_job_update` takes `prior_numbers: { add?, remove? }` for a job whose number already changed. The take-off is the way back.
+3. `plan_sub_labor` with a `change` naming the sheet's own job brings the sheet's number up to date. It reads where the new number leads first and is refused unless that is the sheet's own job, because the sheet table follows a sheet's number to its job.
+4. **The guard, its own commit in that change.** `plan_job` and `plan_job_update` refuse an all-digit number above `next_job_number_suggestion()` unless the plan says `allow_number_jump: true`, and say a test job takes a number with a letter in it. It is the one thing that stops the same jump. It was asked for in this card's own thread on 2026-11-25, where the press was *Build with guard*, and it was kept as its own commit so it could come out without a rework. The owner's yes to it came the same day in the managing session, so it shipped.
+
+**Done on prod 2026-11-25, after the merge.** Each write was on the owner's yes of that day, relayed by the managing session. Each plan was read before its apply. No plan named anything but its own row, no job was skipped and no apply was refused.
+
+- The `dev-mcp` deploy from main. The seat answers 0.135.0.
+- A trial on the seat's ZZ TEST job: a made-up prior number put on, the job found by it, and the number taken off again. It left nothing. A plan that set an all-digit number far above the office's next one was refused by the guard, and was never applied.
+- The old number put on each of the eighteen jobs, one column a job. It wrote no Activity line.
+- The one sheet's number brought up to date, one column. Its job, lines, payments and stage stayed as they were.
+- The read back: each of the eighteen old numbers finds its own job and no other, each new number finds its job, the sheet reads its job's number, and the suggestion has not moved.
+
+**Not in this change.** The app's Edit Job form has the same two gaps: a number changed there is not kept as a prior number and does not reach the job's sheets. Nobody in the office or on the crews has been told the numbers changed.
+
+**The eleven, read again 2026-11-25.** Eleven real jobs still hold a price and no line item: ten Paid, one Working. No bill stands on any. On the ten Paid jobs the payments equal the price to the cent. On the Working job the one payment is under the price, so only the office can say that its price is right. What stands on each went to the managing session by job id.
+
+**Ten mended 2026-11-25, on the owner's yes of that day.** The answer for the ten Paid jobs was "Yes, each plan read before its apply". Each job was read again first: still Paid, still no line item and no bill, the payments still equal to the price. Each plan changed no column and no status, and planned one line: 1 of the job's own name at the price the job already holds. The first was written and read back alone before the other nine. Read back on all ten: one line of 1 at the job's price, on no bill, with the price, the payments and the status as they were. Each job's Activity gained one *Specific work added* line, dated that day and signed by the dev.
+
+**The Working job is held.** The answer for it was to hold until the office says the price is right. It was not touched and still has no line item, so the risk under *Found on the look* stands on that one job.

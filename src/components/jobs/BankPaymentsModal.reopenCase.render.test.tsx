@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for punch list #443, row 5: Accounts Receivable draws a dev's list of closed test cases in its
- * list, with Reopen, and draws nothing of it for the office. A reopen reads the cases again, calls the function
- * of the case's own table, and reads the page again. Every name is made up.
+ * Render smoke for punch list #443, row 5: Accounts Receivable draws the office's list of closed cases in its
+ * list, with Reopen, on any job. A case closed as replaced is counted and not listed. A reopen reads the cases
+ * again, calls the function of the case's own table, and reads the page again. Every name is made up.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -42,8 +42,10 @@ const CASES = [
   caseRow({ mercury_transaction_id: 'mtx-open', counterparty_name: 'Southern Pine', amount: 900, last_job: { job_id: 'job-878', job_number: '878', job_name: 'Tune 5- Seguin', removed_at: '2026-11-21T13:43:00Z', removed_by: 'Taunya', job_revenue: 900, job_payments_made: 0 } }),
   // A test case a walk closed.
   caseRow({ mercury_transaction_id: 'mtx-zz', counterparty_name: 'ZZ Test Payer', amount: 125, closed_at: '2026-11-24T18:00:00Z', closed_reason: 'not_coming', closed_note: 'ZZ TEST walk', closed_by: 'Priya', last_job: { job_id: 'job-zz', job_number: '900', job_name: 'ZZ TEST walk job', removed_at: null, removed_by: null } }),
-  // A real case the office closed: counted, never listed.
+  // A case on a real job the office closed by hand: listed, and the office may reopen it.
   caseRow({ mercury_transaction_id: 'mtx-real', counterparty_name: 'Larkfield Homes', amount: 400, closed_at: '2026-11-22T18:00:00Z', closed_reason: 'settled_other_way', last_job: { job_id: 'job-412', job_number: '412', job_name: 'Larkfield Lot 9', removed_at: null, removed_by: null } }),
+  // A case a new check replaced: counted, never listed.
+  caseRow({ mercury_transaction_id: 'mtx-replaced', counterparty_name: 'Juniper Builders', amount: 310, closed_at: '2026-11-21T18:00:00Z', closed_reason: 'replaced', last_job: { job_id: 'job-413', job_number: '413', job_name: 'Juniper Lot 2', removed_at: null, removed_by: null } }),
 ]
 
 vi.mock('../../hooks/useAuth', async () => {
@@ -114,26 +116,27 @@ async function open(authRole: string) {
   })
 }
 
-describe('BankPaymentsModal · a dev reopens a closed test case (render smoke)', () => {
-  it('draws no list of closed cases for the office', async () => {
-    await open('assistant')
-    expect(screen.getByTestId('ar-came-back-group').textContent).toContain('Came back · 1')
-    expect(screen.queryByTestId('ar-closed-test-cases')).toBeNull()
+describe('BankPaymentsModal · the office reopens a closed case (render smoke)', () => {
+  it('draws the list for a dev too', async () => {
+    await open('dev')
+    expect(screen.getByTestId('ar-closed-cases').textContent).toContain('Closed cases · 2')
   })
 
-  it('draws the list for a dev, and Reopen calls the case’s own function and reads the cases again', async () => {
+  it('draws the list for an assistant, and Reopen on a real job’s case calls its own function and reads the cases again', async () => {
     calls.rpc.length = 0
-    await open('dev')
-    const box = screen.getByTestId('ar-closed-test-cases')
-    expect(box.textContent).toContain('Closed test cases · 1')
+    await open('assistant')
+    expect(screen.getByTestId('ar-came-back-group').textContent).toContain('Came back · 1')
+    const box = screen.getByTestId('ar-closed-cases')
+    expect(box.textContent).toContain('Closed cases · 2')
     fireEvent.click(within(box).getByRole('button', { name: 'Show' }))
     expect(box.textContent).toContain('ZZ Test Payer')
-    expect(box.textContent).not.toContain('Larkfield')
+    expect(box.textContent).toContain('Larkfield Homes')
+    expect(box.textContent).not.toContain('Juniper')
     expect(screen.getByTestId('ar-closed-others').textContent).toContain('1 closed case is not listed.')
     const before = calls.lists
-    fireEvent.click(within(box).getByRole('button', { name: 'Reopen the case of ZZ Test Payer' }))
+    fireEvent.click(within(box).getByRole('button', { name: 'Reopen the case of Larkfield Homes' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Reopen the case' }))
-    await waitFor(() => expect(calls.rpc).toEqual([{ fn: 'reopen_ar_return_case', args: { p_mercury_transaction_id: 'mtx-zz' } }]))
+    await waitFor(() => expect(calls.rpc).toEqual([{ fn: 'reopen_ar_return_case', args: { p_mercury_transaction_id: 'mtx-real' } }]))
     // Once for the fresh read before the call, once for the page after it.
     await waitFor(() => expect(calls.lists).toBeGreaterThanOrEqual(before + 2))
   })

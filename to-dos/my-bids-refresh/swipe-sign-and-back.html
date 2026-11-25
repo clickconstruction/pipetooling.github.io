@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Swipe sign and swipe back</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!-- Punch list #426, the mock-up for the two asks of the phone try of 2026-11-25. Every bid, job, builder and person here is made up. Self-contained: the board copies only this file. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap">
+<style>
+/* Layout: a review sheet. Each question is a row of working phone frames read left to right (today, then each way), a table that weighs them, then the weak points and the picks. */
+:root {
+  --ground: #eceff3;
+  --sheet: #ffffff;
+  --ink: #141b27;
+  --ink-soft: #586375;
+  --rule: #cdd3dc;
+  --pick: #0f766e;
+  --pick-tint: #dcf2ee;
+  --warn: #b45309;
+  --display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --app-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0c1117; --sheet: #151c26; --ink: #edf1f6; --ink-soft: #9ba7b9; --rule: #2b3543;
+    --pick: #5eead4; --pick-tint: #12322e; --warn: #fbbf24;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0c1117; --sheet: #151c26; --ink: #edf1f6; --ink-soft: #9ba7b9; --rule: #2b3543;
+  --pick: #5eead4; --pick-tint: #12322e; --warn: #fbbf24;
+  color-scheme: dark;
+}
+
+/* The app's own look inside the frames: the values of src/index.css, light and dark. A frame wears one of the two whatever the page's theme is. */
+.app.lt {
+  --a-bg: #f0f2f5; --a-surface: #ffffff; --a-subtle: #f9fafb;
+  --a-border: #cfd4db; --a-border-strong: #aab2bd;
+  --a-strong: #111827; --a-700: #374151; --a-muted: #6b7280; --a-link: #2563eb;
+  --a-blue-tint: #eff6ff; --a-blue-border: #bfdbfe; --a-blue-800: #1e40af;
+  --a-violet-bg: #ede9fe; --a-violet-border: #c4b5fd; --a-violet-800: #5b21b6;
+  --a-red-700: #b91c1c; --a-green-700: #15803d; --a-rail-grey: #9ca3af; --a-rail-red: #dc2626;
+}
+.app.dk {
+  --a-bg: #111827; --a-surface: #1f2937; --a-subtle: #18212f;
+  --a-border: #374151; --a-border-strong: #4b5563;
+  --a-strong: #f9fafb; --a-700: #d1d5db; --a-muted: #9ca3af; --a-link: #60a5fa;
+  --a-blue-tint: #1e3358; --a-blue-border: #1e40af; --a-blue-800: #93c5fd;
+  --a-violet-bg: #332457; --a-violet-border: #5b21b6; --a-violet-800: #c4b5fd;
+  --a-red-700: #f87171; --a-green-700: #4ade80; --a-rail-grey: #6b7280; --a-rail-red: #ef4444;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 28px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 52px; }
+h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 1.9rem; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 0.95rem; font-weight: 700; margin: 0; }
+p { margin: 0; }
+.prose { max-width: 64ch; display: grid; gap: 10px; }
+.soft { color: var(--ink-soft); }
+section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; min-width: 0; }
+.eyebrow { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.tag { font-family: var(--body); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; background: var(--pick-tint); color: var(--pick); vertical-align: middle; white-space: nowrap; }
+blockquote { margin: 0; padding: 2px 0 2px 16px; border-left: 3px solid var(--rule); max-width: 64ch; color: var(--ink); }
+
+.looks { display: flex; align-items: center; gap: 10px 22px; flex-wrap: wrap; font-size: 0.85rem; color: var(--ink-soft); }
+.looks > span { display: inline-flex; align-items: center; gap: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--sheet); }
+.seg button { font: inherit; font-weight: 600; color: var(--ink); background: none; border: 0; min-height: 44px; padding: 0 14px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); }
+button:focus-visible { outline: 2px solid var(--pick); outline-offset: 2px; }
+
+.frames { display: flex; flex-wrap: wrap; gap: 30px 24px; align-items: flex-start; }
+.col { display: grid; gap: 8px; min-width: 0; width: 390px; max-width: 100%; align-content: start; }
+.step { font-size: 0.9rem; font-weight: 700; }
+.step small { font-weight: 500; color: var(--ink-soft); font-size: inherit; }
+.note { font-size: 0.84rem; color: var(--ink-soft); }
+.note.bad { color: var(--warn); font-weight: 600; }
+.note.good { color: var(--pick); font-weight: 600; }
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 0.82rem; color: var(--ink-soft); min-height: 44px; }
+.tools button { font: inherit; font-weight: 600; color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; min-height: 44px; padding: 0 12px; cursor: pointer; }
+.tools button:disabled { opacity: 0.45; cursor: default; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 0.88rem; min-width: 760px; max-width: 1180px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 16px 9px 0; border-bottom: 1px solid var(--rule); }
+thead th, tbody th { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+tbody th { width: 9.5rem; padding-top: 12px; }
+td.yes { color: var(--pick); font-weight: 600; }
+td.no { color: var(--warn); font-weight: 600; }
+ol.plain, ul.plain { margin: 0; padding-left: 1.2rem; display: grid; gap: 8px; max-width: 72ch; }
+.weak { display: grid; gap: 0; max-width: 980px; border-top: 1px solid var(--rule); }
+.weak > div { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 6px 26px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.weak b.still { color: var(--warn); }
+.weak b.done { color: var(--pick); }
+@media (max-width: 640px) { .weak > div { grid-template-columns: minmax(0, 1fr); } }
+.picks { display: grid; gap: 14px; max-width: 78ch; margin: 0; padding: 0; list-style: none; counter-reset: pick; }
+.picks li { counter-increment: pick; display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 0 6px; }
+.picks li::before { content: counter(pick) '.'; font-family: var(--display); font-weight: 700; }
+code { font-size: 0.86em; }
+
+/* ---------- the app, inside a frame ---------- */
+.phone { position: relative; width: 100%; border: 1px solid var(--rule); border-radius: 22px; overflow: hidden; }
+.app { background: var(--a-bg); color: var(--a-700); font-family: var(--app-font); font-size: 14px; line-height: 1.4; padding: 8px 8px 12px; min-height: 100%; }
+.card { background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 8px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 56px; padding: 6px 14px; border-bottom: 1px solid var(--a-border); }
+.card-head b { font-size: 1.15rem; color: var(--a-strong); }
+.card-head .badge { margin-left: 8px; font-size: 0.72rem; font-weight: 700; color: #fff; background: #2563eb; border-radius: 999px; padding: 2px 9px; vertical-align: 2px; }
+.newbid { min-height: 44px; padding: 0 14px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; font: 600 0.9rem var(--app-font); }
+.card-body { padding: 0 14px; }
+.group + .group, .foot { border-top: 1px solid var(--a-border); }
+.ghead { width: 100%; min-height: 44px; display: flex; align-items: baseline; gap: 8px; padding: 10px 0 0; background: none; border: 0; text-align: left; font: inherit; color: var(--a-strong); cursor: pointer; }
+.ghead.folded { align-items: center; padding: 0; }
+.ghead .tri { width: 14px; font-size: 0.7rem; color: var(--a-muted); }
+.ghead b { font-size: 1rem; }
+.ghead .n { font-size: 0.8rem; font-weight: 700; background: var(--a-subtle); border-radius: 999px; padding: 1px 9px; color: var(--a-700); }
+.ghead .flag { font-size: 0.78rem; font-weight: 700; color: var(--a-red-700); }
+.gloss { font-size: 0.8125rem; color: var(--a-muted); padding: 0 0 8px 22px; }
+.signline { font-size: 0.8125rem; font-weight: 600; color: var(--a-700); padding: 0 0 8px 22px; }
+ul.rows { list-style: none; margin: 0; padding: 0 0 10px; display: grid; gap: 8px; }
+ul.rows.rep { gap: 0; padding-bottom: 4px; }
+ul.rows.rep li { border-top: 1px solid var(--a-border); }
+.sw { position: relative; overflow: clip; border-radius: 8px; }
+ul.rows.rep .sw { border-radius: 0; }
+.strip { position: absolute; top: 0; bottom: 0; width: 160px; display: flex; }
+.strip.r { right: 0; }
+.strip.l { left: 0; }
+.strip button { width: 100%; border: 0; background: #6b7280; color: #ffffff; font: 700 0.875rem var(--app-font); padding: 0 0.9rem; white-space: nowrap; cursor: pointer; }
+.strip.r button { text-align: right; }
+.strip.l button { text-align: left; }
+.strip button.armed { background: #2563eb; }
+.slide { position: relative; touch-action: pan-y; user-select: none; -webkit-user-select: none; transition: transform 160ms ease-out; }
+.slide.drag { transition: none; }
+.slide.lipped { margin-right: 14px; }
+.lip { position: absolute; top: 0; bottom: 0; right: 0; width: 14px; background: #6b7280; color: #fff; display: grid; place-items: center; font-size: 0.8rem; font-weight: 700; }
+.box { display: flex; align-items: center; gap: 0.6rem; min-height: 67px; padding: 0.55rem 0.7rem 0.55rem 0.75rem; background: var(--a-subtle); border: 1px solid var(--a-border); border-left: 4px solid var(--a-rail-grey); border-radius: 8px; }
+.box.red { border-left-color: var(--a-rail-red); }
+.box.rep { min-height: 56px; padding: 0.35rem 0; background: var(--a-surface); border: 0; border-radius: 0; }
+.words { flex: 1; min-width: 0; min-height: 44px; display: grid; gap: 0.2rem; align-content: center; text-align: left; background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+.name { font-size: 0.9375rem; font-weight: 600; line-height: 1.3; color: var(--a-link); overflow-wrap: anywhere; }
+.box.rep .name, .box.put .name { color: var(--a-700); }
+.box.rep.fresh .name { color: var(--a-strong); font-weight: 700; }
+.due { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.5rem; font-size: 0.8125rem; color: var(--a-muted); font-variant-numeric: tabular-nums; }
+.due b { color: var(--a-strong); }
+.due b.late { color: var(--a-red-700); }
+.pill { font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--a-blue-border); background: var(--a-blue-tint); color: var(--a-blue-800); }
+.pill.am { border-color: var(--a-violet-border); background: var(--a-violet-bg); color: var(--a-violet-800); }
+.chev { flex-shrink: 0; color: var(--a-muted); font-size: 1.2rem; line-height: 1; }
+.dot { flex-shrink: 0; width: 12px; text-align: center; font-size: 0.8rem; line-height: 1; color: var(--a-green-700); }
+.dot i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #2563eb; }
+.wordpress { flex-shrink: 0; min-height: 44px; padding: 0 0.8rem; border: 1px solid var(--a-border-strong); border-radius: 6px; background: var(--a-surface); color: var(--a-700); font: 600 0.8125rem var(--app-font); white-space: nowrap; cursor: pointer; }
+.foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-size: 0.8125rem; color: var(--a-muted); }
+.foot a { margin-left: auto; font-size: 0.875rem; font-weight: 600; color: var(--a-link); text-decoration: none; white-space: nowrap; }
+.empty { font-size: 0.85rem; color: var(--a-muted); padding: 4px 0 12px 22px; }
+.toast { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; border-radius: 8px; background: #047857; color: #fff; font: 500 0.9rem var(--app-font); box-shadow: 0 6px 18px rgb(0 0 0 / 0.22); }
+.toast span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.toast button { min-height: 44px; padding: 0 12px; border: 1px solid rgb(255 255 255 / 0.6); border-radius: 6px; background: rgb(255 255 255 / 0.14); color: #fff; font: 700 0.875rem var(--app-font); cursor: pointer; }
+.edge { position: absolute; top: 0; bottom: 0; left: 0; width: 32px; z-index: 2; pointer-events: none; background: repeating-linear-gradient(135deg, rgb(180 83 9 / 0.3) 0 5px, rgb(180 83 9 / 0.08) 5px 10px); border-right: 2px dashed #b45309; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section>
+    <p class="eyebrow">Punch list #426 · mock-up · drawn 2026-11-25</p>
+    <h1>A sign that a row swipes, and a swipe back</h1>
+    <div class="prose">
+      <p>You tried the swipe on your phone and it held. Then you asked for two more things:</p>
+    </div>
+    <blockquote>I think we need to make it clear to our user that they have the option to swipe on my bids. Maybe we should make it reactive in some way so a user knows that when they scroll down to my bids, they can swipe to hide? As well, when looking at a hidden bid, I would like a swipe to put back from the other direction.</blockquote>
+    <div class="prose soft">
+      <p>Every frame below works. Drag a row with a thumb or a mouse. Each one is the card as it is today with one thing changed, and the first frame of each row is today's card with nothing changed.</p>
+      <p>Every bid, job and person here is made up. Nothing is built yet.</p>
+    </div>
+    <div class="looks">
+      <span>The frames wear <span class="seg" id="seg-theme"><button type="button" data-v="lt" aria-pressed="true">Light</button><button type="button" data-v="dk" aria-pressed="false">Dark</button></span></span>
+      <span>Reduced motion <span class="seg" id="seg-motion"><button type="button" data-v="off" aria-pressed="true">Off</button><button type="button" data-v="on" aria-pressed="false">On</button></span></span>
+    </div>
+  </section>
+
+  <section>
+    <h2>How a person learns that a row swipes</h2>
+    <p class="prose soft">Today the only sign is one line at the foot, under the whole list. Three ways to say it sooner, each beside today.</p>
+    <div class="frames">
+      <div class="col"><p class="step">Today <small>· the line at the foot</small></p><div id="s-today"></div><p class="note bad">A person reads the bids first. The line that says they swipe comes after the last one.</p></div>
+      <div class="col"><p class="step">A · The first row shows its strip <span class="tag">My pick</span></p><div id="s-peek"></div><div class="tools" id="s-peek-tools"></div><p class="note good">It plays when the card scrolls into view. Scroll away and back, or press Play it again.</p></div>
+      <div class="col"><p class="step">B · A lip on every row</p><div id="s-lip"></div><p class="note">The strip's edge always shows. It is there on every visit, and it does not say what it does.</p></div>
+      <div class="col"><p class="step">C · The words under the heading</p><div id="s-words"></div><p class="note">The foot's line moves up, under <b>Unsent</b>. It teaches only a person who reads it.</p></div>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead><tr><th></th><th>Today</th><th>A · first row shows its strip</th><th>B · a lip on every row</th><th>C · words under the heading</th></tr></thead>
+        <tbody>
+          <tr><th>Teaches on first sight</th><td class="no">No. The words are under the list.</td><td class="yes">Yes. It shows the move, the side and the word.</td><td>Partly. A grey edge with an arrow, and no word.</td><td>Only for a person who reads the line.</td></tr>
+          <tr><th>Space on every later visit</th><td>One line at the foot.</td><td class="yes">None. The foot's line stays where it is.</td><td class="no">14 px off every row, for good.</td><td class="no">One more line at the top, for good.</td></tr>
+          <tr><th>Moves under a thumb</th><td>No.</td><td>The first row, 1.4 seconds, three times at most. It waits for a still page and stops at a touch.</td><td>No.</td><td>No.</td></tr>
+          <tr><th>Reduced motion</th><td>Nothing to do.</td><td>No slide. The words stand under the heading for that visit. Turn it on above to see it.</td><td>Nothing to do.</td><td>Nothing to do.</td></tr>
+          <tr><th>How it remembers</th><td>Nothing to remember.</td><td>Per person, on every device they sign in on. No new table.</td><td>Nothing to remember.</td><td>Nothing to remember.</td></tr>
+          <tr><th>Both cards</th><td>Each has its own foot line.</td><td class="yes">One sign for the gesture. The first card in view shows it.</td><td>Every row of both cards.</td><td>One line on each card.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="frames">
+      <div class="col"><p class="step">A on Recent Reports <small>· the same sign</small></p><div id="s-rep"></div><div class="tools" id="s-rep-tools"></div><p class="note">The row goes as far as its word needs: 64 px for <b>Hide</b>, 108 px for <b>Mark opened</b>. Both stop short of the 112 px mark, and only a finger can pass it.</p></div>
+      <div class="col" style="width: 560px;">
+        <h3>The rules of A</h3>
+        <ol class="plain">
+          <li><b>When.</b> The first row of the card is in full view for half a second, no finger is down and the page is still.</li>
+          <li><b>What.</b> That one row slides left, holds for a second with its strip's word showing, and slides back. 1.4 seconds in all.</li>
+          <li><b>It cannot hide anything.</b> The slide stops short of the mark, and only a finger can pass the mark.</li>
+          <li><b>A touch stops it.</b> The row goes straight back. A press on the row still opens the bid.</li>
+          <li><b>How often.</b> Once a day at most, three times at most. It stops for good the first time the person swipes a row themselves.</li>
+          <li><b>One sign for both cards.</b> The count belongs to the gesture. Whichever card comes into view first shows it.</li>
+          <li><b>Where it is kept.</b> In the app's own store of dismissals, which follows a person to each device. A new phone does not start over.</li>
+          <li><b>Phones only.</b> A desk has no swipe. Each row there already has its word press.</li>
+          <li><b>View as.</b> It may play. Nothing is written for the person being viewed.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The swipe back</h2>
+    <p class="prose soft">Left puts a row away. Right brings one back. The strip is on the left, under the row, and reads what the press reads today. It is grey until the mark and blue past it, the same as the way out.</p>
+    <div class="frames">
+      <div class="col"><p class="step">Today <small>· a press, no swipe</small></p><div id="b-today"></div><p class="note bad">The press takes 100 px of the box. On your phone the name beside it broke in the middle of its date.</p></div>
+      <div class="col"><p class="step">1 · Swipe right, no press on a phone <span class="tag">My pick</span></p><div id="b-swipe"></div><p class="note good">A hidden bid has two moves, as a shown one has. A press goes in. A swipe shows it again. The name has the whole box.</p></div>
+      <div class="col"><p class="step">2 · Swipe right, and the press stays</p><div id="b-both"></div><p class="note">Nothing is lost. The row has two ways to do one thing, and the name stays squeezed.</p></div>
+    </div>
+    <div class="frames">
+      <div class="col"><p class="step">Recent Reports <small>· the same swipe back</small></p><div id="b-rep"></div><p class="note">An opened report swipes right to <b>Mark unread</b>. One gesture on both cards.</p></div>
+      <div class="col"><p class="step">Where a right swipe may start</p><div id="b-edge"></div><p class="note">The striped band is the first 32 px of the screen. A swipe that starts there is the phone's own Back, so the row does not answer it. Try it from the band, then from the middle of the row.</p></div>
+      <div class="col" style="width: 560px;">
+        <h3>What the swipe back does</h3>
+        <ul class="plain">
+          <li><b>The strip.</b> On the left, 160 px, grey then blue at 112 px. Its words are <b>Show again</b> on a bid and <b>Mark unread</b> on a report.</li>
+          <li><b>Letting go past the mark</b> puts the row back in its group, first in line as today.</li>
+          <li><b>A toast says where it went</b>, with <b>Undo</b> for ten seconds: <i>Shown again: Sample Retail Shell, phase 2.</i> Today the press says nothing.</li>
+          <li><b>A swipe the wrong way answers.</b> A left swipe on a put-away row moves nothing away. The row shows <b>Show again</b> on its left for a second, so the person sees which way it goes. A right swipe on a shown row answers with <b>Hide</b> the same way. Try it in the frames marked as my pick.</li>
+          <li><b>The line under the group's heading</b> says the move: <i>You hid these. Swipe one right to show it again.</i> It sits over the rows, never under them.</li>
+          <li><b>The sign plays here too</b>, the first time the group is opened: the first row slides right and shows its word.</li>
+          <li><b>A keyboard and a screen reader</b> still have a real press. The strip is a button, as <b>Hide</b>'s strip is.</li>
+          <li><b>At a desk</b> nothing changes. <b>Show again</b> and <b>Mark unread</b> stay as word presses.</li>
+          <li><b>The screen's left edge.</b> A swipe counts when it starts 32 px or more from the edge. A row's box starts 24 px in, so 8 px of the row is left out.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Is this the best we can do?</h2>
+    <p class="prose soft">What is weak in A and in the swipe back, and what was done about each. Four lines are still weak, and they say so.</p>
+    <div class="weak">
+      <div><p><b>A person looking elsewhere misses a move that plays once.</b></p><p><b class="done">Changed.</b> It plays up to three times, once a day, until the person swipes a row themselves. Then never.</p></div>
+      <div><p><b>A row that moves as the thumb comes down.</b></p><p><b class="done">Changed.</b> It waits for a still page and no finger. A touch sends the row straight back, and the press still opens the bid. Only the first row moves, and it stops short of the mark.</p></div>
+      <div><p><b>The strip's word is at the far end, so a short slide shows half of <i>Mark opened</i>.</b></p><p><b class="done">Changed.</b> The slide goes as far as the word needs, 64 px or 108 px.</p></div>
+      <div><p><b>A person who asked their phone for less motion.</b></p><p><b class="done">Changed.</b> No slide. The words stand under the heading for that visit and count the same way.</p></div>
+      <div><p><b>It would start over on a new phone.</b></p><p><b class="done">Changed.</b> The count is kept with the person, in the store the app's dismissed alerts already use. No new table and no migration.</p></div>
+      <div><p><b>With no press, the way back from Hidden is a gesture.</b></p><p><b class="still">Still weak.</b> Four things carry it: the line over the rows, the sign the first time the group opens, a wrong-way swipe that answers with the right way, and <b>Undo</b> right after a hide. A person who reads nothing and never drags the row has no press to find on a phone. Way 2 keeps the press and costs the name its room.</p></div>
+      <div><p><b>A right swipe from the screen's edge is the phone's Back.</b></p><p><b class="still">Still weak.</b> The app cannot stop the phone's Back. It can only keep the row still, which the 32 px rule does. Apple does not publish how wide its edge is, so the number is checked on a phone before it ships. The Pipeline's rows already swipe right with no such rule.</p></div>
+      <div><p><b>The sign shows the swipe, never the mark.</b></p><p><b class="still">Still weak.</b> It does not teach "pull until it turns blue". The strip turning blue under the thumb teaches that, as it does today.</p></div>
+      <div><p><b>A sliding row loses the start of its name.</b></p><p><b class="still">Still weak.</b> For 1.4 seconds the first word or two are cut. It is how the swipe itself looks.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Your picks</h2>
+    <ol class="picks">
+      <li><div><b>The sign: A, B or C.</b> My pick is A. It is the one that shows the move, and it costs nothing after it has taught. The foot's line stays as the standing words.</div></li>
+      <li><div><b>The press on a put-away row, on a phone: gone, or kept.</b> My pick is gone, way 1. The plan of 2026-11-23 gave a bid two moves and no buttons on a phone: a press goes in and a swipe hides. This is the same plan for a hidden one. Keep it, way 2, if a way back that nobody can miss matters more than the name's room.</div></li>
+      <li><div><b>A toast with Undo when a row comes back.</b> My pick is yes, for a swipe and for the desk's press. A swipe can be made by accident in either direction.</div></li>
+      <li><div><b>How often the sign plays.</b> My pick is up to three times, once a day, ending at the person's own first swipe. The other answer is once, ever.</div></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>The build, after your pick</h2>
+    <p class="prose soft">Three small steps, each with its kernel and tests first, its guide and its release note. The client only. No migration and no function.</p>
+    <ol class="plain">
+      <li><b>The swipe back on My Bids.</b> The shared row and its kernel learn a side. <b>Hidden</b>'s rows swipe right, with the toast, the 32 px rule and the answer to a wrong-way swipe.</li>
+      <li><b>The swipe back on Recent Reports.</b> <b>Opened</b>'s rows, the same row and the same rule.</li>
+      <li><b>The sign.</b> One kernel says when it may play and how often. Both cards and both directions use it.</li>
+    </ol>
+    <p class="prose soft">Each step is walked in the simulator before the card closes: the swipe from the screen's edge, a scroll that drifts, and the sign with a finger on the way down.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var STRIP = 160, MARK = 112, SLOP = 6, EDGE = 32, MAX_PLAYS = 3;
+  var state = { theme: 'lt', motion: 'off' };
+  var frames = [];
+  function reduce() {
+    if (state.motion === 'on') return true;
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+  }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+  var WORDS = {
+    bids: {
+      title: 'My Bids', awayLabel: 'Hide', backLabel: 'Show again', awayPeek: 64, backPeek: 100,
+      awayToast: function (n) { return 'Hidden: ' + n + '.'; },
+      backToast: function (n) { return 'Shown again: ' + n + '.'; },
+      hint: 'Swipe a bid left to hide it.', putGroup: 'Hidden',
+      gloss: { button: 'You hid these. Show again puts one back.', swipe: 'You hid these. Swipe one right to show it again.', both: 'You hid these. Swipe one right, or press Show again.' },
+      door: 'Bid Board ›'
+    },
+    reports: {
+      title: 'Recent Reports', awayLabel: 'Mark opened', backLabel: 'Mark unread', awayPeek: 108, backPeek: 108,
+      awayToast: function (n) { return 'Marked opened: ' + n + '.'; },
+      backToast: function (n) { return 'Marked unread: ' + n + '.'; },
+      hint: 'Swipe a report left to mark it opened.', putGroup: 'Opened',
+      gloss: { button: 'You marked these opened. Mark unread puts one back.', swipe: 'You marked these opened. Swipe one right to mark it unread.', both: 'You marked these opened. Swipe one right, or press Mark unread.' },
+      door: 'View all ›'
+    }
+  };
+  function bidRows() {
+    return [
+      { id: 'b1', name: 'Cedar Bend Apartments, building D', group: 'unsent', label: 'Due', value: 'Wed 9/9', tail: '77 days past due', late: true, pill: ['am', 'Account Manager'] },
+      { id: 'b2', name: 'Sample Retail Shell, phase 2', group: 'unsent', label: 'Due', value: 'Mon 11/2', tail: '23 days past due', late: true, pill: ['est', 'Estimator'] },
+      { id: 'b3', name: 'ZZ Test Paper Walk 2026-11-13', group: 'unsent', label: '', value: 'No due date', tail: '12 days on the board', late: false, pill: ['est', 'Estimator'] },
+      { id: 'b4', name: 'Kitchen repipe', group: 'started', label: 'Sent', value: 'Fri 11/20', tail: '5 days ago', late: false, pill: ['est', 'Estimator'] },
+      { id: 'b5', name: 'Cedar Bend Apartments, building C', group: 'started', label: 'Sent', value: 'Tue 11/10', tail: '15 days ago', late: false, pill: ['est', 'Estimator'] }
+    ];
+  }
+  function reportRows() {
+    return [
+      { id: 'r1', name: 'Maple Court bathroom rough', group: 'list', who: 'Sample tech', value: 'Nov 22 1:02 PM' },
+      { id: 'r2', name: 'Sample Retail Shell hydro test', group: 'list', who: 'Sample tech', value: 'Nov 21 4:08 PM' },
+      { id: 'r3', name: 'Kitchen repipe top-out', group: 'list', who: 'Sample tech', value: 'Nov 21 12:47 PM' }
+    ];
+  }
+
+  /**
+   * One working phone frame. opts: kind ('bids' | 'reports'), sign ('today' | 'peek' | 'lip' | 'words'),
+   * back ('button' | 'swipe' | 'both'), put (ids put away at the start), openPut, edge (draw the band), tools (element for the sign's count).
+   */
+  function makeFrame(host, opts) {
+    var w = WORDS[opts.kind];
+    var f = {
+      rows: opts.kind === 'bids' ? bidRows() : reportRows(),
+      put: (opts.put || []).slice(), open: { unsent: true, list: true, started: false, put: !!opts.openPut },
+      toast: null, toastTimer: null, plays: 0, learned: false, backPlays: 0, backLearned: false,
+      inView: false, viewTimer: null, peekTimers: [], peeking: null, signWords: false, fingerDown: false
+    };
+    frames.push({ host: host, f: f, opts: opts, render: render, visit: visit });
+
+    function shown(group) { return f.rows.filter(function (r) { return r.group === group && f.put.indexOf(r.id) < 0; }); }
+    function putRows() { return f.put.map(function (id) { return f.rows.filter(function (r) { return r.id === id; })[0]; }); }
+
+    function rowWords(r, put) {
+      if (opts.kind === 'bids') {
+        return '<button type="button" class="words"><span class="name">' + esc(r.name) + '</span><span class="due">' +
+          (put ? '<span>Unsent</span>' : '') + (r.label ? '<span>' + r.label + '</span>' : '') + '<b>' + r.value + '</b>' +
+          (r.late && !put ? '<b class="late">' + r.tail + '</b>' : '<span>' + r.tail + '</span>') +
+          '<span class="pill ' + r.pill[0] + '">' + r.pill[1] + '</span></span></button>';
+      }
+      return '<span class="dot">' + (put ? '✓' : '<i></i>') + '</span><button type="button" class="words"><span class="name">' + esc(r.name) +
+        '</span><span class="due"><span>' + r.who + '</span><b>' + r.value + '</b></span></button>';
+    }
+    function boxClass(r, put) {
+      if (opts.kind === 'reports') return 'box rep' + (put ? ' put' : ' fresh');
+      return 'box' + (put ? ' put' : r.late ? ' red' : '');
+    }
+    function shownRow(r) {
+      var lip = opts.sign === 'lip';
+      return '<li><div class="sw" data-id="' + r.id + '" data-side="left"><div class="strip r"><button type="button" tabindex="-1" aria-label="' + w.awayLabel + ', ' + esc(r.name) + '">' + w.awayLabel + '</button></div>' +
+        (lip ? '<span class="lip" aria-hidden="true">‹</span>' : '') +
+        '<div class="slide' + (lip ? ' lipped' : '') + '"><div class="' + boxClass(r, false) + '">' + rowWords(r, false) + '<span class="chev" aria-hidden="true">›</span></div></div></div></li>';
+    }
+    function putRow(r) {
+      var press = '<button type="button" class="wordpress" data-back="' + r.id + '">' + w.backLabel + '</button>';
+      if (opts.back === 'button') return '<li><div class="' + boxClass(r, true) + '">' + rowWords(r, true) + press + '</div></li>';
+      return '<li><div class="sw" data-id="' + r.id + '" data-side="right"><div class="strip l"><button type="button" tabindex="-1" aria-label="' + w.backLabel + ', ' + esc(r.name) + '">' + w.backLabel + '</button></div>' +
+        '<div class="slide"><div class="' + boxClass(r, true) + '">' + rowWords(r, true) + (opts.back === 'both' ? press : '<span class="chev" aria-hidden="true">›</span>') + '</div></div></div></li>';
+    }
+    function ghead(key, name, count, flag, gloss) {
+      var open = f.open[key];
+      return '<button type="button" class="ghead' + (open && gloss ? '' : ' folded') + '" data-fold="' + key + '" aria-expanded="' + open + '"><span class="tri">' + (open ? '▼' : '▶') + '</span><b>' + name + '</b><span class="n">' + count + '</span>' +
+        (flag ? '<span class="flag">' + flag + '</span>' : '') + '</button>' + (open && gloss ? '<p class="gloss">' + gloss + '</p>' : '');
+    }
+    function render() {
+      var first = shown(opts.kind === 'bids' ? 'unsent' : 'list');
+      var puts = putRows();
+      var wordsUp = opts.sign === 'words' || f.signWords;
+      var body = '';
+      if (opts.kind === 'bids') {
+        var late = first.filter(function (r) { return r.late; }).length;
+        body += '<div class="group">' + ghead('unsent', 'Unsent', first.length, late ? late + ' past due' : '', 'Still to price and send.') +
+          (f.open.unsent && wordsUp ? '<p class="signline">' + w.hint + '</p>' : '') +
+          (f.open.unsent ? (first.length ? '<ul class="rows">' + first.map(shownRow).join('') + '</ul>' : '<p class="empty">Nothing unsent.</p>') : '') + '</div>';
+        var started = shown('started');
+        if (started.length) body += '<div class="group">' + ghead('started', 'Started or Complete', started.length, '', '') +
+          (f.open.started ? '<ul class="rows">' + started.map(shownRow).join('') + '</ul>' : '') + '</div>';
+      } else {
+        body += '<div class="group">' + (wordsUp ? '<p class="signline" style="padding: 10px 0 8px;">' + w.hint + '</p>' : '') +
+          (first.length ? '<ul class="rows rep">' + first.map(shownRow).join('') + '</ul>' : '<p class="empty" style="padding-left: 0; padding-top: 12px;">Nothing new to read. A report lands here when the crew files one.</p>') + '</div>';
+      }
+      if (puts.length) body += '<div class="group">' + ghead('put', w.putGroup, puts.length, '', w.gloss[opts.back]) +
+        (f.open.put ? '<ul class="rows' + (opts.kind === 'reports' ? ' rep' : '') + '">' + puts.map(putRow).join('') + '</ul>' : '') + '</div>';
+      var total = f.rows.length - f.put.length;
+      host.innerHTML = '<div class="phone"><div class="app ' + state.theme + '"><div class="card"><div class="card-head"><span><b>' + w.title +
+        (opts.kind === 'bids' ? ' (' + total + ')</b>' : '</b>' + (first.length ? '<span class="badge">' + first.length + ' new</span>' : '')) + '</span>' +
+        (opts.kind === 'bids' ? '<button type="button" class="newbid" tabindex="-1">New Bid</button>' : '') + '</div><div class="card-body">' + body +
+        '<div class="foot">' + (opts.sign === 'words' ? '' : '<span>' + w.hint + '</span>') + '<a href="#" onclick="return false">' + w.door + '</a></div></div></div>' +
+        (opts.edge ? '<span class="edge" aria-hidden="true"></span>' : '') +
+        (f.toast ? '<div class="toast" role="status"><span>' + esc(f.toast.words) + '</span><button type="button" data-undo="1">Undo</button></div>' : '') +
+        '</div></div>';
+      wire();
+      tools();
+    }
+    function say(words, undo) {
+      clearTimeout(f.toastTimer);
+      f.toast = { words: words, undo: undo };
+      f.toastTimer = setTimeout(function () { f.toast = null; render(); }, 10000);
+    }
+    function away(id) {
+      var r = f.rows.filter(function (x) { return x.id === id; })[0];
+      f.put.unshift(id);
+      f.learned = true; f.signWords = false;
+      say(w.awayToast(r.name), function () { f.put = f.put.filter(function (x) { return x !== id; }); });
+      render();
+    }
+    function back(id, byHand) {
+      var r = f.rows.filter(function (x) { return x.id === id; })[0];
+      f.put = f.put.filter(function (x) { return x !== id; });
+      if (byHand) f.backLearned = true;
+      // Today's press says nothing. The swipe back, and the press beside it, say where the row went.
+      if (opts.back === 'button') { f.toast = null; clearTimeout(f.toastTimer); }
+      else say(w.backToast(r.name), function () { f.put.unshift(id); });
+      render();
+    }
+    function stopPeek() {
+      f.peekTimers.forEach(clearTimeout); f.peekTimers = [];
+      if (f.peeking) { f.peeking.style.transition = ''; f.peeking.style.transform = ''; f.peeking = null; }
+    }
+    function peek(slide, px) {
+      stopPeek();
+      f.peeking = slide;
+      slide.style.transition = 'transform 280ms ease-out';
+      slide.style.transform = 'translateX(' + px + 'px)';
+      f.peekTimers.push(setTimeout(function () { slide.style.transition = 'transform 240ms ease-in'; slide.style.transform = 'translateX(0px)'; }, 1180));
+      f.peekTimers.push(setTimeout(function () { slide.style.transition = ''; slide.style.transform = ''; f.peeking = null; }, 1440));
+    }
+    /** One visit of the card: the sign plays if it still may. */
+    function visit(force) {
+      if (opts.sign !== 'peek' || f.learned || f.plays >= MAX_PLAYS || f.fingerDown) return;
+      var slide = host.querySelector('.sw[data-side="left"] .slide');
+      if (!slide) return;
+      if (!force && f.playedThisView) return;
+      f.playedThisView = true;
+      f.plays += 1;
+      if (reduce()) { f.signWords = true; render(); return; }
+      f.signWords = false;
+      tools();
+      peek(slide, -w.awayPeek);
+    }
+    function backVisit() {
+      if (opts.back === 'button' || opts.sign !== 'peek' && !opts.backSign) return;
+      if (f.backLearned || f.backPlays >= 1 || reduce()) return;
+      var slide = host.querySelector('.sw[data-side="right"] .slide');
+      if (!slide) return;
+      f.backPlays += 1;
+      setTimeout(function () { var s = host.querySelector('.sw[data-side="right"] .slide'); if (s && !f.fingerDown) peek(s, w.backPeek); }, 450);
+    }
+    function tools() {
+      if (!opts.tools) return;
+      var line = f.learned ? 'You swiped a row yourself. The sign is done for good.'
+        : f.plays >= MAX_PLAYS ? 'Shown 3 of 3. It does not play again.'
+        : f.plays === 0 ? 'Not shown yet.' : 'Shown ' + f.plays + ' of 3. The next one waits for another day.';
+      opts.tools.innerHTML = '<button type="button" data-again="1"' + (f.learned || f.plays >= MAX_PLAYS ? ' disabled' : '') + '>Play it again</button><button type="button" data-reset="1">Start over</button><span>' + line + '</span>';
+      opts.tools.querySelector('[data-again]').onclick = function () { visit(true); };
+      opts.tools.querySelector('[data-reset]').onclick = function () {
+        stopPeek(); f.plays = 0; f.learned = false; f.signWords = false; f.playedThisView = false; f.put = (opts.put || []).slice(); f.toast = null; render();
+      };
+    }
+    function wire() {
+      Array.prototype.forEach.call(host.querySelectorAll('[data-fold]'), function (b) {
+        b.onclick = function () { var k = b.getAttribute('data-fold'); f.open[k] = !f.open[k]; render(); if (k === 'put' && f.open.put) backVisit(); };
+      });
+      Array.prototype.forEach.call(host.querySelectorAll('[data-back]'), function (b) { b.onclick = function () { back(b.getAttribute('data-back'), false); }; });
+      var undo = host.querySelector('[data-undo]');
+      if (undo) undo.onclick = function () { var u = f.toast && f.toast.undo; f.toast = null; clearTimeout(f.toastTimer); if (u) u(); render(); };
+      Array.prototype.forEach.call(host.querySelectorAll('.sw'), swipe);
+    }
+    function swipe(sw) {
+      var slide = sw.querySelector('.slide'), stripBtn = sw.querySelector('.strip button');
+      var right = sw.getAttribute('data-side') === 'right', id = sw.getAttribute('data-id');
+      var start = null, axis = 'undecided', dx = 0, dragged = false;
+      var wayPx = right ? w.backPeek : -w.awayPeek;
+      function clamp(d) { return right ? Math.max(0, Math.min(STRIP, d)) : Math.min(0, Math.max(-STRIP, d)); }
+      stripBtn.onclick = function () { if (right) back(id, true); else away(id); };
+      slide.addEventListener('pointerdown', function (e) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        f.fingerDown = true;
+        stopPeek();
+        // The phone's own Back starts at the screen's left edge and moves right. The frame's edge stands in for the screen's.
+        var band = e.clientX - host.getBoundingClientRect().left < EDGE;
+        if (right && band) return;
+        start = { x: e.clientX, y: e.clientY, id: e.pointerId, band: band }; axis = 'undecided'; dx = 0; dragged = false;
+      });
+      slide.addEventListener('pointermove', function (e) {
+        if (!start || start.id !== e.pointerId) return;
+        var mx = e.clientX - start.x, my = e.clientY - start.y;
+        if (axis === 'undecided') {
+          if (Math.abs(mx) < SLOP && Math.abs(my) < SLOP) return;
+          axis = Math.abs(mx) > Math.abs(my) ? 'horizontal' : 'vertical';
+          if (axis === 'horizontal') { try { slide.setPointerCapture(e.pointerId); } catch (err) { /* older browsers */ } }
+        }
+        if (axis !== 'horizontal') return;
+        // A swipe the wrong way moves nothing away. The row answers by showing its strip on the side it really goes.
+        if (clamp(mx) === 0 && Math.abs(mx) >= 24) {
+          axis = 'answered'; dragged = true;
+          if (opts.answer && !start.band && !reduce()) { slide.classList.remove('drag'); peek(slide, wayPx); }
+          return;
+        }
+        dx = clamp(mx); dragged = true;
+        slide.classList.add('drag');
+        slide.style.transform = 'translateX(' + dx + 'px)';
+        stripBtn.classList.toggle('armed', Math.abs(dx) >= MARK);
+      });
+      function end(e) {
+        f.fingerDown = false;
+        if (!start || start.id !== e.pointerId) return;
+        var armed = axis === 'horizontal' && Math.abs(dx) >= MARK;
+        start = null; axis = 'undecided';
+        slide.classList.remove('drag'); stripBtn.classList.remove('armed');
+        if (f.peeking !== slide) slide.style.transform = '';
+        if (armed) { if (right) back(id, true); else away(id); }
+      }
+      slide.addEventListener('pointerup', end);
+      slide.addEventListener('pointercancel', end);
+      // A drag must not also press the row under it.
+      slide.addEventListener('click', function (e) { if (dragged) { e.preventDefault(); e.stopPropagation(); dragged = false; } }, true);
+    }
+
+    render();
+    if (opts.sign === 'peek' && 'IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          clearTimeout(f.viewTimer);
+          f.inViewNow = en.isIntersecting;
+          if (en.isIntersecting) f.viewTimer = setTimeout(function () { visit(false); }, 500);
+          else { f.playedThisView = false; stopPeek(); }
+        });
+      }, { threshold: 0.6 }).observe(host);
+    }
+    if (f.open.put && opts.backSign && 'IntersectionObserver' in window) {
+      var seen = new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting) { seen.disconnect(); backVisit(); }
+      }, { threshold: 0.6 });
+      seen.observe(host);
+    }
+  }
+
+  function el(id) { return document.getElementById(id); }
+  makeFrame(el('s-today'), { kind: 'bids', sign: 'today', back: 'button' });
+  makeFrame(el('s-peek'), { kind: 'bids', sign: 'peek', back: 'swipe', answer: true, tools: el('s-peek-tools') });
+  makeFrame(el('s-lip'), { kind: 'bids', sign: 'lip', back: 'button' });
+  makeFrame(el('s-words'), { kind: 'bids', sign: 'words', back: 'button' });
+  makeFrame(el('s-rep'), { kind: 'reports', sign: 'peek', back: 'swipe', answer: true, tools: el('s-rep-tools') });
+  makeFrame(el('b-today'), { kind: 'bids', sign: 'today', back: 'button', put: ['b3'], openPut: true });
+  makeFrame(el('b-swipe'), { kind: 'bids', sign: 'today', back: 'swipe', answer: true, put: ['b3'], openPut: true, backSign: true });
+  makeFrame(el('b-both'), { kind: 'bids', sign: 'today', back: 'both', put: ['b3'], openPut: true });
+  makeFrame(el('b-rep'), { kind: 'reports', sign: 'today', back: 'swipe', answer: true, put: ['r3'], openPut: true, backSign: true });
+  makeFrame(el('b-edge'), { kind: 'bids', sign: 'today', back: 'swipe', answer: true, put: ['b3', 'b2'], openPut: true, edge: true });
+
+  function seg(id, key) {
+    var box = el(id);
+    Array.prototype.forEach.call(box.querySelectorAll('button'), function (b) {
+      b.onclick = function () {
+        state[key] = b.getAttribute('data-v');
+        Array.prototype.forEach.call(box.querySelectorAll('button'), function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+        frames.forEach(function (fr) {
+          // A change of motion starts the sign over, so the other way of showing it can be seen at once.
+          if (key === 'motion' && fr.opts.sign === 'peek') { fr.f.plays = 0; fr.f.learned = false; fr.f.signWords = false; fr.f.playedThisView = false; }
+          fr.render();
+          if (key === 'motion' && fr.opts.sign === 'peek' && fr.f.inViewNow) fr.visit(true);
+        });
+      };
+    });
+  }
+  seg('seg-theme', 'theme');
+  seg('seg-motion', 'motion');
+})();
+</script>
+</body>
+</html>

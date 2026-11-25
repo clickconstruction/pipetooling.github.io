@@ -87,7 +87,7 @@ export type SubLaborInput = { ok: true; p: SubLaborPayload; target: string; plan
 const LINE_SHAPE = '{ what (the work in words), day? (YYYY-MM-DD, the day the line is about), amount (a flat dollar amount) } or { what, day?, hours, rate (dollars an hour), count? (units, when hours is per unit) }'
 const LABOR_SHAPE =
   `needs labor — { action?: 'add', job_id (a jobs_ledger.id — find_job), person (a people.id, a users.id or the name of one sub — find_person), date (YYYY-MM-DD, the day the work happened or its first day, never ahead of today), through? (the last day, when the work ran several days), lines: [${LINE_SHAPE}] (1 to ${LINES_MAX}, all flat or all hours at a rate), note? (under ${NOTE_MAX}, kept on the job's activity), stated?: { source } (the days come from a record outside the app and not a punch: name the record), second_sheet_ok? (true when they already hold a sheet on the job for those days and this is other work) } ` +
-  `| { action: 'change', sheet_id (a people_labor_jobs.id — plan_sub_labor lists a job's sheets), job_id? (the job the sheet moves to, as the Edit window's change beside the job does), date?, lines? (replaces every line, as the Edit window's save does), stated?, reason? } ` +
+  `| { action: 'change', sheet_id (a people_labor_jobs.id — plan_sub_labor lists a job's sheets), job_id? (the job the sheet moves to, as the Edit window's change beside the job does; the sheet's own job brings a number the job has outgrown up to date), date?, lines? (replaces every line, as the Edit window's save does), stated?, reason? } ` +
   `| { action: 'remove', sheet_id, reason (why it comes off, kept on the job's activity) }`
 
 function readPlanHash(verb: string, planVerb: string, input: Json): { ok: true; planHash: string | null } | { ok: false; error: string } {
@@ -346,6 +346,8 @@ export type JobMoney = { profit: { laborCost: number; partsCost: number; totalBi
 
 export type SubLaborReads = {
   rows(table: string, query: string): Promise<Json[]>
+  /** GET /rest/v1/<path>?<query> as the dev, the body as it came: a function that answers one value. */
+  value?(path: string, query: string): Promise<unknown>
   /** get_job's money for one job; left out, the plan says the profit band was not read. */
   money?(jobId: string): Promise<JobMoney>
 }
@@ -498,6 +500,11 @@ export type SubLaborWorld = {
   money: JobMoney | null
   /** The job a change moves the sheet to, read the same way; null when the change names no job. */
   to: JobSide | null
+  /**
+   * The job the sheet's own job's number resolves to today (`resolve_job_ledger_id_by_number`), read when a change
+   * names the sheet's own job and the sheet's number is not that job's. Left out otherwise, or when not read.
+   */
+  numberResolvesTo?: string | null
 }
 /** One job as a plan reads it: the row, its sheets with their lines, payments and assignee rows, its allocated bank rows and its profit band. */
 export type JobSide = Pick<SubLaborWorld, 'job' | 'sheets' | 'items' | 'payments' | 'assignees' | 'settings' | 'bankLines' | 'money'>
@@ -532,6 +539,13 @@ export async function readSubLaborWorld(reads: SubLaborReads, p: SubLaborPayload
   if (!sheet) return { devUserId, sheet: null, job: null, person: null, sheets: [], items: [], payments: [], assignees: [], settings: [], bankLines: [], money: null, to: null }
   const moveTo = p.action === 'change' && p.job_id && p.job_id !== sheet.job_ledger_id ? p.job_id : null
   const [side, to] = await Promise.all([readJobSide(reads, sheet.job_ledger_id, sheet), moveTo ? readJobSide(reads, moveTo, null) : Promise.resolve(null)])
+  // 0.135.0: a change that names the sheet's own job brings a stale number up to date. The table follows a sheet's
+  // number to its job (people_labor_jobs_link_job_ledger), so the plan reads where the new number leads first.
+  const stale = p.action === 'change' && !!p.job_id && !moveTo && side.job ? staleSheetNumber(sheet, side.job) : null
+  if (stale && reads.value) {
+    const got = await reads.value('rpc/resolve_job_ledger_id_by_number', `p_number=${encodeURIComponent(stale.after)}`)
+    return { devUserId, sheet, person: null, to, ...side, numberResolvesTo: typeof got === 'string' && UUID_RE.test(got) ? got.toLowerCase() : null }
+  }
   return { devUserId, sheet, person: null, to, ...side }
 }
 
@@ -634,6 +648,20 @@ export function sheetRateFor(lines: readonly LaborLine[], settings: readonly Lab
 
 /** The number a sheet shows for its job: the HCP number, else the Click number (`subLaborJobNumberForStorage`). */
 export const sheetJobNumber = (job: Pick<LaborJobRow, 'hcp_number' | 'click_number'>): string | null => (job.hcp_number ?? '').trim() || (job.click_number ?? '').trim() || null
+
+/** The number text a sheet holds: ten characters at most (`people_labor_jobs.job_number`), as the table's own trigger clips it. */
+export const SHEET_NUMBER_MAX = 10
+/**
+ * A sheet whose number is not its own job's today (0.135.0, the renumber of 2026-11-25): the text it reads and the
+ * text it should, the job's HCP number, else its Click number, clipped as the table clips it. Null when the sheet
+ * already reads its job's number or the job has none, which the sheet's own text then stands in for.
+ */
+export function staleSheetNumber(sheet: Pick<SheetRow, 'job_number'>, job: Pick<LaborJobRow, 'hcp_number' | 'click_number'>): { before: string; after: string } | null {
+  const full = sheetJobNumber(job) ?? ''
+  const after = full.slice(0, SHEET_NUMBER_MAX)
+  const before = (sheet.job_number ?? '').trim()
+  return !after || before === after || before === full ? null : { before, after }
+}
 
 export const laborJobLabel = (job: Pick<LaborJobRow, 'click_number' | 'hcp_number' | 'job_name'>): string => {
   const n = (job.click_number ?? '').trim() || (job.hcp_number ?? '').trim()
@@ -762,7 +790,8 @@ export function subLaborNoteBody(p: SubLaborPayload, world: SubLaborWorld, perso
   if (!p.reason) return null
   const toJob = p.job_id && p.job_id !== world.sheet.job_ledger_id ? world.to?.job ?? null : null
   const moved = toJob ? `moved here from ${world.job ? laborJobLabel(world.job) : 'no job'}` : ''
-  const parts = [moved, p.date && p.date !== day ? `its day ${day} → ${p.date}` : '', p.lines ? `its lines replaced (${p.lines.length})` : ''].filter(Boolean)
+  const stale = p.job_id && !toJob && world.job ? staleSheetNumber(world.sheet, world.job) : null
+  const parts = [moved, stale ? `its number ${stale.before || 'none'} → ${stale.after}` : '', p.date && p.date !== day ? `its day ${day} → ${p.date}` : '', p.lines ? `its lines replaced (${p.lines.length})` : ''].filter(Boolean)
   if (toJob) {
     const owed = sheetOwedCents(world.sheet.labor_rate, world.items.filter((i) => i.job_id === world.sheet!.id))
     return `Sub labor sheet for ${who} (${day}${p.lines ? '' : `, ${laborDollars(owed)}`}) ${parts.join(', ')}.${p.stated ? ` The days are stated from ${p.stated.source}, not punched.` : ''} Reason: ${p.reason}`
@@ -919,9 +948,17 @@ export function subLaborDryRun(p: SubLaborPayload, world: SubLaborWorld): DryRun
     const o = oldItems[i]!
     return n.fixture === (o.fixture ?? '') && cents(n.count) === cents(o.count) && cents(n.hrs_per_unit) === cents(o.hrs_per_unit) && n.is_fixed === (o.is_fixed === true) && (n.labor_rate == null ? o.labor_rate == null : o.labor_rate != null && cents(n.labor_rate) === cents(o.labor_rate)) && (n.direct_labor_amount == null ? o.direct_labor_amount == null : o.direct_labor_amount != null && cents(n.direct_labor_amount) === cents(o.direct_labor_amount))
   }) && cents(newRate) === cents(sheet.labor_rate)
-  if (!dateMoves && !jobMoves && (!newItems || sameLines)) return { ok: false, refused: p.job_id && !p.date && !p.lines ? `That sheet is already on ${label}. Nothing to change.` : `That sheet already reads that way. Nothing to change.` }
+  // The sheet's own job named again (0.135.0): its number, when the job's has changed under it. The link is the
+  // sheet's job_ledger_id and stays; the number is the text the sheet is listed under.
+  const stale = !!p.job_id && !jobMoves && world.job ? staleSheetNumber(sheet, world.job) : null
+  if (stale) {
+    if (world.numberResolvesTo === undefined) return { ok: false, refused: `Where ${stale.after} leads was not read, so the sheet's number cannot be planned. Plan again.` }
+    if (world.numberResolvesTo !== world.job!.id) return { ok: false, refused: `This sheet reads ${stale.before || 'no number'} and its job ${label} reads ${stale.after}. The sheet table follows a sheet's number to its job (people_labor_jobs_link_job_ledger), and ${stale.after} leads to ${world.numberResolvesTo ? `another job (${world.numberResolvesTo})` : 'no job'} today, so writing it would take the sheet off ${label}. The number stays as it is until ${stale.after} leads to this job alone.` }
+  }
+  if (!dateMoves && !jobMoves && !stale && (!newItems || sameLines)) return { ok: false, refused: p.job_id && !p.date && !p.lines ? `That sheet is already on ${label} and reads its number. Nothing to change.` : `That sheet already reads that way. Nothing to change.` }
   const patch: Json = {
     ...(toJob ? { job_number: sheetJobNumber(toJob), job_ledger_id: toJob.id, address: (toJob.job_address ?? '').trim() } : {}),
+    ...(stale ? { job_number: stale.after } : {}),
     ...(dateMoves ? { job_date: p.date } : {}),
     ...(newItems && !sameLines && cents(newRate) !== cents(sheet.labor_rate) ? { labor_rate: newRate } : {}),
   }
@@ -965,18 +1002,20 @@ export function subLaborDryRun(p: SubLaborPayload, world: SubLaborWorld): DryRun
         job_cost: costAfter / 100,
       },
       sheet_patch: patch,
+      ...(stale ? { number: { before: stale.before || null, after: stale.after, why: `${label}'s number changed after the sheet was written. The sheet stays on the job by its link; this is the number it is listed under.` } } : {}),
       replaces_lines: linesMove,
       job_sheets: world.sheets.map((s) => sheetCard(s, world)),
       // A sheet that moves leaves its job whole; one that stays moves its job by the difference.
       ...laborAndMoney(world, toJob ? -oldCost : costAfter - oldCost),
       door: [
-        Object.keys(patch).length ? `the sheet row patched as you under RLS${toJob ? ' — its job, number and address as the Edit window\'s change beside the job writes them' : ''}` : '',
+        Object.keys(patch).length ? `the sheet row patched as you under RLS${toJob ? ' — its job, number and address as the Edit window\'s change beside the job writes them' : stale ? ' — its number, the text the Edit window\'s change beside the job writes' : ''}` : '',
         linesMove ? 'every line deleted and the new lines inserted, as the Edit window\'s save does' : '',
       ].filter(Boolean).join('; then '),
       sets_off: [
         ...(toJob ? [`${world.job ? `${label}'s sub labor drops by ${laborDollars(oldCost)} and ` : ''}${toLabel}'s rises by ${laborDollars(costAfter)} at once: the profit band, the Cost Timeline and get_job`] : []),
         ...(linesMove && world.job && !toJob ? [`${label}'s sub labor moves by ${laborDollars(costAfter - oldCost)} at once`] : []),
         ...(dateMoves ? ['the sheet counts on its new day in the Pay ledger and on an hours statement'] : []),
+        ...(stale ? [`the sheet is listed under ${stale.after} in place of ${stale.before || 'no number'}: the Subs pay list, People → Subs and the sheet's own windows`] : []),
         toJob ? 'the sheet\'s payments, stage and people go with it, as they are' : 'the sheet\'s payments, stage, people and job stay as they are',
       ],
       ...noteWords(noteBody, noteLabel),

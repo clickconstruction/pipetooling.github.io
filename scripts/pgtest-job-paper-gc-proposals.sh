@@ -5,7 +5,7 @@
 #   npm run test:pg:job-paper-gc-proposals
 #
 # The same bed as scripts/pgtest-job-papers-gc-page.sh: the Supabase Postgres image with every file in
-# supabase/migrations applied in order, then its migration a second time, which must change nothing. The scenario,
+# supabase/migrations applied in order, then its migration and the one after it a second time, which must change nothing. The scenario,
 # inside one transaction that rolls back: only the service key proposes, for the customer who is the job's GC; a
 # proposal that loosens a topic, changes nothing, has no name or skips the notice's box is refused; one that stands
 # changes no paper; a newer one, the office's own change and the paper coming off the job each overtake the one
@@ -19,7 +19,8 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55918}"
 NAME="pgtest-job-paper-gc-proposals"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_job_paper_gc_proposals.sql)"
+# Then the migration that replaced job_papers_gc_page after it, so the bed reads the function as it stands.
+WRITES="$(ls supabase/migrations/*_job_paper_gc_proposals.sql) $(ls supabase/migrations/*_job_paper_gc_own.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

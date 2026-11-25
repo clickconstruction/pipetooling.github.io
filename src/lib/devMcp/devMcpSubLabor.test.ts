@@ -25,6 +25,7 @@ import {
   sheetBalance,
   sheetInsertRow,
   sheetItemRows,
+  SHEET_NUMBER_MAX,
   sheetJobCostCents,
   sheetOwedCents,
   sheetPayHowWords,
@@ -34,6 +35,7 @@ import {
   sheetRateFor,
   sheetSendingArgs,
   sheetSentTo,
+  staleSheetNumber,
   subLaborAppliedWords,
   subLaborCommitment,
   subLaborDryRun,
@@ -151,7 +153,7 @@ describe('devMcpSubLabor — the verbs on the allowlist', () => {
     expect(isSubLaborPaymentVerb('apply_sub_labor_payment')).toBe(true)
     expect(planVerbFor('apply_sub_labor')).toBe('plan_sub_labor')
     expect(planVerbFor('apply_sub_labor_payment')).toBe('plan_sub_labor_payment')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.134.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.135.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else:')
     expect(README).toContain("eighty-seven since v2.6944's sub labor pairs")
     expect(README).toContain('one hundred and fifty-six `plan_` / `apply_` / `revert_` verbs')
@@ -498,7 +500,7 @@ describe('devMcpSubLabor — change and remove', () => {
     expect(lone.note_on_activity).toBeNull()
   })
   it('a move refuses the job it is on, a job RLS hides and a job with no address, and warns of a second sheet or a bank row there', async () => {
-    expect(await refusal({ action: 'change', sheet_id: SHEET, job_id: JOB }, worldWithSheet())).toBe('That sheet is already on JP9102. Nothing to change.')
+    expect(await refusal({ action: 'change', sheet_id: SHEET, job_id: JOB }, worldWithSheet())).toBe('That sheet is already on JP9102 and reads its number. Nothing to change.')
     expect(await refusal({ action: 'change', sheet_id: SHEET, job_id: 'aaaaaaaa-0000-4000-8000-00000000000f' }, worldWithSheet())).toContain('No job')
     expect(await refusal({ action: 'change', sheet_id: SHEET, job_id: OTHER_JOB }, worldWithSheet({ jobs_ledger: [job(), otherJob({ job_address: '' })] }))).toContain('JP9103 has no address')
     const OTHER_SHEET = 'cccccccc-0000-4000-8000-000000000009'
@@ -522,6 +524,56 @@ describe('devMcpSubLabor — change and remove', () => {
       return planHash('plan_sub_labor', p, subLaborCommitment(dry.reply))
     }
     expect(await hashOf(worldWithSheet())).not.toBe(await hashOf(busy))
+  })
+  it('the sheet’s own job named again brings a number the job has outgrown up to date, and nothing else (0.135.0)', async () => {
+    // The job was 9102 when the sheet was written and reads 1142 now: the sheet still says 9102.
+    const renumbered = (over: Data = {}): Data => worldWithSheet({ jobs_ledger: [job({ click_number: '1142' }), otherJob()], ...over })
+    expect(staleSheetNumber(sheet(), job({ click_number: '1142' }))).toEqual({ before: '9102', after: '1142' })
+    expect(staleSheetNumber(sheet(), job())).toBeNull()
+    // A job with no number leaves the sheet's own text standing; a long number is clipped as the table clips it.
+    expect(staleSheetNumber(sheet(), job({ click_number: '' }))).toBeNull()
+    expect(staleSheetNumber(sheet({ job_number: 'ZZ-LONG-NU' }), job({ click_number: 'ZZ-LONG-NUMBER' }))).toBeNull()
+    expect(SHEET_NUMBER_MAX).toBe(10)
+    const { world, dry } = await plan({ action: 'change', sheet_id: SHEET, job_id: JOB }, renumbered())
+    expect(world.numberResolvesTo).toBe(JOB)
+    if (!dry.ok) throw new Error(dry.refused)
+    const r = dry.reply
+    expect(r.sheet_patch).toEqual({ job_number: '1142' })
+    expect(r.number).toMatchObject({ before: '9102', after: '1142' })
+    expect(r.replaces_lines).toBe(false)
+    expect(r.moves_to).toBeUndefined()
+    expect(r.after).toMatchObject({ day: '2026-10-15', lines: 'as they are', owed: 600, job_cost: 600 })
+    expect(String(r.door)).toContain('its number')
+    expect((r.sets_off as string[]).join(' ')).toContain('listed under 1142 in place of 9102')
+    expect((r.sets_off as string[]).join(' ')).toContain('payments, stage, people and job stay as they are')
+    // No reason, no note; with one, the note says the number.
+    expect(r.note_on_activity).toBeNull()
+    const noted = await reply({ action: 'change', sheet_id: SHEET, job_id: JOB, reason: 'the job was renumbered' }, renumbered())
+    expect(noted.note_on_activity).toBe('Sub labor sheet for ZZ Sample Sub (2026-10-15) changed: its number 9102 → 1142. Reason: the job was renumbered')
+    // The table follows a sheet's number to its job: a number that leads elsewhere, or nowhere, is refused.
+    const elsewhere = await refusal({ action: 'change', sheet_id: SHEET, job_id: JOB }, renumbered({ jobs_ledger: [job({ click_number: '1142' }), otherJob({ hcp_number: '1142' })] }))
+    expect(elsewhere).toContain(`1142 leads to another job (${OTHER_JOB}) today`)
+    expect(elsewhere).toContain('would take the sheet off JP1142')
+    const p = shaped({ action: 'change', sheet_id: SHEET, job_id: JOB })
+    const { value: _value, ...noValue } = fakeRest(renumbered())
+    const unread = subLaborDryRun(p, await readSubLaborWorld(noValue, p, DEV))
+    expect(unread).toMatchObject({ ok: false, refused: expect.stringContaining('was not read') })
+    const nowhere = subLaborDryRun(p, { ...(await readSubLaborWorld(fakeRest(renumbered()), p, DEV)), numberResolvesTo: null })
+    expect(nowhere).toMatchObject({ ok: false, refused: expect.stringContaining('leads to no job today') })
+    // The resolver is asked for the new number alone, and only for a stale sheet on its own job.
+    const rest = fakeRest(renumbered())
+    await readSubLaborWorld(rest, p, DEV)
+    expect(rest.asked.filter((q) => q.startsWith('rpc/'))).toEqual(['rpc/resolve_job_ledger_id_by_number?p_number=1142'])
+    const fresh = fakeRest(worldWithSheet())
+    await readSubLaborWorld(fresh, p, DEV)
+    expect(fresh.asked.some((q) => q.startsWith('rpc/'))).toBe(false)
+    // A day changed in the same plan rides the same patch.
+    const both = await reply({ action: 'change', sheet_id: SHEET, job_id: JOB, date: '2026-10-14' }, renumbered())
+    expect(both.sheet_patch).toEqual({ job_number: '1142', job_date: '2026-10-14' })
+    // The server reads where the number leads over GET, and says so if the table moved the link anyway.
+    expect(SERVER).toContain("value: async (path, query) => {")
+    expect(SERVER).toContain("if (!('job_ledger_id' in patch) && (row!.job_ledger_id ?? null) !== (world.sheet?.job_ledger_id ?? null))")
+    expect(CATALOG_RPCS.resolve_job_ledger_id_by_number![0]!.args).toEqual({ p_number: 'string' })
   })
   it('will not remove a sheet that carries a payment, and removes one that does not', async () => {
     const REMOVE = { action: 'remove', sheet_id: SHEET, reason: 'made twice for the same days' }

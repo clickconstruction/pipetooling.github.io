@@ -1,39 +1,34 @@
 /**
  * Removing a photo (punch list #443, row 8): the take-back of **Save the photo** on *Card and footer*.
  *
- * A photo could be changed and never taken off, so a made-up photo a walk saved on a test person stood on their
- * account, with its file in the bucket. This is the rule for the press that takes it off. Pure, but for
- * `removeTestPersonPhoto`, which runs the rule on a fresh read and then asks the card's own io to write.
+ * A photo could be changed and never taken off. v2.8565 built the press for a developer on a test person alone.
+ * Since v2.8586, on the owner's word of 2026-11-25 (*wider*), it is drawn for whoever may change that photo, on any
+ * person: the press stands beside **Change the photo**, on the same card, for the same people. This is its rule.
+ * Pure, but for `removePersonPhoto`, which reads the person again and then asks the card's own io to write.
  *
- * - The press is drawn for a dev and for nobody else, and only where there is a photo.
- * - Only a test person's photo goes: their name, or the name on their card, starts with ZZ (`isZzTestPerson`,
- *   the rule that already leaves such a person out of the team's batch of cards).
- * - The row is read again right before the write, and the same rule is run on what the database holds.
+ * - The press is drawn wherever the card is, and only where there is a photo.
+ * - The row is read again right before the write, so a photo changed or removed meanwhile is the one that counts.
+ * - Who may write is the database's own rule: a person clears their own photo and the office a teammate's
+ *   (`20261111200000_person_card_facts.sql`). A write it refuses comes back as words, through `cardIo.removePhoto`.
  *
- * Nothing else points at a photo: the card and the footer are drawn from the two columns, and a test person is in
- * no batch. The database already lets a person clear their own photo and the office a teammate's, so the two gates
- * here are the owner's rule for this press, not the database's.
+ * Nothing else points at a photo: the card and the footer are drawn from the two columns, and the team's batch of
+ * cards holds a person with none as *No photo* until one is saved (`team.ts`, `cardHold`).
  */
 import type { CardIo } from './cardIo'
-import type { KitUserFacts } from './person'
-import { isZzTestPerson } from './team'
 
 /** What of a person the press reads. */
 export interface PhotoRemovePerson {
-  facts: Pick<KitUserFacts, 'name' | 'card_name'>
   photoPath: string | null
 }
 
-/** Who is offered the press, and when: a dev, on a person who has a photo. Every other role sees nothing new. */
-export function photoRemoveDrawn(role: string | null | undefined, person: Pick<PhotoRemovePerson, 'photoPath'>): boolean {
-  return role === 'dev' && !!person.photoPath
+/** When the press is drawn: on a person who has a photo. Whoever reads the card reads it, as they read Change the photo. */
+export function photoRemoveDrawn(person: PhotoRemovePerson): boolean {
+  return !!person.photoPath
 }
 
 /** Why this person's photo cannot be removed; '' when it can. */
 export function photoRemoveProblem(person: PhotoRemovePerson): string {
-  if (!person.photoPath) return 'There is no photo to remove.'
-  if (!isZzTestPerson(person.facts)) return 'Only a test person’s photo can be removed. Their name must start with ZZ.'
-  return ''
+  return person.photoPath ? '' : 'There is no photo to remove.'
 }
 
 /** The confirm window's words. The button names the act. */
@@ -41,7 +36,7 @@ export function photoRemoveConfirm(name: string): { title: string; message: stri
   const who = name.trim()
   return {
     title: who ? `Remove the photo of ${who}?` : 'Remove the photo?',
-    message: 'The photo comes off the card and the footer, and its file is deleted. It cannot be brought back.',
+    message: 'The photo comes off the card and the footer, and its file is deleted. It cannot be brought back. The team’s cards leave this person out until a new photo is saved.',
     confirmLabel: 'Remove the photo',
   }
 }
@@ -52,11 +47,10 @@ export const PHOTO_REMOVED = 'The photo was removed.'
 export const PHOTO_REMOVED_FILE_LEFT = 'The photo came off the card. Its file could not be deleted.'
 
 /**
- * Remove a test person's photo. The person is read again here and the rule is run on that read, so a name changed
- * since the card was opened is the one that counts. A person who fails the rule is refused with the reason.
- * Answers whether the file left the bucket as well.
+ * Remove a person's photo. The person is read again here, so a photo changed since the card was opened is the one
+ * removed, and one already gone is refused with the reason. Answers whether the file left the bucket as well.
  */
-export async function removeTestPersonPhoto(io: Pick<CardIo, 'load' | 'removePhoto'>, userId: string): Promise<{ fileGone: boolean }> {
+export async function removePersonPhoto(io: Pick<CardIo, 'load' | 'removePhoto'>, userId: string): Promise<{ fileGone: boolean }> {
   const fresh = await io.load(userId)
   const problem = photoRemoveProblem(fresh)
   if (problem || !fresh.photoPath) throw new Error(problem || 'There is no photo to remove.')

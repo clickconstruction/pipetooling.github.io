@@ -23,6 +23,7 @@ import {
   parseGcCardBillRequest,
   type GcCardBillErrorKey,
 } from '../_shared/gcCardBill.ts'
+import { isStripeDueDateRefusal, stripeBillDue, stripeBillDueFallbackDays } from '../_shared/stripeBillDueDate.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
 /**
@@ -143,24 +144,43 @@ async function portalDoor(admin: Admin, token: string, invoiceId: string): Promi
     const { data: job } = await admin.from('jobs_ledger').select('hcp_number, click_number, job_name').eq('id', begun.jobId).maybeSingle()
     const jobNumber = ((job as { hcp_number?: string | null } | null)?.hcp_number ?? '').trim() || ((job as { click_number?: string | null } | null)?.click_number ?? '').trim() || null
     const jobName = String((project as { name?: string | null } | null)?.name ?? (job as { job_name?: string | null } | null)?.job_name ?? '')
-    const { dueYmd, daysUntilDue } = gcCardBillDue(todayYmdInAppTz(), begun.certifiedOn, begun.ownerPayDays)
-    const number = buildPipetoolingStripeInvoiceNumber(jobNumber, dueYmd, Date.now())
+    // One read of the clock: the company's today, the bill's number and the due instant all come from it.
+    const nowMs = Date.now()
+    const { dueYmd } = gcCardBillDue(todayYmdInAppTz(new Date(nowMs)), begun.certifiedOn, begun.ownerPayDays)
+    const number = buildPipetoolingStripeInvoiceNumber(jobNumber, dueYmd, nowMs)
     if (!number.ok) throw new Error(number.error)
     const stripeCustomerId = await stripeCustomerFor(stripe, admin, mode, customer as Record<string, unknown>, email)
     const portalUrl = await loadPortalReturnUrl(admin, linkCustomerId, Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com')
     const lines = gcCardBillStripeLines(begun, jobName)
 
-    const invoice = await stripe.invoices.create({
-      customer: stripeCustomerId,
-      collection_method: 'send_invoice',
-      days_until_due: daysUntilDue,
-      // Card only (the owner's shape (a)): the 3% is a card fee, never paid by a bank debit.
-      payment_settings: { payment_method_types: ['card'] },
-      description: lines[0]!.description,
-      footer: stripeInvoiceFooter(null, portalUrl) ?? undefined,
-      number: number.number,
-      metadata: { pipetooling_invoice_id: invoiceId, pipetooling_job_id: begun.jobId ?? '', gc_card_bill: 'portal' },
-    })
+    // #343: the due day itself, as one instant on that day, never a count of days from this minute. Stripe adds a
+    // count to the minute the bill is made, so a card bill due today fell due the second it was made, and an evening
+    // press landed on the next day read in UTC. `gcCardBillDue`'s own count is no longer sent (`stripeBillDueDate.ts`).
+    const due = stripeBillDue(dueYmd, nowMs)
+    const createInvoiceDue = (dueParams: { due_date: number } | { days_until_due: number }) =>
+      stripe.invoices.create({
+        customer: stripeCustomerId,
+        collection_method: 'send_invoice',
+        ...dueParams,
+        // Card only (the owner's shape (a)): the 3% is a card fee, never paid by a bank debit.
+        payment_settings: { payment_method_types: ['card'] },
+        description: lines[0]!.description,
+        footer: stripeInvoiceFooter(null, portalUrl) ?? undefined,
+        number: number.number,
+        metadata: { pipetooling_invoice_id: invoiceId, pipetooling_job_id: begun.jobId ?? '', gc_card_bill: 'portal' },
+      })
+    let invoice: Stripe.Invoice
+    try {
+      invoice = await createInvoiceDue('due_date' in due ? { due_date: due.due_date } : { days_until_due: due.days_until_due })
+    } catch (e) {
+      // Stripe refusing the due day must never stop the card page: the bill is made on a count of days, never under
+      // 1, as `create-stripe-invoice` falls back, and the log says so. The refused call made nothing, so the number
+      // is still free. Any other refusal goes to the catch below, which clears the pending row.
+      if (!('due_date' in due) || !isStripeDueDateRefusal(e)) throw e
+      const days = stripeBillDueFallbackDays(dueYmd, Date.now())
+      console.warn(`gc-card-bill: Stripe refused due_date ${due.due_date} (${due.rule}); made on days_until_due ${days} —`, e instanceof Error ? e.message : String(e))
+      invoice = await createInvoiceDue({ days_until_due: days })
+    }
     made = invoice.id
     for (const line of lines) {
       await stripe.invoiceItems.create({ customer: stripeCustomerId, invoice: invoice.id, amount: line.amountCents, currency: 'usd', description: line.description })

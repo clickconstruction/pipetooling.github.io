@@ -1,5 +1,5 @@
 /**
- * Reopening a closed test case (punch list #443, row 5): the fresh read and the call. The rule is `arCaseReopen.ts`.
+ * Reopening a closed case (punch list #443, row 5): the fresh read and the call. The rule is `arCaseReopen.ts`.
  *
  * It runs as the signed-in person. Each of the three functions checks the caller's role itself and refuses a case it
  * does not reopen, and its refusal is passed on in its own words.
@@ -16,10 +16,10 @@ export async function readArCasesWithClosed(): Promise<ArReturnCaseRow[]> {
 }
 
 /**
- * Reopen one closed test case. The cases are read again here and the rule is run on the case as the database holds
+ * Reopen one closed case. The cases are read again here and the rule is run on the case as the database holds
  * it now, so a case that changed since the list was drawn is refused with its reason. The call is sent once.
  */
-export async function reopenArTestCase(caseId: string): Promise<void> {
+export async function reopenArCase(caseId: string): Promise<void> {
   const fresh = (await readArCasesWithClosed()).find((r) => r.mercury_transaction_id === caseId) ?? null
   const problem = arCaseReopenProblem(fresh)
   if (problem || !fresh) throw new Error(problem)

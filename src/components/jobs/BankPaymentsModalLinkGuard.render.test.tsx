@@ -9,6 +9,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { pickArDeposit } from '../../test/pickArDeposit'
 import BankPaymentsModal from './BankPaymentsModal'
 import { buildBilledStageRows } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -108,6 +109,7 @@ describe('BankPaymentsModal link guard (render smoke)', () => {
         onApplied={() => {}}
       />,
     )
+    await pickArDeposit(/from TF HALDEN ASSOC/)
 
     // Payer chip fills the line… (wait for the empty allocation row first: the
     // selection's line-reset effect flushes after the chip renders, and a click
@@ -145,6 +147,7 @@ describe('BankPaymentsModal link guard (render smoke)', () => {
         onApplied={() => {}}
       />,
     )
+    await pickArDeposit(/from TF HALDEN ASSOC/)
     const chip = await screen.findByRole('button', { name: /Apply allocation: \$2,918\.22 · 883/ })
     await screen.findByTestId('ar-allocation-row')
     fireEvent.click(chip)

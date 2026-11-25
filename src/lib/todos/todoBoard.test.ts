@@ -306,6 +306,24 @@ describe('the links a to-do carries', () => {
     expect(mockupsFor('to-dos/next-up.md', top)).toEqual([])
   })
 
+  it('leaves the card’s pictures page out: it is the built screen, not the drawing the card waits on (punch list #438)', () => {
+    // A folder card: its pictures page is `pictures.html`.
+    const withBoth = ['to-dos/pace/README.md', 'to-dos/pace/mockup.html', 'to-dos/pace/pictures.html', 'to-dos/pace/pictures-lead.webp']
+    expect(mockupsFor('to-dos/pace/README.md', withBoth)).toEqual(['to-dos/pace/mockup.html'])
+    expect(mockupsFor('to-dos/pace/README.md', ['to-dos/pace/README.md', 'to-dos/pace/pictures.html'])).toEqual([])
+    // A page that only starts with the word is still a mock-up.
+    expect(mockupsFor('to-dos/pace/README.md', ['to-dos/pace/README.md', 'to-dos/pace/pictures-of-the-plan.html'])).toEqual(['to-dos/pace/pictures-of-the-plan.html'])
+    // A flat card: its pictures page is `<slug>-pictures.html`.
+    const flat = ['to-dos/heard-day.md', 'to-dos/heard-day-pictures.html', 'to-dos/heard-day-mockup.html']
+    expect(mockupsFor('to-dos/heard-day.md', flat)).toEqual(['to-dos/heard-day-mockup.html'])
+  })
+
+  it('a card with a pictures page and no drawing reads waiting on a mock-up again', () => {
+    const siblings = ['to-dos/pace/README.md', 'to-dos/pace/pictures.html']
+    expect(mockupState({ ...DOC, mockups: mockupsFor('to-dos/pace/README.md', siblings) })).toBe('waiting')
+    expect(mockupState({ ...DOC, mockups: mockupsFor('to-dos/pace/README.md', siblings), meta: { ...META, mockupNotRequired: 'the screen is built' } })).toBe('not-required')
+  })
+
   it('labels a mock-up by its file, minus the to-do it belongs to', () => {
     const sub = { file: 'to-dos/submittals/README.md', slug: 'submittals' }
     expect(mockupLabel(sub, 'to-dos/submittals/mockup.html')).toBe('mockup')

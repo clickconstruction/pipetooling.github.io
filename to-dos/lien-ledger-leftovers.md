@@ -2,7 +2,7 @@
 name: "Lien desk: what the ledger (#361) left, to do later"
 number: 415
 group: residual
-status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454 · loose ends 1, 2, 4 and 6 built the same day on the picks from the pictures, v2.8537, v2.8535 and v2.8538, and loose end 5 answered · walk 2 done on a staged ZZ Test job, walk 7's record written and its reading not seen, which left a finding with no decision yet · v2.8537 and v2.8538 seen on the live desk the same day, read-only, and they read as built; v2.8535's empty card has no live case · walk 4 done on the ZZ Test job staged again, and the two ZZ Test filings voided after it, the same day, on the owner's standing yes for ZZ Test rows · the finding decided the same day, the owner's pick: draw the card from the job's stand-in month, shipped v2.8541 and deployed that night · a second finding of walk 7, the path that forgot a notice only on record, shipped v2.8554 and deployed the same night, on the owner's yes · walk 7 and the path's look written as one sitting on a ZZ Test job, and handed to the walker
+status: saved 2026-11-21 when #361 closed, on Taunya's word *save it all to a punch list card* · nothing built tonight on her word · every follow-up the thread of #361 left is here · its walks and loose ends written out in full on 2026-11-22, for Taunya's ask that every card say what is still to do and what still needs walking · read again against `main` on 2026-11-24, nothing built: loose ends 1, 2 and 4 stand as written, loose end 3 is real, walk 1 is done and left loose end 6, and the pictures for loose ends 1 and 4 went to Taunya · loose end 3 built on Taunya's go the same day, v2.8454 · loose ends 1, 2, 4 and 6 built the same day on the picks from the pictures, v2.8537, v2.8535 and v2.8538, and loose end 5 answered · walk 2 done on a staged ZZ Test job, walk 7's record written and its reading not seen, which left a finding with no decision yet · v2.8537 and v2.8538 seen on the live desk the same day, read-only, and they read as built; v2.8535's empty card has no live case · walk 4 done on the ZZ Test job staged again, and the two ZZ Test filings voided after it, the same day, on the owner's standing yes for ZZ Test rows · the finding decided the same day, the owner's pick: draw the card from the job's stand-in month, shipped v2.8541 and deployed that night · a second finding of walk 7, the path that forgot a notice only on record, shipped v2.8554 and deployed the same night, on the owner's yes · walk 7 and the path's look written as one sitting on a ZZ Test job, and handed to the walker · the owner, 2026-11-25: counsel's grid shows the day each § 53.056 notice went, as the app's own book does, not built
 summary: >
   Punch list #361 rebuilt the Lien desk's Months on this job as one card, the ledger, and closed on
   2026-11-21 once every choice made with it was built and live. Its last night left a handful of
@@ -16,7 +16,7 @@ summary: >
   Neither build has been seen live: walk 7 is the look at both, in one sitting. Walks 3, 5 and 6 were not staged and wait on live cases. The two
   ZZ Test filings the walks left are voided. The cents and the pinned strip were seen on the live desk on 2026-11-24 and read as built. The empty
   card's next press has no live case to be seen on.
-next: The owner says whether counsel's grid shows the day each § 53.056 notice went, written under *Found after the walks*, and the build follows a yes. Walk 7 can be read: both builds are deployed (v2.8541 and v2.8554, 2026-11-24). It is read in one sitting with the path's look. It needs a new record by hand on a ZZ Test job, since the first one is voided. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
+next: Build the answer of 2026-11-25, written under *Found after the walks*: counsel's grid shows the day each § 53.056 notice went, as the app's own book does (S, an edge function, its deploy on its own yes at the time). Walk 7 can be read: both builds are deployed (v2.8541 and v2.8554, 2026-11-24). It is read in one sitting with the path's look. It needs a new record by hand on a ZZ Test job, since the first one is voided. Walks 3, 5 and 6 wait on a live case or are dropped by Taunya.
 size: four walks (XS each): 7 is ready to read on a ZZ Test job, 3, 5 and 6 wait on live cases
 blocker: None. Both builds are deployed, and one record by hand serves both looks.
 ---
@@ -260,8 +260,13 @@ nothing and is unchanged. Not seen live: no notice looked at has a job with no m
 not seen live, **not built**. The firm's portal reads a job's filings of two kinds, the affidavit and the release
 of record (`supabase/functions/legal-portal/index.ts`). The app's own book has read the recorded notices too since
 v2.7485 (`useLienTimelineBook.ts`). So a notice kept by hand and every recorded notice is missing from what counsel
-sees. It changes what an outside firm reads, so it waits on the owner's answer. The build is an edge function, S,
+sees. It changes what an outside firm reads, so it waited on the owner's answer. The build is an edge function, S,
 with one deploy on its own yes. The function is near the upload limit, so the bundle check runs before its PR.
+
+**Answered 2026-11-25 (UTC) in the managing session.** Asked *"Do all the picks on round 3, rows 1 to 11, stand?"*,
+the answer was "Yes, all picks", quoted from that session's record of the user's answers. The row read: *#415: counsel's
+grid shows the day each § 53.056 notice went, as the app's own book does*, and the pick was yes. It is history:
+the deploy of `legal-portal` is asked by name at the time. Not built.
 
 ## How to retire it
 
