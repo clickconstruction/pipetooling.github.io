@@ -5835,6 +5835,7 @@ Cache of **normalized address key** → **latitude** / **longitude** (and source
 delete for the five `/map` roles, **`dev`**, **`master_technician`**, **`assistant`**, **`controller`** (since v2.3898) and **`estimator`** (**`20270520120000_address_geocodes_estimator_map_access.sql`**).
 Written by Edge Functions **`geocode-one`** and **`geocode-address-batch`** (see [EDGE_FUNCTIONS.md](EDGE_FUNCTIONS.md)).
 Client: [`useMapPageData.ts`](../src/hooks/useMapPageData.ts).
+A row is deleted from one place, a dev's **Kept map addresses** block on Settings → Data & recovery, and only when no record in any address column holds its street line (`KEPT_ADDRESS_SOURCES`, `keptAddressClearProblem`, v2.8568, punch list #443).
 See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) **Key Features** §16.
 
 ### address_geocode_misses
