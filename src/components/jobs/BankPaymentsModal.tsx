@@ -26,7 +26,7 @@ import {
 import { ArDepositRow } from './ar/ArDepositRow'
 import { ArReturnCaseRow } from './ar/ArReturnCaseRow'
 import { ArReturnCasePane, type ArCaseCloseReason } from './ar/ArReturnCasePane'
-import { ArClosedTestCases } from './ar/ArClosedTestCases'
+import { ArClosedCases } from './ar/ArClosedCases'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { useArReturnCases } from '../../hooks/useArReturnCases'
 import { useRetainageHeld } from '../../hooks/useRetainageHeld'
@@ -2793,8 +2793,8 @@ export default function BankPaymentsModal({
               {listError && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{listError}</p>
               )}
-              {/* Punch list #443, row 5: a dev's list of closed cases on test jobs, with Reopen. It draws nothing for anyone else. */}
-              {includeHiddenArDeposits ? null : <ArClosedTestCases role={authRole} allCases={returnCases.allCases} onReopened={() => afterCaseWrite(false)} />}
+              {/* Punch list #443, row 5: the office's list of closed cases, with Reopen. It draws nothing for anyone else. */}
+              {includeHiddenArDeposits ? null : <ArClosedCases role={authRole} allCases={returnCases.allCases} todayYmd={todayYmd} onReopened={() => afterCaseWrite(false)} />}
               {caseViewsShown.length > 0 ? (
                 <div data-testid="ar-came-back-group">
                   <div

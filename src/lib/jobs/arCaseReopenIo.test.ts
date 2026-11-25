@@ -10,7 +10,7 @@ vi.mock('../supabase', () => ({
   },
 }))
 
-import { readArCasesWithClosed, reopenArTestCase } from './arCaseReopenIo'
+import { readArCasesWithClosed, reopenArCase } from './arCaseReopenIo'
 
 const zz = { job_id: 'j-zz', job_number: '900', job_name: 'ZZ TEST walk job', removed_at: null, removed_by: null }
 const real = { job_id: 'j-real', job_number: '412', job_name: 'Larkfield Lot 9', removed_at: null, removed_by: null }
@@ -32,46 +32,50 @@ describe('readArCasesWithClosed', () => {
   })
 })
 
-describe('reopenArTestCase', () => {
+describe('reopenArCase', () => {
   it('reads the cases again, then calls the function of the case’s own table, once', async () => {
     db.answers.push(ok([row()]), ok({ ok: true }))
-    await reopenArTestCase('case-1')
+    await reopenArCase('case-1')
     expect(db.rpcs).toEqual([
       { fn: 'list_ar_return_cases', args: { p_include_closed: true } },
       { fn: 'reopen_ar_return_case', args: { p_mercury_transaction_id: 'case-1' } },
     ])
     db.rpcs.length = 0
     db.answers.push(ok([row({ source: 'unbanked' })]), ok({ ok: true }))
-    await reopenArTestCase('case-1')
+    await reopenArCase('case-1')
     expect(db.rpcs[1]).toEqual({ fn: 'reopen_ar_unbanked_check_case', args: { p_case_id: 'case-1' } })
     db.rpcs.length = 0
     db.answers.push(ok([row({ source: 'stripe_debit', last_job: null, stripe_case: zz })]), ok({ ok: true }))
-    await reopenArTestCase('case-1')
+    await reopenArCase('case-1')
     expect(db.rpcs[1]).toEqual({ fn: 'reopen_ar_stripe_case', args: { p_case_id: 'case-1' } })
   })
-  it('refuses a case on a real job on the fresh read, and calls nothing', async () => {
-    db.answers.push(ok([row({ last_job: real })]))
-    await expect(reopenArTestCase('case-1')).rejects.toThrow('Only a case on a test job can be reopened. This one names a real job.')
-    expect(db.rpcs.map((r) => r.fn)).toEqual(['list_ar_return_cases'])
+  it('reopens a case on a real job, and one that names no job', async () => {
+    db.answers.push(ok([row({ last_job: real })]), ok({ ok: true }))
+    await reopenArCase('case-1')
+    expect(db.rpcs.map((r) => r.fn)).toEqual(['list_ar_return_cases', 'reopen_ar_return_case'])
+    db.rpcs.length = 0
+    db.answers.push(ok([row({ last_job: null })]), ok({ ok: true }))
+    await reopenArCase('case-1')
+    expect(db.rpcs.map((r) => r.fn)).toEqual(['list_ar_return_cases', 'reopen_ar_return_case'])
   })
   it('refuses a case that is open by now, closed as replaced, or gone, and calls nothing', async () => {
     db.answers.push(ok([row({ closed_at: null, closed_reason: null })]))
-    await expect(reopenArTestCase('case-1')).rejects.toThrow('This case is open already.')
+    await expect(reopenArCase('case-1')).rejects.toThrow('This case is open already.')
     db.answers.push(ok([row({ closed_reason: 'replaced' })]))
-    await expect(reopenArTestCase('case-1')).rejects.toThrow(/settled another way or as not coming/)
+    await expect(reopenArCase('case-1')).rejects.toThrow(/settled another way or as not coming/)
     db.answers.push(ok([row({ mercury_transaction_id: 'another' })]))
-    await expect(reopenArTestCase('case-1')).rejects.toThrow(/not there any more/)
+    await expect(reopenArCase('case-1')).rejects.toThrow(/not there any more/)
     expect(db.rpcs.every((r) => r.fn === 'list_ar_return_cases')).toBe(true)
   })
   it('passes on the function’s own refusal', async () => {
     db.answers.push(ok([row()]), { data: null, error: { message: 'This case cannot be opened again.', code: 'P0001' } })
-    await expect(reopenArTestCase('case-1')).rejects.toMatchObject({ message: 'This case cannot be opened again.' })
+    await expect(reopenArCase('case-1')).rejects.toMatchObject({ message: 'This case cannot be opened again.' })
     db.answers.push(ok([row()]), ok({ error: 'not authorized' }))
-    await expect(reopenArTestCase('case-1')).rejects.toThrow('not authorized')
+    await expect(reopenArCase('case-1')).rejects.toThrow('not authorized')
   })
   it('calls nothing when the read fails', async () => {
     db.answers.push({ data: null, error: { message: 'no signal' } })
-    await expect(reopenArTestCase('case-1')).rejects.toEqual({ message: 'no signal' })
+    await expect(reopenArCase('case-1')).rejects.toEqual({ message: 'no signal' })
     expect(db.rpcs.map((r) => r.fn)).toEqual(['list_ar_return_cases'])
   })
 })
