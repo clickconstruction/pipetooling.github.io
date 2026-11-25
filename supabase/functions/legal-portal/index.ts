@@ -12,7 +12,7 @@ import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleLegalPortalResponse } from '../_shared/customerSampleLegal.ts'
 // Item 24 (#85): the payer's contact log reaches the firm only about the matter's jobs or the account.
 import { contactGoesWithShare, contactScopeNumbers } from '../_shared/legalContactScope.ts'
-import { LIEN_BOOK_COUNSEL_SELECT, LIEN_BOOK_OWNER_CALL_SELECT, shapeLienBookForCounsel } from '../_shared/legalLienBookShape.ts'
+import { LIEN_BOOK_COUNSEL_SELECT, LIEN_BOOK_FILING_KINDS, LIEN_BOOK_OWNER_CALL_SELECT, shapeLienBookForCounsel } from '../_shared/legalLienBookShape.ts'
 // v2.8315: a job's GC by name when the GC is not the matter's payer.
 import { gcCustomerFor, gcIdsToRead } from '../_shared/legalGcName.ts'
 import { withSampleOwnerFacts } from '../_shared/lienOwnerFacts.ts'
@@ -128,8 +128,10 @@ type Row = Record<string, unknown>
  * nothing anyone said), less the jobs the office's book leaves off: the ZZ test
  * jobs and a job paid in kind (the owner's rule of 2026-11-14). Since v2.4616 the selects name their columns and
  * `shapeLienBookForCounsel` cuts every row again before it is sent: no desk
- * item `fields`, hold reason or spoken word, no filing note, sends or link, no
- * owner email, no address note. Null on any failure so the portal still opens.
+ * item `fields`, hold reason or spoken word, no filing note or link, no
+ * owner email, no address note. Of a filing's sends one thing travels, on a
+ * recorded § 53.056 notice alone (v2.8594): who each copy went to, how and on
+ * which day. Null on any failure so the portal still opens.
  */
 const LIEN_BOOK_WINDOW_DAYS = 400
 // deno-lint-ignore no-explicit-any
@@ -150,7 +152,8 @@ async function readLienBook(admin: any): Promise<Record<string, unknown> | null>
       // jobs paid in kind (the Lien desk's lienInKind.ts), and cuts both columns before the book is sent.
       admin.from('jobs_ledger').select(LIEN_BOOK_COUNSEL_SELECT.jobs).in('id', jobIds),
       admin.from('job_lien_desk_items').select(LIEN_BOOK_COUNSEL_SELECT.deskItems).in('job_id', jobIds).is('voided_at', null).order('created_at', { ascending: false }),
-      admin.from('job_lien_filings').select(LIEN_BOOK_COUNSEL_SELECT.filings).in('job_id', jobIds).in('kind', ['affidavit', 'release_of_record']).is('voided_at', null),
+      // The recorded § 53.056 notices ride this read since v2.8594 (punch list #415), as they do the app's own book's.
+      admin.from('job_lien_filings').select(LIEN_BOOK_COUNSEL_SELECT.filings).in('job_id', jobIds).in('kind', [...LIEN_BOOK_FILING_KINDS]).is('voided_at', null),
       admin.from('job_property_owners').select(LIEN_BOOK_COUNSEL_SELECT.owners).in('job_id', jobIds),
       // v2.8315: the owner's call behind the grid's Paid out to GC and 10 % reserved. The one read that takes `fields`;
       // the rows stay here and shapeLienBookForCounsel sends four values a job.

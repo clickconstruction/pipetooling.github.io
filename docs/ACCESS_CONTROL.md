@@ -1052,6 +1052,7 @@ the service role (the `lien-pay-offer` function) passes.
 `list_lien_notice_months()`, `list_lien_affidavit_windows()` (SECURITY DEFINER, v2.3412) and `list_gc_unpaid_months(p_gc_customer_id)` (v2.3470, *Put a GC on notice* — every job with unpaid work under one GC, no lead window;
 the modal's three doors show for the same office set, Approve all for master / dev, the spoken word for assistant · controller · dev) return rows only to the same office set — and, for the first two, to the **service role** (v2.3789: the `legal-portal` function reads the Timeline book for counsel's grid);
 every other role gets an empty result.
+Since v2.8594 (punch list #415) counsel's grid also reads a job's recorded § 53.056 notices through `legal-portal`: the months each covers and, of each send, who it went to, how and on which day, never a mail number, a name or an address.
 The Dashboard's `lien-notice-approve` card shows to master / dev;
 `lien-notice-draft` to the office set.
 The Board at the top of To do (v2.7332) is drawn for everyone who opens the desk;
