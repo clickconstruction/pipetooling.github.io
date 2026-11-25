@@ -126,6 +126,13 @@ the words on it.
     set the hours to 6:00 AM to 2:00 PM while the person was still salaried, so the numbers read 8 again, then
     undid. **Do the same in step 5 until the fault is mended.** What taking the hours off should leave is a call
     nobody has made: the week as it stood before the first set, or the usual 8 h days.
+  - **The call, answered 2026-11-25 (UTC) in the managing session.** Asked *Taking working hours off a salaried
+    person leaves the week's hours as they were last set. What should taking them off leave?*, the answer was
+    "Clear the week's hours too", quoted from that session's record of the user's answers. What it
+    frees: the mend, a change to `set_working_hours`, which is a migration. What it leaves open: the push, on its
+    own yes at the time, and what a cleared week reads as on pay, which the build reads in the code first, since
+    the answer's words are neither of the two ways this note named. No brief is written. Not built. Step 5's
+    workaround above stands until it is.
   - **Two small things seen, not read in the code.** The Workday schedule window on a teammate's sheet speaks to
     the reader as the person: *You are marked salaried… Define your usual 8-hour day*. The way back from View as
     reads *Exit impersonation* with the name at a desk and *Exit* with the name at 730 px, where the guide says
