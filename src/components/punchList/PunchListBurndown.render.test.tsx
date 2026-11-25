@@ -64,7 +64,10 @@ describe('PunchListBurndown', () => {
     expect(screen.getByText('3 open · 14 points')).toBeTruthy()
     const takeaway = screen.getByTestId('burndown-takeaway').textContent ?? ''
     expect(takeaway).toContain('3 cards are open, 14 points of work.')
-    expect(takeaway).toContain('In the last 7 days 1 card closed and 1 new ones came in, so the list is holding level.')
+    expect(takeaway).toContain('In the last 7 days, 1 new card came in and 1 closed.')
+    expect(takeaway).toContain('That is 0.5 new and 0.5 closed a day, so the list is holding level.')
+    // A list that does not shrink gets no sentence about clearing at this pace.
+    expect(takeaway).not.toContain('At this pace')
     expect(takeaway).toContain('With no new cards it clears by Nov 10.')
     expect(takeaway).toContain('2 cards wait on an owner decision or on time')
     const tiles = within(screen.getByTestId('burndown-tiles'))
@@ -81,7 +84,7 @@ describe('PunchListBurndown', () => {
     expect(screen.getByTestId('burndown-slowest').textContent).toContain('No card left')
 
     fireEvent.change(screen.getByLabelText('Look at'), { target: { value: '24h' } })
-    expect(screen.getByTestId('burndown-takeaway').textContent).toContain('In the last 24 hours 0 cards closed and 0 new ones came in')
+    expect(screen.getByTestId('burndown-takeaway').textContent).toContain('In the last 24 hours, no card came in and none closed, so the list is holding level.')
     expect(screen.getByTestId('burndown-takeaway').textContent).toContain('Nothing closed in the last 24 hours, so there is no pace to read.')
 
     fireEvent.click(screen.getByRole('button', { name: 'Points by size' }))
@@ -97,6 +100,43 @@ describe('PunchListBurndown', () => {
     unmount()
     render(<PunchListBurndown history={history} items={items} now={() => NOW} />)
     expect(screen.getByRole('button', { name: 'Show the burndown' })).toBeTruthy()
+  })
+
+  it('draws each figure of the sentence apart from its words', () => {
+    render(<PunchListBurndown history={history} items={items} now={() => NOW} />)
+    const values = [...screen.getByTestId('burndown-takeaway').querySelectorAll('[data-value="worked-out"]')].map((n) => n.textContent)
+    expect(values).toEqual(['3', '14', '1', '1', '0.5', '0.5', 'holding level', 'Nov 10', '2'])
+  })
+
+  it('says which way the list is going on the folded line, in red when it grows', () => {
+    // A day and a half: two cards, then one more every 12 hours and none closing.
+    const growing: PunchListHistory = {
+      shallow: false,
+      events: historyFromStates([
+        { t: T0 + 600, cards: [card(1, 'ready', 2), card(2, 'ready', 2)] },
+        { t: T0 + 12 * HOUR, cards: [card(1, 'ready', 2), card(2, 'ready', 2), card(3, 'ready', 2)] },
+        { t: T0 + 24 * HOUR, cards: [card(1, 'ready', 2), card(2, 'ready', 2), card(3, 'ready', 2), card(4, 'ready', 2)] },
+      ]),
+    }
+    render(<PunchListBurndown history={growing} items={items} now={() => NOW} />)
+    expect(screen.queryByTestId('burndown-folded')).toBeNull()
+    expect(screen.getByTestId('burndown-takeaway').textContent).toContain('so the list is growing by 1 a day.')
+    fireEvent.click(screen.getByRole('button', { name: 'Hide the burndown' }))
+    const folded = screen.getByTestId('burndown-folded')
+    expect(folded.textContent).toBe(' · growing by 1 a day in the last 7 days')
+    expect(folded.querySelector('[data-value="worked-out"]')?.getAttribute('data-tone')).toBe('red')
+  })
+
+  it('offers the last 21 days, and the device remembers the stretch picked', () => {
+    const { unmount } = render(<PunchListBurndown history={history} items={items} now={() => NOW} />)
+    const look = screen.getByLabelText('Look at') as HTMLSelectElement
+    expect(look.value).toBe('7d')
+    expect([...look.options].map((o) => o.textContent)).toEqual(['The last 24 hours', 'The last 3 days', 'The last 7 days', 'The last 14 days', 'The last 21 days', 'Since Nov 2'])
+    fireEvent.change(look, { target: { value: '21d' } })
+    expect(screen.getByTestId('burndown-takeaway').textContent).toContain('In the last 21 days, 1 new card came in and 1 closed.')
+    unmount()
+    render(<PunchListBurndown history={history} items={items} now={() => NOW} />)
+    expect((screen.getByLabelText('Look at') as HTMLSelectElement).value).toBe('21d')
   })
 
   it('says so when the build had no history to read', () => {
