@@ -2,7 +2,7 @@
 name: "Presses nothing takes back: the standing list"
 number: 443
 group: gated
-status: standing list opened 2026-11-24 on the owner's word of that day · eight rows: the Lien desk, Bills sent, Accounts Receivable, Bill Customer and a person's card · nothing is built and no build is approved
+status: standing list opened 2026-11-24 on the owner's word of that day · nine rows: the Lien desk, Bills sent, Accounts Receivable, Bill Customer, a person's card and the job form's address · nothing is built and no build is approved
 summary: >
   Every press a walk or a thread meets that nothing takes back, one row each: what was pressed, on which
   screen, what it left, and what would take it back. The owner asked for the note on 2026-11-24, when he
@@ -57,6 +57,7 @@ rows, ids and counts only. Name no real customer, job, address or amount.
 | 6 | **Make the bill and email**. | Bill Customer, the Stripe tab. | A bill in Stripe and on the job, and an email to the customer. In test mode the email goes to the sender alone. | The bill can be voided (row 7). An email cannot be called back, so there is nothing to build for it. The row is here so a walk presses it in test mode only. | none | The WALKING thread, 2026-11-24, on card #343. |
 | 7 | **Void invoice**, from **Void Stripe invoice…**. | Bill Customer. | The bill's row is deleted from the job (`void-stripe-invoice-for-revert`), and the rows of its sends go with it. Stripe keeps the invoice as void. | Nothing short of making the bill again. Keeping the row as voided, in place of deleting it, would leave the record and its sends to read. | M, an edge function and likely a migration | The WALKING thread, 2026-11-24, on card #343. Checked the same day: the function deletes the row, and the send rows cascade. |
 | 8 | **Save the photo**. | **Card and footer**, from People → Users on a person's row, and **Your card and footer** in Settings (`YourCardCard`). | The person's photo and its crop on their account, and one file in the photo bucket. A photo can be changed, never taken off. | A **Remove the photo** press that clears the two columns and deletes the file. | S, likely no migration | The WALKING thread, 2026-11-24, on card #313. Checked the same day: `CardIo` has no call that clears a photo, and the only file removals are the old file on a change and the new one when the save fails. |
+| 9 | An address typed in the **Job Address** box, then the box left. No press: leaving the box, or a pause of about a second on a whole address, starts the look-up. | Jobs → Pipeline → **New job**, and a job's Edit tab (`JobFormAddressPin`). | One `address_geocodes` row under the address as typed, kept by `geocode-one`. It stays when the form is closed with **Discard** and no job is made. | A line in Settings for the dev that lists the map's kept addresses no job and no bid is written under, and removes them. The table already has a delete policy for the map's roles. No screen calls it. | S, no migration | The #439 thread, 2026-11-24. Checked the same day: `geocode-one` upserts the row, and nothing in `src/` deletes from the table. |
 
 Row 2 has one exception, and it is not a gap. A line that applied a paper already on record reads **Undo**
 in place of **Void**, and its notice goes back on the desk (v2.7508).
@@ -75,6 +76,8 @@ in place of **Void**, and its notice goes back on the desk (v2.7508).
   because of row 5.
 - One test email to the sender and one voided test invoice in Stripe's test mode, from the walk of #343
   on 2026-11-24, because of rows 6 and 7.
+- One kept address in the map's cache, a made-up spelling of the ZZ Test address that no job is written
+  under, from the #439 thread's look at the New job form on 2026-11-24, because of row 9.
 - A photo on one ZZ Test person, saved by the walk of #313 on 2026-11-24, because of row 8. The team's
   batch of cards leaves ZZ Test people out since the fix that walk asked for.
 
