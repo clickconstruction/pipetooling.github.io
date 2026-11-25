@@ -2,7 +2,7 @@
 name: "Site NDA for vendors: a paper names a job site, vendors sign before anything is sent, and the client is shown who signed"
 number: 439
 group: ready
-status: asked 2026-11-24 · thought through with the owner the same day, each call settled as it came up · drawn as a canvas of sixteen artboards and reviewed as a whole · a door audit added eight doors to the plan · the word to build the whole train, testing along the way, with screenshots at several widths as each piece goes live · piece 1 built and seen live, v2.8520 · piece 2's list and answers built, v2.8529 · Fix the spelling and Open the job built, v2.8542
+status: asked 2026-11-24 · thought through with the owner the same day, each call settled as it came up · drawn as a canvas of sixteen artboards and reviewed as a whole · a door audit added eight doors to the plan · the word to build the whole train, testing along the way, with screenshots at several widths as each piece goes live · piece 1 built and seen live, v2.8520 · piece 2's list and answers built, v2.8529 · Fix the spelling and Open the job built, v2.8542 · 2026-11-25 (UTC) in the managing session: the four calls pieces 3 to 6 stood on were answered, each as the card picks, and the scrub of older public files was chosen, their history too, which waits on its own plan and a yes at the time
 summary: >
   The company works for a client on a site whose details are secret. Vendors must sign the company's own
   NDA before anything about the site reaches them, and the client must be shown who signed. Today the app
@@ -15,7 +15,8 @@ summary: >
   companies see a code name until they sign.
 next: Piece 2's last part, the job form asking about an address written differently at the same map point. Then the train in order, one PR at a time, each tested and seen live at phone and desk width before the next. The live look at piece 2's door, window and Fix the spelling is still owed.
 size: L as a train of seven pieces, about fifteen PRs (S to M · M · M · M · S to M · M to L · M)
-blocker: None for the build. An attorney's read of the vendor NDA's wording comes before it is sent to a real vendor.
+ask: counsel · read · Read the vendor NDA's wording before it is sent to a real vendor.
+blocker: None for the build: the four calls pieces 3 to 6 stood on were answered on 2026-11-25. An attorney's read of the vendor NDA's wording comes before it is sent to a real vendor.
 opinion: build — the signing, the gate and the Contract Book already exist; this ties them to a place and adds the hold and the proof
 ---
 
@@ -80,6 +81,21 @@ Drawn and not objected to, each open to a flip:
 - A sub counts as an outside company. *Our own people* means employees.
 - No way around the hold is drawn. A held send goes by itself when the company signs.
 - The hold reads the job or the bid a send is tagged to. A message with no job on it is not held.
+
+## Answered, 2026-11-25
+
+Four calls were put on 2026-11-25 (UTC) in the managing session, on question cards.
+Each answer is quoted from that session's record of the user's answers, and each is the card's own pick.
+
+1. *The paper prints the site's address only when a box is ticked, and the box starts unticked. Is that right?* "Yes, as the card picks". That is settled 6. Whether the address may be printed at all is still counsel's.
+2. *A sub counts as an outside company, so a sub signs the site NDA like any vendor. Is that right?* "Yes, a sub is an outside company".
+3. *There is no way around the hold. Is that right?* "Yes, no way around it".
+4. *A held send goes by itself when the company signs. Is that right?* "Yes, it goes by itself".
+
+**What they free.** Pieces 3 to 6 of the train are no longer held on these four.
+**What they leave open.** Counsel's read of the NDA's wording, before a real vendor is sent it. The pick on **Same place**, built in v2.8542 and not yet answered. The pick that the hold reads the job or the bid a send is tagged to, which was not asked.
+
+**Older public files.** Asked the same day *Older public files name the project and the client the site NDA is for. Should they be scrubbed?*, the answer was "Scrub history too", quoted from that session's record of the user's answers. It was chosen and nothing was done: no file was changed, nothing was removed, and no plan is written. A rewrite of a public repo's history waits on its own plan, brought to the user first, and on a yes at the time.
 
 ## What the one pass found
 
