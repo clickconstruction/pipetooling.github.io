@@ -16,7 +16,7 @@ summary: >
 next: Step 7, changed since printed (S), which also gives an affidavit a printed fact. It needs no migration but for one call, where *It stands* is kept. Then step 8, mail and file (M). The owner's word is open on six calls, each under *Open questions* with the pick as built. The first real press is the office's, since the press cannot be kept to a test job. A print of the run on a real printer has not been seen.
 size: L for D as five steps (M · M · M · S · M); B, the first three, step 4, the list by bin, step 5, the checklist, and step 6, the one print, are built; left: steps 7 and 8 (S · M)
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474 · v2.8536
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474 · v2.8536 · v2.8589
 ---
 
 # Lien desk To do: one run (#362)
@@ -175,7 +175,9 @@ by itself.
    with neither redrawn (`lienRunStack.ts`). The notices' print stamps `printed_at` as the run window
    does. The press is live for what is right, where the drawing locked it: see *Open questions*.
 7. **Changed since printed** (S): a fingerprint of each paper's sworn fields at print, compared on
-   every read after.
+   every read after. The first part is built, v2.8589: every lien print's filed copy keeps what the
+   paper said, with the kernel that compares and the read of each job's newest print
+   (`lienPrintSworn.ts`, `lienPrintsIo.ts`). Nothing on the desk reads it yet.
 8. **Mail and file** (M): step 3's two cards and the tally, over the record steps that exist today.
 
 ## The two prints on the Board (built, v2.7470; moved under the tiles, v2.7483)
@@ -255,14 +257,21 @@ Read in the code on 2026-11-25, with step 6 on `main`.
 
 **Step 7, changed since printed (S).**
 
-- Both prints already file one sent copy a paper, with a hash of the copy. The filing has a snapshot
-  field (`sourceSnapshot`, `src/lib/sent/sentCopies.ts`) that the lien prints do not fill. So the
-  sworn fields at print can ride on the filed copy with no migration.
-- A kernel that compares that snapshot with today's fields on every read. `lienNoticeParted`
-  (`src/lib/jobs/lienNoticeParted.ts`) already compares a notice's claim, retainage and split by
-  month to the cent, with words for each.
-- A read of each job's newest filed print. That also gives an affidavit a printed fact, so a printed
-  affidavit stops counting as to print after a reload.
+- ~~The sworn fields at print ride on the filed copy.~~ Built, v2.8589: every lien print fills the
+  filing's snapshot field (`sourceSnapshot`, `src/lib/sent/sentCopies.ts`) with each paper's values
+  as it printed. No migration. Five presses file it: the run's one print, the run window, the
+  Board's batch and a job's Lien window, notice and affidavit.
+- ~~A kernel that compares that snapshot with today's fields.~~ Built, v2.8589
+  (`src/lib/jobs/lienPrintSworn.ts`). It keeps every value the paper prints and compares a shorter
+  list, `LIEN_SWORN_FIELDS`, so the first call below changes one list and still reads the prints
+  already filed. `lienNoticeParted` (`src/lib/jobs/lienNoticeParted.ts`) still compares a notice not
+  yet printed to its bills.
+- ~~A read of each job's newest filed print.~~ Built, v2.8589 (`src/lib/jobs/lienPrintsIo.ts`). A read
+  that fails is never read as nothing printed.
+- Not built: anything on the desk that reads it. The checklist does not say *changed since printed*
+  yet, and a printed affidavit still counts as to print after a reload. Both follow the first call,
+  since the list of fields decides which printed paper reads as the same today.
+- A paper printed before v2.8589 has no values kept. It reads as printed with nothing to compare.
 - The drawing's three presses on a changed paper: *Reprint*, *It stands*, *Take it out*. *It stands*
   has to be remembered somewhere. That is the one piece that may need a migration.
 - Two calls to ask before it is built: which fields count as sworn on each paper, and where *It

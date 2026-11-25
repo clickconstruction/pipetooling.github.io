@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { RunNotice } from './lienDeskRun'
 import type { CombinedRunNotice } from './lienNoticeCombine'
 import { lienRunInvoiceDocsShown, lienRunPayPages, lienRunReadyPacket, lienRunStackOf } from './lienRunPacket'
+import { lienNoticePrintFields, lienPrintSnapshotPapers } from './lienPrintSworn'
 import type { NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
 
 const FIELDS = { noticeDate: '2026-09-14', projectDescription: 'ZZ Sample Shop, 12 Sample Rd', claimantName: 'ZZ Plumbing', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'ZZ Builder', contractedWithIfDifferent: '', claimAmount: '500.00', contactPerson: 'Rosa', claimantAddress: '1 Sample St, Sample, TX 78000' }
@@ -45,7 +46,11 @@ describe('lienRunReadyPacket', () => {
   it('prints the ready notices, files one packet on their jobs and stamps the ones whose every copy printed', () => {
     const packet = lienRunReadyPacket({ notices: [notice(), notice({ itemId: 'it2', jobId: 'j2', label: '1002 · ZZ Second Shop', jobNumber: '1002' })], todayYmd: '2026-09-14', issuer: null, enclosures: NONE })
     expect(packet!.notices.map((n) => n.itemId)).toEqual(['it1', 'it2'])
-    expect(packet!.filing).toEqual({ kind: 'lien_notice_packet', title: '§ 53.056 notice packet · 2 notices', jobIds: ['j1', 'j2'] })
+    expect(packet!.filing).toMatchObject({ kind: 'lien_notice_packet', title: '§ 53.056 notice packet · 2 notices', jobIds: ['j1', 'j2'] })
+    // Step 7: the filed copy keeps what each notice said as it printed, in the packet's order.
+    const papers = lienPrintSnapshotPapers(packet!.filing.sourceSnapshot)
+    expect(papers.map((p) => [p.kind, p.jobIds, p.itemIds])).toEqual([['notice', ['j1'], ['it1']], ['notice', ['j2'], ['it2']]])
+    expect(papers[0]!.fields).toEqual(lienNoticePrintFields(packet!.notices[0]!.fields))
     expect(packet!.stampIds).toEqual(['it1', 'it2'])
     expect(packet!.copyKeys).toEqual(expect.arrayContaining(['it1:owner', 'it1:original_contractor', 'it2:owner', 'it2:original_contractor']))
     expect(packet!.html).toContain('<!doctype html>')

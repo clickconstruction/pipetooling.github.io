@@ -15,6 +15,7 @@ import { useLienRunEnclosures } from './useLienRunEnclosures'
 import type { RunNotice } from '../../lib/jobs/lienDeskRun'
 import { lienRunGuideCode } from '../../lib/jobs/lienHelpGuideCode'
 import { lienRunReadyPacket } from '../../lib/jobs/lienRunPacket'
+import { lienPrintSnapshotPapers } from '../../lib/jobs/lienPrintSworn'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { fetchStripeInvoiceFacts } from '../../lib/stripeInvoiceFacts'
 
@@ -121,8 +122,10 @@ describe('the run window and lienRunReadyPacket print the same packet', () => {
     expect(windowHtml).toContain('1001-2609101138')
     expect(windowHtml).toContain('data-pay-code="inv-1"')
     expect(packet!.html).toBe(windowHtml)
-    expect(packet!.filing).toEqual({ kind: windowFiling.kind, title: windowFiling.title, jobIds: windowFiling.jobIds })
-    expect(packet!.filing).toEqual({ kind: 'lien_notice_packet', title: '§ 53.056 notice packet · 2 notices', jobIds: ['j1', 'j2'] })
+    // The whole filing, what each notice said at print with it (step 7): one window's snapshot is the other's.
+    expect(packet!.filing).toEqual(windowFiling)
+    expect(packet!.filing).toMatchObject({ kind: 'lien_notice_packet', title: '§ 53.056 notice packet · 2 notices', jobIds: ['j1', 'j2'] })
+    expect(lienPrintSnapshotPapers(packet!.filing.sourceSnapshot).map((p) => [p.kind, p.jobIds, p.itemIds])).toEqual([['notice', ['j1'], [packet!.notices[0]!.itemId]], ['notice', ['j2'], [packet!.notices[1]!.itemId]]])
     expect(stamped).toEqual([packet!.stampIds])
     expect(packet!.stampIds).toEqual(['it1', 'it2'])
     // What stayed out is on the sheet with its reason, in both.

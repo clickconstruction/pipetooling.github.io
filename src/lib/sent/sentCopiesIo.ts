@@ -143,6 +143,40 @@ export async function loadSentCopiesForJob(jobId: string): Promise<SentCopy[]> {
   }
 }
 
+/** How many job ids one read asks about, and how many rows it takes: a read that fills its limit says it is not whole. */
+const PRINTS_JOBS_A_READ = 50
+const PRINTS_ROWS_A_READ = 1000
+
+/**
+ * The prints of these kinds about any of these jobs, newest first (punch list #362, step 7). Unlike the lists
+ * above, a read that fails is `null` and not no rows: a caller that asks whether a paper printed must tell "none
+ * filed" from "could not read". `whole` is false when a read filled its limit, so older prints may be missing.
+ */
+export async function loadSentPrintsForJobs(kinds: readonly string[], jobIds: readonly string[]): Promise<{ copies: SentCopy[]; whole: boolean } | null> {
+  const ids = [...new Set(jobIds.filter(Boolean))]
+  if (kinds.length === 0 || ids.length === 0) return { copies: [], whole: true }
+  try {
+    const byId = new Map<string, SentCopy>()
+    let whole = true
+    for (let i = 0; i < ids.length; i += PRINTS_JOBS_A_READ) {
+      const some = ids.slice(i, i + PRINTS_JOBS_A_READ)
+      const read = (cols: string) => table().select(cols).in('kind', [...kinds]).eq('how', 'print').overlaps('job_ids', some).order('sent_at', { ascending: false }).limit(PRINTS_ROWS_A_READ)
+      let { data, error } = await read(SENT_COLS)
+      if (error && isUnknownColumn(error.code)) ({ data, error } = await read(SENT_COLS_BASE))
+      if (error) return null
+      const rows = (data ?? []) as unknown[]
+      if (rows.length >= PRINTS_ROWS_A_READ) whole = false
+      for (const row of rows) {
+        const copy = parseSentCopy(row)
+        if (copy) byId.set(copy.id, copy)
+      }
+    }
+    return { copies: [...byId.values()].sort((x, y) => (x.sentAt < y.sentAt ? 1 : x.sentAt > y.sentAt ? -1 : 0)), whole }
+  } catch {
+    return null
+  }
+}
+
 /** The copies filed from one record (v2.5997, #206 PR 4): a sent estimate's letters again. Empty when it cannot read. */
 export async function loadSentCopiesForSource(sourceTable: string, sourceId: string): Promise<SentCopy[]> {
   try {

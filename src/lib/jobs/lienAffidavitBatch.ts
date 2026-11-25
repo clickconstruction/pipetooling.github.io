@@ -11,6 +11,7 @@ import { lienAffidavitFormForItem } from './lienAffidavitForm'
 import { submitOutcome, type LienNoticePolicy, type LienSubmitOutcome } from './lienDesk'
 import { lienAffidavitFootBlockedSentence } from './lienDeskGates'
 import { lienAffidavitGateHeld, type LienAffidavitEntry } from './lienDeskAffidavits'
+import { lienAffidavitPrintPaper, lienPrintSourceSnapshot } from './lienPrintSworn'
 import { lienAffidavitSendReady } from './lienAffidavitSendReady'
 
 /**
@@ -268,7 +269,8 @@ export function lienAffidavitPrintRun(papers: ReadonlyArray<LienAffidavitPrintPa
     html: helpSheetHtml || noticeRecordsHtml || noticeCopiesHtml ? prependToFilingPrintHtml(sheets, `${helpSheetHtml ?? ''}${noticeRecordsHtml ?? ''}${noticeCopiesHtml ?? ''}`, LIEN_HELP_STYLES + LIEN_RECORD_STYLES) : sheets,
     copies: drawn.map((d) => {
       const title = `Lien Affidavit — Job ${d.paper.jobNumber}`
-      return { filing: { kind: 'lien_affidavit', title, jobIds: [d.paper.jobId] }, html: filingDocPrintHtml(d.blocks, title, footer, d.opts) }
+      // What the paper swore rides with its copy (punch list #362, step 7), so a later read can say it changed.
+      return { filing: { kind: 'lien_affidavit', title, jobIds: [d.paper.jobId], sourceSnapshot: lienPrintSourceSnapshot([lienAffidavitPrintPaper(d.paper)]) }, html: filingDocPrintHtml(d.blocks, title, footer, d.opts) }
     }),
   }
 }
