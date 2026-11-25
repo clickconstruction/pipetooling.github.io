@@ -8,10 +8,12 @@ import {
   chartPoints,
   countWords,
   dayWords,
+  foldedWords,
   heldCount,
   hourWords,
   hourlyRows,
   paceOver,
+  rangeFromStored,
   rangeLabel,
   rangeWords,
   signedWords,
@@ -22,6 +24,7 @@ import {
   waveBins,
   waveHours,
   type BurndownMeasure,
+  type BurndownValueKind,
   type BurndownRange,
   type ChartPoint,
   type Pace,
@@ -31,17 +34,19 @@ import {
 } from '../../lib/todos/punchListHistory'
 import type { BoardItem } from '../../lib/todos/todoBoard'
 import { EmptyState } from '../EmptyState'
+import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 
 /**
  * The burndown at the top of /punch-list: the open cards hour by hour, replayed from every change of
  * `to-dos/` on main, with what came in and what closed in waves, where the open work sits, and when
  * the list clears at the pace of the stretch the reader picks. The numbers are `punchListHistory.ts`'s;
  * the cards open now are the board's own. `/punch-list#burndown` lands on it. Hide folds it to one
- * line and the device remembers, as the Shortlist does.
+ * line and the device remembers, as the Shortlist does; the folded line still says which way the list
+ * is going, and the device remembers the stretch picked too (punch list #444).
  */
 export function PunchListBurndown({ history, items, now = Date.now }: { history: PunchListHistory; items: readonly BoardItem[]; now?: () => number }) {
   const [open, setOpen] = useState<boolean>(() => readOpen())
-  const [range, setRange] = useState<BurndownRange>('7d')
+  const [range, setRange] = useState<BurndownRange>(() => readRange())
   const [measure, setMeasure] = useState<BurndownMeasure>('cards')
   const nowMs = useMemo(() => now(), [now])
   const rows = useMemo(() => hourlyRows(history.events, nowMs), [history, nowMs])
@@ -59,6 +64,10 @@ export function PunchListBurndown({ history, items, now = Date.now }: { history:
     setOpen(next)
     writeOpen(next)
   }
+  const pickRange = (next: BurndownRange) => {
+    setRange(next)
+    writeRange(next)
+  }
   const enough = rows.length >= 2 && cardPace !== null && pointPace !== null && pace !== null
   const openPoints = cards.reduce((a, c) => a + c.p, 0)
 
@@ -75,6 +84,12 @@ export function PunchListBurndown({ history, items, now = Date.now }: { history:
         <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Burndown</h2>
         <span style={{ ...mono, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           {cards.length} open · {openPoints} points
+          {!open && enough && cardPace ? (
+            <span data-testid="burndown-folded">
+              {' · '}
+              <ValueSentence<BurndownValueKind> text={foldedWords(cardPace, firstMs)} values={DIRECTION} />
+            </span>
+          ) : null}
         </span>
         <button type="button" onClick={toggle} aria-expanded={open} aria-controls="burndown-body" style={{ ...pill(false), marginLeft: 'auto', fontSize: '0.8rem', padding: '0.2rem 0.6rem' }}>
           {open ? 'Hide the burndown' : 'Show the burndown'}
@@ -94,7 +109,7 @@ export function PunchListBurndown({ history, items, now = Date.now }: { history:
       ) : (
         <div id="burndown-body" className="punch-burn-body" style={{ display: 'grid', gap: '1.25rem', minWidth: 0 }}>
           <p data-testid="burndown-takeaway" style={{ margin: 0, maxWidth: '74ch', lineHeight: 1.6 }}>
-            {takeawayWords({ cards: cardPace, points: pointPace, held: heldCount(cards), firstMs, nowMs }).join(' ')}
+            <ValueSentence<BurndownValueKind> text={takeawayWords({ cards: cardPace, points: pointPace, held: heldCount(cards), firstMs, nowMs }).join(' ')} values={DIRECTION} />
           </p>
 
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -104,7 +119,7 @@ export function PunchListBurndown({ history, items, now = Date.now }: { history:
             <select
               id="burndown-range"
               value={range}
-              onChange={(e) => setRange(e.target.value as BurndownRange)}
+              onChange={(e) => pickRange(rangeFromStored(e.target.value))}
               style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.3rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)' }}
             >
               {BURNDOWN_RANGES.map((r) => (
@@ -394,7 +409,30 @@ function pill(active: boolean): CSSProperties {
   }
 }
 
+/** The way the list is going, drawn as a worked-out value: growing in red, shrinking in green. */
+const DIRECTION: Partial<Record<BurndownValueKind, (text: string) => ReactNode>> = {
+  growing: (text) => <WorkedOutValue tone="red">{text}</WorkedOutValue>,
+  shrinking: (text) => <WorkedOutValue tone="green">{text}</WorkedOutValue>,
+}
+
 const OPEN_KEY = 'punchListBurndownOpen'
+const RANGE_KEY = 'punchListBurndownRange'
+
+function readRange(): BurndownRange {
+  try {
+    return rangeFromStored(window.localStorage.getItem(RANGE_KEY))
+  } catch {
+    return rangeFromStored(null)
+  }
+}
+
+function writeRange(range: BurndownRange): void {
+  try {
+    window.localStorage.setItem(RANGE_KEY, range)
+  } catch {
+    // A private window keeps the stretch for this visit only.
+  }
+}
 
 function readOpen(): boolean {
   try {

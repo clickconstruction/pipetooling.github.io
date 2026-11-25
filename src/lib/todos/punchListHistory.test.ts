@@ -4,12 +4,15 @@ import {
   axisTicks,
   cardsFromDocs,
   chartPoints,
+  directionWords,
+  foldedWords,
   heldCount,
   historyFromStates,
   hourlyRows,
   packHistory,
   paceOver,
   pointsForSize,
+  rangeFromStored,
   rangeLabel,
   rangeWords,
   rowsInRange,
@@ -22,6 +25,7 @@ import {
   type HistoryCard,
   type HistoryState,
 } from './punchListHistory'
+import { plainSentence, sentenceParts } from '../valuesInPlace'
 import { isTodoDocPath, parseBatch, parseRawLog, slugOfTodoPath, statesFromCommits, touchedFromRawLog } from '../../../scripts/todos/readTodoHistory'
 
 const HOUR = 3600
@@ -126,7 +130,7 @@ describe('hourlyRows', () => {
     const day = waveBins(rows, 'all', 'points', 24)
     expect(day).toHaveLength(1)
     expect(day[0]).toMatchObject({ added: 6, closed: 8, partial: true })
-    expect([waveHours('24h', 0), waveHours('7d', 0), waveHours('14d', 0), waveHours('all', 60), waveHours('all', 900)]).toEqual([1, 3, 6, 1, 24])
+    expect([waveHours('24h', 0), waveHours('7d', 0), waveHours('14d', 0), waveHours('21d', 0), waveHours('all', 60), waveHours('all', 900)]).toEqual([1, 3, 6, 24, 1, 24])
   })
 
   it('drains a stage by every card that left it', () => {
@@ -146,17 +150,81 @@ describe('hourlyRows', () => {
     expect(heldCount([card(1, 'gated', 2), card(2, 'waiting', 2), card(3, 'ready', 2)])).toBe(2)
   })
 
-  it('says what the stretch did in plain sentences', () => {
+  it('says what the stretch did in plain sentences, each figure marked as a value', () => {
     const words = takeawayWords({ cards: paceOver(rows, 'all', 'cards')!, points: paceOver(rows, 'all', 'points')!, held: 1, firstMs: rows[0]!.start, nowMs: NOW })
-    expect(words).toEqual([
+    expect(words.map(plainSentence)).toEqual([
       '2 cards are open, 8 points of work.',
-      'Since Nov 2 1 card closed and 1 new ones came in, so the list is holding level.',
+      'Since Nov 2, 1 new card came in and 1 closed.',
+      'That is 8 new and 8 closed a day, so the list is holding level.',
       'With no new cards it clears by Nov 3.',
-      'At this pace it does not clear, because new cards arrive as fast as old ones close.',
-      '1 card wait on an owner decision or on time, so building alone cannot clear them.',
+      '1 card waits on an owner decision or on time, so building alone cannot clear it.',
     ])
+    // The figures and the day are values; the nouns around them stay words.
+    expect(sentenceParts(words[0]!)).toEqual([{ kind: 'count', text: '2' }, ' cards are open, ', { kind: 'count', text: '8' }, ' points of work.'])
+    expect(sentenceParts(words[3]!)).toEqual(['With no new cards it clears by ', { kind: 'day', text: 'Nov 3' }, '.'])
     expect(rangeLabel('7d', null)).toBe('The last 7 days')
     expect(rangeWords('7d', null)).toBe('in the last 7 days')
+  })
+
+  it('reads three weeks as a stretch of its own, a column a day', () => {
+    // Thirty days, an hour a board: a card comes in every 6 hours, and one closes every 12.
+    const boards: HistoryState[] = []
+    let open: HistoryCard[] = Array.from({ length: 40 }, (_, i) => card(i + 1, 'ready', 2))
+    let next = 41
+    for (let h = 0; h <= 30 * 24; h++) {
+      if (h > 0 && h % 6 === 0) open = [...open, card(next++, 'ready', 2)]
+      if (h > 0 && h % 12 === 0) open = open.slice(1)
+      boards.push({ t: T0 + h * HOUR + 60, cards: open })
+    }
+    const now = (T0 + 30 * 24 * HOUR + 1800) * 1000
+    const long = hourlyRows(historyFromStates(boards), now)
+    expect(rangeLabel('21d', null)).toBe('The last 21 days')
+    expect(rangeWords('21d', null)).toBe('in the last 21 days')
+    // The chart draws the whole hours of the stretch and the hour in progress; the pace reads the whole hours alone.
+    expect(rowsInRange(long, '21d')).toHaveLength(21 * 24 + 1)
+    const pace = paceOver(long, '21d', 'cards')!
+    expect(pace).toMatchObject({ hours: 504, added: 84, closed: 42, addedPerDay: 4, closedPerDay: 2, netPerDay: 2, change: 42 })
+    expect(waveBins(long, '21d', 'cards', waveHours('21d', long.length)).filter((b) => !b.partial).every((b) => b.added === 4 && b.closed === 2)).toBe(true)
+    const words = takeawayWords({ cards: pace, points: paceOver(long, '21d', 'points')!, held: 0, firstMs: long[0]!.start, nowMs: now }).map(plainSentence)
+    expect(words[1]).toBe('In the last 21 days, 84 new cards came in and 42 closed.')
+    expect(words[2]).toBe('That is 4 new and 2 closed a day, so the list is growing by 2 a day.')
+    // A growing list gets no sentence about clearing at this pace: the rate has said it.
+    expect(words.some((w) => w.startsWith('At this pace'))).toBe(false)
+    expect(plainSentence(foldedWords(pace, long[0]!.start))).toBe('growing by 2 a day in the last 21 days')
+  })
+
+  it('says which way the list is going as one value, with its kind', () => {
+    expect(sentenceParts(directionWords({ netPerDay: 5.3 }))).toEqual([{ kind: 'growing', text: 'growing by 5.3 a day' }])
+    expect(sentenceParts(directionWords({ netPerDay: -2.7 }))).toEqual([{ kind: 'shrinking', text: 'shrinking by 2.7 a day' }])
+    expect(sentenceParts(directionWords({ netPerDay: 0 }))).toEqual([{ kind: 'level', text: 'holding level' }])
+  })
+
+  it('says when a shrinking list clears, and that a quiet stretch moved nothing', () => {
+    // Six cards, one closing every 6 hours over a day and a half, nothing new.
+    const boards: HistoryState[] = []
+    let open: HistoryCard[] = Array.from({ length: 6 }, (_, i) => card(i + 1, 'ready', 2))
+    for (let h = 0; h <= 36; h++) {
+      if (h > 0 && h % 6 === 0 && h <= 24) open = open.slice(1)
+      boards.push({ t: T0 + h * HOUR + 60, cards: open })
+    }
+    const now = (T0 + 36 * HOUR + 1800) * 1000
+    const shrinking = hourlyRows(historyFromStates(boards), now)
+    const all = takeawayWords({ cards: paceOver(shrinking, 'all', 'cards')!, points: paceOver(shrinking, 'all', 'points')!, held: 0, firstMs: shrinking[0]!.start, nowMs: now }).map(plainSentence)
+    expect(all[1]).toBe('Since Nov 2, 0 new cards came in and 4 closed.')
+    expect(all[2]).toBe('That is 0 new and 2.7 closed a day, so the list is shrinking by 2.7 a day.')
+    expect(all[4]).toMatch(/^At this pace it clears by Nov \d+\.$/)
+    // The last six whole hours saw nothing move.
+    const quiet = paceOver(shrinking.slice(0, -1).slice(-7).concat(shrinking.slice(-1)), 'all', 'cards')!
+    expect(quiet).toMatchObject({ added: 0, closed: 0 })
+    const still = takeawayWords({ cards: quiet, points: quiet, held: 0, firstMs: null, nowMs: now }).map(plainSentence)
+    expect(still[1]).toBe('All of it, no card came in and none closed, so the list is holding level.')
+  })
+
+  it('reads the stretch a device remembered, and falls back on one it does not know', () => {
+    expect(rangeFromStored('21d')).toBe('21d')
+    expect(rangeFromStored('all')).toBe('all')
+    expect(rangeFromStored(null)).toBe('7d')
+    expect(rangeFromStored('90d')).toBe('7d')
   })
 
   it('puts the ticks on the app calendar', () => {

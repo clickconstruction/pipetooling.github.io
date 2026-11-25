@@ -1,4 +1,5 @@
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { val } from '../valuesInPlace'
 import { sizeBucket, type SizeBucket } from './punchListShortlist'
 import { BOARD_GROUPS, GROUP_LABELS, type BoardGroup, type BoardItem, type TodoDoc } from './todoBoard'
 
@@ -216,11 +217,11 @@ export function hourlyRows(events: readonly HistoryEvent[], nowMs: number): Hour
   return rows
 }
 
-export const BURNDOWN_RANGES = ['24h', '3d', '7d', '14d', 'all'] as const
+export const BURNDOWN_RANGES = ['24h', '3d', '7d', '14d', '21d', 'all'] as const
 export type BurndownRange = (typeof BURNDOWN_RANGES)[number]
 export type BurndownMeasure = 'cards' | 'points'
 
-const RANGE_HOURS: Record<BurndownRange, number | null> = { '24h': 24, '3d': 72, '7d': 168, '14d': 336, all: null }
+const RANGE_HOURS: Record<BurndownRange, number | null> = { '24h': 24, '3d': 72, '7d': 168, '14d': 336, '21d': 504, all: null }
 
 /** The picker's label for a stretch; *since* names the history's first day. */
 export function rangeLabel(range: BurndownRange, firstMs: number | null): string {
@@ -228,6 +229,7 @@ export function rangeLabel(range: BurndownRange, firstMs: number | null): string
   if (range === '3d') return 'The last 3 days'
   if (range === '7d') return 'The last 7 days'
   if (range === '14d') return 'The last 14 days'
+  if (range === '21d') return 'The last 21 days'
   return firstMs === null ? 'All of it' : `Since ${dayWords(firstMs)}`
 }
 
@@ -477,22 +479,62 @@ export function signedWords(n: number): string {
   return `${n > 0 ? '+' : ''}${n.toLocaleString('en-US', { maximumFractionDigits: 1 })}`
 }
 
+/** The stretch the section opens on, and the one a device with nothing remembered reads. */
+export const DEFAULT_BURNDOWN_RANGE: BurndownRange = '7d'
+
+/** The stretch a device remembered, or the default when it holds nothing or a stretch this build does not know. */
+export function rangeFromStored(stored: string | null | undefined): BurndownRange {
+  return (BURNDOWN_RANGES as readonly string[]).includes(stored ?? '') ? (stored as BurndownRange) : DEFAULT_BURNDOWN_RANGE
+}
+
+/** A sentence's value kinds: a figure, a day, and the way the list is going. */
+export type BurndownValueKind = 'count' | 'day' | 'growing' | 'shrinking' | 'level'
+
+const figure = (n: number): string => n.toLocaleString('en-US', { maximumFractionDigits: 1 })
+
+/** *121 cards* with the figure marked as a value and the noun left as words. */
+function countedWords(n: number, measure: BurndownMeasure): string {
+  const noun = measure === 'points' ? 'point' : 'card'
+  return `${val('count', n.toLocaleString('en-US'))} ${noun}${Math.abs(n) === 1 ? '' : 's'}`
+}
+
 /**
- * The sentences over the chart: what is open, what the stretch did, and when the list clears.
- * `held` is the open cards waiting on an owner decision or on time, which no building pace closes.
+ * Which way the list is going at a pace, as one marked value: *growing by 4 a day*, *shrinking by 2.7 a day*
+ * or *holding level*. The kind lets the screen draw growing in red and shrinking in green.
+ */
+export function directionWords(pace: Pick<Pace, 'netPerDay'>): string {
+  if (pace.netPerDay > 0) return val('growing', `growing by ${figure(pace.netPerDay)} a day`)
+  if (pace.netPerDay < 0) return val('shrinking', `shrinking by ${figure(-pace.netPerDay)} a day`)
+  return val('level', 'holding level')
+}
+
+/** The folded section's words after its counts: *growing by 4 a day in the last 7 days*. */
+export function foldedWords(pace: Pace, firstMs: number | null): string {
+  return `${directionWords(pace)} ${rangeWords(pace.range, firstMs)}`
+}
+
+/**
+ * The sentences over the chart: what is open, what the stretch took in and closed, the rate a day with the way
+ * the list is going, and when it clears. Every figure and day is marked with `val`, so the screen draws it apart
+ * from the words (`ValueSentence`); `plainSentence` reads it plain. `held` is the open cards waiting on an owner
+ * decision or on time, which no building pace closes. A list that grows or holds level gets no *at this pace*
+ * sentence: the rate has already said it does not clear.
  */
 export function takeawayWords(input: { cards: Pace; points: Pace; held: number; firstMs: number | null; nowMs: number }): string[] {
   const { cards, points, held, firstMs, nowMs } = input
   const stretch = rangeWords(cards.range, firstMs)
   const lead = `${stretch.charAt(0).toUpperCase()}${stretch.slice(1)}`
-  const out = [`${countWords(cards.open, 'cards')} are open, ${countWords(points.open, 'points')} of work.`]
-  const moved = `${lead} ${countWords(cards.closed, 'cards')} closed and ${cards.added.toLocaleString('en-US')} new ones came in`
-  out.push(cards.netPerDay < 0 ? `${moved}, so the list is shrinking.` : cards.netPerDay > 0 ? `${moved}, so the list is growing.` : `${moved}, so the list is holding level.`)
-  if (cards.clearNoNewMs !== null) out.push(`With no new cards it clears by ${dayWords(cards.clearNoNewMs, nowMs)}.`)
+  const out = [`${countedWords(cards.open, 'cards')} are open, ${countedWords(points.open, 'points')} of work.`]
+  if (cards.added === 0 && cards.closed === 0) {
+    out.push(`${lead}, no card came in and none closed, so the list is ${directionWords(cards)}.`)
+  } else {
+    out.push(`${lead}, ${val('count', cards.added.toLocaleString('en-US'))} new ${cards.added === 1 ? 'card' : 'cards'} came in and ${val('count', cards.closed.toLocaleString('en-US'))} closed.`)
+    out.push(`That is ${val('count', figure(cards.addedPerDay))} new and ${val('count', figure(cards.closedPerDay))} closed a day, so the list is ${directionWords(cards)}.`)
+  }
+  if (cards.clearNoNewMs !== null) out.push(`With no new cards it clears by ${val('day', dayWords(cards.clearNoNewMs, nowMs))}.`)
   else out.push(`Nothing closed ${stretch}, so there is no pace to read.`)
-  if (cards.clearAtPaceMs !== null) out.push(`At this pace it clears by ${dayWords(cards.clearAtPaceMs, nowMs)}.`)
-  else if (cards.clearNoNewMs !== null) out.push(`At this pace it does not clear, because new cards arrive ${cards.netPerDay > 0 ? 'faster than' : 'as fast as'} old ones close.`)
-  if (held > 0) out.push(`${countWords(held, 'cards')} wait on an owner decision or on time, so building alone cannot clear them.`)
+  if (cards.clearAtPaceMs !== null) out.push(`At this pace it clears by ${val('day', dayWords(cards.clearAtPaceMs, nowMs))}.`)
+  if (held > 0) out.push(`${countedWords(held, 'cards')} ${held === 1 ? 'waits' : 'wait'} on an owner decision or on time, so building alone cannot clear ${held === 1 ? 'it' : 'them'}.`)
   return out
 }
 
