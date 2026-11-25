@@ -2,7 +2,7 @@
 name: "Punch list: the pace of the list and the merge queue, on one page"
 number: 444
 group: close
-status: asked 2026-11-24 · all four PRs are merged · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is live as v2.8546 · PR 3 (In the merge queue on the page) is live as v2.8547 · PR 4 (each line's state) merged as v2.8550 on 2026-11-25 and ship-pace was redeployed the same hour · none of the three has been walked on the live page
+status: asked 2026-11-24 · all four PRs are merged · PR 2 (the Burndown's three weeks, its rate a day, its folded line) is live as v2.8546 · PR 3 (In the merge queue on the page) is live as v2.8547 · PR 4 (each line's state) merged as v2.8550 on 2026-11-25 and ship-pace was redeployed the same hour · all three were walked on the live page on 2026-11-25 and hold · of the five State chips only the blue one was seen · left: four presses under 44 px on a phone, found by the first walk
 summary: >
   The owner asked to see the merge queue and how fast punch-list cards are being closed. Most of it
   is already live in two places. The Burndown at the top of /punch-list counts cards opened and closed
@@ -10,10 +10,10 @@ summary: >
   of GitHub every 15 minutes. This card joins them on /punch-list and fills four gaps. The Burndown has
   no three-week stretch. Its sentence gives no rate a day. The queue is on another page. A change in
   the queue does not say whether its checks are running or it is ready.
-next: Three walks on the live page. The queue block and the Burndown's 21 days can be walked now. The State chips can be walked once the deploy that holds v2.8550 has finished.
+next: Stand the four small presses of the queue block and the Burndown 44 px high on a phone (the first walk's finding). One more look at the State column when a line is waiting its turn or ready, to see a chip that is not blue. Then the card closes.
 size: M as a train of four (XS · S · S · S); left: three walks
 ver: v2.8546, v2.8547, v2.8550
-blocker: None. The build is done. The card closes on its walks.
+blocker: None. The build is done and its three walks hold. The small presses are a client-only mend.
 opinion: build — the history, the read of GitHub and its token already exist, so this is three small changes to screens and one field more on a read.
 ---
 
@@ -234,6 +234,18 @@ Nothing here writes a row a person made. The one write is the function's own row
   not been seen on the live page.
 - 2026-11-25: the State column is on the `/punch-list` line of `docs/PROJECT_DOCUMENTATION.md`, in the
   follow-up that also moved this card to Close out.
+
+- 2026-11-25, walked on the live page as a dev, in three sittings. **The queue block (v2.8547) holds.** On
+  a row over five minutes old a dev's opening made one read of the row, one call to `ship-pace` and one
+  more read. At 390 px four presses stand under 44 px: **Hide the queue**, **Read GitHub now**, **Hide
+  the burndown** and the link *How fast a change ships*. That mend is not built.
+- **The Burndown's 21 days (v2.8546) hold**, on all three steps of the look.
+- **The State column (v2.8550) holds, with one tone of five seen.** It sits between the title and **In
+  the queue**. Five lines each drew a blue **Checks running** chip, the same five changes in the same
+  order and state as GitHub's own queue read a minute later. **In line now** in Settings says the state
+  in words after the place. At 390 px the chip sits under the title. Not seen: the green **Ready** and
+  **Merging now**, the grey **Waiting its turn** and the red **Will not merge**. That look was opened
+  inside five minutes of the row's own rewrite, so the page made no call to `ship-pace`.
 
 Found while building, and kept:
 
