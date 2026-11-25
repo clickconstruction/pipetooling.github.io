@@ -58,6 +58,8 @@ export type LienRunPrintPressInput = {
   held: number
   /** The run has notices to print and their bills are not read yet: a notice would go without its enclosures. */
   reading: boolean
+  /** The notices the checklist counts as right that the packet does not print now (`lienRunNoticesStopped`). */
+  stopped?: number
 }
 
 export type LienRunPrintPress = {
@@ -72,21 +74,35 @@ export type LienRunPrintPress = {
 
 const PAPER = ['paper', 'papers'] as const
 
-/** The press: *Print the run · 16 papers* with nothing held, *Print 12 papers · 4 wait on step 1 ▸* with some, dead with nothing right. */
+/** The right notices the press does not print, in a sentence: the card names each under it with its reason. */
+function stoppedWords(stopped: number): string {
+  return `${val('count', String(stopped))} right ${stopped === 1 ? 'notice does' : 'notices do'} not print here. ${stopped === 1 ? 'It is' : 'Each is'} named below with its reason.`
+}
+
+/**
+ * The press: *Print the run · 16 papers* with nothing held, *Print 12 papers · 4 wait on step 1 ▸* with some, dead
+ * with nothing to print. A right notice the packet does not print (a hold in the run window, a copy that goes by
+ * Docsmit) is said under the press whatever else it says: *No paper is right yet* is said only when none is.
+ */
 export function lienRunPrintPress(input: LienRunPrintPressInput): LienRunPrintPress {
   const papers = input.notices + input.affidavits
+  const stopped = Math.max(0, input.stopped ?? 0)
   if (input.reading) return { label: 'Print the run · reading the bills…', dead: true, foot: 'A notice prints with its unpaid bills. The press wakes once they are read.', papers }
   if (papers <= 0) {
+    if (stopped > 0) {
+      const more = input.held > 0 ? ` ${val('count', String(input.held))} more ${input.held === 1 ? 'waits' : 'wait'} on step 1 above.` : ''
+      return { label: 'Print the run ▸', dead: true, foot: `No paper prints now. ${stoppedWords(stopped)}${more}`, papers }
+    }
     return input.held > 0
       ? { label: 'Print the run ▸', dead: true, foot: `No paper is right yet. Settle the ${val('count', String(input.held))} above, or leave each out.`, papers }
       : { label: 'Print the run', dead: true, foot: null, papers }
   }
-  if (input.held <= 0) return { label: `Print the run · ${papers} ${pluralNoun(PAPER, papers)}`, dead: false, foot: null, papers }
+  if (input.held <= 0) return { label: `Print the run · ${papers} ${pluralNoun(PAPER, papers)}`, dead: false, foot: stopped > 0 ? stoppedWords(stopped) : null, papers }
   const words = batchWords({ verb: 'Print', ready: papers, held: input.held, heldWhy: { one: 'waits on step 1', many: 'wait on step 1' }, noun: PAPER })
   return {
     label: words.button,
     dead: false,
-    foot: `${val('count', String(input.held))} ${input.held === 1 ? 'paper is' : 'papers are'} not right yet. Settle ${input.held === 1 ? 'it' : 'each'} above, or leave it out. The ${val('count', String(papers))} that ${papers === 1 ? 'is' : 'are'} right ${papers === 1 ? 'prints' : 'print'} now.`,
+    foot: `${val('count', String(input.held))} ${input.held === 1 ? 'paper is' : 'papers are'} not right yet. Settle ${input.held === 1 ? 'it' : 'each'} above, or leave it out. The ${val('count', String(papers))} that ${papers === 1 ? 'is' : 'are'} right ${papers === 1 ? 'prints' : 'print'} now.${stopped > 0 ? ` ${stoppedWords(stopped)}` : ''}`,
     papers,
   }
 }
@@ -106,6 +122,8 @@ export const LIEN_RUN_PRINT_WORDS = {
   /** When either document changed shape and the merge refused it. */
   cannotStack: 'The two papers could not be put in one stack. Print each with its own press.',
   nothing: 'Nothing waits to print.',
+  /** Under the right notices that do not print, when one of them is held: where it is settled. */
+  stoppedDoor: 'The Board’s Print and mail press opens the run window, where a held notice is settled.',
   blocked: 'Popup blocked. Allow popups to print the run.',
   /** Under the printed line: what the print left for the next step. */
   next: 'The notices are marked printed. The affidavits go to the notary.',

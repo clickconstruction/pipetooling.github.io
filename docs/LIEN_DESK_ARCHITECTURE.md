@@ -1362,6 +1362,8 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
   `useLienDeskAffidavits` answers `readyAffidavitsRun`, the affidavits' batch document and each job's copy, and its press prints what that builds.
 - **The run's one print** (v2.8536, punch list #362 step 6): [`useLienRunPrint.ts`](../src/components/jobs/useLienRunPrint.ts) takes the checklist, the desk's monthly notices as a thunk and the affidavit hook's `readyAffidavitsRun` and `runAffidavitCount`, and answers the card's state and its press.
   It builds no document on a render: the count comes from `lienRunReadyNotices` and the affidavit papers, and the press builds the packet and the batch, merges them with `lienRunStackHtml`, prints, files each paper's own copy and stamps the notices.
+  Since v2.8591 the card names a right notice the packet does not print: `lienRunNoticesStopped` answers each with the run window's own reason, a hold, a signature or copies that went with no paper, and `lienRunPrintPress` takes their count.
+  The checklist counts a notice as right from the Board's chip alone, so its strip can still read *1 notice to print* over a press that prints none.
   `lienRunStack.ts` puts two print documents in one job by moving each `body` rule onto a wrapper and naming the affidavits' page, and refuses a document whose shape it does not know.
   The notices' bills are read while the checklist is open, by job, on a list that keeps its identity: the desk rebuilds the notices on every render.
 - **What a paper said at print** (v2.8589, punch list #362 step 7, the part with no call): [`lienPrintSworn.ts`](../src/lib/jobs/lienPrintSworn.ts) is the fingerprint and its compare.

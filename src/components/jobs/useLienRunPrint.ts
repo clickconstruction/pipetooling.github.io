@@ -10,7 +10,7 @@ import type { LienGetItRight } from '../../lib/jobs/lienGetItRight'
 import { lienRunGuideCode } from '../../lib/jobs/lienHelpGuideCode'
 import type { LienHelpLeftOut } from '../../lib/jobs/lienHelpSheet'
 import { lienLeaveOutReasonWords } from '../../lib/jobs/lienLeftOut'
-import { lienRunReadyNotices, lienRunReadyPacket } from '../../lib/jobs/lienRunPacket'
+import { lienRunNoticesStopped, lienRunReadyNotices, lienRunReadyPacket, type LienRunNoticeStopped } from '../../lib/jobs/lienRunPacket'
 import { LIEN_RUN_PRINT_WORDS, lienRunPrintedWords, lienRunPrintPlan, lienRunPrintPress, type LienRunPrintPress } from '../../lib/jobs/lienRunPrint'
 import { lienRunStackHtml, lienStackBrowserCan, lienStackDividerWords, lienStackOrderWords } from '../../lib/jobs/lienRunStack'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
@@ -51,6 +51,8 @@ export type LienRunPrintState = {
   parts: { notices: string; affidavits: string }
   notices: number
   affidavits: number
+  /** The run's right notices the press does not print, each with its reason: the card names them under the press. */
+  stopped: LienRunNoticeStopped[]
   /** What the press printed in this sitting, as a sentence; null before a print. */
   printed: { words: string; next: string | null } | null
   print: (which?: 'all' | 'notices' | 'affidavits') => void
@@ -76,6 +78,8 @@ export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidav
   // The run's notices: the jobs the checklist counts as right and to print, and no other. A left-out paper is never here.
   const notices = live && plan.noticeJobIds.size > 0 ? noticesFor().filter((n) => plan.noticeJobIds.has(n.jobId)) : []
   const ready = notices.length > 0 ? lienRunReadyNotices(notices) : []
+  // The checklist calls a notice right from the Board's chip. The run window may still hold it, or send it with no paper.
+  const stopped = notices.length > 0 ? lienRunNoticesStopped(notices) : []
   // The enclosures are read by job, and the list keeps its identity while the jobs are the same: the desk builds the
   // notices anew on every render, and a read that followed them would never end.
   const jobKey = Array.from(new Set(notices.map((n) => n.jobId))).sort().join('\n')
@@ -86,7 +90,7 @@ export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidav
   const noticeCount = ready.length
   const affidavits = live && plan.affidavitJobIds.size > 0 ? affidavitCount(plan.affidavitJobIds) : 0
   const reading = noticeCount > 0 && !enclosures.read
-  const press = lienRunPrintPress({ notices: noticeCount, affidavits, held: plan.held, reading })
+  const press = lienRunPrintPress({ notices: noticeCount, affidavits, held: plan.held, reading, stopped: stopped.length })
   const both = noticeCount > 0 && affidavits > 0
   const mode: 'one' | 'two' = both && (!canStack || refused) ? 'two' : 'one'
 
@@ -131,6 +135,7 @@ export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidav
     parts: { notices: countedLabel('Print', noticeCount, ['notice', 'notices']), affidavits: countedLabel('Print', affidavits, ['affidavit', 'affidavits']) },
     notices: noticeCount,
     affidavits,
+    stopped,
     printed,
     print,
   }
