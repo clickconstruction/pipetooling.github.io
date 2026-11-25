@@ -68,7 +68,7 @@ import { formatErrorMessage } from '../../../../utils/errorHandling'
 import { Btn } from '../../gcUi'
 import { JobPickerWindow } from '../JobPickerWindow'
 import { useOpenThread } from '../openThread'
-import { replyBoxFolded } from '../../../../lib/messages/replyFold'
+import { boxGreyWords, replyBoxFolded } from '../../../../lib/messages/replyFold'
 import { useMessagesReread } from '../useMessagesReread'
 import { AttachPicker } from './AttachPicker'
 import { FindReplyWindow } from './FindReplyWindow'
@@ -890,7 +890,7 @@ export function ReplyBox({
             onFocus={() => setWoke(true)}
             // A press into a folded box that still holds the focus fires no focus event, so the click wakes it too.
             onClick={() => setWoke(true)}
-            placeholder={settling.active ? OWED_DONE_PLACEHOLDER : goesOut(shown) ? `${boxPlaceholder(shown, contact.name)} ${SLASH_HINT}` : boxPlaceholder(shown, contact.name)}
+            placeholder={settling.active ? OWED_DONE_PLACEHOLDER : boxGreyWords(boxPlaceholder(shown, contact.name), goesOut(shown) ? SLASH_HINT : null, folded)}
             disabled={Boolean(blocked) || busy}
             rows={folded ? 1 : 3}
             data-reply-look={orange ? 'customer' : shown}
