@@ -60,7 +60,7 @@ afterEach(cleanup)
 describe('BidBoardMissingAddressesModal · an address nobody could place (punch list #441)', () => {
   it('says why, the day it was checked and the day the app asks again, with Try again beside Save', () => {
     const { missRow } = sheet()
-    expect(missRow.querySelector('[data-miss-reason]')!.textContent).toBe('Address not found')
+    expect(missRow.querySelector('[data-miss-reason]')!.textContent).toBe('No map service could find this address.')
     const checked = missRow.querySelector('[data-miss-checked]')!
     expect(checked.textContent).toBe('Checked Nov 20. The app asks again by itself on Dec 20.')
     expect([...checked.querySelectorAll('[data-value="worked-out"]')].map((b) => b.textContent)).toEqual(['Nov 20', 'Dec 20'])
@@ -107,7 +107,7 @@ describe('BidBoardMissingAddressesModal · an address nobody could place (punch 
 
   it('Try again that still finds no match moves the day and points at the box', async () => {
     const now = new Date().toISOString()
-    const { missRow } = sheet({ onTryAgain: async () => ({ kind: 'missed', reason: 'Address not found', checkedAt: now }) })
+    const { missRow } = sheet({ onTryAgain: async () => ({ kind: 'missed', reason: 'No map service could find this address.', checkedAt: now }) })
     fireEvent.click(within(missRow).getByRole('button', { name: 'Try again' }))
     await waitFor(() => expect(missRow.querySelector('[data-try-again-result="missed"]')).not.toBeNull())
     expect(missRow.querySelector('[data-try-again-result]')!.textContent).toBe('Still no match. Fix the address in the box and save to place it.')
@@ -129,5 +129,33 @@ describe('BidBoardMissingAddressesModal · an address nobody could place (punch 
   it('on a phone the press takes a thumb', () => {
     const { missRow } = sheet({ isMobile: true })
     expect((within(missRow).getByRole('button', { name: 'Try again' }) as HTMLElement).style.minHeight).toBe('44px')
+  })
+
+  it('on a phone the four text presses take a thumb inside their line, and at a desk keep their size', () => {
+    const names = ['B902', 'Check on Google Maps ↗', 'Edit bid']
+    const phone = sheet({ isMobile: true })
+    for (const name of names) {
+      const press = within(phone.missRow).getByRole('button', { name }) as HTMLElement
+      expect(press.style.minHeight, name).toBe('44px')
+      expect(press.style.display, name).toBe('inline-flex')
+      // The line gets back what the press grew by, so the row is as tall as it was.
+      expect(parseFloat(press.style.marginTop), name).toBeLessThan(0)
+      expect(press.style.marginBottom, name).toBe(press.style.marginTop)
+    }
+    cleanup()
+    const desk = sheet()
+    for (const name of names) expect((within(desk.missRow).getByRole('button', { name }) as HTMLElement).style.minHeight, name).toBe('')
+  })
+
+  it('Use it, offered beside a customer’s address on file, takes a thumb on a phone too', () => {
+    const withCustomer = { ...bare, row: { customers: { address: '100 ZZ Test Lane, Austin, TX 78701' }, bids_gc_builders: null } as unknown as BidBoardMapBid['row'] }
+    const rows = composeMissingAddressRows({ noAddress: [withCustomer], unmapped: [], pins: [], resolving: false, keepIds: new Set<string>(), misses: new Map() })
+    expect(rows[0]!.customerAddress).toBe('100 ZZ Test Lane, Austin, TX 78701')
+    const props = { open: true, rows, onClose: vi.fn(), onSave: vi.fn(async () => true), onTryAgain: vi.fn(async (): Promise<TryAgainOutcome> => ({ kind: 'placed' })), onEditBid: vi.fn(), onFocusRow: vi.fn() }
+    const phone = render(<BidBoardMissingAddressesModal {...props} isMobile />)
+    expect((screen.getByRole('button', { name: 'Use it' }) as HTMLElement).style.minHeight).toBe('44px')
+    phone.unmount()
+    render(<BidBoardMissingAddressesModal {...props} isMobile={false} />)
+    expect((screen.getByRole('button', { name: 'Use it' }) as HTMLElement).style.minHeight).toBe('')
   })
 })

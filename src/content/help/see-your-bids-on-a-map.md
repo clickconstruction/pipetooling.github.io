@@ -80,7 +80,7 @@ Under the map, ***N bids have no map location yet · add their addresses*** is a
 
 The app remembers an address that no map service could place. It does not ask about that address again on every open.
 
-The row of such a bid shows the reason and two days under its address box. The row reads *Checked Nov 20. The app asks again by itself on Dec 20.* The app waits 30 days before it asks again.
+The row of such a bid shows the reason and two days under its address box. The reason reads *No map service could find this address.* The days read *Checked Nov 20. The app asks again by itself on Dec 20.* The app waits 30 days before it asks again.
 
 :::steps
 1. Fix the address in the box and tap {{button:blue|Save}}. A changed address is asked about right away.
