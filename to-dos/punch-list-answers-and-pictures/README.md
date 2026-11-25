@@ -2,7 +2,7 @@
 name: "Punch list: what is still to answer and what it looks like, on every card"
 number: 438
 group: ready
-status: asked 2026-11-24 by Diane · the same day fifteen built cards that waited on a person were drawn in the lens frame with invented data, and each got a pictures page beside it with what it waits on and what to say · the kit that drew them is in this folder · the board's own view drawn the same day on Diane's word, as a canvas of seven frames with a refined cut D and a static copy here · her word on it the same day, *Build D*, on the seven picks · PR 1 built as v2.8519, the question on the card, its migration pushed · PR 2 built as v2.8521, Waiting on me · PR 3 built as v2.8528, a row says when its pictures are old and one command draws a card again · the three questions the build left were answered the same day, *Keep the old picks on #438* · left: a look at Waiting on me on the live site
+status: asked 2026-11-24 by Diane · the same day fifteen built cards that waited on a person were drawn in the lens frame with invented data, and each got a pictures page beside it with what it waits on and what to say · the kit that drew them is in this folder · the board's own view drawn the same day on Diane's word, as a canvas of seven frames with a refined cut D and a static copy here · her word on it the same day, *Build D*, on the seven picks · PR 1 built as v2.8519, the question on the card, its migration pushed · PR 2 built as v2.8521, Waiting on me · PR 3 built as v2.8528, a row says when its pictures are old and one command draws a card again · the three questions the build left were answered the same day, *Keep the old picks on #438* · seen on the live site as a dev the same day, read only · left: the owner's look
 summary: >
   Diane wants the Punch list page to make two things easy for a person. First, the questions that
   person still has to answer. Second, what a card looks like before and after it is built. Today the
@@ -11,10 +11,10 @@ summary: >
   invented data and wrote, for each, what it waits on and the one or two answers that would move it.
   Those pages now sit beside their cards, so the board links to them. The board's own view is built:
   Waiting on me, every card that waits on a person with its question, one lead picture and one answer.
-next: A look at Waiting on me on the live site, as the owner and as a dev. Then draw #426's pictures again with `npm run todo:pictures -- 426`, since its row says they are old.
+next: The owner's look at Waiting on me on the live site, and one at a phone's width. Then draw #426's pictures again with `npm run todo:pictures -- 426`, since its row says they are old.
 ask: owner · look · Open Waiting on me on the Punch list and answer one card on it.
 size: M as a train of three (S · M · S)
-blocker: None. All three PRs are built. The live look is left.
+blocker: None. All three PRs are built. The owner's look is left.
 opinion: build — the pictures and the answers exist for fifteen cards and the board already links to them, so the view is mostly reading what is there
 ---
 
@@ -155,8 +155,16 @@ Three PRs, on the seven picks as they stand. All three are built.
 
 ## Where it stands
 
-Built, and not yet looked at on the live site. The view was only seen in the sealed lens frame on a
-local server.
+Built. PR 2 was seen on the live site on 2026-11-24 as a dev, at 1,280 px, read only:
+
+- The View pill read **Waiting on me 2** and the two rows drew their kind, question, card name and lead picture.
+- The pills counted 10 for the owner, 2 for the office, 2 for anyone at hand, 1 for counsel and 15 for everyone.
+- The read of the picks answered with `answers_ask` in it.
+- Nothing scrolled sideways and no request repeated in the ten seconds after the page opened.
+- No answer was pressed.
+
+Not seen on the live site: the owner's seat, a phone's width, an answer being saved, and PR 3's line on
+an old picture. Those were only seen in the sealed lens frame on a local server.
 
 What the build left out of the mock-up:
 
