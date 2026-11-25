@@ -3,64 +3,61 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('../supabase', () => ({ supabase: {} }))
 
 import type { CardLoad } from './cardIo'
-import { photoRemoveConfirm, photoRemoveDrawn, photoRemoveProblem, removeTestPersonPhoto } from './photoRemove'
+import { photoRemoveConfirm, photoRemoveDrawn, photoRemoveProblem, removePersonPhoto } from './photoRemove'
 
-const person = (name: string | null, card_name: string | null = null, photoPath: string | null = 'u1/photo-1.jpg') => ({ facts: { name, card_name }, photoPath })
 const load = (name: string | null, photoPath: string | null = 'u1/photo-1.jpg'): CardLoad => ({ facts: { name, card_name: null, title: null, email: null, phone: null }, photoPath, crop: { fx: 0.5, fy: 0.5, zoom: 1 }, columnsOn: true, look: null, lookOn: true, size: null, sizeOn: true })
 
 describe('photoRemoveDrawn', () => {
-  it('draws the press for a dev on a person with a photo, and for no other role', () => {
-    expect(photoRemoveDrawn('dev', { photoPath: 'u1/photo-1.jpg' })).toBe(true)
-    for (const role of ['master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers', '', null, undefined]) expect(photoRemoveDrawn(role, { photoPath: 'u1/photo-1.jpg' })).toBe(false)
+  it('draws the press on any person with a photo: whoever reads the card reads it, as they read Change the photo', () => {
+    expect(photoRemoveDrawn({ photoPath: 'u1/photo-1.jpg' })).toBe(true)
+    // A real person's card and a test person's read the same (v2.8565 drew it for a dev on a test person alone).
+    expect(photoRemoveDrawn(load('Marisol'))).toBe(true)
+    expect(photoRemoveDrawn(load('ZZ Test Learner'))).toBe(true)
   })
   it('draws nothing where there is no photo', () => {
-    expect(photoRemoveDrawn('dev', { photoPath: null })).toBe(false)
-    expect(photoRemoveDrawn('dev', { photoPath: '' })).toBe(false)
+    expect(photoRemoveDrawn({ photoPath: null })).toBe(false)
+    expect(photoRemoveDrawn({ photoPath: '' })).toBe(false)
   })
 })
 
 describe('photoRemoveProblem', () => {
-  it('lets a test person’s photo go: the account’s name or the name on the card starts with ZZ', () => {
-    expect(photoRemoveProblem(person('ZZ Test Learner'))).toBe('')
-    expect(photoRemoveProblem(person('Learner', 'zz test learner'))).toBe('')
-  })
-  it('refuses a real person’s photo', () => {
-    expect(photoRemoveProblem(person('Marisol', 'Marisol Vega'))).toBe('Only a test person’s photo can be removed. Their name must start with ZZ.')
-    expect(photoRemoveProblem(person(null, null))).toMatch(/must start with ZZ/)
-    expect(photoRemoveProblem(person('Test ZZ'))).toMatch(/must start with ZZ/)
+  it('lets any person’s photo go', () => {
+    expect(photoRemoveProblem(load('ZZ Test Learner'))).toBe('')
+    expect(photoRemoveProblem(load('Marisol'))).toBe('')
+    expect(photoRemoveProblem(load(null))).toBe('')
   })
   it('refuses where there is no photo', () => {
-    expect(photoRemoveProblem(person('ZZ Test Learner', null, null))).toBe('There is no photo to remove.')
+    expect(photoRemoveProblem(load('Marisol', null))).toBe('There is no photo to remove.')
   })
 })
 
 describe('photoRemoveConfirm', () => {
-  it('names the act on the button, never OK, and the person in the title', () => {
-    expect(photoRemoveConfirm('ZZ Test Learner')).toEqual({
-      title: 'Remove the photo of ZZ Test Learner?',
-      message: 'The photo comes off the card and the footer, and its file is deleted. It cannot be brought back.',
+  it('names the act on the button, never OK, the person in the title, and what the team’s cards do', () => {
+    expect(photoRemoveConfirm('Marisol Vega')).toEqual({
+      title: 'Remove the photo of Marisol Vega?',
+      message: 'The photo comes off the card and the footer, and its file is deleted. It cannot be brought back. The team’s cards leave this person out until a new photo is saved.',
       confirmLabel: 'Remove the photo',
     })
     expect(photoRemoveConfirm('  ').title).toBe('Remove the photo?')
   })
 })
 
-describe('removeTestPersonPhoto', () => {
+describe('removePersonPhoto', () => {
   it('reads the person again, then removes the photo that read names', async () => {
-    const io = { load: vi.fn(async () => load('ZZ Test Learner', 'u1/photo-9.jpg')), removePhoto: vi.fn(async () => ({ fileGone: true })) }
-    expect(await removeTestPersonPhoto(io, 'u1')).toEqual({ fileGone: true })
+    const io = { load: vi.fn(async () => load('Marisol', 'u1/photo-9.jpg')), removePhoto: vi.fn(async () => ({ fileGone: true })) }
+    expect(await removePersonPhoto(io, 'u1')).toEqual({ fileGone: true })
     expect(io.load).toHaveBeenCalledWith('u1')
     expect(io.removePhoto).toHaveBeenCalledWith('u1', 'u1/photo-9.jpg')
   })
-  it('refuses a real person on the fresh read, and writes nothing', async () => {
-    const io = { load: vi.fn(async () => load('Marisol')), removePhoto: vi.fn(async () => ({ fileGone: true })) }
-    await expect(removeTestPersonPhoto(io, 'u1')).rejects.toThrow('Only a test person’s photo can be removed. Their name must start with ZZ.')
+  it('refuses when the photo is already gone, and writes nothing', async () => {
+    const io = { load: vi.fn(async () => load('Marisol', null)), removePhoto: vi.fn(async () => ({ fileGone: true })) }
+    await expect(removePersonPhoto(io, 'u1')).rejects.toThrow('There is no photo to remove.')
     expect(io.removePhoto).not.toHaveBeenCalled()
   })
-  it('refuses when the photo is already gone, and writes nothing', async () => {
-    const io = { load: vi.fn(async () => load('ZZ Test Learner', null)), removePhoto: vi.fn(async () => ({ fileGone: true })) }
-    await expect(removeTestPersonPhoto(io, 'u1')).rejects.toThrow('There is no photo to remove.')
-    expect(io.removePhoto).not.toHaveBeenCalled()
+  it('hands on the database’s refusal, for a person who may not change this account', async () => {
+    const refusal = 'The photo was not removed. You may not have leave to change this account, or the photo was changed meanwhile.'
+    const io = { load: vi.fn(async () => load('Marisol')), removePhoto: vi.fn(async () => Promise.reject(new Error(refusal))) }
+    await expect(removePersonPhoto(io, 'u1')).rejects.toThrow(refusal)
   })
   it('writes nothing when the read fails', async () => {
     const io = {
@@ -69,7 +66,7 @@ describe('removeTestPersonPhoto', () => {
       }),
       removePhoto: vi.fn(async () => ({ fileGone: true })),
     }
-    await expect(removeTestPersonPhoto(io, 'u1')).rejects.toThrow('The card could not be read.')
+    await expect(removePersonPhoto(io, 'u1')).rejects.toThrow('The card could not be read.')
     expect(io.removePhoto).not.toHaveBeenCalled()
   })
 })

@@ -25,7 +25,7 @@ Press {{button:blue|Save the photo}}.
 
 The photo is kept whole. You can open the sheet again and move it at any time. The office can see your photo. Nobody else can until you send a footer.
 
-You can change your photo at any time. Only the developer can remove a photo, and only a test person's.
+You can change your photo at any time. To take it off, press **Remove the photo…** under **Change the photo**. The app asks first. The photo comes off your card and your footer, and it cannot be brought back. The office can remove a teammate's photo the same way. The team's cards leave a person out until they have a photo again.
 
 ## Check your words
 
