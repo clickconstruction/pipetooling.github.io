@@ -37,6 +37,18 @@ export function gcTradeEmailRefusal(key: string): string {
 }
 
 /**
+ * A refusal's words with the mail service's own reason, when the function passed one on (punch list #205). The live
+ * walk of 2026-11-24 pressed Word to every trade twice and read *Try again in a minute* both times, while the service
+ * had said why and the screen dropped it. Only a send the service refused (`sendFailed`) carries such a reason. The
+ * reason is one line, cut at 200 characters.
+ */
+export function gcTradeEmailRefusalWords(answer: { key: string; detail?: string | null }): string {
+  const said = (answer.detail ?? '').replace(/\s+/g, ' ').trim()
+  if (answer.key !== 'sendFailed' || !said) return gcTradeEmailRefusal(answer.key)
+  return `The email did not go out. The mail service said: ${said.length > 200 ? `${said.slice(0, 199)}…` : said}`
+}
+
+/**
  * An invitation's lines as the email carries them (`inviteMessage`): its words without the greeting, the lines the quote
  * should cover as a list, then what it leaves out under its title. The Ask window sends these; the sample shows them.
  */
