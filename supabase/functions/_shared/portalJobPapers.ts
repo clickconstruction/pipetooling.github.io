@@ -4,6 +4,10 @@
  * the people who can open the job have signed, and each sub business with its day. No worker is named, unless the
  * office set the job to show every signer by name. The office can also set it to show the count alone.
  *
+ * Since step 6 a GC may propose a stricter setting. The page gets what its sliders are drawn from, `propose`: the
+ * list's names and plain words, the levels, the notice and the job's own picks. A settings list holds no clause, and
+ * the lines the office reads beside a choice are left out here. It also gets the last proposal with its state.
+ *
  * The database answers it whole (`job_papers_gc_page`, the service key only). This file shapes that answer for the
  * page, reads it back on the page, and asks for it. It imports nothing, so the app and its tests read the same file
  * (`src/lib/portal/gcJobPapers.ts`).
@@ -45,6 +49,39 @@ export interface GcPaperSigner {
   signedOn: string | null
 }
 
+/** Where a GC's proposal stands. Overtaken: a newer one, a change of the paper's settings, or the paper came off. */
+export type GcProposalState = 'waiting' | 'taken' | 'declined' | 'overtaken'
+export const GC_PROPOSAL_STATES: readonly GcProposalState[] = ['waiting', 'taken', 'declined', 'overtaken']
+
+/** The last proposal the GC made on this paper: what it asked for, who typed their name, and the office's answer. */
+export interface GcPaperProposal {
+  state: GcProposalState
+  byName: string
+  /** Instants, as the database wrote them. The page words each as the company's day. */
+  proposedAt: string | null
+  decidedAt: string | null
+  /** The office's reason for a decline. */
+  why: string | null
+  picks: Record<string, string>
+}
+
+/** What the GC's sliders are drawn from: the settings list as their page gets it, and the job's picks and basis. */
+export interface GcPaperPropose {
+  def: Record<string, unknown>
+  picks: Record<string, string>
+  basis: string | null
+}
+
+/** What a GC's page sends to propose: the paper, a choice for every topic, a typed name and the notice's tick. */
+export interface GcProposalAsk {
+  requiredPaperId: string
+  picks: Record<string, string>
+  name: string
+  noticeRead: boolean
+}
+
+export const GC_PROPOSAL_NAME_MAX = 120
+
 export interface GcJobPaper {
   id: string
   name: string
@@ -62,6 +99,10 @@ export interface GcJobPaper {
   businesses: GcPaperBusiness[]
   /** Filled only under 'names'. */
   signers: GcPaperSigner[]
+  /** What a proposal is drawn from, or null when the list did not come with the paper. */
+  propose: GcPaperPropose | null
+  /** The last proposal on this paper, or null when there is none. */
+  proposal: GcPaperProposal | null
 }
 
 export interface GcJobPapers {
@@ -76,6 +117,82 @@ const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
 const text = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
 const count = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0)
 const day = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null)
+
+const instant = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v) ? v : null)
+const KEY = /^[a-z][a-z0-9_]{0,39}$/
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** One choice a setting, by key: only keys and choices that are keys, and at most forty of them. */
+function picksFrom(v: unknown): Record<string, string> {
+  const out: Record<string, string> = {}
+  const b = bag(v)
+  if (!b) return out
+  for (const [k, x] of Object.entries(b).slice(0, 40)) if (KEY.test(k) && typeof x === 'string' && KEY.test(x)) out[k] = x
+  return out
+}
+
+const linesFrom = (v: unknown): string[] => list(v).flatMap((x) => (text(x) ? [text(x)] : []))
+
+/**
+ * A settings list as a GC's page gets it: each topic with its choices from loosest to strictest, as a name and the
+ * plain words the summary says, the levels with their picks, and the notice. What the office reads beside a choice
+ * (what puts a person in breach, what the site must have), the blanks, the site note and the Spanish are left out.
+ * Null when it is no list at all. Reading the page's own copy back gives the same list.
+ */
+export function gcProposeDef(raw: unknown): Record<string, unknown> | null {
+  const d = bag(raw)
+  if (!d) return null
+  const settings = list(d.settings).flatMap((x) => {
+    const s = bag(x)
+    const key = text(s?.key)
+    if (!s || !key) return []
+    const choices = list(s.choices).flatMap((y) => {
+      const c = bag(y)
+      const ckey = text(c?.key)
+      return c && ckey ? [{ key: ckey, label: text(c.label), says: text(c.says), ...(c.out === true ? { out: true } : {}) }] : []
+    })
+    return [{ key, label: text(s.label), choices }]
+  })
+  if (settings.length === 0) return null
+  const levels = list(d.levels).flatMap((x) => {
+    const l = bag(x)
+    const key = text(l?.key)
+    return l && key ? [{ key, label: text(l.label), alignedWith: text(l.alignedWith), picks: picksFrom(l.picks) }] : []
+  })
+  const notice = bag(d.notice)
+  const noticeLines = linesFrom(notice?.lines)
+  return { settings, levels, ...(notice && noticeLines.length > 0 ? { notice: { title: text(notice.title), tick: text(notice.tick), lines: noticeLines } } : {}) }
+}
+
+function proposeFrom(def: unknown, picks: unknown, basis: unknown): GcPaperPropose | null {
+  const trimmed = gcProposeDef(def)
+  return trimmed ? { def: trimmed, picks: picksFrom(picks), basis: text(basis) || null } : null
+}
+
+function proposalFrom(v: unknown, sql: boolean): GcPaperProposal | null {
+  const x = bag(v)
+  const state = GC_PROPOSAL_STATES.find((s) => s === text(x?.state))
+  if (!x || !state) return null
+  return {
+    state,
+    byName: text(sql ? x.by_name : x.byName),
+    proposedAt: instant(sql ? x.proposed_at : x.proposedAt),
+    decidedAt: instant(sql ? x.decided_at : x.decidedAt),
+    why: text(x.why) || null,
+    picks: picksFrom(sql ? x.settings : x.picks),
+  }
+}
+
+/**
+ * What a GC's page sent to propose, read defensively, or null when it is not a proposal at all. The database decides
+ * every rule after this: whose job it is, that no topic loosens and one tightens, the name and the notice's tick.
+ */
+export function gcProposalAsk(body: unknown): GcProposalAsk | null {
+  const b = bag(body)
+  const requiredPaperId = text(b?.requiredPaperId)
+  if (!b || !UUID.test(requiredPaperId) || !bag(b.picks)) return null
+  return { requiredPaperId, picks: picksFrom(b.picks), name: text(b.name).slice(0, GC_PROPOSAL_NAME_MAX), noticeRead: b.noticeRead === true }
+}
 
 function saidFrom(v: unknown): GcPaperSaid[] {
   return list(v).flatMap((x) => {
@@ -105,7 +222,7 @@ function signersFrom(v: unknown, dayKey: 'signed_on' | 'signedOn'): GcPaperSigne
   })
 }
 
-function paperFrom(x: unknown, keys: { name: string; revision: string; aligned: string; dayKey: 'signed_on' | 'signedOn' }): GcJobPaper | null {
+function paperFrom(x: unknown, keys: { name: string; revision: string; aligned: string; dayKey: 'signed_on' | 'signedOn'; sql: boolean }): GcJobPaper | null {
   const p = bag(x)
   const id = text(p?.id)
   const name = text(p?.[keys.name])
@@ -126,6 +243,9 @@ function paperFrom(x: unknown, keys: { name: string; revision: string; aligned: 
     view,
     businesses: view === 'count' ? [] : businessesFrom(p.businesses, keys.dayKey),
     signers: view === 'names' ? signersFrom(p.signers, keys.dayKey) : [],
+    // From the database the list, the picks and the basis sit on the paper. On the page they sit under `propose`.
+    propose: keys.sql ? proposeFrom(p.def, p.picks, p.basis) : proposeFrom(bag(p.propose)?.def, bag(p.propose)?.picks, bag(p.propose)?.basis),
+    proposal: proposalFrom(p.proposal, keys.sql),
   }
 }
 
@@ -140,7 +260,7 @@ export function gcJobPapersFromSql(raw: unknown, gcJobs: ReadonlyArray<{ id: str
     const jobId = text(j?.job_id)
     if (!j || !jobId) continue
     const papers = list(j.papers).flatMap((p) => {
-      const paper = paperFrom(p, { name: 'paper_name', revision: 'settings_revision', aligned: 'aligned_with', dayKey: 'signed_on' })
+      const paper = paperFrom(p, { name: 'paper_name', revision: 'settings_revision', aligned: 'aligned_with', dayKey: 'signed_on', sql: true })
       return paper ? [paper] : []
     })
     if (papers.length > 0) byJob.set(jobId, papers)
@@ -158,7 +278,7 @@ export function parseGcJobPapers(value: unknown): GcJobPapers[] {
     const jobId = text(j?.jobId)
     if (!j || !jobId) return []
     const papers = list(j.papers).flatMap((p) => {
-      const paper = paperFrom(p, { name: 'name', revision: 'settingsRevision', aligned: 'alignedWith', dayKey: 'signedOn' })
+      const paper = paperFrom(p, { name: 'name', revision: 'settingsRevision', aligned: 'alignedWith', dayKey: 'signedOn', sql: false })
       return paper ? [paper] : []
     })
     return papers.length > 0 ? [{ jobId, jobLabel: text(j.jobLabel), papers }] : []

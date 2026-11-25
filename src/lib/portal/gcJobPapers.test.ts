@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GC_PAPER_SAMPLE, gcJobPapersFromSql, gcJobPapersOrNone, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSampleUrl, gcPaperSigned, gcPaperSigner, gcPaperViewOf, parseGcJobPapers } from './gcJobPapers'
+import { GC_PAPER_SAMPLE, gcJobPapersFromSql, gcProposalAsk, gcProposeDef, gcJobPapersOrNone, gcPaperBusiness, gcPaperFine, gcPaperGate, gcPaperLevel, gcPaperRevisionLine, gcPaperSampleUrl, gcPaperSigned, gcPaperSigner, gcPaperViewOf, parseGcJobPapers } from './gcJobPapers'
 
 // What the database answers for one job, with made-up words.
 const SQL = [
@@ -55,6 +55,8 @@ describe('gcJobPapers · what a GC reads about a job’s papers', () => {
               { name: 'Sam Sole', people: 1, signed: 0, signedOn: null },
             ],
             signers: [],
+            propose: null,
+            proposal: null,
           },
         ],
       },
@@ -183,3 +185,77 @@ describe('gcJobPapers · what a GC reads about a job’s papers', () => {
     expect(await gcJobPapersOrNone(refused, GC_JOBS)).toEqual([])
   })
 })
+
+// What the database holds for a settings list, with made-up words: more than a GC's page gets.
+const BOOK_DEF = {
+  settings: [
+    {
+      key: 'photos',
+      label: 'Photos and video',
+      labelEs: 'Fotos',
+      choices: [
+        { key: 'off', label: 'Off', says: 'Placeholder: no photo rule.', out: true },
+        { key: 'standard', label: 'Standard', says: 'Placeholder: ask first.', breach: ['Placeholder breach line.'], site: ['Placeholder site line.'], fills: { party: 'Placeholder' } },
+      ],
+    },
+    { label: 'No key, so it is dropped', choices: [] },
+  ],
+  fields: [{ key: 'party', label: 'Party' }],
+  levels: [{ key: 'standard', label: 'Standard', alignedWith: 'Aligned with a placeholder place', picks: { photos: 'standard', 'Bad Key': 'x' } }],
+  notice: { title: 'Before you start', tick: 'I have read this.', lines: ['Placeholder notice line.', '  '] },
+  siteNote: { title: 'Match the paper to the site', lines: ['Placeholder site note.'] },
+}
+
+describe('gcJobPapers · what a GC’s proposal is drawn from, and what their page sends', () => {
+  it('hands the page a list with names and plain words only', () => {
+    const trimmed = gcProposeDef(BOOK_DEF)
+    expect(trimmed).toEqual({
+      settings: [
+        {
+          key: 'photos',
+          label: 'Photos and video',
+          choices: [
+            { key: 'off', label: 'Off', says: 'Placeholder: no photo rule.', out: true },
+            { key: 'standard', label: 'Standard', says: 'Placeholder: ask first.' },
+          ],
+        },
+      ],
+      levels: [{ key: 'standard', label: 'Standard', alignedWith: 'Aligned with a placeholder place', picks: { photos: 'standard' } }],
+      notice: { title: 'Before you start', tick: 'I have read this.', lines: ['Placeholder notice line.'] },
+    })
+    // What the office reads beside a choice never leaves.
+    expect(JSON.stringify(trimmed)).not.toMatch(/breach|site|fills|party|Fotos/i)
+    // Reading the page's own copy back gives the same list, and nothing that is no list gives none.
+    expect(gcProposeDef(trimmed)).toEqual(trimmed)
+    expect(gcProposeDef(null)).toBeNull()
+    expect(gcProposeDef({ settings: [] })).toBeNull()
+    expect(gcProposeDef({ settings: [{ key: 'a', label: 'A', choices: [] }] })).toEqual({ settings: [{ key: 'a', label: 'A', choices: [] }], levels: [] })
+  })
+
+  it('shapes the list, the picks and the last proposal from the database, and reads them back on the page', () => {
+    const sql = [{ job_id: 'job-1', papers: [{ id: 'row-1', paper_name: 'Sample paper', settings_revision: 1, level: null, said: [], signed: 0, total: 2, businesses: [], picks: { photos: 'standard' }, basis: 'standard', def: BOOK_DEF, proposal: { state: 'declined', by_name: ' Greta Sample ', proposed_at: '2026-11-25T02:00:00.123+00:00', decided_at: '2026-11-25T03:00:00+00:00', why: 'Placeholder reason.', settings: { photos: 'standard' } } }] }]
+    const shaped = gcJobPapersFromSql(sql, [{ id: 'job-1', label: 'J100' }])
+    const paper = shaped[0]!.papers[0]!
+    expect(paper.propose).toEqual({ def: gcProposeDef(BOOK_DEF), picks: { photos: 'standard' }, basis: 'standard' })
+    expect(paper.proposal).toEqual({ state: 'declined', byName: 'Greta Sample', proposedAt: '2026-11-25T02:00:00.123+00:00', decidedAt: '2026-11-25T03:00:00+00:00', why: 'Placeholder reason.', picks: { photos: 'standard' } })
+    // The page reads its own keys back to the same paper.
+    expect(parseGcJobPapers(JSON.parse(JSON.stringify(shaped)))).toEqual(shaped)
+    // A paper whose list did not come has nothing to propose from, and a day that is no instant is no day.
+    const bare = gcJobPapersFromSql([{ job_id: 'job-1', papers: [{ id: 'row-1', paper_name: 'Sample paper', settings_revision: 1, signed: 0, total: 1, proposal: { state: 'waiting', by_name: 'G', proposed_at: 'yesterday', settings: null } }] }], [{ id: 'job-1', label: 'J100' }])[0]!.papers[0]!
+    expect(bare.propose).toBeNull()
+    expect(bare.proposal).toEqual({ state: 'waiting', byName: 'G', proposedAt: null, decidedAt: null, why: null, picks: {} })
+  })
+
+  it('reads what a page sends to propose, and refuses what is no proposal', () => {
+    const id = '11111111-2222-3333-4444-555555555555'
+    expect(gcProposalAsk({ requiredPaperId: id, picks: { photos: 'strict', 'Bad Key': 'x', term: 7 }, name: '  Greta Sample  ', noticeRead: true })).toEqual({ requiredPaperId: id, picks: { photos: 'strict' }, name: 'Greta Sample', noticeRead: true })
+    expect(gcProposalAsk({ requiredPaperId: id, picks: {}, name: 'x'.repeat(300) })).toEqual({ requiredPaperId: id, picks: {}, name: 'x'.repeat(120), noticeRead: false })
+    expect(gcProposalAsk({ requiredPaperId: 'row-1', picks: {} })).toBeNull()
+    expect(gcProposalAsk({ requiredPaperId: id })).toBeNull()
+    expect(gcProposalAsk({ requiredPaperId: id, picks: ['photos'] })).toBeNull()
+    expect(gcProposalAsk(null)).toBeNull()
+    // A tick is true only when it is the value true.
+    expect(gcProposalAsk({ requiredPaperId: id, picks: {}, noticeRead: 'yes' })!.noticeRead).toBe(false)
+  })
+})
+
