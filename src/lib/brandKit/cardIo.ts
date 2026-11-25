@@ -193,7 +193,7 @@ async function readTeam(db: SupabaseClient): Promise<Record<string, unknown>[]> 
   return []
 }
 
-/** Everyone on the company's card: every login that is not archived, not a sample, a twin or a walk tester, and not a subcontractor. */
+/** Everyone on the company's card: every login that is not archived, not a sample, a twin or a walk tester, and not a subcontractor. `teamCards` then leaves out a ZZ test person by name. */
 export function supabaseTeamCardIo(client: unknown = supabase): TeamCardIo {
   const db = client as SupabaseClient
   const one = supabaseCardIo(client)

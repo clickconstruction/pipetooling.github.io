@@ -12,11 +12,14 @@ import type { BillHandWay } from '../../lib/billing/billHandWays'
 import type { BillPaidState } from '../../lib/billing/billsPaid'
 import { BillsSentLedger } from './BillsSentLedger'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { setDevShowsZzTestJobs } from '../../lib/jobs/zzTestJobSwitch'
 
 const io = vi.hoisted(() => ({ paidWeek: null as unknown, paidAsks: [] as Array<{ from: string; to: string }>, data: null as unknown, asks: [] as Array<{ limit: number }>, opened: [] as string[], saved: [] as Array<{ name: string; type: string }>, filed: [] as unknown[], ways: null as unknown, wayCalls: [] as unknown[][], wayRefuse: null as null | Error, refuse: null as null | Error, refuseBill: null as null | string, fail: null as null | Error, phone: false }))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => io.phone }))
+// Who is signed in: the office's master, unless a test says a dev.
+const who = vi.hoisted(() => ({ role: 'master_technician' }))
 vi.mock('../../hooks/useAuth', () => {
-  const auth = () => ({ role: 'master_technician', user: { id: 'u1' }, profileName: 'Priya' })
+  const auth = () => ({ role: who.role, user: { id: 'u1' }, profileName: 'Priya' })
   return { useAuth: auth, useOptionalAuth: auth }
 })
 vi.mock('../../lib/billing/billsSentIo', () => ({
@@ -117,8 +120,12 @@ beforeEach(() => {
   io.refuseBill = null
   io.fail = null
   io.phone = false
+  who.role = 'master_technician'
 })
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  setDevShowsZzTestJobs(false)
+})
 
 describe('BillsSentLedger', () => {
   it('draws a line per send with the address and the amount, and opens the copy', async () => {
@@ -635,6 +642,30 @@ describe('BillsSentLedger', () => {
     expect((screen.getByRole('button', { name: 'Record how it went' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
+  it('stands every press of the list a thumb tall on a phone: the chips, Edit list, the arrows and the word presses', async () => {
+    io.phone = true
+    io.ways = officeList()
+    io.data = { ...data([copy({})]), unsent: [{ billId: GAP_BILL, jobId: JOB, amount: 2140, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }] }
+    renderWithProviders(<BillsSentLedger />)
+    // On a phone the box is one folded line until it is pressed.
+    fireEvent.click(await screen.findByTestId('bills-sent-gaps-fold'))
+    await screen.findByTestId('bills-sent-gap')
+    fireEvent.click(screen.getByRole('button', { name: 'Say how it went…' }))
+    await screen.findByRole('button', { name: '＋ Add a way' })
+    const picker = screen.getByRole('group', { name: 'How the bill went' })
+    const tall = (el: HTMLElement) => el.style.minHeight || el.style.height
+    // The chips, ＋ Add a way and Edit list: none is under 44 px.
+    expect(within(picker).getAllByRole('button').map(tall)).toEqual(within(picker).getAllByRole('button').map(() => '44px'))
+    fireEvent.click(within(picker).getByRole('button', { name: 'Edit list' }))
+    const win = await screen.findByTestId('bill-hand-ways-window')
+    for (const name of ['Rename Handed over', 'Take Handed over off the list', 'Move Handed over up', 'Move Handed over down']) {
+      expect(tall(within(win).getByRole('button', { name }))).toBe('44px')
+    }
+    // A short word press is a thumb wide too.
+    expect(within(win).getByRole('button', { name: 'Rename Handed over' }).style.minWidth).toBe('44px')
+    expect(within(win).getByRole('button', { name: 'Move Handed over up' }).style.width).toBe('44px')
+  })
+
   it('edits the list in its window: rename, move, take off, bring back, and the last way stays', async () => {
     io.ways = officeList()
     const picker = await openForm()
@@ -876,5 +907,41 @@ describe('BillsSentLedger', () => {
     expect(screen.queryByTestId('bills-sent-tile-unpaid')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Not paid' }))
     await waitFor(() => expect(screen.queryByTestId('bills-sent-line')).toBeNull())
+  })
+  it('shows a dev who shows ZZ test jobs the test bills with no send, in a box of their own and in no total', async () => {
+    const TEST_BILL = 'aaaaaaaa-7777-4777-8777-777777777771'
+    const TEST_JOB = 'aaaaaaaa-9999-4999-8999-999999999997'
+    const base = data([])
+    io.data = {
+      ...base,
+      jobs: new Map([...base.jobs, [TEST_JOB, { id: TEST_JOB, hcp_number: '1501', click_number: null, job_name: 'ZZ Test sink', job_address: '', customer_name: 'ZZ Test Customer' }]]),
+      unsent: [{ billId: TEST_BILL, jobId: TEST_JOB, amount: 75, status: 'billed', billedAtIso: '2026-11-09T21:26:00.000Z' }],
+    }
+    // The office never sees it, whatever this browser's switch says.
+    setDevShowsZzTestJobs(true)
+    const office = renderWithProviders(<BillsSentLedger />, { route: '/bills-sent' })
+    await screen.findByTestId('bills-sent-empty')
+    expect(screen.queryByTestId('bills-sent-test-gaps')).toBeNull()
+    office.unmount()
+
+    // A dev who hides ZZ test jobs sees none either.
+    who.role = 'dev'
+    setDevShowsZzTestJobs(false)
+    const hidden = renderWithProviders(<BillsSentLedger />, { route: '/bills-sent' })
+    await screen.findByTestId('bills-sent-empty')
+    expect(screen.queryByTestId('bills-sent-test-gaps')).toBeNull()
+    hidden.unmount()
+
+    // A dev who shows them: the box, its own words, and the form one press away. The yellow box and the tile stay out of it.
+    setDevShowsZzTestJobs(true)
+    renderWithProviders(<BillsSentLedger />, { route: '/bills-sent' })
+    const box = await screen.findByTestId('bills-sent-test-gaps')
+    expect(box.textContent).toContain('1 test bill has no send on record')
+    expect(box.textContent).toContain('You see these because you show ZZ test jobs. They are in no total.')
+    expect(within(box).getByTestId('bills-sent-gap').textContent).toContain('ZZ Test Customer')
+    expect(screen.queryByTestId('bills-sent-gaps')).toBeNull()
+    expect(screen.queryByTestId('bills-sent-tile-unpaid')).toBeNull()
+    fireEvent.click(within(box).getByRole('button', { name: 'Say how it went…' }))
+    expect(await within(box).findByRole('button', { name: 'Record how it went' })).toBeTruthy()
   })
 })

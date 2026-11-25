@@ -2,7 +2,7 @@
 name: "Customer reviews: one link that is theirs, and the ask after a paid job"
 number: 185
 group: close
-status: "shipped 2026-10-27 as four PRs: v2.5934 the review page (#6228 closed, its commits rode in #6263's squash), v2.5943 the morning offer (#6263), v2.5946 the office's view (#6268), v2.5948 the portal's Your jobs (#6270); the fix v2.6007 (#6360, 2026-10-28). Read against main and prod 2026-11-07: both migrations in the ledger, the functions run main's code. Walked live 2026-11-08 in the owner's Chrome: the Reviews block reads with no Google link and no answers this month, the rating page renders on the sample token (stars, the words box, the Google ask), and a paid ZZ test job's Review asked step was brought to now, where the app sends the ask itself the next morning. Not yet seen: a real text on the owner's phone, a rating that lands, the words on the job. The Google link was saved 2026-11-08 and the dev's look of 2026-11-09 read it on the Reviews block and the sample page drawing as the card says. Left: the rating from his phone, the owner's look"
+status: "shipped 2026-10-27 as four PRs: v2.5934 the review page (#6228 closed, its commits rode in #6263's squash), v2.5943 the morning offer (#6263), v2.5946 the office's view (#6268), v2.5948 the portal's Your jobs (#6270); the fix v2.6007 (#6360, 2026-10-28). Read against main and prod 2026-11-07: both migrations in the ledger, the functions run main's code. Walked live 2026-11-08 in the owner's Chrome: the Reviews block reads with no Google link and no answers this month, the rating page renders on the sample token (stars, the words box, the Google ask), and a paid ZZ test job's Review asked step was brought to now, where the app sends the ask itself the next morning. Not yet seen: a real text on the owner's phone, a rating that lands, the words on the job. The Google link was saved 2026-11-08 and the dev's look of 2026-11-09 read it on the Reviews block and the sample page drawing as the card says. Left: the rating from his phone, the owner's look · read on prod 2026-11-24: no ask ever went, because the step is on Offers and each morning's offer was put away, the last one with Stop; written out under *Why no ask went*"
 summary: >
   The customer's side, lens 9 of the 2026-10-26 look at the whole app. Today a homeowner gets
   up to four different links over one job (the estimate's accept link, Stripe's Pay now, the
@@ -15,9 +15,9 @@ summary: >
   put it on Google; at fewer, "what could we have done better" and a Needs you line so someone
   calls. Google's policy forbids asking only the happy customers to post, so the Google ask is
   the owner's call, with the recommendation to show it to everyone after the direct review.
-next: The Google review link is set (2026-11-08, the owner's share link saved on Settings → What customers see → Reviews from his Chrome, read back as *Saved. The review page uses it now.*; the dev's look of 2026-11-09 read it in the field and the sample page drew as the card says, under *Where it stands*). The review text for the paid ZZ test job goes to the owner's own number from the 9:00 AM run on 2026-11-09 (the step is on Sends and reads now since the walk); he taps the stars, writes a line, and reads it on the job window's Review line, the Reviews block and the thread; then the owner's look and delete the folder. Nothing is left to push or deploy.
+next: Put the Review step back on the paid ZZ test job, where it was stopped on 2026-11-24. Check that the ZZ test customer's Messages number is the owner's own. The next 9:00 AM run offers the ask on Today's sends. The owner, or a session on his yes, presses Send on that one row. He taps the stars and writes a line, then reads it on the job window's Review line, the Reviews block and the thread. Then the owner's look, and delete the folder.
 size: M, as four PRs after this one, S M S M
-blocker: the owner's look at the live page and the rating from his phone; the review link is set since 2026-11-08 and the dev's look is done. Nothing left but the owner's look.
+blocker: one real text to the owner's own phone, which needs his yes, and nobody putting the offer away before it is sent.
 ver: v2.5934 · 5943 · 5946 · 5948 · 6007
 opinion: built as recommended on the one-tap rating (v2.5876), so the customer gets one ask; the folder closes on the owner's look
 mockup: to-dos/customer-reviews/mockup.html
@@ -417,3 +417,33 @@ you. Your answer is saved. · Tap a different star any time to change your answe
 find us.* with **Post it on Google** (the sample's own `#sample` link; a real page's button carries the saved link, which
 `job-rating` reads from the key at the customer's load). Nothing was saved. Screenshots `185-1` to `185-3` in the dev look's
 scratchpad. Left: the text from the 9:00 AM run of 2026-11-09 to the owner's number, his taps, and the owner's look.
+
+## Why no ask went (read on prod, 2026-11-24)
+
+A look on 2026-11-24 found the card waiting on a rating that was never asked for. The job holds no Review line and the Reviews block reads 0 asked and 0 answered. The rows and the code were read the same day. Nothing was written and nothing was sent.
+
+**The cause.** The Review step is on **Offers**, not on Sends. This card's `next` line said Sends, and that was wrong.
+
+- On Offers the 9:00 AM run sends nothing. It puts a row on the Dashboard's **Today's sends**, and a person presses **Send**.
+- The run offered the ask for the paid ZZ test job on nine mornings, from 2026-11-09 to 2026-11-24.
+- Eight of those offers were put away as *not this one* by someone in the office. The ninth was put away with **Stop** on 2026-11-24, which stops the step for that job, so the run will not offer it again.
+- An ask is counted when its link is made, at the press of **Send**. No link was ever made, so *0 asked* is right.
+
+**What it was not.**
+
+- Not the phone. The job window's *no phone* is the job's own phone box, which is empty. The run reads the customer's Messages number, which is on file and not opted out.
+- Not the job's state. The job is paid and its bill is paid.
+- Not a rule for test rows. Nothing in the run, the send or the rating page holds back a ZZ test job.
+
+**What the look needs,** in order. Steps 1 and 4 write to prod, and step 4 sends a real text.
+
+1. **Put it back** on the stopped Review step of that ZZ test job.
+2. Check that the ZZ test customer's Messages number is the owner's own. It was not read.
+3. Wait for the next 9:00 AM run. The offer comes back by itself.
+4. Dashboard → **Today's sends** → **Send** on that row. One text goes to that number. Nobody puts the row away first.
+5. The owner opens the link, taps the stars and writes a line.
+6. Read the job window's Review line, the Reviews block and the thread.
+
+Turning the step to Sends would do it with no press. It would also text every real customer with a paid job, so it is not the way to try this.
+
+**Not known.** Why the office put the offers away, and whether the step was ever on Sends.

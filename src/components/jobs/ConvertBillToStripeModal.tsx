@@ -186,6 +186,7 @@ export function ConvertBillToStripeModal({
             amountLabel={`$${formatCurrency(amount)}`}
             dueDateYmd={dueDateYmd}
             memo={memo}
+            serviceAddress={job.job_address}
             localLineDescription=""
             stripePreview={preview}
             stripePreviewLoading={previewLoading}

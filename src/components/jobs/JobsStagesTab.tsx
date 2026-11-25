@@ -4581,7 +4581,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setCombineSeparateModalOpen(false)}
         onAfterSuccess={() => void runJobsStagesSerializedPipeline(() => Promise.resolve(loadJobs()))}
       />
-      {lookAlikesOpen ? <AddressLookAlikesWindow onClose={() => setLookAlikesOpen(false)} /> : null}
+      {lookAlikesOpen ? <AddressLookAlikesWindow onClose={() => setLookAlikesOpen(false)} onOpenJob={(jobId) => tryOpenEditJob(jobId, { focusRow: 'address' })} /> : null}
       <BilledBillViewModal
         invoice={viewBillInvoice}
         onClose={() => {

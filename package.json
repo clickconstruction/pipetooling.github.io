@@ -136,6 +136,7 @@
     "test:pg:lien-closed-days": "bash scripts/pgtest-lien-closed-days.sh",
     "test:pg:lien-run-left-out": "bash scripts/pgtest-lien-run-left-out.sh",
     "test:pg:customer-sends-trail": "bash scripts/pgtest-customer-sends-trail.sh",
+    "test:pg:global-reload-dev-only": "bash scripts/pgtest-global-reload-dev-only.sh",
     "test:pg:lien-closed-paid-activity": "bash scripts/pgtest-lien-closed-paid-activity.sh",
     "test:pg:sub-sheet-stamps": "bash scripts/pgtest-sub-sheet-stamps.sh",
     "test:pg:ar-stripe-cases": "bash scripts/pgtest-ar-stripe-cases.sh",

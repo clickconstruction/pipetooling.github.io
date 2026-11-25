@@ -10,7 +10,8 @@
  * sent again: a reminder makes a new one that works for 14 days, and that ends the link before it. The email says so.
  *
  * It does what is ready: a paper that cannot be reminded is held with its reason and its reminders stop, an email that
- * fails is named and tried again the next hour, and the rest still go.
+ * fails is named and tried again the next hour, and the rest still go. A job's paper built from settings has no words
+ * of its own: the job's row is asked whether it carries settings, as the send asks, so it is reminded too.
  *
  * `dry_run: true` writes nothing and emails nobody. It answers who would be emailed, switch on or off.
  * `only_id` narrows one run to one paper.
@@ -23,7 +24,7 @@ import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { buildContractSigningEmail, CONTRACT_SIGNING_EMAIL_COMPANY } from '../_shared/contractSigningEmail.ts'
-import { hasSigningContent } from '../_shared/contractSigningSend.ts'
+import { hasSigningContent, withJobPaperSettings, type JobPaperSettingsReader } from '../_shared/contractSigningSend.ts'
 import { signerEmailWord } from '../_shared/paperSigner.ts'
 import {
   afterReminder,
@@ -60,10 +61,11 @@ type DueRow = {
   canonical_document_url: string | null
   url: string | null
   form_template_id: string | null
+  job_required_paper_id: string | null
 }
 
 const DUE_COLUMNS =
-  'id, person_id, person_name, document_name, doc_type, status, signer_email, reminders_enabled, reminder_count, next_reminder_at, signing_body_html, canonical_document_url, url, form_template_id'
+  'id, person_id, person_name, document_name, doc_type, status, signer_email, reminders_enabled, reminder_count, next_reminder_at, signing_body_html, canonical_document_url, url, form_template_id, job_required_paper_id'
 
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
@@ -122,7 +124,17 @@ serve(async (req) => {
 
     for (const c of due) {
       let hold: ReminderHold | 'left' | 'nothing_to_sign' | null = reminderHold(c)
-      if (!hold && !hasSigningContent(c)) hold = 'nothing_to_sign'
+      if (!hold) {
+        // A job's paper built from settings has no words of its own (punch list #389, step 3), so the job's row is
+        // asked, as the send asks it, and such a paper is reminded like any other (punch list #376, call 1). A read
+        // that fails holds nothing: the paper is named and read again the next hour, with its date as it was.
+        try {
+          if (!hasSigningContent(await withJobPaperSettings(admin as unknown as JobPaperSettingsReader, c))) hold = 'nothing_to_sign'
+        } catch (e) {
+          failed.push({ id: c.id, reason: `The job's settings were not read: ${(e as { message?: string } | null)?.message ?? 'no reason given'}` })
+          continue
+        }
+      }
       if (!hold && c.person_id) {
         // Someone who left the team is not chased by a robot: the office chases them, or lets the paper go.
         const { data: person } = await admin.from('people').select('archived_at').eq('id', c.person_id).maybeSingle()

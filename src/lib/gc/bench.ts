@@ -7,7 +7,7 @@ import { askTakenBack } from './decline'
 import { OPEN_WITHIN_DAYS, followUps, packageIsOpen } from './followUp'
 import { partnerById } from './lookups'
 import { travelFor } from './map'
-import { answerRecord } from './reliability'
+import { answerRecord, asksToAnswer } from './reliability'
 import type { GcProject, GcState, Invite, Partner, TradePackage } from './types'
 import { daysUntil, shortDate } from './words'
 
@@ -130,7 +130,7 @@ export function tradeBenches(state: GcState): TradeBench[] {
   const out = [...byTrade.values()]
   for (const b of out) {
     b.needs.sort((x, y) => (x.daysLeft ?? 999) - (y.daysLeft ?? 999))
-    b.partners.sort((x, y) => y.bids / Math.max(1, y.invited) - x.bids / Math.max(1, x.invited))
+    b.partners.sort((x, y) => y.bids / Math.max(1, asksToAnswer(y)) - x.bids / Math.max(1, asksToAnswer(x)))
   }
   return out.sort((x, y) => y.urgency - x.urgency || x.dependable - y.dependable || x.trade.localeCompare(y.trade))
 }

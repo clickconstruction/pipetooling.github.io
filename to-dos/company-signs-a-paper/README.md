@@ -60,6 +60,6 @@ company signs, and whether a paper already signed gets the company's signature a
 - Card #389 (`to-dos/sub-nda-builder/README.md`), wider call 4, *Whether the company signs in the
   app*, and row 12 of its table. Its step 8, the company's own secrecy paper to a vendor or partner,
   waits on this.
-- Card #403 (`to-dos/outside-signer-record/README.md`), under *After the train*.
+- Card #403, *Where an outside signer lives*, under *After the train*. It closed on 2026-11-24, and its card lives in git history.
 
 Those two cards are held by other sessions today, so neither was edited to point here.

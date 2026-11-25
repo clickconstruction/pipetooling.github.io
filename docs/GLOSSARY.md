@@ -1360,6 +1360,7 @@ Kernel: [`blockGroupCoverage.ts`](../src/lib/schedule/blockGroupCoverage.ts).
 ### Addresses that look alike
 Pipeline → the tools menu → **Addresses that look alike…** pairs the addresses on file that may be one place written two ways, and a person answers each pair **Same place** or **Not the same**, kept in `address_place_answers` (punch list #439, v2.8529).
 An answer changes no job's address.
+**Fix the spelling…** on a pair is the separate press that does: it rewrites the picked jobs and bids to one of the pair's two spellings, and **Open the job** on a **No street number** row opens a job on its ringed Job Address box (v2.8542).
 The job form's address box lists the addresses **Already on file** above Google's, so a new job takes the spelling its place already has (v2.8520).
 
 ### Combine (jobs)
@@ -4664,6 +4665,7 @@ a call logged there, with the day they promised, is a line on the ask, and **Wil
 An ask they have not heard about is deleted: not opened, not emailed, no contact logged.
 An ask they did hear about is kept and closes as **we took it back** (v2.8490, `gc_invites.declined_why = 'withdrawn'`, `askTakenBack` in `decline.ts`), so a company that was told never reads as never asked, and never reads as having passed.
 **We took it back** is the office's own close of an ask: out of every count of who is still asked as a pass is, left out of the bench's *passed* count and the company's *Times they passed*, said to the company in its portal as *‹we› took this invitation back*, and one line on the company's Activity says who took it back and what they had heard.
+Its ask is left out of the company's quote record too (v2.8518, `asksToAnswer` and `quotedWords` in `reliability.ts`, `Partner.tookBack`): *quoted 2 of 2 asks* counts the asks they had to answer, and a company whose every ask we took back reads *asked once, and we took it back*.
 Each deleted ask is a row in `gc_asks_taken_back` (the trade, the company by id and by its name that day, who asked and when, who took it back and when), since the ask itself is gone and the company may leave the bench after it.
 Its **By people** lists everyone we wait on, each once across their jobs: the number on Follow up's button and on a **GC projects** line on the Dashboard's Needs you, for the office team (v2.4941).
 Its **Work the list**, each person's **Follow up** and a board row's Who to call card open the **Follow up sheet** (v2.5215, guide `work-through-everyone-we-wait-on`): one person at a time, a draft that opens in the reader's own Messages or mail with **I sent it**, and **Call** with what they said, each logged on the ask, on the company, as a promise or in a customer's log.
@@ -5837,6 +5839,7 @@ A point saved to `address_geocodes` deletes its miss through the trigger `addres
 A miss stands 30 days before it is asked again: `GEOCODE_MISS_STANDS_DAYS` in [`geocodeMissMemory.ts`](../supabase/functions/_shared/geocodeMissMemory.ts), the functions' and the readers' rule, not the table's (v2.8477).
 Written by Edge Functions **`geocode-one`** and **`geocode-address-batch`**, only when Google and the Census each answered and neither found the address, whatever OpenStreetMap did (v2.8484).
 Client: `readStandingGeocodeMisses` in [`geocodeMissesIo.ts`](../src/lib/map/geocodeMissesIo.ts), read for the addresses with no saved point, so a standing miss is not sent again.
+`useAddressGeocodeCoords` hands the rows it read back as `misses`, and the Bid Board's missing-address sheet draws the reason, the day and **Try again** from them (v2.8539, punch list #441).
 
 ### Last work date (`jobs_ledger.last_work_date`)
 Cached calendar **`work_date`**: the latest among **approved**, non-rejected, non-revoked **`clock_sessions`** with **`job_ledger_id`** pointing at the job.
@@ -6976,6 +6979,7 @@ Since v2.8524 the bank is never asked from before the org's Accounts Receivable 
 **A day's figure** is each payment at what it took off its bill, on the payment's own day: a Stripe payment the day the customer paid, a matched deposit the day it posted at the bank, a typed payment the day the person named;
 Stripe's fee is not taken off, a refund made in Stripe is not seen, a credit in kind is listed and never added, and a test bill's payment is left out.
 **A test bill** (v2.8445) is one made in Stripe's test mode or one on a ZZ test job (`isBillsTestRow`, `src/lib/billing/billTestRows.ts`): By day sent keeps its send on the list with a mark that says it is in no total, and neither view adds it to a day, a tile, a chip or a paid count.
+A test bill with no send on record is out of the yellow box, and a dev who shows ZZ test jobs (the Pipeline's switch) reads those in a box of their own with **Say how it went…** on each row (`billsSentTestGaps`, v2.8540).
 The chips narrow the month to one way of paying, **Stripe** first, and **one deposit** that paid several bills is drawn once with its bills under it.
 A payment is named by who its bill was sent to, and by the job's customer only when no send names one, so both views say one name (v2.8425).
 The tile *Next Stripe payout to the bank* is drawn on any answer, *None on its way* or *Stripe did not answer* standing where the amount would (`billsPaidPayoutOf`), and a day with a credit in kind and no money reads *1 credit* in its cell (v2.8426), *credit* alone on a phone (`billsPaidCellCredit`, v2.8443).

@@ -55,7 +55,7 @@ function wayChip(picked: boolean, phone: boolean): CSSProperties {
     font: 'inherit',
     fontSize: phone ? '0.875rem' : '0.8125rem',
     padding: '0.25rem 0.7rem',
-    minHeight: phone ? 40 : undefined,
+    minHeight: phone ? THUMB : undefined,
     borderRadius: 999,
     cursor: 'pointer',
     textAlign: 'left',
@@ -123,7 +123,7 @@ export function BillHandWayPicker({ ctl, value, onPick }: { ctl: BillHandWaysCtl
             <button type="button" onClick={() => setAdding(true)} aria-expanded={adding} style={{ ...wayChip(false, phone), borderStyle: 'dashed', color: 'var(--text-blue-700)', fontWeight: 600 }}>
               ＋ Add a way
             </button>
-            <button type="button" onClick={() => setEditing(true)} style={{ ...quiet, fontSize: phone ? '0.875rem' : '0.8125rem', minHeight: phone ? 40 : undefined }}>
+            <button type="button" onClick={() => setEditing(true)} style={{ ...quiet, fontSize: phone ? '0.875rem' : '0.8125rem', minHeight: phone ? THUMB : undefined }}>
               Edit list
             </button>
           </>
@@ -209,8 +209,8 @@ export function BillHandWaysWindow({ ctl, onClose }: { ctl: BillHandWaysCtl; onC
   const arrow = (dead: boolean): CSSProperties => ({
     font: 'inherit',
     fontSize: '0.6875rem',
-    width: phone ? 40 : 26,
-    height: phone ? 40 : 26,
+    width: phone ? THUMB : 26,
+    height: phone ? THUMB : 26,
     borderRadius: 6,
     border: `1px solid ${dead ? 'var(--border)' : 'var(--border-strong)'}`,
     background: 'var(--surface)',
@@ -218,7 +218,8 @@ export function BillHandWaysWindow({ ctl, onClose }: { ctl: BillHandWaysCtl; onC
     cursor: dead ? 'default' : 'pointer',
     padding: 0,
   })
-  const small: CSSProperties = { ...quiet, fontSize: '0.8125rem', minHeight: phone ? 36 : undefined, whiteSpace: 'nowrap' }
+  // A word press stands a thumb tall and wide on a phone (the live walk of punch list #340 measured 36 px, and Show 28 px wide).
+  const small: CSSProperties = { ...quiet, fontSize: '0.8125rem', whiteSpace: 'nowrap', ...(phone ? { minHeight: THUMB, minWidth: THUMB, textAlign: 'left' as const } : {}) }
   const actions: CSSProperties = phone ? { gridColumn: 2, display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.9rem', alignItems: 'center' } : { display: 'flex', gap: '0.75rem', alignItems: 'center' }
 
   return (

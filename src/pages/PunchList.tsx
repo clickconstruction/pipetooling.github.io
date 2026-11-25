@@ -32,6 +32,7 @@ import {
 } from '../lib/todos/punchListView'
 import { parseOpinion, type BoardGroup, type BoardItem, type OpinionVerdict } from '../lib/todos/todoBoard'
 import { PunchListBurndown } from '../components/punchList/PunchListBurndown'
+import { PunchListQueue } from '../components/punchList/PunchListQueue'
 import { PunchListByNumber } from '../components/punchList/PunchListByNumber'
 import { PunchListShortlist } from '../components/punchList/PunchListShortlist'
 import { PunchListAnswer } from '../components/punchList/PunchListAnswer'
@@ -289,6 +290,8 @@ export default function PunchList() {
       ) : null}
 
       {/* The burndown: the open cards hour by hour, replayed from the folder's own history, and when the list clears. */}
+      {/* Punch list #444: the merge queue first, since it is short and the Burndown is long. */}
+      <PunchListQueue role={role} />
       <PunchListBurndown history={history} items={board.items} />
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.25rem', alignItems: 'center' }}>

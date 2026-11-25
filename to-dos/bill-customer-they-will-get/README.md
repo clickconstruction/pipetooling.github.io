@@ -2,7 +2,7 @@
 name: "Bill Customer says what the customer will get: who, by which channel, the real email and text in place, and a press that names its act"
 number: 343
 group: close
-status: the owner said build it all, 2026-11-13; all three built: the words v2.7157, the faces v2.7158, one press v2.7163; left: the owner's own walk on a ZZ Test job, with one real press in Stripe test mode
+status: the owner said build it all, 2026-11-13; all three built: the words v2.7157, the faces v2.7158, one press v2.7163; walked live 2026-11-24 on a ZZ Test job with one real press in Stripe test mode, and the card's own steps hold; the walk found three faults beside them; left: those three, and the email to two people
 summary: >
   The owner asked whether it is clear, when the assistant sends a bill, what the customer is
   receiving. It is not. On the default tab the press reads Create Stripe invoice. It makes the
@@ -12,9 +12,9 @@ summary: >
   send on record that day. The card adds a caption per channel, a Send to line with the name and
   the phone, the real email and text drawn in place, a When you press box, and a press named for
   its act.
-next: the owner's walk: on a ZZ Test job in Stripe test mode, press Make the bill and email, read the made-bill screen and the test email that comes to the sender, then delete this card
+next: mend the three faults the walk of 2026-11-24 found (the due day of a bill due today, a test send that leaves no line in Bills sent, the service address line the face does not show). Two of them change an edge function. Then walk the email to two people on a ZZ Test customer with two contacts, and delete this card
 size: M as a train of three (XS · S · M), all built; left: the owner's walk (XS)
-blocker: a live press; the build pressed nothing that sends
+blocker: the three faults need a builder; the first two need an edge function deployed
 opinion: your call — the code is built and tested; the one real press is yours
 ---
 
@@ -202,3 +202,26 @@ The owner's word on the mock-up, 2026-11-13: *build it all*. That is his yes to 
 build. The one press is covered by render tests with the two edge calls answered in the test,
 and by a walk of the built window on a ZZ test job up to the press. The first real press, in
 Stripe test mode on a ZZ Test job, is the owner's or the office's.
+
+## The live walk of 2026-11-24
+
+Walked on clicktooling.com as the dev, at 730 px and 380 px, on a ZZ Test job. The toggle opened on Live, the walk pressed **Test** and confirmed it, then pressed **Make the bill and email**. The bill was made in Stripe's test mode. One email, its subject opening *[Test]*, went to the sender's own address and to nobody else. No text was sent. The test bill was voided after, so the job is on Ready to Bill again.
+
+**Holds.** The card's own steps, but one: *Email the invoice to 2 people* was not walked, because the ZZ Test customer has one contact.
+
+**Three faults found, none built.** Each was read in the code the same day.
+
+1. **A bill due today is made due tomorrow.** The face read *Due November 24* and the made bill read *Due November 25*.
+   - The face is right. It shows the day the window holds.
+   - The made bill gets no due day. `create-stripe-invoice` sends Stripe a count of days (`daysUntilDue`), and the count is never under 1. So a bill due today comes out due tomorrow, at any hour. A later due day comes out right.
+   - The window's first day is the browser's own date (`todayIsoDate` in `SendRecordInvoiceModal.tsx`), where the rule is the company's day (`todayYmdInAppTz`, `docs/TIME_AND_ZONES.md`).
+   - A fix: the function sends the due day itself, as the end of that day in the company's time zone. The window takes the company's day. One edge function to deploy, no migration.
+2. **A test send leaves no line in Bills sent, and the box says every send is kept there.** The sentence is in `billCustomerTheyWillGet.ts` and reads the same on Test and on Live.
+   - `send-stripe-invoice` files no `sent_documents` copy for a test send, on purpose. It does write the send's own row, which Bills sent reads.
+   - The void deletes the bill, and that row goes with it. So a test bill that is voided leaves nothing.
+   - Two ways, and the pick is open: the function files a test send as a test copy, which is an edge function to deploy, or the box says on Test that a test send is not kept, which is the client alone. My pick is the words, since a test bill is in no total and the list marks it as a test already.
+3. **The made bill's memo opens with a *Service address* line the face does not show.** `create-stripe-invoice` puts the line before the memo. The face draws the memo alone (`StripeBillPreSubmitPreview.tsx`). A fix is the client alone: the face draws the same line from the job's address.
+
+**Presses nothing takes back,** on the list of them (#443): **Make the bill and email** (the bill can be voided, the email cannot be called back) and **Void Stripe invoice…** (the bill's line is gone for good).
+
+**Left on prod by the walk:** one test email to the sender, and one voided test invoice in Stripe's test mode.

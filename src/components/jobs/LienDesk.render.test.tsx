@@ -2605,6 +2605,40 @@ describe('LienDesk affidavits (v2.3412)', () => {
     expect(card.textContent).toContain('Worked, not noticedMay 202620 approved hours · window closed Aug 17 with no notice — the lien does not cover itunsecured')
     expect(card.textContent).toContain("No month has a notice on record — the affidavit cannot claim this work. May 2026's share of the balance stays an ordinary receivable")
   })
+
+  it('a job with no clock hours still shows the months the affidavit claims, from its stand-in month (punch list #415)', () => {
+    // No clock months reach the pane. The month comes from the bill, and a live notice on record names it.
+    const fromBill: LienAffidavitRow = { job_id: 'j650', last_month: '2026-07', deadline: '2026-11-16', is_sub: true, noticed: true, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null, month_source: 'bill' }
+    const d = data([])
+    d.affidavitRows = [fromBill]
+    d.affidavits = buildLienAffidavitQueue([fromBill], [], TODAY)
+    d.filingsByJob = { j650: [{ id: 'f1', job_id: 'j650', kind: 'notice_53_056', months_covered: ['2026-07'], sends: [], voided_at: null }] } as unknown as LienDeskData['filingsByJob']
+    const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    const card = document.querySelector('[data-lien-affidavit-months]') as HTMLElement
+    expect(card).not.toBeNull()
+    expect(document.querySelector('[data-lien-pane-head="months"]')?.textContent).toContain('Months the affidavit claims')
+    expect(card.textContent).toContain('Jul 2026dated from the bill · no clock hours · notice senton the lien')
+    expect(card.textContent).toContain('The affidavit names Jul 2026.')
+    view.unmount()
+
+    // Dated from the job's creation, with no notice and the window closed: worked, not noticed.
+    const fromCreation: LienAffidavitRow = { ...fromBill, last_month: '2026-05', deadline: '2026-09-15', noticed: false, month_source: 'job_created' }
+    const d2 = data([])
+    d2.affidavitRows = [fromCreation]
+    d2.affidavits = buildLienAffidavitQueue([fromCreation], [], TODAY)
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d2} initialKind="affidavit" />)
+    const card2 = document.querySelector('[data-lien-affidavit-months]') as HTMLElement
+    expect(card2.textContent).toContain('Worked, not noticedMay 2026dated from the job’s creation · no clock hours · window closed Jul 15 with no notice — the lien does not cover itunsecured')
+  })
+
+  it('a job dated from hours draws no months card until its clock months are read (punch list #415)', () => {
+    const fromHours: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+    const d = data([])
+    d.affidavitRows = [fromHours]
+    d.affidavits = buildLienAffidavitQueue([fromHours], [], TODAY)
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    expect(document.querySelector('[data-lien-affidavit-months]')).toBeNull()
+  })
 })
 
 describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch list #305)', () => {

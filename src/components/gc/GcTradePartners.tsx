@@ -6,7 +6,7 @@ import { BENCH_REMOVE_FAILED, BENCH_REMOVE_PRESS, BENCH_REMOVE_PRESS_TITLE, benc
 import { declinedTitle, declinedWords } from '../../lib/gc/decline'
 import { askPromise, promiseWords } from '../../lib/gc/followUp'
 import { townFromAddress, travelFor, travelWords } from '../../lib/gc/map'
-import { answerRecord, type AnswerRecord } from '../../lib/gc/reliability'
+import { answerRecord, quotedWords, type AnswerRecord } from '../../lib/gc/reliability'
 import { benchOriginWords, showsBenchOrigin, type BenchOrigin } from '../../lib/prospects/benchOrigin'
 import type { GcState, Invite, Partner } from '../../lib/gc/types'
 import { partnersToVet, vettingOf, vettingWords } from '../../lib/gc/vetting'
@@ -888,7 +888,7 @@ function PartnerLine({ state, partner, bench, writes, origin }: { state: GcState
         </td>
         <td style={{ ...td, whiteSpace: 'nowrap' }}>
           <Chip tone={record.tone}>{record.word}</Chip>{' '}
-          <span style={{ color: 'var(--text-600)', fontSize: '0.85rem' }}>{partner.invited === 0 ? 'never asked' : `quoted ${partner.bids} of ${partner.invited} asks`}</span>
+          <span style={{ color: 'var(--text-600)', fontSize: '0.85rem' }}>{quotedWords(partner, 'never asked')}</span>
           {showsBenchOrigin(partner, origin) && (
             // The sub's record from Prospects (v2.5807) speaks until the first quote: who landed them, when, how they answered our calls.
             <div data-gc-origin={partner.id} style={{ color: 'var(--text-600)', fontSize: '0.8rem', marginTop: '0.2rem' }}>

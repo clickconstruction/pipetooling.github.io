@@ -76,6 +76,21 @@ Under the map, ***N bids have no map location yet · add their addresses*** is a
 3. When the customer has an address on file, it's shown under the row with {{button:outline-blue|Use it}}. One tap fills the box. Tap Use it for a residential bid at the customer's own address. Nothing is saved until you tap Save.
 4. Anything else on the bid: {{button:outline-blue|Edit bid}} opens the full form.
 
+### An address no map service can place
+
+The app remembers an address that no map service could place. It does not ask about that address again on every open.
+
+The row of such a bid shows the reason and two days under its address box. The row reads *Checked Nov 20. The app asks again by itself on Dec 20.* The app waits 30 days before it asks again.
+
+:::steps
+1. Fix the address in the box and tap {{button:blue|Save}}. A changed address is asked about right away.
+2. Or tap {{button:outline|Try again}} beside Save when the address is already right. The app asks the map services now.
+:::
+
+After **Try again**, the row says what happened. *Placed* means the pin is on the map. *Still no match* means the address needs fixing, and the first day moves to today. Sometimes nothing is remembered, for example when a map service did not answer. The row then says *Not placed* and gives the reason. The app asks again on the next open.
+
+**Try again** asks about the saved address, not what you typed in the box. A bid with no address has no **Try again**. The [Map page's list](/help/see-every-job-and-bid-on-one-map#an-address-no-map-service-can-place) shows the same lines for jobs and estimates too.
+
 Saving an address on a bid whose **Distance to Office** is blank fills the distance too. The distance is measured in road miles, the same way the bid form does it. Fixed bids stay in the sheet until you close it, so you can watch the pins land.
 
 ## From a row to its pin

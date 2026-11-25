@@ -458,6 +458,8 @@ export function partnerFromRows(
   rows: Pick<BoardRows, 'points' | 'userNames' | 'vettingForms' | 'people' | 'papers'> & { contacts?: ContactRow[]; awarded?: ReadonlySet<string> },
 ): Partner {
   const asks = invites.filter((i) => i.company_id === c.id)
+  // The asks we took back after they heard (v2.8518): on the record, and out of the rate of asks they answered.
+  const tookBack = asks.filter((i) => i.status === 'declined' && i.declined_why === 'withdrawn').length
   const quoted = new Set(quotes.map((q) => q.invite_id))
   const basePoint = pointOf(rows as BoardRows, c.address)
   const vetting = vettingOf(c, rows.userNames ?? {}, rows.vettingForms?.find((f) => f.company_id === c.id))
@@ -478,6 +480,7 @@ export function partnerFromRows(
     maxMiles: c.max_miles,
     ...companyPapers(rows.papers ?? [], c.id),
     invited: asks.length,
+    ...(tookBack > 0 ? { tookBack } : {}),
     bids: asks.filter((i) => quoted.has(i.id)).length,
     won: asks.filter((i) => rows.awarded?.has(i.id)).length,
     promisesMade: 0,

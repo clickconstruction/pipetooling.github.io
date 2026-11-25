@@ -2,7 +2,7 @@
 name: "My Time: the week and the eight weeks, redrawn"
 number: 427
 group: close
-status: asked 2026-11-23 · five options drawn, then one picture on the owner's word, no quota on this card · his go the same day, *build it all* · the picture in My Time v2.8338 and Job Mode's card v2.8347, with the old hours block retired, both live the same day · left: a look with real hours through View as, as a salaried and an hourly person
+status: asked 2026-11-23 · five options drawn, then one picture on the owner's word, no quota on this card · his go the same day, *build it all* · the picture in My Time v2.8338 and Job Mode's card v2.8347, with the old hours block retired, both live the same day · walked live 2026-11-24 through View as on a ZZ Test person with no hours, where it holds · looked at with real hours on 2026-11-24, a Tuesday evening, through View as on one salaried and one hourly person, on the owner's yes, and it holds · left: a Monday before the start and a day after a punch was left running, or the owner's word that this look is enough
 summary: >
   On the Dashboard's My Time card, the asker did not like how two parts look: a row of eight small
   bars with a four-colour caption, and seven lines of text for the week's days. Reading them found
@@ -10,9 +10,9 @@ summary: >
   hidden, and a week one hour over reads red. On his word, the card stops grading time against a
   quota. The second mock-up is one picture: the week's time as a big number, a column for each
   day, and a column for each of eight weeks that opens that week's days.
-next: A walk as a salaried and an hourly person through View as, on the full Dashboard and in Job Mode, which step 3 of working hours' [`LIVE_TEST.md`](../working-hours/LIVE_TEST.md) covers for an hourly person. Then the card closes on the owner's word.
+next: The owner says whether the look of 2026-11-24 closes the card. If not, look again through View as on a Monday before the start and on a day after a punch was left running. My Time was looked at; Job Mode's card with real hours was not.
 size: M as a train of two (M · S); left: a look with real hours (XS)
-blocker: A look with real hours.
+blocker: The owner's word: close on the look of 2026-11-24, or wait for the two days it could not show.
 ver: v2.8338, v2.8347
 opinion: your call — both PRs are built, and what is left is one look with real hours on the clock
 ---
@@ -216,3 +216,15 @@ His go of 2026-11-23, *build it all*, kept every pick.
 - After the build: View as a salaried person with a workday schedule, and as an hourly person who
   drew a week. Read the panel on a Monday before the start, mid-week, and on a day after a punch
   was left running. Nothing is written by the walk.
+- **Walked 2026-11-24** on clicktooling.com at 730 px, through **View as** on a ZZ Test person who has no
+  hours: one large number, seven day columns, eight week columns, a week's press opens its days with
+  **Back to this week**, no over or under colours, and no sideways scroll.
+- **Still to walk: the look with real hours.** A salaried person, an hourly person who drew a week, and a
+  day after a punch was left running. No ZZ Test person has hours. Two ways to get there, and the pick is
+  the owner's: **View as** two real people, which writes nothing, as this card's own step has it, or hours
+  put on a ZZ Test person through the dev seat first.
+- **Looked at with real hours, 2026-11-24, a Tuesday evening,** on the owner's yes, through **View as** on one
+  salaried and one hourly person. My Time only, and nothing pressed but one week's column. Both show the week's
+  large number with real hours, a column a day, eight weeks, no value outside its frame, and greys with one
+  blue. The hourly person's week opened its days with **Back to this week**. No name and no figure was kept.
+- **Not shown by that evening:** a Monday before the start, and a day after a punch was left running.

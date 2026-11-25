@@ -34,6 +34,7 @@ import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
 import { bidUpdateRefused, BID_UPDATE_NOT_APPLIED_MESSAGE } from '../../lib/bids/updateGuard'
 import { composeMissingAddressRows } from '../../lib/bids/bidBoardMissingAddresses'
 import { BidBoardMissingAddressesModal } from './BidBoardMissingAddressesModal'
+import { tryPlaceAgain } from '../../lib/map/unplacedTryAgainIo'
 import { PinsMapFrame } from '../map/PinsMapFrame'
 import { BidBoardMapRail } from './BidBoardMapRail'
 import { bidBoardMapRail, DEFAULT_DISTANCE_BUCKETS, pinsInBuckets, type DistanceBucketKey, type DistanceBucketVisibility } from '../../lib/bids/bidBoardMapRail'
@@ -365,7 +366,7 @@ export function BidBoardMapCard({
 
   const { bids: mapBids, noAddress } = useMemo(() => bidBoardMapBids(bids, ledgerPrefixMap), [bids, ledgerPrefixMap])
   const addresses = useMemo<AddressToGeocode[]>(() => mapBids.map((b) => ({ key: b.addressKey, display: b.address })), [mapBids])
-  const { coords, resolving } = useAddressGeocodeCoords(addresses, !hidden, 'bid board map address_geocodes')
+  const { coords, resolving, misses, reread } = useAddressGeocodeCoords(addresses, !hidden, 'bid board map address_geocodes')
   const { pins, unmapped } = useMemo(() => resolveBidBoardMapPins(mapBids, coords), [mapBids, coords])
   // v2.3205: the unmapped line is a door — the sheet lists every bid the map
   // can't place with its address ready to fix; fixed rows stay for the session
@@ -373,8 +374,21 @@ export function BidBoardMapCard({
   const [fixOpen, setFixOpen] = useState(false)
   const [fixedIds, setFixedIds] = useState<ReadonlySet<string>>(() => new Set())
   const fixRows = useMemo(
-    () => composeMissingAddressRows({ noAddress, unmapped, pins, resolving, keepIds: fixedIds }),
-    [noAddress, unmapped, pins, resolving, fixedIds],
+    () => composeMissingAddressRows({ noAddress, unmapped, pins, resolving, keepIds: fixedIds, misses }),
+    [noAddress, unmapped, pins, resolving, fixedIds, misses],
+  )
+  // Punch list #441: Try again asks the map services about the saved address, past the memory of
+  // its miss. A placed one keeps its row, as a saved one does, and the saved points are read again.
+  const tryAgain = useCallback(
+    async (target: BidBoardMapBid) => {
+      const outcome = await tryPlaceAgain(target.address)
+      if (outcome.kind === 'placed') {
+        setFixedIds((prev) => new Set([...prev, target.id]))
+        reread()
+      }
+      return outcome
+    },
+    [reread],
   )
   const saveAddress = useCallback(
     async (target: BidBoardMapBid, address: string): Promise<boolean> => {
@@ -672,6 +686,7 @@ export function BidBoardMapCard({
         isMobile={isMobile}
         onClose={() => setFixOpen(false)}
         onSave={saveAddress}
+        onTryAgain={tryAgain}
         onEditBid={(b) => onEditBid(b.row)}
         onFocusRow={(id) => { setFixOpen(false); onFocusRow(id) }}
       />

@@ -29,6 +29,7 @@ export function lienFocusEditJobOptions(focus: LienDoorFocus | null | undefined)
     case 'gc':
     case 'lien-contract':
     case 'status':
+    case 'address':
       return { focusRow: focus }
     case 'pct':
       // The % done field lives on the Bill tab (v2.3819).

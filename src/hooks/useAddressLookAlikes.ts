@@ -5,7 +5,8 @@ import { addressesOnFile } from '../lib/addresses/addressesOnFile'
 import { lookAlikes, pairKeys, type LookAlikePair, type LookAlikes, type MapPoint, type PlaceAnswer } from '../lib/addresses/lookAlikes'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import { formatErrorMessage } from '../utils/errorHandling'
-import { everyRow, readAddresses } from './useAddressesOnFile'
+import type { SpellingFixRow } from '../lib/addresses/fixSpelling'
+import { everyRow, forgetAddressesOnFile, readAddresses } from './useAddressesOnFile'
 
 /**
  * Addresses that look alike (punch list #439, piece 2): the reads and the two writes behind the window and the
@@ -61,6 +62,33 @@ export async function undoLookAlike(pair: Pick<LookAlikePair, 'a' | 'b'>): Promi
   } catch (e) {
     return formatErrorMessage(e, 'The answer was not taken back.')
   }
+}
+
+/** One row the fix did not change, with the reason. */
+export type SpellingFixFailure = { row: SpellingFixRow; reason: string }
+
+/**
+ * Fix the spelling: write `to` as the address of each picked job and bid. It keeps going past a row that fails
+ * and answers every one that did not take with its reason. A row the reader may not change answers no error and
+ * no row, so that is read as a refusal too.
+ */
+export async function fixSpelling(rows: ReadonlyArray<SpellingFixRow>, to: string): Promise<{ done: number; failed: SpellingFixFailure[] }> {
+  let done = 0
+  const failed: SpellingFixFailure[] = []
+  for (const row of rows) {
+    try {
+      const write = row.kind === 'job' ? db.from('jobs_ledger').update({ job_address: to }) : db.from('bids').update({ address: to })
+      const { data, error } = await write.eq('id', row.id).select('id')
+      if (error) failed.push({ row, reason: formatErrorMessage(error, 'The address was not changed.') })
+      else if (!Array.isArray(data) || data.length === 0) failed.push({ row, reason: 'Your account may not change this one.' })
+      else done += 1
+    } catch (e) {
+      failed.push({ row, reason: formatErrorMessage(e, 'The address was not changed.') })
+    }
+  }
+  // The job form's list of addresses on file is a minute old at most: after a fix it reads again.
+  if (done > 0) forgetAddressesOnFile()
+  return { done, failed }
 }
 
 // ---------- The count on the tools button ----------

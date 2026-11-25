@@ -13,12 +13,18 @@
  * reads `address_geocode_misses` beside the cache and sends the geocoder only an
  * address that is in neither, so a miss is asked once and then left alone until
  * its days are up (`GEOCODE_MISS_STANDS_DAYS`), on every device.
+ *
+ * The misses it read, and the ones the geocoder kept while it answered, come back as `misses`, so a
+ * sheet can say why and when without a second read (punch list #441). `reread` reads the saved
+ * points again for the same addresses, after a **Try again** placed one.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { batchGeocodeCacheKeys } from '../lib/map/geocodeCacheBatches'
 import { readStandingGeocodeMisses } from '../lib/map/geocodeMissesIo'
+import { keptMissesInAnswer } from '../lib/map/unplacedMemory'
+import type { GeocodeMissRow } from '../../supabase/functions/_shared/geocodeMissMemory'
 
 /** Matches `geocode-address-batch` MAX_ADDRESSES (and the Map page's chunking). */
 const GEOCODE_BATCH_MAX = 20
@@ -34,6 +40,10 @@ export type AddressGeocodeCoordsState = {
   coords: Map<string, AddressCoords>
   /** True while the cache read or a geocode chunk is still in flight. */
   resolving: boolean
+  /** The misses the app remembers among these addresses, by address key: why, and the day each was checked. */
+  misses: Map<string, GeocodeMissRow>
+  /** Reads the saved points and the misses again for the same addresses. */
+  reread: () => void
 }
 
 export function useAddressGeocodeCoords(
@@ -43,6 +53,9 @@ export function useAddressGeocodeCoords(
 ): AddressGeocodeCoordsState {
   const [coords, setCoords] = useState<Map<string, AddressCoords>>(() => new Map())
   const [resolving, setResolving] = useState(false)
+  const [misses, setMisses] = useState<Map<string, GeocodeMissRow>>(() => new Map())
+  const [rereads, setRereads] = useState(0)
+  const reread = useCallback(() => setRereads((n) => n + 1), [])
   const genRef = useRef(0)
   // Keys we already asked the geocoder about this mount — a miss is not retried on every render.
   const askedRef = useRef<Set<string>>(new Set())
@@ -85,10 +98,17 @@ export function useAddressGeocodeCoords(
       // No saved point and not asked already on this mount. The memory of a miss is read for these
       // alone, after the map has painted: most opens have none, and then nothing more is read.
       const unplaced = keys.filter((k) => !known.has(k) && !askedRef.current.has(k))
-      const misses = await readStandingGeocodeMisses(unplaced)
+      const standing = await readStandingGeocodeMisses(unplaced)
       if (cancelled || gen !== genRef.current) return
+      const keepMisses = (rows: Iterable<GeocodeMissRow>) =>
+        setMisses((prev) => {
+          const next = new Map(prev)
+          for (const r of rows) next.set(r.address_normalized, r)
+          return next
+        })
+      if (standing.size > 0) keepMisses(standing.values())
       // Cold: of those, the ones with no miss that still stands.
-      const cold = unplaced.filter((k) => !misses.has(k))
+      const cold = unplaced.filter((k) => !standing.has(k))
       for (let offset = 0; offset < cold.length; offset += GEOCODE_BATCH_MAX) {
         if (cancelled || gen !== genRef.current) return
         const chunk = cold.slice(offset, offset + GEOCODE_BATCH_MAX)
@@ -98,7 +118,11 @@ export function useAddressGeocodeCoords(
             body: { addresses: chunk.map((k) => displayByKey.get(k) ?? k) },
           })
           if (cancelled || gen !== genRef.current) return
-          if (error || !data?.results?.length) continue
+          if (error) continue
+          // A miss the function kept while it answered carries its day, so the sheet can say it now.
+          const kept = keptMissesInAnswer(data)
+          if (kept.length > 0) keepMisses(kept)
+          if (!data?.results?.length) continue
           const got = data.results
           setCoords((prev) => {
             const next = new Map(prev)
@@ -117,7 +141,7 @@ export function useAddressGeocodeCoords(
     }
     // `addresses` changes with the caller's rows; the signature captures the keys that matter.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, keysSignature])
+  }, [enabled, keysSignature, rereads])
 
-  return useMemo(() => ({ coords, resolving }), [coords, resolving])
+  return useMemo(() => ({ coords, resolving, misses, reread }), [coords, resolving, misses, reread])
 }
