@@ -609,6 +609,7 @@ last_updated: 2026-11-25
 > `lienPhoneGroups` pools the rows with no day into one last group since v2.8341, where each pool ended with its own under one key.
 > Since v2.8346 (punch list #428, the owner's pick *One screen, pinned line*) a phone's Board draws no bin: `LienBoard` returns a phone section (`data-lien-board-phone` = `day`, `flow` or `line`) with the switch `LienBoardFlowSwitch`, and on **The flow** `LienBoardFlowDayLine` and `LienBoardFlowGrid` (`data-lien-board-phone-flow`, a press a stage, `data-lien-board-stage`), all in `LienBoardPhoneFlow.tsx` over [`lienBoardFlow.ts`](../src/lib/jobs/lienBoardFlow.ts) (`lienFlowStage`, `lienFlowRail`, `lienFlowDayLine`, `lienFlowCrossPath`, the view kept in `localStorage`).
 > A pick of exactly one bin with no `line` and no `words` is a stage of the flow (`lienFlowPickedStage`): the Board then draws `LienBoardFlowRail` alone (`data-lien-board-line`), sticky on the desk's scroller, and reports its height through `onPinned`, which the desk writes as `--lien-pinned-top` for `LienDeskNextUp`'s day headings.
+> Since v2.8575 `lienFlowUnderLine` says what stands around that line on a phone: with a stage picked the list-top slot, the find box (unless it holds words) and the run's door (`LienGetItRightHost`'s `door`) are not drawn, so the stage's rows start right under the line.
 > The page keeps the stage in the history entry (`lienDeskStateWithStage` in `lienPhoneJobScreen.ts`, the desk's `flowStageKey`, `onOpenFlowStage` and `onCloseFlowStage`, `setBoardStage` in `useLienDeskBoard.ts`), so Back returns to the flow and a job opened from a stage returns to that stage.
 > `lienPhoneStepWords` stands beside the dots only when the viewer has no press.
 > `LienStepRow`, the four named tiles of v2.4881, is no longer drawn by the list.
@@ -687,6 +688,10 @@ last_updated: 2026-11-25
 > The reads are [`lienPayoffIo.ts`](../src/lib/jobs/lienPayoffIo.ts), which start from the filings because the desk's list functions drop a job paid to zero.
 > The presses are the page's: `onOpenBill` is `openEditJob(jobId, 'bill')` and `onOpenRelease` opens the Lien window with `initialTab: 'release_record'`.
 > It reads again whenever the desk's `data` changes, and `?payoffs=1` opens the window at once.
+> Since v2.8575 (punch list #428) a phone's strip scrolls away with the list: the desk draws a list-top slot (`data-lien-desk-list-top`) first inside whichever list is up and hands its element to the page through `onListTop`.
+> `LienPayoffs` takes that element as `stripHome` and draws the strip into it through a portal, so the one mounted component keeps its window and its read across views.
+> With `stripHome` null no list is up (an open paper, a job's own screen, a picked stage) and no strip is drawn.
+> With `stripHome` left out, as on a computer, the strip stands in the grid's first row.
 > It writes nothing.
 > **v2.8508 (the release knows its lien, piece 2):** [`lienReleaseOfRecord.ts`](../src/lib/jobs/lienReleaseOfRecord.ts) (12 tests) gives `LienFilingTabs`'s `release_record` tab `releaseTargets` and `pickReleaseTarget` (each filed affidavit with its own release, the picker *Which lien*), `releaseMoneyGate` (the hold and its reason), `releasePaymentDay`, `releaseSaveFields` and `releaseStampPatch`.
 > The stamp is two `ChangeableValue`s, and each Keep is one update of the release row through `keepReleaseStamp`.

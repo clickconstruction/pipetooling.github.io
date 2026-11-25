@@ -103,6 +103,30 @@ export function lienFlowPickedStage(pick: Pick<LienBoardPick, 'bins' | 'line' | 
   return pick.bins[0] ?? null
 }
 
+// ---------- Under the pinned line ----------
+
+/** What a phone's To do draws around the Board: the strip over it, the find box and the run's door under it. */
+export type LienFlowUnderLine = {
+  /** The strip that scrolls away with the list, over the Board (Payoffs). */
+  top: boolean
+  /** The find box. */
+  find: boolean
+  /** The run's door, *This run* with **Get it right ›**. */
+  run: boolean
+}
+
+/**
+ * What stands around the pinned line while a stage is picked on a phone (punch list #428, the owner's answer of
+ * 2026-11-25: *Nothing*). A picked stage brings the page to its top, where the line is, so its rows start right under
+ * it. The strip over the Board, the find box and the run's door are not drawn until the stage is let go. A find box
+ * that holds words stays, since those words still narrow the rows and a person must see why. A computer, and a phone
+ * with no stage picked, draw all three.
+ */
+export function lienFlowUnderLine(at: { phone: boolean; pick: Pick<LienBoardPick, 'bins' | 'line' | 'words'> | null | undefined; find: string }): LienFlowUnderLine {
+  if (!at.phone || !lienFlowPickedStage(at.pick)) return { top: true, find: true, run: true }
+  return { top: false, find: at.find.trim().length > 0, run: false }
+}
+
 export type LienFlowRailCell = { key: LienBoardBinKey; name: string; count: number; lit: boolean; empty: boolean }
 
 export type LienFlowRail = {

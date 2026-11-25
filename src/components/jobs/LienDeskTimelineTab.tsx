@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { LienJobNumber } from './LienJobNumber'
 import { splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -47,6 +47,8 @@ export type LienDeskTimelineTabProps = {
   onSetProperty?: (jobId: string) => void
   /** On a phone the two pickers and the print press are a thumb tall (punch list #352, the leftovers). */
   phone?: boolean
+  /** A phone's strip at the top of the list, where it scrolls away with it (Payoffs, punch list #428); nothing on a computer. */
+  top?: ReactNode
 }
 
 const STACK_BELOW_PX = 700
@@ -60,7 +62,7 @@ const selectStyle: CSSProperties = { padding: '2px 6px', border: '1px solid var(
 const PHONE_PRESS_PX = 44
 const phoneSelectStyle: CSSProperties = { ...selectStyle, minHeight: PHONE_PRESS_PX, padding: '0 10px', borderRadius: 8, fontSize: '1rem', minWidth: 0, maxWidth: '100%' }
 
-export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId, show, onShow, onOpenRow, onOpenJob, onPrint, properties, onOpenProperty, onSetProperty, group = 'none', onGroup, phone = false }: LienDeskTimelineTabProps) {
+export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId, show, onShow, onOpenRow, onOpenJob, onPrint, properties, onOpenProperty, onSetProperty, group = 'none', onGroup, phone = false, top = null }: LienDeskTimelineTabProps) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const picker = phone ? phoneSelectStyle : selectStyle
   const [stacked, setStacked] = useState(false)
@@ -157,6 +159,7 @@ export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId
 
   return (
     <div ref={hostRef} data-lien-desk-timeline-tab style={{ overflow: 'auto', minWidth: 0, display: 'grid', alignContent: 'start' }}>
+      {top}
       {/* The control bar stays over the rows on a computer. On a phone its presses are a thumb tall, so the bar scrolls away with the list sooner than hold a taller strip of the screen (punch list #352: a thumb-tall row makes a pinned header taller). */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.8rem', alignItems: 'center', padding: '0.55rem 0.9rem', borderBottom: '1px solid var(--border)', fontSize: '0.78rem', position: phone ? 'static' : 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
         <label style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>

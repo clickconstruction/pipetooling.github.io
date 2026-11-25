@@ -17,6 +17,8 @@ import LienDeskPage from './LienDeskPage'
 
 const auth = vi.hoisted(() => ({ role: 'dev' as string | null }))
 const screenSize = vi.hoisted(() => ({ phone: false }))
+// Payoffs reads no lien unless a test files one, so the strip is drawn only where a test asks for it.
+const payoffs = vi.hoisted(() => ({ filed: false }))
 const desk = vi.hoisted(() => ({ data: null as unknown, refetch: vi.fn() }))
 const cache = vi.hoisted(() => ({ fetchScopeIfNeeded: vi.fn(async () => {}), runFetchScopes: vi.fn(async () => {}) }))
 
@@ -33,6 +35,18 @@ vi.mock('../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => screenSize.phone }))
+vi.mock('../lib/jobs/lienPayoffIo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/jobs/lienPayoffIo')>()),
+  // A made-up filed lien on a made-up job, paid in full and still on record.
+  readLienPayoffFacts: async (todayYmd: string) => ({
+    affidavits: payoffs.filed ? [{ id: 'a1', job_id: 'zz1', amount: 100, county: 'Travis', recording_number: '2026-0000001', filed_at: '2026-09-01' }] : [],
+    releases: [],
+    jobs: payoffs.filed ? [{ id: 'zz1', hcp_number: null, click_number: '9001', job_name: 'ZZ Test house', job_address: '1 Sample Street', customer_id: 'zc1', customer_name: 'ZZ Test customer' }] : [],
+    openByJob: {},
+    paymentsByJob: {},
+    todayYmd,
+  }),
+}))
 vi.mock('../lib/people/fetchActiveUsers', () => ({ fetchActiveUsers: async () => ({ data: [], error: null }) }))
 vi.mock('../contexts/JobsListCacheContext', () => ({
   buildJobsListCacheKey: (userId: string, customerFilter: string | null) => `${userId}:${customerFilter || 'all'}`,
@@ -132,6 +146,7 @@ function Harness({ start }: { start: string }) {
 beforeEach(() => {
   auth.role = 'dev'
   screenSize.phone = false
+  payoffs.filed = false
   desk.data = deskData()
   desk.refetch.mockClear()
   cache.fetchScopeIfNeeded.mockClear()
@@ -269,6 +284,39 @@ describe('LienDeskPage (/lien-desk)', () => {
     } finally {
       window.localStorage.clear()
     }
+  })
+
+  it('Payoffs stands in its own row over the desk on a computer, and on a phone scrolls away with the list (punch list #428)', async () => {
+    payoffs.filed = true
+    // A computer: the strip is in the page's first row, over the desk, and the desk draws no slot.
+    const wide = renderWithProviders(<Harness start="/lien-desk" />)
+    await settle()
+    await waitFor(() => expect(wide.container.querySelector('[data-lien-payoffs-strip]')).not.toBeNull())
+    expect(wide.container.querySelector('[data-lien-payoffs]')!.contains(wide.container.querySelector('[data-lien-payoffs-strip]'))).toBe(true)
+    expect(wide.container.querySelector('[data-lien-desk-list-top]')).toBeNull()
+    wide.unmount()
+
+    // A phone, on To do: one strip, inside the one scroller and first in it, and the row over the desk is empty.
+    screenSize.phone = true
+    const phone = renderWithProviders(<Harness start="/lien-desk" />)
+    await settle()
+    await waitFor(() => expect(phone.container.querySelector('[data-lien-payoffs-strip]')).not.toBeNull())
+    const strip = phone.container.querySelector<HTMLElement>('[data-lien-payoffs-strip]')!
+    expect(phone.container.querySelectorAll('[data-lien-payoffs-strip]')).toHaveLength(1)
+    const scroller = phone.container.querySelector<HTMLElement>('[data-lien-do-now]')!
+    expect(scroller.firstElementChild!.contains(strip)).toBe(true)
+    expect(phone.container.querySelector('[data-lien-payoffs]')!.contains(strip)).toBe(false)
+    phone.unmount()
+
+    // A phone, an open notice: no list is up, so the strip is not drawn over the paper.
+    const paper = renderWithProviders(<Harness start="/lien-desk?tab=notices&job=j650" />)
+    await settle()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Back to the notices' })).toBeTruthy())
+    expect(paper.container.querySelector('[data-lien-payoffs-strip]')).toBeNull()
+    // Back at the list the strip is there again, first in the list.
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the notices' }))
+    await waitFor(() => expect(paper.container.querySelector('[data-lien-desk-list] [data-lien-payoffs-strip]')).not.toBeNull())
+    expect(paper.container.querySelector<HTMLElement>('[data-lien-desk-list]')!.firstElementChild!.contains(paper.container.querySelector('[data-lien-payoffs-strip]'))).toBe(true)
   })
 
   it('on a phone, a notice reached by a link goes to the list in its own place', async () => {

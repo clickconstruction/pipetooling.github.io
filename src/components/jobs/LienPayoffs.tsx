@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { EmptyState } from '../EmptyState'
 import { Money, MoneyText } from '../Money'
 import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
@@ -56,6 +57,13 @@ type Props = {
   record?: Parameters<typeof LienPayoffCheck>[0]['record']
   /** Open the window at once: the address's `?payoffs=1`. */
   initiallyOpen?: boolean
+  /**
+   * A phone's home for the strip (punch list #428, the owner's answer of 2026-11-25: *It scrolls away with the list*):
+   * the desk's list-top slot, inside whichever list is on the screen. Given an element, the strip is drawn into it.
+   * Given null, no list is up and the strip is not drawn. Left out, the strip stands in its own row over the desk, as
+   * on a computer. The window is this component's own either way, so it stays open while the strip moves.
+   */
+  stripHome?: HTMLElement | null
 }
 
 const VALUES: Partial<Record<LienPayoffValueKind, (text: string) => ReactNode>> = {
@@ -271,7 +279,7 @@ function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, load
   )
 }
 
-export default function LienPayoffs({ todayYmd, refreshKey, onOpenBill, onOpenRelease, onChanged, isMobile = false, read = readLienPayoffFacts, record, initiallyOpen = false }: Props) {
+export default function LienPayoffs({ todayYmd, refreshKey, onOpenBill, onOpenRelease, onChanged, isMobile = false, read = readLienPayoffFacts, record, initiallyOpen = false, stripHome }: Props) {
   const [facts, setFacts] = useState<LienPayoffFacts | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -305,18 +313,23 @@ export default function LienPayoffs({ todayYmd, refreshKey, onOpenBill, onOpenRe
   const words = useMemo(() => lienPayoffStrip(places), [places])
   const onDoor = useCallback((door: LienPayoffDoor, jobId: string) => (door === 'bill' ? onOpenBill(jobId) : onOpenRelease(jobId)), [onOpenBill, onOpenRelease])
 
+  const stripNode =
+    words.say || failure ? (
+      <div data-lien-payoffs-strip data-tone={words.tone} style={words.tone === 'amber' ? stripAmber : strip}>
+        <b>{LIEN_PAYOFF_WORDS.title}</b>
+        <span style={{ flex: '1 1 12rem', minWidth: 0 }}>{words.say ? <ValueSentence<LienPayoffValueKind> text={words.say} values={VALUES} /> : <span style={{ color: 'var(--text-red-700)' }}>{failure}</span>}</span>
+        <button type="button" data-lien-payoffs-open onClick={() => setOpen(true)} style={{ ...press, ...(isMobile ? { minHeight: 44 } : {}) }}>
+          {LIEN_PAYOFF_WORDS.open}
+        </button>
+      </div>
+    ) : null
+  // A phone's strip is drawn at the top of the list on the screen, with the list's own side room, and nowhere while no list is up.
+  const stripInList = stripHome && stripNode ? createPortal(<div data-lien-payoffs-in-list style={{ padding: '0.5rem 0.75rem 0' }}>{stripNode}</div>, stripHome) : null
+
   // The wrapper is always drawn: the page's grid gives this strip its own row, and the desk the row under it.
   return (
     <div data-lien-payoffs>
-      {words.say || failure ? (
-        <div data-lien-payoffs-strip data-tone={words.tone} style={words.tone === 'amber' ? stripAmber : strip}>
-          <b>{LIEN_PAYOFF_WORDS.title}</b>
-          <span style={{ flex: '1 1 12rem', minWidth: 0 }}>{words.say ? <ValueSentence<LienPayoffValueKind> text={words.say} values={VALUES} /> : <span style={{ color: 'var(--text-red-700)' }}>{failure}</span>}</span>
-          <button type="button" data-lien-payoffs-open onClick={() => setOpen(true)} style={{ ...press, ...(isMobile ? { minHeight: 44 } : {}) }}>
-            {LIEN_PAYOFF_WORDS.open}
-          </button>
-        </div>
-      ) : null}
+      {stripHome === undefined ? stripNode : stripInList}
       {open ? (
         <PayoffsWindow
           places={places}
