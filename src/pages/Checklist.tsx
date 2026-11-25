@@ -18,6 +18,7 @@ import { ChecklistItemEditModal } from '../components/ChecklistItemEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
+import { fetchUserDisplayNames, toldName, withArchivedIds, withPlainNames } from '../lib/userDisplayNames'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
 import { ChecklistReviewInboxes } from '../components/checklist/ChecklistReviewInboxes'
@@ -501,6 +502,8 @@ function ChecklistTodayTab({ authUserId, look = null, canForward, canOpenVehicle
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per ?task and the day's first read
   }, [taskParam, loading])
   const [eventActorNameById, setEventActorNameById] = useState<Record<string, string>>({})
+  /** The people among those names who have left. A thread still names them. A line that says who is told does not. */
+  const [leftPersonIds, setLeftPersonIds] = useState<ReadonlySet<string>>(() => new Set<string>())
   // Punch list #369: a done task says who hears. Their names are read beside the names of the people in the threads.
   useEffect(() => {
     const rows = [...todayInstances, ...outstandingInstances]
@@ -508,18 +511,13 @@ function ChecklistTodayTab({ authUserId, look = null, canForward, canOpenVehicle
     const ids = [...new Set([...rows.map((i) => taskHearsId(i.checklist_items, personId)), ...rows.map((i) => i.checklist_items?.created_by_user_id ?? null)].filter((v): v is string => !!v))].filter((id) => !(id in eventActorNameById))
     if (ids.length === 0) return
     let off = false
-    void supabase
-      .from('users')
-      .select('id, name')
-      .in('id', ids)
-      .then(({ data }) => {
-        if (off || !data) return
-        setEventActorNameById((prev) => {
-          const next = { ...prev }
-          for (const r of data as Array<{ id: string; name: string | null }>) next[r.id] = (r.name ?? '').trim() || 'Someone'
-          return next
-        })
-      })
+    // Through the names function, never the people table: a helper may not read a dev's row there, nor a master's who
+    // has not adopted them, and the line then named nobody (the simulator's walk of 2026-11-25).
+    void fetchUserDisplayNames(ids).then((rows) => {
+      if (off || rows.length === 0) return
+      setEventActorNameById((prev) => withPlainNames(prev, rows))
+      setLeftPersonIds((prev) => withArchivedIds(prev, rows))
+    })
     return () => {
       off = true
     }
@@ -604,15 +602,10 @@ function ChecklistTodayTab({ authUserId, look = null, canForward, canOpenVehicle
     const actorIds = [...new Set(events.map((ev) => ev.actor_user_id).filter((v): v is string => !!v))]
     const missing = actorIds.filter((id) => !(id in eventActorNameById))
     if (missing.length > 0) {
-      const { data: nameRows } = await supabase.from('users').select('id, name').in('id', missing)
-      if (nameRows) {
-        setEventActorNameById((prev) => {
-          const next = { ...prev }
-          for (const r of nameRows as Array<{ id: string; name: string | null }>) {
-            next[r.id] = (r.name ?? '').trim() || 'Someone'
-          }
-          return next
-        })
+      const nameRows = await fetchUserDisplayNames(missing)
+      if (nameRows.length > 0) {
+        setEventActorNameById((prev) => withPlainNames(prev, nameRows))
+        setLeftPersonIds((prev) => withArchivedIds(prev, nameRows))
       }
     }
   }
@@ -816,8 +809,7 @@ function ChecklistTodayTab({ authUserId, look = null, canForward, canOpenVehicle
   const olderRows = outstandingInstances.filter((i) => i.id !== nextId)
   const showSentence = !loading && !dayFailure && (todayInstances.length > 0 || outstandingInstances.length > 0)
   const hearsNameFor = (inst: ChecklistInstance): string | null => {
-    const id = taskHearsId(inst.checklist_items, personId)
-    return id ? (eventActorNameById[id] ?? null) : null
+    return toldName(taskHearsId(inst.checklist_items, personId), eventActorNameById, leftPersonIds)
   }
   // Punch list #369, step B1: the person's own task, and a follow-up from a task they finished. Both open the New task
   // window that exists, so nothing new is saved here. The day reads again once the window has sent.
@@ -852,7 +844,7 @@ function ChecklistTodayTab({ authUserId, look = null, canForward, canOpenVehicle
       vehicle: isVehicleTaskTitle(it?.title ?? ''),
       done: !!inst.completed_at,
       giverId,
-      giverName: giverId ? (eventActorNameById[giverId] ?? null) : null,
+      giverName: toldName(giverId, eventActorNameById, leftPersonIds),
       dueYmd: it?.due_date ?? null,
       stuck: isStuck(inst),
       first: pickedFirst === inst.id,

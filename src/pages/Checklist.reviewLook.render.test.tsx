@@ -39,8 +39,11 @@ vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
   const stub = makeSupabaseStub()
   const WRITES = ['insert', 'update', 'upsert', 'delete']
-  /** `task_note_taggable` lists who may be tagged at a card's note box. It is a read: STABLE, and it changes nothing. */
-  const READ_FUNCTIONS = ['task_note_taggable']
+  /**
+   * `task_note_taggable` lists who may be tagged at a card's note box, and `get_user_display_names` gives the names of
+   * the people a card's lines name. Each is a read: STABLE, and it changes nothing.
+   */
+  const READ_FUNCTIONS = ['task_note_taggable', 'get_user_display_names']
   /** Any table: reads answer empty, and a write is counted. */
   const plain = (table: string): Record<string, unknown> => {
     const b = stub.from() as Record<string, unknown>
