@@ -23853,6 +23853,9 @@ export type Database = {
           canonical_document_url: string | null
           fields: Json | null
           form_template_id: string | null
+          gc_own: boolean
+          gc_own_set_at: string | null
+          gc_own_set_by: string | null
           gc_view: string | null
           gc_view_set_at: string | null
           gc_view_set_by: string | null
@@ -23880,6 +23883,9 @@ export type Database = {
           canonical_document_url?: string | null
           fields?: Json | null
           form_template_id?: string | null
+          gc_own?: boolean
+          gc_own_set_at?: string | null
+          gc_own_set_by?: string | null
           gc_view?: string | null
           gc_view_set_at?: string | null
           gc_view_set_by?: string | null
@@ -23907,6 +23913,9 @@ export type Database = {
           canonical_document_url?: string | null
           fields?: Json | null
           form_template_id?: string | null
+          gc_own?: boolean
+          gc_own_set_at?: string | null
+          gc_own_set_by?: string | null
           gc_view?: string | null
           gc_view_set_at?: string | null
           gc_view_set_by?: string | null
@@ -23938,6 +23947,13 @@ export type Database = {
             columns: ["form_template_id"]
             isOneToOne: false
             referencedRelation: "contract_form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_required_papers_gc_own_set_by_fkey"
+            columns: ["gc_own_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -49708,6 +49724,10 @@ export type Database = {
       job_paper_set_basis: {
         Args: { p_basis: string; p_required_paper_id: string }
         Returns: string
+      }
+      job_paper_set_gc_own: {
+        Args: { p_own: boolean; p_required_paper_id: string }
+        Returns: boolean
       }
       job_paper_set_gc_view: {
         Args: { p_required_paper_id: string; p_view: string }
