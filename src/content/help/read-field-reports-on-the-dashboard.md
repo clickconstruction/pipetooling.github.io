@@ -44,6 +44,8 @@ A note at the bottom of the screen says which report you marked. Press **Undo** 
 
 To clear every new report in the list, press {{button:outline|Mark 8 opened}} at the bottom of the card. The press says how many it will mark.
 
+On a phone, the first report may move by itself when you scroll down to it. The report slides to the left, shows **Mark opened** and slides back. Nothing is marked. The card is showing you that a report swipes. This stops for good once you swipe a report or a bid yourself.
+
 ## The list refills
 
 The list shows eight reports at a time, newest first. When you clear one, the next new report comes up. The badge counts every new report, so it can read more than eight.

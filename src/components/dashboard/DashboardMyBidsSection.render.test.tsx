@@ -307,6 +307,65 @@ describe('DashboardMyBidsSection — hiding a bid (punch list #426, step 4)', ()
     expect(openBidPreview).toHaveBeenCalledWith('b2')
   })
 
+  it('on a device held in the hand, the card\'s first bid alone carries the sign, and the person\'s own swipe ends it (v2.8604)', async () => {
+    device.handHeld = true
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    const signed = [...document.querySelectorAll('[data-swipe-away-sign]')]
+    expect(signed.length).toBe(1)
+    expect(signed[0]!.closest('[data-my-bid]')?.getAttribute('data-my-bid')).toBe('b1')
+    expect(localStorage.getItem('pipetooling.swipeSign.me')).toBeNull()
+    const slide = document.querySelector('[data-my-bid="b1"] [data-swipe-away-slide]') as HTMLElement
+    pointer(slide, 'pointerdown', 300)
+    pointer(slide, 'pointermove', 280)
+    pointer(slide, 'pointermove', 150)
+    pointer(slide, 'pointerup', 150)
+    expect(await screen.findByText('Hidden: Fire Cabinet Installation.')).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('pipetooling.swipeSign.me') ?? 'null')?.away?.learned).toBe(true)
+    // The next bid is the first now, and it carries the sign, which may no longer play.
+    await waitFor(() => expect(document.querySelector('[data-my-bid="b2"] [data-swipe-away-sign]')).not.toBeNull())
+    // Hidden's first bid carries the way back.
+    fireEvent.click(await screen.findByRole('button', { name: 'Hidden, 1 bid' }))
+    expect(document.querySelector('[data-my-bid="b1"] [data-swipe-away-sign]')).not.toBeNull()
+    expect(JSON.parse(localStorage.getItem('pipetooling.swipeSign.me') ?? 'null')?.back?.learned).toBe(false)
+  })
+
+  it('a person who asked for less motion reads the gesture under the group\'s heading for that visit (v2.8604)', async () => {
+    device.handHeld = true
+    const realMedia = window.matchMedia
+    window.matchMedia = ((q: string) => ({ matches: q.includes('prefers-reduced-motion'), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia
+    // jsdom has no IntersectionObserver: this one says every watched row is in full view.
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(private cb: IntersectionObserverCallback) {}
+        observe() {
+          queueMicrotask(() => this.cb([{ isIntersecting: true, intersectionRatio: 1 } as IntersectionObserverEntry], this as unknown as IntersectionObserver))
+        }
+        unobserve() {}
+        disconnect() {}
+      },
+    )
+    try {
+      renderWithProviders(section('estimator'))
+      await loadedHeading()
+      expect(document.querySelector('[data-my-bids-sign-words]')).toBeNull()
+      await waitFor(() => expect(document.querySelector('[data-my-bids-sign-words]')?.textContent).toBe('Swipe a bid left to hide it.'), { timeout: 2000 })
+      // No row moved, and the visit is counted.
+      expect((document.querySelector('[data-my-bid="b1"] [data-swipe-away-slide]') as HTMLElement).style.transform).toBe('translateX(0px)')
+      expect(JSON.parse(localStorage.getItem('pipetooling.swipeSign.me') ?? 'null')?.away?.plays).toBe(1)
+    } finally {
+      vi.unstubAllGlobals()
+      window.matchMedia = realMedia
+    }
+  })
+
+  it('at a desk no bid carries the sign (v2.8604)', async () => {
+    renderWithProviders(section('estimator'))
+    await loadedHeading()
+    expect(document.querySelector('[data-swipe-away-sign]')).toBeNull()
+  })
+
   it('at a desk, Show again says what it did, and Undo hides the bid again and says nothing more (v2.8603)', async () => {
     renderWithProviders(section('estimator'))
     await loadedHeading()
