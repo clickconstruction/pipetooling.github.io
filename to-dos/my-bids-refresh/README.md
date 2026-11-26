@@ -2,7 +2,7 @@
 name: "My Bids and Recent Reports on the Dashboard: one swipe to put a row away"
 number: 426
 group: ready
-status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · the walk's two small presses and the frame's lost page mended in v2.8464, the bid window's own small presses in v2.8496 · Recent Reports' swipe walked on clicktooling.com as a sample account 2026-11-24, and it held · tried on a real iPhone 2026-11-25 by the person who runs the session, and the swipe held · that try asked for two more things, a sign that a row can be swiped and a swipe back for a put-away row, both drawn the same day in `swipe-sign-and-back.html` · their pick the same day, *A and no press* · the swipe back built on both cards (v2.8603) and the sign (v2.8604), neither walked on a phone · a hide on a second device not walked
+status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · the walk's two small presses and the frame's lost page mended in v2.8464, the bid window's own small presses in v2.8496 · Recent Reports' swipe walked on clicktooling.com as a sample account 2026-11-24, and it held · tried on a real iPhone 2026-11-25 by the person who runs the session, and the swipe held · that try asked for two more things, a sign that a row can be swiped and a swipe back for a put-away row, both drawn the same day in `swipe-sign-and-back.html` · their pick the same day, *A and no press* · the swipe back built on both cards (v2.8603) and the sign (v2.8604), neither walked on a phone · a hide on a second device not walked · picks 3 and 4 answered 2026-11-26: keep both as built
 summary: >
   The owner wants the eye icon on each My Bids row replaced by a swipe and the bids grouped by state.
   He wants Recent Reports' heading back on one row, its presses moved to the foot, and the same swipe
@@ -382,6 +382,9 @@ phone?*, the person who runs the session answered:
 So the sign is way A and a put-away row has no press on a phone, way 1. The answer named picks 1 and 2. Picks 3
 and 4 were not answered, and each is built as recommended: a toast with **Undo** when a row comes back, and a
 sign that plays up to three times. Either is a small change if the answer differs.
+
+**Picks 3 and 4, answered 2026-11-26 (UTC) in the managing session.** Asked on 2026-11-26 (UTC) in the managing session whether every pick on the question sheet stands, the person answered "All picks stand". Row 18 read: *#426:
+Keep the Undo toast and the hint up to three times, once a day. Pick: Keep both.* Both stay as built.
 
 **The build, after the pick.** Planned as three small PRs, each with its kernel and tests first, its guide and
 its release note. The client only: no migration and no function. Steps 1 and 2 shipped as one PR, v2.8603,
