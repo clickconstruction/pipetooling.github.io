@@ -149,3 +149,27 @@ describe('the paper’s date, its saved fields and the county’s stamp', () => 
     expect(plainSentence(releaseRecordedSentence(rel({ filed_at: '2026-12-03', fields: { releaseInstrument: '2026-0431955' } })) ?? '')).toBe('Released. The county recorded it Dec 3 as 2026-0431955.')
   })
 })
+
+describe('the funds confirmed (punch list #435, piece 4)', () => {
+  const FUNDS = { by: 'u1', name: 'Alex Rivera', at: '2026-11-26T15:04:00Z', note: 'the funds are good' }
+
+  it('lets the release go before the bank’s day on a confirmation, and says whose word it rests on', () => {
+    const g = releaseMoneyGate({ open: 0, payments: [check()], todayYmd: TODAY, anywayReason: '', bank: [bank()], funds: FUNDS })
+    expect(g.hold).toBe(false)
+    expect(g.tone).toBe('green')
+    expect(g.why).toBeNull()
+    expect(plainSentence(g.say)).toBe('Paid Nov 24 by check 1184. Alex Rivera confirmed the funds Nov 26.')
+    expect(plainWordsFailures(plainSentence(g.say))).toEqual([])
+  })
+
+  it('still holds on a check that came back, and while the bank is being asked', () => {
+    expect(releaseMoneyGate({ open: 0, payments: [check()], todayYmd: TODAY, anywayReason: '', bank: [bank({ status: 'failed', postedYmd: '2026-11-25', failureReason: 'Insufficient funds' })], funds: FUNDS }).hold).toBe(true)
+    expect(releaseMoneyGate({ open: 0, payments: [check()], todayYmd: TODAY, anywayReason: '', bank: undefined, funds: FUNDS }).hold).toBe(true)
+    expect(releaseMoneyGate({ open: 1455.5, payments: [check()], todayYmd: TODAY, anywayReason: '', bank: [bank()], funds: FUNDS }).hold).toBe(true)
+  })
+
+  it('saves the confirmation on the release, and nothing when there is none', () => {
+    expect(releaseSaveFields({ paymentDate: '2026-11-24' }, 'a1', '', null, FUNDS)).toEqual({ paymentDate: '2026-11-24', releasesFilingId: 'a1', releasedOnConfirmedFunds: FUNDS })
+    expect(releaseSaveFields({}, 'a1', '', null, null)).toEqual({ releasesFilingId: 'a1' })
+  })
+})

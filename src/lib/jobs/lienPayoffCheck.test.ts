@@ -3,11 +3,11 @@ import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
 import type { BankCheck } from './checkCleared'
 import type { LienPayoffBill, LienPayoffPlace, LienPayoffRow } from './lienPayoff'
-import { PAYOFF_CHECK_WORDS, checkBills, checkPlan, liensPayoffAmount, parseCheckAmount, payoffCheckBank, payoffCheckNote, spreadCheck, type CheckBill } from './lienPayoffCheck'
+import { PAYOFF_CHECK_WORDS, checkBills, checkPlan, liensPayoffAmount, parseCheckAmount, payoffCheckBank, payoffCheckClears, payoffCheckNote, spreadCheck, type CheckBill } from './lienPayoffCheck'
 
 // Every job, bill, instrument and amount here is made up.
 const bill = (invoiceId: string, jobId: string, open: number, billedYmd: string, stripe = false): LienPayoffBill => ({ invoiceId, jobId, open, billedYmd, stripe })
-const row = (jobId: string, jobNumber: string, step: LienPayoffRow['step']['step'] = 'money'): LienPayoffRow => ({ affidavitId: `a-${jobId}`, jobId, jobNumber, jobName: `Okafor ${jobNumber}`, county: 'Travis', instrument: '', filedYmd: '2026-11-09', lienAmount: 0, open: 0, step: { step, say: '', warn: null, warnTone: null, press: null, releaseId: null } })
+const row = (jobId: string, jobNumber: string, step: LienPayoffRow['step']['step'] = 'money'): LienPayoffRow => ({ affidavitId: `a-${jobId}`, jobId, jobNumber, jobName: `Okafor ${jobNumber}`, county: 'Travis', instrument: '', filedYmd: '2026-11-09', lienAmount: 0, open: 0, step: { step, say: '', warn: null, warnTone: null, press: null, releaseId: null, paid: null, check: null, recordedYmd: null }, askedYmd: '', funds: null, fields: null })
 const place = (over: Partial<LienPayoffPlace> = {}): Pick<LienPayoffPlace, 'rows' | 'other'> => ({ rows: [row('j1', '2041'), row('j2', '2058'), row('j3', '2063')], other: [{ jobId: 'j4', jobNumber: '2071', jobName: 'Okafor trip charge', open: 640 }], ...over })
 const BILLS: Record<string, LienPayoffBill[]> = {
   j1: [bill('b2', 'j1', 3000, '2026-11-10'), bill('b1', 'j1', 4420, '2026-11-02')],
@@ -169,5 +169,14 @@ describe('the small pieces', () => {
   it('writes the note every row of one check carries', () => {
     expect(payoffCheckNote(16455.5, ' 1184 ', 4)).toBe('Payoff check 1184, $16,455.50 over 4 bills')
     expect(payoffCheckNote(640, '9', 1)).toBe('Payoff check 9, $640.00 over 1 bill')
+  })
+})
+
+describe('payoffCheckClears (piece 4)', () => {
+  it('names the bank’s day when the bank holds the check, else about seven days after it', () => {
+    const atBank: BankCheck = { id: 'k1', amount: 12580.5, status: 'pending', depositedYmd: '2026-11-23', postedYmd: null, bankDayYmd: '2026-12-02', checkNumber: '2290', failureReason: null }
+    expect(payoffCheckClears({ check: atBank }, '2026-11-24', '2026-11-24')).toEqual({ ymd: '2026-12-02', about: false })
+    expect(payoffCheckClears({ check: null }, '2026-11-24', '2026-11-24')).toEqual({ ymd: '2026-12-01', about: true })
+    expect(payoffCheckClears(null, '', '2026-11-24')).toBeNull()
   })
 })

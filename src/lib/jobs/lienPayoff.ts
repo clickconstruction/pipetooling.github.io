@@ -24,6 +24,11 @@
  *
  * Since piece 3 it also gives each job's sent bills that still owe (`lienPayoffBills`) and the jobs at a place with
  * money open and no filed lien (`LienPayoffPlace.other`), for the check pane in `lienPayoffCheck.ts`.
+ *
+ * Since piece 4 each row carries the two facts a payoff keeps on the affidavit row (`lienPayoffFields.ts`): the day a
+ * release was asked for in writing, and a leader's, a controller's or a dev's word that the bank confirmed the funds.
+ * A confirmed check owes its release before the bank's day. Each step also carries the last payment and the bank's
+ * answer, which the place's card reads (`lienPayoffCard.ts`).
  */
 import { calendarYmdInAppTzFromIso, ymdAddDays } from '../../utils/dateUtils'
 import { moneyWords } from '../moneyParts'
@@ -32,6 +37,7 @@ import { formatYmdMonthDay } from './billedExpectedPay'
 import { bankCheckAnswer, checkAnswerWords, checkName, paymentCheckAnswer, type BankCheck, type CheckAnswer } from './checkCleared'
 import { isCheckPayment } from './checkClearing'
 import { lienDeskJobNumber } from './lienJobLabel'
+import { fundsConfirmedWords, payoffNote, type FundsConfirmed } from './lienPayoffFields'
 import { attributeJobPayments } from './paymentAttribution'
 
 /** `bank`: the bills read paid by a check the bank has not cleared. No release is offered. */
@@ -41,9 +47,10 @@ export type LienPayoffStepKey = 'money' | 'bank' | 'release' | 'county' | 'done'
 export type LienPayoffDoor = 'bill' | 'release'
 
 /** The kinds of value a payoff sentence marks. */
-export type LienPayoffValueKind = 'money' | 'day' | 'way' | 'instrument' | 'count'
+export type LienPayoffValueKind = 'money' | 'day' | 'way' | 'instrument' | 'count' | 'who'
 
-export type LienPayoffAffidavit = { id: string; job_id: string; amount: number | string | null; county: string | null; recording_number: string | null; filed_at: string | null }
+/** `fields` holds the payoff's two facts since piece 4 (`lienPayoffFields.ts`); an older reader may leave it out. */
+export type LienPayoffAffidavit = { id: string; job_id: string; amount: number | string | null; county: string | null; recording_number: string | null; filed_at: string | null; fields?: unknown }
 
 export type LienPayoffRelease = { id: string; job_id: string; created_at: string; filed_at: string | null; recording_number: string | null; fields: unknown }
 
@@ -104,6 +111,12 @@ export type LienPayoffStep = {
   press: { label: string; door: LienPayoffDoor } | null
   /** The release of record this lien already has, or null. */
   releaseId: string | null
+  /** The last payment with a day and an amount: its day and how it came ('' when the row does not say). Null with none. */
+  paid: { ymd: string; way: string } | null
+  /** What the bank says of that payment (`checkCleared.ts`). Null with no payment. */
+  check: CheckAnswer | null
+  /** The day the county recorded the release, on `done` alone. */
+  recordedYmd: string | null
 }
 
 /** The three steps as the window's legend reads them. */
@@ -210,6 +223,8 @@ export type LienPayoffStepInput = {
   payments: ReadonlyArray<LienPayoffPayment>
   /** The bank's check deposits (`checkClearedIo.ts`). With none, a check waits seven days from the day typed. */
   bank?: ReadonlyArray<BankCheck>
+  /** The bank confirmed the funds, on a leader's, a controller's or a dev's word (piece 4): the release is owed before the bank's day. */
+  funds?: FundsConfirmed | null
   todayYmd: string
 }
 
@@ -220,6 +235,11 @@ export function lienPayoffStep(input: LienPayoffStepInput): LienPayoffStep {
   const owes = open > 0.004
   const stillOpen = `${val('money', moneyWords(open))} is still open on this job’s bills.`
   const release = releaseForAffidavit(affidavit, releases, affidavitsOnJob)
+  // The last payment and what the bank says of it ride on every step, for the place's card (piece 4) as much as this row.
+  const lastPaid = lastPayment(payments)
+  const paid = lastPaid ? { ymd: (lastPaid.paid_on ?? '').slice(0, 10), way: payWayWords(lastPaid) } : null
+  const check = lastPaid ? paymentCheckAnswer(lastPaid, input.bank ?? [], todayYmd) : null
+  const facts = { paid, check, recordedYmd: null as string | null }
 
   if (release?.filed_at) {
     const day = val('day', formatYmdMonthDay(release.filed_at))
@@ -231,6 +251,8 @@ export function lienPayoffStep(input: LienPayoffStepInput): LienPayoffStep {
       warnTone: owes ? 'red' : null,
       press: null,
       releaseId: release.id,
+      ...facts,
+      recordedYmd: release.filed_at.slice(0, 10),
     }
   }
 
@@ -243,6 +265,7 @@ export function lienPayoffStep(input: LienPayoffStepInput): LienPayoffStep {
       warnTone: owes ? 'red' : null,
       press: { label: 'Record the county’s stamp ›', door: 'release' },
       releaseId: release.id,
+      ...facts,
     }
   }
 
@@ -255,27 +278,31 @@ export function lienPayoffStep(input: LienPayoffStepInput): LienPayoffStep {
       warnTone: null,
       press: { label: 'Record the payment ›', door: 'bill' },
       releaseId: null,
+      ...facts,
     }
   }
 
-  const paid = lastPayment(payments)
-  const way = paid ? payWayWords(paid) : ''
-  const paidYmd = paid ? (paid.paid_on ?? '').slice(0, 10) : ''
-  const said = paid ? `Paid ${val('day', formatYmdMonthDay(paidYmd))}${way ? ` by ${val('way', way)}` : ''}.` : 'The bills read paid.'
+  const said = paid ? `Paid ${val('day', formatYmdMonthDay(paid.ymd))}${paid.way ? ` by ${val('way', paid.way)}` : ''}.` : 'The bills read paid.'
+  const makeRelease = { label: 'Make the release ›', door: 'release' as const }
   // A release rests on money the bank has made good: a check that has not cleared holds the lien on `bank`.
-  const answer = paid ? paymentCheckAnswer(paid, input.bank ?? [], todayYmd) : null
-  if (paid && answer && !answer.cleared) {
-    const words = checkAnswerWords(answer, checkName(paid.reference_number))
+  if (lastPaid && check && !check.cleared) {
+    const bad = check.state === 'came_back' || check.state === 'unread'
+    // Unless a leader, a controller or a dev said the bank confirmed the funds (piece 4): then the release is owed now.
+    if (input.funds && !bad) {
+      return { step: 'release', say: `${said} ${fundsConfirmedWords(input.funds)} The release is owed.`, warn: null, warnTone: null, press: makeRelease, releaseId: null, ...facts }
+    }
+    const words = checkAnswerWords(check, checkName(lastPaid.reference_number))
     return {
       step: 'bank',
       say: said,
       warn: `${words.say} The release waits ${words.wait}.`,
       warnTone: words.tone === 'red' ? 'red' : 'amber',
-      press: answer.state === 'came_back' ? { label: LIEN_PAYOFF_WORDS.cameBack, door: 'bill' } : null,
+      press: check.state === 'came_back' ? { label: LIEN_PAYOFF_WORDS.cameBack, door: 'bill' } : null,
       releaseId: null,
+      ...facts,
     }
   }
-  return { step: 'release', say: `${said} The release is owed.`, warn: null, warnTone: null, press: { label: 'Make the release ›', door: 'release' }, releaseId: null }
+  return { step: 'release', say: `${said} The release is owed.`, warn: null, warnTone: null, press: makeRelease, releaseId: null, ...facts }
 }
 
 // ---------- The rows and their places ----------
@@ -293,6 +320,12 @@ export type LienPayoffRow = {
   /** What the job's sent bills still owe. */
   open: number
   step: LienPayoffStep
+  /** The day a release was asked for in writing, or '' (piece 4, `lienPayoffFields.ts`). */
+  askedYmd: string
+  /** The bank confirmed the funds, on whose word and when, or null. */
+  funds: FundsConfirmed | null
+  /** The affidavit row's `fields` as read, so a write can keep every other field. */
+  fields: unknown
 }
 
 export type LienPayoffPlace = {
@@ -420,6 +453,7 @@ export function lienPayoffPlaces(facts: LienPayoffFacts): LienPayoffPlace[] {
   for (const a of filed) {
     const job = jobById.get(a.job_id)
     const open = facts.openByJob[a.job_id] ?? 0
+    const note = payoffNote(a.fields)
     const row: LienPayoffRow = {
       affidavitId: a.id,
       jobId: a.job_id,
@@ -430,7 +464,10 @@ export function lienPayoffPlaces(facts: LienPayoffFacts): LienPayoffPlace[] {
       filedYmd: (a.filed_at ?? '').slice(0, 10),
       lienAmount: num(a.amount),
       open,
-      step: lienPayoffStep({ affidavit: a, releases: facts.releases, affidavitsOnJob: onJob.get(a.job_id) ?? 1, open, payments: facts.paymentsByJob[a.job_id] ?? [], bank: facts.bank, todayYmd: facts.todayYmd }),
+      step: lienPayoffStep({ affidavit: a, releases: facts.releases, affidavitsOnJob: onJob.get(a.job_id) ?? 1, open, payments: facts.paymentsByJob[a.job_id] ?? [], bank: facts.bank, funds: note.funds, todayYmd: facts.todayYmd }),
+      askedYmd: note.askedYmd,
+      funds: note.funds,
+      fields: a.fields ?? null,
     }
     const key = (job && lienPlaceKey(job.job_address)) || `job|${a.job_id}`
     const place = byPlace.get(key) ?? { key, place: (job?.job_address ?? '').trim() || 'A job with no address', payer: '', headline: '', rows: [], other: [], bank: null }

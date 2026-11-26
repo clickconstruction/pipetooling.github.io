@@ -28,7 +28,9 @@
 import { batchWords, type BatchWords } from '../batchWords'
 import { moneyWords } from '../moneyParts'
 import { val } from '../valuesInPlace'
+import { ymdAddDays } from '../../utils/dateUtils'
 import { bankCheckAnswer, bankCheckTyped, checkAnswerWords, checkName, type BankCheck } from './checkCleared'
+import { CHECK_CLEAR_DAYS } from './checkClearing'
 import type { LienPayoffBill, LienPayoffPlace } from './lienPayoff'
 
 export const PAYOFF_CHECK_WORDS = {
@@ -49,6 +51,13 @@ export const PAYOFF_CHECK_WORDS = {
   overLine: 'This is more than the bill owes.',
   failed: 'The payment was not recorded.',
   noDeposit: 'The bank shows no deposit of this check. A release then waits seven days.',
+  /** The written request (piece 4): typed with the check, kept on each liened lien the check pays. */
+  asked: 'Asked for a release in writing',
+  askedHint: 'Leave it empty if no written request has come.',
+  clears: 'Check clears',
+  clearsBank: 'the bank’s day',
+  clearsAbout: 'about, seven days after the check',
+  askedNotKept: 'The day a release was asked for did not take on every lien.',
 } as const
 
 const cents = (dollars: number | string | null | undefined): number => Math.round((Number(dollars) || 0) * 100)
@@ -135,6 +144,15 @@ export function payoffCheckBank(typed: { check: number | null; number: string },
   if (answer.cleared) return { hold: null, note: words.say, tone: 'green', check }
   const tail = answer.state === 'unread' ? '' : answer.state === 'came_back' ? 'Do not record it.' : words.wait === 'until then' ? 'Record it then.' : 'Record it once the bank clears it.'
   return { hold: [words.say, tail].filter(Boolean).join(' '), note: null, tone: words.tone, check }
+}
+
+/** The day the check clears, for the pane's worked-out line: the bank's day when the bank holds the check, else about seven days after it. */
+export function payoffCheckClears(bank: Pick<PayoffCheckBank, 'check'> | null, receivedYmd: string, todayYmd: string): { ymd: string; about: boolean } | null {
+  if (bank?.check) {
+    const ymd = bankCheckAnswer(bank.check, todayYmd).clearsYmd
+    return ymd ? { ymd, about: false } : null
+  }
+  return /^\d{4}-\d{2}-\d{2}$/.test(receivedYmd) ? { ymd: ymdAddDays(receivedYmd, CHECK_CLEAR_DAYS), about: true } : null
 }
 
 export type CheckLineState = 'none' | 'ready' | 'held' | 'over'

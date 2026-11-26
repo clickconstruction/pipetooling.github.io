@@ -343,3 +343,50 @@ describe('lienPayoffBills', () => {
     expect(lienPayoffBills('j1', [inv('a', 100, 'billed', '2026-11-01T12:00:00Z'), inv('b', 100, 'billed', '2026-11-05T12:00:00Z')], [{ invoice_id: null, amount: 100 }], 200).map((b) => b.invoiceId)).toEqual(['b'])
   })
 })
+
+describe('the funds confirmed (punch list #435, piece 4)', () => {
+  const FUNDS = { by: 'u1', name: 'Alex Rivera', at: '2026-11-26T15:04:00Z', note: 'the funds are good' }
+  const JOB: LienPayoffJob = { id: 'j1', hcp_number: null, click_number: '2041', job_name: 'Okafor main house', job_address: '212 Larkspur Court, Austin, TX', customer_id: 'c1', customer_name: 'Marisol Okafor' }
+
+  it('owes the release before the bank’s day once the funds are confirmed, and says whose word it rests on', () => {
+    const s = step({ payments: [check()], bank: [bank()], funds: FUNDS })
+    expect(s.step).toBe('release')
+    expect(plainSentence(s.say)).toBe('Paid Nov 24 by check 1184. Alex Rivera confirmed the funds Nov 26. The release is owed.')
+    expect(plainWordsFailures(plainSentence(s.say))).toEqual([])
+    expect(s.press).toEqual({ label: 'Make the release ›', door: 'release' })
+    expect(s.check?.state).toBe('at_bank')
+    expect(s.paid).toEqual({ ymd: '2026-11-24', way: 'check 1184' })
+  })
+
+  it('keeps the lien on the bank when the check came back, confirmation or not', () => {
+    const s = step({ payments: [check()], bank: [bank({ status: 'failed', postedYmd: '2026-11-25', failureReason: 'Insufficient funds' })], funds: FUNDS })
+    expect(s.step).toBe('bank')
+    expect(s.press).toEqual({ label: 'Open the bills ›', door: 'bill' })
+    expect(s.check?.state).toBe('came_back')
+  })
+
+  it('carries the last payment, the bank’s answer and the recorded day on every step', () => {
+    const done = step({ payments: [check()], releases: [rel({ filed_at: '2026-12-03', fields: { releasesFilingId: 'a1' } })] })
+    expect(done.recordedYmd).toBe('2026-12-03')
+    expect(done.paid).toEqual({ ymd: '2026-11-24', way: 'check 1184' })
+    expect(done.check?.state).toBe('no_deposit')
+    const owing = step({ open: 7420 })
+    expect(owing.recordedYmd).toBeNull()
+    expect(owing.paid).toBeNull()
+    expect(owing.check).toBeNull()
+  })
+
+  it('puts the two facts off the affidavit row on its place row', () => {
+    const fields = { releaseAskedYmd: '2026-11-24', fundsConfirmed: FUNDS }
+    const places = lienPayoffPlaces({ affidavits: [aff({ fields })], releases: [], jobs: [JOB], openByJob: { j1: 0 }, paymentsByJob: { j1: [check()] }, bank: [bank()], todayYmd: TODAY })
+    const row = places[0]!.rows[0]!
+    expect(row.askedYmd).toBe('2026-11-24')
+    expect(row.funds).toEqual(FUNDS)
+    expect(row.fields).toEqual(fields)
+    expect(row.step.step).toBe('release')
+    const bare = lienPayoffPlaces({ affidavits: [aff()], releases: [], jobs: [JOB], openByJob: { j1: 7420 }, paymentsByJob: {}, todayYmd: TODAY })[0]!.rows[0]!
+    expect(bare.askedYmd).toBe('')
+    expect(bare.funds).toBeNull()
+    expect(bare.fields).toBeNull()
+  })
+})

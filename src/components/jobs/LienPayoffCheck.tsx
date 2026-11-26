@@ -1,13 +1,15 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Money } from '../Money'
-import { ChangeableValue, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { ChangeableValue, ValueLine, ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { useToastContext } from '../../contexts/ToastContext'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import type { BankCheck } from '../../lib/jobs/checkCleared'
 import type { LienPayoffBill, LienPayoffPlace } from '../../lib/jobs/lienPayoff'
-import { PAYOFF_CHECK_WORDS, checkBills, checkPlan, liensPayoffAmount, parseCheckAmount, payoffCheckBank, payoffCheckNote, spreadCheck, type CheckLine } from '../../lib/jobs/lienPayoffCheck'
+import { PAYOFF_CARD_WORDS, releaseDue } from '../../lib/jobs/lienPayoffCard'
+import { keepPayoffFields } from '../../lib/jobs/lienPayoffCardIo'
+import { PAYOFF_CHECK_WORDS, checkBills, checkPlan, liensPayoffAmount, parseCheckAmount, payoffCheckBank, payoffCheckClears, payoffCheckNote, spreadCheck, type CheckLine } from '../../lib/jobs/lienPayoffCheck'
 import { recordPayoffCheck, type PayoffCheckOutcome } from '../../lib/jobs/lienPayoffCheckIo'
 import { moneyWords } from '../../lib/moneyParts'
 
@@ -24,6 +26,10 @@ import { moneyWords } from '../../lib/moneyParts'
  * Since punch list #437, piece 1, the pane asks the bank (`bankChecks`): a check the bank holds and has not cleared
  * is not recorded, and the pane says the day it may be. When the place's own check is at the bank
  * (`place.bank`), the pane opens on what the bank read off it, so nobody types the check.
+ *
+ * Since piece 4 the pane also takes the day a release was asked for in writing, so a check and its letter are typed
+ * in one sitting, and works out the due day and the clearing day beside the check. The asked day is kept on each
+ * liened lien once the payments are recorded (`lienPayoffCardIo.ts`).
  */
 
 type Props = {
@@ -39,6 +45,8 @@ type Props = {
   /** The job's Bill tab: where a part payment on a Stripe bill is recorded. */
   onOpenBill: (jobId: string) => void
   record?: typeof recordPayoffCheck
+  /** Tests hand the asked day's write in. */
+  keep?: typeof keepPayoffFields
 }
 
 const head: CSSProperties = { margin: 0, fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -48,7 +56,7 @@ const linkPress: CSSProperties = { border: 'none', background: 'none', padding: 
 const TONE = { red: 'var(--text-red-700)', amber: 'var(--text-amber-800)', green: 'var(--text-green-700)' } as const
 const NO_CHECKS: ReadonlyArray<BankCheck> = []
 
-export default function LienPayoffCheck({ place, billsByJob, bankChecks = NO_CHECKS, todayYmd, isMobile, onBack, onRecorded, onOpenBill, record = recordPayoffCheck }: Props) {
+export default function LienPayoffCheck({ place, billsByJob, bankChecks = NO_CHECKS, todayYmd, isMobile, onBack, onRecorded, onOpenBill, record = recordPayoffCheck, keep = keepPayoffFields }: Props) {
   const { showToast } = useToastContext()
   const bills = useMemo(() => checkBills(place, billsByJob), [place, billsByJob])
   /** The place's own check at the bank, when there is one: the pane opens on what the bank read off it. */
@@ -56,6 +64,8 @@ export default function LienPayoffCheck({ place, billsByJob, bankChecks = NO_CHE
   const [amountText, setAmountText] = useState(() => moneyWords(atBank?.amount ?? liensPayoffAmount(checkBills(place, billsByJob))).replace('$', ''))
   const [number, setNumber] = useState(atBank?.checkNumber ?? '')
   const [received, setReceived] = useState(atBank?.depositedYmd && atBank.depositedYmd <= todayYmd ? atBank.depositedYmd : todayYmd)
+  /** The day a release was asked for in writing (piece 4), starting on what the place's liens already hold. */
+  const [asked, setAsked] = useState(() => [...place.rows.map((r) => r.askedYmd).filter(Boolean)].sort()[0] ?? '')
   /** What a person set by hand, by bill. The rest of the check is spread around these. */
   const [kept, setKept] = useState<Record<string, number>>({})
   const [busy, setBusy] = useState(false)
@@ -64,6 +74,8 @@ export default function LienPayoffCheck({ place, billsByJob, bankChecks = NO_CHE
 
   const check = parseCheckAmount(amountText)
   const bank = useMemo(() => payoffCheckBank({ check, number }, bankChecks, todayYmd), [check, number, bankChecks, todayYmd])
+  const clears = useMemo(() => payoffCheckClears(bank, received, todayYmd), [bank, received, todayYmd])
+  const due = useMemo(() => releaseDue(asked, todayYmd), [asked, todayYmd])
   const plan = useMemo(() => checkPlan({ check, number, bills, pays: spreadCheck(check ?? 0, bills, kept), bank }), [check, number, bills, kept, bank])
   const jobs = useMemo(() => {
     const order: string[] = []
@@ -83,6 +95,14 @@ export default function LienPayoffCheck({ place, billsByJob, bankChecks = NO_CHE
       const done = outcomes.filter((o) => o.ok).length
       const words = batchOutcomeWords({ verb: 'record', past: 'recorded', done, failed: outcomes.length - done, noun: 'payment' })
       showToast(words.line, words.tone === 'success' ? 'success' : words.tone === 'warning' ? 'info' : 'error')
+      // The written request's day rides with the money (piece 4): kept on each liened lien the check pays.
+      if (done > 0 && asked) {
+        const kept = await keep(
+          place.rows.filter((r) => r.step.step !== 'done' && r.askedYmd !== asked).map((r) => ({ affidavitId: r.affidavitId, fields: r.fields })),
+          { askedYmd: asked },
+        )
+        if (kept.some((k) => !k.ok)) showToast(PAYOFF_CHECK_WORDS.askedNotKept, 'error')
+      }
       if (done > 0) onRecorded()
       if (done === outcomes.length && plan.held === 0) onBack()
       else setRan(ready.map((line, i) => ({ line, outcome: outcomes[i] ?? { invoiceId: line.bill.invoiceId, ok: false, why: PAYOFF_CHECK_WORDS.failed } })))
@@ -149,7 +169,7 @@ export default function LienPayoffCheck({ place, billsByJob, bankChecks = NO_CHE
   return (
     <div data-lien-payoff-check="open" style={{ display: 'grid', gap: '0.8rem' }}>
       {top}
-      <section style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(3, minmax(0, 1fr))', gap: '0.6rem' }}>
+      <section style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(4, minmax(0, 1fr))', gap: '0.6rem' }}>
         <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8125rem' }}>
           <span style={{ fontWeight: 600 }}>{PAYOFF_CHECK_WORDS.amount}</span>
           <input type="text" inputMode="decimal" data-lien-payoff-check-amount value={amountText} onChange={(e) => setAmountText(e.target.value)} autoComplete="off" style={{ ...box, fontVariantNumeric: 'tabular-nums' }} />
@@ -162,7 +182,30 @@ export default function LienPayoffCheck({ place, billsByJob, bankChecks = NO_CHE
           <span style={{ fontWeight: 600 }}>{PAYOFF_CHECK_WORDS.received}</span>
           <input type="date" data-lien-payoff-check-received value={received} max={todayYmd} onChange={(e) => setReceived(e.target.value || todayYmd)} style={box} />
         </label>
-        <p style={{ ...small, margin: 0, gridColumn: '1 / -1' }}>{PAYOFF_CHECK_WORDS.amountHint}</p>
+        <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8125rem' }}>
+          <span style={{ fontWeight: 600 }}>{PAYOFF_CHECK_WORDS.asked}</span>
+          <input type="date" data-lien-payoff-check-asked value={asked} max={todayYmd} onChange={(e) => setAsked(e.target.value)} style={box} />
+        </label>
+        <p style={{ ...small, margin: 0, gridColumn: '1 / -1' }}>
+          {PAYOFF_CHECK_WORDS.amountHint} {PAYOFF_CHECK_WORDS.askedHint}
+        </p>
+        {/* The two days, worked out beside the check (piece 4): when the release is due, and when the check clears. */}
+        {due || clears ? (
+          <div data-lien-payoff-check-days style={{ gridColumn: '1 / -1', fontSize: '0.8125rem' }}>
+            <ValueLines>
+              {due ? (
+                <ValueLine label={PAYOFF_CARD_WORDS.due}>
+                  <WorkedOutValue>{formatYmdMonthDay(due.dueYmd)}</WorkedOutValue> <span style={small}>{PAYOFF_CARD_WORDS.dueHint}</span>
+                </ValueLine>
+              ) : null}
+              {clears ? (
+                <ValueLine label={PAYOFF_CHECK_WORDS.clears}>
+                  <WorkedOutValue>{formatYmdMonthDay(clears.ymd)}</WorkedOutValue> <span style={small}>{clears.about ? PAYOFF_CHECK_WORDS.clearsAbout : PAYOFF_CHECK_WORDS.clearsBank}</span>
+                </ValueLine>
+              ) : null}
+            </ValueLines>
+          </div>
+        ) : null}
         {bank.note ? (
           <p data-lien-payoff-check-bank={bank.tone} style={{ margin: 0, gridColumn: '1 / -1', fontSize: '0.78rem', color: TONE[bank.tone] }}>
             <ValueSentence text={bank.note} />

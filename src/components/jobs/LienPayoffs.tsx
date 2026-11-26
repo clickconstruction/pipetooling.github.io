@@ -2,11 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { createPortal } from 'react-dom'
 import { EmptyState } from '../EmptyState'
 import { Money, MoneyText } from '../Money'
-import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { ChangeableValue, ValueLine, ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
+import { useToastContext } from '../../contexts/ToastContext'
+import type { UserRole } from '../../hooks/useAuth'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
+import { batchOutcomeWords } from '../../lib/batchWords'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { emptyWords } from '../../lib/emptyWords'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import type { BankCheck } from '../../lib/jobs/checkCleared'
+import { PAYOFF_CARD_WORDS, canConfirmFunds, lienPayoffCard, type PayoffStopState } from '../../lib/jobs/lienPayoffCard'
+import { PAYOFF_WRITE_FAILED, keepPayoffFields, type PayoffFieldsRow } from '../../lib/jobs/lienPayoffCardIo'
+import { fundsConfirmedNow } from '../../lib/jobs/lienPayoffFields'
 import {
   LIEN_PAYOFF_STEPS,
   LIEN_PAYOFF_WORDS,
@@ -38,6 +45,11 @@ import LienPayoffCheck from './LienPayoffCheck'
  * The window itself writes one thing, since piece 3: *One check for this place ›* on a place opens the check pane
  * (`LienPayoffCheck.tsx`), which records one check over the place's bills. Everything else is a door: the Bill tab
  * records a single payment and the Lien window's Release of record tab makes the paper.
+ *
+ * Since piece 4 each open place carries the payoff card (`lienPayoffCard.ts`): five stops, one line that says what
+ * to do today or that nothing is owed, the day a release was asked for in writing as a value changed in place, the
+ * due day and the clearing day worked out, and **The bank confirmed the funds ›** for a leader, a controller or a
+ * dev. The two facts are kept on each lien's affidavit row (`lienPayoffCardIo.ts`), no migration.
  */
 
 type Props = {
@@ -55,6 +67,11 @@ type Props = {
   read?: (todayYmd: string) => Promise<LienPayoffFacts>
   /** Tests hand the check pane's write in. */
   record?: Parameters<typeof LienPayoffCheck>[0]['record']
+  /** Tests hand the card's writes in: the asked day and the funds confirmation on each lien. */
+  keep?: typeof keepPayoffFields
+  /** Who is signed in: the funds press is a leader's, a controller's or a dev's, and the confirmation carries their name. */
+  role?: UserRole | null
+  who?: PayoffWho | null
   /** Open the window at once: the address's `?payoffs=1`. */
   initiallyOpen?: boolean
   /**
@@ -65,6 +82,8 @@ type Props = {
    */
   stripHome?: HTMLElement | null
 }
+
+export type PayoffWho = { id: string; name: string }
 
 const VALUES: Partial<Record<LienPayoffValueKind, (text: string) => ReactNode>> = {
   money: (t) => (
@@ -86,6 +105,119 @@ const STEP_LOOK: Record<'done' | 'now' | 'later', CSSProperties> = {
   done: { background: 'var(--bg-green-tint, var(--bg-muted))', color: 'var(--text-green-700)', borderColor: 'var(--text-green-700)' },
   now: { background: '#2563eb', color: '#ffffff', borderColor: '#2563eb' },
   later: { background: 'var(--surface)', color: 'var(--text-muted)', borderColor: 'var(--border-strong)' },
+}
+const STOP_LOOK: Record<PayoffStopState, CSSProperties> = { ...STEP_LOOK, bad: { background: 'var(--bg-red-tint, var(--bg-muted))', color: 'var(--text-red-700)', borderColor: 'var(--text-red-700)' } }
+const TONE_COLOR = { plain: undefined, amber: 'var(--text-amber-800)', red: 'var(--text-red-700)', green: 'var(--text-green-700)' } as const
+const box: CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.4rem 0.55rem', fontFamily: 'inherit', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)' }
+
+const fieldsRows = (rows: ReadonlyArray<LienPayoffRow>): PayoffFieldsRow[] => rows.map((r) => ({ affidavitId: r.affidavitId, fields: r.fields }))
+
+/**
+ * The payoff card on an open place (piece 4; the rule is `lienPayoffCard.ts`): five stops, the one line, the two
+ * days, and the funds press. Each write goes to every lien it concerns and keeps going past one that fails.
+ */
+function PayoffCardBlock({ place, todayYmd, isMobile, canConfirm, who, keep, onKept }: { place: LienPayoffPlace; todayYmd: string; isMobile: boolean; canConfirm: boolean; who: PayoffWho | null; keep: typeof keepPayoffFields; onKept: () => void }) {
+  const { showToast } = useToastContext()
+  const card = useMemo(() => lienPayoffCard(place.rows, todayYmd), [place.rows, todayYmd])
+  const [fundsOpen, setFundsOpen] = useState(false)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const tall = isMobile ? { minHeight: 44 } : {}
+
+  /** The asked day is kept on every lien not yet released. A lien that did not take it is named under the field. */
+  const keepAsked = async (value: string) => {
+    const outcomes = await keep(fieldsRows(card.askedRows), { askedYmd: value })
+    const failed = outcomes.filter((o) => !o.ok)
+    if (failed.length < outcomes.length) onKept()
+    if (failed.length) throw new Error(failed[0]?.why ?? PAYOFF_WRITE_FAILED)
+  }
+
+  const confirm = async () => {
+    if (!who || busy || !note.trim()) return
+    setBusy(true)
+    try {
+      const outcomes = await keep(fieldsRows(card.fundsRows), { funds: fundsConfirmedNow(who, note, new Date().toISOString()) })
+      const done = outcomes.filter((o) => o.ok).length
+      const words = batchOutcomeWords({ verb: 'confirm', past: 'confirmed', done, failed: outcomes.length - done, noun: ['lien’s funds', 'liens’ funds'] })
+      showToast(words.line, words.tone === 'success' ? 'success' : words.tone === 'warning' ? 'info' : 'error')
+      if (done > 0) {
+        setFundsOpen(false)
+        setNote('')
+        onKept()
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const dead = busy || !note.trim()
+  return (
+    <div data-lien-payoff-card data-tone={card.tone} style={{ display: 'grid', gap: '0.5rem', margin: '0 0 0.55rem', padding: '0.55rem 0.7rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
+      <ol data-lien-payoff-stops style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(5, minmax(0, 1fr))', gap: isMobile ? '0.35rem' : '0.6rem' }}>
+        {card.stops.map((s, i) => (
+          <li key={s.key} data-lien-payoff-stop={s.key} data-state={s.state} style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0 0.4rem', alignItems: 'start', fontSize: '0.75rem', lineHeight: 1.35 }}>
+            <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, marginTop: 1, borderRadius: '50%', borderWidth: 1, borderStyle: 'solid', fontSize: '0.6875rem', fontWeight: 700, lineHeight: 1, ...STOP_LOOK[s.state] }}>
+              {s.state === 'done' ? '✓' : s.state === 'bad' ? '!' : i + 1}
+            </span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontWeight: 700, color: s.state === 'later' ? 'var(--text-muted)' : s.state === 'bad' ? 'var(--text-red-700)' : s.state === 'done' ? 'var(--text-green-700)' : undefined }}>{s.label}</span>
+              <span data-lien-payoff-stop-say style={{ color: 'var(--text-muted)' }}>
+                <ValueSentence<LienPayoffValueKind> text={s.say} values={VALUES} />
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p data-lien-payoff-line style={{ margin: 0, fontSize: '0.8125rem', lineHeight: 1.45, fontWeight: 600, color: TONE_COLOR[card.tone] }}>
+        <ValueSentence<LienPayoffValueKind> text={card.line} values={VALUES} />
+      </p>
+      <div style={{ fontSize: '0.8125rem' }}>
+        <ValueLines>
+          <ValueLine label={PAYOFF_CARD_WORDS.asked}>
+            <ChangeableValue text={card.askedYmd ? formatYmdMonthDay(card.askedYmd) : PAYOFF_CARD_WORDS.notYet} label={PAYOFF_CARD_WORDS.askedLabel} type="date" value={card.askedYmd} canClear max={todayYmd} onKeep={keepAsked} />
+          </ValueLine>
+          {card.due ? (
+            <ValueLine label={PAYOFF_CARD_WORDS.due}>
+              <span data-lien-payoff-due={card.due.daysLeft < 0 ? 'late' : 'ahead'}>
+                <WorkedOutValue tone={card.due.daysLeft < 0 ? 'red' : undefined}>{formatYmdMonthDay(card.due.dueYmd)}</WorkedOutValue>
+              </span>{' '}
+              <span style={small}>{PAYOFF_CARD_WORDS.dueHint}</span>
+            </ValueLine>
+          ) : null}
+          {card.clearsYmd ? (
+            <ValueLine label={card.cleared ? PAYOFF_CARD_WORDS.cleared : PAYOFF_CARD_WORDS.clears}>
+              <span data-lien-payoff-clears={card.cleared ? 'cleared' : 'waiting'}>
+                <WorkedOutValue>{formatYmdMonthDay(card.clearsYmd)}</WorkedOutValue>
+              </span>
+            </ValueLine>
+          ) : null}
+        </ValueLines>
+      </div>
+      {card.offerFunds && canConfirm && who ? (
+        fundsOpen ? (
+          <div data-lien-payoff-funds-box style={{ display: 'grid', gap: '0.45rem', padding: '0.5rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)' }}>
+            <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.8125rem' }}>
+              <span style={{ fontWeight: 600 }}>{PAYOFF_CARD_WORDS.fundsHead}</span>
+              <input type="text" data-lien-payoff-funds-note value={note} onChange={(e) => setNote(e.target.value)} placeholder={PAYOFF_CARD_WORDS.fundsExample} autoComplete="off" style={box} />
+            </label>
+            <p style={{ ...small, margin: 0 }}>{PAYOFF_CARD_WORDS.fundsKept}</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <button type="button" data-lien-payoff-funds-confirm disabled={dead} onClick={() => void confirm()} style={{ ...press, cursor: dead ? 'default' : 'pointer', ...(dead ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT } : { background: '#15803d', color: '#ffffff' }), ...tall }}>
+                {busy ? 'Confirming…' : PAYOFF_CARD_WORDS.fundsConfirm}
+              </button>
+              <button type="button" data-lien-payoff-funds-cancel onClick={() => setFundsOpen(false)} style={{ ...plainPress, ...tall }}>
+                {PAYOFF_CARD_WORDS.fundsCancel}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" data-lien-payoff-funds-open onClick={() => setFundsOpen(true)} style={{ ...plainPress, color: 'var(--text-link)', justifySelf: 'start', ...tall }}>
+            {PAYOFF_CARD_WORDS.funds}
+          </button>
+        )
+      ) : null}
+    </div>
+  )
 }
 
 /** The three steps as three small rounds: a tick behind the lien, its number on the step it stands on. */
@@ -156,7 +288,7 @@ function LienRow({ row, isMobile, onDoor }: { row: LienPayoffRow; isMobile: bool
   )
 }
 
-function PlaceCard({ place, isMobile, onDoor, onCheck }: { place: LienPayoffPlace; isMobile: boolean; onDoor: (door: LienPayoffDoor, jobId: string) => void; onCheck?: () => void }) {
+function PlaceCard({ place, isMobile, onDoor, onCheck, card }: { place: LienPayoffPlace; isMobile: boolean; onDoor: (door: LienPayoffDoor, jobId: string) => void; onCheck?: () => void; card?: ReactNode }) {
   const other = lienPayoffOtherLine(place.other)
   return (
     <section data-lien-payoff-place={place.key} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.85rem 0.15rem', background: 'var(--surface)' }}>
@@ -186,6 +318,8 @@ function PlaceCard({ place, isMobile, onDoor, onCheck }: { place: LienPayoffPlac
           <ValueSentence<LienPayoffValueKind> text={other} values={VALUES} />
         </p>
       ) : null}
+      {/* The payoff card (piece 4): five stops, the line for today, the two days and the funds press. */}
+      {card}
       {place.rows.map((row) => (
         <LienRow key={row.affidavitId} row={row} isMobile={isMobile} onDoor={onDoor} />
       ))}
@@ -193,7 +327,7 @@ function PlaceCard({ place, isMobile, onDoor, onCheck }: { place: LienPayoffPlac
   )
 }
 
-function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, loading, isMobile, onRetry, onClose, onDoor, onRecorded, record }: { places: LienPayoffPlace[]; billsByJob: Readonly<Record<string, ReadonlyArray<LienPayoffBill>>>; bankChecks?: ReadonlyArray<BankCheck>; todayYmd: string; failure: string | null; loading: boolean; isMobile: boolean; onRetry: () => void; onClose: () => void; onDoor: (door: LienPayoffDoor, jobId: string) => void; onRecorded: () => void; record?: Parameters<typeof LienPayoffCheck>[0]['record'] }) {
+function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, loading, isMobile, onRetry, onClose, onDoor, onRecorded, record, keep, role, who }: { places: LienPayoffPlace[]; billsByJob: Readonly<Record<string, ReadonlyArray<LienPayoffBill>>>; bankChecks?: ReadonlyArray<BankCheck>; todayYmd: string; failure: string | null; loading: boolean; isMobile: boolean; onRetry: () => void; onClose: () => void; onDoor: (door: LienPayoffDoor, jobId: string) => void; onRecorded: () => void; record?: Parameters<typeof LienPayoffCheck>[0]['record']; keep: typeof keepPayoffFields; role: UserRole | null; who: PayoffWho | null }) {
   useModalStackEntry()
   const closeRef = useRef(onClose)
   closeRef.current = onClose
@@ -215,6 +349,7 @@ function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, load
   const checkPlace = places.find((p) => p.key === checkKey) ?? null
   /** A place offers the check pane while a job with a lien on record still has an open bill. */
   const checkDoor = (p: LienPayoffPlace) => (liensPayoffAmount(checkBills(p, billsByJob)) > 0 ? () => setCheckKey(p.key) : undefined)
+  const canConfirm = canConfirmFunds(role)
   return (
     <div
       role="dialog"
@@ -238,7 +373,7 @@ function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, load
         </div>
         {checkPlace ? (
           <div style={{ overflow: 'auto', minHeight: 0, padding: '0.75rem 1rem 1rem' }}>
-            <LienPayoffCheck place={checkPlace} billsByJob={billsByJob} bankChecks={bankChecks} todayYmd={todayYmd} isMobile={isMobile} onBack={() => setCheckKey(null)} onRecorded={onRecorded} onOpenBill={(jobId) => onDoor('bill', jobId)} record={record} />
+            <LienPayoffCheck place={checkPlace} billsByJob={billsByJob} bankChecks={bankChecks} todayYmd={todayYmd} isMobile={isMobile} onBack={() => setCheckKey(null)} onRecorded={onRecorded} onOpenBill={(jobId) => onDoor('bill', jobId)} record={record} keep={keep} />
           </div>
         ) : (
         <div style={{ overflow: 'auto', minHeight: 0, padding: '0.75rem 1rem 1rem', display: 'grid', gap: '0.7rem', alignContent: 'start' }}>
@@ -262,7 +397,7 @@ function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, load
           {!failure && loading && places.length === 0 ? <p style={{ ...small, margin: 0 }}>Reading the filed liens…</p> : null}
           {!failure && !loading && places.length === 0 ? <EmptyState main={emptyWords({ kind: 'waiting', who: 'a release' }).main} compact /> : null}
           {open.map((p) => (
-            <PlaceCard key={p.key} place={p} isMobile={isMobile} onDoor={onDoor} onCheck={checkDoor(p)} />
+            <PlaceCard key={p.key} place={p} isMobile={isMobile} onDoor={onDoor} onCheck={checkDoor(p)} card={<PayoffCardBlock place={p} todayYmd={todayYmd} isMobile={isMobile} canConfirm={canConfirm} who={who} keep={keep} onKept={onRecorded} />} />
           ))}
           {released.length ? (
             <section style={{ display: 'grid', gap: '0.5rem' }}>
@@ -279,7 +414,7 @@ function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, load
   )
 }
 
-export default function LienPayoffs({ todayYmd, refreshKey, onOpenBill, onOpenRelease, onChanged, isMobile = false, read = readLienPayoffFacts, record, initiallyOpen = false, stripHome }: Props) {
+export default function LienPayoffs({ todayYmd, refreshKey, onOpenBill, onOpenRelease, onChanged, isMobile = false, read = readLienPayoffFacts, record, keep = keepPayoffFields, role = null, who = null, initiallyOpen = false, stripHome }: Props) {
   const [facts, setFacts] = useState<LienPayoffFacts | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -347,6 +482,9 @@ export default function LienPayoffs({ todayYmd, refreshKey, onOpenBill, onOpenRe
             onChanged?.()
           }}
           record={record}
+          keep={keep}
+          role={role}
+          who={who}
         />
       ) : null}
     </div>
