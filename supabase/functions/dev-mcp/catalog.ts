@@ -1041,6 +1041,8 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "dev_legal_plan_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
   "dev_legal_statement_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
   "dev_matter_doc_read": [{"args":{"p_doc_id":"string","p_matter_id":"string","p_section?":"string"},"returns":"Json"}],
+  "dev_may_delete_test_comment": [{"args":{"p_event_id":"string"},"returns":"boolean"}],
+  "dev_may_delete_test_note": [{"args":{"p_note_id":"string"},"returns":"boolean"}],
   "dev_mcp_issue_key": [{"args":{"p_label?":"string","p_token":"string"},"returns":"string"}],
   "dev_mcp_reveal_key": [{"args":{"p_credential_id":"string"},"returns":"string"}],
   "dev_migration_ledger_tail": [{"args":{"p_n?":"number"},"returns":"Json"}],

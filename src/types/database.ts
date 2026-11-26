@@ -47928,6 +47928,14 @@ export type Database = {
         Args: { p_doc_id: string; p_matter_id: string; p_section?: string }
         Returns: Json
       }
+      dev_may_delete_test_comment: {
+        Args: { p_event_id: string }
+        Returns: boolean
+      }
+      dev_may_delete_test_note: {
+        Args: { p_note_id: string }
+        Returns: boolean
+      }
       dev_mcp_issue_key: {
         Args: { p_label?: string; p_token: string }
         Returns: string
