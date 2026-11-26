@@ -4,7 +4,7 @@ import { STRIP_LEGEND, STRIP_MIN_THICK, buildFlowStrip, layoutFlowStrip, stripWo
 import type { StageFlow, StageId, StageReading } from './stageFlow'
 
 // Made-up paces and piles.
-const stage = (id: StageId, name: string, weeks: number | null): StageReading => ({ id, name, object: '', action: '', readable: true, pile: { headline: '', sub: [], usd: null, guessShare: 0 }, flow: [], weeks, weeksText: '', badge: '', tone: 'plain', isLink: false })
+const stage = (id: StageId, name: string, weeks: number | null): StageReading => ({ id, name, object: '', action: '', readable: true, pile: { headline: '', sub: [], usd: null, guessShare: 0 }, flow: [], paceUsd: null, weeks, weeksText: '', badge: '', tone: 'plain', isLink: false })
 const flow = (linkId: StageId | null, weeks: Partial<Record<StageId, number | null>> = { build: 4.2, bill: 7.5, collect: 2.6 }): StageFlow => ({
   stages: [stage('market', 'Market', null), stage('sales', 'Sales', null), stage('build', 'Build', weeks.build ?? null), stage('bill', 'Bill', weeks.bill ?? null), stage('collect', 'Collect', weeks.collect ?? null)],
   linkId,
@@ -15,7 +15,7 @@ const flow = (linkId: StageId | null, weeks: Partial<Record<StageId, number | nu
 const paces = { market: 44_000, sales: 36_000, build: 33_000, bill: 19_000, collect: 26_000 }
 
 describe('buildFlowStrip', () => {
-  it('draws the five steps in order, each with its pace, and lights the page’s slowest step', () => {
+  it('draws the five steps in order, each with its pace, and lights the page’s narrowest step', () => {
     const strip = buildFlowStrip(flow('bill'), paces)
     expect(strip.sections.map((s) => s.name)).toEqual(['Market', 'Sales', 'Build', 'Bill', 'Collect'])
     expect(strip.sections.map((s) => s.paceText)).toEqual(['$44k asked', '$36k sold', '$33k built', '$19k billed', '$26k paid'])
@@ -62,19 +62,19 @@ describe('buildFlowStrip', () => {
     const thin = Object.fromEntries(buildFlowStrip(flow('bill', { build: 0.3, bill: 1.2, collect: null }), paces).sections.map((s) => [s.id, s]))
     expect(thin.build?.weeksText).toBe('')
     expect(thin.bill?.weeksText).toBe('1 week waits')
-    expect(thin.bill?.label).toBe('Bill. $19k billed a week. 1 week of work waits in front of it. The slowest step.')
+    expect(thin.bill?.label).toBe('Bill. $19k billed a week. 1 week of work waits in front of it. The narrowest step.')
     expect(thin.collect?.pile).toBe(0)
     // A pile past the cap is drawn at full height, and no taller.
     expect(buildFlowStrip(flow('build', { build: 40, bill: 6, collect: 3 }), paces).sections.find((s) => s.id === 'build')?.pile).toBe(1)
   })
 
-  it('lights the page’s reading even when another step is narrower, and says so for a screen reader', () => {
-    // Sales moves the least, and Build has the most weeks waiting: the page lights Build.
+  it('lights the page’s reading whatever it is, and says so for a screen reader', () => {
+    // The strip draws the link the flow hands it. Here the flow says Build, though Sales moves the least.
     const strip = buildFlowStrip(flow('build', { build: 7.4, bill: 2, collect: 3 }), { market: 234_000, sales: 14_000, build: 38_300, bill: 30_000, collect: 42_000 })
     const by = Object.fromEntries(strip.sections.map((s) => [s.id, s]))
     expect(by.build?.lit).toBe(true)
     expect(by.sales?.thick).toBeLessThan(by.build?.thick ?? 0)
-    expect(by.build?.label).toBe('Build. $38.3k built a week. 7 weeks of work wait in front of it. The slowest step.')
+    expect(by.build?.label).toBe('Build. $38.3k built a week. 7 weeks of work wait in front of it. The narrowest step.')
     expect(by.sales?.label).toBe('Sales. $14k sold a week.')
   })
 

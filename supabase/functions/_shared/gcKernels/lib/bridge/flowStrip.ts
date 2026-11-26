@@ -11,9 +11,10 @@ import { STAGE_ORDER, stageUsd, type StageFlow, type StageId } from './stageFlow
  *   drawn the way pipe is sized: the flow goes with the bore's area, so a step that moves four
  *   times the dollars is twice as wide. A step that does not read is drawn at the thinnest.
  * - **The block on top** of Build, Bill and Collect is the work waiting in front of that step,
- *   in weeks at its own pace. That is the page's reading of the slowest step: the lit section
- *   is the one with the most weeks waiting (`StageFlow.linkId`), which is not always the
- *   narrowest. Market and Sales feed the field and hold no pile, so they have no block.
+ *   in weeks at its own pace. The lit section is the page's reading (`StageFlow.linkId`): since
+ *   punch list #321 the narrowest step, the one that moves the fewest dollars a week, so it is
+ *   the thinnest section that reads. Market and Sales feed the field and hold no pile, so they
+ *   have no block.
  *
  * Pure: the page passes the flow it already built and each step's pace today.
  */
@@ -92,7 +93,7 @@ export function buildFlowStrip(flow: StageFlow, paces: Partial<Record<StageId, n
       weeksText,
       pile: w != null && maxWeeks > 0 ? Math.min(w, STRIP_PILE_WEEKS_CAP) / maxWeeks : 0,
       lit,
-      label: [`${name}.`, p != null ? (worth ? `Worth ${stageUsd(p)} a week.` : `${stageUsd(p)} ${verb} a week.`) : 'Not read yet.', weeksText ? `${whole} ${whole === 1 ? 'week of work waits' : 'weeks of work wait'} in front of it.` : '', lit ? 'The slowest step.' : ''].filter(Boolean).join(' '),
+      label: [`${name}.`, p != null ? (worth ? `Worth ${stageUsd(p)} a week.` : `${stageUsd(p)} ${verb} a week.`) : 'Not read yet.', weeksText ? `${whole} ${whole === 1 ? 'week of work waits' : 'weeks of work wait'} in front of it.` : '', lit ? 'The narrowest step.' : ''].filter(Boolean).join(' '),
     }
   })
   const lit = sections.find((s) => s.lit) ?? null

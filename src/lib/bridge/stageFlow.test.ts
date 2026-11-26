@@ -39,40 +39,91 @@ describe('buildStageFlow', () => {
     expect(buildOf(100_000).weeksText).toBe('7 to 8 weeks to build what is already sold')
   })
 
-  it('lights the most weeks to clear and names a close second as the pair', () => {
+  it('lights the narrowest step, the fewest dollars a week, and reads each step’s pace (punch list #321)', () => {
     const flow = today()
+    // Bill turns $22k a week, Build $35k and Collect $46k: Bill is the narrowest, and $35k is not within a tenth of it.
+    expect(flow.stages.map((s) => [s.id, s.paceUsd])).toEqual([['market', null], ['sales', null], ['build', 35_000], ['bill', 22_000], ['collect', 46_000]])
     expect(flow.linkId).toBe('bill')
     expect(flow.nominatedId).toBe('bill')
-    expect(flow.pairId).toBe('build')
+    expect(flow.pairId).toBeNull()
     const bill = flow.stages.find((s) => s.id === 'bill')!
     expect(bill.isLink).toBe(true)
-    expect(bill.badge).toBe('the weakest link, with Build')
+    expect(bill.badge).toBe('the narrowest step')
+    expect(flow.stages.find((s) => s.id === 'build')!.badge).toBe('wait')
+    expect(flow.stages.find((s) => s.id === 'collect')!.badge).toBe('moves with Bill')
+  })
+
+  it('names a step within a tenth of the narrowest as its pair', () => {
+    // Build turns $24k a week against Bill's $22k: $24k times nine tenths is under $22k, so the two read as a pair.
+    const flow = buildStageFlow({
+      market: null, sales: null, fieldPerWeekUsd: 24_000, bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 24_000, outPerWeekUsd: 22_000 },
+      collect: { pileUsd: 332_000, pileCount: null, inPerWeekUsd: 22_000, outPerWeekUsd: 46_000, lateCount: 49 },
+      build: { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 49_000, outPerWeekUsd: 24_000, knownJobs: 28, guessUsd: 100_000, guessJobs: 6 },
+      heldLinkId: null,
+    })
+    expect(flow.linkId).toBe('bill')
+    expect(flow.pairId).toBe('build')
+    expect(flow.stages.find((s) => s.id === 'bill')!.badge).toBe('the narrowest step, with Build')
     expect(flow.stages.find((s) => s.id === 'build')!.badge).toBe('a close second · set the %s')
     expect(flow.stages.find((s) => s.id === 'collect')!.badge).toBe('moves with Bill')
   })
 
+  it('can light Market or Sales: a feeder is a candidate at its worth or at what it sold', () => {
+    const feeders = {
+      market: { bidsInvited: 20, bidsInvitedUsd: 2_400_000, estimatesRequested: 25, estimatesRequestedUsd: 64_000, weeks: 8, worth: { perWeekUsd: 29_000, bidsPerWeekUsd: 22_000, estimatesPerWeekUsd: 7_000 } },
+      sales: { bids: { sentUsd: 2_400_000, wonUsd: 98_000, lostUsd: 645_000 }, estimates: { sentUsd: 64_000, wonUsd: 25_000, lostUsd: 0 }, awaiting: { bids: 28, bidsUsd: 4_728_000, estimates: 13, estimatesUsd: 46_000 }, soldPerWeekUsd: 20_000 },
+      fieldPerWeekUsd: 35_000,
+      build: { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 20_000, outPerWeekUsd: 35_000, knownJobs: 28, guessUsd: 0, guessJobs: 0 },
+      bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 35_000, outPerWeekUsd: 22_000 },
+      collect: { pileUsd: 332_000, pileCount: null, inPerWeekUsd: 22_000, outPerWeekUsd: 46_000, lateCount: 49 },
+      heldLinkId: null,
+    }
+    // Sales sold $20k a week, the fewest: it is lit, Bill at $22k is its pair, and the steps after it move with it.
+    const salesLit = buildStageFlow(feeders)
+    expect(salesLit.stages.find((s) => s.id === 'sales')!.paceUsd).toBe(20_000)
+    expect(salesLit.linkId).toBe('sales')
+    expect(salesLit.pairId).toBe('bill')
+    expect(salesLit.stages.find((s) => s.id === 'sales')!.badge).toBe('the narrowest step, with Bill')
+    expect(salesLit.stages.find((s) => s.id === 'sales')!.tone).toBe('link')
+    expect(salesLit.stages.find((s) => s.id === 'bill')!.badge).toBe('a close second')
+    expect(salesLit.stages.find((s) => s.id === 'build')!.badge).toBe('moves with Sales')
+    // Market keeps its own badge against the field while it is not lit.
+    expect(salesLit.stages.find((s) => s.id === 'market')!.badge).toBe('short of the field')
+    // Market worth $7k a week is lit on its own; Sales back at $49k keeps its badge.
+    const marketLit = buildStageFlow({ ...feeders, market: { ...feeders.market, worth: { perWeekUsd: 7_000, bidsPerWeekUsd: null, estimatesPerWeekUsd: 7_000 } }, sales: { ...feeders.sales, soldPerWeekUsd: 49_000 } })
+    expect(marketLit.linkId).toBe('market')
+    expect(marketLit.stages.find((s) => s.id === 'market')!.badge).toBe('the narrowest step')
+    expect(marketLit.stages.find((s) => s.id === 'sales')!.badge).toBe('ahead of the field · wait')
+    // The dollars that came in are no pace: without its worth Market cannot be lit, however much or little came in.
+    const unread = buildStageFlow({ ...feeders, market: { ...feeders.market, worth: null }, sales: { ...feeders.sales, soldPerWeekUsd: 49_000 } })
+    expect(unread.stages.find((s) => s.id === 'market')!.paceUsd).toBeNull()
+    expect(unread.linkId).toBe('bill')
+  })
+
   it('a held call stands against a wobble and yields to a clear overtake', () => {
     const base = today()
+    // The call holds Bill at $23k a week. Build reads $22k, narrower, but not by the hold margin: the call stands.
     const wobble = buildStageFlow({
       market: null, sales: null, fieldPerWeekUsd: null, bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 23_000 },
       collect: { pileUsd: 332_000, pileCount: null, inPerWeekUsd: 23_000, outPerWeekUsd: 46_000, lateCount: 49 },
-      build: { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 49_000, outPerWeekUsd: 35_000, knownJobs: 28, guessUsd: 0, guessJobs: 0 },
+      build: { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 49_000, outPerWeekUsd: 22_000, knownJobs: 28, guessUsd: 0, guessJobs: 0 },
       heldLinkId: 'bill',
     })
     expect(base.linkId).toBe('bill')
     expect(wobble.nominatedId).toBe('build')
     expect(wobble.linkId).toBe('bill')
     expect(wobble.heldStands).toBe(true)
-    expect(wobble.stages.find((s) => s.id === 'build')!.badge).toBe('reads 10.3 weeks · the call holds Bill')
+    expect(wobble.stages.find((s) => s.id === 'build')!.badge).toBe('reads $22k a week · the call holds Bill')
+    // At $18k a week Build is narrower by more than the margin, and takes it.
     const overtaken = buildStageFlow({
-      market: null, sales: null, fieldPerWeekUsd: null, bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 40_000 },
-      collect: { pileUsd: 332_000, pileCount: null, inPerWeekUsd: 40_000, outPerWeekUsd: 46_000, lateCount: 49 },
-      build: { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 49_000, outPerWeekUsd: 35_000, knownJobs: 28, guessUsd: 0, guessJobs: 0 },
+      market: null, sales: null, fieldPerWeekUsd: null, bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 23_000 },
+      collect: { pileUsd: 332_000, pileCount: null, inPerWeekUsd: 23_000, outPerWeekUsd: 46_000, lateCount: 49 },
+      build: { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 49_000, outPerWeekUsd: 18_000, knownJobs: 28, guessUsd: 0, guessJobs: 0 },
       heldLinkId: 'bill',
     })
     expect(overtaken.linkId).toBe('build')
     expect(overtaken.heldStands).toBe(false)
-    expect(overtaken.stages.find((s) => s.id === 'build')!.badge).toBe('the weakest link')
+    expect(overtaken.stages.find((s) => s.id === 'build')!.badge).toBe('the narrowest step')
     expect(overtaken.stages.find((s) => s.id === 'bill')!.badge).toBe('moves with Build')
   })
 
@@ -84,7 +135,7 @@ describe('buildStageFlow', () => {
     expect(flow.stages.find((s) => s.id === 'collect')!.readable).toBe(false)
     expect(flow.linkId).toBe('bill')
     expect(flow.pairId).toBeNull()
-    expect(flow.stages.find((s) => s.id === 'bill')!.badge).toBe('the weakest link')
+    expect(flow.stages.find((s) => s.id === 'bill')!.badge).toBe('the narrowest step')
   })
 
   it('says "reading…" on Market and Sales while their loader is in flight', () => {
@@ -107,11 +158,12 @@ describe('buildStageFlow', () => {
     expect(c.pile.greyKind).toBe('waiting')
     expect(c.weeks).toBeCloseTo(140 / 29.2, 3)
     expect(c.weeksText).toBe('4.8 weeks to collect what is already late')
-    expect(c.badge).toBe('the weakest link')
+    expect(c.badge).toBe('the narrowest step')
     // Over a third grey, yet no thin-reading gate and no "set the %s": the grey is money not yet due, not a guess.
     const withBuild = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: null, bill: null, collect: { pileUsd: 140_000, notDueUsd: 157_000, pileCount: 47, inPerWeekUsd: 56_800, outPerWeekUsd: 29_200, lateCount: 47 }, build: { pileUsd: 150_000, pileCount: 10, inPerWeekUsd: 50_000, outPerWeekUsd: 34_000, knownJobs: 10, guessUsd: 0, guessJobs: 0 }, heldLinkId: null })
+    // Collect turns $29.2k a week and Build $34k: Collect is the narrowest, and $34k is not within a tenth of it.
     expect(withBuild.linkId).toBe('collect')
-    expect(withBuild.stages.find((s) => s.id === 'collect')!.badge).toBe('the weakest link, with Build')
+    expect(withBuild.stages.find((s) => s.id === 'collect')!.badge).toBe('the narrowest step')
     const old = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: null, bill: null, collect: { pileUsd: 332_000, pileCount: null, inPerWeekUsd: 22_000, outPerWeekUsd: 46_000, lateCount: 49 }, build: null, heldLinkId: null }).stages.find((s) => s.id === 'collect')!
     expect(old.pile.sub).toEqual(['49 invoices late'])
     expect(old.pile.guessShare).toBe(0)
@@ -122,6 +174,7 @@ describe('buildStageFlow', () => {
     expect(weeksToClear(0, 500)).toBe(0)
     const flow = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: null, bill: { pileUsd: 233_000, pileCount: 0, inPerWeekUsd: 34_000, outPerWeekUsd: 0 }, collect: null, build: null, heldLinkId: null })
     expect(flow.stages.find((s) => s.id === 'bill')!.weeksText).toBe('no pace to read')
+    expect(flow.stages.find((s) => s.id === 'bill')!.paceUsd).toBeNull()
     expect(flow.linkId).toBeNull()
   })
 
@@ -168,36 +221,36 @@ describe('buildStageFlow', () => {
     for (const line of [...build.flow, ...pctLeads.flow].map((f) => `${f.who} ${f.usd} ${f.tail ?? 'a week'}.`)) expect(plainWordsFailures(line), line).toEqual([])
   })
 
-  it('does not hand the link to Build on a thin percent unless it leads by a clear margin', () => {
-    // Build reads 15 weeks with over half its pile a guess; Bill reads 13.5. Build leads, but not by the hold margin.
+  it('does not hand the link to Build on a thin percent unless it is narrower by a clear margin', () => {
+    // Build turns $20k a week with over half its pile a guess; Bill turns $22k. Build is narrower, but not by the hold margin.
     const thin = buildStageFlow({
-      market: null, sales: null, fieldPerWeekUsd: 24_000, bill: { pileUsd: 297_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
+      market: null, sales: null, fieldPerWeekUsd: 20_000, bill: { pileUsd: 297_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
       collect: { pileUsd: 200_000, pileCount: null, inPerWeekUsd: 22_000, outPerWeekUsd: 46_000, lateCount: 10 },
-      build: { pileUsd: 360_000, pileCount: 13, inPerWeekUsd: 49_000, outPerWeekUsd: 24_000, knownJobs: 13, guessUsd: 400_000, guessJobs: 14 },
+      build: { pileUsd: 360_000, pileCount: 13, inPerWeekUsd: 49_000, outPerWeekUsd: 20_000, knownJobs: 13, guessUsd: 400_000, guessJobs: 14 },
       heldLinkId: null,
     })
     expect(thin.nominatedId).toBe('bill')
     expect(thin.linkId).toBe('bill')
-    expect(thin.stages.find((s) => s.id === 'build')!.badge).toBe('reads 15.0 weeks on a thin % · set the %s')
-    expect(thin.stages.find((s) => s.id === 'bill')!.badge).toBe('the weakest link, with Build')
+    expect(thin.stages.find((s) => s.id === 'build')!.badge).toBe('reads $20k a week on a thin % · set the %s')
+    expect(thin.stages.find((s) => s.id === 'bill')!.badge).toBe('the narrowest step, with Build')
     // By the hold margin, Build takes it, and the badge asks for the percents.
     const clear = buildStageFlow({
-      market: null, sales: null, fieldPerWeekUsd: 20_000, bill: { pileUsd: 297_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
+      market: null, sales: null, fieldPerWeekUsd: 18_000, bill: { pileUsd: 297_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
       collect: null,
-      build: { pileUsd: 360_000, pileCount: 13, inPerWeekUsd: 49_000, outPerWeekUsd: 20_000, knownJobs: 13, guessUsd: 400_000, guessJobs: 14 },
+      build: { pileUsd: 360_000, pileCount: 13, inPerWeekUsd: 49_000, outPerWeekUsd: 18_000, knownJobs: 13, guessUsd: 400_000, guessJobs: 14 },
       heldLinkId: null,
     })
     expect(clear.linkId).toBe('build')
-    expect(clear.stages.find((s) => s.id === 'build')!.badge).toBe('the weakest link · set the %s')
+    expect(clear.stages.find((s) => s.id === 'build')!.badge).toBe('the narrowest step · set the %s')
     // A known pile is never gated.
     const known = buildStageFlow({
-      market: null, sales: null, fieldPerWeekUsd: 24_000, bill: { pileUsd: 297_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
+      market: null, sales: null, fieldPerWeekUsd: 20_000, bill: { pileUsd: 297_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
       collect: null,
-      build: { pileUsd: 360_000, pileCount: 13, inPerWeekUsd: 49_000, outPerWeekUsd: 24_000, knownJobs: 13, guessUsd: 0, guessJobs: 0 },
+      build: { pileUsd: 360_000, pileCount: 13, inPerWeekUsd: 49_000, outPerWeekUsd: 20_000, knownJobs: 13, guessUsd: 0, guessJobs: 0 },
       heldLinkId: null,
     })
     expect(known.linkId).toBe('build')
-    expect(known.stages.find((s) => s.id === 'build')!.badge).toBe('the weakest link, with Bill')
+    expect(known.stages.find((s) => s.id === 'build')!.badge).toBe('the narrowest step, with Bill')
   })
 
   it('reads Market and Sales by pace against the field, with the SENT / WON / LOST table', () => {
@@ -229,7 +282,9 @@ describe('buildStageFlow', () => {
     expect(sales.weeksText2).toBe('the field builds $35k a week')
     expect(sales.badge).toBe('ahead of the field · wait')
     expect(flow.linkId).toBe('bill')
-    const behind = buildStageFlow({ market: null, sales: { bids: { sentUsd: 0, wonUsd: 0, lostUsd: 0 }, estimates: { sentUsd: 0, wonUsd: 0, lostUsd: 0 }, awaiting: { bids: 0, bidsUsd: 0, estimates: 0, estimatesUsd: 0 }, soldPerWeekUsd: 20_000 }, fieldPerWeekUsd: 35_000, bill: null, collect: null, build: null, heldLinkId: null })
+    // Sales behind the field keeps that badge while a narrower step, Bill at $15k, holds the red.
+    const behind = buildStageFlow({ market: null, sales: { bids: { sentUsd: 0, wonUsd: 0, lostUsd: 0 }, estimates: { sentUsd: 0, wonUsd: 0, lostUsd: 0 }, awaiting: { bids: 0, bidsUsd: 0, estimates: 0, estimatesUsd: 0 }, soldPerWeekUsd: 20_000 }, fieldPerWeekUsd: 35_000, bill: { pileUsd: 100_000, pileCount: 5, inPerWeekUsd: 35_000, outPerWeekUsd: 15_000 }, collect: null, build: null, heldLinkId: null })
+    expect(behind.linkId).toBe('bill')
     expect(behind.stages.find((s) => s.id === 'sales')!.badge).toBe('behind the field')
   })
 
@@ -244,7 +299,8 @@ describe('buildStageFlow', () => {
     const onlyEstimates = marketOf({ perWeekUsd: 7_000, bidsPerWeekUsd: null, estimatesPerWeekUsd: 7_000 })
     expect(onlyEstimates.weeksText).toBe('worth $7k a week')
     expect(onlyEstimates.weeksText2).toBe('estimates sell $7k')
-    expect(onlyEstimates.badge).toBe('short of the field')
+    // Worth $7k a week against a field that builds $35k: Market is the narrowest step, and the badge says so.
+    expect(onlyEstimates.badge).toBe('the narrowest step')
     expect(marketWorthPerWeek({ worth: { perWeekUsd: 40_000, bidsPerWeekUsd: null, estimatesPerWeekUsd: null } })).toBe(40_000)
   })
 

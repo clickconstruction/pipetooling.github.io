@@ -86,6 +86,6 @@ describe('buildBillPile (v2.5834)', () => {
     expect(stage.weeksText).toBe('1.0 weeks to bill what is already finished')
     const wide = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: null, bill: { ...bill, guessUsd: 120_000 }, collect: null, build: null, heldLinkId: null }).stages.find((s) => s.id === 'bill')!
     expect(wide.weeksText).toBe('1 to 3 weeks to bill what is already finished')
-    expect(stage.badge).toBe('the weakest link · set the %s')
+    expect(stage.badge).toBe('the narrowest step · set the %s')
   })
 })

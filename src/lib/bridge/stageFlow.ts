@@ -1,25 +1,30 @@
 /**
  * The weakest link (the Bridge, link PR 1): the company as five stages in flow
  * order — Market → Sales → Build → Bill → Collect — each read as what comes in,
- * what goes out, and the pile waiting in front of it. One rule lights a stage:
- * the most weeks to clear what is already waiting, at today's pace. Market and
- * Sales feed the field, so they read by pace against it, not by weeks of pile
- * (their readings arrive in a later PR; until then they say so). Pure: no
+ * what goes out, and the pile waiting in front of it. One rule lights a stage.
+ * Since punch list #321 (PR 2, the owner's answer of 2026-11-25) it is the
+ * narrowest step: the one that moves the fewest dollars a week (`paceUsd`:
+ * Market's worth at the won rates, Sales's sold work, and what Build, Bill and
+ * Collect each turn). A company moves only as many dollars a week as its
+ * narrowest step; widening any other only makes a pile. Until then the rule
+ * was the most weeks to clear what is already waiting, which could light a step
+ * that was ahead of what fed it and could never light Market or Sales. The
+ * weeks are still read, for the bars and each card's last line. Pure: no
  * React, no Supabase.
  *
  * A recorded call holds the link for its week (`heldLinkId`): another stage
  * takes it only by a clear margin, so a $1k wobble in billing does not move
  * the red on a Tuesday. Two stages within a tenth of each other read as a
- * pair ("the weakest link, with Build").
+ * pair ("the narrowest step, with Build").
  */
 
 export type StageId = 'market' | 'sales' | 'build' | 'bill' | 'collect'
 
 export const STAGE_ORDER: ReadonlyArray<StageId> = ['market', 'sales', 'build', 'bill', 'collect']
 
-/** A stage takes the link from a held call only when it reads this much longer. */
+/** A stage takes the link from a held call only when it reads this much narrower: its pace times this is still under the held one's. */
 export const STAGE_HOLD_MARGIN = 1.15
-/** Two stages within this share of each other read as a pair. */
+/** Two stages within this share of each other read as a pair: the second's pace times this is at or under the link's. */
 export const STAGE_PAIR_MARGIN = 0.9
 /** When more than this share of a stage's pile is a guess (Build, and Bill since v2.5834), it takes the link only by the hold margin. */
 export const BUILD_GUESS_GATE = 1 / 3
@@ -151,6 +156,11 @@ export type StageReading = {
   }
   /** Two lines, each with a subject: "the field finishes" · "$34k" · "a week" (the tail defaults to "a week"). */
   flow: Array<{ who: string; usd: string; tail?: string }>
+  /**
+   * Dollars a week the step moves today, the figure the rule reads (punch list #321): Market's worth at the won rates,
+   * Sales's sold work, and what Build, Bill and Collect each turn. Null when the step does not read, or turns nothing.
+   */
+  paceUsd: number | null
   /** Sales only: SENT / WON / LOST for bids and estimates. */
   table?: { head: [string, string, string]; rows: Array<{ label: string; cells: [string, string, string]; note?: string }> }
   weeks: number | null
@@ -211,6 +221,7 @@ function notReadable(id: StageId, loading = false): StageReading {
     readable: false,
     pile: loading ? { headline: 'reading…', sub: [], usd: null, guessShare: 0 } : { headline: 'not readable yet', sub: ['the app does not count this pile yet'], usd: null, guessShare: 0 },
     flow: [],
+    paceUsd: null,
     weeks: null,
     weeksText: '',
     badge: loading ? 'reading…' : 'not readable yet',
@@ -233,6 +244,7 @@ function pileStage(id: 'build' | 'bill' | 'collect', input: PileStageInput, who:
       { who: who[0], usd: perWeek(input.inPerWeekUsd) },
       { who: who[1], usd: perWeek(input.outPerWeekUsd) },
     ],
+    paceUsd: input.outPerWeekUsd > 0 ? input.outPerWeekUsd : null,
     weeks,
     weeksText: weeksText(weeks),
     badge: '',
@@ -278,6 +290,8 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
         { who: 'bids', usd: stageUsd(m.bidsInvitedUsd), tail: 'from GCs' },
         { who: 'estimates', usd: stageUsd(m.estimatesRequestedUsd), tail: 'from customers' },
       ],
+      // The rule reads Market at its worth alone: the dollars that came in are not on the field's scale.
+      paceUsd: worthUsd,
       weeks: null,
       weeksText: worthUsd != null ? `worth ${stageUsd(worthUsd)} a week` : `about ${stageUsd(perWeek)} a week bid`,
       weeksText2: worthUsd != null && m.worth ? marketWorthParts(m.worth) : 'what it is worth is not read yet',
@@ -300,6 +314,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
       readable: true,
       pile: { headline: `${stageUsd(awaitingUsd)} awaiting an answer`, sub: [`${sl.awaiting.bids} ${sl.awaiting.bids === 1 ? 'bid' : 'bids'}, ${stageUsd(sl.awaiting.bidsUsd)}`, `${sl.awaiting.estimates} ${sl.awaiting.estimates === 1 ? 'estimate' : 'estimates'}, ${stageUsd(sl.awaiting.estimatesUsd)}`], usd: null, guessShare: 0 },
       flow: [],
+      paceUsd: sl.soldPerWeekUsd != null && sl.soldPerWeekUsd > 0 ? sl.soldPerWeekUsd : null,
       table: {
         head: ['sent', 'won', 'lost'],
         rows: [
@@ -378,45 +393,50 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
     )
   } else byId.set('collect', notReadable('collect'))
 
-  // The rule: the pile stage with the most weeks to clear. A held call stands unless overtaken by a clear margin.
-  const candidates = STAGE_ORDER.map((id) => byId.get(id) as StageReading).filter((s) => s.readable && s.weeks != null)
-  const sorted = [...candidates].sort((a, b) => (b.weeks as number) - (a.weeks as number))
+  // The rule (punch list #321, PR 2): the narrowest step, the one that moves the fewest dollars a week. Every step with a
+  // pace is a candidate, Market at its worth and Sales at what it sold, so a feeder can be lit. A held call stands
+  // unless a step is narrower by a clear margin.
+  const candidates = STAGE_ORDER.map((id) => byId.get(id) as StageReading).filter((s) => s.readable && s.paceUsd != null)
+  const sorted = [...candidates].sort((a, b) => (a.paceUsd as number) - (b.paceUsd as number))
   let nominated = sorted[0] ?? null
-  // A thin reading does not take the link: with more than a third of its pile a guess (Build, or Bill since v2.5834), a stage leads only by the hold margin.
-  let thinBuild: StageReading | null = null
-  if (nominated && nominated.pile.greyKind !== 'waiting' && nominated.pile.guessShare > BUILD_GUESS_GATE && sorted[1] && (nominated.weeks as number) < (sorted[1].weeks as number) * STAGE_HOLD_MARGIN) {
-    thinBuild = nominated
+  // A thin reading does not take the link: with more than a third of its pile a guess (Build, or Bill since v2.5834), a
+  // stage is the narrowest only by the hold margin, since the same thin percents feed its pace.
+  let thin: StageReading | null = null
+  if (nominated && nominated.pile.greyKind !== 'waiting' && nominated.pile.guessShare > BUILD_GUESS_GATE && sorted[1] && (nominated.paceUsd as number) * STAGE_HOLD_MARGIN > (sorted[1].paceUsd as number)) {
+    thin = nominated
     nominated = sorted[1]
   }
   const held = input.heldLinkId ? candidates.find((s) => s.id === input.heldLinkId) ?? null : null
   let link: StageReading | null = nominated
   let heldStands = false
   if (held && nominated && held.id !== nominated.id) {
-    if ((nominated.weeks as number) < (held.weeks as number) * STAGE_HOLD_MARGIN) {
+    if ((nominated.paceUsd as number) * STAGE_HOLD_MARGIN > (held.paceUsd as number)) {
       link = held
       heldStands = true
     }
   }
   const second = link ? sorted.find((s) => s.id !== link!.id) ?? null : null
-  const pair = link && second && (second.weeks as number) >= (link.weeks as number) * STAGE_PAIR_MARGIN ? second : null
+  const pair = link && second && (second.paceUsd as number) * STAGE_PAIR_MARGIN <= (link.paceUsd as number) ? second : null
 
   const stages = STAGE_ORDER.map((id) => {
     const s = byId.get(id) as StageReading
-    if (!s.readable || s.weeks == null) return s
+    if (!s.readable || s.paceUsd == null) return s
     if (link && s.id === link.id) {
       const extra = s.pile.guessShare > 0 && s.pile.greyKind !== 'waiting' ? ' · set the %s' : ''
-      return { ...s, isLink: true, tone: 'link' as const, badge: `${pair ? `the weakest link, with ${pair.name}` : 'the weakest link'}${extra}` }
+      return { ...s, isLink: true, tone: 'link' as const, badge: `${pair ? `the narrowest step, with ${pair.name}` : 'the narrowest step'}${extra}` }
     }
-    if (thinBuild && s.id === thinBuild.id && link && s.id !== link.id) {
-      return { ...s, tone: 'pair' as const, badge: `reads ${oneDecimal(s.weeks as number)} weeks on a thin % · set the %s` }
+    if (thin && s.id === thin.id && link && s.id !== link.id) {
+      return { ...s, tone: 'pair' as const, badge: `reads ${stageUsd(s.paceUsd)} a week on a thin % · set the %s` }
     }
     if (link && heldStands && nominated && s.id === nominated.id) {
-      return { ...s, tone: 'plain' as const, badge: `reads ${oneDecimal(s.weeks as number)} weeks · the call holds ${link.name}` }
+      return { ...s, tone: 'plain' as const, badge: `reads ${stageUsd(s.paceUsd)} a week · the call holds ${link.name}` }
     }
     if (pair && s.id === pair.id) {
       const extra = s.pile.guessShare > 0 && s.pile.greyKind !== 'waiting' ? ' · set the %s' : ''
       return { ...s, tone: 'pair' as const, badge: `a close second${extra}` }
     }
+    // A feeder that is not lit keeps its own badge: where it stands against the field.
+    if (s.id === 'market' || s.id === 'sales') return s
     if (link && STAGE_ORDER.indexOf(s.id) > STAGE_ORDER.indexOf(link.id)) {
       return { ...s, tone: 'plain' as const, badge: `moves with ${link.name}` }
     }
@@ -427,10 +447,10 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
 }
 
 /** The one-line rule the page opens on, and the longer reading behind its "?". */
-export const STAGE_RULE_LINE = 'Find the slowest step. Everything waits on it. We measure the week by what the field earned, billed and paid.'
+export const STAGE_RULE_LINE = 'Find the narrowest step, the one that moves the fewest dollars a week. Everything waits on it. We measure the week by what the field earned, billed and paid.'
 
 export const STAGE_RULE_LONG =
-  'A business is only as good as its weakest link. Work piles up in front of that link and starves everything after it. Throughput is what the field earns, billed and collectable. Grow it through the link. Cutting cost everywhere else makes the piles bigger and the week no better.'
+  'A business is only as good as its weakest link. The link is the narrowest step, the one that moves the fewest dollars a week. Work piles up in front of that link and starves everything after it. Throughput is what the field earns, billed and collectable. Grow it through the link. Cutting cost everywhere else makes the piles bigger and the week no better.'
 
 export const STAGE_RULE_POINTS: ReadonlyArray<{ head: string; text: string }> = [
   { head: '1 · The goal', text: 'The goal is to make money. Everything else is a means to it.' },

@@ -88,10 +88,10 @@ describe('buildWeekMailFromReads', () => {
     expect(mail.gaps).toEqual([])
   })
 
-  it('the slowest step is named on the card and lit on the strip, with its moves and nobody on them', () => {
+  it('the narrowest step is named on the card and lit on the strip, with its moves and nobody on them', () => {
     const mail = buildWeekMailFromReads(reads({ data: data({ ...flows(), crew: { fieldHours7d: 0, fieldHoursWindow: 0, officeBidHours7d: 0, pendingClosedHours: 40, pendingClosedSessions: 5 } }), fin: fin([item('a', 10_000, '2026-09-01'), item('b', 30_000, '2026-09-20')]) }))
     expect(mail.model.link).toBe('collect')
-    expect(mail.model.card.lead).toBe('Collect is the slowest step.')
+    expect(mail.model.card.lead).toBe('Collect is the narrowest step.')
     expect(tile(mail, 'step')?.value).toBe('Collect')
     expect(mail.strip?.litId).toBe('collect')
     expect(mail.model.card.moves.length).toBeGreaterThan(0)
@@ -176,7 +176,8 @@ describe('buildWeekMailFromReads: Market on the won rates (punch list #318)', ()
     // Bids: $160k over 8 weeks is $20k a week, a quarter of it won: $5k. Estimates: $2k a week, half sold: $1k.
     expect(market(mail)?.paceUsd).toBeCloseTo(6_000, 6)
     expect(market(mail)?.paceText).toBe('$6k worth')
-    expect(market(mail)?.label).toBe('Market. Worth $6k a week.')
+    // Worth $6k a week is the fewest dollars of any step that reads here, so Market is the narrowest step.
+    expect(market(mail)?.label).toBe('Market. Worth $6k a week. The narrowest step.')
     expect(mail.marketParts).toEqual(['bids $5k at 25% won, a thin count', 'estimates $1k at 50% won, a thin count'])
     const text = weekMailText(mail, 'https://app.example/bridge')
     expect(text).toContain('  Market: $6k worth')

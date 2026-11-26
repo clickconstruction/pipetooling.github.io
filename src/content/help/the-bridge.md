@@ -5,8 +5,8 @@ roles: dev, master_technician
 keywords: bridge, market worth, won rate, bids won, estimates sold, vectors, who moved the number, by the day, profitable day, red day, green day, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
-1. Read the numbers at the top. The numbers are what the field made last week, the slowest step, and your two balances.
-2. Read the card under the numbers. The card names the slowest step and the moves that would change it.
+1. Read the numbers at the top. The numbers are what the field made last week, the narrowest step, and your two balances.
+2. Read the card under the numbers. The card names the narrowest step and the moves that would change it.
 3. Press a line under a move to act on that one thing.
 
 **The Bridge** answers three questions on one page: where we stand, where cash is going, and what would change it. The Bridge runs on one clock: days.
@@ -24,7 +24,7 @@ The Bridge is for the owner and devs. A dev lands here when they open the app or
 The page opens on four numbers.
 
 - **Made last week** is field contribution, the number the company works to raise. That is what the field earned at each job's price, less its wages. The small bars are the last eight pay weeks. A ≈ after the number means hours still wait on approval. From Friday the tile shows this week so far.
-- **Slowest step** is the stage the page reads as the weakest link.
+- **Narrowest step** is the step that moves the fewest dollars a week. The company moves only as many dollars a week as that step does.
 - **Cash balance** is cash on hand today. The number is green while the next eight weeks stay over your floor. The number is amber when cash goes under the floor on a later day, and the line names that day. The number is red when cash is under the floor today.
 - **Accrual balance** is cash, plus what customers owe you, less what you owe. What you owe is the supply bills, the payroll owed and the sub labor owed. Bills in collections are left out. Press the accrual balance to open **Money owed** behind Money.
 
@@ -38,15 +38,15 @@ Cash balance $21.0k, 14 days of runway. Accrual balance $60.7k, 40 days of runwa
 
 On a phone, the first two numbers share a row and the balances sit under them.
 
-Under the numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. Under the bar, a line says whether that work grows or shrinks each week, and by how much. Market and Sales hold no pile. Each of their lines says how far short of the field the step runs, or how far ahead. The slowest step is red. The red does not move with the lines. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the numbers. In a week cash comes first, a phone shows it under the card.
+Under the numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. Under the bar, a line says whether that work grows or shrinks each week, and by how much. Market and Sales hold no pile. Each of their lines says how far short of the field the step runs, or how far ahead. The narrowest step is red. The red does not move with the lines. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the numbers. In a week cash comes first, a phone shows it under the card.
 
 Market's row reads what the asks are worth a week, not every dollar that came in. [What Market is worth](#what-market-is-worth) gives the rule. Press **How Market's figure is counted** under the pipe to read the working. The Market card behind **The flow** reads the same amount.
 
 An amber line under the cash balance names any account you left out of cash on hand. Press it to open Money at [the bank's accounts](#cash-on-hand-comes-from-the-bank).
 
-When cash goes under your floor, cash comes first. The card reads **Keep cash above the floor**. Its moves chase the late invoices and ask the supply houses for more days. The slowest step follows as the last move.
+When cash goes under your floor, cash comes first. The card reads **Keep cash above the floor**. The card's moves chase the late invoices and ask the supply houses for more days. The narrowest step follows as the last move.
 
-Under the numbers, **What to do now** names the slowest step and the moves that would change it. The card shows the first three moves, or two on a phone.
+Under the numbers, **What to do now** names the narrowest step and the moves that would change it. The card shows the first three moves, or two on a phone.
 
 Each move names the things behind it, as a small table. A table shows three lines. Press **Show all** to see the rest.
 
@@ -91,7 +91,7 @@ Behind **Money**, the eight week chart has a card for every bar. Hover over any 
 
 ## The rule, and where the work piles up
 
-**The flow** opens on one line. Find the slowest step. Everything waits on it. Press the {{button:outline|?}} beside it to read why, in five points.
+**The flow** opens on one line. Find the narrowest step, the one that moves the fewest dollars a week. Everything waits on it. Press the {{button:outline|?}} beside that line to read why, in five points.
 
 Under that line sit five cards in the order work flows. Market, Sales, Build, Bill, Collect. Each card reads one stage. The bar is the pile waiting in front of it. The two lines under the bar say what comes in and what goes out each week. The last line says how many weeks it would take to clear the pile at today's pace. Collect's weeks count only the bills past their day. The grey part of its bar is billed and not yet due.
 
@@ -107,7 +107,7 @@ The field's pace is read a second way, by hours. That is what the field earned o
 
 The Bill card's pile is finished work not yet billed. On each working job that is the percent done times the contract, less what is billed or paid. A job marked ready to bill counts the whole remainder. A job with no percent takes the newest field report's answer. A working job with neither reads as half done and is drawn grey. The grey rule and the thin percent rule work the same way as on Build. The Bill card's second line counts every bill by the day it went out. A bill marked billed by hand counts on the day it was marked.
 
-The stage with the most weeks reads red. That is the weakest link. A stage within a tenth of it reads as its pair. The stages after the link say they move with it. A card that says **not readable yet** waits on a later step of the app.
+The step that moves the fewest dollars a week reads red. That step is the narrowest step. Market counts at what its asks are worth, and Sales at what it sold, so either can be red. A step within a tenth of it reads as its pair. The steps after the red one say they move with it. A card that says **not readable yet** waits on a later step of the app.
 
 Press a card to read it. The pressed card has the red border.
 
@@ -280,7 +280,7 @@ Vectors by the day has three readings. Press {{button:outline|Profit}} for earne
 
 Behind **The flow**, the **Weekly email** switch sits at the bottom. Turn it on and the app mails the Bridge's first screen every Monday at 6 AM Central. The owner and every dev get it at their own address. Nobody else gets it. The line under the switch says when it last went and to how many people. Turn it off and nothing goes out on Monday.
 
-The email shows what the field made and the slowest step. Under them it shows the cash balance beside the accrual balance. Each balance says its runway in days, as on the page. Then come the strip of pipe and **What to do now** with its first three moves. The email counts the same bank accounts as the page. An account you left out of cash on hand is left out of the email too.
+The email shows what the field made and the narrowest step. Under those two numbers the email shows the cash balance beside the accrual balance. Each balance says its runway in days, as on the page. Then come the strip of pipe and **What to do now** with its first three moves. The email counts the same bank accounts as the page. An account you left out of cash on hand is left out of the email too.
 
 The email leaves out [what the Bridge leaves out](#what-the-bridge-leaves-out). When the list names something, a line under the email's name says what is left out. Market on the email's pipe reads what the asks are worth a week, the same amount as the page. One line under the pipe says what the bids win and what the estimates sell.
 

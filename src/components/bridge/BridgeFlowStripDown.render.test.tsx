@@ -9,7 +9,7 @@ import type { StripDirection } from '../../lib/bridge/flowStripDown'
 import type { StageFlow, StageId, StageReading } from '../../lib/bridge/stageFlow'
 
 // Made-up paces and piles.
-const stage = (id: StageId, name: string, weeks: number | null): StageReading => ({ id, name, object: '', action: '', readable: true, pile: { headline: '', sub: [], usd: null, guessShare: 0 }, flow: [], weeks, weeksText: '', badge: '', tone: 'plain', isLink: false })
+const stage = (id: StageId, name: string, weeks: number | null): StageReading => ({ id, name, object: '', action: '', readable: true, pile: { headline: '', sub: [], usd: null, guessShare: 0 }, flow: [], paceUsd: null, weeks, weeksText: '', badge: '', tone: 'plain', isLink: false })
 const flow: StageFlow = { stages: [stage('market', 'Market', null), stage('sales', 'Sales', null), stage('build', 'Build', 4.2), stage('bill', 'Bill', 7.5), stage('collect', 'Collect', 2.6)], linkId: 'bill', nominatedId: 'bill', heldStands: false, pairId: null }
 const strip = buildFlowStrip(flow, { market: 160_000, sales: 36_000, build: 33_000, bill: 19_000, collect: 26_000 })
 const market: MarketWorth = {
@@ -32,9 +32,9 @@ describe('BridgeFlowStripDown', () => {
     // Until Market's worth is read its row says what was bid, and there is no working to open.
     expect(screen.getByTestId('bridge-strip-market').textContent).toBe('Marketbid $160k a week')
     expect(screen.queryByTestId('bridge-strip-market-toggle')).toBeNull()
-    expect(screen.getByTestId('bridge-strip-bill').textContent).toBe('Bill, the slowest stepbilled $19k a week8 weeks wait')
+    expect(screen.getByTestId('bridge-strip-bill').textContent).toBe('Bill, the narrowest stepbilled $19k a week8 weeks wait')
     // The press says the whole reading to a screen reader, and hands back its step.
-    fireEvent.click(screen.getByRole('button', { name: 'Bill. $19k billed a week. 8 weeks of work wait in front of it. The slowest step. Open its desk.' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Bill. $19k billed a week. 8 weeks of work wait in front of it. The narrowest step. Open its desk.' }))
     expect(onOpen).toHaveBeenCalledWith('bill')
   })
 
@@ -63,7 +63,7 @@ describe('BridgeFlowStripDown', () => {
     }
     renderWithProviders(<BridgeFlowStripDown strip={strip} onOpen={() => {}} market={market} directions={directions} />)
     expect(screen.getByTestId('bridge-strip-market').textContent).toBe('Marketworth $9k a weekbids $6k at 4% wonestimates $3k at 60% won$10k a week short of the field.')
-    expect(screen.getByTestId('bridge-strip-bill').textContent).toBe('Bill, the slowest stepbilled $19k a week8 weeks waitKeeps up.')
+    expect(screen.getByTestId('bridge-strip-bill').textContent).toBe('Bill, the narrowest stepbilled $19k a week8 weeks waitKeeps up.')
     expect(screen.getByTestId('bridge-strip-collect').textContent).toBe('Collectpaid $26k a week3 weeks waitGrows $15k a week.')
     // A growing pile is the warning, in red and bold; a shrinking one is green; a feeder short of the field is amber; keeping up is muted.
     const styleOf = (id: StageId) => screen.getByTestId(`bridge-strip-direction-${id}`).style
@@ -75,7 +75,7 @@ describe('BridgeFlowStripDown', () => {
     expect(styleOf('bill').color).toBe('var(--text-muted)')
     // The red stays where the page's rule put it.
     expect(screen.getByTestId('bridge-flow-strip').querySelectorAll('rect[fill="#dc2626"]').length).toBe(1)
-    expect(screen.getByRole('button', { name: 'Bill. $19k billed a week. 8 weeks of work wait in front of it. The slowest step. Keeps up. Open its desk.' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Bill. $19k billed a week. 8 weeks of work wait in front of it. The narrowest step. Keeps up. Open its desk.' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Market. Worth $9k a week. $10k a week short of the field. Open its desk.' })).toBeTruthy()
   })
 

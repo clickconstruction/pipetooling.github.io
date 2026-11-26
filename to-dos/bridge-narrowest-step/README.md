@@ -2,7 +2,7 @@
 name: "The Bridge lights the narrowest step"
 number: 321
 group: ready
-status: drawn 2026-11-12 after a review of the Bridge once Market read on the won rates (#318) · nothing is built · 2026-11-25 (UTC): the meaning answered in the managing session, the scaling function is the narrowest step, the one that moves the fewest dollars a week · the rule itself answered later the same day: the Bridge lights the narrowest step, so PR 2 and PR 3 are no longer held · PR 1 built 2026-11-26 as v2.8622, each row's direction on the pipe, the red unmoved
+status: drawn 2026-11-12 after a review of the Bridge once Market read on the won rates (#318) · nothing is built · 2026-11-25 (UTC): the meaning answered in the managing session, the scaling function is the narrowest step, the one that moves the fewest dollars a week · the rule itself answered later the same day: the Bridge lights the narrowest step, so PR 2 and PR 3 are no longer held · PR 1 built 2026-11-26 as v2.8622, each row's direction on the pipe, the red unmoved · PR 2 built 2026-11-26 as v2.8628, the page lights the narrowest step, held unarmed until its `bridge-weekly-sheet` redeploy has a yes
 mockup: to-dos/bridge-narrowest-step/mockup.html
 summary: >
   The Bridge lights the step with the most weeks of work waiting. With all five steps on one scale, that rule can
@@ -118,6 +118,7 @@ PR 2 and PR 3 waited on the word on the rule itself. It came on 2026-11-25, "Yes
 
 ## Where it stands
 
-PR 1 is built as v2.8622 (2026-11-26): each row of the pipe says which way its work is heading, and the red stays where it was.
-The meaning and the rule were both answered on 2026-11-25, so PR 2 and PR 3 follow.
-PR 2 changes `stageFlow.ts`, which is copied to the edge functions and read by `bridge-weekly-sheet`, so it carries a regenerated copy and owes that function a redeploy after its merge, as v2.7230 did; PR 3 does the same through `weekCall.ts`.
+PR 1 is built as v2.8622 (2026-11-26): each row of the pipe says which way its work is heading.
+PR 2 is built as v2.8628 (2026-11-26): the page lights the narrowest step, Market and Sales among the candidates, the held call, the close second and the thin-reading guard kept in pace terms, and every surface that named the slowest step or the weakest link says the narrowest step.
+It changes `stageFlow.ts`, `weekCall.ts`, `flowStrip.ts` and `dial.ts`, which are copied to the edge functions and read by `bridge-weekly-sheet`, so it carries the regenerated copy and owes that function one redeploy after its merge, as v2.7230 did; until then the Monday email lights the old step.
+PR 3 follows: the tile's two lines, the call on the lit step's moves, the guide's rule section, and this card's close-out.
