@@ -41,7 +41,7 @@ The company can ask about the plans until questions close. The question shows in
 
 ## Who gets our emails
 
-The company can add people and tick the kinds of email each one gets. Every kind always keeps someone. The people show in the company's window. [Look up a trade partner](/help/look-up-a-trade-partner) says where.
+The company can add people and tick the kinds of email each one gets. Every kind always keeps someone. The company can take a person off with **Remove**. The portal asks first and names the person. The people show in the company's window. [Look up a trade partner](/help/look-up-a-trade-partner) says where.
 
 ## A line from its Messages tab
 
