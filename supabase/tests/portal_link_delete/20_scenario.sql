@@ -41,6 +41,17 @@ BEGIN
   END;
   RAISE EXCEPTION '% was allowed', label;
 END $$;
+-- A direct DELETE tried as the signed-in person: how many rows it reached, or the refusal's words. The table has no
+-- delete policy of its own, so the schema's default grant reaches no row for anyone.
+CREATE FUNCTION pld.try_direct(p_link uuid) RETURNS text LANGUAGE plpgsql AS $$
+DECLARE n integer;
+BEGIN
+  DELETE FROM public.customer_portal_links WHERE id = p_link;
+  GET DIAGNOSTICS n = ROW_COUNT;
+  RETURN n::text || ' row';
+EXCEPTION WHEN OTHERS THEN
+  RETURN SQLERRM;
+END $$;
 -- What stands, past RLS: the links by their last two hex digits, in order.
 CREATE FUNCTION pld.links() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT string_agg(right(id::text, 2), ' ' ORDER BY id) FROM public.customer_portal_links WHERE customer_id IN (pld.id('91'), pld.id('92'))
@@ -79,7 +90,7 @@ SELECT pld.same('four links stand', pld.links(), 'e1 e2 e3 e4');
 SELECT pld.as_user(pld.id('a2'));
 SET LOCAL ROLE authenticated;
 SELECT pld.same('an assistant is refused at the door', pld.try(pld.id('e1')), 'Only a developer can delete a portal link.');
-SELECT pld.refused('an assistant cannot delete a row directly', format($q$DELETE FROM public.customer_portal_links WHERE id = %L$q$, pld.id('e1')), 'permission denied');
+SELECT pld.same('an assistant''s direct delete reaches no row', pld.try_direct(pld.id('e1')), '0 row');
 SELECT pld.same('nothing changed', pld.links(), 'e1 e2 e3 e4');
 RESET ROLE;
 
@@ -92,7 +103,7 @@ SELECT pld.same('a real customer''s turned-off link is refused', pld.try(pld.id(
 SELECT pld.same('a link a GC proposal names is refused, with the count', pld.try(pld.id('e3')), '1 GC proposal names this link. It stays.');
 SELECT pld.same('a link that is not there is refused', pld.try(pld.id('e9')), 'This link is not there any more.');
 SELECT pld.same('nothing changed yet', pld.links(), 'e1 e2 e3 e4');
-SELECT pld.refused('a dev cannot delete a row directly either', format($q$DELETE FROM public.customer_portal_links WHERE id = %L$q$, pld.id('e1')), 'permission denied');
+SELECT pld.same('a dev''s direct delete reaches no row either', pld.try_direct(pld.id('e1')), '0 row');
 SELECT pld.same('the ZZ customer''s turned-off link goes', pld.try(pld.id('e1')), 'ok');
 SELECT pld.same('it is gone and the others stand', pld.links(), 'e2 e3 e4');
 SELECT pld.same('a second delete of the same link is refused', pld.try(pld.id('e1')), 'This link is not there any more.');

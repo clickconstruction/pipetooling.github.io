@@ -4,11 +4,11 @@ A developer deletes a turned-off portal link of a test customer. Punch list #443
 
 ## Why
 
-**Turn off**, then **Turn the portal off**, in a customer's portal window sets `revoked_at` on the `customer_portal_links` row and keeps it for the window's History. The table grants the office `SELECT, INSERT, UPDATE` and nobody `DELETE` ([`20260821213000_customer_portal_links`](./20260821213000_customer_portal_links.md)), so every walk that turned a ZZ Test customer's portal off left a row for good: six stood on one ZZ Test customer on 2026-11-25.
+**Turn off**, then **Turn the portal off**, in a customer's portal window sets `revoked_at` on the `customer_portal_links` row and keeps it for the window's History. The table has one read policy and no delete policy ([`20260821213000_customer_portal_links`](./20260821213000_customer_portal_links.md)), so a direct delete reaches no row and every walk that turned a ZZ Test customer's portal off left a row for good: six stood on one ZZ Test customer on 2026-11-25.
 
 ## What it makes
 
-Two functions, both `CREATE OR REPLACE`, both `SECURITY DEFINER`. No table is created, so the four closing calls do not apply. The table's own policies and grants are as they were: the delete goes through this door and no other.
+Two functions, both `CREATE OR REPLACE`, both `SECURITY DEFINER`. No table is created, so the four closing calls do not apply. The table's own policies are as they were, and it still has no delete policy of its own, so a direct delete reaches no row: the delete goes through this door and no other.
 
 - **`customer_is_zz_test(p_customer_id uuid) → boolean`**, `STABLE`, `row_security = off`. The ZZ convention in SQL for a customer, as `isZzTestName` says it: the customer's name starts with ZZ after trimming, in any case. Beside `job_is_zz_test` ([`20261120163000`](./20261120163000_settings_on_the_job.md)). Internal: revoked from `PUBLIC`, `anon` and `authenticated`.
 - **`delete_test_portal_link(p_link_id uuid) → jsonb`**, granted to `authenticated`. Refuses, in words, a caller who is not signed in, a caller who is not a developer (`is_dev()`), a link that is not there, a link still live (`revoked_at` null), a link of a customer whose name does not start with ZZ, and a link that any `job_paper_proposals` row names (`portal_link_id`, `ON DELETE SET NULL` since [`20261125023655`](./20261125023655_job_paper_gc_proposals.md), which would otherwise forget the link without a word). Then deletes the one row and answers `{ ok, customer_id, audience }`.

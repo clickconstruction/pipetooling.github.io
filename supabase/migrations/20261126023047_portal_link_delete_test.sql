@@ -17,8 +17,9 @@ SET lock_timeout = '3s';
 --                                        proposal names (job_paper_proposals.portal_link_id, ON DELETE SET NULL,
 --                                        would otherwise forget it without a word); then deletes the one row.
 --
--- No table is created, so no fence is owed. The table's own policies and grants are as they were: the delete goes
--- through this door and no other. Every statement is safe to run twice.
+-- No table is created, so no fence is owed. The table's own policies are as they were, and it has no delete policy of
+-- its own, so a direct DELETE reaches no row for anyone: the delete goes through this door and no other. Every
+-- statement is safe to run twice.
 
 CREATE OR REPLACE FUNCTION public.customer_is_zz_test(p_customer_id uuid)
 RETURNS boolean
@@ -79,4 +80,4 @@ REVOKE ALL ON FUNCTION public.delete_test_portal_link(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.delete_test_portal_link(uuid) TO authenticated;
 
 COMMENT ON FUNCTION public.delete_test_portal_link(uuid) IS
-  'Punch list #443, row 11: a developer deletes one turned-off portal link of a customer whose name starts with ZZ, when no GC proposal names it. Refuses everything else in words. The table itself grants no delete.';
+  'Punch list #443, row 11: a developer deletes one turned-off portal link of a customer whose name starts with ZZ, when no GC proposal names it. Refuses everything else in words. The table has no delete policy of its own, so a direct delete reaches no row.';
