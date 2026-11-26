@@ -9,6 +9,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { ArReturnCasePane } from './ArReturnCasePane'
 import { arReturnCaseView, type ArReturnCaseRow } from '../../../lib/jobs/arReturnCase'
 import { arCaseFeeOffer, AR_RETURNED_CHECK_FEE_STATUTE, type ArCaseFeeRow } from '../../../lib/jobs/arReturnCaseFee'
+import { payoffReturnedView, type PayoffReturnedInput } from '../../../lib/jobs/payoffReturned'
+import type { ReturnedCaseLiens } from '../../../hooks/useReturnedCaseLiens'
 
 const TODAY = '2026-10-05'
 
@@ -256,5 +258,75 @@ describe('ArReturnCasePane — the new check inside a bigger payment (v2.5891)',
     cleanup()
     pane({ canApply: false })
     expect(screen.queryByTestId('ar-return-case-combined')).toBeNull()
+  })
+})
+
+describe('ArReturnCasePane — the liens on a returned check (punch list #435, piece 6)', () => {
+  // Every job, instrument and name here is made up.
+  const lien = (over: Partial<PayoffReturnedInput> = {}) =>
+    payoffReturnedView({
+      jobs: [{ jobId: 'j1', stand: 'counted' }],
+      labelByJob: { j1: '#2041 Okafor main house' },
+      targets: [{ affidavit: { id: 'a1', job_id: 'j1', county: 'Travis', recording_number: '2026-0412207', filed_at: '2026-09-09' }, release: null }],
+      prints: [],
+      checkNumber: '1184',
+      ...over,
+    })
+  const saved = { id: 'r1', created_at: '2026-09-20T16:00:00Z', filed_at: null, fields: { releasesFilingId: 'a1' } }
+  const pane = (liens: ReturnedCaseLiens | null, onOpenJob = noop as (jobId: string) => void) =>
+    render(
+      <ArReturnCasePane view={arReturnCaseView({ row, trail: [], todayYmd: TODAY })} todayYmd={TODAY} canApply replacement={null} busy={null} error={null} onTakeOff={noop} onTheySaid={noop} onUseReplacement={noop} onClose={noop} onTakeRecordedOff={noop} onNotBounced={noop} liens={liens} onOpenJob={onOpenJob} />,
+    )
+
+  it('draws nothing while the liens are read, and nothing when no job is liened', () => {
+    pane({ status: 'reading', view: null, why: null })
+    expect(screen.queryByTestId('ar-return-case-liens')).toBeNull()
+    cleanup()
+    pane({ status: 'ready', view: null, why: null })
+    expect(screen.queryByTestId('ar-return-case-liens')).toBeNull()
+    cleanup()
+    pane(null)
+    expect(screen.queryByTestId('ar-return-case-liens')).toBeNull()
+  })
+
+  it('none printed: the lien stays on record, in amber', () => {
+    pane({ status: 'ready', view: lien(), why: null })
+    const block = screen.getByTestId('ar-return-case-liens')
+    expect(block.getAttribute('data-state')).toBe('amber')
+    expect(screen.getByTestId('ar-return-case-liens-line').textContent).toBe('No release has left the office. 1 filed lien stays on record.')
+    const one = screen.getByTestId('ar-return-case-lien')
+    expect(one.getAttribute('data-case')).toBe('none')
+    expect(one.textContent).toContain('#2041 Okafor main house')
+    expect(one.textContent).toContain('instrument 2026-0412207')
+    expect(screen.getByTestId('ar-return-case-lien-chip').textContent).toBe('On record')
+  })
+
+  it('printed: Do not record, with who printed it and when, and a door to the job', () => {
+    const onOpenJob = vi.fn()
+    pane({ status: 'ready', view: lien({ targets: [{ affidavit: { id: 'a1', job_id: 'j1', county: 'Travis', recording_number: '2026-0412207', filed_at: '2026-09-09' }, release: saved }], prints: [{ jobId: 'j1', printedAt: '2026-09-20T17:00:00Z', by: 'Alex Rivera' }] }), why: null }, onOpenJob)
+    expect(screen.getByTestId('ar-return-case-liens').getAttribute('data-state')).toBe('red')
+    expect(screen.getByTestId('ar-return-case-lien').getAttribute('data-case')).toBe('printed')
+    expect(screen.getByTestId('ar-return-case-lien-chip').textContent).toBe('Do not record')
+    expect(screen.getByTestId('ar-return-case-lien').textContent).toContain('A release was printed Sep 20 by Alex Rivera. Do not record it.')
+    fireEvent.click(screen.getByTestId('ar-return-case-lien-open'))
+    expect(onOpenJob).toHaveBeenCalledWith('j1')
+  })
+
+  it('recorded: Released, money came back, and it is counsel’s', () => {
+    pane({ status: 'ready', view: lien({ jobs: [{ jobId: 'j1', stand: 'typed' }], targets: [{ affidavit: { id: 'a1', job_id: 'j1', county: 'Travis', recording_number: '2026-0412207', filed_at: '2026-09-09' }, release: { ...saved, filed_at: '2026-09-22', fields: { releasesFilingId: 'a1', releaseInstrument: '2026-0431955' } } }] }), why: null })
+    expect(screen.getByTestId('ar-return-case-liens').getAttribute('data-state')).toBe('counsel')
+    expect(screen.getByTestId('ar-return-case-liens-line').textContent).toBe('1 release is recorded on check 1184. Ask counsel.')
+    expect(screen.getByTestId('ar-return-case-lien-chip').textContent).toBe('Released, money came back')
+    expect(screen.getByTestId('ar-return-case-lien').textContent).toContain('The county recorded the release Sep 22 as 2026-0431955. The app cannot undo that.')
+    // The check was typed on this job by hand: the case's own take off does not reach it.
+    expect(screen.getByTestId('ar-return-case-lien-typed').textContent).toBe('Check 1184 still counts as paid on this job. Take it off on the job’s Bill tab.')
+  })
+
+  it('says so when the liens could not be read, with the reason', () => {
+    pane({ status: 'failed', view: null, why: 'permission denied for table job_lien_filings' })
+    const block = screen.getByTestId('ar-return-case-liens')
+    expect(block.getAttribute('data-state')).toBe('failed')
+    expect(block.textContent).toContain('The liens on these jobs could not be read.')
+    expect(block.textContent).toContain('permission denied for table job_lien_filings')
   })
 })

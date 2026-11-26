@@ -29,6 +29,12 @@
  * release was asked for in writing, and a leader's, a controller's or a dev's word that the bank confirmed the funds.
  * A confirmed check owes its release before the bank's day. Each step also carries the last payment and the bank's
  * answer, which the place's card reads (`lienPayoffCard.ts`).
+ *
+ * Since piece 6 a release never rests on a check the bank sent back (`payoffReturned.ts`). While the bank says the
+ * job's last payment came back, a saved release reads *Do not record it* with the bills' door in place of the
+ * county's, and a recorded one reads *Released, money came back*. Both carry `moneyBack`, which keeps their place
+ * in the open list. Once the payment is off the job the bank's answer is gone from here, and Accounts Receivable's
+ * case is what remembers.
  */
 import { calendarYmdInAppTzFromIso, ymdAddDays } from '../../utils/dateUtils'
 import { moneyWords } from '../moneyParts'
@@ -38,6 +44,7 @@ import { bankCheckAnswer, checkAnswerWords, checkName, paymentCheckAnswer, type 
 import { isCheckPayment } from './checkClearing'
 import { lienDeskJobNumber } from './lienJobLabel'
 import { fundsConfirmedWords, payoffNote, type FundsConfirmed } from './lienPayoffFields'
+import { releaseOnReturnedCheck } from './payoffReturned'
 import { attributeJobPayments } from './paymentAttribution'
 
 /** `bank`: the bills read paid by a check the bank has not cleared. No release is offered. */
@@ -107,7 +114,7 @@ export type LienPayoffStep = {
   /** A second line that asks for care, or null. */
   warn: string | null
   warnTone: 'amber' | 'red' | null
-  /** The one press. Null once the lien is released, and while it waits for the bank. */
+  /** The one press. Null once the lien is released, and while it waits for the bank. A release on a check that came back opens the bills. */
   press: { label: string; door: LienPayoffDoor } | null
   /** The release of record this lien already has, or null. */
   releaseId: string | null
@@ -117,6 +124,8 @@ export type LienPayoffStep = {
   check: CheckAnswer | null
   /** The day the county recorded the release, on `done` alone. */
   recordedYmd: string | null
+  /** A release of this lien is saved or recorded, and the bank says the money it rests on came back (piece 6). */
+  moneyBack?: boolean
 }
 
 /** The three steps as the window's legend reads them. */
@@ -240,13 +249,20 @@ export function lienPayoffStep(input: LienPayoffStepInput): LienPayoffStep {
   const paid = lastPaid ? { ymd: (lastPaid.paid_on ?? '').slice(0, 10), way: payWayWords(lastPaid) } : null
   const check = lastPaid ? paymentCheckAnswer(lastPaid, input.bank ?? [], todayYmd) : null
   const facts = { paid, check, recordedYmd: null as string | null }
+  // A release never rests on a check the bank sent back (piece 6): what the bank said, and the bills' door.
+  const cameBack = release && lastPaid && releaseOnReturnedCheck(check) ? checkAnswerWords(check!, checkName(lastPaid.reference_number)).say : null
+  const toBills = { label: LIEN_PAYOFF_WORDS.cameBack, door: 'bill' as const }
 
   if (release?.filed_at) {
     const day = val('day', formatYmdMonthDay(release.filed_at))
     const instrument = releaseOwnInstrument(release)
+    const recorded = instrument ? `The county recorded it ${day} as ${val('instrument', instrument)}.` : `The county recorded it ${day}.`
+    if (cameBack) {
+      return { step: 'done', say: `Released, money came back. ${recorded}`, warn: `${cameBack} The county’s record stands. Ask counsel.`, warnTone: 'red', press: toBills, releaseId: release.id, ...facts, recordedYmd: release.filed_at.slice(0, 10), moneyBack: true }
+    }
     return {
       step: 'done',
-      say: instrument ? `Released. The county recorded it ${day} as ${val('instrument', instrument)}.` : `Released. The county recorded it ${day}.`,
+      say: `Released. ${recorded}`,
       warn: owes ? stillOpen : null,
       warnTone: owes ? 'red' : null,
       press: null,
@@ -258,6 +274,9 @@ export function lienPayoffStep(input: LienPayoffStepInput): LienPayoffStep {
 
   if (release) {
     const made = val('day', formatYmdMonthDay(calendarYmdInAppTzFromIso(release.created_at)))
+    if (cameBack) {
+      return { step: 'county', say: `The release was made ${made}. Do not record it.`, warn: `${cameBack} Take the payment off the bills.`, warnTone: 'red', press: toBills, releaseId: release.id, ...facts, moneyBack: true }
+    }
     return {
       step: 'county',
       say: `The release was made ${made}. Sign it before a notary. Then record it at the county.`,
@@ -419,7 +438,7 @@ export function lienPayoffPlaceHeadline(rows: ReadonlyArray<LienPayoffRow>): str
  */
 function placeRank(place: Pick<LienPayoffPlace, 'rows' | 'bank'>): number {
   const has = (k: LienPayoffStepKey) => place.rows.some((r) => r.step.step === k)
-  if (has('release') || place.bank?.answer.cleared) return 0
+  if (has('release') || place.bank?.answer.cleared || place.rows.some((r) => r.step.moneyBack)) return 0
   if (has('bank') || place.bank) return 1
   if (has('county')) return 2
   if (has('money')) return 3
@@ -508,6 +527,8 @@ export type LienPayoffStrip = {
   /** Places with a check at the bank that has not cleared. */
   atBank: number
   released: number
+  /** Releases saved or recorded on a check the bank sent back (piece 6). */
+  moneyBack: number
   /** The desk's one line, with its count marked. Null when no lien has been filed. */
   say: string | null
   tone: 'amber' | 'plain'
@@ -524,13 +545,15 @@ export function lienPayoffStrip(places: ReadonlyArray<LienPayoffPlace>): LienPay
   const released = count('done')
   const toRecord = places.filter((p) => p.bank?.answer.cleared).length
   const atBank = places.filter((p) => p.bank && !p.bank.answer.cleared && p.bank.answer.state !== 'came_back').length
+  const moneyBack = rows.filter((r) => r.step.moneyBack).length
   let say: string | null = null
-  if (owed) say = `${val('count', String(owed))} ${owed === 1 ? 'lien is' : 'liens are'} paid and still on record.`
+  if (moneyBack) say = `${val('count', String(moneyBack))} ${moneyBack === 1 ? 'release rests' : 'releases rest'} on a check that came back.`
+  else if (owed) say = `${val('count', String(owed))} ${owed === 1 ? 'lien is' : 'liens are'} paid and still on record.`
   else if (toRecord) say = `${val('count', String(toRecord))} ${toRecord === 1 ? 'check has' : 'checks have'} cleared for liens on record. Record ${toRecord === 1 ? 'it' : 'them'}.`
   else if (county) say = `${val('count', String(county))} ${county === 1 ? 'release waits' : 'releases wait'} for the county’s stamp.`
   else if (bank) say = `${val('count', String(bank))} paid ${lien(bank)} ${bank === 1 ? 'waits' : 'wait'} for the bank to clear a check.`
   else if (atBank) say = `${val('count', String(atBank))} ${atBank === 1 ? 'check' : 'checks'} for liens on record ${atBank === 1 ? 'is' : 'are'} at the bank.`
   else if (onRecord) say = `${val('count', String(onRecord))} filed ${lien(onRecord)} on record.`
   else if (released) say = released === 1 ? 'The filed lien is released.' : 'Every filed lien is released.'
-  return { owed, county, onRecord, bank, toRecord, atBank, released, say, tone: owed || county || toRecord ? 'amber' : 'plain' }
+  return { owed, county, onRecord, bank, toRecord, atBank, released, moneyBack, say, tone: moneyBack || owed || county || toRecord ? 'amber' : 'plain' }
 }

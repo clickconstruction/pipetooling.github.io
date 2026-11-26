@@ -85,7 +85,7 @@ import type { JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { lienTradeWords } from '../../lib/jobs/lienTradeWords'
 import { MoneyText } from '../Money'
 import { ChangeableValue, ValueLine, ValueLines, ValueSentence } from '../valuesInPlace/ValuesInPlace'
-import { RELEASE_OF_RECORD_WORDS, pickReleaseTarget, releaseMoneyGate, releaseNeedsBank, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from '../../lib/jobs/lienReleaseOfRecord'
+import { RELEASE_OF_RECORD_WORDS, pickReleaseTarget, releaseMoneyBackWords, releaseMoneyGate, releaseNeedsBank, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from '../../lib/jobs/lienReleaseOfRecord'
 import { payoffNote } from '../../lib/jobs/lienPayoffFields'
 
 /**
@@ -1681,6 +1681,8 @@ export default function LienFilingTabs({
   const savedRelease = releaseTarget?.release ?? null
   const releaseInstrument = savedRelease && savedRelease.fields && typeof savedRelease.fields === 'object' && !Array.isArray(savedRelease.fields) ? String((savedRelease.fields as Record<string, unknown>).releaseInstrument ?? '') : ''
   const releasedWords = savedRelease ? releaseRecordedSentence(savedRelease) : null
+  // A saved release whose check the bank sent back (#435, piece 6): do not record it, or the county's record stands.
+  const releaseMoneyBack = savedRelease ? releaseMoneyBackWords({ recorded: Boolean(savedRelease.filed_at), payments: job.payments ?? [], bank: bankChecks, todayYmd: todayYmd() }) : null
   const releaseHeld: CSSProperties = releaseGate.hold ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, border: '1px solid transparent', cursor: 'default' } : {}
   const releaseTone = { red: 'var(--text-red-700)', amber: 'var(--text-amber-800)', green: 'var(--text-green-700)' }[releaseGate.tone]
   const releaseOutline: CSSProperties = { padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer', ...releasePhoneButton }
@@ -1717,6 +1719,11 @@ export default function LienFilingTabs({
                 <p data-lien-release-saved={savedRelease.filed_at ? 'recorded' : 'made'} style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', lineHeight: 1.45, color: releasedWords ? 'var(--text-green-700)' : undefined }}>
                   {releasedWords ? <ValueSentence text={releasedWords} /> : RELEASE_OF_RECORD_WORDS.saved}
                 </p>
+                {releaseMoneyBack ? (
+                  <p data-lien-release-money-back role="alert" style={{ margin: '0 0 0.6rem', padding: '0.5rem 0.7rem', border: '1px solid var(--border-red)', borderRadius: 8, fontSize: '0.8125rem', lineHeight: 1.45, fontWeight: 600, color: 'var(--text-red-700)' }}>
+                    <ValueSentence text={releaseMoneyBack} />
+                  </p>
+                ) : null}
                 {/* The county's stamp, as two values changed where they sit (values in place): each Keep writes at once. */}
                 <div data-lien-release-stamp style={{ margin: '0 0 0.8rem', padding: '0.55rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-subtle)', fontSize: '0.8125rem' }}>
                   <div style={{ fontWeight: 700, marginBottom: '0.3rem' }}>{RELEASE_OF_RECORD_WORDS.stampHead}</div>

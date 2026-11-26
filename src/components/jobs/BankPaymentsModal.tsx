@@ -26,6 +26,7 @@ import {
 import { ArDepositRow } from './ar/ArDepositRow'
 import { ArReturnCaseRow } from './ar/ArReturnCaseRow'
 import { ArReturnCasePane, type ArCaseCloseReason } from './ar/ArReturnCasePane'
+import { useReturnedCaseLiens } from '../../hooks/useReturnedCaseLiens'
 import { ArClosedCases } from './ar/ArClosedCases'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { useArReturnCases } from '../../hooks/useArReturnCases'
@@ -519,6 +520,8 @@ export default function BankPaymentsModal({
     void reloadCaseFee(selectedCaseId)
   }, [selectedCaseId, selectedCaseCameBack, canApply, reloadCaseFee])
   const caseFeeOffer = selectedCaseView ? arCaseFeeOffer(selectedCaseView, caseFees.get(selectedCaseView.id)) : null
+  // Punch list #435, piece 6: the filed liens on the check's jobs, each with where its release stands.
+  const caseLiens = useReturnedCaseLiens(open ? selectedCaseView : null, canApply)
   const [theySaidJob, setTheySaidJob] = useState<{ jobId: string; label: string } | null>(null)
   /** Use it as the new check: the case the deposit being applied replaces; closed when the apply lands. */
   const replacingRef = useRef<{ caseId: string; depositId: string } | null>(null)
@@ -2953,6 +2956,7 @@ export default function BankPaymentsModal({
                   onPutBack={() => void putDisputedBillBack()}
                   fee={caseFeeOffer}
                   onAddFee={() => void addCaseFee()}
+                  liens={caseLiens}
                   onOpenJob={onOpenEditJob}
                   onBack={narrow ? () => setMobilePane(false) : undefined}
                 />

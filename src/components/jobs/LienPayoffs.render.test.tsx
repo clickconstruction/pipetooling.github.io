@@ -298,3 +298,31 @@ describe('the payoff card (punch list #435, piece 4)', () => {
     expect(rowOf('a1').querySelector('[data-lien-payoff-say]')!.textContent).toBe('Paid Nov 24 by check 1184. Alex Rivera confirmed the funds Nov 26. The release is owed.')
   })
 })
+
+describe('a release on a check that came back (punch list #435, piece 6)', () => {
+  // Check 3310 paid the Bastrop lien, its release was recorded, and then the paying bank sent the check back.
+  const BACK: BankCheck = { id: 'b3', amount: 900, status: 'failed', depositedYmd: '2026-11-02', postedYmd: '2026-11-03', bankDayYmd: '2026-11-10', checkNumber: '3310', failureReason: 'Insufficient funds' }
+  const paid3 = { j3: [{ amount: 900, paid_on: '2026-11-01', payment_type: 'Check', reference_number: '3310' }] }
+
+  it('keeps a recorded release out of the Released fold, in red, with the bills’ door', async () => {
+    const { onOpenBill } = draw({ initiallyOpen: true, read: () => Promise.resolve(facts({ bank: [CLEARED, BACK], paymentsByJob: { ...facts().paymentsByJob, ...paid3 } })) })
+    const row = await found('[data-lien-payoff-row="a3"]')
+    expect(document.querySelector('[data-lien-payoffs-released-fold]')).toBeNull()
+    expect(row.querySelector('[data-lien-payoff-say]')!.textContent).toBe('Released, money came back. The county recorded it Nov 5 as 2026-0500990.')
+    expect(row.querySelector('[data-lien-payoff-warn]')!.getAttribute('data-lien-payoff-warn')).toBe('red')
+    expect(row.querySelector('[data-lien-payoff-warn]')!.textContent).toBe('Check 3310 came back. The bank said insufficient funds. The county’s record stands. Ask counsel.')
+    expect(row.querySelector('[data-lien-payoff-released]')).toBeNull()
+    fireEvent.click(row.querySelector('[data-lien-payoff-press="bill"]')!)
+    expect(onOpenBill).toHaveBeenCalledWith('j3')
+  })
+
+  it('tells the office not to record a saved release, and opens the bills in place of the county’s stamp', async () => {
+    const f = facts({ bank: [CLEARED, BACK], paymentsByJob: { ...facts().paymentsByJob, ...paid3 } })
+    draw({ initiallyOpen: true, read: () => Promise.resolve({ ...f, releases: f.releases.map((r) => ({ ...r, filed_at: null })) }) })
+    const row = await found('[data-lien-payoff-row="a3"]')
+    expect(row.dataset.step).toBe('county')
+    expect(row.querySelector('[data-lien-payoff-say]')!.textContent).toBe('The release was made Nov 1. Do not record it.')
+    expect(row.querySelector('[data-lien-payoff-press="release"]')).toBeNull()
+    expect(row.querySelector('[data-lien-payoff-press="bill"]')!.textContent).toBe('Open the bills ›')
+  })
+})

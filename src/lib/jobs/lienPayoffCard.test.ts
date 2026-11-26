@@ -161,6 +161,26 @@ describe('lienPayoffCard, the five stops', () => {
   })
 })
 
+describe('a release on a check that came back (punch list #435, piece 6)', () => {
+  const release = (id: string, job: string, affidavit: string, filedAt: string | null) => ({ id, job_id: job, created_at: '2026-11-24T18:00:00Z', filed_at: filedAt, recording_number: null, fields: { releasesFilingId: affidavit } })
+
+  it('turns the county stop red for a saved release, and tells the office not to record it', () => {
+    const c = card({ ...bothPaid, bank: [CAME_BACK], releases: [release('r1', 'j1', 'a1', null), release('r2', 'j2', 'a2', null)] }, '2026-11-26')
+    expect(states(c)).toEqual(['done', 'bad', 'bad', 'bad', 'later'])
+    expect(says(c)[3]).toBe('Do not record. The check came back.')
+    expect(plainSentence(c.line)).toBe('The check came back. Open the bills and take the payments off.')
+    expect(c.tone).toBe('red')
+  })
+
+  it('says a recorded release is counsel’s, and offers no copies to send', () => {
+    const c = card({ ...bothPaid, bank: [CAME_BACK], releases: [release('r1', 'j1', 'a1', '2026-11-25'), release('r2', 'j2', 'a2', '2026-11-25')] }, '2026-11-26')
+    expect(states(c)).toEqual(['done', 'bad', 'bad', 'done', 'later'])
+    expect(plainSentence(c.line)).toBe('The check came back. Open the bills and take the payments off. 2 releases are already recorded. Ask counsel.')
+    expect(plainWordsFailures(plainSentence(c.line))).toEqual([])
+    expect(c.tone).toBe('red')
+  })
+})
+
 describe('the due day', () => {
   it('is ten days after the written request, and counts the days left', () => {
     expect(releaseDue('2026-11-24', '2026-11-26')).toEqual({ askedYmd: '2026-11-24', dueYmd: '2026-12-04', daysLeft: 8 })

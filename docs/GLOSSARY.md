@@ -6874,6 +6874,10 @@ Since **v2.8632** (punch list #435, piece 4) each open place carries the **payof
 **The bank confirmed the funds** is a leader's, a controller's or a dev's word, with a note, that a check not yet cleared is good (`fields.fundsConfirmed`, `lienPayoffFields.ts`).
 A lien with that word owes its release before the bank's day, and the release saved then carries it (`fields.releasedOnConfirmedFunds`).
 *Copies sent* has no fact on record until piece 5.
+Since **v2.8639** (punch list #435, piece 6) a check that came back says where the release of each filed lien on its jobs stands, in a box named **Liens on this money** in Accounts Receivable's case (`payoffReturned.ts`).
+**None printed** is a lien with no release out of the office, **printed** is a release with a printed copy that the county has not recorded and reads *Do not record*, and **recorded** reads *Released, money came back* and is counsel's.
+**The check's mark** is how the case finds the payments one check was typed as in Payoffs: the deposit's own check number on unlinked check payments typed near its day, adding up to no more than the check.
+In Payoffs a saved release whose check came back reads *Do not record it* with **Open the bills ›**, and a recorded one stays in the open list.
 
 ### Property card (Lien desk)
 Every job at one property record on one window (**v2.7488**): the address, the owner of record, two lines that count the property, each kind of paper apart (*4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail*, then *6 lien affidavits ready to file*) and a row per job with where its notice and its affidavit stand.

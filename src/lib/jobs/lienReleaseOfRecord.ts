@@ -20,6 +20,10 @@
  *     which nothing set before, and the release's own instrument number is `fields.releaseInstrument`. The row's
  *     `recording_number` keeps the affidavit's number, as every older row and reader has it.
  *
+ * Since piece 6 a saved release says so when the bank sent back the check it rests on (`releaseMoneyBackWords`):
+ * *Do not record this release* while the county has not recorded it, and *the county’s record stands* once it has.
+ * The stamp's two values stay open either way, since a stamp the clerk already gave is a fact to keep.
+ *
  * No migration: the link and the instrument number live in the `fields` the release already saves.
  * The app counts the days and does not judge the law.
  */
@@ -31,6 +35,7 @@ import { BANK_CHECK_WINDOW_DAYS, checkAnswerWords, checkName, paymentCheckAnswer
 import { isCheckPayment } from './checkClearing'
 import { lastPayment, payWayWords, releaseForAffidavit, releaseOwnInstrument, type LienPayoffAffidavit, type LienPayoffPayment, type LienPayoffRelease } from './lienPayoff'
 import { fundsConfirmedWords, type FundsConfirmed } from './lienPayoffFields'
+import { releaseOnReturnedCheck } from './payoffReturned'
 
 export const RELEASE_OF_RECORD_WORDS = {
   which: 'Which lien',
@@ -120,6 +125,19 @@ export function releaseMoneyGate(input: { open: number; payments: ReadonlyArray<
   if (input.funds && answer.state !== 'came_back' && answer.state !== 'unread') return { hold: false, tone: 'green', say: `${said} ${fundsConfirmedWords(input.funds)}`, why: null }
   const words = checkAnswerWords(answer, checkName(paid.reference_number))
   return held(words.say, `The release waits ${words.wait}.`, words.tone === 'red' ? 'red' : 'amber')
+}
+
+/**
+ * What a saved release says when the bank sent back the check behind the job's last payment (#435, piece 6), with
+ * its values marked. Null when that money stands, and while the bank's deposits are unread.
+ */
+export function releaseMoneyBackWords(input: { recorded: boolean; payments: ReadonlyArray<LienPayoffPayment>; bank: ReadonlyArray<BankCheck> | null | undefined; todayYmd: string }): string | null {
+  const paid = lastPayment(input.payments)
+  if (!paid || !input.bank) return null
+  const answer = paymentCheckAnswer(paid, input.bank, input.todayYmd)
+  if (!releaseOnReturnedCheck(answer)) return null
+  const said = checkAnswerWords(answer, checkName(paid.reference_number)).say
+  return input.recorded ? `${said} The county’s record stands. Ask counsel.` : `Do not record this release. ${said}`
 }
 
 /**
