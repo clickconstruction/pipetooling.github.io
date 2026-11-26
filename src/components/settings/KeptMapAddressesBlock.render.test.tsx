@@ -130,6 +130,16 @@ describe('KeptMapAddressesBlock', () => {
     expect(screen.getAllByTestId('kept-map-address-why').map((el) => el.textContent)).toContain('This address is too short to tell apart from the others. It stays.')
   })
 
+  it('a long miss with no street number says so, not that it is too short (punch list #443)', async () => {
+    const MISS = 'zz test walk place with no number in it, alder, tx'
+    io.rows = [{ key: MISS, keptAtIso: '2026-11-25T02:00:00Z', placed: false, kind: 'miss' }]
+    draw('dev')
+    await openAndFind('walk')
+    const press = (await screen.findByRole('button', { name: `Clear the miss ${MISS}` })) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    expect(screen.getAllByTestId('kept-map-address-why').map((el) => el.textContent)).toEqual(['This address has no street number, so it cannot be told apart from the others. It stays.'])
+  })
+
   it('says what to do when the search finds nothing', async () => {
     io.rows = []
     draw('dev')
