@@ -21,7 +21,7 @@ const MADE = [34_000, 29_000, 41_000, 22_000, 38_000, 36_000, 27_000, 31_000]
 const CASH_TODAY = 48_400
 const CASH_NOTE = 'Leaves out Accounts Payable, $12.0k.'
 
-const stage = (id: StageId, name: string, pile: string, weeks: number | null, weeksText: string, flow: StageReading['flow'] = []): StageReading => ({
+const stage = (id: StageId, name: string, pile: string, paceUsd: number, weeks: number | null, weeksText: string, flow: StageReading['flow'] = []): StageReading => ({
   id,
   name,
   object: '',
@@ -29,9 +29,10 @@ const stage = (id: StageId, name: string, pile: string, weeks: number | null, we
   readable: true,
   pile: { headline: pile, sub: [], usd: null, guessShare: 0 },
   flow,
+  paceUsd,
   weeks,
   weeksText,
-  badge: id === 'bill' ? 'the weakest link' : '',
+  badge: id === 'bill' ? 'the narrowest step' : '',
   tone: id === 'bill' ? 'link' : 'plain',
   isLink: id === 'bill',
 })
@@ -49,11 +50,12 @@ export function sampleWeekMail(todayYmd: string): WeekMail {
   }
   const flow: StageFlow = {
     stages: [
-      stage('market', 'Market', '45 asks in 8 weeks', null, 'worth $29k a week'),
-      stage('sales', 'Sales', '$1.9M awaiting an answer', null, 'sold $36k of work a week'),
-      stage('build', 'Build', '$198k left to build', 6, '6.0 weeks to build what is already sold'),
-      stage('bill', 'Bill', '$142k finished, not yet billed', 7.5, '7.5 weeks to bill what is already finished', [{ who: 'the field finishes', usd: '$33k' }, { who: 'the office bills', usd: '$19k' }]),
-      stage('collect', 'Collect', '$188k billed, not yet paid', 3.7, '3.7 weeks to collect what is already late'),
+      // Bill moves the fewest dollars a week, so it is the narrowest step: the same paces the strip below draws.
+      stage('market', 'Market', '45 asks in 8 weeks', 29_000, null, 'worth $29k a week'),
+      stage('sales', 'Sales', '$1.9M awaiting an answer', 36_000, null, 'sold $36k of work a week'),
+      stage('build', 'Build', '$198k left to build', 33_000, 6, '6.0 weeks to build what is already sold'),
+      stage('bill', 'Bill', '$142k finished, not yet billed', 19_000, 7.5, '7.5 weeks to bill what is already finished', [{ who: 'the field finishes', usd: '$33k' }, { who: 'the office bills', usd: '$19k' }]),
+      stage('collect', 'Collect', '$188k billed, not yet paid', 41_000, 3.7, '3.7 weeks to collect what is already late'),
     ],
     linkId: 'bill',
     nominatedId: 'bill',
@@ -78,7 +80,7 @@ export function sampleWeekMail(todayYmd: string): WeekMail {
   })
   // Market at what the asks are worth at the won rates (punch list #318), with what the amount is made of.
   const strip = buildFlowStrip(flow, { market: 29_000, sales: 36_000, build: 33_000, bill: 19_000, collect: 41_000 }, { marketIsWorth: true })
-  // The two balances the page shows after the slowest step: payroll $26.4k a week and $600 a day of overhead burn the runway.
+  // The two balances the page shows after the narrowest step: payroll $26.4k a week and $600 a day of overhead burn the runway.
   const burnPerDayUsd = burnPerDay({ payrollPerWeekUsd: 26_400, overheadPerDayUsd: 600 })
   const money = {
     cash: cashLine({ forecast, cashTodayUsd: CASH_TODAY, cashNote: CASH_NOTE, todayYmd, dayLabel: md, burnPerDayUsd }),

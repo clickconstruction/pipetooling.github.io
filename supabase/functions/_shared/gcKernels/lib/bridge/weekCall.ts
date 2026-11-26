@@ -4,11 +4,12 @@
  * The Bridge's first screen as one model (punch list #303, PR 1): the tiles and the card *What to do now*.
  *
  * Three tiles say where the company stands: what the field made in the last full pay week, cash's low point against
- * the floor, and the slowest step. One card names that step with the moves that would change it, each with its door.
+ * the floor, and the narrowest step (the slowest step, by the most weeks waiting, until punch list #321). One card names
+ * that step with the moves that would change it, each with its door.
  * The page draws two balances in place of the cash tile (`moneyCard.ts`); the Monday email draws all three.
  *
  * One rule from the cash story: when the forecast goes under the floor inside the window and the page may trust its
- * cash figure, cash leads. The first moves are cash moves, with the slowest step as the move after them.
+ * cash figure, cash leads. The first moves are cash moves, with the narrowest step as the move after them.
  *
  * The model is a pulse (punch list #334): it reads today and nothing else. Until then it also proposed a call for the
  * week, showed a recorded call against today and asked on Friday whether the step moved. No call was ever kept, and
@@ -66,7 +67,7 @@ export type WeekDoor = { to: string; label: string }
 
 export type WeekMove = {
   key: MoveKey
-  /** A cash move changes the day cash goes under the floor; a step move works the slowest step. */
+  /** A cash move changes the day cash goes under the floor; a step move works the narrowest step. */
   kind: 'step' | 'cash'
   title: string
   why: string
@@ -189,8 +190,8 @@ function cashTile(input: WeekCallInput, leads: boolean): WeekTile {
 
 function stepTile(flow: StageFlow | null): WeekTile {
   const s = flow?.stages.find((x) => x.id === flow.linkId) ?? null
-  if (!s) return { id: 'step', label: 'Slowest step', value: 'not read', sub: 'The five steps are not read yet.', tone: 'plain' }
-  return { id: 'step', label: 'Slowest step', value: s.name, sub: `${cap(s.weeksText)}.`, tone: 'red' }
+  if (!s) return { id: 'step', label: 'Narrowest step', value: 'not read', sub: 'The five steps are not read yet.', tone: 'plain' }
+  return { id: 'step', label: 'Narrowest step', value: s.name, sub: `${cap(s.weeksText)}.`, tone: 'red' }
 }
 
 // ── the proposal ───────────────────────────────────────────────────────────
@@ -273,7 +274,7 @@ export function buildWeekCall(input: WeekCallInput): WeekCallModel {
     const first = firstDayUnderFloor(input.forecast, input.cashTodayUsd, input.todayYmd)
     const floor = shortK(input.forecast.floorUsd)
     const goes = first && first.offset > 0 ? `Cash goes under ${floor} on ${input.dayLabel(first.ymd)}.` : `Cash is under the ${floor} floor.`
-    const still = step ? ` ${step.name} is still the slowest step.` : ''
+    const still = step ? ` ${step.name} is still the narrowest step.` : ''
     return { link: 'capital', cashLeads, tiles, card: { label: WEEK_CARD_LABEL, lead: 'Keep cash above the floor.', line: `${goes}${still}`, moves: cashMoves(input, step), tone: 'lit' } }
   }
 
@@ -286,7 +287,7 @@ export function buildWeekCall(input: WeekCallInput): WeekCallModel {
   // The pile, then its first two paces: why it waits. The weeks are on the step tile, so the card does not say them again.
   const paces = stage ? stage.flow.slice(0, 2).map((f) => ` ${cap(f.who)} ${f.usd} ${f.tail ?? 'a week'}.`).join('') : ''
   const line = stage && stage.readable ? `${cap(stage.pile.headline)}.${paces}` : stage ? 'The app does not read this step yet.' : ''
-  return { link, cashLeads, tiles, card: { label: WEEK_CARD_LABEL, lead: `${name} is the slowest step.`, line, moves: proposedMoves(link, input), tone: 'lit' } }
+  return { link, cashLeads, tiles, card: { label: WEEK_CARD_LABEL, lead: `${name} is the narrowest step.`, line, moves: proposedMoves(link, input), tone: 'lit' } }
 }
 
 // ── the budget ─────────────────────────────────────────────────────────────

@@ -9,8 +9,9 @@ import type { StageFlowInput } from '../../lib/bridge/stageFlow'
 const input: StageFlowInput = {
   market: null,
   sales: null,
-  fieldPerWeekUsd: 35_000,
-  build: { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 49_000, outPerWeekUsd: 35_000, knownJobs: 28, guessUsd: 0, guessJobs: 0 },
+  // The field builds $50k a week, so the mark where the link moves sits at Collect's $46k, clear of the two marks near $34k.
+  fieldPerWeekUsd: 50_000,
+  build: { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 49_000, outPerWeekUsd: 50_000, knownJobs: 28, guessUsd: 0, guessJobs: 0 },
   bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
   collect: { pileUsd: 332_000, pileCount: 49, inPerWeekUsd: 22_000, outPerWeekUsd: 46_000, lateCount: 49 },
   heldLinkId: null,
@@ -23,8 +24,8 @@ describe('BridgeDial', () => {
     const onChange = vi.fn()
     renderWithProviders(<BridgeDial reading={reading} moved={false} onChange={onChange} onReset={() => {}} />)
     expect(screen.getByTestId('bridge-dial-value').textContent).toBe('$22k/wk')
-    expect(screen.getAllByTestId('bridge-dial-mark').map((m) => m.textContent)).toEqual(['today', 'above here Build is the link', 'a second biller from here', 'the pile stops growing'])
-    expect(screen.getByTestId('bridge-dial-the-link').textContent).toContain('Bill is the weakest link')
+    expect(screen.getAllByTestId('bridge-dial-mark').map((m) => m.textContent)).toEqual(['today', 'a second biller from here', 'the pile stops growing', 'above here Collect is the link'])
+    expect(screen.getByTestId('bridge-dial-the-link').textContent).toContain('Bill is the narrowest step')
     expect(screen.queryByTestId('bridge-dial-reset')).toBeNull()
     fireEvent.change(screen.getByRole('slider'), { target: { value: '40000' } })
     expect(onChange).toHaveBeenCalledWith(40_000)

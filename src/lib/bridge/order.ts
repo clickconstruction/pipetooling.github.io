@@ -1,9 +1,10 @@
 /**
  * What to deal with first (link PR 6): tiers, not a leaderboard. The link
  * first; what throttles it with it; the stage that would be the link after it
- * next; what moves when the link moves follows; what is ahead of the field
- * waits. Each row carries the reading that put it there and its first move.
- * Pure.
+ * next; what moves when the link moves follows; a step with no pace to read
+ * yet waits. Since punch list #321 the link is the narrowest step, so the
+ * tiers read by each step's pace. Each row carries the reading that put it
+ * there and its first move. Pure.
  */
 import type { CallLink } from './calls'
 import { LINK_DESK } from './linkDesk'
@@ -12,14 +13,14 @@ import { STAGE_ORDER, type StageFlow, type StageId } from './stageFlow'
 
 export type OrderTier = 'First' | 'With it' | 'Next' | 'Follows' | 'Waits'
 
-export const ORDER_RULE = 'The stage with the most weeks to clear what is already waiting comes first. What throttles it comes with it. The stage that would be the link after it comes next. What moves when the link moves follows. What is ahead of the field waits.'
+export const ORDER_RULE = 'The narrowest step, the one that moves the fewest dollars a week, comes first. What throttles it comes with it. The step that would be the link after it comes next. What moves when the link moves follows. A step with no pace to read yet waits.'
 
 export const ORDER_TIER_WHY: Record<OrderTier, string> = {
-  First: 'the most weeks to clear what is already waiting',
+  First: 'the narrowest step, the fewest dollars a week',
   'With it': 'what throttles the link; clearing it is part of exploiting the link',
   Next: 'the link once the first one moves',
   Follows: 'moves when the link moves; nothing to do here first',
-  Waits: 'ahead of the field; more here only adds to the piles',
+  Waits: 'no pace to read yet; it cannot be placed until it reads',
 }
 
 export type OrderRow = {
@@ -41,16 +42,16 @@ export type Order = { rows: OrderRow[]; pressedLine: string }
 export function buildOrder(input: { flow: StageFlow; resources: ResourceReading[]; pressedId: CallLink | null }): Order {
   const { flow, resources } = input
   const byId = new Map<StageId, StageFlow['stages'][number]>(flow.stages.map((s) => [s.id, s]))
-  const pileStages = flow.stages.filter((s) => s.readable && s.weeks != null)
+  const pileStages = flow.stages.filter((s) => s.readable && s.paceUsd != null)
   const link = flow.linkId ? byId.get(flow.linkId) ?? null : null
-  const sorted = [...pileStages].sort((a, b) => (b.weeks as number) - (a.weeks as number))
+  const sorted = [...pileStages].sort((a, b) => (a.paceUsd as number) - (b.paceUsd as number))
   const second = link ? sorted.find((s) => s.id !== link.id) ?? null : null
   const tiers: Array<{ tier: OrderTier; ids: CallLink[] }> = [
     { tier: 'First', ids: link ? [link.id] : [] },
     { tier: 'With it', ids: resources.filter((r) => r.throttles).map((r) => r.id) },
     { tier: 'Next', ids: second ? [second.id] : [] },
     { tier: 'Follows', ids: [...pileStages.filter((s) => s !== link && s !== second).map((s) => s.id as CallLink), ...resources.filter((r) => !r.throttles).map((r) => r.id as CallLink)] },
-    { tier: 'Waits', ids: flow.stages.filter((s) => s.readable && s.weeks == null).map((s) => s.id as CallLink) },
+    { tier: 'Waits', ids: flow.stages.filter((s) => s.readable && s.paceUsd == null).map((s) => s.id as CallLink) },
   ]
   // A stage the app cannot read yet sits last, in Waits, and says so.
   const unread = STAGE_ORDER.filter((id) => !(byId.get(id)?.readable)).map((id) => id as CallLink)

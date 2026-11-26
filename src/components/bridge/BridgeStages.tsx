@@ -4,7 +4,7 @@ import type { StageFlow, StageId, StageReading } from '../../lib/bridge/stageFlo
 /**
  * Where the work piles up (the Bridge, link PR 1): the five stages as cards in
  * flow order, each with its pile, two flow lines with a subject, the weeks to
- * clear, and a badge. The link reads red. Pressing a card picks it; later PRs
+ * clear, and a badge. The link reads red: since punch list #321 the narrowest step. Pressing a card picks it; later PRs
  * hang the dial and the link's desk off the pick. A stage with a desk of its
  * own (Collect's, v2.5890) carries a door at the card's foot, there whichever
  * stage is the link; a stage with no desk yet draws no door.
@@ -157,7 +157,7 @@ export function BridgeStages({ flow, pickedId, onPick, onOrder, desks }: { flow:
           <StageCard key={s.id} stage={s} picked={pickedId === s.id} maxPileUsd={maxPile} onPick={onPick} onOrder={onOrder} desk={desks?.[s.id]} />
         ))}
       </div>
-      <div style={{ ...det, marginTop: '0.5rem' }}>Market and Sales feed the field, so they read by pace against it. Build, Bill and Collect read by how many weeks it would take to clear what is already waiting, at today's pace. The grey part of a pile is work the app can only guess at. On Collect it is what is billed and not yet due.</div>
+      <div style={{ ...det, marginTop: '0.5rem' }}>Each step reads the dollars it moves a week, and the narrowest is lit. Market and Sales feed the field and hold no pile, so each also reads by pace against it. Build, Bill and Collect also say how many weeks it would take to clear what is already waiting, at today's pace. The grey part of a pile is work the app can only guess at. On Collect it is what is billed and not yet due.</div>
     </div>
   )
 }
