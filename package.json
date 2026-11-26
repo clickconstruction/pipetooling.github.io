@@ -151,6 +151,7 @@
     "test:pg:combine-rows": "bash scripts/pgtest-combine-rows.sh",
     "test:pg:on-site-move": "bash scripts/pgtest-on-site-move.sh",
     "test:pg:on-site-guards": "bash scripts/pgtest-on-site-guards.sh",
+    "test:pg:pay-log-screen": "bash scripts/pgtest-pay-log-screen.sh",
     "test:pg:sticker-names": "bash scripts/pgtest-sticker-names.sh",
     "test:pg:theme-review": "bash scripts/pgtest-theme-review.sh",
     "test:pg:helper-on-job": "bash scripts/pgtest-helper-on-job.sh",

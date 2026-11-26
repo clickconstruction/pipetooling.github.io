@@ -3588,6 +3588,10 @@ The table's insert policy takes `kind = 'answer'` alone, so nobody signed in, a 
 An answer is written as before: by the person, or for anyone by a dev, an assistant, the controller or a pay-approved master.
 `working_hours_on(user, day)` is a security invoker, so it answers what the caller may already read.
 Migration `20261123075925_working_hours_door.sql`.
+**A wage changed on a screen leaves a line (v2.8629, punch list #389):** `people_pay_config_log_change`, a deferred `CONSTRAINT TRIGGER` on `people_pay_config`, writes one `pay_admin_events` line of action `set_pay_config` at the end of any transaction that changes a pay column (the wage, the office wage, `is_salary`, `record_hours_but_salary`, `show_in_hours`, `salaried_week_hours`), with the changed columns, the row before and after, `payload.by = 'screen'`, a reason that says a screen changed it and no reason was asked, and `auth.uid()` as the actor.
+A door that wrote its own `set_pay_config` line for the person in the same transaction (`set_pay_config`, `set_working_hours`) gets no second line.
+The trigger is a definer, so the screens' own upsert (Bring back, the hire and end windows, the desk's Pay section, People → Pay's cells) needs no insert right on the log, and who reads the log does not change.
+Migration `20261126033215_pay_config_log_screen_changes.sql`.
 Since v2.8353 a change to `people_pay_config.salaried_week_hours` is a **dev**'s or the **controller**'s, held by the trigger `people_pay_config_week_dev_or_controller`.
 A pay-approved owner still changes a wage, and a new pay row on the default week is made by anyone who may make one.
 The **Working hours** row on a person's sheet (*Pay & schedule*) is changed by a dev or the controller, and an owner with pay approval reads it locked.
