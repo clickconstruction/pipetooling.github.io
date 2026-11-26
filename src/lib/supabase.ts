@@ -4,6 +4,7 @@ import { makeConsoleRowCapReporter, wrapFetchWithRowCapTripwire } from './supaba
 import { wrapFetchCountingWrites } from './unsavedWork'
 import { bindAppHealthToWindow, wrapFetchReportingHealth } from './appHealth'
 import { wrapFetchRememberingRefusals } from './tellTheDev/trouble'
+import { wrapFetchCountingInFlight } from './supabaseInFlight'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -25,12 +26,16 @@ if (!url || !anonKey) {
 // at the top of every screen and the auth gate read. Innermost but one, a call the server
 // refuses is remembered for a few minutes in this tab alone, so a note to the dev can say what was
 // refused (punch list #380, src/lib/tellTheDev/trouble.ts); a call with no answer never is.
+// Outermost of all, every request is counted while in flight (punch list #365, v2.8616, src/lib/supabaseInFlight.ts),
+// so a page can tell when the client is quiet and its counts are whole.
 export const supabase = createClient<Database>(url, anonKey, {
   db: { schema: 'public' },
   global: {
-    fetch: wrapFetchReportingHealth(
-      wrapFetchCountingWrites(
-        wrapFetchRememberingRefusals(wrapFetchWithRowCapTripwire((input, init) => fetch(input, init), makeConsoleRowCapReporter())),
+    fetch: wrapFetchCountingInFlight(
+      wrapFetchReportingHealth(
+        wrapFetchCountingWrites(
+          wrapFetchRememberingRefusals(wrapFetchWithRowCapTripwire((input, init) => fetch(input, init), makeConsoleRowCapReporter())),
+        ),
       ),
     ),
   },
