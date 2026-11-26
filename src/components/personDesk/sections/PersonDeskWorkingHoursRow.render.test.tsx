@@ -174,7 +174,47 @@ describe('PersonDeskWorkingHoursRow', () => {
     fireEvent.click(go)
     await settle()
     expect(save).toHaveBeenCalledWith({ userId: 'u-wes', days: null, effectiveFrom: '2026-11-22', reason: 'Back on full days' })
-    expect(await screen.findByText('Working hours taken off. Pay is back on the standard week.')).toBeTruthy()
+    // The words land twice: the toast, and the row's own note (v2.8625).
+    expect((await screen.findAllByText('Working hours taken off. Pay is back on the standard week.')).length).toBeGreaterThanOrEqual(2)
+    expect(document.querySelector('[data-working-hours-saved]')?.textContent).toBe('Working hours taken off. Pay is back on the standard week.')
+  })
+
+  it('after a take-off the row reads Not set yet, says what it did, and still opens the earlier hours with the take-off last (punch list #429, v2.8625)', async () => {
+    const state = { rows: [set()] as AvailableHoursAnswer[] }
+    const save = vi.fn<WorkingHoursIo['save']>(async (input) => {
+      state.rows = [...state.rows, set({ days: null, hours_per_week: 0, effective_from: input.effectiveFrom, set_at: '2026-11-25T16:00:00Z', note: input.reason })]
+    })
+    const io: WorkingHoursIo = { rows: async () => state.rows, names: async () => ({ 'u-renee': 'Renee Alder' }), save }
+    renderWithProviders(<PersonDeskWorkingHoursRow userId="u-wes" displayName="Wes Calloway" viewer={controller} pay={SIX_HOUR_WEEK} lastReportEndYmd={null} changeKey={0} onChanged={() => {}} io={io} todayYmd={TODAY} />)
+    await settle()
+    press('Take working hours off')
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Back on full days' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Take working hours off' }))
+    await settle()
+    expect(await screen.findByText(/Not set yet\./)).toBeTruthy()
+    expect(document.querySelector('[data-working-hours="none"]')).toBeTruthy()
+    expect(document.querySelector('[data-working-hours-saved]')?.textContent).toBe('Working hours taken off. Pay is back on the standard week.')
+    press('Earlier hours')
+    const earlier = document.querySelector('[data-working-hours-earlier]') as HTMLElement
+    const rowsText = Array.from(earlier.querySelectorAll('.whEarlierRow')).map((r) => r.textContent ?? '')
+    expect(rowsText).toHaveLength(2)
+    expect(rowsText[0]).toContain('Working hours taken off.')
+    expect(rowsText[0]).toContain('Back on full days')
+    expect(rowsText[1]).toContain('6:00 AM to 12:00 PM Mon to Fri. 30 h.')
+  })
+
+  it('a person whose hours were taken off before opens the earlier hours from the Not set yet row, and the owner reads the same', async () => {
+    const takenOff = set({ days: null, hours_per_week: 0, effective_from: '2026-11-22', set_at: '2026-11-24T16:00:00Z', note: 'Back on full days' })
+    row({ viewer: owner }, [set({ effective_from: '2026-11-15', set_at: '2026-11-16T15:00:00Z' }), takenOff])
+    await settle()
+    await screen.findByText(/Not set yet\./)
+    expect(screen.queryByRole('button', { name: 'Set working hours' })).toBeNull()
+    press('Earlier hours')
+    const earlier = document.querySelector('[data-working-hours-earlier]') as HTMLElement
+    expect(earlier.textContent).toContain('Working hours taken off.')
+    expect(earlier.textContent).toContain('From Sun Nov 15')
+    expect(document.querySelector('[data-working-hours-saved]')).toBeNull()
   })
 
   it('writes nothing when the take-off is cancelled', async () => {

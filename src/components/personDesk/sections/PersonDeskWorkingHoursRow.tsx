@@ -44,6 +44,8 @@ import { ValueSentence, WorkedOutValue } from '../../valuesInPlace/ValuesInPlace
 import { DeskRow, LockTag } from '../personDeskShared'
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+/** How long the last save's words stay on the row. */
+const SAVED_WORDS_MS = 8000
 const START_CHOICES = workingClockChoices('start')
 const END_CHOICES = workingClockChoices('end')
 
@@ -90,6 +92,13 @@ export function PersonDeskWorkingHoursRow({
   const [starter, setStarter] = useState<Starter | null>(null)
   const [busy, setBusy] = useState(false)
   const [saveWhy, setSaveWhy] = useState<string | null>(null)
+  /** What the last save did, on the row for a moment beside its toast (punch list #429, v2.8625): a take-off lands on a row that redraws, and the toast alone was missed. */
+  const [saved, setSaved] = useState<string | null>(null)
+  useEffect(() => {
+    if (!saved) return
+    const t = window.setTimeout(() => setSaved(null), SAVED_WORDS_MS)
+    return () => window.clearTimeout(t)
+  }, [saved])
   const [showEarlier, setShowEarlier] = useState(false)
 
   const canSet = (viewer.isDev || viewer.role === 'controller') && !viewer.readOnly
@@ -113,6 +122,8 @@ export function PersonDeskWorkingHoursRow({
   const inForce = rows ? setRowInForce(rows, todayYmd) : null
   const current: WeekDays | null = inForce?.days ?? null
   const coming = rows ? workingHoursComing(rows, todayYmd) : null
+  // Every save, the newest first, a take-off among them: a person whose hours were taken off opens theirs too (v2.8625).
+  const earlier = rows ? workingHoursHistory(rows) : []
   useEffect(() => {
     if (rows !== undefined) onHours?.(current)
     // The week is the message; the callback's identity is not.
@@ -134,6 +145,7 @@ export function PersonDeskWorkingHoursRow({
       setOpen(null)
       setStarter(null)
       showToast(done, 'success')
+      setSaved(done)
       await load()
       onChanged()
     } catch (e) {
@@ -158,6 +170,31 @@ export function PersonDeskWorkingHoursRow({
   }
 
   const lock = canSet ? null : <LockTag label="dev or controller" title="A dev or the controller sets working hours. They are shown so you know where they stand." />
+  const earlierPress =
+    earlier.length > 0 ? (
+      <button type="button" className="whQuiet" aria-expanded={showEarlier} onClick={() => setShowEarlier((v) => !v)}>
+        Earlier hours
+      </button>
+    ) : null
+  const earlierList = showEarlier ? (
+    <div className="whEarlier" data-working-hours-earlier>
+      {earlier.map((r) => (
+        <div key={`${r.effective_from}-${r.set_at}`} className="whEarlierRow">
+          <span className="whMuted">From {workingSundayWords(r.effective_from)}</span>
+          <span>{r.days ? `${workingWeekLineWords(r.days)}. ${formatHours(workingWeekHours(r.days))} h.` : 'Working hours taken off.'}</span>
+          <span className="whEarlierWhy">
+            Saved {new Date(r.set_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            {r.set_by && names[r.set_by] ? ` by ${names[r.set_by]}` : ''}.{r.note ? ` ${r.note}` : ''}
+          </span>
+        </div>
+      ))}
+    </div>
+  ) : null
+  const savedNote = saved && !open && !starter ? (
+    <div role="status" className="vipNote" data-working-hours-saved>
+      {saved}
+    </div>
+  ) : null
 
   if (!userId) {
     return (
@@ -439,6 +476,7 @@ export function PersonDeskWorkingHoursRow({
               ) : null}
             </div>
           ) : null}
+          {savedNote}
           {starter && pay ? starterField(starter) : null}
           {open ? (
             <div className="whLines">
@@ -448,14 +486,21 @@ export function PersonDeskWorkingHoursRow({
               {field(open)}
             </div>
           ) : null}
-          {!canSet ? <p className="whLegend">A dev or the controller sets working hours.</p> : null}
+          {/* A person whose hours were taken off has saves to open, as a person with a week in force does (punch list #429, v2.8625). */}
+          {!canSet || earlierPress ? (
+            <p className="whLegend">
+              {!canSet ? 'A dev or the controller sets working hours.' : null}
+              {!canSet && earlierPress ? ' ' : null}
+              {earlierPress}
+            </p>
+          ) : null}
+          {earlierList}
         </div>
       </DeskRow>
     )
   }
 
   // ---------- hours are set ----------
-  const earlier = workingHoursHistory(rows)
   const setBy = inForce?.set_by ? (names[inForce.set_by] ?? null) : null
   return (
     <DeskRow label="Working hours" stack actions={lock}>
@@ -517,11 +562,7 @@ export function PersonDeskWorkingHoursRow({
         </div>
         <p className="whLegend">
           {canSet ? 'Underlined values can be changed here. Bold ones are worked out.' : 'A dev or the controller sets working hours.'}{' '}
-          {earlier.length > 0 ? (
-            <button type="button" className="whQuiet" aria-expanded={showEarlier} onClick={() => setShowEarlier((v) => !v)}>
-              Earlier hours
-            </button>
-          ) : null}{' '}
+          {earlierPress}{' '}
           {canSet && !open ? (
             <button type="button" className="whQuiet" disabled={busy} onClick={() => void takeOff()}>
               Take working hours off
@@ -533,20 +574,8 @@ export function PersonDeskWorkingHoursRow({
             {saveWhy}
           </div>
         ) : null}
-        {showEarlier ? (
-          <div className="whEarlier" data-working-hours-earlier>
-            {earlier.map((r) => (
-              <div key={`${r.effective_from}-${r.set_at}`} className="whEarlierRow">
-                <span className="whMuted">From {workingSundayWords(r.effective_from)}</span>
-                <span>{r.days ? `${workingWeekLineWords(r.days)}. ${formatHours(workingWeekHours(r.days))} h.` : 'Working hours taken off.'}</span>
-                <span className="whEarlierWhy">
-                  Saved {new Date(r.set_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  {r.set_by && names[r.set_by] ? ` by ${names[r.set_by]}` : ''}.{r.note ? ` ${r.note}` : ''}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : null}
+        {savedNote}
+        {earlierList}
       </div>
     </DeskRow>
   )
