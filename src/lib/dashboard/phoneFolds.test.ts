@@ -79,10 +79,14 @@ describe('the three folds that had no count (v2.3891)', () => {
     expect(crewDayFoldHeadline({ people: 0, jobs: 0, flags: 0 })?.words).toBe('nobody on the day')
     expect(crewDayFoldHeadline(null)).toBeNull()
   })
-  it('Recent reports: what is new, and what is listed', () => {
-    expect(recentReportsFoldHeadline({ listed: 12, fresh: 3 })).toEqual({ words: '3 new · 12 listed', tone: 'amber' })
-    expect(recentReportsFoldHeadline({ listed: 4, fresh: 0 })).toEqual({ words: '4 listed · all read', tone: 'quiet' })
-    expect(recentReportsFoldHeadline({ listed: 0, fresh: 0 })?.words).toBe('none yet')
+  it('Recent reports: what is new, of every report in the card’s window, and never the word listed (punch list #426)', () => {
+    expect(recentReportsFoldHeadline({ inWindow: 12, fresh: 3 })).toEqual({ words: '3 new of 12', tone: 'amber' })
+    // Fifteen new in the window: the open card lists eight at a time, so the fold does not say fifteen are listed.
+    expect(recentReportsFoldHeadline({ inWindow: 15, fresh: 15 })).toEqual({ words: '15 new of 15', tone: 'amber' })
+    expect(recentReportsFoldHeadline({ inWindow: 4, fresh: 0 })).toEqual({ words: '4 reports · all read', tone: 'quiet' })
+    expect(recentReportsFoldHeadline({ inWindow: 1, fresh: 0 })).toEqual({ words: '1 report · all read', tone: 'quiet' })
+    expect(recentReportsFoldHeadline({ inWindow: 0, fresh: 0 })?.words).toBe('none yet')
+    for (const c of [{ inWindow: 15, fresh: 15 }, { inWindow: 4, fresh: 0 }]) expect(recentReportsFoldHeadline(c)?.words).not.toMatch(/listed/)
     expect(recentReportsFoldHeadline(null)).toBeNull()
   })
   it('My Time: the week so far', () => {

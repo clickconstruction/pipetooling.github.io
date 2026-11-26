@@ -1196,7 +1196,7 @@ export default function Dashboard() {
   const phoneOffice = isMobile && (isPhoneOfficeRole(role) || shortDashboardOn)
   // What the three sections that count for themselves say on their fold lines (v2.3891).
   const [crewDaySummary, setCrewDaySummary] = useState<{ people: number; jobs: number; flags: number } | null>(null)
-  const [recentReportCounts, setRecentReportCounts] = useState<{ listed: number; fresh: number } | null>(null)
+  const [recentReportCounts, setRecentReportCounts] = useState<{ inWindow: number; fresh: number } | null>(null)
   const [myTimeWeekSeconds, setMyTimeWeekSeconds] = useState<number | null>(null)
   // Needs you on a phone (`needsYouPlace.ts`): the card, or the one-line door to the Inbox tab of the mode the page is drawn in.
   // Off the new phone layout the door is the office person's with Dispatch Mode on, and Job Mode's own Dashboard draws neither.

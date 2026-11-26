@@ -116,7 +116,7 @@ export function DashboardRecentReportsSection({
   authUserId: string | undefined
   role: UserRole | null
   /** How many reports the card holds and how many are new, for a host that draws the section folded (v2.3891). */
-  onCounts?: (counts: { listed: number; fresh: number } | null) => void
+  onCounts?: (counts: { inWindow: number; fresh: number } | null) => void
   /** Shared with the job-row family — creates the `link_job_pictures` dispatch request. */
   submitLinkJobPicturesDispatchRequest?: (args: {
     jobId: string
@@ -151,7 +151,7 @@ export function DashboardRecentReportsSection({
   // The photos (punch list #229, PR 3): one count read for the rows drawn, a badge on the folded row, the strip when open.
   const photoCounts = useReportPhotoCounts([...card.listed, ...card.opened].map((r) => r.id))
   useEffect(() => {
-    onCounts?.(recentReportsLoading ? null : { listed: card.inWindow, fresh: card.fresh })
+    onCounts?.(recentReportsLoading ? null : { inWindow: card.inWindow, fresh: card.fresh })
     // The counts are the message; the callback's identity is not.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recentReportsLoading, card.inWindow, card.fresh])
