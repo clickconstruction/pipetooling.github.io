@@ -2370,6 +2370,11 @@ A training-mode account cannot sign, since starting a paper is a write.
 - It is read by whoever may read the person's clock sessions: the person, a dev, payroll access and the office (`is_assistant()`, so the controller too).
 - A person writes only their own rows, for today or yesterday by the company's day, on a bid they can read, and no one deletes a row.
 - **`save_my_bid_day()`** and **`get_my_bid_day()`** are `SECURITY INVOKER`, so both run under the caller's own row policies and an archived caller reads nothing.
+- **The owner's answer** (2026-11-25, asked by name before the push, relayed by the managing session): asked *Do the three picks stand, and may #9878's migration be pushed after it merges?*, the owner said "Yes, push it".
+- The three picks: the kept list is read by the person, a dev, payroll access and the office, and not by a lead.
+- The trace is read by the person, the owner, a dev and only those on the Activity tab's viewer list, so the office does not read it unless granted.
+- The trace is kept with no end date.
+- **The beat's sender** (v2.8609): `useBidActivityBeat` in `Layout.tsx` sends for the bid in the Bids page's address, only while the person pressed, typed or scrolled in the last five minutes, and sends nothing while View as is on.
 - **Test**: `npm run test:pg:bid-day` (`supabase/tests/bid_day/`).
 
 ### Stripe out-of-band payment unwind (v2.362, refinements v2.363)
