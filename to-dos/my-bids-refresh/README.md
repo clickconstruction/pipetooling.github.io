@@ -9,7 +9,7 @@ summary: >
   to mark a report opened, so a person can clear work off a list. The plan is one swipe for both
   cards: left, a strip that names the act, Undo, and a folded group at the foot that holds what was
   put away. The reading also found things neither ask named, listed below for each card.
-next: The simulator's walk of the swipe back and the sign held in the lens frame on 2026-11-26. Left: the signed-in checks (writes on a ZZ Test bid, each on its own yes), Recent Reports' swipe, and the dark theme. Then retire the card.
+next: The swipe back and the sign held in the lens frame on 2026-11-26, in light and in dark, and Recent Reports' swipe held through View as. Left for a simulator on a quiet Mac: Reduce Motion, the keyboard and the sign's feel. The signed-in checks stay with the person's own phone, since a swipe a person makes ends the sign for that account for good. Two small faults that walk met are briefed. Then retire the card.
 size: L as a train of six (S · M · M · M · S · S); left: the simulator's walk
 blocker: None.
 opinion: build — the owner said go on every recommendation
@@ -427,9 +427,34 @@ hidden bid unchanged.
 **Holds.** The swipe back (v2.8603) on checks 1, 3, 4, 5, 9, 10 and 13, and the sign (v2.8604) on checks 2, 3, 7, 10 and
 15. The edge rule reads as built: a start of 3, 10 or 20 points moved no row, and 40 did.
 
-**Not made.** Reduce Motion, the keyboard, dark (the frame is fixed light), the finger-down check, and the signed-in checks
+**Not made.** Reduce Motion, the keyboard, dark, the finger-down check, and the signed-in checks
 8, 9, 11 and 14, which write and wait for a later sitting on a ZZ Test bid with their own yes. Recent Reports was not
-walked: the frame's card is empty.
+walked: the frame's card is empty. Dark was left out because the frame was read as fixed light. That was wrong: the
+frame has a dark door, and the sixth sitting walked it.
+
+**The simulator's sixth sitting, 2026-11-26.** At 402 wide in dark and at 375 wide in light, on the live site. A
+simulator, never a real phone, on a Mac under heavy load, so what drew stands and how long it took does not.
+
+- **Dark holds.** Under *Widths and themes* the tab has a **Dark** group, and **Phone 375 · Dark** has its own **Open
+  alone ↗**. In that frame the swipe back held on checks 1, 2, 3, 4, 6, 7 and 8: grey **Show again**, blue past the
+  mark, the bid back under **Unsent**, a green toast with **Undo**. Check 6 is weak: the older toast may have left by
+  its own clock. At 375 in the light frame checks 1, 4, 9 and 13 held. Nothing was written.
+- **Recent Reports holds: the sign, the swipe and the swipe back.** Through View as the sample assistant, on one row,
+  a report of a ZZ Test job. The first report slid by itself and showed **Mark opened**. A full swipe put the report
+  under **Opened** with a toast and **Undo**. A right swipe past the mark put it back, *Marked unread*. The mark was
+  written and deleted, and read back as gone. One View as row stays, on card #443.
+- **The signed-in checks cost the owner the sign.** Read in the code the same day: a swipe a person makes themselves
+  marks the sign as learned for that account, for good and on every device (`swipeSignLearned`, kept in
+  `user_dismissals`), and no screen puts it back. View as writes nothing. So any signed-in check that completes a
+  swipe on the dev's own account ends the sign there. By the simulator thread's report of the person's answers of
+  that day: no right swipe as the dev, and the sign on the dev's own Dashboard is not yet.
+- **Two small faults met, read in the code and briefed, client only, not built as of this line.** The bid window's head
+  gives the name about a quarter of a phone's width beside its three presses, so a three-word name wrapped to four
+  lines and broke inside a word (`BidPreviewModal.tsx`). And the folded Recent reports card read *15 new · 15 listed*
+  over an open card that lists eight: the fold is handed every report of the window under the name *listed*
+  (`phoneFolds.ts`).
+- **Not made:** Reduce Motion, the keyboard, the sign's feel and timing, check 5 in dark, and two cards on one
+  Dashboard, since the sample assistant's draws no My Bids card.
 
 ## The asks
 
