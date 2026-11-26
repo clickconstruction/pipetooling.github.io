@@ -4,13 +4,14 @@
  * note pill in place of the 48px bar, a done task as one line that says who hears, and the Next card with its one
  * solid blue press.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { ChecklistInstanceCard } from './ChecklistInstanceCard'
 import type { ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { settle } from '../../test/renderSmokeMocks'
 
-vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
+const viewport = vi.hoisted(() => ({ phone: false }))
+vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => viewport.phone }))
 const openPaintedMap = vi.fn().mockReturnValue(true)
 vi.mock('../../lib/paintedMap/paintedMapDoor', () => ({ openPaintedMap: (...a: unknown[]) => openPaintedMap(...a), paintPaintedMap: () => false }))
 vi.mock('../../hooks/useTaskMapWhole', () => ({ useTaskMapWhole: () => ({ kind: 'none' }) }))
@@ -41,6 +42,52 @@ function renderFresh(overrides: Partial<Parameters<typeof ChecklistInstanceCard>
 }
 
 describe('ChecklistInstanceCard, the fresh look', () => {
+  afterEach(() => {
+    viewport.phone = false
+  })
+
+  it('at a desk a row keeps its presses beside its words, in the box held to 55% (punch list #369)', async () => {
+    renderFresh({ instance: { id: 'inst-1', completed_at: new Date().toISOString(), reviewed_at: null }, hearsName: 'Imani', onPhotoAdded: vi.fn(), actions: <button type="button">Follow-up</button> })
+    await settle()
+    const box = document.querySelector('[data-fresh-presses]') as HTMLElement
+    expect(box.dataset.freshPresses).toBe('beside')
+    expect(box.style.maxWidth).toBe('55%')
+    // Beside: the box is in the same row as the words.
+    expect(box.parentElement).toBe(screen.getByText('Check the truck fluids').parentElement?.parentElement)
+  })
+
+  it('on a phone a done row gives its words the width: the presses take a row of their own under them (punch list #369)', async () => {
+    viewport.phone = true
+    renderFresh({ instance: { id: 'inst-1', completed_at: new Date().toISOString(), reviewed_at: null }, hearsName: 'Imani', onPhotoAdded: vi.fn(), actions: <button type="button">Follow-up</button> })
+    await settle()
+    const boxes = document.querySelectorAll('[data-fresh-presses]')
+    expect(boxes).toHaveLength(1)
+    const box = boxes[0] as HTMLElement
+    expect(box.dataset.freshPresses).toBe('under')
+    expect(box.style.maxWidth).toBe('')
+    // Under: the box follows the row that holds the tick and the words, and is not inside it.
+    const wordsRow = screen.getByText('Check the truck fluids').parentElement?.parentElement as HTMLElement
+    expect(wordsRow.contains(box)).toBe(false)
+    expect(box.previousElementSibling).toBe(wordsRow)
+    // The same presses, in the same order.
+    expect([...box.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['＋ Note', '📷 Photo', 'Follow-up'])
+    expect(document.querySelector('[data-fresh-done]')?.textContent).toMatch(/^Done .+\. Imani hears it is done\.$/)
+    expect(wordsRow.contains(document.querySelector('[data-fresh-done]'))).toBe(true)
+  })
+
+  it('on a phone an open row that is not the Next card does the same, and the Next card is as it was', async () => {
+    viewport.phone = true
+    const { unmount } = renderFresh({ hearsName: 'Imani' })
+    await settle()
+    expect((document.querySelector('[data-fresh-presses]') as HTMLElement).dataset.freshPresses).toBe('under')
+    unmount()
+    renderFresh({ lead: true })
+    await settle()
+    const box = document.querySelector('[data-fresh-presses]') as HTMLElement
+    expect(box.dataset.freshPresses).toBe('under')
+    expect(box.style.marginTop).toBe('0.6rem')
+  })
+
   it('an open task: a 30px tick with its thick edge, a quiet ＋ Note pill, and no 48px note bar', async () => {
     const { onToggleComplete } = renderFresh()
     await settle()

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task Mode: the done row on a phone, before and after</title>
+<style>
+/* A drawing, not a screenshot: the done row of Checklist → Today laid out with the card's own inline styles and the
+   app's theme tokens, inside a frame 402 points wide. Made-up task and names. */
+:root{
+  --bg-page:#f0f2f5;--surface:#ffffff;--bg-muted:#f3f4f6;
+  --text-strong:#111827;--text-700:#374151;--text-600:#4b5563;--text-muted:#6b7280;
+  --border:#cfd4db;--text-green-700:#15803d;--frame:#1f2937;--note:#92400e;--note-bg:#fffbeb;--note-border:#fcd34d;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg-page:#111827;--surface:#1f2937;--bg-muted:#374151;
+  --text-strong:#f9fafb;--text-700:#d1d5db;--text-600:#d1d5db;--text-muted:#9ca3af;
+  --border:#374151;--text-green-700:#4ade80;--frame:#4b5563;--note:#fcd34d;--note-bg:#3a2f11;--note-border:#92400e;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg-page:#111827;--surface:#1f2937;--bg-muted:#374151;
+  --text-strong:#f9fafb;--text-700:#d1d5db;--text-600:#d1d5db;--text-muted:#9ca3af;
+  --border:#374151;--text-green-700:#4ade80;--frame:#4b5563;--note:#fcd34d;--note-bg:#3a2f11;--note-border:#92400e;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 16px 48px;background:var(--bg-page);color:var(--text-strong);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:900px;margin:0 auto}
+h1{font-size:1.35rem;margin:0 0 .35rem}
+h2{font-size:1rem;margin:0 0 .5rem}
+p{margin:.4rem 0;color:var(--text-700)}
+.say{background:var(--note-bg);border:1px solid var(--note-border);color:var(--note);border-radius:8px;padding:.55rem .75rem;margin:.9rem 0 1.4rem;font-size:.92rem}
+.pair{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.phone{width:418px;max-width:100%;border:8px solid var(--frame);border-radius:30px;background:var(--bg-page);padding:14px 16px 20px}
+.head{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);font-weight:700;margin:2px 0 8px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;list-style:none}
+.row{display:flex;align-items:flex-start;gap:.6rem}
+.tick{width:30px;height:30px;flex-shrink:0;border-radius:8px;background:#15803d;color:#fff;font-size:.95rem;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+.ring{width:30px;height:30px;flex-shrink:0;border-radius:8px;border:2.5px solid var(--text-600);background:var(--surface)}
+.words{flex:1;min-width:0}
+.title{font-weight:500;font-size:.9375rem;line-height:1.3;margin-top:4px}
+.title.done{color:var(--text-muted);text-decoration:line-through}
+.line{font-size:.78rem;color:var(--text-muted);margin-top:2px}
+.line .green{display:block;color:var(--text-green-700)}
+.presses{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-items:center}
+.presses.beside{max-width:55%;flex-shrink:0}
+.presses.under{margin-top:.45rem}
+.pill{font:inherit;font-size:12.5px;min-height:44px;padding:4px 11px;border-radius:999px;border:1px solid transparent;background:var(--bg-muted);color:var(--text-700);white-space:nowrap;flex-shrink:0;display:inline-flex;align-items:center}
+.cap{font-size:.85rem;color:var(--text-muted);margin-top:.5rem;max-width:402px}
+</style>
+</head>
+<body>
+<main>
+<h1>Task Mode: the done row on a phone, before and after</h1>
+<p>Punch list #369. Checklist → Today at 402 points wide: one task under <b>Done today</b> and one waiting under <b>Then</b>, each with its four presses.</p>
+<div class="say"><b>This is a drawing, not a screenshot.</b> Both frames are laid out by your browser from the card's own styles, with a made-up task and made-up names. The app itself was not opened to make it. Where the words wrap on a real phone depends on its font.</div>
+
+<div class="pair">
+  <section>
+    <h2>Before</h2>
+    <div class="phone">
+      <div class="head">Then</div>
+      <li class="card"><div class="row">
+        <span class="ring"></span>
+        <div class="words">
+          <div class="title">Flush the water heater at the ZZ Test shop and check the anode rod</div>
+          <div class="line">Imani hears when it is done. A photo is asked for.</div>
+        </div>
+        <div class="presses beside"><span class="pill">＋ Note</span><span class="pill">📷 Photo</span><span class="pill">🗺 Map</span><span class="pill">⋯ More</span></div>
+      </div></li>
+      <div class="head">Done today</div>
+      <li class="card"><div class="row">
+        <span class="tick">✓</span>
+        <div class="words">
+          <div class="title done">Check the truck fluids and top off the washer tank</div>
+          <div class="line">Done 2:14 PM. Imani hears it is done.<span class="green">Add a photo or a note for Imani if it helps.</span></div>
+        </div>
+        <div class="presses beside"><span class="pill">＋ Note</span><span class="pill">📷 Photo</span><span class="pill">🗺 Map</span><span class="pill">Follow-up</span></div>
+      </div></li>
+    </div>
+    <p class="cap">The presses stand beside the words in a box held to 55% of the row. Four of them fill it two by two, and the words wrap in what is left.</p>
+  </section>
+
+  <section>
+    <h2>After</h2>
+    <div class="phone">
+      <div class="head">Then</div>
+      <li class="card"><div class="row">
+        <span class="ring"></span>
+        <div class="words">
+          <div class="title">Flush the water heater at the ZZ Test shop and check the anode rod</div>
+          <div class="line">Imani hears when it is done. A photo is asked for.</div>
+        </div>
+      </div>
+      <div class="presses under"><span class="pill">＋ Note</span><span class="pill">📷 Photo</span><span class="pill">🗺 Map</span><span class="pill">⋯ More</span></div></li>
+      <div class="head">Done today</div>
+      <li class="card"><div class="row">
+        <span class="tick">✓</span>
+        <div class="words">
+          <div class="title done">Check the truck fluids and top off the washer tank</div>
+          <div class="line">Done 2:14 PM. Imani hears it is done.<span class="green">Add a photo or a note for Imani if it helps.</span></div>
+        </div>
+      </div>
+      <div class="presses under"><span class="pill">＋ Note</span><span class="pill">📷 Photo</span><span class="pill">🗺 Map</span><span class="pill">Follow-up</span></div></li>
+    </div>
+    <p class="cap">On a phone the presses take a row of their own under the words, the shape the <b>Next</b> card already has. The words get the row's whole width. At a desk nothing changes.</p>
+  </section>
+</div>
+</main>
+</body>
+</html>
