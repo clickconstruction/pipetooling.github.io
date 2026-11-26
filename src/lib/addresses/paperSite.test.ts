@@ -14,6 +14,7 @@ import {
   rowsForSite,
   signedForSiteWords,
   type PaperSite,
+  type PaperSiteRow,
 } from './paperSite'
 import { normalizeAddressKey } from '../developments/notInIt'
 import { plainWordsFailures } from '../plainWords'
@@ -95,7 +96,7 @@ describe('rowIsForSite', () => {
   })
 
   it('picks the rows of a list that are for a site', () => {
-    const rows = [
+    const rows: Array<PaperSiteRow & { id: string }> = [
       { id: 'a', ...none },
       { id: 'b', ...atQuarry },
       { id: 'c', ...atBarn },
