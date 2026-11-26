@@ -67,6 +67,16 @@ export function paintedMapLinkOpen(link: { expires_at: string; ended_at: string 
   return Date.parse(link.expires_at) > Date.parse(nowIso)
 }
 
+/**
+ * A link a developer may reopen (punch list #443, row 14): ended, and not past its day. Ending a link kept its row and
+ * its code's hash, so clearing `ended_at` gives the same address back; a link past its day stays ended, since a new
+ * one is the only way to a day ahead.
+ */
+export function paintedMapLinkReopenable(link: { expires_at: string; ended_at: string | null }, nowIso: string): boolean {
+  if (!link.ended_at) return false
+  return Date.parse(link.expires_at) > Date.parse(nowIso)
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // What a person reads.
 
@@ -87,6 +97,11 @@ export const PAINTED_MAP_LINK_WORDS = {
   needsDevice: 'This page could not be opened here. Reload it and try again.',
   /** A point that is not a point. The reader's dot still shows on their own phone. */
   badPoint: 'That place could not be kept.',
+  /** Reopening an ended link (punch list #443, row 14): a dev's take-back of End this link now, on a test map alone. */
+  reopenNotDev: 'Only a developer can reopen an ended link.',
+  reopenNotTest: 'Only a link of a test map can be reopened. The map’s name must start with ZZ.',
+  reopenNotEnded: 'This link is still open.',
+  reopenPastDay: 'This link is past its day. Make a new one.',
   /** A page from before the name step asked for the map the old way. */
   reload: 'This page is out of date. Reload it to open the map.',
 } as const

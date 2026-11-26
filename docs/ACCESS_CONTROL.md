@@ -1324,6 +1324,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - **A shared link** (v2.7223, `20261114010000_painted_map_links.sql`): `/way/<code>` opens one map with no sign-in, through the `painted-map-link` edge function and nothing else (`docs/EDGE_FUNCTIONS.md`).
   The reader gets the map's name, lines and places with their words and photos, and no job, address, name or date.
   **`painted_map_links`** keeps a link's hash and never its code;
+  Since v2.8627 (punch list #443, row 14) a dev alone puts an ended link of a map whose name starts with ZZ back through `desk.reopen` on `painted-map-link`, when it is not past its day.
+  The function reads the caller's role and the map's name itself, and the table still lets a client only read.
   a row is **read** by whoever reads the map and **written** by nobody signed in (`authenticated` holds `SELECT` alone).
   **Making and ending a link** is the map's maker's and the office's, checked in the function against the caller's own RLS, and refused to an archived account, an account in training and a twin.
   A link ends by itself after ninety days, or on **End this link now**;
