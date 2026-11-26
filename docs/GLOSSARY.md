@@ -2775,6 +2775,8 @@ On an archived desk whose roster row has an end date, **Bring back…** sits whe
 the people who may archive see it (`canArchiveAccount`);
 since v2.6590 the desk deep link takes `&flow=bring_back` (`PersonDeskDeepLinkHandler`), opening the desk with the window up, which is how the Needs you **Away** line's press lands on the day an Away note's countdown ends (→ *Away note*).
 One window (`PersonDeskBringBackModal`, kernel `lib/people/bringBack.ts`, reads `bringBackFacts.ts`): the day back, the away line, the rows time away made stale (sign-in email, wage with Keep or Change (since v2.6550 Change… folds the typed wage into the facts the checklist reads, `withWageChange`, making a pay row in the words when there is none and keeping a salaried row salaried, so the row no longer reads *No pay setup* under a green dot), team, licenses red when one lapsed, paperwork, vehicle, housing), the old-roadmap-tasks box (ticked by default within 90 days), training mode (off by default), the HR line.
+Since v2.8614 (punch list #389, finding 188) a sub with no wage on file skips the Wage row, which reads *Not needed for their kind* as Team does for the office, because a sub is paid through sub labor (`kindNeedsWage`, the facts' `needsWage`).
+A sub with a wage someone set keeps Keep or Change.
 The press runs `planBringBackWrites`: `restore-user` with `restore_roadmap`, then one `UPDATE people` that clears `archived_at` and `end_date` and sets `start_date`, so `people_stints_follow_dates` opens a new **stint** (`employment_stints`, v2.6481) beside the old one.
 *Ended by mistake?
 Undo the end instead* keeps the start and reopens the old stint.

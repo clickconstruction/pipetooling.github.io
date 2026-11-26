@@ -40,7 +40,7 @@ Press {{button:blue|Still theirs}} when the address is still theirs. A dev chang
 :::
 
 :::card Wage
-Press {{button:outline|Keep $24.00}} or {{button:blue|Change…}} and type the new wage. This row cannot be left open.
+Press {{button:outline|Keep $24.00}} or {{button:blue|Change…}} and type the new wage. This row cannot be left open. A sub with no wage on file skips it. The row reads *Not needed for their kind*, since a sub is paid through sub labor.
 :::
 
 :::card Team, Licenses, Paperwork

@@ -14,6 +14,7 @@ import {
   daysBetweenYmd,
   findArchivedMatch,
   kindNeedsTeam,
+  kindNeedsWage,
   longDate,
   mergeArchivedRows,
   planBringBackWrites,
@@ -36,6 +37,7 @@ function facts(p: Partial<BringBackFacts> = {}): BringBackFacts {
     lastSignInYmd: '2026-11-03',
     pay: { hourlyWage: 24, isSalary: false, setYmd: '2026-01-12' },
     needsTeam: true,
+    needsWage: true,
     team: null,
     licenses: [{ name: 'Journeyman plumber', date_of_expiry: '2028-06-30' }],
     paperworkSignedEarlier: { count: 5, lastYmd: '2024-03-04' },
@@ -98,6 +100,29 @@ describe('the owner calls', () => {
     expect(wage.action).toEqual({ kind: 'confirm_wage', hourlyWage: 24, isSalary: false })
     expect(byId(buildBringBackChecklist(facts({ pay: null })), 'wage').detail).toBe('No pay setup')
     expect(byId(buildBringBackChecklist(facts({ pay: { hourlyWage: null, isSalary: false, setYmd: null } })), 'wage').detail).toBe('Pay row has no wage')
+  })
+
+  it('a sub with no wage on file skips the Wage row, as Team is skipped for the office (#389, v2.8614)', () => {
+    const noPay = byId(buildBringBackChecklist(facts({ needsWage: false, pay: null })), 'wage')
+    expect(noPay).toMatchObject({ state: 'skipped', detail: 'Not needed for their kind', action: null, canLeaveOpen: false })
+    const emptyRow = byId(buildBringBackChecklist(facts({ needsWage: false, pay: { hourlyWage: null, isSalary: false, setYmd: null } })), 'wage')
+    expect(emptyRow).toMatchObject({ state: 'skipped', detail: 'Not needed for their kind' })
+    // The skipped row does not hold the finish: the sub comes back with no wage typed up.
+    const items = buildBringBackChecklist(facts({ needsWage: false, pay: null }))
+    expect(bringBackButtonLabel(items)).toBe('Bring back · 4 open')
+    expect(items.filter((i) => i.state === 'open').map((i) => i.id)).toEqual(['sign_in', 'team', 'licenses', 'paperwork'])
+  })
+
+  it('a sub with a wage someone set keeps Call 3: Keep or Change, never left open (#389, v2.8614)', () => {
+    const wage = byId(buildBringBackChecklist(facts({ needsWage: false })), 'wage')
+    expect(wage).toMatchObject({ state: 'open', detail: '$24.00 / h, set Jan 2026', canLeaveOpen: false })
+    expect(wage.action).toEqual({ kind: 'confirm_wage', hourlyWage: 24, isSalary: false })
+    // Everyone else with no pay setup still types one: the row stays open.
+    expect(byId(buildBringBackChecklist(facts({ needsWage: true, pay: null })), 'wage').state).toBe('open')
+    expect(kindNeedsWage('sub')).toBe(false)
+    expect(kindNeedsWage('helper')).toBe(true)
+    expect(kindNeedsWage('assistant')).toBe(true)
+    expect(kindNeedsWage(null)).toBe(true)
   })
 
   it('call 4: training mode starts off for a returner', () => {

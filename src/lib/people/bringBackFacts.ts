@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import { kindNeedsTeam, type BringBackFacts } from './bringBack'
+import { kindNeedsTeam, kindNeedsWage, type BringBackFacts } from './bringBack'
 import { loadPayConfigFacts } from './personDeskFacts'
 import type { PersonKey } from './personKey'
 
@@ -100,6 +100,7 @@ export async function loadBringBackFacts(key: PersonKey, backYmd: string): Promi
     lastSignInYmd: ymd(user?.last_sign_in_at),
     pay: pay && pay.exists ? { hourlyWage: pay.hourlyWage, isSalary: pay.isSalary, setYmd: null } : null,
     needsTeam: kindNeedsTeam(person?.kind ?? key.personKind),
+    needsWage: kindNeedsWage(person?.kind ?? key.personKind),
     team,
     licenses,
     paperworkSignedEarlier: { count: signedEarlier.length, lastYmd: signedEarlier.length > 0 ? (signedEarlier.sort()[signedEarlier.length - 1] ?? null) : null },
