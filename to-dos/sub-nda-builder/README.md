@@ -2,7 +2,7 @@
 name: "Sub NDA builder: a job's secrecy settings make the paper its subs sign"
 number: 389
 group: waiting
-status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · 2026-11-20 steps 1 and 2 of this card's train built, the Book takes settings and prints a sample (v2.8014, v2.8019, v2.8020), and on #404 the flow, typing on it and Publish built in the tab, for a dev · the same day step 3 built, a job carries its settings and the sign path reads them (v2.8145, v2.8154) · 2026-11-21 its three functions deployed and a ZZ Test paper signed on prod, which found the signing link refused (fixed in v2.8156 and deployed the same day) · the same day Taunya answered the four calls step 4 stood on, and step 4 was built in three parts: its ground, the Book's lines and the office's settings page on a job (v2.8182, v2.8183, v2.8184) · the same day step 4 was walked live on prod, and the small presses it found were fixed (v2.8229, v2.8275) · 2026-11-24 three of the five walks left were walked on prod at the owner's yes, and all three passed: v2.8275 with a paper required, a sub with no login, and a change after a signature · the same day step 5 was started: its first part, what a GC reads about a job's paper and who has signed, is built (v2.8503), and its sample PDF (v2.8506), with the office's setting for what a GC sees and steps 6 to 8 not started, nothing joins the tab's builder to the Book yet, and nothing has reached a real job, GC or signer · 2026-11-25 step 7 built, the GC's own form (v2.8571), its migration pushed and its functions deployed the same day · the same day walk A, walk B and step 7's tick were walked on the live site and passed · 2026-11-26: three calls answered on the question sheet: the portal window's words and the sub's Wage row go to a client-only builder, the pay-log trigger to the migration lane, and the Needs you line stands as a GC proposal's one notice for now
+status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · 2026-11-20 steps 1 and 2 of this card's train built, the Book takes settings and prints a sample (v2.8014, v2.8019, v2.8020), and on #404 the flow, typing on it and Publish built in the tab, for a dev · the same day step 3 built, a job carries its settings and the sign path reads them (v2.8145, v2.8154) · 2026-11-21 its three functions deployed and a ZZ Test paper signed on prod, which found the signing link refused (fixed in v2.8156 and deployed the same day) · the same day Taunya answered the four calls step 4 stood on, and step 4 was built in three parts: its ground, the Book's lines and the office's settings page on a job (v2.8182, v2.8183, v2.8184) · the same day step 4 was walked live on prod, and the small presses it found were fixed (v2.8229, v2.8275) · 2026-11-24 three of the five walks left were walked on prod at the owner's yes, and all three passed: v2.8275 with a paper required, a sub with no login, and a change after a signature · the same day step 5 was started: its first part, what a GC reads about a job's paper and who has signed, is built (v2.8503), and its sample PDF (v2.8506), with the office's setting for what a GC sees and steps 6 to 8 not started, nothing joins the tab's builder to the Book yet, and nothing has reached a real job, GC or signer · 2026-11-25 step 7 built, the GC's own form (v2.8571), its migration pushed and its functions deployed the same day · the same day walk A, walk B and step 7's tick were walked on the live site and passed · 2026-11-26: three calls answered on the question sheet: the portal window's words and the sub's Wage row go to a client-only builder, the pay-log trigger to the migration lane, and the Needs you line stands as a GC proposal's one notice for now · 2026-11-26: the portal window's not-saved line (v2.8613) and Bring back's Wage row for a sub with no wage on file (v2.8614) are merged, the second on the person's word *Only with no wage*; the pay log was read on prod and holds no line for walk B's wage, so the trigger waits on the migration lane; the papers reader's loose casts came off; the Form Studio's Delete is built and in review
 summary: >
   On a job where the company owes secrecy to a GC or an owner, the office sets a short page of secrecy
   settings, or the GC proposes them from the portal page they already open. The office confirms. The app
@@ -13,7 +13,7 @@ summary: >
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
 next: The two walks left in *Left to do and to walk*, each a person's, with a real phone: a person's own Read and sign, and a finger on the sliders. Three were walked on 2026-11-24 and passed. Before a real job, the real wording in the Contract Book's entry, with its breach and site lines, and an attorney's read of it: until a revision is marked as read only a ZZ Test job takes the paper. Step 5 was walked on the live site on 2026-11-24 and passed: the GC's page, its sample's address, and the office's setting for what a GC sees. Steps 1 to 5 are built, and step 6's first part: a GC proposes a stricter setting and the office takes it or declines. Its migration was pushed and its three functions deployed on 2026-11-24, so nothing of it waits on prod. The office hears of a proposal on Needs you (v2.8558). Step 7 is built on the answer of the same day, settled 15, a tick on the form's line (v2.8571): its migration was pushed and its three functions deployed on 2026-11-25, so nothing of it waits on prod, and it is not walked. Walk A (a GC proposes, the office answers), walk B (a take after a signature) and step 7's tick were walked on the live site on 2026-11-25 and passed. Left unseen of step 7: the tick cleared and set again on a required row, and its look at 375 px. Beside them, the last steps of the Document builder tab, #404, and Taunya's read, box by box, of the grid in this card's mock-up. Then the open calls below, with the wider calls still open in *The wider look*.
-ver: v2.8014 · v2.8019 · v2.8020 · v2.8145 · v2.8154 · v2.8156 · v2.8182 · v2.8183 · v2.8184 · v2.8229 · v2.8275 · v2.8462 · v2.8467 · v2.8503 · v2.8506 · v2.8533 · v2.8553 · v2.8558 · v2.8571
+ver: v2.8014 · v2.8019 · v2.8020 · v2.8145 · v2.8154 · v2.8156 · v2.8182 · v2.8183 · v2.8184 · v2.8229 · v2.8275 · v2.8462 · v2.8467 · v2.8503 · v2.8506 · v2.8533 · v2.8553 · v2.8558 · v2.8571 · v2.8613 · v2.8614
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -183,14 +183,21 @@ every pick on it stands, the person answered "All picks stand". Each row is quot
     email, as step 6's design says, and the walk of 2026-11-25 read it so in the code. Nothing changes.
 17. **The portal window says *Not saved yet. Copy link saves it.*** Row 7 read: *#389: The portal window says
     Not saved yet. Copy link saves it. Pick: Yes.* The window draws a suggested short address as if it were saved,
-    and the address opens nothing until **Copy link** is pressed. The mend is the client alone, XS to S, and is
-    with a builder; not built as of this line.
+    and the address opens nothing until **Copy link** is pressed. **Built as v2.8613, merged 2026-11-26:** under
+    the box the window reads *Not saved yet. Copy link saves it.* while the address is only suggested, from a pure
+    kernel with its test and a render smoke, and the guide *share a customer their portal* says it. Not seen live.
 18. **Bring back skips the Wage row for a subcontractor, and a wage saved on a screen gets a pay-log line.** Row 8
     read: *#389: Bring back skips the Wage row for a subcontractor. Pick: Yes.*, and row 9: *#389: A wage changed on
     a screen gets a pay-log line by a database trigger. Its push is asked separately. Pick: Yes.* The first is the
-    client alone: for a subcontractor the Wage row reads that it is not needed for their kind and is skipped, as
-    Team already is. The second is a trigger on the pay rows that writes the pay log, a migration whose push is
-    asked by name. Neither is built as of this line.
+    client alone, **built as v2.8614, merged 2026-11-26, narrower than the row's words and on the person's word.**
+    Asked *Should Bring back skip the Wage row for every subcontractor, or only one with no wage on file (as
+    built)?*, the person answered "Only with no wage". So a sub with no wage on file skips the row, which reads
+    *Not needed for their kind* as Team does, with no press, and no pay row is written for it; a sub whose wage
+    someone set keeps **Keep** or **Change…**. Not seen live. The second is a trigger on the pay rows that writes
+    the pay log, a migration whose push is asked by name; the migration lane has it third in its queue, not built.
+    Read on prod on 2026-11-26, read only, through the dev seat: the pay log `pay_admin_events` holds no line for
+    the one-dollar wage walk B saved through **Bring back** on 2026-11-25, which confirms that no screen writes it
+    today.
 
 ## Open: the look
 
@@ -796,10 +803,24 @@ Step 7 on prod on 2026-11-25, and the three walks of that day:
   - **The sub's page after. Passed.** The lock is back, *Not signed yet*, and the job's address is held back. The sub did not sign again.
   - **Not walked:** the server's own refusal of a looser proposal, as in walk A.
   - **How long the job was shut.** 4 minutes 1 second, from 23:03:07 to 23:07:08 UTC. The roster was the 7 office accounts and the sub. Nothing was sent to anyone.
-  - **Found on the way, and not this card's to build.** **Bring back…** on an archived sub is a checklist whose *Wage* row has no **Leave open…**, so a sub with no pay setup comes back only with a wage made. The walk stopped there and went on at a yes for one $1 an hour wage. Whether a wage saved from a screen leaves a line on the pay log was not read back. Both are with the session that manages the threads.
+  - **Found on the way, and not this card's to build.** **Bring back…** on an archived sub is a checklist whose *Wage* row has no **Leave open…**, so a sub with no pay setup comes back only with a wage made. The walk stopped there and went on at a yes for one $1 an hour wage. Whether a wage saved from a screen leaves a line on the pay log was not read back. Both are with the session that manages the threads. Since v2.8614 (2026-11-26) a sub with no wage on file skips that row, and the pay log read on prod the same day holds no line for this wage: *Settled*, 17 and 18.
 - **Step 7's tick was walked and passed,** on 2026-11-25 at 23:06 UTC, inside walk B's shut window, on a form the Book already holds, required for 36 seconds.
   - **Seen.** The tick **This is the GC's own form** in **Add a paper**. The form moved to the unsaved rows reading *The GC's own form*, with its tick on. **Require 1 paper** made two calls, the require and then the mark, and the saved row kept the words and the tick. On the GC's page, above the settings block, **Subs sign your own form** with the form's name, its two lines, *0 of 8 people have signed* and the sub business with *Not yet*. No **Download a sample** and no **Propose a stricter setting**. Then **Take off**.
   - **Not seen.** The tick cleared and set again on the required row, where it saves in place with a toast, and the tick at 375 px. A count above zero on an own form.
+
+### 2026-11-26, after the person's answers
+
+- **Two of the walks' findings are mended and merged**, both the client alone, neither seen live yet: the portal window's
+  *Not saved yet* line (v2.8613) and Bring back's Wage row for a sub with no wage on file (v2.8614), each as *Settled*,
+  17 and 18 say. The walker's recipe for each is the walking thread's.
+- **The papers reader's loose casts came off** (`jobPapersIo.ts` reads its names from the generated types), a chore with
+  no version, merged 2026-11-26. Nothing on a screen changed.
+- **The Form Studio's Delete is built and in review**, the client alone, nothing owed after its merge: a form a job
+  requires or once required draws a dead **Delete** that says so, and a refusal the database sends anyway reads in
+  plain words. Its version goes on this card once its fragment is on main.
+- **The pay log was read on prod on 2026-11-26**, read only, through the dev seat, by the walking thread: `pay_admin_events`
+  holds no line for walk B's wage. That is the trigger of *Settled*, 18, which the migration lane has; nothing is
+  pushed without the person's yes, asked by name.
 
 Loose ends:
 
