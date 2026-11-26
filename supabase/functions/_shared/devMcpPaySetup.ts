@@ -478,10 +478,17 @@ export function resolvePaySetup(p: PaySetupPayload, world: PaySetupWorld, today:
     } else {
       workingSame = whBefore !== null && JSON.stringify(whBefore) === JSON.stringify(asked.days) && !(asked.from === 'this_week' && coming)
     }
-    const movesPay = after.is_salary && asked.days !== null && workingHoursMovePay(asked.days, weekBefore)
-    if (movesPay && asked.from === 'next_week') return { ok: false, refused: `Nothing to plan: these hours change what a salaried day pays (${weekSaid(weekBefore)} today, ${weekSaid(paidWeekOf(asked.days!))} with them), and pay carries no date, so they cannot start next week. Leave working_hours_from out to start them this week, or plan them next week with days of the same lengths.` }
-    if (movesPay) week = paidWeekOf(asked.days!)
-    if (!workingSame) workingOp = { days: asked.days, from: whFrom, movesPay, paidWeek: asked.days ? paidWeekOf(asked.days) : null }
+    // A take-off puts a salaried person's week on pay back on the standard week (the door's rule since v2.8607): pay
+    // moves when a set week is in force on the Sunday asked for and the pay row holds another week than the standard.
+    const takeOff = asked.days === null
+    const movesPay = after.is_salary && (takeOff ? whBefore !== null && !isDefaultWeek(weekBefore) : workingHoursMovePay(asked.days!, weekBefore))
+    if (movesPay && asked.from === 'next_week') {
+      return { ok: false, refused: takeOff
+        ? `Nothing to plan: taking working hours off puts ${who} back on the standard week (${weekSaid(weekBefore)} today, ${weekSaid(SALARIED_DEFAULT_WEEK)} after), and pay carries no date, so it cannot start next week. Leave working_hours_from out to take them off this week.`
+        : `Nothing to plan: these hours change what a salaried day pays (${weekSaid(weekBefore)} today, ${weekSaid(paidWeekOf(asked.days!))} with them), and pay carries no date, so they cannot start next week. Leave working_hours_from out to start them this week, or plan them next week with days of the same lengths.` }
+    }
+    if (movesPay) week = takeOff ? [...SALARIED_DEFAULT_WEEK] : paidWeekOf(asked.days!)
+    if (!workingSame) workingOp = { days: asked.days, from: whFrom, movesPay, paidWeek: asked.days ? paidWeekOf(asked.days) : movesPay ? [...SALARIED_DEFAULT_WEEK] : null }
   }
 
   const changes: PayChange[] = []
@@ -707,10 +714,12 @@ export function paySetupDryRun(p: PaySetupPayload, world: PaySetupWorld, today: 
     const payWords = !after.is_salary
       ? `${payName} is hourly: working hours move nothing on pay. Logged hours × the wage pay them.`
       : wh.movesPay
-        ? `The door writes the seven numbers on the pay row with the hours: ${weekSaid(weekBefore)} becomes ${weekSaid(week)}, with one line on the pay log and the reason. Pay carries no date, so the new week prices every week with no pay report (reaches_back).`
+        ? wh.days
+          ? `The door writes the seven numbers on the pay row with the hours: ${weekSaid(weekBefore)} becomes ${weekSaid(week)}, with one line on the pay log and the reason. Pay carries no date, so the new week prices every week with no pay report (reaches_back).`
+          : `Taking working hours off puts the seven numbers on pay back on the standard week: ${weekSaid(weekBefore)} becomes ${weekSaid(week)}, with one line on the pay log and the reason. Pay carries no date, so the standard week prices every week with no pay report (reaches_back).`
         : wh.days
           ? `Each day keeps its length, so the seven numbers on pay stay (${weekSaid(week)}) and no pay moves.`
-          : `Taking working hours off leaves the seven numbers on pay as they are (${weekSaid(week)}).`
+          : `Taking working hours off leaves the seven numbers on pay as they are (${weekSaid(week)}): ${isDefaultWeek(weekBefore) ? 'the pay row already holds the standard week' : 'no set week is in force on that Sunday'}, so there is nothing to put back.`
     const whClock = !after.is_salary || !user
       ? `${payName} clocks in and out themselves: working hours make no sessions.`
       : !tStart
