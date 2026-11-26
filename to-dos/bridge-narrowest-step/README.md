@@ -11,9 +11,9 @@ summary: >
   sells. The steps that hold the company back are the one that moves the fewest dollars a week, and the one whose
   pile grows. The drawing puts today's reading beside one that lights the narrowest step and says on each row
   whether its pile grows or shrinks. It is a question for the owner, since it changes the page's rule.
-next: v2.8646 mends the walk's two findings and owes one more `bridge-weekly-sheet` redeploy, on a yes and the push slot, before the send on Monday 2026-11-30 at 6 AM Central, which is the first read of the email itself; a look in light, which the walk could not make; then the owner's own read of the red and the direction lines on his numbers.
+next: the send on Monday 2026-11-30 at 6 AM Central is the first read of the email itself; the fix for the rule's **?**, which takes two presses to open, is briefed to the small fixes; a look in light, which the walks could not make; then the owner's own read of the red and the direction lines on his numbers.
 size: M as three parts (S · M · S), all built
-blocker: Nothing to build. v2.8646's redeploy waits on a yes and the push slot.
+blocker: Nothing to build and nothing to deploy.
 opinion: the row directions shipped first and the red moved after, as planned; the redeploy is done, so once the walkers have looked, retire the card on the owner's word
 ---
 
@@ -131,6 +131,9 @@ The walkers read the three recipes on the live site on 2026-11-26, 06:50 to 06:5
 What passed: the tile, the card's lead and the pipe's red row name one step, and it has the fewest dollars a week of the five; each direction agrees with its card behind **The flow**; the dial turns the cards past the next step's pace and **back to today** returns them with nothing written; 375 px with no word cut; red, green and amber read apart in dark.
 The two findings that held in the code are mended in v2.8646: points 2 and 5 of the rule's long reading said *the slowest step*, and the tile's second line said customers pay one figure *of the* other when the first was the larger.
 The saying *A business is only as good as its weakest link* stays in the long reading, since the next sentence says the link is the narrowest step.
-v2.8646 changes `stageFlow.ts` and `weekCall.ts`, both copied to `bridge-weekly-sheet`, so it owes one redeploy after its merge; until then the Monday email keeps the old second line.
+v2.8646 changes `stageFlow.ts` and `weekCall.ts`, both copied to `bridge-weekly-sheet`, so it owed one redeploy after its merge.
+That redeploy ran from `main` on 2026-11-26 at 11:05 UTC, on the person's yes, version 54 to 55, and `check:edge-drift` then read every function current, so nothing is owed on prod.
+The walkers read v2.8646 on the live site the same day, 11:05 to 11:12 UTC, reads only: a pass. Points 2 and 5 say *the narrowest step*, the tile's second line says the two paces apart with what is paid the larger, and at 375 px both lines sit inside the tile.
+That look met one more thing: the **?** beside the rule line takes two presses to open, since it opens on focus and the same press's click shuts it. It is a component, owes no redeploy, and is briefed to the small fixes.
 Not read by the walk: light, since the dev account's own theme is dark and changing it is a write; and the email, by the person's word.
-Left for people: the yes and the push slot for v2.8646's redeploy; a look in light; the owner's own read of the red and the direction lines on his numbers.
+Left for people: a look in light; the owner's own read of the red and the direction lines on his numbers.
