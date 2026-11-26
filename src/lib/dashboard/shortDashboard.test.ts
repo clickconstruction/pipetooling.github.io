@@ -14,6 +14,8 @@ import {
   canSetDashboardViewFor,
   dashboardViewStorageKey,
   parseDashboardView,
+  SHORT_DASHBOARD_COUNTS_CAP_MS,
+  shortDashboardCountsRead,
   shortDashboardGreeting,
   shortDashboardRead,
   shortPageFor,
@@ -105,6 +107,21 @@ describe('shortDashboard · the leader’s Dashboard, distilled', () => {
     expect(shortDashboardRead({ ...base, lienHasData: true, lienStarted: true, waiversLoading: true, settled: true })).toBe('ready')
     // A viewer with no Lien desk waits on the waivers alone.
     expect(shortDashboardRead({ ...base, lienOn: false })).toBe('ready')
+  })
+
+  it('draws the two counts only when the list is in and no source is still reading, or after the cap (punch list #365, v2.8616)', () => {
+    const base = { listRead: 'ready' as const, sourcesReading: false, capped: false, settled: false }
+    expect(shortDashboardCountsRead(base)).toBe('ready')
+    expect(shortDashboardCountsRead({ ...base, sourcesReading: true })).toBe('reading')
+    // The cap: a hook whose read never ends must not hold the counts forever.
+    expect(shortDashboardCountsRead({ ...base, sourcesReading: true, capped: true })).toBe('ready')
+    expect(SHORT_DASHBOARD_COUNTS_CAP_MS).toBe(8000)
+    // Once ready this visit, a re-read after a press never takes the numbers away.
+    expect(shortDashboardCountsRead({ ...base, sourcesReading: true, settled: true })).toBe('ready')
+    // The list's own read comes first: while it reads, or after it failed, the counts are not whole, cap or no cap.
+    expect(shortDashboardCountsRead({ ...base, listRead: 'reading' })).toBe('reading')
+    expect(shortDashboardCountsRead({ ...base, listRead: 'reading', capped: true })).toBe('reading')
+    expect(shortDashboardCountsRead({ ...base, listRead: 'failed', settled: true })).toBe('reading')
   })
 
   it('greets by the hour and counts in whole words', () => {

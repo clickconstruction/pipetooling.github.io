@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useNeedsYouInputs } from '../../hooks/useNeedsYouInputs'
+import { useSupabaseQuiet } from '../../hooks/useSupabaseQuiet'
 import { needsYouClickTarget, type NeedsYouItem } from '../../lib/dashboardNeedsYou'
 import { NEEDS_YOU_ACTION_BG, NEEDS_YOU_ACTION_FG, NEEDS_YOU_RAIL } from '../../lib/dashboard/needsYouPalette'
-import { SHORT_DASHBOARD_WORDS, shortDashboardGreeting, shortDashboardRead, splitForShortDashboard, type ShortDashboardRead } from '../../lib/dashboard/shortDashboard'
+import { SHORT_DASHBOARD_COUNTS_CAP_MS, SHORT_DASHBOARD_WORDS, shortDashboardCountsRead, shortDashboardGreeting, shortDashboardRead, splitForShortDashboard, type ShortDashboardCountsRead, type ShortDashboardRead } from '../../lib/dashboard/shortDashboard'
 import type { DispatchAgingSummary } from '../../lib/dispatchInboxAging'
 import { LIEN_DESK_PATH } from '../../lib/lien/lienDeskRoute'
 import { recordNavClick } from '../../lib/navClickTelemetry'
@@ -44,6 +45,8 @@ export type ShortDashboardBodyProps = {
   /** How many lines someone else is pressing. */
   office: number
   read: ShortDashboardRead
+  /** Whether the two counts, the office's and the door's, are whole yet: every source in, or the cap passed (punch list #365, v2.8616). */
+  countsRead: ShortDashboardCountsRead
   phone: boolean
   onAct: (item: NeedsYouItem) => void
   /** A press on the leader's lien card: the notice's address and which press it was. */
@@ -62,18 +65,20 @@ export type ShortDashboardBodyProps = {
   onEverythingElse: () => void
 }
 
-export function ShortDashboardBody({ firstName, hour, waiting, alsoYours, role, office, read, phone, onAct, onOpenLien, onOpenLienDesk, onRateCrew, top, underGreeting, schedule, foot, onEverythingElse }: ShortDashboardBodyProps) {
+export function ShortDashboardBody({ firstName, hour, waiting, alsoYours, role, office, read, countsRead, phone, onAct, onOpenLien, onOpenLienDesk, onRateCrew, top, underGreeting, schedule, foot, onEverythingElse }: ShortDashboardBodyProps) {
   const w = SHORT_DASHBOARD_WORDS
   const rows = waiting.length + (onRateCrew ? 1 : 0)
   // The count is a promise that the list is whole, so it waits for a read that is in.
   const countLine = read === 'ready' ? w.count(rows) : ''
   // Every count on the page is of the one read (the simulator's walk of 2026-11-25: the office's line and the door's
   // note drew from the counts as they stood, so they changed under the reader when the read landed). Until it is in,
-  // the office's line is left out and the door says what it opens, with no count.
-  const whole = read === 'ready'
+  // the office's line is left out and the door says what it opens, with no count. Since v2.8616 the two counts also
+  // wait for every source of the card, not the lien reads alone: the same sitting read *23 other things* and ten
+  // seconds later *24*, since each late source moved a number.
+  const whole = read === 'ready' && countsRead === 'ready'
 
   return (
-    <div data-short-dashboard data-read={read} style={{ maxWidth: 560, margin: '0 auto' }}>
+    <div data-short-dashboard data-read={read} data-counts-read={countsRead} style={{ maxWidth: 560, margin: '0 auto' }}>
       {top}
       <div style={{ margin: '0.25rem 0 0.9rem' }}>
         <div data-short-greeting style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--text-strong)', lineHeight: 1.2 }}>
@@ -215,6 +220,21 @@ export default function DashboardShortHome({
   useEffect(() => {
     if (read === 'ready') setSettled(true)
   }, [read])
+  // The two counts wait for every source (punch list #365, v2.8616): until the client has had nothing in flight for a
+  // moment, since a source's read is a request through it and most of the sixty hooks say nothing themselves. Capped
+  // at the watchdog's eight seconds so a read that never ends cannot hold them, and settled once ready so a re-read
+  // after a press never takes them away.
+  const quiet = useSupabaseQuiet()
+  const [capped, setCapped] = useState(false)
+  useEffect(() => {
+    const t = window.setTimeout(() => setCapped(true), SHORT_DASHBOARD_COUNTS_CAP_MS)
+    return () => window.clearTimeout(t)
+  }, [])
+  const [countsSettled, setCountsSettled] = useState(false)
+  const countsRead = shortDashboardCountsRead({ listRead: read, sourcesReading: !quiet, capped, settled: countsSettled })
+  useEffect(() => {
+    if (countsRead === 'ready') setCountsSettled(true)
+  }, [countsRead])
 
   return (
     <>
@@ -226,6 +246,7 @@ export default function DashboardShortHome({
         role={role}
         office={split.office.length}
         read={read}
+        countsRead={countsRead}
         phone={phone}
         onAct={(item) => {
           recordNavClick(authUserId, role, 'short-dashboard', needsYouClickTarget(item))

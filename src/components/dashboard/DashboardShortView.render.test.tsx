@@ -40,6 +40,7 @@ function draw(over: Partial<ShortDashboardBodyProps> = {}) {
     alsoYours: 0,
     office: 23,
     read: 'ready',
+    countsRead: 'ready',
     phone: true,
     onAct: vi.fn(),
     onOpenLien: vi.fn(),
@@ -117,6 +118,21 @@ describe('ShortDashboardBody', () => {
     const ready = draw({ waiting: [], read: 'ready', office: 23, alsoYours: 13 })
     expect(ready.container.querySelector('[data-short-office]')?.textContent).toBe('The office is handling 23 other things.')
     expect(ready.container.querySelector('[data-short-door-note]')?.textContent).toBe('13 more of yours are in there.')
+  })
+
+  it('with the list in but a source still reading, the two counts wait, and draw once every source is in (punch list #365, v2.8616)', () => {
+    // The list is whole (the lien reads are in), but a slow source of the office's count is not: the numbers would move.
+    const { container } = draw({ waiting: [tagItem], read: 'ready', countsRead: 'reading', office: 23, alsoYours: 4 })
+    expect(container.querySelector('[data-short-dashboard]')?.getAttribute('data-counts-read')).toBe('reading')
+    expect(container.querySelector('[data-short-office]')).toBeNull()
+    expect(container.querySelector('[data-short-door-note]')?.textContent).toBe('Money, crew, jobs and the full Dashboard.')
+    // The list itself is drawn: a paper never waits on a slow source.
+    expect(screen.getByText('Dana tagged you on Alder Creek Lofts')).toBeTruthy()
+    expect(container.querySelector('[data-short-count]')?.textContent).toBe('1 thing waits on you.')
+    cleanup()
+    const ready = draw({ waiting: [tagItem], read: 'ready', countsRead: 'ready', office: 24, alsoYours: 6 })
+    expect(ready.container.querySelector('[data-short-office]')?.textContent).toBe('The office is handling 24 other things.')
+    expect(ready.container.querySelector('[data-short-door-note]')?.textContent).toBe('6 more of yours are in there.')
   })
 
   it('a read that failed is not whole either: no office line and no count on the door', () => {

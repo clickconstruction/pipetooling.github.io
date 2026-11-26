@@ -19,7 +19,7 @@ The full Dashboard holds every section the company has. The short one holds a li
 - A job note that tagged you has {{button:amber|Open}}. A teammate is waiting on your answer.
 - The weekly look at the line budgets has {{button:outline|Review}}.
 - **My Schedule** shows your day under the list.
-- One line says how many other things the office is handling.
+- One line says how many other things the office is handling. The line and the door's count wait until every read is in, so the numbers do not move once drawn.
 - **Everything else** opens the full Dashboard.
 
 The rows are the same lines the [Needs you card](/help/needs-you-card) shows. A press here opens the same screen.

@@ -126,6 +126,35 @@ export function shortDashboardRead(input: {
   return input.waiversLoading ? 'reading' : 'ready'
 }
 
+/**
+ * Whether the two count lines, the office's and the door's, can be drawn yet (punch list #365, v2.8616). They count
+ * every source of the Needs you card, so they are whole only when the list's read is in **and** no source is still
+ * being read: until then the page drew them from the counts as they stood, and each late source moved a number under
+ * the reader. The page reads *still being read* off the client's own count of requests in flight (`useSupabaseQuiet`),
+ * since most of the card's sixty hooks say nothing about their read. The cap is the guard against a read that never
+ * ends: after it the counts draw as they stand. Once ready they stay ready for the visit, so a re-read
+ * after a press never takes the numbers away. The list keeps its own rule, `shortDashboardRead`: a paper must not
+ * wait on a slow source.
+ */
+export type ShortDashboardCountsRead = 'reading' | 'ready'
+
+/** The watchdog's number (`useAuth`): the longest the counts wait on a source before they draw as they stand. */
+export const SHORT_DASHBOARD_COUNTS_CAP_MS = 8000
+
+export function shortDashboardCountsRead(input: {
+  listRead: ShortDashboardRead
+  /** Some read the counts depend on is not in yet: today, the client has a request in flight or just had one. */
+  sourcesReading: boolean
+  /** The cap has passed since the page was opened. */
+  capped: boolean
+  /** The counts were ready once this visit. */
+  settled: boolean
+}): ShortDashboardCountsRead {
+  if (input.listRead !== 'ready') return 'reading'
+  if (input.settled || input.capped) return 'ready'
+  return input.sourcesReading ? 'reading' : 'ready'
+}
+
 const things = (n: number): string => (n === 1 ? '1 thing waits on you.' : `${n} things wait on you.`)
 
 /** Morning before noon, Afternoon until five, Evening after. */
