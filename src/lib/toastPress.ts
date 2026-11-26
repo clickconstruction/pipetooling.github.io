@@ -39,3 +39,14 @@ export function toastDismissPress(narrow: boolean): CSSProperties {
     boxSizing: 'border-box',
   }
 }
+
+/**
+ * The role a toast's words carry, so a screen reader says them (punch list #445). A refusal or a failure is an alert,
+ * which interrupts. A done or a note is a status, which waits its turn. The centre toast is a dialog that already
+ * names its words, so there they carry no role and are not said twice. The role sits on the words alone, never on the
+ * card, so the × and the action press are not read out with them.
+ */
+export function toastLiveRole(type: 'info' | 'warning' | 'error' | 'success', dialog: boolean): 'alert' | 'status' | undefined {
+  if (dialog) return undefined
+  return type === 'error' || type === 'warning' ? 'alert' : 'status'
+}

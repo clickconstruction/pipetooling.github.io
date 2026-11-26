@@ -610,7 +610,9 @@ describe('JobDocumentsStartChecks', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tue Dec 8, our first day, press to change' }))
     fireEvent.change(screen.getByLabelText('our first day'), { target: { value: '2026-12-10' } })
     fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
-    expect((await screen.findByRole('alert')).textContent).toContain('Our days could not be moved.')
+    // The first refusal's toast is still up, and since v2.8638 a toast's words are an alert too. The field's own
+    // line is asked for by its class.
+    await waitFor(() => expect(document.querySelector('.vipWhy[role="alert"]')?.textContent).toContain('Our days could not be moved.'))
     expect((screen.getByLabelText('our first day') as HTMLInputElement).value).toBe('2026-12-10')
   })
 })

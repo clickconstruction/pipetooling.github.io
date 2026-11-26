@@ -15,11 +15,11 @@ vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => viewport.phone }))
 import { ToastProvider, useToastContext } from '../contexts/ToastContext'
 import type { ToastAnchor, ToastPlacement } from './Toast'
 
-function Shower({ message, anchor, placement, action }: { message: string; anchor?: ToastAnchor; placement?: ToastPlacement; action?: () => void }) {
+function Shower({ message, anchor, placement, action, type = 'success' }: { message: string; anchor?: ToastAnchor; placement?: ToastPlacement; action?: () => void; type?: 'info' | 'warning' | 'error' | 'success' }) {
   const { showToast, showActionToast } = useToastContext()
   useEffect(() => {
     if (action) showActionToast(message, { label: 'Undo', onClick: action })
-    else showToast(message, 'success', 5000, anchor, placement)
+    else showToast(message, type, 5000, anchor, placement)
     // Once, on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -123,5 +123,44 @@ describe('Toast — where it sits', () => {
     const dialog = screen.getByRole('alertdialog')
     expect(dialog.style.top).toBe('50%')
     expect(dialog.dataset.toastFoot).toBeUndefined()
+  })
+
+  it('a toast’s words carry a role a screen reader says: an alert for a failure or a warning, a status for the rest (punch list #445)', () => {
+    draw({ message: 'That did not save.', type: 'error' })
+    expect(screen.getByRole('alert').textContent).toBe('That did not save.')
+    cleanup()
+    draw({ message: 'This bid was sent.', type: 'warning' })
+    expect(screen.getByRole('alert').textContent).toBe('This bid was sent.')
+    cleanup()
+    draw({ message: 'Heads up.', type: 'info' })
+    expect(screen.getByRole('status').textContent).toBe('Heads up.')
+    cleanup()
+    draw({ message: 'Saved.' })
+    expect(screen.getByRole('status').textContent).toBe('Saved.')
+  })
+
+  it('the role is on the words alone: the action press and the × are not read out with them', () => {
+    draw({ message: 'Put away.', action: () => {} })
+    const words = screen.getByRole('status')
+    expect(words.textContent).toBe('Put away.')
+    expect(words.contains(screen.getByRole('button', { name: 'Undo' }))).toBe(false)
+    expect(words.contains(screen.getByRole('button', { name: 'Dismiss' }))).toBe(false)
+  })
+
+  it('a foot toast and an anchored toast carry the role too', () => {
+    viewport.phone = true
+    draw({ message: 'Saved.' })
+    expect(toastOf('Saved.').dataset.toastFoot).toBe('')
+    expect(screen.getByRole('status').textContent).toBe('Saved.')
+    cleanup()
+    draw({ message: 'Copied.', anchor: { clientX: 40, clientY: 40 } })
+    expect(screen.getByRole('status').textContent).toBe('Copied.')
+  })
+
+  it('a centre toast stays one dialog that names its words: no alert or status inside it', () => {
+    draw({ message: 'Hold on.', placement: 'center', type: 'error' })
+    expect(screen.getByRole('alertdialog').getAttribute('aria-describedby')).toBe(screen.getByText('Hold on.').id)
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
   })
 })
