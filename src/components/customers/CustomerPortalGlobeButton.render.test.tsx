@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 const { rpcMock, linkRowsMock, slugRowMock } = vi.hoisted(() => ({
-  rpcMock: vi.fn(async () => ({ data: { token: 'tok1234567890abcdef', audience: 'all', activeSince: '2026-08-21T00:00:00Z' }, error: null })),
+  rpcMock: vi.fn(async (..._args: unknown[]): Promise<{ data: unknown; error: null }> => ({ data: { token: 'tok1234567890abcdef', audience: 'all', activeSince: '2026-08-21T00:00:00Z' }, error: null })),
   linkRowsMock: { rows: [] as unknown[] },
   slugRowMock: { row: null as unknown },
 }))
@@ -81,7 +81,10 @@ describe('CustomerPortalGlobeButton', () => {
     const addressInput = (await screen.findByLabelText('Portal address')) as HTMLInputElement
     // B18 / J21-F6: the default address is the name PLUS a random tail — the bare name is the edit.
     expect(addressInput.value).toMatch(/^kestrin-contracting-[a-km-np-z2-9]{4}$/)
-    expect(screen.getByText('Editable until first shared')).toBeTruthy()
+    // #389, finding 180: the suggestion is not saved until Copy link, and the window says so under the box.
+    expect(screen.getByText('Not saved yet. Copy link saves it.')).toBeTruthy()
+    expect(screen.queryByText('Editable until first shared')).toBeNull()
+    expect(addressInput.style.color).toBe('var(--text-muted)')
     expect(screen.getByText('✓ hard to guess — random tail')).toBeTruthy()
     expect(screen.getByLabelText('New random tail')).toBeTruthy()
     expect(screen.getByText('Copy link')).toBeTruthy()
@@ -168,5 +171,56 @@ describe('CustomerPortalGlobeButton', () => {
     fireEvent.click(screen.getByLabelText('Advanced settings'))
     expect(screen.getByLabelText('New portal address')).toBeTruthy()
     expect(screen.getByText('Save')).toBeTruthy()
+  })
+
+  it('a saved address that is not shared yet keeps the old line, drawn as the box’s own (#389, finding 180)', async () => {
+    linkRowsMock.rows = [
+      { customer_id: 'c4', audience: 'all', token: 'tokSSS1234567890abc', created_at: '2026-08-01T00:00:00Z', revoked_at: null, created_by: null },
+    ]
+    slugRowMock.row = { slug: 'kestrin-contracting-q4mt', locked_at: null }
+    rpcMock.mockClear()
+    renderWithProviders(<CustomerPortalGlobeButton customerId="c4" customerName="Kestrin Contracting" />)
+    await settle()
+    fireEvent.click(screen.getByLabelText("Open Kestrin Contracting's customer portal link"))
+    const addressInput = (await screen.findByLabelText('Portal address')) as HTMLInputElement
+    expect(addressInput.value).toBe('kestrin-contracting-q4mt')
+    expect(addressInput.style.color).toBe('inherit')
+    expect(screen.getByText('Editable until first shared')).toBeTruthy()
+    expect(screen.queryByText('Not saved yet. Copy link saves it.')).toBeNull()
+  })
+
+  it('Copy link on a fresh portal saves and locks the suggestion, and the not-saved line goes (#389, finding 180)', async () => {
+    linkRowsMock.rows = [
+      { customer_id: 'c5', audience: 'all', token: 'tokCCC1234567890abc', created_at: '2026-08-01T00:00:00Z', revoked_at: null, created_by: null },
+    ]
+    slugRowMock.row = null
+    rpcMock.mockClear()
+    rpcMock.mockImplementation(async (...args: unknown[]) => {
+      const name = args[0] as string
+      if (name === 'set_customer_portal_slug') return { data: { slug: (args[1] as { p_slug: string }).p_slug }, error: null }
+      if (name === 'mark_customer_portal_slug_shared') return { data: { ok: true }, error: null }
+      return { data: { token: 'tok1234567890abcdef', audience: 'all', activeSince: '2026-08-21T00:00:00Z' }, error: null }
+    })
+    const writeText = vi.fn(async () => undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    try {
+      renderWithProviders(<CustomerPortalGlobeButton customerId="c5" customerName="Kestrin Contracting" />)
+      await settle()
+      fireEvent.click(screen.getByLabelText("Open Kestrin Contracting's customer portal link"))
+      const addressInput = (await screen.findByLabelText('Portal address')) as HTMLInputElement
+      const suggested = addressInput.value
+      expect(screen.getByText('Not saved yet. Copy link saves it.')).toBeTruthy()
+      fireEvent.click(screen.getByText('Copy link'))
+      await waitFor(() => expect(rpcMock).toHaveBeenCalledWith('set_customer_portal_slug', { p_customer_id: 'c5', p_slug: suggested }))
+      await waitFor(() => expect(rpcMock).toHaveBeenCalledWith('mark_customer_portal_slug_shared', { p_customer_id: 'c5' }))
+      await waitFor(() => expect(screen.queryByLabelText('Portal address')).toBeNull()) // locked: static text now
+      expect(screen.getByText(suggested)).toBeTruthy()
+      expect(screen.queryByText('Not saved yet. Copy link saves it.')).toBeNull()
+      expect(screen.queryByText('Editable until first shared')).toBeNull()
+      expect(writeText).toHaveBeenCalledTimes(1)
+    } finally {
+      rpcMock.mockReset()
+      rpcMock.mockImplementation(async () => ({ data: { token: 'tok1234567890abcdef', audience: 'all', activeSince: '2026-08-21T00:00:00Z' }, error: null }))
+    }
   })
 })
