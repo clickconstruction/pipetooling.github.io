@@ -1,5 +1,5 @@
 -- A paper names a site (punch list #439, piece 3, migration *_paper_names_a_site). Four columns on a paper's row and
--- three checks that hold their shape. Fixtures are made as postgres, standing in for the screens; the two writes of
+-- three checks that hold their shape. And Documents → Agreements answers the site (migration *_agreements_on_file_site). Fixtures are made as postgres, standing in for the screens; the two writes of
 -- case 7 run as each user through RLS. Raises on the first failed assertion; ends with "paper_site PASSED". See
 -- scripts/pgtest-paper-site.sh. Never against prod. Every person, development and address is made up.
 \set ON_ERROR_STOP 1
@@ -153,10 +153,34 @@ SELECT psb.same('the three checks are validated',
    FROM pg_constraint WHERE conrelid = 'public.person_contract_documents'::regclass AND contype = 'c' AND conname LIKE 'person_contract_documents_site_%'),
   'person_contract_documents_site_address_words: true · person_contract_documents_site_key_words: true · person_contract_documents_site_one_kind: true');
 
--- 10. Documents → Agreements reads as before: the view answers, and none of its columns names a site.
-SELECT psb.same('agreements_on_file has no column of a site',
-  (SELECT count(*)::text FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'agreements_on_file' AND column_name LIKE 'site_%'), '0');
-SELECT psb.same('agreements_on_file still answers', (SELECT (count(*) >= 0)::text FROM public.agreements_on_file), 'true');
+-- 10. Documents → Agreements answers the site (migration *_agreements_on_file_site): three columns, the view's last,
+-- in this order. A sent agreement that names an address reads its key and its address as written on its line. One that
+-- names a development reads the development. A paper that names no site reads three nulls.
+SELECT psb.same('agreements_on_file ends with the three columns of a site',
+  (SELECT string_agg(column_name || ' ' || data_type, ' · ' ORDER BY ordinal_position)
+   FROM (SELECT column_name, data_type, ordinal_position FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = 'agreements_on_file' ORDER BY ordinal_position DESC LIMIT 3) c),
+  'site_development_id uuid · site_address_key text · site_address text');
+INSERT INTO public.developments (id, name, master_user_id) VALUES
+  ('00000000-0000-0000-0000-0000000439d2', 'ZZ Test Site Bed Development Two', '00000000-0000-0000-0000-0000000439a1');
+INSERT INTO public.person_contract_documents (id, person_name, document_name, contract_lineage_id, status, doc_type, sent_at, site_development_id, site_address_key, site_address) VALUES
+  ('00000000-0000-0000-0000-000004390111', 'ZZ Test Site Vendor Five', 'Site secrecy paper', gen_random_uuid(), 'sent', 'agreement', '2026-11-20T15:00:00Z', NULL, '300 example court springfield', '300 Example Ct, Springfield'),
+  ('00000000-0000-0000-0000-000004390112', 'ZZ Test Site Vendor Six', 'Site secrecy paper', gen_random_uuid(), 'sent', 'agreement', '2026-11-20T15:00:00Z', '00000000-0000-0000-0000-0000000439d2', NULL, NULL),
+  ('00000000-0000-0000-0000-000004390113', 'ZZ Test Site Vendor Seven', 'Site secrecy paper', gen_random_uuid(), 'sent', 'agreement', '2026-11-20T15:00:00Z', NULL, NULL, NULL);
+SELECT psb.same('a paper that names an address reads it on its line',
+  (SELECT concat_ws(' | ', COALESCE(right(site_development_id::text, 4), 'no development'), COALESCE(site_address_key, 'no key'), COALESCE(site_address, 'no address'))
+   FROM public.agreements_on_file WHERE id LIKE '%:00000000-0000-0000-0000-000004390111'),
+  'no development | 300 example court springfield | 300 Example Ct, Springfield');
+SELECT psb.same('a paper that names a development reads it on its line',
+  (SELECT concat_ws(' | ', COALESCE(right(site_development_id::text, 4), 'no development'), COALESCE(site_address_key, 'no key'), COALESCE(site_address, 'no address'))
+   FROM public.agreements_on_file WHERE id LIKE '%:00000000-0000-0000-0000-000004390112'),
+  '39d2 | no key | no address');
+SELECT psb.same('a paper that names no site reads none on its line',
+  (SELECT concat_ws(' | ', COALESCE(right(site_development_id::text, 4), 'no development'), COALESCE(site_address_key, 'no key'), COALESCE(site_address, 'no address'))
+   FROM public.agreements_on_file WHERE id LIKE '%:00000000-0000-0000-0000-000004390113'),
+  'no development | no key | no address');
+SELECT psb.same('the list filters by a site in one read',
+  (SELECT count(*)::text FROM public.agreements_on_file WHERE site_address_key = '300 example court springfield'), '1');
 
 DO $$ BEGIN RAISE NOTICE 'paper_site PASSED'; END $$;
 ROLLBACK;
