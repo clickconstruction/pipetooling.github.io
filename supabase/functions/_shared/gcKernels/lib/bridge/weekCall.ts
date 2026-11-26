@@ -23,7 +23,7 @@ import type { CashForecast } from './cashForecast.ts'
 import { CALL_LINK_NAMES, isStageLink, shortUsd, type CallLink, type MoveKey } from './calls.ts'
 import { shortK, type Headline } from './headline.ts'
 import { LINK_DESK, type DeskMovePreset } from './linkDesk.ts'
-import type { StageFlow, StageReading } from './stageFlow.ts'
+import { stageUsd, type StageFlow, type StageReading } from './stageFlow.ts'
 import { THIS_WEEK_DOORS } from './thisWeek.ts'
 
 /**
@@ -61,6 +61,8 @@ export type WeekTile = {
   wide?: boolean
   /** On the cash tile: the accounts left out of cash on hand, in one sentence. */
   note?: string
+  /** On the step tile (punch list #321, PR 3): the second line, what cash waits on, under the line on what growth waits on. */
+  sub2?: string
 }
 
 export type WeekDoor = { to: string; label: string }
@@ -188,10 +190,37 @@ function cashTile(input: WeekCallInput, leads: boolean): WeekTile {
   return { id: 'cash', label: 'Cash comes first this week', value: `Under the floor ${whenWords(first?.offset ?? 0)}`, sub: `${goes}${bank}`, tone: 'red', wide: true, ...note }
 }
 
+/** A card's pace line as a sentence: "The office bills $19k a week." */
+const paceSentence = (f: StageReading['flow'][number]): string => `${cap(f.who)} ${f.usd} ${f.tail ?? 'a week'}.`
+
+/**
+ * The lit step's paces in short sentences (punch list #321, PR 3): a feeder's own pace and the field's, a pile step's
+ * out and in, in the words its card uses. The dollars a week say why it is the narrowest; the weeks stay on the card.
+ */
+function stepPaces(s: StageReading, field: StageReading | null): string {
+  if (s.id === 'market' || s.id === 'sales') {
+    const own = s.paceUsd != null ? (s.id === 'market' ? `Market is worth ${stageUsd(s.paceUsd)} a week.` : `Sales sold ${stageUsd(s.paceUsd)} a week.`) : `${cap(s.weeksText)}.`
+    return field?.paceUsd != null ? `${own} The field builds ${stageUsd(field.paceUsd)} a week.` : own
+  }
+  const [inn, out] = s.flow
+  return [out ? paceSentence(out) : '', inn ? paceSentence(inn) : ''].filter(Boolean).join(' ')
+}
+
+/**
+ * The step tile (punch list #321, PR 3): two lines under the step's name. The first says what growth waits on, the
+ * narrowest step with its paces. The second says what cash waits on: Collect, with what customers pay of what is
+ * billed a week, since the last step before the bank is where cash waits whichever step is narrowest. When Collect is
+ * itself the narrowest, one line says both.
+ */
 function stepTile(flow: StageFlow | null): WeekTile {
   const s = flow?.stages.find((x) => x.id === flow.linkId) ?? null
   if (!s) return { id: 'step', label: 'Narrowest step', value: 'not read', sub: 'The five steps are not read yet.', tone: 'plain' }
-  return { id: 'step', label: 'Narrowest step', value: s.name, sub: `${cap(s.weeksText)}.`, tone: 'red' }
+  const field = flow?.stages.find((x) => x.id === 'build') ?? null
+  const collect = flow?.stages.find((x) => x.id === 'collect') ?? null
+  const growth = `${s.id === 'collect' ? 'Growth and cash wait' : 'Growth waits'} on ${s.name}. ${stepPaces(s, field)}`.trim()
+  const [billed, paid] = collect?.readable ? collect.flow : []
+  const cash = s.id !== 'collect' && billed && paid ? `Cash waits on Collect. ${cap(paid.who)} ${paid.usd} of the ${billed.usd} billed a week.` : null
+  return { id: 'step', label: 'Narrowest step', value: s.name, sub: growth, tone: 'red', ...(cash ? { sub2: cash } : {}) }
 }
 
 // ── the proposal ───────────────────────────────────────────────────────────
@@ -284,8 +313,10 @@ export function buildWeekCall(input: WeekCallInput): WeekCallModel {
   }
   const name = CALL_LINK_NAMES[link]
   const stage = isStageLink(link) ? (flow?.stages.find((x) => x.id === link) ?? null) : null
-  // The pile, then its first two paces: why it waits. The weeks are on the step tile, so the card does not say them again.
-  const paces = stage ? stage.flow.slice(0, 2).map((f) => ` ${cap(f.who)} ${f.usd} ${f.tail ?? 'a week'}.`).join('') : ''
+  // The pile, then its first two paces: why it waits. A feeder has no pace lines, so its pace and the field's stand in
+  // (punch list #321, PR 3). The weeks stay on the step's card, so the card at the top does not say them again.
+  const feeder = stage?.readable && stage.flow.length === 0 ? [stage.weeksText, stage.weeksText2 ?? ''].filter(Boolean).map((t) => ` ${cap(t)}.`).join('') : ''
+  const paces = stage ? stage.flow.slice(0, 2).map((f) => ` ${paceSentence(f)}`).join('') || feeder : ''
   const line = stage && stage.readable ? `${cap(stage.pile.headline)}.${paces}` : stage ? 'The app does not read this step yet.' : ''
   return { link, cashLeads, tiles, card: { label: WEEK_CARD_LABEL, lead: `${name} is the narrowest step.`, line, moves: proposedMoves(link, input), tone: 'lit' } }
 }
@@ -295,7 +326,7 @@ export function buildWeekCall(input: WeekCallInput): WeekCallModel {
 /** Every sentence the tiles and the card print on a phone, in order. */
 export function weekCallWords(model: WeekCallModel, moves: number = WEEK_CALL_MOVES_PHONE): string[] {
   const out: string[] = []
-  for (const t of model.tiles) out.push(t.label, t.value, t.sub, t.note ?? '')
+  for (const t of model.tiles) out.push(t.label, t.value, t.sub, t.sub2 ?? '', t.note ?? '')
   out.push(model.card.label, model.card.lead, model.card.line)
   for (const m of model.card.moves.slice(0, moves)) out.push(m.title, m.why)
   return out.filter((s) => s.trim().length > 0)

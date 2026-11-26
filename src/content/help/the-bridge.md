@@ -24,7 +24,7 @@ The Bridge is for the owner and devs. A dev lands here when they open the app or
 The page opens on four numbers.
 
 - **Made last week** is field contribution, the number the company works to raise. That is what the field earned at each job's price, less its wages. The small bars are the last eight pay weeks. A ≈ after the number means hours still wait on approval. From Friday the tile shows this week so far.
-- **Narrowest step** is the step that moves the fewest dollars a week. The company moves only as many dollars a week as that step does.
+- **Narrowest step** is the step that moves the fewest dollars a week. The company moves only as many dollars a week as that step does. Under the name, one line says what growth waits on: that step, with its pace and the field's. A second line says what cash waits on: Collect, with what customers pay a week of what the office bills.
 - **Cash balance** is cash on hand today. The number is green while the next eight weeks stay over your floor. The number is amber when cash goes under the floor on a later day, and the line names that day. The number is red when cash is under the floor today.
 - **Accrual balance** is cash, plus what customers owe you, less what you owe. What you owe is the supply bills, the payroll owed and the sub labor owed. Bills in collections are left out. Press the accrual balance to open **Money owed** behind Money.
 
@@ -93,6 +93,10 @@ Behind **Money**, the eight week chart has a card for every bar. Hover over any 
 
 **The flow** opens on one line. Find the narrowest step, the one that moves the fewest dollars a week. Everything waits on it. Press the {{button:outline|?}} beside that line to read why, in five points.
 
+Each step moves so many dollars a week. Market moves what its asks are worth at the won rates. Sales moves what it sold. Build moves what the field built. Bill moves what the office billed. Collect moves what customers paid. The company moves only as many dollars a week as the step that moves the fewest. That step reads red. Widening any other step only makes a pile in front of the red one.
+
+A pile is not a jam. Work waiting in front of a step grows only when more comes in than goes out. The pipe on the first screen says under each step whether its pile grows or shrinks. A narrow step with a shrinking pile is starved, not slow. Read the direction line beside the red.
+
 Under that line sit five cards in the order work flows. Market, Sales, Build, Bill, Collect. Each card reads one stage. The bar is the pile waiting in front of it. The two lines under the bar say what comes in and what goes out each week. The last line says how many weeks it would take to clear the pile at today's pace. Collect's weeks count only the bills past their day. The grey part of its bar is billed and not yet due.
 
 The Market card counts the asks that came in: bids invited and estimates requested, by value. Its last two lines say what those asks are worth a week. One line gives the amount. The next splits it into what the bids win and what the estimates sell. The badge reads **short of the field** when that amount is under what the field builds. Until the amount is read, the card says so and judges nothing.
@@ -107,7 +111,7 @@ The field's pace is read a second way, by hours. That is what the field earned o
 
 The Bill card's pile is finished work not yet billed. On each working job that is the percent done times the contract, less what is billed or paid. A job marked ready to bill counts the whole remainder. A job with no percent takes the newest field report's answer. A working job with neither reads as half done and is drawn grey. The grey rule and the thin percent rule work the same way as on Build. The Bill card's second line counts every bill by the day it went out. A bill marked billed by hand counts on the day it was marked.
 
-The step that moves the fewest dollars a week reads red. That step is the narrowest step. Market counts at what its asks are worth, and Sales at what it sold, so either can be red. A step within a tenth of it reads as its pair. The steps after the red one say they move with it. A card that says **not readable yet** waits on a later step of the app.
+The step that moves the fewest dollars a week reads red. That step is the narrowest step. Market counts at what its asks are worth, and Sales at what it sold, so either can be red. A step within a tenth of it reads as its pair. The steps after the red one say they move with it. A step with no pace to read is never red. A card that says **not readable yet** waits on a later step of the app.
 
 Press a card to read it. The pressed card has the red border.
 

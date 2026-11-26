@@ -169,7 +169,7 @@ describe('the Monday email as the first screen', () => {
     expect(html.indexOf('Cash balance')).toBeLessThan(html.indexOf('Accrual balance'))
     expect(html.indexOf('Accrual balance')).toBeLessThan(html.indexOf('What to do now'))
     const text = weekMailText(mail, URL)
-    expect(text).toContain('Narrowest step: Bill\n  7.5 weeks to bill what is already finished.\nCash balance: $18.4k\n  8 days of runway\n  Stays over the $10.0k floor. Low point $18.4k on Nov 9.\nAccrual balance: $53.4k\n  23 days of runway\n  Adds $60.0k owed to you. Takes off $25.0k you owe, subs included.\nRunway counts payroll and overhead, $2.3k a day.\n')
+    expect(text).toContain('Narrowest step: Bill\n  Growth waits on Bill. The office bills $19k a week. The field finishes $33k a week.\nCash balance: $18.4k\n  8 days of runway\n  Stays over the $10.0k floor. Low point $18.4k on Nov 9.\nAccrual balance: $53.4k\n  23 days of runway\n  Adds $60.0k owed to you. Takes off $25.0k you owe, subs included.\nRunway counts payroll and overhead, $2.3k a day.\n')
   })
 
   it('the accounts left out of cash are said under the cash balance', () => {

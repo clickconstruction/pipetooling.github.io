@@ -1,8 +1,9 @@
 ---
 name: "The Bridge lights the narrowest step"
 number: 321
-group: ready
-status: drawn 2026-11-12 after a review of the Bridge once Market read on the won rates (#318) · nothing is built · 2026-11-25 (UTC): the meaning answered in the managing session, the scaling function is the narrowest step, the one that moves the fewest dollars a week · the rule itself answered later the same day: the Bridge lights the narrowest step, so PR 2 and PR 3 are no longer held · PR 1 built 2026-11-26 as v2.8622, each row's direction on the pipe, the red unmoved · PR 2 built 2026-11-26 as v2.8628, the page lights the narrowest step, held unarmed until its `bridge-weekly-sheet` redeploy has a yes
+group: close
+status: drawn 2026-11-12 after a review of the Bridge once Market read on the won rates (#318) · 2026-11-25 (UTC): the meaning answered in the managing session, the scaling function is the narrowest step, the one that moves the fewest dollars a week · the rule itself answered later the same day: the Bridge lights the narrowest step · all three PRs built 2026-11-26: PR 1 v2.8622 merged, each row's direction on the pipe; PR 2 v2.8628 and PR 3 v2.8630 open unarmed with HOLD, since each changes kernels copied to `bridge-weekly-sheet` and that function owes one redeploy after they merge, on a yes · nothing left to build
+ver: v2.8622 · 8628 · 8630
 mockup: to-dos/bridge-narrowest-step/mockup.html
 summary: >
   The Bridge lights the step with the most weeks of work waiting. With all five steps on one scale, that rule can
@@ -10,10 +11,10 @@ summary: >
   sells. The steps that hold the company back are the one that moves the fewest dollars a week, and the one whose
   pile grows. The drawing puts today's reading beside one that lights the narrowest step and says on each row
   whether its pile grows or shrinks. It is a question for the owner, since it changes the page's rule.
-next: PR 1 (S), each row's direction on the pipe, which changes no rule. Then PR 2 (M), the rule the page lights by, and PR 3 (S), on the answer of 2026-11-25: the page lights the narrowest step.
-size: M as three parts (S · M · S); the row directions alone are S
-blocker: Nothing. The rule was answered on 2026-11-25 in so many words, so all three PRs can be built, in order.
-opinion: build the row directions first; they add no new rule and let him see both readings on his own numbers
+next: arm PR 2 and then PR 3 on the relayed yes, redeploy `bridge-weekly-sheet` once after PR 3 merges and before the email's send on Monday 2026-11-30 at 6 AM Central, then the walkers' look at the three (the recipes are with the managing session), then the owner's own read of the red and the direction lines on his numbers.
+size: M as three parts (S · M · S), all built
+blocker: Nothing to build. The redeploy waits on a yes and the push slot.
+opinion: the row directions shipped first and the red moved after, as planned; once the redeploy is done and the walkers have looked, retire the card on the owner's word
 ---
 
 # The Bridge lights the narrowest step (#321)
@@ -96,9 +97,9 @@ PR 2 and PR 3 waited on the word on the rule itself. It came on 2026-11-25, "Yes
 
 | PR | What | Size |
 |---|---|---|
-| 1 | **Each row's direction.** A line under each step on the pipe: the pile grows or shrinks by so many dollars a week, or the step is so far short of the field. Pure, from numbers the cards hold. The red stays where it is. | S |
-| 2 | **The rule.** Light the narrowest step. Keep the held call, the close second and the thin-reading guard. Regenerate the edge copy and redeploy what `check:edge-drift` names. | M |
-| 3 | **The tile, the call and the guide.** Two lines on the tile. The call proposes the lit step's moves. The guide's rule section in plain words. | S |
+| 1 | **Each row's direction.** A line under each step on the pipe: the pile grows or shrinks by so many dollars a week, or the step is so far short of the field. Pure, from numbers the cards hold. The red stays where it is. Built as v2.8622, merged 2026-11-26. | S |
+| 2 | **The rule.** Light the narrowest step. Keep the held call, the close second and the thin-reading guard. Regenerate the edge copy and redeploy what `check:edge-drift` names. Built as v2.8628, open unarmed; the redeploy is owed. | M |
+| 3 | **The tile, the call and the guide.** Two lines on the tile. The call proposes the lit step's moves. The guide's rule section in plain words. Built as v2.8630, open unarmed on PR 2's branch; the same redeploy covers it. | S |
 
 ## How to verify
 
@@ -118,7 +119,10 @@ PR 2 and PR 3 waited on the word on the rule itself. It came on 2026-11-25, "Yes
 
 ## Where it stands
 
-PR 1 is built as v2.8622 (2026-11-26): each row of the pipe says which way its work is heading.
-PR 2 is built as v2.8628 (2026-11-26): the page lights the narrowest step, Market and Sales among the candidates, the held call, the close second and the thin-reading guard kept in pace terms, and every surface that named the slowest step or the weakest link says the narrowest step.
-It changes `stageFlow.ts`, `weekCall.ts`, `flowStrip.ts` and `dial.ts`, which are copied to the edge functions and read by `bridge-weekly-sheet`, so it carries the regenerated copy and owes that function one redeploy after its merge, as v2.7230 did; until then the Monday email lights the old step.
-PR 3 follows: the tile's two lines, the call on the lit step's moves, the guide's rule section, and this card's close-out.
+All three PRs are built on 2026-11-26, in the card's order, by the `bridge-321` thread of run 4.
+PR 1 (v2.8622) is merged: each row of the pipe says which way its work is heading.
+PR 2 (v2.8628) is open and unarmed with HOLD in its title: the page lights the narrowest step, Market and Sales among the candidates, the held call, the close second and the thin-reading guard kept in pace terms, and every surface that named the slowest step or the weakest link says the narrowest step.
+PR 3 (v2.8630) is open on PR 2's branch, unarmed with HOLD: the tile's two lines, what growth waits on and what cash waits on, the card's paces for a lit feeder, the guide's rule section in plain words.
+PR 2 and PR 3 change kernels copied to `bridge-weekly-sheet` (`stageFlow.ts`, `weekCall.ts`, `flowStrip.ts`, `dial.ts`, `calls.ts`, `weekMail.ts`), so that function owes one redeploy after they merge, as v2.7230 did; until then the Monday email lights the old step and the page the new one.
+Left for people: the yes and the push slot for that redeploy, before the email's next send on Monday 2026-11-30 at 6 AM Central; the walkers' look at the three (the recipes are in the run's notes folder); the owner's own read of the red and the direction lines on his numbers.
+Nothing on this card is seen on the live site yet.

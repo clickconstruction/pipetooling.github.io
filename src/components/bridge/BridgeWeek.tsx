@@ -87,7 +87,7 @@ function BalancesTile({ cash, accrual, foot, narrow, onNote, onAccrual }: { cash
   )
 }
 
-/** *Made last week* or *Slowest step*. The cash tile and its red band are the balances' now. */
+/** *Made last week* or *Narrowest step*. The cash tile and its red band are the balances' now. */
 function Tile({ tile, narrow }: { tile: WeekTile; narrow: boolean }) {
   return (
     <div data-testid={`bridge-week-tile-${tile.id}`} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: narrow ? '0.5rem 0.55rem' : '0.7rem 0.9rem', minWidth: 0 }}>
@@ -111,6 +111,12 @@ function Tile({ tile, narrow }: { tile: WeekTile; narrow: boolean }) {
         </div>
       )}
       <div style={{ fontSize: narrow ? '0.72rem' : '0.82rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: 2 }}>{tile.sub}</div>
+      {tile.sub2 && (
+        // The step tile's second line (punch list #321, PR 3): what cash waits on, under what growth waits on, with a rule between.
+        <div data-testid={`bridge-week-tile-${tile.id}-sub2`} style={{ fontSize: narrow ? '0.72rem' : '0.82rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: 5, paddingTop: 5, borderTop: '1px solid var(--border)' }}>
+          {tile.sub2}
+        </div>
+      )}
     </div>
   )
 }
