@@ -1,6 +1,6 @@
 /**
  * The payoff card (punch list #435, piece 4): one place's payoff as five stops on the Lien desk's Payoffs, read from
- * what the app already holds. The owner's critique of the first draw (the card): a payoff takes two weeks, so it is
+ * what the app already holds. The card's critique of the first draw: a payoff takes two weeks, so it is
  * a card that stays, named for what it is, with its days in a column, and on a day it needs nothing it says so in
  * one line.
  *

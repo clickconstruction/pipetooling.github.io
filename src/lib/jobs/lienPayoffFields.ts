@@ -2,7 +2,7 @@
  * What a payoff keeps on a filed lien (punch list #435, piece 4): the day a release was asked for in writing, and a
  * leader's, a controller's or a dev's word that the bank confirmed the funds. Both live in the `fields` the
  * affidavit row already saves (`job_lien_filings`, kind `affidavit`), one per lien, as a release keeps its link and
- * its own instrument number (`lienReleaseOfRecord.ts`). The owner's pick of 2026-11-26 over the card's small table:
+ * its own instrument number (`lienReleaseOfRecord.ts`). The pick answered on 2026-11-26 over the card's small table:
  * a written request and a release are per lien in the Code (§ 53.152), and the check is already named by the
  * payment rows' number, day and note. A later piece may lift them into columns. No migration.
  *
