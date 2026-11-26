@@ -11,7 +11,7 @@ summary: >
 next: A live look at the three small mends of the walk of 2026-11-26 (v2.8636, v2.8637, v2.8641). The first two write nothing; the note box's line is read on the Clock out sheet of a session with a typed plan, and Cancel leaves it open. Then the Bid Board, the My Time card and CountTooling, each on the owner's word.
 size: L as a train of six (S · M · M · S · S · M); steps 1 to 3 are live; left: the Bid Board, the My Time card and CountTooling (S · S · M)
 blocker: None. The look needs the live-look slot.
-ver: v2.8605 · 8609 · 8610 · 8636 · 8637 · 8638 · 8641
+ver: v2.8605 · 8609 · 8610 · 8636 · 8637 · 8638 · 8641 · 8651
 opinion: build — the owner said build it, and the first three pieces are live; the last three wait on the owner's word
 ---
 
@@ -467,6 +467,9 @@ write on the person's yes of that day. This is the walker's report, and the code
   a note, on the words alone. Built as a role on each toast and not as one region that stays on the page, since
   144 test files draw under the real toast and would each find two. Its own note says a *status* that arrives
   with its words is the less sure kind, and that a listen on a real phone decides. No screen reader was run.
+- **Seen on the way by that build: the First Look read page said its sent line twice**, once as a toast and once as the
+  page's own line, so a screen reader would have heard both. Mended in v2.8651 (PR #9954, merged 2026-11-26), client
+  only: the toast is dropped and the page's own line says it once. The page is card #319's.
 - **For the next walker.** A sent bid needs **Revise…** before a price can change, and a bid with no count rows
   has no price to change. The dev's own account meets two gates before the sheet: the day's goals check and
   the spending gate.

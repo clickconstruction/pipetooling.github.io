@@ -11,10 +11,10 @@ summary: >
   card: move a task to another day, say you cannot do it, say it no longer applies, go through the old
   ones, add proof as you finish, add your own task or a follow-up, hand a task on, and draw a map or leave
   a point on one.
-next: A second look at the New task window on a quiet day, each send on its own yes: five sends in a row from Manage, each followed by ＋ New task at once, to see whether it ever fails to open or opens holding the task just sent. Weigh the done row on a phone, where four presses leave the words about 75 points. Then someone walks Task Mode on a real phone.
+next: A second look at the New task window on a quiet day, each send on its own yes: five sends in a row from Manage, each followed by ＋ New task at once, to see whether it ever fails to open or opens holding the task just sent. Look at the done row on a phone: since v2.8643 its presses sit under the words, which get the row's width. Then someone walks Task Mode on a real phone.
 size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S), built; left: a look at the names mend (XS), a look at the delete's line (XS) and a walk on a phone (XS)
 blocker: a person at a phone for the walk.
-ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545 · v2.7546 · v2.7547 · v2.7548 · v2.7549 · v2.7550 · v2.7551 · v2.8560 · v2.8572
+ver: v2.7533 · v2.7536 · v2.7537 · v2.7539 · v2.7541 · v2.7542 · v2.7543 · v2.7544 · v2.7545 · v2.7546 · v2.7547 · v2.7548 · v2.7549 · v2.7550 · v2.7551 · v2.8560 · v2.8572 · v2.8643
 opinion: build — the refresh changes no data, each tool is one small press on the card, and the one migration is additive
 ---
 
@@ -184,3 +184,9 @@ search box, words typed at once after the tap were dropped, and the same words t
 and searched. The three boxes above were typed the same way. So before any of them goes to a real phone, each is tried
 again with a pause between the tap and the typing. Not retried in that sitting. The five ZZ Test task sends were not made
 either: no hour of that sitting had a Mac with no merge, push or deploy.
+
+**The done row on a phone, built 2026-11-26.** Asked that day *Card #369: build the done row's phone layout now, with a drawn
+before and after in the PR?*, the person's answer was the pick, *Yes, build and arm*, as the build's own record quotes it.
+Built as v2.8643 (PR #9946, merged 2026-11-26), client only: on a phone a task's row takes the **Next** card's shape, with
+its presses in a row of their own under the words. At a desk a row is as it was. The drawn before and after is
+`done-row-before-after.html` in this folder. Not seen on a phone or in a simulator yet.
