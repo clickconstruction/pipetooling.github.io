@@ -186,7 +186,7 @@ Left from piece 4, each named in its fragment:
 - A confirmation of the funds cannot be taken back from the card.
 - The place's press keeps the name it was built with, *One check for this place ›*, where screen 1 reads *They paid: take the payoff ›*.
 - Piece 4's looking-only walk was made on the live desk on 2026-11-26: every open place had its card, five stops, the line for today and the asked day's field, and the check pane showed its four fields and both worked-out days. It found one fault, a *Check clears* line read off an older check on a lien still waiting on its money, mended in v2.8650. No lien waited for the bank and no place was all released, so those two steps were not seen.
-- Piece 4 has not been walked with a write: no asked day or confirmation was saved on a ZZ test lien.
+- Piece 4's first walk with a write was made on 2026-11-26, on two ZZ test jobs at one made-up place, each with a part bill and an affidavit recorded by hand: the place read 2 liens with its first stop lit, the asked day kept on both liens showed *Release due* ten days on, and it was still there after a reload. No real place was touched, nothing was sent, and every row was deleted. The jobs stayed Working after a part bill sent by hand, so no Ready to bill notice left. No check, funds confirmation, release or stamp has been saved on a ZZ test lien yet: those steps record payments, which send the office its paid notices.
 
 ### Piece 5 as built (v2.8648)
 
@@ -225,7 +225,7 @@ Left from piece 6, each named in its fragment:
 - The case's **Take it off** does not reach a payment found by the mark. That is the database's function and its match, so it is a migration and the database lane's.
 - A release sent out as a downloaded PDF reads *Release held*: only a print files a copy.
 - A check the bank could not read, a typed check never deposited and a card dispute draw no box.
-- Piece 6 has not been walked: no returned check was played back on a ZZ test job.
+- Piece 6's looking-only walk on 2026-11-26 saw Payoffs read right, with no lien held or marked, and saw none of the three cases: Accounts Receivable held no open returned-check case. No returned check has been played back on a ZZ test job.
 
 Left from pieces 1 to 3, each small:
 
