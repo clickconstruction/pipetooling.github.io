@@ -18,7 +18,7 @@ import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { bidDevelopmentName } from '../../lib/bids/bidBoardDevelopment'
 import { RecordQuestions } from '../developments/RecordQuestions'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
-import { BID_WINDOW_LINE_DRAWN, bidWindowChipPress, bidWindowClosePress, bidWindowHeadPress, bidWindowLinePress } from '../../lib/bids/bidWindowPhonePress'
+import { BID_WINDOW_LINE_DRAWN, bidWindowChipPress, bidWindowClosePress, bidWindowHeadPress, bidWindowHeadStacks, bidWindowLinePress } from '../../lib/bids/bidWindowPhonePress'
 
 export type BidPreviewTabUrl =
   | 'bid-board'
@@ -346,6 +346,57 @@ export function BidPreviewModal({
   const shownEntries = showAllFields ? detailEntries : detailEntries.filter((e) => !e.empty)
   const foldedLabels = detailEntries.filter((e) => e.empty).map((e) => e.label)
 
+  // The head's three presses, named so a phone can lay them out its own way (punch list #426, finding 262).
+  const headCopyPress = bid ? (
+    <button
+      type="button"
+      title="Copies project name, address, and bid due date"
+      onClick={() => {
+        void (async () => {
+          const text = buildBidCopyForText(bid)
+          if (!text) {
+            showToast('Nothing to copy', 'error')
+            return
+          }
+          try {
+            if (!navigator.clipboard?.writeText) {
+              showToast('Could not copy', 'error')
+              return
+            }
+            await navigator.clipboard.writeText(text)
+            showToast('Copied for text', 'success')
+          } catch {
+            showToast('Could not copy', 'error')
+          }
+        })()
+      }}
+      style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer', color: 'var(--text-strong)', ...bidWindowHeadPress(narrow) }}
+    >
+      Copy for text
+    </button>
+  ) : null
+  const headEditPress = bid && !paneMode ? (
+    <button
+      type="button"
+      onClick={() => onRequestEditBid(bid.id)}
+      style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', background: '#2563eb', color: 'white', border: '1px solid #2563eb', borderRadius: 5, cursor: 'pointer', ...bidWindowHeadPress(narrow) }}
+    >
+      Edit bid
+    </button>
+  ) : null
+  const headClosePress = !paneMode ? (
+    <button
+      type="button"
+      onClick={onClose}
+      aria-label="Close"
+      title="Close"
+      style={{ padding: '0.45rem 0.55rem', fontSize: '0.85rem', lineHeight: 1, background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer', color: 'var(--text-strong)', ...bidWindowClosePress(narrow) }}
+    >
+      ✕
+    </button>
+  ) : null
+  const headStacks = bidWindowHeadStacks(narrow)
+
   return (
     <div
       className={paneMode ? undefined : 'bid-preview-overlay'}
@@ -366,16 +417,17 @@ export function BidPreviewModal({
         style={paneMode ? { background: staleNoUpdateHighlight ? 'var(--bg-red-tint)' : undefined } : modalStyle}
         onMouseDown={paneMode ? undefined : (e) => e.stopPropagation()}
       >
+        {/* At a desk the name sits beside its three presses. On a phone they kept their width and the name got a
+            quarter of the head, so the head stacks: the name with the ✕ at its right, Copy for text and Edit bid under. */}
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: '1rem',
-            padding: '1.1rem 1.4rem 1rem',
-          }}
+          data-bid-head={headStacks ? 'stacked' : 'row'}
+          style={
+            headStacks
+              ? { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'start', gap: '0.6rem 0.75rem', padding: '1.1rem 1.4rem 1rem' }
+              : { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1.1rem 1.4rem 1rem' }
+          }
         >
-          <div style={{ minWidth: 0 }}>
+          <div data-bid-head-name style={{ minWidth: 0, ...(headStacks && !headClosePress ? { gridColumn: '1 / -1' } : {}) }}>
             <h2 id={paneMode ? undefined : 'bid-preview-title'} style={{ margin: '0 0 0.15rem', fontSize: '1.3rem', letterSpacing: '-0.01em', overflowWrap: 'break-word' }}>
               {bid ? bid.project_name?.trim() || '—' : 'Preview Bid'}
             </h2>
@@ -427,56 +479,21 @@ export function BidPreviewModal({
               </button>
             ) : null}
           </div>
-          <div style={{ display: 'flex', gap: '0.45rem', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            {bid ? (
-              <button
-                type="button"
-                title="Copies project name, address, and bid due date"
-                onClick={() => {
-                  void (async () => {
-                    const text = buildBidCopyForText(bid)
-                    if (!text) {
-                      showToast('Nothing to copy', 'error')
-                      return
-                    }
-                    try {
-                      if (!navigator.clipboard?.writeText) {
-                        showToast('Could not copy', 'error')
-                        return
-                      }
-                      await navigator.clipboard.writeText(text)
-                      showToast('Copied for text', 'success')
-                    } catch {
-                      showToast('Could not copy', 'error')
-                    }
-                  })()
-                }}
-                style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer', color: 'var(--text-strong)', ...bidWindowHeadPress(narrow) }}
-              >
-                Copy for text
-              </button>
-            ) : null}
-            {bid && !paneMode ? (
-              <button
-                type="button"
-                onClick={() => onRequestEditBid(bid.id)}
-                style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', background: '#2563eb', color: 'white', border: '1px solid #2563eb', borderRadius: 5, cursor: 'pointer', ...bidWindowHeadPress(narrow) }}
-              >
-                Edit bid
-              </button>
-            ) : null}
-            {!paneMode ? (
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close"
-                title="Close"
-                style={{ padding: '0.45rem 0.55rem', fontSize: '0.85rem', lineHeight: 1, background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer', color: 'var(--text-strong)', ...bidWindowClosePress(narrow) }}
-              >
-                ✕
-              </button>
-            ) : null}
-          </div>
+          {headStacks ? (
+            <>
+              {headClosePress}
+              <div data-bid-head-presses="under" style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+                {headCopyPress}
+                {headEditPress}
+              </div>
+            </>
+          ) : (
+            <div data-bid-head-presses="beside" style={{ display: 'flex', gap: '0.45rem', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {headCopyPress}
+              {headEditPress}
+              {headClosePress}
+            </div>
+          )}
         </div>
 
         {loading ? <div style={{ color: 'var(--text-muted)', padding: '0 1.4rem 1.3rem' }}>Loading…</div> : null}

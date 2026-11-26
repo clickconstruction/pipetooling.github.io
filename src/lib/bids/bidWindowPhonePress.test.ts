@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PHONE_PRESS_MIN_HEIGHT } from '../phonePress'
-import { BID_WINDOW_LINE_DRAWN, bidWindowChipPress, bidWindowClosePress, bidWindowHeadPress, bidWindowLinePress } from './bidWindowPhonePress'
+import { BID_WINDOW_LINE_DRAWN, bidWindowChipPress, bidWindowClosePress, bidWindowHeadPress, bidWindowHeadStacks, bidWindowLinePress } from './bidWindowPhonePress'
 
 describe('the Bid window’s top presses on a phone (punch list #426)', () => {
   it('a desk adds nothing', () => {
@@ -49,5 +49,12 @@ describe('the Bid window’s top presses on a phone (punch list #426)', () => {
 
   it('a press already a fingertip tall takes nothing', () => {
     expect(bidWindowLinePress(true, { height: 48 })).toEqual({ padding: '0 0', margin: '0 0 0' })
+  })
+})
+
+describe('the Bid window’s head on a phone (punch list #426, finding 262)', () => {
+  it('stacks on a phone, so the name has the line, and is one row at a desk', () => {
+    expect(bidWindowHeadStacks(true)).toBe(true)
+    expect(bidWindowHeadStacks(false)).toBe(false)
   })
 })
