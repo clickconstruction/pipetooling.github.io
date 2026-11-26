@@ -2017,13 +2017,19 @@ export function BidsPricingTab({
     // nothing to refuse — the toast only when a draft exists (punch list #128).
     const raw = wbPriceDrafts[countRowId]
     if (raw == null) return
-    if (!guardPriceRowsWrite()) return
     const clearDraft = () =>
       setWbPriceDrafts((prev) => {
         const next = { ...prev }
         delete next[countRowId]
         return next
       })
+    if (!guardPriceRowsWrite()) {
+      // A sent bid's lock refuses the price for good, so the typed number leaves the field with the toast and
+      // the saved price reads again: a field that kept it read as saved until a reload (punch list #445). The
+      // other refusal, the open price still loading, passes in a moment, so its typed number waits in the field.
+      if (pricingLock === 'locked') clearDraft()
+      return
+    }
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     const derived = derivePricingWorkbench()
