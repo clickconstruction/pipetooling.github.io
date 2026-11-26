@@ -501,7 +501,7 @@ A printed notice waits on the desk in {{chip:yellow|Approved · to mail}}. Open 
 
 **A mailing recorded by mistake.** Open the job's Lien window. Find the notice's record under **Filings on this job**. Press **Void** on it, then **Confirm void**. The notice goes back to the desk by itself. It keeps its approval and its signature, so nobody asks the leader again. A notice that had printed stands in *Approved · to mail* again. Its count of days toward the attorney's letter stops. Record the mailing again when the facts are right. A void does not call back an email that already went.
 
-A voided record stays on file. Only the developer can delete one. It must be a notice recorded by hand on a test job.
+A voided record stays on file. Only the developer can delete one. The record must be a notice recorded by hand on a test job. The record's line on the job's Activity is deleted with it.
 
 **Take back one notice.** Sometimes one row is marked printed by mistake. Press its Printed tick, which reads like *✓ Nov 16 · Taunya · Undo…*. The run asks first and names the job. Press {{button:red|Put 372 back in Approved · to print}}. Only that notice goes back, and its approval stands. If the notice was signed, its signature comes off. The leader signs it again before it prints. A copy that printed stays in the job's Documents. A tracking number typed on that row and not recorded is dropped. The other notices in the run stay as they are. Right after you press {{button:outline|Printed ▸}}, a line offers **Undo the Printed mark**. It does the same for that row in one press. On a signed notice it asks first, because the signature comes off. The line goes once you type a number on the row. A notice already recorded as mailed has no undo here.
 

@@ -185,3 +185,4 @@ bid-day
 lien-print-stands
 pay-log-screen
 portal-link-delete
+lien-notice-record-delete
