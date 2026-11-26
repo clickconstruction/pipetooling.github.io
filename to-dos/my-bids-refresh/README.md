@@ -9,7 +9,7 @@ summary: >
   to mark a report opened, so a person can clear work off a list. The plan is one swipe for both
   cards: left, a strip that names the act, Undo, and a folded group at the foot that holds what was
   put away. The reading also found things neither ask named, listed below for each card.
-next: The swipe back and the sign held in the lens frame on 2026-11-26, in light and in dark, and Recent Reports' swipe held through View as. Left for a simulator on a quiet Mac: Reduce Motion, the keyboard and the sign's feel. The signed-in checks stay with the person's own phone, since a swipe a person makes ends the sign for that account for good. Two small faults that walk met are briefed. Then retire the card.
+next: The swipe back and the sign held in the lens frame on 2026-11-26, in light and in dark, and Recent Reports' swipe held through View as. Left for a simulator on a quiet Mac: Reduce Motion, the keyboard and the sign's feel. The signed-in checks stay with the person's own phone, since a swipe a person makes ends the sign for that account for good. Two small faults that walk met are mended (v2.8653, v2.8654) and want a look. Then retire the card.
 size: L as a train of six (S · M · M · M · S · S); left: the simulator's walk
 blocker: None.
 opinion: build — the owner said go on every recommendation
@@ -448,11 +448,13 @@ simulator, never a real phone, on a Mac under heavy load, so what drew stands an
   `user_dismissals`), and no screen puts it back. View as writes nothing. So any signed-in check that completes a
   swipe on the dev's own account ends the sign there. By the simulator thread's report of the person's answers of
   that day: no right swipe as the dev, and the sign on the dev's own Dashboard is not yet.
-- **Two small faults met, read in the code and briefed, client only, not built as of this line.** The bid window's head
+- **Two small faults met, read in the code, and mended the same day, client only.** The bid window's head
   gives the name about a quarter of a phone's width beside its three presses, so a three-word name wrapped to four
   lines and broke inside a word (`BidPreviewModal.tsx`). And the folded Recent reports card read *15 new · 15 listed*
   over an open card that lists eight: the fold is handed every report of the window under the name *listed*
-  (`phoneFolds.ts`).
+  (`phoneFolds.ts`). Since v2.8654 (PR #9959) the head stacks on a phone: the name and the ✕ on the first line, **Copy
+  for text** and **Edit bid** under them. Since v2.8653 (PR #9958) the fold reads *15 new of 15*, or *15 reports · all
+  read*. Neither is seen in a simulator yet.
 - **Not made:** Reduce Motion, the keyboard, the sign's feel and timing, check 5 in dark, and two cards on one
   Dashboard, since the sample assistant's draws no My Bids card.
 
