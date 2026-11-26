@@ -39,6 +39,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import path from 'node:path'
 import ts from 'typescript'
+import { parsedFileCache } from '../lib/parsedFileCache.mjs'
 
 const CHECK = process.argv.includes('--check')
 const LIST = process.argv.includes('--list')
@@ -64,13 +65,13 @@ const isTest = (f) => /\.test\.tsx?$/.test(f) || f.startsWith('src/test/')
 const tsxFiles = tracked.filter((f) => f.endsWith('.tsx') && !isTest(f)).sort()
 const cssFiles = tracked.filter((f) => f.endsWith('.css')).sort()
 
-const parsed = new Map()
+/** Parsed files, a bounded number of them (scripts/lib/parsedFileCache.mjs): holding every one was 1.1 GB of heap. */
+const parsed = parsedFileCache()
 function parse(file) {
-  if (!parsed.has(file)) {
+  return parsed.read(file, () => {
     const text = readFileSync(file, 'utf8')
-    parsed.set(file, { text, sf: ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS) })
-  }
-  return parsed.get(file)
+    return { value: { text, sf: ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS) }, chars: text.length }
+  })
 }
 
 function resolveImport(from, spec) {
@@ -248,6 +249,7 @@ function raise(src, where, what) {
 }
 
 for (const file of tsxFiles) {
+  parsed.letGo()
   const { text, sf } = parse(file)
   if (!/fixed|ZIndex=|zIndex=/.test(text)) continue
   const visit = (n, fixedDepth) => {

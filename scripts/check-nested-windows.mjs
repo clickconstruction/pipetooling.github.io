@@ -32,6 +32,7 @@ import { createRequire } from 'node:module'
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { parsedFileCache } from './lib/parsedFileCache.mjs'
 
 const ROOT = process.cwd()
 const require = createRequire(path.join(ROOT, 'package.json'))
@@ -64,15 +65,35 @@ for (const f of sourceFiles) {
   }
 }
 
-// ---- The program
+// ---- The source, one file at a time
+// Each file is parsed alone and a name is followed by reading: its scope, its import, the file the
+// import names. A whole ts.Program with its type checker held every file of src at once and grew
+// with the app (3.1 GB of heap by v2.8671, past Node's default). Here the heap holds the files one
+// walk reaches and a few megabytes of the ones read last (scripts/lib/parsedFileCache.mjs).
 const files = sourceFiles.filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f) && !f.startsWith('src/test/'))
 const cfg = ts.readConfigFile(path.join(ROOT, 'tsconfig.json'), ts.sys.readFile)
 const options = ts.parseJsonConfigFileContent(cfg.config, ts.sys, ROOT).options
-// Only the app's own symbols are resolved, so no lib and no global @types: a quarter of the time and
-// under 1.5 GB of heap, with the same findings.
-const program = ts.createProgram({ rootNames: files.map((f) => path.join(ROOT, f)), options: { ...options, noEmit: true, types: [], noLib: true } })
-const checker = program.getTypeChecker()
+const moduleCache = ts.createModuleResolutionCache(ROOT, (x) => x, options)
 const SRC = path.join(ROOT, 'src')
+
+/** Parsed files, a bounded number of them: a file let go is parsed again when a later walk reads it. */
+const parsed = parsedFileCache()
+function parse(abs) {
+  return parsed.read(abs, () => {
+    let text = null
+    try {
+      text = readFileSync(abs, 'utf8')
+    } catch {
+      // a file that is not there reads as a name nothing declares
+    }
+    return { value: text === null ? null : ts.createSourceFile(abs, text, ts.ScriptTarget.Latest, true), chars: text?.length ?? 0 }
+  })
+}
+/** The project file a module specifier names, or null: a package, a stylesheet, an asset. */
+function moduleFile(spec, from) {
+  const r = ts.resolveModuleName(spec, from, options, ts.sys, moduleCache).resolvedModule
+  return r && !r.isExternalLibraryImport && /\.[cm]?[jt]sx?$/.test(r.resolvedFileName) ? parse(r.resolvedFileName) : null
+}
 
 const where = (n) => `${path.relative(ROOT, n.getSourceFile().fileName)}:${n.getSourceFile().getLineAndCharacterOfPosition(n.getStart()).line + 1}`
 const short = (s, n = 100) => {
@@ -83,17 +104,179 @@ function strip(e) {
   while (e && (ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isNonNullExpression(e) || ts.isSatisfiesExpression(e) || ts.isTypeAssertionExpression(e))) e = e.expression
   return e
 }
-function resolveDecl(node) {
-  let sym = checker.getSymbolAtLocation(node)
-  if (!sym) return null
-  if (sym.flags & ts.SymbolFlags.Alias) {
-    try {
-      sym = checker.getAliasedSymbol(sym)
-    } catch {
-      return null
+
+// ---- Names: what a scope declares, what a file exports, what an identifier or `a.b` stands for
+/** Every name a pattern binds, each with its declaration: the variable or parameter, or the binding element. */
+function bindingNames(name, decl, add) {
+  if (ts.isIdentifier(name)) return add(name.text, decl)
+  for (const el of name.elements) if (!ts.isOmittedExpression(el)) bindingNames(el.name, el, add)
+}
+const localsMemo = new WeakMap()
+/** name → its declarations in this scope, in the order the compiler binds them (functions first, then as written). */
+function localsOf(scope) {
+  let m = localsMemo.get(scope)
+  if (m) return m
+  m = new Map()
+  localsMemo.set(scope, m)
+  const add = (name, decl) => (m.has(name) ? m.get(name).push(decl) : m.set(name, [decl]))
+  const vars = (list) => list.declarations.forEach((d) => bindingNames(d.name, d, add))
+  const statements = (sts) => {
+    for (const st of sts) if (ts.isFunctionDeclaration(st) && st.name) add(st.name.text, st)
+    for (const st of sts) {
+      if (ts.isVariableStatement(st)) vars(st.declarationList)
+      else if ((ts.isClassDeclaration(st) || ts.isEnumDeclaration(st) || ts.isInterfaceDeclaration(st) || ts.isTypeAliasDeclaration(st) || ts.isModuleDeclaration(st)) && st.name && ts.isIdentifier(st.name)) add(st.name.text, st)
+      else if (ts.isImportEqualsDeclaration(st)) add(st.name.text, st)
+      else if (ts.isImportDeclaration(st) && st.importClause) {
+        const { name, namedBindings } = st.importClause
+        if (name) add(name.text, st.importClause)
+        if (namedBindings && ts.isNamespaceImport(namedBindings)) add(namedBindings.name.text, namedBindings)
+        else if (namedBindings) for (const el of namedBindings.elements) add(el.name.text, el)
+      }
     }
   }
-  return sym.declarations?.[0] ?? sym.valueDeclaration ?? null
+  if (ts.isSourceFile(scope) || ts.isBlock(scope) || ts.isModuleBlock(scope)) statements(scope.statements)
+  else if (ts.isCaseBlock(scope)) statements(scope.clauses.flatMap((c) => [...c.statements]))
+  else if (ts.isCatchClause(scope)) {
+    if (scope.variableDeclaration) bindingNames(scope.variableDeclaration.name, scope.variableDeclaration, add)
+  }
+  else if (ts.isFunctionLike(scope)) {
+    for (const p of scope.parameters) bindingNames(p.name, p, add)
+    if (scope.body && ts.isBlock(scope.body)) statements(scope.body.statements)
+  } else if (scope.initializer && ts.isVariableDeclarationList(scope.initializer)) vars(scope.initializer)
+  return m
+}
+// A function's body shares the function's scope, so its block is not one of its own.
+const isScope = (n) => ts.isSourceFile(n) || ts.isModuleBlock(n) || ts.isCaseBlock(n) || ts.isCatchClause(n) || ts.isFunctionLike(n) || ts.isForStatement(n) || ts.isForInStatement(n) || ts.isForOfStatement(n) || (ts.isBlock(n) && !ts.isFunctionLike(n.parent))
+const isTypeOnly = (d) => ts.isInterfaceDeclaration(d) || ts.isTypeAliasDeclaration(d)
+/** The first declaration of the nearest value an identifier names; a type of the same name in a nearer scope is passed over. */
+function lookup(id) {
+  for (let scope = id.parent; scope; scope = scope.parent) {
+    if (!isScope(scope)) continue
+    const decls = localsOf(scope).get(id.text)
+    if (decls && !decls.every(isTypeOnly)) return decls[0]
+    if (ts.isFunctionExpression(scope) && scope.name?.text === id.text) return scope
+  }
+  return null
+}
+const exportsMemo = new WeakMap()
+/** What a file exports: each name with where it comes from, and the files it re-exports whole. */
+function exportsOf(sf) {
+  let t = exportsMemo.get(sf)
+  if (t) return t
+  t = { named: new Map(), stars: [] }
+  exportsMemo.set(sf, t)
+  for (const st of sf.statements) {
+    const from = ts.isExportDeclaration(st) && st.moduleSpecifier ? st.moduleSpecifier.text : null
+    if (ts.isExportDeclaration(st)) {
+      if (!st.exportClause) t.stars.push(from)
+      else if (ts.isNamespaceExport(st.exportClause)) t.named.set(st.exportClause.name.text, { from })
+      else for (const el of st.exportClause.elements) t.named.set(el.name.text, from ? { from, name: (el.propertyName ?? el.name).text } : { local: (el.propertyName ?? el.name).text })
+    } else if (ts.isExportAssignment(st)) {
+      if (!st.isExportEquals) t.named.set('default', ts.isIdentifier(st.expression) ? { local: st.expression.text } : { decl: st })
+    } else if (ts.canHaveModifiers(st) && ts.getModifiers(st)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) {
+      const isDefault = ts.getModifiers(st).some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)
+      const add = (name) => t.named.set(isDefault ? 'default' : name, { local: name })
+      if (ts.isVariableStatement(st)) st.declarationList.declarations.forEach((d) => bindingNames(d.name, d, add))
+      else if (st.name && ts.isIdentifier(st.name)) add(st.name.text)
+      else if (isDefault) t.named.set('default', { decl: st })
+    }
+  }
+  return t
+}
+/** The declaration a file exports under a name, followed through re-exports to where it is written. */
+function exported(sf, name, depth = 0) {
+  if (depth > 20) return null
+  const t = exportsOf(sf)
+  const e = t.named.get(name)
+  if (e?.decl) return e.decl
+  if (e?.local) return target(localsOf(sf).get(e.local)?.[0] ?? null, depth + 1)
+  if (e) {
+    const m = moduleFile(e.from, sf.fileName)
+    return m && e.name !== undefined ? exported(m, e.name, depth + 1) : m
+  }
+  if (name === 'default') return null
+  for (const spec of t.stars) {
+    const m = moduleFile(spec, sf.fileName)
+    const d = m && exported(m, name, depth + 1)
+    if (d) return d
+  }
+  return null
+}
+/** An import followed to the declaration it brings in (a whole-file import is its SourceFile); any other declaration is itself. */
+function target(decl, depth = 0) {
+  if (!decl) return null
+  const from = (importDecl) => moduleFile(importDecl.moduleSpecifier.text, decl.getSourceFile().fileName)
+  if (ts.isImportSpecifier(decl)) {
+    const m = from(decl.parent.parent.parent)
+    return m && exported(m, (decl.propertyName ?? decl.name).text, depth + 1)
+  }
+  if (ts.isImportClause(decl)) {
+    const m = from(decl.parent)
+    return m && exported(m, 'default', depth + 1)
+  }
+  if (ts.isNamespaceImport(decl)) return from(decl.parent.parent)
+  return ts.isImportEqualsDeclaration(decl) ? null : decl
+}
+/**
+ * What `a` in `a.b` holds, when it can be read: a file (an `import * as`) or an object literal,
+ * through a const with no type written on it, `as const`, `satisfies`, a property of another such
+ * object, a `?:` whose arms are such objects or null, and what `useMemo` or a function with no return
+ * type written on it returns. A value whose members come from a type (a prop, a hook's result, a typed const) is
+ * null: the compiler answered those with a line of a type, which nothing here acts on.
+ */
+function shapeOf(expr, depth = 0) {
+  let e = expr
+  while (ts.isParenthesizedExpression(e) || ts.isNonNullExpression(e) || ts.isSatisfiesExpression(e) || (ts.isAsExpression(e) && ts.isConstTypeReference(e.type))) e = e.expression
+  if (ts.isObjectLiteralExpression(e)) return e
+  if (depth > 10) return null
+  // `a ? b : c` reads as its first arm when both arms can be read, or as the arm that is not null.
+  // With one arm a typed value the compiler picks by its own order, so that reads as nothing.
+  if (ts.isConditionalExpression(e)) {
+    const isNull = (x) => x.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(x) && x.text === 'undefined')
+    if (isNull(strip(e.whenTrue))) return shapeOf(e.whenFalse, depth + 1)
+    const first = shapeOf(e.whenTrue, depth + 1)
+    return first && (isNull(strip(e.whenFalse)) || shapeOf(e.whenFalse, depth + 1)) ? first : null
+  }
+  if (ts.isCallExpression(e)) {
+    // useMemo(() => …) holds what its function returns; so does a function called in place or by name.
+    const callee = strip(e.expression)
+    let fn = /(^|\.)useMemo$/.test(callee.getText()) ? strip(e.arguments[0]) : isFn(callee) ? callee : ts.isIdentifier(callee) ? resolveDecl(callee, depth + 1) : null
+    if (fn && ts.isVariableDeclaration(fn) && !fn.type && fn.initializer) fn = strip(fn.initializer)
+    if (!fn || !(ts.isFunctionDeclaration(fn) || isFn(fn)) || fn.type || fn.asteriskToken || fn.modifiers?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword)) return null
+    for (const r of returnsOf(fn)) {
+      const s = shapeOf(r, depth + 1)
+      if (s) return s
+    }
+    return null
+  }
+  if (!(ts.isIdentifier(e) || ts.isPropertyAccessExpression(e))) return null
+  const d = resolveDecl(e, depth + 1)
+  if (!d) return null
+  if (ts.isSourceFile(d)) return d
+  if (ts.isVariableDeclaration(d)) return !d.type && d.initializer ? shapeOf(d.initializer, depth + 1) : null
+  if (ts.isPropertyAssignment(d)) return shapeOf(d.initializer, depth + 1)
+  return ts.isShorthandPropertyAssignment(d) ? shapeOf(d.name, depth + 1) : null
+}
+/** The property of an object literal by name: the last one written, or the one a spread before it brings. */
+function propertyOf(obj, name, depth) {
+  for (let i = obj.properties.length - 1; i >= 0; i--) {
+    const p = obj.properties[i]
+    if (ts.isSpreadAssignment(p)) {
+      const s = shapeOf(p.expression, depth + 1)
+      if (!s || ts.isSourceFile(s)) return null
+      const d = propertyOf(s, name, depth + 1)
+      if (d) return d
+    } else if (p.name && (ts.isIdentifier(p.name) || ts.isStringLiteralLike(p.name) || ts.isNumericLiteral(p.name)) && p.name.text === name) return p
+  }
+  return null
+}
+/** The declaration an identifier or an `a.b` stands for, or null when reading the source does not say. */
+function resolveDecl(node, depth = 0) {
+  if (ts.isIdentifier(node)) return target(lookup(node))
+  if (!ts.isPropertyAccessExpression(node)) return null
+  const s = shapeOf(node.expression, depth)
+  if (!s) return null
+  return ts.isSourceFile(s) ? exported(s, node.name.text) : propertyOf(s, node.name.text, depth)
 }
 const inProject = (d) => !!d && d.getSourceFile().fileName.startsWith(SRC)
 const isFn = (n) => !!n && (ts.isArrowFunction(n) || ts.isFunctionExpression(n))
@@ -148,13 +331,15 @@ function isFixedStyle(e, depth = 0) {
   if (ts.isIdentifier(e) || ts.isPropertyAccessExpression(e) || ts.isElementAccessExpression(e)) {
     const d = resolveDecl(ts.isElementAccessExpression(e) ? e.expression : e)
     if (!d) return false
-    if (!styleMemo.has(d)) {
-      styleMemo.set(d, false)
+    // By place, not by node: the file may be let go and parsed again before the next read.
+    const key = `${d.getSourceFile().fileName}:${d.pos}`
+    if (!styleMemo.has(key)) {
+      styleMemo.set(key, false)
       let r = (ts.isVariableDeclaration(d) || ts.isPropertyAssignment(d)) && d.initializer ? isFixedStyle(d.initializer, depth + 1) : false
       if (!r && ts.isElementAccessExpression(e)) r = /position\s*:\s*['"`]fixed/.test(d.getText())
-      styleMemo.set(d, r)
+      styleMemo.set(key, r)
     }
-    return styleMemo.get(d)
+    return styleMemo.get(key)
   }
   if (ts.isCallExpression(e)) {
     if (e.arguments.some((a) => isFixedStyle(a, depth + 1))) return true
@@ -251,14 +436,9 @@ function componentFnFromExpr(e, depth) {
   const t = e.arguments[0].getText()
   const spec = t.match(/import\(\s*['"]([^'"]+)['"]\s*\)/)?.[1]
   if (!spec) return null
-  const res = ts.resolveModuleName(spec, e.getSourceFile().fileName, program.getCompilerOptions(), ts.sys)
-  const target = res.resolvedModule && program.getSourceFile(res.resolvedModule.resolvedFileName)
-  const modSym = target && checker.getSymbolAtLocation(target)
-  if (!modSym) return null
-  let exp = checker.getExportsOfModule(modSym).find((s) => s.escapedName === (t.match(/default:\s*\w+\.(\w+)/)?.[1] ?? 'default'))
-  if (!exp) return null
-  if (exp.flags & ts.SymbolFlags.Alias) exp = checker.getAliasedSymbol(exp)
-  return componentFn(exp.declarations?.[0], depth + 1)
+  const mod = moduleFile(spec, e.getSourceFile().fileName)
+  const exp = mod && exported(mod, t.match(/default:\s*\w+\.(\w+)/)?.[1] ?? 'default')
+  return exp ? componentFn(exp, depth + 1) : null
 }
 /** A component's own prop names, from a destructured first parameter. */
 function propNames(fn) {
@@ -389,7 +569,9 @@ const allowedHits = []
 let backdrops = 0
 for (const f of files) {
   if (!f.endsWith('.tsx')) continue
-  const sf = program.getSourceFile(path.join(ROOT, f))
+  // Only here, between two files: a walk compares nodes, so the files it reads stay whole until it ends.
+  parsed.letGo()
+  const sf = parse(path.join(ROOT, f))
   const visit = (n) => {
     if ((ts.isJsxElement(n) || ts.isJsxSelfClosingElement(n)) && isIntrinsic(n)) {
       for (const [ev, h] of Object.entries(handlersOf(n))) {
