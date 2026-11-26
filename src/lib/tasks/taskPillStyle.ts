@@ -30,3 +30,13 @@ export const TASK_PILL_LIT_STYLE: CSSProperties = {
   color: 'var(--text-blue-800)',
   fontWeight: 700,
 }
+
+/**
+ * Where a task row's presses sit (punch list #369). At a desk a row's presses stand at the right of its words, in a
+ * box held to 55% of the row. On a phone four presses filled that box two by two and left the words about 75 points:
+ * a done line wrapped to four lines and the green line under it to four more. So on a phone the presses take a row of
+ * their own under the words, the shape the Next card has at every width.
+ */
+export function taskPressesUnderWords(lead: boolean, phone: boolean): boolean {
+  return lead || phone
+}

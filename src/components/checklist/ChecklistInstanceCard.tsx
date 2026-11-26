@@ -25,7 +25,8 @@ import type { TaskPlace } from '../../lib/tasks/taskPlace'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { MAP_PRESS_LABEL, MAP_PRESS_TITLE, PHOTO_PRESS_LABEL, beforeStartWords, doneLineWords, justDoneWords, notePressLabel, taskMapIdOf } from '../../lib/tasks/todayPage'
 import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
-import { TASK_PILL_LIT_STYLE, TASK_PILL_STYLE } from '../../lib/tasks/taskPillStyle'
+import { TASK_PILL_LIT_STYLE, TASK_PILL_STYLE, taskPressesUnderWords } from '../../lib/tasks/taskPillStyle'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { doerLineWords, droppedLineWords, stuckChipWords } from '../../lib/tasks/taskDoerActs'
 import { dayLabel } from '../../lib/checklistDueDates'
 
@@ -185,6 +186,7 @@ export function ChecklistInstanceCard({
   }, [openSignal])
   // A map by itself is read for the card that has no place. With a place, the place's block reads its own way in.
   const taskMap = useTaskMapWhole(place ? null : mapId)
+  const phone = useIsMobile()
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
   const composerRef = useRef<HTMLInputElement | null>(null)
@@ -549,6 +551,8 @@ export function ChecklistInstanceCard({
       </div>
     ) : null
   const freshLeadPress = lead && !isCompleted
+  // On a phone a row's presses go under its words, as the Next card's do at every width (punch list #369).
+  const pressesUnder = taskPressesUnderWords(lead, phone)
   const freshBody = (
     <>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.7rem' }}>
@@ -629,8 +633,8 @@ export function ChecklistInstanceCard({
           {linesBlock}
           {photoStrip}
         </div>
-        {lead ? null : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', alignItems: 'center', maxWidth: '55%', flexShrink: 0 }}>
+        {pressesUnder ? null : (
+          <div data-fresh-presses="beside" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', alignItems: 'center', maxWidth: '55%', flexShrink: 0 }}>
             {freshNotePress}
             {freshPhotoPress}
             {freshMapPress}
@@ -638,8 +642,8 @@ export function ChecklistInstanceCard({
           </div>
         )}
       </div>
-      {lead ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', alignItems: 'center', marginTop: '0.6rem' }}>
+      {pressesUnder ? (
+        <div data-fresh-presses="under" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'flex-end', alignItems: 'center', marginTop: lead ? '0.6rem' : '0.45rem' }}>
           {freshNotePress}
           {freshPhotoPress}
           {freshMapPress}
