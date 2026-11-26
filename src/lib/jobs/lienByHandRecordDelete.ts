@@ -1,11 +1,10 @@
 /**
  * Deleting a by-hand notice record (punch list #443, row 1): the take-back of **Record it…** and the by-hand form
- * on a § 53.056 notice, for the record alone.
+ * on a § 53.056 notice, for the record and its line on the job's Activity.
  *
  * A notice recorded by hand is one `job_lien_filings` row with `by_hand` set. **Void** takes it off the job's tabs
- * and keeps the row, so a test record stood in the table for good. The table has let a dev delete since it was
- * made (`job_lien_filings_delete_dev`), and nothing called it. This is the rule for the press that does. Pure: the
- * reads and the delete are `lienByHandRecordDeleteIo.ts`, the list and the press
+ * and keeps the row, so a test record stood in the table for good. This is the rule for the press that deletes
+ * one. Pure: the reads and the delete are `lienByHandRecordDeleteIo.ts`, the list and the press
  * `components/jobs/LienVoidedByHandRecords.tsx`.
  *
  * - The list and the press are drawn for a dev and for nobody else.
@@ -17,10 +16,16 @@
  *   (the database would clear either pointer silently), another record applied from it (the database would refuse
  *   the delete), or a sent copy that names it.
  *
- * **The line on the job's Activity stays.** The insert wrote it, and a signed-in person can only read that table.
- * Taking the line too needs a function, which is not this change.
+ * **The line on the job's Activity goes with the record.** The record's insert wrote the line, and a signed-in
+ * person can only read that table, so the delete is a function's: `delete_test_lien_notice_record` holds every rule
+ * above again and takes the record and its line in one transaction. The rule here runs first, in the same words.
+ *
+ * **Activity lines of deleted notice records.** Until that function, the delete took the record alone and left its
+ * line. A line whose record is gone is a stray. The second half of this file is the rule for the press that clears
+ * a test job's strays, and `delete_test_lien_notice_stray_lines` decides again which lines those are.
  */
 import { isZzTestJob } from '../../../supabase/functions/_shared/zzTestJob'
+import { countedLabel } from '../batchWords'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdWeekdayShortFriendly } from '../../utils/dateUtils'
 import type { JobLienFilingRow } from './lienDeadlines'
 
@@ -100,10 +105,61 @@ export function lienByHandDeleteConfirm(siblings: number): { title: string; mess
   const others = siblings > 0 ? ` ${some(siblings, '1 other record of the same paper, on another job, stays.', '{n} other records of the same paper, on other jobs, stay.')}` : ''
   return {
     title: 'Delete this notice record?',
-    message: `1 record is deleted, for good. Its line on the job’s Activity stays.${others}`,
+    message: `1 record is deleted, for good. Its line on the job’s Activity goes with it.${others}`,
     confirmLabel: 'Delete the record',
   }
 }
 
 /** What the toast says once it is gone. */
-export const LIEN_BY_HAND_RECORD_DELETED = 'The record was deleted. Its line on the job’s Activity stays.'
+export const LIEN_BY_HAND_RECORD_DELETED = 'The record was deleted. Its line on the job’s Activity went with it.'
+
+/** The type of the Activity line a notice record's insert writes (`job_lien_filings_to_activity_ins`). */
+export const LIEN_NOTICE_ACTIVITY_EVENT = 'lien_notice_sent'
+
+/** What of an Activity line the stray rule reads: its id, and its detail, which names its record as `source_id`. */
+export interface LienNoticeActivityLine {
+  id: string
+  detail: unknown
+}
+
+/** The id of the record a line names, '' when it names none. */
+export function lienNoticeLineRecordId(line: Pick<LienNoticeActivityLine, 'detail'>): string {
+  const detail = line.detail
+  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return ''
+  const id = (detail as Record<string, unknown>).source_id
+  return typeof id === 'string' ? id.trim() : ''
+}
+
+/**
+ * The stray lines among a job's notice lines: each names a record that is not among the job's records, voided ones
+ * counted. A line that names no record is left alone, as the function leaves it. This is the window's count. The
+ * function looks for the record on every job, so it may clear fewer, and the toast says what it cleared.
+ */
+export function lienNoticeStrayLines<T extends LienNoticeActivityLine>(lines: ReadonlyArray<T>, filings: ReadonlyArray<Pick<JobLienFilingRow, 'id'>>): T[] {
+  const standing = new Set(filings.map((f) => f.id.toLowerCase()))
+  return lines.filter((line) => {
+    const id = lienNoticeLineRecordId(line).toLowerCase()
+    return id !== '' && !standing.has(id)
+  })
+}
+
+/** Who is offered the stray lines: a dev, on a ZZ test job. A real job's Activity is never cleared. */
+export function lienNoticeStrayLinesDrawn(role: string | null | undefined, job: LienByHandJob | null | undefined): boolean {
+  return lienByHandDeleteDrawn(role) && !!job && isZzTestJob(job)
+}
+
+/** The confirm window's words for **Clear…**. The button names the act with its count. */
+export function lienNoticeStrayClearConfirm(n: number): { title: string; message: string; confirmLabel: string } {
+  const one = n === 1
+  return {
+    title: one ? 'Clear this Activity line?' : `Clear these ${n} Activity lines?`,
+    message: `${one ? '1 line is' : `${n} lines are`} deleted from the job’s Activity, for good. ${one ? 'It names' : 'Each names'} a notice record that was deleted. Every other line stays.`,
+    confirmLabel: countedLabel('Clear', n, 'line'),
+  }
+}
+
+/** What the toast says once the function answered, from the count it cleared. Zero is an answer. */
+export function lienNoticeStrayClearedWords(cleared: number): string {
+  if (!(cleared > 0)) return 'No Activity line was cleared. The database found no line whose record is gone.'
+  return cleared === 1 ? '1 Activity line was cleared.' : `${cleared} Activity lines were cleared.`
+}

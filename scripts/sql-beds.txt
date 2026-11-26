@@ -186,3 +186,4 @@ lien-print-stands
 pay-log-screen
 portal-link-delete
 paper-site
+lien-notice-record-delete

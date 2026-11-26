@@ -6523,7 +6523,8 @@ Since **v2.7989** (punch list #361) the card is one ledger read top to bottom: t
 A notice printed here and mailed by hand is recorded after the fact from the pane's *Already mailed?
 Record it…* or the Lien window's *Already sent — record it…* (**v2.3770**): one filing per job the paper covered, on one `packet_id`, `by_hand`, the paper's `printed_claim` beside the job's amount.
 A by-hand record is voided, never deleted by the office, and a dev alone reads **Voided by-hand notice records** in the job's Lien window, with **Delete…** for a record on a ZZ test job that nothing points at (`lienByHandDeleteProblem`, `lienByHandTiesProblem`, v2.8567, punch list #443).
-The line the record put on the job's Activity stays when the record is deleted.
+The line the record put on the job's Activity is deleted with the record, in one transaction (`delete_test_lien_notice_record`, v2.8644).
+On a ZZ test job the dev also reads **Activity lines of deleted notice records** with **Clear…**, for the lines of records deleted before that (`lienNoticeStrayLines`, `delete_test_lien_notice_stray_lines`).
 The run can print the jobs at one property as **one notice** on purpose (*Combine the jobs at one property into one notice*, **v2.3777**, off by default): the claims summed and the months joined on the form, still one filing per job on one `packet_id`, each with its share and the paper's `printed_claim`.
 **Affidavits** (v2.3412): the second kind — one § 53.052 window per job (4th month after the last month worked;
 3rd residential, `list_lien_affidavit_windows()`), the gate (a private owner of record · county + legal description · the GC's address and a recorded notice on sub jobs · not a homestead, and on a house the homestead question answered;

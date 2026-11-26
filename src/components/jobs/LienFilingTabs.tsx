@@ -1071,8 +1071,9 @@ export default function LienFilingTabs({
   )
   }
 
-  // Punch list #443, row 1: a dev's list of the job's voided by-hand notice records, with Delete. It draws nothing for anyone else.
-  const voidedByHandBox = <LienVoidedByHandRecords role={authRole} filings={filings} job={job} onChanged={onChanged} />
+  // Punch list #443, row 1: a dev's list of the job's voided by-hand notice records, with Delete, and on a test job the
+  // Activity lines of records deleted before, with Clear. It draws nothing for anyone else.
+  const voidedByHandBox = <LienVoidedByHandRecords role={authRole} filings={filings} job={job} jobId={job.id} onChanged={onChanged} />
 
   const historyBox = live.length > 0 && (
     <div style={{ margin: '0 0 0.9rem', padding: '0.5rem 0.6rem', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)' }}>
