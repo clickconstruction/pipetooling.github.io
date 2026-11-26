@@ -2,7 +2,7 @@
 name: "People → Hours: someone still on the clock has a green box that opens My Time"
 number: 446
 group: close
-status: asked 2026-11-25 with a screenshot of the table's head · read in the code, drawn and checked against the ask the same day · built 2026-11-25 as v2.8602, one client-only PR · walked on the live site on 2026-11-26 on a ZZ Test person with a one-dollar pay row made for it, steps 1 to 8, and it holds · one thing beside the card met on that walk, the clock-in sheet's live press with an empty plan, is briefed as its own small fix · the two choices the person might have wanted the other way were put on the question sheet of 2026-11-26, and both stay as built
+status: asked 2026-11-25 with a screenshot of the table's head · read in the code, drawn and checked against the ask the same day · built 2026-11-25 as v2.8602, one client-only PR · walked on the live site on 2026-11-26 on a ZZ Test person with a one-dollar pay row made for it, steps 1 to 8, and it holds · one thing beside the card met on that walk, the clock-in sheet's live press with an empty plan, is mended in v2.8624, merged 2026-11-26 and not yet seen live · the two choices the person might have wanted the other way were put on the question sheet of 2026-11-26, and both stay as built
 mockup: to-dos/hours-on-the-clock-box/mockup.html
 summary: >
   On People → Hours a person who was still clocked in showed an empty box that took typing,
@@ -15,7 +15,7 @@ summary: >
 next: The owner looks at it on a day with people on the clock, and the card is deleted.
 ask: owner · look · On a day with people on the clock, do the green boxes and the green totals on People → Hours read the way you meant?
 size: S, built and walked; left: the owner's look (XS)
-ver: v2.8602
+ver: v2.8602 · v2.8624
 blocker: None in the code. The owner's look.
 opinion: build — it is what was asked, with no migration and no function
 ---
@@ -135,7 +135,10 @@ two, and the totals are black again. The session was rejected so nothing is left
 
 **Met beside the card, not this card's fault but cited against it:** in the clock-in sheet **Complete Clock In** is
 live while the plan box is empty and refuses by a short toast, so a press that does nothing can look dead. As built
-since before this card. Briefed as a small client-only fix. The strip's **Clock Out** timer reading over a minute
+since before this card. **Mended in v2.8624, merged 2026-11-26:** the press is dead, in the dead press's pair, while the
+plan box is empty, with *Say what you mean to get done today, then Complete Clock In.* under the box, and comes alive as
+the person types; the clock-out review's press, already dead with an empty box, is drawn as one with *Say what you worked
+on today, then Complete clock out.*; the toast stays for the keyboard path. Not yet seen live. The strip's **Clock Out** timer reading over a minute
 eight seconds after a clock-in is the day's total, which held an earlier closed session of the same company day: as
 built, and right.
 
