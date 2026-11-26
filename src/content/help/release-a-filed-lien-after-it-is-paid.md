@@ -23,7 +23,7 @@ One sentence says where the lien stands. One button says what to do next.
 
 ## Read the payoff card
 
-Each place with a lien still on record has a card with five stops. They read **Money recorded**, **Check clears**, **Releases**, **Recorded at the county** and **Copies sent**. A tick means the stop is done. The blue stop is the one you are on. A red stop needs care.
+Each place with a lien still on record has a card with five stops. The stops read **Money recorded**, **Check clears**, **Releases**, **Recorded at the county** and **Copies sent**. A tick means the stop is done. The blue stop is the one you are on. A red stop needs care.
 
 One line under the stops says what to do today. On a day the payoff needs nothing, the line says so.
 
@@ -113,6 +113,6 @@ The stamped copy goes on the release's line under **Filings on this job**. Press
 
 ## What the window does not do
 
-It does not make the paper. The Lien window's **Release of record** tab does that. A single payment is recorded on the job's Bill tab. The window says which one to open and when.
+The window does not make the paper. The Lien window's **Release of record** tab does that. A single payment is recorded on the job's Bill tab. The window says which one to open and when.
 
 The app counts days. It does not give legal advice.
