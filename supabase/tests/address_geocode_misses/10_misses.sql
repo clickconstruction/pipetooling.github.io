@@ -86,18 +86,22 @@ BEGIN
 END $$;
 RESET ROLE;
 
--- 3 · a dev cannot delete one by hand either.
+-- 3 · a dev deletes a miss by hand, and only the one named: since 20261126024719 (punch list #443, row 16) the table
+--     has a delete policy for a dev alone. A second miss is made for the press, so the steps below keep theirs.
+--     20_dev_delete.sql plays the rest of that policy.
+INSERT INTO public.address_geocode_misses (address_normalized, error_code, detail) VALUES ('zz row sixteen lane, made up', 'not_found', 'a walk left it');
 SELECT bedm.as_user('00000000-0000-0000-0000-0000000408a6');
 SET LOCAL ROLE authenticated;
 DO $$
+DECLARE n integer;
 BEGIN
-  BEGIN
-    DELETE FROM public.address_geocode_misses;
-    RAISE EXCEPTION 'FAILED: a dev deleted a miss by hand';
-  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: a dev cannot delete a miss by hand';
-  END;
+  DELETE FROM public.address_geocode_misses WHERE address_normalized = 'zz row sixteen lane, made up';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN RAISE EXCEPTION 'FAILED: a dev''s delete reached % rows, not one', n; END IF;
+  RAISE NOTICE 'ok: a dev deletes a miss by hand, since punch list #443 row 16';
 END $$;
 RESET ROLE;
+SELECT bedm.ok('the first miss still stands', bedm.miss_code('zz the pasture behind the made up barn') IS NOT NULL);
 
 -- 4 · a training account reads a miss and writes none.
 SELECT bedm.as_user('00000000-0000-0000-0000-0000000408a3');
