@@ -13,6 +13,9 @@ import { noteTagsChanged, notifyNoteTag, postTaggedTaskNote } from '../../lib/jo
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useNoteTagBox } from '../jobs/NoteTagBox'
 import { TaggedNoteBody } from '../jobs/TaggedNoteBody'
+import ConfirmDialog from '../ConfirmDialog'
+import { TASK_COMMENT_DELETED_WORDS, TEST_NOTE_DELETE_PRESS, taskCommentDeleteConfirm, taskCommentDeleteProblem, testNoteDeleteDrawn } from '../../lib/notes/testNoteDelete'
+import { deleteTestTaskComment } from '../../lib/notes/testNoteDeleteIo'
 
 /** A long-running repeating task can have years of instances — cap the activity fetch. */
 export const ITEM_ACTIVITY_INSTANCE_CAP = 120
@@ -189,6 +192,31 @@ export function ChecklistItemActivity({
   // Tagging a teammate in a task note (punch list #375): the names at the box come from the day row the note
   // lands on, and a posted note that carries a tag draws its chip and who it waits on.
   const viewerRole = useOptionalAuth()?.role ?? null
+  // Deleting a test task's comment (punch list #443, row 13): a dev's take-back of Post, on a ZZ task alone. The panel
+  // is drawn on cards with no toast or confirm provider around them, so the confirm is the plain window and the words
+  // after land on the panel itself.
+  const [commentToDelete, setCommentToDelete] = useState<{ id: string; author: string } | null>(null)
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null)
+  const [deleteSaid, setDeleteSaid] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const commentDeleteDrawn = testNoteDeleteDrawn(viewerRole)
+  const commentDeleteProblem = commentDeleteDrawn ? taskCommentDeleteProblem({ event_type: 'comment' }, item.title) : ''
+  const deleteComment = async (eventId: string) => {
+    setCommentToDelete(null)
+    if (commentDeleteProblem || deletingEventId) return
+    setDeletingEventId(eventId)
+    setDeleteSaid(null)
+    setDeleteError(null)
+    try {
+      await deleteTestTaskComment(eventId)
+      setEvents((prev) => prev.filter((e) => e.id !== eventId))
+      setDeleteSaid(TASK_COMMENT_DELETED_WORDS)
+    } catch (e) {
+      setDeleteError(formatErrorMessage(e, 'The comment was not deleted.'))
+    } finally {
+      setDeletingEventId(null)
+    }
+  }
   const tagBox = useNoteTagBox({
     jobId: '',
     taskInstanceId: postTargetId,
@@ -338,6 +366,23 @@ export function ChecklistItemActivity({
                   <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(entry.actorUserId)}</span>{' '}
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{stripStamp(entry.at)}{dayChip}</span> —{' '}
                   <TaggedNoteBody body={entry.body ?? ''} tags={tagsByNote.get(entry.id)} postedIso={entry.at} viewerId={authUserId} />
+                  {commentDeleteDrawn ? (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        data-testid="task-comment-delete"
+                        aria-label={`${TEST_NOTE_DELETE_PRESS} ${name(entry.actorUserId)}’s comment`}
+                        title={commentDeleteProblem || 'Delete this comment. Only a developer sees this press.'}
+                        aria-disabled={!!commentDeleteProblem || deletingEventId != null}
+                        onClick={() => { if (!commentDeleteProblem && !deletingEventId) setCommentToDelete({ id: entry.id, author: name(entry.actorUserId) }) }}
+                        style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: '0.8125rem', textDecoration: 'underline', color: commentDeleteProblem ? 'var(--text-faint)' : 'var(--text-red-600)', cursor: commentDeleteProblem || deletingEventId ? 'default' : 'pointer' }}
+                      >
+                        {deletingEventId === entry.id ? 'Deleting…' : TEST_NOTE_DELETE_PRESS}
+                      </button>
+                      {commentDeleteProblem ? <span style={{ marginLeft: '0.35rem', color: 'var(--text-faint)', fontSize: '0.8125rem' }} data-testid="task-comment-delete-why">{commentDeleteProblem}</span> : null}
+                    </>
+                  ) : null}
                 </div>
               )
             }
@@ -490,6 +535,18 @@ export function ChecklistItemActivity({
       ) : null}
       {footerActions ? (
         <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'center', marginTop: '0.55rem' }}>{footerActions}</div>
+      ) : null}
+      {deleteSaid ? <p role="status" data-testid="task-comment-delete-said" style={{ margin: '0.4rem 0 0', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-green-700)' }}>{deleteSaid}</p> : null}
+      {deleteError ? <p role="alert" data-testid="task-comment-delete-error" style={{ margin: '0.4rem 0 0', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{deleteError}</p> : null}
+      {commentToDelete ? (
+        <ConfirmDialog
+          title={taskCommentDeleteConfirm(commentToDelete.author).title}
+          body={taskCommentDeleteConfirm(commentToDelete.author).message}
+          confirmLabel={taskCommentDeleteConfirm(commentToDelete.author).confirmLabel}
+          cancelLabel="Keep it"
+          onConfirm={() => void deleteComment(commentToDelete.id)}
+          onCancel={() => setCommentToDelete(null)}
+        />
       ) : null}
     </div>
   )

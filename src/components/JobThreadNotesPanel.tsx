@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { useToastContext } from '../contexts/ToastContext'
+import { formatErrorMessage } from '../utils/errorHandling'
+import { JOB_NOTE_DELETED_WORDS, TEST_NOTE_DELETE_PRESS, jobNoteDeleteConfirm, jobNoteDeleteProblem, testNoteDeleteDrawn } from '../lib/notes/testNoteDelete'
+import { deleteTestJobNote } from '../lib/notes/testNoteDeleteIo'
 import type { JobEstimateAuthor } from '../lib/jobs/jobPeople'
 import { JobPeopleNames } from './jobs/JobPeopleNames'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
@@ -105,6 +110,13 @@ type JobThreadNotesPanelProps = {
   jobThreadStampActions?: JobThreadStampActions
   /** Passed to {@link displayReportTemplateName} for report row titles and ReportViewModal. */
   viewerRole?: UserRole | null
+  /**
+   * Deleting a test job's note (punch list #443, row 13): the job's names, so a dev reads **Delete…** on each note,
+   * live on a ZZ test job and dead with its reason on any other. Left out, no note offers a delete.
+   */
+  noteDeleteJob?: { job_name?: string | null; customer_name?: string | null } | null
+  /** Called once a note is deleted, so the host reads its notes again. */
+  onNoteDeleted?: () => void
   /** Pipeline % complete (jobs_ledger.pct_complete); null when never set. Enables the "Set % complete" control. */
   pctComplete?: number | null
   /** Whether the viewer may edit the percent (dev / master / assistant / primary). */
@@ -216,6 +228,8 @@ export function JobThreadNotesPanel({
   showEmptyPlaceholder = true,
   showComposerLabel = true,
   jobThreadStampActions,
+  noteDeleteJob = null,
+  onNoteDeleted,
   viewerRole,
   pctComplete,
   canEditPct = false,
@@ -290,6 +304,26 @@ export function JobThreadNotesPanel({
   const noteBodyRef = useRef<HTMLTextAreaElement>(null)
   // Tagging a teammate (punch list #363): the list above the box, and the tags on the job's posted notes.
   const viewerId = tagViewerId ?? null
+  // Deleting a test job's note (punch list #443, row 13): a dev's take-back of Post note, on a ZZ test job alone.
+  const confirmDialog = useConfirmDialog()
+  const { showToast } = useToastContext()
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
+  const noteDeleteDrawn = testNoteDeleteDrawn(viewerRole) && !!tagJobId && noteDeleteJob != null
+  const noteDeleteProblem = noteDeleteDrawn ? jobNoteDeleteProblem(noteDeleteJob) : ''
+  const deleteNote = async (noteId: string, authorName: string) => {
+    if (!tagJobId || noteDeleteProblem || deletingNoteId) return
+    if (!(await confirmDialog({ ...jobNoteDeleteConfirm(authorName), danger: true }))) return
+    setDeletingNoteId(noteId)
+    try {
+      await deleteTestJobNote(noteId, tagJobId)
+      showToast(JOB_NOTE_DELETED_WORDS, 'success')
+      onNoteDeleted?.()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The note was not deleted.'), 'error')
+    } finally {
+      setDeletingNoteId(null)
+    }
+  }
   const tagging = Boolean(tagJobId && onSubmitTagged)
   const noteTags = useJobNoteTags(tagJobId, (activityProp ?? notes ?? []).length)
   const tagBox = useNoteTagBox({ jobId: tagJobId ?? '', draft, setDraft: onDraftChange, inputRef: noteBodyRef, enabled: tagging && canPost && canTagInJobNotes(viewerRole), place: 'above', bigAt: look.pressMinHeight != null })
@@ -748,6 +782,22 @@ export function JobThreadNotesPanel({
                         <span style={{ marginLeft: '0.5rem' }}>
                           {weekdayTimeChicago} · {daysAgoLabel}
                         </span>
+                        {noteDeleteDrawn ? (
+                          <>
+                            <button
+                              type="button"
+                              data-testid="job-note-delete"
+                              aria-label={`${TEST_NOTE_DELETE_PRESS} ${authorName}’s note`}
+                              title={noteDeleteProblem || 'Delete this note. Only a developer sees this press.'}
+                              aria-disabled={!!noteDeleteProblem || deletingNoteId != null}
+                              onClick={() => { if (!noteDeleteProblem && !deletingNoteId) void deleteNote(n.id, authorName) }}
+                              style={{ marginLeft: '0.5rem', background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', color: noteDeleteProblem ? 'var(--text-faint)' : 'var(--text-red-600)', cursor: noteDeleteProblem || deletingNoteId ? 'default' : 'pointer' }}
+                            >
+                              {deletingNoteId === n.id ? 'Deleting…' : TEST_NOTE_DELETE_PRESS}
+                            </button>
+                            {noteDeleteProblem ? <span style={{ marginLeft: '0.35rem', color: 'var(--text-faint)' }} data-testid="job-note-delete-why">{noteDeleteProblem}</span> : null}
+                          </>
+                        ) : null}
                       </div>
                       <div style={{ color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap' }}>
                         <TaggedNoteBody body={n.body} tags={noteTags.get(n.id)} postedIso={n.created_at} viewerId={viewerId} />
