@@ -22,8 +22,8 @@ export type AgreementsSendBook = {
   roster: Array<{ name: string; sub: boolean; company?: string }>
 }
 
-/** The columns a quick send reads of a person's paper. */
-export const QUICK_SEND_PERSON_COLUMNS = 'id, person_name, document_name, status, lineage_version, sent_at, signer_last_viewed_at, signed_at, url, signing_body_html, signing_body_format, canonical_document_url'
+/** The columns a quick send reads of a person's paper. The last two say which site it names (punch list #439), so a company's paper for one site is never taken for its paper for another. */
+export const QUICK_SEND_PERSON_COLUMNS = 'id, person_name, document_name, status, lineage_version, sent_at, signer_last_viewed_at, signed_at, url, signing_body_html, signing_body_format, canonical_document_url, site_development_id, site_address_key'
 
 /** Everything the send needs, read together. Throws with the reason. */
 export async function readAgreementsSendBook(): Promise<AgreementsSendBook> {
