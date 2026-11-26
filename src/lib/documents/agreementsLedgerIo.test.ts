@@ -94,6 +94,18 @@ describe('readAgreements', () => {
     expect(ops()).not.toContain('ilike')
   })
 
+  it('asks for one site’s papers by its keys, forty at most, and for every line with no site asked (punch list #439)', async () => {
+    await readAgreements({ kind: 'all', state: 'live', typed: '', limit: 100, site: { keys: ['118 old quarry trail sampleton tx', '118 old quarry trail barn sampleton tx'] } })
+    expect(calls()).toContainEqual(['in', ['site_address_key', ['118 old quarry trail sampleton tx', '118 old quarry trail barn sampleton tx']]])
+    await readAgreements({ kind: 'all', state: 'live', typed: '', limit: 100, site: { keys: Array.from({ length: 60 }, (_, i) => `k${i}`) } })
+    const asked = calls().find(([op, args]) => op === 'in' && args[0] === 'site_address_key')
+    expect((asked?.[1][1] as string[]).length).toBe(40)
+    for (const site of [null, undefined, { keys: [] }]) {
+      await readAgreements({ kind: 'all', state: 'live', typed: '', limit: 100, site })
+      expect(calls().some(([op, args]) => op === 'in' && args[0] === 'site_address_key')).toBe(false)
+    }
+  })
+
   it('says another page may follow when the page came back full', async () => {
     db.answer = { data: [{ id: 'a' }, { id: 'b' }], error: null, count: null }
     expect(await readAgreements({ kind: 'all', state: 'live', typed: '', limit: 2 })).toEqual({ rows: [{ id: 'a' }, { id: 'b' }], more: true })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
+import { plainSentence } from '../valuesInPlace'
 import { jobContractChips } from '../jobs/jobContractLifecycle'
 import { theirPaperFromRow, theirPaperLine } from '../jobs/theirPaper'
 import { buildJobWorkOrderCoverage, workOrderChipLabel, type WorkOrderRowLike } from '../subWorkOrders/workOrderCoverage'
@@ -25,7 +26,12 @@ import {
   agreementStateChips,
   agreementSignerWords,
   agreementSigningForWords,
+  AGREEMENTS_SITE_KEYS_MAX,
+  AGREEMENTS_SITE_WORDS,
   agreementFindWords,
+  agreementSiteWords,
+  agreementsSiteAsked,
+  agreementsSiteSentence,
   agreementGroup,
   agreementJobTail,
   agreementJobTitle,
@@ -251,6 +257,34 @@ describe('the find box', () => {
     expect(agreementsNarrowed({ kind: 'all', state: 'ended', typed: '' })).toBe(true)
     expect(agreementsNarrowed({ kind: 'all', state: 'live', typed: 'cedar' })).toBe(true)
     expect(agreementsNarrowed({ kind: 'all', state: 'any', typed: 'cedar' })).toBe(true)
+  })
+})
+
+describe('the site (punch list #439)', () => {
+  it('counts a site asked for as a narrowing, so an empty list offers to clear it', () => {
+    expect(agreementsSiteAsked(null)).toBe(false)
+    expect(agreementsSiteAsked({ keys: [] })).toBe(false)
+    expect(agreementsSiteAsked({ keys: ['118 old quarry trail sampleton tx'] })).toBe(true)
+    expect(agreementsNarrowed({ kind: 'all', state: 'live', typed: '', site: { keys: ['k'] } })).toBe(true)
+    expect(agreementsNarrowed({ kind: 'all', state: 'live', typed: '', site: null })).toBe(false)
+    expect(agreementsEmptyWords({ kind: 'all', state: 'live', typed: '', site: { keys: ['k'] } }).next).toBe('Clear the filters')
+  })
+
+  it('reads the site’s three columns with every line', () => {
+    for (const column of ['site_development_id', 'site_address_key', 'site_address']) expect(AGREEMENTS_SELECT.split(', ')).toContain(column)
+  })
+
+  it('says the site over the list and on a line, with the address as a value', () => {
+    expect(plainSentence(agreementsSiteSentence(' 118 Old Quarry Trl, Sampleton, TX '))).toBe('Papers for the site at 118 Old Quarry Trl, Sampleton, TX.')
+    expect(agreementsSiteSentence('118 Old Quarry Trl')).not.toBe(plainSentence(agreementsSiteSentence('118 Old Quarry Trl')))
+    expect(plainSentence(agreementSiteWords({ site_address: '118 Old Quarry Trl, Sampleton, TX' }))).toBe('for the site at 118 Old Quarry Trl, Sampleton, TX')
+    expect(agreementSiteWords({ site_address: null })).toBe('')
+    expect(agreementSiteWords({})).toBe('')
+  })
+
+  it('passes the plain-words rules', () => {
+    for (const line of [AGREEMENTS_SITE_WORDS.lead, AGREEMENTS_SITE_WORDS.everyHint, plainSentence(agreementsSiteSentence('118 Old Quarry Trl, Sampleton, TX'))]) expect(plainWordsFailures(line), line).toEqual([])
+    expect(AGREEMENTS_SITE_KEYS_MAX).toBe(40)
   })
 })
 

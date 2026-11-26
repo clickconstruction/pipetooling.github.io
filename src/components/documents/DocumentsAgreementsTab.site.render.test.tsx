@@ -179,7 +179,7 @@ describe('Documents → Agreements · the site', () => {
     await screen.findAllByTestId('documents-agreements-row')
     expect(screen.getByRole('button', { name: 'Find by site…' })).toBeTruthy()
     cleanup()
-    renderWithProviders(<DocumentsAgreementsTab embedded embedSearch="vendor" />)
+    renderWithProviders(<DocumentsAgreementsTab embedSearch="vendor" />)
     await screen.findAllByTestId('documents-agreements-row')
     expect(screen.queryByRole('button', { name: 'Find by site…' })).toBeNull()
   })
