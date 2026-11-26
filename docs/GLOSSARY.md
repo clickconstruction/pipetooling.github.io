@@ -6398,13 +6398,15 @@ The **line of time** (v2.8111) is the Schedule look's stages on one line of days
 **The days they gave** (v2.8111) is the office's printed sheet for a site (`movedSheet`, [`movedSheetHtml.ts`](../src/lib/startChecks/movedSheetHtml.ts)): every day they gave for each stage, oldest first, with who said it, how and when, each move and the site's total, sent to nobody and never on the GC's page.
 
 ### Users lenses (People → Users)
-People → Users (**v2.3702**, People spine PR 5): one roster, three column sets — **Contact** (email, phone, note, the needs rail), **Account** (role, last sign-in, training mode, supervision, a *Desk* door to the person's Access & account, where name, email, trades, extra access, password and archive live since v2.4343) and **Pay** (wage, office rate, salary, record hours, vehicle deal, *Workday…*).
+People → Users (**v2.3702**, People spine PR 5): one roster, four column sets — **Contact** (email, phone, note, the needs rail), **Account** (role, last sign-in, training mode, supervision, a *Desk* door to the person's Access & account, where name, email, trades, extra access, password and archive live since v2.4343) and **Pay** (wage, office rate, salary, record hours, vehicle deal, *Workday…*).
 `?lens=` on the URL;
 the Payroll tab's *People pay config* button is a link to the Pay lens;
 the pay lens needs pay access and keeps people without a login visible.
+The fourth, **Sites** (v2.8657), is a dev's alone: each person's seat on CountTooling and on TakeoffTooling (no seat, active or retired, the role there, a robot's seat, the last sign-in where the site sends it, a chip when the site holds another address), read over `ct-bridge` and `tt-bridge` with the `roster` verb while the lens is open, and it changes nothing.
+A person is matched by `users.counttooling_user_id` where the row holds one and by address otherwise (`siteSeatFor` in [`siteAccounts.ts`](../src/lib/people/siteAccounts.ts)), a line above the list counts each site's accounts that match nobody here, and a site that cannot be read says why without blanking the other.
 Kernel [`usersTabLens.ts`](../src/lib/people/usersTabLens.ts);
-cells `UsersTabLensCells` / `PayConfigCells`.
-Guide *see everyone's pay setup*.
+cells `UsersTabLensCells` / `PayConfigCells` / `UsersTabSiteCells`.
+Guides *see everyone's pay setup* and *see who has a seat on CountTooling and TakeoffTooling*.
 
 ### Hire (People → Users)
 People → Users → **+ Hire** (**v2.3701**, People spine PR 3): one form for a new person — name, kind, email with *Send the invite* (dev) and *Start in training mode*, start date, wage with *Salaried* and the workday's start time, an optional paperwork packet — run as an ordered list of writes with a result per step and **Retry** on the one that failed: invite (the login **and** the roster row, linked from birth — `invite-user` / `create-user` write the `people` row through `_shared/rosterRow.ts`), pay row, salaried workday template, packet.

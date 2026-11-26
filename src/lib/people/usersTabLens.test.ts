@@ -21,6 +21,17 @@ describe('Users tab lenses', () => {
     expect(resolveUsersTabLens('account', { canAccessPay: false, narrowViewport: true })).toBe('contact')
   })
 
+  it('the sites lens is a dev\'s alone, and never on a phone', () => {
+    expect(parseUsersTabLens('sites')).toBe('sites')
+    expect(usersTabLensesFor({ canAccessPay: true, narrowViewport: false, isDev: true })).toEqual(['contact', 'account', 'pay', 'sites'])
+    expect(usersTabLensesFor({ canAccessPay: false, narrowViewport: false, isDev: true })).toEqual(['contact', 'account', 'sites'])
+    expect(usersTabLensesFor({ canAccessPay: true, narrowViewport: true, isDev: true })).toEqual(['contact'])
+    expect(resolveUsersTabLens('sites', { canAccessPay: true, narrowViewport: false, isDev: true })).toBe('sites')
+    expect(resolveUsersTabLens('sites', { canAccessPay: true, narrowViewport: false, isDev: false })).toBe('contact')
+    expect(resolveUsersTabLens('sites', { canAccessPay: true, narrowViewport: false })).toBe('contact')
+    expect(lensForcesNoLoginOpen('sites')).toBe(false)
+  })
+
   it('the pay lens keeps the no-login fold open so every pay-config person shows', () => {
     expect(lensForcesNoLoginOpen('pay')).toBe(true)
     expect(lensForcesNoLoginOpen('contact')).toBe(false)
