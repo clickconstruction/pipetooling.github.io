@@ -5,6 +5,7 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BridgeFlowStripDown } from './BridgeFlowStripDown'
 import { buildFlowStrip } from '../../lib/bridge/flowStrip'
 import type { MarketWorth } from '../../lib/bridge/bidWins'
+import type { StripDirection } from '../../lib/bridge/flowStripDown'
 import type { StageFlow, StageId, StageReading } from '../../lib/bridge/stageFlow'
 
 // Made-up paces and piles.
@@ -50,6 +51,39 @@ describe('BridgeFlowStripDown', () => {
     expect(Array.from(screen.getByTestId('bridge-strip-market-detail').querySelectorAll('li')).map((li) => li.textContent)).toEqual(market.detail)
     // The bids' lines and the estimates' lines are two blocks.
     expect(screen.getAllByTestId('bridge-strip-market-detail-block').map((b) => b.querySelectorAll('li').length)).toEqual([1, 1])
+  })
+
+  it('says under each row which way its work is heading, in its own colour, and the press says it too (punch list #321, PR 1)', () => {
+    const directions: Partial<Record<StageId, StripDirection>> = {
+      market: { text: '$10k a week short of the field.', tone: 'short' },
+      sales: { text: '$14k a week short of the field.', tone: 'short' },
+      build: { text: 'Shrinks $14k a week.', tone: 'shrinks' },
+      bill: { text: 'Keeps up.', tone: 'keeps' },
+      collect: { text: 'Grows $15k a week.', tone: 'grows' },
+    }
+    renderWithProviders(<BridgeFlowStripDown strip={strip} onOpen={() => {}} market={market} directions={directions} />)
+    expect(screen.getByTestId('bridge-strip-market').textContent).toBe('Marketworth $9k a weekbids $6k at 4% wonestimates $3k at 60% won$10k a week short of the field.')
+    expect(screen.getByTestId('bridge-strip-bill').textContent).toBe('Bill, the slowest stepbilled $19k a week8 weeks waitKeeps up.')
+    expect(screen.getByTestId('bridge-strip-collect').textContent).toBe('Collectpaid $26k a week3 weeks waitGrows $15k a week.')
+    // A growing pile is the warning, in red and bold; a shrinking one is green; a feeder short of the field is amber; keeping up is muted.
+    const styleOf = (id: StageId) => screen.getByTestId(`bridge-strip-direction-${id}`).style
+    expect(styleOf('collect').color).toBe('var(--text-red-700)')
+    expect(styleOf('collect').fontWeight).toBe('700')
+    expect(styleOf('build').color).toBe('var(--text-green-700)')
+    expect(styleOf('build').fontWeight).toBe('400')
+    expect(styleOf('sales').color).toBe('var(--text-amber-800)')
+    expect(styleOf('bill').color).toBe('var(--text-muted)')
+    // The red stays where the page's rule put it.
+    expect(screen.getByTestId('bridge-flow-strip').querySelectorAll('rect[fill="#dc2626"]').length).toBe(1)
+    expect(screen.getByRole('button', { name: 'Bill. $19k billed a week. 8 weeks of work wait in front of it. The slowest step. Keeps up. Open its desk.' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Market. Worth $9k a week. $10k a week short of the field. Open its desk.' })).toBeTruthy()
+  })
+
+  it('prints no direction line for a row the page hands none, and none at all without directions', () => {
+    renderWithProviders(<BridgeFlowStripDown strip={strip} onOpen={() => {}} directions={{ collect: { text: 'Grows $15k a week.', tone: 'grows' } }} />)
+    expect(screen.getByTestId('bridge-strip-direction-collect').textContent).toBe('Grows $15k a week.')
+    expect(screen.queryByTestId('bridge-strip-direction-build')).toBeNull()
+    expect(screen.getByTestId('bridge-strip-market').textContent).toBe('Marketbid $160k a week')
   })
 
   it('keeps the dollars bid on Market’s row when its worth cannot be read', () => {

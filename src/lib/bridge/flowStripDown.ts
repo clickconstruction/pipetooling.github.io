@@ -1,5 +1,5 @@
 import { STRIP_MIN_THICK, STRIP_PACE_VERB, type FlowStrip, type StripSection } from './flowStrip'
-import { stageUsd, type StageId } from './stageFlow'
+import { marketWorthPerWeek, stageUsd, type PileStageInput, type StageFlowInput, type StageId } from './stageFlow'
 
 /**
  * The strip of pipe, standing up (punch list #318): the same five sections as
@@ -94,6 +94,72 @@ export type StripDownLines = {
   weeks: string
 }
 
+// ── each row's direction (punch list #321, PR 1) ───────────────────────────
+
+/**
+ * Which way the work in front of a step is heading, said under its weeks: the pile grows when more comes in a week
+ * than goes out, shrinks when the step clears more than it is fed, and keeps up when the two are close. Market and
+ * Sales hold no pile, so their line reads their pace against the field's: so many dollars a week short of it, or
+ * ahead of it. Every number is one the cards behind The flow already hold (`StageFlowInput`). The lit step does not
+ * move: the rule the page lights by is `buildStageFlow`'s, in `stageFlow.ts`, which is copied to the edge functions
+ * and is not touched here. A pace is what happened, not what a step could do, so a starved step reads narrow too; the
+ * direction of its pile is how the two are told apart.
+ */
+export type StripDirectionTone = 'grows' | 'shrinks' | 'keeps' | 'short' | 'ahead'
+export type StripDirection = { text: string; tone: StripDirectionTone }
+
+/** Two paces within this share of the larger read as keeping up, so a wobble does not read as a trend. */
+export const DIRECTION_KEEPS_MARGIN = 0.05
+
+const aWeek = (usd: number): string => `${stageUsd(Math.abs(usd))} a week`
+const closeEnough = (a: number, b: number): boolean => Math.abs(a - b) <= Math.max(a, b) * DIRECTION_KEEPS_MARGIN
+const KEEPS_UP: StripDirection = { text: 'Keeps up.', tone: 'keeps' }
+
+/** A pile step's direction: what comes in a week less what goes out. Null when neither pace reads. */
+export function pileDirection(stage: Pick<PileStageInput, 'pileUsd' | 'inPerWeekUsd' | 'outPerWeekUsd'>): StripDirection | null {
+  const inUsd = Number.isFinite(stage.inPerWeekUsd) ? Math.max(0, stage.inPerWeekUsd) : 0
+  const outUsd = Number.isFinite(stage.outPerWeekUsd) ? Math.max(0, stage.outPerWeekUsd) : 0
+  if (!(inUsd > 0) && !(outUsd > 0)) return null
+  if (closeEnough(inUsd, outUsd)) return KEEPS_UP
+  const diff = inUsd - outUsd
+  if (diff > 0) return { text: `Grows ${aWeek(diff)}.`, tone: 'grows' }
+  // Clearing more than comes in with nothing waiting is keeping up, not a pile shrinking.
+  if (!(stage.pileUsd > 0)) return KEEPS_UP
+  return { text: `Shrinks ${aWeek(diff)}.`, tone: 'shrinks' }
+}
+
+/** A feeder's direction: its pace against the field's. Null until both read. */
+export function feederDirection(perWeekUsd: number | null, fieldPerWeekUsd: number | null): StripDirection | null {
+  if (perWeekUsd == null || fieldPerWeekUsd == null || !Number.isFinite(perWeekUsd) || !Number.isFinite(fieldPerWeekUsd) || !(fieldPerWeekUsd > 0)) return null
+  const pace = Math.max(0, perWeekUsd)
+  if (closeEnough(pace, fieldPerWeekUsd)) return { text: 'Keeps up with the field.', tone: 'keeps' }
+  const gap = fieldPerWeekUsd - pace
+  return gap > 0 ? { text: `${aWeek(gap)} short of the field.`, tone: 'short' } : { text: `${aWeek(gap)} ahead of the field.`, tone: 'ahead' }
+}
+
+/**
+ * Every row's direction from the input the page already builds for `buildStageFlow`. Market's comes only once its
+ * worth is read, since the dollars bid are not on the field's scale. A step that does not read has no line.
+ */
+export function stripDownDirections(input: StageFlowInput): Partial<Record<StageId, StripDirection>> {
+  const out: Partial<Record<StageId, StripDirection>> = {}
+  const market = feederDirection(marketWorthPerWeek(input.market), input.fieldPerWeekUsd)
+  if (market) out.market = market
+  const sales = feederDirection(input.sales?.soldPerWeekUsd ?? null, input.fieldPerWeekUsd)
+  if (sales) out.sales = sales
+  for (const id of ['build', 'bill', 'collect'] as const) {
+    const stage = input[id]
+    const direction = stage ? pileDirection(stage) : null
+    if (direction) out[id] = direction
+  }
+  return out
+}
+
+/** The press's words for a screen reader: the step's own sentence run, its direction, then the door. */
+export function stripDownLabel(s: Pick<StripSection, 'label'>, direction: StripDirection | null | undefined): string {
+  return [s.label, direction?.text ?? '', 'Open its desk.'].filter(Boolean).join(' ')
+}
+
 /** The words beside one section. There is room for a whole phrase here, so the pace reads as one. */
 export function stripDownLines(
   s: Pick<StripSection, 'id' | 'name' | 'paceUsd' | 'weeksText' | 'lit'>,
@@ -144,17 +210,18 @@ export function marketDetailBlocks(detail: ReadonlyArray<string>): string[][] {
 
 /**
  * Every word the standing pipe prints while its working is closed: the legend, each step's name, pace and weeks,
- * Market's amount with its two parts once that is read, and the press under the pipe. It prints more than the pipe
- * drawn across did (`stripWords`), since each step has a whole row.
+ * Market's amount with its two parts once that is read, each row's direction when the page hands one, and the press
+ * under the pipe. It prints more than the pipe drawn across did (`stripWords`), since each step has a whole row.
  */
-export function stripDownWords(strip: FlowStrip, market: { pace: string; parts: ReadonlyArray<string>; perWeekUsd: number | null } | null): string[] {
+export function stripDownWords(strip: FlowStrip, market: { pace: string; parts: ReadonlyArray<string>; perWeekUsd: number | null } | null, directions: Partial<Record<StageId, StripDirection>> = {}): string[] {
   const worth = market != null && market.perWeekUsd != null
   const sized = withMarketWorth(strip, market?.perWeekUsd ?? null)
   return [
     STRIP_DOWN_LEGEND,
     ...sized.sections.flatMap((s) => {
       const lines = stripDownLines(s)
-      return s.id === 'market' && worth ? [lines.title, market.pace, ...market.parts] : [lines.title, lines.pace, lines.weeks]
+      const direction = directions[s.id]?.text ?? ''
+      return s.id === 'market' && worth ? [lines.title, market.pace, ...market.parts, direction] : [lines.title, lines.pace, lines.weeks, direction]
     }),
     worth ? STRIP_DOWN_MARKET_PRESS : '',
   ].filter((w) => w.length > 0)

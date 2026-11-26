@@ -3,8 +3,8 @@ import { plainWordsFailures } from '../plainWords'
 import { STRIP_MIN_THICK, buildFlowStrip } from './flowStrip'
 import { buildBidWins, buildMarketWorth } from './bidWins'
 import { buildEstimateWins } from './estimateWins'
-import { STRIP_DOWN_LEGEND, STRIP_DOWN_MARKET_PRESS, layoutFlowStripDown, marketDetailBlocks, stripDownLines, stripDownWords, withMarketWorth } from './flowStripDown'
-import type { StageFlow, StageId, StageReading } from './stageFlow'
+import { DIRECTION_KEEPS_MARGIN, STRIP_DOWN_LEGEND, STRIP_DOWN_MARKET_PRESS, feederDirection, layoutFlowStripDown, marketDetailBlocks, pileDirection, stripDownDirections, stripDownLabel, stripDownLines, stripDownWords, withMarketWorth } from './flowStripDown'
+import type { StageFlow, StageFlowInput, StageId, StageReading } from './stageFlow'
 
 // Made-up paces and piles.
 const stage = (id: StageId, name: string, weeks: number | null): StageReading => ({ id, name, object: '', action: '', readable: true, pile: { headline: '', sub: [], usd: null, guessShare: 0 }, flow: [], weeks, weeksText: '', badge: '', tone: 'plain', isLink: false })
@@ -123,5 +123,77 @@ describe('marketDetailBlocks', () => {
     expect(blocks.map((b) => b[0]?.split(':')[0])).toEqual(['Bids', 'Estimates'])
     expect(blocks[0]).toEqual(bids.detail)
     expect(blocks[1]).toEqual(estimates.detail)
+  })
+})
+
+describe('each row’s direction (punch list #321, PR 1)', () => {
+  // The card's made-up week: the field builds more than Sales sells, so Build's pile shrinks while Collect's grows.
+  const week: StageFlowInput = {
+    market: { bidsInvited: 12, bidsInvitedUsd: 400_000, estimatesRequested: 20, estimatesRequestedUsd: 90_000, weeks: 8, worth: { perWeekUsd: 34_000, bidsPerWeekUsd: 20_000, estimatesPerWeekUsd: 14_000 } },
+    sales: { bids: { sentUsd: 300_000, wonUsd: 80_000, lostUsd: 120_000 }, estimates: { sentUsd: 70_000, wonUsd: 40_000, lostUsd: 10_000 }, awaiting: { bids: 4, bidsUsd: 100_000, estimates: 3, estimatesUsd: 20_000 }, soldPerWeekUsd: 30_000 },
+    build: { pileUsd: 352_000, pileCount: 20, inPerWeekUsd: 30_000, outPerWeekUsd: 44_000, knownJobs: 20, guessUsd: 0, guessJobs: 0 },
+    bill: { pileUsd: 46_000, pileCount: 3, inPerWeekUsd: 44_000, outPerWeekUsd: 46_000 },
+    collect: { pileUsd: 217_000, pileCount: null, inPerWeekUsd: 46_000, outPerWeekUsd: 31_000, lateCount: 9 },
+    fieldPerWeekUsd: 44_000,
+    heldLinkId: null,
+  }
+
+  it('says which way each pile is heading, and how far each feeder runs from the field', () => {
+    expect(stripDownDirections(week)).toEqual({
+      market: { text: '$10k a week short of the field.', tone: 'short' },
+      sales: { text: '$14k a week short of the field.', tone: 'short' },
+      build: { text: 'Shrinks $14k a week.', tone: 'shrinks' },
+      bill: { text: 'Keeps up.', tone: 'keeps' },
+      collect: { text: 'Grows $15k a week.', tone: 'grows' },
+    })
+  })
+
+  it('reads two paces within a twentieth of each other as keeping up, and a wider gap as a trend', () => {
+    expect(DIRECTION_KEEPS_MARGIN).toBe(0.05)
+    expect(pileDirection({ pileUsd: 50_000, inPerWeekUsd: 40_000, outPerWeekUsd: 42_000 })).toEqual({ text: 'Keeps up.', tone: 'keeps' })
+    expect(pileDirection({ pileUsd: 50_000, inPerWeekUsd: 40_000, outPerWeekUsd: 43_000 })).toEqual({ text: 'Shrinks $3k a week.', tone: 'shrinks' })
+    expect(pileDirection({ pileUsd: 50_000, inPerWeekUsd: 43_000, outPerWeekUsd: 40_000 })).toEqual({ text: 'Grows $3k a week.', tone: 'grows' })
+    expect(feederDirection(42_000, 44_000)).toEqual({ text: 'Keeps up with the field.', tone: 'keeps' })
+    expect(feederDirection(48_000, 44_000)).toEqual({ text: '$4k a week ahead of the field.', tone: 'ahead' })
+  })
+
+  it('calls a step that clears more than it is fed, with nothing waiting, keeping up', () => {
+    expect(pileDirection({ pileUsd: 0, inPerWeekUsd: 20_000, outPerWeekUsd: 40_000 })).toEqual({ text: 'Keeps up.', tone: 'keeps' })
+    // A pile that is empty today still grows when more comes in than goes out.
+    expect(pileDirection({ pileUsd: 0, inPerWeekUsd: 40_000, outPerWeekUsd: 20_000 })).toEqual({ text: 'Grows $20k a week.', tone: 'grows' })
+  })
+
+  it('says nothing for a step with no pace to read, and nothing for a feeder until the field reads', () => {
+    expect(pileDirection({ pileUsd: 50_000, inPerWeekUsd: 0, outPerWeekUsd: 0 })).toBeNull()
+    expect(feederDirection(30_000, null)).toBeNull()
+    expect(feederDirection(null, 44_000)).toBeNull()
+    expect(feederDirection(30_000, 0)).toBeNull()
+    expect(stripDownDirections({ ...week, build: null, bill: null, collect: null, fieldPerWeekUsd: null })).toEqual({})
+  })
+
+  it('says nothing for Market until its worth is read, since the dollars bid are not on the field’s scale', () => {
+    const unread = stripDownDirections({ ...week, market: { ...week.market!, worth: null } })
+    expect(unread.market).toBeUndefined()
+    expect(unread.sales).toEqual({ text: '$14k a week short of the field.', tone: 'short' })
+  })
+
+  it('keeps every sentence to plain words', () => {
+    const lines = [
+      ...Object.values(stripDownDirections(week)),
+      pileDirection({ pileUsd: 0, inPerWeekUsd: 20_000, outPerWeekUsd: 40_000 }),
+      feederDirection(42_000, 44_000),
+      feederDirection(48_000, 44_000),
+    ]
+    for (const d of lines) expect(plainWordsFailures(d!.text), d!.text).toEqual([])
+  })
+
+  it('prints each direction under its row, and the press says it to a screen reader', () => {
+    const directions = stripDownDirections(week)
+    const words = stripDownWords(strip, null, directions)
+    expect(words.slice(1)).toEqual(['Market', 'bid $160k a week', '$10k a week short of the field.', 'Sales', 'sold $36k a week', '$14k a week short of the field.', 'Build', 'built $33k a week', '4 weeks wait', 'Shrinks $14k a week.', 'Bill, the slowest step', 'billed $19k a week', '8 weeks wait', 'Keeps up.', 'Collect', 'paid $26k a week', '3 weeks wait', 'Grows $15k a week.'])
+    // Without directions the pipe prints what it did.
+    expect(stripDownWords(strip, null)).toEqual(stripDownWords(strip, null, {}))
+    expect(stripDownLabel(section(strip, 'bill'), directions.bill)).toBe('Bill. $19k billed a week. 8 weeks of work wait in front of it. The slowest step. Keeps up. Open its desk.')
+    expect(stripDownLabel(section(strip, 'sales'), undefined)).toBe('Sales. $36k sold a week. Open its desk.')
   })
 })
