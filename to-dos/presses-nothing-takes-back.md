@@ -255,6 +255,11 @@ by line after that day's walk of five of them.
   that walk and removed after it: the row stays, marked removed. No row of this list holds them.
 - One clock session of 85 seconds, of the sample superintendent on the ZZ test job, from the walk of #234
   on 2026-11-25. Whether a screen takes a clock session back was not read.
+- From the walks of #446, #234 and #429 on 2026-11-26, on rows this list does not hold: one pay row at one dollar
+  an hour on a second ZZ Test person, which no screen deletes; seven pay log lines, one on that person and six on
+  another ZZ Test person, which the table keeps; four set working-hours rows on that second person, none in force;
+  one rejected clock session on the first; one closed clock session of the sample superintendent, pending approval,
+  which a dev or the office may reject; and three more View as rows from that sitting's looks.
 
 ## When a take-back is built
 
