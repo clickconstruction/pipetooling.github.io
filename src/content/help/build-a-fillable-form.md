@@ -46,6 +46,12 @@ Hand an agent the PDF and say "help me draft this". It can run `npm run forms:in
 
 Some forms are signed by one person and completed by another. The I-9 is one. In the inspector, set **Filled by** to *the office* on the boxes the office completes. The signer never sees them. After the signer signs, the record offers **Complete the office section**. That fills those boxes on the filed PDF and finishes it. **Preview filled PDF** shows both halves with sample answers.
 
+## Delete a form
+
+Each form's row has {{button:outline|Delete}}. The press removes the uploaded PDF and its boxes. A Contract Book entry built from the form stays and stops being a form. Signed copies keep their PDFs.
+
+A form a job requires, or once required, cannot be deleted. The job's record keeps it. The form's {{button:outline|Delete}} is grey, and the row says how many jobs hold it. Take the form off every job and the record still holds it, so the form stays.
+
 ## A PDF that will not load
 
 Some official PDFs are saved in a way the studio cannot read. The Texas DWC-83 is one. The studio tells you when that happens. Re-save the file. **Print to PDF** from any viewer works. Upload that copy instead. Re-saving usually drops the PDF's own fillable fields, so you place every box by hand.

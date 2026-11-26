@@ -10,6 +10,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { bookEntryForForm } from './formStudioState'
 import { emptyFormSchema, type FormSchema } from './formSchema'
 import { HOURS_STATEMENT_DOC_TYPE } from '../people/hoursStatementForm'
+import { formHoldsByForm } from './formDeleteHold'
 
 export const FORM_TEMPLATES_BUCKET = 'contract-form-templates'
 
@@ -104,6 +105,20 @@ export async function saveFormTemplate(id: string, patch: Partial<Pick<FormTempl
   )
   if (!updated) throw new Error('Could not save the form template')
   return normalise(updated)
+}
+
+/**
+ * The jobs that hold each of these forms (punch list #389): every `job_required_papers` row that points at one, the
+ * rows taken off their job included, since the database keeps those too and refuses the form's delete for them.
+ * Form Studio is the office's (a dev or the controller), who may read that table.
+ */
+export async function readFormHolds(formIds: readonly string[]): Promise<Map<string, number>> {
+  if (formIds.length === 0) return new Map()
+  const rows = await withSupabaseRetry(
+    () => supabase.from('job_required_papers').select('form_template_id, job_id').in('form_template_id', [...formIds]),
+    'read which jobs hold the forms',
+  )
+  return formHoldsByForm(rows ?? [])
 }
 
 export async function deleteFormTemplate(row: FormTemplateRow): Promise<void> {

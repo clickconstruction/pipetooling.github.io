@@ -5,7 +5,9 @@ import type { ContractBookTemplate } from '../ContractBookModal'
 import { emptyFormSchema } from '../../../lib/forms/formSchema'
 import { readPdfFields, type FormPdfLibLike } from '../../../lib/forms/fillFormPdf'
 import { mergeDraftedFields, schemaSummary } from '../../../lib/forms/formStudioState'
-import { createFormTemplate, deleteFormTemplate, downloadTemplatePdf, listFormTemplates, type BookEntryLite, type FormTemplateRow } from '../../../lib/forms/formTemplateRepo'
+import { createFormTemplate, deleteFormTemplate, downloadTemplatePdf, listFormTemplates, readFormHolds, type BookEntryLite, type FormTemplateRow } from '../../../lib/forms/formTemplateRepo'
+import { FORM_DELETE_REFUSED_WORDS, formDeleteHoldWords, isFormHeldByJobs } from '../../../lib/forms/formDeleteHold'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 import { FormStudioEditor } from './FormStudioEditor'
 import { EmptyState } from '../../EmptyState'
 import { formatErrorMessage } from '../../../utils/errorHandling'
@@ -13,7 +15,9 @@ import { formatErrorMessage } from '../../../utils/errorHandling'
 /**
  * Form Studio (Contract Forms PR 2) — the dev-only Forms tab of the Contract
  * library. Lists form templates, creates one from an uploaded PDF (importing
- * its fillable fields as boxes), and opens the editor.
+ * its fillable fields as boxes), and opens the editor. A form any job requires or once required cannot be deleted
+ * (punch list #389, v2.8620): the database keeps a required paper's row and refuses the form's delete for it, so
+ * that row's Delete is a dead press with the reason beside it, and a refusal that comes anyway is said in plain words.
  */
 
 /**
@@ -39,6 +43,8 @@ const DOC_TYPES: Array<{ v: string; l: string }> = [
 export function FormStudio({ packets, bookEntries, onSaved }: { packets: ContractBookTemplate[]; bookEntries: BookEntryLite[]; onSaved: () => void }) {
   const confirmDialog = useConfirmDialog()
   const [rows, setRows] = useState<FormTemplateRow[]>([])
+  /** `form id` → how many jobs require it or once required it. Empty while the read is out or when it failed: then Delete is live and a refusal is said in words. */
+  const [holds, setHolds] = useState<Map<string, number>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -56,7 +62,9 @@ export function FormStudio({ packets, bookEntries, onSaved }: { packets: Contrac
     setLoading(true)
     setError(null)
     try {
-      setRows(await listFormTemplates())
+      const list = await listFormTemplates()
+      setRows(list)
+      setHolds(await readFormHolds(list.map((r) => r.id)).catch(() => new Map<string, number>()))
     } catch (e) {
       setError(formatErrorMessage(e))
     } finally {
@@ -122,6 +130,7 @@ export function FormStudio({ packets, bookEntries, onSaved }: { packets: Contrac
   }
 
   async function remove(row: FormTemplateRow) {
+    if (holds.has(row.id)) return
     const entry = bookEntries.find((d) => d.form_template_id === row.id)
     const ok = await confirmDialog({
       title: `Delete "${row.name}"?`,
@@ -136,7 +145,13 @@ export function FormStudio({ packets, bookEntries, onSaved }: { packets: Contrac
       setRows((prev) => prev.filter((r) => r.id !== row.id))
       onSaved()
     } catch (e) {
-      setError(formatErrorMessage(e))
+      if (isFormHeldByJobs(e)) {
+        // A job required the form between the list's read and the press: say so, and read the holds again so the press goes dead.
+        setError(FORM_DELETE_REFUSED_WORDS)
+        setHolds(await readFormHolds(rows.map((r) => r.id)).catch(() => holds))
+      } else {
+        setError(formatErrorMessage(e))
+      }
     } finally {
       setBusy(null)
     }
@@ -224,6 +239,7 @@ export function FormStudio({ packets, bookEntries, onSaved }: { packets: Contrac
             const s = schemaSummary(r.schema)
             const entry = bookEntries.find((d) => d.form_template_id === r.id)
             const packet = entry ? packets.find((p) => p.id === entry.template_id) : null
+            const heldBy = holds.get(r.id) ?? 0
             return (
               <li key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.7rem', background: 'var(--surface)', fontSize: '0.8125rem' }}>
                 <div style={{ minWidth: 0, flex: '1 1 220px' }}>
@@ -242,12 +258,23 @@ export function FormStudio({ packets, bookEntries, onSaved }: { packets: Contrac
                       ' · not published'
                     )}
                   </div>
+                  {heldBy > 0 ? (
+                    <div data-form-hold style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>
+                      {formDeleteHoldWords(heldBy)}
+                    </div>
+                  ) : null}
                 </div>
                 <span style={{ ...chip, background: r.status === 'published' ? 'var(--bg-green-tint, #e8f3ea)' : 'var(--bg-subtle)', color: r.status === 'published' ? 'var(--text-green-700, #1f7a3a)' : 'var(--text-muted)' }}>{r.status}</span>
                 <button type="button" onClick={() => void openRow(r)} disabled={!!busy} style={{ ...btn, fontWeight: 700 }}>
                   Open
                 </button>
-                <button type="button" onClick={() => void remove(r)} disabled={!!busy} style={{ ...btn, color: 'var(--text-red-700)' }}>
+                <button
+                  type="button"
+                  onClick={() => void remove(r)}
+                  disabled={!!busy || heldBy > 0}
+                  title={heldBy > 0 ? formDeleteHoldWords(heldBy) : undefined}
+                  style={heldBy > 0 ? { ...btn, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'not-allowed' } : { ...btn, color: 'var(--text-red-700)' }}
+                >
                   Delete
                 </button>
               </li>
