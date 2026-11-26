@@ -17,9 +17,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// `roster` reads and writes nothing. TakeoffTooling's manage-user also has deactivate,
-// reactivate and update_email since 2026-11-26; none is forwarded from here yet.
-const ALLOWED_VERBS = new Set(['create', 'lookup', 'set_twin_flag', 'roster'])
+// `roster` reads and writes nothing. Since v2.8666 the person desk's Sites rows also send
+// `deactivate` and `reactivate` (the seat's auth ban, by `tt_user_id`) and `set_role` (user,
+// admin or dev; TakeoffTooling refuses to demote its last dev). `update_email` is not
+// forwarded yet.
+const ALLOWED_VERBS = new Set(['create', 'lookup', 'set_twin_flag', 'roster', 'deactivate', 'reactivate', 'set_role'])
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
