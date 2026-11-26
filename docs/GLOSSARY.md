@@ -1372,6 +1372,7 @@ Pipeline → the tools menu → **Addresses that look alike…** pairs the addre
 An answer changes no job's address.
 **Fix the spelling…** on a pair is the separate press that does: it rewrites the picked jobs and bids to one of the pair's two spellings, and **Open the job** on a **No street number** row opens a job on its ringed Job Address box (v2.8542).
 The job form's address box lists the addresses **Already on file** above Google's, so a new job takes the spelling its place already has (v2.8520).
+Since v2.8640 the form also asks **Is this the same place?** about a typed address the map puts at the same spot as one on file, and keeps the answer in the same table (`sameSpotOnFile.ts`, `JobFormAddressSameSpot.tsx`).
 
 ### Combine (jobs)
 Two job cards for one piece of work become one: Pipeline → the tools menu → **Combine / Separate…** → **Combine** picks the source (the card that goes away) and the target (the card that stays), and `migrate_job_ledger_costs_and_delete(p_from, p_to, p_allow_billed)` (latest `20261104130000_combine_moves_soft_job_links.sql`, v2.6492;

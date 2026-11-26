@@ -1,5 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
+import JobFormAddressSameSpot from './JobFormAddressSameSpot'
+import type { MapPoint } from '../../lib/addresses/lookAlikes'
 import {
   CLOSE_ON_FILE_WORDS,
   closeOnFile,
@@ -28,12 +30,14 @@ const mark = (tone: 'typed' | 'onFile'): CSSProperties => ({
 })
 
 /**
- * Under the Job Address box (punch list #439, piece 1), one of two things, or nothing:
+ * Under the Job Address box (punch list #439, piece 1), one of three things, or nothing:
  *
  * - the address is one the company already has: a quiet line says how many jobs and bids are there;
  * - the address is a slip away from one on file, and the person has left the box: the form asks once, with the
  *   two spellings side by side and the differing words marked. **Use the one on file** rewrites the field.
- *   **Keep mine** settles it for that address until it is typed again.
+ *   **Keep mine** settles it for that address until it is typed again;
+ * - the address is written differently from one on file at the same spot on the map: the form asks whether it is
+ *   the same place (`JobFormAddressSameSpot`, piece 2's last part), once the map has a point for it.
  *
  * Advice, never a gate: nothing here blocks a save. While the box has the focus it stays quiet about a slip, so
  * it never moves the form under someone who is still typing.
@@ -42,10 +46,13 @@ export default function JobFormAddressOnFile({
   address,
   list,
   focused,
+  point = null,
   onUse,
 }: {
   address: string
   list: ReadonlyArray<AddressOnFile>
+  /** The typed address's own map point, once the map has one. Without it the form never asks about a place. */
+  point?: MapPoint | null
   /** True while the address box has the focus. */
   focused: boolean
   onUse: (address: string) => void
@@ -53,6 +60,10 @@ export default function JobFormAddressOnFile({
   const [keptFor, setKeptFor] = useState<string | null>(null)
   const entry = useMemo(() => onFileEntry(list, address), [list, address])
   const close = useMemo(() => (entry ? null : closeOnFile(list, address)), [entry, list, address])
+  const settled = keptFor === address
+  // Keep mine on a slip settles that address: the form does not ask about the same one again as a place.
+  const slipKey = close && settled ? close.entry.key : null
+  const skipKeys = useMemo(() => (slipKey ? new Set([slipKey]) : undefined), [slipKey])
 
   if (entry) {
     return (
@@ -64,7 +75,8 @@ export default function JobFormAddressOnFile({
       </div>
     )
   }
-  if (!close || focused || keptFor === address) return null
+  if (!close || settled) return <JobFormAddressSameSpot address={address} list={list} point={point} focused={focused} skipKeys={skipKeys} onUse={onUse} />
+  if (focused) return null
   return (
     <div
       role="group"

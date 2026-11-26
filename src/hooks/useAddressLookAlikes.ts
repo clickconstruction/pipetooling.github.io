@@ -25,7 +25,8 @@ async function readMapPoints(): Promise<Map<string, MapPoint>> {
   return out
 }
 
-async function readAnswers(): Promise<PlaceAnswer[]> {
+/** Every kept answer. Throws with the reason. The job form's question reads it too (`useSameSpotOnFile`). */
+export async function readAnswers(): Promise<PlaceAnswer[]> {
   const rows = await everyRow('address_place_answers', 'key_a, key_b, same, by_name, answered_at', 'key_a')
   const out: PlaceAnswer[] = []
   for (const r of rows) {
@@ -43,8 +44,13 @@ export async function readLookAlikes(): Promise<LookAlikes> {
 }
 
 /** Keep an answer for a pair. Answering again replaces the first answer. Null when it landed, else the reason. */
-export async function answerLookAlike(pair: Pick<LookAlikePair, 'a' | 'b'>, same: boolean): Promise<string | null> {
-  const { keyA, keyB } = pairKeys(pair.a.key, pair.b.key)
+export function answerLookAlike(pair: Pick<LookAlikePair, 'a' | 'b'>, same: boolean): Promise<string | null> {
+  return answerPlaceKeys(pair.a.key, pair.b.key, same)
+}
+
+/** Keep an answer for two cleaned keys, in either order. Null when it landed, else the reason. */
+export async function answerPlaceKeys(one: string, other: string, same: boolean): Promise<string | null> {
+  const { keyA, keyB } = pairKeys(one, other)
   try {
     const { error } = await db.from('address_place_answers').upsert({ key_a: keyA, key_b: keyB, same }, { onConflict: 'key_a,key_b' })
     return error ? formatErrorMessage(error, 'The answer was not kept.') : null

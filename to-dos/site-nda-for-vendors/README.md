@@ -2,7 +2,7 @@
 name: "Site NDA for vendors: a paper names a job site, vendors sign before anything is sent, and the client is shown who signed"
 number: 439
 group: ready
-status: asked 2026-11-24 · thought through with the owner the same day, each call settled as it came up · drawn as a canvas of sixteen artboards and reviewed as a whole · a door audit added eight doors to the plan · the word to build the whole train, testing along the way, with screenshots at several widths as each piece goes live · piece 1 built and seen live, v2.8520 · piece 2's list and answers built, v2.8529 · Fix the spelling and Open the job built, v2.8542, and seen live 2026-11-25 with nothing changed · 2026-11-25 (UTC) in the managing session: the four calls pieces 3 to 6 stood on were answered, each as the card picks, and the scrub of older public files was chosen, their history too, which waits on its own plan and a yes at the time
+status: asked 2026-11-24 · thought through with the owner the same day, each call settled as it came up · drawn as a canvas of sixteen artboards and reviewed as a whole · a door audit added eight doors to the plan · the word to build the whole train, testing along the way, with screenshots at several widths as each piece goes live · piece 1 built and seen live, v2.8520 · piece 2's list and answers built, v2.8529 · Fix the spelling and Open the job built, v2.8542, and seen live 2026-11-25 with nothing changed · the job form's question about an address at the same spot on the map built, v2.8640, which ends piece 2's build, not yet seen live · 2026-11-25 (UTC) in the managing session: the four calls pieces 3 to 6 stood on were answered, each as the card picks, and the scrub of older public files was chosen, their history too, which waits on its own plan and a yes at the time
 summary: >
   The company works for a client on a site whose details are secret. Vendors must sign the company's own
   NDA before anything about the site reaches them, and the client must be shown who signed. Today the app
@@ -13,7 +13,7 @@ summary: >
   site asks the company's own people to sign before a job there opens, and holds every send to an outside
   company until it signs. A packet, and later the client's own page, list everyone bound. Outside
   companies see a code name until they sign.
-next: Piece 2's last part, the job form asking about an address written differently at the same map point. Then the train in order, one PR at a time, each tested and seen live at phone and desk width before the next. Fix the spelling and Open the job were seen live on 2026-11-25 with nothing changed. Still owed on piece 2: an answer kept and a spelling changed, on a ZZ Test pair made for it.
+next: The live look at v2.8640, the job form's question about a place, at phone and desk width. Then piece 3, which starts with a migration that puts a site on the paper's row, and the train in order, one PR at a time, each tested and seen live before the next. Fix the spelling and Open the job were seen live on 2026-11-25 with nothing changed. Still owed on piece 2: an answer kept, in the list and in the job form, and a spelling changed, on a ZZ Test pair made for it.
 size: L as a train of seven pieces, about fifteen PRs (S to M · M · M · M · S to M · M to L · M)
 ask: counsel · read · Read the vendor NDA's wording before it is sent to a real vendor.
 blocker: None for the build: the four calls pieces 3 to 6 stood on were answered on 2026-11-25. An attorney's read of the vendor NDA's wording comes before it is sent to a real vendor.
@@ -138,7 +138,7 @@ and desk width before the next is cut.
 | # | Piece | What a person can do after it | Size | Touches |
 |---|---|---|---|---|
 | 1 | Addresses already on file (built, v2.8520) | On a new job or an edit, the address box lists addresses on file above Google's, with how many jobs are there. Leaving the box with an address close to one on file asks once. | S to M | One kernel for *same address*, the job form's box |
-| 2 | The site match (the list, v2.8529; the fix, v2.8542) | **Addresses that look alike** from the Pipeline's tools menu: pairs to answer, **Fix the spelling…**, and jobs with no street number. Answers are kept. | M | A table of answers, the window, the tools menu |
+| 2 | The site match (the list, v2.8529; the fix, v2.8542; the job form's question, v2.8640) | **Addresses that look alike** from the Pipeline's tools menu: pairs to answer, **Fix the spelling…**, and jobs with no street number. Answers are kept. The job form asks **Is this the same place?** about a new address at a spot on file. | M | A table of answers, the window, the tools menu, the job form's box |
 | 3 | A paper names a site | **Send a paper** asks which site. The site's papers show on a job's Documents tab, on Agreements with a site filter, on the development's page and on a company's own record. | M | A site on the paper's row, four lists |
 | 4 | Secrecy on a site | **Turn on secrecy for this site** from three doors. The company's own people sign before a job there opens. **Turn it off…** too. | M | A site's settings, the gate across a site's jobs |
 | 5 | The proof | **Make the packet** opens a window to look, then **Download**, **Print** and **Send to the client**. Later the client's own page shows the list, with a sample on What customers see. | S to M | A print, the customer portal |
@@ -196,5 +196,9 @@ and the held state at every other send (piece 6).
   Not seen: **Same place**, **Not the same** and **Change N addresses** pressed, a row that fails, the
   toast with both counts, and a pair leaving the list after a fix. Those need a ZZ Test pair made for
   the look, and that is a write on its own yes.
+  The job form's question (v2.8640) is not seen live. To see it without a write: on the New Job form, type a made-up
+  unit at an address on file, leave the box and read the question, then close with **Discard**. Leaving the box
+  keeps one map-cache row under the made-up spelling, as piece 1's look did. **Same place, keep mine** and **Not the
+  same** each write one answer, so pressing them waits on its own yes.
 - **Pieces 3 to 7.** ZZ Test jobs, a ZZ Test supply house with a sink address, and a ZZ Test paper only.
   Nothing goes to a real vendor before an attorney has read the wording.

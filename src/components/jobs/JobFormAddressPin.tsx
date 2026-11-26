@@ -22,7 +22,16 @@ import { ADDRESS_PIN_PAUSE_MS, addressLooksWhole, addressPinFailureReason, addre
  * a blur, takes that answer. A press, *Place it* or *Try again*, sends `retry: true` and
  * asks the services past the memory.
  */
-export default function JobFormAddressPin({ address, blurSignal = 0 }: { address: string; blurSignal?: number }) {
+export default function JobFormAddressPin({
+  address,
+  blurSignal = 0,
+  onPoint,
+}: {
+  address: string
+  blurSignal?: number
+  /** Told the address's key and its point each time the map answers one, from the cache or a look-up (punch list #439). */
+  onPoint?: (key: string, point: { lat: number; lng: number }) => void
+}) {
   // Outside an AuthProvider (render smokes of the form) there is no role and the line stays silent.
   const role = useOptionalAuth()?.role ?? null
   // `/map` is on the estimator's list with or without prospects access, so `false` is safe here.
@@ -30,6 +39,9 @@ export default function JobFormAddressPin({ address, blurSignal = 0 }: { address
   const [state, setState] = useState<AddressPinState>({ kind: 'idle' })
   const [lastRunFor, setLastRunFor] = useState('')
   const timer = useRef<number | null>(null)
+  // The latest listener, read when an answer lands, so a new function each render starts no look-up.
+  const onPointRef = useRef(onPoint)
+  onPointRef.current = onPoint
   const key = normalizeAddressForGeocodeKey(address)
 
   const place = useCallback(async (addr: string, googleOnly = false, pressed = false) => {
@@ -42,7 +54,10 @@ export default function JobFormAddressPin({ address, blurSignal = 0 }: { address
         : await supabase.functions.invoke<GeocodeOneResponse>('geocode-one', { body: pressed ? { address: addr, retry: true } : { address: addr } })
       const data = (res as { data?: GeocodeOneResponse | null }).data ?? (res as GeocodeOneResponse)
       if (!data || typeof data !== 'object' || !('ok' in data)) throw new Error('no answer')
-      if (data.ok) setState({ kind: 'placed', county: ((data as { county?: string }).county ?? '').trim(), source: data.source ?? 'cache' })
+      if (data.ok) {
+        setState({ kind: 'placed', county: ((data as { county?: string }).county ?? '').trim(), source: data.source ?? 'cache' })
+        if (Number.isFinite(data.lat) && Number.isFinite(data.lng)) onPointRef.current?.(k, { lat: data.lat, lng: data.lng })
+      }
       else setState({ kind: 'failed', reason: addressPinFailureReason(data.error) })
     } catch {
       setState({ kind: 'failed', reason: addressPinFailureReason('upstream') })
@@ -60,11 +75,13 @@ export default function JobFormAddressPin({ address, blurSignal = 0 }: { address
     if (key === lastRunFor) return
     let alive = true
     void (async () => {
-      const { data } = await supabase.from('address_geocodes').select('lat').eq('address_normalized', key).maybeSingle()
+      const { data } = await supabase.from('address_geocodes').select('lat, lng').eq('address_normalized', key).maybeSingle()
       if (!alive) return
       if (data) {
         setState({ kind: 'placed', county: '', source: 'cache' })
         setLastRunFor(key)
+        const { lat, lng } = data as { lat?: unknown; lng?: unknown }
+        if (typeof lat === 'number' && typeof lng === 'number') onPointRef.current?.(key, { lat, lng })
       } else {
         setState({ kind: 'unplaced' })
         // A whole-looking address pins itself after a pause; a fragment waits for the blur.
