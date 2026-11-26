@@ -2,7 +2,7 @@
 name: "The leader's Dashboard, distilled"
 number: 365
 group: close
-status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way · the short page walked there the same day on the dev's own account, where it holds but for two lines that are wrong for about three seconds on a fresh open · all three faults mended · a fourth sitting the same day saw the two counts move ten seconds after they drew, which is not mended and is larger than a small fix, and a small Remind press on the office's Team's open tasks, mended in v2.8600, not yet seen · v2.8581's two desk mends held in the simulator on 2026-11-25 and the desk link held in the browser pane at 1280 px the same evening
+status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way · the short page walked there the same day on the dev's own account, where it holds but for two lines that are wrong for about three seconds on a fresh open · all three faults mended · a fourth sitting the same day saw the two counts move ten seconds after they drew, which is not mended and is larger than a small fix, and a small Remind press on the office's Team's open tasks, mended in v2.8600, not yet seen · v2.8581's two desk mends held in the simulator on 2026-11-25 and the desk link held in the browser pane at 1280 px the same evening · 2026-11-26: the larger mend of the two counts that move is briefed, client only, M, and a client-only builder has it after its list · the Waiting on look stays unmade by the person's word of the same day
 summary: >
   One leader has been given too much on his Dashboard. He will not look at any of it, uses the app only on
   his phone, and hands even small updates to his assistants. The assessment counted 44 cards, strips and
@@ -218,6 +218,18 @@ As the sample leader set to Short for the look.
 
 **The two counts move after they draw. Not mended.** The page read *23 other things* and *4 more of yours*, and ten seconds later *24* and *6*. v2.8581 made the two lines wait for the page's read, but that read asks about the two lien reads alone (`shortDashboardRead`). The counts come from every source of the Needs you card. `useNeedsYouInputs` reads 67 sources, and about sixty of them hand back no word on whether they are still reading. So making the counts wait for all of them means a loading flag on about sixty hooks. That is a medium piece of work with a call in it, not a small fix, and it was sent back on 2026-11-25. The list under *Waiting on you* did not move.
 
+**Briefed on 2026-11-26 as the larger mend, on the person's word.** Row 11 of that day's question sheet read:
+*#365: fixing briefs the larger moving-counts mend, a loading flag only on sources that can put a row on a leader's
+short page. Pick: Yes.*, and the person answered "All picks stand". The brief read the sources first: for a leader
+nearly every Needs you source is on, so a flag only on the sources that can move the two counts cuts seven of 67, not
+fifty. But about forty of the hooks already say when they are not yet read, seven by a flag they hand back and about
+thirty-three by the house rule that a value is null while loading. So the mend is one *reading* flag on
+`useNeedsYouInputs` that is true while any enabled source is still reading, a kernel for the two count lines that
+waits on it with an eight-second cap, the view drawing the office's line and the door's count once, together, and a
+`loading` boolean on the twenty or so hooks that say nothing. The list under *Waiting on you* keeps its own rule, the
+two lien reads alone. Client only, M, nothing owed after the merge. A client-only builder has it after its list. Not
+built as of this line. A superintendent on Short should see no change: for him few sources are on.
+
 **Remind on the office's *Team's open tasks* stood about 27 points tall on a phone. Mended in v2.8600.** It stands 44 on a phone now and gives the difference back to its row, so the row is as tall as it was. At a desk it is as it was. Not yet seen in the simulator.
 
 **v2.8581's two desk mends held.** The link that ends `&section=dashboard_view` opened the desk on that section, and the
@@ -226,3 +238,10 @@ same link at 1280 px on a fresh load: the head one block above the sections, and
 the top of the scrolling part. Neither **Short** nor **Full** was pressed on either look.
 
 **Which card *Waiting on* means.** Not *Team's open tasks*. It is the card under **Needs you** titled *Waiting on* and the leader's first name, drawn only when a leader has lien rows waiting. A look at it needs a ZZ lien paper waiting on a leader, which is a write and its own yes.
+
+**The look stays unmade, by the person's word of 2026-11-26.** Round 2's row 26 read: *#365: The Waiting on look, now
+that it would reach a real leader by push or text and sit on his phone. Pick: Leave it unmade.*, and the person answered
+"All picks stand". The simulator had read the code: the Waiting on card drops sample leaders, so a ZZ paper could only
+wait on the real leader, **Send for approval** would tell him by push or text, and the paper would sit under Needs you
+on his phone until voided. So the office's Waiting on card stands on its tests and on the live look of 2026-11-17, and
+no walk makes a paper wait on the leader for it.
