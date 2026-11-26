@@ -15,7 +15,7 @@ const move = (over: Partial<WeekMove>): WeekMove => ({ key: 'other', kind: 'step
 const tiles: WeekCallModel['tiles'] = [
   { id: 'made', label: 'Made last week', value: '$31.0k', sub: '8 settled weeks ran $22.0k to $41.0k.', tone: 'plain', bars: [{ share: 0.8, current: false, waiting: false, label: 'Nov 1' }, { share: 0.2, current: true, waiting: true, label: 'Nov 8' }] },
   { id: 'cash', label: 'Cash low point, 8 weeks', value: '$12.0k', sub: 'On Nov 27. The floor is $10.0k.', tone: 'green' },
-  { id: 'step', label: 'Narrowest step', value: 'Bill', sub: '7.5 weeks to bill what is already finished.', tone: 'red' },
+  { id: 'step', label: 'Narrowest step', value: 'Bill', sub: 'Growth waits on Bill. The office bills $19k a week. The field finishes $33k a week.', sub2: 'Cash waits on Collect. Customers pay $26k of the $19k billed a week.', tone: 'red' },
 ]
 
 // The two balances, as `moneyCard.ts` would word them.
@@ -187,6 +187,10 @@ describe('BridgeWeek', () => {
   it('reads Made last week, Narrowest step, then the two balances with their runway (#334, PR 6)', () => {
     const onAccrual = vi.fn()
     const { unmount } = renderWithProviders(week(propose, { onAccrual }))
+    // The step tile's two lines (punch list #321, PR 3): growth, then cash under a rule; the made tile has no second line.
+    expect(screen.getByTestId('bridge-week-tile-step').textContent).toBe('Narrowest stepBillGrowth waits on Bill. The office bills $19k a week. The field finishes $33k a week.Cash waits on Collect. Customers pay $26k of the $19k billed a week.')
+    expect(screen.getByTestId('bridge-week-tile-step-sub2').style.borderTop).toBe('1px solid var(--border)')
+    expect(screen.queryByTestId('bridge-week-tile-made-sub2')).toBeNull()
     const before = (a: HTMLElement, b: HTMLElement): boolean => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
     expect(before(screen.getByTestId('bridge-week-tile-made'), screen.getByTestId('bridge-week-tile-step'))).toBe(true)
     expect(before(screen.getByTestId('bridge-week-tile-step'), screen.getByTestId('bridge-week-tile-money'))).toBe(true)

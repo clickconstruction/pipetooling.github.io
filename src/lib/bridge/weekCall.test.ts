@@ -3,7 +3,7 @@ import { plainWordsFailures } from '../plainWords'
 import { buildFlowStrip, stripWords } from './flowStrip'
 import { buildCashForecast } from './cashForecast'
 import type { Headline, HeadlineWeek } from './headline'
-import type { StageFlow, StageReading } from './stageFlow'
+import { buildStageFlow, type StageFlow, type StageFlowInput, type StageReading } from './stageFlow'
 import { WEEK_CALL_MOVES, WEEK_CARD_LABEL, WEEK_FIRST_SCREEN_NUMBERS, WEEK_FIRST_SCREEN_WORDS, WEEK_NOT_READ_LINE, buildWeekCall, deskMoves, firstDayUnderFloor, proposedMoves, weekCallBudget, weekCallWords, whenWords, type WeekCallInput } from './weekCall'
 
 // Made-up numbers throughout: a company whose finished work waits on the bill.
@@ -65,6 +65,20 @@ const base: WeekCallInput = {
   dayLabel: (ymd) => `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}`,
 }
 
+/** The card's made-up week as input again, so one stage can be swapped: the flow does not keep its input. */
+const weekInput = (flow: StageFlow): StageFlowInput => {
+  void flow
+  return {
+    market: null,
+    sales: { bids: { sentUsd: 300_000, wonUsd: 80_000, lostUsd: 120_000 }, estimates: { sentUsd: 70_000, wonUsd: 40_000, lostUsd: 10_000 }, awaiting: { bids: 4, bidsUsd: 100_000, estimates: 3, estimatesUsd: 20_000 }, soldPerWeekUsd: 30_000 },
+    build: { pileUsd: 352_000, pileCount: 20, inPerWeekUsd: 30_000, outPerWeekUsd: 44_000, knownJobs: 20, guessUsd: 0, guessJobs: 0 },
+    bill: { pileUsd: 46_000, pileCount: 3, inPerWeekUsd: 44_000, outPerWeekUsd: 46_000 },
+    collect: { pileUsd: 217_000, pileCount: null, inPerWeekUsd: 46_000, outPerWeekUsd: 31_000, lateCount: 9 },
+    fieldPerWeekUsd: 44_000,
+    heldLinkId: null,
+  }
+}
+
 describe('buildWeekCall, a usual week', () => {
   it('names the narrowest step with its moves, the ones with a number first', () => {
     const m = buildWeekCall(base)
@@ -80,6 +94,40 @@ describe('buildWeekCall, a usual week', () => {
     expect(m.card.moves.slice(0, WEEK_CALL_MOVES).map((x) => x.title)).toEqual(['Bill the 11 finished jobs.', 'Price the 4 jobs with no price.', 'Take bank sorting off whoever bills, so billing is never idle.'])
     expect(m.card.moves[0]).toEqual({ key: 'bill', kind: 'step', title: 'Bill the 11 finished jobs.', why: '$142k is finished and not billed.', door: { to: '/jobs?tab=stages', label: expect.any(String) }, then: 142_000 })
     expect(m.card.moves[2]?.door).toBeNull()
+  })
+
+  it('the step tile’s two lines and the card on the card’s own week: Sales lit, cash on Collect (punch list #321, PR 3)', () => {
+    // The card's made-up week: Sales sells $30k against a field that builds $44k, and customers pay $31k of $46k billed.
+    const week = buildStageFlow({
+      market: { bidsInvited: 12, bidsInvitedUsd: 400_000, estimatesRequested: 20, estimatesRequestedUsd: 90_000, weeks: 8, worth: { perWeekUsd: 34_000, bidsPerWeekUsd: 20_000, estimatesPerWeekUsd: 14_000 } },
+      sales: { bids: { sentUsd: 300_000, wonUsd: 80_000, lostUsd: 120_000 }, estimates: { sentUsd: 70_000, wonUsd: 40_000, lostUsd: 10_000 }, awaiting: { bids: 4, bidsUsd: 100_000, estimates: 3, estimatesUsd: 20_000 }, soldPerWeekUsd: 30_000 },
+      build: { pileUsd: 352_000, pileCount: 20, inPerWeekUsd: 30_000, outPerWeekUsd: 44_000, knownJobs: 20, guessUsd: 0, guessJobs: 0 },
+      bill: { pileUsd: 46_000, pileCount: 3, inPerWeekUsd: 44_000, outPerWeekUsd: 46_000 },
+      collect: { pileUsd: 217_000, pileCount: null, inPerWeekUsd: 46_000, outPerWeekUsd: 31_000, lateCount: 9 },
+      fieldPerWeekUsd: 44_000,
+      heldLinkId: null,
+    })
+    const m = buildWeekCall({ ...base, flow: week })
+    expect(m.link).toBe('sales')
+    const step = m.tiles.find((t) => t.id === 'step')!
+    expect(step).toMatchObject({ label: 'Narrowest step', value: 'Sales', sub: 'Growth waits on Sales. Sales sold $30k a week. The field builds $44k a week.', sub2: 'Cash waits on Collect. Customers pay $31k of the $46k billed a week.', tone: 'red' })
+    // The card: the pile, then the feeder's pace and the field's, since a feeder has no pace lines of its own; then Sales's moves.
+    expect(m.card.lead).toBe('Sales is the narrowest step.')
+    expect(m.card.line).toBe('$120k awaiting an answer. Sold $30k of work a week. The field builds $44k a week.')
+    expect(m.card.moves.map((x) => x.title)).toEqual(['Date the won bids, or count them by sent month, so wins read by week.', 'Close out the bids older than 90 days as lost, so the pile is real.', 'Put values on the bids sent with none.', 'Work Followup on the live bids by their day.'])
+    // Market lit: its worth and the field. Collect lit: one line says growth and cash both wait on it, and there is no second.
+    const market = buildWeekCall({ ...base, flow: buildStageFlow({ ...weekInput(week), market: { bidsInvited: 12, bidsInvitedUsd: 400_000, estimatesRequested: 20, estimatesRequestedUsd: 90_000, weeks: 8, worth: { perWeekUsd: 7_000, bidsPerWeekUsd: null, estimatesPerWeekUsd: 7_000 } } }) }).tiles.find((t) => t.id === 'step')!
+    expect(market.sub).toBe('Growth waits on Market. Market is worth $7k a week. The field builds $44k a week.')
+    const collectLit = buildWeekCall({ ...base, flow: { ...week, linkId: 'collect' } }).tiles.find((t) => t.id === 'step')!
+    expect(collectLit.sub).toBe('Growth and cash wait on Collect. Customers pay $31k a week. The office bills $46k a week.')
+    expect(collectLit.sub2).toBeUndefined()
+    for (const t of [step, market, collectLit]) for (const line of [t.sub, t.sub2 ?? '']) if (line) expect(plainWordsFailures(line), line).toEqual([])
+    for (const line of weekCallWords(m, WEEK_CALL_MOVES)) expect(plainWordsFailures(line), line).toEqual([])
+    // The two lines count toward the phone's first screen.
+    expect(weekCallWords(m).includes(step.sub2!)).toBe(true)
+    const b = weekCallBudget(m)
+    expect(b.words).toBeLessThanOrEqual(WEEK_FIRST_SCREEN_WORDS)
+    expect(b.numbers).toBeLessThanOrEqual(WEEK_FIRST_SCREEN_NUMBERS)
   })
 
   it('is a pulse: it names no person, proposes no call and asks nothing about Friday (#334)', () => {
@@ -110,7 +158,9 @@ describe('buildWeekCall, a usual week', () => {
     expect(made?.bars?.length).toBe(9)
     expect(made?.bars?.[2]?.share).toBe(1)
     expect(cash).toMatchObject({ value: '$12.0k', label: 'Cash low point, 8 weeks', sub: 'On Nov 27. The floor is $10.0k.', tone: 'green' })
-    expect(step).toMatchObject({ value: 'Bill', sub: '7.5 weeks to bill what is already finished.', tone: 'red' })
+    // The tile says what growth waits on, with the step's paces; the fixture's Collect has no pace lines, so no cash line.
+    expect(step).toMatchObject({ value: 'Bill', sub: 'Growth waits on Bill. The office bills $19k a week. The field finishes $33k a week.', tone: 'red' })
+    expect(step!.sub2).toBeUndefined()
   })
 
   it('leads with this week from Friday, and marks a week whose hours still wait', () => {

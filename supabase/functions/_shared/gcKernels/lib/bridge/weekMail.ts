@@ -158,7 +158,8 @@ function tileHtml(t: WeekTile): string {
   return card(
     `<div style="${KICKER}">${esc(t.label)}</div>
 <div style="font-size:26px;font-weight:800;line-height:1.15;margin-top:4px;color:${TONE_HEX[t.tone]}">${esc(t.value)}</div>${barsHtml(t.bars)}
-<div style="font-size:13px;color:${MUTED};margin-top:4px">${esc(t.sub)}</div>`,
+<div style="font-size:13px;color:${MUTED};margin-top:4px">${esc(t.sub)}</div>${t.sub2 ? `
+<div style="font-size:13px;color:${MUTED};margin-top:5px;padding-top:5px;border-top:1px solid ${LINE}">${esc(t.sub2)}</div>` : ''}`,
     `1px solid ${red ? '#f1b5ae' : LINE}`,
     red ? '#fef3f2' : '#fff',
   )
@@ -256,7 +257,7 @@ export function weekMailText(mail: WeekMail, bridgeUrl: string): string {
   const { model } = mail
   const c = model.card
   const balance = (line: MoneyLine): string[] => [`${line.label}: ${line.value}`, ...(line.runway ? [`  ${line.runway}`] : []), `  ${line.sub}`, ...(line.note ? [`  ${line.note}`] : [])]
-  const tiles = [...weekMailTiles(model).flatMap((t) => [`${t.label}: ${t.value}`, `  ${t.sub}`]), ...balance(mail.money.cash), ...balance(mail.money.accrual), ...(mail.money.foot ? [mail.money.foot] : [])]
+  const tiles = [...weekMailTiles(model).flatMap((t) => [`${t.label}: ${t.value}`, `  ${t.sub}`, ...(t.sub2 ? [`  ${t.sub2}`] : [])]), ...balance(mail.money.cash), ...balance(mail.money.accrual), ...(mail.money.foot ? [mail.money.foot] : [])]
   const strip = mail.strip
     ? ['', `${WEEK_MAIL_WORDS.steps}. ${STRIP_LEGEND.long}`, ...mail.strip.sections.map((s) => `  ${s.name}: ${s.paceText}${s.weeksText ? `, ${s.weeksText}` : ''}${s.lit ? `, ${WEEK_MAIL_WORDS.narrowest}` : ''}`), ...(weekMailMarketLine(mail) ? [`  ${weekMailMarketLine(mail)}`] : [])]
     : []

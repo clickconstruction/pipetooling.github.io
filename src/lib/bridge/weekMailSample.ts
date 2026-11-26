@@ -55,7 +55,7 @@ export function sampleWeekMail(todayYmd: string): WeekMail {
       stage('sales', 'Sales', '$1.9M awaiting an answer', 36_000, null, 'sold $36k of work a week'),
       stage('build', 'Build', '$198k left to build', 33_000, 6, '6.0 weeks to build what is already sold'),
       stage('bill', 'Bill', '$142k finished, not yet billed', 19_000, 7.5, '7.5 weeks to bill what is already finished', [{ who: 'the field finishes', usd: '$33k' }, { who: 'the office bills', usd: '$19k' }]),
-      stage('collect', 'Collect', '$188k billed, not yet paid', 41_000, 3.7, '3.7 weeks to collect what is already late'),
+      stage('collect', 'Collect', '$188k billed, not yet paid', 41_000, 3.7, '3.7 weeks to collect what is already late', [{ who: 'the office bills', usd: '$19k' }, { who: 'customers pay', usd: '$41k' }]),
     ],
     linkId: 'bill',
     nominatedId: 'bill',
