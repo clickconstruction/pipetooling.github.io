@@ -2,16 +2,16 @@
 name: "Clock out: the bids of the day"
 number: 445
 group: close
-status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · the owner's go the same day (I like it, build it) · the ground is live as v2.8605, the beat as v2.8609 and the Clock out list as v2.8610 (2026-11-26) · walked live 2026-11-26 as the dev on two ZZ Test bids, every step a pass · the walk met three things: the note box opens on the clock-in's plan, as built since v2.6092; the strip starts at the beat's five-minute bucket; and a locked bid's refused price stays typed in its field · the person the same day on the note box: keep it, and add one line saying where the words came from, which is built and in review · the last two are mended in v2.8637 and v2.8636, merged the same day and not yet seen live · left: a look at those, then the Bid Board, the My Time card and CountTooling on the owner's word
+status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · the owner's go the same day (I like it, build it) · the ground is live as v2.8605, the beat as v2.8609 and the Clock out list as v2.8610 (2026-11-26) · walked live 2026-11-26 as the dev on two ZZ Test bids, every step a pass · the walk met three things: the note box opens on the clock-in's plan, as built since v2.6092; the strip starts at the beat's five-minute bucket; and a locked bid's refused price stays typed in its field · the person the same day on the note box: keep it, and add one line saying where the words came from, built as v2.8641 and merged the same day, with no line over a Job Mode note · the last two are mended in v2.8637 and v2.8636, merged the same day · none of the three is seen live yet · left: a look at those, then the Bid Board, the My Time card and CountTooling on the owner's word
 summary: >
   An estimator works one bid at a time, and the app already records most of that work without being asked.
   This card reads those records into a list at clock out: the bids the person worked on today, with nothing
   to type. The person takes one off or adds one the app missed in one press. Step 1 needs no new table. The
   later steps add one small beat so the list also holds bids a person read and did not change.
-next: A live look at the two small mends of the walk of 2026-11-26 (v2.8636, v2.8637), which writes nothing. The note box's line, once it merges. Then the Bid Board, the My Time card and CountTooling, each on the owner's word.
+next: A live look at the three small mends of the walk of 2026-11-26 (v2.8636, v2.8637, v2.8641). The first two write nothing; the note box's line is read on the Clock out sheet of a session with a typed plan, and Cancel leaves it open. Then the Bid Board, the My Time card and CountTooling, each on the owner's word.
 size: L as a train of six (S · M · M · S · S · M); steps 1 to 3 are live; left: the Bid Board, the My Time card and CountTooling (S · S · M)
 blocker: None. The look needs the live-look slot.
-ver: v2.8605 · 8609 · 8610 · 8636 · 8637
+ver: v2.8605 · 8609 · 8610 · 8636 · 8637 · 8641
 opinion: build — the owner said build it, and the first three pieces are live; the last three wait on the owner's word
 ---
 
@@ -446,7 +446,12 @@ write on the person's yes of that day. This is the walker's report, and the code
   can leave this empty.* stand over a box that holds the plan. **Answered 2026-11-26 (UTC) in the managing
   session.** Asked *"Card #445: the clock-out note opens already holding the plan typed at clock-in. Keep that, or
   open it empty?"*, the person answered "All picks stand". The pick read: *Keep it, and add one line saying where
-  the words came from*. The line is built and in review as of this line.
+  the words came from*. Built as v2.8641 (PR #9942, merged 2026-11-26), client only: under the box, *From your plan
+  at clock in. Change it or leave it.*, while the box still holds the plan it opened on, letter for letter. *You can
+  leave this empty.* shows only over an empty box, and the reports' line wins when the reports fill it. Narrower than
+  the brief in one place, on the person's word *Yes, arm as built*, relayed by the managing session: a Job Mode start
+  writes the session's note as *On my way to …* or *On site at …*, which is not a plan, so no line is drawn over those
+  words. Not yet seen live.
 - **The strip's start.** It read 10:20 PM for a clock-in at 10:22 PM. Read in the code: a bid's first trace is
   the floor of its five-minute bucket, and the strip starts at the lesser of the clock-in and that floor
   (`readBidDay`). Mended in v2.8637 (PR #9938, merged 2026-11-26), client only: a first bucket that holds a
