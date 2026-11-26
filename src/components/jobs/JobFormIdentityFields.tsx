@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, Ref, RefObject } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 import JobFormAddressNudge from './JobFormAddressNudge'
@@ -11,6 +11,7 @@ import { prewarmAddressGeocode, useAddressSuggestions } from '../../hooks/useAdd
 import { useAddressesOnFile } from '../../hooks/useAddressesOnFile'
 import { onFileMatches, type OnFileMatch } from '../../lib/addresses/addressesOnFile'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
 import { JOB_KINDS, JOB_KIND_CONTROL_HELP, JOB_KIND_WORDS, type JobKind, type JobKindRead } from '../../lib/jobs/jobKind'
 
 /* height 36 = the SearchableSelect trigger's rendered height — Job Name and
@@ -144,6 +145,13 @@ export function JobFormIdentityFields({
   const [activeSuggestion, setActiveSuggestion] = useState(0)
   // Leaving the address field asks the pin line to look the address up (v2.4783).
   const [pinBlur, setPinBlur] = useState(0)
+  // The map's point for an address, as the pin line learns it. The question about a place reads it (punch list #439).
+  const [pinPoint, setPinPoint] = useState<{ key: string; lat: number; lng: number } | null>(null)
+  const onPinPoint = useCallback((key: string, point: { lat: number; lng: number }) => setPinPoint({ key, ...point }), [])
+  const jobAddressPoint = useMemo(
+    () => (pinPoint && pinPoint.key === normalizeAddressForGeocodeKey(jobAddress) ? { lat: pinPoint.lat, lng: pinPoint.lng } : null),
+    [pinPoint, jobAddress],
+  )
   const { suggestions, clearSuggestions } = useAddressSuggestions(
     jobAddress,
     addressFocused && !suggestionsSuppressed,
@@ -429,9 +437,9 @@ export function JobFormIdentityFields({
               setJobAddress. */}
           <JobFormAddressNudge address={jobAddress} onApply={setJobAddress} />
           {/* On file already, or a slip away from an address that is (punch list #439). */}
-          <JobFormAddressOnFile address={jobAddress} list={onFileList} focused={addressFocused} onUse={setJobAddress} />
+          <JobFormAddressOnFile address={jobAddress} list={onFileList} focused={addressFocused} point={jobAddressPoint} onUse={setJobAddress} />
           {/* The address pins itself (v2.4783): the cache, else a lookup on blur or after a pause. */}
-          <JobFormAddressPin address={jobAddress} blurSignal={pinBlur} />
+          <JobFormAddressPin address={jobAddress} blurSignal={pinBlur} onPoint={onPinPoint} />
         </div>
       </div>
     </>

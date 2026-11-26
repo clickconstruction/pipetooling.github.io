@@ -63,3 +63,5 @@ The last tab is **No street number**. Words alone cannot match these addresses, 
 Each job on a row has {{button:gray|Open the job}}. It opens the job on its **Edit** tab, with the **Job Address** box ringed. Add the street number there.
 
 To write a new job's address the way it is on file, see [use an address the company already has](/help/use-an-address-already-on-file).
+
+The job form asks the same question about a new address. See [when the map puts it at the same spot](/help/use-an-address-already-on-file#when-the-map-puts-it-at-the-same-spot). An answer given there is kept here too.
