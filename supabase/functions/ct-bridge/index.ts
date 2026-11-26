@@ -15,7 +15,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const ALLOWED_VERBS = new Set(['create', 'deactivate', 'reactivate', 'set_twin_flag', 'update_email', 'lookup', 'roster'])
+// `set_flags` (v2.8666) sets a seat's admin, overseer and lead flags from the person desk's
+// Role there line. CountTooling refuses to switch off its last admin.
+const ALLOWED_VERBS = new Set(['create', 'deactivate', 'reactivate', 'set_twin_flag', 'update_email', 'lookup', 'roster', 'set_flags'])
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
