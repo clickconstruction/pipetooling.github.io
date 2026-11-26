@@ -67,10 +67,11 @@ describe('a tech’s page for one look (punch list #319 PR 7)', () => {
     expect(send.disabled).toBe(false)
     fireEvent.click(send)
     await waitFor(() => expect(io.answer).toHaveBeenCalledWith(ID, 'can_price', 'Bring a 3/4 inch stop.'))
-    // The page keeps its own line under the press, and the toast says the same words. Since v2.8638 a toast's
-    // words are a status too, so the page's line is asked for by its tag.
-    const said = await screen.findAllByRole('status')
-    expect(said.filter((el) => el.tagName === 'P').map((el) => el.textContent)).toEqual(['The office has your answer.'])
+    // The page says it once, in its own line under the press, which stays. No toast repeats it (punch list #445).
+    const said = await screen.findByRole('status')
+    expect(said.tagName).toBe('P')
+    expect(said.textContent).toBe('The office has your answer.')
+    expect(screen.getAllByText('The office has your answer.')).toHaveLength(1)
   })
 
   it('shows an answer already given', async () => {
