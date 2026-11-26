@@ -48,9 +48,9 @@ Some forms are signed by one person and completed by another. The I-9 is one. In
 
 ## Delete a form
 
-Each form's row has {{button:outline|Delete}}. It removes the uploaded PDF and its boxes. A Contract Book entry built from the form stays and stops being a form. Signed copies keep their PDFs.
+Each form's row has {{button:outline|Delete}}. The press removes the uploaded PDF and its boxes. A Contract Book entry built from the form stays and stops being a form. Signed copies keep their PDFs.
 
-A form a job requires, or once required, cannot be deleted. The job's record keeps it. Its {{button:outline|Delete}} is grey, and the row says how many jobs hold it. Take the form off every job and the record still holds it, so the form stays.
+A form a job requires, or once required, cannot be deleted. The job's record keeps it. The form's {{button:outline|Delete}} is grey, and the row says how many jobs hold it. Take the form off every job and the record still holds it, so the form stays.
 
 ## A PDF that will not load
 
