@@ -2,7 +2,7 @@
 name: "People → Hours: someone still on the clock has a green box that opens My Time"
 number: 446
 group: close
-status: asked 2026-11-25 with a screenshot of the table's head · read in the code, drawn and checked against the ask the same day · built 2026-11-25 as v2.8602, one client-only PR · not yet walked on the live site · the two choices the person might have wanted the other way were put on the question sheet of 2026-11-26, and both stay as built
+status: asked 2026-11-25 with a screenshot of the table's head · read in the code, drawn and checked against the ask the same day · built 2026-11-25 as v2.8602, one client-only PR · walked on the live site on 2026-11-26 on a ZZ Test person with a one-dollar pay row made for it, steps 1 to 8, and it holds · one thing beside the card met on that walk, the clock-in sheet's live press with an empty plan, is briefed as its own small fix · the two choices the person might have wanted the other way were put on the question sheet of 2026-11-26, and both stay as built
 mockup: to-dos/hours-on-the-clock-box/mockup.html
 summary: >
   On People → Hours a person who was still clocked in showed an empty box that took typing,
@@ -12,11 +12,11 @@ summary: >
   accident. The row, day and week totals count the running time and read in green. A
   salaried day keeps its set hours. A session nobody clocked out of on an earlier day is
   amber, says left open and adds no time.
-next: The walking thread walks it on the live site with a ZZ Test person clocked in. Then the owner looks at it on a day with people on the clock, and the card is deleted.
+next: The owner looks at it on a day with people on the clock, and the card is deleted.
 ask: owner · look · On a day with people on the clock, do the green boxes and the green totals on People → Hours read the way you meant?
-size: S, built; left: the live walk and the owner's look (XS)
+size: S, built and walked; left: the owner's look (XS)
 ver: v2.8602
-blocker: A live walk, which needs a ZZ Test person clocked in.
+blocker: None in the code. The owner's look.
 opinion: build — it is what was asked, with no migration and no function
 ---
 
@@ -119,3 +119,24 @@ On the live site, as a dev, with a ZZ Test person who has a pay row and a login:
 Two choices the person might have wanted the other way were put on the question sheet: running time counts in
 the green totals, and a salaried person on the clock gets a green box. Asked on 2026-11-26 (UTC) in the managing session whether every pick on the question sheet stands, the person answered "All picks stand". Row 19 read: *#446: Keep running time in the green totals and the green box for a salaried person on the clock. Pick:
 Keep both.* Both stay as built. The live walk and the owner's look are still owed.
+
+## Walked live (2026-11-26)
+
+Walked on the live site in the Browser pane as the dev, on the build that holds v2.8602, steps 1 to 8 of the recipe, on a
+ZZ Test person. The Hours grid lists only people with a pay row, so a one-dollar pay row was saved on that person first,
+on its own yes; it stays, since no screen deletes a pay row (card #443 lists it).
+
+**Holds.** The green box reads the day so far to the minute with *on the clock*; the row, day and week totals count the
+running time and read in green, with the running part named under the row's; the head's *+1 on the clock* and its
+tooltip read as built. Tab reaches the box where a field would be, Enter opens that person's My Time for the day with
+the session running, and focus comes back to the box when the card closes. At 600 px the cell is a press that opens
+My Time with no day sheet. After the clock-out the cell is an ordinary field with the amber badge within a second or
+two, and the totals are black again. The session was rejected so nothing is left to approve.
+
+**Met beside the card, not this card's fault but cited against it:** in the clock-in sheet **Complete Clock In** is
+live while the plan box is empty and refuses by a short toast, so a press that does nothing can look dead. As built
+since before this card. Briefed as a small client-only fix. The strip's **Clock Out** timer reading over a minute
+eight seconds after a clock-in is the day's total, which held an earlier closed session of the same company day: as
+built, and right.
+
+**Left for the owner:** the look on a day with people on the clock, under *ask*.
