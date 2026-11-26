@@ -30,6 +30,7 @@ import { sharedColumnsLine } from '../../../lib/hiring/columnShares'
 import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, DeskRow, DeskSection, LockTag, deskBtn } from '../personDeskShared'
 import PersonWatchRow from './PersonWatchRow'
 import { PersonDeskSitesRows } from './PersonDeskSitesRows'
+import { PersonDeskWaysInRow } from './PersonDeskWaysInRow'
 import type { UserRole } from '../../../hooks/useAuth'
 import { humanRoleLabel } from '../../../lib/roleLabels'
 import { formatErrorMessage } from '../../../utils/errorHandling'
@@ -657,6 +658,8 @@ export function PersonDeskAccessSection({
         <span>{describeLastSeen(u.last_sign_in_at, Date.now())}</span>
       </DeskRow>
       )}
+
+      {viewer.isDev && !noLogin ? <PersonDeskWaysInRow userId={u.id} rosterEmail={u.email} displayName={displayName} busy={busy} run={run} confirm={confirmDialog} /> : null}
 
       {showSites && !noLogin ? (
         <PersonDeskSitesRows user={{ id: u.id, email: u.email, name: u.name, counttooling_user_id: u.counttooling_user_id ?? null }} displayName={displayName} busy={busy} run={run} confirm={confirmDialog} />

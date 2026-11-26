@@ -4178,6 +4178,7 @@ Row 97's signal is held by the database too since v2.8532: on the private Realti
 | 123 | The GC tables' policies: the Board's award lane, the Portal lane, the Building lane (`src/lib/gc/doors.ts`) | dev | they open with the doors in rows 115–117, by the test that holds them |
 | 124 | The dev MCP's write verbs (`cost_batch_apply`, `dev_hr_entry_write`, `dev_legal_plan_write`, the matter narrative) | dev, or the `cost_agent` / `hr_agent` roles | agents' verbs, not doors in the app |
 | 125 | People → Users → the **Sites** lens (v2.8657): each person's seat on CountTooling and on TakeoffTooling, read over `ct-bridge` and `tt-bridge` | dev | both bridges are devs-only doors, and the lens reads and changes nothing |
+| 126 | Person desk → the **Ways in** row (v2.8671): whether a password is set and whether Google is linked, and **Unlink Google**, over `dev_login_ways` and `dev_unlink_google` | dev | how a person signs in is a dev's to read and to change, and both functions refuse anyone else |
 
 ## Typed confirms (v2.6765–v2.6766, punch list #188 rows 72–79)
 

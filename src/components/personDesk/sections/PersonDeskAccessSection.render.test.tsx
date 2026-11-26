@@ -46,6 +46,8 @@ vi.mock('../../../lib/supabase', () => {
 // v2.8667: the Sites rows read two other sites on mount and have a render test of their own
 // (PersonDeskSitesRows.render.test.tsx). Here they are a marker, so this file's presses stay the only calls.
 vi.mock('./PersonDeskSitesRows', () => ({ PersonDeskSitesRows: () => <div data-testid="sites-rows" /> }))
+// v2.8671: the Ways in row reads on mount too, and has its own render test (PersonDeskWaysInRow.render.test.tsx).
+vi.mock('./PersonDeskWaysInRow', () => ({ PersonDeskWaysInRow: () => <div data-testid="ways-in-row" /> }))
 
 const KAI: PersonDeskUserRow = {
   id: 'u-kai',
