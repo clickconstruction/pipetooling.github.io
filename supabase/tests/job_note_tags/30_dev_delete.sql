@@ -38,8 +38,8 @@ $$;
 CREATE FUNCTION jdd.kept() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT coalesce(string_agg(right(record_id, 2), ' ' ORDER BY record_id), '-') FROM public.deleted_records_archive WHERE table_name = 'jobs_ledger_thread_notes' AND group_key IN (jdd.id('b1')::text, jdd.id('b2')::text)
 $$;
-GRANT USAGE ON SCHEMA jdd TO authenticated, service_role;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA jdd TO authenticated, service_role;
+GRANT USAGE ON SCHEMA jdd TO anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA jdd TO anon, authenticated, service_role;
 
 -- Who: Devon the dev, Dana the office, Hector a helper on both jobs.
 INSERT INTO auth.users (id, email) VALUES (jdd.id('a1'), 'devon@notedelete.test'), (jdd.id('a2'), 'dana@notedelete.test'), (jdd.id('a4'), 'hector@notedelete.test');

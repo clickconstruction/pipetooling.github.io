@@ -33,8 +33,8 @@ $$;
 CREATE FUNCTION tdd.tags() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT coalesce(string_agg(right(event_id::text, 2) || '>' || coalesce(right(answer_event_id::text, 2), '-'), ' ' ORDER BY id), '-') FROM public.task_note_tags WHERE instance_id IN (tdd.id('e1'), tdd.id('e2'))
 $$;
-GRANT USAGE ON SCHEMA tdd TO authenticated, service_role;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA tdd TO authenticated, service_role;
+GRANT USAGE ON SCHEMA tdd TO anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA tdd TO anon, authenticated, service_role;
 
 -- Who: Devon the dev, Dana the office, Luis a superintendent who has the task.
 INSERT INTO auth.users (id, email) VALUES (tdd.id('a1'), 'devon@commentdelete.test'), (tdd.id('a2'), 'dana@commentdelete.test'), (tdd.id('a3'), 'luis@commentdelete.test');
