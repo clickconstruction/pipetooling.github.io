@@ -45,8 +45,8 @@ INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin, is_
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin, is_sample = EXCLUDED.is_sample, archived_at = EXCLUDED.archived_at, login_attached_at = EXCLUDED.login_attached_at;
 -- Two tasks: a ZZ test task and a real-named one, each with one day.
 INSERT INTO public.checklist_items (id, title, created_by_user_id, repeat_type, start_date) VALUES
-  (tdd.id('c1'), 'ZZ Test comment delete task', tdd.id('a2'), 'none', current_date),
-  (tdd.id('c2'), 'Walk the lofts', tdd.id('a2'), 'none', current_date);
+  (tdd.id('c1'), 'ZZ Test comment delete task', tdd.id('a2'), 'once', current_date),
+  (tdd.id('c2'), 'Walk the lofts', tdd.id('a2'), 'once', current_date);
 INSERT INTO public.checklist_item_assignees (checklist_item_id, user_id) VALUES (tdd.id('c1'), tdd.id('a3')), (tdd.id('c2'), tdd.id('a3')) ON CONFLICT DO NOTHING;
 INSERT INTO public.checklist_instances (id, checklist_item_id, scheduled_date) VALUES (tdd.id('e1'), tdd.id('c1'), current_date), (tdd.id('e2'), tdd.id('c2'), current_date);
 INSERT INTO public.checklist_instance_assignees (checklist_instance_id, user_id) VALUES (tdd.id('e1'), tdd.id('a3')), (tdd.id('e2'), tdd.id('a3')) ON CONFLICT DO NOTHING;
