@@ -222,6 +222,24 @@ The section is there only when the site has a paper. The list holds outside comp
 
 Nothing is sent from that list. To send a paper again, find its line on the Agreements tab.
 
+## Find a site's papers on the tab
+
+The Agreements tab can show one site's papers alone.
+
+1. Press **Find by site…**, beside the find box.
+2. Type three letters or more of the address.
+3. Press the address.
+
+A line over the list then reads *Papers for the site at* with the address. The list holds the papers that name that site, and no others.
+
+The chips and the find box still work on that shorter list. Press **Clear the site** to see every paper again. **Every site**, in the window, does the same.
+
+Two addresses answered **Same place** are one site here too.
+
+A paper that names a site always says so on its line. The line reads *for the site at* with the address.
+
+An estimator can find by site as well.
+
 ## Add someone to a list
 
 A paper sent to someone you typed in reads **Not on a list**. Its line carries **Add to a list**, signed or not.
