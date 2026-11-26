@@ -28,7 +28,10 @@ IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # it stood, so the migration that widens it to every paper of an outside party runs after it, as on prod.
 # And the estimator's reach (punch list #403, the owner's second decision): the ground also puts the fold's helper
 # back as it stood, so the migration that adds its refusal runs after it, as on prod.
-WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql) $(ls supabase/migrations/*_agreements_every_party_paper.sql) $(ls supabase/migrations/*_estimator_reach.sql)"
+# Last of all, the site a paper names (punch list #439): the view restated once more with three columns at its end. A
+# view never loses a column, so an older definition cannot replace the wider view: the view is dropped before the
+# files below are applied again, and the newest definition, applied last, makes it as prod has it.
+WRITES="$(ls supabase/migrations/*_paper_party.sql) $(ls supabase/migrations/*_estimator_reads_outside_papers.sql) $(ls supabase/migrations/*_agreements_every_party_paper.sql) $(ls supabase/migrations/*_estimator_reach.sql) $(ls supabase/migrations/*_agreements_on_file_site.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -45,7 +48,9 @@ sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 pgtest_migrate
-# A second run must change nothing: the view replaced by itself, the same grant.
+# A second run must change nothing: the view made again as it stood, the same grant. Nothing may depend on the view,
+# so the drop is a plain one and fails aloud if something does.
+psql_as postgres -c "DROP VIEW public.agreements_on_file" >/dev/null 2>"$ERR" || { echo "FAILED dropping the view before its files are applied again"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 for f in $WRITES; do
   psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 done

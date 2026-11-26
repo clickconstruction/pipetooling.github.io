@@ -29,7 +29,7 @@ Two partial indexes, since every list of a site's papers reads by site: `idx_per
 
 - **Who writes a site.** The table's policies answer by role and name no column. Whoever may write a paper may write its site, and nobody else.
 - **The signer.** `get-contract-for-signer`, `accept-contract` and the signed copy read the row by a list of columns they name. Nothing of a site reaches a signer until one of them is changed to say so. The PR that prints an address owes that function's change and its deploy.
-- **Documents → Agreements.** `agreements_on_file` names its own columns, so it answers as before. A site filter there needs the view to answer the site, which is a migration of its own.
+- **Documents → Agreements.** `agreements_on_file` names its own columns, so it answers as before. A site filter there needs the view to answer the site, which is a migration of its own: `20261126110711_agreements_on_file_site.sql`.
 - **The triggers of the table.** None watches these columns.
 - **A new version of a paper.** `create_pending_contract_versions_after_book_save` copies a paper by a list of columns it names, so the copy it makes names no site. The client PR that sends a site's paper says what a new version does.
 - **One signature per site.** No unique rule: a paper can be taken back and sent again, so the send asks.
@@ -48,4 +48,4 @@ The types PR (`npm run gen-types:linked`, both generated type files and the dev 
 
 ## Its bed
 
-`supabase/tests/paper_site/20_scenario.sql` (`npm run test:pg:paper-site`), which applies this file a second time. Its cases: a paper made with no site names none; a paper names a development; a paper names an address by its key, keeps the address as written and the print; never both; a blank key and a key of 301 characters are refused; an address with no key, a blank one, one of 501 characters and a print with no address are refused; the dev writes a site through the table's policies and a subcontractor reaches no row; a development deleted leaves its paper naming no site; the indexes are partial and the checks validated; `agreements_on_file` has no column of a site and still answers.
+`supabase/tests/paper_site/20_scenario.sql` (`npm run test:pg:paper-site`), which applies this file a second time. Its cases: a paper made with no site names none; a paper names a development; a paper names an address by its key, keeps the address as written and the print; never both; a blank key and a key of 301 characters are refused; an address with no key, a blank one, one of 501 characters and a print with no address are refused; the dev writes a site through the table's policies and a subcontractor reaches no row; a development deleted leaves its paper naming no site; the indexes are partial and the checks validated; `agreements_on_file` answers the site as its last three columns, since `20261126110711_agreements_on_file_site.sql`.

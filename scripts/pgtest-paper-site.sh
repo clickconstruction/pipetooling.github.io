@@ -11,7 +11,8 @@
 # never both; a blank key, a key past 300 characters, an address with no key and a print with no address are each
 # refused; a development deleted leaves its paper standing and naming no site; the dev writes a paper's site through
 # the table's own policies and a subcontractor reaches no row; the two indexes are there and partial; and
-# agreements_on_file answers with the columns it had. It raises on its first failed assertion and ends with
+# agreements_on_file answers the site of a paper as its last three columns, and null on a line that is no such paper
+# (migration *_agreements_on_file_site, applied a second time after the first). It raises on its first failed assertion and ends with
 # "paper_site PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from
 # scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -20,7 +21,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55439}"
 NAME="pgtest-paper-site"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_paper_names_a_site.sql)"
+WRITES="$(ls supabase/migrations/*_paper_names_a_site.sql) $(ls supabase/migrations/*_agreements_on_file_site.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -37,7 +38,8 @@ sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 pgtest_migrate
-# A second run must change nothing: the columns, the three checks and the two indexes are there.
+# A second run must change nothing: the columns, the three checks and the two indexes are there, and the view is
+# replaced by itself.
 for w in $WRITES; do
   psql_as postgres -f - < "$w" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $w"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 done
