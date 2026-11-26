@@ -27,7 +27,7 @@ Each place with a lien still on record has a card with five stops. The stops rea
 
 One line under the stops says what to do today. On a day the payoff needs nothing, the line says so.
 
-Two days sit under the line. **Release due** shows once a written request is on record. **Check clears** shows the day the bank names for the check.
+Two days sit under the line. **Release due** shows once a written request is on record. **Check clears** shows the day the bank names for the check, once the money is recorded.
 
 **Copies sent** lights once the county has recorded a release. Mail the stamped copy to the payer. Then press the value beside **Copies sent**, pick the day and press **Keep**. The place stays in the open list until the copies are out.
 
@@ -141,7 +141,7 @@ A release the county already recorded reads *Released, money came back*. The app
 
 The **Release of record** tab shows the same words in red over **The county's stamp**. You can still set the day and the number there. A stamp the clerk already gave is a fact to keep.
 
-The office takes a returned check off its job in Accounts Receivable. The check's case there has a button that marks each saved release. A marked release stays held here after the payment is off the job. The row then reads *The release waits for a payment that holds.* Record the new payment on the bill. The release is let go once that payment clears.
+The office takes a returned check off its job in Accounts Receivable. The check's case there has a button that marks each saved release. A marked release stays held here after the payment is off the job. Its place stays in the open list while it is held. The row then reads *The release waits for a payment that holds.* Record the new payment on the bill. The release is let go once that payment clears.
 
 Accounts Receivable shows the liens too. The check's case has a box named **Liens on this money**. Read [the liens on a check that came back](/help/match-bank-deposits-to-bills#the-liens-on-a-check-that-came-back).
 

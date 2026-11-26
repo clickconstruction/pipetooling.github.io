@@ -4,7 +4,7 @@ A wage changed on a screen leaves a line on the pay log. Punch list #389, the se
 
 ## Why
 
-The pay log is `pay_admin_events` ([`20260918100000_pay_person_admin`](./20260918100000_pay_person_admin.md)). One function writes a `set_pay_config` line, `set_pay_config`, with the reason it is given, and its only callers are the dev seat's pay verbs. Every screen that saves a wage writes `people_pay_config` directly with a plain upsert: Bring back, the hire and end windows, the desk's Pay section and People → Pay's cells. So a wage the office changes on a screen left a pay row and no line, and the one-dollar wage saved on a ZZ Test sub on 2026-11-25 at 23:04 UTC has none.
+The pay log is `pay_admin_events` ([`20260918100000_pay_person_admin`](./20260918100000_pay_person_admin.md)). `set_pay_config` writes a `set_pay_config` line with the reason it is given, and its only callers are the dev seat's pay verbs and the terminal's `npm run pay:person`; `set_working_hours` writes one when it moves a salaried week. Every screen that saves a wage writes `people_pay_config` directly with a plain upsert: Bring back, the hire and end windows, the desk's Pay section and People → Pay's cells. So a wage the office changes on a screen left a pay row and no line, and the one-dollar wage saved on a ZZ Test sub on 2026-11-25 at 23:04 UTC has none.
 
 ## What it makes
 
@@ -30,3 +30,5 @@ The client calls nothing new and changes nothing: either order. Until the push a
 ## Test
 
 `npm run test:pg:pay-log-screen` applies this migration a second time after every migration, which must change nothing, and plays `supabase/tests/pay_log_screen/20_scenario.sql`, with `SET CONSTRAINTS ALL IMMEDIATE` standing in for the end of a request's transaction: a screen's wage change leaves one line with the wage before and after; a write that changes no pay, and a column the log does not watch, leave none; the salaried switch leaves a line; a change through `set_pay_config` leaves exactly the door's own line; a new row with a wage leaves a line with no before; a new row with no pay leaves none. No Postgres runs on the Mac that built this, so the SQL beds job on the PR is the proof of the SQL.
+
+**Applied** to prod by 2026-11-26: the dev seat's `check_migration_ledger` read 1,504 versions applied against 1,504 files on `origin/main`, this version among them (read in the docs pass after #9830); no new name in `database.ts`, since the file makes one trigger and its trigger function, which the generated types leave out.

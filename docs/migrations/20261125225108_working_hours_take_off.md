@@ -39,3 +39,5 @@ The client calls nothing this migration creates. Its **Take working hours off** 
 ## Test
 
 `npm run test:pg:working-hours` runs this migration twice more after the door's, and plays `supabase/tests/working_hours/50_take_off.sql`: a take-off with nothing in force, hours stopped before they start, the dry run, the two refusals, an owner at the door, the take-off with its pay log line, a second take-off, hours set again from the standard week, a salaried person already on the standard week, and an hourly person. `10_door.sql`'s case 11 and `20_lock.sql`'s take-off now give the reason a change to pay asks for.
+
+**Applied** to prod by 2026-11-26: the dev seat's `check_migration_ledger` read 1,504 versions applied against 1,504 files on `origin/main`, this version among them (read in the docs pass after #9830); no new name in `database.ts`, since the function is replaced under its own name.

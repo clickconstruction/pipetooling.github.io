@@ -28,3 +28,5 @@ The client calls `delete_test_portal_link` by name, which only this migration cr
 ## Test
 
 `npm run test:pg:portal-link-delete` applies this migration a second time after every migration, which must change nothing, and plays `supabase/tests/portal_link_delete/20_scenario.sql`: an assistant refused at the door and refused a direct delete; a dev refused a live link, a real customer's turned-off link, a link a GC proposal names (with the count) and a link that is not there, and refused a direct delete; the dev deletes the ZZ Test customer's turned-off link, which is gone while the others stand, and a second delete of it is refused; the proposal still names its link; signed out, the door refuses. No Postgres runs on the Mac that built this, so the SQL beds job on the PR is the proof of the SQL.
+
+**Applied** to prod by 2026-11-26: the dev seat's `check_migration_ledger` read 1,504 versions applied against 1,504 files on `origin/main`, this version among them (read in the docs pass after #9830); types regenerated in #9928.
