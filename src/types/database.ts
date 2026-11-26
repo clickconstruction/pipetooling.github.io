@@ -47838,6 +47838,14 @@ export type Database = {
         Args: { p_invoice_id: string }
         Returns: Json
       }
+      delete_test_lien_notice_record: {
+        Args: { p_filing_id: string }
+        Returns: Json
+      }
+      delete_test_lien_notice_stray_lines: {
+        Args: { p_job_id: string }
+        Returns: Json
+      }
       delete_test_portal_link: { Args: { p_link_id: string }; Returns: Json }
       dev_bid_write: {
         Args: { p: Json; p_dry_run?: boolean; p_link?: Json }
