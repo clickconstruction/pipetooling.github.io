@@ -95,4 +95,32 @@ describe('ClockInOutButton · the note boxes and their presses', () => {
     expect(press.style.background).not.toBe(DEAD_PRESS_FILL)
     expect(screen.queryByText('Say what you worked on today, then Complete clock out.')).toBeNull()
   })
+
+  it('a review that opens on the plan typed at clock in says so, until the person changes a letter (punch list #445)', async () => {
+    state.session = { ...openSession, notes: 'Rough-in at the ZZ Test job' }
+    renderWithProviders(<ClockInOutButton userId="user-1" userName="Robert" />)
+    fireEvent.click(await screen.findByRole('button', { name: /Clock Out/i }))
+    await screen.findByRole('heading', { name: 'Clock out' })
+    const box = screen.getByLabelText(/What did you work on\?/) as HTMLTextAreaElement
+    expect(box.value).toBe('Rough-in at the ZZ Test job')
+    expect(screen.getByText('From your plan at clock in. Change it or leave it.')).toBeTruthy()
+    // One press still clocks out: the plan in the box is the note.
+    expect((screen.getByRole('button', { name: 'Complete clock out' }) as HTMLButtonElement).disabled).toBe(false)
+    expect(screen.queryByText('Say what you worked on today, then Complete clock out.')).toBeNull()
+    fireEvent.change(box, { target: { value: 'Rough-in at the ZZ Test job, and the trim' } })
+    expect(screen.queryByText('From your plan at clock in. Change it or leave it.')).toBeNull()
+    // Typed back to the plan, letter for letter, the box holds the plan again.
+    fireEvent.change(box, { target: { value: 'Rough-in at the ZZ Test job' } })
+    expect(screen.getByText('From your plan at clock in. Change it or leave it.')).toBeTruthy()
+  })
+
+  it('a review that opens on the note a Job Mode start wrote names no plan', async () => {
+    state.session = { ...openSession, notes: 'On my way to J1007 · ZZ Test Clinic, about 12 min' }
+    renderWithProviders(<ClockInOutButton userId="user-1" userName="Robert" />)
+    fireEvent.click(await screen.findByRole('button', { name: /Clock Out/i }))
+    await screen.findByRole('heading', { name: 'Clock out' })
+    expect((screen.getByLabelText(/What did you work on\?/) as HTMLTextAreaElement).value).toBe('On my way to J1007 · ZZ Test Clinic, about 12 min')
+    expect(screen.queryByText('From your plan at clock in. Change it or leave it.')).toBeNull()
+    expect((screen.getByRole('button', { name: 'Complete clock out' }) as HTMLButtonElement).disabled).toBe(false)
+  })
 })

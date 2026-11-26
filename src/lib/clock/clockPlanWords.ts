@@ -6,6 +6,8 @@
  * dead, drawn with the dead press's pair, and the screen says what brings it alive. Pure.
  */
 
+import { hereNote, travelNote } from '../jobMode/onMyWay'
+
 /** Under the clock-in sheet's box while it is empty. */
 export const CLOCK_IN_PLAN_EMPTY_LINE = 'Say what you mean to get done today, then Complete Clock In.'
 
@@ -15,4 +17,31 @@ export const CLOCK_OUT_NOTE_EMPTY_LINE = 'Say what you worked on today, then Com
 /** Whether a note box holds nothing but spaces, so its press is dead. */
 export function clockNoteEmpty(text: string): boolean {
   return text.trim() === ''
+}
+
+/**
+ * Under the clock-out review's box while it still holds the plan typed at clock in (punch list #445). The review has
+ * opened on the session's own note since 2026-04 so that clock out is one press (punch list #189), and nothing said
+ * where the words came from: a box that looked typed, under *You can leave this empty.*
+ */
+export const CLOCK_OUT_NOTE_FROM_PLAN_LINE = 'From your plan at clock in. Change it or leave it.'
+
+/** How the two notes Job Mode writes at a start open: *On my way to …* and *On site at …*. */
+const JOB_MODE_NOTE_STARTS = [travelNote('', null), hereNote('')]
+
+/**
+ * Whether a session's note is words a person typed as their plan. A start from Job Mode writes the note itself, so
+ * that one is no plan and the line that names the plan would be untrue over it.
+ */
+export function clockNoteIsPlan(note: string): boolean {
+  const words = note.trim()
+  return words !== '' && !JOB_MODE_NOTE_STARTS.some((start) => words.startsWith(start))
+}
+
+/**
+ * Whether the plan's line draws under the clock-out box: the box opened on a plan, the day's reports did not fill it
+ * (their own line says so and wins), and the person has not changed a letter of it.
+ */
+export function clockOutPlanLineShows(box: { seed: string; text: string; filledFromReports: boolean }): boolean {
+  return !box.filledFromReports && clockNoteIsPlan(box.seed) && box.text === box.seed
 }
