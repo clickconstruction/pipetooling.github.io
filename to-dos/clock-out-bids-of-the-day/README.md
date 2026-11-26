@@ -1,17 +1,18 @@
 ---
 name: "Clock out: the bids of the day"
 number: 445
-group: ready
-status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · the owner's go the same day (I like it, build it) · the ground is PR #9878, armed · the beat and the sheet's list are built and wait on the types
+group: close
+status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · the owner's go the same day (I like it, build it) · the ground is live as v2.8605, the beat as v2.8609 and the Clock out list as v2.8610 (2026-11-26) · left: the live walk, then the Bid Board, the My Time card and CountTooling on the owner's word
 summary: >
   An estimator works one bid at a time, and the app already records most of that work without being asked.
   This card reads those records into a list at clock out: the bids the person worked on today, with nothing
   to type. The person takes one off or adds one the app missed in one press. Step 1 needs no new table. The
   later steps add one small beat so the list also holds bids a person read and did not change.
-next: Push PR #9878's migration at its merge, then the types PR, then the beat and the sheet's list as two PRs. Then walk it live.
-size: L as a train of six (S · M · M · S · S · M); left: the push, the beat and the sheet's list (M · S · M), then the Bid Board, the My Time card and CountTooling (S · S · M)
-blocker: None. The push of PR #9878's migration has the owner's yes and goes at its merge.
-opinion: build — the owner said build it, and the first three pieces are written and tested
+next: Walk it live with a ZZ Test bid (How to verify). Then the Bid Board, the My Time card and CountTooling, each on the owner's word.
+size: L as a train of six (S · M · M · S · S · M); steps 1 to 3 are live; left: the Bid Board, the My Time card and CountTooling (S · S · M)
+blocker: None. The walk needs the live-look slot and a ZZ Test bid.
+ver: v2.8605 · 8609 · 8610
+opinion: build — the owner said build it, and the first three pieces are live; the last three wait on the owner's word
 ---
 
 # Clock out: the bids of the day (#445)
@@ -376,10 +377,10 @@ as four PRs:
 
 | PR | What | Owes |
 |---|---|---|
-| The ground, PR #9878 | `20261125223610_bid_day_ground.sql`: the beat's table `user_bid_activity` in five-minute buckets, the kept list `bid_day_entries`, and `bump_user_bid_activity`, `get_my_bid_day`, `save_my_bid_day`. Its SQL bed is `npm run test:pg:bid-day`. | The push, at the merge |
-| The types | `npm run gen-types:linked` | Nothing |
-| The beat | `useBidActivityBeat` in the layout reads the bid from the address and sends at most a minute a minute, only while the person pressed, typed or scrolled in the last five minutes | Nothing |
-| The list | The kernel `src/lib/clock/bidDay.ts`, the sheet's section `ClockOutBidDay.tsx`, the wiring in `ClockInOutButton.tsx` and the guide | Nothing |
+| The ground, PR #9878 (v2.8605) | `20261125223610_bid_day_ground.sql`: the beat's table `user_bid_activity` in five-minute buckets, the kept list `bid_day_entries`, and `bump_user_bid_activity`, `get_my_bid_day`, `save_my_bid_day`. Its SQL bed is `npm run test:pg:bid-day`. | The push, at the merge |
+| The types, PR #9887 | `npm run gen-types:linked` | Nothing |
+| The beat, PR #9891 (v2.8609) | `useBidActivityBeat` in the layout reads the bid from the address and sends at most a minute a minute, only while the person pressed, typed or scrolled in the last five minutes | Nothing |
+| The list, PR #9900 (v2.8610) | The kernel `src/lib/clock/bidDay.ts`, the sheet's section `ClockOutBidDay.tsx`, the wiring in `ClockInOutButton.tsx` and the guide | Nothing |
 
 What changed from the plan while building:
 
@@ -419,5 +420,7 @@ with no clock out, and CountTooling's beat.
 ## Where it stands
 
 Read and measured on 2026-11-25, and the mock-up drawn and changed three times on the owner's looks the
-same day. The owner said to build it. The ground is PR #9878, armed, with its SQL bed green. The beat and
-the sheet's list are written and tested and wait on the types PR. Nothing is live yet.
+same day. The owner said to build it. Steps 1 to 3 are live: the ground as v2.8605 (PR #9878, its migration
+pushed 2026-11-25), the types (PR #9887), the beat as v2.8609 (PR #9891) and the Clock out list as v2.8610
+(PR #9900), all on 2026-11-26. Not walked live yet: the recipe is under How to verify. Steps 4 to 6 wait on
+the owner's word.
