@@ -385,7 +385,7 @@ export default function SubPortalGlobeButton({
       setMain({ kind: 'active', token })
       setSubPortalGlobeState(personId, 'active')
       setTimeline((prev) => [
-        { kind: 'link', at: new Date().toISOString(), createdBy: user?.id ?? null, audience: 'all', outcome: 'active', revokedAt: null },
+        { kind: 'link', linkId: null, at: new Date().toISOString(), createdBy: user?.id ?? null, audience: 'all', outcome: 'active', revokedAt: null },
         ...prev,
       ])
       showToast('Portal link created.', 'success')
