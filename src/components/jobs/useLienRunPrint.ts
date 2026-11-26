@@ -39,6 +39,8 @@ export type LienRunPrintHookInput = {
   onChanged: () => void
   /** The run's affidavits whose newest print says the same today (step 7, `useLienRunPrinted`): they do not print again. */
   printedAffidavitJobIds?: ReadonlySet<string>
+  /** The run's changed affidavits a person said stand as printed: they do not print again either. */
+  stoodAffidavitJobIds?: ReadonlySet<string>
   /** Every copy of a print is filed, or could not be: the newest prints are read again. */
   onFiled?: () => void
 }
@@ -57,6 +59,10 @@ export type LienRunPrintState = {
   affidavits: number
   /** The run's right affidavits left out of the print because they printed already and say the same today. */
   affidavitsPrinted: number
+  /** The run's right affidavits left out of the print because a person said they stand as printed. */
+  affidavitsStood: number
+  /** Print one affidavit of the run again, alone, as its own press prints it (a changed paper's *Reprint this one*). */
+  reprintAffidavit: (jobId: string) => void
   /** The run's right notices the press does not print, each with its reason: the card names them under the press. */
   stopped: LienRunNoticeStopped[]
   /** What the press printed in this sitting, as a sentence; null before a print. */
@@ -73,7 +79,7 @@ const timeWords = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', 
  *
  * The documents are built at the press, never on a render. The count comes from the same kernels with no document.
  */
-export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidavitsRun, issuer, todayYmd, stripeMode, userId, onChanged, printedAffidavitJobIds, onFiled }: LienRunPrintHookInput): LienRunPrintState | null {
+export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidavitsRun, issuer, todayYmd, stripeMode, userId, onChanged, printedAffidavitJobIds, stoodAffidavitJobIds, onFiled }: LienRunPrintHookInput): LienRunPrintState | null {
   const { showToast } = useToastContext()
   const [printed, setPrinted] = useState<LienRunPrintState['printed']>(null)
   const [refused, setRefused] = useState(false)
@@ -95,9 +101,12 @@ export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidav
   if (!run || !plan) return null
   const noticeCount = ready.length
   // An affidavit that printed and would say the same today is not printed again by the run. The Board's own print still takes it.
-  const affidavitJobIds = printedAffidavitJobIds && printedAffidavitJobIds.size > 0 ? new Set([...plan.affidavitJobIds].filter((id) => !printedAffidavitJobIds.has(id))) : plan.affidavitJobIds
+  // Nor is one a person said stands as printed, though a statement on it has moved.
+  const skips = (id: string) => Boolean(printedAffidavitJobIds?.has(id) || stoodAffidavitJobIds?.has(id))
+  const affidavitJobIds = (printedAffidavitJobIds?.size ?? 0) + (stoodAffidavitJobIds?.size ?? 0) > 0 ? new Set([...plan.affidavitJobIds].filter((id) => !skips(id))) : plan.affidavitJobIds
   const affidavits = live && affidavitJobIds.size > 0 ? affidavitCount(affidavitJobIds) : 0
-  const affidavitsPrinted = live ? plan.affidavitJobIds.size - affidavitJobIds.size : 0
+  const affidavitsStood = live ? [...plan.affidavitJobIds].filter((id) => stoodAffidavitJobIds?.has(id)).length : 0
+  const affidavitsPrinted = live ? plan.affidavitJobIds.size - affidavitJobIds.size - affidavitsStood : 0
   const reading = noticeCount > 0 && !enclosures.read
   const press = lienRunPrintPress({ notices: noticeCount, affidavits, held: plan.held, reading, stopped: stopped.length })
   const both = noticeCount > 0 && affidavits > 0
@@ -139,6 +148,19 @@ export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidav
     if (packet && packet.stampIds.length > 0) void markLienDeskItemsPrinted(packet.stampIds, userId).catch(() => undefined).then(onChanged)
   }
 
+  // One changed affidavit again, alone: the batch for its job, printed and filed as the batch's own press does it.
+  const reprintAffidavit = (jobId: string) => {
+    if (!plan.affidavitJobIds.has(jobId)) return
+    const batch = affidavitsRun({ jobIds: new Set([jobId]), leftOut: [] })
+    if (!batch) return
+    if (!openHtmlPrintWindow(batch.html)) {
+      showToast(LIEN_RUN_PRINT_WORDS.blocked, 'error')
+      return
+    }
+    const filed = batch.copies.map((copy) => fileSentCopy({ ...copy.filing, how: 'print' }, { html: copy.html }))
+    if (onFiled) void Promise.all(filed).then(onFiled, onFiled)
+  }
+
   return {
     press,
     order: lienStackOrderWords(noticeCount, affidavits, mode === 'one'),
@@ -148,6 +170,8 @@ export function useLienRunPrint({ run, open, noticesFor, affidavitCount, affidav
     notices: noticeCount,
     affidavits,
     affidavitsPrinted,
+    affidavitsStood,
+    reprintAffidavit,
     stopped,
     printed,
     print,

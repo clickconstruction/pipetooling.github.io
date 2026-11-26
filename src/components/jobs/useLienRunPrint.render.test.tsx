@@ -128,6 +128,37 @@ describe('useLienRunPrint', () => {
     expect(plain.result.current).toMatchObject({ affidavits: 1, affidavitsPrinted: 0 })
   })
 
+  it('an affidavit a person said stands as printed is not printed again, and is counted apart from one that says the same', async () => {
+    const view = mount({ stoodAffidavitJobIds: new Set(['job-1']) })
+    await waitFor(() => expect(view.result.current!.press.dead).toBe(false))
+    expect(view.result.current).toMatchObject({ notices: 1, affidavits: 0, affidavitsStood: 1, affidavitsPrinted: 0 })
+    act(() => view.result.current!.print())
+    expect(affidavitsRun).not.toHaveBeenCalled()
+  })
+
+  it('Reprint this one prints one affidavit of the run alone, files its copy, and reads the prints again', async () => {
+    const onFiled = vi.fn()
+    const view = mount({ onFiled })
+    await waitFor(() => expect(view.result.current!.press.dead).toBe(false))
+    act(() => view.result.current!.reprintAffidavit('job-1'))
+    expect(affidavitsRun).toHaveBeenCalledTimes(1)
+    expect([...affidavitsRun.mock.calls[0]![0].jobIds]).toEqual(['job-1'])
+    expect(openMock).toHaveBeenCalledTimes(1)
+    expect(fileMock.mock.calls.map((c) => (c[0] as { kind: string; how: string }).kind)).toEqual(['lien_affidavit'])
+    // No notice is stamped by it: it printed no notice.
+    expect(stampMock).not.toHaveBeenCalled()
+    await waitFor(() => expect(onFiled).toHaveBeenCalledTimes(1))
+    // A job that is not one of the run's affidavits prints nothing.
+    act(() => view.result.current!.reprintAffidavit('job-9'))
+    expect(affidavitsRun).toHaveBeenCalledTimes(1)
+    // A blocked window says so and files nothing.
+    openMock.mockReturnValueOnce(false)
+    fileMock.mockClear()
+    act(() => view.result.current!.reprintAffidavit('job-1'))
+    expect(toastMock).toHaveBeenCalledWith('Popup blocked. Allow popups to print the run.', 'error')
+    expect(fileMock).not.toHaveBeenCalled()
+  })
+
   it('the press prints one stack, files each paper as its own press files it, and stamps the run’s notices printed', async () => {
     const view = mount()
     await waitFor(() => expect(view.result.current!.press.dead).toBe(false))

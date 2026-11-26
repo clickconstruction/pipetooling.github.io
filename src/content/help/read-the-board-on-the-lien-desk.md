@@ -245,7 +245,25 @@ Anything the paper states counts: the money, the parties, the property, the work
 
 A printed notice is read against the bills as they stand. So a bill corrected after the print counts, even when nobody redrew the notice.
 
-A changed affidavit prints again with the run. For a changed notice, press **Print and mail** on the Board. The run window opens. Take the printed notice back there and print it again.
+Each changed paper has three presses.
+
+:::cards
+:::card Reprint this one
+An affidavit prints again now, by itself. On a notice the press reads **Reprint in the run window ›**. The run window opens on that notice. Take the printed notice back there and print it again.
+:::
+:::card It stands as printed
+Press this when the printed paper is still good. The desk keeps your answer with your name, the time and what had changed. Every office seat sees it.
+:::
+:::card Take it out of the run
+This is **Leave out**. Pick a reason. The paper leaves this run and keeps its own day.
+:::
+:::
+
+A paper that stands moves under **Stands as printed**. The line names who said so. Press {{button:outline|Take back}} to undo the answer.
+
+Your answer covers that one change. If the paper changes again, the desk asks again.
+
+A changed affidavit that nobody answers for prints again with the run. An affidavit that stands does not.
 
 An affidavit that printed and says the same today does not print again with the run. A line under the press says how many. The Board's **Print for notarization** still prints them.
 

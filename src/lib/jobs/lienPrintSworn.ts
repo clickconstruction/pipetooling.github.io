@@ -230,6 +230,33 @@ export function lienChangedSincePrint(kind: LienPrintPaperKind, printed: LienPri
   return out
 }
 
+/** A short, steady number for a string (cyrb53), as text: the key below must fit a column and read the same on every machine. */
+function shortHash(text: string): string {
+  let h1 = 0xdeadbeef
+  let h2 = 0x41c6ce57
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i)
+    h1 = Math.imul(h1 ^ c, 2654435761)
+    h2 = Math.imul(h2 ^ c, 1597334677)
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36)
+}
+
+/**
+ * The key of one difference between a print and today (step 7, *It stands*): which fields moved, from what to what,
+ * as the compare sees the values. An answer given for a difference is kept under this key, so a second change, which
+ * is another difference, is another key and asks again. Two reads of the same difference give the same key however
+ * the values are spaced or the money is written. '' with no change.
+ */
+export function lienPrintChangeKey(kind: LienPrintPaperKind, changes: ReadonlyArray<LienPrintChange>): string {
+  if (changes.length === 0) return ''
+  const asOf = new Map(LIEN_SWORN_FIELDS[kind].map((f) => [f.key, f.as]))
+  const parts = changes.map((c) => `${c.key}\u0001${seen(c.printed, asOf.get(c.key) ?? 'text')}\u0001${seen(c.now, asOf.get(c.key) ?? 'text')}`).sort()
+  return `${kind}:${changes.length}:${shortHash(parts.join('\u0002'))}`
+}
+
 const quoted = (v: string): string => (v ? `“${v}”` : 'nothing')
 
 /** One change in words with both values: *the claim: printed “$18,400.00”, now “$6,150.00”*. */

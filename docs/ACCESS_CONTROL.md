@@ -1033,6 +1033,8 @@ a `'public'` answer puts the ticked jobs on the attorney's list through `set_job
 it asks a reason to take a job off the path and to put it back, and can put the job on the attorney's list through the same flag.
 **Leave a paper out of the run** (v2.8474, `20261124093000_lien_run_left_out.sql`): `lien_run_left_out` is read by **dev · assistant-like · master**, the roles that read `job_lien_desk_items`, and has no insert, update or delete policy.
 Its rows are written only by `set_lien_run_left_out`, for the same roles (the lien office, `isLienOffice`), which stamps who and when on the server and refuses a leave-out with no reason.
+**Say a printed lien paper stands** (v2.8595, `20261125210500_lien_print_stands.sql`): `lien_print_stands` is read by **dev · assistant-like · master**, the same roles.
+Its rows are written only by `set_lien_print_stands`, for the same roles, which stamps who and when on the server, refuses an answer that names no change, and takes an answer back with a stamp.
 The client draws **Leave out**, **Leave out again** and **Put it back** for the lien office alone;
 anyone else who opens the desk reads the checklist.
 **A window that has closed** (v2.7801, `LienClosedWindow`): the Board's closed window adds no write and no policy, so its three presses are refused or allowed by the functions they call, *Keep collecting* by `set_job_lien_path_answer`, *Let it go* by `set_job_collections_flag` and `set_job_uncollectible`, *Record it closed* by the insert policy on `job_lien_desk_items`;

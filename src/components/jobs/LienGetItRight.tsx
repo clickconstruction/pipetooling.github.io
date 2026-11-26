@@ -10,7 +10,8 @@ import { Money } from '../Money'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { LIEN_RUN_PRINT_WORDS as PRINT } from '../../lib/jobs/lienRunPrint'
-import { LIEN_RUN_PRINTED_WORDS as PRINTED, lienRunPrintedByWords, lienRunPrintedSameWords, lienRunPrintedUnreadWords } from '../../lib/jobs/lienRunPrinted'
+import { LIEN_PRINT_STANDS_WORDS as STANDS, lienPrintStandsByWords, lienPrintStoodWords } from '../../lib/jobs/lienPrintStands'
+import { LIEN_RUN_PRINTED_WORDS as PRINTED, lienRunPrintedByWords, lienRunPrintedSameWords, lienRunPrintedUnreadWords, type LienRunChangedPaper } from '../../lib/jobs/lienRunPrinted'
 import type { LienRunPrintedState } from './useLienRunPrinted'
 import { lienKindTagStyle } from './LienDeskNextUp'
 import type { LienRunPrintState } from './useLienRunPrint'
@@ -48,6 +49,8 @@ export type LienGetItRightProps = {
   print?: LienRunPrintState | null
   /** Changed since printed (step 7, `useLienRunPrinted`): the run's printed papers beside today. The lien office's, as the print is. */
   printed?: LienRunPrintedState | null
+  /** A changed notice's *Reprint in the run window*: the run window on that one notice. Absent, the press is not drawn. */
+  onReprintNotice?: (paper: LienRunChangedPaper) => void
 }
 
 const blueBtn: CSSProperties = { padding: '5px 12px', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '0.8125rem', fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }
@@ -193,7 +196,100 @@ function Question({ line }: { line: LienRunLine }) {
   )
 }
 
-export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, userName, onBack, onAct, onOpenLine, onLeaveOut, onPutBack, prints, print, printed }: LienGetItRightProps) {
+/** A changed paper's head and its lines: the kind, the job, when it printed and by whom, then one line a change. */
+function ChangedPaperBody({ paper, whenWords }: { paper: LienRunChangedPaper; whenWords: (iso: string) => string }) {
+  return (
+    <>
+      <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>
+        <span style={{ ...lienKindTagStyle(paper.kind), marginRight: 6 }}>{lienRunKindWord(paper.kind)}</span>
+        <strong>{paper.label}</strong>
+        {paper.title.trim() ? ` · ${paper.title.trim()}` : ''}
+      </div>
+      <div style={{ ...small, margin: '2px 0 4px' }}>
+        <ValueSentence text={lienRunPrintedByWords(paper, whenWords(paper.printedAt))} />
+        {paper.standIn ? ` ${PRINTED.standIn}` : ''}
+      </div>
+      <ValueLines>
+        {paper.changes.map((c) => (
+          <div key={c.key} data-lien-run-change={c.key} style={{ fontSize: '0.8125rem', color: 'var(--text-700)', overflowWrap: 'anywhere' }}>
+            <ValueSentence text={c.words} />
+          </div>
+        ))}
+      </ValueLines>
+    </>
+  )
+}
+
+/** The three answers for a changed paper: print it again, say it stands, or take it out of the run. A press with no way to act is not drawn. */
+function ChangedPaperPresses({ paper, isMobile, onReprint, onStands, onTakeOut }: { paper: LienRunChangedPaper; isMobile: boolean; onReprint: (() => void) | null; onStands: () => Promise<void>; onTakeOut: (() => void) | null }) {
+  const [busy, setBusy] = useState(false)
+  const [why, setWhy] = useState<string | null>(null)
+  const stands = async () => {
+    if (busy) return
+    setBusy(true)
+    setWhy(null)
+    try {
+      await onStands()
+    } catch (e) {
+      setWhy(formatErrorMessage(e, STANDS.notStood))
+    }
+    setBusy(false)
+  }
+  return (
+    <>
+      <div data-lien-run-changed-presses style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+        {onReprint ? (
+          <button type="button" data-lien-run-changed-press="reprint" onClick={onReprint} style={{ ...blueBtn, ...tall(isMobile) }}>
+            {paper.kind === 'notice' ? STANDS.reprintNotice : STANDS.reprint}
+          </button>
+        ) : null}
+        <button type="button" data-lien-run-changed-press="stands" disabled={busy} onClick={() => void stands()} style={{ ...plainBtn, ...tall(isMobile), ...(busy ? deadBtn : null) }}>
+          {STANDS.stands}
+        </button>
+        {onTakeOut ? (
+          <button type="button" data-lien-run-changed-press="take-out" onClick={onTakeOut} style={{ ...plainBtn, ...tall(isMobile) }}>
+            {STANDS.takeOut}
+          </button>
+        ) : null}
+      </div>
+      {why ? <div role="alert" data-lien-run-changed-why style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)', marginTop: 6 }}>{why}</div> : null}
+    </>
+  )
+}
+
+/** Under a paper that stands: who said so and when, and the way back. */
+function StoodFoot({ paper, isMobile, canTakeBack, words, onTakeBack }: { paper: LienRunChangedPaper; isMobile: boolean; canTakeBack: boolean; words: string; onTakeBack: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false)
+  const [why, setWhy] = useState<string | null>(null)
+  const takeBack = async () => {
+    if (busy) return
+    setBusy(true)
+    setWhy(null)
+    try {
+      await onTakeBack()
+    } catch (e) {
+      setWhy(formatErrorMessage(e, STANDS.notTakenBack))
+    }
+    setBusy(false)
+  }
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 6, fontSize: '0.8125rem', color: 'var(--text-green-700)' }}>
+        <span data-lien-run-stood-by={paper.key}>
+          <ValueSentence text={words} />
+        </span>
+        {canTakeBack ? (
+          <button type="button" data-lien-run-stood-take-back disabled={busy} onClick={() => void takeBack()} style={{ ...plainBtn, ...tall(isMobile), ...(busy ? deadBtn : null) }}>
+            {STANDS.takeBack}
+          </button>
+        ) : null}
+      </div>
+      {why ? <div role="alert" style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)', marginTop: 6 }}>{why}</div> : null}
+    </>
+  )
+}
+
+export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, userName, onBack, onAct, onOpenLine, onLeaveOut, onPutBack, prints, print, printed, onReprintNotice }: LienGetItRightProps) {
   const [formFor, setFormFor] = useState<string | null>(null)
   const [putting, setPutting] = useState<string | null>(null)
   const [putWhy, setPutWhy] = useState<{ key: string; why: string } | null>(null)
@@ -343,39 +439,55 @@ export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, us
         </section>
       ) : null}
 
-      {printed && printed.changed.length > 0 ? (
-        <section data-lien-run-card="changed" style={{ ...card, border: '1px solid var(--border-amber)' }}>
+      {printed && printed.changed.length + printed.stood.length > 0 ? (
+        <section data-lien-run-card="changed" style={{ ...card, ...(printed.changed.length > 0 ? { border: '1px solid var(--border-amber)' } : null) }}>
           <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-strong)', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline' }}>
             <span>{PRINTED.head}</span>
             <span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               <WorkedOutValue>{String(printed.changed.length)}</WorkedOutValue> {printed.changed.length === 1 ? 'paper' : 'papers'}
             </span>
           </h3>
-          <p style={{ ...small, margin: '4px 0 8px' }}>{PRINTED.lead}</p>
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
-            {printed.changed.map((p) => (
-              <li key={p.key} data-lien-run-changed={p.key} style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>
-                  <span style={{ ...lienKindTagStyle(p.kind), marginRight: 6 }}>{lienRunKindWord(p.kind)}</span>
-                  <strong>{p.label}</strong>
-                  {p.title.trim() ? ` · ${p.title.trim()}` : ''}
-                </div>
-                <div style={{ ...small, margin: '2px 0 4px' }}>
-                  <ValueSentence text={lienRunPrintedByWords(p, printed.whenWords(p.printedAt))} />
-                  {p.standIn ? ` ${PRINTED.standIn}` : ''}
-                </div>
-                <ValueLines>
-                  {p.changes.map((c) => (
-                    <div key={c.key} data-lien-run-change={c.key} style={{ fontSize: '0.8125rem', color: 'var(--text-700)', overflowWrap: 'anywhere' }}>
-                      <ValueSentence text={c.words} />
-                    </div>
-                  ))}
-                </ValueLines>
-              </li>
-            ))}
-          </ul>
-          {printed.changed.some((p) => p.kind === 'affidavit') ? <p style={{ ...small, margin: '8px 0 0' }}>{PRINTED.affidavitNext}</p> : null}
-          {printed.changed.some((p) => p.kind === 'notice') ? <p style={{ ...small, margin: '6px 0 0' }}>{PRINTED.noticeNext}</p> : null}
+          {printed.changed.length > 0 ? (
+            <>
+              <p style={{ ...small, margin: '4px 0 8px' }}>{PRINTED.lead}</p>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 12 }}>
+                {printed.changed.map((p) => {
+                  const line = run.right.find((l) => l.key === p.key) ?? null
+                  return (
+                    <li key={p.key} data-lien-run-changed={p.key} style={{ minWidth: 0 }}>
+                      <ChangedPaperBody paper={p} whenWords={printed.whenWords} />
+                      {canLeaveOut ? (
+                        <ChangedPaperPresses
+                          paper={p}
+                          isMobile={isMobile}
+                          onReprint={p.kind === 'affidavit' ? (print ? () => print.reprintAffidavit(p.jobId) : null) : onReprintNotice && p.itemId ? () => onReprintNotice(p) : null}
+                          onStands={() => printed.markStands(p)}
+                          onTakeOut={line ? () => setFormFor(`changed:${p.key}`) : null}
+                        />
+                      ) : null}
+                      {line && formFor === `changed:${p.key}` ? <LeaveOutForm line={line} isMobile={isMobile} again={false} onLeaveOut={onLeaveOut} onClose={() => setFormFor(null)} /> : null}
+                    </li>
+                  )
+                })}
+              </ul>
+              {printed.changed.some((p) => p.kind === 'affidavit') ? <p style={{ ...small, margin: '8px 0 0' }}>{PRINTED.affidavitNext}</p> : null}
+              {printed.changed.some((p) => p.kind === 'notice') ? <p style={{ ...small, margin: '6px 0 0' }}>{PRINTED.noticeNext}</p> : null}
+            </>
+          ) : null}
+          {printed.stood.length > 0 ? (
+            <div data-lien-run-stood style={{ marginTop: printed.changed.length > 0 ? 12 : 4, paddingTop: printed.changed.length > 0 ? 10 : 0, borderTop: printed.changed.length > 0 ? '1px solid var(--border)' : 'none' }}>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>{STANDS.stoodHead}</div>
+              <p style={{ ...small, margin: '2px 0 8px' }}>{STANDS.stoodLead}</p>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+                {printed.stood.map((p) => (
+                  <li key={p.key} data-lien-run-stood-row={p.key} style={{ minWidth: 0 }}>
+                    <ChangedPaperBody paper={p} whenWords={printed.whenWords} />
+                    <StoodFoot paper={p} isMobile={isMobile} canTakeBack={canLeaveOut} words={lienPrintStandsByWords(p.stand, userName, printed.whenWords(p.stand.stoodAt))} onTakeBack={() => printed.takeBackStands(p)} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -432,6 +544,11 @@ export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, us
           {print.affidavitsPrinted > 0 ? (
             <p data-lien-run-printed-same style={{ ...small, margin: '6px 0 0' }}>
               <ValueSentence text={lienRunPrintedSameWords(print.affidavitsPrinted)} />
+            </p>
+          ) : null}
+          {print.affidavitsStood > 0 ? (
+            <p data-lien-run-printed-stood style={{ ...small, margin: '6px 0 0' }}>
+              <ValueSentence text={lienPrintStoodWords(print.affidavitsStood)} />
             </p>
           ) : null}
           {printed && printed.unread > 0 ? (
