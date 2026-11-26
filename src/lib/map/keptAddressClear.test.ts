@@ -12,6 +12,7 @@ import {
   keptAddressSearchPattern,
   keptAddressSearchProblem,
   keptAddressStreetLine,
+  keptAddressUncheckedWhy,
   type KeptAddressSource,
   keptAddressClearedWords,
 } from './keptAddressClear'
@@ -78,6 +79,20 @@ describe('keptAddressClearProblem', () => {
   })
   it('never clears an address too short to check, whatever was read', () => {
     expect(keptAddressClearProblem('9 st', [])).toBe('This address is too short to tell apart from the others. It stays.')
+  })
+  it('says the reason that holds for a line it cannot check: too short, no street number, or no street name (punch list #443)', () => {
+    expect(keptAddressUncheckedWhy('9 st')).toBe('This address is too short to tell apart from the others. It stays.')
+    expect(keptAddressUncheckedWhy('12345')).toBe('This address is too short to tell apart from the others. It stays.')
+    // A long line with no number in it is not short: 39 characters here.
+    const noNumber = 'zz test walk place with no number in it, alder, tx'
+    expect(keptAddressStreetLine(noNumber)).toHaveLength(39)
+    expect(keptAddressLikePattern(noNumber)).toBeNull()
+    expect(keptAddressUncheckedWhy(noNumber)).toBe('This address has no street number, so it cannot be told apart from the others. It stays.')
+    expect(keptAddressClearProblem(noNumber, [])).toBe('This address has no street number, so it cannot be told apart from the others. It stays.')
+    expect(keptAddressClearProblem('main street', [])).toBe('This address has no street number, so it cannot be told apart from the others. It stays.')
+    expect(keptAddressUncheckedWhy('1234 5678, alder, tx')).toBe('This address has no street name, so it cannot be told apart from the others. It stays.')
+    // A line that can be checked has no such reason, and what was read decides.
+    expect(keptAddressUncheckedWhy(KEY)).toBe('')
   })
 })
 
