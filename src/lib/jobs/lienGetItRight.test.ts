@@ -248,17 +248,18 @@ describe('the three steps and the door', () => {
 describe('the strip with what the print knows (v2.8631)', () => {
   const none = { printedAffidavitJobIds: new Set<string>(), stoppedNotices: [] }
 
-  it('with no facts it is the checklist as built', () => {
+  it('before the prints are read it is the checklist as built', () => {
     const { run } = desk()
-    expect(lienGetItRightWithFacts(run, none)).toBe(run)
+    expect(lienGetItRightWithFacts(run, null)).toBe(run)
   })
 
   it('a printed affidavit is not to print, and is said apart; the lines, the door and the totals do not move', () => {
     const { run } = desk()
     const shown = lienGetItRightWithFacts(run, { ...none, printedAffidavitJobIds: new Set(['a-ready']) })
-    expect(shown.counts).toMatchObject({ toPrint: 2, toFile: 2, affidavitsPrinted: 1, noticesStopped: 0, right: 4 })
+    expect(shown.counts).toMatchObject({ toPrint: 2, toFile: 1, affidavitsPrinted: 1, noticesStopped: 0, right: 4 })
     expect(plainSentence(shown.steps[1].line)).toBe('1 notice to print · 1 affidavit for the notary · 1 affidavit printed')
-    expect(plainSentence(shown.steps[2].line)).toBe('1 to mail · 2 to file')
+    // To file is what printed; the affidavit still to print is step 2's.
+    expect(plainSentence(shown.steps[2].line)).toBe('1 to mail · 1 to file')
     expect(shown.rightParts).toBe('1 affidavit ready to file · 1 affidavit printed · 1 notice to print · 1 notice printed')
     expect(shown.right).toBe(run.right)
     expect(shown.settle).toBe(run.settle)
@@ -301,8 +302,10 @@ describe('the strip with what the print knows (v2.8631)', () => {
   it('a fact about a paper that is not right counts for nothing', () => {
     const { run } = desk()
     const shown = lienGetItRightWithFacts(run, { printedAffidavitJobIds: new Set(['a-owner']), stoppedNotices: [{ jobId: 'n-draft', kind: 'held' }] })
-    expect(shown.counts).toMatchObject({ toPrint: 3, affidavitsPrinted: 0, noticesStopped: 0 })
-    expect(shown.steps.map((s) => plainSentence(s.line))).toEqual(run.steps.map((s) => plainSentence(s.line)))
+    expect(shown.counts).toMatchObject({ toPrint: 3, toFile: 0, affidavitsPrinted: 0, noticesStopped: 0 })
+    expect(shown.steps.slice(0, 2).map((s) => plainSentence(s.line))).toEqual(run.steps.slice(0, 2).map((s) => plainSentence(s.line)))
+    // With the facts known and no affidavit printed, nothing is to file yet: the affidavits are step 2's.
+    expect(plainSentence(shown.steps[2].line)).toBe('1 to mail')
   })
 
   it('the strip’s new words are plain', () => {

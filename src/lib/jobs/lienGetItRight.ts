@@ -91,7 +91,7 @@ export type LienGetItRight = {
     toPrint: number
     /** Printed notices still to mail. */
     toMail: number
-    /** Affidavits ready to file. */
+    /** Affidavits to file: every right one until the print's facts are read, then the printed ones (the unprinted are step 2's). */
     toFile: number
     /** Right affidavits that printed and say the same today, or that a person said stand as printed: they do not print again. 0 until the print's facts are read (`lienGetItRightWithFacts`). */
     affidavitsPrinted: number
@@ -196,14 +196,15 @@ const marked = (n: number, one: string, many: string) => `${count(n)} ${n === 1 
  * The counts, the step and the three lines of the strip, from the sorted lines and what the print knows. With no facts
  * a right affidavit counts as to print until it is filed, and every right notice as to print: the Board's chips alone.
  */
-function lienRunStrip(s: LienRunSorted, facts: LienRunFacts): Pick<LienGetItRight, 'counts' | 'step' | 'steps' | 'rightParts'> {
+function lienRunStrip(s: LienRunSorted, facts: LienRunFacts, known: boolean): Pick<LienGetItRight, 'counts' | 'step' | 'steps' | 'rightParts'> {
   const { asked, settle, right, leftOut } = s
   const stoppedBy = new Map(facts.stoppedNotices.map((n) => [n.jobId, n.kind] as const))
   const toMail = right.filter((l) => l.kind === 'notice' && l.stageKey === 'in_mail').length
   const affidavits = right.filter((l) => l.kind === 'affidavit')
-  const toFile = affidavits.length
   const affidavitsPrinted = affidavits.filter((l) => facts.printedAffidavitJobIds.has(l.jobId)).length
-  const affidavitsToPrint = toFile - affidavitsPrinted
+  const affidavitsToPrint = affidavits.length - affidavitsPrinted
+  // With the print's facts, to file is the printed affidavits: the unprinted ones are step 2's. Before them, every right one.
+  const toFile = known ? affidavitsPrinted : affidavits.length
   const noticesRight = right.filter((l) => l.kind === 'notice' && l.stageKey !== 'in_mail')
   const stopped = noticesRight.filter((l) => stoppedBy.has(l.jobId))
   const paperless = stopped.filter((l) => stoppedBy.get(l.jobId) === 'paperless').length
@@ -294,7 +295,7 @@ export function buildLienGetItRight(input: LienGetItRightInput): LienGetItRight 
   const right = lines.filter((l) => l.standing === 'right').sort((a, b) => b.amount - a.amount || a.label.localeCompare(b.label))
   const leftOut = lines.filter((l) => l.standing === 'left_out').sort((a, b) => (a.leftOut?.leftOutAt ?? '').localeCompare(b.leftOut?.leftOutAt ?? '') || a.label.localeCompare(b.label))
 
-  const strip = lienRunStrip({ asked, settle, right, leftOut, lines: lines.length }, NO_FACTS)
+  const strip = lienRunStrip({ asked, settle, right, leftOut, lines: lines.length }, NO_FACTS, false)
 
   return {
     day: run.day,
@@ -312,11 +313,12 @@ export function buildLienGetItRight(input: LienGetItRightInput): LienGetItRight 
  * The checklist again, with what the print and the printed read know (v2.8631): a right affidavit that printed and
  * says the same today, or that a person said stands, is not to print, and a right notice the run's press does not
  * print now is said apart with why. The lines, the door and the totals do not move: only the counts, the step and
- * the strip's words. With no facts it is the checklist as built.
+ * the strip's words. Null facts (the prints not read yet, or a viewer with no one print) leave the checklist as built;
+ * facts that are known, even none, make *to file* the printed affidavits and leave the unprinted ones to step 2.
  */
-export function lienGetItRightWithFacts(run: LienGetItRight, facts: LienRunFacts): LienGetItRight {
-  if (facts.printedAffidavitJobIds.size === 0 && facts.stoppedNotices.length === 0) return run
-  return { ...run, ...lienRunStrip({ asked: run.asked, settle: run.settle, right: run.right, leftOut: run.leftOut, lines: run.counts.papers + run.counts.leftOut }, facts) }
+export function lienGetItRightWithFacts(run: LienGetItRight, facts: LienRunFacts | null): LienGetItRight {
+  if (!facts) return run
+  return { ...run, ...lienRunStrip({ asked: run.asked, settle: run.settle, right: run.right, leftOut: run.leftOut, lines: run.counts.papers + run.counts.leftOut }, facts, true) }
 }
 
 /**

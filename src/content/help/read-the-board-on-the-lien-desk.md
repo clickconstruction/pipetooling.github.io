@@ -191,6 +191,8 @@ Under **Get it right** each line is one paper that cannot print as it stands. Th
 
 Press **papers are right** under the questions to read the papers that are ready. When nothing is left to settle, the checklist says every paper in the run is right. The run's print sits under the questions. Read [Print the run](#print-the-run) below.
 
+Once a paper of the run has printed, a third card opens under the print. The card is **Out the door**. The card counts the printed notices still to mail. The press {{button:blue|Enter mail numbers · 4}} opens the run window on the mail numbers. The card lists the printed affidavits still to file, one county clerk at a time. **Record the filing ›** on an affidavit opens the job in the Lien window. The filing is recorded in that window. A line at the top of the card says what printed and what is left.
+
 ## Leave a paper out of the run
 
 One stuck paper must not hold the rest. Press {{button:outline|Leave out}} on its line. Pick a reason from the list. Type a few words if they help. **Another reason** needs your words. Then press {{button:blue|Leave it out}}.

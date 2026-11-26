@@ -2,7 +2,7 @@
 name: "Lien desk To do: one run — get every paper right, then print, mail and file them together"
 number: 362
 group: ready
-status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483 · the title bar's run door retired, v2.7490 · the run window redrawn for notices and built, v2.7477 (one count, three steps, one press); the liens' lane is drawn and not approved · step 5, the Get it right checklist with Leave out, built v2.8474 on Diane's word of 2026-11-24, with its one call written to flip · step 6, the one print, built v2.8536 on Diane's two answers of 2026-11-24 (live for what is right; the Board's prints unchanged), merged and live 2026-11-25 (pull request 9814) · six calls on the run's defaults written up for the owner 2026-11-25 and all answered the same day: each stands as built, and the first real press is the office's · step 7, changed since printed: every lien print keeps what its paper said (v2.8589), and on the owner's two answers of 2026-11-25 the checklist names a printed paper that changed (v2.8593) and each has three presses, with *It stands* kept on record (v2.8595, one migration, pushed 2026-11-26 at 02:11 UTC) · the print card names a right notice that does not print, v2.8591, seen live on 2026-11-25 · the types and the dev seat's catalog followed on 2026-11-26 (pull request 9902, dev-mcp deployed)
+status: written 2026-11-14 from a Lien desk session · mock-up redrawn 2026-11-15 with the Board in place (Today, B, A, D) at Taunya's ask · Taunya picked B's direction, B was refined the same day and she gave the go to build it · B is built and live (v2.7367, v2.7371, v2.7372), checked on the live desk 2026-11-15 · the owner picked D on 2026-11-16, the list by bin first, and one press, one stack for the print · step 4, the list by bin, built v2.7456 · a print at the foot of each Board column, the owner's *Yes, build this* of 2026-11-16, built v2.7470 · the two prints moved under the tiles, v2.7483 · the title bar's run door retired, v2.7490 · the run window redrawn for notices and built, v2.7477 (one count, three steps, one press); the liens' lane is drawn and not approved · step 5, the Get it right checklist with Leave out, built v2.8474 on Diane's word of 2026-11-24, with its one call written to flip · step 6, the one print, built v2.8536 on Diane's two answers of 2026-11-24 (live for what is right; the Board's prints unchanged), merged and live 2026-11-25 (pull request 9814) · six calls on the run's defaults written up for the owner 2026-11-25 and all answered the same day: each stands as built, and the first real press is the office's · step 7, changed since printed: every lien print keeps what its paper said (v2.8589), and on the owner's two answers of 2026-11-25 the checklist names a printed paper that changed (v2.8593) and each has three presses, with *It stands* kept on record (v2.8595, one migration, pushed 2026-11-26 at 02:11 UTC) · the print card names a right notice that does not print, v2.8591, seen live on 2026-11-25 · the types and the dev seat's catalog followed on 2026-11-26 (pull request 9902, dev-mcp deployed) · the strip's two counts mended, v2.8631 · step 8, Out the door, built v2.8634: what the run printed and what is left to mail and file, with the presses that exist
 summary: >
   The To do tab's Needs you now groups and orders rows by their day alone. Twenty-two rows sharing
   one day fall in no order that means anything, a held paper reads "the property record is not
@@ -13,10 +13,10 @@ summary: >
   under it, about three rows. The mock-up draws today's desk and three answers with the Board in
   place: B (one page, clearer rows), A (the list follows the Board's bins) and D (one run in three
   steps, opened from the Board's first tile). Each is the start of the next.
-next: The migration `20261125210500_lien_print_stands.sql` is applied (2026-11-26, 02:11 UTC), the types are on main (pull request 9902, 03:01 UTC) and the dev seat was deployed with its catalog (03:46 UTC): nothing of step 7 is owed on prod. The *Changed since printed* card was seen drawn live on 2026-11-26 (sitting 21); its three presses have not been pressed live. Then step 8, mail and file (M). The six calls on the run's defaults are answered, each as built, under *Open questions*. The first real press is the office's, at its own printer. A guarded press, with the print window held shut, has its own yes of 2026-11-25 and is the walker's, on a live press alone. A print of the run on a real printer has not been seen.
-size: L for D as five steps (M · M · M · S · M); B, the first three, step 4, the list by bin, step 5, the checklist, step 6, the one print, and step 7, changed since printed, are built; left: step 8 (M)
+next: The migration `20261125210500_lien_print_stands.sql` is applied (2026-11-26, 02:11 UTC), the types are on main (pull request 9902, 03:01 UTC) and the dev seat was deployed with its catalog (03:46 UTC): nothing of step 7 is owed on prod. The *Changed since printed* card was seen drawn live on 2026-11-26 (sitting 21); its three presses have not been pressed live. Step 8's card, Out the door, is built (v2.8634): once a paper of the run has printed it says what is left to mail and to file, with the run window's press and the door to each filing, and a tally. A tally of what was mailed and filed needs a record of the run that nothing keeps, and the copies to each owner wait on counsel (#366). The six calls on the run's defaults are answered, each as built, under *Open questions*. The first real press is the office's, at its own printer. A guarded press, with the print window held shut, has its own yes of 2026-11-25 and is the walker's, on a live press alone. A print of the run on a real printer has not been seen.
+size: L for D as five steps (M · M · M · S · M); B, the first three, step 4, the list by bin, step 5, the checklist, step 6, the one print, step 7, changed since printed, and step 8's card as far as the run's own record allows (v2.8634) are built; left: the mailed and filed tallies, which need a record of the run, and the owners' copies (#366)
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474 · v2.8536 · v2.8589 · v2.8591 · v2.8593 · v2.8595 · v2.8631
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474 · v2.8536 · v2.8589 · v2.8591 · v2.8593 · v2.8595 · v2.8631 · v2.8634
 ---
 
 # Lien desk To do: one run (#362)
@@ -317,16 +317,24 @@ Read in the code on 2026-11-25, with step 6 on `main`.
   its own. Asked whether every pick on that sheet stands, the answer was *Yes, all picks*.
 
 **Step 8, mail and file (M).** It goes after step 7, since its tally needs the affidavits' printed
-fact.
+fact. Built as v2.8634 on 2026-11-26, as far as the run's own record allows (`src/lib/jobs/lienRunOut.ts`).
 
-- The checklist's third card, *Out the door*. Its name is already on the step strip.
-- Mail: the notices this run printed, through the run window's own *Mail and record* step, which
-  exists (`record_mailing`).
-- File: the affidavits grouped by county clerk (`lienAffidavitClerkOrder`, which the batch print
-  uses), then the copies owed to each owner, through the Board's presses that exist.
-- The tally line: printed, mailed, filed, left out, changed.
+- ~~The checklist's third card, *Out the door*.~~ Built. It is drawn under the print once a paper of the
+  run has printed. Before that the strip's third step says what waits.
+- ~~Mail: the notices this run printed, through the run window's own *Mail and record* step.~~ Built: the
+  printed notices still to mail, with the run window's own press, *Enter mail numbers · N*, which opens it
+  on recording.
+- ~~File: the affidavits grouped by county clerk.~~ Built: the printed affidavits still to file, a stop a
+  clerk, by county as the batch lies (`lienAffidavitClerkOrder`'s rule), each with *Record the filing ›*,
+  which opens the job in the Lien window where the filing is recorded. The copies owed to each owner are
+  not here: see the last bullet.
+- The tally line reads *Printed N · N to mail · N to file · N left out · N changed since printed*. The
+  drawing's *mailed a of b* and *filed c of d* are not built: a mailed notice and a filed affidavit leave
+  the run, which is the papers still to send or file, so what was done needs a record of the run that
+  nothing keeps. Keeping one is a migration and the owner's call.
 - The liens' fourth step, the copies after filing, is drawn and not approved. What goes in that
-  envelope is punch list #366 and waits on counsel.
+  envelope is punch list #366 and waits on counsel. The card draws no line for it.
+- Not seen live: a walker's look at steps 7 and 8 on the live desk, where the run holds printed notices.
 
 ## Related
 

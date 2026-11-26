@@ -10,6 +10,7 @@ import { Money } from '../Money'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { ValueLines, ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 import { LIEN_RUN_PRINT_WORDS as PRINT } from '../../lib/jobs/lienRunPrint'
+import { buildLienRunOut, LIEN_RUN_OUT_WORDS as DOOR } from '../../lib/jobs/lienRunOut'
 import { LIEN_PRINT_STANDS_WORDS as STANDS, lienPrintStandsByWords, lienPrintStoodWords } from '../../lib/jobs/lienPrintStands'
 import { LIEN_RUN_PRINTED_WORDS as PRINTED, lienRunPrintedByWords, lienRunPrintedSameWords, lienRunPrintedUnreadWords, type LienRunChangedPaper } from '../../lib/jobs/lienRunPrinted'
 import type { LienRunPrintedState } from './useLienRunPrinted'
@@ -51,6 +52,12 @@ export type LienGetItRightProps = {
   printed?: LienRunPrintedState | null
   /** A changed notice's *Reprint in the run window*: the run window on that one notice. Absent, the press is not drawn. */
   onReprintNotice?: (paper: LienRunChangedPaper) => void
+  /** Out the door (step 8): the run window on its recording step, where the printed notices' mail numbers are typed. Absent, the press is not drawn. */
+  onRecordMailing?: () => void
+  /** Out the door: a printed affidavit's job in the Lien window, where its filing is recorded. Absent, the press is not drawn. */
+  onRecordFiling?: (line: LienRunLine) => void
+  /** The county each printed affidavit is filed in, as its paper names it: the stops a clerk. */
+  countyFor?: (jobIds: ReadonlySet<string>) => ReadonlyArray<{ jobId: string; county: string }>
 }
 
 const blueBtn: CSSProperties = { padding: '5px 12px', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '0.8125rem', fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }
@@ -289,10 +296,15 @@ function StoodFoot({ paper, isMobile, canTakeBack, words, onTakeBack }: { paper:
   )
 }
 
-export default function LienGetItRight({ run: given, isMobile, scrolls, canLeaveOut, userName, onBack, onAct, onOpenLine, onLeaveOut, onPutBack, prints, print, printed, onReprintNotice }: LienGetItRightProps) {
+export default function LienGetItRight({ run: given, isMobile, scrolls, canLeaveOut, userName, onBack, onAct, onOpenLine, onLeaveOut, onPutBack, prints, print, printed, onReprintNotice, onRecordMailing, onRecordFiling, countyFor }: LienGetItRightProps) {
   // The strip's counts with what the print and the printed read know (v2.8631): a printed affidavit and a right notice the
   // run window holds are said apart from what the press prints. The lines and the door do not move.
-  const run = lienGetItRightWithFacts(given, { printedAffidavitJobIds: printed ? new Set([...printed.printedSame, ...printed.stoodAffidavits]) : new Set(), stoppedNotices: print?.stopped ?? [] })
+  const printedAffidavitJobIds = printed ? new Set([...printed.printedSame, ...printed.stoodAffidavits]) : new Set<string>()
+  // The facts are known once the prints are read; before that, and for a viewer with no one print, the strip is as built.
+  const run = lienGetItRightWithFacts(given, printed && !printed.reading ? { printedAffidavitJobIds, stoppedNotices: print?.stopped ?? [] } : null)
+  // Out the door (step 8): what the run has printed and what is left to mail and file. The lien office's, as the print is.
+  const counties = new Map((countyFor && printedAffidavitJobIds.size > 0 ? countyFor(printedAffidavitJobIds) : []).map((c) => [c.jobId, c.county] as const))
+  const out = print && printed ? buildLienRunOut({ run, printedAffidavitJobIds, countyOf: (jobId) => counties.get(jobId), changed: printed.changed.length }) : null
   const [formFor, setFormFor] = useState<string | null>(null)
   const [putting, setPutting] = useState<string | null>(null)
   const [putWhy, setPutWhy] = useState<{ key: string; why: string } | null>(null)
@@ -571,6 +583,53 @@ export default function LienGetItRight({ run: given, isMobile, scrolls, canLeave
             <p role="status" data-lien-run-printed style={{ fontSize: '0.8125rem', color: 'var(--text-green-700)', margin: '8px 0 0' }}>
               <ValueSentence text={print.printed.words} /> {print.printed.next}
             </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {out && out.show ? (
+        <section data-lien-run-card="out" style={card}>
+          <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-strong)' }}>3 · {DOOR.head}</h3>
+          <p data-lien-run-out-tally style={{ ...small, margin: '4px 0 10px' }}>
+            <ValueSentence text={out.tally} />
+          </p>
+          {out.mail.count > 0 ? (
+            <div data-lien-run-out="mail" style={{ marginBottom: out.file.count > 0 ? 12 : 0 }}>
+              <b style={{ display: 'block', color: 'var(--text-strong)', fontSize: '0.85rem' }}>
+                {DOOR.mail} · <WorkedOutValue>{String(out.mail.count)}</WorkedOutValue> {out.mail.count === 1 ? 'notice' : 'notices'}
+              </b>
+              <p style={{ ...small, margin: '2px 0 6px' }}>{DOOR.mailLead}</p>
+              {onRecordMailing ? (
+                <button type="button" data-lien-run-out-press="mail" onClick={onRecordMailing} style={{ ...blueBtn, ...tall(isMobile) }}>
+                  {out.mail.press}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {out.file.count > 0 ? (
+            <div data-lien-run-out="file">
+              <b style={{ display: 'block', color: 'var(--text-strong)', fontSize: '0.85rem' }}>
+                {DOOR.file} · <WorkedOutValue>{String(out.file.count)}</WorkedOutValue> {out.file.count === 1 ? 'affidavit' : 'affidavits'} · <WorkedOutValue>{String(out.file.clerks.length)}</WorkedOutValue> {out.file.clerks.length === 1 ? 'clerk' : 'clerks'}
+              </b>
+              <p style={{ ...small, margin: '2px 0 4px' }}>{DOOR.fileLead}</p>
+              {out.file.clerks.map((c) => (
+                <div key={c.county || 'none'} data-lien-run-out-clerk={c.county || 'none'} style={{ marginTop: 6 }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-700)' }}>
+                    {c.label} · <WorkedOutValue>{String(c.lines.length)}</WorkedOutValue>
+                  </span>
+                  {c.lines.map((l) => (
+                    <div key={l.key} data-lien-run-out-line={l.key} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 4 }}>
+                      <Who line={l} isMobile={isMobile} onOpenLine={onOpenLine} />
+                      {onRecordFiling ? (
+                        <button type="button" data-lien-run-out-press="file" onClick={() => onRecordFiling(l)} style={{ ...linkBtn, ...tall(isMobile) }}>
+                          {DOOR.filePress}
+                        </button>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           ) : null}
         </section>
       ) : null}

@@ -6806,6 +6806,9 @@ A paper left out of the run never prints from that press, and the Board's own tw
 A line of the checklist is one paper that cannot print as it stands, with its bin in the Board's words, the one thing it waits on and its To do row's own press;
 a paper that can print or is printed is **right**.
 **Leave out** takes one paper out of this run with a reason a person picks or types, kept in `lien_run_left_out` with who and when (`lienLeftOut.ts`), and **Put it back** takes it in again.
+**Out the door** (v2.8634, punch list #362, step 8) is the checklist's third card, drawn once a paper of the run has printed (`lienRunOut.ts`).
+It lists the printed notices still to mail with the run window's *Enter mail numbers* press, the printed affidavits still to file a county clerk at a time with *Record the filing ›* opening each job's Lien window, and a tally of what printed and what is left;
+what was mailed or filed is not counted, since a paper that went leaves the run.
 A paper left out of an earlier run is **asked again**: the next run neither takes it by itself nor leaves it out, and lists it first with the old reason until a person answers.
 Leaving a paper out changes nothing on the paper and locks no press: the Board's two prints still take a ready paper, left out or not, until the run has one print of its own (step 6 of the card).
 Since v2.7899 (the owner's pick of 2026-11-18) that list's head names what it counts and where the rest are, *Needs you now · 27 papers* with *12 more under Later* beside it, where it read a bare number that did not match the tab's count of rows the viewer can move (`lienNextUpNowWords.ts`).
