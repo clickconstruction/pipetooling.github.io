@@ -59,7 +59,7 @@ const AFTER = {
   affidavits: [] as LienAffidavitEntry[],
 }
 
-function mount(desk: { notices: LienDeskEntry[]; affidavits: LienAffidavitEntry[] }, over: { leftOut?: LienLeftOutRow[]; open?: boolean; office?: boolean; isMobile?: boolean; failure?: boolean; noRun?: boolean; print?: LienRunPrintState; printed?: LienRunPrintedState; onReprintNotice?: (paper: LienRunChangedPaper) => void; onRecordMailing?: () => void; onRecordFiling?: (line: LienRunLine) => void; countyFor?: (jobIds: ReadonlySet<string>) => ReadonlyArray<{ jobId: string; county: string }>; onLeaveOut?: (line: LienRunLine, reason: string, note: string) => Promise<void>; onPutBack?: (line: LienRunLine) => Promise<void> } = {}) {
+function mount(desk: { notices: LienDeskEntry[]; affidavits: LienAffidavitEntry[] }, over: { leftOut?: LienLeftOutRow[]; open?: boolean; office?: boolean; isMobile?: boolean; failure?: boolean; noRun?: boolean; print?: LienRunPrintState; printed?: LienRunPrintedState; onReprintNotice?: (paper: LienRunChangedPaper) => void; onRecordMailing?: (lines: LienRunLine[]) => void; onRecordFiling?: (line: LienRunLine) => void; countyFor?: (jobIds: ReadonlySet<string>) => ReadonlyArray<{ jobId: string; county: string }>; onLeaveOut?: (line: LienRunLine, reason: string, note: string) => Promise<void>; onPutBack?: (line: LienRunLine) => Promise<void> } = {}) {
   const board = buildLienBoard({ ...desk, retainage: [], todayYmd: TODAY, jobNumber: (id) => `ZZ-${id}`, jobName: (id) => `ZZ ${id}`, gcName: () => 'ZZ Builders', leaderName: 'Sam' })
   const rows = buildLienNextUp({ ...desk, retainage: [], letterTwoByJob: {}, role: 'assistant', todayYmd: TODAY, jobTitle: (id) => `ZZ ${id}`, gcName: () => 'ZZ Builders', leaderName: () => 'Sam' })
   const run = over.noRun || over.failure ? null : buildLienGetItRight({ board, rows, leftOut: over.leftOut ?? [], todayYmd: TODAY, jobTitle: (id) => `ZZ ${id}`, leaderName: () => 'Sam' })
@@ -567,6 +567,10 @@ describe('step 3: Out the door (punch list #362, step 8)', () => {
     expect(q('[data-lien-run-out="file"]')).toBeNull()
     fireEvent.click(q('[data-lien-run-out-press="mail"]')!)
     expect(onRecordMailing).toHaveBeenCalledTimes(1)
+    // The press hands over the card's own printed notices, so the run window opens on them alone and counts what the press counts.
+    const handed = onRecordMailing.mock.calls[0]![0] as LienRunLine[]
+    expect(handed).toHaveLength(2)
+    expect(handed.every((l) => l.kind === 'notice' && l.stageKey === 'in_mail')).toBe(true)
     cleanup()
     mount(BEFORE, { print: printState({ notices: 1, affidavits: 0, held: 4 }), printed: { changed: [], printedSame: new Set(), unread: 0, ...QUIET }, onRecordMailing })
     expect(q('[data-lien-run-card="out"]')).toBeNull()

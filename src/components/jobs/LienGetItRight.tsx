@@ -52,8 +52,8 @@ export type LienGetItRightProps = {
   printed?: LienRunPrintedState | null
   /** A changed notice's *Reprint in the run window*: the run window on that one notice. Absent, the press is not drawn. */
   onReprintNotice?: (paper: LienRunChangedPaper) => void
-  /** Out the door (step 8): the run window on its recording step, where the printed notices' mail numbers are typed. Absent, the press is not drawn. */
-  onRecordMailing?: () => void
+  /** Out the door (step 8): the run window on its recording step, holding the card's own printed notices, where their mail numbers are typed. Absent, the press is not drawn. */
+  onRecordMailing?: (lines: LienRunLine[]) => void
   /** Out the door: a printed affidavit's job in the Lien window, where its filing is recorded. Absent, the press is not drawn. */
   onRecordFiling?: (line: LienRunLine) => void
   /** The county each printed affidavit is filed in, as its paper names it: the stops a clerk. */
@@ -602,7 +602,7 @@ export default function LienGetItRight({ run: given, isMobile, scrolls, canLeave
               </b>
               <p style={{ ...small, margin: '2px 0 6px' }}>{DOOR.mailLead}</p>
               {onRecordMailing ? (
-                <button type="button" data-lien-run-out-press="mail" onClick={onRecordMailing} style={{ ...blueBtn, ...tall(isMobile) }}>
+                <button type="button" data-lien-run-out-press="mail" onClick={() => onRecordMailing(out.mail.lines)} style={{ ...blueBtn, ...tall(isMobile) }}>
                   {out.mail.press}
                 </button>
               ) : null}

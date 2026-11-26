@@ -13,7 +13,7 @@ summary: >
   under it, about three rows. The mock-up draws today's desk and three answers with the Board in
   place: B (one page, clearer rows), A (the list follows the Board's bins) and D (one run in three
   steps, opened from the Board's first tile). Each is the start of the next.
-next: The migration `20261125210500_lien_print_stands.sql` is applied (2026-11-26, 02:11 UTC), the types are on main (pull request 9902, 03:01 UTC) and the dev seat was deployed with its catalog (03:46 UTC): nothing of step 7 is owed on prod. The *Changed since printed* card was seen drawn live on 2026-11-26 (sitting 21); its three presses have not been pressed live. Step 8's card, Out the door, is built (v2.8634): once a paper of the run has printed it says what is left to mail and to file, with the run window's press and the door to each filing, and a tally. A tally of what was mailed and filed needs a record of the run that nothing keeps, and the copies to each owner wait on counsel (#366). The six calls on the run's defaults are answered, each as built, under *Open questions*. The first real press is the office's, at its own printer. A guarded press, with the print window held shut, has its own yes of 2026-11-25 and is the walker's, on a live press alone. A print of the run on a real printer has not been seen.
+next: The migration `20261125210500_lien_print_stands.sql` is applied (2026-11-26, 02:11 UTC), the types are on main (pull request 9902, 03:01 UTC) and the dev seat was deployed with its catalog (03:46 UTC): nothing of step 7 is owed on prod. The *Changed since printed* card was seen drawn live on 2026-11-26 (sitting 21); its three presses have not been pressed live. Step 8's card, Out the door, is built (v2.8634): once a paper of the run has printed it says what is left to mail and to file, with the run window's press and the door to each filing, and a tally. Steps 7 and 8 were seen on the live desk on 2026-11-26 (sitting 26, looking only): both cards as built, with one finding, the Mail press's window titled for the whole run, mended as v2.8658 and not seen live yet. The File part was not seen, since the run held no printed affidavit. A tally of what was mailed and filed needs a record of the run that nothing keeps, and the copies to each owner wait on counsel (#366). The six calls on the run's defaults are answered, each as built, under *Open questions*. The first real press is the office's, at its own printer. A guarded press, with the print window held shut, has its own yes of 2026-11-25 and is the walker's, on a live press alone. A print of the run on a real printer has not been seen.
 size: L for D as five steps (M · M · M · S · M); B, the first three, step 4, the list by bin, step 5, the checklist, step 6, the one print, step 7, changed since printed, and step 8's card as far as the run's own record allows (v2.8634) are built; left: the mailed and filed tallies, which need a record of the run, and the owners' copies (#366)
 blocker: none
 ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474 · v2.8536 · v2.8589 · v2.8591 · v2.8593 · v2.8595 · v2.8631 · v2.8634
@@ -294,7 +294,11 @@ Read in the code on 2026-11-25, with step 6 on `main`.
   print, and the Board's own print still takes it. Seen drawn live on 2026-11-26 (sitting 21, nothing
   pressed): one notice printed before v2.8589, so the notice as stored was read in its place, the claim
   printed and the claim now a figure apart, and the door line to the run window. Its three presses were
-  not pressed.
+  not pressed. Seen again on 2026-11-26 (sitting 26, looking only): *Changed since printed · 1 paper*,
+  a notice with its three presses by their words and its foot line. *Take it out of the run* opened the
+  Leave out form and **Cancel** closed it with the count still 1. *Reprint in the run window ›* opened
+  a window titled *Enter mail numbers · 1 notice* holding that one notice. *It stands as printed* is not
+  pressed live: asked on 2026-11-26, the answer was no, since it leaves a row for good on a real job.
 - A paper printed before v2.8589 has no values kept. Such an affidavit counts as to print, as
   before. Such a notice is read against the notice as stored, and its line says so.
 - ~~The three presses on a changed paper.~~ Built, v2.8595, on the second answer below. *Reprint
@@ -323,7 +327,9 @@ fact. Built as v2.8634 on 2026-11-26, as far as the run's own record allows (`sr
   run has printed. Before that the strip's third step says what waits.
 - ~~Mail: the notices this run printed, through the run window's own *Mail and record* step.~~ Built: the
   printed notices still to mail, with the run window's own press, *Enter mail numbers · N*, which opens it
-  on recording.
+  on recording. Since v2.8658 the window it opens holds the card's own printed notices alone, so its
+  title carries the press's N (`lienRunMailEntriesFor`, `src/lib/jobs/lienNextUp.ts`). Until then the
+  press opened the whole run, titled *Print and mail* while any approved notice still waited to print.
 - ~~File: the affidavits grouped by county clerk.~~ Built: the printed affidavits still to file, a stop a
   clerk, by county as the batch lies (`lienAffidavitClerkOrder`'s rule), each with *Record the filing ›*,
   which opens the job in the Lien window where the filing is recorded. The copies owed to each owner are
@@ -334,7 +340,12 @@ fact. Built as v2.8634 on 2026-11-26, as far as the run's own record allows (`sr
   nothing keeps. Keeping one is a migration and the owner's call.
 - The liens' fourth step, the copies after filing, is drawn and not approved. What goes in that
   envelope is punch list #366 and waits on counsel. The card draws no line for it.
-- Not seen live: a walker's look at steps 7 and 8 on the live desk, where the run holds printed notices.
+- Seen live on 2026-11-26 (sitting 26, looking only, v2.8634 listed). The strip's third step read
+  *4 to mail*. The card read *Printed 4 · 4 to mail · 1 changed since printed* and *Mail · 4 notices*,
+  with the press *Enter mail numbers · 4*. At 380 px nothing scrolled sideways and each press was 44 px
+  tall. One finding: the press opened a window titled *Print and mail · 14 notices*, the whole run with
+  its held notices. Mended as v2.8658, which is not seen live yet. Not seen: the File part, since the
+  run held no printed affidavit, and any press that writes.
 
 ## Related
 
@@ -467,6 +478,13 @@ Leave out, what Leave out holds back, the gate, and the stack's order. The first
 office's, at its own printer. The words asked and the answer are under *Open questions*. The second
 part of the look, the guarded press, is not covered by that answer. It has its own yes of the same day
 (*Who makes the first real press*, above) and is not walked yet.
+
+Steps 7 and 8 were walked on the live desk on 2026-11-26 (sitting 26, as the dev, looking only, at
+desk width and at 380 px). Both cards read as built, and the tally's parts added up: printed is to mail
+plus to file, and the changed count is the card's above. The one finding was the Mail press's window,
+titled for the whole run, mended as v2.8658. Asked the same day, a record of the run is not built yet:
+the question is put again after the office's first real run. The owners' copies stay off the card until
+counsel answers (#366).
 
 The mock-up still draws all three; its B is what shipped, but for two things the build changed: the bin's name stands where the
 mock-up dropped the four dots, and *Print N for notarization ›* (*Print N affidavits ›* until v2.7398, renamed to the button it opens) opens the affidavits list at Ready to file
