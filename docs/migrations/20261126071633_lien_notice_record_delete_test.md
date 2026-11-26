@@ -65,11 +65,11 @@ One thing nothing here checks: `mail_pieces.source_ids` can hold a filing's id w
 
 ## Order
 
-The client calls `delete_test_lien_notice_record` and `delete_test_lien_notice_stray_lines` by name, and only this migration creates them. So `npm run check:calls-ahead` labels the PR *push right after the merge*, and `deploy.yml` holds the client until the push. Push with `bash scripts/db-push.sh` from a checkout of main right after the merge. The push is asked for by name and waits on its own yes.
+The client calls `delete_test_lien_notice_record` and `delete_test_lien_notice_stray_lines` by name, and only this migration creates them. So `npm run check:calls-ahead` labels the PR *push right after the merge*, and `deploy.yml` holds the client until the push. Push with `bash scripts/db-push.sh` from a checkout of main right after the merge. The push was asked for by name and waited on its own yes.
 
 Until the push, **Delete…** on a voided by-hand record is answered with a missing name, read as a refusal, and the record stays. That is a step back from v2.8567 for as long as the gap lasts, on a press only a developer sees. The read of the job's Activity lines works before the push, so the second line can be drawn, and its **Clear…** is refused the same way.
 
-No types PR is owed for the client: it calls both functions as untyped RPCs, as the other take-backs call theirs. The generated types gain the two functions on the next `chore(types)` PR.
+No types PR is owed for the client: it calls both functions as untyped RPCs, as the other take-backs call theirs. The generated types gained the two functions on the next `chore(types)` PR.
 
 ## Test
 

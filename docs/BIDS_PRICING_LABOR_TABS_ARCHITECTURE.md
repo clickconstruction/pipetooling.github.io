@@ -10,7 +10,7 @@ covers:
   - src/hooks/useBidPricingEngine.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-21
+last_updated: 2026-11-26
 sections:
   - What this surface is
   - The shared substrate
@@ -141,7 +141,7 @@ Refs (6): `bookOfferTokenRef` 406 and `freezingPricingRef` 409 (P4 / freeze chai
 
 ### Region P0 — Pricing lock and the freeze chain (cross-cutting)
 
-- **Lock (v2.3591):** `pricingLockState` over `bid_date_sent` + the session's `revisedBidIds` (sessionStorage, never on the bid). `guardPricingWrite` (333–337) toasts and refuses; it gates the brush's `armBrush`, `endBrushStroke`, `undoBrushSweep` (handed to `useMarginBrush` since v2.4048; since v2.5672 a sweep's undo carries the price it was painted on, `brushUndoOnScreen` in `lib/bids/marginBrush.ts`, so **↩ Undo sweep** shows only while that card is open and never writes another price's rows), `savePricingAssignment`, `removePricingAssignment`, `applyPendingBookOffer`, `savePricingEntry`, `copyPricesIntoViewedScenario`, `fillMatchingBookEntries`, `applyWorkbenchPreview`, `commitWorkbenchTypedPrice`. Chip + *Revise…* / *Lock again* render 3230–3235 inside the sticky strip.
+- **Lock (v2.3591):** `pricingLockState` over `bid_date_sent` + the session's `revisedBidIds` (sessionStorage, never on the bid). `guardPricingWrite` (333–337) toasts and refuses; it gates the brush's `armBrush`, `endBrushStroke`, `undoBrushSweep` (handed to `useMarginBrush` since v2.4048; since v2.5672 a sweep's undo carries the price it was painted on, `brushUndoOnScreen` in `lib/bids/marginBrush.ts`, so **↩ Undo sweep** shows only while that card is open and never writes another price's rows), `savePricingAssignment`, `removePricingAssignment`, `applyPendingBookOffer`, `savePricingEntry`, `copyPricesIntoViewedScenario`, `fillMatchingBookEntries`, `applyWorkbenchPreview`, `commitWorkbenchTypedPrice` (since v2.8636 a typed price the lock refuses drops the row's draft, so the field reads the saved price again; the other refusal of `guardPriceRowsWrite`, the open price still loading, keeps the draft). Chip + *Revise…* / *Lock again* render 3230–3235 inside the sticky strip.
 - **Freeze (the first price freezes a bid):** `freezeSharedPricingAfterWrite` (1500–1516; guarded by `freezingPricingRef`) → `resolvePricingWriteTarget` / `needsFreezeAfterWrite` → `cloneTemplateIntoBidAndActivate` (1519–1533, RPC `clone_price_book_version_to_bid`) → `attachAndActivateNewBidPricing` (1476–1487, UPDATE `price_book_versions.bid_version_id`). Every price write calls it after its own write, and since v2.5043 it arms the priced-margin stamp first (`usePricedMarginStamp`; `attachAndActivateNewBidPricing`, `handlePricingVersionChange` and `makeScenarioCustomerFacing` arm it too). The stamp reads `pricedMarginStampOnScreen` over one more `derivePricingWorkbench()` per render, refreshed into a ref after every commit, so a reload that unmounts the strip cannot drop a write.
 - **One write path:** `writeUnitPriceOverrideRow` (986–1030) is shared by the brush, the solver's Apply, typed prices and copy-prices (quirk 3).
 - **Extraction:** none of this moves. A sub-component receives `guardPricingWrite` and a `writePrice(rowId, value)` callback that wraps write + reload + freeze.

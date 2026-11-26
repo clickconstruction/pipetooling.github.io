@@ -9,7 +9,7 @@ covers:
   - src/components/quickfill/QuickfillScheduleSection.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-16
+last_updated: 2026-11-26
 ---
 
 > **Line numbers are exact as of `a05cef4c4`** (from `npm run map -- <file>` fact sheets) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map` before trusting a range.
@@ -312,7 +312,7 @@ Implication: extractions here don't need controlled-selection props — they nee
 | day-rail-window parse/serialize | lazy init 201–215 + `saveDaySettings` 234–246 | `lib/dispatchDayRailWindow.ts` + tests (bounds, min-60, full-day→null) |
 | `rowsToDotBlocks` 926–931, roster search filter 523–535 | inline | fold into the respective lib modules above |
 
-Already in `lib/*` **with tests** (do not re-extract): `dayScheduleDotDrag`, `jobTravelEstimate`, `reorderDayScheduleBlocks`, `notComingInTimeOff`, `quickfillMarkStamp`, `quickfillSectionSearch`, `quickfillCompleteNoBill`, `quickfillUndatedBills`, `scheduleDispatchAddBlockTimeline`, `scheduleDispatchAddBlockSave`, `scheduleDispatchHub`, `scheduleBlockTitle`, `clockSessionsToDispatchSecondaryBands`, `dispatchAddBlockTime`, `jobScheduleBlocks`, `jobScheduleOverlap`, `jobs/stagesJobNumberJump`, `map/geocodeCacheBatches`, `quickfill/{round, stationDeepLink, closeWeekChip, freshnessSummary, outstandingLabel}`, `moneyfillWeekClose`, `closeWeekAnchor`, `dispatchInboxAging`, `bankingAccess`, `scheduleDispatchEditRoles`. Without tests (add opportunistically): `quickfillScheduleSegments`, `usersTabRosterRoleSections`, `travelHintsConfig`, `routedTravelTimes`, `map/normalizeAddressForGeocode`, `map/geocodeErrorMessage`, `quickfill/sectionBanners`.
+Already in `lib/*` **with tests** (do not re-extract): `dayScheduleDotDrag`, `jobTravelEstimate`, `reorderDayScheduleBlocks`, `notComingInTimeOff`, `quickfillMarkStamp`, `quickfillSectionSearch`, `quickfillCompleteNoBill`, `quickfillUndatedBills`, `scheduleDispatchAddBlockTimeline`, `scheduleDispatchAddBlockSave`, `scheduleDispatchHub`, `scheduleBlockTitle`, `clockSessionsToDispatchSecondaryBands`, `dispatchAddBlockTime`, `jobScheduleBlocks`, `jobScheduleOverlap`, `jobs/stagesJobNumberJump`, `map/geocodeCacheBatches`, `quickfill/{round, stationDeepLink, closeWeekChip, freshnessSummary, outstandingLabel}`, `moneyfillWeekClose`, `closeWeekAnchor`, `dispatchInboxAging`, `bankingAccess`, `scheduleDispatchEditRoles`. Without tests (add opportunistically): `quickfillScheduleSegments`, `usersTabRosterRoleSections`, `travelHintsConfig`, `routedTravelTimes`, `map/normalizeAddressForGeocode`, `quickfill/sectionBanners`.
 
 ## Test coverage
 
