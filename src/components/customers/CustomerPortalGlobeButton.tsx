@@ -28,7 +28,7 @@ import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../../lib/portal/portalShor
 import { portalAddressLine, portalAddressLineColor, portalAddressState, portalAddressTextColor } from '../../lib/portal/portalAddressLine'
 import { mintCustomerPortalLink } from '../../lib/portal/mintCustomerPortalLink'
 import { PORTAL_LINK_DELETE_PRESS, PORTAL_LINK_DELETED_WORDS, portalLinkDeleteConfirm, portalLinkDeleteDrawn, portalLinkDeleteProblem } from '../../lib/portal/portalLinkDelete'
-import { deleteTestPortalLink } from '../../lib/portal/portalLinkDeleteIo'
+import { PortalLinkDeleteRefused, deleteTestPortalLink, readPortalLinkNamedCounts } from '../../lib/portal/portalLinkDeleteIo'
 import { formatPortalDate, formatPortalUsd, parsePortalPayload, PORTAL_TRADE_COLORS, type PortalTradeTag } from '../../lib/portal/portalPayload'
 import { buildStatementBillRows, type StatementBillRow } from '../../lib/portal/portalStatementJobLinks'
 import { setPortalGlobeState, usePortalGlobeState } from '../../hooks/usePortalOffStates'
@@ -152,6 +152,22 @@ export default function CustomerPortalGlobeButton({
 
   // One code path with the Stage Plan drawer's door (v2.3517): src/lib/portal/mintCustomerPortalLink.ts.
   const mint = useCallback(async (aud: Audience, rotate: boolean): Promise<string | null> => mintCustomerPortalLink(customerId, aud, rotate), [customerId])
+
+  const mayDeleteLinks = portalLinkDeleteDrawn(role)
+  // Which of the turned-off links a GC proposal names (finding 254): those stay, so their press is dead with the reason
+  // and opens no confirm. Read for a dev alone, after the History. Unread, every press stays live and the function refuses.
+  const [namedByLink, setNamedByLink] = useState<ReadonlyMap<string, number>>(() => new Map())
+  useEffect(() => {
+    if (!mayDeleteLinks) return
+    const ids = timeline.flatMap((e) => (e.kind === 'link' && e.outcome !== 'active' && e.linkId ? [e.linkId] : []))
+    let cancelled = false
+    void readPortalLinkNamedCounts(ids).then((counts) => {
+      if (!cancelled && counts) setNamedByLink(counts)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [timeline, mayDeleteLinks])
 
   /**
    * Resolve everything WITHOUT writing: link rows are read first; an active
@@ -493,7 +509,14 @@ export default function CustomerPortalGlobeButton({
       showToast(PORTAL_LINK_DELETED_WORDS, 'success')
       await loadState()
     } catch (err) {
-      showToast(formatErrorMessage(err, 'The link was not deleted'), 'error')
+      if (err instanceof PortalLinkDeleteRefused) {
+        // The rule turned it down on purpose: its reason, as it stands, and not as a failure. Read again, so a link
+        // a proposal came to name since the window opened draws its press dead.
+        showToast(err.message, 'warning')
+        await loadState()
+      } else {
+        showToast(formatErrorMessage(err, 'The link was not deleted'), 'error')
+      }
     } finally {
       setBusy(false)
     }
@@ -520,7 +543,7 @@ export default function CustomerPortalGlobeButton({
   const historyList = (
     <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
       {timeline.map((e, i) => {
-        const problem = linkDeleteDrawn && e.kind === 'link' && e.outcome !== 'active' ? portalLinkDeleteProblem(e, customerName) : null
+        const problem = linkDeleteDrawn && e.kind === 'link' && e.outcome !== 'active' ? portalLinkDeleteProblem(e, customerName, e.linkId ? (namedByLink.get(e.linkId) ?? 0) : 0) : null
         return (
           <li key={i} style={{ fontSize: '0.75rem', color: e.kind === 'link' && e.outcome === 'active' ? 'var(--text-700)' : 'var(--text-muted)', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span>{timelineLine(e)}</span>

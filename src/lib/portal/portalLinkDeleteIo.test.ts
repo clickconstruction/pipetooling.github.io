@@ -10,7 +10,7 @@ vi.mock('../supabase', () => ({
   },
 }))
 
-import { deleteTestPortalLink } from './portalLinkDeleteIo'
+import { PortalLinkDeleteRefused, deleteTestPortalLink } from './portalLinkDeleteIo'
 import type { PortalLinkDeleteCandidate } from './portalLinkDelete'
 
 const off: PortalLinkDeleteCandidate = { kind: 'link', linkId: 'l1', at: '2026-11-20T15:00:00Z', createdBy: null, audience: 'all', outcome: 'turned-off', revokedAt: '2026-11-21T15:00:00Z' }
@@ -37,5 +37,21 @@ describe('deleteTestPortalLink (punch list #443, row 11)', () => {
     await expect(deleteTestPortalLink(off, 'ZZ Test Portal Customer')).rejects.toThrow('2 GC proposals name this link. It stays.')
     calls.answer = { data: { error: 'Only a developer can delete a portal link.' }, error: null }
     await expect(deleteTestPortalLink(off, 'ZZ Test Portal Customer')).rejects.toThrow('Only a developer can delete a portal link.')
+  })
+
+  it('a refusal is a PortalLinkDeleteRefused whose message is the reason alone, from the rule or from the function (finding 254)', async () => {
+    const mine = await deleteTestPortalLink(off, 'Davenport Plumbing').catch((e: unknown) => e)
+    expect(mine).toBeInstanceOf(PortalLinkDeleteRefused)
+    calls.answer = { data: null, error: { message: '1 GC proposal names this link. It stays.', code: 'P0001' } }
+    const theirs = await deleteTestPortalLink(off, 'ZZ Test Portal Customer').catch((e: unknown) => e)
+    expect(theirs).toBeInstanceOf(PortalLinkDeleteRefused)
+    expect((theirs as Error).message).toBe('1 GC proposal names this link. It stays.')
+  })
+
+  it('anything else that goes wrong is not a refusal', async () => {
+    calls.answer = { data: null, error: { message: 'canceling statement due to statement timeout', code: '57014' } }
+    const failed = await deleteTestPortalLink(off, 'ZZ Test Portal Customer').catch((e: unknown) => e)
+    expect(failed).toBeInstanceOf(Error)
+    expect(failed).not.toBeInstanceOf(PortalLinkDeleteRefused)
   })
 })
