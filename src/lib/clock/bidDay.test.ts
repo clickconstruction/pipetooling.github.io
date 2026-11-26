@@ -141,6 +141,34 @@ describe('readBidDay', () => {
     expect(noClock?.endMs).toBe(Date.parse(at('14:05')))
   })
 
+  it('starts the strip at the clock in when the first trace shares its five minutes (punch list #445)', () => {
+    // Clocked in at :22, the first beat at :23. The beat's bucket opens at :20, which proves nothing about :20 to :22.
+    const read = readBidDay(payload({ sessions: [{ in: at('13:22'), out: null }], beats: [{ bid_id: B412, tab: 'pricing', at: at('13:23'), seconds: 60 }] }))
+    expect(read?.startMs).toBe(Date.parse(at('13:22')))
+    // The block is cut to the strip, so it starts at the clock in too.
+    const list = buildBidDayList(read, none, [], names)
+    expect(list.strip.startMs).toBe(Date.parse(at('13:22')))
+    expect(list.strip.segments[0]?.leftPct).toBe(0)
+  })
+
+  it('still starts the strip at a trace whose five minutes end before the first clock in', () => {
+    // A beat at :18 sits in the bucket :15 to :20, which is over before the clock in at :22: the person began at the bid.
+    const before = readBidDay(payload({ sessions: [{ in: at('13:22'), out: null }], beats: [{ bid_id: B412, tab: 'pricing', at: at('13:18'), seconds: 60 }] }))
+    expect(before?.startMs).toBe(Date.parse(at('13:15')))
+    // A bucket that ends on the clock in's own minute is before it as well.
+    const edge = readBidDay(payload({ sessions: [{ in: at('13:20'), out: null }], beats: [{ bid_id: B412, tab: 'pricing', at: at('13:17'), seconds: 60 }] }))
+    expect(edge?.startMs).toBe(Date.parse(at('13:15')))
+  })
+
+  it('ends a closed day at the last clock out when the last trace shares its five minutes', () => {
+    // Clocked out at :32 with a beat at :31. The beat's bucket runs to :35, which proves nothing about :32 to :35.
+    const closed = readBidDay(payload({ sessions: [{ in: at('13:00'), out: at('19:32') }], beats: [{ bid_id: B412, tab: 'pricing', at: at('19:31'), seconds: 60 }] }))
+    expect(closed?.endMs).toBe(Date.parse(at('19:32')))
+    // A trace in the five minutes after the clock out's own still moves the end: the person went on after it.
+    const after = readBidDay(payload({ sessions: [{ in: at('13:00'), out: at('19:32') }], beats: [{ bid_id: B412, tab: 'pricing', at: at('19:36'), seconds: 60 }] }))
+    expect(after?.endMs).toBe(Date.parse(at('19:40')))
+  })
+
   it('orders the bids by when each first shows', () => {
     const read = readBidDay(
       payload({

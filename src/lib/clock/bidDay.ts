@@ -62,7 +62,10 @@ export type BidDayEvidence = {
 
 export type BidDayRead = {
   day: string
-  /** The strip's two ends, in ms: the day's first clock in (or first trace) to now (or the last clock out). */
+  /**
+   * The strip's two ends, in ms: the day's first clock in (or first trace) to now (or the last clock out). A trace
+   * in the same five minutes as a clock in or a clock out does not move that end past it.
+   */
   startMs: number
   endMs: number
   /** In the order each bid first shows in the day. */
@@ -238,9 +241,15 @@ export function readBidDay(payload: BidDayPayload | null | undefined): BidDayRea
   const outs = (payload.sessions ?? []).map((s) => ms(s.out)).filter((t) => !Number.isNaN(t))
   const firstTrace = bids.length ? Math.min(...bids.map((b) => b.firstAt)) : NaN
   const lastTrace = bids.length ? Math.max(...bids.map((b) => b.lastAt)) : NaN
-  const starts = [...ins, firstTrace].filter((t) => !Number.isNaN(t))
+  // A trace is known to its five-minute bucket and no closer, so a bucket's floor proves nothing about the minutes
+  // before the first beat in it. A first bucket that holds a clock in starts at that clock in, and a last bucket that
+  // holds a clock out ends at that clock out: the strip read 10:20 for a clock in at 10:22 (punch list #445). A bucket
+  // that is over before the first clock in, or opens after the last clock out, still moves the end it is past.
+  const traceStart = ins.some((t) => t >= firstTrace && t < firstTrace + BUCKET_MS) ? NaN : firstTrace
+  const traceEnd = outs.some((t) => t > lastTrace - BUCKET_MS && t <= lastTrace) ? NaN : lastTrace
+  const starts = [...ins, traceStart].filter((t) => !Number.isNaN(t))
   const startMs = starts.length ? Math.min(...starts) : ms(payload.from)
-  const ends = [...outs, lastTrace].filter((t) => !Number.isNaN(t))
+  const ends = [...outs, traceEnd].filter((t) => !Number.isNaN(t))
   const dayEnd = ms(payload.to)
   let endMs = open || !ends.length ? now : Math.max(...ends)
   if (Number.isNaN(endMs)) endMs = ends.length ? Math.max(...ends) : dayEnd
