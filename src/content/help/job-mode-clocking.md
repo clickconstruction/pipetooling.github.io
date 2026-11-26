@@ -199,7 +199,7 @@ To turn the short page on or off, see [see only what waits on me on the dashboar
 
 {{gif:job-mode-clocking.gif|Starting the day: the Ready to start card, the green button, and the clocked-in card}}
 
-- You tap {{button:green|Clock In}} to start your day. If you have a schedule, the card offers your scheduled job. Otherwise you can pick a job manually.
+- You tap {{button:green|Clock In}} to start your day. The sheet asks what you plan to get done. **Complete Clock In** stays grey until you type it. If you have a schedule, the card offers your scheduled job. Otherwise you can pick a job manually.
 - **Nothing listed?** The sheet says so and stays that way. It reads **Nothing on your schedule today, and no jobs assigned to you**. It has dispatch's number to tap and a pointer to the search box. You call, or you type the job's name or number.
 
 :::example Day one, no schedule yet
