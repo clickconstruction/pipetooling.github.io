@@ -152,6 +152,11 @@ export function PartyPapersList({
                       )}
                     </span>
                     {l.signer || l.signingFor ? <span style={subLine}>{[l.signer, l.signingFor].filter(Boolean).join(' · ')}</span> : null}
+                    {l.site ? (
+                      <span style={subLine} data-testid="party-paper-site">
+                        <ValueSentence text={l.site} />
+                      </span>
+                    ) : null}
                   </div>
                   <div style={lineRight}>
                     <span style={{ ...stateChip, background: colors.background, color: colors.color }}>{l.state.words}</span>

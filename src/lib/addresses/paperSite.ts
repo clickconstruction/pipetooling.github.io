@@ -11,6 +11,7 @@
  *
  * Pure: no React, no supabase.
  */
+import { normalizeAddressKey } from '../developments/notInIt'
 import { val } from '../valuesInPlace'
 import { onFileCountWords, type AddressOnFile } from './addressesOnFile'
 import { samePlaceKeys, type PlaceAnswer } from './lookAlikes'
@@ -72,6 +73,18 @@ export function rowsForSite<T extends PaperSiteRow>(rows: ReadonlyArray<T>, site
 /** A site in a few words, for a line that names it: the address on file, or the development's name. */
 export function paperSiteLabel(site: PaperSite): string {
   return site.kind === 'address' ? site.address : site.name
+}
+
+/** The cleaned keys that are one place with an address, by the answers kept. Empty for an address with no key. */
+export function siteKeysOfAddress(address: string | null | undefined, answers: ReadonlyArray<PlaceAnswer> = []): Set<string> {
+  const key = normalizeAddressKey(address ?? '')
+  return key ? samePlaceKeys(key, answers) : new Set()
+}
+
+/** What a paper's line says of its site: `for the site at 118 Old Quarry Trl, Sampleton, TX`, or nothing. */
+export function paperSiteNote(row: { site_address?: string | null }): string {
+  const address = oneSpace(row.site_address ?? '')
+  return address ? `for the site at ${val('address', address)}` : ''
 }
 
 /** The words of the site's line in the email window, and of the window that finds a site. */

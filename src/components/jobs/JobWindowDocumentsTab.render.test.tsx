@@ -38,6 +38,8 @@ const restoreSpy = vi.fn((app: SavedPayApplication) => {
   onJob = [...onJob, { ...app, deletedAt: null, deletedByName: '' }]
   return Promise.resolve()
 })
+// The papers of the job's site are their own file's to test: here the section reads nothing and draws nothing.
+vi.mock('../../hooks/useSitePapers', () => ({ useSitePapers: () => ({ rows: [], answers: [], failure: null, reading: false, retry: () => {} }) }))
 vi.mock('../../lib/aiaPayApplicationsIo', () => ({
   PayApplicationNumberTaken: class extends Error {},
   loadPayApplications: (jobId: string) => loadSpy(jobId),
