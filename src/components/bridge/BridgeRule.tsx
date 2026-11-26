@@ -1,25 +1,49 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useReducer, useRef, type CSSProperties } from 'react'
 import { STAGE_RULE_LINE, STAGE_RULE_LONG, STAGE_RULE_POINTS } from '../../lib/bridge/stageFlow'
+import { RULE_READING_SHUT, ruleReadingAfter } from '../../lib/bridge/ruleReading'
 
 /**
  * The rule the Bridge opens on (link PR 1): one line, and a "?" that shows the
  * longer reading and the five points from *The Goal* in our words on hover,
  * focus or press.
+ *
+ * A press is kept apart from a look (punch list #321, finding 275, `ruleReading.ts`): hover and focus open the
+ * reading while they last, one press keeps it open however the pointer got there, and the next press, Escape or a
+ * press off the line shuts it. Before, the look opened it and the same press's click toggled it shut.
  */
 
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 
 export function BridgeRule() {
-  const [open, setOpen] = useState(false)
+  const [reading, said] = useReducer(ruleReadingAfter, RULE_READING_SHUT)
+  const open = reading.open
+  const lineRef = useRef<HTMLDivElement | null>(null)
+  // While the reading is open, Escape shuts it, and so does a press anywhere off the line and its reading.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') said('dismiss')
+    }
+    const onPress = (e: PointerEvent) => {
+      if (e.target instanceof Node && lineRef.current?.contains(e.target)) return
+      said('dismiss')
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPress)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPress)
+    }
+  }, [open])
   return (
-    <div style={{ position: 'relative', marginTop: '0.4rem' }} onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} data-testid="bridge-rule">
+    <div ref={lineRef} style={{ position: 'relative', marginTop: '0.4rem' }} onMouseEnter={() => said('look')} onMouseLeave={() => said('lookEnded')} data-testid="bridge-rule">
       <div style={{ fontSize: '0.95rem', borderLeft: '3px solid #2563eb', padding: '0.35rem 0.7rem', background: 'var(--surface)', borderRadius: '0 8px 8px 0', display: 'flex', gap: '0.6rem', alignItems: 'baseline' }}>
         <span>{STAGE_RULE_LINE}</span>
         <button
           type="button"
-          onFocus={() => setOpen(true)}
-          onBlur={() => setOpen(false)}
-          onClick={() => setOpen((o) => !o)}
+          onFocus={() => said('look')}
+          onBlur={() => said('lookEnded')}
+          onClick={() => said('press')}
           aria-label="Why this rule"
           aria-expanded={open}
           style={{ marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem', lineHeight: 1, flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}

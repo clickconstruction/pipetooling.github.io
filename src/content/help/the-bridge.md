@@ -81,6 +81,8 @@ The first screen is the whole page until you open a door. Under the card sit {{b
 - **Money** holds cash for eight weeks, bills and receipts, net position, money owed and the eight week chart.
 - **People** holds who moved the number, the day grid and the crew's hours.
 
+The rule has a **?** at its right end. Press it once to read the rule in full. Press it again to close it.
+
 An amber door counts the [soft numbers](#soft-numbers). It shows only when something makes the reading unsure.
 
 The open door rides in the page's address. A link to `/bridge?door=money` opens Money.
