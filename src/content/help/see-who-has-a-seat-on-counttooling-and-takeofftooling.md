@@ -47,7 +47,7 @@ The Sites view reads only. Nothing you press here changes an account. You change
 1. Open the person's desk. Go to **Access and account**.
 2. Find the row named for the site, **CountTooling** or **TakeoffTooling**.
 3. Press {{button:outline|Make their seat}} when they have no seat there.
-4. Press {{button:outline|Retire here}} to stop them signing in to that site. The desk asks first. Their work on that site stays.
+4. Press {{button:outline|Retire here}} to stop them signing in to that site. The desk asks first. The person's work on that site stays.
 5. Press {{button:outline|Bring back}} to let a retired seat sign in again.
 
 Archiving a person retires their CountTooling seat too. The guide [archive user accounts](/help/archive-user-accounts) walks through that.
