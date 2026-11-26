@@ -5866,10 +5866,12 @@ delete for the five `/map` roles, **`dev`**, **`master_technician`**, **`assista
 Written by Edge Functions **`geocode-one`** and **`geocode-address-batch`** (see [EDGE_FUNCTIONS.md](EDGE_FUNCTIONS.md)).
 Client: [`useMapPageData.ts`](../src/hooks/useMapPageData.ts).
 A row is deleted from one place, a dev's **Kept map addresses** block on Settings → Data & recovery, and only when no record in any address column holds its street line (`KEPT_ADDRESS_SOURCES`, `keptAddressClearProblem`, v2.8568, punch list #443).
+Since v2.8623 the same block lists a kept miss beside the kept addresses and clears one under the same rule (punch list #443, row 16).
 See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) **Key Features** §16.
 
 ### address_geocode_misses
 An address no map service could place, kept beside [`address_geocodes`](#address_geocodes) by the same **normalized address key**, with the reason (`error_code`, `detail`) and the day it was checked (`checked_at`, the server's clock on every write) (v2.8473, punch list #408).
+A dev deletes a miss by hand from the **Kept map addresses** block since v2.8623, through `address_geocode_misses_delete_dev` (migration `20261126024719`, punch list #443 row 16), and only when no record holds its street line.
 **RLS** — read, insert and update for every signed-in user, and no delete for anyone (`20261124091500`).
 A point saved to `address_geocodes` deletes its miss through the trigger `address_geocodes_clears_miss`.
 A miss stands 30 days before it is asked again: `GEOCODE_MISS_STANDS_DAYS` in [`geocodeMissMemory.ts`](../supabase/functions/_shared/geocodeMissMemory.ts), the functions' and the readers' rule, not the table's (v2.8477).

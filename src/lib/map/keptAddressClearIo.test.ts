@@ -42,16 +42,27 @@ beforeEach(() => {
 })
 
 describe('searchKeptAddresses', () => {
-  it('reads the cache for the typed words, newest kept first, twenty at most', async () => {
-    db.answers = { address_geocodes: [ok([{ address_normalized: KEY, geocoded_at: '2026-11-25T01:48:37Z', geocode_error: null }, { address_normalized: '9 tset lane', geocoded_at: null, geocode_error: 'not found' }])] }
+  it('reads the cache and the misses for the typed words, newest kept first, twenty of each at most', async () => {
+    db.answers = {
+      address_geocodes: [ok([{ address_normalized: KEY, geocoded_at: '2026-11-25T01:48:37Z', geocode_error: null }, { address_normalized: '9 tset lane', geocoded_at: null, geocode_error: 'not found' }])],
+      address_geocode_misses: [ok([{ address_normalized: '4 tset bend, alder, tx', checked_at: '2026-11-25T02:00:00Z' }])],
+    }
     expect(await searchKeptAddresses('tset')).toEqual([
-      { key: KEY, keptAtIso: '2026-11-25T01:48:37Z', placed: true },
-      { key: '9 tset lane', keptAtIso: null, placed: false },
+      { key: KEY, keptAtIso: '2026-11-25T01:48:37Z', placed: true, kind: 'kept' },
+      { key: '9 tset lane', keptAtIso: null, placed: false, kind: 'kept' },
+      { key: '4 tset bend, alder, tx', keptAtIso: '2026-11-25T02:00:00Z', placed: false, kind: 'miss' },
     ])
-    expect(db.statements[0]?.calls).toEqual([
+    const by = (table: string) => db.statements.find((s) => s.table === table)?.calls
+    expect(by('address_geocodes')).toEqual([
       ['select', ['address_normalized, geocoded_at, geocode_error']],
       ['ilike', ['address_normalized', '%tset%']],
       ['order', ['geocoded_at', { ascending: false }]],
+      ['limit', [20]],
+    ])
+    expect(by('address_geocode_misses')).toEqual([
+      ['select', ['address_normalized, checked_at']],
+      ['ilike', ['address_normalized', '%tset%']],
+      ['order', ['checked_at', { ascending: false }]],
       ['limit', [20]],
     ])
   })
@@ -117,5 +128,21 @@ describe('clearKeptAddress', () => {
   it('says so when the delete reaches no row', async () => {
     db.answers = { address_geocodes: [ok([])] }
     await expect(clearKeptAddress(KEY)).rejects.toThrow(/was not cleared/)
+  })
+  it('clears a kept miss from its own table, under the same rule (punch list #443, row 16)', async () => {
+    db.answers = { address_geocode_misses: [ok([{ address_normalized: KEY }])] }
+    await clearKeptAddress(KEY, 'miss')
+    expect(deletes()).toHaveLength(1)
+    expect(deletes()[0]?.table).toBe('address_geocode_misses')
+    expect(deletes()[0]?.calls).toEqual([
+      ['delete', []],
+      ['eq', ['address_normalized', KEY]],
+      ['select', ['address_normalized']],
+    ])
+    db.answers = { jobs_ledger: [ok([], 1)] }
+    await expect(clearKeptAddress(KEY, 'miss')).rejects.toThrow(/It stays\.$/)
+    expect(deletes()).toHaveLength(1)
+    db.answers = { address_geocode_misses: [ok([])] }
+    await expect(clearKeptAddress(KEY, 'miss')).rejects.toThrow('The miss was not cleared. It may be gone already, or you may not have leave to clear it. Find it again.')
   })
 })

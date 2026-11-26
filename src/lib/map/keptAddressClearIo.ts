@@ -9,9 +9,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { KEPT_ADDRESS_SEARCH_LIMIT, KEPT_ADDRESS_SOURCES, keptAddressClearProblem, keptAddressLikePattern, keptAddressSearchPattern, type KeptAddressHits } from './keptAddressClear'
+import { KEPT_ADDRESS_SEARCH_LIMIT, KEPT_ADDRESS_SOURCES, keptAddressClearProblem, keptAddressLikePattern, keptAddressSearchPattern, type KeptAddressHits, type KeptAddressKind } from './keptAddressClear'
 
-/** One kept address, as the block lists it. */
+/** One kept address, as the block lists it: a point the map placed, or a miss (#443, row 16). */
 export interface KeptAddress {
   /** The address as the cache keeps it: its key. */
   key: string
@@ -19,15 +19,33 @@ export interface KeptAddress {
   keptAtIso: string | null
   /** False for an address the map could not place. */
   placed: boolean
+  /** Which table keeps it: `address_geocodes`, or `address_geocode_misses` for a miss. */
+  kind: KeptAddressKind
 }
 
-/** The kept addresses whose words match, newest kept first, twenty at most. Throws when the read fails. */
+/** The table a kind is kept in. */
+export const KEPT_ADDRESS_TABLES: Readonly<Record<KeptAddressKind, 'address_geocodes' | 'address_geocode_misses'>> = { kept: 'address_geocodes', miss: 'address_geocode_misses' }
+
+/**
+ * The kept addresses and the kept misses whose words match, newest kept first, twenty of each at most. Throws when
+ * either read fails.
+ */
 export async function searchKeptAddresses(typed: string): Promise<KeptAddress[]> {
-  const rows = await withSupabaseRetry(
-    () => supabase.from('address_geocodes').select('address_normalized, geocoded_at, geocode_error').ilike('address_normalized', keptAddressSearchPattern(typed)).order('geocoded_at', { ascending: false }).limit(KEPT_ADDRESS_SEARCH_LIMIT),
-    'read the kept addresses',
-  )
-  return (rows ?? []).map((r) => ({ key: r.address_normalized, keptAtIso: r.geocoded_at, placed: !r.geocode_error }))
+  const pattern = keptAddressSearchPattern(typed)
+  const [rows, misses] = await Promise.all([
+    withSupabaseRetry(
+      () => supabase.from('address_geocodes').select('address_normalized, geocoded_at, geocode_error').ilike('address_normalized', pattern).order('geocoded_at', { ascending: false }).limit(KEPT_ADDRESS_SEARCH_LIMIT),
+      'read the kept addresses',
+    ),
+    withSupabaseRetry(
+      () => supabase.from('address_geocode_misses').select('address_normalized, checked_at').ilike('address_normalized', pattern).order('checked_at', { ascending: false }).limit(KEPT_ADDRESS_SEARCH_LIMIT),
+      'read the kept misses',
+    ),
+  ])
+  return [
+    ...(rows ?? []).map((r): KeptAddress => ({ key: r.address_normalized, keptAtIso: r.geocoded_at, placed: !r.geocode_error, kind: 'kept' })),
+    ...(misses ?? []).map((m): KeptAddress => ({ key: m.address_normalized, keptAtIso: m.checked_at, placed: false, kind: 'miss' })),
+  ]
 }
 
 /**
@@ -49,12 +67,14 @@ export async function readKeptAddressHits(key: string, client: unknown = supabas
 }
 
 /**
- * Clear one kept address. The records are read again here, right before the delete, and an address that fails the
- * rule is refused with its reason. The delete is sent once, and a delete that reaches no row is said.
+ * Clear one kept address, or one kept miss (`kind: 'miss'`, #443 row 16: the table lets a dev delete since
+ * 20261126024719). The records are read again here, right before the delete, and an address that fails the rule is
+ * refused with its reason. The delete is sent once, and a delete that reaches no row is said.
  */
-export async function clearKeptAddress(key: string): Promise<void> {
+export async function clearKeptAddress(key: string, kind: KeptAddressKind = 'kept'): Promise<void> {
   const problem = keptAddressClearProblem(key, await readKeptAddressHits(key))
   if (problem) throw new Error(problem)
-  const gone = await withSupabaseRetry(() => supabase.from('address_geocodes').delete().eq('address_normalized', key).select('address_normalized'), 'clear the kept address', { maxRetries: 0 })
-  if (!gone || gone.length === 0) throw new Error('The address was not cleared. It may be gone already. Find it again.')
+  const table = KEPT_ADDRESS_TABLES[kind]
+  const gone = await withSupabaseRetry(() => supabase.from(table).delete().eq('address_normalized', key).select('address_normalized'), kind === 'miss' ? 'clear the kept miss' : 'clear the kept address', { maxRetries: 0 })
+  if (!gone || gone.length === 0) throw new Error(kind === 'miss' ? 'The miss was not cleared. It may be gone already, or you may not have leave to clear it. Find it again.' : 'The address was not cleared. It may be gone already. Find it again.')
 }
