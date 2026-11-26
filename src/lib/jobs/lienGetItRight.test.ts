@@ -4,7 +4,7 @@ import { plainSentence } from '../valuesInPlace'
 import { buildLienBoard } from './lienBoard'
 import type { LienDeskEntry, LienDeskPile } from './lienDesk'
 import type { LienAffidavitEntry, LienAffidavitGate, LienAffidavitPile } from './lienDeskAffidavits'
-import { buildLienGetItRight, LIEN_GET_IT_RIGHT_WORDS, lienRunDoor, lienRunHead, lienRunPaperRight, lienRunPapers } from './lienGetItRight'
+import { buildLienGetItRight, LIEN_GET_IT_RIGHT_WORDS, lienGetItRightWithFacts, lienRunDoor, lienRunHead, lienRunPaperRight, lienRunPapers } from './lienGetItRight'
 import type { LienLeftOutRow } from './lienLeftOut'
 import { buildLienNextUp } from './lienNextUp'
 import { lienFieldsHash } from './lienNoticeSignature'
@@ -242,5 +242,74 @@ describe('the three steps and the door', () => {
   it('the sentences a person reads are plain', () => {
     const words = [LIEN_GET_IT_RIGHT_WORDS.lead, LIEN_GET_IT_RIGHT_WORDS.askedLead, LIEN_GET_IT_RIGHT_WORDS.allRight, LIEN_GET_IT_RIGHT_WORDS.rightNow, LIEN_GET_IT_RIGHT_WORDS.printsLead]
     expect(words.flatMap((w) => plainWordsFailures(w))).toEqual([])
+  })
+})
+
+describe('the strip with what the print knows (v2.8631)', () => {
+  const none = { printedAffidavitJobIds: new Set<string>(), stoppedNotices: [] }
+
+  it('with no facts it is the checklist as built', () => {
+    const { run } = desk()
+    expect(lienGetItRightWithFacts(run, none)).toBe(run)
+  })
+
+  it('a printed affidavit is not to print, and is said apart; the lines, the door and the totals do not move', () => {
+    const { run } = desk()
+    const shown = lienGetItRightWithFacts(run, { ...none, printedAffidavitJobIds: new Set(['a-ready']) })
+    expect(shown.counts).toMatchObject({ toPrint: 2, toFile: 2, affidavitsPrinted: 1, noticesStopped: 0, right: 4 })
+    expect(plainSentence(shown.steps[1].line)).toBe('1 notice to print · 1 affidavit for the notary · 1 affidavit printed')
+    expect(plainSentence(shown.steps[2].line)).toBe('1 to mail · 2 to file')
+    expect(shown.rightParts).toBe('1 affidavit ready to file · 1 affidavit printed · 1 notice to print · 1 notice printed')
+    expect(shown.right).toBe(run.right)
+    expect(shown.settle).toBe(run.settle)
+    expect(shown.totals).toBe(run.totals)
+    expect(lienRunDoor(shown)).toEqual(lienRunDoor(run))
+  })
+
+  it('a right notice the run window holds is said apart, and with nothing else to print step 2 is done', () => {
+    const { run } = desk({ notices: [notice('n-ready', 'ready', { item: signed('i-ready') }), notice('n-printed', 'printed', { item: signed('i-printed', { printed_at: '2026-11-13T15:00:00Z' }) })], affidavits: [] })
+    expect(run.step).toBe(2)
+    expect(plainSentence(run.steps[1].line)).toBe('1 notice to print')
+    const shown = lienGetItRightWithFacts(run, { ...none, stoppedNotices: [{ jobId: 'n-ready', kind: 'held' }] })
+    expect(shown.step).toBe(3)
+    expect(shown.steps.map((s) => s.state)).toEqual(['done', 'done', 'now'])
+    expect(plainSentence(shown.steps[1].line)).toBe('Nothing waits to print · 1 notice waits in the run window')
+    expect(plainSentence(shown.steps[2].line)).toBe('1 to mail')
+    expect(shown.counts).toMatchObject({ toPrint: 0, noticesStopped: 1, right: 2 })
+    expect(shown.rightParts).toBe('1 right notice does not print here · 1 notice printed')
+  })
+
+  it('a notice with no paper copy is said as going without paper, beside what prints', () => {
+    const { run } = desk({ notices: [notice('n-ready', 'ready', { item: signed('i-ready') })], affidavits: [affidavit('a-ready', 'ready', { item: item('ia-ready', 'approved') })] })
+    const shown = lienGetItRightWithFacts(run, { ...none, stoppedNotices: [{ jobId: 'n-ready', kind: 'paperless' }] })
+    expect(shown.step).toBe(2)
+    expect(plainSentence(shown.steps[1].line)).toBe('1 affidavit for the notary · 1 notice goes without paper')
+    expect(shown.rightParts).toBe('1 affidavit ready to file · 1 right notice does not print here')
+  })
+
+  it('every right affidavit printed and nothing to mail: step 3 is now, with them to file', () => {
+    const { run } = desk({ notices: [], affidavits: [affidavit('a-ready', 'ready', { item: item('ia-ready', 'approved') }), affidavit('a-ready2', 'ready', { item: item('ia-ready2', 'approved') })] })
+    expect(run.step).toBe(2)
+    const shown = lienGetItRightWithFacts(run, { ...none, printedAffidavitJobIds: new Set(['a-ready', 'a-ready2']) })
+    expect(shown.step).toBe(3)
+    expect(shown.steps.map((s) => s.state)).toEqual(['done', 'done', 'now'])
+    expect(plainSentence(shown.steps[1].line)).toBe('Nothing waits to print · 2 affidavits printed')
+    expect(plainSentence(shown.steps[2].line)).toBe('2 to file')
+    expect(shown.rightParts).toBe('2 affidavits printed')
+  })
+
+  it('a fact about a paper that is not right counts for nothing', () => {
+    const { run } = desk()
+    const shown = lienGetItRightWithFacts(run, { printedAffidavitJobIds: new Set(['a-owner']), stoppedNotices: [{ jobId: 'n-draft', kind: 'held' }] })
+    expect(shown.counts).toMatchObject({ toPrint: 3, affidavitsPrinted: 0, noticesStopped: 0 })
+    expect(shown.steps.map((s) => plainSentence(s.line))).toEqual(run.steps.map((s) => plainSentence(s.line)))
+  })
+
+  it('the strip’s new words are plain', () => {
+    const { run } = desk({ notices: [notice('n-ready', 'ready', { item: signed('i-ready') }), notice('n-two', 'ready', { item: signed('i-two') })], affidavits: [affidavit('a-ready', 'ready', { item: item('ia-ready', 'approved') })] })
+    const shown = lienGetItRightWithFacts(run, { printedAffidavitJobIds: new Set(['a-ready']), stoppedNotices: [{ jobId: 'n-ready', kind: 'held' }, { jobId: 'n-two', kind: 'paperless' }] })
+    // The strip joins its parts with a middle dot, as the lines always have: each part is a sentence a person reads.
+    const parts = [...shown.steps.map((s) => plainSentence(s.line)), shown.rightParts].flatMap((line) => line.split(' · '))
+    expect(parts.flatMap((w) => plainWordsFailures(w))).toEqual([])
   })
 })
