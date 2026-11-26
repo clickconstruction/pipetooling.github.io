@@ -261,6 +261,23 @@ The open photo shows the job, who took it, when and where it is filed. Press {{b
 
 The row reads the same photos as Documents → Photos. The guide [find every photo that was uploaded](/help/find-every-photo-that-was-uploaded) explains where each one is saved.
 
+## The site's papers
+
+A paper sent to an outside company can name a site. A development's page lists those papers under **Papers for this site**.
+
+The list holds two kinds of paper.
+
+- A paper that names the address of a job or a bid in the development.
+- A paper that names the development itself.
+
+Each line leads with the company. The paper and who signs sit under the company's name. A chip says where the paper stands, with its day.
+
+The papers still to sign come first. One line over the list counts the signed ones.
+
+The section is there only when the site has a paper. The office and an estimator see the section. Nothing is sent from the list.
+
+To name a site on a paper, see [name the site a paper is for](/help/find-an-agreement-we-sent-or-signed#name-the-site-a-paper-is-for).
+
 ## What an estimator sees
 
 An estimator opens the same page with the jobs and bids, the history, the plans and the questions. The page shows no money. The Money look is one line that says the office reads it.

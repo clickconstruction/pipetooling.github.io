@@ -26,6 +26,39 @@ export type SitePaperLine = PartyPaperLine & {
 /** The address keys a job's site reads papers by, at most this many, so a long chain of answers stays one request. */
 export const SITE_KEYS_MAX = 40
 
+/** A site as the lists read it: the address keys that are the place, and the development a paper may name instead. */
+export type SiteScope = { keys: ReadonlySet<string>; developmentId: string | null }
+
+/** A development's site reads by this many keys at most, asked forty at a time. */
+export const DEVELOPMENT_SITE_KEYS_MAX = 200
+
+/** A job's site: its address, every spelling answered Same place, and its development. */
+export function jobSiteScope(job: SiteJob, answers: ReadonlyArray<PlaceAnswer> = []): SiteScope {
+  return { keys: siteKeysOfAddress(job.job_address, answers), developmentId: job.development_id || null }
+}
+
+/**
+ * A development's site (punch list #439, piece 3): the development itself, and the address of every job and bid in
+ * it with each spelling answered Same place. A development has no address of its own, so a paper sent for one of its
+ * jobs is the development's paper too.
+ */
+export function developmentSiteScope(developmentId: string | null | undefined, addresses: ReadonlyArray<string | null | undefined>, answers: ReadonlyArray<PlaceAnswer> = []): SiteScope {
+  const keys = new Set<string>()
+  for (const address of addresses) {
+    for (const key of siteKeysOfAddress(address, answers)) {
+      if (keys.size >= DEVELOPMENT_SITE_KEYS_MAX) break
+      keys.add(key)
+    }
+  }
+  return { keys, developmentId: developmentId || null }
+}
+
+/** True when a paper's row is for a site: it names the site's development, or one of its address keys. */
+export function rowIsInSiteScope(row: PartyPaperRow, scope: SiteScope): boolean {
+  if (scope.developmentId && row.site_development_id === scope.developmentId) return true
+  return !!row.site_address_key && !row.site_development_id && scope.keys.has(row.site_address_key)
+}
+
 /** The keys to ask for, for a job: its own first. */
 export function siteKeysToRead(job: SiteJob, answers: ReadonlyArray<PlaceAnswer> = []): string[] {
   return [...siteKeysOfAddress(job.job_address, answers)].slice(0, SITE_KEYS_MAX)
@@ -33,9 +66,7 @@ export function siteKeysToRead(job: SiteJob, answers: ReadonlyArray<PlaceAnswer>
 
 /** True when a paper's row is for the job's site: its address, a spelling answered Same place, or its development. */
 export function rowIsForJobSite(row: PartyPaperRow, job: SiteJob, answers: ReadonlyArray<PlaceAnswer> = []): boolean {
-  if (job.development_id && row.site_development_id === job.development_id) return true
-  const keys = siteKeysOfAddress(job.job_address, answers)
-  return !!row.site_address_key && !row.site_development_id && keys.has(row.site_address_key)
+  return rowIsInSiteScope(row, jobSiteScope(job, answers))
 }
 
 const waits = (l: PartyPaperLine): boolean => l.state.tone === 'waiting' || l.state.tone === 'unsent'
@@ -45,12 +76,17 @@ const waits = (l: PartyPaperLine): boolean => l.state.tone === 'waiting' || l.st
  * The ones still to sign come first, then the signed, the newest first within each.
  */
 export function sitePaperLines(rows: ReadonlyArray<PartyPaperRow>, job: SiteJob, answers: ReadonlyArray<PlaceAnswer>, todayYmd: string): SitePaperLine[] {
+  return sitePaperLinesInScope(rows, jobSiteScope(job, answers), todayYmd)
+}
+
+/** The same lines for any site: a job's, or a development's with every job in it. */
+export function sitePaperLinesInScope(rows: ReadonlyArray<PartyPaperRow>, scope: SiteScope, todayYmd: string): SitePaperLine[] {
   const replaced = replacedPaperIds(rows)
   const seen = new Set<string>()
   const out: Array<{ line: SitePaperLine; at: string }> = []
   for (const row of rows) {
     if (!row.id || seen.has(row.id) || replaced.has(row.id)) continue
-    if (row.party_contact_id == null || !rowIsForJobSite(row, job, answers)) continue
+    if (row.party_contact_id == null || !rowIsInSiteScope(row, scope)) continue
     seen.add(row.id)
     const company = (row.party_name ?? '').trim() || (row.signing_for ?? '').trim() || 'A company'
     out.push({ line: { ...partyPaperLine(row, replaced, todayYmd, company), company }, at: row.signed_at ?? row.sent_at ?? row.created_at ?? '' })
@@ -68,4 +104,5 @@ export function sitePapersCountSentence(lines: ReadonlyArray<SitePaperLine>): st
 export const SITE_PAPERS_WORDS = {
   heading: 'Papers for this site',
   lead: 'Papers outside companies were sent for the place this job is at.',
+  developmentLead: 'Papers outside companies were sent for this development, or for a job in it.',
 } as const

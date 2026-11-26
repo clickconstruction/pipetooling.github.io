@@ -33,6 +33,7 @@ import { DevelopmentAskSheet, type AskAboutOption, type AskPreset } from '../com
 import { DevelopmentChipConfirm, type ChipConfirmRow } from '../components/developments/DevelopmentChipConfirm'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
+import { DevelopmentSitePapers } from '../components/developments/DevelopmentSitePapers'
 import { DevelopmentPartsCard, type SitePlansWrites } from '../components/developments/DevelopmentPartsCard'
 import { DevelopmentPlansByDate } from '../components/developments/DevelopmentPlansByDate'
 import { PlansViewSwitch } from '../components/developments/PlansViewSwitch'
@@ -408,6 +409,8 @@ export default function DevelopmentPage() {
   }, [canWritePlans, developmentIdForParts, siteIo, siteRead?.parts, authUser?.id, showToast, load, labelOfJobId, data?.names])
   // The jobs' costs for the Jobs & bids table (v2.6215): dev and controller read them, one batched read for the site.
   const shownJobIds = useMemo(() => (shown ? shown.jobs.map((j) => j.id) : []), [shown])
+  // The addresses of the site's jobs and bids: a paper that names one of them is this development's paper (punch list #439).
+  const siteAddresses = useMemo(() => (shown ? [...shown.jobs.map((j) => j.job_address ?? null), ...shown.bids.map((b) => b.address ?? null)] : []), [shown])
   const costsByJobId = useSiteCosts(shownJobIds, canSeeSiteCosts(role))
   // The Timeline is the finance seats' (v2.6493, punch list #257): a device that remembered it for another role opens on the money.
   const moneyViewShown: MoneyView = moneyView === 'timeline' && !canSeeSiteCosts(role) ? 'money' : moneyView
@@ -1829,6 +1832,9 @@ export default function DevelopmentPage() {
         <Card id={DEVELOPMENT_JUMP_ANCHOR.photos} title="Photos" fold={foldFor('photos', lineOf(looks.photos))} meta={photosCardMeta(sitePhotos.census, door)}>
           <DevelopmentPhotosLook state={sitePhotos} pieces={[...shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j) })), ...shown.bids.map((b) => ({ id: b.id, label: bidLabel(b) }))]} role={role} phone={phone} siteName={dev.name} openJob={openJob} goToPieces={goToPieces} door={door} />
         </Card>
+
+        {/* Papers for this site (punch list #439): what outside companies were sent for this development or a job in it. Drawn only when there is one. */}
+        <DevelopmentSitePapers developmentId={dev.id} addresses={siteAddresses} />
 
         {/* The seventh look (punch list #379): trips to a site away from home. Mounted for the office door; the card draws only when the look shows. */}
         {moneyShown ? (

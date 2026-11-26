@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { pairKeys, type PlaceAnswer } from './lookAlikes'
-import { SITE_KEYS_MAX, SITE_PAPERS_WORDS, rowIsForJobSite, siteKeysToRead, sitePaperLines, sitePapersCountSentence } from './sitePapers'
+import { DEVELOPMENT_SITE_KEYS_MAX, SITE_KEYS_MAX, SITE_PAPERS_WORDS, developmentSiteScope, jobSiteScope, rowIsForJobSite, rowIsInSiteScope, siteKeysToRead, sitePaperLines, sitePaperLinesInScope, sitePapersCountSentence } from './sitePapers'
 import type { PartyPaperRow } from '../contracts/partyPapers'
 import { normalizeAddressKey } from '../developments/notInIt'
 import { plainWordsFailures } from '../plainWords'
@@ -54,6 +54,37 @@ describe('which papers are a job’s site’s', () => {
     expect(rowIsForJobSite(paper('e', { site_address_key: key(COVE) }), JOB)).toBe(false)
     // A job in no development never matches a paper by a blank development.
     expect(rowIsForJobSite(paper('f', { site_address_key: null, site_address: null, site_development_id: null }), { job_address: QUARRY, development_id: null })).toBe(false)
+  })
+})
+
+describe('a development’s site', () => {
+  const scope = developmentSiteScope('d1', [QUARRY, null, '  ', COVE, QUARRY], [same(QUARRY, BARN)])
+
+  it('is the development and the address of every job and bid in it, with each spelling answered Same place', () => {
+    expect(scope.developmentId).toBe('d1')
+    expect([...scope.keys].sort()).toEqual([key(BARN), key(COVE), key(QUARRY)].sort())
+    expect(developmentSiteScope(null, []).developmentId).toBeNull()
+    expect(developmentSiteScope('d1', []).keys.size).toBe(0)
+    const many = developmentSiteScope('d1', Array.from({ length: 300 }, (_, i) => `${i + 1} Lot Ln, Sampleton, TX`))
+    expect(many.keys.size).toBe(DEVELOPMENT_SITE_KEYS_MAX)
+  })
+
+  it('takes a paper that names the development, or the address of any job in it, and no other', () => {
+    expect(rowIsInSiteScope(paper('a'), scope)).toBe(true)
+    expect(rowIsInSiteScope(paper('b', { site_address_key: key(COVE) }), scope)).toBe(true)
+    expect(rowIsInSiteScope(paper('c', { site_address_key: key(BARN) }), scope)).toBe(true)
+    expect(rowIsInSiteScope(paper('d', { site_address_key: null, site_address: null, site_development_id: 'd1' }), scope)).toBe(true)
+    expect(rowIsInSiteScope(paper('e', { site_address_key: null, site_address: null, site_development_id: 'd2' }), scope)).toBe(false)
+    expect(rowIsInSiteScope(paper('f', { site_address_key: key('9 Elsewhere Rd, Placeholder, TX') }), scope)).toBe(false)
+    expect(rowIsInSiteScope(paper('g', { site_address_key: null, site_address: null }), scope)).toBe(false)
+  })
+
+  it('lists them as a job’s own lines, and a job’s site is the same rule with one address', () => {
+    const rows = [paper('at-cove', { site_address_key: key(COVE), party_name: 'Example Pipe & Valve' }), paper('at-quarry'), paper('away', { site_address_key: key('9 Elsewhere Rd, Placeholder, TX') })]
+    expect(sitePaperLinesInScope(rows, scope, TODAY).map((l) => l.id).sort()).toEqual(['at-cove', 'at-quarry'])
+    expect(sitePaperLinesInScope(rows, jobSiteScope(JOB), TODAY).map((l) => l.id)).toEqual(['at-quarry'])
+    expect(sitePaperLines(rows, JOB, [], TODAY).map((l) => l.id)).toEqual(['at-quarry'])
+    expect(plainWordsFailures(SITE_PAPERS_WORDS.developmentLead)).toEqual([])
   })
 })
 
