@@ -72,6 +72,23 @@ describe('the Add a part sheet', () => {
     expect(onAdd).toHaveBeenCalledWith({ partId: null, partName: 'Hangers', manufacturer: null }, 40)
   })
 
+  it('Pick a different part sits first in the quantity step, under the picked name, and the presses that act come last (punch list #398, v2.8635)', () => {
+    open()
+    fireEvent.click(within(screen.getByTestId('add-part-box-says')).getByRole('button'))
+    const dialog = screen.getByRole('dialog', { name: 'Add a part to G101' })
+    expect(dialog.textContent).toContain('Hangers')
+    const names = within(dialog).getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent ?? '')
+    const at = (name: string) => names.indexOf(name)
+    expect(at('Pick a different part')).toBeGreaterThanOrEqual(0)
+    expect(at('Pick a different part')).toBeLessThan(at('One fewer'))
+    expect(at('One fewer')).toBeLessThan(at('+10'))
+    expect(at('+100')).toBeLessThan(at('Add 1 to G101'))
+    expect(at('Add 1 to G101')).toBeLessThan(at('Add 1 and another part'))
+    expect(names[names.length - 1]).toBe('Add 1 and another part')
+    fireEvent.click(screen.getByRole('button', { name: 'Pick a different part' }))
+    expect(screen.getByRole('searchbox', { name: 'Search the parts book' })).toBeTruthy()
+  })
+
   it('Add 40 and another part writes the part, keeps the sheet on the picker and says what went in', () => {
     const { onAdd, onAddAnother } = open()
     fireEvent.change(field(), { target: { value: 'wax ring' } })

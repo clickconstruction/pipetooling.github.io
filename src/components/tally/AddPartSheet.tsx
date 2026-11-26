@@ -126,6 +126,8 @@ export function AddPartSheet({ container, names, searchParts, words, onClose, on
         </>
       ) : (
         <>
+          {/* The way back sits where the choice is made, under the picked name in the head (punch list #398, v2.8635): last of the step it fell under the fold on a phone with the number pad up, since the sheet follows the keyboard (v2.8583). The presses that act stay last. */}
+          <button type="button" style={{ ...quiet, justifySelf: 'start' }} onClick={() => setPicked(null)}>Pick a different part</button>
           <Stepper n={n} max={ADD_PART_MAX} onChange={(v) => { setN(v); setTouched(true) }} autoSelect />
           {/* A real load is 27, 50 or 94 (v2.8284): the chips get there in a press or two. */}
           <div role="group" aria-label="Add to the number" style={{ display: 'grid', gridTemplateColumns: `repeat(${QUANTITY_CHIPS.length}, minmax(0, 1fr))`, gap: '0.4rem' }}>
@@ -133,7 +135,6 @@ export function AddPartSheet({ container, names, searchParts, words, onClose, on
           </div>
           <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 52 }} onClick={() => onAdd(picked, n)}>{words ? words.press(n) : `Add ${n} to ${container.label}`}</button>
           {onAddAnother ? <button type="button" style={{ ...btn, ...btnBlock }} onClick={() => { if (!onAddAnother(picked, n)) return; setNote(addPartDoneWords(n, picked.partName, container.label)); setPicked(null); setTerm(''); setN(1); setTouched(false) }} data-testid="add-part-another">{addAnotherLabel(n)}</button> : null}
-          <button type="button" style={{ ...quiet, justifySelf: 'start' }} onClick={() => setPicked(null)}>Pick a different part</button>
         </>
       )}
     </Sheet>

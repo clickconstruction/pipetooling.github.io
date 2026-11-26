@@ -96,7 +96,7 @@ A new box can take its first part in the same press. Type the part in **What is 
 
 The sheet opens with choices. **This box says** offers the box's own words as the part. **Already on this job** lists the names the job has, with how many and in which box. Tap one when it is the same part. The new pieces go under that name, and the office reads one total. Type a new name only when the job has none like it. What you type is offered first, as **Use “hangers” as typed**.
 
-Then say how many. Type the number, or tap **+10**, **+25** or **+100**. Tap the blue press to add the part and close the sheet. Tap **Add 40 and another part** to add it and stay for the next part.
+Then say how many. Picked the wrong one? **Pick a different part** sits right under its name. Type the number, or tap **+10**, **+25** or **+100**. Tap the blue press to add the part and close the sheet. Tap **Add 40 and another part** to add it and stay for the next part.
 
 A part put into a box that held none of it is counted as it goes in. The box does not ask you to count what you just put in. That count is the part's own and not the box's. A box due a count stays due until you count it. When the box already held some, count the box as usual.
 
