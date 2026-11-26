@@ -2,7 +2,7 @@
 name: "Clock out: the bids of the day"
 number: 445
 group: close
-status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · the owner's go the same day (I like it, build it) · the ground is live as v2.8605, the beat as v2.8609 and the Clock out list as v2.8610 (2026-11-26) · walked live 2026-11-26 as the dev on two ZZ Test bids, every step a pass · the walk met three things: the note box opens on the clock-in's plan, as built since v2.6092; the strip starts at the beat's five-minute bucket; and a locked bid's refused price stays typed in its field · the person the same day on the note box: keep it, and add one line saying where the words came from, built as v2.8641 and merged the same day, with no line over a Job Mode note · the last two are mended in v2.8637 and v2.8636, merged the same day · none of the three is seen live yet · left: a look at those, then the Bid Board, the My Time card and CountTooling on the owner's word
+status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · the owner's go the same day (I like it, build it) · the ground is live as v2.8605, the beat as v2.8609 and the Clock out list as v2.8610 (2026-11-26) · walked live 2026-11-26 as the dev on two ZZ Test bids, every step a pass · the walk met three things: the note box opens on the clock-in's plan, as built since v2.6092; the strip starts at the beat's five-minute bucket; and a locked bid's refused price stays typed in its field · the person the same day on the note box: keep it, and add one line saying where the words came from, built as v2.8641 and merged the same day, with no line over a Job Mode note · the last two are mended in v2.8637 and v2.8636, merged the same day · the toasts say their role to a screen reader since v2.8638, merged the same day · none of the four is seen or heard live yet · left: a look at those, then the Bid Board, the My Time card and CountTooling on the owner's word
 summary: >
   An estimator works one bid at a time, and the app already records most of that work without being asked.
   This card reads those records into a list at clock out: the bids the person worked on today, with nothing
@@ -11,7 +11,7 @@ summary: >
 next: A live look at the three small mends of the walk of 2026-11-26 (v2.8636, v2.8637, v2.8641). The first two write nothing; the note box's line is read on the Clock out sheet of a session with a typed plan, and Cancel leaves it open. Then the Bid Board, the My Time card and CountTooling, each on the owner's word.
 size: L as a train of six (S · M · M · S · S · M); steps 1 to 3 are live; left: the Bid Board, the My Time card and CountTooling (S · S · M)
 blocker: None. The look needs the live-look slot.
-ver: v2.8605 · 8609 · 8610 · 8636 · 8637 · 8641
+ver: v2.8605 · 8609 · 8610 · 8636 · 8637 · 8638 · 8641
 opinion: build — the owner said build it, and the first three pieces are live; the last three wait on the owner's word
 ---
 
@@ -462,8 +462,11 @@ write on the person's yes of that day. This is the walker's report, and the code
   the commit returns before it drops what was typed (`commitWorkbenchTypedPrice`). Mended in v2.8636 (PR #9937,
   merged 2026-11-26), client only: a price the lock refuses is dropped from the field, which reads the saved
   price again as the toast shows. The sale price, revenue, profit and margin cells mend together. Not yet seen
-  live. Beside it: the app's toasts carry no status role on any page. That mend is built and in review as of
-  this line.
+  live. Beside it: the app's toasts carried no status role on any page. Mended in v2.8638 (PR #9939, merged
+  2026-11-26), client only: a toast's words carry `alert` for an error or a warning and `status` for a success or
+  a note, on the words alone. Built as a role on each toast and not as one region that stays on the page, since
+  144 test files draw under the real toast and would each find two. Its own note says a *status* that arrives
+  with its words is the less sure kind, and that a listen on a real phone decides. No screen reader was run.
 - **For the next walker.** A sent bid needs **Revise…** before a price can change, and a bid with no count rows
   has no price to change. The dev's own account meets two gates before the sheet: the day's goals check and
   the spending gate.

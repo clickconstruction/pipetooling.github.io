@@ -290,6 +290,8 @@ by line after that day's walk of five of them.
   View as row, the sample assistant, looks only; and one Stripe case on a ZZ test job reopened from *Closed cases* and
   closed again 34 seconds later as settled another way, with a new ZZ TEST note. No id was read back: the dev seat is
   refused on the account that walked, so the rows are matched on the page by person, time and words.
+- From the simulator's sixth sitting on 2026-11-26: one more View as row, the sample assistant, because of row 17. A
+  report of a ZZ Test job was marked opened and marked unread again inside that look, which left no row.
 
 ## When a take-back is built
 
