@@ -7,14 +7,25 @@ import { useState, type CSSProperties } from 'react'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { KEPT_ADDRESS_CLEARED, KEPT_ADDRESS_SEARCH_LIMIT, keptAddressClearConfirm, keptAddressClearDrawn, keptAddressClearProblem, keptAddressLikePattern, keptAddressSearchProblem } from '../../lib/map/keptAddressClear'
+import { KEPT_ADDRESS_SEARCH_LIMIT, keptAddressClearConfirm, keptAddressClearDrawn, keptAddressClearedWords, keptAddressClearProblem, keptAddressLikePattern, keptAddressSearchProblem } from '../../lib/map/keptAddressClear'
+import { geocodeMissAsksAgainAt } from '../../../supabase/functions/_shared/geocodeMissMemory'
 import { clearKeptAddress, readKeptAddressHits, searchKeptAddresses, type KeptAddress } from '../../lib/map/keptAddressClearIo'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdWeekdayShortFriendly } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
-const keptDay = (iso: string | null): string => {
+const dayOf = (iso: string | null | undefined): string => {
   const ymd = iso && Number.isFinite(Date.parse(iso)) ? calendarYmdInAppTzFromIso(iso) : ''
-  return ymd ? `Kept ${formatWorkDateYmdWeekdayShortFriendly(ymd)}.` : ''
+  return ymd ? formatWorkDateYmdWeekdayShortFriendly(ymd) : ''
+}
+const keptDay = (iso: string | null): string => {
+  const day = dayOf(iso)
+  return day ? `Kept ${day}.` : ''
+}
+/** A miss's line (#443, row 16): the day the services were asked, and the day it stops counting by itself. */
+const missLine = (iso: string | null): string => {
+  const checked = dayOf(iso)
+  const again = dayOf(geocodeMissAsksAgainAt(iso)?.toISOString())
+  return [checked ? `No map service could place it. Checked ${checked}.` : 'No map service could place it.', again ? `It stops counting ${again} by itself.` : ''].filter(Boolean).join(' ')
 }
 
 export default function KeptMapAddressesBlock({ role }: { role: string | null | undefined }) {
@@ -54,10 +65,10 @@ export default function KeptMapAddressesBlock({ role }: { role: string | null | 
         setStayed((s) => ({ ...s, [row.key]: problem }))
         return
       }
-      if (!(await confirmDialog({ ...keptAddressClearConfirm(row.key), danger: true }))) return
-      await clearKeptAddress(row.key)
-      showToast(KEPT_ADDRESS_CLEARED, 'success')
-      setFound((f) => (f ? { ...f, rows: f.rows.filter((r) => r.key !== row.key) } : f))
+      if (!(await confirmDialog({ ...keptAddressClearConfirm(row.key, row.kind), danger: true }))) return
+      await clearKeptAddress(row.key, row.kind)
+      showToast(keptAddressClearedWords(row.kind), 'success')
+      setFound((f) => (f ? { ...f, rows: f.rows.filter((r) => !(r.key === row.key && r.kind === row.kind)) } : f))
     } catch (e) {
       showToast(formatErrorMessage(e, 'The address was not cleared.'), 'error')
     } finally {
@@ -82,7 +93,7 @@ export default function KeptMapAddressesBlock({ role }: { role: string | null | 
       {open ? (
         <div style={{ padding: '0 1rem 1rem', borderTop: '1px solid var(--border)' }}>
           <p style={{ ...muted, margin: '0.75rem 0', fontSize: '0.875rem' }}>
-            The map keeps every address it looks up, and an address typed in a Job Address box is kept even when no job is made. Find one by its words. An address is cleared only when no record anywhere holds its street line.
+            The map keeps every address it looks up, and an address typed in a Job Address box is kept even when no job is made. An address no map service could place is kept beside them as a miss for 30 days. Find either by its words. One is cleared only when no record anywhere holds its street line.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
             <input
@@ -120,17 +131,17 @@ export default function KeptMapAddressesBlock({ role }: { role: string | null | 
                 const problem = (keptAddressLikePattern(row.key) ? '' : keptAddressClearProblem(row.key, [])) || stayed[row.key] || ''
                 const dead = !!problem || busyKey != null
                 return (
-                  <div key={row.key} data-testid="kept-map-address" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0 0.75rem', alignItems: 'center', padding: '0.35rem 0', borderTop: '1px solid var(--border)', fontSize: '0.875rem' }}>
+                  <div key={`${row.kind}:${row.key}`} data-testid="kept-map-address" data-kind={row.kind} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0 0.75rem', alignItems: 'center', padding: '0.35rem 0', borderTop: '1px solid var(--border)', fontSize: '0.875rem' }}>
                     <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                       <b style={{ color: 'var(--text-strong)' }}>{row.key}</b>
-                      <span style={{ ...muted, display: 'block' }}>{[keptDay(row.keptAtIso), row.placed ? '' : 'The map could not place it.'].filter(Boolean).join(' ')}</span>
+                      <span style={{ ...muted, display: 'block' }}>{row.kind === 'miss' ? missLine(row.keptAtIso) : [keptDay(row.keptAtIso), row.placed ? '' : 'The map could not place it.'].filter(Boolean).join(' ')}</span>
                       {problem ? (
                         <span style={{ ...muted, display: 'block' }} data-testid="kept-map-address-why">
                           {problem}
                         </span>
                       ) : null}
                     </div>
-                    <button type="button" onClick={() => void clear(row)} disabled={dead} aria-label={`Clear ${row.key}`} style={problem ? { ...word, color: 'var(--text-muted)', textDecoration: 'none', cursor: 'default' } : { ...word, color: 'var(--text-red-700)', cursor: dead ? 'default' : 'pointer' }}>
+                    <button type="button" onClick={() => void clear(row)} disabled={dead} aria-label={`Clear ${row.kind === 'miss' ? 'the miss ' : ''}${row.key}`} style={problem ? { ...word, color: 'var(--text-muted)', textDecoration: 'none', cursor: 'default' } : { ...word, color: 'var(--text-red-700)', cursor: dead ? 'default' : 'pointer' }}>
                       {busyKey === row.key ? 'Checking…' : 'Clear…'}
                     </button>
                   </div>

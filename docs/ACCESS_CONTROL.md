@@ -3341,6 +3341,8 @@ Checklist and Tally feature access still varies by role (see the feature matrice
 **`address_geocodes`** RLS: read / insert / update for every signed-in user since **`20260908035852`** (v2.3131 — the Dashboard **Your jobs on a map** card), delete for the five `/map` roles, dev / master_technician / assistant / controller / estimator (**`20270520120000_address_geocodes_estimator_map_access.sql`**;
 the controller since **`20260927220000_controller_policies_the_rest.sql`**, v2.3898);
 **`address_geocode_misses`** RLS (v2.8473, punch list #408): read / insert / update for every signed-in user, the same reach as `address_geocodes`, and no delete for anyone (**`20261124091500_address_geocode_misses.sql`**);
+Since v2.8623 (punch list #443, row 16) a dev alone deletes a miss by hand, through `address_geocode_misses_delete_dev` and the `DELETE` grant (migration `20261126024719`), from the **Kept map addresses** block and only when no record holds its street line.
+The four fences still hold a read-only account, a twin and an archived caller back from that delete.
 a point saved to `address_geocodes` deletes its miss through the definer trigger `address_geocodes_clears_miss`, and the server stamps `checked_at` on every write;
 Edge **`geocode-address-batch`** (primary load chunks, every signed-in role) / **`geocode-one`** (**Review geocodes** Google refresh, Settings default-label, the Edit Job **On the map** line — the five `/map` roles, controller included since v2.4974;
 the line itself reads `isPathAllowedForRole(role, '/map')`).
