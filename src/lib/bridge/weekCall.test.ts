@@ -121,7 +121,14 @@ describe('buildWeekCall, a usual week', () => {
     const collectLit = buildWeekCall({ ...base, flow: { ...week, linkId: 'collect' } }).tiles.find((t) => t.id === 'step')!
     expect(collectLit.sub).toBe('Growth and cash wait on Collect. Customers pay $31k a week. The office bills $46k a week.')
     expect(collectLit.sub2).toBeUndefined()
-    for (const t of [step, market, collectLit]) for (const line of [t.sub, t.sub2 ?? '']) if (line) expect(plainWordsFailures(line), line).toEqual([])
+    // A week customers pay more than is billed: the two paces are said apart, never "$48k of the $46k billed" (finding 245).
+    const paidLeads = buildWeekCall({ ...base, flow: buildStageFlow({ ...weekInput(week), collect: { pileUsd: 217_000, pileCount: null, inPerWeekUsd: 46_000, outPerWeekUsd: 48_000, lateCount: 9 } }) }).tiles.find((t) => t.id === 'step')!
+    expect(paidLeads.value).toBe('Sales')
+    expect(paidLeads.sub2).toBe('Cash waits on Collect. Customers pay $48k a week. The office bills $46k a week.')
+    // Level, to the dollar: a share that is the whole still reads as a share.
+    const level = buildWeekCall({ ...base, flow: buildStageFlow({ ...weekInput(week), collect: { pileUsd: 217_000, pileCount: null, inPerWeekUsd: 46_000, outPerWeekUsd: 46_000, lateCount: 9 } }) }).tiles.find((t) => t.id === 'step')!
+    expect(level.sub2).toBe('Cash waits on Collect. Customers pay $46k of the $46k billed a week.')
+    for (const t of [step, market, collectLit, paidLeads, level]) for (const line of [t.sub, t.sub2 ?? '']) if (line) expect(plainWordsFailures(line), line).toEqual([])
     for (const line of weekCallWords(m, WEEK_CALL_MOVES)) expect(plainWordsFailures(line), line).toEqual([])
     // The two lines count toward the phone's first screen.
     expect(weekCallWords(m).includes(step.sub2!)).toBe(true)
