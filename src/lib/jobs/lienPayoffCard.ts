@@ -141,7 +141,12 @@ export function lienPayoffCard(rows: ReadonlyArray<LienPayoffRow>, todayYmd: str
   const made = county.length + done.length
   const notarized = [...county, ...done].filter((r) => r.step.notarizedYmd || r.step.step === 'done').length
   const open = rows.filter((r) => r.step.step !== 'done')
-  const checks = rows.map((r) => r.step.check).filter((c): c is CheckAnswer => Boolean(c))
+  // The clearing day is the payoff check's: a lien still on the money carries the bank's answer on an older payment,
+  // which is not the check the card waits for (the walk of 2026-11-26 read a day five months back off one).
+  const checks = rows
+    .filter((r) => r.step.step !== 'money')
+    .map((r) => r.step.check)
+    .filter((c): c is CheckAnswer => Boolean(c))
   // A saved or recorded release on a check that came back counts too (piece 6, `payoffReturned.ts`).
   const moneyBack = rows.filter((r) => r.step.moneyBack)
   const cameBack = bank.some((r) => r.step.check?.state === 'came_back') || moneyBack.length > 0

@@ -15,7 +15,7 @@ next: Pieces 4, 5 and 6 wait for their walks on ZZ test jobs. Piece 7 (S) waits 
 size: L as a train of seven (S · M · M · M · M · S · S); pieces 1 to 6 built; left: piece 7 (S)
 blocker: Counsel's answers gate piece 7 and the words on the papers, the payer's receipt among them.
 opinion: build — the door, the one check, the safe release, the card with five stops, the releases on the run and the returned check are built in pieces 1 to 6; the walks are next
-ver: v2.8504 · v2.8508 · v2.8510 · v2.8632 · v2.8639 · v2.8648
+ver: v2.8504 · v2.8508 · v2.8510 · v2.8632 · v2.8639 · v2.8648 · v2.8650
 ---
 
 # A lien payoff: one check in, every lien at the place released (#435)
@@ -185,7 +185,8 @@ Left from piece 4, each named in its fragment:
 - The payer's receipt of screen 3 is not built. It is a paper, and counsel's answers gate the words on the papers.
 - A confirmation of the funds cannot be taken back from the card.
 - The place's press keeps the name it was built with, *One check for this place ›*, where screen 1 reads *They paid: take the payoff ›*.
-- Piece 4 has not been walked: no asked day or confirmation was saved on a ZZ test lien.
+- Piece 4's looking-only walk was made on the live desk on 2026-11-26: every open place had its card, five stops, the line for today and the asked day's field, and the check pane showed its four fields and both worked-out days. It found one fault, a *Check clears* line read off an older check on a lien still waiting on its money, mended in v2.8650. No lien waited for the bank and no place was all released, so those two steps were not seen.
+- Piece 4 has not been walked with a write: no asked day or confirmation was saved on a ZZ test lien.
 
 ### Piece 5 as built (v2.8648)
 
