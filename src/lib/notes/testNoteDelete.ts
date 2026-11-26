@@ -14,6 +14,9 @@
  *   the app writes (done, reopened, a line ticked) are never offered.
  * - A note or a comment another tag names as its answer stays: the tag's `answer_note_id` / `answer_event_id` is
  *   `ON DELETE SET NULL`, and the database would forget the answer without a word. The note's own tags go with it.
+ *   Its press reads dead with the count before it is pressed (finding 273): an answer is always a note of the tag's
+ *   own job or task, so the tags each panel already reads for its chips hold every answer (`noteAnswerCounts`), with
+ *   no read of the press's own. The count inside the delete stays as the last check.
  * - A job's note is kept in Deleted records by the notes table's own trigger. A comment is not kept anywhere.
  */
 import { isZzTestJob, isZzTestName } from '../../../supabase/functions/_shared/zzTestJob'
@@ -47,6 +50,24 @@ export function noteAnswersProblem(answers: number | null): string {
   if (answers === 1) return '1 tag names this as its answer. It stays.'
   if (answers > 1) return `${answers} tags name this as their answer. It stays.`
   return ''
+}
+
+/**
+ * How many tags name each note or comment as their answer, from the tag rows a panel already holds by note
+ * (`useJobNoteTags`, `useTaskNoteTags`). A note nothing names has no entry. A panel whose tags did not load holds
+ * none, so every press stays live and the delete's own count answers.
+ */
+export function noteAnswerCounts(byNote: ReadonlyMap<string, readonly { answerNoteId?: string | null }[]>): ReadonlyMap<string, number> {
+  const out = new Map<string, number>()
+  for (const rows of byNote.values()) {
+    for (const r of rows) if (r.answerNoteId) out.set(r.answerNoteId, (out.get(r.answerNoteId) ?? 0) + 1)
+  }
+  return out
+}
+
+/** Why one note's or comment's press is dead: the fixed reason first, then its answers; '' when the press is live. */
+export function noteDeleteWhy(fixed: string, answers: number | undefined): string {
+  return fixed || noteAnswersProblem(answers ?? 0)
 }
 
 /** The confirm window's words for a job's note. The button names the act. */

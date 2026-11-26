@@ -28,7 +28,7 @@ export function useTaskNoteTags(taskItemId: string | null, rev: unknown, instanc
     let live = true
     void supabase
       .from('task_note_tags')
-      .select('event_id, tagged_user_id, tagged_name, tagger_user_id, created_at, cleared_at, cleared_how')
+      .select('event_id, tagged_user_id, tagged_name, tagger_user_id, created_at, cleared_at, cleared_how, answer_event_id')
       .eq(instanceId ? 'instance_id' : 'item_id', instanceId ?? taskItemId ?? '')
       .then(({ data, error }) => {
         if (!live || error || !data) return
@@ -40,6 +40,7 @@ export function useTaskNoteTags(taskItemId: string | null, rev: unknown, instanc
           createdAt: r.created_at,
           clearedAt: r.cleared_at,
           clearedHow: r.cleared_how === 'answered' || r.cleared_how === 'done' ? r.cleared_how : null,
+          answerNoteId: r.answer_event_id ?? null,
         }))
         setState({ itemId, byNote: rows.length === 0 ? EMPTY : tagsByNote(rows) })
       })
