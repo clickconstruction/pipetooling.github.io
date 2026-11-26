@@ -28,7 +28,7 @@ It makes and changes no table, so the four closing calls of a `CREATE TABLE` mig
 
 ## Order
 
-The client calls the function by its old name with its old argument and already refuses a replaced case before the call, so neither side misreads the other. The push and the client deploy may land in either order; this PR changes no client code but a comment. `npm run check:calls-ahead` names the one call as a function the migration replaces, so no deploy waits for the push.
+The client calls the function by its old name with its old argument and already refuses a replaced case before the call, so neither side misreads the other. The push and the client deploy may land in either order; this PR changes no client code but a comment. `npm run check:calls-ahead` names no call: the client reaches the function by a name chosen at run time (`arCaseReopenCall`), which the finder does not see. No deploy waits for the push either way, since the function replaces one that is live.
 
 ## Test
 
