@@ -522,6 +522,23 @@ describe('BidsPricingTab render smoke', () => {
     expect(window.sessionStorage.length).toBe(1)
   })
 
+  it('a price typed on a sent bid is refused, and the field reads the saved price again at once (punch list #445)', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps({}, makeBid({ bid_date_sent: '2026-06-02', bid_value: 6500 }))} />)
+    await settle()
+    db.writes = []
+    const box = () => screen.getByLabelText('Sale price per unit for Water closet') as HTMLInputElement
+    fireEvent.focus(box())
+    fireEvent.change(box(), { target: { value: '950' } })
+    expect(box().value).toBe('950')
+    fireEvent.blur(box())
+    // The lock refuses the write and says so; the typed number does not stay in the field as if it had saved.
+    await waitFor(() => expect(box().value).toBe('$800.00'))
+    expect(screen.getByText('This bid was sent Jun 2 — press Revise on the Pricing header to change its prices.')).toBeTruthy()
+    expect(db.writes.filter((w) => w.table === 'bid_count_row_custom_prices')).toEqual([])
+    // The bar follows the field back: $800 on six water closets and $500 on four lavatories.
+    expect(strip().textContent ?? '').toContain('Revenue$6,800.00')
+  })
+
   it('the header chip shows what the quote desk says', async () => {
     smoke.rfqChip = { kind: 'quotes', tone: 'blue', label: 'Quotes (2)' }
     renderWithProviders(<BidsPricingTab {...pricedProps()} />)

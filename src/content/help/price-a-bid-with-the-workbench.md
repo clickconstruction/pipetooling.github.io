@@ -91,6 +91,8 @@ Five pipe rows sell for $6,200.00. Connections at 40% is $2,480.00. One pipe row
 
 **Revenue, Profit, and Margin are inputs too.** You click any of the three and type. The sale price/unit follows as you type. Revenue spreads across the count. Profit adds the row's cost back. Margin solves cost divided by one minus the margin. Enter or leaving the field saves it exactly like a typed price, with *saved ✓*. Esc walks away without saving. Rows with no Takeoffs cost have no profit or margin to edit.
 
+**A sent bid's prices are locked.** Type a price on a sent bid and nothing is saved. A note names the day the bid was sent. The box goes back to the saved price at once. Press {{button:outline|Revise…}} on the Pricing header first to change a sent bid's prices.
+
 **Solver previews wait on this device.** You visit any page, reload, close the tab, or come back tomorrow. The preview is sitting where you left it. One from an earlier sitting says when it is from: *solve from Tue 4:12 PM — restored*. Each price option keeps its own preview. So viewing another price just sets yours aside. It is restored when you view that price again. Previews stay on the computer they were made on. They do not follow you to another machine. A GC can never see a preview. Cover Letter, Share, Print, and CSV always use saved prices only. The **?** beside the bid's name keeps a short version of this story.
 
 Each price card's ✎ opens the **Price** modal. You rename it or delete it. The ★ cannot be deleted while the letter is built on it.
