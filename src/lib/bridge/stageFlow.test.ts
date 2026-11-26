@@ -17,8 +17,8 @@ describe('buildStageFlow', () => {
     expect(bill.pile.headline).toBe('$233k finished, not yet billed')
     expect(bill.pile.sub).toEqual(['on 15 jobs'])
     expect(bill.flow).toEqual([
-      { who: 'the field finishes', usd: '$34k' },
-      { who: 'the office bills', usd: '$22k' },
+      { who: 'the field finishes', usd: '$34k', perWeekUsd: 34_000 },
+      { who: 'the office bills', usd: '$22k', perWeekUsd: 22_000 },
     ])
     expect(bill.weeksText).toBe('10.6 weeks to bill what is already finished')
     const collect = flow.stages.find((s) => s.id === 'collect')!
@@ -205,19 +205,19 @@ describe('buildStageFlow', () => {
     const flow = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: 34_000, bill: null, collect: null, build: honest, heldLinkId: null })
     const build = flow.stages.find((s) => s.id === 'build')!
     expect(build.flow).toEqual([
-      { who: 'sales sells', usd: '$49k' },
-      { who: 'the field builds', usd: '$34k', tail: 'a week by hours' },
+      { who: 'sales sells', usd: '$49k', perWeekUsd: 49_000 },
+      { who: 'the field builds', usd: '$34k', perWeekUsd: 34_000, tail: 'a week by hours' },
       { who: 'by the percents', usd: '$24k', tail: 'a week' },
     ])
     expect(build.weeksText).toBe('10.6 weeks to build what is already sold')
     // The percents lead: the card says so and names the hours.
     const pctLeads = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: 40_000, bill: null, collect: null, build: withFieldPaces({ ...byPercent, outPerWeekUsd: 40_000 }, 34_000), heldLinkId: null }).stages.find((s) => s.id === 'build')!
-    expect(pctLeads.flow[1]).toEqual({ who: 'the field builds', usd: '$40k', tail: 'a week by the percents' })
+    expect(pctLeads.flow[1]).toEqual({ who: 'the field builds', usd: '$40k', perWeekUsd: 40_000, tail: 'a week by the percents' })
     expect(pctLeads.flow[2]).toEqual({ who: 'by hours', usd: '$34k', tail: 'a week' })
     // Within a twentieth of each other, one line.
     const agree = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: 34_000, bill: null, collect: null, build: withFieldPaces({ ...byPercent, outPerWeekUsd: 33_000 }, 34_000), heldLinkId: null }).stages.find((s) => s.id === 'build')!
     expect(agree.flow).toHaveLength(2)
-    expect(agree.flow[1]).toEqual({ who: 'the field builds', usd: '$34k', tail: 'a week' })
+    expect(agree.flow[1]).toEqual({ who: 'the field builds', usd: '$34k', perWeekUsd: 34_000, tail: 'a week' })
     for (const line of [...build.flow, ...pctLeads.flow].map((f) => `${f.who} ${f.usd} ${f.tail ?? 'a week'}.`)) expect(plainWordsFailures(line), line).toEqual([])
   })
 

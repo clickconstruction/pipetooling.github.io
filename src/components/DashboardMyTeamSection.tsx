@@ -36,6 +36,7 @@ import type { ClockSessionRow } from '../types/clockSessions'
 import DashboardMyTeamPendingBanner from './DashboardMyTeamPendingBanner'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { rejectSessionConfirm } from '../lib/clock/clockSessionConfirm'
 
 const teamHoursThStyle = {
   padding: '0.35rem 0.5rem',
@@ -537,7 +538,7 @@ export default function DashboardMyTeamSection({
                                 <button
                                   type="button"
                                   onClick={async () => {
-                                    if (!(await confirmDialog({ message: 'Reject this clock session?', confirmLabel: 'Reject' }))) return
+                                    if (!(await confirmDialog(rejectSessionConfirm(s)))) return
                                     try {
                                       await withSupabaseRetry(
                                         async () =>

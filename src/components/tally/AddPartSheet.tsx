@@ -78,8 +78,16 @@ export function AddPartSheet({ container, names, searchParts, words, onClose, on
   const already = picked ? [] : term.trim() ? matches : choices.already
   const listHead: CSSProperties = { ...muted, fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase' }
   const row: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'baseline', width: '100%', padding: '0.75rem 1rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', font: 'inherit', minHeight: TOUCH_MIN }
+  // The press that acts stays on the screen while the number it acts on is typed (punch list #398, finding 263): it
+  // stands in the sheet's foot, which does not scroll, so it sits on the keys' top at any height. Last in the scroller,
+  // it was a sliver at the fold on a 375 by 667 phone with the number pad up.
+  const addPress = picked ? (
+    <button type="button" data-testid="add-part-primary" style={{ ...btnPrimary, ...btnBlock, minHeight: 52 }} onClick={() => onAdd(picked, n)}>
+      {words ? words.press(n) : `Add ${n} to ${container.label}`}
+    </button>
+  ) : undefined
   return (
-    <Sheet title={words?.title ?? `Add a part to ${container.label}`} sub={picked ? `${picked.partName}${picked.manufacturer ? ` · ${picked.manufacturer}` : ''}` : (words?.sub ?? 'Pick a name this job already has, find it in the parts book, or type its name.')} onClose={onClose}>
+    <Sheet title={words?.title ?? `Add a part to ${container.label}`} sub={picked ? `${picked.partName}${picked.manufacturer ? ` · ${picked.manufacturer}` : ''}` : (words?.sub ?? 'Pick a name this job already has, find it in the parts book, or type its name.')} onClose={onClose} footer={addPress}>
       {!picked ? (
         <>
           {note ? <p role="status" style={{ ...muted, margin: 0, fontWeight: 600 }} data-testid="add-part-note">{note}</p> : null}
@@ -126,14 +134,13 @@ export function AddPartSheet({ container, names, searchParts, words, onClose, on
         </>
       ) : (
         <>
-          {/* The way back sits where the choice is made, under the picked name in the head (punch list #398, v2.8635): last of the step it fell under the fold on a phone with the number pad up, since the sheet follows the keyboard (v2.8583). The presses that act stay last. */}
+          {/* The way back sits where the choice is made, under the picked name in the head (punch list #398, v2.8635): last of the step it fell under the fold on a phone with the number pad up, since the sheet follows the keyboard (v2.8583). The second Add press stays last in the scroller, and the first stands in the sheet's foot (finding 263). */}
           <button type="button" style={{ ...quiet, justifySelf: 'start' }} onClick={() => setPicked(null)}>Pick a different part</button>
           <Stepper n={n} max={ADD_PART_MAX} onChange={(v) => { setN(v); setTouched(true) }} autoSelect />
           {/* A real load is 27, 50 or 94 (v2.8284): the chips get there in a press or two. */}
           <div role="group" aria-label="Add to the number" style={{ display: 'grid', gridTemplateColumns: `repeat(${QUANTITY_CHIPS.length}, minmax(0, 1fr))`, gap: '0.4rem' }}>
             {QUANTITY_CHIPS.map((c) => <button key={c} type="button" style={{ ...btn, minHeight: 44, padding: 0 }} onClick={() => { setN(chipAdds(n, c, touched)); setTouched(true) }}>+{c}</button>)}
           </div>
-          <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 52 }} onClick={() => onAdd(picked, n)}>{words ? words.press(n) : `Add ${n} to ${container.label}`}</button>
           {onAddAnother ? <button type="button" style={{ ...btn, ...btnBlock }} onClick={() => { if (!onAddAnother(picked, n)) return; setNote(addPartDoneWords(n, picked.partName, container.label)); setPicked(null); setTerm(''); setN(1); setTouched(false) }} data-testid="add-part-another">{addAnotherLabel(n)}</button> : null}
         </>
       )}

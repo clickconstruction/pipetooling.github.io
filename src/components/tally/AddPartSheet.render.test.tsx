@@ -82,11 +82,37 @@ describe('the Add a part sheet', () => {
     expect(at('Pick a different part')).toBeGreaterThanOrEqual(0)
     expect(at('Pick a different part')).toBeLessThan(at('One fewer'))
     expect(at('One fewer')).toBeLessThan(at('+10'))
-    expect(at('+100')).toBeLessThan(at('Add 1 to G101'))
-    expect(at('Add 1 to G101')).toBeLessThan(at('Add 1 and another part'))
-    expect(names[names.length - 1]).toBe('Add 1 and another part')
+    expect(at('+100')).toBeLessThan(at('Add 1 and another part'))
+    // The press that adds the part is the sheet's last control: it stands in the foot, under the scroller (finding 263).
+    expect(at('Add 1 and another part')).toBeLessThan(at('Add 1 to G101'))
+    expect(names[names.length - 1]).toBe('Add 1 to G101')
     fireEvent.click(screen.getByRole('button', { name: 'Pick a different part' }))
     expect(screen.getByRole('searchbox', { name: 'Search the parts book' })).toBeTruthy()
+  })
+
+  it('the blue Add press stands in the sheet’s foot, outside the part that scrolls, so it stays above the keys on a short phone (punch list #398, finding 263)', () => {
+    open()
+    // Before a part is picked there is nothing to add, so the sheet has no foot.
+    expect(screen.queryByTestId('add-part-primary')).toBeNull()
+    fireEvent.click(within(screen.getByTestId('add-part-box-says')).getByRole('button'))
+    const dialog = screen.getByRole('dialog', { name: 'Add a part to G101' })
+    const add = screen.getByTestId('add-part-primary')
+    expect(add.textContent).toBe('Add 1 to G101')
+    const scrollers = [...dialog.querySelectorAll<HTMLElement>('div')].filter((d) => d.style.overflowY === 'auto')
+    expect(scrollers).toHaveLength(1)
+    const scroller = scrollers[0]!
+    expect(scroller.contains(add)).toBe(false)
+    // The foot follows the scroller and does not shrink or scroll.
+    expect(add.parentElement?.previousElementSibling).toBe(scroller)
+    expect(add.parentElement?.style.flex).toMatch(/^(none|0 0 auto)$/)
+    // The scroller still holds the number, the chips and the second Add press, which is its last control.
+    const inScroller = within(scroller).getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent ?? '')
+    expect(inScroller).toContain('+10')
+    expect(inScroller[inScroller.length - 1]).toBe('Add 1 and another part')
+    expect(within(scroller).getByRole('spinbutton')).toBeTruthy()
+    // The number typed moves the press's own words, and the press writes that number.
+    fireEvent.click(within(scroller).getByRole('button', { name: '+10' }))
+    expect(add.textContent).toBe('Add 10 to G101')
   })
 
   it('Add 40 and another part writes the part, keeps the sheet on the picker and says what went in', () => {

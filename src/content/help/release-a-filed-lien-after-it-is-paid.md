@@ -2,7 +2,7 @@
 title: release a filed lien after it is paid
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: payoff, payoffs, paid, someone paid, paid off, one check, several bills, several jobs, spread, check number, release, release of record, filed lien, lien paid, county, clerk, notary, instrument, stamp, check, clears, cleared, at the bank, waits for the bank, deposit, posted, came back, lien desk, payoff card, five stops, written request, asked in writing, release due, ten days, bank confirmed the funds, funds, copies sent, returned check, bounced, do not record, money came back, counsel
+keywords: payoff, payoffs, paid, someone paid, paid off, one check, several bills, several jobs, spread, check number, release, release of record, filed lien, lien paid, county, clerk, notary, instrument, stamp, check, clears, cleared, at the bank, waits for the bank, deposit, posted, came back, lien desk, payoff card, five stops, written request, asked in writing, release due, ten days, bank confirmed the funds, funds, copies sent, returned check, bounced, do not record, money came back, counsel, print for the notary, notarized, releases, the run, held, short
 where: /lien-desk
 ---
 When someone pays off a filed lien, the Lien desk tells you what to do next. You press one button at a time.
@@ -29,7 +29,7 @@ One line under the stops says what to do today. On a day the payoff needs nothin
 
 Two days sit under the line. **Release due** shows once a written request is on record. **Check clears** shows the day the bank names for the check.
 
-**Copies sent** has no button yet. Mail the stamped copies to the payer once the county has recorded each release.
+**Copies sent** lights once the county has recorded a release. Mail the stamped copy to the payer. Then press the value beside **Copies sent**, pick the day and press **Keep**. The place stays in the open list until the copies are out.
 
 ## Step 1, record the payment
 
@@ -93,6 +93,8 @@ The payment date is already the day of the last payment. Press **Print for notar
 
 The leader signs the paper before a notary.
 
+You can print the release with the day's other releases. Read [Print the releases in the run](#print-the-releases-in-the-run) below.
+
 A job with two filed liens asks **Which lien** first. Pick the one that was paid.
 
 ## Release a lien with money still open
@@ -110,6 +112,24 @@ Take the notarized release to the county clerk. The clerk records it and stamps 
 Back on the Lien desk, press {{button:blue|Record the county’s stamp ›}} on the row. The tab shows **The county's stamp**. Press the value beside **Recorded on**, set the day and press **Keep**. Do the same beside **Instrument number**. The row then reads *Released*.
 
 The stamped copy goes on the release's line under **Filings on this job**. Press *link the saved copy* there and paste its Drive link.
+
+## Print the releases in the run
+
+The run prints every saved release in one press. Open the [Lien desk](/lien-desk) and open the run. A card named **Releases** sits under **Out the door**.
+
+The card lists each saved release under what it needs next. The four heads are **Print for the notary**, **At the notary**, **Record at the county** and **Send the copies**. A line at the top counts them.
+
+Press the blue button under **Print for the notary**. The button reads like {{button:blue|Print 3 releases for the notary}}. One print opens, with a release on each sheet. The leader signs each before a notary.
+
+Some releases may be held. The button then reads like {{button:blue|Print 2 releases for the notary · 1 is short ▸}}. The ready ones print. The held one stays with its reason in red. *Short* means the job's bills owe money again. A release is also held when its check came back.
+
+## Record the notary and the copies in the run
+
+A printed release moves under **At the notary**. Press the value beside **Notarized**, pick the day and press **Keep**. The release moves under **Record at the county**.
+
+Press **Record the county’s stamp ›** on that release. The release's tab opens. Set the day and the instrument number there. The steps are in [Step 3](#step-3-record-it-at-the-county).
+
+A recorded release moves under **Send the copies**. Mail the stamped copy to the payer. Then press the value beside **Copies sent**, pick the day and press **Keep**. The release leaves the card.
 
 ## If the check comes back after a release is made
 

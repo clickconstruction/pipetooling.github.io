@@ -2,7 +2,7 @@
 name: "A box's own screen: the parts first, four tiles that carry their facts, the rare presses behind More"
 number: 398
 group: close
-status: asked 2026-11-18 with a screenshot of a box on the Tally's On site tab · walked read-only and drawn the same day · the six calls taken as picked, then a second pass on his ask (is this the best we can do) · the owner's go the same day (I like it, build it all) · built 2026-11-18 as v2.7873, one PR (#8831), on top of Take from a box (v2.7824, v2.7828), on main · walked in an iPhone simulator 2026-11-25 on a box with five kinds of part: the screen's presses hold, five small faults were found, and two things wait on the owner's word · 2026-11-25 (UTC) in the managing session: the first of the two is answered, an add counts its own line and not the box; the second is not decided, and a mock-up of the screen as it is and of each option is owed first; one photo of a box on the ZZ test job was given a yes, asked again at the time · seen in the simulator the same day with the text at 125%: none of the four tiles is on the first screen · four small faults mended in v2.8583, merged 2026-11-25, not yet seen in the simulator · read in the code the same day: the added part's own count and the list's Count chip are ruled in the database too, so the two are one small lane with a migration, briefed and not built · the owner the same day: a crew member may retire, edit or move a box, as built · two of v2.8583's mends held in the simulator the same day · the photo was not taken, since a simulator's camera takes no picture, so it waits for a real phone · seen on that look and mended in v2.8597, merged the same day: the tally said a site has no containers while it was still reading, and after a read failed · 2026-11-26 (UTC): the lane with the migration is built as v2.8612, PR #9896, merged at 02:41 UTC on the person's yes, its push through the slot right after · v2.8597 seen live the same day, the walker's sitting 21: three tally loads and the Materials desk never drew the empty words while reading · the simulator's fifth sitting, 2026-11-26: v2.8597 holds on three fresh loads, Back lands on the row, and one small thing met in Add a part with the number pad up, Pick a different part one scroll down, is mended in v2.8635, merged the same day and not yet seen in the simulator
+status: asked 2026-11-18 with a screenshot of a box on the Tally's On site tab · walked read-only and drawn the same day · the six calls taken as picked, then a second pass on his ask (is this the best we can do) · the owner's go the same day (I like it, build it all) · built 2026-11-18 as v2.7873, one PR (#8831), on top of Take from a box (v2.7824, v2.7828), on main · walked in an iPhone simulator 2026-11-25 on a box with five kinds of part: the screen's presses hold, five small faults were found, and two things wait on the owner's word · 2026-11-25 (UTC) in the managing session: the first of the two is answered, an add counts its own line and not the box; the second is not decided, and a mock-up of the screen as it is and of each option is owed first; one photo of a box on the ZZ test job was given a yes, asked again at the time · seen in the simulator the same day with the text at 125%: none of the four tiles is on the first screen · four small faults mended in v2.8583, merged 2026-11-25, not yet seen in the simulator · read in the code the same day: the added part's own count and the list's Count chip are ruled in the database too, so the two are one small lane with a migration, briefed and not built · the owner the same day: a crew member may retire, edit or move a box, as built · two of v2.8583's mends held in the simulator the same day · the photo was not taken, since a simulator's camera takes no picture, so it waits for a real phone · seen on that look and mended in v2.8597, merged the same day: the tally said a site has no containers while it was still reading, and after a read failed · 2026-11-26 (UTC): the lane with the migration is built as v2.8612, PR #9896, merged at 02:41 UTC on the person's yes, its push through the slot right after · v2.8597 seen live the same day, the walker's sitting 21: three tally loads and the Materials desk never drew the empty words while reading · the simulator's fifth sitting, 2026-11-26: v2.8597 holds on three fresh loads, Back lands on the row, and one small thing met in Add a part with the number pad up, Pick a different part one scroll down, is mended in v2.8635, merged the same day · the simulator's sixth sitting, 2026-11-26: v2.8635 holds at 402 wide, and at 375 by 667 neither Add press is on screen with the number pad up, which is briefed
 mockup: to-dos/box-screen/mockup.html
 summary: >
   A crew member at a cage asks two things: is this the box in front of me, and what is in it.
@@ -254,9 +254,31 @@ Walked in an iPhone simulator at 402 wide on the ZZ Test walk job's boxes, savin
   step's last control, under the two Add presses, and since the sheet follows the keyboard its last control is the one
   that falls under the fold. Mended in v2.8635 (PR #9929, merged 2026-11-26), client only: the press
   sits under the picked part's name, above the stepper, and the two Add presses stay last, so the last control above the keys
-  is one of them. Not yet seen in a simulator.
+  is one of them. Seen in the simulator's sixth sitting: it holds at 402 wide.
 - **Where is it?** The last row stands above the bar after one scroll. **Back** from ZZ4 lands with the row whole near the
   foot.
 - **v2.8597, three fresh loads by address:** no false empty list in any frame from 2.7 seconds on; the first 2.7 seconds
   were not caught.
 - **To redo:** ZZ2's photo words (step 1) and step 3's mid-screen landing.
+
+### The simulator's sixth sitting (2026-11-26)
+
+At 402 by 874 and at 375 by 667 points, on the ZZ Test walk job's boxes, saving nothing. A simulator, never a real phone, on
+a Mac under heavy load.
+
+- **v2.8635 holds at 402.** With the number pad up and no scroll: the picked part, **Pick a different part** whole, the
+  number, the three chips and the blue **Add 1 to ZZ4** whole. One scroll brings **Add 1 and another part** above the keys
+  as the last control. **Pick a different part** brings the picker back with the typed name kept.
+- **At 375 by 667 neither Add press is on screen with the number pad up.** The blue press is a sliver at the fold. One
+  scroll brings both and takes the number off the screen. Read in the code the same day: the sheet's body is one scroller
+  above the keys and the Add presses are the last things in it (`OnSiteSheet.tsx`, `AddPartSheet.tsx`). Briefed as a
+  client-only S: the primary press goes in a foot that does not scroll. Not built as of this line.
+- **The tiles call, at the smallest width.** At 375 by 667 ZZ4 opens with its four tiles under the pinned **Take from ZZ4**
+  press: only the tops of **Count ZZ4** and **Photo** show until a scroll. One more look for the owner's call above.
+- **v2.8583, steps 1, 3 and 4.** ZZ2's photo strip says in words that the file is in Drive's trash: step 1 passes. **Back**
+  from ZZ4 lands with its row whole and on screen, about a fifth of the screen lower than it was left: step 3 holds in
+  part, as in the fifth sitting. ZZ4 opens at its name row at both widths: step 4 holds.
+- **v2.8612, two of the four places seen.** The tally's On site list reads ZZ4 amber, *never counted*, with the **Count**
+  chip at 1, and ZZ4's own **Count ZZ4** tile reads *Never counted*. ZZ2, the empty box, reads *Empty* with no mark and has
+  no Count tile. The other two places were not looked at: the Job Mode card's line under **Materials on site**, and the
+  office's chip on Jobs → Materials.

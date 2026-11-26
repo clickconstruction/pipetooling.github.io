@@ -24,7 +24,7 @@ The Bridge is for the owner and devs. A dev lands here when they open the app or
 The page opens on four numbers.
 
 - **Made last week** is field contribution, the number the company works to raise. That is what the field earned at each job's price, less its wages. The small bars are the last eight pay weeks. A ≈ after the number means hours still wait on approval. From Friday the tile shows this week so far.
-- **Narrowest step** is the step that moves the fewest dollars a week. The company moves only as many dollars a week as that step does. Under the name, one line says what growth waits on: that step, with its pace and the field's. A second line says what cash waits on: Collect, with what customers pay a week of what the office bills.
+- **Narrowest step** is the step that moves the fewest dollars a week. The company moves only as many dollars a week as that step does. Under the name, one line says what growth waits on: that step, with its pace and the field's. A second line says what cash waits on: Collect, with what customers pay a week of what the office bills. When customers pay more than the office bills, the line says each pace by itself.
 - **Cash balance** is cash on hand today. The number is green while the next eight weeks stay over your floor. The number is amber when cash goes under the floor on a later day, and the line names that day. The number is red when cash is under the floor today.
 - **Accrual balance** is cash, plus what customers owe you, less what you owe. What you owe is the supply bills, the payroll owed and the sub labor owed. Bills in collections are left out. Press the accrual balance to open **Money owed** behind Money.
 

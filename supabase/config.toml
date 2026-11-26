@@ -166,7 +166,10 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-enable_signup = true
+# false matches prod (`disable_signup`, on since 2026-09-03, read back 2026-11-26): only a dev's doors
+# make an account. With true here a `supabase config push` would reopen sign-ups, and
+# `handle_new_user` makes every new login a `helpers` row (punch list #447).
+enable_signup = false
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
@@ -201,6 +204,8 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
+# This one is the email provider's own switch (prod: `external_email_enabled`, on). It stays true:
+# the fence against new accounts is `[auth] enable_signup` above.
 enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.

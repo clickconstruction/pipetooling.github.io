@@ -106,6 +106,20 @@ export function keptAddressLikePattern(key: string): string | null {
   return `%${words.join('%')}%`
 }
 
+/**
+ * Why a street line cannot be checked, in the words that hold (punch list #443): one sentence used to say *too short*
+ * for all three reasons, over a line of 39 characters that had no number in it. The rule is `keptAddressLikePattern`'s
+ * and does not change here: a line with no number, or no name, matches loosely, and a loose match must never clear an
+ * address in use.
+ */
+export function keptAddressUncheckedWhy(key: string): string {
+  const line = keptAddressStreetLine(key)
+  if (line.length < KEPT_ADDRESS_MIN_LINE) return 'This address is too short to tell apart from the others. It stays.'
+  if (!/\d/.test(line)) return 'This address has no street number, so it cannot be told apart from the others. It stays.'
+  if (!/[a-z]/i.test(line)) return 'This address has no street name, so it cannot be told apart from the others. It stays.'
+  return ''
+}
+
 /** How many records hold the street line, for each source that has any. */
 export type KeptAddressHits = ReadonlyArray<{ source: KeptAddressSource; count: number }>
 
@@ -114,7 +128,7 @@ export type KeptAddressHits = ReadonlyArray<{ source: KeptAddressSource; count: 
  * an address is never cleared on no answer.
  */
 export function keptAddressClearProblem(key: string, hits: KeptAddressHits | null | undefined): string {
-  if (!keptAddressLikePattern(key)) return 'This address is too short to tell apart from the others. It stays.'
+  if (!keptAddressLikePattern(key)) return keptAddressUncheckedWhy(key)
   if (!hits) return 'The records could not be read, so nobody knows what is written under this address. Nothing was cleared.'
   const found = hits.filter((h) => h.count > 0)
   if (found.length === 0) return ''

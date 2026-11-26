@@ -21,6 +21,8 @@ Press {{button:blue|Mark done}} on the **Next** card. On a task under **Then**, 
 
 A finished task moves under **Done today** as one struck line. Tapping its green check reopens the task. Every completion and reopen is remembered on the card's history, with who and when.
 
+A task's presses sit to the right of its words. On a phone the presses sit in a row under the words. The words then have the whole width of the card.
+
 ## Mark a round of tasks done at once
 
 Is your day a round of the same tasks? When two or more of today's repeating tasks are open, a press under them reads like {{button:outline|Mark 3 done}}. Press it. A window asks once, and its press says the same words. Each task then finishes as if you had ticked it.
@@ -183,7 +185,7 @@ Fix it up, reply on the thread if useful, and check it off again.
 
 Under your finished task a line says when you did it and who hears. It reads like *Done 12:22 PM. Imani hears it is done.* When that person signs off, the line reads *Signed off by Imani*. Nothing more is needed from you.
 
-Right after you finish a task, a green line reads *Add a photo or a note for Imani if it helps.* The two presses sit beside it. Skip them when there is nothing to add.
+Right after you finish a task, a green line reads *Add a photo or a note for Imani if it helps.* The two presses sit beside it. On a phone the two presses sit under it. Skip them when there is nothing to add.
 
 ## Add your own task
 

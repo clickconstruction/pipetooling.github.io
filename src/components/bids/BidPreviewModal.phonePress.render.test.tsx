@@ -54,6 +54,39 @@ const BID = {
 const draw = () => renderWithProviders(<BidPreviewModal bid={BID} loading={false} error={null} onClose={() => {}} onNavigateToBidsTab={() => {}} onRequestEditBid={() => {}} />)
 
 describe('BidPreviewModal · the top presses on a phone', () => {
+  it('at a phone’s width the head stacks: the name with the ✕ at its right, Copy for text and Edit bid on the line under (punch list #426, finding 262)', async () => {
+    stubPhoneWidth(true)
+    draw()
+    const copy = await screen.findByRole('button', { name: 'Copy for text' })
+    const head = document.querySelector('[data-bid-head]') as HTMLElement
+    expect(head.dataset.bidHead).toBe('stacked')
+    expect(head.style.display).toBe('grid')
+    const name = head.querySelector('[data-bid-head-name]') as HTMLElement
+    const under = head.querySelector('[data-bid-head-presses]') as HTMLElement
+    const close = screen.getByRole('button', { name: 'Close' })
+    // The name's block and the two presses' block are not on one row: the presses span the head's whole width, under.
+    expect(under.dataset.bidHeadPresses).toBe('under')
+    expect(under.style.gridColumn).toBe('1 / -1')
+    expect(name.contains(under)).toBe(false)
+    expect([...under.querySelectorAll('button')]).toEqual([copy, screen.getByRole('button', { name: 'Edit bid' })])
+    // The ✕ is the head's own child, right after the name, so it sits at the name's right on the first line.
+    expect(close.parentElement).toBe(head)
+    expect(name.nextElementSibling).toBe(close)
+    expect(name.textContent).toContain('Lodge')
+  })
+
+  it('at a desk the head is one row, with the three presses beside the name as before', async () => {
+    stubPhoneWidth(false)
+    draw()
+    await screen.findByRole('button', { name: 'Copy for text' })
+    const head = document.querySelector('[data-bid-head]') as HTMLElement
+    expect(head.dataset.bidHead).toBe('row')
+    expect(head.style.display).toBe('flex')
+    const beside = head.querySelector('[data-bid-head-presses]') as HTMLElement
+    expect(beside.dataset.bidHeadPresses).toBe('beside')
+    expect([...beside.querySelectorAll('button')].map((b) => b.getAttribute('aria-label') ?? b.textContent)).toEqual(['Copy for text', 'Edit bid', 'Close'])
+  })
+
   it('at a phone’s width Copy for text, Edit bid and the ✕ stand 44 px tall, and the ✕ is as wide', async () => {
     stubPhoneWidth(true)
     draw()

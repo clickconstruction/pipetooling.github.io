@@ -9,6 +9,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { BankCheck } from '../../lib/jobs/checkCleared'
 import type { LienPayoffFacts } from '../../lib/jobs/lienPayoff'
+import type { ReleaseFactsChange } from '../../lib/jobs/lienReleaseFacts'
 import LienPayoffs from './LienPayoffs'
 
 vi.mock('../../lib/supabase', async () => {
@@ -25,7 +26,8 @@ const facts = (over: Partial<LienPayoffFacts> = {}): LienPayoffFacts => ({
     { id: 'a2', job_id: 'j2', amount: 5160.5, county: 'Travis', recording_number: '2026-0412208', filed_at: '2026-11-09' },
     { id: 'a3', job_id: 'j3', amount: 900, county: 'Bastrop', recording_number: '2026-0500001', filed_at: '2026-10-02' },
   ],
-  releases: [{ id: 'r3', job_id: 'j3', created_at: '2026-11-01T15:00:00Z', filed_at: '2026-11-05', recording_number: '2026-0500001', fields: { releasesFilingId: 'a3', releaseInstrument: '2026-0500990' } }],
+  // The Bastrop lien is released and its copies are out, so its place is behind the Released fold.
+  releases: [{ id: 'r3', job_id: 'j3', created_at: '2026-11-01T15:00:00Z', filed_at: '2026-11-05', recording_number: '2026-0500001', fields: { releasesFilingId: 'a3', releaseInstrument: '2026-0500990', copiesSent: { ymd: '2026-11-06', by: 'u1', name: 'Alex Rivera', at: '2026-11-06T16:00:00Z' } } }],
   jobs: [
     { id: 'j1', hcp_number: null, click_number: '2041', job_name: 'Okafor main house', job_address: '212 Larkspur Court, Austin, TX', customer_id: 'c1', customer_name: 'Marisol Okafor' },
     { id: 'j2', hcp_number: null, click_number: '2058', job_name: 'Okafor service visit', job_address: '212 Larkspur Ct Austin TX', customer_id: 'c1', customer_name: 'Marisol Okafor' },
@@ -324,5 +326,41 @@ describe('a release on a check that came back (punch list #435, piece 6)', () =>
     expect(row.querySelector('[data-lien-payoff-say]')!.textContent).toBe('The release was made Nov 1. Do not record it.')
     expect(row.querySelector('[data-lien-payoff-press="release"]')).toBeNull()
     expect(row.querySelector('[data-lien-payoff-press="bill"]')!.textContent).toBe('Open the bills ›')
+  })
+})
+
+describe('the copies on the payoff card (punch list #435, piece 5)', () => {
+  // The Bastrop release is recorded and its copies have not gone: the place stays open until they are out.
+  const owed = () => {
+    const f = facts()
+    return { ...f, releases: f.releases.map((r) => ({ ...r, fields: { releasesFilingId: 'a3', releaseInstrument: '2026-0500990' } })) }
+  }
+  const drawOwed = (who: { id: string; name: string } | null) => {
+    const keepRelease = vi.fn((rows: ReadonlyArray<{ releaseId: string; fields: unknown }>, _change: ReleaseFactsChange) => Promise.resolve(rows.map((r) => ({ releaseId: r.releaseId, ok: true, why: null as string | null }))))
+    const read = vi.fn(() => Promise.resolve(owed()))
+    renderWithProviders(<LienPayoffs todayYmd="2026-11-24" refreshKey={1} onOpenBill={vi.fn()} onOpenRelease={vi.fn()} read={read} initiallyOpen role="assistant" who={who} keepRelease={keepRelease} />)
+    return { keepRelease, read }
+  }
+
+  it('keeps a released place in the open list, with its fifth stop lit, until the copies’ day is typed', async () => {
+    const { keepRelease, read } = drawOwed({ id: 'u1', name: 'Alex Rivera' })
+    await found('[data-lien-payoff-row="a3"]')
+    expect(document.querySelector('[data-lien-payoffs-released-fold]')).toBeNull()
+    const copies = await found('[data-lien-payoff-copies]')
+    const stop = copies.closest('[data-lien-payoff-card]')!.querySelector('[data-lien-payoff-stop="copies"]')!
+    expect(stop.getAttribute('data-state')).toBe('now')
+    fireEvent.click(screen.getByRole('button', { name: /the day the stamped copies were sent/ }))
+    fireEvent.change(screen.getByLabelText(/the day the stamped copies were sent/), { target: { value: '2026-11-20' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+    await waitFor(() => expect(keepRelease).toHaveBeenCalledTimes(1))
+    expect(keepRelease.mock.calls[0]![0]).toEqual([{ releaseId: 'r3', fields: { releasesFilingId: 'a3', releaseInstrument: '2026-0500990' } }])
+    expect(keepRelease.mock.calls[0]![1]).toMatchObject({ copies: { ymd: '2026-11-20', by: 'u1', name: 'Alex Rivera' } })
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2))
+  })
+
+  it('draws no copies value for a viewer who is not signed in as someone', async () => {
+    drawOwed(null)
+    await found('[data-lien-payoff-row="a3"]')
+    expect(document.querySelector('[data-lien-payoff-copies]')).toBeNull()
   })
 })

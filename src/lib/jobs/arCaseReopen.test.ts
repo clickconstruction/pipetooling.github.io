@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ArReturnCaseRow } from './arReturnCase'
-import { AR_CASE_REOPENED, arCaseJobs, arCaseReopenCall, arCaseReopenConfirm, arCaseReopenDrawn, arCaseReopenProblem, arClosedCases, arClosedCasesShown, arClosedOlderLabel, arClosedOthersWords } from './arCaseReopen'
+import { AR_CASE_REOPENED, arCaseJobs, arCaseKindWords, arCaseReopenCall, arCaseReopenConfirm, arCaseReopenDrawn, arCaseReopenProblem, arClosedCases, arClosedCasesShown, arClosedOlderLabel, arClosedOthersWords } from './arCaseReopen'
 
 const job = (id: string, name: string) => ({ job_id: id, job_number: '900', job_name: name })
 const row = (over: Partial<ArReturnCaseRow> = {}): ArReturnCaseRow => ({
@@ -99,11 +99,42 @@ describe('arClosedCases', () => {
     )
     expect(lines.map((l) => l.id)).toEqual(['newer', 'older', 'real', 'no-job'])
     expect(others).toBe(2)
-    expect(lines[0]).toEqual({ id: 'newer', payer: 'ZZ Test Payer', amount: 125, closedWords: 'Closed as not coming on Tue, Nov 24. ZZ TEST walk', jobWords: 'ZZ TEST walk job', older: false })
+    expect(lines[0]).toEqual({ id: 'newer', payer: 'ZZ Test Payer', amount: 125, kind: 'Check came back', closedWords: 'Closed as not coming on Tue, Nov 24. ZZ TEST walk', jobWords: 'ZZ TEST walk job', older: false })
     expect(lines[1]!.closedWords).toBe('Closed as settled another way on Mon, Nov 23.')
     expect(lines[2]!.jobWords).toBe('Larkfield Lot 9')
     expect(lines[3]!.jobWords).toBe('')
   })
+  it('says what kind of case each one is, in the Came back list’s words (punch list #443)', () => {
+    expect(arCaseKindWords('bank')).toBe('Check came back')
+    expect(arCaseKindWords('hand')).toBe('Check came back, marked by hand')
+    expect(arCaseKindWords('rejected')).toBe('Check never reached the bank')
+    expect(arCaseKindWords('unbanked')).toBe('Check never deposited')
+    expect(arCaseKindWords('stripe_dispute')).toBe('Card disputed')
+    expect(arCaseKindWords('stripe_debit')).toBe('Bank payment failed')
+    // A source the app does not know reopens as a returned check, so it reads as one.
+    expect(arCaseKindWords(null)).toBe('Check came back')
+    expect(arCaseKindWords('something new')).toBe('Check came back')
+    const { lines } = arClosedCases(
+      [
+        row({ mercury_transaction_id: 'c-card', source: 'stripe_dispute', closed_at: '2026-11-24T18:00:00Z' }),
+        row({ mercury_transaction_id: 'c-debit', source: 'stripe_debit', closed_at: '2026-11-23T18:00:00Z' }),
+        row({ mercury_transaction_id: 'c-unbanked', source: 'unbanked', closed_at: '2026-11-22T18:00:00Z' }),
+        row({ mercury_transaction_id: 'c-check', closed_at: '2026-11-21T18:00:00Z' }),
+      ],
+      TODAY,
+    )
+    expect(lines.map((l) => [l.id, l.kind])).toEqual([
+      ['c-card', 'Card disputed'],
+      ['c-debit', 'Bank payment failed'],
+      ['c-unbanked', 'Check never deposited'],
+      ['c-check', 'Check came back'],
+    ])
+    // The kind and the function Reopen… calls agree.
+    expect(arCaseReopenCall(row({ source: 'stripe_dispute' })).fn).toBe('reopen_ar_stripe_case')
+    expect(arCaseReopenCall(row({ source: 'unbanked' })).fn).toBe('reopen_ar_unbanked_check_case')
+    expect(arCaseReopenCall(row({ source: 'hand' })).fn).toBe('reopen_ar_return_case')
+  })
+
   it('reads a case with no name and an amount sent as text', () => {
     const { lines } = arClosedCases([row({ counterparty_name: null, amount: '88.50' })], TODAY)
     expect(lines[0]!.payer).toBe('No name on record')
@@ -125,7 +156,7 @@ describe('arClosedCases', () => {
 })
 
 describe('arClosedCasesShown', () => {
-  const line = (id: string, older: boolean) => ({ id, payer: 'ZZ Test Payer', amount: 1, closedWords: '', jobWords: '', older })
+  const line = (id: string, older: boolean) => ({ id, payer: 'ZZ Test Payer', amount: 1, kind: 'Check came back', closedWords: '', jobWords: '', older })
   it('draws the recent ones and counts the folded', () => {
     const got = arClosedCasesShown([line('a', false), line('b', true), line('c', true)], false)
     expect(got.shown.map((l) => l.id)).toEqual(['a'])

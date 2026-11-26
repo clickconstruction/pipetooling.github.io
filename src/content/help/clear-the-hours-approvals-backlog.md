@@ -51,7 +51,7 @@ Every Approve button says what it's about to do. It shows the count and the hour
 - {{button:green|Approve all 23 · 137h}} on a person's header approves everything they have waiting, all weeks, after a confirm.
 - {{button:green|Approve everything · 120 · 622h}} at the top clears the entire queue after a confirm.
 
-Approved sessions leave the list right away. The hours land in payroll behind them. {{button:red|Reject}} sends a session back for good. Rejected time never reaches payroll. {{button:outline|Edit}} opens the full session editor when the times or the split need fixing. The queue refreshes when you save.
+Approved sessions leave the list right away. The hours land in payroll behind them. {{button:red|Reject}} sends a session back for good. Rejected time never reaches payroll. The window that asks names the person, the day and the hours. Check them before you press **Reject the session**. {{button:outline|Edit}} opens the full session editor when the times or the split need fixing. The queue refreshes when you save.
 
 :::example Salaried schedule time never shows here
 Sessions the system creates from a salary schedule approve themselves within the hour. Only real punches wait in this queue.

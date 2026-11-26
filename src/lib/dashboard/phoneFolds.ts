@@ -119,11 +119,16 @@ export function crewDayFoldHeadline(summary: { people: number; jobs: number; fla
   return { words: parts.join(' · '), tone: summary.flags > 0 ? 'amber' : 'quiet' }
 }
 
-/** `3 new · 12 listed` for Recent reports' fold (v2.3891). */
-export function recentReportsFoldHeadline(counts: { listed: number; fresh: number } | null): PhoneFoldHeadline | null {
+/**
+ * `3 new of 12` for Recent reports' fold (v2.3891), and `12 reports · all read` when none is new. `inWindow` is every
+ * report of the card's window, read or not. Until punch list #426's finding 268 the fold called that number *listed*,
+ * and the open card lists eight at a time: *15 new · 15 listed* stood over a list of eight.
+ */
+export function recentReportsFoldHeadline(counts: { inWindow: number; fresh: number } | null): PhoneFoldHeadline | null {
   if (!counts) return null
-  if (counts.listed === 0) return { words: 'none yet', tone: 'quiet' }
-  return counts.fresh > 0 ? { words: `${counts.fresh} new · ${counts.listed} listed`, tone: 'amber' } : { words: `${counts.listed} listed · all read`, tone: 'quiet' }
+  if (counts.inWindow === 0) return { words: 'none yet', tone: 'quiet' }
+  if (counts.fresh > 0) return { words: `${counts.fresh} new of ${counts.inWindow}`, tone: 'amber' }
+  return { words: `${counts.inWindow} ${counts.inWindow === 1 ? 'report' : 'reports'} · all read`, tone: 'quiet' }
 }
 
 /** `6.2 h this week` for My Time's fold (v2.3891). */

@@ -115,8 +115,10 @@ describe('lienPayoffCard, the five stops', () => {
         { id: 'r2', job_id: 'j2', created_at: '2026-11-24T18:00:00Z', filed_at: '2026-12-03', recording_number: '2026-0412208', fields: { releasesFilingId: 'a2', releaseInstrument: '2026-0431955' } },
       ],
     })
-    expect(states(bothMade)).toEqual(['done', 'done', 'done', 'now', 'later'])
-    expect(plainSentence(bothMade.stops[2]!.say)).toBe('All 2 made.')
+    // The recorded release owes its copies now, while the other is still for the county (piece 5).
+    expect(states(bothMade)).toEqual(['done', 'done', 'done', 'now', 'now'])
+    expect(plainSentence(bothMade.stops[2]!.say)).toBe('All 2 made, 1 notarized.')
+    expect(plainSentence(bothMade.stops[4]!.say)).toBe('1 to send.')
     expect(plainSentence(bothMade.stops[3]!.say)).toBe('1 recorded, 1 to record.')
     expect(plainSentence(bothMade.line)).toBe('Sign 1 release before a notary. Then record it at the county.')
 
@@ -178,6 +180,42 @@ describe('a release on a check that came back (punch list #435, piece 6)', () =>
     expect(plainSentence(c.line)).toBe('The check came back. Open the bills and take the payments off. 2 releases are already recorded. Ask counsel.')
     expect(plainWordsFailures(plainSentence(c.line))).toEqual([])
     expect(c.tone).toBe('red')
+  })
+})
+
+describe('the notary and the copies (punch list #435, piece 5)', () => {
+  const release = (id: string, job: string, affidavit: string, filedAt: string | null, more: Record<string, unknown> = {}) => ({ id, job_id: job, created_at: '2026-11-24T18:00:00Z', filed_at: filedAt, recording_number: null, fields: { releasesFilingId: affidavit, ...more } })
+  const SENT = { by: 'u1', name: 'Alex Rivera', at: '2026-12-05T16:00:00Z' }
+
+  it('says how many releases are notarized on the third stop', () => {
+    const none = card({ ...bothPaid, bank: [CLEARED], releases: [release('r1', 'j1', 'a1', null), release('r2', 'j2', 'a2', null)] })
+    expect(plainSentence(none.stops[2]!.say)).toBe('All 2 made.')
+    const one = card({ ...bothPaid, bank: [CLEARED], releases: [release('r1', 'j1', 'a1', null, { notarizedYmd: '2026-11-24' }), release('r2', 'j2', 'a2', null)] })
+    expect(plainSentence(one.stops[2]!.say)).toBe('All 2 made, 1 notarized.')
+    const both = card({ ...bothPaid, bank: [CLEARED], releases: [release('r1', 'j1', 'a1', null, { notarizedYmd: '2026-11-24' }), release('r2', 'j2', 'a2', null, { notarizedYmd: '2026-11-24' })] })
+    expect(plainSentence(both.stops[2]!.say)).toBe('All 2 made and notarized.')
+  })
+
+  it('keeps the copies’ day on each recorded release that owes them, and counts the ones sent', () => {
+    const c = card({ ...bothPaid, bank: [CLEARED], releases: [release('r1', 'j1', 'a1', '2026-12-03', { copiesSent: { ...SENT, ymd: '2026-12-05' } }), release('r2', 'j2', 'a2', '2026-12-04')] }, '2026-12-06')
+    expect(c.copiesRows.map((r) => r.affidavitId)).toEqual(['a2'])
+    expect(c.stops[4]!.state).toBe('now')
+    expect(plainSentence(c.stops[4]!.say)).toBe('1 sent, 1 to send.')
+    expect(c.copiesRows[0]!.step.releaseId).toBe('r2')
+    expect(c.copiesRows[0]!.step.releaseFields).toEqual({ releasesFilingId: 'a2' })
+  })
+
+  it('ticks the fifth stop once every release’s copies are out', () => {
+    const c = card({ ...bothPaid, bank: [CLEARED], releases: [release('r1', 'j1', 'a1', '2026-12-03', { copiesSent: { ...SENT, ymd: '2026-12-05' } }), release('r2', 'j2', 'a2', '2026-12-04', { copiesSent: { ...SENT, ymd: '2026-12-06' } })] }, '2026-12-06')
+    expect(c.copiesRows).toEqual([])
+    expect(c.stops[4]!.state).toBe('done')
+    expect(plainSentence(c.stops[4]!.say)).toBe('Sent Dec 6.')
+  })
+
+  it('asks for no copies of a release the county recorded more than thirty days ago', () => {
+    const c = card({ ...bothPaid, bank: [CLEARED], releases: [release('r1', 'j1', 'a1', '2026-10-01'), release('r2', 'j2', 'a2', '2026-10-01')] }, '2026-12-06')
+    expect(c.copiesRows).toEqual([])
+    expect(c.stops[4]!.state).toBe('later')
   })
 })
 

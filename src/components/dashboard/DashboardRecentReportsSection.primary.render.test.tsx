@@ -94,10 +94,10 @@ describe('DashboardRecentReportsSection — a primary reads their own jobs\' rep
 
   it('the counts are the list the database answered, and no more', async () => {
     listed.rows = [report, second]
-    const counts: Array<{ listed: number; fresh: number } | null> = []
+    const counts: Array<{ inWindow: number; fresh: number } | null> = []
     try {
       renderWithProviders(<DashboardRecentReportsSection authUserId="me" role="primary" onCounts={(c) => counts.push(c)} />)
-      await waitFor(() => expect(counts[counts.length - 1]).toEqual({ listed: 2, fresh: 2 }))
+      await waitFor(() => expect(counts[counts.length - 1]).toEqual({ inWindow: 2, fresh: 2 }))
       fireEvent.click(screen.getByText('Recent Reports'))
       await waitFor(() => expect(screen.getByText(/Lloyd Field Bathroom Rough/)).toBeTruthy())
       expect(screen.getByLabelText('2 new reports')).toBeTruthy()
