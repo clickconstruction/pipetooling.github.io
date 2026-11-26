@@ -20,9 +20,18 @@ export type ReleaseFacts = {
   notarizedYmd: string
   /** The day the stamped copies were sent, with who recorded it. Null when they have not been. */
   copies: (ReleaseBy & { ymd: string }) | null
+  /** A check behind this release came back, as Accounts Receivable's case marked it. Null with no mark. */
+  moneyBack: ReleaseMoneyBackMark | null
 }
 
-export const RELEASE_FACT_KEYS = { printed: 'printedForNotary', notarized: 'notarizedYmd', copies: 'copiesSent' } as const
+/**
+ * The mark a returned-check case leaves on a release (punch list #435, the returned check's mark): the day the
+ * check came back, its number as the bank read it ('' when it read none), the case, and who pressed. The desk reads
+ * it once the payment is off the job and the bank's own answer is gone (`payoffReturned.ts`, `releaseMarkHolds`).
+ */
+export type ReleaseMoneyBackMark = { ymd: string; check: string; caseId: string; by: string; at: string }
+
+export const RELEASE_FACT_KEYS = { printed: 'printedForNotary', notarized: 'notarizedYmd', copies: 'copiesSent', moneyBack: 'moneyCameBack' } as const
 
 const isYmd = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)
 const text = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
@@ -45,7 +54,14 @@ export function releaseFacts(fields: unknown): ReleaseFacts {
     printed: readBy(f[RELEASE_FACT_KEYS.printed]),
     notarizedYmd: isYmd(notarized) ? notarized : '',
     copies: copiesBy && isYmd(copiesYmd) ? { ...copiesBy, ymd: copiesYmd } : null,
+    moneyBack: readMark(f[RELEASE_FACT_KEYS.moneyBack]),
   }
+}
+
+function readMark(raw: unknown): ReleaseMoneyBackMark | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return isYmd(r.ymd) ? { ymd: r.ymd, check: text(r.check), caseId: text(r.caseId), by: text(r.by), at: text(r.at) } : null
 }
 
 export type ReleaseFactsChange = {
@@ -55,6 +71,8 @@ export type ReleaseFactsChange = {
   notarizedYmd?: string
   /** Null takes the copies off. Left out, they are left alone. */
   copies?: (ReleaseBy & { ymd: string }) | null
+  /** Null takes the mark off. Left out, it is left alone. */
+  moneyBack?: ReleaseMoneyBackMark | null
 }
 
 /** The row's `fields` with the change in it and every other field kept: the paper's own fields are never touched. */
@@ -72,6 +90,10 @@ export function releaseFactsPatch(fields: unknown, change: ReleaseFactsChange): 
   if (change.copies !== undefined) {
     if (change.copies && isYmd(change.copies.ymd)) out[RELEASE_FACT_KEYS.copies] = { ymd: change.copies.ymd, by: change.copies.by, name: change.copies.name, at: change.copies.at }
     else delete out[RELEASE_FACT_KEYS.copies]
+  }
+  if (change.moneyBack !== undefined) {
+    if (change.moneyBack && isYmd(change.moneyBack.ymd)) out[RELEASE_FACT_KEYS.moneyBack] = { ymd: change.moneyBack.ymd, check: change.moneyBack.check, caseId: change.moneyBack.caseId, by: change.moneyBack.by, at: change.moneyBack.at }
+    else delete out[RELEASE_FACT_KEYS.moneyBack]
   }
   return out
 }

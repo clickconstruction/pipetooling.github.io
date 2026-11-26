@@ -190,3 +190,14 @@ describe('a saved release on a check that came back (punch list #435, piece 6)',
     expect(releaseMoneyBackWords({ recorded: false, payments: [check()], bank: null, todayYmd: TODAY })).toBeNull()
   })
 })
+
+describe('a saved release held on the case’s mark (punch list #435, the returned check’s mark)', () => {
+  const MARK = { ymd: '2026-11-27', check: '1184', caseId: 'dep1', by: 'u1', at: '2026-11-28T15:00:00Z' }
+
+  it('speaks once the payment is off the job, and lets go on a payment that holds', () => {
+    expect(plainSentence(releaseMoneyBackWords({ recorded: false, payments: [], bank: [], todayYmd: '2026-11-29', mark: MARK, open: 7420 }) ?? '')).toBe('Do not record this release. Check 1184 came back Nov 27.')
+    expect(plainSentence(releaseMoneyBackWords({ recorded: true, payments: [], bank: undefined, todayYmd: '2026-11-29', mark: MARK, open: 7420 }) ?? '')).toBe('Check 1184 came back Nov 27. The county’s record stands. Ask counsel.')
+    expect(releaseMoneyBackWords({ recorded: false, payments: [check({ paid_on: '2026-12-01', payment_type: 'Wire', reference_number: null })], bank: [], todayYmd: '2026-12-02', mark: MARK, open: 0 })).toBeNull()
+    expect(releaseMoneyBackWords({ recorded: false, payments: [], bank: [], todayYmd: '2026-11-29', mark: null, open: 7420 })).toBeNull()
+  })
+})

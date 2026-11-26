@@ -521,7 +521,7 @@ export default function BankPaymentsModal({
   }, [selectedCaseId, selectedCaseCameBack, canApply, reloadCaseFee])
   const caseFeeOffer = selectedCaseView ? arCaseFeeOffer(selectedCaseView, caseFees.get(selectedCaseView.id)) : null
   // Punch list #435, piece 6: the filed liens on the check's jobs, each with where its release stands.
-  const caseLiens = useReturnedCaseLiens(open ? selectedCaseView : null, canApply)
+  const caseLiens = useReturnedCaseLiens(open ? selectedCaseView : null, canApply, undefined, authUserId)
   const [theySaidJob, setTheySaidJob] = useState<{ jobId: string; label: string } | null>(null)
   /** Use it as the new check: the case the deposit being applied replaces; closed when the apply lands. */
   const replacingRef = useRef<{ caseId: string; depositId: string } | null>(null)

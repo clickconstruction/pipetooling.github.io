@@ -36,6 +36,9 @@
  * in the open list. Once the payment is off the job the bank's answer is gone from here, and Accounts Receivable's
  * case is what remembers.
  *
+ * Since v2.8662 the case leaves a mark on the release (`ReleaseMoneyBackMark`), and the desk heeds it after the payment
+ * is off the job, until a payment made on or after that day has cleared (`releaseMarkHolds`).
+ *
  * Since piece 5 a step with a release carries the notary's day, the copies' day and whether the copies are still owed
  * (`lienReleaseFacts.ts`), for the place's card and the run's releases (`lienReleaseRun.ts`).
  */
@@ -48,7 +51,7 @@ import { isCheckPayment } from './checkClearing'
 import { lienDeskJobNumber } from './lienJobLabel'
 import { fundsConfirmedWords, payoffNote, type FundsConfirmed } from './lienPayoffFields'
 import { releaseFacts, releaseRunStage } from './lienReleaseFacts'
-import { releaseOnReturnedCheck } from './payoffReturned'
+import { releaseMarkHolds, releaseMarkWords, releaseOnReturnedCheck } from './payoffReturned'
 import { attributeJobPayments } from './paymentAttribution'
 
 /** `bank`: the bills read paid by a check the bank has not cleared. No release is offered. */
@@ -130,6 +133,8 @@ export type LienPayoffStep = {
   recordedYmd: string | null
   /** A release of this lien is saved or recorded, and the bank says the money it rests on came back (piece 6). */
   moneyBack?: boolean
+  /** That is said by the mark Accounts Receivable's case left on the release, the payment being off the job already. */
+  moneyBackMarked?: boolean
   /** The day the release was notarized, on a lien with a release that carries one (piece 5, `lienReleaseFacts.ts`). */
   notarizedYmd?: string
   /** The day the release's stamped copies were sent, when they have been. */
@@ -265,7 +270,10 @@ export function lienPayoffStep(input: LienPayoffStepInput): LienPayoffStep {
   const way = release && out ? { ...(out.notarizedYmd ? { notarizedYmd: out.notarizedYmd } : {}), ...(out.copies ? { copiesYmd: out.copies.ymd } : {}), ...(releaseRunStage(release, todayYmd) === 'copies' ? { copiesOwed: true } : {}), releaseFields: release.fields ?? null } : {}
   const facts = { paid, check, recordedYmd: null as string | null, ...way }
   // A release never rests on a check the bank sent back (piece 6): what the bank said, and the bills' door.
-  const cameBack = release && lastPaid && releaseOnReturnedCheck(check) ? checkAnswerWords(check!, checkName(lastPaid.reference_number)).say : null
+  const byBank = release && lastPaid && releaseOnReturnedCheck(check) ? checkAnswerWords(check!, checkName(lastPaid.reference_number)).say : null
+  // Once the payment is off the job the bank's answer is gone: the mark Accounts Receivable's case left says it, until a payment holds.
+  const byMark = !byBank && out?.moneyBack && releaseMarkHolds(out.moneyBack, { open, lastPaidYmd: paid?.ymd ?? null, check }) ? releaseMarkWords(out.moneyBack) : null
+  const cameBack = byBank ?? byMark
   const toBills = { label: LIEN_PAYOFF_WORDS.cameBack, door: 'bill' as const }
 
   if (release?.filed_at) {
@@ -273,7 +281,7 @@ export function lienPayoffStep(input: LienPayoffStepInput): LienPayoffStep {
     const instrument = releaseOwnInstrument(release)
     const recorded = instrument ? `The county recorded it ${day} as ${val('instrument', instrument)}.` : `The county recorded it ${day}.`
     if (cameBack) {
-      return { step: 'done', say: `Released, money came back. ${recorded}`, warn: `${cameBack} The county’s record stands. Ask counsel.`, warnTone: 'red', press: toBills, releaseId: release.id, ...facts, recordedYmd: release.filed_at.slice(0, 10), moneyBack: true }
+      return { step: 'done', say: `Released, money came back. ${recorded}`, warn: `${cameBack} The county’s record stands. Ask counsel.`, warnTone: 'red', press: toBills, releaseId: release.id, ...facts, recordedYmd: release.filed_at.slice(0, 10), moneyBack: true, ...(byMark ? { moneyBackMarked: true } : {}) }
     }
     return {
       step: 'done',
@@ -290,7 +298,7 @@ export function lienPayoffStep(input: LienPayoffStepInput): LienPayoffStep {
   if (release) {
     const made = val('day', formatYmdMonthDay(calendarYmdInAppTzFromIso(release.created_at)))
     if (cameBack) {
-      return { step: 'county', say: `The release was made ${made}. Do not record it.`, warn: `${cameBack} Take the payment off the bills.`, warnTone: 'red', press: toBills, releaseId: release.id, ...facts, moneyBack: true }
+      return { step: 'county', say: `The release was made ${made}. Do not record it.`, warn: byBank ? `${byBank} Take the payment off the bills.` : `${cameBack} The release waits for a payment that holds.`, warnTone: 'red', press: toBills, releaseId: release.id, ...facts, moneyBack: true, ...(byMark ? { moneyBackMarked: true } : {}) }
     }
     return {
       step: 'county',

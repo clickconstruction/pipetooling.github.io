@@ -87,6 +87,7 @@ import { MoneyText } from '../Money'
 import { ChangeableValue, ValueLine, ValueLines, ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { RELEASE_OF_RECORD_WORDS, pickReleaseTarget, releaseMoneyBackWords, releaseMoneyGate, releaseNeedsBank, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from '../../lib/jobs/lienReleaseOfRecord'
 import { payoffNote } from '../../lib/jobs/lienPayoffFields'
+import { releaseFacts } from '../../lib/jobs/lienReleaseFacts'
 
 /**
  * The statutory filing tabs of the Lien instruments modal (v2.2645, phase 3):
@@ -1683,7 +1684,7 @@ export default function LienFilingTabs({
   const releaseInstrument = savedRelease && savedRelease.fields && typeof savedRelease.fields === 'object' && !Array.isArray(savedRelease.fields) ? String((savedRelease.fields as Record<string, unknown>).releaseInstrument ?? '') : ''
   const releasedWords = savedRelease ? releaseRecordedSentence(savedRelease) : null
   // A saved release whose check the bank sent back (#435, piece 6): do not record it, or the county's record stands.
-  const releaseMoneyBack = savedRelease ? releaseMoneyBackWords({ recorded: Boolean(savedRelease.filed_at), payments: job.payments ?? [], bank: bankChecks, todayYmd: todayYmd() }) : null
+  const releaseMoneyBack = savedRelease ? releaseMoneyBackWords({ recorded: Boolean(savedRelease.filed_at), payments: job.payments ?? [], bank: bankChecks, todayYmd: todayYmd(), mark: releaseFacts(savedRelease.fields).moneyBack, open: claim.openBalance }) : null
   const releaseHeld: CSSProperties = releaseGate.hold ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, border: '1px solid transparent', cursor: 'default' } : {}
   const releaseTone = { red: 'var(--text-red-700)', amber: 'var(--text-amber-800)', green: 'var(--text-green-700)' }[releaseGate.tone]
   const releaseOutline: CSSProperties = { padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer', ...releasePhoneButton }

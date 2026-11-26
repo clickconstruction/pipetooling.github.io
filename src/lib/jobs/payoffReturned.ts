@@ -28,7 +28,13 @@
  * press while the bank says the job's last payment came back, and marks a recorded one. Once the payment is taken
  * off the job the desk no longer has the bank's answer, and the case here is what remembers.
  *
- * Nothing here writes. Every sentence keeps to `plainWords.ts` and marks its values with `val`. Pure; tested beside
+ * **The mark** (the returned check's mark, after piece 6). The desk's flag reads the bank's answer off the job's last
+ * payment, so it is gone once that payment is taken off. The case therefore offers one press that keeps a mark on
+ * each saved release it lists (`ReleaseMoneyBackMark`, `lienReleaseFacts.ts`; the write is `lienReleaseRunIo.ts`).
+ * `releaseMarkHolds` says how long the desk heeds it: until the job's bills read paid by a payment made on or after
+ * the day the check came back, and that payment has cleared. No press takes a mark off: a payment that holds does.
+ *
+ * The view itself writes nothing. Every sentence keeps to `plainWords.ts` and marks its values with `val`. Pure; tested beside
  * it. The reads are `payoffReturnedIo.ts`, the screen `ArReturnCasePane.tsx`. This file imports nothing of
  * `lienPayoff.ts` but types, so that file can read the flag.
  */
@@ -38,6 +44,8 @@ import { formatYmdMonthDay } from './billedExpectedPay'
 import { bankCheckForPayment, checkName, type BankCheck, type CheckAnswer, type CheckClearedPayment } from './checkCleared'
 import { isCheckPayment } from './checkClearing'
 import type { LienPayoffAffidavit, LienPayoffRelease } from './lienPayoff'
+import { releaseFacts, type ReleaseMoneyBackMark } from './lienReleaseFacts'
+import { countedLabel } from '../batchWords'
 
 export type ReturnedReleaseCase = 'none' | 'printed' | 'recorded'
 
@@ -54,11 +62,31 @@ export const PAYOFF_RETURNED_WORDS = {
   reading: 'Reading the liens on these jobs.',
   unread: 'The liens on these jobs could not be read. Open each job’s Lien window before a release is recorded.',
   printsUnread: 'The app could not read which releases were printed. A saved release is treated as printed.',
+  markLead: 'Tell the Lien desk, so each release stays held after the payment is off the job.',
+  marked: 'The Lien desk is told. Each release stays held until a payment holds.',
+  markFailed: 'The release did not take the mark.',
 } as const
 
 /** True when the bank says the job's last payment came back: a release must not rest on it. */
 export function releaseOnReturnedCheck(check: Pick<CheckAnswer, 'state'> | null | undefined): boolean {
   return check?.state === 'came_back'
+}
+
+/**
+ * Whether the desk still heeds a returned check's mark on a release. It holds while the job's bills still owe, while
+ * the last payment is older than the day the check came back (the payment that came back is still on the job), and
+ * while a newer payment has not cleared. A payment that holds lifts it.
+ */
+export function releaseMarkHolds(mark: Pick<ReleaseMoneyBackMark, 'ymd'> | null | undefined, input: { open: number; lastPaidYmd: string | null; check: Pick<CheckAnswer, 'cleared'> | null }): boolean {
+  if (!mark) return false
+  if (Math.round((Number(input.open) || 0) * 100) / 100 > 0.004) return true
+  if (!input.lastPaidYmd || input.lastPaidYmd < mark.ymd) return true
+  return !(input.check?.cleared ?? true)
+}
+
+/** *Check 1184 came back Nov 27.*, with its values marked: what the desk says of a release held on its mark. */
+export function releaseMarkWords(mark: Pick<ReleaseMoneyBackMark, 'ymd' | 'check'>): string {
+  return `${val('way', checkName(mark.check).replace(/^./, (c) => c.toUpperCase()))} came back ${val('day', formatYmdMonthDay(mark.ymd))}.`
 }
 
 // ---------- The check's mark ----------
@@ -153,6 +181,10 @@ export type ReturnedLien = {
   say: string
   /** A release of this lien is saved, whether or not it has left. */
   releaseSaved: boolean
+  /** The saved release's row, for the mark: its id and its `fields` as read. Null with none saved. */
+  release: { id: string; fields: unknown } | null
+  /** The release already carries this case's mark. */
+  marked: boolean
   /** The check still counts as paid on this job by a payment the case's take off does not reach. Null otherwise. */
   typed: string | null
 }
@@ -166,6 +198,10 @@ export type PayoffReturnedView = {
   counsel: boolean
   /** The printed copies could not be read, so a saved release was read as printed. */
   printsUnread: boolean
+  /** The saved releases this case has not marked yet, and the press that marks them. Null with none, or when the case is not named. */
+  mark: { rows: Array<{ releaseId: string; fields: unknown }>; button: string; change: ReleaseMoneyBackMark } | null
+  /** How many of the saved releases already carry this case's mark. */
+  marked: number
 }
 
 const text = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
@@ -226,6 +262,14 @@ export type PayoffReturnedInput = {
   prints: ReadonlyArray<ReleasePrint> | null
   /** The check's own number, or '' when the bank read none. */
   checkNumber: string
+  /** The case, and the day its check came back: with both, the view offers the mark. */
+  caseId?: string
+  cameBackYmd?: string | null
+}
+
+/** Who presses the mark, and when: the view's `mark.change` carries neither until the press. */
+export function returnedMarkNow(change: ReleaseMoneyBackMark, who: string, atIso: string): ReleaseMoneyBackMark {
+  return { ...change, by: who, at: atIso }
 }
 
 /**
@@ -243,7 +287,7 @@ export function payoffReturnedView(input: PayoffReturnedInput): PayoffReturnedVi
     .map((t) => {
       const jobId = t.affidavit.job_id
       const typed = standByJob.get(jobId) === 'typed' ? `${Check} still counts as paid on this job. Take it off on the job’s Bill tab.` : null
-      return { affidavitId: t.affidavit.id, jobId, jobLabel: input.labelByJob[jobId] || 'a job', instrument: text(t.affidavit.recording_number), ...lienWords(t, input.prints), releaseSaved: Boolean(t.release), typed }
+      return { affidavitId: t.affidavit.id, jobId, jobLabel: input.labelByJob[jobId] || 'a job', instrument: text(t.affidavit.recording_number), ...lienWords(t, input.prints), releaseSaved: Boolean(t.release), release: t.release ? { id: t.release.id, fields: t.release.fields ?? null } : null, marked: Boolean(t.release && input.caseId && releaseFacts(t.release.fields).moneyBack?.caseId === input.caseId), typed }
     })
     .sort((a, b) => rank[a.case] - rank[b.case] || a.jobLabel.localeCompare(b.jobLabel, undefined, { numeric: true }) || a.instrument.localeCompare(b.instrument))
   const n = (k: ReturnedReleaseCase): number => liens.filter((l) => l.case === k).length
@@ -262,5 +306,15 @@ export function payoffReturnedView(input: PayoffReturnedInput): PayoffReturnedVi
     const held = saved ? ` ${count(saved)} saved ${saved === 1 ? 'release waits' : 'releases wait'}.` : ''
     line = `No release has left the office. ${count(liens.length)} filed ${liens.length === 1 ? 'lien stays' : 'liens stay'} on record.${held}`
   }
-  return { line, tone, liens, counsel: recorded > 0, printsUnread: input.prints === null && liens.some((l) => l.case === 'printed') }
+  const unmarked = liens.filter((l) => l.release && !l.marked)
+  const ymd = (input.cameBackYmd ?? '').slice(0, 10)
+  const mark =
+    input.caseId && /^\d{4}-\d{2}-\d{2}$/.test(ymd) && unmarked.length > 0
+      ? {
+          rows: unmarked.map((l) => ({ releaseId: l.release!.id, fields: l.release!.fields })),
+          button: countedLabel('Hold', unmarked.length, ['release on the Lien desk', 'releases on the Lien desk']),
+          change: { ymd, check: input.checkNumber.trim(), caseId: input.caseId, by: '', at: '' },
+        }
+      : null
+  return { line, tone, liens, counsel: recorded > 0, printsUnread: input.prints === null && liens.some((l) => l.case === 'printed'), mark, marked: liens.filter((l) => l.marked).length }
 }

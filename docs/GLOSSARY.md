@@ -6891,6 +6891,8 @@ One press prints the ready releases for the notary and holds the rest, a release
 A release keeps three facts on its own row: that the run printed it (`fields.printedForNotary`), the day it was **notarized** (`fields.notarizedYmd`) and the day its **copies** were **sent** (`fields.copiesSent`, `lienReleaseFacts.ts`).
 The payoff card's *Copies sent* stop reads that day, and a place stays in the open list until its copies are out.
 The copies are asked for thirty days from the county's day, so a release from before the fact does not stand open.
+Since **v2.8662** **the returned check's mark** is what Accounts Receivable's case leaves on a saved release, by one press, *Hold 2 releases on the Lien desk*: the check, the day it came back and the case (`fields.moneyCameBack`).
+The Lien desk heeds the mark after the payment is taken off the job, and lets go when the bills read paid by a later payment that has cleared (`releaseMarkHolds`).
 
 ### Property card (Lien desk)
 Every job at one property record on one window (**v2.7488**): the address, the owner of record, two lines that count the property, each kind of paper apart (*4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail*, then *6 lien affidavits ready to file*) and a row per job with where its notice and its affidavit stand.

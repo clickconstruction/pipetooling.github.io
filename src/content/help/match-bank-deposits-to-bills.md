@@ -205,7 +205,11 @@ Press **Open the job ›** on a lien to open its job.
 
 A check typed once in Payoffs pays several bills. The case finds those payments by the check's number. Such a lien adds a red line. The line reads *Check 1184 still counts as paid on this job.* The case's own button does not reach that payment. Open the job and take the payment off on its Bill tab.
 
-A job with no filed lien shows no box. The box reads only and changes nothing.
+A saved release gets one button under the liens. The button reads like {{button:red|Hold 2 releases on the Lien desk}}. Press it before you take the check off the job. Each release is then marked with the check and the day it came back.
+
+The Lien desk keeps a marked release held. The release reads *Do not record it* there until a later payment holds. Nobody takes the mark off by hand.
+
+A job with no filed lien shows no box.
 
 ### A check marked returned by hand
 

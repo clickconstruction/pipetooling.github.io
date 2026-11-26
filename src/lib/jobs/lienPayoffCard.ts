@@ -215,7 +215,9 @@ export function lienPayoffCard(rows: ReadonlyArray<LienPayoffRow>, todayYmd: str
   const notRecorded = n - done.length
   if (cameBack) {
     const recorded = moneyBack.filter((r) => r.step.step === 'done').length
-    line = `The check came back. Open the bills and take the payments off.${recorded ? ` ${count(recorded)} ${releases(recorded)} ${recorded === 1 ? 'is' : 'are'} already recorded. Ask counsel.` : ''}`
+    // A release held on its mark alone: the payment is off the job already, so there is nothing to take off.
+    const onJob = bank.some((r) => r.step.check?.state === 'came_back') || moneyBack.some((r) => !r.step.moneyBackMarked)
+    line = `The check came back. ${onJob ? 'Open the bills and take the payments off.' : 'Record a payment that holds before a release goes out.'}${recorded ? ` ${count(recorded)} ${releases(recorded)} ${recorded === 1 ? 'is' : 'are'} already recorded. Ask counsel.` : ''}`
     tone = 'red'
   } else if (unread) {
     line = 'The bank could not read the check. Deposit it again.'

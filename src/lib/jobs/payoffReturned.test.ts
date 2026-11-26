@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { plainSentence } from '../valuesInPlace'
 import { plainWordsFailures } from '../plainWords'
 import type { BankCheck } from './checkCleared'
-import { PAYOFF_RETURNED_WORDS, paymentsOnReturnedCheck, payoffReturnedView, releaseOnReturnedCheck, returnedCaseJobs, returnedReleaseCase, type PayoffReturnedInput, type ReleasePrint, type ReturnedLienTarget, type ReturnedMarkPayment } from './payoffReturned'
+import { PAYOFF_RETURNED_WORDS, paymentsOnReturnedCheck, payoffReturnedView, releaseMarkHolds, releaseMarkWords, releaseOnReturnedCheck, returnedCaseJobs, returnedMarkNow, returnedReleaseCase, type PayoffReturnedInput, type ReleasePrint, type ReturnedLienTarget, type ReturnedMarkPayment } from './payoffReturned'
 
 // Every name, address, job, instrument, check and amount here is made up.
 
@@ -224,5 +224,52 @@ describe('releaseOnReturnedCheck', () => {
     expect(releaseOnReturnedCheck({ state: 'came_back' })).toBe(true)
     for (const state of ['cleared', 'posted', 'at_bank', 'late', 'unread', 'no_deposit', 'not_check'] as const) expect(releaseOnReturnedCheck({ state })).toBe(false)
     expect(releaseOnReturnedCheck(null)).toBe(false)
+  })
+})
+
+describe('the returned check’s mark', () => {
+  const MARK = { ymd: '2026-11-27', check: '1184', caseId: 'dep1', by: 'u1', at: '2026-11-28T15:00:00Z' }
+
+  it('offers one press over the saved releases the case has not marked, with its count', () => {
+    const v = view({ targets: [{ affidavit: A1, release: SAVED }, { affidavit: A2, release: { ...RECORDED, id: 'r2', fields: { releasesFilingId: 'a2' } } }], caseId: 'dep1', cameBackYmd: '2026-11-27' })
+    expect(v.mark?.button).toBe('Hold 2 releases on the Lien desk')
+    expect(v.mark?.rows.map((r) => r.releaseId).sort()).toEqual(['r1', 'r2'])
+    expect(v.mark?.change).toEqual({ ymd: '2026-11-27', check: '1184', caseId: 'dep1', by: '', at: '' })
+    expect(v.marked).toBe(0)
+    expect(returnedMarkNow(v.mark!.change, 'u1', MARK.at)).toEqual(MARK)
+  })
+
+  it('leaves out a release this case already marked, and offers nothing once all are', () => {
+    const marked = { ...SAVED, fields: { releasesFilingId: 'a1', moneyCameBack: MARK } }
+    const some = view({ targets: [{ affidavit: A1, release: marked }, { affidavit: A2, release: { ...SAVED, id: 'r2', fields: { releasesFilingId: 'a2' } } }], caseId: 'dep1', cameBackYmd: '2026-11-27' })
+    expect(some.mark?.button).toBe('Hold 1 release on the Lien desk')
+    expect(some.mark?.rows.map((r) => r.releaseId)).toEqual(['r2'])
+    expect(some.marked).toBe(1)
+    const all = view({ targets: [{ affidavit: A1, release: marked }], caseId: 'dep1', cameBackYmd: '2026-11-27' })
+    expect(all.mark).toBeNull()
+    expect(all.marked).toBe(1)
+    // Another case's mark is not this one's.
+    expect(view({ targets: [{ affidavit: A1, release: marked }], caseId: 'dep2', cameBackYmd: '2026-12-09' }).mark?.rows).toHaveLength(1)
+  })
+
+  it('offers no press with no saved release, or when the case or its day is not named', () => {
+    expect(view({ caseId: 'dep1', cameBackYmd: '2026-11-27' }).mark).toBeNull()
+    expect(view({ targets: [{ affidavit: A1, release: SAVED }] }).mark).toBeNull()
+    expect(view({ targets: [{ affidavit: A1, release: SAVED }], caseId: 'dep1', cameBackYmd: null }).mark).toBeNull()
+  })
+
+  it('holds while the bills owe, while the payment that came back is still the last, and until a newer one clears', () => {
+    expect(releaseMarkHolds(null, { open: 500, lastPaidYmd: null, check: null })).toBe(false)
+    expect(releaseMarkHolds(MARK, { open: 7420, lastPaidYmd: null, check: null })).toBe(true)
+    expect(releaseMarkHolds(MARK, { open: 0, lastPaidYmd: '2026-11-24', check: { cleared: true } })).toBe(true)
+    expect(releaseMarkHolds(MARK, { open: 0, lastPaidYmd: '2026-12-01', check: { cleared: false } })).toBe(true)
+    expect(releaseMarkHolds(MARK, { open: 0, lastPaidYmd: '2026-12-01', check: { cleared: true } })).toBe(false)
+    expect(releaseMarkHolds(MARK, { open: 0, lastPaidYmd: '2026-11-27', check: null })).toBe(false)
+  })
+
+  it('says the check and the day, in plain words', () => {
+    expect(plainSentence(releaseMarkWords(MARK))).toBe('Check 1184 came back Nov 27.')
+    expect(plainSentence(releaseMarkWords({ ...MARK, check: '' }))).toBe('The check came back Nov 27.')
+    for (const s of [releaseMarkWords(MARK), PAYOFF_RETURNED_WORDS.markLead, PAYOFF_RETURNED_WORDS.marked, PAYOFF_RETURNED_WORDS.markFailed]) expect(plainWordsFailures(plainSentence(s))).toEqual([])
   })
 })

@@ -11,11 +11,11 @@ summary: >
   against its total, one release for each filed lien the money covers, each held until the check
   clears and shown with the day it is due, printed in the desk's one run, and kept on the desk until
   the county has recorded it and the copies are out.
-next: Pieces 4, 5 and 6 wait for their walks on ZZ test jobs. Piece 7 (S) waits on counsel. Small and open: a returned check's mark kept on the release row, so the desk remembers after the payment is taken off. The office still walks a real payoff through Payoffs, check and release, and says what still reads wrong.
+next: Pieces 4, 5 and 6 and the returned check's mark wait for their walks on ZZ test jobs. Piece 7 (S) waits on counsel. The office still walks a real payoff through Payoffs, check and release, and says what still reads wrong.
 size: L as a train of seven (S · M · M · M · M · S · S); pieces 1 to 6 built; left: piece 7 (S)
 blocker: Counsel's answers gate piece 7 and the words on the papers, the payer's receipt among them.
 opinion: build — the door, the one check, the safe release, the card with five stops, the releases on the run and the returned check are built in pieces 1 to 6; the walks are next
-ver: v2.8504 · v2.8508 · v2.8510 · v2.8632 · v2.8639 · v2.8648 · v2.8650
+ver: v2.8504 · v2.8508 · v2.8510 · v2.8632 · v2.8639 · v2.8648 · v2.8650 · v2.8662
 ---
 
 # A lien payoff: one check in, every lien at the place released (#435)
@@ -221,7 +221,7 @@ It reads only: no migration, no function, no write.
 Left from piece 6, each named in its fragment:
 
 - No press opens a matter for counsel, as the guard table says one does. The app has no door from a job to a matter, and counsel's question 8 is not answered.
-- The desk's flag lasts while the payment is on the job. After **Take it off** the desk falls back to *is still open on this job’s bills*, and the case is what remembers. A mark kept on the release row would outlast both. It is a write, and it was put as a question.
+- The desk's flag lasted only while the payment was on the job. Mended in v2.8662: the case has one press, *Hold N releases on the Lien desk*, that keeps a mark on each saved release, and the desk heeds it until a later payment has cleared. The mark is a press of its own, not a side effect of **Take it off**.
 - The case's **Take it off** does not reach a payment found by the mark. That is the database's function and its match, so it is a migration and the database lane's.
 - A release sent out as a downloaded PDF reads *Release held*: only a print files a copy.
 - A check the bank could not read, a typed check never deposited and a card dispute draw no box.
