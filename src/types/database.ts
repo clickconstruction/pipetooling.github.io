@@ -47736,6 +47736,7 @@ export type Database = {
         Args: { p_customer_id: string; p_work_date: string }
         Returns: undefined
       }
+      customer_is_zz_test: { Args: { p_customer_id: string }; Returns: boolean }
       customer_merge_moves_only: {
         Args: { p_column: string; p_new: Json; p_old: Json }
         Returns: boolean
@@ -47818,6 +47819,7 @@ export type Database = {
         Args: { p_invoice_id: string }
         Returns: Json
       }
+      delete_test_portal_link: { Args: { p_link_id: string }; Returns: Json }
       dev_bid_write: {
         Args: { p: Json; p_dry_run?: boolean; p_link?: Json }
         Returns: Json
@@ -47927,6 +47929,14 @@ export type Database = {
       dev_matter_doc_read: {
         Args: { p_doc_id: string; p_matter_id: string; p_section?: string }
         Returns: Json
+      }
+      dev_may_delete_test_comment: {
+        Args: { p_event_id: string }
+        Returns: boolean
+      }
+      dev_may_delete_test_note: {
+        Args: { p_note_id: string }
+        Returns: boolean
       }
       dev_mcp_issue_key: {
         Args: { p_label?: string; p_token: string }
