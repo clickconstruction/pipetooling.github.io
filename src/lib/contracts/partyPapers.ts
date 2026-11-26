@@ -18,6 +18,7 @@ import { pluralNoun } from '../batchWords'
 import { emptyWords, type EmptyWords } from '../emptyWords'
 import { val } from '../valuesInPlace'
 import { paperSignerLine, signingForBeside } from './paperParty'
+import { paperSiteNote } from '../addresses/paperSite'
 
 // ── Who reads the list ────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -95,6 +96,12 @@ export type PartyPaperRow = {
   created_at: string | null
   signer_last_viewed_at: string | null
   supersedes_person_contract_document_id: string | null
+  /** The site the paper names, when the read asks for it (punch list #439): an address as written under its key, or a development. */
+  site_address?: string | null
+  site_address_key?: string | null
+  site_development_id?: string | null
+  /** The party's name as the paper keeps it, when the read asks for it. */
+  party_name?: string | null
 }
 
 /** The moment a paper sorts on: the day it was signed, the moment it was sent, or the moment it was made. */
@@ -171,6 +178,8 @@ export type PartyPaperLine = {
   signingFor: string
   /** *Signed ⟪day|Nov 20⟫*, *Sent …*, *Made …*, the day marked with `val`. '' with no day. */
   day: string
+  /** *for the site at ⟪address|118 Old Quarry Trl⟫*, when the paper names an address as its site. '' when it names none. */
+  site: string
   /** Whether a press opens its signed record. Only a signed paper has one. */
   opens: boolean
 }
@@ -218,6 +227,7 @@ export function partyPaperLine(row: PartyPaperRow, replaced: ReadonlySet<string>
     // With no party name to hold it against, the line says nothing: it never names the page's own party as another's.
     signingFor: partyName?.trim() ? signingForBeside(row.signing_for, [partyName, row.signer_name, row.signer_printed_name]) : '',
     day,
+    site: paperSiteNote(row),
     opens: row.status === 'signed',
   }
 }

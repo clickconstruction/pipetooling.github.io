@@ -11,8 +11,10 @@ import {
   paperSiteSentence,
   rowIsForSite,
   rowNamesNoSite,
+  paperSiteNote,
   rowsForSite,
   signedForSiteWords,
+  siteKeysOfAddress,
   type PaperSite,
   type PaperSiteRow,
 } from './paperSite'
@@ -108,7 +110,22 @@ describe('rowIsForSite', () => {
   })
 })
 
+describe('siteKeysOfAddress', () => {
+  it('answers an address’s own key, the keys answered Same place, and nothing for a blank', () => {
+    expect([...siteKeysOfAddress(QUARRY)]).toEqual([key(QUARRY)])
+    expect([...siteKeysOfAddress(QUARRY, [same(QUARRY, BARN), same(QUARRY, COVE, false)])].sort()).toEqual([key(BARN), key(QUARRY)].sort())
+    expect(siteKeysOfAddress('  ').size).toBe(0)
+    expect(siteKeysOfAddress(null).size).toBe(0)
+  })
+})
+
 describe('the words', () => {
+  it('says a paper’s site on its line, and nothing with none', () => {
+    expect(plainSentence(paperSiteNote({ site_address: `  ${QUARRY} ` }))).toBe(`for the site at ${QUARRY}`)
+    expect(paperSiteNote({ site_address: null })).toBe('')
+    expect(paperSiteNote({})).toBe('')
+  })
+
   it('names a site, says its line and its row', () => {
     expect(paperSiteLabel(site(QUARRY))).toBe(QUARRY)
     expect(paperSiteLabel(ranch)).toBe('Old Quarry Ranch')

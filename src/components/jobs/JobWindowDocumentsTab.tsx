@@ -20,6 +20,7 @@ import AiaG702G703Modal from './AiaG702G703Modal'
 import { JobDocumentsBills } from './JobDocumentsBills'
 import { JobDocumentsContract } from './JobDocumentsContract'
 import { JobDocumentsRequiredPapers } from './JobDocumentsRequiredPapers'
+import { JobDocumentsSitePapers } from './JobDocumentsSitePapers'
 import { JobDocumentsLienPaper } from './JobDocumentsLienPaper'
 import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
@@ -362,6 +363,9 @@ export function JobWindowDocumentsTab({
 
       {/* Papers before this job opens (step 2 of seven): the papers everyone signs before the job opens to them. The office's to set. */}
       {isOfficeRole(role) ? <JobDocumentsRequiredPapers job={job} onOverlayOpenChange={onOverlayOpenChange} /> : null}
+
+      {/* Papers for this site (punch list #439): what outside companies were sent for the place this job is at. Drawn only when there is one. */}
+      <JobDocumentsSitePapers job={job} />
 
       <JobDocumentsTestReports job={job} />
 

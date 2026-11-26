@@ -152,6 +152,13 @@ describe('what a line says', () => {
     expect(partyPaperLine(paper('a', { signer_last_viewed_at: '2026-11-17T10:00:00Z' }), new Set(), TODAY).state.words).toBe('viewed, not signed')
   })
 
+  it('says the site on a paper that names an address, and nothing on one that names none (punch list #439)', () => {
+    expect(partyPaperLine(paper('a'), new Set(), TODAY).site).toBe('')
+    const l = partyPaperLine(paper('a', { site_address_key: '118 old quarry trail sampleton tx', site_address: '118 Old Quarry Trl, Sampleton, TX' }), new Set(), TODAY)
+    expect(plainSentence(l.site)).toBe('for the site at 118 Old Quarry Trl, Sampleton, TX')
+    expect(l.site).not.toBe(plainSentence(l.site))
+  })
+
   it('reads a signed paper as signed, by the name the signer typed, and opens its record', () => {
     const l = partyPaperLine(paper('a', { status: 'signed', signed_at: '2026-11-20', signer_printed_name: 'Lena M. Park' }), new Set(), TODAY)
     expect(l.state).toEqual({ words: 'signed ✓', tone: 'signed' })

@@ -200,6 +200,28 @@ Two addresses answered **Same place** are one site. See [answer addresses that l
 
 The site is kept when **Send email** is pressed, and not before. Someone on your own team is not asked for a site here.
 
+## See a site's papers on its jobs
+
+A paper that names a site shows on every job at that address.
+
+1. Open a job at the site.
+2. Press **Documents**.
+3. Look for **Papers for this site**.
+
+Each line leads with the company. The paper and who signs sit under the company's name. A chip says where the paper stands, with its day.
+
+:::example Two companies at one site
+**Example Pipe & Valve**, Vendor NDA, Lee Example signs. {{chip:yellow|never opened}} Sent Nov 22.
+
+**Sample Well Drilling**, Vendor NDA, signed by Rae Sample. {{chip:green|signed ✓}} Signed Nov 12.
+:::
+
+The papers still to sign come first. One line over the list counts the signed ones.
+
+The section is there only when the site has a paper. The list holds outside companies. The office and an estimator see the section.
+
+Nothing is sent from that list. To send a paper again, find its line on the Agreements tab.
+
 ## Add someone to a list
 
 A paper sent to someone you typed in reads **Not on a list**. Its line carries **Add to a list**, signed or not.
@@ -342,6 +364,8 @@ A supply house and a customer each list the papers that are with them.
 The list holds every kind of paper. A W-9 and an insurance certificate are there with the agreements.
 
 Each line says who signs and where the paper stands. A paper that was made and never sent reads *not sent*.
+
+A paper that names a site says so under its name. The line reads *for the site at* with the address.
 
 :::example A supply house's papers
 {{chip:blue|Agreement}} **Mutual secrecy agreement**, signed by Lena Park, Branch manager. {{chip:green|signed ✓}} Signed Nov 20.

@@ -93,6 +93,16 @@ describe('a supply house’s papers', () => {
     expect(words.some((w) => w.includes('signed ✓') && w.includes('signed by Lena Park, Branch manager'))).toBe(true)
   })
 
+  it('says the site under a paper that names one, and nothing under one that names none (punch list #439)', async () => {
+    io.rows = [paper('p-site', { site_address_key: '118 old quarry trail sampleton tx', site_address: '118 Old Quarry Trl, Sampleton, TX' }), paper('p-none', { document_name: 'Vendor terms' })]
+    renderWithProviders(<PartyPapersSection party={HOUSE} />)
+    const lines = await screen.findAllByTestId('party-paper-row')
+    expect(lines).toHaveLength(2)
+    const sites = screen.getAllByTestId('party-paper-site')
+    expect(sites.map((s) => s.textContent)).toEqual(['for the site at 118 Old Quarry Trl, Sampleton, TX'])
+    expect(lines.find((l) => l.textContent?.includes('Vendor terms'))?.querySelector('[data-testid="party-paper-site"]')).toBeNull()
+  })
+
   it('draws a line’s day and the count as values, apart from the words', async () => {
     io.rows = [paper('p-sent')]
     renderWithProviders(<PartyPapersSection party={HOUSE} />)
