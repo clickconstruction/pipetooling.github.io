@@ -299,7 +299,7 @@ describe('CustomerPortalGlobeButton', () => {
       fireEvent.click(screen.getByLabelText("Open ZZ Test Portal Customer's customer portal link"))
       await waitFor(() => expect(screen.getByText('2 GC proposals name this link. It stays.')).toBeTruthy())
       // One read, for the turned-off links of this window alone.
-      expect(proposalRowsMock.asked.at(-1)).toEqual(['l-named', 'l-free'])
+      expect(proposalRowsMock.asked[proposalRowsMock.asked.length - 1]).toEqual(['l-named', 'l-free'])
       const presses = screen.getAllByTestId('portal-link-delete')
       expect(presses.map((p) => p.getAttribute('aria-disabled'))).toEqual(['true', 'false'])
       fireEvent.click(presses[0]!)
