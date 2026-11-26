@@ -58,6 +58,22 @@ export function arCaseReopenCall(row: Pick<ArReturnCaseRow, 'mercury_transaction
   return { fn: 'reopen_ar_return_case', args: { p_mercury_transaction_id: row.mercury_transaction_id } }
 }
 
+/**
+ * What kind of case a row is, in plain words (punch list #443). The Closed cases list read who paid, how much and
+ * how it was closed, and nothing said whether the case was a returned check, a card dispute or a check the bank never
+ * took, though **Reopen…** calls a different function for each. The words are the Came back list's own chips
+ * (`arReturnCaseView`, `arStripeCaseView`), with the thing they are about in front. A source the app does not know is
+ * a check that came back, as `arCaseReopenCall` treats it.
+ */
+export function arCaseKindWords(source: ArReturnCaseRow['source'] | string | null | undefined): string {
+  if (source === 'unbanked') return 'Check never deposited'
+  if (source === 'rejected') return 'Check never reached the bank'
+  if (source === 'stripe_dispute') return 'Card disputed'
+  if (source === 'stripe_debit') return 'Bank payment failed'
+  if (source === 'hand') return 'Check came back, marked by hand'
+  return 'Check came back'
+}
+
 /** How far back the list shows before it folds the rest, in days. */
 export const AR_CLOSED_CASES_RECENT_DAYS = 90
 
@@ -67,6 +83,8 @@ export interface ArClosedCaseLine {
   /** Who the money was from; *No name on record* when the case holds none. */
   payer: string
   amount: number | null
+  /** What kind of case it is, in the Came back list's own words: *Check came back*, *Card disputed* (`arCaseKindWords`). */
+  kind: string
   /** *Closed as not coming on Mon, Nov 23.*, with the note the office typed after it. */
   closedWords: string
   /** The jobs it names, by name; '' when it names none. */
@@ -98,6 +116,7 @@ export function arClosedCases(all: ReadonlyArray<ArReturnCaseRow>, todayYmd: str
       id: r.mercury_transaction_id,
       payer: (r.counterparty_name ?? '').trim() || 'No name on record',
       amount: amountOf(r.amount),
+      kind: arCaseKindWords(r.source),
       closedWords: [`Closed${reason ? ` as ${reason}` : ''}${ymd ? ` on ${formatWorkDateYmdWeekdayShortFriendly(ymd)}` : ''}.`, note].filter(Boolean).join(' '),
       jobWords: arCaseJobs(r)
         .map((j) => (j.job_name ?? '').trim())

@@ -63,6 +63,20 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('ArClosedCases', () => {
+  it('each row says what kind of case it is, on a line of its own (punch list #443, finding 255)', () => {
+    draw('assistant', [
+      row({ mercury_transaction_id: 'c-card', counterparty_name: 'ZZ Test Card', source: 'stripe_dispute', closed_at: '2026-11-24T18:00:00Z' }),
+      row({ mercury_transaction_id: 'c-unbanked', counterparty_name: 'ZZ Test Unbanked', source: 'unbanked', closed_at: '2026-11-23T18:00:00Z' }),
+      row({ mercury_transaction_id: 'c-check', counterparty_name: 'ZZ Test Check', closed_at: '2026-11-22T18:00:00Z' }),
+    ])
+    openList()
+    expect(screen.getAllByTestId('ar-closed-kind').map((el) => el.textContent)).toEqual(['Card disputed', 'Check never deposited', 'Check came back'])
+    // The kind sits in its own row's words, under who paid.
+    const rows = screen.getAllByTestId('ar-closed-case')
+    expect(rows[0]!.textContent).toContain('ZZ Test Card')
+    expect(within(rows[0]!).getByTestId('ar-closed-kind').textContent).toBe('Card disputed')
+  })
+
   it('draws the line for the four office roles', () => {
     for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
       draw(role)

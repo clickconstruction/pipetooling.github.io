@@ -12,7 +12,8 @@ import { Money } from '../../Money'
  * **Close it as settled** and **Close it as not coming**, for the office (a dev, a master, an assistant, a
  * controller). It draws nothing for any other role, and nothing when no closed case can be reopened.
  *
- * Each case reads who paid, the amount, how it was closed and its job, with **Reopen…**. The list shows the cases
+ * Each case reads who paid, the amount, what kind of case it is (a check that came back, a card dispute, a check
+ * never deposited: punch list #443, finding 255), how it was closed and its job, with **Reopen…**. The list shows the cases
  * closed in the last 90 days, newest first, and one press draws the older ones. A case closed by a new payment or
  * by Stripe's answer is counted and not listed. The press asks first, in a confirm whose button names the act,
  * then calls `reopenArCase`, which reads the cases again and runs the same rule. `onReopened` reads the page again.
@@ -62,6 +63,7 @@ export function ArClosedCases({ role, allCases, todayYmd, onReopened }: { role: 
               <div key={line.id} data-testid="ar-closed-case" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0 0.6rem', alignItems: 'center', padding: '0.3rem 0', borderTop: '1px solid var(--border)' }}>
                 <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                   <b style={{ color: 'var(--text-strong)' }}>{line.payer}</b> · <Money amount={line.amount} />
+                  <span data-testid="ar-closed-kind" style={{ display: 'block', fontWeight: 600, color: 'var(--text-700)' }}>{line.kind}</span>
                   {line.jobWords ? <span style={{ display: 'block' }}>{line.jobWords}</span> : null}
                   <span style={{ display: 'block', color: 'var(--text-muted)' }}>{line.closedWords}</span>
                 </div>
