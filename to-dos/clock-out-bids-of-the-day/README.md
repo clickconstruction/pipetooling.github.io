@@ -8,7 +8,7 @@ summary: >
   This card reads those records into a list at clock out: the bids the person worked on today, with nothing
   to type. The person takes one off or adds one the app missed in one press. Step 1 needs no new table. The
   later steps add one small beat so the list also holds bids a person read and did not change.
-next: A live look at the strip's start (v2.8637) and the note box's line (v2.8641). Both are read on the Clock out sheet of an open session, so the look needs one clock in and its clock out, each on its own yes. Then the Bid Board, the My Time card and CountTooling, each on the owner's word.
+next: A live look at the strip's start (v2.8637) and the note box's line (v2.8641). Both are read on the Clock out sheet of an open session, so the look needs one clock in and its clock out. The walk was held on 2026-11-26: a first clock in of the day on the dev's own account raises the day's goals check, and passing it writes a row nothing takes back (card #443, row 19). It waits on a day that account has already clocked in, or on the person's word. Then the Bid Board, the My Time card and CountTooling, each on the owner's word.
 size: L as a train of six (S · M · M · S · S · M); steps 1 to 3 are live; left: the Bid Board, the My Time card and CountTooling (S · S · M)
 blocker: None. The look needs the live-look slot.
 ver: v2.8605 · 8609 · 8610 · 8636 · 8637 · 8638 · 8641 · 8651
@@ -469,7 +469,7 @@ write on the person's yes of that day. This is the walker's report, and the code
   144 test files draw under the real toast and would each find two. Its own note says a *status* that arrives
   with its words is the less sure kind, and that a listen on a real phone decides. No screen reader was run. Seen
   live on 2026-11-26 in the page's tree: an error toast is one *alert* holding its own words, with the × outside it.
-  A *status* toast was not read.
+  A *status* toast was read later that day: the green *Session rejected* and *Session deleted* are each a *status*.
 - **Seen on the way by that build: the First Look read page said its sent line twice**, once as a toast and once as the
   page's own line, so a screen reader would have heard both. Mended in v2.8651 (PR #9954, merged 2026-11-26), client
   only: the toast is dropped and the page's own line says it once. The page is card #319's.
