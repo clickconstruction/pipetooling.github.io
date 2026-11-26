@@ -18,7 +18,8 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
   PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
--- The log for one person, past RLS: how many lines, and the newest line's by, changes and reason.
+-- The log for one person, past RLS: how many lines, and the newest line's by, changes and reason. The wage is numeric(…,2), so
+-- to_jsonb renders it with its cents: 1.00, never 1.
 CREATE FUNCTION pls.log(p_name text) RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT (SELECT count(*) FROM public.pay_admin_events WHERE person_name = p_name)::text || ' line(s)'
     || COALESCE((SELECT ' · by ' || COALESCE(payload->>'by', 'the door') || ' · ' || (payload->'changes')::text || ' · ' || reason
@@ -27,6 +28,12 @@ $$;
 CREATE FUNCTION pls.before_after(p_name text) RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT COALESCE(payload->'before'->>'hourly_wage', 'none') || ' → ' || COALESCE(payload->'after'->>'hourly_wage', 'none')
   FROM public.pay_admin_events WHERE person_name = p_name ORDER BY created_at DESC, id DESC LIMIT 1
+$$;
+-- The bed is one transaction, so now() never moves: every line it writes carries the same created_at, and the trigger's
+-- rule (a door's line at this transaction's now() means no second line) would take a screen's earlier line for a door's.
+-- In the app each request is its own transaction. Between cases this ages every line a minute, as postgres, past RLS.
+CREATE FUNCTION pls.age_log() RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  UPDATE public.pay_admin_events SET created_at = created_at - interval '1 minute' WHERE person_name LIKE 'ZZ Paylog %'
 $$;
 GRANT USAGE ON SCHEMA pls TO authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pls TO authenticated, service_role;
@@ -50,35 +57,40 @@ SET LOCAL ROLE authenticated;
 -- 1. A screen's upsert that changes the wage: one line, by screen, the wage before and after, the reason that none was asked.
 INSERT INTO public.people_pay_config (person_name, hourly_wage) VALUES ('ZZ Paylog Hal', 1) ON CONFLICT (person_name) DO UPDATE SET hourly_wage = EXCLUDED.hourly_wage;
 SET CONSTRAINTS ALL IMMEDIATE;
-SELECT pls.same('a screen''s wage change leaves one line', pls.log('ZZ Paylog Hal'), '1 line(s) · by screen · {"hourly_wage": 1} · Changed on a screen. No reason was asked.');
-SELECT pls.same('the line holds the wage before and after', pls.before_after('ZZ Paylog Hal'), '20 → 1');
+SELECT pls.same('a screen''s wage change leaves one line', pls.log('ZZ Paylog Hal'), '1 line(s) · by screen · {"hourly_wage": 1.00} · Changed on a screen. No reason was asked.');
+SELECT pls.same('the line holds the wage before and after', pls.before_after('ZZ Paylog Hal'), '20.00 → 1.00');
+SELECT pls.age_log();
 SET CONSTRAINTS ALL DEFERRED;
 
 -- 2. An upsert that changes nothing leaves no line; a column the log does not watch leaves none either.
 INSERT INTO public.people_pay_config (person_name, hourly_wage) VALUES ('ZZ Paylog Hal', 1) ON CONFLICT (person_name) DO UPDATE SET hourly_wage = EXCLUDED.hourly_wage;
 UPDATE public.people_pay_config SET vehicle_rate_override = 0.5 WHERE person_name = 'ZZ Paylog Hal';
 SET CONSTRAINTS ALL IMMEDIATE;
-SELECT pls.same('a write that changes no pay leaves no line', pls.log('ZZ Paylog Hal'), '1 line(s) · by screen · {"hourly_wage": 1} · Changed on a screen. No reason was asked.');
+SELECT pls.same('a write that changes no pay leaves no line', pls.log('ZZ Paylog Hal'), '1 line(s) · by screen · {"hourly_wage": 1.00} · Changed on a screen. No reason was asked.');
+SELECT pls.age_log();
 SET CONSTRAINTS ALL DEFERRED;
 
 -- 3. Salaried on from a screen: one more line, with the switch.
 UPDATE public.people_pay_config SET is_salary = true WHERE person_name = 'ZZ Paylog Hal';
 SET CONSTRAINTS ALL IMMEDIATE;
 SELECT pls.same('the salaried switch from a screen leaves a line', pls.log('ZZ Paylog Hal'), '2 line(s) · by screen · {"is_salary": true} · Changed on a screen. No reason was asked.');
+SELECT pls.age_log();
 SET CONSTRAINTS ALL DEFERRED;
 
 -- 4. A change through the door, set_pay_config, leaves exactly its own line: the trigger finds it and writes none.
 SELECT public.set_pay_config('ZZ Paylog Hal', '{"hourly_wage": 22}'::jsonb, 'a raise, through the seat');
 SET CONSTRAINTS ALL IMMEDIATE;
 SELECT pls.same('a change through the door leaves one line, the door''s', pls.log('ZZ Paylog Hal'), '3 line(s) · by the door · {"hourly_wage": 22} · a raise, through the seat');
+SELECT pls.age_log();
 SET CONSTRAINTS ALL DEFERRED;
 
 -- 5. A new row with a wage (a hire's, a return's) leaves a line with no before; a new row with no pay leaves none.
 INSERT INTO public.people_pay_config (person_name, hourly_wage) VALUES ('ZZ Paylog Ren', 18) ON CONFLICT (person_name) DO UPDATE SET hourly_wage = EXCLUDED.hourly_wage;
 INSERT INTO public.people_pay_config (person_name) VALUES ('ZZ Paylog Sal') ON CONFLICT (person_name) DO NOTHING;
 SET CONSTRAINTS ALL IMMEDIATE;
-SELECT pls.same('a new row with a wage leaves a line with no before', pls.log('ZZ Paylog Ren') || ' · ' || pls.before_after('ZZ Paylog Ren'), '1 line(s) · by screen · {"hourly_wage": 18} · Changed on a screen. No reason was asked. · none → 18');
+SELECT pls.same('a new row with a wage leaves a line with no before', pls.log('ZZ Paylog Ren') || ' · ' || pls.before_after('ZZ Paylog Ren'), '1 line(s) · by screen · {"hourly_wage": 18.00} · Changed on a screen. No reason was asked. · none → 18.00');
 SELECT pls.same('a new row with no pay leaves no line', pls.log('ZZ Paylog Sal'), '0 line(s)');
+SELECT pls.age_log();
 SET CONSTRAINTS ALL DEFERRED;
 RESET ROLE;
 
