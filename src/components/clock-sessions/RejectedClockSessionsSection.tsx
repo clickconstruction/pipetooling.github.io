@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { restoreRejectedClockSessions } from '../../lib/restoreRejectedClockSessions'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import type { ClockSessionRow } from '../../types/clockSessions'
+import { deleteSessionConfirm } from '../../lib/clock/clockSessionConfirm'
 import { ClockSessionsSection } from './ClockSessionsSection'
 import type { EmptyStateWords } from '../EmptyState'
 
@@ -115,7 +116,7 @@ export function RejectedClockSessionsSection({
             <button
               type="button"
               onClick={async () => {
-                if (!(await confirmDialog({ message: 'Delete this clock session permanently?', confirmLabel: 'Delete', danger: true }))) return
+                if (!(await confirmDialog(deleteSessionConfirm(s)))) return
                 try {
                   await withSupabaseRetry(
                     async () => supabase.from('clock_sessions').delete().eq('id', s.id),

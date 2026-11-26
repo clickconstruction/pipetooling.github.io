@@ -21,6 +21,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { clockSessionMatchesSearch } from '../../lib/clockSessionSearch'
+import { rejectSessionConfirm } from '../../lib/clock/clockSessionConfirm'
 import {
   HOURS_TAB_SECTION_CHEVRON,
   HOURS_TAB_SECTION_SHELL,
@@ -329,7 +330,7 @@ export function PeopleHoursSessions({
                   <button
                     type="button"
                     onClick={async () => {
-                      if (!(await confirmDialog({ message: 'Reject this clock session?', confirmLabel: 'Reject' }))) return
+                      if (!(await confirmDialog(rejectSessionConfirm(s)))) return
                       const { error } = await supabase.from('clock_sessions').update({ rejected_at: new Date().toISOString(), rejected_by: authUserId ?? null }).eq('id', s.id)
                       if (error) setError(error.message)
                       else { showToast?.('Session rejected', 'success'); reloadSessions() }
