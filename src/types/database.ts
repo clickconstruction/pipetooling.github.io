@@ -45970,6 +45970,9 @@ export type Database = {
           paper_name: string | null
           person_id: string | null
           person_kind: string | null
+          site_address: string | null
+          site_address_key: string | null
+          site_development_id: string | null
           source_id: string | null
           state: string | null
           with_name: string | null
