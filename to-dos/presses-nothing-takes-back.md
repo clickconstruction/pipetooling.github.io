@@ -259,16 +259,28 @@ by line after that day's walk of five of them.
   address alone, from the walk of #205 on 2026-11-25. One person added to the GC test trade company for
   that walk and removed after it: the row stays, marked removed. No row of this list holds them.
 - One clock session of 85 seconds, of the sample superintendent on the ZZ test job, from the walk of #234
-  on 2026-11-25. Whether a screen takes a clock session back was not read.
+  on 2026-11-25. Read in the code on 2026-11-26: a screen does take one back. On People → Hours, *Rejected Sessions*, a
+  rejected session has **Return to pending** and, for a dev or a pay-approved master, **Delete** (`RejectedClockSessionsSection`;
+  the table's delete policy names the same two). So a walk's clock session is taken back by a reject and then a delete. None
+  of the walks' rejected sessions is deleted yet: each delete waits on its own yes.
 - From the walks of #446, #234 and #429 on 2026-11-26, on rows this list does not hold: one pay row at one dollar
   an hour on a second ZZ Test person, which no screen deletes; seven pay log lines, one on that person and six on
   another ZZ Test person, which the table keeps; four set working-hours rows on that second person, none in force;
-  one rejected clock session on the first; one closed clock session of the sample superintendent, pending approval,
-  which a dev or the office may reject; and three more View as rows from that sitting's looks.
+  one rejected clock session on the first; one closed clock session of the sample superintendent, rejected on
+  2026-11-26 with one press on People → Hours on the person's yes, by the walker's report; and three more View as rows from
+  that sitting's looks.
 - From the last walk of #389 on 2026-11-26: two more View as rows. The ZZ Test Book entry that walk made is deleted
   and read back as gone, so nothing of it is on this list.
 - From the simulator's fifth sitting on 2026-11-26: two more View as rows, the sample leader and the sample assistant.
   The sample leader's view was set to Short and back to Full for the look, and read back Full.
+- From the walks of #205 and #445 on 2026-11-26, by the walker's report, on rows this list does not hold: one more word to
+  a trade on the GC test project, with its sent copy and its mail log line, to the mail service's test inbox alone; one more
+  person added to the GC test trade company and removed, the row kept and marked removed; one trade awarded and the award
+  taken back, which deleted the drafted statement of work; one closed clock session of the dev's own account, pending
+  approval, which a dev or the office may reject and then delete; one kept row of that day's bid list and four five-minute
+  rows of bid time on two ZZ Test bids, which the app keeps; one sale price on a ZZ Test bid left one dollar above where it
+  was found, with its line in the bid's history, which one press on the grid puts back; and the dev's own goals check for
+  the day.
 
 ## When a take-back is built
 

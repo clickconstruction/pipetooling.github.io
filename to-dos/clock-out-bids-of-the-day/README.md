@@ -2,15 +2,15 @@
 name: "Clock out: the bids of the day"
 number: 445
 group: close
-status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · the owner's go the same day (I like it, build it) · the ground is live as v2.8605, the beat as v2.8609 and the Clock out list as v2.8610 (2026-11-26) · left: the live walk, then the Bid Board, the My Time card and CountTooling on the owner's word
+status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · the owner's go the same day (I like it, build it) · the ground is live as v2.8605, the beat as v2.8609 and the Clock out list as v2.8610 (2026-11-26) · walked live 2026-11-26 as the dev on two ZZ Test bids, every step a pass · the walk met three things: the note box opens on the clock-in's plan, as built since v2.6092, which is a question for the person; the strip starts at the beat's five-minute bucket; and a locked bid's refused price stays typed in its field; the last two are briefed, client only · left: those, then the Bid Board, the My Time card and CountTooling on the owner's word
 summary: >
   An estimator works one bid at a time, and the app already records most of that work without being asked.
   This card reads those records into a list at clock out: the bids the person worked on today, with nothing
   to type. The person takes one off or adds one the app missed in one press. Step 1 needs no new table. The
   later steps add one small beat so the list also holds bids a person read and did not change.
-next: Walk it live with a ZZ Test bid (How to verify). Then the Bid Board, the My Time card and CountTooling, each on the owner's word.
+next: The person's answer on the note box that opens on the clock-in's plan (The walk of 2026-11-26). The two small mends that walk asked for. Then the Bid Board, the My Time card and CountTooling, each on the owner's word.
 size: L as a train of six (S · M · M · S · S · M); steps 1 to 3 are live; left: the Bid Board, the My Time card and CountTooling (S · S · M)
-blocker: None. The walk needs the live-look slot and a ZZ Test bid.
+blocker: None for the two small mends. The note box waits on the person's answer.
 ver: v2.8605 · 8609 · 8610
 opinion: build — the owner said build it, and the first three pieces are live; the last three wait on the owner's word
 ---
@@ -168,8 +168,11 @@ One component draws it for every role: `src/components/ClockInOutButton.tsx`. It
 phone and on a desktop, a centred sheet at most 480 px wide.
 
 - The title is **Clock out**.
-- **What did you work on?** is a note, and it is required. **Complete clock out** is dead until it holds
-  a word. For a field tech the day's reports fill it since #189. For an estimator nothing fills it.
+- **What did you work on?** is a note, and it is required. **Complete clock out** is dead while it holds
+  no word. The box opens holding the session's own note, which is the plan typed at clock in, so for a
+  session with a plan the press is live from the start (v2.6092; read again on 2026-11-26, after this card
+  first said the press was dead until typed). For a field tech the day's reports fill it instead since
+  #189. For an estimator nothing but the plan fills it.
 - **What Job or Bid were you working on?** takes one job or one bid for the whole session. It offers the
   day's scheduled jobs, the bids on the person's Working board, a search and the last pick.
 - On a phone the clock is one line: **Clocked in**, the time, **Focus** and **Clock out**.
@@ -408,7 +411,7 @@ with no clock out, and CountTooling's beat.
 - **Step 1, by test.** The kernel takes rows and returns the list. Fixtures cover a worked bid, a touch,
   a bid with only the app's own write, a bid that became a job and an empty day.
 - **Step 1, walked.** On the live site with ZZ Test rows: change a ZZ Test bid, press **Clock out**
-  and read the note. Then a day with no change, where the note is empty as today.
+  and read the note. Then a day with no change, where the list is empty and the note opens on the clock-in's plan.
 - **Step 2, walked.** Open a ZZ Test bid on Pricing for three minutes and change nothing. The bid appears
   under **Opened, nothing changed**. Leave the tab in front and untouched for ten minutes: the size does
   not grow.
@@ -422,5 +425,35 @@ with no clock out, and CountTooling's beat.
 Read and measured on 2026-11-25, and the mock-up drawn and changed three times on the owner's looks the
 same day. The owner said to build it. Steps 1 to 3 are live: the ground as v2.8605 (PR #9878, its migration
 pushed 2026-11-25), the types (PR #9887), the beat as v2.8609 (PR #9891) and the Clock out list as v2.8610
-(PR #9900), all on 2026-11-26. Not walked live yet: the recipe is under How to verify. Steps 4 to 6 wait on
+(PR #9900), all on 2026-11-26. Walked live the same day: see below. Steps 4 to 6 wait on
 the owner's word.
+
+### The walk of 2026-11-26
+
+On the live site, as the dev's own account, since the beat is held under View as. On two ZZ Test bids, each
+write on the person's yes of that day. This is the walker's report, and the code was read after it.
+
+- **Every step passed.** With a bid open on Pricing, a beat landed about once a minute. A bid opened and not
+  changed stood under **Opened, nothing changed** with its size and its tab. One price change put the other
+  bid under **Bids you worked on today**, with *Read from what you opened and changed today. Sizes are rough.*
+  The tick took the bid off and put it back, and the press's count followed. At 375 px both rows and the strip
+  stood inside the sheet, the box 44 px with the bid's name beside it. **Complete clock out · 1 bid** kept the
+  bid's line in the session's note and one kept row for the day, both read back.
+- **The note box opens on the clock-in's plan.** With no bid ticked, **Complete clock out** was live where the
+  recipe expected it dead, and the kept note is the bid's line and then the plan's words. Read in the code: the
+  review has opened on the session's own note since before this card, and v2.6092 says so in its own words. So
+  *The clock out as it is* above was wrong, and is corrected. With a list answered, *Anything else?* and *You
+  can leave this empty.* stand over a box that holds the plan. Whether the box should open empty is a question
+  for the person. A small mend is briefed and held until the answer.
+- **The strip's start.** It read 10:20 PM for a clock-in at 10:22 PM. Read in the code: a bid's first trace is
+  the floor of its five-minute bucket, and the strip starts at the lesser of the clock-in and that floor
+  (`readBidDay`). Briefed as a client-only XS. Not built as of this line.
+- **A locked bid's refused price stays typed.** Older than this card. A sent bid's pricing is locked. A price
+  typed there is refused by a toast, and the field keeps the typed number until a reload. Read in the code:
+  the commit returns before it drops what was typed (`commitWorkbenchTypedPrice`). Briefed as a client-only
+  XS. A second brief beside it: the app's toasts carry no status role on any page. Neither is built as of this
+  line.
+- **For the next walker.** A sent bid needs **Revise…** before a price can change, and a bid with no count rows
+  has no price to change. The dev's own account meets two gates before the sheet: the day's goals check and
+  the spending gate.
+- **What the walk left on prod** is on card #443.
