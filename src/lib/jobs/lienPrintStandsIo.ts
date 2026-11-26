@@ -7,15 +7,8 @@ import type { LienPrintStandsChange, LienPrintStandsRow } from './lienPrintStand
  * `lienPrintStands.ts`. The table is `lien_print_stands` and the write is `set_lien_print_stands` (migration
  * 20261125210500), which stamps who and when on the server: nothing here writes the table itself.
  *
- * Neither is in the generated types until the migration is pushed and the types are drawn again, so both go through
- * one untyped door.
+ * Both are in the generated types since the migration was pushed on 2026-11-26, so both go through the typed client.
  */
-type Answer<T> = { data: T | null; error: { code?: string; message?: string } | null }
-type Untyped = {
-  from: (table: string) => { select: (cols: string) => { is: (col: string, v: null) => { order: (col: string, o: { ascending: boolean }) => PromiseLike<Answer<unknown[]>> } } }
-  rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<Answer<unknown>>
-}
-const db = supabase as unknown as Untyped
 
 const text = (v: unknown): string => (typeof v === 'string' ? v : '')
 
@@ -39,7 +32,7 @@ export function lienPrintStandsFromRow(raw: unknown): LienPrintStandsRow | null 
 /** Every answer that stands (not taken back), for every job: a few rows a run. Null when the read failed. */
 export async function readLienPrintStands(): Promise<LienPrintStandsRow[] | null> {
   try {
-    const { data, error } = await db.from('lien_print_stands').select('id, job_id, paper, change_key, changes, sent_document_id, stood_by, stood_at').is('taken_back_at', null).order('stood_at', { ascending: true })
+    const { data, error } = await supabase.from('lien_print_stands').select('id, job_id, paper, change_key, changes, sent_document_id, stood_by, stood_at').is('taken_back_at', null).order('stood_at', { ascending: true })
     if (error) return null
     return (data ?? []).map(lienPrintStandsFromRow).filter((r): r is LienPrintStandsRow => !!r)
   } catch {
@@ -52,11 +45,11 @@ export type LienPrintStandsWrite = { jobId: string; paper: LienPrintPaperKind } 
 /** Say a changed paper stands as printed, or take that back. Throws with the function's own words when it refuses. */
 export async function writeLienPrintStands(w: LienPrintStandsWrite): Promise<{ changed: boolean }> {
   const args = w.stands
-    ? { p_job_id: w.jobId, p_paper: w.paper, p_stands: true, p_change_key: w.changeKey, p_changes: w.changes.map((c) => ({ key: c.key, label: c.label, printed: c.printed, now: c.now })), p_sent_document_id: w.sentDocumentId }
+    ? { p_job_id: w.jobId, p_paper: w.paper, p_stands: true, p_change_key: w.changeKey, p_changes: w.changes.map((c) => ({ key: c.key, label: c.label, printed: c.printed, now: c.now })), p_sent_document_id: w.sentDocumentId ?? undefined }
     : { p_job_id: w.jobId, p_paper: w.paper, p_stands: false }
-  const { data, error } = await db.rpc('set_lien_print_stands', args)
+  const { data, error } = await supabase.rpc('set_lien_print_stands', args)
   if (error) throw error
-  const answer = (data ?? null) as { ok?: boolean; changed?: boolean; error?: string } | null
+  const answer = (data ?? null) as unknown as { ok?: boolean; changed?: boolean; error?: string } | null
   if (!answer || answer.error || !answer.ok) throw new Error(answer?.error || (w.stands ? 'The answer was not kept.' : 'The answer was not taken back.'))
   return { changed: Boolean(answer.changed) }
 }

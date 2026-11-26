@@ -54,4 +54,4 @@ The client that ships with this file reads the table and calls the function, so 
 
 A client live before the push is not broken by it: a read of the table that fails is read as no answers, so every changed paper asks, and a press on *It stands* says the server's reason and writes nothing.
 
-**Not applied.** The push is asked for by name.
+**Applied** on 2026-11-26 at 02:11 UTC from `main` at `0d4420cd0d`, by `scripts/db-push.sh` on the person's yes relayed by name: the plain push refused the out-of-order stamp and the `--include-all` retry applied this one file. The drift check read 1,494 of 1,494 after. The generated types and the dev seat's catalog followed in the same session's `chore(types)` PR.
