@@ -77,7 +77,7 @@ with no day, so nothing a trade sees is wrong today. Still, `src/lib/gc/portal.t
 `portalPay`) and `src/lib/gc/portalI18n.ts` (`payIntro`, `payBy`, `payWasDue`) read the old rule, a day
 counted from approval. Nothing draws them. They are copied to the edge functions, so changing them means
 redeploying `gc-trade-portal` and `customer-portal`. Change them with the pay table on the trade's page,
-which is the trade partner's portal, [#205](trade-portal-vs-jobtread.md).
+which is the trade partner's portal, #205 (retired 2026-11-26; its card lives in git history at the deleting commit).
 
 ### For the attorney
 
