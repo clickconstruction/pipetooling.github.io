@@ -24,7 +24,9 @@ try {
       // server, not app routes; the shell would 404 them for a signed-in phone.
       // /to-dos/… are the mock-up pages the build copies beside the app (v2.3558) — real
       // files on the server, opened from the Punch list; the shell must not swallow them.
-      denylist: [/^\/task-install\.html$/, /^\/fix(?:\/|$)/, /^\/fix-cache\.html$/, /^\/g\//, /^\/to-dos\//, /^\/show\.html$/],
+      // /privacy and /terms are the two public pages Google's sign-in screen links to (v2.8672): real
+      // HTML a reader with no account opens, so the shell must not swallow them either.
+      denylist: [/^\/task-install\.html$/, /^\/fix(?:\/|$)/, /^\/fix-cache\.html$/, /^\/g\//, /^\/to-dos\//, /^\/show\.html$/, /^\/privacy(?:\/|$)/, /^\/terms(?:\/|$)/],
     }),
   )
 } catch {

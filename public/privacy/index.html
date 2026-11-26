@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Privacy · ClickTooling</title>
+    <meta name="description" content="What ClickTooling collects, what it is used for, who it is shared with, and how to ask for a copy or a deletion." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!--
+      A real static document, not an app route (v2.8672): Google's sign-in screen links here, and a
+      reader with no account must be able to open it. The service worker denylists /privacy and /terms
+      (src/sw.ts) so the app shell never swallows them. The words are the owner's: change them here.
+    -->
+    <style>
+      :root {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        color: #1f2937;
+        background: #ffffff;
+      }
+      body {
+        margin: 0;
+        -webkit-text-size-adjust: 100%;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 2.5rem 1.25rem 4rem;
+        line-height: 1.6;
+      }
+      h1 {
+        font-size: 1.75rem;
+        margin: 0 0 0.25rem;
+      }
+      h2 {
+        font-size: 1.125rem;
+        margin: 2rem 0 0.5rem;
+      }
+      p,
+      li {
+        font-size: 1rem;
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      .dated {
+        color: #4b5563;
+        margin: 0 0 1.5rem;
+      }
+      a {
+        color: #1d4ed8;
+      }
+      nav {
+        margin-top: 2.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e5e7eb;
+        font-size: 0.9375rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Privacy</h1>
+      <p class="dated">In effect from November 26, 2026.</p>
+
+      <p>
+        ClickTooling is the work tool at clicktooling.com. It is run by Click Construction, LLC, called "we" on this
+        page. This page says what ClickTooling collects, what we use it for, who else sees it, and what you can ask
+        us to do.
+      </p>
+
+      <h2>Who this page is for</h2>
+      <ul>
+        <li>People with a ClickTooling account: our staff and the subcontractors we work with.</li>
+        <li>
+          People who open a link we send: a customer, a builder or anyone else reading an estimate, a bill, a
+          contract or a schedule.
+        </li>
+      </ul>
+      <p>Accounts are made by our office. Nobody can sign up alone.</p>
+
+      <h2>What we collect</h2>
+      <ul>
+        <li><strong>Account details.</strong> Your name, email address, phone number and role.</li>
+        <li>
+          <strong>Work records.</strong> What you and your team put into ClickTooling: jobs, bids, hours, clock-ins
+          and clock-outs, notes, messages, photos and files.
+        </li>
+        <li>
+          <strong>Location.</strong> Where your device is when you clock in or use a map, and only when your device
+          allows it. You can turn this off in your device's settings.
+        </li>
+        <li>
+          <strong>Customer and job details.</strong> Names, job addresses, contact details, signatures, and what was
+          billed and paid.
+        </li>
+        <li>
+          <strong>Sign-in and device records.</strong> When you signed in, your IP address and the kind of browser
+          you used.
+        </li>
+      </ul>
+      <p>
+        Card payments are taken by our payment company on its own pages. ClickTooling does not see or keep a card
+        number.
+      </p>
+
+      <h2>Signing in with Google</h2>
+      <p>You can sign in to your ClickTooling account with Google. When you do, Google tells us four things:</p>
+      <ul>
+        <li>your name,</li>
+        <li>your email address,</li>
+        <li>your profile picture,</li>
+        <li>the id Google gives your account.</li>
+      </ul>
+      <p>
+        We use these for one thing: to sign you in to the ClickTooling account that already exists under that email
+        address. Signing in with Google does not let us read your mail, your calendar, your contacts or your files.
+      </p>
+      <p>
+        We do not sell what Google tells us. We do not use it for advertising. We do not use it to train AI models.
+        We share it with nobody except the companies that run sign-in for us, named below.
+      </p>
+      <p>
+        Our use of what we receive from Google follows the
+        <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+        including its Limited Use rules.
+      </p>
+      <p>
+        To stop using Google with ClickTooling, ask our office to take Google off your login. You can also remove
+        ClickTooling in your Google Account, under Security, then your connections to third-party apps.
+      </p>
+
+      <h2>What we use it for</h2>
+      <ul>
+        <li>To run the work: schedule it, price it, bill it, pay for it and keep its records.</li>
+        <li>To sign you in and keep your account safe.</li>
+        <li>To send you notices about your work by email, text or a notice on your phone.</li>
+        <li>To keep the records the law asks a business to keep, such as pay and lien records.</li>
+      </ul>
+      <p>ClickTooling shows no ads and carries no advertising trackers.</p>
+
+      <h2>Who else sees it</h2>
+      <p>We do not sell personal information. We share it only in these ways:</p>
+      <ul>
+        <li>
+          <strong>Companies that run parts of ClickTooling for us.</strong> Supabase keeps the database and runs
+          sign-in. GitHub hosts the site. Google provides sign-in, mail, file storage and maps. Stripe takes
+          payments. Other companies send our email, texts and letters, and read documents such as bills and plans
+          for us. Each one handles the information only to do that job.
+        </li>
+        <li>
+          <strong>People on the same work.</strong> Your team sees the work records your role lets them see. A
+          customer or a builder sees what we send them.
+        </li>
+        <li><strong>When the law requires it</strong>, such as a court order.</li>
+      </ul>
+
+      <h2>What stays in your browser</h2>
+      <p>
+        ClickTooling keeps your sign-in and a copy of the app in your browser's storage. That is how you stay signed
+        in and how the app opens with a weak signal. Signing out or clearing the site's data removes them.
+      </p>
+
+      <h2>How long we keep it</h2>
+      <p>
+        We keep account details while the account is open. We keep work records for as long as the business and the
+        law need them, which can be years after a job ends.
+      </p>
+
+      <h2>What you can ask for</h2>
+      <ul>
+        <li>A copy of the personal information we hold about you.</li>
+        <li>A correction of something that is wrong.</li>
+        <li>
+          A deletion. We will delete what we are free to delete, and tell you what we must keep and why.
+        </li>
+      </ul>
+      <p>Write to the address at the bottom of this page. We answer within 30 days.</p>
+
+      <h2>How we protect it</h2>
+      <p>
+        Information travels encrypted between your device and ClickTooling. What each account can see is set by its
+        role. No system is perfectly safe, so tell us right away if you think your account was used by someone else.
+      </p>
+
+      <h2>Children</h2>
+      <p>ClickTooling is a work tool for adults. It is not for anyone under 18.</p>
+
+      <h2>Changes to this page</h2>
+      <p>When this page changes, the date at the top changes with it. A large change is also told to account holders.</p>
+
+      <h2>How to reach us</h2>
+      <p>
+        Click Construction, LLC<br />
+        <a href="mailto:help@clickconstruction.com">help@clickconstruction.com</a>
+      </p>
+
+      <nav><a href="/terms/">Terms</a> · <a href="/">Back to ClickTooling</a></nav>
+    </main>
+  </body>
+</html>
