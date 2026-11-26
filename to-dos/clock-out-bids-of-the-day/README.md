@@ -2,13 +2,13 @@
 name: "Clock out: the bids of the day"
 number: 445
 group: close
-status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · the owner's go the same day (I like it, build it) · the ground is live as v2.8605, the beat as v2.8609 and the Clock out list as v2.8610 (2026-11-26) · walked live 2026-11-26 as the dev on two ZZ Test bids, every step a pass · the walk met three things: the note box opens on the clock-in's plan, as built since v2.6092; the strip starts at the beat's five-minute bucket; and a locked bid's refused price stays typed in its field · the person the same day on the note box: keep it, and add one line saying where the words came from, built as v2.8641 and merged the same day, with no line over a Job Mode note · the last two are mended in v2.8637 and v2.8636, merged the same day · the toasts say their role to a screen reader since v2.8638, merged the same day · the locked price and the toast's *alert* were seen live the same day, reads only; the strip's start and the note box's line want one clock in and are not seen · left: a look at those, then the Bid Board, the My Time card and CountTooling on the owner's word
+status: asked 2026-11-25 · the traces read in the code and counted on prod the same day · mock-up drawn with three ways and a pick · the owner's three looks the same day: one line shape for every row, the colour strip on the pick, and a tick in place of the words Take off · the owner's go the same day (I like it, build it) · the ground is live as v2.8605, the beat as v2.8609 and the Clock out list as v2.8610 (2026-11-26) · walked live 2026-11-26 as the dev on two ZZ Test bids, every step a pass · the walk met three things: the note box opens on the clock-in's plan, as built since v2.6092; the strip starts at the beat's five-minute bucket; and a locked bid's refused price stays typed in its field · the person the same day on the note box: keep it, and add one line saying where the words came from, built as v2.8641 and merged the same day, with no line over a Job Mode note · the last two are mended in v2.8637 and v2.8636, merged the same day · the toasts say their role to a screen reader since v2.8638, merged the same day · the locked price and the toast's *alert* were seen live the same day, reads only; the note box's line was seen live later that day, a pass; the strip's start could not be read that day, since the account already held a bid beat from before the clock in · left: a look at those, then the Bid Board, the My Time card and CountTooling on the owner's word
 summary: >
   An estimator works one bid at a time, and the app already records most of that work without being asked.
   This card reads those records into a list at clock out: the bids the person worked on today, with nothing
   to type. The person takes one off or adds one the app missed in one press. Step 1 needs no new table. The
   later steps add one small beat so the list also holds bids a person read and did not change.
-next: A live look at the strip's start (v2.8637) and the note box's line (v2.8641). Both are read on the Clock out sheet of an open session, so the look needs one clock in and its clock out. The walk was held on 2026-11-26: a first clock in of the day on the dev's own account raises the day's goals check, and passing it writes a row nothing takes back (card #443, row 19). It waits on a day that account has already clocked in, or on the person's word. Then the Bid Board, the My Time card and CountTooling, each on the owner's word.
+next: A live look at the strip's start (v2.8637), the one mend of the walk not yet seen: on a day whose first bid beat comes after the clock in, so that nothing is opened on a bid before it. It needs one clock in and its clock out, and a first clock in of the day raises the goals check (card #443, row 19), each on its own yes. Then the Bid Board, the My Time card and CountTooling, each on the owner's word.
 size: L as a train of six (S · M · M · S · S · M); steps 1 to 3 are live; left: the Bid Board, the My Time card and CountTooling (S · S · M)
 blocker: None. The look needs the live-look slot.
 ver: v2.8605 · 8609 · 8610 · 8636 · 8637 · 8638 · 8641 · 8651
@@ -451,12 +451,18 @@ write on the person's yes of that day. This is the walker's report, and the code
   leave this empty.* shows only over an empty box, and the reports' line wins when the reports fill it. Narrower than
   the brief in one place, on the person's word *Yes, arm as built*, relayed by the managing session: a Job Mode start
   writes the session's note as *On my way to …* or *On site at …*, which is not a plan, so no line is drawn over those
-  words. Not yet seen live.
+  words. Seen live on 2026-11-26, by the walker's report, on the dev's own account: with a bid on the list and the
+  plan in the box the line reads *From your plan at clock in. Change it or leave it.* and *You can leave this empty.*
+  does not show; one added letter takes the line away and taking it out brings it back; an emptied box reads *You can
+  leave this empty.*; with the bid taken off and the box empty the press is dead and grey with *Say what you worked on
+  today, then Complete clock out.* A Job Mode note was not staged.
 - **The strip's start.** It read 10:20 PM for a clock-in at 10:22 PM. Read in the code: a bid's first trace is
   the floor of its five-minute bucket, and the strip starts at the lesser of the clock-in and that floor
   (`readBidDay`). Mended in v2.8637 (PR #9938, merged 2026-11-26), client only: a first bucket that holds a
   clock-in no longer moves the start, and a last bucket that holds a clock-out no longer moves the end of a
-  closed day. A trace that is over before the first clock-in still starts the strip. Not yet seen live.
+  closed day. A trace that is over before the first clock-in still starts the strip. Not readable on 2026-11-26: the
+  account's first bid beat of that day came hours before the walk's clock in, so *Your day* started at that beat's
+  floor, as built, and not at the clock in. The look is owed on a day whose first bid beat comes after the clock in.
 - **A locked bid's refused price stays typed.** Older than this card. A sent bid's pricing is locked. A price
   typed there is refused by a toast, and the field keeps the typed number until a reload. Read in the code:
   the commit returns before it drops what was typed (`commitWorkbenchTypedPrice`). Mended in v2.8636 (PR #9937,
