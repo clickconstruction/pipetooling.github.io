@@ -142,14 +142,15 @@ DELETE FROM public.developments WHERE id = '00000000-0000-0000-0000-0000000439d1
 SELECT psb.same('a development deleted leaves its paper naming no site', psb.site('00000000-0000-0000-0000-000004390101'),
   'no development | no key | no address | does not print');
 
--- 9. The two indexes are there and partial, and the three checks are validated.
+-- 9. The two indexes are there and partial, and the three checks are validated. The key to developments is a
+-- constraint of the table too, named alike, so the checks are read by their kind.
 SELECT psb.same('the two indexes are partial',
   (SELECT string_agg(indexname || ': ' || (indexdef LIKE '%WHERE (% IS NOT NULL)')::text, ' · ' ORDER BY indexname)
    FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'person_contract_documents' AND indexname LIKE 'idx_person_contract_documents_site_%'),
   'idx_person_contract_documents_site_address_key: true · idx_person_contract_documents_site_development: true');
 SELECT psb.same('the three checks are validated',
   (SELECT string_agg(conname || ': ' || convalidated::text, ' · ' ORDER BY conname)
-   FROM pg_constraint WHERE conrelid = 'public.person_contract_documents'::regclass AND conname LIKE 'person_contract_documents_site_%'),
+   FROM pg_constraint WHERE conrelid = 'public.person_contract_documents'::regclass AND contype = 'c' AND conname LIKE 'person_contract_documents_site_%'),
   'person_contract_documents_site_address_words: true · person_contract_documents_site_key_words: true · person_contract_documents_site_one_kind: true');
 
 -- 10. Documents → Agreements reads as before: the view answers, and none of its columns names a site.
