@@ -59,7 +59,7 @@ const AFTER = {
   affidavits: [] as LienAffidavitEntry[],
 }
 
-function mount(desk: { notices: LienDeskEntry[]; affidavits: LienAffidavitEntry[] }, over: { leftOut?: LienLeftOutRow[]; open?: boolean; office?: boolean; isMobile?: boolean; failure?: boolean; noRun?: boolean; print?: LienRunPrintState; printed?: LienRunPrintedState; onReprintNotice?: (paper: LienRunChangedPaper) => void; onLeaveOut?: (line: LienRunLine, reason: string, note: string) => Promise<void>; onPutBack?: (line: LienRunLine) => Promise<void> } = {}) {
+function mount(desk: { notices: LienDeskEntry[]; affidavits: LienAffidavitEntry[] }, over: { leftOut?: LienLeftOutRow[]; open?: boolean; office?: boolean; isMobile?: boolean; failure?: boolean; noRun?: boolean; print?: LienRunPrintState; printed?: LienRunPrintedState; onReprintNotice?: (paper: LienRunChangedPaper) => void; onRecordMailing?: () => void; onRecordFiling?: (line: LienRunLine) => void; countyFor?: (jobIds: ReadonlySet<string>) => ReadonlyArray<{ jobId: string; county: string }>; onLeaveOut?: (line: LienRunLine, reason: string, note: string) => Promise<void>; onPutBack?: (line: LienRunLine) => Promise<void> } = {}) {
   const board = buildLienBoard({ ...desk, retainage: [], todayYmd: TODAY, jobNumber: (id) => `ZZ-${id}`, jobName: (id) => `ZZ ${id}`, gcName: () => 'ZZ Builders', leaderName: 'Sam' })
   const rows = buildLienNextUp({ ...desk, retainage: [], letterTwoByJob: {}, role: 'assistant', todayYmd: TODAY, jobTitle: (id) => `ZZ ${id}`, gcName: () => 'ZZ Builders', leaderName: () => 'Sam' })
   const run = over.noRun || over.failure ? null : buildLienGetItRight({ board, rows, leftOut: over.leftOut ?? [], todayYmd: TODAY, jobTitle: (id) => `ZZ ${id}`, leaderName: () => 'Sam' })
@@ -83,6 +83,9 @@ function mount(desk: { notices: LienDeskEntry[]; affidavits: LienAffidavitEntry[
       print={over.print}
       printed={over.printed}
       onReprintNotice={over.onReprintNotice}
+      onRecordMailing={over.onRecordMailing}
+      onRecordFiling={over.onRecordFiling}
+      countyFor={over.countyFor}
       prints={[{ key: 'notice', label: 'Print and mail 1 notice', left: null, dead: false, onPress: spies.onPrint }, { key: 'affidavit', label: 'Print 1 for notarization', left: '1 held', dead: false, onPress: spies.onPrint }]}
     >
       <div data-the-list>the list</div>
@@ -539,5 +542,41 @@ describe('the strip with what the print knows (v2.8631)', () => {
     mount(READY, { leftOut: [left()], print: printState({ notices: 1, affidavits: 1, held: 0 }), printed: { changed: [], printedSame: new Set(), unread: 0, ...QUIET, reading: true } })
     expect(stepStates()).toEqual(['done', 'now', 'wait'])
     expect(text('[data-lien-run-step="2"]')).toBe('2 · Print1 notice to print · 1 affidavit for the notary')
+  })
+})
+
+describe('step 3: Out the door (punch list #362, step 8)', () => {
+  it('is drawn once something of the run is printed: the printed affidavits to file a clerk at a time, with the door to each filing', () => {
+    const onRecordFiling = vi.fn()
+    mount(READY, { leftOut: [left()], print: printState({ notices: 1, affidavits: 0, held: 0, affidavitsPrinted: 1 }), printed: { changed: [], printedSame: new Set(['filed']), unread: 0, ...QUIET }, onRecordMailing: vi.fn(), onRecordFiling, countyFor: (ids) => [...ids].map((jobId) => ({ jobId, county: 'Marlow' })) })
+    expect(text('[data-lien-run-out-tally]')).toBe('Printed 1 · 1 to file · 1 left out')
+    expect(q('[data-lien-run-out="mail"]')).toBeNull()
+    expect(text('[data-lien-run-out="file"] b')).toBe('File · 1 affidavit · 1 clerk')
+    expect(all('[data-lien-run-out-clerk]').map((el) => el.getAttribute('data-lien-run-out-clerk'))).toEqual(['Marlow'])
+    expect(text('[data-lien-run-out-clerk="Marlow"] > span')).toBe('Marlow County clerk · 1')
+    fireEvent.click(q('[data-lien-run-out-press="file"]')!)
+    expect(onRecordFiling).toHaveBeenCalledTimes(1)
+    expect(onRecordFiling.mock.calls[0]![0].key).toBe('affidavit:filed')
+  })
+
+  it('the printed notices are to mail, with the run window’s own press, and the card is not drawn before anything printed or for a viewer with no print', () => {
+    const onRecordMailing = vi.fn()
+    mount(AFTER, { print: printState({ notices: 0, affidavits: 0, held: 0 }), printed: { changed: [], printedSame: new Set(), unread: 0, ...QUIET }, onRecordMailing, onRecordFiling: vi.fn() })
+    expect(text('[data-lien-run-out-tally]')).toBe('Printed 2 · 2 to mail')
+    expect(text('[data-lien-run-out="mail"] b')).toBe('Mail · 2 notices')
+    expect(q('[data-lien-run-out="file"]')).toBeNull()
+    fireEvent.click(q('[data-lien-run-out-press="mail"]')!)
+    expect(onRecordMailing).toHaveBeenCalledTimes(1)
+    cleanup()
+    mount(BEFORE, { print: printState({ notices: 1, affidavits: 0, held: 4 }), printed: { changed: [], printedSame: new Set(), unread: 0, ...QUIET }, onRecordMailing })
+    expect(q('[data-lien-run-card="out"]')).toBeNull()
+    cleanup()
+    mount(AFTER)
+    expect(q('[data-lien-run-card="out"]')).toBeNull()
+  })
+
+  it('on a phone its presses are 44 px tall', () => {
+    mount(READY, { isMobile: true, leftOut: [left()], print: printState({ notices: 1, affidavits: 0, held: 0, affidavitsPrinted: 1 }), printed: { changed: [], printedSame: new Set(['filed']), unread: 0, ...QUIET }, onRecordMailing: vi.fn(), onRecordFiling: vi.fn(), countyFor: (ids) => [...ids].map((jobId) => ({ jobId, county: 'Marlow' })) })
+    for (const b of all('[data-lien-run-card="out"] button')) expect(b.style.minHeight).toBe('44px')
   })
 })
