@@ -41,7 +41,7 @@ Some addresses are written differently and sit at the same spot on the map. A un
 
 Leave the box. Once the map has placed your address, the form asks **Is this the same place?**
 
-- It says how many jobs and bids are on file at that spot, and under which address.
+- The question says how many jobs and bids are on file at that spot, and under which address.
 - {{button:blue|Same place, use that spelling}} changes the box to the address on file.
 - {{button:gray|Same place, keep mine}} leaves your address and records that the two are one place.
 - {{button:gray|Not the same}} records that they are two places.
@@ -60,6 +60,6 @@ You can still save without answering. The form asks the office only, since the o
 
 A different house number is a different place. So is a different unit or building number. The form never calls those a slip.
 
-It may still ask whether they are the same place, as above. It asks only when the map puts them at one spot.
+The form may still ask whether two such addresses are the same place, as above. The form asks only when the map puts them at one spot.
 
 For two jobs that are already at one address, see [combine duplicate jobs](/help/combine-duplicate-jobs). For one place already on file under two spellings, see [answer addresses that look alike](/help/answer-addresses-that-look-alike).
