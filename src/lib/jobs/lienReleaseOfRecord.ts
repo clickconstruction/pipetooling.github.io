@@ -11,7 +11,10 @@
  *     its save, and says what is open. A reason typed under *Release it anyway* lifts the hold and is saved on the
  *     release: a lien settled for less is a real case, and the app does not judge it. Since punch list #437,
  *     piece 1, a check the bank has not cleared holds the tab the same way (`checkCleared.ts`), and the same
- *     typed reason lifts it. The owner's rule of 2026-11-24: a release waits until the check clears.
+ *     typed reason lifts it. The owner's rule of 2026-11-24: a release waits until the check clears. Since punch
+ *     list #435, piece 4, a leader's, a controller's or a dev's word that the bank confirmed the funds, kept on the
+ *     affidavit row (`lienPayoffFields.ts`), lets the release go before the bank's day, and the release saved then
+ *     carries that word (`releasedOnConfirmedFunds`).
  *   - `releasePaymentDay`: the paper's payment date starts on the day of the last payment, not on today.
  *   - `releaseStampPatch`: the county's stamp. The day the clerk recorded the release is the row's `filed_at`,
  *     which nothing set before, and the release's own instrument number is `fields.releaseInstrument`. The row's
@@ -27,6 +30,7 @@ import { formatYmdMonthDay } from './billedExpectedPay'
 import { BANK_CHECK_WINDOW_DAYS, checkAnswerWords, checkName, paymentCheckAnswer, type BankCheck } from './checkCleared'
 import { isCheckPayment } from './checkClearing'
 import { lastPayment, payWayWords, releaseForAffidavit, releaseOwnInstrument, type LienPayoffAffidavit, type LienPayoffPayment, type LienPayoffRelease } from './lienPayoff'
+import { fundsConfirmedWords, type FundsConfirmed } from './lienPayoffFields'
 
 export const RELEASE_OF_RECORD_WORDS = {
   which: 'Which lien',
@@ -93,7 +97,7 @@ export function releaseNeedsBank(open: number, payments: ReadonlyArray<LienPayof
  * while they are being read and `null` when the read failed. Either holds a release that rests on a recent check,
  * so a slow or a failed read never lets one out early.
  */
-export function releaseMoneyGate(input: { open: number; payments: ReadonlyArray<LienPayoffPayment>; todayYmd: string; anywayReason: string; bank?: ReadonlyArray<BankCheck> | null }): ReleaseMoneyGate {
+export function releaseMoneyGate(input: { open: number; payments: ReadonlyArray<LienPayoffPayment>; todayYmd: string; anywayReason: string; bank?: ReadonlyArray<BankCheck> | null; funds?: FundsConfirmed | null }): ReleaseMoneyGate {
   const open = Math.round((Number(input.open) || 0) * 100) / 100
   const anyway = input.anywayReason.trim().length > 0
   if (open > 0.004) {
@@ -112,6 +116,8 @@ export function releaseMoneyGate(input: { open: number; payments: ReadonlyArray<
   if (!input.bank && releaseNeedsBank(open, input.payments, input.todayYmd)) return held(input.bank === null ? RELEASE_OF_RECORD_WORDS.bankUnread : RELEASE_OF_RECORD_WORDS.asking, '', 'amber')
   const answer = paymentCheckAnswer(paid, input.bank ?? [], input.todayYmd)
   if (answer.cleared) return { hold: false, tone: 'green', say: said, why: null }
+  // The bank confirmed the funds, on a leader's, a controller's or a dev's word (#435, piece 4): the release may go, unless the check came back.
+  if (input.funds && answer.state !== 'came_back' && answer.state !== 'unread') return { hold: false, tone: 'green', say: `${said} ${fundsConfirmedWords(input.funds)}`, why: null }
   const words = checkAnswerWords(answer, checkName(paid.reference_number))
   return held(words.say, `The release waits ${words.wait}.`, words.tone === 'red' ? 'red' : 'amber')
 }
@@ -119,11 +125,17 @@ export function releaseMoneyGate(input: { open: number; payments: ReadonlyArray<
 /**
  * The fields a release saves: the paper's own, the affidavit it releases, and the reason it went out anyway. The
  * reason is `releasedUnpaidReason` when money was still open, and `releasedBeforeClearedReason` when the bills read
- * paid by a check the bank had not cleared.
+ * paid by a check the bank had not cleared. A release let go on a confirmation of the funds carries it as
+ * `releasedOnConfirmedFunds`, so the paper's row says whose word it rested on.
  */
-export function releaseSaveFields(paper: Record<string, unknown>, affidavitId: string, anywayReason: string, why: 'open' | 'check' | null = 'open'): Record<string, unknown> {
+export function releaseSaveFields(paper: Record<string, unknown>, affidavitId: string, anywayReason: string, why: 'open' | 'check' | null = 'open', funds: FundsConfirmed | null = null): Record<string, unknown> {
   const reason = anywayReason.trim()
-  return { ...paper, releasesFilingId: affidavitId, ...(reason && why ? { [why === 'check' ? 'releasedBeforeClearedReason' : 'releasedUnpaidReason']: reason } : {}) }
+  return {
+    ...paper,
+    releasesFilingId: affidavitId,
+    ...(reason && why ? { [why === 'check' ? 'releasedBeforeClearedReason' : 'releasedUnpaidReason']: reason } : {}),
+    ...(funds ? { releasedOnConfirmedFunds: { by: funds.by, name: funds.name, at: funds.at, note: funds.note } } : {}),
+  }
 }
 
 /** Why a recorded day cannot be kept, or null. */

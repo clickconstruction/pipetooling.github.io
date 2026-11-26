@@ -86,6 +86,7 @@ import { lienTradeWords } from '../../lib/jobs/lienTradeWords'
 import { MoneyText } from '../Money'
 import { ChangeableValue, ValueLine, ValueLines, ValueSentence } from '../valuesInPlace/ValuesInPlace'
 import { RELEASE_OF_RECORD_WORDS, pickReleaseTarget, releaseMoneyGate, releaseNeedsBank, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from '../../lib/jobs/lienReleaseOfRecord'
+import { payoffNote } from '../../lib/jobs/lienPayoffFields'
 
 /**
  * The statutory filing tabs of the Lien instruments modal (v2.2645, phase 3):
@@ -291,7 +292,9 @@ export default function LienFilingTabs({
   // A release waits for the bank (#437, piece 1): the bank's check deposits are read only when the bills read paid by a recent check.
   const releaseAsksBank = useMemo(() => releaseNeedsBank(claim.openBalance, job.payments ?? [], todayYmd()), [claim.openBalance, job.payments])
   const bankChecks = useBankChecks(releaseAsksBank, todayYmd(), (job.payments ?? []).map((p) => p.mercury_transaction_id))
-  const releaseGate = useMemo(() => releaseMoneyGate({ open: claim.openBalance, payments: job.payments ?? [], todayYmd: todayYmd(), anywayReason: releaseAnyway ?? '', bank: bankChecks }), [claim.openBalance, job.payments, releaseAnyway, bankChecks])
+  // The bank confirmed the funds, on a leader's, a controller's or a dev's word kept on the lien (#435, piece 4): the release may go before the bank's day.
+  const releaseFunds = useMemo(() => payoffNote(releaseTarget?.affidavit.fields).funds, [releaseTarget])
+  const releaseGate = useMemo(() => releaseMoneyGate({ open: claim.openBalance, payments: job.payments ?? [], todayYmd: todayYmd(), anywayReason: releaseAnyway ?? '', bank: bankChecks, funds: releaseFunds }), [claim.openBalance, job.payments, releaseAnyway, bankChecks, releaseFunds])
   // Under the claim on both tabs: where the figure came from, so nobody prints it blind.
   const claimNoteLines = claimNotes.map((n) => (
     <span key={n.key} data-lien-window-claim-note={n.key} style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: n.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-amber-700)' }}>
@@ -905,7 +908,7 @@ export default function LienFilingTabs({
       {
         kind: 'release_of_record',
         amount: 0,
-        fields: releaseSaveFields(JSON.parse(JSON.stringify(releaseFields)) as Record<string, unknown>, releaseTarget.affidavit.id, releaseAnyway ?? '', releaseGate.why),
+        fields: releaseSaveFields(JSON.parse(JSON.stringify(releaseFields)) as Record<string, unknown>, releaseTarget.affidavit.id, releaseAnyway ?? '', releaseGate.why, releaseFunds),
         county: releaseFields.county,
         // The affidavit's number, as every older release row holds it. The release's own is `fields.releaseInstrument`.
         recording_number: releaseFields.recordingNumber,

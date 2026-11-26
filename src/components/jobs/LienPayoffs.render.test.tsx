@@ -201,3 +201,100 @@ describe('LienPayoffs', () => {
     expect(document.querySelector('[data-lien-payoffs-strip]')).toBeNull()
   })
 })
+
+describe('the payoff card (punch list #435, piece 4)', () => {
+  type Keep = NonNullable<Parameters<typeof LienPayoffs>[0]['keep']>
+  const okKeep: Keep = async (rows) => rows.map((r) => ({ affidavitId: r.affidavitId, ok: true, why: null }))
+  const drawCard = (over: { facts?: Partial<LienPayoffFacts>; role?: 'dev' | 'assistant' | 'controller'; keep?: Keep } = {}) => {
+    const onChanged = vi.fn()
+    const read = vi.fn(() => Promise.resolve(facts(over.facts)))
+    const keep = vi.fn<Keep>(over.keep ?? okKeep)
+    renderWithProviders(<LienPayoffs todayYmd={over.facts?.todayYmd ?? '2026-11-24'} refreshKey={1} onOpenBill={() => {}} onOpenRelease={() => {}} onChanged={onChanged} read={read} keep={keep} role={over.role ?? 'dev'} who={{ id: 'u1', name: 'Alex Rivera' }} initiallyOpen />)
+    return { onChanged, read, keep }
+  }
+  const stopStates = (card: HTMLElement) => [...card.querySelectorAll<HTMLElement>('[data-lien-payoff-stop]')].map((s) => s.dataset.state)
+
+  it('draws five stops on an open place with the line for today and the two days, and none on a released place', async () => {
+    drawCard()
+    const card = await found('[data-lien-payoff-card]')
+    expect(document.querySelectorAll('[data-lien-payoff-card]')).toHaveLength(1)
+    expect(stopStates(card)).toEqual(['now', 'done', 'now', 'later', 'later'])
+    expect([...card.querySelectorAll('[data-lien-payoff-stop-say]')].map((s) => s.textContent)).toEqual(['$5,160.50 is still open on 1 of 2 liens’ bills.', 'Cleared Nov 21.', '1 to make.', 'After the notary.', 'After recording.'])
+    expect(card.querySelector('[data-lien-payoff-line]')!.textContent).toBe('$5,160.50 is still open here. Record it on each bill, or type one check.')
+    expect(card.dataset.tone).toBe('plain')
+    expect(card.querySelector('[data-lien-payoff-clears]')!.textContent).toBe('Nov 21')
+    expect(card.querySelector('[data-lien-payoff-due]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'not yet, the day a release was asked for in writing, press to change' })).toBeTruthy()
+    expect(document.querySelector('[data-lien-payoff-funds-open]')).toBeNull()
+    // The released place behind the fold draws no card.
+    fireEvent.click(await found('[data-lien-payoffs-released-fold]'))
+    await waitFor(() => expect(document.querySelectorAll('[data-lien-payoff-place]').length).toBe(2))
+    expect(document.querySelectorAll('[data-lien-payoff-card]')).toHaveLength(1)
+  })
+
+  it('keeps the day a release was asked for on every lien not yet released, shows the due day, and reads again', async () => {
+    const { keep, read, onChanged } = drawCard()
+    await found('[data-lien-payoff-card]')
+    fireEvent.click(screen.getByRole('button', { name: 'not yet, the day a release was asked for in writing, press to change' }))
+    fireEvent.change(screen.getByLabelText(/the day a release was asked for in writing/), { target: { value: '2026-11-20' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+    await waitFor(() => expect(keep).toHaveBeenCalledTimes(1))
+    expect(keep.mock.calls[0]![0].map((r) => r.affidavitId)).toEqual(['a1', 'a2'])
+    expect(keep.mock.calls[0]![1]).toEqual({ askedYmd: '2026-11-20' })
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2))
+    expect(onChanged).toHaveBeenCalledTimes(1)
+  })
+
+  it('names the lien that did not take the day under the field', async () => {
+    const { keep } = drawCard({ keep: async (rows) => rows.map((r, i) => ({ affidavitId: r.affidavitId, ok: i === 0, why: i === 0 ? null : 'The row is locked.' })) })
+    await found('[data-lien-payoff-card]')
+    fireEvent.click(screen.getByRole('button', { name: 'not yet, the day a release was asked for in writing, press to change' }))
+    fireEvent.change(screen.getByLabelText(/the day a release was asked for in writing/), { target: { value: '2026-11-20' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }))
+    await waitFor(() => expect(keep).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(document.querySelector('[data-lien-payoff-card]')!.textContent).toContain('The row is locked.'))
+  })
+
+  it('offers The bank confirmed the funds to a dev while the check is at the bank, writes it with the note, and tells the desk', async () => {
+    const { keep, read, onChanged } = drawCard({ facts: { bank: [AT_BANK] } })
+    const card = await found('[data-lien-payoff-card]')
+    expect(stopStates(card)).toEqual(['now', 'now', 'later', 'later', 'later'])
+    expect(card.querySelector('[data-lien-payoff-stop="bank"] [data-lien-payoff-stop-say]')!.textContent).toBe('The bank says Dec 2.')
+    expect(card.querySelector('[data-lien-payoff-clears]')!.textContent).toBe('Dec 2')
+    fireEvent.click(screen.getByRole('button', { name: 'The bank confirmed the funds ›' }))
+    const confirm = await found('[data-lien-payoff-funds-confirm]')
+    expect((confirm as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(document.querySelector('[data-lien-payoff-funds-note]')!, { target: { value: 'called the bank, the funds are good' } })
+    expect((confirm as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(confirm)
+    await waitFor(() => expect(keep).toHaveBeenCalledTimes(1))
+    expect(keep.mock.calls[0]![0]).toEqual([{ affidavitId: 'a1', fields: null }])
+    const change = keep.mock.calls[0]![1]
+    expect(change.funds).toMatchObject({ by: 'u1', name: 'Alex Rivera', note: 'called the bank, the funds are good' })
+    expect(typeof change.funds?.at).toBe('string')
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2))
+    expect(onChanged).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(document.querySelector('[data-lien-payoff-funds-box]')).toBeNull())
+  })
+
+  it('shows the funds press to a controller and not to an assistant', async () => {
+    drawCard({ facts: { bank: [AT_BANK] }, role: 'assistant' })
+    await found('[data-lien-payoff-card]')
+    expect(document.querySelector('[data-lien-payoff-funds-open]')).toBeNull()
+    cleanup()
+    drawCard({ facts: { bank: [AT_BANK] }, role: 'controller' })
+    await found('[data-lien-payoff-funds-open]')
+  })
+
+  it('reads a confirmed check as cleared, with whose word, and offers the release', async () => {
+    const funds = { by: 'u1', name: 'Alex Rivera', at: '2026-11-26T15:04:00Z', note: 'the funds are good' }
+    const confirmed = facts({ bank: [AT_BANK] })
+    drawCard({ facts: { ...confirmed, affidavits: confirmed.affidavits.map((a) => (a.id === 'a1' ? { ...a, fields: { fundsConfirmed: funds } } : a)) } })
+    const card = await found('[data-lien-payoff-card]')
+    expect(card.querySelector('[data-lien-payoff-stop="bank"]')!.getAttribute('data-state')).toBe('done')
+    expect(card.querySelector('[data-lien-payoff-stop="bank"] [data-lien-payoff-stop-say]')!.textContent).toBe('Alex Rivera confirmed the funds Nov 26.')
+    expect(document.querySelector('[data-lien-payoff-funds-open]')).toBeNull()
+    expect(rowOf('a1').dataset.step).toBe('release')
+    expect(rowOf('a1').querySelector('[data-lien-payoff-say]')!.textContent).toBe('Paid Nov 24 by check 1184. Alex Rivera confirmed the funds Nov 26. The release is owed.')
+  })
+})

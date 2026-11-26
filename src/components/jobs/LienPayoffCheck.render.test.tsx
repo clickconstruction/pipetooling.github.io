@@ -193,3 +193,42 @@ describe('One check for this place', () => {
     expect(q<HTMLButtonElement>('[data-lien-payoff-check-record]').disabled).toBe(true)
   })
 })
+
+describe('the written request, with the check (punch list #435, piece 4)', () => {
+  it('takes the day a release was asked for, works out the two days, and keeps the day on each liened lien once the payments are recorded', async () => {
+    type Keep = NonNullable<Parameters<typeof LienPayoffs>[0]['keep']>
+    const keep = vi.fn<Keep>(async (rows) => rows.map((r) => ({ affidavitId: r.affidavitId, ok: true, why: null })))
+    const write = vi.fn<Record>(async (lines) => lines.map((l) => ({ invoiceId: l.invoiceId, ok: true, why: null })))
+    renderWithProviders(<LienPayoffs todayYmd="2026-11-24" refreshKey={1} onOpenBill={() => {}} onOpenRelease={() => {}} read={() => Promise.resolve(facts())} record={write} keep={keep} initiallyOpen />)
+    fireEvent.click(await screen.findByRole('button', { name: 'One check for this place ›' }))
+    // With no deposit at the bank, the check clears about seven days after the day received.
+    expect(q('[data-lien-payoff-check-days]').textContent).toContain('Check clears')
+    expect(q('[data-lien-payoff-check-days]').textContent).toContain('Dec 1')
+    expect(q('[data-lien-payoff-check-days]').textContent).not.toContain('Release due')
+    type('[data-lien-payoff-check-asked]', '2026-11-24')
+    expect(q('[data-lien-payoff-check-days]').textContent).toContain('Release due')
+    expect(q('[data-lien-payoff-check-days]').textContent).toContain('Dec 4')
+    type('[data-lien-payoff-check-number]', '1184')
+    fireEvent.click(q('[data-lien-payoff-check-record]'))
+    await waitFor(() => expect(write).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(keep).toHaveBeenCalledTimes(1))
+    expect(keep.mock.calls[0]![0]).toEqual([
+      { affidavitId: 'a1', fields: null },
+      { affidavitId: 'a2', fields: null },
+    ])
+    expect(keep.mock.calls[0]![1]).toEqual({ askedYmd: '2026-11-24' })
+  })
+
+  it('writes no day when none was typed', async () => {
+    type Keep = NonNullable<Parameters<typeof LienPayoffs>[0]['keep']>
+    const keep = vi.fn<Keep>(async (rows) => rows.map((r) => ({ affidavitId: r.affidavitId, ok: true, why: null })))
+    const write = vi.fn<Record>(async (lines) => lines.map((l) => ({ invoiceId: l.invoiceId, ok: true, why: null })))
+    renderWithProviders(<LienPayoffs todayYmd="2026-11-24" refreshKey={1} onOpenBill={() => {}} onOpenRelease={() => {}} read={() => Promise.resolve(facts())} record={write} keep={keep} initiallyOpen />)
+    fireEvent.click(await screen.findByRole('button', { name: 'One check for this place ›' }))
+    type('[data-lien-payoff-check-number]', '1184')
+    fireEvent.click(q('[data-lien-payoff-check-record]'))
+    await waitFor(() => expect(write).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(document.querySelector('[data-lien-payoff-check]')).toBeNull())
+    expect(keep).not.toHaveBeenCalled()
+  })
+})

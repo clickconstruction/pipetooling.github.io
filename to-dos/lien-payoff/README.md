@@ -2,7 +2,7 @@
 name: "A lien payoff: one check in, every lien at the place released"
 number: 435
 group: ready
-status: asked 2026-11-24 by Diane, when a property owner paid off every lien at one place with one check · what exists read in the code, the law read in the published Code, a first draw, a critique as Grace would give it and a second draw, all the same day · the same day she asked where the door was and for the product to do the thinking, and said to build pieces 1 and 2 · the door and each lien's next press in v2.8504 · the release that waits for the money and takes the county's stamp in v2.8508, with no migration · on her *Yes, build 3* the same day, one check recorded over every bill it pays in v2.8510, with no migration either · calls 2 to 4 answered 2026-11-25 (UTC) in the managing session, each the card's pick: one release for each lien, a receipt that names the instruments and nothing signed that waives, and the affidavit's signer signs · call 1 answered later the same day in the managing session: it is settled by #437, and **The bank confirmed the funds** goes to a leader, a controller or a dev · pieces 4 to 7 are not built
+status: asked 2026-11-24 by Diane, when a property owner paid off every lien at one place with one check · what exists read in the code, the law read in the published Code, a first draw, a critique as Grace would give it and a second draw, all the same day · the same day she asked where the door was and for the product to do the thinking, and said to build pieces 1 and 2 · the door and each lien's next press in v2.8504 · the release that waits for the money and takes the county's stamp in v2.8508, with no migration · on her *Yes, build 3* the same day, one check recorded over every bill it pays in v2.8510, with no migration either · calls 2 to 4 answered 2026-11-25 (UTC) in the managing session, each the card's pick: one release for each lien, a receipt that names the instruments and nothing signed that waives, and the affidavit's signer signs · call 1 answered later the same day in the managing session: it is settled by #437, and **The bank confirmed the funds** goes to a leader, a controller or a dev · piece 4, the payoff card with five stops, built as v2.8632, with no migration: on the answer of 2026-11-26 the written request's day and the funds confirmation live in the fields the affidavit row already saves, one per lien · pieces 5 to 7 are not built
 summary: >
   A payoff of the liens at one place runs today through three jobs, one bill and one tab at a time:
   about fifty presses for three liens, the check number typed four times, and nothing that ties a
@@ -11,11 +11,11 @@ summary: >
   against its total, one release for each filed lien the money covers, each held until the check
   clears and shown with the day it is due, printed in the desk's one run, and kept on the desk until
   the county has recorded it and the copies are out.
-next: Piece 4 (M), the payoff card with its five stops, is ready to build: call 1 is settled by #437, answered 2026-11-25. The office still walks a real payoff through Payoffs, check and release, and says what still reads wrong.
-size: L as a train of seven (S · M · M · M · M · S · S); pieces 1 to 3 built; left: pieces 4 to 7 (M · M · S · S)
-blocker: Nothing for piece 4: all four of the owner's calls are answered. Counsel's answers gate piece 7 and the words on the papers.
-opinion: build — the door, the one check and the safe release are built in pieces 1 to 3; the card with five stops waits on the picks
-ver: v2.8504 · v2.8508 · v2.8510
+next: Piece 5 (M), the releases ride the run, is next: print for the notary, mark notarized, record at the county, record the copies. Piece 4 waits for its walk on ZZ test jobs. The office still walks a real payoff through Payoffs, check and release, and says what still reads wrong.
+size: L as a train of seven (S · M · M · M · M · S · S); pieces 1 to 4 built; left: pieces 5 to 7 (M · S · S)
+blocker: Nothing for pieces 5 and 6. Counsel's answers gate piece 7 and the words on the papers, the payer's receipt among them.
+opinion: build — the door, the one check, the safe release and the card with five stops are built in pieces 1 to 4; the releases on the run are next
+ver: v2.8504 · v2.8508 · v2.8510 · v2.8632
 ---
 
 # A lien payoff: one check in, every lien at the place released (#435)
@@ -156,7 +156,7 @@ Amounts draw through `Money`, changeable values through `ChangeableValue`, worke
 | 1 | **The door, and each lien's next press.** The line *Payoffs* with *Someone paid ›*, and the window of every filed lien under its place, each with one sentence and one press. **Built, v2.8504.** | S | `lienPayoff.ts`: the step, the sentence and the press from the bills, the payments and the release on record. 22 tests, 6 render tests. | None | Its tests, and a read-only look at the live desk |
 | 2 | **The release waits for the money and takes the county's stamp.** The tab is on one filed lien, holds its print and save while the bills still owe unless a reason is typed, starts the payment date on the last payment, saves one release a lien, and takes the day recorded and the release's own instrument number in place. **Built, v2.8508.** | M | `lienReleaseOfRecord.ts`: the targets, the money hold, the stamp. 12 tests, 6 render tests. | None after all: the link and the number live in the fields a release already saves | Its tests, and a read-only look at the hold on a live job |
 | 3 | **One check over many bills.** *One check for this place ›* in Payoffs: the check typed once, placed on the liened bills first and oldest first, three totals, one press that records each ready bill and holds a part payment on a Stripe bill. **Built, v2.8510.** | M | `lienPayoffCheck.ts`: the order, the spread to the cent, the plan and the button's words. 14 tests, 7 render tests. | None after all: one `mark_invoice_paid` a bill, and the check's number, day and note are its mark | Its tests, and a read-only look at the pane on the live desk |
-| 4 | **The payoff door and card.** The place's press, the check pane, the card with its five stops, the written request's day and the leader's funds press. The guide ships here. | M | `lienPayoff.ts`: the stops, the next act, the due day, the held reasons. Render smokes for the pane and the card. | One small table for a payoff, with the four fence calls: the place, the check, the day asked, who confirmed funds | Kernel tests, smokes, a walk from check to card on ZZ test jobs |
+| 4 | **The payoff door and card.** The place's press, the check pane, the card with its five stops, the written request's day and the funds press for a leader, a controller or a dev. The guide gains its three sections here. **Built, v2.8632.** | M | `lienPayoffCard.ts`: the stops, the line for today, the due day, who may confirm. `lienPayoffFields.ts`: the two facts on the affidavit row. 28 tests, 9 render tests. | None after all: the day asked and the confirmation live in the `fields` the affidavit row already saves, one per lien (answered 2026-11-26) | Its tests. The walk from check to card on ZZ test jobs is the walkers', from a recipe |
 | 5 | **The releases ride the run.** Print for the notary, mark notarized, record at the county, record the copies, each with its count and what it held. | M | `lienRunChecklist.ts` takes releases. `batchWords` gives the labels. | None | Checklist tests, a full run on ZZ test jobs with one release held |
 | 6 | **A check that comes back knows its releases.** The case reads the check mark, holds what has not left and marks what has. | S | `payoffReturned.ts`: none printed, printed, recorded. Tests for each. | None | Kernel tests, a played-back returned check on a ZZ test job |
 | 7 | **No final waiver wider than the money.** The unconditional prompt waits where other bills stay open at the place. Built on counsel's word. | S | `pickLienWaiverForBill` gains the place's open bills. Tests beside it. | None | Kernel tests |
@@ -165,6 +165,27 @@ Pieces 1 to 3 are built and carry the door.
 Since v2.8525 (piece 1 of [#437](../held-check/README.md)) Payoffs, the release tab and the check pane wait for the bank to clear a check, where pieces 1 to 3 only warned.
 The guide shipped with them: `release-a-filed-lien-after-it-is-paid`.
 Each piece has its release note and fragment.
+
+### Piece 4 as built (v2.8632)
+
+Each open place in Payoffs carries the card: five stops, one line for today, the day a release was asked for in writing changed where it sits, the due day ten days on and the clearing day worked out, and **The bank confirmed the funds ›** for a leader, a controller or a dev.
+A confirmed lien offers **Make the release ›** before the bank's day, the release tab lets the release go, and the release saved carries whose word it rested on.
+The check pane takes the asked day with the check.
+
+**Where the two facts live.** The plan above was one small table for a payoff.
+Asked on 2026-11-26, the answer was the other pick, A: the day asked and the funds confirmation live in the `fields` the affidavit row already saves (`job_lien_filings`, kind `affidavit`), one per lien, with no migration.
+Why: a written request and a release are per lien in the Code, the check is already named by the payment rows' number, day and note, and pieces 2 and 3 each planned a column or a function and shipped with none.
+So piece 4 was one client PR with no push owed.
+A later piece may lift the two facts into columns.
+The three roles are checked on the client, the same gate the tab's *Release it anyway…* has today.
+
+Left from piece 4, each named in its fragment:
+
+- The fifth stop, *Copies sent*, has no fact to read until piece 5 records the copies. The third stop counts releases saved, since nothing records the notary until piece 5 either.
+- The payer's receipt of screen 3 is not built. It is a paper, and counsel's answers gate the words on the papers.
+- A confirmation of the funds cannot be taken back from the card.
+- The place's press keeps the name it was built with, *One check for this place ›*, where screen 1 reads *They paid: take the payoff ›*.
+- Piece 4 has not been walked: no asked day or confirmation was saved on a ZZ test lien.
 
 Left from pieces 1 to 3, each small:
 
@@ -185,6 +206,8 @@ Left from pieces 1 to 3, each small:
 
 Calls 2 to 4 were answered on 2026-11-25 (UTC) in the managing session.
 Each answer above is quoted from that session's record of the user's answers.
+
+5. Where does piece 4 keep the written request's day and the bank's funds confirmation? A: in the fields the affidavit row already saves, one per lien, no migration, so piece 4 is one client PR. B: the small table this card planned. Pick: A. **Answered 2026-11-26 (UTC) in the managing session**, quoted from that session's record of the user's answers: asked whether the picks of that round stand, this one among them, the answer was "All picks stand". So piece 4 is built as A, in v2.8632. What it leaves open: a later piece may lift the two facts into columns.
 
 **For Grace**
 

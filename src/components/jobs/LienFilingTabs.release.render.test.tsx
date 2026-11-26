@@ -193,6 +193,24 @@ describe('Release of record: a check holds the release until the bank clears it'
     expect(fields.releasedUnpaidReason).toBeUndefined()
   })
 
+  it('lets the release go before the bank’s day on a confirmation of the funds kept on the lien, and saves whose word it rested on (#435, piece 4)', async () => {
+    on('2026-11-27T18:00:00Z')
+    bank.checks = [AT_BANK]
+    const funds = { by: 'u1', name: 'Alex Rivera', at: '2026-11-26T15:04:00Z', note: 'called the bank, the funds are good' }
+    draw({ job: byCheck(), filings: [lien({ fields: { fundsConfirmed: funds } }) as never] })
+    expect(money().dataset.lienReleaseMoney).toBe('green')
+    expect(money().getAttribute('role')).toBeNull()
+    expect(money().textContent).toContain('Paid Nov 24 by check 1184. Alex Rivera confirmed the funds Nov 26.')
+    expect(document.querySelector('[data-lien-release-anyway]')).toBeNull()
+    expect(actions().every((b) => !b.disabled)).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Save release record' }))
+    await waitFor(() => expect(writes.inserts).toHaveLength(1))
+    const fields = writes.inserts[0]!.fields as Record<string, unknown>
+    expect(fields.releasesFilingId).toBe('a1')
+    expect(fields.releasedOnConfirmedFunds).toEqual(funds)
+    expect(fields.releasedBeforeClearedReason).toBeUndefined()
+  })
+
   it('is open the day the bank clears the check', () => {
     on('2026-12-02T18:00:00Z')
     bank.checks = [{ ...AT_BANK, status: 'sent', postedYmd: '2026-11-25' }]

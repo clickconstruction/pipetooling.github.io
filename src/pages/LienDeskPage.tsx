@@ -340,6 +340,8 @@ export default function LienDeskPage() {
         todayYmd={todayYmd}
         refreshKey={data}
         isMobile={isMobile}
+        role={role}
+        who={user?.id ? { id: user.id, name: profileName ?? '' } : null}
         stripHome={isMobile ? payoffsHome : undefined}
         initiallyOpen={searchParams.get('payoffs') === '1'}
         onOpenBill={(jobId) => openEditJob(jobId, 'bill')}

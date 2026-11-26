@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDesk.tsx
 mapped_at: bc5f56a52b
 audience: Developers, AI Agents
-last_updated: 2026-11-25
+last_updated: 2026-11-26
 ---
 
 > **Line numbers are as of `bc5f56a52b`** (the `mapped_at` commit), where the file is 3,019 lines.
@@ -711,6 +711,12 @@ last_updated: 2026-11-25
 > A reason typed there is saved as `fields.releasedBeforeClearedReason`.
 > `lienPlaceCheck` gives a place the bank's deposit for exactly what its liens' open bills come to (`LienPayoffPlace.bank`), and `payoffCheckBank` makes the check pane's press dead for a check the bank has not cleared.
 > No migration and no new write.
+> **v2.8632 (the payoff card, #435 piece 4):** `PayoffsWindow` hands each open place's `PlaceCard` a `PayoffCardBlock`, drawn over the liens' rows: five stops, the line for today, and a `ValueLines` of the asked day (`ChangeableValue`), the due day and the clearing day (`WorkedOutValue`).
+> Its rule is [`lienPayoffCard.ts`](../src/lib/jobs/lienPayoffCard.ts) (13 tests): `lienPayoffCard` reads a place's rows, `releaseDue` adds the ten days of § 53.152(a), and `canConfirmFunds` names the three roles of **The bank confirmed the funds ›**.
+> The two facts live on each lien's affidavit row, `fields.releaseAskedYmd` and `fields.fundsConfirmed` ([`lienPayoffFields.ts`](../src/lib/jobs/lienPayoffFields.ts), 7 tests), written by [`lienPayoffCardIo.ts`](../src/lib/jobs/lienPayoffCardIo.ts), one update a lien, the run going on past a row that fails.
+> `lienPayoffStep` takes `funds` and moves a confirmed lien from `bank` to `release`, every step carries `paid`, `check` and `recordedYmd` for the card, and `releaseMoneyGate` passes on the same confirmation once the bank has answered.
+> `LienPayoffs` takes `role`, `who` and `keep` from the page, and `LienPayoffCheck` takes the asked day with the check and keeps it on the liened liens after the payments.
+> No migration: the pick answered on 2026-11-26 over the card's small table, and the fifth stop, *Copies sent*, has no fact to read until piece 5.
 
 > **v2.6777 · v2.6780 (the desk is a page, punch list #182):** `/lien-desk` ([`pages/LienDeskPage.tsx`](../src/pages/LienDeskPage.tsx), the address in [`lib/lien/lienDeskRoute.ts`](../src/lib/lien/lienDeskRoute.ts): `?tab=deadlines|notices|affidavits|retainage|timeline`, `&job=`, `&pile=`, the one-shot `&records=`).
 > `LienDeskModal` takes `frame: 'page' | 'window'` — on the page no overlay, no ✕, no `useModalFullScreen` key, the page's `backDoor` before the title, `data-lien-desk-panel="page"`, a named region, and `onAddressChange` told every change of `kind`, the Notices selection and `pile` once `data` is in (the job a door named counts before the selection catches up);

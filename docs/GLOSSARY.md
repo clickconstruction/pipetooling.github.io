@@ -6863,6 +6863,11 @@ Since **v2.8525** (punch list #437, piece 1) a release waits for the bank: a che
 A lien whose bills read paid by a check that has not cleared stands on a fourth step, **bank**, with *Waits for the bank* in the press's place, and the Release of record tab holds its print and save the same way until a reason is typed under *Release it anyway…*.
 The check pane does not record a check the bank holds and has not cleared, and a place says when **a check for exactly what pays its liens off** is at the bank and when it is ready to record.
 A check the bank shows no deposit of waits seven days from the day typed, as before.
+Since **v2.8632** (punch list #435, piece 4) each open place carries the **payoff card**: five **stops**, *Money recorded*, *Check clears*, *Releases*, *Recorded at the county* and *Copies sent*, each done, now, later or in red, over one line that says what to do today (`lienPayoffCard.ts`).
+**Asked for a release in writing** is the day of a payer's written request, kept on each lien's affidavit row (`fields.releaseAskedYmd`) and changed where it sits, and **Release due** is ten days after it.
+**The bank confirmed the funds** is a leader's, a controller's or a dev's word, with a note, that a check not yet cleared is good (`fields.fundsConfirmed`, `lienPayoffFields.ts`).
+A lien with that word owes its release before the bank's day, and the release saved then carries it (`fields.releasedOnConfirmedFunds`).
+*Copies sent* has no fact on record until piece 5.
 
 ### Property card (Lien desk)
 Every job at one property record on one window (**v2.7488**): the address, the owner of record, two lines that count the property, each kind of paper apart (*4 notices sent Oct 14 · 2 on Sep 22 · 1 to print and mail*, then *6 lien affidavits ready to file*) and a row per job with where its notice and its affidavit stand.
