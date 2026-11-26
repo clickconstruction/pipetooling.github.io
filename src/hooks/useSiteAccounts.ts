@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage } from '../utils/errorHandling'
 import type { SiteKey, SitePerson, SiteRead } from '../lib/people/siteAccounts'
@@ -22,12 +22,12 @@ export function useSiteAccounts(enabled: boolean): SiteAccountsState {
   const [reads, setReads] = useState<Record<SiteKey, SiteRead>>(LOADING)
   const [people, setPeople] = useState<SiteAccountsState['people']>(null)
   const [tick, setTick] = useState(0)
-  const run = useRef(0)
 
   useEffect(() => {
     if (!enabled) return
-    const mine = ++run.current
-    const live = () => run.current === mine
+    // A read that lands after the lens closed, or after Read again, is dropped.
+    let alive = true
+    const live = () => alive
     setReads(LOADING)
     setPeople(null)
     for (const site of ['count', 'takeoff'] as const) {
@@ -46,7 +46,7 @@ export function useSiteAccounts(enabled: boolean): SiteAccountsState {
         if (live()) setPeople({ ok: false, reason: formatErrorMessage(e, 'The people here could not be read.') })
       })
     return () => {
-      run.current++
+      alive = false
     }
   }, [enabled, tick])
 
