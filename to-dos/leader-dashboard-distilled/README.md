@@ -2,7 +2,7 @@
 name: "The leader's Dashboard, distilled"
 number: 365
 group: close
-status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way · the short page walked there the same day on the dev's own account, where it holds but for two lines that are wrong for about three seconds on a fresh open · all three faults mended · a fourth sitting the same day saw the two counts move ten seconds after they drew, which is not mended and is larger than a small fix, and a small Remind press on the office's Team's open tasks, mended in v2.8600, not yet seen · v2.8581's two desk mends held in the simulator on 2026-11-25 and the desk link held in the browser pane at 1280 px the same evening · 2026-11-26: the larger mend of the two counts that move is briefed, client only, M, and a client-only builder has it after its list · the Waiting on look stays unmade by the person's word of the same day
+status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way · the short page walked there the same day on the dev's own account, where it holds but for two lines that are wrong for about three seconds on a fresh open · all three faults mended · a fourth sitting the same day saw the two counts move ten seconds after they drew, which is not mended and is larger than a small fix, and a small Remind press on the office's Team's open tasks, mended in v2.8600, not yet seen · v2.8581's two desk mends held in the simulator on 2026-11-25 and the desk link held in the browser pane at 1280 px the same evening · 2026-11-26: the larger mend of the two counts that move is briefed, built as v2.8616 the same day as the brief's fallback way, the client's in-flight count, merged and not yet seen on a screen · the Waiting on look stays unmade by the person's word of the same day
 summary: >
   One leader has been given too much on his Dashboard. He will not look at any of it, uses the app only on
   his phone, and hands even small updates to his assistants. The assessment counted 44 cards, strips and
@@ -15,7 +15,7 @@ summary: >
 next: Set the leader to Short on his People desk, then walk his page with him on his phone. Nothing else is owed until the owner asks for the text or the four tabs.
 size: M as a train of four (M · S · M · S); built: PRs 1 and 2 and the first half of 4; set aside by the owner's answers: PR 3 (M) and the four tabs (S)
 blocker: None in the code. Setting the leader to Short is the owner's or the office's press.
-ver: v2.7568, v2.8581, v2.8600
+ver: v2.7568, v2.8581, v2.8600, v2.8616
 opinion: build — the first PR changes nobody's page until the office presses Short, so the risk is in what the short page hides, and that is the owner's call to make with the leader beside him
 ---
 
@@ -227,8 +227,21 @@ thirty-three by the house rule that a value is null while loading. So the mend i
 `useNeedsYouInputs` that is true while any enabled source is still reading, a kernel for the two count lines that
 waits on it with an eight-second cap, the view drawing the office's line and the door's count once, together, and a
 `loading` boolean on the twenty or so hooks that say nothing. The list under *Waiting on you* keeps its own rule, the
-two lien reads alone. Client only, M, nothing owed after the merge. A client-only builder has it after its list. Not
-built as of this line. A superintendent on Short should see no change: for him few sources are on.
+two lien reads alone. Client only, nothing owed after the merge. A superintendent on Short should see no change: for
+him few sources are on.
+
+**Built as v2.8616, merged 2026-11-26, as the brief's fallback way and not its pick.** The builder surveyed the 67 hooks
+first and found 34 that say nothing about their read (their first value is the same as an empty one), not the twenty the
+brief guessed, so a flag on each is L, not M. It built the brief's way B instead: a fifth wrapper on the Supabase client's
+`fetch` counts every request in flight; `useSupabaseQuiet` reads true once nothing has been in flight for 300 ms; a pure
+kernel, `shortDashboardCountsRead`, says the two counts are ready when the list's read is in and nothing is being read,
+or once 8,000 ms have passed, and ready stays ready for the visit; the view draws the office's line and the door's count
+only then, together, once. Every request holds them, the schedule's and Training's with the card's, so on a slow phone
+they may take a few seconds and the cap holds that to eight. The kernels take any *still reading* signal, so the brief's
+way A, a word from each source, can replace the count later with no change to the view. Tests on the wrapper, the hook,
+the kernel and the view; the guide *see only what waits on me on the dashboard* says the counts wait. Not yet seen on a
+screen: the walk is a fresh load as an account on Short, watched for fifteen seconds, with the two numbers drawing once
+and never moving.
 
 **Remind on the office's *Team's open tasks* stood about 27 points tall on a phone. Mended in v2.8600.** It stands 44 on a phone now and gives the difference back to its row, so the row is as tall as it was. At a desk it is as it was. Not yet seen in the simulator.
 
