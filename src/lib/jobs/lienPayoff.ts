@@ -35,6 +35,9 @@
  * county's, and a recorded one reads *Released, money came back*. Both carry `moneyBack`, which keeps their place
  * in the open list. Once the payment is off the job the bank's answer is gone from here, and Accounts Receivable's
  * case is what remembers.
+ *
+ * Since piece 5 a step with a release carries the notary's day, the copies' day and whether the copies are still owed
+ * (`lienReleaseFacts.ts`), for the place's card and the run's releases (`lienReleaseRun.ts`).
  */
 import { calendarYmdInAppTzFromIso, ymdAddDays } from '../../utils/dateUtils'
 import { moneyWords } from '../moneyParts'
@@ -44,6 +47,7 @@ import { bankCheckAnswer, checkAnswerWords, checkName, paymentCheckAnswer, type 
 import { isCheckPayment } from './checkClearing'
 import { lienDeskJobNumber } from './lienJobLabel'
 import { fundsConfirmedWords, payoffNote, type FundsConfirmed } from './lienPayoffFields'
+import { releaseFacts, releaseRunStage } from './lienReleaseFacts'
 import { releaseOnReturnedCheck } from './payoffReturned'
 import { attributeJobPayments } from './paymentAttribution'
 
@@ -126,6 +130,14 @@ export type LienPayoffStep = {
   recordedYmd: string | null
   /** A release of this lien is saved or recorded, and the bank says the money it rests on came back (piece 6). */
   moneyBack?: boolean
+  /** The day the release was notarized, on a lien with a release that carries one (piece 5, `lienReleaseFacts.ts`). */
+  notarizedYmd?: string
+  /** The day the release's stamped copies were sent, when they have been. */
+  copiesYmd?: string
+  /** The county recorded the release in the last thirty days and no copies are on record: the place stays open until they are out. */
+  copiesOwed?: boolean
+  /** The release row's `fields` as read, so a write can keep every other field. */
+  releaseFields?: unknown
 }
 
 /** The three steps as the window's legend reads them. */
@@ -248,7 +260,10 @@ export function lienPayoffStep(input: LienPayoffStepInput): LienPayoffStep {
   const lastPaid = lastPayment(payments)
   const paid = lastPaid ? { ymd: (lastPaid.paid_on ?? '').slice(0, 10), way: payWayWords(lastPaid) } : null
   const check = lastPaid ? paymentCheckAnswer(lastPaid, input.bank ?? [], todayYmd) : null
-  const facts = { paid, check, recordedYmd: null as string | null }
+  // What the release keeps of its way out the door (piece 5): the notary's day, the copies, and whether they are still owed.
+  const out = release ? releaseFacts(release.fields) : null
+  const way = release && out ? { ...(out.notarizedYmd ? { notarizedYmd: out.notarizedYmd } : {}), ...(out.copies ? { copiesYmd: out.copies.ymd } : {}), ...(releaseRunStage(release, todayYmd) === 'copies' ? { copiesOwed: true } : {}), releaseFields: release.fields ?? null } : {}
+  const facts = { paid, check, recordedYmd: null as string | null, ...way }
   // A release never rests on a check the bank sent back (piece 6): what the bank said, and the bills' door.
   const cameBack = release && lastPaid && releaseOnReturnedCheck(check) ? checkAnswerWords(check!, checkName(lastPaid.reference_number)).say : null
   const toBills = { label: LIEN_PAYOFF_WORDS.cameBack, door: 'bill' as const }
