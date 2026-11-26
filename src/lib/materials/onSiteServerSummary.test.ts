@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { containerLines, countDiffs, type Container, type Movement } from './onSite'
+import { ADD_COUNT_NOTE, containerLines, countDiffs, lastCountedAt, type Container, type Movement } from './onSite'
 import { jobMaterialsSummary } from './onSiteSummary'
 import { jobMaterialsSummaryFromServer, serverCountDiffs, serverLastCountedAt, serverLines, type ServerSummary } from './onSiteServerSummary'
 
@@ -67,6 +67,41 @@ describe('onSiteServerSummary · the database’s sums in the kernel’s shapes 
     const none = () => null
     expect(jobMaterialsSummaryFromServer(containers, server, NOW, none)).toMatchObject({ missingLines: 2, missingUnpricedLines: 2, missingMoneyWeek: 0 })
     expect(jobMaterialsSummary(containers, rows, NOW, none)).toMatchObject({ missingLines: 2, missingUnpricedLines: 2, missingMoneyWeek: 0 })
+    expect(fromServer.stale.map((c) => c.id)).toEqual(['b1'])
+  })
+
+  it('an added part’s own count is left out of the box’s last count on both sides, and an empty box is due nowhere (punch list #398)', () => {
+    // B1 takes an add today: the delivery and the line's count with its note (addPartRows). The SQL's last_counts leave
+    // that count out, as lastCountedAt does; the line keeps it. C1 is a box that was counted long ago and is empty now.
+    const added: Movement[] = [
+      ...rows,
+      mv({ id: 'r9', reason: 'delivered', quantity: 6, at: '2026-11-08T10:00:00.000Z', toContainerId: 'b1', partName: 'Hangers', manufacturer: null, note: 'added on site', byName: 'Dana' }),
+      mv({ id: 'r10', reason: 'counted', quantity: 6, at: '2026-11-08T10:00:00.001Z', fromContainerId: 'b1', partName: 'Hangers', manufacturer: null, note: ADD_COUNT_NOTE, byName: 'Dana' }),
+      mv({ id: 'r11', reason: 'delivered', quantity: 2, at: '2026-10-01T10:00:00Z', toContainerId: 'c1', partName: 'Wax ring', manufacturer: null }),
+      mv({ id: 'r12', reason: 'counted', quantity: 2, at: '2026-10-02T10:00:00Z', fromContainerId: 'c1', partName: 'Wax ring', manufacturer: null }),
+      mv({ id: 'r13', reason: 'used', quantity: 2, at: '2026-10-03T10:00:00Z', fromContainerId: 'c1', partName: 'Wax ring', manufacturer: null }),
+    ]
+    const addedServer: ServerSummary = {
+      ...server,
+      rows: 13,
+      lines: [
+        ...server.lines,
+        { container_id: 'b1', part_key: 'text:hangers', part_id: null, part_name: 'Hangers', manufacturer: null, on_hand: 6, cannot_find_since_count: 0, last_touched_at: '2026-11-08T10:00:00.001Z', last_touched_by: 'Dana', last_count_at: '2026-11-08T10:00:00.001Z', last_count_by: 'Dana', last_count_diff: 0 },
+        { container_id: 'c1', part_key: 'text:wax ring', part_id: null, part_name: 'Wax ring', manufacturer: null, on_hand: 0, cannot_find_since_count: 0, last_touched_at: '2026-10-03T10:00:00Z', last_touched_by: 'Mateo', last_count_at: '2026-10-02T10:00:00Z', last_count_by: 'Mateo', last_count_diff: 0 },
+      ],
+      // last_counts: B1's add is left out, so B1 has none; C1's old count stands.
+      last_counts: [...server.last_counts, { container_id: 'c1', at: '2026-10-02T10:00:00Z', by_name: 'Mateo' }],
+      diffs: [...server.diffs, { movement_id: 'r10', at: '2026-11-08T10:00:00.001Z', by_name: 'Dana', container_id: 'b1', part_key: 'text:hangers', part_id: null, part_name: 'Hangers', manufacturer: null, expected: 6, counted: 6 }],
+    }
+    expect(serverLastCountedAt(addedServer, 'b1')).toEqual(lastCountedAt(added, 'b1'))
+    expect(serverLastCountedAt(addedServer, 'b1')).toBeNull()
+    expect(serverLastCountedAt(addedServer, 'c1')).toEqual(lastCountedAt(added, 'c1'))
+    const containers = [box('a2'), box('b1'), box('c1'), box('unsorted', 'unsorted')]
+    const priceOf = () => null
+    const fromRows = jobMaterialsSummary(containers, added, NOW, priceOf)
+    const fromServer = jobMaterialsSummaryFromServer(containers, addedServer, NOW, priceOf)
+    // B1 is still due: the add counted its line and not the box. C1 is empty, so it is due nowhere, old count or not.
+    expect(fromRows.stale.map((c) => c.id)).toEqual(['b1'])
     expect(fromServer.stale.map((c) => c.id)).toEqual(['b1'])
   })
 })

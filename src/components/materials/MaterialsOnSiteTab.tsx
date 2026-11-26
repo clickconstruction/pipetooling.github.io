@@ -27,8 +27,8 @@ import { boxScreenFromMaterials } from '../../lib/materials/boxRow'
 import { buildDeskPhone, type DeskPhoneFilter } from '../../lib/materials/deskPhone'
 import { staleWords } from '../../lib/materials/onSiteSummary'
 import { isMaterialsOfficeRole } from '../../lib/materials/materialsTabs'
-import { countIsDue, lastCountedAt, lastCountWords } from '../../lib/materials/onSite'
-import { findOnSite, findOnSiteWords, type OnSiteFindJob } from '../../lib/materials/onSiteFind'
+import { boxCountDue, containerLines, lastCountedAt, lastCountWords, linesOf, type ContainerLine } from '../../lib/materials/onSite'
+import { findOnSite, findOnSiteWords, type OnSiteFindHit, type OnSiteFindJob } from '../../lib/materials/onSiteFind'
 import { listMovements } from '../../lib/materials/onSiteStore'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { supabase } from '../../lib/supabase'
@@ -59,10 +59,11 @@ const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
 const door: CSSProperties = { display: 'inline-flex', alignItems: 'center', minHeight: 30, padding: '0 0.6rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }
 const amber: CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 0.45rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, borderWidth: 1, borderStyle: 'solid', whiteSpace: 'nowrap', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderColor: 'var(--text-amber-800)' }
 
-/** How many of a job's live boxes are due a count. */
+/** How many of a job's live boxes are due a count (`boxCountDue`, #398: a line to count, and no count inside 14 days). */
 function dueBoxes(job: OnSiteFindJob, now: Date): number {
   const movements = listMovements(job.jobId)
-  return job.containers.filter((c) => !c.retiredAt && c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now)).length
+  const lines = containerLines(movements)
+  return job.containers.filter((c) => !c.retiredAt && boxCountDue({ kind: c.kind, last: lastCountedAt(movements, c.id), lines: linesOf(lines, c.id) }, now)).length
 }
 
 export default function MaterialsOnSiteTab({ active, role, userId, userName, onLabels, phone = false, printSheet }: Props) {
@@ -105,6 +106,14 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
 
   const now = new Date()
   const found = findOnSite(desk.jobs, query)
+  // A hit's box is due a count by the one rule (#398), its job's lines summed once a render.
+  const jobLines = new Map<string, ContainerLine[]>()
+  const hitCount = (h: OnSiteFindHit): { words: string; due: boolean } => {
+    let lines = jobLines.get(h.jobId)
+    if (!lines) { lines = containerLines(listMovements(h.jobId)); jobLines.set(h.jobId, lines) }
+    const last = lastCountedAt(listMovements(h.jobId), h.container.id)
+    return { words: lastCountWords(last, now), due: boxCountDue({ kind: h.container.kind, last, lines: linesOf(lines, h.container.id) }, now) }
+  }
   const searching = query.trim() !== ''
   const siteGroups = fieldSites ? groupDeskBySite(withBoxes.map((j) => j.jobId), sites.siteOfJob, sites.siteNames).filter((g) => g.kind === 'site') : []
   const fieldSite = fieldSites && siteId ? siteGroups.find((g) => g.kind === 'site' && g.siteId === siteId) : undefined
@@ -148,10 +157,7 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
             : <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'parts on site', query: query.trim() }), { onPress: () => setQuery('') })} />
         ) : (
           <OnSiteFindPhoneList
-            rows={found.hits.map((h) => {
-              const last = lastCountedAt(listMovements(h.jobId), h.container.id)
-              return { ...findPhoneRow(h, { words: lastCountWords(last, now), due: countIsDue(last, now) }), href: office ? boxScreenFromMaterials(h.jobId, h.container.id) : boxOnSiteLink(h.jobId, h.container.id) }
-            })}
+            rows={found.hits.map((h) => ({ ...findPhoneRow(h, hitCount(h)), href: office ? boxScreenFromMaterials(h.jobId, h.container.id) : boxOnSiteLink(h.jobId, h.container.id) }))}
           />
         )
       ) : showSearch && searching ? (
@@ -162,15 +168,14 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
               {found.hits.length === 0 ? (
                 <tr><td style={td} colSpan={6}>{desk.loading && !desk.loaded ? <span style={muted}>Loading the boxes…</span> : <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'parts on site', query: query.trim() }), { onPress: () => setQuery('') })} />}</td></tr>
               ) : found.hits.map((h) => {
-                const last = lastCountedAt(listMovements(h.jobId), h.container.id)
-                const due = h.container.kind !== 'unsorted' && countIsDue(last, now)
+                const { words: lastWords, due } = hitCount(h)
                 return (
                   <tr key={`${h.container.id}:${h.line?.partKey ?? ''}`}>
                     <td style={td}>{h.line ? <>{h.line.partName}{h.line.manufacturer ? <span style={muted}> · {h.line.manufacturer}</span> : null}</> : <span style={muted}>the box itself</span>}</td>
                     <td style={td}><strong>{h.container.label}</strong> <span style={muted}>{h.container.kind === 'unsorted' ? 'delivered' : boxKindWords(h.container.kind).toLowerCase()}{h.place ? ` · ${h.place}` : ''}{h.container.where ? ` · ${h.container.where}` : ''}</span></td>
                     <td style={td}>{h.jobLabel}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{h.line ? h.line.onHand : ''}</td>
-                    <td style={td}>{h.container.kind === 'unsorted' ? '' : due ? <span style={amber}>{lastCountWords(last, now)}</span> : <span style={muted}>{lastCountWords(last, now)}</span>}</td>
+                    <td style={td}>{h.container.kind === 'unsorted' ? '' : due ? <span style={amber}>{lastWords}</span> : <span style={muted}>{lastWords}</span>}</td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       {office
                         ? <Link to={onSiteJobHref(role, h.jobId)} style={door}>Open the job</Link>
@@ -217,7 +222,8 @@ export default function MaterialsOnSiteTab({ active, role, userId, userName, onL
               jobs: withBoxes.map((j) => {
                 const live = j.containers.filter((c) => !c.retiredAt)
                 const movements = listMovements(j.jobId)
-                const stale = live.filter((c) => c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now))
+                const lines = containerLines(movements)
+                const stale = live.filter((c) => boxCountDue({ kind: c.kind, last: lastCountedAt(movements, c.id), lines: linesOf(lines, c.id) }, now))
                 return { id: j.jobId, number: j.number ?? '', name: j.name ?? (j.number ? '' : j.label), boxes: live.length, places: 0, due: stale.length, dueWords: staleWords(stale), missingLines: 0, missingUnpricedLines: 0, missingMoney: 0, credits: 0, failed: null }
               }),
               groups: groupDeskBySite(withBoxes.map((j) => j.jobId), fieldSites ? sites.siteOfJob : new Map(), fieldSites ? sites.siteNames : new Map()),

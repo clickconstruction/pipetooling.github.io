@@ -76,7 +76,7 @@ import BoxTakes from '../materials/BoxTakes'
 import { FlowRow } from '../materials/FlowRow'
 import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { countWalkAt, countWalkCantFindWords, countWalkKeys } from '../../lib/materials/countWalk'
-import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
+import { boxCountDue, containerLines, containerWords, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
 import { addPressLabel, boxNameVerdict, nextFreeName, siteBoxesFor, type SiteBox } from '../../lib/materials/boxName'
 import { BOX_LINE_FIELD_LABEL, BOX_LINE_LATER_NOTE, BOX_LINE_MAX, addedLineVerdict, boxLineFromParts, boxLineOf, boxLinePressLabel, boxLineSavedWords, boxLineVerdict, lineFieldValue, nameWordsNote, sayItBetterSub, sayItBetterTitle, type BoxLine } from '../../lib/materials/boxLine'
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
@@ -331,7 +331,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const jobCenter = addr ? (jobCoords.get(normalizeAddressForGeocodeKey(addr)) ?? null) : null
   // The job's painted maps (#345), under the boxes on the site map: read only while that map is open.
   const painted = usePaintedMapsLayer(jobId ? { jobId } : null, sheet?.kind === 'map' || sheet?.kind === 'where')
-  const mapPins: OnSiteMapPin[] = containers.filter((c) => c.lat != null && c.lng != null && !c.retiredAt).map((c) => ({ id: c.id, label: c.label, lat: c.lat as number, lng: c.lng as number, tone: countIsDue(lastCountedAt(movements, c.id), new Date()) && c.kind !== 'unsorted' ? 'amber' : 'ok' }))
+  // A pin is amber when its box is due a count (#398): a line to count, and no count inside 14 days. An empty box is never amber.
+  const mapPins: OnSiteMapPin[] = containers.filter((c) => c.lat != null && c.lng != null && !c.retiredAt).map((c) => ({ id: c.id, label: c.label, lat: c.lat as number, lng: c.lng as number, tone: boxCountDue({ kind: c.kind, last: lastCountedAt(movements, c.id), lines: linesOf(lines, c.id) }, new Date()) ? 'amber' : 'ok' }))
   const pinnedCount = mapPins.length
   const boxCount = containers.filter((c) => c.kind !== 'unsorted' && !c.retiredAt).length
   // The map sheets: where the map should jump (Use my location), what the ring sits on while placing, and a word when the phone cannot say where it is.
@@ -828,7 +829,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   }
   const ls = linesOf(lines, container.id)
   const last = lastCountedAt(movements, container.id)
-  const due = container.kind !== 'unsorted' && countIsDue(last, now)
+  const due = boxCountDue({ kind: container.kind, last, lines: ls }, now)
   const photos = listPhotos(jobId).filter((p) => p.containerId === container.id)
   const after = lastAct && lastAct.containerId === container.id && actIsFresh(lastAct.at, Date.now()) ? lastAct.what : null
   const header = (

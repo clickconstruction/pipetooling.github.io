@@ -5,7 +5,7 @@
  * whether the device or the database did the arithmetic. Pure: the server's answer in, the kernel's
  * lines, differences and summary out; the price lookup is handed in.
  */
-import { countIsDue, missingMoney, type Container, type ContainerLine, type CountDiff } from './onSite'
+import { boxCountDue, missingMoney, type Container, type ContainerLine, type CountDiff } from './onSite'
 import type { JobMaterialsSummary } from './onSiteSummary'
 
 export type ServerLine = {
@@ -110,6 +110,7 @@ export function jobMaterialsSummaryFromServer(containers: ReadonlyArray<Containe
     if (m.at < weekAgo) continue
     add(-m.quantity, m.part_key)
   }
-  const stale = live.filter((c) => c.kind !== 'unsorted' && countIsDue(serverLastCountedAt(s, c.id), now))
+  // Due a count (#398), as jobMaterialsSummary reads it: the server's last_counts already leave an added part's own count out.
+  const stale = live.filter((c) => boxCountDue({ kind: c.kind, last: serverLastCountedAt(s, c.id), lines: s.lines.filter((l) => l.container_id === c.id).map((l) => ({ onHand: l.on_hand, cannotFindSinceCount: l.cannot_find_since_count })) }, now))
   return { containers: live.length, onSiteLines: onSite.length, missingLines, missingUnpricedLines, missingMoneyWeek, stale, credits: s.credits }
 }

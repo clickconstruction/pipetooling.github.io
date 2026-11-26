@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { flowFigure, flowTileWord, officeFlow, phoneFlow, startOfDayIso } from './flowRow'
-import type { Container, Movement } from './onSite'
+import { ADD_COUNT_NOTE, type Container, type Movement } from './onSite'
 
 const NOW = new Date('2026-10-28T20:00:00Z')
 
@@ -69,12 +69,34 @@ describe('phoneFlow', () => {
     expect(f.dueBoxIds).toEqual(['b1'])
   })
 
-  it('has no Unsorted to open on a job that never took a delivery', () => {
+  it('has no Unsorted to open on a job that never took a delivery, and an empty box is due no count (punch list #398)', () => {
     const f = phoneFlow([box('a1')], [], NOW)
     expect(f.unsortedId).toBeNull()
     expect(f.unsorted).toBe(0)
-    // a box with no count yet is due one
-    expect(f.dueBoxIds).toEqual(['a1'])
+    // A box with nothing in it offers no count on its screen, so the Count chip leaves it out.
+    expect(f.dueBoxIds).toEqual([])
+    expect(f.due).toBe(0)
+    // Give it a part with no count yet: due.
+    const stocked = phoneFlow([box('a1')], [mv({ reason: 'delivered', quantity: 4, at: '2026-10-26T09:00:00Z', toContainerId: 'a1' })], NOW)
+    expect(stocked.dueBoxIds).toEqual(['a1'])
+  })
+
+  it('an added part counts its own line and leaves the box due (punch list #398)', () => {
+    // B1 was never counted. Add a part to it today: the add writes the line's count with its note.
+    const added: Movement[] = [
+      ...movements,
+      mv({ reason: 'delivered', quantity: 12, at: '2026-10-28T19:00:00.000Z', toContainerId: 'b1', partName: 'Hangers', note: 'added on site' }),
+      mv({ reason: 'counted', quantity: 12, at: '2026-10-28T19:00:00.001Z', fromContainerId: 'b1', partName: 'Hangers', note: ADD_COUNT_NOTE }),
+    ]
+    expect(phoneFlow(containers, added, NOW).dueBoxIds).toEqual(['b1'])
+    expect(officeFlow(containers, added, NOW, priceOf).due).toBe(1)
+    // A count of the box, by hand, clears it. The Can't find on B1 is still a hand needed, so count that line too.
+    const counted: Movement[] = [
+      ...added,
+      mv({ reason: 'counted', quantity: 9, at: '2026-10-28T19:30:00Z', fromContainerId: 'b1', partName: '1/2" ball valve' }),
+      mv({ reason: 'counted', quantity: 12, at: '2026-10-28T19:31:00Z', fromContainerId: 'b1', partName: 'Hangers' }),
+    ]
+    expect(phoneFlow(containers, counted, NOW).dueBoxIds).toEqual([])
   })
 })
 

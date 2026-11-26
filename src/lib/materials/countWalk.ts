@@ -6,7 +6,7 @@
  * place, and the walk stepped over the next one: it was never shown and never counted, and the box still read
  * *counted*.
  */
-import type { ContainerLine } from './onSite'
+import { lineIsCountable, type ContainerLine } from './onSite'
 
 /**
  * The lines a walk visits, in the box's own order: every line with parts on hand when the walk starts, and every
@@ -15,7 +15,7 @@ import type { ContainerLine } from './onSite'
  * whose only line was such a one had no Count this box at all.
  */
 export function countWalkKeys(lines: ReadonlyArray<Pick<ContainerLine, 'partKey' | 'onHand' | 'cannotFindSinceCount'>>): string[] {
-  return lines.filter((l) => l.onHand > 0 || l.cannotFindSinceCount > 0).map((l) => l.partKey)
+  return lines.filter(lineIsCountable).map((l) => l.partKey)
 }
 
 /** What the walk says on a line that carries a Can't find: how many, and that the count is what clears it. Empty when it carries none. */

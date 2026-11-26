@@ -16,7 +16,9 @@
 # box's pin: who set it, when and how sure, stamped by job_containers_stamp_pin. A third, 40_place_way.sql, plays a place's
 # way: the one column a direct caller may change on a place, and which map it may be. A fourth, 50_box_changes_and_watch.sql, plays who
 # changed a box, an answer taken off, and a watch only devs read with its quiet log of boxes opened. A fifth, 60_press_answers.sql, plays an answer to a press: taken back
-# and closed to every sum, or marked and kept, each withdrawn with a reason and never deleted. The move and the combine through the same tables are held by scripts/pgtest-on-site-move.sh
+# and closed to every sum, or marked and kept, each withdrawn with a reason and never deleted. A sixth, 70_box_due.sql (punch list #398), plays what
+# makes a box due a count in on_site_door_facts and on_site_job_summary: an added part's own count is the line's and not the box's, an empty box is
+# due nowhere, a Can't find with none left is still a line to count. The move and the combine through the same tables are held by scripts/pgtest-on-site-move.sh
 # and scripts/pgtest-combine-rows.sh, which run over these triggers too. PGTEST_KEEP=1 leaves the container up. Needs
 # docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches
 # prod.
@@ -34,6 +36,7 @@ PRESSES=(
   supabase/migrations/*_on_site_box_changes.sql
   supabase/migrations/*_person_watches.sql
   supabase/migrations/*_on_site_press_answers.sql
+  supabase/migrations/*_box_due_a_count.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }

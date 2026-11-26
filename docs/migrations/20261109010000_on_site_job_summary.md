@@ -1,6 +1,6 @@
 # 20261109010000 — on_site_job_summary (v2.6743)
 
-Materials on site (punch list #209): the summary RPC for a job past the client's 5,000-row read. No table is created, so no fence is owed.
+Materials on site (punch list #209): the summary RPC for a job past the client's 5,000-row read. No table is created, so no fence is owed. Replaced by [`20261126014752_box_due_a_count`](./20261126014752_box_due_a_count.md) (v2.8612, punch list #398), whose `last_counts` leave out an added part's own count.
 
 **`on_site_job_summary(p_job_id uuid, p_since timestamptz DEFAULT now() − 30 days)` → jsonb**, `LANGUAGE sql`, `STABLE`, **`SECURITY INVOKER`**: the ledger's own RLS (`on_site_can_touch_job`) decides what the caller sums, so a job the caller may not touch answers empty, as the screens' read does. `authenticated` may execute it; `anon` may not.
 

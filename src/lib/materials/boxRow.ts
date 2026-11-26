@@ -5,6 +5,8 @@
  *
  * Pure: what the row's last line says and whether it is amber. A box with no part that nobody has counted reads
  * *Empty* in the muted colour. It read an amber *0 parts · never counted* before, which asked for a count of nothing.
+ * Since #398 no empty box is amber: a box with nothing on hand and no Can't find has no line to count, so its count
+ * is due nowhere, however old.
  */
 import { countIsDue, lastCountWords, type lastCountedAt } from './onSite'
 
@@ -21,12 +23,13 @@ export type BoxRowState = {
   empty: boolean
 }
 
-export function boxRowState(input: { kind: string; parts: number; /** The box's line is the app's own, which already says how many. */ lineIsApps: boolean; last: ReturnType<typeof lastCountedAt>; now: Date }): BoxRowState {
+export function boxRowState(input: { kind: string; parts: number; /** The box's line is the app's own, which already says how many. */ lineIsApps: boolean; last: ReturnType<typeof lastCountedAt>; now: Date; /** Pieces pressed Can't find since the last count: a line to count even with none on hand. */ cannot?: number }): BoxRowState {
   const { kind, parts, last, now } = input
   const partsWords = input.lineIsApps ? null : `${parts} ${parts === 1 ? 'part' : 'parts'}`
   if (kind === 'unsorted') return { partsWords, stateWords: 'put them in a cage', amber: false, empty: false }
   if (parts === 0 && !last) return { partsWords: null, stateWords: BOX_ROW_EMPTY, amber: false, empty: true }
-  return { partsWords, stateWords: lastCountWords(last, now), amber: countIsDue(last, now), empty: parts === 0 }
+  const hasLineToCount = parts > 0 || (input.cannot ?? 0) > 0
+  return { partsWords, stateWords: lastCountWords(last, now), amber: hasLineToCount && countIsDue(last, now), empty: parts === 0 }
 }
 
 /** Where a row of the office's desk leads on a phone: the Tally's box screen, which goes back to the desk. */

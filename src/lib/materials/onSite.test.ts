@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { containerLines, countDiffs, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, missingMoney, nextLabel, partKey, placeName, pressLabel, searchContainers, searchLines, type Movement } from './onSite'
+import { ADD_COUNT_NOTE, boxCountDue, containerLines, countDiffs, countIsDue, groupByPlace, lastCountWords, lastCountedAt, lastCountedByBox, leftWords, lineIsCountable, linesOf, missingMoney, nextLabel, partKey, placeName, pressLabel, searchContainers, searchLines, type Movement } from './onSite'
 
 function mv(over: Partial<Movement> & Pick<Movement, 'reason' | 'quantity' | 'at'>): Movement {
   return { id: over.id ?? `${over.at}-${over.reason}`, jobId: 'j1', partId: null, partName: '3/4" copper 90', manufacturer: 'Nibco', fromContainerId: null, toContainerId: null, note: '', byUserId: null, byName: 'Mateo', source: null, itemId: null, ...over }
@@ -84,6 +84,48 @@ describe('countDiffs and the stale rule', () => {
     expect(lastCountWords(null, now)).toBe('never counted')
     expect(lastCountWords({ at: '2026-10-28T18:48:00Z', byName: 'Jordan' }, now)).toBe('counted 14 days ago')
     expect(lastCountWords({ at: '2026-11-12T08:00:00Z', byName: 'Jordan' }, now)).toBe('counted today by Jordan')
+  })
+
+  it('an added part’s own count is the line’s and never the box’s (punch list #398)', () => {
+    const now = new Date('2026-11-12T12:00:00Z')
+    // Add a part writes the delivery and, a millisecond later, the line's count with its note (addPartRows).
+    const added = [
+      ...rows,
+      mv({ reason: 'delivered', quantity: 40, at: '2026-11-12T09:00:00.000Z', toContainerId: 'a2', partName: 'Hangers', note: 'added on site', byName: 'Dana' }),
+      mv({ reason: 'counted', quantity: 40, at: '2026-11-12T09:00:00.001Z', fromContainerId: 'a2', partName: 'Hangers', note: ADD_COUNT_NOTE, byName: 'Dana' }),
+    ]
+    // The box's last count is still Jordan's, fifteen days ago, so the box stays due.
+    expect(lastCountedAt(added, 'a2')).toEqual({ at: '2026-10-28T18:48:00Z', byName: 'Jordan' })
+    expect(lastCountedByBox(added)).toEqual(new Map([['a2', '2026-10-28T18:48:00Z'], ['b1', '2026-10-26T18:48:00Z']]))
+    // The line itself was counted by the add: its own last count reads the add.
+    const hangers = containerLines(added).find((l) => l.containerId === 'a2' && l.partName === 'Hangers')!
+    expect(hangers).toMatchObject({ onHand: 40, lastCountAt: '2026-11-12T09:00:00.001Z', lastCountBy: 'Dana', lastCountDiff: 0 })
+    // A box whose only count is an add's is never counted.
+    expect(lastCountedAt(added.filter((m) => m.partName === 'Hangers'), 'a2')).toBeNull()
+    expect(countIsDue(lastCountedAt(added, 'a2'), now)).toBe(true)
+  })
+
+  it('a box is due a count only when it holds a line to count (punch list #398)', () => {
+    const now = new Date('2026-11-12T12:00:00Z')
+    const old = { at: '2026-10-20T12:00:00Z' }
+    const onHand = [{ onHand: 3, cannotFindSinceCount: 0 }]
+    const cannot = [{ onHand: 0, cannotFindSinceCount: 2 }]
+    const none = [{ onHand: 0, cannotFindSinceCount: 0 }]
+    expect(lineIsCountable(onHand[0]!)).toBe(true)
+    expect(lineIsCountable(cannot[0]!)).toBe(true)
+    expect(lineIsCountable(none[0]!)).toBe(false)
+    // Parts on hand and no count, or an old one: due.
+    expect(boxCountDue({ kind: 'box', last: null, lines: onHand }, now)).toBe(true)
+    expect(boxCountDue({ kind: 'box', last: old, lines: onHand }, now)).toBe(true)
+    // A fresh count: not due.
+    expect(boxCountDue({ kind: 'box', last: { at: '2026-11-10T12:00:00Z' }, lines: onHand }, now)).toBe(false)
+    // A Can't find with none left is still a line to count.
+    expect(boxCountDue({ kind: 'cage', last: old, lines: cannot }, now)).toBe(true)
+    // An empty box offers no count, so it is due one nowhere, never counted or counted long ago.
+    expect(boxCountDue({ kind: 'box', last: null, lines: [] }, now)).toBe(false)
+    expect(boxCountDue({ kind: 'box', last: old, lines: none }, now)).toBe(false)
+    // Unsorted is never due.
+    expect(boxCountDue({ kind: 'unsorted', last: null, lines: onHand }, now)).toBe(false)
   })
 })
 

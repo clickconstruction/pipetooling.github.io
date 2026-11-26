@@ -3,7 +3,7 @@
  * Needs you line read about one job, from its containers and movements. Not pure: the money reads
  * the store's `priceOf` (the parts book's price, the invoice's past 90 days — `bookPrice.ts`).
  */
-import { containerLines, countDiffs, countIsDue, lastCountedAt, missingMoney, partKey, type Container, type Movement } from './onSite'
+import { boxCountDue, containerLines, countDiffs, lastCountedAt, linesOf, missingMoney, partKey, type Container, type Movement } from './onSite'
 import { listContainers, listMovements, priceOf as storePriceOf, priceOfJob, serverSummary } from './onSiteStore'
 import { jobMaterialsSummaryFromServer } from './onSiteServerSummary'
 
@@ -36,7 +36,8 @@ export function jobMaterialsSummary(containers: Container[], movements: Movement
   }
   for (const d of diffs) add(d.diff, d.partKey)
   for (const m of cannot) add(-m.quantity, partKey(m.partId, m.partName))
-  const stale = live.filter((c) => c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now))
+  // Due a count (#398): a box with a line to count and no count inside 14 days, an added part's own count left out.
+  const stale = live.filter((c) => boxCountDue({ kind: c.kind, last: lastCountedAt(movements, c.id), lines: linesOf(lines, c.id) }, now))
   const credits = movements.filter((m) => m.reason === 'returned').length
   return { containers: live.length, onSiteLines: onSite.length, missingLines, missingUnpricedLines, missingMoneyWeek, stale, credits }
 }
