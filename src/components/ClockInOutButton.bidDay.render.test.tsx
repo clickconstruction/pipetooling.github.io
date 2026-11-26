@@ -7,7 +7,7 @@
  * shows no list at all.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 
 const h = vi.hoisted(() => ({ role: 'estimator', day: null as unknown }))
@@ -114,6 +114,27 @@ describe('ClockInOutButton, the bids of the day', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Add B431 · ZZ Test Orchard School' }))
     expect(screen.queryByText('Opened, nothing changed')).toBeNull()
     expect(press().textContent).toBe('Complete clock out · 2 bids')
+  })
+
+  it('with a bid on the list the box may stay empty and says so only while it is empty; opened on the plan, it names the plan (punch list #445)', async () => {
+    await openSheet()
+    await screen.findByText('Bids you worked on today')
+    expect(screen.getByText('You can leave this empty.')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText(/Anything else\?/), { target: { value: 'A site walk' } })
+    expect(screen.queryByText('You can leave this empty.')).toBeNull()
+    cleanup()
+
+    session.notes = 'Price the ZZ Test clinic'
+    try {
+      await openSheet()
+      await screen.findByText('Bids you worked on today')
+      expect((screen.getByLabelText(/Anything else\?/) as HTMLTextAreaElement).value).toBe('Price the ZZ Test clinic')
+      expect(screen.getByText('From your plan at clock in. Change it or leave it.')).toBeTruthy()
+      expect(screen.queryByText('You can leave this empty.')).toBeNull()
+      expect(press().textContent).toBe('Complete clock out · 1 bid')
+    } finally {
+      session.notes = ''
+    }
   })
 
   it('says so on a day the app saw nothing, and asks an estimator for the note', async () => {

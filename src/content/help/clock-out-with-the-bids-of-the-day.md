@@ -50,6 +50,8 @@ With one bid on the list, {{button:red|Complete clock out}} is ready at once. Th
 
 **Anything else?** is for work the app cannot see, such as a call or a site walk. You can leave it empty.
 
+The box may open on the plan you typed at clock in. A line under the box says **From your plan at clock in. Change it or leave it.** Words left in the box are kept under the bids in the note the office reads.
+
 :::example A day the app saw nothing
 The sheet says **The app saw no bid today.** Add the bids you worked on, or type what you did under **What did you work on?** Then clock out.
 :::

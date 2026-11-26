@@ -32,7 +32,7 @@ import {
 } from '../utils/errorHandling'
 import { denverCalendarDayKey, startOfYmdInAppTzMs, todayYmdInAppTz } from '../utils/dateUtils'
 import { CLOCK_OUT_NOTE_FILLED_LINE, CLOCK_OUT_REVIEW_TITLE, clockOutDayReports, clockOutNoteFromReports, type ClockOutReportInput } from '../lib/clock/clockOutNote'
-import { CLOCK_IN_PLAN_EMPTY_LINE, CLOCK_OUT_NOTE_EMPTY_LINE, clockNoteEmpty } from '../lib/clock/clockPlanWords'
+import { CLOCK_IN_PLAN_EMPTY_LINE, CLOCK_OUT_NOTE_EMPTY_LINE, CLOCK_OUT_NOTE_FROM_PLAN_LINE, clockNoteEmpty, clockOutPlanLineShows } from '../lib/clock/clockPlanWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 import { clockOutJob, clockOutPickOf } from '../lib/clock/clockOutJob'
 import { bidDayPressLabel } from '../lib/clock/bidDay'
@@ -277,6 +277,8 @@ export default function ClockInOutButton({
   const clockOutReviewNotesRef = useRef('')
   clockOutReviewNotesRef.current = clockOutReviewNotes
   const [clockOutNoteFilled, setClockOutNoteFilled] = useState(false)
+  /** What the review's box opened on, the session's own note: while the box still holds it, a line says where it came from (punch list #445). */
+  const [clockOutNoteOpenedOn, setClockOutNoteOpenedOn] = useState('')
   const [clockOutReviewFailure, setClockOutReviewFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [clockOutSaving, setClockOutSaving] = useState(false)
   const clockOutNotesRef = useRef<HTMLTextAreaElement>(null)
@@ -1176,6 +1178,7 @@ export default function ClockInOutButton({
     setAssociationChipFromSearch(false)
     setClockOutReviewNotes(openSession.notes?.trim() ?? '')
     clockOutNoteSeedRef.current = openSession.notes?.trim() ?? ''
+    setClockOutNoteOpenedOn(openSession.notes?.trim() ?? '')
     setClockOutNoteFilled(false)
     setClockOutReviewFailure(null)
     setUnifiedSearchText('')
@@ -2540,7 +2543,13 @@ export default function ClockInOutButton({
                 style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: 'var(--surface)' }}
               />
               {clockOutNoteFilled ? <span style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{CLOCK_OUT_NOTE_FILLED_LINE}</span> : null}
-              {clockOutListAnswers && !clockOutNoteFilled ? <span style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>You can leave this empty.</span> : null}
+              {/* The box opens on the plan typed at clock in, so clock out is one press (punch list #189). It says so while the plan stands untouched (punch list #445). */}
+              {clockOutPlanLineShows({ seed: clockOutNoteOpenedOn, text: clockOutReviewNotes, filledFromReports: clockOutNoteFilled }) ? (
+                <span data-clock-out-note-from-plan style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  {CLOCK_OUT_NOTE_FROM_PLAN_LINE}
+                </span>
+              ) : null}
+              {clockOutListAnswers && !clockOutNoteFilled && clockNoteEmpty(clockOutReviewNotes) ? <span style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>You can leave this empty.</span> : null}
               {/* With the bid day's list answered (v2.8610) the box may stay empty; otherwise the press under it is dead until it has words (v2.8624). */}
               {!clockOutListAnswers && clockNoteEmpty(clockOutReviewNotes) ? (
                 <span data-clock-out-note-empty style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
