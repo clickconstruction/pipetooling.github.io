@@ -75,14 +75,15 @@ ON CONFLICT (address_normalized) DO UPDATE SET error_code = EXCLUDED.error_code,
 SELECT bedm.ok('the upsert keeps one row', (SELECT count(*) = 1 FROM public.address_geocode_misses));
 SELECT bedm.ok('the upsert carries the new words', (SELECT detail = 'asked again' FROM public.address_geocode_misses));
 SELECT bedm.ok('an update cannot backdate the day either', (SELECT checked_at > now() - interval '1 hour' FROM public.address_geocode_misses));
--- Nobody deletes a miss by hand: the role holds no DELETE on the table.
+-- Nobody but a dev deletes a miss by hand. Since 20261126024719 (punch list #443, row 16) the table grants DELETE to
+-- authenticated for the dev's own policy, so a helper's delete is not refused outright: it reaches no row.
 DO $$
+DECLARE n integer;
 BEGIN
-  BEGIN
-    DELETE FROM public.address_geocode_misses;
-    RAISE EXCEPTION 'FAILED: a signed-in user deleted a miss by hand';
-  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: a signed-in user cannot delete a miss by hand';
-  END;
+  DELETE FROM public.address_geocode_misses;
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN RAISE EXCEPTION 'FAILED: a signed-in user deleted % miss(es) by hand', n; END IF;
+  RAISE NOTICE 'ok: a signed-in user''s delete reaches no miss';
 END $$;
 RESET ROLE;
 
