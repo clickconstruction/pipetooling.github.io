@@ -11,6 +11,8 @@ import type { PaintedMapLinkRow, PaintedMapVisitRow } from '../../lib/paintedMap
 import { PAINTED_MAP_SHARE_WORDS_MAX, paintedMapShareWordCount } from '../../lib/paintedMap/paintedMapShare'
 
 vi.mock('../../hooks/useModalStackEntry', () => ({ useModalStackEntry: () => () => true }))
+const auth = vi.hoisted(() => ({ role: null as string | null }))
+vi.mock('../../hooks/useAuth', async (orig) => ({ ...(await orig<typeof import('../../hooks/useAuth')>()), useOptionalAuth: () => (auth.role ? { role: auth.role, user: { id: 'u-dev' } } : null) }))
 vi.mock('qrcode.react', () => ({ QRCodeSVG: (props: { value: string }) => <svg data-testid="qr" data-value={props.value} /> }))
 
 const io = vi.hoisted(() => ({
@@ -52,6 +54,12 @@ vi.mock('../../lib/paintedMap/paintedMapLinkIo', () => ({
     io.remembered = link
   },
   rememberedPaintedMapLink: () => io.remembered,
+  reopenPaintedMapLink: async (mapId: string, linkId: string) => {
+    io.calls.push(`reopen:${mapId}:${linkId}`)
+    if (io.refuse) throw new Error(io.refuse)
+    io.links = io.links.map((l) => (l.id === linkId ? { ...l, ended_at: null } : l))
+    return { endsOn: '2027-02-17' }
+  },
 }))
 
 import { PaintedMapShareSheet } from './PaintedMapShareSheet'
@@ -466,3 +474,51 @@ describe('PaintedMapShareSheet, a link that is out', () => {
     expect(document.querySelector('[data-painted-share-visits]')).toBeNull()
   })
 })
+
+describe('reopening an ended link (punch list #443, row 14)', () => {
+  const ENDED: PaintedMapLinkRow = { id: 'link-9', made_at: '2026-11-20T16:00:00Z', expires_at: '2999-01-01T00:00:00Z', ended_at: '2026-11-25T18:00:00Z', open_count: 2 }
+  afterEach(() => {
+    auth.role = null
+  })
+
+  it('a dev reads the ended link under its fold and reopens it after a confirm that names the map and the act', async () => {
+    auth.role = 'dev'
+    io.links = [ENDED]
+    render(<PaintedMapShareSheet mapId="m1" mapName="ZZ Test way in" origin="https://example.test" onClose={() => {}} phone={false} />)
+    const fold = await screen.findByText('Ended links · 1')
+    fireEvent.click(fold)
+    const press = screen.getByTestId('painted-link-reopen')
+    expect(press.getAttribute('aria-disabled')).toBe('false')
+    expect(screen.getByText('Ended Nov 25. Would end on Dec 31.')).toBeTruthy()
+    fireEvent.click(press)
+    const yes = await screen.findByRole('button', { name: 'Reopen the link' })
+    expect(screen.getByText('Reopen this ended link of ZZ Test way in?')).toBeTruthy()
+    expect(io.calls.filter((c) => c.startsWith('reopen:'))).toEqual([])
+    fireEvent.click(yes)
+    await waitFor(() => expect(io.calls.filter((c) => c.startsWith('reopen:'))).toEqual(['reopen:m1:link-9']))
+    expect(await screen.findByText('The link is open again until Feb 17. Anyone who holds it can open the map.')).toBeTruthy()
+    await waitFor(() => expect(screen.queryByText('Ended links · 1')).toBeNull())
+  })
+
+  it('on a real map the press is dead with its reason, and a refused reopen says why', async () => {
+    auth.role = 'dev'
+    io.links = [ENDED]
+    render(<PaintedMapShareSheet mapId="m1" mapName="The way in for deliveries" origin="https://example.test" onClose={() => {}} phone={false} />)
+    fireEvent.click(await screen.findByText('Ended links · 1'))
+    const press = screen.getByTestId('painted-link-reopen')
+    expect(press.getAttribute('aria-disabled')).toBe('true')
+    expect(screen.getByTestId('painted-link-reopen-why').textContent).toBe('Only a link of a test map can be reopened. The map’s name must start with ZZ.')
+    fireEvent.click(press)
+    expect(screen.queryByRole('button', { name: 'Reopen the link' })).toBeNull()
+  })
+
+  it('nobody but a dev reads the fold', async () => {
+    auth.role = 'helpers'
+    io.links = [ENDED]
+    render(<PaintedMapShareSheet mapId="m1" mapName="ZZ Test way in" origin="https://example.test" onClose={() => {}} phone={false} />)
+    await screen.findByRole('dialog', { name: 'Share this map' })
+    expect(screen.queryByText(/Ended links/)).toBeNull()
+    expect(screen.queryByTestId('painted-link-reopen')).toBeNull()
+  })
+})
+

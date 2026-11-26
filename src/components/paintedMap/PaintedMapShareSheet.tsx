@@ -47,6 +47,9 @@ import { PaintedMapCopiesFold, PaintedMapPictureView, usePaintedMapCopies, type 
 import { PaintedMapShareIcon, type PaintedMapShareIconName } from './PaintedMapShareIcon'
 import { PAINTED_MAP_SHEET_Z } from '../../lib/windowLayers'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { useOptionalAuth } from '../../hooks/useAuth'
+import { PAINTED_MAP_LINKS_ENDED_HEAD, PAINTED_MAP_LINK_REOPEN_PRESS, paintedMapLinkEndedWords, paintedMapLinkReopenConfirm, paintedMapLinkReopenDrawn, paintedMapLinkReopenProblem, paintedMapLinkReopenedWords, paintedMapLinksToReopen } from '../../lib/paintedMap/paintedMapLinkReopen'
+import { reopenPaintedMapLink } from '../../lib/paintedMap/paintedMapLinkIo'
 
 type Props = {
   mapId: string
@@ -165,6 +168,26 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
 
   const nowIso = new Date().toISOString()
   const open = (links ?? []).filter((l) => paintedMapLinkOpen(l, nowIso))
+  // Reopening an ended link (punch list #443, row 14): a dev's take-back of End this link now, on a test map alone.
+  const viewerRole = useOptionalAuth()?.role ?? null
+  const reopenDrawn = paintedMapLinkReopenDrawn(viewerRole)
+  const endedToReopen = reopenDrawn ? paintedMapLinksToReopen(links ?? [], nowIso) : []
+  const [reopening, setReopening] = useState<PaintedMapLinkRow | null>(null)
+  const reopen = async (link: PaintedMapLinkRow) => {
+    setReopening(null)
+    if (busy) return
+    setBusy(true)
+    clearSaid()
+    try {
+      const back = await reopenPaintedMapLink(mapId, link.id)
+      setSaid(paintedMapLinkReopenedWords(back.endsOn))
+      await readLinks()
+    } catch (e) {
+      setError(formatErrorMessage(e, 'The link was not reopened.'))
+    } finally {
+      setBusy(false)
+    }
+  }
   // The link this device remembers is used only while a link of the map is still open: ended from elsewhere, it is forgotten.
   const live = mine && (links === null || open.length > 0) ? mine : null
   const url = live ? paintedMapLinkUrl(origin, live.code) : null
@@ -562,6 +585,33 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
                 ) : null}
 
                 {linkBlock}
+                {reopenDrawn && endedToReopen.length > 0 ? (
+                  <details data-painted-share-ended style={{ fontSize: '0.875rem', color: 'var(--text-700)', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 700, color: 'var(--text-700)', minHeight: 44, display: 'flex', alignItems: 'center' }}>{PAINTED_MAP_LINKS_ENDED_HEAD} · {endedToReopen.length}</summary>
+                    <div style={{ display: 'grid', gap: '0.35rem', marginTop: '0.35rem' }}>
+                      {endedToReopen.map((l) => {
+                        const problem = paintedMapLinkReopenProblem(l, mapName, nowIso)
+                        return (
+                          <div key={l.id} data-painted-share-ended-link style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span>{paintedMapLinkEndedWords(l)}</span>
+                            <button
+                              type="button"
+                              data-testid="painted-link-reopen"
+                              aria-label={`${PAINTED_MAP_LINK_REOPEN_PRESS} the link ended ${paintedMapLinkEndedWords(l)}`}
+                              title={problem || 'Reopen this ended link. Only a developer sees this press.'}
+                              aria-disabled={!!problem || busy}
+                              onClick={() => { if (!problem && !busy) setReopening(l) }}
+                              style={{ background: 'none', border: 'none', padding: 0, minHeight: 44, fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', color: problem ? 'var(--text-faint)' : 'var(--text-link)', cursor: problem || busy ? 'default' : 'pointer' }}
+                            >
+                              {PAINTED_MAP_LINK_REOPEN_PRESS}
+                            </button>
+                            {problem ? <span style={{ color: 'var(--text-faint)' }} data-testid="painted-link-reopen-why">{problem}</span> : null}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </details>
+                ) : null}
 
                 <div data-painted-share-see style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.2rem' }}>
                   <span style={{ flex: 1, minWidth: 0 }}>{W.short}</span>
@@ -582,6 +632,17 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
           </div>
         </div>
       </div>
+      {reopening ? (
+        <ConfirmDialog
+          zIndex={PAINTED_MAP_SHEET_Z + 60}
+          title={paintedMapLinkReopenConfirm(reopening, mapName).title}
+          body={paintedMapLinkReopenConfirm(reopening, mapName).message}
+          confirmLabel={paintedMapLinkReopenConfirm(reopening, mapName).confirmLabel}
+          cancelLabel="Keep it ended"
+          onConfirm={() => void reopen(reopening)}
+          onCancel={() => setReopening(null)}
+        />
+      ) : null}
       {ending ? (
         <ConfirmDialog
           zIndex={PAINTED_MAP_SHEET_Z + 60}

@@ -28,6 +28,7 @@ export {
   paintedMapLinkCode,
   paintedMapLinkExpiry,
   paintedMapLinkOpen,
+  paintedMapLinkReopenable,
   sharedMapIsEmpty,
   sharedPaintedMap,
 } from '../../../supabase/functions/_shared/paintedMapLink'

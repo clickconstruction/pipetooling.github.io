@@ -184,6 +184,17 @@ export async function endPaintedMapLinks(mapId: string, linkId?: string | null):
   throw new Error(words(res.body, `The link was not ended. The function answered ${res.status}.`))
 }
 
+/**
+ * Reopen one ended link (punch list #443, row 14): a dev's take-back of End this link now, on a test map alone. The
+ * function holds every rule itself and refuses in its own words; the sheet runs the same rule first
+ * (`paintedMapLinkReopen.ts`). Answers the day the link ends on.
+ */
+export async function reopenPaintedMapLink(mapId: string, linkId: string): Promise<{ endsOn: string | null }> {
+  const res = await desk({ action: 'desk.reopen', mapId, linkId })
+  if (res.status === 200 && res.body.ok === true) return { endsOn: typeof res.body.endsOn === 'string' ? res.body.endsOn : null }
+  throw new Error(words(res.body, `The link was not reopened. The function answered ${res.status}.`))
+}
+
 /** The most visits the sheet lists. Past it the latest are shown. */
 export const PAINTED_MAP_VISITS_MAX = 50
 

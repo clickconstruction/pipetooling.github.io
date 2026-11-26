@@ -13,6 +13,7 @@ import {
   paintedMapLinkCode,
   paintedMapLinkExpiry,
   paintedMapLinkOpen,
+  paintedMapLinkReopenable,
   paintedMapVisitPoint,
   paintedMapVisitPointColumns,
   paintedMapVisitorName,
@@ -21,6 +22,7 @@ import {
 } from '../_shared/paintedMapLink.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { isZzTestName } from '../_shared/zzTestJob.ts'
 
 /**
  * painted-map-link (punch list #345, PR 4, v2.7223): a link to a painted map. The page at `/way/<code>` opens one map
@@ -68,6 +70,11 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  *                                           The refusals are desk.mint's own, with the same words.
  *   POST { action: 'desk.end', mapId, linkId? } → { ok, ended } End this link now: one link, or every open link of
  *                                           the map. The same two may end one.
+ *   POST { action: 'desk.reopen', mapId, linkId } → { ok, reopened, endsOn } (punch list #443, row 14): a developer
+ *                                           puts an ended link of a test map back, when it is not past its day and
+ *                                           the map's name starts with ZZ. The same code opens the map again. Refused
+ *                                           in words for anyone else, a live link, a link past its day, a real map,
+ *                                           and a map at its open-link cap.
  *
  * Rate limit: 60 calls a minute per client address and 600 across the isolate, in memory, best effort. Nothing is
  * texted or mailed from here: the app's own composer carries the link.
@@ -311,6 +318,30 @@ async function desk(req: Request, admin: Admin, supabaseUrl: string, body: Recor
     return json({ ok: true, ended: (data ?? []).length })
   }
 
+  // Reopen an ended link (punch list #443, row 14): a developer's take-back of End this link now, on a test map alone.
+  if (body.action === 'desk.reopen') {
+    const linkId = typeof body.linkId === 'string' && UUID_RE.test(body.linkId) ? body.linkId : null
+    if (!linkId) return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 400)
+    const { data: who } = await admin.from('users').select('role').eq('id', caller.userId).maybeSingle()
+    if ((who as { role?: string | null } | null)?.role !== 'dev') return json({ error: PAINTED_MAP_LINK_WORDS.reopenNotDev }, 403)
+    const sharedMap = await loadMap(admin, mapId)
+    if (!sharedMap) return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 404)
+    if (!isZzTestName(sharedMap.name)) return json({ error: PAINTED_MAP_LINK_WORDS.reopenNotTest }, 403)
+    const { data: linkRow, error: linkErr } = await admin.from('painted_map_links').select('id, ended_at, expires_at').eq('id', linkId).eq('map_id', mapId).maybeSingle()
+    if (linkErr) throw new Error(`the link: ${linkErr.message}`)
+    const ended = linkRow as { id: string; ended_at: string | null; expires_at: string } | null
+    if (!ended) return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 404)
+    if (!ended.ended_at) return json({ error: PAINTED_MAP_LINK_WORDS.reopenNotEnded }, 409)
+    if (!paintedMapLinkReopenable(ended, nowIso)) return json({ error: PAINTED_MAP_LINK_WORDS.reopenPastDay }, 409)
+    const { data: openNow, error: openNowErr } = await admin.from('painted_map_links').select('id').eq('map_id', mapId).is('ended_at', null).gt('expires_at', nowIso)
+    if (openNowErr) throw new Error(`the map's links: ${openNowErr.message}`)
+    if ((openNow ?? []).length >= PAINTED_MAP_LINKS_OPEN_MAX) return json({ error: PAINTED_MAP_LINK_WORDS.tooMany }, 409)
+    const { data: back, error: backErr } = await admin.from('painted_map_links').update({ ended_at: null, ended_by: null }).eq('id', linkId).eq('map_id', mapId).not('ended_at', 'is', null).select('id')
+    if (backErr) throw new Error(`reopening the link: ${backErr.message}`)
+    console.log(JSON.stringify({ event: 'painted_map_link_reopen', map: mapId, link: linkId, reopened: (back ?? []).length }))
+    return json({ ok: true, reopened: (back ?? []).length, endsOn: calendarYmdInAppTzFromIso(ended.expires_at) })
+  }
+
   // desk.mint and desk.can
   // The phone's own code, when it picked one. A code that is not ten letters of the alphabet is refused, not replaced:
   // the phone has already written it into a text.
@@ -375,7 +406,7 @@ serve(async (req) => {
       const parsed: unknown = await req.json().catch(() => null)
       if (!parsed || typeof parsed !== 'object') return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 400)
       const body = parsed as Record<string, unknown>
-      if (body.action === 'desk.mint' || body.action === 'desk.end' || body.action === 'desk.can') return await desk(req, admin, supabaseUrl, body)
+      if (body.action === 'desk.mint' || body.action === 'desk.end' || body.action === 'desk.can' || body.action === 'desk.reopen') return await desk(req, admin, supabaseUrl, body)
       if (body.action === 'way.open') return await wayOpen(req, admin, supabaseUrl, body, ip)
       if (body.action === 'way.here') return await wayHere(req, admin, body)
       return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 400)

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   PAINTED_MAP_LINK_ALPHABET,
+  PAINTED_MAP_LINK_WORDS,
   linkDayWords,
   linkEndsWords,
   linkMadeDayWords,
@@ -10,6 +11,7 @@ import {
   paintedMapLinkCode,
   paintedMapLinkExpiry,
   paintedMapLinkOpen,
+  paintedMapLinkReopenable,
   paintedMapLinkUrl,
   sharedLineForCanvas,
   sharedMapIsEmpty,
@@ -225,5 +227,21 @@ describe('a visit as the share sheet says it', () => {
     // Both are areas: the latest one, and no pin.
     expect(visitLine({ ...both, first_accuracy_m: 3200 }, whenOf)).toMatchObject({ where: 'Showed only the area they were in, 7 miles across, Nov 15, 3:05 PM.', whereUrl: null })
     expect(visitPoint(row)).toBeNull()
+  })
+})
+
+describe('paintedMapLinkReopenable (punch list #443, row 14)', () => {
+  const now = '2026-11-26T03:00:00Z'
+  it('an ended link not past its day may come back; an open link and a link past its day may not', () => {
+    expect(paintedMapLinkReopenable({ ended_at: '2026-11-25T18:00:00Z', expires_at: '2027-02-18T05:59:59Z' }, now)).toBe(true)
+    expect(paintedMapLinkReopenable({ ended_at: null, expires_at: '2027-02-18T05:59:59Z' }, now)).toBe(false)
+    expect(paintedMapLinkReopenable({ ended_at: '2026-11-25T18:00:00Z', expires_at: '2026-11-26T03:00:00Z' }, now)).toBe(false)
+    expect(paintedMapLinkReopenable({ ended_at: '2026-11-25T18:00:00Z', expires_at: '2026-11-20T05:59:59Z' }, now)).toBe(false)
+  })
+  it('the four refusals have their words, which the sheet says before the call', () => {
+    expect(PAINTED_MAP_LINK_WORDS.reopenNotDev).toBe('Only a developer can reopen an ended link.')
+    expect(PAINTED_MAP_LINK_WORDS.reopenNotTest).toBe('Only a link of a test map can be reopened. The map’s name must start with ZZ.')
+    expect(PAINTED_MAP_LINK_WORDS.reopenNotEnded).toBe('This link is still open.')
+    expect(PAINTED_MAP_LINK_WORDS.reopenPastDay).toBe('This link is past its day. Make a new one.')
   })
 })
