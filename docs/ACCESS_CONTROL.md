@@ -2912,6 +2912,8 @@ The client's gate is `canTagInJobNotes` (`src/lib/jobs/noteTags.ts`): the same s
 open to the team since v2.7576): `task_note_tags` has one read policy and no write policy.
 The tagged person and the tagger read their own rows, and anyone else reads a tag when they can read its note in the task's thread.
 Rows are written only by `task_note_post_tagged` (the note under the writer's own policies, the tags through the definer `task_note_tags_write`), the answering trigger on `checklist_instance_events`, `task_note_tag_done` and `task_note_tags_seen`.
+Since v2.8626 (punch list #443, row 13) a dev alone deletes a comment on a day of a task whose title starts with ZZ, through `checklist_instance_events_delete_dev` and the `DELETE` grant (migration `20261126030238`), when no tag names it as its answer.
+The same migration lets a dev delete a note on a ZZ test job through `jobs_ledger_thread_notes_delete_dev`, under the same rule, and Deleted records keeps the note.
 **Who can be tagged on a task, and who can tag** (`task_note_people`, read for one day row): whoever gave the task and whoever has that day row, whatever their role but subcontractor or estimator, then dev, master technician, assistant and controller.
 A primary, a helper or a superintendent is on the list only when the task is theirs, so a tag never opens a task to someone new.
 Never an archived person, a digital twin or an account in training mode, and a sample or walk-tester account only for a dev or another such account.

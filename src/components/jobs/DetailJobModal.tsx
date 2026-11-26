@@ -2947,6 +2947,8 @@ export default function DetailJobModal({
             tagViewerId={authUser?.id ?? null}
             onSubmitTagged={(tagged) => void threadNotes.submitNote(tagged)}
             submitting={threadNotes.submitting}
+            noteDeleteJob={fullJob ? { job_name: fullJob.job_name, customer_name: fullJob.customer_name } : null}
+            onNoteDeleted={threadNotes.reload}
             jobThreadStampActions={stampsOffered && !narrowViewport ? { onArrived: stampArrived, onLeaving: stampLeaving } : undefined}
             pctComplete={fullJob?.pct_complete ?? null}
             onLeaveReport={fullJob && canLeaveJobFieldReport(authRole) ? () => setLeaveReportOpen(true) : undefined}

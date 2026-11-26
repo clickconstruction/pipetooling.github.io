@@ -5985,6 +5985,8 @@ See **`RECENT_FEATURES.md`** → v2.592.
 
 ### Clock sessions in Job activity / notes (v2.593)
 The **Job activity / notes** feed (rendered by the unified **`JobActivityView`** on Jobs **Pipeline** since v2.1673, and by **`JobThreadNotesPanel`** on the **Job Detail** modal, **Job Mode**, **Quickfill**, and **Estimates**) is a merged chronological timeline of read-only and interactive sources: thread notes (**`jobs_ledger_thread_notes`**), field reports, dispatch schedule blocks (**v2.445**), and — as of **v2.593** — **clock in/out sessions**.
+Since v2.8626 a dev reads **Delete…** beside a note on a ZZ test job and beside a comment on a ZZ task, through two delete policies of migration `20261126030238` (punch list #443, row 13).
+A note another tag names as its answer stays, and Deleted records keeps a deleted note.
 Clock rows show `person · in → out · duration` (open sessions read *still on the clock*), an amber **Pending approval** chip when **`approved_at`** is null, and the session note when present — in `JobThreadNotesPanel` with an indigo left-border + **CLOCK** tag;
 in the Pipeline's unified view as muted numbered lines (no kind tags there).
 Pure kernel **[`clockSessionsToActivityItems`](../src/lib/jobThreadClockActivity.ts)** maps non-rejected **`clock_sessions`** (fetched via **`fetchClockSessionsForJobLedger`**, which already excludes revoked) into timeline items;
