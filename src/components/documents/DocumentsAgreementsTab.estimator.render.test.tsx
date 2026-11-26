@@ -257,8 +257,9 @@ describe('DocumentsAgreementsTab · an estimator on a phone', () => {
     expect(name.style.minHeight).toBe('44px')
     expect(name.style.display).toBe('inline-flex')
     const buttons = Array.from(screen.getByRole('region', { name: 'Agreements' }).querySelectorAll('button'))
-    // Three kind chips, four state chips and the one signed name: an estimator's tab has no other press.
-    expect(buttons).toHaveLength(8)
+    // Find by site…, three kind chips, four state chips and the one signed name: an estimator's tab has no other press.
+    expect(buttons).toHaveLength(9)
+    expect(buttons[0]?.textContent).toBe('Find by site…')
     for (const b of buttons) expect(`${b.textContent}: ${b.style.minHeight}`).toMatch(/: 44px$/)
     // The press still opens the signed record.
     fireEvent.click(name)

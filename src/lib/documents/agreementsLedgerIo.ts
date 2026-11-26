@@ -8,7 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { AGREEMENTS_PAGE, AGREEMENTS_SELECT, agreementFindWords, kindsOfPick, statesOfPick, type AgreementRow, type AgreementState, type AgreementsQuery, type AgreementsReader, type KindPick } from './agreementsLedger'
+import { AGREEMENTS_PAGE, AGREEMENTS_SELECT, AGREEMENTS_SITE_KEYS_MAX, agreementFindWords, agreementsSiteAsked, kindsOfPick, statesOfPick, type AgreementRow, type AgreementState, type AgreementsQuery, type AgreementsReader, type KindPick } from './agreementsLedger'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -19,13 +19,15 @@ export type AgreementsRead = { rows: AgreementRow[]; more: boolean }
 type Narrowable<T> = { in: (column: string, values: ReadonlyArray<string>) => T; ilike: (column: string, pattern: string) => T }
 
 /** The chips and the find box as filters: the kinds, the states, and every typed word found in the row's `find_text`. */
-function applyFilters<T extends Narrowable<T>>(q: T, query: Pick<AgreementsQuery, 'kind' | 'state' | 'typed' | 'reader'>): T {
+function applyFilters<T extends Narrowable<T>>(q: T, query: Pick<AgreementsQuery, 'kind' | 'state' | 'typed' | 'reader' | 'site'>): T {
   let out = q
   const kinds = kindsOfPick(query.kind, query.reader)
   if (kinds) out = out.in('kind', kinds)
   const states = statesOfPick(query.state)
   if (states) out = out.in('state', states)
   for (const word of agreementFindWords(query.typed)) out = out.ilike('find_text', `*${word}*`)
+  // One site's papers (punch list #439): the lines whose paper names one of the site's keys. Every other kind of line names none.
+  if (agreementsSiteAsked(query.site)) out = out.in('site_address_key', (query.site?.keys ?? []).slice(0, AGREEMENTS_SITE_KEYS_MAX))
   return out
 }
 

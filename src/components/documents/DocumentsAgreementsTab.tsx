@@ -7,6 +7,10 @@ import { useConfirmDialog, usePromptDialog } from '../../contexts/ConfirmDialogC
 import {
   AGREEMENTS_EMPTY_PAGE,
   AGREEMENTS_PAGE,
+  AGREEMENTS_SITE_KEYS_MAX,
+  AGREEMENTS_SITE_WORDS,
+  agreementSiteWords,
+  agreementsSiteSentence,
   AGREEMENT_GROUP_COLORS,
   AGREEMENT_STATE_COLORS,
   agreementCountWords,
@@ -69,6 +73,11 @@ import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, todayYmdInAp
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { AgreementsSendPaper } from './AgreementsSendPaper'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
+import { PaperSitePicker } from './PaperSitePicker'
+import type { PaperSite } from '../../lib/addresses/paperSite'
+import { samePlaceKeys } from '../../lib/addresses/lookAlikes'
+import { readAnswers } from '../../hooks/useAddressLookAlikes'
 import { AgreementsContractLibrary } from './AgreementsContractLibrary'
 import { EmptyState } from '../EmptyState'
 import JobContractModal from '../jobs/JobContractModal'
@@ -184,6 +193,10 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   const [typed, setTyped] = useState('')
   const [asked, setAsked] = useState('')
   const [limit, setLimit] = useState(AGREEMENTS_PAGE)
+  /** One site's papers alone (punch list #439): the picked address, and its keys with every spelling answered Same place. */
+  const [site, setSite] = useState<{ address: string; keys: string[] } | null>(null)
+  const [sitePicking, setSitePicking] = useState(false)
+  const [siteBusy, setSiteBusy] = useState(false)
   const [rows, setRows] = useState<AgreementRow[] | null>(null)
   const [more, setMore] = useState(false)
   const [waiting, setWaiting] = useState<number | null>(null)
@@ -224,6 +237,9 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   // The Search tab has no chips: it asks across every kind and every state.
   const kindAsk: KindPick = embedded ? 'all' : kind
   const stateAsk: StateAsk = embedded ? 'any' : state
+  // The Search tab finds by words alone. The keys are held as one string, so the read runs again only when they change.
+  const siteKeysAsked = embedded || !site ? '' : site.keys.join('|')
+  const siteAsk = useMemo(() => (siteKeysAsked ? { keys: siteKeysAsked.split('|') } : null), [siteKeysAsked])
 
   useEffect(() => {
     if (quietEmbed) {
@@ -233,7 +249,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     }
     let cancelled = false
     setReading(true)
-    void readAgreements({ kind: kindAsk, state: stateAsk, typed: asked, limit, reader })
+    void readAgreements({ kind: kindAsk, state: stateAsk, typed: asked, limit, reader, site: siteAsk })
       .then((read) => {
         if (cancelled) return
         setRows(read.rows)
@@ -250,7 +266,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     return () => {
       cancelled = true
     }
-  }, [kindAsk, stateAsk, asked, limit, tries, quietEmbed, reader])
+  }, [kindAsk, stateAsk, asked, limit, tries, quietEmbed, reader, siteAsk])
 
   // The count on Waiting on a signature, under the kind picked; a count that cannot be read leaves the chip's words alone.
   // The Search tab draws no chips, so it asks for no count.
@@ -299,14 +315,33 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
 
   const today = todayYmdInAppTz()
   const groups = useMemo(() => agreementMonthGroups(rows ?? []), [rows])
-  const query = { kind: kindAsk, state: stateAsk, typed: asked }
+  const query = { kind: kindAsk, state: stateAsk, typed: asked, site: siteAsk }
   const narrowed = agreementsNarrowed(query)
   const clear = () => {
     setTyped('')
     setKind('all')
     setState('live')
+    setSite(null)
     setLimit(AGREEMENTS_PAGE)
     if (embedded) onClearEmbedSearch?.()
+  }
+
+  /** A site was picked in **Find by site…**, or **Every site**. Two spellings answered Same place are one site. */
+  const pickSite = async (picked: PaperSite | null) => {
+    if (siteBusy) return
+    if (!picked || picked.kind !== 'address') {
+      setSite(null)
+      setSitePicking(false)
+      setLimit(AGREEMENTS_PAGE)
+      return
+    }
+    setSiteBusy(true)
+    // Without the answers the picked spelling is still asked for.
+    const answers = await readAnswers().catch(() => [])
+    setSite({ address: picked.address, keys: [...samePlaceKeys(picked.key, answers)].slice(0, AGREEMENTS_SITE_KEYS_MAX) })
+    setSiteBusy(false)
+    setSitePicking(false)
+    setLimit(AGREEMENTS_PAGE)
   }
 
   const open = async (row: AgreementRow) => {
@@ -443,7 +478,23 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
               </button>
             </>
           ) : null}
+          <button type="button" style={{ ...documentsQuietButton, ...pressFloor }} onClick={() => setSitePicking(true)}>
+            {AGREEMENTS_SITE_WORDS.find}
+          </button>
         </div>
+      ) : null}
+      {!embedded && site ? (
+        <p style={{ ...quiet, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.15rem 0.6rem' }} data-testid="documents-agreements-site">
+          <span>
+            <ValueSentence text={agreementsSiteSentence(site.address)} />
+          </span>
+          <button type="button" style={{ ...documentsLinkButton, ...pressFloor }} onClick={() => void pickSite(null)}>
+            {AGREEMENTS_SITE_WORDS.clear}
+          </button>
+        </p>
+      ) : null}
+      {sitePicking ? (
+        <PaperSitePicker busy={siteBusy} onPick={(picked) => void pickSite(picked)} onClose={() => setSitePicking(false)} lead={AGREEMENTS_SITE_WORDS.lead} none={{ label: AGREEMENTS_SITE_WORDS.every, hint: AGREEMENTS_SITE_WORDS.everyHint }} closesOnEscape />
       ) : null}
       {quietEmbed ? (
         <p style={quiet} data-testid="documents-agreements-embed-hint">
@@ -513,6 +564,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                       const signerWords = agreementSignerWords(row)
                       // The business the paper names, when it is not the party beside it (the audit's finding 9).
                       const signingForWords = agreementSigningForWords(row)
+                      // The site the paper names, on its own line: the list is not always asked for one site.
+                      const siteWords = agreementSiteWords(row)
                       const name = agreementName(row)
                       // A reader's signed line opens its record, and every other line of theirs is plain words.
                       const door = canAct ? agreementDoor(row) : agreementReaderDoor(row, readerOpensRecords)
@@ -555,6 +608,14 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                               With <strong style={{ color: 'var(--text-700)', fontWeight: 600 }}>{row.with_name || 'no name on file'}</strong>
                               {signerWords ? ` · ${signerWords}` : null}
                               {signingForWords ? ` · ${signingForWords}` : null}
+                              {siteWords ? (
+                                <>
+                                  {' · '}
+                                  <span data-testid="agreement-site">
+                                    <ValueSentence text={siteWords} />
+                                  </span>
+                                </>
+                              ) : null}
                               {jobTitle ? (
                                 <>
                                   {' · '}

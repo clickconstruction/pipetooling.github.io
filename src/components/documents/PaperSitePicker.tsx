@@ -4,6 +4,7 @@ import { PAPER_SITE_WORDS, paperSiteOfEntry, paperSiteRowNote, type PaperSite } 
 import { readAddresses } from '../../hooks/useAddressesOnFile'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
@@ -28,7 +29,16 @@ export function PaperSitePicker({
   busy,
   onPick,
   onClose,
+  lead = PAPER_SITE_WORDS.lead,
+  none = { label: PAPER_SITE_WORDS.notForASite, hint: PAPER_SITE_WORDS.notForASiteHint },
+  closesOnEscape = false,
 }: {
+  /** The line under the title. A list that finds by site says its own (punch list #439, the Agreements filter). */
+  lead?: string
+  /** The first choice, which answers no site: its words. */
+  none?: { label: string; hint: string }
+  /** The window closes itself on Escape. Left off where the caller owns Escape, as Send a paper does. */
+  closesOnEscape?: boolean
   /** True while a pick is being checked against the papers the company holds: the rows wait. */
   busy: boolean
   /** A site, or null for **It is not for a site**. */
@@ -57,6 +67,18 @@ export function PaperSitePicker({
     }
   }, [attempt])
 
+  const isTopmost = useModalStackEntry(closesOnEscape)
+  useEffect(() => {
+    if (!closesOnEscape) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || busy || !isTopmost()) return
+      e.preventDefault()
+      onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [closesOnEscape, busy, isTopmost, onClose])
+
   const typedEnough = typed.trim().replace(/\s/g, '').length >= 3
   const rows = useMemo(() => (list ? onFileMatches(list, typed, ROWS).filter((m) => paperSiteOfEntry(m) != null) : []), [list, typed])
 
@@ -75,10 +97,10 @@ export function PaperSitePicker({
             ×
           </button>
         </div>
-        <p style={{ margin: '0.25rem 0 0.6rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{PAPER_SITE_WORDS.lead}</p>
+        <p style={{ margin: '0.25rem 0 0.6rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{lead}</p>
         <button type="button" style={choice} disabled={busy} onClick={() => onPick(null)}>
-          {PAPER_SITE_WORDS.notForASite}
-          <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400, marginTop: '0.15rem' }}>{PAPER_SITE_WORDS.notForASiteHint}</span>
+          {none.label}
+          <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400, marginTop: '0.15rem' }}>{none.hint}</span>
         </button>
         <input
           type="search"
