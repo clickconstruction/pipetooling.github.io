@@ -31,7 +31,7 @@ The edge of the box has a color. Red means the due date has passed. Red also mea
 
 ## Open a bid
 
-Press the bid. The bid's window opens over the Dashboard. The window shows the bid's dates, contact and notes.
+Press the bid. The bid's window opens over the Dashboard. The window shows the bid's dates, contact and notes. On a phone the bid's name has the top line with the ✕ beside it. **Copy for text** and **Edit bid** sit on the line under the name.
 
 Under **Open in Bids**, press the tab you want to work in. You land on that tab with the bid picked.
 

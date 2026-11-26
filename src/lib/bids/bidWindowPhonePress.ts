@@ -23,6 +23,16 @@ export function bidWindowHeadPress(narrow: boolean): CSSProperties {
   return narrow ? { minHeight: PHONE_PRESS_MIN_HEIGHT, boxSizing: 'border-box' } : DESK
 }
 
+/**
+ * Whether the window's head stacks (punch list #426, finding 262). At a desk the bid's name sits beside **Copy for
+ * text**, **Edit bid** and the ✕. On a phone the three kept their width and the name got about a quarter of the head:
+ * a three-word name wrapped to four lines and broke inside a word. So on a phone the name takes the first line with the
+ * ✕ at its right, and the two presses sit on the line under it.
+ */
+export function bidWindowHeadStacks(narrow: boolean): boolean {
+  return narrow
+}
+
 /** The window's ✕: a fingertip's square on a phone. */
 export function bidWindowClosePress(narrow: boolean): CSSProperties {
   return narrow ? { minHeight: PHONE_PRESS_MIN_HEIGHT, minWidth: PHONE_PRESS_MIN_HEIGHT, boxSizing: 'border-box' } : DESK
