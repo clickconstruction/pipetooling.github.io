@@ -11,9 +11,9 @@ summary: >
   sells. The steps that hold the company back are the one that moves the fewest dollars a week, and the one whose
   pile grows. The drawing puts today's reading beside one that lights the narrowest step and says on each row
   whether its pile grows or shrinks. It is a question for the owner, since it changes the page's rule.
-next: a dry run of the Monday email to read its tile and its five steps before the send on Monday 2026-11-30 at 6 AM Central, by whoever the person names, then the walkers' look at the three (the recipes are with the managing session), then the owner's own read of the red and the direction lines on his numbers.
+next: the walkers' look at the three on the page (the recipes are with the managing session), which stands in for the email's dry run, skipped on the person's word; the send on Monday 2026-11-30 at 6 AM Central is then the first read of the email itself; then the owner's own read of the red and the direction lines on his numbers.
 size: M as three parts (S · M · S), all built
-blocker: Nothing to build and nothing to deploy. The email's dry run waits on a hand that may sign in as a dev.
+blocker: Nothing to build and nothing to deploy.
 opinion: the row directions shipped first and the red moved after, as planned; the redeploy is done, so once the walkers have looked, retire the card on the owner's word
 ---
 
@@ -126,5 +126,6 @@ PR 3 (v2.8630) is merged: the tile's two lines, what growth waits on and what ca
 PR 2 and PR 3 change kernels copied to `bridge-weekly-sheet` (`stageFlow.ts`, `weekCall.ts`, `flowStrip.ts`, `dial.ts`, `calls.ts`, `weekMail.ts`), so that function owed one redeploy after they merged, as v2.7230 did.
 The `bridge-321` thread of run 5 redeployed it from `main` on 2026-11-26 at 06:38 UTC, version 53 to 54, and `check:edge-drift` then read every function current, so the Monday email lights the same step as the page.
 The email's dry run is not read yet: the thread's own permission check refused the sign-in as a dev that a dry run needs, so nobody has read the tile and the five steps off the deployed function.
-Left for people: whose hand runs the email's dry run, before its next send on Monday 2026-11-30 at 6 AM Central; the walkers' look at the three (the recipes are in the run's notes folder); the owner's own read of the red and the direction lines on his numbers.
+The person chose on 2026-11-26 to skip the dry run and have the walkers read the page, which runs the same kernels, so Monday's send is the first read of the email itself.
+Left for people: the walkers' look at the three (the recipes are in the run's notes folder); the owner's own read of the red and the direction lines on his numbers.
 Nothing on this card is seen on the live site yet.
