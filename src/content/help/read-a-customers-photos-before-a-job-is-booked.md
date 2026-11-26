@@ -22,7 +22,7 @@ You see the photos, the video and what the customer wrote. Press a photo to open
 2. Write a note for the office. Say what you see, what it likely needs and what to bring.
 3. Press {{button:blue|Send my answer}}.
 
-The office reads your answer on the customer's thread. Then mark the task done on your Checklist.
+A green line under the button reads *The office has your answer.* The office reads your answer on the customer's thread. Then mark the task done on your Checklist.
 
 ## When the job is booked
 

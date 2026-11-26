@@ -86,8 +86,9 @@ export default function FirstLookRead({ io = DEFAULT_IO }: { io?: FirstLookThrea
     setBusy(true)
     try {
       await io.answer(look.id, pick, note.trim() || null)
+      // The page's own line under the press says it and stays. A toast with the same words said it twice, to a
+      // screen reader too once a toast's words carried a role (v2.8638, punch list #445).
       setSent(true)
-      showToast(TECH_READ_WORDS.sent, 'success')
       await load()
     } catch (e) {
       showToast(formatErrorMessage(e, 'Your answer was not sent.'), 'error')
