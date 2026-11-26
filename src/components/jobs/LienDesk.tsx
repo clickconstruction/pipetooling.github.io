@@ -78,7 +78,7 @@ import { canRedrawItem, fieldsRedrawn, lienNoticePartedBand, lienNoticeRedrawCon
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
-import { lienRunEntriesFor, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { lienRunEntriesFor, lienRunMailEntriesFor, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { lienBoardChipFor, lienBoardDoorWords, lienBoardLeaderBinPress, lienBoardPickWords, lienBoardRowInPick, type LienBoardBinKey, type LienBoardChip, type LienBoardKind } from '../../lib/jobs/lienBoard'
 import { lienFlowUnderLine } from '../../lib/jobs/lienBoardFlow'
 import { lienBinFolds } from '../../lib/jobs/lienNextUpByBin'
@@ -510,6 +510,8 @@ export default function LienDesk({
   const [runGcId, setRunGcId] = useState<string | null>(null)
   // A ready notice's Just this one (v2.7512) opens the run on that one notice, by its desk item; null is the run's own list.
   const [runOnlyItemId, setRunOnlyItemId] = useState<string | null>(null)
+  // Out the door's Enter mail numbers (punch list #362): the run opens on the jobs whose printed notices the card counts; null is the run's own list.
+  const [runMailJobIds, setRunMailJobIds] = useState<ReadonlySet<string> | null>(null)
   // The sheet's code (v2.7328): the run opens on the notice the phone scanned, its Mailed box under the cursor.
   const [runFocus, setRunFocus] = useState<string | null>(null)
   useEffect(() => {
@@ -1886,12 +1888,14 @@ export default function LienDesk({
     setRunTakeBack(false)
     setRunGcId(null)
     setRunOnlyItemId(null)
+    setRunMailJobIds(null)
     setRunOpen(true)
   }
   // The monthly notices a run holds, built one way for the window and for Just this one's count (v2.7512): a GC's, one notice's, or every one.
   const runSignOpts = { inks, onDeviceNameFor: (id: string | null) => leaderNameFor?.(id) ?? '', leaderFor: (id: string | null) => ({ userId: id, name: signatureNameFor?.(id)?.trim() || (leaderNameFor?.(id) ?? '') }) }
+  const runBuild = (entries: Parameters<typeof buildLienDeskRun>[0]) => (data ? buildLienDeskRun(entries, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, ...runSignOpts }) : [])
   const monthlyRunNotices = (gcId: string | null, onlyItemId: string | null) =>
-    data ? buildLienDeskRun(lienRunEntriesFor(data.queue.piles.ready, data.queue.piles.printed, gcId, onlyItemId), data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, ...runSignOpts }) : []
+    data ? runBuild(lienRunEntriesFor(data.queue.piles.ready, data.queue.piles.printed, gcId, onlyItemId)) : []
   // The run's one print (punch list #362, step 6): the lien office's, built from the same notices the run window gets and the affidavits' own batch.
   // Changed since printed (step 7): each job's newest filed print, read while the checklist is open, beside the papers as they stand today.
   const runPrinted = useLienRunPrinted({ run: office ? getItRight.run : null, open: getItRight.open, noticesFor: () => monthlyRunNotices(null, null), affidavitsFor: aff.runAffidavitPapers })
@@ -1902,6 +1906,16 @@ export default function LienDesk({
     setRunGcId(null)
     setRunFocus(null)
     setRunOnlyItemId(itemId)
+    setRunMailJobIds(null)
+    setRunOpen(true)
+  }
+  // Out the door's Enter mail numbers (punch list #362): the run window on the card's own printed notices, so it opens on recording and counts what the press counts.
+  const openRunOnMail = (jobIds: ReadonlyArray<string>) => {
+    setRunTakeBack(false)
+    setRunGcId(null)
+    setRunFocus(null)
+    setRunOnlyItemId(null)
+    setRunMailJobIds(new Set(jobIds))
     setRunOpen(true)
   }
   const onBoardPrint = (side: LienBoardPrintSide) => (side.act === 'print_affidavits' ? printReadyAffidavits() : openWholeRun())
@@ -3159,7 +3173,7 @@ export default function LienDesk({
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>
             ) : null}
-            <LienGetItRightHost door={underLine.run} run={getItRight.run} open={getItRight.open} failure={getItRight.failure} onOpen={() => getItRight.setOpen(true)} onRetry={() => void getItRight.reload()} scrolls={doNow.listScrolls} isMobile={isMobile} canLeaveOut={office} userName={(id) => leaderNameFor?.(id)?.trim() || null} onBack={() => getItRight.setOpen(false)} onAct={(rowKey) => { const row = nextUpRows.find((r) => r.key === rowKey); if (row) actOnNextUp(row) }} onOpenLine={(line) => zoomFor(line.jobId, line.kind)?.press()} onLeaveOut={getItRight.leaveOut} onPutBack={getItRight.putBack} print={runPrint} printed={runPrinted} releases={runReleases} onRecordMailing={office ? () => setRunOpen(true) : undefined} onRecordFiling={office ? (line) => (onOpenLienAffidavit ?? onOpenLienInstruments)(line.jobId) : undefined} countyFor={(jobIds) => aff.runAffidavitPapers(jobIds).map((p) => ({ jobId: p.jobId, county: p.fields.county }))} onReprintNotice={(paper) => { if (paper.itemId) openRunOnOne(paper.itemId) }} prints={boardPrints ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.label, left: side.left?.words ?? null, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
+            <LienGetItRightHost door={underLine.run} run={getItRight.run} open={getItRight.open} failure={getItRight.failure} onOpen={() => getItRight.setOpen(true)} onRetry={() => void getItRight.reload()} scrolls={doNow.listScrolls} isMobile={isMobile} canLeaveOut={office} userName={(id) => leaderNameFor?.(id)?.trim() || null} onBack={() => getItRight.setOpen(false)} onAct={(rowKey) => { const row = nextUpRows.find((r) => r.key === rowKey); if (row) actOnNextUp(row) }} onOpenLine={(line) => zoomFor(line.jobId, line.kind)?.press()} onLeaveOut={getItRight.leaveOut} onPutBack={getItRight.putBack} print={runPrint} printed={runPrinted} releases={runReleases} onRecordMailing={office ? (lines) => openRunOnMail(lines.map((l) => l.jobId)) : undefined} onRecordFiling={office ? (line) => (onOpenLienAffidavit ?? onOpenLienInstruments)(line.jobId) : undefined} countyFor={(jobIds) => aff.runAffidavitPapers(jobIds).map((p) => ({ jobId: p.jobId, county: p.fields.county }))} onReprintNotice={(paper) => { if (paper.itemId) openRunOnOne(paper.itemId) }} prints={boardPrints ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.label, left: side.left?.words ?? null, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
             <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} risk={rowRisk} riskLabel={riskLabel} stageFor={rowStage} noticeFor={rowNotice} byBin={board && !isMobile ? { binFor: rowBin, folds: lienBinFolds({ office, serveOwed: serveJobs.length, serveButton: serveDoor, printReady: affPrintPlanAll.ready.length, printButton: lienAffidavitPrintDoorWords(affPrintPlanAll), sendReady: affSendPlanAll.ready.length }), narrowed: Boolean(boardPick) } : null} trackPress={office && !isMobile && affPrintPlanAll.ready.length >= 2 ? { button: lienAffidavitPrintDoorWords(affPrintPlanAll), onPress: () => { setAffHeldOnlyPicked(false); setAffPile('ready'); setKind('affidavit') } } : null} remind={office && reminderWords && waitingRows.length > 0 ? { button: reminderWords.button, dead: reminderWords.dead, busy: reminding, onPress: () => void remindLeader() } : null} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
             </LienGetItRightHost>
             </div>
@@ -3383,7 +3397,7 @@ export default function LienDesk({
             onChanged()
             return out
           }}
-          notices={[...monthlyRunNotices(runGcId, runOnlyItemId), ...buildLienRetainageRun(runGcId || runOnlyItemId ? [] : data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, runSignOpts)]}
+          notices={runMailJobIds ? runBuild(lienRunMailEntriesFor(data.queue.piles.ready, data.queue.piles.printed, runMailJobIds)) : [...monthlyRunNotices(runGcId, runOnlyItemId), ...buildLienRetainageRun(runGcId || runOnlyItemId ? [] : data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, runSignOpts)]}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}
@@ -3393,6 +3407,7 @@ export default function LienDesk({
             setRunTakeBack(false)
             setRunGcId(null)
             setRunOnlyItemId(null)
+            setRunMailJobIds(null)
             setRunFocus(null)
           }}
           openOnTakeBack={runTakeBack}

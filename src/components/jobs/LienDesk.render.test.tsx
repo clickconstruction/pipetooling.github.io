@@ -5671,6 +5671,35 @@ describe('LienDesk · the master signs on someone else’s screen with his code 
     codeState.status = { set: true, setAtIso: '2026-10-23T18:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
   })
 
+  it('Out the door’s Enter mail numbers opens the run on the card’s printed notices alone (punch list #362): the window is on recording and counts what the press counts', async () => {
+    const approved = { cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z', status: 'approved', approved_by: 'u-sam', approved_at: '2026-09-12T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '' }
+    const signed = { signed_by: 'u-sam', signed_at: '2026-09-12T15:00:00Z', signer_printed_name: 'Sam', signer_signature_mode: 'type', signed_fields_hash: lienFieldsHash({}) }
+    const item = (id: string, job: string, over: Record<string, unknown>) => ({ id, job_id: job, kind: 'notice_53_056', months: ['2026-07'], fields: {}, ...over }) as unknown as LienDeskItemRow
+    // Three approved notices. One still waits to print; two printed and wait on their mail numbers.
+    const d = data([row('j650', '2026-07', '2026-10-15'), row('j651', '2026-07', '2026-10-15'), row('j653', '2026-07', '2026-10-15')], [item('it1', 'j650', { ...approved, ...signed }), item('it2', 'j651', { ...approved, ...signed, printed_at: '2026-09-13T16:00:00Z' }), item('it3', 'j653', { ...approved, ...signed, printed_at: '2026-09-13T16:00:00Z' })], true)
+    d.jobsById.j650 = { ...d.jobsById.j650!, master_user_id: 'u-sam' } as NonNullable<typeof d.jobsById.j650>
+    d.jobsById.j651 = { ...d.jobsById.j650!, id: 'j651', hcp_number: '651', job_name: 'Palomino Trail' }
+    d.jobsById.j653 = { ...d.jobsById.j650!, id: 'j653', hcp_number: '653', job_name: 'ZZ Test Bend' }
+    const desk = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" authName="Wendi" leaderNameFor={() => 'Sam'} data={d} initialKind="next" />)
+    await settle()
+    fireEvent.click(document.querySelector<HTMLElement>('[data-lien-run-door-open]')!)
+    await settle()
+    const press = await waitFor(() => {
+      const el = document.querySelector<HTMLElement>('[data-lien-run-out-press="mail"]')
+      expect(el).not.toBeNull()
+      return el!
+    })
+    expect(press.textContent).toBe('Enter mail numbers · 2')
+    fireEvent.click(press)
+    // The whole run would open on Print and mail · 3 notices: the unprinted one is not in this window.
+    const run = await screen.findByRole('dialog', { name: 'Enter mail numbers' })
+    expect(within(run).getByRole('heading', { level: 2 }).textContent).toBe('Enter mail numbers · 2 notices')
+    expect(run.textContent).toContain('Palomino Trail')
+    expect(run.textContent).toContain('ZZ Test Bend')
+    expect(run.textContent).not.toContain('AXO Schertz')
+    desk.unmount()
+  })
+
   it('Just this one opens the run on that one notice, and counts its envelopes (v2.7512): the Lien window is not opened, an unsigned notice reads held', async () => {
     const onOpenLienInstruments = vi.fn()
     const approved = { cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z', status: 'approved', approved_by: 'u-sam', approved_at: '2026-09-12T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '' }

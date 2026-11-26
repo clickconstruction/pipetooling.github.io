@@ -4,7 +4,7 @@ import type { LienAffidavitEntry, LienAffidavitPile } from './lienDeskAffidavits
 import type { LienRetainageEntry, LienRetainagePile } from './lienDeskRetainage'
 import type { LetterTwoStatus } from './lienLetterTwo'
 import type { CourtesyStatus } from './lienCourtesyNotice'
-import { buildLienNextUp, lienRunEntriesFor, lienViewerLeadsJob, groupLienNextUp, lienGateHoldWords, lienNextUpCount, lienNextUpNowHead, lienPrintedDaysWords, lienWaitedWords, type LienNextUpInput, type LienNextUpRow } from './lienNextUp'
+import { buildLienNextUp, lienRunEntriesFor, lienRunMailEntriesFor, lienViewerLeadsJob, groupLienNextUp, lienGateHoldWords, lienNextUpCount, lienNextUpNowHead, lienPrintedDaysWords, lienWaitedWords, type LienNextUpInput, type LienNextUpRow } from './lienNextUp'
 
 const TODAY = '2026-10-05'
 
@@ -93,6 +93,13 @@ describe('buildLienNextUp — notices', () => {
     expect(lienRunEntriesFor(readyItems, printedItems, 'gc1', 'ip').map((e) => e.jobId)).toEqual(['p'])
     expect(lienRunEntriesFor(readyItems, printedItems, null, 'gone')).toEqual([])
     expect(lienRunEntriesFor(readyItems, printedItems, null, null).map((e) => e.jobId)).toEqual(['a', 'b', 'p'])
+
+    // Out the door's Enter mail numbers (punch list #362): the run holds the notices of the jobs the card counts, and no approved notice still to print.
+    const twoPrinted = [notice('p', 'printed'), notice('q', 'printed'), notice('r', 'printed')]
+    expect(lienRunMailEntriesFor(ready, twoPrinted, new Set(['p', 'q'])).map((e) => e.jobId)).toEqual(['p', 'q'])
+    expect(lienRunMailEntriesFor(ready, twoPrinted, new Set())).toEqual([])
+    // A notice taken back inside the open window is in the ready pile again, and the window still finds it.
+    expect(lienRunMailEntriesFor([...ready, notice('q', 'ready')], [notice('p', 'printed')], new Set(['p', 'q'])).map((e) => e.jobId)).toEqual(['p', 'q'])
 
     // Two GCs with one each are two single rows, not a run.
     expect(build({ notices: [notice('j1', 'ready'), notice('j2', 'ready', { gcCustomerId: 'gc2' })] }).map((r) => r.action)).toEqual(['send', 'send'])

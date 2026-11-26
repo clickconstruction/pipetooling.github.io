@@ -167,6 +167,19 @@ export function lienRunEntriesFor<E extends { gcCustomerId?: string | null; item
   return gcId ? ready.filter((e) => e.gcCustomerId === gcId) : [...ready, ...printed]
 }
 
+/**
+ * The notices the run window holds when *Out the door*'s **Enter mail numbers · N** opens it (punch list #362, the
+ * walk's sitting 26): the notices of the jobs the card counts, and no other. Every one of them is printed, so the
+ * window opens on recording and its title carries the press's own N. The whole run would open on *Print and mail*
+ * with every approved notice in it, the held ones too.
+ *
+ * Both piles are read, as *Just this one* reads them: a notice taken back inside the open window goes back to the
+ * ready pile, and the window must still find it.
+ */
+export function lienRunMailEntriesFor<E extends { jobId: string }>(ready: ReadonlyArray<E>, printed: ReadonlyArray<E>, jobIds: ReadonlySet<string>): E[] {
+  return [...printed, ...ready].filter((e) => jobIds.has(e.jobId))
+}
+
 export type LienNextUpInput = {
   notices: ReadonlyArray<LienDeskEntry>
   affidavits: ReadonlyArray<LienAffidavitEntry>
