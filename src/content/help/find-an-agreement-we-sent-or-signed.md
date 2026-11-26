@@ -222,6 +222,8 @@ The section is there only when the site has a paper. The list holds outside comp
 
 Nothing is sent from that list. To send a paper again, find its line on the Agreements tab.
 
+A development's page has the same section. That list holds the papers for every job in the development.
+
 ## Find a site's papers on the tab
 
 The Agreements tab can show one site's papers alone.
