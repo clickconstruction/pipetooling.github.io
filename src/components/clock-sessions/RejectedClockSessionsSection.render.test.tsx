@@ -9,12 +9,13 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 const db = { deletes: [] as string[] }
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
-  const stub = makeSupabaseStub()
+  const stub = makeSupabaseStub() as Record<string, unknown>
+  const baseFrom = stub.from as (table: string) => Record<string, unknown>
   return {
     supabase: {
       ...stub,
       from: (t: string) => ({
-        ...stub.from(t),
+        ...baseFrom(t),
         delete: () => ({
           eq: (_col: string, id: string) => {
             db.deletes.push(`${t}:${id}`)
