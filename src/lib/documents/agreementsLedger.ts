@@ -23,6 +23,8 @@ import { buildJobWorkOrderCoverage, workOrderChipLabel } from '../subWorkOrders/
 import { weekdayDate } from '../gc/words'
 import { isPartyAgreementKind, paperPartyKind, paperSignerFromFacts, paperSignerLine, partyAgreementTag, partyNeedsAList, signingForBeside } from '../contracts/paperParty'
 import { partyPaperKindWords } from '../contracts/partyPapers'
+import { paperSiteNote } from '../addresses/paperSite'
+import { val } from '../valuesInPlace'
 
 /** The kinds the view answers. A kind the kernel does not know still draws, as a plain agreement. */
 export type AgreementKind =
@@ -75,10 +77,14 @@ export interface AgreementRow {
   /** The day the line shows, in the company's calendar: the signed day, the sent day, or the day it ended. */
   at_day: string | null
   facts: Record<string, unknown> | null
+  /** The site a person's or a party's paper names (punch list #439): an address under its cleaned key, or a development. Null on every other line. */
+  site_development_id?: string | null
+  site_address_key?: string | null
+  site_address?: string | null
 }
 
 export const AGREEMENTS_SELECT =
-  'id, kind, source_id, state, paper_name, with_name, job_id, job_hcp_number, job_click_number, job_name, job_address, more_jobs, person_id, person_kind, at, at_day, facts'
+  'id, kind, source_id, state, paper_name, with_name, job_id, job_hcp_number, job_click_number, job_name, job_address, more_jobs, person_id, person_kind, at, at_day, facts, site_development_id, site_address_key, site_address'
 
 /** Rows read per step; Show more reads the next step. */
 export const AGREEMENTS_PAGE = 100
@@ -231,6 +237,38 @@ export interface AgreementsQuery {
   limit: number
   /** Whose chips these are. Left out, the office's. */
   reader?: AgreementsReader
+  /** Only the papers that name this site (punch list #439). Left out or null, every line. */
+  site?: AgreementsSiteAsk | null
+}
+
+/** A site as the list asks for it: its address's cleaned key and every key the answers kept make the same place. */
+export type AgreementsSiteAsk = { keys: ReadonlyArray<string> }
+
+/** The most keys one ask carries, so a long chain of answers stays one request. */
+export const AGREEMENTS_SITE_KEYS_MAX = 40
+
+/** True when the list is asked for one site's papers. */
+export function agreementsSiteAsked(site: AgreementsSiteAsk | null | undefined): boolean {
+  return (site?.keys.length ?? 0) > 0
+}
+
+/** The words of the site's press and its line on the tab. */
+export const AGREEMENTS_SITE_WORDS = {
+  find: 'Find by site…',
+  clear: 'Clear the site',
+  lead: 'Pick an address. The list then shows the papers that name it.',
+  every: 'Every site',
+  everyHint: 'The list goes back to every paper.',
+} as const
+
+/** The line over the list once a site is picked: `Papers for the site at 118 Old Quarry Trl, Sampleton, TX.` */
+export function agreementsSiteSentence(address: string): string {
+  return `Papers for the site at ${val('address', address.trim())}.`
+}
+
+/** A line's own site, when its paper names one: `for the site at 118 Old Quarry Trl, Sampleton, TX`. '' when it names none. */
+export function agreementSiteWords(row: Pick<AgreementRow, 'site_address'>): string {
+  return paperSiteNote(row)
 }
 
 /**
@@ -249,8 +287,8 @@ export function agreementFindWords(typed: string): string[] {
 }
 
 /** Whether a chip or the box narrows the list, for the empty state's words. The default state chip does not. */
-export function agreementsNarrowed(q: Pick<AgreementsQuery, 'kind' | 'state' | 'typed'>): boolean {
-  return q.kind !== 'all' || q.state !== 'live' || agreementFindWords(q.typed).length > 0
+export function agreementsNarrowed(q: Pick<AgreementsQuery, 'kind' | 'state' | 'typed' | 'site'>): boolean {
+  return q.kind !== 'all' || q.state !== 'live' || agreementFindWords(q.typed).length > 0 || agreementsSiteAsked(q.site)
 }
 
 /** Where the empty list's press goes: the Pipeline, where a contract is sent to sign. */
@@ -275,7 +313,7 @@ export function agreementsReaderDoorsWords(opensRecords: boolean): string {
  * The empty list's words: nothing matches the search (*Clear the search*), nothing matches the chips (*Clear the
  * filters*), or nothing is on file at all, which names the page that fills it. The tab adds the press.
  */
-export function agreementsEmptyWords(q: Pick<AgreementsQuery, 'kind' | 'state' | 'typed'>, reader: AgreementsReader = 'office'): EmptyWords {
+export function agreementsEmptyWords(q: Pick<AgreementsQuery, 'kind' | 'state' | 'typed' | 'site'>, reader: AgreementsReader = 'office'): EmptyWords {
   if (!agreementsNarrowed(q)) {
     const office = emptyWords({ kind: 'data', noun: 'agreements', page: { label: AGREEMENTS_EMPTY_PAGE.label, tail: AGREEMENTS_EMPTY_PAGE.tail } })
     // An estimator sends nothing, so their empty list names who does and offers no press.
