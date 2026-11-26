@@ -207,8 +207,9 @@ function stepPaces(s: StageReading, field: StageReading | null): string {
 /**
  * The step tile (punch list #321, PR 3): two lines under the step's name. The first says what growth waits on, the
  * narrowest step with its paces. The second says what cash waits on: Collect, with what customers pay of what is
- * billed a week, since the last step before the bank is where cash waits whichever step is narrowest. When Collect is
- * itself the narrowest, one line says both.
+ * billed a week, since the last step before the bank is where cash waits whichever step is narrowest. In a week
+ * customers pay more than is billed, the two paces are said apart, since *of the* would name a share over the whole.
+ * When Collect is itself the narrowest, one line says both.
  */
 function stepTile(flow: StageFlow | null): WeekTile {
   const s = flow?.stages.find((x) => x.id === flow.linkId) ?? null
@@ -217,7 +218,9 @@ function stepTile(flow: StageFlow | null): WeekTile {
   const collect = flow?.stages.find((x) => x.id === 'collect') ?? null
   const growth = `${s.id === 'collect' ? 'Growth and cash wait' : 'Growth waits'} on ${s.name}. ${stepPaces(s, field)}`.trim()
   const [billed, paid] = collect?.readable ? collect.flow : []
-  const cash = s.id !== 'collect' && billed && paid ? `Cash waits on Collect. ${cap(paid.who)} ${paid.usd} of the ${billed.usd} billed a week.` : null
+  const paidLeads = paid?.perWeekUsd != null && billed?.perWeekUsd != null && paid.perWeekUsd > billed.perWeekUsd
+  const cashPaces = billed && paid ? (paidLeads ? `${paceSentence(paid)} ${paceSentence(billed)}` : `${cap(paid.who)} ${paid.usd} of the ${billed.usd} billed a week.`) : ''
+  const cash = s.id !== 'collect' && cashPaces ? `Cash waits on Collect. ${cashPaces}` : null
   return { id: 'step', label: 'Narrowest step', value: s.name, sub: growth, tone: 'red', ...(cash ? { sub2: cash } : {}) }
 }
 

@@ -156,8 +156,12 @@ export type StageReading = {
     /** What the grey means: `guess` takes the thin-reading gate and the *set the %s* badge; `waiting` does neither. */
     greyKind?: 'guess' | 'waiting'
   }
-  /** Two lines, each with a subject: "the field finishes" · "$34k" · "a week" (the tail defaults to "a week"). */
-  flow: Array<{ who: string; usd: string; tail?: string }>
+  /**
+   * Two lines, each with a subject: "the field finishes" · "$34k" · "a week" (the tail defaults to "a week"). A pile
+   * step's lines also carry the dollars a week as a number, so a sentence that sets one beside the other knows which
+   * is the larger.
+   */
+  flow: Array<{ who: string; usd: string; tail?: string; perWeekUsd?: number }>
   /**
    * Dollars a week the step moves today, the figure the rule reads (punch list #321): Market's worth at the won rates,
    * Sales's sold work, and what Build, Bill and Collect each turn. Null when the step does not read, or turns nothing.
@@ -243,8 +247,8 @@ function pileStage(id: 'build' | 'bill' | 'collect', input: PileStageInput, who:
     readable: true,
     pile: { headline: pile.headline, sub: pile.sub, usd: input.pileUsd, guessShare: pile.guessShare, greyKind: pile.greyKind ?? 'guess' },
     flow: [
-      { who: who[0], usd: perWeek(input.inPerWeekUsd) },
-      { who: who[1], usd: perWeek(input.outPerWeekUsd) },
+      { who: who[0], usd: perWeek(input.inPerWeekUsd), perWeekUsd: input.inPerWeekUsd },
+      { who: who[1], usd: perWeek(input.outPerWeekUsd), perWeekUsd: input.outPerWeekUsd },
     ],
     paceUsd: input.outPerWeekUsd > 0 ? input.outPerWeekUsd : null,
     weeks,
@@ -354,7 +358,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
       const hoursLead = byHoursUsd >= byPercentUsd
       const other = hoursLead ? byPercentUsd : byHoursUsd
       const agree = Math.abs(byHoursUsd - byPercentUsd) <= Math.max(byHoursUsd, byPercentUsd) * PACE_AGREE_MARGIN
-      reading.flow[1] = { who: 'the field builds', usd: perWeek(b.outPerWeekUsd), tail: agree ? 'a week' : hoursLead ? 'a week by hours' : 'a week by the percents' }
+      reading.flow[1] = { who: 'the field builds', usd: perWeek(b.outPerWeekUsd), perWeekUsd: b.outPerWeekUsd, tail: agree ? 'a week' : hoursLead ? 'a week by hours' : 'a week by the percents' }
       if (!agree) reading.flow.push({ who: hoursLead ? 'by the percents' : 'by hours', usd: perWeek(other), tail: 'a week' })
     }
     byId.set('build', reading)
@@ -456,8 +460,8 @@ export const STAGE_RULE_LONG =
 
 export const STAGE_RULE_POINTS: ReadonlyArray<{ head: string; text: string }> = [
   { head: '1 · The goal', text: 'The goal is to make money. Everything else is a means to it.' },
-  { head: '2 · The bottleneck’s hour', text: 'An hour lost at the slowest step is lost for the whole company. An hour saved anywhere else is a mirage.' },
+  { head: '2 · The bottleneck’s hour', text: 'An hour lost at the narrowest step is lost for the whole company. An hour saved anywhere else is a mirage.' },
   { head: '3 · Busy is not productive', text: 'Keeping everyone busy is not the same as making money. A plant where every resource runs flat out drowns in inventory.' },
   { head: '4 · Balance flow, not capacity', text: 'Put the slowest boy at the front of the hike and lighten his pack. The troop arrives together.' },
-  { head: '5 · Beware of inertia', text: 'Once the slowest step moves, yesterday’s rules become today’s constraint. Find the next one.' },
+  { head: '5 · Beware of inertia', text: 'Once the narrowest step moves, yesterday’s rules become today’s constraint. Find the next one.' },
 ]
