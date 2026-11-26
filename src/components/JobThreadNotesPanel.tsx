@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
-import { JOB_NOTE_DELETED_WORDS, TEST_NOTE_DELETE_PRESS, jobNoteDeleteConfirm, jobNoteDeleteProblem, testNoteDeleteDrawn } from '../lib/notes/testNoteDelete'
+import { JOB_NOTE_DELETED_WORDS, TEST_NOTE_DELETE_PRESS, jobNoteDeleteConfirm, jobNoteDeleteProblem, noteAnswerCounts, noteDeleteWhy, testNoteDeleteDrawn } from '../lib/notes/testNoteDelete'
 import { deleteTestJobNote } from '../lib/notes/testNoteDeleteIo'
 import type { JobEstimateAuthor } from '../lib/jobs/jobPeople'
 import { JobPeopleNames } from './jobs/JobPeopleNames'
@@ -326,6 +326,9 @@ export function JobThreadNotesPanel({
   }
   const tagging = Boolean(tagJobId && onSubmitTagged)
   const noteTags = useJobNoteTags(tagJobId, (activityProp ?? notes ?? []).length)
+  // A note a tag names as its answer stays, and its press says so before it is pressed (finding 273). The answers are
+  // counted from the tags read above for the chips: no read of the press's own.
+  const noteAnswers = useMemo(() => noteAnswerCounts(noteTags), [noteTags])
   const tagBox = useNoteTagBox({ jobId: tagJobId ?? '', draft, setDraft: onDraftChange, inputRef: noteBodyRef, enabled: tagging && canPost && canTagInJobNotes(viewerRole), place: 'above', bigAt: look.pressMinHeight != null })
   const sendNote = () => {
     if (tagging && onSubmitTagged) {
@@ -768,6 +771,7 @@ export function JobThreadNotesPanel({
                   const n = item.note
                   const authorName = n.author?.name?.trim() || 'Unknown'
                   const { weekdayTimeChicago, daysAgoLabel } = getDispatchNoteDisplayMeta(n.created_at)
+                  const noteDeleteWhyNot = noteDeleteDrawn ? noteDeleteWhy(noteDeleteProblem, noteAnswers.get(n.id)) : ''
                   return (
                     <li
                       key={`n-${n.id}`}
@@ -788,14 +792,14 @@ export function JobThreadNotesPanel({
                               type="button"
                               data-testid="job-note-delete"
                               aria-label={`${TEST_NOTE_DELETE_PRESS} ${authorName}’s note`}
-                              title={noteDeleteProblem || 'Delete this note. Only a developer sees this press.'}
-                              aria-disabled={!!noteDeleteProblem || deletingNoteId != null}
-                              onClick={() => { if (!noteDeleteProblem && !deletingNoteId) void deleteNote(n.id, authorName) }}
-                              style={{ marginLeft: '0.5rem', background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', color: noteDeleteProblem ? 'var(--text-faint)' : 'var(--text-red-600)', cursor: noteDeleteProblem || deletingNoteId ? 'default' : 'pointer' }}
+                              title={noteDeleteWhyNot || 'Delete this note. Only a developer sees this press.'}
+                              aria-disabled={!!noteDeleteWhyNot || deletingNoteId != null}
+                              onClick={() => { if (!noteDeleteWhyNot && !deletingNoteId) void deleteNote(n.id, authorName) }}
+                              style={{ marginLeft: '0.5rem', background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', color: noteDeleteWhyNot ? 'var(--text-faint)' : 'var(--text-red-600)', cursor: noteDeleteWhyNot || deletingNoteId ? 'default' : 'pointer' }}
                             >
                               {deletingNoteId === n.id ? 'Deleting…' : TEST_NOTE_DELETE_PRESS}
                             </button>
-                            {noteDeleteProblem ? <span style={{ marginLeft: '0.35rem', color: 'var(--text-faint)' }} data-testid="job-note-delete-why">{noteDeleteProblem}</span> : null}
+                            {noteDeleteWhyNot ? <span style={{ marginLeft: '0.35rem', color: 'var(--text-faint)' }} data-testid="job-note-delete-why">{noteDeleteWhyNot}</span> : null}
                           </>
                         ) : null}
                       </div>

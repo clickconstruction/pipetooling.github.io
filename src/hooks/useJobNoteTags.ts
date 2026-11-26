@@ -14,6 +14,9 @@ const EMPTY: ReadonlyMap<string, NoteTagRow[]> = new Map()
  *
  * A read that fails leaves the notes as they were: the chips and the waiting words are an
  * addition to a line that already reads whole, so no error is drawn for them.
+ *
+ * Each row carries the note that answered it (`answerNoteId`), which is always a note of the same job: a dev's
+ * **Delete…** on a test job's note reads its answers from here, with no read of its own (punch list #443, row 13).
  */
 export function useJobNoteTags(jobId: string | null, rev: unknown): ReadonlyMap<string, NoteTagRow[]> {
   const [state, setState] = useState<{ jobId: string | null; byNote: ReadonlyMap<string, NoteTagRow[]> }>({ jobId: null, byNote: EMPTY })
@@ -27,7 +30,7 @@ export function useJobNoteTags(jobId: string | null, rev: unknown): ReadonlyMap<
     let live = true
     void supabase
       .from('jobs_ledger_note_tags')
-      .select('note_id, tagged_user_id, tagged_name, tagger_user_id, created_at, cleared_at, cleared_how')
+      .select('note_id, tagged_user_id, tagged_name, tagger_user_id, created_at, cleared_at, cleared_how, answer_note_id')
       .eq('job_id', jobId)
       .then(({ data, error }) => {
         if (!live || error || !data) return
@@ -39,6 +42,7 @@ export function useJobNoteTags(jobId: string | null, rev: unknown): ReadonlyMap<
           createdAt: r.created_at,
           clearedAt: r.cleared_at,
           clearedHow: r.cleared_how === 'answered' || r.cleared_how === 'done' ? r.cleared_how : null,
+          answerNoteId: r.answer_note_id ?? null,
         }))
         setState({ jobId, byNote: rows.length === 0 ? EMPTY : tagsByNote(rows) })
       })

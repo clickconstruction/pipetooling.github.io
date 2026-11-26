@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { JOB_NOTE_DELETED_WORDS, TASK_COMMENT_DELETED_WORDS, TEST_NOTE_DELETE_PRESS, jobNoteDeleteConfirm, jobNoteDeleteProblem, noteAnswersProblem, taskCommentDeleteConfirm, taskCommentDeleteProblem, testNoteDeleteDrawn } from './testNoteDelete'
+import { JOB_NOTE_DELETED_WORDS, TASK_COMMENT_DELETED_WORDS, TEST_NOTE_DELETE_PRESS, jobNoteDeleteConfirm, jobNoteDeleteProblem, noteAnswerCounts, noteAnswersProblem, noteDeleteWhy, taskCommentDeleteConfirm, taskCommentDeleteProblem, testNoteDeleteDrawn } from './testNoteDelete'
 
 describe('deleting a test job’s note and a test task’s comment (punch list #443, row 13)', () => {
   it('is drawn for a dev and for nobody else', () => {
@@ -27,6 +27,24 @@ describe('deleting a test job’s note and a test task’s comment (punch list #
     expect(noteAnswersProblem(3)).toBe('3 tags name this as their answer. It stays.')
     expect(noteAnswersProblem(null)).toBe('The tags that may name this as their answer could not be counted. Nothing was deleted.')
     expect(noteAnswersProblem(Number.NaN)).toBe('The tags that may name this as their answer could not be counted. Nothing was deleted.')
+  })
+
+  it('counts each note’s answers from the tags a panel already holds, so the press reads dead before it is pressed (finding 273)', () => {
+    const byNote = new Map([
+      ['ask-1', [{ answerNoteId: 'answer-1' }, { answerNoteId: 'answer-1' }]],
+      ['ask-2', [{ answerNoteId: 'answer-2' }, { answerNoteId: null }, {}]],
+    ])
+    const counts = noteAnswerCounts(byNote)
+    expect(counts.get('answer-1')).toBe(2)
+    expect(counts.get('answer-2')).toBe(1)
+    // An ask is not an answer: it goes, and its tags go with it.
+    expect(counts.get('ask-1')).toBeUndefined()
+    expect(noteAnswerCounts(new Map()).size).toBe(0)
+    // The fixed reason comes first; then the answers; a note nothing names is live.
+    expect(noteDeleteWhy('', counts.get('answer-2'))).toBe('1 tag names this as its answer. It stays.')
+    expect(noteDeleteWhy('', counts.get('answer-1'))).toBe('2 tags name this as their answer. It stays.')
+    expect(noteDeleteWhy('', counts.get('ask-1'))).toBe('')
+    expect(noteDeleteWhy('Only a note on a test job can be deleted.', 2)).toBe('Only a note on a test job can be deleted.')
   })
 
   it('the confirms name the author and the act, and the toasts say what went', () => {
