@@ -27846,6 +27846,67 @@ export type Database = {
           },
         ]
       }
+      lien_print_stands: {
+        Row: {
+          change_key: string
+          changes: Json
+          id: string
+          job_id: string
+          paper: string
+          sent_document_id: string | null
+          stood_at: string
+          stood_by: string
+          taken_back_at: string | null
+          taken_back_by: string | null
+        }
+        Insert: {
+          change_key: string
+          changes?: Json
+          id?: string
+          job_id: string
+          paper: string
+          sent_document_id?: string | null
+          stood_at?: string
+          stood_by: string
+          taken_back_at?: string | null
+          taken_back_by?: string | null
+        }
+        Update: {
+          change_key?: string
+          changes?: Json
+          id?: string
+          job_id?: string
+          paper?: string
+          sent_document_id?: string | null
+          stood_at?: string
+          stood_by?: string
+          taken_back_at?: string | null
+          taken_back_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lien_print_stands_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lien_print_stands_stood_by_fkey"
+            columns: ["stood_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lien_print_stands_taken_back_by_fkey"
+            columns: ["taken_back_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lien_run_left_out: {
         Row: {
           id: string
@@ -53750,6 +53811,17 @@ export type Database = {
       }
       set_job_uncollectible: {
         Args: { p_flagged: boolean; p_job_id: string; p_reason?: string }
+        Returns: Json
+      }
+      set_lien_print_stands: {
+        Args: {
+          p_change_key?: string
+          p_changes?: Json
+          p_job_id: string
+          p_paper: string
+          p_sent_document_id?: string
+          p_stands: boolean
+        }
         Returns: Json
       }
       set_lien_run_left_out: {
