@@ -1897,6 +1897,8 @@ A tech reads only their own row;
 - **Who writes a pay application's line on the page** (v2.5286, `20261012200000_portal_customer_lines.sql`): a sent pay application changes only through its doors, column grants on `gc_owner_pay_apps` under the Owner Billing door's money policy: the architect's certificate, the invoice it was billed on, and the customer's line on its card (`customer_line`, `customer_line_es`, the page's sentence and never the bill's money).
 - **Who sees a customer's page as they see it** (Messages cut 8d, v2.5325): whoever opens the customer's window (a dev, `canUseGcBoardWrites`).
   It reads their live link from `customer_portal_links` under that table's own policy and calls `customer-portal` as a staff look (`?preview=1` with the office's session), so no view counts and nothing is written;
+  Since v2.8621 (punch list #443, row 11) a dev alone deletes one turned-off link of a customer whose name starts with ZZ through `delete_test_portal_link()`, `SECURITY DEFINER` behind `is_dev()`, `customer_is_zz_test()` and a count of the GC proposals that name the link.
+  The table still has no delete policy of its own, so a direct delete reaches no row (migration `20261126023047`).
   its presses send nothing.
   **Make their link** goes through `mint_customer_portal_link`, as the globe's Create does.
 - **What their page reads of their thread, and writes to it** (Messages cut 8e, v2.5331): `customer-portal` reads the page's contact's lines with the service role and passes only those between us and them by text, email or their page, on no job but theirs, without who of ours wrote them beyond a first name, a text's subject, the opt-out line, a note's back day or its step (`_shared/gcPortalThread.ts`).
