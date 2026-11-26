@@ -53,3 +53,28 @@ export function useSiteAccounts(enabled: boolean): SiteAccountsState {
   const refresh = useCallback(() => setTick((t) => t + 1), [])
   return { reads, people, refresh }
 }
+
+/**
+ * The two sites' accounts alone (v2.8667), for one person's desk: read only while `enabled`, each site on its own.
+ * `refresh` reads again after a press changed a seat.
+ */
+export function useSiteRosters(enabled: boolean): { reads: Record<SiteKey, SiteRead>; refresh: () => void } {
+  const [reads, setReads] = useState<Record<SiteKey, SiteRead>>(LOADING)
+  const [tick, setTick] = useState(0)
+
+  useEffect(() => {
+    if (!enabled) return
+    let alive = true
+    for (const site of ['count', 'takeoff'] as const) {
+      void fetchSiteRoster(supabase, site).then((read) => {
+        if (alive) setReads((prev) => ({ ...prev, [site]: read }))
+      })
+    }
+    return () => {
+      alive = false
+    }
+  }, [enabled, tick])
+
+  const refresh = useCallback(() => setTick((t) => t + 1), [])
+  return { reads, refresh }
+}

@@ -10,7 +10,6 @@ import { hasSupervisionSwitch } from '../../../lib/people/supervision'
 import { checkSignInEmail } from '../../../../supabase/functions/_shared/signInEmailChange'
 import {
   changeSignInEmail,
-  createCountToolingSeat,
   extraAccessForRole,
   passwordProblem,
   renameAccount,
@@ -30,6 +29,7 @@ import { useHiringColumnShares } from '../../../hooks/useHiringColumnShares'
 import { sharedColumnsLine } from '../../../lib/hiring/columnShares'
 import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, DeskRow, DeskSection, LockTag, deskBtn } from '../personDeskShared'
 import PersonWatchRow from './PersonWatchRow'
+import { PersonDeskSitesRows } from './PersonDeskSitesRows'
 import type { UserRole } from '../../../hooks/useAuth'
 import { humanRoleLabel } from '../../../lib/roleLabels'
 import { formatErrorMessage } from '../../../utils/errorHandling'
@@ -59,7 +59,7 @@ async function fnErrorMessage(e: unknown): Promise<string> {
  * Access & account (v2.2701; Account on the desk, PR B): every control for one person's login,
  * row by row, each saving itself. It used to hold role, sign-in, training and status, and send
  * the rest to the Active Accounts window ("Manage account…"), which opened on everyone. Name,
- * trades, supervision, extra access, the password and the CountTooling seat now live here.
+ * trades, supervision, extra access, the password and the CountTooling seat now live here. Since v2.8667 that seat is one of the Sites rows (`PersonDeskSitesRows`): a seat and its role on CountTooling and on TakeoffTooling.
  * Rows the viewer cannot change still show their value, with a tag that says who can.
  */
 export function PersonDeskAccessSection({
@@ -177,7 +177,8 @@ export function PersonDeskAccessSection({
   const supervisionApplies = hasSupervisionSwitch(u.role)
   const canFlipSupervision = canSetSupervision(viewer) && (!isSelf || viewer.isDev)
   const canRun = u.needs_supervision === false
-  const showCountTooling = viewer.isDev && (Boolean(u.counttooling_user_id) || u.role === 'estimator')
+  // v2.8667: a dev sees the person's seat on each sister site, whatever their role here.
+  const showSites = viewer.isDev
 
   /** Closes the Attach form and forgets what was typed, the password above all. */
   function closeAttach() {
@@ -657,31 +658,8 @@ export function PersonDeskAccessSection({
       </DeskRow>
       )}
 
-      {showCountTooling && !noLogin ? (
-        <DeskRow
-          label="CountTooling"
-          actions={
-            u.counttooling_user_id ? null : (
-              <button
-                type="button"
-                style={deskBtn(BTN, busy != null || !u.email)}
-                disabled={busy != null || !u.email}
-                title="Make (or find) their CountTooling account and link it."
-                onClick={() => void run('ct', () => createCountToolingSeat(supabase, { userId: u.id, email: u.email!, name: u.name }), `CountTooling seat ready for ${displayName}`)}
-              >
-                {busy === 'ct' ? 'Making…' : 'Make a seat'}
-              </button>
-            )
-          }
-        >
-          {u.counttooling_user_id ? (
-            <Chip tone="green" title={`Linked CountTooling account ${u.counttooling_user_id}. Archiving them also retires the seat.`}>
-              seat linked
-            </Chip>
-          ) : (
-            <span style={{ color: 'var(--text-muted)' }}>no seat</span>
-          )}
-        </DeskRow>
+      {showSites && !noLogin ? (
+        <PersonDeskSitesRows user={{ id: u.id, email: u.email, name: u.name, counttooling_user_id: u.counttooling_user_id ?? null }} displayName={displayName} busy={busy} run={run} confirm={confirmDialog} />
       ) : null}
 
       <DeskRow

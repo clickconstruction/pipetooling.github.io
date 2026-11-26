@@ -12,7 +12,7 @@ import type { SiteAccountsState } from '../../hooks/useSiteAccounts'
 
 afterEach(cleanup)
 
-const seat = (over: Partial<SiteAccount>): SiteAccount => ({ id: 'ct-1', email: 'zz.test.estimator@example.com', active: true, isTwin: false, role: null, lastSignInAt: null, ...over })
+const seat = (over: Partial<SiteAccount>): SiteAccount => ({ id: 'ct-1', email: 'zz.test.estimator@example.com', active: true, isTwin: false, roles: [], lastSignInAt: null, ...over })
 const ready = (accounts: SiteAccount[]): SiteRead => ({ state: 'ready', accounts })
 const reads = (count: SiteRead, takeoff: SiteRead): Record<SiteKey, SiteRead> => ({ count, takeoff })
 
@@ -28,10 +28,10 @@ describe('the Sites lens cells', () => {
       <UsersTabSiteCells
         person={{ email: 'zz.test.estimator@example.com', linkedId: 'ct-1' }}
         name="ZZ Test Estimator"
-        reads={reads(ready([seat({ role: 'admin' })]), ready([]))}
+        reads={reads(ready([seat({ roles: ['overseer', 'admin'] })]), ready([]))}
       />,
     )
-    expect(screen.getByLabelText('ZZ Test Estimator on CountTooling: active, admin')).toBeTruthy()
+    expect(screen.getByLabelText('ZZ Test Estimator on CountTooling: active, overseer, admin')).toBeTruthy()
     expect(screen.getByLabelText('ZZ Test Estimator on TakeoffTooling: no seat')).toBeTruthy()
   })
 
