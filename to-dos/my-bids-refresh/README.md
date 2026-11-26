@@ -2,14 +2,14 @@
 name: "My Bids and Recent Reports on the Dashboard: one swipe to put a row away"
 number: 426
 group: ready
-status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · the walk's two small presses and the frame's lost page mended in v2.8464, the bid window's own small presses in v2.8496 · Recent Reports' swipe walked on clicktooling.com as a sample account 2026-11-24, and it held · tried on a real iPhone 2026-11-25 by the person who runs the session, and the swipe held · that try asked for two more things, a sign that a row can be swiped and a swipe back for a put-away row, both drawn the same day in `swipe-sign-and-back.html` · their pick the same day, *A and no press* · the swipe back built on both cards (v2.8603) and the sign (v2.8604), neither walked on a phone · a hide on a second device not walked · picks 3 and 4 answered 2026-11-26: keep both as built
+status: claude/my-bids-refresh-c526b6 · asked 2026-11-23 in two asks, each with a phone screenshot · read and drawn the same day · the owner's go the same day, as recommended, with one press per bid · all six steps merged and live (v2.8337, v2.8340, v2.8344, v2.8349, v2.8351, v2.8369 with its column pushed 2026-11-23, v2.8370) · My Bids walked on clicktooling.com in the lens frame 2026-11-24, read only, and it held · the walk's two small presses and the frame's lost page mended in v2.8464, the bid window's own small presses in v2.8496 · Recent Reports' swipe walked on clicktooling.com as a sample account 2026-11-24, and it held · tried on a real iPhone 2026-11-25 by the person who runs the session, and the swipe held · that try asked for two more things, a sign that a row can be swiped and a swipe back for a put-away row, both drawn the same day in `swipe-sign-and-back.html` · their pick the same day, *A and no press* · the swipe back built on both cards (v2.8603) and the sign (v2.8604), neither walked on a phone · a hide on a second device not walked · picks 3 and 4 answered 2026-11-26: keep both as built · the swipe back and the sign walked in an iPhone simulator 2026-11-26 in the lens frame and hold; left: the signed-in checks that write, Recent Reports' swipe and the dark theme
 summary: >
   The owner wants the eye icon on each My Bids row replaced by a swipe and the bids grouped by state.
   He wants Recent Reports' heading back on one row, its presses moved to the foot, and the same swipe
   to mark a report opened, so a person can clear work off a list. The plan is one swipe for both
   cards: left, a strip that names the act, Undo, and a folded group at the foot that holds what was
   put away. The reading also found things neither ask named, listed below for each card.
-next: A walk of the swipe back and the sign in the simulator. Then retire the card.
+next: The simulator's walk of the swipe back and the sign held in the lens frame on 2026-11-26. Left: the signed-in checks (writes on a ZZ Test bid, each on its own yes), Recent Reports' swipe, and the dark theme. Then retire the card.
 size: L as a train of six (S · M · M · M · S · S); left: the simulator's walk
 blocker: None.
 opinion: build — the owner said go on every recommendation
@@ -417,6 +417,19 @@ With reduced motion no row moved and *Swipe a bid left to hide it.* stood under 
 again inside ten seconds would have stacked two toasts with two **Undo** presses, so a toast may now name what
 it is about and a newer one about the same bid or report takes the older one's place. Held by tests, not seen
 on a phone. Not walked: the right swipe on a real screen's edge and whether 32 px is the right number.
+
+### The simulator's walk, 2026-11-26
+
+Walked in an iPhone simulator (iPhone 17 Pro, 402 wide; a simulator, never a real phone), in the lens frame opened on the
+phone from Settings → What everyone sees → **Open alone ↗**. Nothing was written: no `user_dismissals` row, and the dev's
+hidden bid unchanged.
+
+**Holds.** The swipe back (v2.8603) on checks 1, 3, 4, 5, 9, 10 and 13, and the sign (v2.8604) on checks 2, 3, 7, 10 and
+15. The edge rule reads as built: a start of 3, 10 or 20 points moved no row, and 40 did.
+
+**Not made.** Reduce Motion, the keyboard, dark (the frame is fixed light), the finger-down check, and the signed-in checks
+8, 9, 11 and 14, which write and wait for a later sitting on a ZZ Test bid with their own yes. Recent Reports was not
+walked: the frame's card is empty.
 
 ## The asks
 
