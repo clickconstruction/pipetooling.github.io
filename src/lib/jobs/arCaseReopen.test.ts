@@ -156,7 +156,7 @@ describe('arClosedCases', () => {
 })
 
 describe('arClosedCasesShown', () => {
-  const line = (id: string, older: boolean) => ({ id, payer: 'ZZ Test Payer', amount: 1, closedWords: '', jobWords: '', older })
+  const line = (id: string, older: boolean) => ({ id, payer: 'ZZ Test Payer', amount: 1, kind: 'Check came back', closedWords: '', jobWords: '', older })
   it('draws the recent ones and counts the folded', () => {
     const got = arClosedCasesShown([line('a', false), line('b', true), line('c', true)], false)
     expect(got.shown.map((l) => l.id)).toEqual(['a'])
