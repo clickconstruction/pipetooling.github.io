@@ -13,7 +13,7 @@ summary: >
   under it, about three rows. The mock-up draws today's desk and three answers with the Board in
   place: B (one page, clearer rows), A (the list follows the Board's bins) and D (one run in three
   steps, opened from the Board's first tile). Each is the start of the next.
-next: The migration `20261125210500_lien_print_stands.sql` is applied (2026-11-26, 02:11 UTC), and the types follow in pull request 9902 with the dev seat's deploy after it. Then a look at the *Changed since printed* card and its three presses on the live desk, by a walker. Then step 8, mail and file (M). The six calls on the run's defaults are answered, each as built, under *Open questions*. The first real press is the office's, at its own printer. A guarded press, with the print window held shut, has its own yes of 2026-11-25 and is the walker's, on a live press alone. A print of the run on a real printer has not been seen.
+next: The migration `20261125210500_lien_print_stands.sql` is applied (2026-11-26, 02:11 UTC), and the types follow in pull request 9902 with the dev seat's deploy after it. The *Changed since printed* card was seen drawn live on 2026-11-26 (sitting 21); its three presses have not been pressed live. Then step 8, mail and file (M). The six calls on the run's defaults are answered, each as built, under *Open questions*. The first real press is the office's, at its own printer. A guarded press, with the print window held shut, has its own yes of 2026-11-25 and is the walker's, on a live press alone. A print of the run on a real printer has not been seen.
 size: L for D as five steps (M · M · M · S · M); B, the first three, step 4, the list by bin, step 5, the checklist, step 6, the one print, and step 7, changed since printed, are built; left: step 8 (M)
 blocker: none
 ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474 · v2.8536 · v2.8589 · v2.8591 · v2.8593 · v2.8595
@@ -291,7 +291,10 @@ Read in the code on 2026-11-25, with step 6 on `main`.
   print.~~ Built, v2.8593, on the first answer below. A card over *Print the run* names each printed
   paper that would say another thing today, with both values. A printed notice is read against the
   bills as they stand. An affidavit whose newest print says the same today is left out of the run's
-  print, and the Board's own print still takes it. Not seen live.
+  print, and the Board's own print still takes it. Seen drawn live on 2026-11-26 (sitting 21, nothing
+  pressed): one notice printed before v2.8589, so the notice as stored was read in its place, the claim
+  printed and the claim now a figure apart, and the door line to the run window. Its three presses were
+  not pressed.
 - A paper printed before v2.8589 has no values kept. Such an affidavit counts as to print, as
   before. Such a notice is read against the notice as stored, and its line says so.
 - ~~The three presses on a changed paper.~~ Built, v2.8595, on the second answer below. *Reprint
@@ -300,7 +303,8 @@ Read in the code on 2026-11-25, with step 6 on `main`.
   key of that difference, so a second change asks again, and *Take back* stamps it. *Take it out of
   the run* is the run's own Leave out. An affidavit that stands does not print again with the run.
   The migration is `20261125210500_lien_print_stands.sql`, pushed on 2026-11-26 at 02:11 UTC from `main`
-  at `0d4420cd0d` on the person's yes, so *It stands* has its table. Not seen live.
+  at `0d4420cd0d` on the person's yes, so *It stands* has its table. The three presses are not pressed
+  live yet: sitting 21 looked only.
 - ~~**Which fields count as sworn on each paper.**~~ Answered 2026-11-25. Asked: *"a printed notice
   or affidavit reads as changed when anything it states has moved since it printed: the money, the
   parties, the property, the work and its months. Its date, its contact person and the county an
@@ -433,7 +437,9 @@ here. It is named below with its reason. 11 more wait on step 1 above.*, names t
 (the paper claims one amount, the bills now come to a smaller one, it prints once redrawn), and points at
 the Board's Print and mail press. At 380 px nothing scrolls sideways and the dead press is 44 px tall,
 where the morning's look read 26 px. In dark the head and counts read 14 to 1 and the grey lines 5.8 to
-1. Opening the checklist wrote nothing.
+1. Opening the checklist wrote nothing. Sitting 21 (2026-11-26, nothing pressed) read the same card
+again, with the dead press 26 px tall at 1024 px, the desk's height as v2.8591 says, and 44 px at 380 px,
+so the 26 px of sitting 15 was a desk-width look.
 
 The look at step 6 is written as a recipe in three parts. The first part was walked on the live desk on
 2026-11-25 (sitting 15, as the dev, nothing pressed): it read the card, the Board and the list, and its one
