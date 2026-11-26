@@ -4,6 +4,8 @@ import type { PayConfigRow } from '../../types/peoplePayConfig'
 import type { PersonDeskSectionId } from '../../lib/people/personDeskSections'
 import { USERS_TAB_LENSES, lensForcesNoLoginOpen, resolveUsersTabLens, usersTabLensesFor, type UsersTabLens } from '../../lib/people/usersTabLens'
 import { UsersLensHeader, UsersTabAccountCells, UsersTabPayCells, WorkdayScheduleModal } from './UsersTabLensCells'
+import { UsersSitesLensSummary, UsersTabSiteCells } from './UsersTabSiteCells'
+import { useSiteAccounts } from '../../hooks/useSiteAccounts'
 import { hasSupervisionSwitch } from '../../lib/people/supervision'
 import type { Person, PersonKind, UserRow } from '../../hooks/usePeopleRoster'
 import type { UsersTabTagAnchor, UsersTabTagsApi } from '../../hooks/useUsersTabTags'
@@ -272,8 +274,10 @@ export function PeopleUsersTab({
   const archivedCount = archivedPeopleRows.length + archivedLoginRows.length
   // Punch list #265: the roster records the backfill left for the desk (a users row carries their name).
   const strayWords = rosterStrayWords(rosterStrayCount(people))
-  const lens: UsersTabLens = resolveUsersTabLens(searchParams.get('lens'), { canAccessPay: access.canAccessPay && Boolean(payLens), narrowViewport })
-  const lensChoices = usersTabLensesFor({ canAccessPay: access.canAccessPay && Boolean(payLens), narrowViewport })
+  const lens: UsersTabLens = resolveUsersTabLens(searchParams.get('lens'), { canAccessPay: access.canAccessPay && Boolean(payLens), narrowViewport, isDev })
+  const lensChoices = usersTabLensesFor({ canAccessPay: access.canAccessPay && Boolean(payLens), narrowViewport, isDev })
+  // v2.8657: the Sites lens reads the two sister sites only while it is open, and only for a dev.
+  const siteAccounts = useSiteAccounts(lens === 'sites' && isDev)
   function setLens(next: UsersTabLens) {
     setSearchParams(
       (prev) => {
@@ -469,6 +473,10 @@ export function PeopleUsersTab({
     const openDesk = personDesk?.canOpen
       ? (section: PersonDeskSectionId) => personDesk.open(item.source === 'user' ? { userId: item.id, displayName: item.name, section } : { personId: item.id, displayName: item.name, section })
       : undefined
+    if (lens === 'sites') {
+      const linkedId = item.source === 'user' && siteAccounts.people?.ok ? (siteAccounts.people.countLinkByUserId.get(item.id) ?? null) : null
+      return <UsersTabSiteCells person={{ email: item.email ?? null, linkedId }} name={item.name} reads={siteAccounts.reads} />
+    }
     if (lens === 'account') {
       return (
         <UsersTabAccountCells
@@ -895,6 +903,7 @@ export function PeopleUsersTab({
           <EmptyState compact {...nobodyMatchesWords(usersTabSearch, () => setUsersTabSearch(''))} />
         </div>
       ) : null}
+      {lens === 'sites' && !narrowViewport ? <UsersSitesLensSummary sites={siteAccounts} /> : null}
       {!narrowViewport ? (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.15rem' }}>
           {lens === 'contact' ? <UsersRailHeader /> : <UsersLensHeader lens={lens} />}

@@ -6,6 +6,7 @@ import { lensSignInLabel, type UsersTabLens } from '../../lib/people/usersTabLen
 import { SalaryWorkScheduleSettings } from '../SalaryWorkScheduleSettings'
 import { BTN_RED, DESK_EDITOR_Z } from '../personDesk/personDeskShared'
 import { PAY_CELL_WIDTHS, PayConfigCells, payConfigRowOrEmpty, type PayConfigCellsProps } from './PayConfigCells'
+import { UsersSitesLensHeader } from './UsersTabSiteCells'
 
 /**
  * The Users tab's Account and Pay lens cells (People spine PR 5, v2.3702): the columns
@@ -20,6 +21,7 @@ const HEAD: React.CSSProperties = { textAlign: 'center', fontSize: '0.625rem', l
 
 /** The column header above the first group — one per lens (contact keeps the needs rail's own). */
 export function UsersLensHeader({ lens }: { lens: Exclude<UsersTabLens, 'contact'> }) {
+  if (lens === 'sites') return <UsersSitesLensHeader />
   if (lens === 'pay') {
     return (
       <div aria-hidden style={{ display: 'flex', gap: 6, marginLeft: 'auto', paddingRight: 34 }}>
