@@ -6,7 +6,7 @@ keywords: google, continue with google, sign in with google, single sign-on, sso
 where: /sign-in
 ---
 
-You can sign in with your Google account in place of your password. It opens the same account, with the same role and the same work.
+You can sign in with your Google account in place of your password. Google opens the same account, with the same role and the same work.
 
 ## Sign in
 
@@ -18,7 +18,7 @@ Google sends you back signed in. You land on the page you asked for.
 
 ## Which Google account works
 
-Google must sign you in with the same email address the office has for you here. That is the address you type on the sign-in page today.
+Google must sign you in with the same email address the office has for you here. You type that address on the sign-in page today.
 
 A Google account on another address opens nothing. The page says **No account uses that Google address**. Use the right Google account, or ask the office to check the address on your account.
 
