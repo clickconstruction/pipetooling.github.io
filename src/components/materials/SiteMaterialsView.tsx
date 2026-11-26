@@ -28,7 +28,7 @@ import { isLeftOut, rowSitePrices, sitePriceWords, type SitePrice } from '../../
 import type { SitePriceInput } from '../../lib/materials/sitePricesIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { askReasonWords, joinedTies, orderedPair, samePartAsks, tieCanon, tieFor, tieNamesWords, type PartTie, type SamePartAsk, type TieVerdict } from '../../lib/materials/partTies'
-import { containerLines, lastCountWords, type Movement } from '../../lib/materials/onSite'
+import { containerLines, lastCountedByBox, lastCountWords, type Movement } from '../../lib/materials/onSite'
 import { serverLines } from '../../lib/materials/onSiteServerSummary'
 import { addSitePrice, editContainer, listContainerMoves, listContainers, loadJob, retireContainer, unretireContainer, listMovements, listPlaces, listSitePrices, loadBookPrices, priceForScope, removeSitePrice, serverSummary, setScopeTies, sitePricingAvailable } from '../../lib/materials/onSiteStore'
 import { priceTitle, priceWords } from '../../lib/materials/bookPrice'
@@ -131,7 +131,9 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
   // The store's own rows, job by job. A job past the ledger cap reads its lines from the database's summary.
   const rollup: SiteRollupJob[] = jobs.map((j) => {
     const summary = serverSummary(j.id)
-    return { jobId: j.id, label: j.label, containers: listContainers(j.id), places: listPlaces(j.id), lines: summary ? serverLines(summary) : containerLines(listMovements(j.id)) }
+    // Each box's last count (#398): the server's last_counts, or the ledger's, both with an added part's own count left out.
+    const lastCounted = summary ? new Map(summary.last_counts.map((c) => [c.container_id, c.at] as const)) : lastCountedByBox(listMovements(j.id))
+    return { jobId: j.id, label: j.label, containers: listContainers(j.id), places: listPlaces(j.id), lines: summary ? serverLines(summary) : containerLines(listMovements(j.id)), lastCounted }
   })
   const movements: Movement[] = jobs.flatMap((j) => listMovements(j.id))
   const glance = siteGlance(rollup, now)

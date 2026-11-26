@@ -26,6 +26,12 @@ describe('a box as one row (v2.8284)', () => {
     expect(boxRowState({ kind: 'cage', parts: 0, lineIsApps: false, last: last(2), now })).toMatchObject({ partsWords: '0 parts', amber: false, empty: true })
   })
 
+  it('an empty box is never amber, however old its count; a Can’t find with none left still asks for one (punch list #398)', () => {
+    expect(boxRowState({ kind: 'cage', parts: 0, lineIsApps: false, last: last(21), now })).toMatchObject({ stateWords: 'counted 21 days ago', amber: false, empty: true })
+    expect(boxRowState({ kind: 'cage', parts: 0, lineIsApps: false, last: last(21), now, cannot: 2 })).toMatchObject({ stateWords: 'counted 21 days ago', amber: true, empty: true })
+    expect(boxRowState({ kind: 'cage', parts: 0, lineIsApps: false, last: last(1), now, cannot: 2 })).toMatchObject({ amber: false })
+  })
+
   it('the desk’s row opens the Tally’s box screen marked as from Materials, and that screen comes back to the job', () => {
     expect(boxScreenFromMaterials('j1', 'c1')).toBe('/tally?tab=on-site&job=j1&container=c1&from=materials')
     expect(materialsJobPage('j1')).toBe('/materials?tab=on-site&job=j1')

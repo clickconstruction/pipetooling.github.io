@@ -31,7 +31,7 @@ The top row of figures reads the site at a glance.
 
 - **Last recorded** says when someone last pressed anything on this site. The figure turns amber after seven quiet days.
 - **Boxes** and **On hand** count what is there.
-- **Due a count** counts the boxes past 14 days. A smaller line says how many more fall due this week.
+- **Due a count** counts the boxes past 14 days. An empty box is not counted. A smaller line says how many more fall due this week.
 - **Can't find** and **Short at a count** count the lines to chase.
 - **Missing this week** is the money that walked away.
 - **This week** is what came in and what was used.

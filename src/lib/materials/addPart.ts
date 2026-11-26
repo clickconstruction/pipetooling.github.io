@@ -7,7 +7,7 @@
  *
  * Pure: the press's words, the row, and what the toast says. The write is `onSiteStore.addMovement`.
  */
-import type { ContainerLine } from './onSite'
+import { ADD_COUNT_NOTE, type ContainerLine } from './onSite'
 import type { OnHandName } from './onSiteNames'
 import type { AddMovementInput } from './onSiteStore'
 import { rollKey, sameWordsKey } from './siteRollup'
@@ -133,8 +133,8 @@ export function addPartRows(input: { jobId: string; containerId: string; part: A
   return [delivered, counted]
 }
 
-/** The note on such a count, so History says where it came from. */
-export const ADD_COUNT_NOTE = 'counted as added'
+/** The note on such a count, so History says where it came from. It lives in `onSite.ts`, whose `lastCountedAt` leaves such a row out of a box's last count (#398). */
+export { ADD_COUNT_NOTE } from './onSite'
 
 // ---------------------------------------------------------------------------
 // A new box with its first part (v2.8284)

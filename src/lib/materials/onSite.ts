@@ -258,14 +258,52 @@ export function countDiffs(movements: ReadonlyArray<Movement>): CountDiff[] {
   return out.reverse()
 }
 
-/** When a container was last counted: the newest count row in it, or null. */
+/**
+ * The note on the count row the Tally's Add a part writes beside the add (`addPartRows`), when the box held none of
+ * the part: the line is counted as it goes in. That count is the line's own and never the box's (punch list #398,
+ * the owner's answer of 2026-11-25): `lastCountedAt` leaves it out. The database copies these words in
+ * `on_site_door_facts` and `on_site_job_summary` (migration 20261126014752); `boxDueNote.test.ts` fails when one side
+ * changes alone.
+ */
+export const ADD_COUNT_NOTE = 'counted as added'
+
+/** When a container was last counted: the newest count row in it, an added part's own count left out, or null. */
 export function lastCountedAt(movements: ReadonlyArray<Movement>, containerId: string): { at: string; byName: string } | null {
   let best: Movement | null = null
   for (const m of movements) {
-    if (m.reason !== 'counted' || m.fromContainerId !== containerId) continue
+    if (m.reason !== 'counted' || m.fromContainerId !== containerId || m.note === ADD_COUNT_NOTE) continue
     if (!best || m.at > best.at) best = m
   }
   return best ? { at: best.at, byName: best.byName } : null
+}
+
+/** `lastCountedAt` for every box at once: each box's id to its last count's `at`, an added part's own count left out. */
+export function lastCountedByBox(movements: ReadonlyArray<Movement>): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const m of movements) {
+    if (m.reason !== 'counted' || !m.fromContainerId || m.note === ADD_COUNT_NOTE) continue
+    const cur = out.get(m.fromContainerId)
+    if (!cur || m.at > cur) out.set(m.fromContainerId, m.at)
+  }
+  return out
+}
+
+/**
+ * A line a count visits (`countWalkKeys`): something on hand, or a Can't find since the last count. A line counted
+ * to none with nothing owed is not one, so a box of such lines has nothing to count.
+ */
+export function lineIsCountable(l: Pick<ContainerLine, 'onHand' | 'cannotFindSinceCount'>): boolean {
+  return l.onHand > 0 || l.cannotFindSinceCount > 0
+}
+
+/**
+ * When a box is due a count (punch list #398): it holds a line to count, and its last count is old or none
+ * (`countIsDue`). An empty box offers no count on its screen, so it is due one nowhere: not on the list's Count
+ * chip, the office's chip, the map's pin or the Job Mode card's line. Unsorted is the app's own row and never due.
+ * The database holds the same rule in `on_site_door_facts` (migration 20261126014752).
+ */
+export function boxCountDue(box: { kind: ContainerKind | string; last: { at: string } | null; lines: ReadonlyArray<Pick<ContainerLine, 'onHand' | 'cannotFindSinceCount'>> }, now: Date): boolean {
+  return box.kind !== 'unsorted' && box.lines.some(lineIsCountable) && countIsDue(box.last, now)
 }
 
 /** Days since a stamp, whole, at `now`. */

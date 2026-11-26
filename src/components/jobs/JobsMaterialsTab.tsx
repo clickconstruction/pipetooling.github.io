@@ -27,7 +27,7 @@ import { missingWeekIsPartial, missingWeekNote } from '../../lib/materials/missi
 import { deskJobsNotLoadedWords, deskRowNotLoadedWords, SITE_NOT_LOADED_WORDS, SITES_NOT_LOADED_WORDS } from '../../lib/materials/onSiteReadFailed'
 import { EmptyState } from '../EmptyState'
 import { OFFLINE_READ_MESSAGE, recoveryFailureFromError } from '../../lib/offlineRecoveryState'
-import { containerLines, countDiffs, countIsDue, daysSince, groupByPlace, lastCountWords, lastCountedAt, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type Container, type ContainerLine } from '../../lib/materials/onSite'
+import { boxCountDue, containerLines, countDiffs, daysSince, groupByPlace, lastCountWords, lastCountedAt, lastCountedByBox, linesOf, missingMoney, partKey, REASON_WORDS, STALE_COUNT_DAYS, type Container, type ContainerLine } from '../../lib/materials/onSite'
 import { addContainer, addDelivery, addMovement, addPlace, bookPricesState, jobIdsWithData, jobLedgerCapped, listContainers, listMovements, listPhotos, listPlaces, MOVEMENTS_LIMIT, newId, priceForJob, priceOfJob, rememberPrice, retireContainer, retryBookPrices, setOnSiteErrorHandler, unretireContainer, unsortedContainer, jobLoadState, loadDesk, loadJob } from '../../lib/materials/onSiteStore'
 import { BOOK_PRICE_FRESH_DAYS, priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
@@ -727,7 +727,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [whereBoxId, setWhereBoxId] = useState<string | null>(null)
   // The job's painted maps (#345), under the boxes: read only while the map is the view, or a box's Where is it? is open.
   const painted = usePaintedMapsLayer(jobId ? { jobId } : null, (section === 'onsite' && onSiteView === 'map') || whereBoxId != null)
-  const mapPins: OnSiteMapPin[] = containers.filter((c) => c.lat != null && c.lng != null).map((c) => ({ id: c.id, label: c.label, lat: c.lat as number, lng: c.lng as number, tone: c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now) ? 'amber' : 'ok' }))
+  // A pin is amber when its box is due a count (#398): a line to count, and no count inside 14 days. An empty box is never amber.
+  const mapPins: OnSiteMapPin[] = containers.filter((c) => c.lat != null && c.lng != null).map((c) => ({ id: c.id, label: c.label, lat: c.lat as number, lng: c.lng as number, tone: boxCountDue({ kind: c.kind, last: lastCountedAt(movements, c.id), lines: linesOf(lines, c.id) }, now) ? 'amber' : 'ok' }))
   const [reasonFilter, setReasonFilter] = useState<string>('')
   const [whoFilter, setWhoFilter] = useState<string>('')
   const [sinceDays, setSinceDays] = useState<7 | 30>(7)
@@ -952,7 +953,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             {g.containers.map((c) => {
               const ls = linesOf(lines, c.id)
               const last = lastCountedAt(movements, c.id)
-              const due = c.kind !== 'unsorted' && countIsDue(last, now)
+              const due = boxCountDue({ kind: c.kind, last, lines: ls }, now)
               // What is in it (punch list #351, PR 2): a person's words, or the app's line from the parts. The name opens Edit, which holds the same line.
               const boxLineNow = c.kind === 'unsorted' ? null : boxLineOf(c, lines)
               if (phone) {
@@ -1359,7 +1360,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
             </div>
           ) : null}
           {(() => {
-            const rows = sitePartRows([{ jobId, label: jobLabel(job, jobId), containers, places, lines }], now, tieCanon(partTies.ties))
+            const rows = sitePartRows([{ jobId, label: jobLabel(job, jobId), containers, places, lines, lastCounted: lastCountedByBox(movements) }], now, tieCanon(partTies.ties))
             if (rows.length === 0) return load.loaded ? <EmptyState compact main="No part is on hand on this job yet." tail="A crew counts parts into a box on the phone’s On site tab." /> : <p style={{ ...muted, margin: 0, padding: '0.75rem 0.9rem' }}>Reading the boxes…</p>
             return (
               <table style={{ borderCollapse: 'collapse', width: '100%' }}>

@@ -4,7 +4,7 @@
  * a badge where a hand is needed; the phone's row is the three names the crew already sees, Unsorted,
  * Used and Count, each with its count. Pure: the money comes through `priceOf`.
  */
-import { containerLines, countDiffs, countIsDue, lastCountedAt, linesOf, missingMoney, partKey, type Container, type ContainerLine, type Movement } from './onSite'
+import { boxCountDue, containerLines, countDiffs, lastCountedAt, linesOf, missingMoney, partKey, type Container, type ContainerLine, type Movement } from './onSite'
 
 /** The window the Missing figure and its money read over. */
 export const FLOW_WINDOW_DAYS = 7
@@ -40,9 +40,13 @@ export type PhoneFlow = {
   dueBoxIds: string[]
 }
 
-/** The boxes that need a hand: due a count, or holding a Can't find since the last count. Unsorted is never one. */
+/** The boxes that need a hand: due a count (`boxCountDue`: a line to count, and no count inside 14 days), or holding a Can't find since the last count. Unsorted is never one, and nor is an empty box (#398). */
 export function boxesNeedingAHand(containers: ReadonlyArray<Container>, lines: ReadonlyArray<ContainerLine>, movements: ReadonlyArray<Movement>, now: Date): Container[] {
-  return containers.filter((c) => !c.retiredAt && c.kind !== 'unsorted' && (countIsDue(lastCountedAt(movements, c.id), now) || linesOf(lines, c.id).some((l) => l.cannotFindSinceCount > 0)))
+  return containers.filter((c) => {
+    if (c.retiredAt || c.kind === 'unsorted') return false
+    const ls = linesOf(lines, c.id)
+    return boxCountDue({ kind: c.kind, last: lastCountedAt(movements, c.id), lines: ls }, now) || ls.some((l) => l.cannotFindSinceCount > 0)
+  })
 }
 
 export function officeFlow(containers: ReadonlyArray<Container>, movements: ReadonlyArray<Movement>, now: Date, priceOf: (key: string) => number | null, windowDays = FLOW_WINDOW_DAYS): OfficeFlow {

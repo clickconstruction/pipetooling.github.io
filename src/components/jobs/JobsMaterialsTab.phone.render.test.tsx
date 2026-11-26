@@ -77,10 +77,11 @@ describe('A job’s On site section on a phone', () => {
     data.boxes = [box('zz1', 'ZZ1'), box('un', 'Unsorted', 'unsorted')]
     open()
     const tiles = screen.getByTestId('flow-tiles')
-    expect(within(tiles).getAllByRole('tab').map((t) => t.textContent)).toEqual(['0Came in', '0On site1', '0Used', '0Missing'])
+    // ZZ1 is empty, so it is due no count and On site carries no badge (#398).
+    expect(within(tiles).getAllByRole('tab').map((t) => t.textContent)).toEqual(['0Came in', '0On site', '0Used', '0Missing'])
     expect(tiles.querySelector('svg')).toBeNull()
     expect(within(tiles).getAllByRole('tab').map((t) => t.getAttribute('aria-selected'))).toEqual(['false', 'true', 'false', 'false'])
-    expect(within(tiles).getAllByRole('tab')[1]!.getAttribute('title')).toBe('0 pieces on site in 1 box · 1 need a hand')
+    expect(within(tiles).getAllByRole('tab')[1]!.getAttribute('title')).toBe('0 pieces on site in 1 box')
 
     const row = screen.getByTestId('materials-phone-view-row')
     expect(within(row).getAllByRole('button').map((b) => b.textContent)).toEqual(['List', 'By part', 'Map', '+ Container'])
@@ -107,7 +108,7 @@ describe('A job’s On site section on a phone', () => {
     open({ phone: false })
     expect(screen.queryByTestId('flow-tiles')).toBeNull()
     expect(screen.queryByTestId('materials-phone-view-row')).toBeNull()
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['0came in', '0on site1', '0used', '0missing'])
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['0came in', '0on site', '0used', '0missing'])
     expect(within(screen.getByRole('group', { name: 'This site\'s boxes' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Add a container', 'Print labels', 'Print future stickers', 'Print the manifest'])
   })
 

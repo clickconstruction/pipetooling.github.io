@@ -33,7 +33,7 @@ export default function OnSiteBoxRow({ box, line, parts, cannot, last, now, stic
   action?: string
   testId?: string
 }) {
-  const state = boxRowState({ kind: box.kind, parts, lineIsApps: line.by === 'app', last, now })
+  const state = boxRowState({ kind: box.kind, parts, lineIsApps: line.by === 'app', last, now, cannot })
   const style = rowStyle(state.amber || cannot > 0)
   const body = (
     <>

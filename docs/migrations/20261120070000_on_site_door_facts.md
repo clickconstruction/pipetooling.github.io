@@ -1,6 +1,6 @@
 # 20261120070000 — on_site_door_facts (v2.8103)
 
-Materials on site (punch list #407): what the Job Mode card's Materials on site press says of a job's site, in one read. No table is created, so no fence is owed.
+Materials on site (punch list #407): what the Job Mode card's Materials on site press says of a job's site, in one read. No table is created, so no fence is owed. Replaced by [`20261126014752_box_due_a_count`](./20261126014752_box_due_a_count.md) (v2.8612, punch list #398), whose `due` leaves out an added part's own count and counts only a box with a line to count.
 
 **`on_site_door_facts(p_job_id uuid)` → jsonb**, `LANGUAGE sql`, `STABLE`, **`SECURITY INVOKER`**: `job_containers`, `job_material_movements`, `box_stickers` and `sticker_runs` each answer under the caller's own RLS, so the numbers are what that person can open. Granted to `authenticated`; revoked from `anon` and `PUBLIC`.
 

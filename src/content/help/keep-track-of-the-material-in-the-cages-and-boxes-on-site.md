@@ -82,7 +82,7 @@ The box then shows **Taken from G12**. Each take reads who took what, with its p
 
 ## Count a box
 
-A box is due a count after two weeks. Under the parts, tap {{button:outline|Count A1}} and walk the lines. The press says when the box was last counted. The press turns amber when a count is due. The walk shows every line that has parts, one at a time. A line marked can't find is in the walk too, even with none left. Your count clears the mark.
+A box is due a count after two weeks. An empty box is never due one. Under the parts, tap {{button:outline|Count A1}} and walk the lines. The press says when the box was last counted. The press turns amber when a count is due. The walk shows every line that has parts, one at a time. A line marked can't find is in the walk too, even with none left. Your count clears the mark.
 
 Tap **25 is right** when the number matches. Type the number when it does not. Tap **Skip this line** to leave a line as it is. Tap **Not in A1 any more** when the part is gone from the box.
 
@@ -98,7 +98,7 @@ The sheet opens with choices. **This box says** offers the box's own words as th
 
 Then say how many. Type the number, or tap **+10**, **+25** or **+100**. Tap the blue press to add the part and close the sheet. Tap **Add 40 and another part** to add it and stay for the next part.
 
-A part put into a box that held none of it is counted as it goes in. The box does not ask you to count what you just put in. When the box already held some, count the box as usual.
+A part put into a box that held none of it is counted as it goes in. The box does not ask you to count what you just put in. That count is the part's own and not the box's. A box due a count stays due until you count it. When the box already held some, count the box as usual.
 
 ## Take a photo
 

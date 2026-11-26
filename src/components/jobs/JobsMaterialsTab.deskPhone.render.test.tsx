@@ -132,8 +132,8 @@ describe('the Materials desk · a phone and a computer', () => {
 
 describe('the Materials desk on a phone · what a row says and does', () => {
   it('a job with a box due a count is marked and names the box, in the desk’s words', () => {
-    // R13 was never counted: it is due.
-    data.movements = { ...countedAll(), ja: [mv('ja', { quantity: 4, reason: 'counted', fromContainerId: 'r12', at: ago(24) })] }
+    // R13 holds a part and was never counted: it is due. (An empty box is due nowhere since #398, so the part is what makes it due.)
+    data.movements = { ...countedAll(), ja: [mv('ja', { quantity: 4, reason: 'counted', fromContainerId: 'r12', at: ago(24) }), mv('ja', { quantity: 6, reason: 'delivered', toContainerId: 'r13', at: ago(48) })] }
     draw(true)
     const row = document.querySelector('[data-desk-phone-row="ja"]')!
     expect(row.hasAttribute('data-marked')).toBe(true)
@@ -186,7 +186,8 @@ describe('the Materials desk on a phone · what a row says and does', () => {
 
 describe('the Materials desk on a phone · the figures narrow the list', () => {
   it('Due a count keeps the jobs with a box due, and a second press brings every job back', () => {
-    data.movements = { ...countedAll(), ja: [mv('ja', { quantity: 4, reason: 'counted', fromContainerId: 'r12', at: ago(24) })] }
+    // R13 holds a part and was never counted (#398: an empty box would be due nowhere).
+    data.movements = { ...countedAll(), ja: [mv('ja', { quantity: 4, reason: 'counted', fromContainerId: 'r12', at: ago(24) }), mv('ja', { quantity: 6, reason: 'delivered', toContainerId: 'r13', at: ago(48) })] }
     draw(true)
     expect(tiles().map((t) => t.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false'])
     fireEvent.click(tiles()[1]!)

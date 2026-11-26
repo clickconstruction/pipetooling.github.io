@@ -16,7 +16,7 @@
  * Pure rules only. The screen is `components/materials/SiteMaterialsView.tsx`; the rows come from
  * the on-site store, which the desk has already read.
  */
-import { compareLabels, countIsDue, daysSince, STALE_COUNT_DAYS, UNSORTED_LABEL, type Container, type ContainerLine, type Movement, type Place } from './onSite'
+import { boxCountDue, compareLabels, daysSince, lineIsCountable, STALE_COUNT_DAYS, UNSORTED_LABEL, type Container, type ContainerLine, type Movement, type Place } from './onSite'
 
 /** One job of the site as the store holds it: its boxes, its places and its lines as `containerLines` reads them. */
 export type SiteRollupJob = {
@@ -26,6 +26,12 @@ export type SiteRollupJob = {
   containers: ReadonlyArray<Container>
   places: ReadonlyArray<Place>
   lines: ReadonlyArray<ContainerLine>
+  /**
+   * When each box was last counted, an added part's own count left out (`lastCountedByBox`, or the server's
+   * `last_counts`), as every other screen reads it (#398). Left out, the newest count of any line stands in, which
+   * cannot tell an add's count apart.
+   */
+  lastCounted?: ReadonlyMap<string, string>
 }
 
 /** One box that holds some of a part. */
@@ -136,8 +142,13 @@ function shown(l: ContainerLine): boolean {
   return l.onHand > 0 || l.cannotFindSinceCount > 0 || (l.lastCountDiff ?? 0) < 0
 }
 
-/** When each box was last counted: the newest count of any line in it. */
-export function boxCountedAt(lines: ReadonlyArray<ContainerLine>): Map<string, string> {
+/**
+ * When each box was last counted: the job's own map where it carries one (`lastCounted`), else the newest count of
+ * any line in it. A line's `lastCountAt` may be an added part's own count (`ADD_COUNT_NOTE`), which `lastCountedAt`
+ * leaves out of the box's, and the lines alone cannot tell the two apart (#398).
+ */
+export function boxCountedAt(lines: ReadonlyArray<ContainerLine>, lastCounted?: ReadonlyMap<string, string>): Map<string, string> {
+  if (lastCounted) return new Map(lastCounted)
   const out = new Map<string, string>()
   for (const l of lines) {
     if (!l.lastCountAt) continue
@@ -156,8 +167,9 @@ function placeOf(job: SiteRollupJob, c: Container): string {
   return job.places.find((p) => p.id === c.locationId)?.name ?? ''
 }
 
-function boxIsDue(c: Container, countedAt: string | undefined, now: Date): boolean {
-  return c.kind !== 'unsorted' && countIsDue(countedAt ? { at: countedAt } : null, now)
+/** Due a count (#398): a box with a line to count and no count inside 14 days. An empty box is never due. */
+function boxIsDue(c: Container, countedAt: string | undefined, lines: ReadonlyArray<ContainerLine>, now: Date): boolean {
+  return boxCountDue({ kind: c.kind, last: countedAt ? { at: countedAt } : null, lines: lines.filter((l) => l.containerId === c.id && lineIsCountable(l)) }, now)
 }
 
 /**
@@ -172,7 +184,7 @@ export function sitePartRows(jobs: ReadonlyArray<SiteRollupJob>, now: Date, cano
   const bookName = new Map<string, string>()
   for (const job of jobs) {
     const live = new Map(liveBoxes(job).map((c) => [c.id, c] as const))
-    const counted = boxCountedAt(job.lines)
+    const counted = boxCountedAt(job.lines, job.lastCounted)
     for (const l of job.lines) {
       const c = live.get(l.containerId)
       if (!c || !shown(l)) continue
@@ -187,7 +199,7 @@ export function sitePartRows(jobs: ReadonlyArray<SiteRollupJob>, now: Date, cano
       // A row with a parts-book line reads as the book's part, whatever was typed beside it.
       if (l.partId && !row.partId) row.partId = l.partId
       const short = Math.max(0, -(l.lastCountDiff ?? 0))
-      const due = boxIsDue(c, counted.get(c.id), now)
+      const due = boxIsDue(c, counted.get(c.id), job.lines, now)
       row.boxes.push({ containerId: c.id, label: c.kind === 'unsorted' ? UNSORTED_LABEL : c.label, jobId: job.jobId, jobLabel: job.label, placeName: placeOf(job, c), spelling: l.partName, partKey: l.partKey, onHand: l.onHand, lineCountedAt: l.lastCountAt, due, cannotFind: l.cannotFindSinceCount, short })
       row.total += l.onHand
       row.cannotFind += l.cannotFindSinceCount
@@ -244,14 +256,14 @@ export function sitePlaceSections(jobs: ReadonlyArray<SiteRollupJob>, now: Date)
     return s
   }
   for (const job of jobs) {
-    const counted = boxCountedAt(job.lines)
+    const counted = boxCountedAt(job.lines, job.lastCounted)
     for (const c of liveBoxes(job)) {
       const lines = job.lines.filter((l) => l.containerId === c.id && shown(l)).map((l) => ({ partKey: l.partKey, name: l.partName, onHand: l.onHand, cannotFind: l.cannotFindSinceCount, short: Math.max(0, -(l.lastCountDiff ?? 0)) }))
       if (c.kind === 'unsorted' && lines.length === 0) continue
       const place = placeOf(job, c)
       const s = c.kind === 'unsorted' ? section('~unsorted', UNSORTED_SECTION) : place ? section(`place:${place.trim().toLowerCase()}`, place.trim()) : section('~none', NO_PLACE_SECTION)
       if (!s.jobLabels.includes(job.label)) s.jobLabels.push(job.label)
-      s.boxes.push({ containerId: c.id, label: c.kind === 'unsorted' ? UNSORTED_LABEL : c.label, kind: c.kind, where: c.where, jobId: job.jobId, jobLabel: job.label, countedAt: counted.get(c.id) ?? null, due: boxIsDue(c, counted.get(c.id), now), lines })
+      s.boxes.push({ containerId: c.id, label: c.kind === 'unsorted' ? UNSORTED_LABEL : c.label, kind: c.kind, where: c.where, jobId: job.jobId, jobLabel: job.label, countedAt: counted.get(c.id) ?? null, due: boxIsDue(c, counted.get(c.id), job.lines, now), lines })
       s.pieces += lines.reduce((n, l) => n + l.onHand, 0)
     }
   }
@@ -302,7 +314,7 @@ export function siteGlance(jobs: ReadonlyArray<SiteRollupJob>, now: Date): SiteG
   for (const job of jobs) {
     const live = liveBoxes(job)
     const liveIds = new Set(live.map((c) => c.id))
-    const counted = boxCountedAt(job.lines)
+    const counted = boxCountedAt(job.lines, job.lastCounted)
     const real = live.filter((c) => c.kind !== 'unsorted')
     if (real.length > 0) jobsWithBoxes += 1
     boxes += real.length
@@ -310,7 +322,10 @@ export function siteGlance(jobs: ReadonlyArray<SiteRollupJob>, now: Date): SiteG
       const place = placeOf(job, c)
       if (place) places.add(place.trim().toLowerCase())
       const at = counted.get(c.id)
-      if (boxIsDue(c, at, now)) dueNow += 1
+      // An empty box is due nowhere and falls due never (#398): only a box with a line to count is counted here.
+      const countable = job.lines.some((l) => l.containerId === c.id && lineIsCountable(l))
+      if (!countable) continue
+      if (boxIsDue(c, at, job.lines, now)) dueNow += 1
       else if (at && daysSince(at, now) >= STALE_COUNT_DAYS - DUE_SOON_DAYS) dueSoon += 1
     }
     for (const l of job.lines) {
