@@ -23,6 +23,11 @@
  * - A street line too short to tell apart is never checked: the address stays.
  *
  * The cache is only a cache. Clearing a row costs the next screen that asks for the address one more look-up.
+ *
+ * A miss (punch list #443, row 16) is kept beside the points, in `address_geocode_misses`: an address no map
+ * service could place, under the same key. It goes by itself when a point is saved for the address, and it stops
+ * counting after 30 days, but nobody could delete one by hand until migration 20261126024719 let a dev. The block
+ * lists a miss with the kept addresses, under the same rule: it is cleared only when no record holds its street line.
  */
 
 /** Who is offered the block: a dev. Every other role sees nothing new. */
@@ -139,8 +144,18 @@ export function keptAddressSearchPattern(typed: string): string {
   return `%${words.join('%')}%`
 }
 
-/** The confirm window's words. The button names the act. */
-export function keptAddressClearConfirm(key: string): { title: string; message: string; confirmLabel: string } {
+/** What the cache keeps under a key: a point the map placed, or a miss, an address no service could place (#443, row 16). */
+export type KeptAddressKind = 'kept' | 'miss'
+
+/** The confirm window's words. The button names the act. A miss (row 16) is said as one. */
+export function keptAddressClearConfirm(key: string, kind: KeptAddressKind = 'kept'): { title: string; message: string; confirmLabel: string } {
+  if (kind === 'miss') {
+    return {
+      title: 'Clear this kept miss?',
+      message: `${key}. No map service could place it, and no record holds its street line. The map asks the services again the next time anyone types it.`,
+      confirmLabel: 'Clear the miss',
+    }
+  }
   return {
     title: 'Clear this kept address?',
     message: `${key}. No record holds its street line. The map looks it up again the next time anyone types it.`,
@@ -150,3 +165,9 @@ export function keptAddressClearConfirm(key: string): { title: string; message: 
 
 /** What the toast says once it is gone. */
 export const KEPT_ADDRESS_CLEARED = 'The kept address was cleared.'
+export const KEPT_MISS_CLEARED = 'The kept miss was cleared.'
+
+/** The toast for what was cleared. */
+export function keptAddressClearedWords(kind: KeptAddressKind): string {
+  return kind === 'miss' ? KEPT_MISS_CLEARED : KEPT_ADDRESS_CLEARED
+}
