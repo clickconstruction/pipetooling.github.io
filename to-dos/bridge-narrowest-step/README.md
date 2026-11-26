@@ -2,7 +2,7 @@
 name: "The Bridge lights the narrowest step"
 number: 321
 group: ready
-status: drawn 2026-11-12 after a review of the Bridge once Market read on the won rates (#318) · nothing is built · 2026-11-25 (UTC): the meaning answered in the managing session, the scaling function is the narrowest step, the one that moves the fewest dollars a week · the rule itself answered later the same day: the Bridge lights the narrowest step, so PR 2 and PR 3 are no longer held
+status: drawn 2026-11-12 after a review of the Bridge once Market read on the won rates (#318) · nothing is built · 2026-11-25 (UTC): the meaning answered in the managing session, the scaling function is the narrowest step, the one that moves the fewest dollars a week · the rule itself answered later the same day: the Bridge lights the narrowest step, so PR 2 and PR 3 are no longer held · PR 1 built 2026-11-26 as v2.8622, each row's direction on the pipe, the red unmoved
 mockup: to-dos/bridge-narrowest-step/mockup.html
 summary: >
   The Bridge lights the step with the most weeks of work waiting. With all five steps on one scale, that rule can
@@ -118,4 +118,6 @@ PR 2 and PR 3 waited on the word on the rule itself. It came on 2026-11-25, "Yes
 
 ## Where it stands
 
-Drawn, not built. The meaning was answered on 2026-11-25. The next move is PR 1. The rule was answered the same day, so PR 2 and PR 3 follow it.
+PR 1 is built as v2.8622 (2026-11-26): each row of the pipe says which way its work is heading, and the red stays where it was.
+The meaning and the rule were both answered on 2026-11-25, so PR 2 and PR 3 follow.
+PR 2 changes `stageFlow.ts`, which is copied to the edge functions and read by `bridge-weekly-sheet`, so it carries a regenerated copy and owes that function a redeploy after its merge, as v2.7230 did; PR 3 does the same through `weekCall.ts`.

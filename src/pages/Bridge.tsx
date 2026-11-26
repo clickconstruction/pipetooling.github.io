@@ -54,6 +54,7 @@ import { buildFixSizes } from '../lib/bridge/fixSizes'
 import { buildFlowStrip } from '../lib/bridge/flowStrip'
 import { BridgeFlowStrip } from '../components/bridge/BridgeFlowStrip'
 import { BridgeFlowStripDown } from '../components/bridge/BridgeFlowStripDown'
+import { stripDownDirections } from '../lib/bridge/flowStripDown'
 import { buildEstimateWins, type EstimateSent } from '../lib/bridge/estimateWins'
 import { loadEstimatesSent } from '../lib/bridge/loadEstimateWins'
 import { BID_SIZES, buildBidWins, buildMarketWorth, marketWorthInput, type BidSent } from '../lib/bridge/bidWins'
@@ -1387,6 +1388,8 @@ export default function Bridge() {
     if (!stageFlow || !stageInput) return null
     return buildFlowStrip(stageFlow, { market: todayPace(stageInput, 'market'), sales: todayPace(stageInput, 'sales'), build: todayPace(stageInput, 'build'), bill: todayPace(stageInput, 'bill'), collect: todayPace(stageInput, 'collect') }, { marketIsWorth: marketPaceIsWorth(stageInput) })
   }, [stageFlow, stageInput])
+  // Each row's direction on the standing pipe (punch list #321, PR 1): today's paces too, never the dial's what-if.
+  const stripDirections = useMemo(() => (stageInput ? stripDownDirections(stageInput) : null), [stageInput])
 
   // Every move for the pressed step (v2.6840), for its desk: which of them the card at the top holds.
   const deskList = useMemo(() => {
@@ -1515,7 +1518,7 @@ export default function Bridge() {
             <BridgeWeek
               model={weekModel}
               onCashNote={() => pressDoor('money', { keepOpen: true, scrollTo: 'bridge-cash-accounts' })}
-              strip={flowStrip ? pipeAcross ? <BridgeFlowStrip strip={flowStrip} onOpen={openStageDesk} /> : <BridgeFlowStripDown strip={flowStrip} onOpen={openStageDesk} market={marketWorth} /> : null}
+              strip={flowStrip ? pipeAcross ? <BridgeFlowStrip strip={flowStrip} onOpen={openStageDesk} /> : <BridgeFlowStripDown strip={flowStrip} onOpen={openStageDesk} market={marketWorth} directions={stripDirections} /> : null}
               stripSide={!pipeAcross}
               money={weekMoney}
               dives={callDives}

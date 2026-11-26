@@ -38,7 +38,7 @@ Cash balance $21.0k, 14 days of runway. Accrual balance $60.7k, 40 days of runwa
 
 On a phone, the first two numbers share a row and the balances sit under them.
 
-Under the numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. The slowest step is red. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the numbers. In a week cash comes first, a phone shows it under the card.
+Under the numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. Under the bar, a line says whether that work grows or shrinks each week, and by how much. Market and Sales hold no pile. Each of their lines says how far short of the field the step runs, or how far ahead. The slowest step is red. The red does not move with the lines. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the numbers. In a week cash comes first, a phone shows it under the card.
 
 Market's row reads what the asks are worth a week, not every dollar that came in. [What Market is worth](#what-market-is-worth) gives the rule. Press **How Market's figure is counted** under the pipe to read the working. The Market card behind **The flow** reads the same amount.
 

@@ -2,27 +2,34 @@ import { useState } from 'react'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import type { MarketWorth } from '../../lib/bridge/bidWins'
 import type { FlowStrip } from '../../lib/bridge/flowStrip'
-import { STRIP_DOWN_LEGEND, STRIP_DOWN_MARKET_PRESS, layoutFlowStripDown, marketDetailBlocks, stripDownLines, withMarketWorth } from '../../lib/bridge/flowStripDown'
+import { STRIP_DOWN_LEGEND, STRIP_DOWN_MARKET_PRESS, layoutFlowStripDown, marketDetailBlocks, stripDownLabel, stripDownLines, withMarketWorth, type StripDirection, type StripDirectionTone } from '../../lib/bridge/flowStripDown'
 import type { StageId } from '../../lib/bridge/stageFlow'
 
 /**
  * The strip of pipe, standing up (punch list #318): the five steps as one pipe
  * running down, each step's words beside its section. How wide a section is says how many dollars
  * it moves in a week. The bar under a step's words says how much work waits in front of it. The
- * slowest step is lit. A press on a row opens that step's desk.
+ * slowest step is lit. A press on a row opens that step's desk. Under each row's weeks, since punch list #321 (PR 1),
+ * a line says which way its work is heading: the pile grows or shrinks by so many dollars a week, or a feeder runs
+ * so far short of the field. The red does not move with it.
  *
  * The drawing is for the eye; each row's press carries the words for a screen reader.
  */
 
-export function BridgeFlowStripDown({ strip: read, onOpen, market = null }: { strip: FlowStrip; onOpen: (id: StageId) => void; /** What Market is worth, the bids and the estimates each through its won coefficient. */ market?: MarketWorth | null }) {
+/** The direction line's colour: a growing pile is the warning, a shrinking one or a feeder ahead is good, short of the field is the amber of a wait. */
+const DIRECTION_COLOR: Record<StripDirectionTone, string> = { grows: 'var(--text-red-700)', shrinks: 'var(--text-green-700)', keeps: 'var(--text-muted)', short: 'var(--text-amber-800)', ahead: 'var(--text-green-700)' }
+
+export function BridgeFlowStripDown({ strip: read, onOpen, market = null, directions = null }: { strip: FlowStrip; onOpen: (id: StageId) => void; /** What Market is worth, the bids and the estimates each through its won coefficient. */ market?: MarketWorth | null; /** Each row's direction (`stripDownDirections`); a row with none prints no line. */ directions?: Partial<Record<StageId, StripDirection>> | null }) {
   const narrow = useIsNarrowScreen()
   const [marketOpen, setMarketOpen] = useState(false)
   // Market is drawn at what it is worth once that is read; until then, at the dollars asked, as before.
   const strip = withMarketWorth(read, market?.perWeekUsd ?? null)
   const worth = market != null && market.perWeekUsd != null
+  const hasDirections = directions != null && Object.keys(directions).length > 0
   // One section's height and the pipe's width on the page. A row holds Market's four lines, and leaves air under a
-  // wait bar so the bar reads with its own step and not as a rule over the next one.
-  const row = narrow ? 68 : 74
+  // wait bar so the bar reads with its own step and not as a rule over the next one. With a direction line on the
+  // rows, each row is one line taller.
+  const row = narrow ? (hasDirections ? 86 : 68) : (hasDirections ? 92 : 74)
   const pipe = narrow ? 76 : 104
   const joint = narrow ? 12 : 14
   const layout = layoutFlowStripDown(strip.sections, { row, pipe, joint })
@@ -52,13 +59,14 @@ export function BridgeFlowStripDown({ strip: read, onOpen, market = null }: { st
         <div style={{ display: 'grid' }}>
           {strip.sections.map((s) => {
             const lines = stripDownLines(s)
+            const direction = directions?.[s.id] ?? null
             return (
               // Each step's words start at the top of its own run of pipe, so the five names fall at even steps.
               <button
                 key={s.id}
                 type="button"
                 onClick={() => onOpen(s.id)}
-                aria-label={`${s.label} Open its desk.`}
+                aria-label={stripDownLabel(s, direction)}
                 data-testid={`bridge-strip-${s.id}`}
                 style={{ font: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', gap: 1, minWidth: 0, height: row, padding: `${joint / 2}px 0 0 ${pipe + (narrow ? 12 : 16)}px`, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', lineHeight: 1.2 }}
               >
@@ -77,6 +85,12 @@ export function BridgeFlowStripDown({ strip: read, onOpen, market = null }: { st
                     {/* The bar under the words: as long as the weeks, so the steps can be compared down the column. */}
                     <span aria-hidden style={{ display: 'block', height: 4, marginTop: 2, width: Math.max(6, Math.round(s.pile * barMax)), borderRadius: 2, background: s.lit ? '#dc2626' : 'var(--text-muted)', opacity: s.lit ? 1 : 0.55 }} />
                   </>
+                )}
+                {direction && (
+                  // Which way the work in front of the step is heading, in its own colour: it reads beside the red, never instead of it.
+                  <span data-testid={`bridge-strip-direction-${s.id}`} style={{ fontSize: narrow ? '0.7rem' : '0.76rem', marginTop: lines.weeks ? 2 : 0, fontWeight: direction.tone === 'grows' ? 700 : 400, color: DIRECTION_COLOR[direction.tone], fontVariantNumeric: 'tabular-nums' }}>
+                    {direction.text}
+                  </span>
                 )}
               </button>
             )
