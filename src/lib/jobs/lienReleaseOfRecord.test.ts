@@ -3,7 +3,7 @@ import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
 import type { LienPayoffAffidavit, LienPayoffPayment, LienPayoffRelease } from './lienPayoff'
 import type { BankCheck } from './checkCleared'
-import { RELEASE_OF_RECORD_WORDS, pickReleaseTarget, releaseMoneyGate, releaseNeedsBank, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from './lienReleaseOfRecord'
+import { RELEASE_OF_RECORD_WORDS, pickReleaseTarget, releaseMoneyBackWords, releaseMoneyGate, releaseNeedsBank, releasePaymentDay, releaseRecordedSentence, releaseSaveFields, releaseStampDayCheck, releaseStampPatch, releaseTargets } from './lienReleaseOfRecord'
 
 // Every job, instrument and amount here is made up.
 const TODAY = '2026-11-24'
@@ -171,5 +171,22 @@ describe('the funds confirmed (punch list #435, piece 4)', () => {
   it('saves the confirmation on the release, and nothing when there is none', () => {
     expect(releaseSaveFields({ paymentDate: '2026-11-24' }, 'a1', '', null, FUNDS)).toEqual({ paymentDate: '2026-11-24', releasesFilingId: 'a1', releasedOnConfirmedFunds: FUNDS })
     expect(releaseSaveFields({}, 'a1', '', null, null)).toEqual({ releasesFilingId: 'a1' })
+  })
+})
+
+describe('a saved release on a check that came back (punch list #435, piece 6)', () => {
+  const back = [bank({ status: 'failed', postedYmd: '2026-11-25', failureReason: 'Insufficient funds' })]
+
+  it('says not to record it while the county has not, and that the record stands once it has', () => {
+    expect(plainSentence(releaseMoneyBackWords({ recorded: false, payments: [check()], bank: back, todayYmd: TODAY }) ?? '')).toBe('Do not record this release. Check 1184 came back. The bank said insufficient funds.')
+    expect(plainSentence(releaseMoneyBackWords({ recorded: true, payments: [check()], bank: back, todayYmd: TODAY }) ?? '')).toBe('Check 1184 came back. The bank said insufficient funds. The county’s record stands. Ask counsel.')
+  })
+
+  it('says nothing while the money stands, with no payment, and while the bank is unread', () => {
+    expect(releaseMoneyBackWords({ recorded: false, payments: [check()], bank: [bank()], todayYmd: TODAY })).toBeNull()
+    expect(releaseMoneyBackWords({ recorded: false, payments: [check({ payment_type: 'Cash', reference_number: null })], bank: back, todayYmd: TODAY })).toBeNull()
+    expect(releaseMoneyBackWords({ recorded: false, payments: [], bank: back, todayYmd: TODAY })).toBeNull()
+    expect(releaseMoneyBackWords({ recorded: false, payments: [check()], bank: undefined, todayYmd: TODAY })).toBeNull()
+    expect(releaseMoneyBackWords({ recorded: false, payments: [check()], bank: null, todayYmd: TODAY })).toBeNull()
   })
 })

@@ -390,3 +390,59 @@ describe('the funds confirmed (punch list #435, piece 4)', () => {
     expect(bare.fields).toBeNull()
   })
 })
+
+describe('a release on a check that came back (punch list #435, piece 6)', () => {
+  const back = [bank({ status: 'failed', postedYmd: '2026-11-25', failureReason: 'Insufficient funds' })]
+
+  it('holds a saved release: Do not record it, with the bills’ door in place of the county’s', () => {
+    const s = step({ releases: [rel()], payments: [check()], bank: back })
+    expect(s.step).toBe('county')
+    expect(s.moneyBack).toBe(true)
+    expect(plainSentence(s.say)).toBe('The release was made Nov 24. Do not record it.')
+    expect(plainSentence(s.warn ?? '')).toBe('Check 1184 came back. The bank said insufficient funds. Take the payment off the bills.')
+    expect(s.warnTone).toBe('red')
+    expect(s.press).toEqual({ label: 'Open the bills ›', door: 'bill' })
+  })
+
+  it('marks a recorded release: Released, money came back, and it is counsel’s', () => {
+    const s = step({ releases: [rel({ filed_at: '2026-11-26', fields: { releaseInstrument: '2026-0431955' } })], payments: [check()], bank: back, todayYmd: '2026-11-27' })
+    expect(s.step).toBe('done')
+    expect(s.moneyBack).toBe(true)
+    expect(plainSentence(s.say)).toBe('Released, money came back. The county recorded it Nov 26 as 2026-0431955.')
+    expect(plainSentence(s.warn ?? '')).toBe('Check 1184 came back. The bank said insufficient funds. The county’s record stands. Ask counsel.')
+    expect(s.press).toEqual({ label: 'Open the bills ›', door: 'bill' })
+    expect(s.recordedYmd).toBe('2026-11-26')
+  })
+
+  it('leaves a release alone while the check is only at the bank, and once a newer payment stands', () => {
+    expect(step({ releases: [rel()], payments: [check()], bank: [bank()] }).moneyBack).toBeUndefined()
+    const replaced = step({ releases: [rel()], payments: [check(), check({ paid_on: '2026-11-30', payment_type: 'Wire', reference_number: null })], bank: back, todayYmd: '2026-12-01' })
+    expect(replaced.moneyBack).toBeUndefined()
+    expect(replaced.press).toEqual({ label: 'Record the county’s stamp ›', door: 'release' })
+  })
+
+  it('keeps a place with a recorded release on returned money at the top, and says so on the strip', () => {
+    const f: LienPayoffFacts = {
+      affidavits: [aff()],
+      releases: [rel({ filed_at: '2026-11-26' })],
+      jobs: [{ id: 'j1', hcp_number: null, click_number: '2041', job_name: 'Okafor main house', job_address: '212 Larkspur Court, Austin, TX', customer_id: 'c1', customer_name: 'Marisol Okafor' }],
+      openByJob: { j1: 0 },
+      paymentsByJob: { j1: [check()] },
+      bank: back,
+      todayYmd: '2026-11-27',
+    }
+    const places = lienPayoffPlaces(f)
+    expect(places[0]!.rows[0]!.step.moneyBack).toBe(true)
+    const strip = lienPayoffStrip(places)
+    expect(strip).toMatchObject({ moneyBack: 1, released: 1, tone: 'amber' })
+    expect(plainSentence(strip.say ?? '')).toBe('1 release rests on a check that came back.')
+    expect(plainWordsFailures(plainSentence(strip.say ?? ''))).toEqual([])
+    expect(lienPayoffStrip(lienPayoffPlaces({ ...f, bank: [] })).moneyBack).toBe(0)
+  })
+
+  it('keeps its sentences to plain words', () => {
+    for (const s of [step({ releases: [rel()], payments: [check()], bank: back }), step({ releases: [rel({ filed_at: '2026-11-26' })], payments: [check()], bank: back, todayYmd: '2026-11-27' })]) {
+      for (const words of [s.say, s.warn ?? '']) expect(plainWordsFailures(plainSentence(words))).toEqual([])
+    }
+  })
+})

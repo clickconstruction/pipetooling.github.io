@@ -341,8 +341,10 @@ function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, load
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-  const open = places.filter((p) => p.rows.some((r) => r.step.step !== 'done'))
-  const released = places.filter((p) => p.rows.every((r) => r.step.step === 'done'))
+  // A place whose recorded release rests on a check that came back is not done (piece 6): it stays in the open list.
+  const isOpen = (p: LienPayoffPlace) => p.rows.some((r) => r.step.step !== 'done' || r.step.moneyBack)
+  const open = places.filter(isOpen)
+  const released = places.filter((p) => !isOpen(p))
   const [showReleased, setShowReleased] = useState(false)
   /** The place whose check pane is open, by key. The pane stands in for the list until it is closed. */
   const [checkKey, setCheckKey] = useState<string | null>(null)

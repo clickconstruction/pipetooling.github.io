@@ -3,6 +3,9 @@ import { AR_CAME_BACK_SENTENCE } from '../../../lib/jobs/arApplySentence'
 import { arCaseDay, arCaseMoney, type ArCombinedReplacement, type ArReplacementDeposit, type ArReturnCaseView } from '../../../lib/jobs/arReturnCase'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { AR_RETURNED_CHECK_FEE, type ArCaseFeeOffer } from '../../../lib/jobs/arReturnCaseFee'
+import { PAYOFF_RETURNED_WORDS, type PayoffReturnedValueKind } from '../../../lib/jobs/payoffReturned'
+import type { ReturnedCaseLiens } from '../../../hooks/useReturnedCaseLiens'
+import { ValueSentence } from '../../valuesInPlace/ValuesInPlace'
 
 export type ArCaseCloseReason = 'settled_other_way' | 'not_coming'
 
@@ -29,6 +32,8 @@ export type ArReturnCasePaneProps = {
   /** v2.5033: the returned-check fee — the press, the fee once it is on, or why there is none. */
   fee?: ArCaseFeeOffer | null
   onAddFee?: () => void
+  /** Punch list #435, piece 6: the filed liens on the check's jobs, each with where its release stands. */
+  liens?: ReturnedCaseLiens | null
   onOpenJob?: (jobId: string) => void
   /** Narrow layout: the list is behind this. */
   onBack?: () => void
@@ -63,6 +68,10 @@ const box = (tone: 'red' | 'amber' | 'blue' | 'green') =>
  *
  * v2.4950: a card dispute or a failed bank debit on a Stripe bill shows here too, with a link to
  * it in Stripe. A lost dispute's one step is Put the bill back, read back first.
+ *
+ * Punch list #435, piece 6: a check that came back on a job with a filed lien says where each lien's release
+ * stands, under what it costs: none has left, one is printed and reads Do not record, or the county recorded one
+ * and it is counsel's (`payoffReturned.ts`). Jobs with no filed lien draw nothing.
  */
 export function ArReturnCasePane(props: ArReturnCasePaneProps) {
   const { view, todayYmd, canApply, replacement, busy } = props
@@ -133,6 +142,58 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
               Open the job ›
             </button>
           ) : null}
+        </div>
+      ) : null}
+
+      {props.liens?.status === 'failed' ? (
+        <div data-testid="ar-return-case-liens" data-state="failed" role="alert" style={{ ...box('amber'), borderRadius: 8, padding: '0.6rem 0.8rem' }}>
+          <div style={{ fontWeight: 600 }}>{PAYOFF_RETURNED_WORDS.unread}</div>
+          {props.liens.why ? <div>{props.liens.why}</div> : null}
+        </div>
+      ) : props.liens?.view ? (
+        <div data-testid="ar-return-case-liens" data-state={props.liens.view.counsel ? 'counsel' : props.liens.view.tone} style={{ ...box(props.liens.view.tone), borderRadius: 8, padding: '0.6rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+          <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{PAYOFF_RETURNED_WORDS.head}</div>
+          <div data-testid="ar-return-case-liens-line" style={{ fontWeight: 600 }}>
+            <ValueSentence<PayoffReturnedValueKind> text={props.liens.view.line} />
+          </div>
+          {props.liens.view.liens.map((l) => (
+            <div key={l.affidavitId} data-testid="ar-return-case-lien" data-case={l.case} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem', color: 'var(--text-700)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{l.jobLabel}</span>
+                {l.instrument ? <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>instrument {l.instrument}</span> : null}
+                <span
+                  data-testid="ar-return-case-lien-chip"
+                  style={{
+                    borderRadius: 999,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    padding: '1px 9px',
+                    background: l.chip.tone === 'amber' ? 'var(--bg-amber-tint)' : 'var(--surface)',
+                    color: l.chip.tone === 'red' ? 'var(--text-red-700)' : l.chip.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)',
+                    border: `1px solid ${l.chip.tone === 'red' ? 'var(--border-red)' : l.chip.tone === 'amber' ? 'var(--border-amber)' : 'var(--border)'}`,
+                  }}
+                >
+                  {l.chip.text}
+                </span>
+              </div>
+              <div>
+                <ValueSentence<PayoffReturnedValueKind> text={l.say} />
+              </div>
+              {l.typed ? (
+                <div data-testid="ar-return-case-lien-typed" style={{ color: 'var(--text-red-700)', fontWeight: 600 }}>
+                  <ValueSentence<PayoffReturnedValueKind> text={l.typed} />
+                </div>
+              ) : null}
+              {props.onOpenJob ? (
+                <div>
+                  <button type="button" data-testid="ar-return-case-lien-open" onClick={() => props.onOpenJob?.(l.jobId)} style={{ ...btn(false), border: 'none', background: 'transparent', padding: '0.2rem 0', color: 'var(--text-link)' }}>
+                    {PAYOFF_RETURNED_WORDS.openJob}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ))}
+          {props.liens.view.printsUnread ? <div style={{ color: 'var(--text-700)' }}>{PAYOFF_RETURNED_WORDS.printsUnread}</div> : null}
         </div>
       ) : null}
 

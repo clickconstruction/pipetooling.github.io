@@ -136,7 +136,9 @@ export function lienPayoffCard(rows: ReadonlyArray<LienPayoffRow>, todayYmd: str
   const made = county.length + done.length
   const open = rows.filter((r) => r.step.step !== 'done')
   const checks = rows.map((r) => r.step.check).filter((c): c is CheckAnswer => Boolean(c))
-  const cameBack = bank.some((r) => r.step.check?.state === 'came_back')
+  // A saved or recorded release on a check that came back counts too (piece 6, `payoffReturned.ts`).
+  const moneyBack = rows.filter((r) => r.step.moneyBack)
+  const cameBack = bank.some((r) => r.step.check?.state === 'came_back') || moneyBack.length > 0
   const unread = !cameBack && bank.some((r) => r.step.check?.state === 'unread')
   const funds = open.map((r) => r.funds).find((f): f is FundsConfirmed => Boolean(f)) ?? null
   const askedYmd = [...open.map((r) => r.askedYmd).filter(Boolean)].sort()[0] ?? ''
@@ -180,10 +182,11 @@ export function lienPayoffCard(rows: ReadonlyArray<LienPayoffRow>, todayYmd: str
   const s4: PayoffStop = { key: 'county', label: PAYOFF_CARD_WORDS.stops.county, state: 'later', say: 'After the notary.' }
   const recordedDay = latest(done.map((r) => r.step.recordedYmd ?? '').filter(Boolean))
   if (done.length === n) Object.assign(s4, { state: 'done', say: recordedDay ? `Recorded ${day(recordedDay)}.` : 'Recorded.' })
+  else if (moneyBack.some((r) => r.step.step === 'county')) Object.assign(s4, { state: 'bad', say: 'Do not record. The check came back.' })
   else if (county.length) Object.assign(s4, { state: 'now', say: done.length ? `${count(done.length)} recorded, ${count(county.length)} to record.` : `${count(county.length)} to record, after the notary.` })
 
   // 5. Copies sent: no fact yet (piece 5).
-  const s5: PayoffStop = done.length === n ? { key: 'copies', label: PAYOFF_CARD_WORDS.stops.copies, state: 'now', say: 'Send the stamped copies to the payer.' } : { key: 'copies', label: PAYOFF_CARD_WORDS.stops.copies, state: 'later', say: PAYOFF_CARD_WORDS.copiesLater }
+  const s5: PayoffStop = done.length === n && moneyBack.length === 0 ? { key: 'copies', label: PAYOFF_CARD_WORDS.stops.copies, state: 'now', say: 'Send the stamped copies to the payer.' } : { key: 'copies', label: PAYOFF_CARD_WORDS.stops.copies, state: 'later', say: PAYOFF_CARD_WORDS.copiesLater }
 
   // The two days.
   const due = done.length < n ? releaseDue(askedYmd, todayYmd) : null
@@ -194,7 +197,8 @@ export function lienPayoffCard(rows: ReadonlyArray<LienPayoffRow>, todayYmd: str
   let tone: LienPayoffCard['tone']
   const notRecorded = n - done.length
   if (cameBack) {
-    line = 'The check came back. Open the bills and take the payments off.'
+    const recorded = moneyBack.filter((r) => r.step.step === 'done').length
+    line = `The check came back. Open the bills and take the payments off.${recorded ? ` ${count(recorded)} ${releases(recorded)} ${recorded === 1 ? 'is' : 'are'} already recorded. Ask counsel.` : ''}`
     tone = 'red'
   } else if (unread) {
     line = 'The bank could not read the check. Deposit it again.'

@@ -2,7 +2,7 @@
 title: match bank deposits to the bills they pay
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: accounts receivable, retainage, retainage held, release bill, retainage release, pay application, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, never deposited, take it off, stop payment case, chargeback, card dispute, dispute lost, put the bill back, failed bank payment, ach
+keywords: accounts receivable, retainage, retainage held, release bill, retainage release, pay application, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, never deposited, take it off, stop payment case, chargeback, card dispute, dispute lost, put the bill back, failed bank payment, ach, lien, filed lien, release, do not record, liens on this money
 where: /accounts-receivable
 ---
 Money that lands in the bank is not done yet. Each deposit still has to be applied to the bill it pays. Then the job shows paid and nobody chases the money. You do that in **Accounts Receivable**. Open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
@@ -182,6 +182,30 @@ Sep 21 Taunya applied it to #878 Tune 5- Seguin. Sep 23 The bank sent it back.
 - **The returned check fee.** Texas lets you charge up to $30 for a check that came back. The case offers {{button:outline|Add the $30 fee to bill 1}} beside the line *$30 — the most Texas allows, Bus. & Com. Code § 3.506*. Point at the line to read the law. One press adds the fee to the bill the check paid, as its own line. The job's total grows by the fee too. Edit Job counts it in the **Job Total** as a rider, so later edits keep it. The case keeps who added it and when, and it takes the fee once. A Stripe bill cannot take a line, so the case says so instead. If the bill with the fee is sent back or deleted, the fee comes off with it. The job's total drops by the fee. The case then says *The $30 fee came off with its bill* and offers the press again.
 
 A check that came back cannot pay a bill. Its pane has no bills to pick and Apply stays off.
+
+### The liens on a check that came back
+
+A check may have paid a job with a filed lien. The check's case then shows a box named **Liens on this money**. The box lists each filed lien on the check's jobs. Each lien says where its release stands.
+
+:::example a check that paid two liened jobs
+**Liens on this money**
+1 release is printed on check 1184. Do not record it.
+**#2041 Okafor main house** instrument 2026-0412207 {{chip:red|Do not record}}
+A release was printed Nov 25 by Alex Rivera. Do not record it. Find the paper and keep it back from the county.
+**#2058 Okafor service visit** instrument 2026-0412208 {{chip:gray|On record}}
+No release has been made. The lien stays on record until a payment holds.
+:::
+
+- {{chip:gray|On record}} means no release was made. Nothing has left the office.
+- {{chip:yellow|Release held}} means a release was saved and never printed. Do not print it until a payment holds.
+- {{chip:red|Do not record}} means a release was printed. The line names the day and who printed it. Find the paper and keep it back from the county.
+- {{chip:red|Released, money came back}} means the county recorded the release. The app cannot undo that. Ask counsel what to do.
+
+Press **Open the job ›** on a lien to open its job.
+
+A check typed once in Payoffs pays several bills. The case finds those payments by the check's number. Such a lien adds a red line. The line reads *Check 1184 still counts as paid on this job.* The case's own button does not reach that payment. Open the job and take the payment off on its Bill tab.
+
+A job with no filed lien shows no box. The box reads only and changes nothing.
 
 ### A check marked returned by hand
 

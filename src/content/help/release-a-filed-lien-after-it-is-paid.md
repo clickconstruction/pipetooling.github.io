@@ -2,7 +2,7 @@
 title: release a filed lien after it is paid
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: payoff, payoffs, paid, someone paid, paid off, one check, several bills, several jobs, spread, check number, release, release of record, filed lien, lien paid, county, clerk, notary, instrument, stamp, check, clears, cleared, at the bank, waits for the bank, deposit, posted, came back, lien desk, payoff card, five stops, written request, asked in writing, release due, ten days, bank confirmed the funds, funds, copies sent
+keywords: payoff, payoffs, paid, someone paid, paid off, one check, several bills, several jobs, spread, check number, release, release of record, filed lien, lien paid, county, clerk, notary, instrument, stamp, check, clears, cleared, at the bank, waits for the bank, deposit, posted, came back, lien desk, payoff card, five stops, written request, asked in writing, release due, ten days, bank confirmed the funds, funds, copies sent, returned check, bounced, do not record, money came back, counsel
 where: /lien-desk
 ---
 When someone pays off a filed lien, the Lien desk tells you what to do next. You press one button at a time.
@@ -110,6 +110,18 @@ Take the notarized release to the county clerk. The clerk records it and stamps 
 Back on the Lien desk, press {{button:blue|Record the county’s stamp ›}} on the row. The tab shows **The county's stamp**. Press the value beside **Recorded on**, set the day and press **Keep**. Do the same beside **Instrument number**. The row then reads *Released*.
 
 The stamped copy goes on the release's line under **Filings on this job**. Press *link the saved copy* there and paste its Drive link.
+
+## If the check comes back after a release is made
+
+A check can come back after its release is saved, printed or recorded. The app then says so in three places.
+
+In Payoffs the lien's row turns red. A saved release reads *Do not record it*. Press {{button:blue|Open the bills ›}} and take the payment off the bill.
+
+A release the county already recorded reads *Released, money came back*. The app cannot undo the county's record. Ask counsel what to do. The place stays in the open list until the payment is off the job.
+
+The **Release of record** tab shows the same words in red over **The county's stamp**. You can still set the day and the number there. A stamp the clerk already gave is a fact to keep.
+
+Accounts Receivable shows it too. The check's case has a box named **Liens on this money**. Read [the liens on a check that came back](/help/match-bank-deposits-to-bills#the-liens-on-a-check-that-came-back).
 
 ## What the window does not do
 

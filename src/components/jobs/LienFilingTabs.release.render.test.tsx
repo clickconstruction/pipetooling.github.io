@@ -252,6 +252,37 @@ describe('Release of record: a saved release and the county’s stamp', () => {
   })
 })
 
+describe('Release of record: a saved release on a check that came back (#435, piece 6)', () => {
+  const BACK: BankCheck = { id: 'k1', amount: 7420, status: 'failed', depositedYmd: '2026-11-24', postedYmd: '2026-11-25', bankDayYmd: '2026-12-02', checkNumber: '1184', failureReason: 'Insufficient funds' }
+  const byCheck = () =>
+    makeJob({ id: 'job-2041', hcp_number: '2041', job_name: 'Okafor main house', job_address: '212 Larkspur Court, Austin, TX', status: 'billed', revenue: 7420, payments_made: 7420, payments: [{ id: 'p1', job_id: 'job-2041', invoice_id: null, amount: 7420, paid_on: '2026-11-24', payment_type: 'Check', reference_number: '1184' }] })
+  const moneyBack = () => document.querySelector<HTMLElement>('[data-lien-release-money-back]')
+
+  it('says not to record it, and keeps the stamp’s two values open', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-27T18:00:00Z'))
+    bank.checks = [BACK]
+    draw({ job: byCheck(), filings: [lien() as never, release() as never] })
+    expect(moneyBack()!.textContent).toBe('Do not record this release. Check 1184 came back. The bank said insufficient funds.')
+    expect(moneyBack()!.getAttribute('role')).toBe('alert')
+    expect(document.querySelector('[data-lien-release-stamp]')!.textContent).toContain('Recorded on')
+    vi.useRealTimers()
+  })
+
+  it('says the county’s record stands once the release is recorded, and nothing when the money stands', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-27T18:00:00Z'))
+    bank.checks = [BACK]
+    draw({ job: byCheck(), filings: [lien() as never, release({ filed_at: '2026-11-26' }) as never] })
+    expect(moneyBack()!.textContent).toBe('Check 1184 came back. The bank said insufficient funds. The county’s record stands. Ask counsel.')
+    cleanup()
+    bank.checks = [{ ...BACK, status: 'sent' }]
+    draw({ job: byCheck(), filings: [lien() as never, release() as never] })
+    expect(moneyBack()).toBeNull()
+    vi.useRealTimers()
+  })
+})
+
 describe('Release of record: a job with two filed liens', () => {
   it('asks which lien, opens on the one still to release, and saves against the one picked', async () => {
     const second = lien({ id: 'a2', recording_number: '2026-0500001', filed_at: '2026-11-16' })
