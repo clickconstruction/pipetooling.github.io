@@ -111,8 +111,13 @@ SELECT pld.same('the proposal still names its link', (SELECT right(portal_link_i
 RESET ROLE;
 
 -- ---------------------------------------------------------------------------------------------------------------
--- 3. Signed out, nobody calls it.
-SELECT pld.refused('signed out, the door refuses', format($q$SELECT public.delete_test_portal_link(%L)$q$, pld.id('e3')), 'not authenticated');
+-- 3. Signed out, nobody calls it: the function is revoked from anon, so the call is refused at the door.
+SELECT set_config('request.jwt.claims', '', true);
+SELECT set_config('request.jwt.claim.sub', '', true);
+SELECT set_config('request.jwt.claim.role', '', true);
+SET LOCAL ROLE anon;
+SELECT pld.refused('signed out, the door refuses', format($q$SELECT public.delete_test_portal_link(%L)$q$, pld.id('e3')), 'permission denied');
+RESET ROLE;
 
 DO $$ BEGIN RAISE NOTICE 'portal_link_delete PASSED'; END $$;
 ROLLBACK;
