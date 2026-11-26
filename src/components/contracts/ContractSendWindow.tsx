@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { buildContractSigningEmail, CONTRACT_SIGNING_EMAIL_DEFAULT_INTRO, contractSigningEmailDefaultSubject } from '../../lib/contractSigningEmail'
 import { PORTAL_SHORT_ORIGIN } from '../../lib/portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
@@ -42,6 +42,7 @@ export function ContractSendWindow({
   again = false,
   party = null,
   preparePartyPaper,
+  siteSlot = null,
   onClose,
   onRowWritten,
   onSent,
@@ -73,6 +74,8 @@ export function ContractSendWindow({
    * company, and the paper's row. Answers the row to send. Left out when the paper is already written.
    */
   preparePartyPaper?: (input: PartySendInput) => Promise<string>
+  /** The line that says which site the paper names, with its presses, drawn under who it is with (punch list #439). The caller owns it. */
+  siteSlot?: ReactNode
   onClose: () => void
   onRowWritten?: (docId: string) => void
   onSent: (sent: { docId: string; emailed: boolean; planKind: QuickSendPlan['kind'] | null }) => void
@@ -270,6 +273,7 @@ export function ContractSendWindow({
             {sendPartyHint(target.documentName, party)}
           </p>
         ) : null}
+        {siteSlot}
         {again && target ? (
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.25rem' }} data-testid="contract-send-again-note">
             {target.documentName} goes to {party ? signerName.trim() || party.name || 'them' : target.personName} again, with a new signing link. The link sent before stops working.

@@ -221,6 +221,14 @@ describe('ContractSendWindow', () => {
   const partyTarget = { personName: 'Lena Park', documentName: 'Mutual secrecy agreement' }
   const rep = { name: 'Tallgrass Supply Co.', unlisted: false, keepWith: null }
 
+  it('draws the site’s line it is handed right under who the paper is with (punch list #439)', () => {
+    renderWithProviders(
+      <ContractSendWindow {...base} target={partyTarget} docId={null} party={rep} preparePartyPaper={async () => 'party-row'} initialEmail="lena@tallgrass.example" siteSlot={<p data-testid="handed-site">This paper names no site.</p>} onClose={() => {}} onSent={() => {}} />,
+    )
+    const hint = screen.getByTestId('contract-send-party')
+    expect(hint.nextElementSibling).toBe(screen.getByTestId('handed-site'))
+  })
+
   it('a party’s paper says who it is with and what it will say, and sends the business the signer signs for', async () => {
     const prepare = vi.fn(async () => 'party-row')
     const onSent = vi.fn()

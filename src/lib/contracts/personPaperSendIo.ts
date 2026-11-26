@@ -10,6 +10,7 @@ import type { QuickSendPlan } from '../contractsQuickSend'
 import { onePersonIdForName, rosterEmailForName, sendWindowSender, type PersonPaperSendResult, type SendRosterPerson, type SendRosterUser } from './personPaperSend'
 import { isPartyPaperName } from './paperParty'
 import type { SendWindowParty } from '../documents/paperPartyPick'
+import type { PaperSiteColumns } from '../addresses/paperSite'
 
 export type PersonPaperSendInput = {
   documentId: string
@@ -83,6 +84,8 @@ export async function materializeQuickSendRow(pending: {
    * then the party's stored name, and the paper is no roster person's.
    */
   party?: { contactId: string; name: string }
+  /** The site a new row names (punch list #439). A row that is there already keeps the site it has. */
+  site?: PaperSiteColumns
 }): Promise<string> {
   const { plan } = pending
   const source = plan.source
@@ -109,6 +112,8 @@ export async function materializeQuickSendRow(pending: {
         .insert({
           person_name: pending.personName,
           ...(pending.party ? { party_contact_id: pending.party.contactId, party_name: pending.party.name } : {}),
+          // The site's columns are younger than the generated types: spread, they are written as they are.
+          ...(pending.site ?? {}),
           document_name: pending.documentName,
           contract_lineage_id: globalThis.crypto.randomUUID(),
           lineage_version: 1,

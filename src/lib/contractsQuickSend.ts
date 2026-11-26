@@ -39,6 +39,9 @@ export type QuickSendPersonRow = {
   signing_body_html: string | null
   signing_body_format: string
   canonical_document_url: string | null
+  /** The site the paper names, when a read asks for it (punch list #439): a development, or an address by its cleaned key. */
+  site_development_id?: string | null
+  site_address_key?: string | null
 }
 
 export type QuickSendSource =

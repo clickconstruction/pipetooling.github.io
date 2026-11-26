@@ -6,9 +6,8 @@ import { paperPressFloor } from '../../lib/documents/agreementsPhonePress'
 import { useToastContext } from '../../contexts/ToastContext'
 import { SEND_A_PAPER_LABEL, papersMatching, sendablePapers } from '../../lib/documents/agreementsSend'
 import { readAgreementsSendBook, type AgreementsSendBook } from '../../lib/documents/agreementsSendIo'
-import { quickSendNoContentWords, quickSendPickPlan, quickSendPlan, quickSendPlanWrites, quickSendRosterSplit, resolveQuickSendSource, type QuickSendPlan } from '../../lib/contractsQuickSend'
+import { quickSendNoContentWords, quickSendPickPlan, quickSendPlan, quickSendPlanWrites, quickSendReusablePersonRow, quickSendRosterSplit, resolveQuickSendSource, type QuickSendPlan } from '../../lib/contractsQuickSend'
 import { materializeQuickSendRow, readPersonSendFactsByName, readSenderFacts, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
-import { partyPaperName } from '../../lib/contracts/paperParty'
 import { partyNameToKeep, sendWindowPartyOfPick, type PartyPick, type PartyRecordTable, type PartySendInput, type SendWindowParty } from '../../lib/documents/paperPartyPick'
 import { findPartyContacts, keepSignerWithBusiness, makeContactForAddress, readCopiesOut, readPartyContact } from '../../lib/documents/paperPartyIo'
 import { SECOND_COPY_HINT, SECOND_COPY_LABEL, SEND_AGAIN_HINT, copiesOutLead, copiesOutTitle, copyOutSentence, partyPapersOut, sendAgainLabel, type PartyCopyOut } from '../../lib/documents/partyPaperOut'
@@ -17,6 +16,12 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import { PaperPartyPicker } from './PaperPartyPicker'
+import { PaperSitePicker } from './PaperSitePicker'
+import { PAPER_SITE_WORDS, paperSiteColumns, paperSiteSentence, rowsForSite, signedForSiteWords, type PaperSite } from '../../lib/addresses/paperSite'
+import type { PlaceAnswer } from '../../lib/addresses/lookAlikes'
+import { readAnswers } from '../../hooks/useAddressLookAlikes'
+import { partyPaperName } from '../../lib/contracts/paperParty'
+import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
 
 /**
@@ -27,6 +32,11 @@ import { ValueSentence, WorkedOutValue } from '../valuesInPlace/ValuesInPlace'
  * the people on file there, and takes someone on no list. An outside party's paper is filed under the party's contact.
  * Nothing is written until **Send email** is pressed, so closing any step leaves nothing behind. Once the email goes,
  * `onSent` lets the list read again and the new line shows on it.
+ *
+ * Since punch list #439 (piece 3) an outside party's paper can name a site. The email window says *This paper names no
+ * site.* with **Name a site…**, which opens **Which site is it for?** over it. A company holds a paper once for each
+ * site and once for no site: a copy out for the picked site is offered again, a signature for it stops the send, and
+ * the site is written with the row at Send email.
  *
  * `startOn` lets another door start at the person step for a paper it names: the Contract library's Send to…. And
  * `onOpenLibrary` is where the paper step sends someone who wants to write or change a paper.
@@ -40,6 +50,7 @@ const paperRow: CSSProperties = { display: 'block', width: '100%', padding: '0.5
 const paperFrom: CSSProperties = { display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.1rem' }
 const closeX: CSSProperties = { minWidth: 44, minHeight: 44, margin: '-0.6rem -0.6rem 0 0', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.15rem', lineHeight: 1, color: 'var(--text-muted)', flexShrink: 0 }
 const choice: CSSProperties = { display: 'block', width: '100%', minHeight: 44, padding: '0.55rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 600, textAlign: 'left', boxSizing: 'border-box' }
+const siteLink: CSSProperties = { padding: '0.35rem 0', minHeight: 32, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 600, color: 'var(--text-link)' }
 const choiceHint: CSSProperties = { display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400, marginTop: '0.15rem' }
 
 type Step =
@@ -51,9 +62,9 @@ type Step =
    * `again` is a copy that is already out, sent to the same person again. `second` is a second copy for someone else
    * at a company that already has the paper out: it never lands on the first person's copy.
    */
-  | { at: 'send-party'; documentName: string; pick: Exclude<PartyPick, { kind: 'roster' }>; party: SendWindowParty; facts: PersonPaperSendFacts; again?: PartyCopyOut; second?: boolean }
+  | { at: 'send-party'; documentName: string; pick: Exclude<PartyPick, { kind: 'roster' }>; party: SendWindowParty; facts: PersonPaperSendFacts; again?: PartyCopyOut; second?: boolean; site?: PaperSite | null }
   /** The company already has this paper out: the office says whether it goes to the same person again or to another. */
-  | { at: 'party-out'; documentName: string; pick: Extract<PartyPick, { kind: 'record' }>; party: SendWindowParty; sender: PersonPaperSendFacts['sender']; copies: PartyCopyOut[] }
+  | { at: 'party-out'; documentName: string; pick: Extract<PartyPick, { kind: 'record' }>; party: SendWindowParty; sender: PersonPaperSendFacts['sender']; copies: PartyCopyOut[]; site?: PaperSite | null }
 
 export function AgreementsSendPaper({
   onSent,
@@ -74,6 +85,11 @@ export function AgreementsSendPaper({
   const [step, setStep] = useState<Step | null>(null)
   const [busy, setBusy] = useState<null | 'open' | 'pick'>(null)
   const [typed, setTyped] = useState('')
+  /** **Which site is it for?** is open over the email window. */
+  const [sitePicking, setSitePicking] = useState(false)
+  const [siteBusy, setSiteBusy] = useState(false)
+  /** The answers kept in Addresses that look alike, read when a site is first named: two spellings of one place are one site. */
+  const placeAnswers = useRef<PlaceAnswer[]>([])
 
   /** The person a party's send kept with their company, so a second press of a send that failed keeps nobody twice. */
   const keptSigner = useRef<{ pick: PartyPick; name: string; email: string; record: { table: PartyRecordTable; id: string } } | null>(null)
@@ -139,7 +155,8 @@ export function AgreementsSendPaper({
       // is looked at on every contact that points at it: its own, and each person named under it by Add to a list.
       if (pick.kind === 'record') {
         const contactIds = await findPartyContacts(pick.record)
-        const copies = await readCopiesOut(partyPapersOut(data.personDocuments, contactIds, documentName).map((d) => d.id))
+        // A paper that names a site is that site's paper: only the copies that name none count here.
+        const copies = await readCopiesOut(partyPapersOut(rowsForSite(data.personDocuments, null), contactIds, documentName).map((d) => d.id))
         if (copies.length > 0) {
           setStep({ at: 'party-out', documentName, pick, party: sendWindowPartyOfPick(pick), sender, copies })
           return
@@ -164,7 +181,7 @@ export function AgreementsSendPaper({
    * and the paper's row under the party's stored name. A party that already has this paper out gets the same copy again,
    * unless the office asked for a second copy for someone else there.
    */
-  const preparePartyPaper = async (documentName: string, pick: Exclude<PartyPick, { kind: 'roster' }>, party: SendWindowParty, input: PartySendInput, second = false): Promise<string> => {
+  const preparePartyPaper = async (documentName: string, pick: Exclude<PartyPick, { kind: 'roster' }>, party: SendWindowParty, input: PartySendInput, second = false, site: PaperSite | null = null): Promise<string> => {
     if (!data) throw new Error('The Contract Book did not read.')
     let contactId: string
     if (pick.kind === 'unlisted') {
@@ -184,32 +201,80 @@ export function AgreementsSendPaper({
     }
     const storedName = partyPaperName(contactId)
     // A second copy is a row of its own, written from the Book: the copy that is out is never reused for it.
-    const { plan } = second
-      ? { plan: quickSendPlan({ existing: null, source: resolveQuickSendSource({ documentName, templateDocuments: data.book, personDocuments: data.personDocuments }) }) }
-      : quickSendPickPlan({ documentName, personName: storedName, templateDocuments: data.book, personDocuments: data.personDocuments })
+    // The copy to reuse is one for the same site: a paper for another site, or for none, is left as it is.
+    const source = resolveQuickSendSource({ documentName, templateDocuments: data.book, personDocuments: data.personDocuments })
+    const existing = second ? null : quickSendReusablePersonRow({ documentName, personName: storedName, personDocuments: rowsForSite(data.personDocuments, site, placeAnswers.current) })
+    const plan = quickSendPlan({ existing, source })
     if (plan.kind === 'no-content') throw new Error(quickSendNoContentWords(documentName))
     if (!quickSendPlanWrites(plan)) return plan.docId
-    return materializeQuickSendRow({ personName: storedName, documentName, plan, party: { contactId, name: partyNameToKeep(party, input.typedCompany, input.signerName) } })
+    return materializeQuickSendRow({ personName: storedName, documentName, plan, party: { contactId, name: partyNameToKeep(party, input.typedCompany, input.signerName) }, ...(site ? { site: paperSiteColumns(site) } : {}) })
   }
 
-  const close = () => setStep(null)
+  /**
+   * A site was picked for the paper in the email window, or taken off. For a company on file the papers it holds for
+   * that site are looked at first: a signature for the site stops here with the reason, and a copy that is out is
+   * offered again, as a copy with no site is. Nothing is written.
+   */
+  const nameSite = async (site: PaperSite | null) => {
+    if (step?.at !== 'send-party' || step.again || !data || siteBusy) return
+    if (!site) {
+      setStep({ ...step, site: null })
+      setSitePicking(false)
+      return
+    }
+    setSiteBusy(true)
+    try {
+      // Two spellings of one place are one site. Without the answers, the same spelling still is.
+      placeAnswers.current = await readAnswers().catch(() => [])
+      if (step.pick.kind === 'record') {
+        const contactIds = await findPartyContacts(step.pick.record)
+        const stored = new Set(contactIds.map((id) => partyPaperName(id)))
+        const held = rowsForSite(data.personDocuments, site, placeAnswers.current).filter((d) => stored.has(d.person_name) && d.document_name === step.documentName)
+        const signed = held.find((d) => d.status === 'signed')
+        if (signed) {
+          const day = signed.signed_at ? formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(signed.signed_at)) : ''
+          showToast(signedForSiteWords(step.party.name, step.documentName, day), 'error')
+          return
+        }
+        const copies = step.second ? [] : await readCopiesOut(partyPapersOut(held, contactIds, step.documentName).map((d) => d.id))
+        if (copies.length > 0) {
+          setSitePicking(false)
+          setStep({ at: 'party-out', documentName: step.documentName, pick: step.pick, party: step.party, sender: step.facts.sender, copies, site })
+          return
+        }
+      }
+      setStep({ ...step, site })
+      setSitePicking(false)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The papers for that site did not read.'), 'error')
+    } finally {
+      setSiteBusy(false)
+    }
+  }
+
+  const close = () => {
+    setSitePicking(false)
+    setStep(null)
+  }
 
   // Escape closes the three windows this press draws itself: the paper list, Who is it with? and the one that says a
   // paper is already out. Nothing is written in any of them. The Send window keeps its own keys: it holds an address
   // and a message someone typed.
   const stepAt = step?.at ?? null
-  const escapeCloses = stepAt === 'paper' || stepAt === 'person' || stepAt === 'party-out'
+  const escapeCloses = stepAt === 'paper' || stepAt === 'person' || stepAt === 'party-out' || sitePicking
   const isTopmost = useModalStackEntry(escapeCloses)
   useEffect(() => {
     if (!escapeCloses) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented || busy != null || !isTopmost()) return
       e.preventDefault()
-      setStep(null)
+      // Over the email window, Escape closes the site's window alone: the address and the message typed there stay.
+      if (sitePicking) setSitePicking(false)
+      else setStep(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [escapeCloses, busy, isTopmost])
+  }, [escapeCloses, busy, isTopmost, sitePicking])
 
   // Another door named the paper: read what the pick needs, then ask for the person.
   useEffect(() => {
@@ -328,6 +393,11 @@ export function AgreementsSendPaper({
               </button>
             </div>
             <p style={{ margin: '0.25rem 0 0.6rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{copiesOutLead(step.party.name, step.copies.length)}</p>
+            {step.site ? (
+              <p style={{ margin: '-0.3rem 0 0.6rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }} data-testid="party-out-site">
+                <ValueSentence text={paperSiteSentence(step.site)} />
+              </p>
+            ) : null}
             {step.copies.map((copy) => (
               <div key={copy.docId} style={{ marginBottom: '0.7rem' }}>
                 <p style={{ margin: '0 0 0.35rem', fontSize: '0.875rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }} data-testid="party-copy-out">
@@ -366,6 +436,7 @@ export function AgreementsSendPaper({
                   pick,
                   party: sendWindowPartyOfPick(pick),
                   second: true,
+                  site: step.site ?? null,
                   facts: { target: { personName: '', documentName: step.documentName }, initialEmail: '', signerName: '', signerTitle: '', personId: null, sender: step.sender },
                 })
               }}
@@ -383,7 +454,23 @@ export function AgreementsSendPaper({
             target={step.facts.target}
             docId={step.again?.docId ?? null}
             party={step.party}
-            preparePartyPaper={step.again ? undefined : (input) => preparePartyPaper(step.documentName, step.pick, step.party, input, step.second === true)}
+            preparePartyPaper={step.again ? undefined : (input) => preparePartyPaper(step.documentName, step.pick, step.party, input, step.second === true, step.site ?? null)}
+            siteSlot={
+              // A copy that is out keeps the site it was sent for: only a new paper is asked.
+              step.again ? null : (
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.25rem', display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.15rem 0.6rem' }} data-testid="contract-send-site">
+                  <span>{step.site ? <ValueSentence text={paperSiteSentence(step.site)} /> : PAPER_SITE_WORDS.none}</span>
+                  <button type="button" style={siteLink} onClick={() => setSitePicking(true)}>
+                    {step.site ? PAPER_SITE_WORDS.change : PAPER_SITE_WORDS.name}
+                  </button>
+                  {step.site ? (
+                    <button type="button" style={siteLink} onClick={() => void nameSite(null)}>
+                      {PAPER_SITE_WORDS.off}
+                    </button>
+                  ) : null}
+                </p>
+              )
+            }
             initialEmail={step.facts.initialEmail}
             initialSignerName={step.facts.signerName}
             initialSignerTitle={step.facts.signerTitle}
@@ -397,6 +484,7 @@ export function AgreementsSendPaper({
           />
         </Suspense>
       ) : null}
+      {sitePicking && step?.at === 'send-party' && !step.again ? <PaperSitePicker busy={siteBusy} onPick={(site) => void nameSite(site)} onClose={() => setSitePicking(false)} /> : null}
       {step?.at === 'send' ? (
         <Suspense fallback={null}>
           <ContractSendWindow

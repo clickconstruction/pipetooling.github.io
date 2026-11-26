@@ -175,6 +175,31 @@ The new line sits under **Outside companies**. It can be sent again or copied as
 
 Each copy is its own line under **Outside companies**. Escape closes the window with nothing sent.
 
+## Name the site a paper is for
+
+A paper for an outside company can name one site. A site is an address a job or a bid already has.
+
+The email window reads *This paper names no site.* Leave it that way for a paper about no one place.
+
+1. Press **Name a site…** in the email window. **Which site is it for?** opens over it.
+2. Type three letters or more of the address.
+3. Press the address. Each row says how many jobs and bids are there.
+
+The email window then reads *For the site at* with the address. **Change the site…** picks another. **Take the site off** goes back to no site.
+
+:::example One supply house, two sites
+Tallgrass Supply Co. signed the paper for 118 Old Quarry Trl. You send the same paper for 40 Stone Rd. That is a new copy, and the first one stays as it is.
+:::
+
+A company holds a paper once for each site, and once more for no site.
+
+- A copy that is already out for the site is offered again, as above.
+- A company that signed for the site is not sent the paper again. The app says the day they signed.
+
+Two addresses answered **Same place** are one site. See [answer addresses that look alike](/help/answer-addresses-that-look-alike).
+
+The site is kept when **Send email** is pressed, and not before. Someone on your own team is not asked for a site here.
+
 ## Add someone to a list
 
 A paper sent to someone you typed in reads **Not on a list**. Its line carries **Add to a list**, signed or not.
