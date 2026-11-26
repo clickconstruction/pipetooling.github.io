@@ -2232,6 +2232,7 @@ A training-mode account cannot sign, since starting a paper is a write.
   `close_ar_stripe_case()`, `reopen_ar_stripe_case()` and `put_back_lost_dispute_bill()` (a lost dispute's payment off its job and its bill back to be billed again, in one transaction) for the same four roles, revoked from `anon`;
   the table `ar_stripe_cases` read by those roles through RLS and written only by those functions and the closing triggers on `jobs_ledger_payments` and `jobs_ledger_invoices`.
   Since v2.8566 the app calls a reopen (`reopen_ar_return_case`, `reopen_ar_stripe_case` or `reopen_ar_unbanked_check_case`, by the case's source) from one press, **Reopen…** under **Closed cases** in Accounts Receivable, drawn since v2.8588 for the same four roles on a case of any job closed as settled another way or not coming, and until then for a dev alone on a ZZ test job's case (`arCaseReopenDrawn`, `arCaseReopenProblem`).
+  Since v2.8615 `reopen_ar_return_case()` itself reopens only a case closed as settled another way or not coming, as its two siblings always did, and refuses a replaced case with its reason (migration `20261126020832`).
   **v2.5033** adds the returned check fee (`20261010003000_ar_returned_check_fee.sql`): `list_ar_return_case_fees()` and `add_ar_return_case_fee()`, `SECURITY DEFINER`, for the same four roles, revoked from `anon`;
   the press refuses a training account and a digital twin in words first.
 

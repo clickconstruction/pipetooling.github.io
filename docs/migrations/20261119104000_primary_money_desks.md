@@ -1,6 +1,6 @@
 # 20261119104000_primary_money_desks.sql (2026-11-19, v2.7931)
 
-The money desks close to a primary (punch list #400 PR 5, `to-dos/primary-job-doors.md`, the owner's call 1). It needs nothing but what is live. Push after the PR merges. No client change: no screen of a primary's calls what it closes.
+The money desks close to a primary (punch list #400 PR 5, `to-dos/primary-job-doors.md`, the owner's call 1). It needs nothing but what is live. Push after the PR merges. No client change: no screen of a primary's calls what it closes. Its `reopen_ar_return_case` is replaced by [`20261126020832_reopen_ar_return_case_two_reasons`](./20261126020832_reopen_ar_return_case_two_reasons.md) (v2.8615), which holds a replaced case closed.
 
 ## What it does
 

@@ -12,8 +12,9 @@
  *   2026-11-25, *Wider*.
  * - Only a case the office closed by hand is listed and reopened: *settled another way* or *not coming*. A case
  *   closed because a new check replaced it, or by Stripe's own answer, stays, and is counted, not listed. The
- *   returned-check function would reopen any closed case and clear its replacement, so this rule is the one that
- *   holds it to the two reasons.
+ *   returned-check function reopened any closed case and cleared its replacement until v2.8615 (migration
+ *   20261126020832), so this rule was the one that held it to the two reasons; since then the database holds the
+ *   same rule, and this one refuses before the call with its reason.
  * - The list grows for good, so it shows the cases closed in the last 90 days and folds the older ones.
  */
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdWeekdayShortFriendly, ymdDaysBetween } from '../../utils/dateUtils'
