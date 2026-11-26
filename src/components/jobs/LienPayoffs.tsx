@@ -14,6 +14,8 @@ import type { BankCheck } from '../../lib/jobs/checkCleared'
 import { PAYOFF_CARD_WORDS, canConfirmFunds, lienPayoffCard, type PayoffStopState } from '../../lib/jobs/lienPayoffCard'
 import { PAYOFF_WRITE_FAILED, keepPayoffFields, type PayoffFieldsRow } from '../../lib/jobs/lienPayoffCardIo'
 import { fundsConfirmedNow } from '../../lib/jobs/lienPayoffFields'
+import { releaseByNow } from '../../lib/jobs/lienReleaseFacts'
+import { keepReleaseFacts } from '../../lib/jobs/lienReleaseRunIo'
 import {
   LIEN_PAYOFF_STEPS,
   LIEN_PAYOFF_WORDS,
@@ -69,6 +71,8 @@ type Props = {
   record?: Parameters<typeof LienPayoffCheck>[0]['record']
   /** Tests hand the card's writes in: the asked day and the funds confirmation on each lien. */
   keep?: typeof keepPayoffFields
+  /** The write of a release's own facts (piece 5): the day its copies were sent. */
+  keepRelease?: typeof keepReleaseFacts
   /** Who is signed in: the funds press is a leader's, a controller's or a dev's, and the confirmation carries their name. */
   role?: UserRole | null
   who?: PayoffWho | null
@@ -116,7 +120,7 @@ const fieldsRows = (rows: ReadonlyArray<LienPayoffRow>): PayoffFieldsRow[] => ro
  * The payoff card on an open place (piece 4; the rule is `lienPayoffCard.ts`): five stops, the one line, the two
  * days, and the funds press. Each write goes to every lien it concerns and keeps going past one that fails.
  */
-function PayoffCardBlock({ place, todayYmd, isMobile, canConfirm, who, keep, onKept }: { place: LienPayoffPlace; todayYmd: string; isMobile: boolean; canConfirm: boolean; who: PayoffWho | null; keep: typeof keepPayoffFields; onKept: () => void }) {
+function PayoffCardBlock({ place, todayYmd, isMobile, canConfirm, who, keep, keepRelease, onKept }: { place: LienPayoffPlace; todayYmd: string; isMobile: boolean; canConfirm: boolean; who: PayoffWho | null; keep: typeof keepPayoffFields; keepRelease: typeof keepReleaseFacts; onKept: () => void }) {
   const { showToast } = useToastContext()
   const card = useMemo(() => lienPayoffCard(place.rows, todayYmd), [place.rows, todayYmd])
   const [fundsOpen, setFundsOpen] = useState(false)
@@ -131,6 +135,17 @@ function PayoffCardBlock({ place, todayYmd, isMobile, canConfirm, who, keep, onK
     if (failed.length < outcomes.length) onKept()
     if (failed.length) throw new Error(failed[0]?.why ?? PAYOFF_WRITE_FAILED)
   }
+
+  /** The copies' day is kept on every recorded release at the place that still owes them (piece 5). */
+  const keepCopies = async (value: string) => {
+    if (!who || !value) return
+    const rows = card.copiesRows.flatMap((r) => (r.step.releaseId ? [{ releaseId: r.step.releaseId, fields: r.step.releaseFields }] : []))
+    const outcomes = await keepRelease(rows, { copies: { ...releaseByNow(who, new Date().toISOString()), ymd: value } })
+    const failed = outcomes.filter((o) => !o.ok)
+    if (failed.length < outcomes.length) onKept()
+    if (failed.length) throw new Error(failed[0]?.why ?? PAYOFF_WRITE_FAILED)
+  }
+  const copiesFrom = [...card.copiesRows.map((r) => r.step.recordedYmd ?? '')].sort().pop() ?? ''
 
   const confirm = async () => {
     if (!who || busy || !note.trim()) return
@@ -188,6 +203,13 @@ function PayoffCardBlock({ place, todayYmd, isMobile, canConfirm, who, keep, onK
             <ValueLine label={card.cleared ? PAYOFF_CARD_WORDS.cleared : PAYOFF_CARD_WORDS.clears}>
               <span data-lien-payoff-clears={card.cleared ? 'cleared' : 'waiting'}>
                 <WorkedOutValue>{formatYmdMonthDay(card.clearsYmd)}</WorkedOutValue>
+              </span>
+            </ValueLine>
+          ) : null}
+          {card.copiesRows.length > 0 && who ? (
+            <ValueLine label={PAYOFF_CARD_WORDS.copies}>
+              <span data-lien-payoff-copies>
+                <ChangeableValue text={PAYOFF_CARD_WORDS.notYet} label={PAYOFF_CARD_WORDS.copiesLabel} type="date" value="" max={todayYmd} check={(draft) => (draft && copiesFrom && draft < copiesFrom ? PAYOFF_CARD_WORDS.copiesBeforeRecorded : null)} onKeep={keepCopies} />
               </span>
             </ValueLine>
           ) : null}
@@ -327,7 +349,7 @@ function PlaceCard({ place, isMobile, onDoor, onCheck, card }: { place: LienPayo
   )
 }
 
-function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, loading, isMobile, onRetry, onClose, onDoor, onRecorded, record, keep, role, who }: { places: LienPayoffPlace[]; billsByJob: Readonly<Record<string, ReadonlyArray<LienPayoffBill>>>; bankChecks?: ReadonlyArray<BankCheck>; todayYmd: string; failure: string | null; loading: boolean; isMobile: boolean; onRetry: () => void; onClose: () => void; onDoor: (door: LienPayoffDoor, jobId: string) => void; onRecorded: () => void; record?: Parameters<typeof LienPayoffCheck>[0]['record']; keep: typeof keepPayoffFields; role: UserRole | null; who: PayoffWho | null }) {
+function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, loading, isMobile, onRetry, onClose, onDoor, onRecorded, record, keep, keepRelease, role, who }: { places: LienPayoffPlace[]; billsByJob: Readonly<Record<string, ReadonlyArray<LienPayoffBill>>>; bankChecks?: ReadonlyArray<BankCheck>; todayYmd: string; failure: string | null; loading: boolean; isMobile: boolean; onRetry: () => void; onClose: () => void; onDoor: (door: LienPayoffDoor, jobId: string) => void; onRecorded: () => void; record?: Parameters<typeof LienPayoffCheck>[0]['record']; keep: typeof keepPayoffFields; keepRelease: typeof keepReleaseFacts; role: UserRole | null; who: PayoffWho | null }) {
   useModalStackEntry()
   const closeRef = useRef(onClose)
   closeRef.current = onClose
@@ -342,7 +364,8 @@ function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, load
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   // A place whose recorded release rests on a check that came back is not done (piece 6): it stays in the open list.
-  const isOpen = (p: LienPayoffPlace) => p.rows.some((r) => r.step.step !== 'done' || r.step.moneyBack)
+  // Nor is one whose recorded release still owes its copies (piece 5): the card stays until they are out.
+  const isOpen = (p: LienPayoffPlace) => p.rows.some((r) => r.step.step !== 'done' || r.step.moneyBack || r.step.copiesOwed)
   const open = places.filter(isOpen)
   const released = places.filter((p) => !isOpen(p))
   const [showReleased, setShowReleased] = useState(false)
@@ -399,7 +422,7 @@ function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, load
           {!failure && loading && places.length === 0 ? <p style={{ ...small, margin: 0 }}>Reading the filed liens…</p> : null}
           {!failure && !loading && places.length === 0 ? <EmptyState main={emptyWords({ kind: 'waiting', who: 'a release' }).main} compact /> : null}
           {open.map((p) => (
-            <PlaceCard key={p.key} place={p} isMobile={isMobile} onDoor={onDoor} onCheck={checkDoor(p)} card={<PayoffCardBlock place={p} todayYmd={todayYmd} isMobile={isMobile} canConfirm={canConfirm} who={who} keep={keep} onKept={onRecorded} />} />
+            <PlaceCard key={p.key} place={p} isMobile={isMobile} onDoor={onDoor} onCheck={checkDoor(p)} card={<PayoffCardBlock place={p} todayYmd={todayYmd} isMobile={isMobile} canConfirm={canConfirm} who={who} keep={keep} keepRelease={keepRelease} onKept={onRecorded} />} />
           ))}
           {released.length ? (
             <section style={{ display: 'grid', gap: '0.5rem' }}>
@@ -416,7 +439,7 @@ function PayoffsWindow({ places, billsByJob, bankChecks, todayYmd, failure, load
   )
 }
 
-export default function LienPayoffs({ todayYmd, refreshKey, onOpenBill, onOpenRelease, onChanged, isMobile = false, read = readLienPayoffFacts, record, keep = keepPayoffFields, role = null, who = null, initiallyOpen = false, stripHome }: Props) {
+export default function LienPayoffs({ todayYmd, refreshKey, onOpenBill, onOpenRelease, onChanged, isMobile = false, read = readLienPayoffFacts, record, keep = keepPayoffFields, keepRelease = keepReleaseFacts, role = null, who = null, initiallyOpen = false, stripHome }: Props) {
   const [facts, setFacts] = useState<LienPayoffFacts | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -485,6 +508,7 @@ export default function LienPayoffs({ todayYmd, refreshKey, onOpenBill, onOpenRe
           }}
           record={record}
           keep={keep}
+          keepRelease={keepRelease}
           role={role}
           who={who}
         />

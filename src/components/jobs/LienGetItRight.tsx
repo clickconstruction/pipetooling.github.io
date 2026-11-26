@@ -58,6 +58,8 @@ export type LienGetItRightProps = {
   onRecordFiling?: (line: LienRunLine) => void
   /** The county each printed affidavit is filed in, as its paper names it: the stops a clerk. */
   countyFor?: (jobIds: ReadonlySet<string>) => ReadonlyArray<{ jobId: string; county: string }>
+  /** The releases on the run (punch list #435, piece 5; `LienRunReleases`), drawn under Out the door. It draws nothing while no release has an act left. */
+  releases?: ReactNode
 }
 
 const blueBtn: CSSProperties = { padding: '5px 12px', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '0.8125rem', fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }
@@ -296,7 +298,7 @@ function StoodFoot({ paper, isMobile, canTakeBack, words, onTakeBack }: { paper:
   )
 }
 
-export default function LienGetItRight({ run: given, isMobile, scrolls, canLeaveOut, userName, onBack, onAct, onOpenLine, onLeaveOut, onPutBack, prints, print, printed, onReprintNotice, onRecordMailing, onRecordFiling, countyFor }: LienGetItRightProps) {
+export default function LienGetItRight({ run: given, isMobile, scrolls, canLeaveOut, userName, onBack, onAct, onOpenLine, onLeaveOut, onPutBack, prints, print, printed, onReprintNotice, onRecordMailing, onRecordFiling, countyFor, releases }: LienGetItRightProps) {
   // The strip's counts with what the print and the printed read know (v2.8631): a printed affidavit and a right notice the
   // run window holds are said apart from what the press prints. The lines and the door do not move.
   const printedAffidavitJobIds = printed ? new Set([...printed.printedSame, ...printed.stoodAffidavits]) : new Set<string>()
@@ -633,6 +635,8 @@ export default function LienGetItRight({ run: given, isMobile, scrolls, canLeave
           ) : null}
         </section>
       ) : null}
+
+      {releases}
 
       {run.right.length > 0 ? (
         <details data-lien-run-card="right" style={card} onToggle={(e) => setRightOpen(e.currentTarget.open)}>

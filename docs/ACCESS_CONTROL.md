@@ -1026,6 +1026,7 @@ the per-statement form template and the person copy are written as the service r
 
 **Lien desk** (v2.3405, `20260914180000_lien_desk.sql`): `job_lien_desk_items` — **read / insert / update** dev · assistant-like · master (`is_dev() OR is_assistant() OR role = 'master_technician'`), **delete** dev.
 **The bank confirmed the funds** (v2.8632, punch list #435 piece 4): the press on a Payoffs place card is drawn for **dev · master_technician · controller** alone (`canConfirmFunds` in `lienPayoffCard.ts`, the owner's answer of 2026-11-25), a client gate like the Release of record tab's *Release it anyway…*.
+**The releases on the run** (v2.8648, punch list #435 piece 5): the *Releases* card's print press and its two values, *Notarized* and *Copies sent*, are drawn for the lien office alone, **dev · master_technician · assistant · controller** (`isLienOffice`, checked in `LienDeskPage`), a client gate over the row's own update policy, and anyone else on the desk reads the list with no press.
 Its write, and the write of the day a release was asked for in writing, is the affidavit row's own `fields` on `job_lien_filings` under that table's existing UPDATE policy, with no new role and no new policy.
 **Is this public property?**
 (v2.7436, `20261116221500_property_lien_public_answer.sql`): the answer on a property record (`customer_addresses.lien_public_answer`) is written only by `set_property_lien_public_answer`, for **dev · master · assistant · controller** (the lien office, `isLienOffice`);

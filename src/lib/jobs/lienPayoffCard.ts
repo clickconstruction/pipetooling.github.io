@@ -67,6 +67,9 @@ export const PAYOFF_CARD_WORDS = {
   fundsWho: 'A leader, a controller or a dev may press it.',
   fundsKept: 'The card keeps your name and the day with it.',
   copiesLater: 'After recording.',
+  copies: 'Copies sent',
+  copiesLabel: 'the day the stamped copies were sent',
+  copiesBeforeRecorded: 'The copies cannot go before the county recorded the release.',
 } as const
 
 export type PayoffDue = { askedYmd: string; dueYmd: string; daysLeft: number }
@@ -92,6 +95,8 @@ export type LienPayoffCard = {
   askedRows: LienPayoffRow[]
   /** The liens the funds press writes to: those waiting for the bank. */
   fundsRows: LienPayoffRow[]
+  /** The liens whose recorded release still owes its copies (piece 5): the copies' day is kept on each. */
+  copiesRows: LienPayoffRow[]
 }
 
 const count = (n: number): string => val('count', String(n))
@@ -134,6 +139,7 @@ export function lienPayoffCard(rows: ReadonlyArray<LienPayoffRow>, todayYmd: str
   const done = at('done')
   const n = rows.length
   const made = county.length + done.length
+  const notarized = [...county, ...done].filter((r) => r.step.notarizedYmd || r.step.step === 'done').length
   const open = rows.filter((r) => r.step.step !== 'done')
   const checks = rows.map((r) => r.step.check).filter((c): c is CheckAnswer => Boolean(c))
   // A saved or recorded release on a check that came back counts too (piece 6, `payoffReturned.ts`).
@@ -175,7 +181,7 @@ export function lienPayoffCard(rows: ReadonlyArray<LienPayoffRow>, todayYmd: str
   // 3. Releases.
   const s3: PayoffStop = { key: 'releases', label: PAYOFF_CARD_WORDS.stops.releases, state: 'later', say: bank.length ? 'After the check clears.' : 'After the money is recorded.' }
   if (cameBack) Object.assign(s3, { state: 'bad', say: 'Held. The check came back.' })
-  else if (made === n) Object.assign(s3, { state: 'done', say: n === 1 ? 'Made.' : `All ${count(n)} made.` })
+  else if (made === n) Object.assign(s3, { state: 'done', say: `${n === 1 ? 'Made' : `All ${count(n)} made`}${notarized === n ? ' and notarized' : notarized ? `, ${count(notarized)} notarized` : ''}.` })
   else if (owed.length) Object.assign(s3, { state: 'now', say: made ? `${count(made)} made, ${count(owed.length)} to make.` : `${count(owed.length)} to make.` })
 
   // 4. Recorded at the county.
@@ -185,8 +191,14 @@ export function lienPayoffCard(rows: ReadonlyArray<LienPayoffRow>, todayYmd: str
   else if (moneyBack.some((r) => r.step.step === 'county')) Object.assign(s4, { state: 'bad', say: 'Do not record. The check came back.' })
   else if (county.length) Object.assign(s4, { state: 'now', say: done.length ? `${count(done.length)} recorded, ${count(county.length)} to record.` : `${count(county.length)} to record, after the notary.` })
 
-  // 5. Copies sent: no fact yet (piece 5).
-  const s5: PayoffStop = done.length === n && moneyBack.length === 0 ? { key: 'copies', label: PAYOFF_CARD_WORDS.stops.copies, state: 'now', say: 'Send the stamped copies to the payer.' } : { key: 'copies', label: PAYOFF_CARD_WORDS.stops.copies, state: 'later', say: PAYOFF_CARD_WORDS.copiesLater }
+  // 5. Copies sent: the day kept on each recorded release (piece 5, `lienReleaseFacts.ts`).
+  const copiesRows = moneyBack.length === 0 ? done.filter((r) => r.step.copiesOwed) : []
+  const sent = done.filter((r) => r.step.copiesYmd)
+  const sentDay = latest(sent.map((r) => r.step.copiesYmd ?? ''))
+  const s5: PayoffStop = { key: 'copies', label: PAYOFF_CARD_WORDS.stops.copies, state: 'later', say: PAYOFF_CARD_WORDS.copiesLater }
+  if (copiesRows.length === n) Object.assign(s5, { state: 'now', say: 'Send the stamped copies to the payer.' })
+  else if (copiesRows.length) Object.assign(s5, { state: 'now', say: sent.length ? `${count(sent.length)} sent, ${count(copiesRows.length)} to send.` : `${count(copiesRows.length)} to send.` })
+  else if (done.length === n && sent.length === n && sentDay) Object.assign(s5, { state: 'done', say: `Sent ${day(sentDay)}.` })
 
   // The two days.
   const due = done.length < n ? releaseDue(askedYmd, todayYmd) : null
@@ -237,5 +249,6 @@ export function lienPayoffCard(rows: ReadonlyArray<LienPayoffRow>, todayYmd: str
     offerFunds: bank.length > 0 && !cameBack && !unread && !funds,
     askedRows: open,
     fundsRows: bank,
+    copiesRows,
   }
 }

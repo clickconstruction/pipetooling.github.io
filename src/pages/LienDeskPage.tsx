@@ -35,11 +35,12 @@ import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../lib/physicalInvoiceIssuer'
 import { lienSignatureNameFor, lienSignerNameFor, lienSignerPhoneFor, type LienSignerUser } from '../lib/jobs/lienSigner'
 import { lienFocusEditJobOptions } from '../lib/jobs/lienFocusEditJobOptions'
-import { isLienLeader } from '../lib/jobs/lienDesk'
+import { isLienLeader, isLienOffice } from '../lib/jobs/lienDesk'
 import { syncLienDeskAfterRecord } from '../lib/jobs/lienDeskIo'
 import { lienWindowDeskAffidavit, lienWindowDeskNotice } from '../lib/jobs/lienTimelineDesk'
 import { withJobLastWork, withJobsLastWork } from '../lib/jobs/lienLastWorkJobs'
 import LienPayoffs from '../components/jobs/LienPayoffs'
+import LienRunReleases from '../components/jobs/LienRunReleases'
 import { ownerRecordsFromDesk } from '../lib/jobs/ownerRecordsDesk'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
@@ -395,6 +396,18 @@ export default function LienDeskPage() {
         onOpenLegalDesk={() => navigate(LEGAL_DESK_PATH)}
         legalSignoff={legalSignoff}
         onOpenLienAffidavit={(jobId) => withJob(jobId, (job) => setLienWindow({ job, initialTab: 'affidavit' }))}
+        // The releases on the run (punch list #435, piece 5): printed for the notary, notarized, recorded and sent, under Out the door.
+        runReleases={
+          <LienRunReleases
+            todayYmd={todayYmd}
+            refreshKey={data}
+            isMobile={isMobile}
+            issuer={issuer}
+            who={user?.id && isLienOffice(role) ? { id: user.id, name: profileName ?? '' } : null}
+            onOpenRelease={(jobId) => withJob(jobId, (job) => setLienWindow({ job, initialTab: 'release_record' }))}
+            onChanged={refetch}
+          />
+        }
         // A stop window's card: the Lien window on the paper's tab, landed on the copy that lacks its number or receipt.
         onOpenLienProof={(land) => withJob(land.jobId, (job) => setLienWindow({ job, initialTab: lienMailProofWindowTab(land.paper), land }))}
         onChanged={refetch}
