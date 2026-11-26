@@ -22,7 +22,7 @@ ver: v2.8333 · v2.8335 · v2.8343 · v2.8371 · v2.8442 to v2.8457
 
 Mock-up: [`mockup.html`](./mockup.html), served at `/to-dos/bills-sent-who-paid/mockup.html`. The list as it is beside the list with payment made plain, at a desk and on a phone. Then the second view, By day paid, with a day picked. That view can be pressed. Every name, job, bill number, check number and amount on it is made up.
 
-This card follows [#327, Bills sent](../bills-sent-ledger/README.md), which built the page, and [#340](../bills-sent-how-it-went-list/README.md), which built the form on it.
+This card follows [#327, Bills sent](../bills-sent-ledger/README.md), which built the page, and #340 (retired 2026-11-26; its card lives in git history at the deleting commit), which built the form on it.
 
 ## The ask
 
