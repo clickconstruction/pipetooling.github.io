@@ -335,6 +335,17 @@ export default function SignIn() {
             <p className="auth-public-landing__signin-footnote">
               Issue logging in? Contact the office
             </p>
+            {/* Real pages outside the app (public/privacy, public/terms, v2.8672): plain links, so the
+                browser loads the document itself. Google's sign-in screen links to the same two. */}
+            <p className="auth-public-landing__signin-footnote">
+              <a href="/privacy/" style={{ color: 'inherit' }}>
+                Privacy
+              </a>
+              {' · '}
+              <a href="/terms/" style={{ color: 'inherit' }}>
+                Terms
+              </a>
+            </p>
           </form>
         </div>
         <ToolingFamilyStrip />
