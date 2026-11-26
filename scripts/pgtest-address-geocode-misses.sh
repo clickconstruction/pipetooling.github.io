@@ -17,7 +17,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55923}"
 NAME="pgtest-address-geocode-misses"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_address_geocode_misses.sql)"
+WRITES="$(ls supabase/migrations/*_address_geocode_misses.sql supabase/migrations/*_geocode_miss_delete_dev.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

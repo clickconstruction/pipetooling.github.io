@@ -1897,6 +1897,8 @@ A tech reads only their own row;
 - **Who writes a pay application's line on the page** (v2.5286, `20261012200000_portal_customer_lines.sql`): a sent pay application changes only through its doors, column grants on `gc_owner_pay_apps` under the Owner Billing door's money policy: the architect's certificate, the invoice it was billed on, and the customer's line on its card (`customer_line`, `customer_line_es`, the page's sentence and never the bill's money).
 - **Who sees a customer's page as they see it** (Messages cut 8d, v2.5325): whoever opens the customer's window (a dev, `canUseGcBoardWrites`).
   It reads their live link from `customer_portal_links` under that table's own policy and calls `customer-portal` as a staff look (`?preview=1` with the office's session), so no view counts and nothing is written;
+  Since v2.8621 (punch list #443, row 11) a dev alone deletes one turned-off link of a customer whose name starts with ZZ through `delete_test_portal_link()`, `SECURITY DEFINER` behind `is_dev()`, `customer_is_zz_test()` and a count of the GC proposals that name the link.
+  The table still has no delete policy of its own, so a direct delete reaches no row (migration `20261126023047`).
   its presses send nothing.
   **Make their link** goes through `mint_customer_portal_link`, as the globe's Create does.
 - **What their page reads of their thread, and writes to it** (Messages cut 8e, v2.5331): `customer-portal` reads the page's contact's lines with the service role and passes only those between us and them by text, email or their page, on no job but theirs, without who of ours wrote them beyond a first name, a text's subject, the opt-out line, a note's back day or its step (`_shared/gcPortalThread.ts`).
@@ -2232,6 +2234,7 @@ A training-mode account cannot sign, since starting a paper is a write.
   `close_ar_stripe_case()`, `reopen_ar_stripe_case()` and `put_back_lost_dispute_bill()` (a lost dispute's payment off its job and its bill back to be billed again, in one transaction) for the same four roles, revoked from `anon`;
   the table `ar_stripe_cases` read by those roles through RLS and written only by those functions and the closing triggers on `jobs_ledger_payments` and `jobs_ledger_invoices`.
   Since v2.8566 the app calls a reopen (`reopen_ar_return_case`, `reopen_ar_stripe_case` or `reopen_ar_unbanked_check_case`, by the case's source) from one press, **Reopen…** under **Closed cases** in Accounts Receivable, drawn since v2.8588 for the same four roles on a case of any job closed as settled another way or not coming, and until then for a dev alone on a ZZ test job's case (`arCaseReopenDrawn`, `arCaseReopenProblem`).
+  Since v2.8615 `reopen_ar_return_case()` itself reopens only a case closed as settled another way or not coming, as its two siblings always did, and refuses a replaced case with its reason (migration `20261126020832`).
   **v2.5033** adds the returned check fee (`20261010003000_ar_returned_check_fee.sql`): `list_ar_return_case_fees()` and `add_ar_return_case_fee()`, `SECURITY DEFINER`, for the same four roles, revoked from `anon`;
   the press refuses a training account and a digital twin in words first.
 
@@ -2912,6 +2915,8 @@ The client's gate is `canTagInJobNotes` (`src/lib/jobs/noteTags.ts`): the same s
 open to the team since v2.7576): `task_note_tags` has one read policy and no write policy.
 The tagged person and the tagger read their own rows, and anyone else reads a tag when they can read its note in the task's thread.
 Rows are written only by `task_note_post_tagged` (the note under the writer's own policies, the tags through the definer `task_note_tags_write`), the answering trigger on `checklist_instance_events`, `task_note_tag_done` and `task_note_tags_seen`.
+Since v2.8626 (punch list #443, row 13) a dev alone deletes a comment on a day of a task whose title starts with ZZ, through `checklist_instance_events_delete_dev` and the `DELETE` grant (migration `20261126030238`), when no tag names it as its answer.
+The same migration lets a dev delete a note on a ZZ test job through `jobs_ledger_thread_notes_delete_dev`, under the same rule, and Deleted records keeps the note.
 **Who can be tagged on a task, and who can tag** (`task_note_people`, read for one day row): whoever gave the task and whoever has that day row, whatever their role but subcontractor or estimator, then dev, master technician, assistant and controller.
 A primary, a helper or a superintendent is on the list only when the task is theirs, so a tag never opens a task to someone new.
 Never an archived person, a digital twin or an account in training mode, and a sample or walk-tester account only for a dev or another such account.
@@ -3341,6 +3346,8 @@ Checklist and Tally feature access still varies by role (see the feature matrice
 **`address_geocodes`** RLS: read / insert / update for every signed-in user since **`20260908035852`** (v2.3131 — the Dashboard **Your jobs on a map** card), delete for the five `/map` roles, dev / master_technician / assistant / controller / estimator (**`20270520120000_address_geocodes_estimator_map_access.sql`**;
 the controller since **`20260927220000_controller_policies_the_rest.sql`**, v2.3898);
 **`address_geocode_misses`** RLS (v2.8473, punch list #408): read / insert / update for every signed-in user, the same reach as `address_geocodes`, and no delete for anyone (**`20261124091500_address_geocode_misses.sql`**);
+Since v2.8623 (punch list #443, row 16) a dev alone deletes a miss by hand, through `address_geocode_misses_delete_dev` and the `DELETE` grant (migration `20261126024719`), from the **Kept map addresses** block and only when no record holds its street line.
+The four fences still hold a read-only account, a twin and an archived caller back from that delete.
 a point saved to `address_geocodes` deletes its miss through the definer trigger `address_geocodes_clears_miss`, and the server stamps `checked_at` on every write;
 Edge **`geocode-address-batch`** (primary load chunks, every signed-in role) / **`geocode-one`** (**Review geocodes** Google refresh, Settings default-label, the Edit Job **On the map** line — the five `/map` roles, controller included since v2.4974;
 the line itself reads `isPathAllowedForRole(role, '/map')`).

@@ -20,7 +20,7 @@ PORT="${PGTEST_PORT:-55797}"
 NAME="pgtest-job-note-tags"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # Both migrations, in their order: the second restates two functions of the first.
-WRITES="$(ls supabase/migrations/*_jobs_ledger_note_tags.sql) $(ls supabase/migrations/*_job_note_tags_from_the_job_window.sql)"
+WRITES="$(ls supabase/migrations/*_jobs_ledger_note_tags.sql) $(ls supabase/migrations/*_job_note_tags_from_the_job_window.sql) $(ls supabase/migrations/*_test_note_delete_dev.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -42,7 +42,9 @@ pgtest_migrate
 for w in $WRITES; do
   psql_as postgres -f - < "$w" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $w"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 done
-out="$(psql_as postgres -f - < supabase/tests/job_note_tags/20_scenario.sql 2>&1 || true)"
-if ! grep -q "job_note_tags PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
-grep -o "ok: .*" <<<"$out"
+for scenario in supabase/tests/job_note_tags/*.sql; do
+  out="$(psql_as postgres -f - < "$scenario" 2>&1 || true)"
+  if ! grep -q "job_note_tags PASSED" <<<"$out"; then echo "FAILED $scenario"; echo "$out" | tail -40; exit 1; fi
+  grep -o "ok: .*" <<<"$out"
+done
 echo "job-note-tags bed ok"

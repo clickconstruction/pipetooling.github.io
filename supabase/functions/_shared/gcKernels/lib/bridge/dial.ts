@@ -110,8 +110,6 @@ export type DialReading = {
   flow: StageFlow
 }
 
-const isFeeder = (s: StageId): boolean => s === 'market' || s === 'sales'
-
 function pileAndIn(input: StageFlowInput, stage: StageId): { pileUsd: number; inUsd: number; outUsd: number } | null {
   if (stage === 'bill' && input.bill) return { pileUsd: input.bill.pileUsd, inUsd: input.bill.inPerWeekUsd, outUsd: input.bill.outPerWeekUsd }
   if (stage === 'collect' && input.collect) return { pileUsd: input.collect.pileUsd, inUsd: input.collect.inPerWeekUsd, outUsd: input.collect.outPerWeekUsd }
@@ -155,17 +153,14 @@ export function buildDialReading(input: StageFlowInput, stage: StageId, usd: num
   const pile = pileAndIn(adjusted, stage)
   if (pile) {
     marks.push({ usd: pile.inUsd, label: 'the pile stops growing' })
-    const others = flow.stages.filter((s) => s.id !== stage && s.readable && s.weeks != null)
-    const othersMax = others.length ? Math.max(...others.map((s) => s.weeks as number)) : 0
-    const other = others.find((s) => s.weeks === othersMax)
-    if (other && othersMax > 0) {
-      const cross = pile.pileUsd / othersMax
-      marks.push({ usd: cross, label: base.linkId === stage ? `above here ${other.name} is the link` : `below here ${name} is the link` })
-    }
     marks.push({ usd: spec.elevateAtUsd, label: `${words.elevate} from here` })
   } else if (input.fieldPerWeekUsd != null) {
     marks.push({ usd: input.fieldPerWeekUsd, label: 'the field’s pace' })
   }
+  // Where the link moves (punch list #321): the rule lights the narrowest step, so the dial crosses it at the next
+  // narrowest step's pace. The others' paces do not move with this dial, so the crossing is theirs.
+  const narrowestOther = flow.stages.filter((s) => s.id !== stage && s.readable && s.paceUsd != null).sort((a, b) => (a.paceUsd as number) - (b.paceUsd as number))[0]
+  if (narrowestOther) marks.push({ usd: narrowestOther.paceUsd as number, label: base.linkId === stage ? `above here ${narrowestOther.name} is the link` : `below here ${name} is the link` })
 
   // The pile over twelve weeks.
   const fieldPace = input.fieldPerWeekUsd
@@ -208,16 +203,16 @@ export function buildDialReading(input: StageFlowInput, stage: StageId, usd: num
     else lines.push({ head: 'the pile', text: `The field gets ${stageUsd(fed)} a week of work and builds ${stageUsd(fieldPace)}. It runs out of work by ${dateAfterWeeks(buildPile / (fieldPace - fed))}.`, tone: 'red' })
   }
 
-  // The link.
+  // The link (punch list #321): the narrowest step, in dollars a week. A feeder is a candidate like any other.
   const linkName = flow.linkId ? STAGE_META[flow.linkId].name : null
-  const myWeeks = flow.stages.find((s) => s.id === stage)?.weeks ?? null
-  const linkWeeks = flow.linkId ? (flow.stages.find((s) => s.id === flow.linkId)?.weeks ?? null) : null
-  const second = flow.linkId ? flow.stages.filter((s) => s.id !== flow.linkId && s.weeks != null).sort((a, b) => (b.weeks as number) - (a.weeks as number))[0] : undefined
-  if (!linkName || linkWeeks == null) lines.push({ head: 'the link', text: 'No stage reads a pile yet, so nothing is the link.', tone: 'grey' })
-  else if (isFeeder(stage)) lines.push({ head: 'the link', text: fieldPace != null && usd < fieldPace && stage === 'sales' ? `${linkName} is the weakest link until the field runs out of work. Then ${name} is.` : `${linkName} stays the weakest link. Selling more adds to the piles and does not move it.`, tone: 'grey' })
-  else if (flow.linkId === stage) lines.push({ head: 'the link', text: `${name} is the weakest link: ${(myWeeks as number).toFixed(1)} weeks ${clearWords(stage)}.${second ? ` ${second.name} is next, ${(second.weeks as number).toFixed(1)} weeks.` : ''}`, tone: 'red' })
-  else if (base.linkId === stage) lines.push({ head: 'the link', text: `${linkName} becomes the weakest link: ${linkWeeks.toFixed(1)} weeks ${clearWords(flow.linkId as StageId)}. ${name} is down to ${myWeeks == null ? '—' : myWeeks.toFixed(1)} weeks.`, tone: 'green' })
-  else lines.push({ head: 'the link', text: `${linkName} stays the weakest link, ${linkWeeks.toFixed(1)} weeks. ${name} is at ${myWeeks == null ? '—' : myWeeks.toFixed(1)} weeks.`, tone: 'grey' })
+  const myPace = flow.stages.find((s) => s.id === stage)?.paceUsd ?? null
+  const linkPace = flow.linkId ? (flow.stages.find((s) => s.id === flow.linkId)?.paceUsd ?? null) : null
+  const second = flow.linkId ? flow.stages.filter((s) => s.id !== flow.linkId && s.paceUsd != null).sort((a, b) => (a.paceUsd as number) - (b.paceUsd as number))[0] : undefined
+  const mine = myPace == null ? 'no pace' : `${stageUsd(myPace)} a week`
+  if (!linkName || linkPace == null) lines.push({ head: 'the link', text: 'No step reads a pace yet, so nothing is the link.', tone: 'grey' })
+  else if (flow.linkId === stage) lines.push({ head: 'the link', text: `${name} is the narrowest step: ${mine}.${second ? ` ${second.name} is next, ${stageUsd(second.paceUsd as number)} a week.` : ''}`, tone: 'red' })
+  else if (base.linkId === stage) lines.push({ head: 'the link', text: `${linkName} becomes the narrowest step: ${stageUsd(linkPace)} a week. ${name} is up to ${mine}.`, tone: 'green' })
+  else lines.push({ head: 'the link', text: `${linkName} stays the narrowest step, ${stageUsd(linkPace)} a week. ${name} is at ${mine}.`, tone: 'grey' })
 
   // The money.
   if (stage === 'bill' && input.bill) {
@@ -238,13 +233,6 @@ export function buildDialReading(input: StageFlowInput, stage: StageId, usd: num
 
   const valueText = `${stageUsd(usd)}/wk`
   return { spec, usd, valueText, unitText, zone, marks: marks.filter((mk) => mk.usd >= spec.minUsd && mk.usd <= spec.maxUsd), spark, lines, flow }
-}
-
-function clearWords(stage: StageId): string {
-  if (stage === 'bill') return 'to bill what is already finished'
-  if (stage === 'collect') return 'to collect what is already late'
-  if (stage === 'build') return 'to build what is already sold'
-  return 'to clear'
 }
 
 export const DIAL_STAGES: ReadonlyArray<StageId> = STAGE_ORDER

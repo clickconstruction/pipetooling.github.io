@@ -20,7 +20,7 @@ describe('the Bridge’s links', () => {
   })
 
   it('words the desk status: the page’s own reading, a resource, or not the link today', () => {
-    expect(deskStatus({ link: 'bill', linkId: 'bill' })).toBe('nominated by the page: the most weeks to clear what is already waiting')
+    expect(deskStatus({ link: 'bill', linkId: 'bill' })).toBe('nominated by the page: the narrowest step, the fewest dollars a week')
     expect(deskStatus({ link: 'decision', linkId: 'bill' })).toBe('a resource; it throttles a link or shows its symptom')
     expect(deskStatus({ link: 'build', linkId: 'bill' })).toBe('not the link today, by the page’s reading')
   })

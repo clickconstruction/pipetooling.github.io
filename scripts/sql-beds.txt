@@ -184,3 +184,4 @@ global-reload-dev-only
 bid-day
 lien-print-stands
 pay-log-screen
+portal-link-delete

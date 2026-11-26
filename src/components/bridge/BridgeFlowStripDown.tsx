@@ -9,7 +9,7 @@ import type { StageId } from '../../lib/bridge/stageFlow'
  * The strip of pipe, standing up (punch list #318): the five steps as one pipe
  * running down, each step's words beside its section. How wide a section is says how many dollars
  * it moves in a week. The bar under a step's words says how much work waits in front of it. The
- * slowest step is lit. A press on a row opens that step's desk. Under each row's weeks, since punch list #321 (PR 1),
+ * narrowest step is lit. A press on a row opens that step's desk. Under each row's weeks, since punch list #321 (PR 1),
  * a line says which way its work is heading: the pile grows or shrinks by so many dollars a week, or a feeder runs
  * so far short of the field. The red does not move with it.
  *

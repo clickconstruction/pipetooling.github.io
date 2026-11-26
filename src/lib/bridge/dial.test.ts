@@ -64,21 +64,22 @@ describe('the dial', () => {
     const r = buildDialReading(input, 'bill', 22_000, { spec, todayYmd, dayLabel })
     expect(r.valueText).toBe('$22k/wk')
     expect(r.unitText).toBe('about 1.4 jobs a week')
-    expect(r.marks.map((m) => m.label)).toEqual(['today', 'the pile stops growing', 'above here Build is the link', 'a second biller from here'])
+    // The link moves at the next narrowest step's pace: Market, worth $29k a week.
+    expect(r.marks.map((m) => m.label)).toEqual(['today', 'the pile stops growing', 'a second biller from here', 'above here Market is the link'])
     expect(r.lines[0]).toEqual({ head: 'the pile', text: 'The field finishes $34k a week and the office bills $22k. The pile grows $12k a week and reaches $377k in twelve weeks.', tone: 'amber' })
-    expect(r.lines[1]!.text).toBe('Bill is the weakest link: 10.6 weeks to bill what is already finished. Build is next, 10.3 weeks.')
+    expect(r.lines[1]!.text).toBe('Bill is the narrowest step: $22k a week. Market is next, $29k a week.')
     expect(r.lines[2]!.text).toBe('Of the field’s $34k a week, $22k becomes a bill. $12k a week is earned on paper and not billed.')
     expect(r.spark.tone).toBe('red')
     expect(r.spark.endText).toBe('$377k')
     expect(r.flow.linkId).toBe('bill')
   })
 
-  it('at $40k Build becomes the link and the pile is gone by a date', () => {
+  it('at $40k Market becomes the link and the pile is gone by a date', () => {
     const spec = dialSpec(input, 'bill', { perUnitUsd: 233_000 / 15 })!
     const r = buildDialReading(input, 'bill', 40_000, { spec, todayYmd, dayLabel })
-    expect(r.flow.linkId).toBe('build')
+    expect(r.flow.linkId).toBe('market')
     expect(r.lines[0]!.text).toBe('The field finishes $34k a week and the office bills $40k. The pile shrinks $6k a week and is gone by 2027-07-09.')
-    expect(r.lines[1]!.text).toBe('Build becomes the weakest link: 10.3 weeks to build what is already sold. Bill is down to 5.8 weeks.')
+    expect(r.lines[1]!.text).toBe('Market becomes the narrowest step: $29k a week. Bill is up to $40k a week.')
     expect(r.lines[2]!.text).toBe('All of the field’s $34k a week becomes a bill, plus $6k a week of the old pile.')
     expect(r.spark.tone).toBe('green')
   })
@@ -86,13 +87,15 @@ describe('the dial', () => {
   it('a feeder reads Build’s pile and the field’s pace', () => {
     const spec = dialSpec(input, 'sales', { perUnitUsd: null })!
     const r = buildDialReading(input, 'sales', 49_000, { spec, todayYmd, dayLabel })
-    expect(r.marks.map((m) => m.label)).toEqual(['today', 'the field’s pace'])
+    // A feeder is a candidate too: below Bill's $22k a week, Sales is the link.
+    expect(r.marks.map((m) => m.label)).toEqual(['today', 'the field’s pace', 'below here Sales is the link'])
     expect(r.lines[0]!.text).toBe('The field gets $49k a week of work and builds $35k. Build’s pile grows $14k a week.')
-    expect(r.lines[1]!.text).toBe('Bill stays the weakest link. Selling more adds to the piles and does not move it.')
+    expect(r.lines[1]!.text).toBe('Bill stays the narrowest step, $22k a week. Sales is at $49k a week.')
     expect(r.spark.pileWord).toBe('Build’s pile')
     const dry = buildDialReading(input, 'sales', 20_000, { spec, todayYmd, dayLabel })
     expect(dry.lines[0]!.text).toContain('It runs out of work by')
-    expect(dry.lines[1]!.text).toBe('Bill is the weakest link until the field runs out of work. Then Sales is.')
+    expect(dry.flow.linkId).toBe('sales')
+    expect(dry.lines[1]!.text).toBe('Sales is the narrowest step: $20k a week. Bill is next, $22k a week.')
   })
 
   it('keeps every reading in plain words', () => {

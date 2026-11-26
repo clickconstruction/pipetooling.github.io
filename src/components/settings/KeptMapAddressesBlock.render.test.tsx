@@ -10,7 +10,7 @@ import { KEPT_ADDRESS_SOURCES } from '../../lib/map/keptAddressClear'
 import KeptMapAddressesBlock from './KeptMapAddressesBlock'
 
 const io = vi.hoisted(() => ({
-  rows: [] as Array<{ key: string; keptAtIso: string | null; placed: boolean }>,
+  rows: [] as Array<{ key: string; keptAtIso: string | null; placed: boolean; kind: 'kept' | 'miss' }>,
   hits: {} as Record<string, number>,
   searched: [] as string[],
   cleared: [] as string[],
@@ -31,9 +31,9 @@ vi.mock('../../lib/map/keptAddressClearIo', async () => {
       if (!keptAddressLikePattern(key)) return null
       return sources.map((source) => ({ source, count: key === '208 juniper bend, alder, tx' ? (io.hits[source.table] ?? 0) : 0 }))
     },
-    clearKeptAddress: async (key: string) => {
+    clearKeptAddress: async (key: string, kind: 'kept' | 'miss' = 'kept') => {
       if (io.refuse) throw io.refuse
-      io.cleared.push(key)
+      io.cleared.push(kind === 'miss' ? `miss:${key}` : key)
     },
   }
 })
@@ -50,9 +50,9 @@ const openAndFind = async (words = 'tset') => {
 
 beforeEach(() => {
   io.rows = [
-    { key: ZZ, keptAtIso: '2026-11-25T01:48:37Z', placed: true },
-    { key: REAL, keptAtIso: '2026-11-03T18:00:00Z', placed: true },
-    { key: '9 st', keptAtIso: null, placed: false },
+    { key: ZZ, keptAtIso: '2026-11-25T01:48:37Z', placed: true, kind: 'kept' },
+    { key: REAL, keptAtIso: '2026-11-03T18:00:00Z', placed: true, kind: 'kept' },
+    { key: '9 st', keptAtIso: null, placed: false, kind: 'kept' },
   ]
   io.hits = { jobs_ledger: 2, customers: 1 }
   io.searched = []
@@ -156,5 +156,24 @@ describe('KeptMapAddressesBlock', () => {
 
   it('reads every source the rule lists', () => {
     expect(KEPT_ADDRESS_SOURCES.length).toBeGreaterThan(20)
+  })
+
+  it('lists a kept miss with its days and clears it after a confirm that names a miss (punch list #443, row 16)', async () => {
+    const MISS = '4 tset bend, alder, tx'
+    io.rows = [{ key: MISS, keptAtIso: '2026-11-25T02:00:00Z', placed: false, kind: 'miss' }]
+    draw('dev')
+    await openAndFind()
+    const lines = await screen.findAllByTestId('kept-map-address')
+    expect(lines).toHaveLength(1)
+    expect(lines[0]!.getAttribute('data-kind')).toBe('miss')
+    expect(lines[0]!.textContent).toContain('No map service could place it. Checked Tue, Nov 24.')
+    expect(lines[0]!.textContent).toContain('It stops counting Thu, Dec 24 by itself.')
+    fireEvent.click(screen.getByRole('button', { name: `Clear the miss ${MISS}` }))
+    const yes = await screen.findByRole('button', { name: 'Clear the miss' })
+    expect(screen.getByText('Clear this kept miss?')).toBeTruthy()
+    fireEvent.click(yes)
+    await waitFor(() => expect(io.cleared).toEqual([`miss:${MISS}`]))
+    expect(await screen.findByText('The kept miss was cleared.')).toBeTruthy()
+    await waitFor(() => expect(screen.queryAllByTestId('kept-map-address')).toHaveLength(0))
   })
 })

@@ -4,7 +4,7 @@ The three writes the case of a returned check needs in Accounts Receivable (punc
 
 - **`take_returned_check_off_jobs(p_mercury_transaction_id)`** — every payment the deposit still carries comes off its job through `remove_jobs_ledger_payment_and_reconcile` (the reconcile, the `removed` history event with the bank's reason, the bill and the job back to Billed), biggest first, under a row lock on the deposit. All or nothing: a refusal from any payment (a Stripe credit note, a bill Stripe holds as paid) raises `#978 Stonewick- HVAC: This bill is marked paid in Stripe — …` and nothing comes off. Only for a deposit that came back (a returned row, or the bank-return rule). Returns `{ok, removed, jobs: [{job_id, label, amount, warning}]}`.
 - **`close_ar_return_case(p_mercury_transaction_id, p_reason, p_note default null, p_replaced_by default null)`** — `replaced` (names the new deposit, never itself), `settled_other_way`, `not_coming`; a note up to 500 characters; only an open case.
-- **`reopen_ar_return_case(p_mercury_transaction_id)`** — clears the close.
+- **`reopen_ar_return_case(p_mercury_transaction_id)`** — clears the close. Since [`20261126020832_reopen_ar_return_case_two_reasons`](./20261126020832_reopen_ar_return_case_two_reasons.md) (v2.8615, punch list #443 row 5) only a close by hand, *settled another way* or *not coming*; a replaced case stays closed.
 
 All three: dev, master_technician, assistant, controller, primary; revoked from `public` and `anon`, granted to `authenticated`.
 

@@ -13,6 +13,7 @@ import {
   keptAddressSearchProblem,
   keptAddressStreetLine,
   type KeptAddressSource,
+  keptAddressClearedWords,
 } from './keptAddressClear'
 
 const source = (table: string, column: string): KeptAddressSource => KEPT_ADDRESS_SOURCES.find((s) => s.table === table && s.column === column)!
@@ -152,5 +153,18 @@ describe('the search and the words', () => {
       confirmLabel: 'Clear the address',
     })
     expect(KEPT_ADDRESS_CLEARED).toBe('The kept address was cleared.')
+  })
+})
+
+describe('a kept miss (punch list #443, row 16)', () => {
+  it('the confirm and the toast say a miss when one is cleared, and an address otherwise', () => {
+    expect(keptAddressClearConfirm('1 tset street, austin, tx', 'miss')).toEqual({
+      title: 'Clear this kept miss?',
+      message: '1 tset street, austin, tx. No map service could place it, and no record holds its street line. The map asks the services again the next time anyone types it.',
+      confirmLabel: 'Clear the miss',
+    })
+    expect(keptAddressClearConfirm('1 tset street, austin, tx')).toMatchObject({ title: 'Clear this kept address?', confirmLabel: 'Clear the address' })
+    expect(keptAddressClearedWords('miss')).toBe('The kept miss was cleared.')
+    expect(keptAddressClearedWords('kept')).toBe('The kept address was cleared.')
   })
 })

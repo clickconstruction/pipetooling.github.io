@@ -22,7 +22,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55813}"
 NAME="pgtest-task-note-tags"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_task_note_tags.sql)"
+WRITES="$(ls supabase/migrations/*_task_note_tags.sql supabase/migrations/*_test_note_delete_dev.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -44,7 +44,9 @@ pgtest_migrate
 for w in $WRITES; do
   psql_as postgres -f - < "$w" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $w"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 done
-out="$(psql_as postgres -f - < supabase/tests/task_note_tags/20_scenario.sql 2>&1 || true)"
-if ! grep -q "task_note_tags PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
-grep -o "ok: .*" <<<"$out"
+for scenario in supabase/tests/task_note_tags/*.sql; do
+  out="$(psql_as postgres -f - < "$scenario" 2>&1 || true)"
+  if ! grep -q "task_note_tags PASSED" <<<"$out"; then echo "FAILED $scenario"; echo "$out" | tail -40; exit 1; fi
+  grep -o "ok: .*" <<<"$out"
+done
 echo "task-note-tags bed ok"

@@ -2179,6 +2179,8 @@ its plan lived in `to-dos/bridge-weakest-link/` until the train shipped;
 its follow-ups, to-do #107, shipped as v2.5244 and v2.5861–v2.5874 and the to-do is retired) **The flow** opens on **the rule** (the page did until v2.6840;
 `BridgeRule.tsx`: "Find the slowest step…", its "?" the five points after *The Goal*) and, under the top line, **Where the work piles up** (`stageFlow.ts`, `BridgeStages.tsx`): five cards in flow order, Market → Sales → Build → Bill → Collect, each a pile, two flow lines and the weeks to clear what is already waiting;
 the most weeks lights red as the weakest link, a stage within a tenth reads as its pair, a held call stands unless overtaken by 15 %.
+Since v2.8628 (punch list #321, PR 2, the owner's answer of 2026-11-25) the rule lights **the narrowest step**, the one that moves the fewest dollars a week (`StageReading.paceUsd`: Market's worth at the won rates, Sales's sold work, what Build, Bill and Collect each turn), so Market and Sales are candidates and the red can leave a step that is ahead of what feeds it.
+The hold margin, the pair and the thin-reading gate are kept in pace terms, and every badge, the tile, the card's lead, the pipe's lit row, the dial's link line, the order's first tier and the Monday email say *the narrowest step* in place of *the weakest link* or *the slowest step*.
 v2.5233 adds **the link's desk** (`BridgeLinkDesk.tsx`, `linkDesk.ts`: what / why / how / today's reading, the moves with an owner each and **This is the link this week** until v2.6840, when the call moved to the first screen's card and the desk kept its four readings) and, until v2.7105, **Last week's call, against what moved** (`BridgeLastCall.tsx`, `calls.ts`: the streak, each move then → now with a done mark, the link's measure, the consequence by streak, Friday's **It moved** / **It did not**;
 the header chip carried the verdict until v2.6840).
 v2.5234 makes Build read (`buildPace.ts`, `loadBuildPace.ts`): built per week = each job's change in percent × its contract from `job_pct_events` and the reports' percent answers, sold per week = the contract on jobs created, the pile = the contract left on open jobs with the no-percent jobs read as half done and drawn grey;
@@ -5866,10 +5868,12 @@ delete for the five `/map` roles, **`dev`**, **`master_technician`**, **`assista
 Written by Edge Functions **`geocode-one`** and **`geocode-address-batch`** (see [EDGE_FUNCTIONS.md](EDGE_FUNCTIONS.md)).
 Client: [`useMapPageData.ts`](../src/hooks/useMapPageData.ts).
 A row is deleted from one place, a dev's **Kept map addresses** block on Settings → Data & recovery, and only when no record in any address column holds its street line (`KEPT_ADDRESS_SOURCES`, `keptAddressClearProblem`, v2.8568, punch list #443).
+Since v2.8623 the same block lists a kept miss beside the kept addresses and clears one under the same rule (punch list #443, row 16).
 See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) **Key Features** §16.
 
 ### address_geocode_misses
 An address no map service could place, kept beside [`address_geocodes`](#address_geocodes) by the same **normalized address key**, with the reason (`error_code`, `detail`) and the day it was checked (`checked_at`, the server's clock on every write) (v2.8473, punch list #408).
+A dev deletes a miss by hand from the **Kept map addresses** block since v2.8623, through `address_geocode_misses_delete_dev` (migration `20261126024719`, punch list #443 row 16), and only when no record holds its street line.
 **RLS** — read, insert and update for every signed-in user, and no delete for anyone (`20261124091500`).
 A point saved to `address_geocodes` deletes its miss through the trigger `address_geocodes_clears_miss`.
 A miss stands 30 days before it is asked again: `GEOCODE_MISS_STANDS_DAYS` in [`geocodeMissMemory.ts`](../supabase/functions/_shared/geocodeMissMemory.ts), the functions' and the readers' rule, not the table's (v2.8477).
@@ -5993,6 +5997,8 @@ See **`RECENT_FEATURES.md`** → v2.592.
 
 ### Clock sessions in Job activity / notes (v2.593)
 The **Job activity / notes** feed (rendered by the unified **`JobActivityView`** on Jobs **Pipeline** since v2.1673, and by **`JobThreadNotesPanel`** on the **Job Detail** modal, **Job Mode**, **Quickfill**, and **Estimates**) is a merged chronological timeline of read-only and interactive sources: thread notes (**`jobs_ledger_thread_notes`**), field reports, dispatch schedule blocks (**v2.445**), and — as of **v2.593** — **clock in/out sessions**.
+Since v2.8626 a dev reads **Delete…** beside a note on a ZZ test job and beside a comment on a ZZ task, through two delete policies of migration `20261126030238` (punch list #443, row 13).
+A note another tag names as its answer stays, and Deleted records keeps a deleted note.
 Clock rows show `person · in → out · duration` (open sessions read *still on the clock*), an amber **Pending approval** chip when **`approved_at`** is null, and the session note when present — in `JobThreadNotesPanel` with an indigo left-border + **CLOCK** tag;
 in the Pipeline's unified view as muted numbered lines (no kind tags there).
 Pure kernel **[`clockSessionsToActivityItems`](../src/lib/jobThreadClockActivity.ts)** maps non-rejected **`clock_sessions`** (fetched via **`fetchClockSessionsForJobLedger`**, which already excludes revoked) into timeline items;

@@ -86,7 +86,7 @@ export function layoutFlowStripDown(
 }
 
 export type StripDownLines = {
-  /** "Bill", or "Bill, the slowest step" on the lit one. */
+  /** "Bill", or "Bill, the narrowest step" on the lit one. */
   title: string
   /** "billed $19k a week", or "not read yet". */
   pace: string
@@ -100,10 +100,10 @@ export type StripDownLines = {
  * Which way the work in front of a step is heading, said under its weeks: the pile grows when more comes in a week
  * than goes out, shrinks when the step clears more than it is fed, and keeps up when the two are close. Market and
  * Sales hold no pile, so their line reads their pace against the field's: so many dollars a week short of it, or
- * ahead of it. Every number is one the cards behind The flow already hold (`StageFlowInput`). The lit step does not
- * move: the rule the page lights by is `buildStageFlow`'s, in `stageFlow.ts`, which is copied to the edge functions
- * and is not touched here. A pace is what happened, not what a step could do, so a starved step reads narrow too; the
- * direction of its pile is how the two are told apart.
+ * ahead of it. Every number is one the cards behind The flow already hold (`StageFlowInput`). The lit step is the
+ * rule's (`buildStageFlow` in `stageFlow.ts`, copied to the edge functions): since PR 2 the narrowest step. A pace is
+ * what happened, not what a step could do, so a starved step reads narrow too; the direction of its pile is how the
+ * two are told apart.
  */
 export type StripDirectionTone = 'grows' | 'shrinks' | 'keeps' | 'short' | 'ahead'
 export type StripDirection = { text: string; tone: StripDirectionTone }
@@ -165,7 +165,7 @@ export function stripDownLines(
   s: Pick<StripSection, 'id' | 'name' | 'paceUsd' | 'weeksText' | 'lit'>,
 ): StripDownLines {
   return {
-    title: s.lit ? `${s.name}, the slowest step` : s.name,
+    title: s.lit ? `${s.name}, the narrowest step` : s.name,
     pace: s.paceUsd != null ? `${STRIP_DOWN_VERB[s.id] ?? STRIP_PACE_VERB[s.id]} ${stageUsd(s.paceUsd)} a week` : 'not read yet',
     weeks: s.weeksText,
   }
@@ -186,7 +186,7 @@ export function withMarketWorth(strip: FlowStrip, marketPerWeekUsd: number | nul
     const thick = p != null && max > 0 ? STRIP_MIN_THICK + (1 - STRIP_MIN_THICK) * Math.sqrt(p / max) : STRIP_MIN_THICK
     if (s.id !== 'market') return { ...s, thick }
     const usd = stageUsd(marketPerWeekUsd)
-    return { ...s, paceUsd: p, paceText: `${usd} worth`, thick, label: [`${s.name}.`, `Worth ${usd} a week.`, s.lit ? 'The slowest step.' : ''].filter(Boolean).join(' ') }
+    return { ...s, paceUsd: p, paceText: `${usd} worth`, thick, label: [`${s.name}.`, `Worth ${usd} a week.`, s.lit ? 'The narrowest step.' : ''].filter(Boolean).join(' ') }
   })
   return { ...strip, sections }
 }

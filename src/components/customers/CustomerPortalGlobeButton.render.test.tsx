@@ -9,10 +9,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 
-const { rpcMock, linkRowsMock, slugRowMock } = vi.hoisted(() => ({
+const { rpcMock, linkRowsMock, slugRowMock, authMock } = vi.hoisted(() => ({
   rpcMock: vi.fn(async (..._args: unknown[]): Promise<{ data: unknown; error: null }> => ({ data: { token: 'tok1234567890abcdef', audience: 'all', activeSince: '2026-08-21T00:00:00Z' }, error: null })),
   linkRowsMock: { rows: [] as unknown[] },
   slugRowMock: { row: null as unknown },
+  /** The signed-in role: a dev unless a case says otherwise (#443, row 11: the delete press is a dev's alone). */
+  authMock: { role: 'dev' as string },
 }))
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -48,7 +50,8 @@ vi.mock('../../lib/supabase', async () => {
 })
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
-  return useAuthModuleMock()
+  const m = useAuthModuleMock()
+  return { ...m, useAuth: () => ({ ...m.useAuth(), role: authMock.role }), useOptionalAuth: () => ({ ...m.useOptionalAuth(), role: authMock.role }) }
 })
 
 import CustomerPortalGlobeButton from './CustomerPortalGlobeButton'
@@ -221,6 +224,70 @@ describe('CustomerPortalGlobeButton', () => {
     } finally {
       rpcMock.mockReset()
       rpcMock.mockImplementation(async () => ({ data: { token: 'tok1234567890abcdef', audience: 'all', activeSince: '2026-08-21T00:00:00Z' }, error: null }))
+    }
+  })
+
+  it('a dev deletes a test customer’s turned-off link from History, after the confirm (punch list #443, row 11)', async () => {
+    authMock.role = 'dev'
+    linkRowsMock.rows = [
+      { id: 'l-off', customer_id: 'zz1', audience: 'all', token: 'deadtok', created_at: '2026-08-01T00:00:00Z', revoked_at: '2026-08-02T00:00:00Z', created_by: null },
+    ]
+    slugRowMock.row = null
+    rpcMock.mockClear()
+    renderWithProviders(<CustomerPortalGlobeButton customerId="zz1" customerName="ZZ Test Portal Customer" />)
+    await settle()
+    fireEvent.click(screen.getByLabelText("Open ZZ Test Portal Customer's customer portal link"))
+    await waitFor(() => expect(screen.getByText('This portal is turned off.')).toBeTruthy())
+    // The off state has no gear, so a dev reads History under the off box.
+    expect(screen.getByTestId('portal-off-history')).toBeTruthy()
+    const press = await screen.findByTestId('portal-link-delete')
+    expect(press.textContent).toBe('Delete…')
+    expect(press.getAttribute('aria-disabled')).toBe('false')
+    fireEvent.click(press)
+    const confirm = await screen.findByRole('button', { name: 'Delete the link' })
+    expect(screen.getByText('Delete this turned-off link of ZZ Test Portal Customer?')).toBeTruthy()
+    expect(rpcMock).not.toHaveBeenCalled()
+    fireEvent.click(confirm)
+    await waitFor(() => expect(rpcMock).toHaveBeenCalledWith('delete_test_portal_link', { p_link_id: 'l-off' }))
+    await waitFor(() => expect(screen.getByText('The turned-off link was deleted.')).toBeTruthy())
+  })
+
+  it('a real customer’s turned-off link reads a dead Delete… with its reason, and a press on it deletes nothing (punch list #443, row 11)', async () => {
+    authMock.role = 'dev'
+    linkRowsMock.rows = [
+      { id: 'l-real', customer_id: 'c7', audience: 'all', token: 'deadtok', created_at: '2026-08-01T00:00:00Z', revoked_at: '2026-08-02T00:00:00Z', created_by: null },
+    ]
+    slugRowMock.row = null
+    rpcMock.mockClear()
+    renderWithProviders(<CustomerPortalGlobeButton customerId="c7" customerName="Harbor Row Plumbing" />)
+    await settle()
+    fireEvent.click(screen.getByLabelText("Open Harbor Row Plumbing's customer portal link"))
+    await waitFor(() => expect(screen.getByText('This portal is turned off.')).toBeTruthy())
+    const press = await screen.findByTestId('portal-link-delete')
+    expect(press.getAttribute('aria-disabled')).toBe('true')
+    expect(screen.getByText('Only a test customer’s link can be deleted. The customer’s name must start with ZZ.')).toBeTruthy()
+    fireEvent.click(press)
+    expect(screen.queryByRole('button', { name: 'Delete the link' })).toBeNull()
+    expect(rpcMock).not.toHaveBeenCalled()
+  })
+
+  it('an assistant reads no Delete… in History (punch list #443, row 11)', async () => {
+    authMock.role = 'assistant'
+    try {
+      linkRowsMock.rows = [
+        { id: 'l-off', customer_id: 'zz2', audience: 'all', token: 'deadtok', created_at: '2026-08-01T00:00:00Z', revoked_at: '2026-08-02T00:00:00Z', created_by: null },
+      ]
+      slugRowMock.row = null
+      rpcMock.mockClear()
+      renderWithProviders(<CustomerPortalGlobeButton customerId="zz2" customerName="ZZ Test Portal Customer" />)
+      await settle()
+      fireEvent.click(screen.getByLabelText("Open ZZ Test Portal Customer's customer portal link"))
+      await waitFor(() => expect(screen.getByText('This portal is turned off.')).toBeTruthy())
+      // The office's off state is as it was: no History under the box, no press.
+      expect(screen.queryByTestId('portal-off-history')).toBeNull()
+      expect(screen.queryByTestId('portal-link-delete')).toBeNull()
+    } finally {
+      authMock.role = 'dev'
     }
   })
 })

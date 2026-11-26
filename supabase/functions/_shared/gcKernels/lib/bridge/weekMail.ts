@@ -13,8 +13,8 @@ import { WEEK_CALL_MOVES, type WeekBar, type WeekCallModel, type WeekMove, type 
  * pipe, and the card *What to do now* with its moves. The words and the numbers are
  * `buildWeekCall`'s and `buildFlowStrip`'s, so the mail and the page cannot say two things.
  *
- * Since v2.7214 the tiles are the page's own (punch list #334): what the field made, the slowest
- * step, then the cash balance beside the accrual balance, each with its runway (`moneyCard.ts`).
+ * Since v2.7214 the tiles are the page's own (punch list #334): what the field made, the narrowest
+ * step (the slowest until punch list #321), then the cash balance beside the accrual balance, each with its runway (`moneyCard.ts`).
  * Until then the mail kept the tile *Cash low point, 8 weeks*, which the page had dropped.
  *
  * The mail speaks of no call (punch list #334, PR 11): the page stopped making one, so the mail
@@ -34,7 +34,7 @@ export type WeekMail = {
   /** "Nov 9": the day it was built. */
   todayLabel: string
   model: WeekCallModel
-  /** The cash balance and the accrual balance, where the page shows them: after the slowest step. */
+  /** The cash balance and the accrual balance, where the page shows them: after the narrowest step. */
   money: WeekMailMoney
   /** The five steps as one pipe; null when it was not built. */
   strip: FlowStrip | null
@@ -61,7 +61,7 @@ export const WEEK_MAIL_WORDS = {
   steps: 'The five steps',
   /** Over the two parts of the Market amount, under the pipe. */
   marketWorth: 'What Market is worth',
-  slowest: 'the slowest step',
+  narrowest: 'the narrowest step',
   foot: 'This is the Bridge’s first screen, as it read when this was built.',
   sent: 'It goes out Monday at 6 AM Central. The switch is on the Bridge, behind The flow.',
 } as const
@@ -95,7 +95,7 @@ export function weekMailMarketLine(mail: Pick<WeekMail, 'marketParts'>): string 
   return [`${WEEK_MAIL_WORDS.marketWorth}: ${first}.`, ...rest.map((p) => `${p.charAt(0).toUpperCase()}${p.slice(1)}.`)].join(' ')
 }
 
-/** The tiles the mail draws beside the balances: what the field made and the slowest step. The cash tile is the balances' now. */
+/** The tiles the mail draws beside the balances: what the field made and the narrowest step. The cash tile is the balances' now. */
 export function weekMailTiles(model: WeekCallModel): WeekTile[] {
   return model.tiles.filter((t) => t.id !== 'cash')
 }
@@ -258,7 +258,7 @@ export function weekMailText(mail: WeekMail, bridgeUrl: string): string {
   const balance = (line: MoneyLine): string[] => [`${line.label}: ${line.value}`, ...(line.runway ? [`  ${line.runway}`] : []), `  ${line.sub}`, ...(line.note ? [`  ${line.note}`] : [])]
   const tiles = [...weekMailTiles(model).flatMap((t) => [`${t.label}: ${t.value}`, `  ${t.sub}`]), ...balance(mail.money.cash), ...balance(mail.money.accrual), ...(mail.money.foot ? [mail.money.foot] : [])]
   const strip = mail.strip
-    ? ['', `${WEEK_MAIL_WORDS.steps}. ${STRIP_LEGEND.long}`, ...mail.strip.sections.map((s) => `  ${s.name}: ${s.paceText}${s.weeksText ? `, ${s.weeksText}` : ''}${s.lit ? `, ${WEEK_MAIL_WORDS.slowest}` : ''}`), ...(weekMailMarketLine(mail) ? [`  ${weekMailMarketLine(mail)}`] : [])]
+    ? ['', `${WEEK_MAIL_WORDS.steps}. ${STRIP_LEGEND.long}`, ...mail.strip.sections.map((s) => `  ${s.name}: ${s.paceText}${s.weeksText ? `, ${s.weeksText}` : ''}${s.lit ? `, ${WEEK_MAIL_WORDS.narrowest}` : ''}`), ...(weekMailMarketLine(mail) ? [`  ${weekMailMarketLine(mail)}`] : [])]
     : []
   const moves = weekMailMoves(model).map((m, i) => `  ${i + 1}. ${m.title}${m.why ? ` ${m.why}` : ''}`)
   const what = ['', c.label, c.lead, ...(c.line ? [c.line] : []), ...moves, `${WEEK_MAIL_WORDS.open}: ${bridgeUrl}`]

@@ -5,7 +5,7 @@ import type { StageId } from '../../lib/bridge/stageFlow'
 /**
  * The strip of pipe on the Bridge's first screen (v2.6847, punch list #303, PR 3): the five
  * steps as one line of pipe. How wide a section is says how many dollars it moves in a week.
- * The block on top says how much work waits in front of it. The slowest step is lit. A press
+ * The block on top says how much work waits in front of it. The narrowest step is lit. A press
  * on a section opens that step's desk.
  *
  * The drawing is for the eye; each section's press carries the words for a screen reader.
