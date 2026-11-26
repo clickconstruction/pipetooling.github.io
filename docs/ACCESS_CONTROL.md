@@ -1960,6 +1960,7 @@ the Monday email's switch `your_week_email_on_v1` is a dev's to change (`dev_upd
 - **Companion client changes (same PR)**: `/accept-invite` offers the set-password form only to a session that arrived through the invite link (`src/lib/acceptInviteState.ts`;
   any other live session sees "You're already set up — sign in"), and the self-service `/sign-up` route is gone — accounts are created by invitation (`invite-user`) or by a dev (`create-user`) only.
   Server-side self-signup (`disable_signup`) was closed in the Supabase dashboard on 2026-09-03.
+  Since v2.8670 the sign-in page offers **Continue with Google** while the project's Google provider is on: the Auth server links it to the login whose address matches, so it opens the same `users` row and role, and with sign-ups closed a Google address that matches no login gets no account (`src/lib/signInGoogle.ts`).
 
 ### A users row need not be a login; adding a person makes one (v2.6511 / v2.6514, punch list #260)
 

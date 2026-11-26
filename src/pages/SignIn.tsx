@@ -28,6 +28,8 @@ function waitingAddress(): string | null {
   })
 }
 
+import { googleIsOn, googleRedirectTo, googleRefusalWords, withoutGoogleRefusal } from '../lib/signInGoogle'
+
 const SIGNIN_INPUT_CLASS = 'auth-public-landing__signin-input'
 const SIGNIN_PASSWORD_INPUT_CLASS = `${SIGNIN_INPUT_CLASS} auth-public-landing__signin-input--password`
 
@@ -45,6 +47,35 @@ export default function SignIn() {
   const [magicError, setMagicError] = useState<string | null>(null)
   const [sentToEmail, setSentToEmail] = useState('')
   const [cooldownLeft, setCooldownLeft] = useState(0)
+  // Continue with Google (v2.8670, punch list #447): shown only while the project has Google switched on.
+  const [googleOn, setGoogleOn] = useState(false)
+  const [googleError, setGoogleError] = useState<string | null>(null)
+  const [googleLeaving, setGoogleLeaving] = useState(false)
+
+  useEffect(() => {
+    // The Auth server publishes which ways in are on. Unreadable means off: the press never shows by mistake.
+    const base = import.meta.env.VITE_SUPABASE_URL
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+    if (!base || !key || typeof fetch !== 'function') return
+    let alive = true
+    fetch(`${base}/auth/v1/settings`, { headers: { apikey: key } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((settings: unknown) => {
+        if (alive) setGoogleOn(googleIsOn(settings))
+      })
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    // Back from Google with a refusal: say it once, then take it out of the address so a reload is quiet.
+    const words = googleRefusalWords(window.location.search, window.location.hash)
+    if (!words) return
+    setGoogleError(words)
+    window.history.replaceState(null, '', `${window.location.pathname}${withoutGoogleRefusal(window.location.search)}`)
+  }, [])
 
   useEffect(() => {
     // GoTrue rate-limits magic-link emails — hold the Resend button until it can succeed.
@@ -113,6 +144,22 @@ export default function SignIn() {
         .then(reload, reload)
     } else {
       reload()
+    }
+  }
+
+  async function handleGoogle() {
+    setGoogleError(null)
+    setGoogleLeaving(true)
+    const redirectTo = googleRedirectTo(window.location.origin, waitingAddress())
+    // The page leaves for Google and loads again on the way back. Clearing the caches first means that load is
+    // the current build, as the hard reload after a password sign-in is.
+    if (typeof caches !== 'undefined') {
+      await caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).catch(() => undefined)
+    }
+    const { error: err } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo, queryParams: { prompt: 'select_account' } } })
+    if (err) {
+      setGoogleLeaving(false)
+      setGoogleError(`Google did not open. ${err.message}`)
     }
   }
 
@@ -215,6 +262,15 @@ export default function SignIn() {
               <span>{sessionMessage}</span>
             </div>
           )}
+          {googleOn ? (
+            <div className="auth-public-landing__signin-magic-offer">
+              <button type="button" className="auth-public-landing__signin-magic-button" onClick={handleGoogle} disabled={googleLeaving}>
+                {googleLeaving ? 'Opening Google…' : 'Continue with Google'}
+              </button>
+              <p className="auth-public-landing__signin-magic-offer-text">Or sign in with your email and password.</p>
+            </div>
+          ) : null}
+          {googleError ? <p className="auth-public-landing__signin-error" role="alert">{googleError}</p> : null}
           <form className="auth-public-landing__signin-form" onSubmit={handleSubmit}>
             <div className="auth-public-landing__signin-field">
               <input

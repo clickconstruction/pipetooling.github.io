@@ -31,6 +31,7 @@ vi.mock('../lib/supabase', () => ({
         error: { message: 'Invalid login credentials' },
       })),
       signInWithOtp: vi.fn(async () => ({ error: null })),
+      signInWithOAuth: vi.fn(async () => ({ data: {}, error: null })),
     },
   },
 }))
@@ -346,5 +347,47 @@ describe('SignIn tagline (v2.6503, the lockup on glass v2.6575)', () => {
     const tiles = screen.getByRole('list', { name: 'Service highlights' })
     expect(header?.compareDocumentPosition(tiles) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(line?.querySelector('.auth-public-landing__tagline-two')?.textContent).toBe('ClickTooling keeps you moving.')
+  })
+})
+
+describe('Continue with Google (v2.8670)', () => {
+  const oauthMock = vi.mocked(supabase.auth.signInWithOAuth)
+  const settings = (google: boolean) => vi.fn(async () => ({ ok: true, json: async () => ({ external: { email: true, google } }) }))
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    oauthMock.mockClear()
+    window.history.replaceState(null, '', '/')
+  })
+
+  it('is not on the page while the project has Google off', async () => {
+    vi.stubGlobal('fetch', settings(false))
+    renderSignIn()
+    await settle()
+    expect(screen.queryByRole('button', { name: 'Continue with Google' })).toBeNull()
+  })
+
+  it('is on the page once the project has Google on, and the password form stays', async () => {
+    vi.stubGlobal('fetch', settings(true))
+    renderSignIn()
+    expect(await screen.findByRole('button', { name: 'Continue with Google' })).toBeTruthy()
+    expect(screen.getByLabelText('Password')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy()
+  })
+
+  it('sends the person to Google and back to this page', async () => {
+    vi.stubGlobal('fetch', settings(true))
+    renderSignIn()
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue with Google' }))
+    await waitFor(() => expect(oauthMock).toHaveBeenCalledTimes(1))
+    expect(oauthMock).toHaveBeenCalledWith({ provider: 'google', options: { redirectTo: `${window.location.origin}/sign-in`, queryParams: { prompt: 'select_account' } } })
+  })
+
+  it('says there is no account when Google sends the person back refused, and cleans the address', async () => {
+    vi.stubGlobal('fetch', settings(true))
+    window.history.replaceState(null, '', '/sign-in?error=access_denied&error_code=signup_disabled&error_description=Signups+not+allowed+for+this+instance')
+    renderSignIn()
+    expect(await screen.findByText('No account uses that Google address. Sign in with the address the office has for you, or ask the office.')).toBeTruthy()
+    expect(window.location.search).toBe('')
   })
 })
