@@ -9,6 +9,8 @@
  * for a minute or more with no change of the person's. A size is rough and rounded, never a figure to bill by.
  */
 
+import { SKY_UNDER_WORDS } from '../skyUnderWords'
+
 /** One five-minute bucket of the person's changes on one bid. `app` is the app's own writes, such as a sync on open. */
 export type BidDayChange = { bid_id: string; at: string; own: number; app: number; tables: string[] }
 /** One five-minute bucket of beats for one bid on one Bids tab. */
@@ -35,8 +37,11 @@ const BUCKET_SECONDS = 300
 /** A bid nobody changed shows as opened only once it was in front this long. */
 export const OPENED_MIN_SECONDS = 60
 
-/** One colour a bid, the same on its block and on its row. Saturated on purpose: they read on both themes. */
-export const BID_DAY_COLORS = ['#2563eb', '#0f766e', '#6d28d9', '#b45309', '#be123c', '#0369a1', '#4d7c0f', '#a21caf'] as const
+/**
+ * One colour a bid, the same on its block and on its row. Saturated on purpose: they read on both themes. The deep sky
+ * is the kernel's (`skyUnderWords.test.ts` keeps that hex to its kernel, the stylesheet and one chart palette).
+ */
+export const BID_DAY_COLORS = ['#2563eb', '#0f766e', '#6d28d9', '#b45309', '#be123c', SKY_UNDER_WORDS, '#4d7c0f', '#a21caf'] as const
 
 /** What the day holds for one bid, before the person has said anything. */
 export type BidDayEvidence = {
