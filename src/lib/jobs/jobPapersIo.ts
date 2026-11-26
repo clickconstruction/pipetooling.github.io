@@ -46,8 +46,7 @@ async function jwt(): Promise<string> {
 
 export const supabaseJobPapersIo: JobPapersIo = {
   async readRoster(jobId) {
-    // The functions are not in the generated types until the types PR that follows the push.
-    const raw = await withSupabaseRetry(() => supabase.rpc('job_papers_roster' as never, { p_job_id: jobId } as never), 'read who has signed the job’s papers')
+    const raw = await withSupabaseRetry(() => supabase.rpc('job_papers_roster', { p_job_id: jobId }), 'read who has signed the job’s papers')
     return parseJobPapersRoster(raw)
   },
   async readBook() {
@@ -63,18 +62,18 @@ export const supabaseJobPapersIo: JobPapersIo = {
   },
   async requirePapers(jobId, bookDocumentIds) {
     const added = await withSupabaseRetry(
-      () => supabase.rpc('job_papers_require' as never, { p_job_id: jobId, p_book_document_ids: [...bookDocumentIds] } as never) as never,
+      () => supabase.rpc('job_papers_require', { p_job_id: jobId, p_book_document_ids: [...bookDocumentIds] }),
       'require the papers',
       { maxRetries: 0 },
     )
     return typeof added === 'number' ? added : 0
   },
   async removePaper(requiredPaperId) {
-    await withSupabaseRetry(() => supabase.rpc('job_paper_remove' as never, { p_required_paper_id: requiredPaperId } as never) as never, 'take the paper off', { maxRetries: 0 })
+    await withSupabaseRetry(() => supabase.rpc('job_paper_remove', { p_required_paper_id: requiredPaperId }), 'take the paper off', { maxRetries: 0 })
   },
   async signingLink(requiredPaperId, personId) {
     const documentId = await withSupabaseRetry(
-      () => supabase.rpc('job_paper_start' as never, { p_required_paper_id: requiredPaperId, p_person_id: personId } as never) as never,
+      () => supabase.rpc('job_paper_start', { p_required_paper_id: requiredPaperId, p_person_id: personId }),
       'start the paper',
       { maxRetries: 0 },
     )
@@ -89,13 +88,13 @@ export const supabaseJobPapersIo: JobPapersIo = {
     return json.accept_url
   },
   async readClosed() {
-    return parseClosedJobIds(await withSupabaseRetry(() => supabase.rpc('jobs_closed_to_me' as never), 'read the jobs that wait on your signature'))
+    return parseClosedJobIds(await withSupabaseRetry(() => supabase.rpc('jobs_closed_to_me'), 'read the jobs that wait on your signature'))
   },
   async readMine(jobId) {
-    return parseMyJobPapers(await withSupabaseRetry(() => supabase.rpc('job_papers_mine' as never, { p_job_id: jobId } as never), 'read this job’s papers'))
+    return parseMyJobPapers(await withSupabaseRetry(() => supabase.rpc('job_papers_mine', { p_job_id: jobId }), 'read this job’s papers'))
   },
   async ownSigningLink(requiredPaperId) {
-    const documentId = await withSupabaseRetry(() => supabase.rpc('job_paper_start' as never, { p_required_paper_id: requiredPaperId } as never) as never, 'start the paper', { maxRetries: 0 })
+    const documentId = await withSupabaseRetry(() => supabase.rpc('job_paper_start', { p_required_paper_id: requiredPaperId }), 'start the paper', { maxRetries: 0 })
     if (typeof documentId !== 'string' || !documentId) throw new Error('The paper could not be started.')
     const res = await fetch(`${supabaseUrl}/functions/v1/get-contract-signing-link-for-self`, {
       method: 'POST',
@@ -107,31 +106,20 @@ export const supabaseJobPapersIo: JobPapersIo = {
     return json.accept_url
   },
   async readNeedingMe() {
-    return parseJobsNeedingMe(await withSupabaseRetry(() => supabase.rpc('job_papers_needing_me' as never), 'read the jobs that wait on your signature'))
+    return parseJobsNeedingMe(await withSupabaseRetry(() => supabase.rpc('job_papers_needing_me'), 'read the jobs that wait on your signature'))
   },
   async readGcOwn(jobId) {
-    // The column and the function below are not in the generated types until the types PR that follows the push.
     const rows = await withSupabaseRetry(
-      () =>
-        supabase
-          .from('job_required_papers' as never)
-          .select('id')
-          .eq('job_id' as never, jobId as never)
-          .is('removed_at' as never, null as never)
-          .eq('gc_own' as never, true as never) as never,
+      () => supabase.from('job_required_papers').select('id').eq('job_id', jobId).is('removed_at', null).eq('gc_own', true),
       'read which forms are the GC’s own',
     )
-    return ((rows as unknown as Array<{ id: string }> | null) ?? []).map((r) => r.id)
+    return (rows ?? []).map((r) => r.id)
   },
   async setGcOwn(requiredPaperId, own) {
-    await withSupabaseRetry(() => supabase.rpc('job_paper_set_gc_own' as never, { p_required_paper_id: requiredPaperId, p_own: own } as never) as never, 'mark the form', { maxRetries: 0 })
+    await withSupabaseRetry(() => supabase.rpc('job_paper_set_gc_own', { p_required_paper_id: requiredPaperId, p_own: own }), 'mark the form', { maxRetries: 0 })
   },
   async countRequired(jobId) {
-    const res = await supabase
-      .from('job_required_papers' as never)
-      .select('id', { count: 'exact', head: true })
-      .eq('job_id' as never, jobId as never)
-      .is('removed_at' as never, null as never)
+    const res = await supabase.from('job_required_papers').select('id', { count: 'exact', head: true }).eq('job_id', jobId).is('removed_at', null)
     if (res.error) throw res.error
     return res.count ?? 0
   },
