@@ -2,7 +2,7 @@
 name: "Presses nothing takes back: the standing list"
 number: 443
 group: gated
-status: standing list opened 2026-11-24 on the owner's word of that day · seventeen rows: the Lien desk, Bills sent, Accounts Receivable, Bill Customer, a person's card, the job form's address, a job's papers, a customer's portal, a person's desk, a job's notes, a painted map, an address the map could not place and View as · the six take-backs that need the client alone are built and live, v2.8561 and v2.8564 to v2.8568, each for a dev on a test row · all six were walked on 2026-11-25, each on its own yes: rows 3, 4, 8, 9 and the record of row 1 read back as gone, and row 5 reopened two cases and closed them again · row 8 is wider since v2.8586 and row 5 since v2.8588, and both wider presses were walked on the live site the same evening · on 2026-11-25 the owner said rows 8 and 5 go wider, and that all eight that need a migration or a function are to be built, each on its own yes · the same day he said row 16 joins them as a ninth, its push on its own yes
+status: standing list opened 2026-11-24 on the owner's word of that day · seventeen rows: the Lien desk, Bills sent, Accounts Receivable, Bill Customer, a person's card, the job form's address, a job's papers, a customer's portal, a person's desk, a job's notes, a painted map, an address the map could not place and View as · the six take-backs that need the client alone are built and live, v2.8561 and v2.8564 to v2.8568, each for a dev on a test row · all six were walked on 2026-11-25, each on its own yes: rows 3, 4, 8, 9 and the record of row 1 read back as gone, and row 5 reopened two cases and closed them again · row 8 is wider since v2.8586 and row 5 since v2.8588, and both wider presses were walked on the live site the same evening · on 2026-11-25 the owner said rows 8 and 5 go wider, and that all eight that need a migration or a function are to be built, each on its own yes · the same day he said row 16 joins them as a ninth, its push on its own yes · on 2026-11-26 the person said row 5's database gap is built with #398's database lane, its push on its own yes
 summary: >
   Every press a walk or a thread meets that nothing takes back, one row each: what was pressed, on which
   screen, what it left, and what would take it back. The owner asked for the note on 2026-11-24, when he
@@ -82,6 +82,11 @@ own yes.
 One more, for row 5 as it goes wider. Asked the same question of round 3, *"Do all the picks on round 3, rows 1 to 11, stand?"*,
 he answered "Yes, all picks". The row read: *#443: cases closed as replaced are counted under the list and
 not drawn*, and the pick was to keep it so.
+
+One more, 2026-11-26 (UTC), for the gap under row 5 as it went wider. Asked on 2026-11-26 (UTC) in the managing session whether every pick on the question sheet stands, the person answered "All picks stand". Row 13 read: *#443: Row 5's
+database gap is built with #398's database lane. Pick: Yes.* The gap: `reopen_ar_return_case` reopens any closed
+returned-check case, so only the client's rule keeps a case closed as replaced closed. Its migration goes beside
+#398's lane as its own PR, and its push is asked by name like every other.
 
 ## What counts
 

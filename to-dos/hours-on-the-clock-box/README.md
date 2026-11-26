@@ -2,7 +2,7 @@
 name: "People → Hours: someone still on the clock has a green box that opens My Time"
 number: 446
 group: close
-status: asked 2026-11-25 with a screenshot of the table's head · read in the code, drawn and checked against the ask the same day · built 2026-11-25 as v2.8602, one client-only PR · not yet walked on the live site
+status: asked 2026-11-25 with a screenshot of the table's head · read in the code, drawn and checked against the ask the same day · built 2026-11-25 as v2.8602, one client-only PR · not yet walked on the live site · the two choices the person might have wanted the other way were put on the question sheet of 2026-11-26, and both stay as built
 mockup: to-dos/hours-on-the-clock-box/mockup.html
 summary: >
   On People → Hours a person who was still clocked in showed an empty box that took typing,
@@ -113,3 +113,9 @@ On the live site, as a dev, with a ZZ Test person who has a pay row and a login:
    My Time opens, and no sheet with an hours box.
 7. Switch to dark and read the box again.
 8. Reject or delete the ZZ Test session so nothing is left behind.
+
+## The two choices, answered 2026-11-26
+
+Two choices the person might have wanted the other way were put on the question sheet: running time counts in
+the green totals, and a salaried person on the clock gets a green box. Asked on 2026-11-26 (UTC) in the managing session whether every pick on the question sheet stands, the person answered "All picks stand". Row 19 read: *#446: Keep running time in the green totals and the green box for a salaried person on the clock. Pick:
+Keep both.* Both stay as built. The live walk and the owner's look are still owed.
