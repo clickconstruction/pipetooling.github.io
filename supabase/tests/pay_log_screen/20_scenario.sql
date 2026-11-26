@@ -88,7 +88,8 @@ SET CONSTRAINTS ALL DEFERRED;
 INSERT INTO public.people_pay_config (person_name, hourly_wage) VALUES ('ZZ Paylog Ren', 18) ON CONFLICT (person_name) DO UPDATE SET hourly_wage = EXCLUDED.hourly_wage;
 INSERT INTO public.people_pay_config (person_name) VALUES ('ZZ Paylog Sal') ON CONFLICT (person_name) DO NOTHING;
 SET CONSTRAINTS ALL IMMEDIATE;
-SELECT pls.same('a new row with a wage leaves a line with no before', pls.log('ZZ Paylog Ren') || ' · ' || pls.before_after('ZZ Paylog Ren'), '1 line(s) · by screen · {"hourly_wage": 18.00} · Changed on a screen. No reason was asked. · none → 18.00');
+-- On a new row there is no before, so the changes are every pay column the row carries, the defaults included.
+SELECT pls.same('a new row with a wage leaves a line with no before', pls.log('ZZ Paylog Ren') || ' · ' || pls.before_after('ZZ Paylog Ren'), '1 line(s) · by screen · {"is_salary": false, "hourly_wage": 18.00, "show_in_hours": false, "salaried_week_hours": [0.00, 8.00, 8.00, 8.00, 8.00, 8.00, 0.00], "record_hours_but_salary": false} · Changed on a screen. No reason was asked. · none → 18.00');
 SELECT pls.same('a new row with no pay leaves no line', pls.log('ZZ Paylog Sal'), '0 line(s)');
 SELECT pls.age_log();
 SET CONSTRAINTS ALL DEFERRED;
