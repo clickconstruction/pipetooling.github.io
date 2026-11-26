@@ -2,7 +2,7 @@
 name: "The leader's Dashboard, distilled"
 number: 365
 group: close
-status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way · the short page walked there the same day on the dev's own account, where it holds but for two lines that are wrong for about three seconds on a fresh open · all three faults mended · a fourth sitting the same day saw the two counts move ten seconds after they drew, which is not mended and is larger than a small fix, and a small Remind press on the office's Team's open tasks, mended in v2.8600 in v2.8581, not yet seen in the simulator
+status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet · the two places the view is set were read in an iPhone simulator 2026-11-25, and two small faults were seen on a person's desk on the way · the short page walked there the same day on the dev's own account, where it holds but for two lines that are wrong for about three seconds on a fresh open · all three faults mended · a fourth sitting the same day saw the two counts move ten seconds after they drew, which is not mended and is larger than a small fix, and a small Remind press on the office's Team's open tasks, mended in v2.8600, not yet seen · v2.8581's two desk mends held in the simulator on 2026-11-25 and the desk link held in the browser pane at 1280 px the same evening
 summary: >
   One leader has been given too much on his Dashboard. He will not look at any of it, uses the app only on
   his phone, and hands even small updates to his assistants. The assessment counted 44 cards, strips and
@@ -15,7 +15,7 @@ summary: >
 next: Set the leader to Short on his People desk, then walk his page with him on his phone. Nothing else is owed until the owner asks for the text or the four tabs.
 size: M as a train of four (M · S · M · S); built: PRs 1 and 2 and the first half of 4; set aside by the owner's answers: PR 3 (M) and the four tabs (S)
 blocker: None in the code. Setting the leader to Short is the owner's or the office's press.
-ver: v2.7568, v2.8581
+ver: v2.7568, v2.8581, v2.8600
 opinion: build — the first PR changes nobody's page until the office presses Short, so the risk is in what the short page hides, and that is the owner's call to make with the leader beside him
 ---
 
@@ -189,7 +189,7 @@ not been set to Short: every leader's and dev's row reads Full. That press is th
 Read on 2026-11-25 in an iPhone simulator, in Safari at 402 by 874 points, as the dev, on the live site. Nothing of the short page was seen, and nothing was pressed: setting an account to Short is a write the walk was not cleared to make.
 
 - **Both places the view is set read as built.** Settings → Your dashboard → **Dashboard view** offers **Short** and **Full** with their one line each, Full lit. The sample leader's desk has the same two, Full lit, with the line that the office can set it for them.
-- **Two small faults on a person's desk on a phone, read in the code the same day. Mended in v2.8581, not yet seen in the simulator.** Each is the client alone, S.
+- **Two small faults on a person's desk on a phone, read in the code the same day. Mended in v2.8581, and both held in the simulator's fourth sitting the same day.** Each is the client alone, S.
   1. **The link to this section lands one swipe short.** A link that ends `&section=dashboard_view` opened the desk at Licenses and Your week. The desk scrolled to the section once, before the sections above it had loaded and grown (`PersonDeskBody.tsx`). v2.8581: the aim is held for a second and a half while they settle, waits for a section that draws late, and lets go at a touch.
   2. **The desk's pinned head takes about half the screen.** On that account, with two amber notices, the head took about 445 of 874 points and the sections scrolled in a window of about 315. The head sat outside the scrolling part and nothing folded it. v2.8581: on a phone the head scrolls away with the sections and the name's row with its × stays pinned. The amber bands are not folded into one line, which is a bigger change and a call.
 - **Still owed.** The short page itself, **Everything else**, **Back to the short Dashboard** and the bar's Dashboard tab, on an account set to Short.
@@ -219,5 +219,10 @@ As the sample leader set to Short for the look.
 **The two counts move after they draw. Not mended.** The page read *23 other things* and *4 more of yours*, and ten seconds later *24* and *6*. v2.8581 made the two lines wait for the page's read, but that read asks about the two lien reads alone (`shortDashboardRead`). The counts come from every source of the Needs you card. `useNeedsYouInputs` reads 67 sources, and about sixty of them hand back no word on whether they are still reading. So making the counts wait for all of them means a loading flag on about sixty hooks. That is a medium piece of work with a call in it, not a small fix, and it was sent back on 2026-11-25. The list under *Waiting on you* did not move.
 
 **Remind on the office's *Team's open tasks* stood about 27 points tall on a phone. Mended in v2.8600.** It stands 44 on a phone now and gives the difference back to its row, so the row is as tall as it was. At a desk it is as it was. Not yet seen in the simulator.
+
+**v2.8581's two desk mends held.** The link that ends `&section=dashboard_view` opened the desk on that section, and the
+desk's pinned head was one row of about 60 points where it had been about 445. The same evening the browser pane opened the
+same link at 1280 px on a fresh load: the head one block above the sections, and the **Dashboard view** section's head at
+the top of the scrolling part. Neither **Short** nor **Full** was pressed on either look.
 
 **Which card *Waiting on* means.** Not *Team's open tasks*. It is the card under **Needs you** titled *Waiting on* and the leader's first name, drawn only when a leader has lien rows waiting. A look at it needs a ZZ lien paper waiting on a leader, which is a write and its own yes.
