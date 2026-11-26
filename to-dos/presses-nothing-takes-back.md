@@ -217,7 +217,9 @@ by line after that day's walk of five of them.
   closed by the walk of v2.8552 on 2026-11-25, on another ZZ test job, and was not touched. A dev can
   reopen each from *Closed test cases* (row 5, v2.8566). That line reads *Closed test cases · 4* on
   the live site: the fourth is a test case put back on 2026-11-09, no walk's leftover, and its
-  **Reopen…** is dead with the reason.
+  **Reopen…** is dead with the reason. As the sample helper and the sample estimator (2026-11-26), Accounts
+  Receivable sends each away, to the Dashboard and to the Bid Board, so neither draws the list: the page is the
+  office's.
 - No by-hand record on a test bill. The walk of #340 made three on 2026-11-25, and row 4's press
   (v2.8564) deleted each. The two ZZ ways that walk added were deleted with row 3's press after it.
 - Three test emails to the sender and three voided test invoices in Stripe's test mode, because of
@@ -225,10 +227,10 @@ by line after that day's walk of five of them.
   two walks of 2026-11-25. The newest invoice's number ends `2611251255`.
 - No made-up address in the map's cache. The one from the #439 thread's look at the New job form was
   cleared on 2026-11-25 with row 9's press (v2.8568), and read back as gone.
-- Twelve taken-off papers on one ZZ test job, because of row 10: eight through 2026-11-24 and four more
-  from the two walks of #389 on 2026-11-25. `to-dos/sub-nda-builder/README.md` lists them by id under its
+- Fourteen taken-off papers on one ZZ test job, because of row 10: eight through 2026-11-24, four more
+  from the two walks of #389 on 2026-11-25, and two more from its last walk on 2026-11-26. `to-dos/sub-nda-builder/README.md` lists them by id under its
   loose ends.
-- Six turned-off portal links on one ZZ Test customer, because of row 11, the newest two from the walks
+- Seven turned-off portal links on one ZZ Test customer, because of row 11, the newest from the walk of #389 on 2026-11-26 and two from the walks
   of #389 on 2026-11-25. One turned-off link of a sub's own page beside them, from the same walks.
 - No photo on the ZZ Test person. The one the walk of #313 saved was removed on 2026-11-25 with row
   8's press (v2.8565). The team's batch of cards leaves ZZ Test people out since the fix that walk
@@ -246,7 +248,7 @@ by line after that day's walk of five of them.
   table holds one for every use by anyone, so its own count is far higher and is not a walk's leftover.
 - Nothing because of rows 12, 14 and 15. The made-up person is gone, as the press means. The walk of #345
   ended a link and threw a map away that it had made for the look.
-- From the two walks of #389 on 2026-11-25, on rows this list does not hold: four proposals of a GC and
+- From the two walks of #389 on 2026-11-25, on rows this list does not hold: five proposals of a GC, the fifth from its last walk on 2026-11-26, and
   one signing consent on a ZZ test job, which the app keeps; one sheet in Deleted records; two more notes
   on that job's Activity; and one pay setup row for a ZZ Test sub at one dollar an hour, saved on the
   owner's word because **Bring back** takes no return without a wage. That person is archived again.
@@ -260,6 +262,8 @@ by line after that day's walk of five of them.
   another ZZ Test person, which the table keeps; four set working-hours rows on that second person, none in force;
   one rejected clock session on the first; one closed clock session of the sample superintendent, pending approval,
   which a dev or the office may reject; and three more View as rows from that sitting's looks.
+- From the last walk of #389 on 2026-11-26: two more View as rows. The ZZ Test Book entry that walk made is deleted
+  and read back as gone, so nothing of it is on this list.
 
 ## When a take-back is built
 
