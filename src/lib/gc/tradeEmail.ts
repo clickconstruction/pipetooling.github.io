@@ -5,12 +5,14 @@
  * the questions window read one copy (`gcTradeEmail.test.ts`).
  */
 import type { TradeEmailErrorKey, TradeEmailLine } from '../../../supabase/functions/_shared/gcTradeEmail'
+import type { TradeEmailHeld } from '../../../supabase/functions/_shared/gcTradeEmailAlone'
 import { portalShownLang, pt, pWeekday, type PortalLang } from './portalI18n'
 import type { PortalMessage } from './portal'
 import type { BackCharge, GcState, TradeChangeRequest } from './types'
 import { money } from './words'
 
 export type { TradeEmailErrorKey, TradeEmailKind, TradeEmailLine, TradeEmailRequest, TradeMailGroup } from '../../../supabase/functions/_shared/gcTradeEmail'
+export type { TradeEmailHeld } from '../../../supabase/functions/_shared/gcTradeEmailAlone'
 
 /** The language an email goes out in, from the company's record: its own once Spanish is on, English until then. */
 export function tradeMailLang(lang: unknown): PortalLang {
@@ -60,10 +62,21 @@ export function inviteEmailLines(m: PortalMessage, lang: PortalLang): TradeEmail
   ]
 }
 
-/** What `gc-trade-email` answered: sent (or sent before, `already`), or refused with its key. */
+/**
+ * What `gc-trade-email` answered: sent (or sent before, `already`), or refused with its key.
+ *
+ * Since punch list #205 a send that went also says how many emails went on this call (`emails`) and names each person
+ * the mail service refused, with its reason (`held`). `readTradeEmailAnswer` always sets both; they are optional so a
+ * caller that reads neither builds an answer without them. `to` is everyone on the message's row, `held` is never in it.
+ */
 export type TradeEmailAnswer =
-  | { ok: true; companyId: string; messageId: string; emailSendLogId: string | null; to: string[]; already: boolean }
+  | { ok: true; companyId: string; messageId: string; emailSendLogId: string | null; to: string[]; already: boolean; emails?: number; held?: TradeEmailHeld[] }
   | { ok: false; key: TradeEmailErrorKey; detail: string | null }
+
+/** How many emails a send that went sent on this call: the function's count, else one, and none for a key sent before. */
+export function tradeEmailsSent(answer: { already: boolean; emails?: number }): number {
+  return answer.emails ?? (answer.already ? 0 : 1)
+}
 
 /** A test copy's answer (B2b-viii-b): the address it went to, and who the real send would reach. Nothing was recorded. */
 export interface TradeEmailTestAnswer {
@@ -95,13 +108,21 @@ export function readTradeEmailAnswer(data: unknown, errorBody: unknown): TradeEm
     return { ok: false, key, detail: typeof refusal.detail === 'string' ? refusal.detail : null }
   }
   if (!isObject(data) || typeof data.messageId !== 'string' || typeof data.companyId !== 'string') return { ok: false, key: 'failed', detail: null }
+  const already = data.already === true
+  // A function deployed before punch list #205 says neither: one email went, or none for a key sent before.
+  const emails = typeof data.emails === 'number' && Number.isInteger(data.emails) && data.emails >= 0 ? data.emails : tradeEmailsSent({ already })
+  const held = Array.isArray(data.held)
+    ? data.held.flatMap((h) => (isObject(h) && typeof h.name === 'string' && typeof h.reason === 'string' ? [{ name: h.name, reason: h.reason }] : []))
+    : []
   return {
     ok: true,
     companyId: data.companyId,
     messageId: data.messageId,
     emailSendLogId: typeof data.emailSendLogId === 'string' ? data.emailSendLogId : null,
     to: Array.isArray(data.to) ? data.to.filter((n): n is string => typeof n === 'string') : [],
-    already: data.already === true,
+    already,
+    emails,
+    held,
   }
 }
 

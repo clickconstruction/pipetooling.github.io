@@ -8,7 +8,11 @@ import type { PortalLang } from './portalI18n'
 import { answerEmailKey, readTradeEmailAnswer, readTradeEmailTestAnswer, type TradeEmailAnswer, type TradeEmailErrorKey, type TradeEmailLine, type TradeEmailRequest, type TradeEmailTestAnswer } from './tradeEmail'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
-export async function sendGcTradeEmail(req: Omit<TradeEmailRequest, 'group'> & { group?: TradeEmailRequest['group'] }): Promise<TradeEmailAnswer> {
+/**
+ * `eachAlone` (punch list #205): when the mail service refuses the one message, the function sends each person the email
+ * alone and answers who was `held`. Only a caller that lists the held people asks for it, today Word to every trade.
+ */
+export async function sendGcTradeEmail(req: Omit<TradeEmailRequest, 'group'> & { group?: TradeEmailRequest['group']; eachAlone?: boolean }): Promise<TradeEmailAnswer> {
   try {
     const r = await supabase.functions.invoke('gc-trade-email', { body: req })
     const context = (r.error as { context?: { json?: () => Promise<unknown> } } | null)?.context

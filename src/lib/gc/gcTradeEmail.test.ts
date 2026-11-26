@@ -46,6 +46,7 @@ import {
   inviteEmailLines,
   readTradeEmailAnswer,
   readTradeEmailTestAnswer,
+  tradeEmailsSent,
   tradeMailLang,
 } from './tradeEmail'
 import { stageOf, tradePortalState } from './tradePortalState'
@@ -364,13 +365,39 @@ describe('the office’s side', () => {
   })
 
   it('reads a send, a send made before, and a refusal', () => {
-    expect(readTradeEmailAnswer({ companyId: COMPANY, messageId: 'm1', emailSendLogId: 'l1', to: ['Dana Ortiz'] }, null)).toEqual({ ok: true, companyId: COMPANY, messageId: 'm1', emailSendLogId: 'l1', to: ['Dana Ortiz'], already: false })
-    expect(readTradeEmailAnswer({ companyId: COMPANY, messageId: 'm1', emailSendLogId: null, to: [], already: true }, null)).toMatchObject({ ok: true, emailSendLogId: null, already: true })
+    // A function deployed before one email a person says no count and names nobody held: one email went, or none before.
+    expect(readTradeEmailAnswer({ companyId: COMPANY, messageId: 'm1', emailSendLogId: 'l1', to: ['Dana Ortiz'] }, null)).toEqual({ ok: true, companyId: COMPANY, messageId: 'm1', emailSendLogId: 'l1', to: ['Dana Ortiz'], already: false, emails: 1, held: [] })
+    expect(readTradeEmailAnswer({ companyId: COMPANY, messageId: 'm1', emailSendLogId: null, to: [], already: true }, null)).toMatchObject({ ok: true, emailSendLogId: null, already: true, emails: 0, held: [] })
     expect(readTradeEmailAnswer(null, { error: 'noEmail' })).toEqual({ ok: false, key: 'noEmail', detail: null })
     expect(readTradeEmailAnswer(null, { error: 'sendFailed', detail: 'Resend 403' })).toEqual({ ok: false, key: 'sendFailed', detail: 'Resend 403' })
     expect(readTradeEmailAnswer({ error: 'notOnProject' }, null)).toEqual({ ok: false, key: 'notOnProject', detail: null })
     expect(readTradeEmailAnswer(null, { error: 'Something else' })).toEqual({ ok: false, key: 'failed', detail: null })
     expect(readTradeEmailAnswer('junk', null)).toEqual({ ok: false, key: 'failed', detail: null })
+  })
+
+  it('reads how many emails went and each person the mail service refused (punch list #205, one email a person)', () => {
+    const held = [{ name: 'Marcus Hale', reason: 'Invalid `to` field.' }]
+    // Two went alone and one was held: the row's names are the two.
+    expect(readTradeEmailAnswer({ companyId: COMPANY, messageId: 'm1', emailSendLogId: 'l1', to: ['Dana Ortiz', 'Ana Reyes'], emails: 2, held }, null)).toEqual({
+      ok: true,
+      companyId: COMPANY,
+      messageId: 'm1',
+      emailSendLogId: 'l1',
+      to: ['Dana Ortiz', 'Ana Reyes'],
+      already: false,
+      emails: 2,
+      held,
+    })
+    // A second press that reached the one who was owed: the key was sent before, and one email went now.
+    expect(readTradeEmailAnswer({ companyId: COMPANY, messageId: 'm1', emailSendLogId: 'l1', to: ['Dana Ortiz', 'Marcus Hale'], already: true, emails: 1, held: [] }, null)).toMatchObject({ already: true, emails: 1, held: [] })
+    // A held row the screen cannot read is dropped, and a count that is not a whole number falls back.
+    expect(readTradeEmailAnswer({ companyId: COMPANY, messageId: 'm1', emailSendLogId: null, to: [], emails: 1.5, held: [{ name: 'Marcus Hale' }, 'junk', { name: 'Ana Reyes', reason: 'Bounced before.' }] }, null)).toMatchObject({
+      emails: 1,
+      held: [{ name: 'Ana Reyes', reason: 'Bounced before.' }],
+    })
+    expect(tradeEmailsSent({ already: false })).toBe(1)
+    expect(tradeEmailsSent({ already: true })).toBe(0)
+    expect(tradeEmailsSent({ already: true, emails: 2 })).toBe(2)
   })
 
   it('reads a test copy: where it went and who the real one reaches, never a send (B2b-viii-b)', () => {

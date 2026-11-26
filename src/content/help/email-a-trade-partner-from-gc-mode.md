@@ -46,7 +46,9 @@ A reminder is a new message, so it goes out.
 
 On a job we are building, the project's card has **Word to every trade**. It opens a window with a subject and a box for the words. The window lists every company awarded a trade on the job. Type the word and press **Tell N companies**. One email goes to each company, in its language, to the people who get the job's emails. Each company reads it in its portal too.
 
-The same words go once. A second press of the same words sends nothing and says so. Change a word and press again to send a new one. A company that could not be reached is named with why, and the others still get theirs. When the mail service refuses a company, the line gives the service's own reason.
+The same words go once. A second press of the same words sends nothing to a person who has them. Change a word and press again to send a new one. A company that could not be reached is named with why, and the others still get theirs. When the mail service refuses a company, the line gives the service's own reason.
+
+Sometimes the mail service refuses one person's address at a company. The other people at that company still get the word, each in an email of their own. The window names the person who was left out, with the service's reason. Mend the address in the company's window. Then open **Word to every trade** again. The window still has your words. Press **Tell N companies** again, and the word goes only to the people who did not get it.
 
 ## See what was sent
 

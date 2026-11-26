@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { batchOutcomeWords, countedLabel } from '../../lib/batchWords'
 import { tradeMailLang } from '../../lib/gc/tradeEmail'
 import type { GcProject, GcState } from '../../lib/gc/types'
-import { andList, wordLines, wordRecipients, wordSubject, type WordRecipient } from '../../lib/gc/wordToTrades'
+import { andList, keepWord, keptWord, WORD_AGAIN_WORDS, wordHeldLine, wordLines, wordOutcomeCounts, wordRecipients, wordSubject, type WordRecipient } from '../../lib/gc/wordToTrades'
 import type { WordToTrades } from '../../lib/gc/wordToTradesIo'
 import { Btn, input } from './gcUi'
 
@@ -15,6 +15,12 @@ import { Btn, input } from './gcUi'
  * and one press that says what it will do with its count (`countedLabel`), dead until something is typed and someone is
  * awarded. It keeps going past a refusal and names each company with why afterwards (`batchOutcomeWords`). Each email
  * lands in `gc_trade_messages`, so every company's thread in its portal shows it (PR 5).
+ *
+ * One email a person (v2.8608): when the mail service refuses one person's address, the rest of the company still gets
+ * the word, and the window names the person with the service's reason under the companies that were not reached. The
+ * line counts emails: each that went, and each that did not. A press that left someone out keeps its words for the job
+ * while the page is open (`keptWord`), so the window opens on them again and **Back to the words** returns to them: the
+ * same words reach only who did not get them.
  */
 
 export function GcWordToTrades({
@@ -30,8 +36,8 @@ export function GcWordToTrades({
   onClose: () => void
 }) {
   const recipients = useMemo(() => wordRecipients(state, project), [state, project])
-  const [subject, setSubject] = useState(() => wordSubject(project.name))
-  const [text, setText] = useState('')
+  const [subject, setSubject] = useState(() => keptWord(project.id)?.subject ?? wordSubject(project.name))
+  const [text, setText] = useState(() => keptWord(project.id)?.text ?? '')
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<WordToTrades | null>(null)
   useEffect(() => {
@@ -47,12 +53,14 @@ export function GcWordToTrades({
     if (!ready) return
     setSending(true)
     try {
-      setResult(await onSend(recipients, subject.trim(), text))
+      const sent = await onSend(recipients, subject.trim(), text)
+      keepWord(project.id, wordOutcomeCounts(sent).failed > 0 ? { subject: subject.trim(), text } : null)
+      setResult(sent)
     } finally {
       setSending(false)
     }
   }
-  const outcome = result ? batchOutcomeWords({ verb: 'send', past: 'Sent', done: result.sent.length, failed: result.refused.length, noun: ['email', 'emails'] }) : null
+  const outcome = result ? batchOutcomeWords({ verb: 'send', past: 'Sent', ...wordOutcomeCounts(result), noun: ['email', 'emails'] }) : null
   return createPortal(
     <div
       role="presentation"
@@ -83,6 +91,12 @@ export function GcWordToTrades({
                 {r.company}: {r.words}
               </div>
             ))}
+            {result.held.map((h) => (
+              <div key={`${h.companyId}:${h.name}`} data-word-held style={{ color: 'var(--text-amber-800)' }}>
+                {wordHeldLine(h)}
+              </div>
+            ))}
+            {outcome.head && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{WORD_AGAIN_WORDS}</div>}
           </div>
         ) : (
           <>
@@ -120,6 +134,11 @@ export function GcWordToTrades({
           {result ? (
             <>
               <span style={{ flex: '1 1 10rem' }} />
+              {outcome?.head && (
+                <Btn kind="quiet" onClick={() => setResult(null)}>
+                  Back to the words
+                </Btn>
+              )}
               <Btn kind="primary" onClick={onClose}>
                 Done
               </Btn>
