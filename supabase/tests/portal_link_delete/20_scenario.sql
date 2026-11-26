@@ -56,8 +56,8 @@ END $$;
 CREATE FUNCTION pld.links() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT string_agg(right(id::text, 2), ' ' ORDER BY id) FROM public.customer_portal_links WHERE customer_id IN (pld.id('91'), pld.id('92'))
 $$;
-GRANT USAGE ON SCHEMA pld TO authenticated, service_role;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pld TO authenticated, service_role;
+GRANT USAGE ON SCHEMA pld TO anon, authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pld TO anon, authenticated, service_role;
 
 -- Who: Devon the dev, Rosa the assistant.
 INSERT INTO auth.users (id, email) VALUES (pld.id('a1'), 'devon@linkdelete.test'), (pld.id('a2'), 'rosa@linkdelete.test');
