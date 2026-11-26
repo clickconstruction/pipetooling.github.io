@@ -60,6 +60,7 @@ const load: BringBackLoad = {
     lastSignInYmd: '2026-11-03',
     pay: { hourlyWage: 24, isSalary: false, setYmd: null },
     needsTeam: true,
+    needsWage: true,
     team: { id: 't-1', name: 'Crew A' },
     licenses: [{ name: 'Journeyman plumber', date_of_expiry: '2028-06-30' }],
     paperworkSignedEarlier: { count: 5, lastYmd: '2024-03-04' },
@@ -191,6 +192,24 @@ describe('PersonDeskBringBackModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save wage' }))
     await screen.findByText(moneyText(/\$20\.00 \/ h, set Nov 2029/))
     expect(screen.queryByText(/No pay setup/)).toBeNull()
+  })
+
+  it('a sub with no pay setup reads Wage · Not needed for their kind, with no Keep or Change, and one fewer open (#389, v2.8614)', async () => {
+    loadFacts.mockResolvedValueOnce({ ...load, facts: { ...load.facts, pay: null, needsWage: false } })
+    await open()
+    expect(screen.getByText('Wage')).toBeTruthy()
+    expect(screen.getByText(/Not needed for their kind/)).toBeTruthy()
+    expect(screen.queryByText(/No pay setup/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Change…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Keep / })).toBeNull()
+    const finish = screen.getByRole('button', { name: /^Bring back · \d open$/ }) as HTMLButtonElement
+    expect(finish.textContent).toBe('Bring back · 3 open')
+    fireEvent.click(screen.getByRole('button', { name: 'Still theirs' }))
+    leaveOpen('renewal in the mail')
+    leaveOpen('sending Monday')
+    fireEvent.click(await screen.findByRole('button', { name: 'Bring back' }))
+    await waitFor(() => expect(writes.some((w) => w.what === 'person_file_entries.insert')).toBe(true))
+    expect(writes.some((w) => w.what === 'people_pay_config.upsert')).toBe(false)
   })
 
   it('Undo the end instead keeps the old start so the old stint reopens', async () => {

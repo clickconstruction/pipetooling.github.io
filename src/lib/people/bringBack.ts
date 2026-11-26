@@ -64,6 +64,11 @@ export type BringBackFacts = {
   pay: { hourlyWage: number | null; isSalary: boolean; setYmd: string | null } | null
   /** Whether their kind works in a Hours-tab team (the field: helpers, leaders, subs). Office roles do not. */
   needsTeam: boolean
+  /**
+   * Whether their kind is paid an hourly wage. A sub is paid through sub labor and may never have one, so Bring back
+   * skips the Wage row for a sub with no wage on file instead of making the office type one up (#389, v2.8614).
+   */
+  needsWage: boolean
   /** The Hours-tab team they are on (the member row outlives an archive); null when none. */
   team: { id: string; name: string } | null
   licenses: Array<{ name: string; date_of_expiry: string | null }>
@@ -211,23 +216,29 @@ export function buildBringBackChecklist(f: BringBackFacts): BringBackItem[] {
     })
   }
 
-  // Call 3: the wage is always pressed — Keep or Change — and never left open.
+  // Call 3: the wage is always pressed — Keep or Change — and never left open. One kind steps out of it (#389,
+  // v2.8614): a sub with no wage on file is paid through sub labor, so the row is skipped as Team is for the office.
+  // A sub with a wage someone set keeps Call 3, since that wage is on their row and should be looked at.
   const wage = f.pay?.hourlyWage ?? null
   const set = f.pay?.setYmd ? `, set ${monthYear(f.pay.setYmd)}` : ''
-  items.push({
-    id: 'wage',
-    kind: 'wage',
-    label: 'Wage',
-    detail:
-      wage != null && wage > 0
-        ? `${money(wage)} / h${f.pay?.isSalary ? ' salaried' : ''}${set}`
-        : f.pay
-          ? 'Pay row has no wage'
-          : 'No pay setup',
-    state: 'open',
-    action: { kind: 'confirm_wage', hourlyWage: wage, isSalary: f.pay?.isSalary ?? false },
-    canLeaveOpen: false,
-  })
+  if (!f.needsWage && !(wage != null && wage > 0)) {
+    items.push({ id: 'wage', kind: 'wage', label: 'Wage', detail: 'Not needed for their kind', state: 'skipped', action: null, canLeaveOpen: false })
+  } else {
+    items.push({
+      id: 'wage',
+      kind: 'wage',
+      label: 'Wage',
+      detail:
+        wage != null && wage > 0
+          ? `${money(wage)} / h${f.pay?.isSalary ? ' salaried' : ''}${set}`
+          : f.pay
+            ? 'Pay row has no wage'
+            : 'No pay setup',
+      state: 'open',
+      action: { kind: 'confirm_wage', hourlyWage: wage, isSalary: f.pay?.isSalary ?? false },
+      canLeaveOpen: false,
+    })
+  }
 
   if (!f.needsTeam) {
     items.push({ id: 'team', kind: 'team', label: 'Team', detail: 'Not needed for their kind', state: 'skipped', action: null, canLeaveOpen: true })
@@ -507,4 +518,9 @@ export function bringBackFooterWords(a: { hasLogin: boolean; accountArchived?: b
 /** Whether a kind works in a Hours-tab team: the field, not the office. */
 export function kindNeedsTeam(kind: string | null | undefined): boolean {
   return kind === 'helper' || kind === 'sub' || kind === 'master_technician'
+}
+
+/** Whether a kind is paid an hourly wage: everyone but a sub, who is paid through sub labor (#389, v2.8614). */
+export function kindNeedsWage(kind: string | null | undefined): boolean {
+  return kind !== 'sub'
 }
