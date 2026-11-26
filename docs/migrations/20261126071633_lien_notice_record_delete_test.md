@@ -95,3 +95,5 @@ Each write below is a write on prod and waits on its own yes. The three stray li
 5. **On its own yes**, record a § 53.056 notice by hand on the ZZ Test job and void it. The job's Activity gains one notice line. The Lien window reads *Voided by-hand notice records · 1*.
 6. **On its own yes**, press **Show**, then **Delete…**. The confirm reads *1 record is deleted, for good. Its line on the job’s Activity goes with it.* Confirm. The toast reads *The record was deleted. Its line on the job’s Activity went with it.*
 7. Read `job_lien_filings` for the job through the dev seat: the row is not there. Read the job's Activity: the notice line of step 5 is gone, and no *Activity lines of deleted notice records* line is drawn. Tell `fixing` both.
+
+**Applied** to prod by 2026-11-26: the dev seat's `check_migration_ledger` read 1,504 versions applied against 1,504 files on `origin/main`, this version among them (read in the docs pass after #9830); types regenerated in #9981.

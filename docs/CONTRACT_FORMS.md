@@ -5,7 +5,7 @@ file: docs/CONTRACT_FORMS.md
 type: Specialist
 purpose: How a Contract Book entry becomes a fillable form (an uploaded PDF plus dev-placed entry boxes), the FormSchema reference, the agent workflow for drafting a form from a PDF, and the out-of-band storage setup.
 audience: Developers, AI Agents
-last_updated: 2026-11-20
+last_updated: 2026-11-26
 key_sections:
   - name: "What a form is"
   - name: "FormSchema reference"
@@ -152,7 +152,7 @@ When the IRS (or anyone) issues a new PDF: open the form in the studio, **Replac
 
 ## The Form Studio (a dev and the controller)
 
-People → Contracts → Contract library → **Forms** (`src/components/contracts/formStudio/`). `FormStudio` lists `contract_form_templates` and creates one from an uploaded PDF (`readPdfFields` → optional `mergeDraftedFields` → `createFormTemplate`, which uploads to the private bucket and inserts the row). `FormStudioEditor` renders the page (`PdfPageCanvas`, pdf.js) under `FormBoxLayer` (drag / resize / multi-select) beside `FormBoxInspector`; every schema change goes through `src/lib/forms/formStudioState.ts`. Toolbar: add by type, Import PDF fields, Merge → digits, Import / Export JSON (the same `FormSchema` the scripts produce), Replace PDF, Preview filled PDF (client-side `fillFormPdf`), Save, Publish (packet + document name + audience → one Book entry per template via `publishFormTemplate`). The editor keeps unsaved edits (schema, name, revision, doc type, keyed by the template) across the app's auto-reload through `src/lib/reloadDraft.ts` (v2.3742). Guide: `build-a-fillable-form.md`.
+People → Contracts → Contract library → **Forms** (`src/components/contracts/formStudio/`). `FormStudio` lists `contract_form_templates` and creates one from an uploaded PDF (`readPdfFields` → optional `mergeDraftedFields` → `createFormTemplate`, which uploads to the private bucket and inserts the row). Since v2.8620 a form a job requires or once required draws a dead **Delete** with the reason, because `job_required_papers.form_template_id` is `ON DELETE RESTRICT` and a paper taken off its job keeps its row (`readFormHolds` in `formTemplateRepo.ts`, `lib/forms/formDeleteHold.ts`). `FormStudioEditor` renders the page (`PdfPageCanvas`, pdf.js) under `FormBoxLayer` (drag / resize / multi-select) beside `FormBoxInspector`; every schema change goes through `src/lib/forms/formStudioState.ts`. Toolbar: add by type, Import PDF fields, Merge → digits, Import / Export JSON (the same `FormSchema` the scripts produce), Replace PDF, Preview filled PDF (client-side `fillFormPdf`), Save, Publish (packet + document name + audience → one Book entry per template via `publishFormTemplate`). The editor keeps unsaved edits (schema, name, revision, doc type, keyed by the template) across the app's auto-reload through `src/lib/reloadDraft.ts` (v2.3742). Guide: `build-a-fillable-form.md`.
 
 ## The signer's page (fill on the document)
 

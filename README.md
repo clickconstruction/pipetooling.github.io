@@ -36,7 +36,7 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 
 ## Contributing / branch workflow
 
-`main` is **branch-protected** — no direct pushes. All changes land via a pull request whose CI `checks` job (typecheck + lint + test) must pass; merging then triggers the GitHub Pages deploy. See the "Branch workflow" section in [AI_CONTEXT.md](./docs/AI_CONTEXT.md).
+`main` is **branch-protected** — no direct pushes. All changes land via a pull request whose CI `checks` gate (typecheck + lint + test) must pass; merging then triggers the GitHub Pages deploy. See the "Branch workflow" section in [AI_CONTEXT.md](./docs/AI_CONTEXT.md).
 
 ```bash
 git checkout -b my-change

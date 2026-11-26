@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-25
+last_updated: 2026-11-26
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -7147,12 +7147,12 @@ Nothing left People → Contracts: both pages keep a door.
 Since v2.8430 the tab's presses, chips and line names stand 44 px tall at 640 px and under, the picker's and the shared Send window's with them ([`agreementsPhonePress.ts`](../src/lib/documents/agreementsPhonePress.ts)).
 Since v2.7995 (punch list #403) the second window of **Send a paper** is **Who is it with?**, which finds a teammate, a sub, a customer and the people on file there, a supply house and its reps, and takes **Someone not in any list** ([`PaperPartyPicker.tsx`](../src/components/documents/PaperPartyPicker.tsx), [`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts)).
 Since v2.8419 (punch list #403, step 6) **Who is it with?** finds a sub by their trade company's name too, and their line reads *Signs for* the company ([`paperPartyPick.ts`](../src/lib/documents/paperPartyPick.ts), `sendRosterWithCompanies` in [`agreementsSend.ts`](../src/lib/documents/agreementsSend.ts)).
-Since v2.8325 (punch list #403, the owner's third decision of 2026-11-22) a company that already has the picked paper out is named before the email window opens: a small window says who has it and the day it went, and offers **Send it to … again** or **Send a second copy to someone else**, which is a row of its own ([`partyPaperOut.ts`](../src/lib/documents/partyPaperOut.ts)).
+Since v2.8325 (punch list #403, the owner's third decision of 2026-11-22) a company that already has the picked paper out, and since v2.8660 out with no site named, is named before the email window opens: a small window says who has it and the day it went, and offers **Send it to … again** or **Send a second copy to someone else**, which is a row of its own ([`partyPaperOut.ts`](../src/lib/documents/partyPaperOut.ts)).
 Since v2.8660 (punch list #439, piece 3) an outside company's paper can name a **site**, an address on file under its cleaned key, picked in the window the email window's site press opens ([`PaperSitePicker.tsx`](../src/components/documents/PaperSitePicker.tsx)), and a company holds a paper once for each site and once for none ([`paperSite.ts`](../src/lib/addresses/paperSite.ts), the four `site_` columns of `person_contract_documents`).
 Since v2.8665 a site's papers show on each job at it, as **Papers for this site** on the job's Documents tab ([`JobDocumentsSitePapers.tsx`](../src/components/jobs/JobDocumentsSitePapers.tsx), [`sitePapers.ts`](../src/lib/addresses/sitePapers.ts)), and a company's own list of papers says a paper's site on its line.
 Since v2.8668 the Agreements tab's **Find by site…** asks the list for one site's papers, by the site's keys on the view's `site_address_key` (`AgreementsQuery.site`, `agreementsLedgerIo.ts`), and a line says its paper's site.
 Since v2.8669 a development's page has **Papers for this site** too: the papers that name the development or the address of a job or a bid in it ([`DevelopmentSitePapers.tsx`](../src/components/developments/DevelopmentSitePapers.tsx), `developmentSiteScope` in `sitePapers.ts`), drawn by the list the job's tab shares ([`SitePapersList.tsx`](../src/components/jobs/SitePapersList.tsx)).
-Since v2.8486 that look reads the company's own contact and each named contact that points at it (`partyContactsToLook`, `findPartyContacts`), so a copy out under a person named there is found, and Escape closes the three windows the press draws.
+Since v2.8486 the look for a copy that is already out (v2.8325) reads the company's own contact and each named contact that points at it (`partyContactsToLook`, `findPartyContacts`), so a copy out under a person named there is found, and Escape closes the three windows the press draws.
 A paper with an outside company is a line tagged *Customer*, *Supply house* or *Not on a list*, under the chip **Outside companies**, and it says who signs after the party.
 Since v2.8419 a trade company's own paper, tagged *Trade company*, sits under **Staff and subs** with the subs who work there, where it sat under **GC projects** before.
 An estimator still reads a trade company's own paper under **Outside companies**.

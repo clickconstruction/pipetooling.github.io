@@ -1,6 +1,6 @@
 # 20261126070436_paper_names_a_site.sql (2026-11-26, v2.8642)
 
-A paper's row can name a site (punch list #439, piece 3, the ground: `to-dos/site-nda-for-vendors/README.md`). Nothing on a screen reads or writes it yet: the client PRs of piece 3 are built on this once it is pushed.
+A paper's row can name a site (punch list #439, piece 3, the ground: `to-dos/site-nda-for-vendors/README.md`). Since v2.8660 **Send a paper** writes it for an outside company's paper, and since v2.8665 the lists of a site's papers read it.
 
 ## What it makes
 
@@ -31,7 +31,7 @@ Two partial indexes, since every list of a site's papers reads by site: `idx_per
 - **The signer.** `get-contract-for-signer`, `accept-contract` and the signed copy read the row by a list of columns they name. Nothing of a site reaches a signer until one of them is changed to say so. The PR that prints an address owes that function's change and its deploy.
 - **Documents → Agreements.** `agreements_on_file` names its own columns, so it answers as before. A site filter there needs the view to answer the site, which is a migration of its own: `20261126110711_agreements_on_file_site.sql`.
 - **The triggers of the table.** None watches these columns.
-- **A new version of a paper.** `create_pending_contract_versions_after_book_save` copies a paper by a list of columns it names, so the copy it makes names no site. The client PR that sends a site's paper says what a new version does.
+- **A new version of a paper.** `create_pending_contract_versions_after_book_save` copies a paper by a list of columns it names, so the copy it makes names no site. The client PR that sends a site's paper (v2.8660) left that as it is.
 - **One signature per site.** No unique rule: a paper can be taken back and sent again, so the send asks.
 
 ## Locks
@@ -49,3 +49,5 @@ The types PR (`npm run gen-types:linked`, both generated type files and the dev 
 ## Its bed
 
 `supabase/tests/paper_site/20_scenario.sql` (`npm run test:pg:paper-site`), which applies this file a second time. Its cases: a paper made with no site names none; a paper names a development; a paper names an address by its key, keeps the address as written and the print; never both; a blank key and a key of 301 characters are refused; an address with no key, a blank one, one of 501 characters and a print with no address are refused; the dev writes a site through the table's policies and a subcontractor reaches no row; a development deleted leaves its paper naming no site; the indexes are partial and the checks validated; `agreements_on_file` answers the site as its last three columns, since `20261126110711_agreements_on_file_site.sql`.
+
+**Applied** to prod by 2026-11-26: the dev seat's `check_migration_ledger` read 1,504 versions applied against 1,504 files on `origin/main`, this version among them (read in the docs pass after #9830); types regenerated in #9963.

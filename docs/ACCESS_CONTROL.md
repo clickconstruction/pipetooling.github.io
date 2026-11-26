@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-11-25
+last_updated: 2026-11-26
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -967,7 +967,7 @@ Since v2.7937 **Send a paper** writes a person's copy as People → Contracts' q
 Since v2.7938 the tab's **Contract library** door opens People's library with one copy of its role rules (`contractLibraryRoles.ts`): the owner and a dev delete, and the controller and a dev see the Forms tab.
 Since v2.7726 a person's copy of a paper a job requires is in it with its job, under the same read as every person's agreement: the office.
 `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
-Since v2.8175 (punch list #403, the owner's call 8) an `estimator` has the tab to read, and an old link to it lands them on it: the kind chips are the ones their role reads (*All*, *Outside companies*, *Work orders*), with no **Send a paper**, no **Contract library**, and no act on a line.
+Since v2.8175 (punch list #403, the owner's call 8) an `estimator` has the tab to read, and an old link to it lands them on it: the kind chips are the ones their role reads (*All*, *Outside companies*, *Work orders*), with no **Send a paper**, no **Contract library**, and no act on a line, and since v2.8668 with **Find by site…**, which narrows the same read by `site_address_key`.
 Since v2.8388 (the owner's second decision) a signed line's name is a press that opens the signed record for an estimator (`agreementReaderDoor`), and a waiting paper, a work order and a job stay plain words.
 A training estimator's lines open nothing, on the tab and on a company's own page (`canOpenSignedRecord`), the default it was built on, which the owner has yet to read: a training account reads the line only.
 Their list is what the view answers them under each table's own read, an outside company's papers from `person_contract_documents` and work orders from `step_commitments`, so no policy changed for it.
@@ -979,6 +979,7 @@ It is a read alone: the four roles still write.
 Since v2.8162 the party's own page lists them: a supply house's window has a **Papers** section and the Customer page's **Agreements** card has *Papers with this customer*, each for the four roles and the estimator (`canReadPartyPapers`), and a primary or a superintendent is drawn no section and nothing is read for them.
 That list reads `person_contract_documents` itself, every kind and every state, under the reader's own policy, so it changes no policy and an estimator is answered an outside company's papers alone.
 An estimator opens a signed paper's record from its name there.
+Since v2.8665 (punch list #439) the same gate draws **Papers for this site** on a job's Documents tab, and since v2.8669 on a development's page: the outside companies' papers that name the site, read from `person_contract_documents` under the reader's own policy with no press on a line, so no policy changed for it.
 Since v2.8378 (punch list #403, the owner's second decision, `20261123184149_estimator_reach.sql`) an estimator who is not a digital twin and not in training also reads that record's two other reads for an outside company's paper: the form's layout (`contract_form_templates_estimator_outside`, a form such a paper is filled on) and the signature's image (`contract_signer_signatures_estimator_outside` on `storage.objects`, which asks `estimator_reads_paper`).
 A training estimator still reads the paper's row and reads neither, and the four roles read both as before.
 Since v2.8388 `open-contract-form-pdf` and `person-paper-pdf` refuse an estimator in training the signed file (`users.read_only`, read by each handler with the role), and a dev, the controller, a pay-approved master and the four roles open theirs in training as before.
@@ -1906,10 +1907,10 @@ A tech reads only their own row;
 - **Who writes a pay application's line on the page** (v2.5286, `20261012200000_portal_customer_lines.sql`): a sent pay application changes only through its doors, column grants on `gc_owner_pay_apps` under the Owner Billing door's money policy: the architect's certificate, the invoice it was billed on, and the customer's line on its card (`customer_line`, `customer_line_es`, the page's sentence and never the bill's money).
 - **Who sees a customer's page as they see it** (Messages cut 8d, v2.5325): whoever opens the customer's window (a dev, `canUseGcBoardWrites`).
   It reads their live link from `customer_portal_links` under that table's own policy and calls `customer-portal` as a staff look (`?preview=1` with the office's session), so no view counts and nothing is written;
-  Since v2.8621 (punch list #443, row 11) a dev alone deletes one turned-off link of a customer whose name starts with ZZ through `delete_test_portal_link()`, `SECURITY DEFINER` behind `is_dev()`, `customer_is_zz_test()` and a count of the GC proposals that name the link.
-  The table still has no delete policy of its own, so a direct delete reaches no row (migration `20261126023047`).
   its presses send nothing.
   **Make their link** goes through `mint_customer_portal_link`, as the globe's Create does.
+  Since v2.8621 (punch list #443, row 11) a dev alone deletes one turned-off link of a customer whose name starts with ZZ through `delete_test_portal_link()`, `SECURITY DEFINER` behind `is_dev()`, `customer_is_zz_test()` and a count of the GC proposals that name the link.
+  The table still has no delete policy of its own, so a direct delete reaches no row (migration `20261126023047`).
 - **What their page reads of their thread, and writes to it** (Messages cut 8e, v2.5331): `customer-portal` reads the page's contact's lines with the service role and passes only those between us and them by text, email or their page, on no job but theirs, without who of ours wrote them beyond a first name, a text's subject, the opt-out line, a note's back day or its step (`_shared/gcPortalThread.ts`).
   A team note, an event and a call never leave.
   Their line from the page goes through `submit-portal-request`'s `portal_message` after the link check, as the service role, on that contact and tied only to a GC project of theirs;
@@ -1977,7 +1978,7 @@ the Monday email's switch `your_week_email_on_v1` is a dev's to change (`dev_upd
 - **Attaching a login** (v2.6518): dev only, through `create-user` with `user_id` — the auth account is created on the person's id and `handle_new_user` stamps the row;
   the desk's *Access & account* **Login** row, the Users tab's ⋯ *Attach a login*, the Hire form's end (*Attach a login* when the hire made no login) and the roster form's *Also attach a login* box (v2.6789;
   the three doors open the desk with the Attach form already up through `PersonDeskOpenArgs.flow: 'attach_login'`) are the doors, and `invite-user` refuses an address that belongs to a no-login row so the person is never made twice.
-  Until a login is attached the desk hides Training mode, Sign-in and the CountTooling seat;
+  Until a login is attached the desk hides Training mode, Sign-in, a dev's Ways in row and the Sites rows;
   since v2.6519 Change… on the address writes the app's copy alone for such a row, Archive sends the row's id (`archive-user` takes `user_id`), and `archive-user`, `restore-user` and `merge-users` ban or unban only where a login stands.
   The pickers that hand someone an app task, a pin or an imitation ask `activeUsersQuery` for `withLogin` and list only people who can sign in;
   every roster, crew, approval and pay list still lists everyone.
@@ -2717,6 +2718,7 @@ A training-mode account cannot sign, since starting a paper is a write.
 - Jobs page — Stages tab: Billed Awaiting Payment, Total by Name modal;
   **Combine / Separate** (toolbar **right**) — same **dev** / **master_technician** / **assistant** / **controller** gate as **Job Book** (**v2.516**)
   **Addresses that look alike** (tools menu, under **Combine / Separate**) — the same office gate, with its answers in `address_place_answers` written by the office (`is_office_staff`) and read by the estimator beside them (**v2.8529**)
+  The job form's question about a typed address at the same spot as one on file (**v2.8640**) is asked of those four roles alone (`mayAnswerPlace`), and its answer is a row of the same table under the same policy.
   **Fix the spelling…** in that window writes `jobs_ledger.job_address` and `bids.address` under those tables' own policies, and a row the reader may not change stays in the window with its reason (**v2.8542**).
 - Jobs page — Labor tab: Add labor jobs per person
 - Jobs page — Sub Sheet Ledger tab: View labor jobs (own and shared);
@@ -3600,7 +3602,7 @@ Master adoption confers nothing: `is_assistant_of_pay_approved_master()` was dro
 
 **Working hours (v2.8345, punch list #429):** a person's working hours are a `set` row on `person_available_hours`, a week with a start and an end for each day in 15-minute blocks.
 `set_working_hours(user, days, from, reason, dry_run)` is the one door that writes one, a definer that refuses anyone who is not a **dev** or the **controller** (`is_dev()`, `is_controller()`).
-For a salaried person the door writes `people_pay_config.salaried_week_hours` in the same transaction and adds a `pay_admin_events` line, and a change to a day's length starts this week and needs a reason.
+For a salaried person the door writes `people_pay_config.salaried_week_hours` in the same transaction and adds a `pay_admin_events` line, and a change to a day's length starts this week and needs a reason, as does, since v2.8607, a take-off that puts the standard week back (migration `20261125225108_working_hours_take_off.sql`).
 The table's insert policy takes `kind = 'answer'` alone, so nobody signed in, a dev included, writes a set row straight to the table.
 An answer is written as before: by the person, or for anyone by a dev, an assistant, the controller or a pay-approved master.
 `working_hours_on(user, day)` is a security invoker, so it answers what the caller may already read.
