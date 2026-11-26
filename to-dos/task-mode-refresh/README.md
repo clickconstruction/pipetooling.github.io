@@ -178,3 +178,9 @@ Seen in the code on the way, and not built: a task's activity panel and the Hist
 **A third search box would not hold focus, 2026-11-26, in a simulator at load 26.** People → Users' search box took the
 tap and typed words about 15 seconds late and dropped them, twice. With the two of 2026-11-25, the View as people box and
 the tally's Choose job box, it waits on a real phone: a starved Mac's simulator is no ground to read it on.
+
+**The search boxes may be the simulator's typing, 2026-11-26.** In the simulator's sixth sitting, on another screen's
+search box, words typed at once after the tap were dropped, and the same words typed with the keyboard already up landed
+and searched. The three boxes above were typed the same way. So before any of them goes to a real phone, each is tried
+again with a pause between the tap and the typing. Not retried in that sitting. The five ZZ Test task sends were not made
+either: no hour of that sitting had a Mac with no merge, push or deploy.

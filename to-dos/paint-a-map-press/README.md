@@ -475,4 +475,19 @@ Walked in an iPhone simulator at 402 wide, looking only. A simulator, never a re
 - **The row holds five presses**, left to right: a tally press, **Clock In**, a clock-plus press, **Job Report** and **Paint
   a map**. The walk's recipe named four. Read the same day: the home draws the Dashboard's own quick row whole, so five is
   as built, and the recipe's words were short by one.
-- **Not called:** the Paint a map sheet was opened and scrolled but not read closely enough. To redo.
+- **Not called:** the Paint a map sheet was opened and scrolled but not read closely enough. Redone in the sixth sitting,
+  below.
+
+## The start sheet, in a simulator (2026-11-26)
+
+The simulator's sixth sitting, at 402 wide, inside View as the sample assistant, every sheet closed with **Cancel**. A
+simulator, never a real phone. No map was saved, and **Walk or drive it**, **Draw it by hand**, **Start with a place** and
+**Near me** were not pressed.
+
+- **v2.8578 holds for a job in a development.** The start sheet fills the screen down to **Draw it by hand**, cut at the
+  top of Safari's bar, with **Start with a place** under the fold. One scroll inside the sheet, about 80 points, brings both
+  whole above the bar.
+- **The picker.** With nothing to offer it reads *You have not been on a job yet. Search for the job, or press Near me.*, and
+  its foot stands on the top of Safari's bar. With the keyboard up it ends at the top of the keys, and a searched job's row
+  stands whole above them.
+- **Not read:** a plain job's sheet, which is one row shorter, and a picker that holds rows.
