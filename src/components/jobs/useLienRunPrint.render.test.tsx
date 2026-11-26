@@ -55,7 +55,7 @@ function runOf(over: Partial<Pick<LienGetItRight, 'asked' | 'settle' | 'right' |
   const settle = over.settle ?? []
   const right = over.right ?? []
   const leftOut = over.leftOut ?? []
-  return { day: '2026-11-16', dayWords: 'tomorrow', asked, settle, right, leftOut, counts: { papers: asked.length + settle.length + right.length, settle: asked.length + settle.length, right: right.length, leftOut: leftOut.length, toPrint: 0, toMail: 0, toFile: 0 }, totals: { run: 0, waits: 0, right: 0 }, step: 2, steps: [] as unknown as LienGetItRight['steps'], rightParts: '' }
+  return { day: '2026-11-16', dayWords: 'tomorrow', asked, settle, right, leftOut, counts: { papers: asked.length + settle.length + right.length, settle: asked.length + settle.length, right: right.length, leftOut: leftOut.length, toPrint: 0, toMail: 0, toFile: 0, affidavitsPrinted: 0, noticesStopped: 0 }, totals: { run: 0, waits: 0, right: 0 }, step: 2, steps: [] as unknown as LienGetItRight['steps'], rightParts: '' }
 }
 /** A run with one notice and one affidavit right. Job j2's notice is ready on the desk and due later: not in the run. */
 const BOTH = runOf({ right: [line({ kind: 'notice', jobId: 'j1' }), line({ kind: 'affidavit', jobId: 'job-1', stageKey: 'ready', stage: 'Ready to file' })] })
