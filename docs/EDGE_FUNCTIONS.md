@@ -305,6 +305,10 @@ PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-si
 
 ## Authentication
 
+### The project's Auth settings
+
+The live Auth settings (sign-ups, the redirect list, providers, hooks, the token's life) are read from the project through the Management API (`GET /v1/projects/<ref>/config/auth` with `SUPABASE_MGMT_TOKEN`), never taken from `supabase/config.toml`. Sign-ups are closed on prod (`disable_signup`), and `[auth] enable_signup = false` in `config.toml` says the same, so the file can no longer reopen them. `supabase config push` writes the whole `[auth]` block over the live settings: read the live settings and compare them with the file first, every time.
+
 ### Three auth styles
 
 Not every function takes an `Authorization` header — each function authenticates in one of three ways (see the Overview note on `verify_jwt`):
