@@ -32,6 +32,8 @@ import {
 } from '../utils/errorHandling'
 import { denverCalendarDayKey, startOfYmdInAppTzMs, todayYmdInAppTz } from '../utils/dateUtils'
 import { CLOCK_OUT_NOTE_FILLED_LINE, CLOCK_OUT_REVIEW_TITLE, clockOutDayReports, clockOutNoteFromReports, type ClockOutReportInput } from '../lib/clock/clockOutNote'
+import { CLOCK_IN_PLAN_EMPTY_LINE, CLOCK_OUT_NOTE_EMPTY_LINE, clockNoteEmpty } from '../lib/clock/clockPlanWords'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 import { clockOutJob, clockOutPickOf } from '../lib/clock/clockOutJob'
 import { bidDayPressLabel } from '../lib/clock/bidDay'
 import { saveMyBidDay } from '../lib/clock/bidDayIo'
@@ -2188,6 +2190,12 @@ export default function ClockInOutButton({
                 disabled={actionLoading}
                 style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: 'var(--surface)' }}
               />
+              {/* The press under the sheet is dead while this box is empty (punch list #446, v2.8624): this line says what brings it alive. */}
+              {clockNoteEmpty(clockInNotes) ? (
+                <span data-clock-in-plan-empty style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  {CLOCK_IN_PLAN_EMPTY_LINE}
+                </span>
+              ) : null}
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ marginBottom: '0.25rem' }}>
@@ -2300,15 +2308,19 @@ export default function ClockInOutButton({
               <button
                 type="button"
                 onClick={handleCompleteClockIn}
-                disabled={actionLoading}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: `1px solid ${CLOCK_IN_ACCENT_UNDER_WORDS}`,
-                  borderRadius: 6,
-                  background: CLOCK_IN_ACCENT_UNDER_WORDS,
-                  color: CLOCK_IN_ACCENT_TEXT,
-                  cursor: actionLoading ? 'not-allowed' : 'pointer',
-                }}
+                disabled={actionLoading || clockNoteEmpty(clockInNotes)}
+                style={
+                  clockNoteEmpty(clockInNotes)
+                    ? { padding: '0.5rem 1rem', border: '1px solid transparent', borderRadius: 6, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'not-allowed' }
+                    : {
+                        padding: '0.5rem 1rem',
+                        border: `1px solid ${CLOCK_IN_ACCENT_UNDER_WORDS}`,
+                        borderRadius: 6,
+                        background: CLOCK_IN_ACCENT_UNDER_WORDS,
+                        color: CLOCK_IN_ACCENT_TEXT,
+                        cursor: actionLoading ? 'not-allowed' : 'pointer',
+                      }
+                }
               >
                 {actionLoading ? 'Clocking in…' : 'Complete Clock In'}
               </button>
@@ -2529,6 +2541,12 @@ export default function ClockInOutButton({
               />
               {clockOutNoteFilled ? <span style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{CLOCK_OUT_NOTE_FILLED_LINE}</span> : null}
               {clockOutListAnswers && !clockOutNoteFilled ? <span style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>You can leave this empty.</span> : null}
+              {/* With the bid day's list answered (v2.8610) the box may stay empty; otherwise the press under it is dead until it has words (v2.8624). */}
+              {!clockOutListAnswers && clockNoteEmpty(clockOutReviewNotes) ? (
+                <span data-clock-out-note-empty style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  {CLOCK_OUT_NOTE_EMPTY_LINE}
+                </span>
+              ) : null}
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ marginBottom: '0.25rem' }}>
@@ -2702,15 +2720,19 @@ export default function ClockInOutButton({
                 onClick={() => {
                   void handleCompleteClockOutReview()
                 }}
-                disabled={(!clockOutListAnswers && !clockOutReviewNotes.trim()) || clockOutSaving}
-                style={{
-                  padding: '0.5rem 1rem',
-                  border: '1px solid #dc2626',
-                  borderRadius: 4,
-                  background: '#dc2626',
-                  color: 'white',
-                  cursor: (clockOutListAnswers || clockOutReviewNotes.trim()) && !clockOutSaving ? 'pointer' : 'not-allowed',
-                }}
+                disabled={(!clockOutListAnswers && clockNoteEmpty(clockOutReviewNotes)) || clockOutSaving}
+                style={
+                  !clockOutListAnswers && clockNoteEmpty(clockOutReviewNotes)
+                    ? { padding: '0.5rem 1rem', border: '1px solid transparent', borderRadius: 4, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'not-allowed' }
+                    : {
+                        padding: '0.5rem 1rem',
+                        border: '1px solid #dc2626',
+                        borderRadius: 4,
+                        background: '#dc2626',
+                        color: 'white',
+                        cursor: clockOutSaving ? 'not-allowed' : 'pointer',
+                      }
+                }
               >
                 {clockOutSaving ? 'Clocking out…' : bidDayPressLabel('Complete clock out', bidDay.show ? bidDay.list.keptCount : 0)}
               </button>

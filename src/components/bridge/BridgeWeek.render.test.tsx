@@ -15,7 +15,7 @@ const move = (over: Partial<WeekMove>): WeekMove => ({ key: 'other', kind: 'step
 const tiles: WeekCallModel['tiles'] = [
   { id: 'made', label: 'Made last week', value: '$31.0k', sub: '8 settled weeks ran $22.0k to $41.0k.', tone: 'plain', bars: [{ share: 0.8, current: false, waiting: false, label: 'Nov 1' }, { share: 0.2, current: true, waiting: true, label: 'Nov 8' }] },
   { id: 'cash', label: 'Cash low point, 8 weeks', value: '$12.0k', sub: 'On Nov 27. The floor is $10.0k.', tone: 'green' },
-  { id: 'step', label: 'Slowest step', value: 'Bill', sub: '7.5 weeks to bill what is already finished.', tone: 'red' },
+  { id: 'step', label: 'Narrowest step', value: 'Bill', sub: '7.5 weeks to bill what is already finished.', tone: 'red' },
 ]
 
 // The two balances, as `moneyCard.ts` would word them.
@@ -29,7 +29,7 @@ const propose: WeekCallModel = {
   tiles,
   card: {
     label: 'What to do now',
-    lead: 'Bill is the slowest step.',
+    lead: 'Bill is the narrowest step.',
     line: '$142k finished, not yet billed. The field finishes $33k a week. The office bills $19k a week.',
     moves: [
       move({ key: 'bill', title: 'Bill the 11 finished jobs.', why: '$142k is finished and not billed.', door: { to: '/jobs?tab=stages', label: 'Open Stages' }, then: 142_000 }),
@@ -48,7 +48,7 @@ const cashWeek: WeekCallModel = {
   card: {
     ...propose.card,
     lead: 'Keep cash above the floor.',
-    line: 'Cash is under the $10.0k floor. Bill is still the slowest step.',
+    line: 'Cash is under the $10.0k floor. Bill is still the narrowest step.',
     moves: [move({ key: 'chase', kind: 'cash', title: 'Chase the 9 late invoices.', why: '$41.0k is late. The forecast leans on it.', door: { to: '/jobs?tab=billing', label: 'Open Billing' }, then: 41_000 }), move({ key: 'bill', title: 'Bill the 11 finished jobs.', why: '$142k is finished and not billed.', door: { to: '/jobs?tab=stages', label: 'Open Stages' }, then: 142_000 })],
   },
 }
@@ -61,7 +61,7 @@ describe('BridgeWeek', () => {
     expect(screen.getByTestId('bridge-week-tile-step').textContent).toContain('Bill')
     expect(screen.getByTestId('bridge-week-tile-cash').textContent).toContain('$12.0k')
     expect(screen.getByTestId('bridge-week-label').textContent).toBe('What to do now')
-    expect(screen.getByTestId('bridge-week-lead').textContent).toBe('Bill is the slowest step.')
+    expect(screen.getByTestId('bridge-week-lead').textContent).toBe('Bill is the narrowest step.')
     expect(screen.getByTestId('bridge-week-line').textContent).toContain('$142k finished, not yet billed.')
     expect(screen.getAllByTestId('bridge-week-move').length).toBe(3)
     // A move with a door is a link to it.
@@ -184,7 +184,7 @@ describe('BridgeWeek', () => {
     expect(onCashNote).toHaveBeenCalledTimes(1)
   })
 
-  it('reads Made last week, Slowest step, then the two balances with their runway (#334, PR 6)', () => {
+  it('reads Made last week, Narrowest step, then the two balances with their runway (#334, PR 6)', () => {
     const onAccrual = vi.fn()
     const { unmount } = renderWithProviders(week(propose, { onAccrual }))
     const before = (a: HTMLElement, b: HTMLElement): boolean => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0

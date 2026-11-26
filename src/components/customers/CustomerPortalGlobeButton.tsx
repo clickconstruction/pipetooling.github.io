@@ -27,6 +27,8 @@ import {
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../../lib/portal/portalShortOrigin'
 import { portalAddressLine, portalAddressLineColor, portalAddressState, portalAddressTextColor } from '../../lib/portal/portalAddressLine'
 import { mintCustomerPortalLink } from '../../lib/portal/mintCustomerPortalLink'
+import { PORTAL_LINK_DELETE_PRESS, PORTAL_LINK_DELETED_WORDS, portalLinkDeleteConfirm, portalLinkDeleteDrawn, portalLinkDeleteProblem } from '../../lib/portal/portalLinkDelete'
+import { deleteTestPortalLink } from '../../lib/portal/portalLinkDeleteIo'
 import { formatPortalDate, formatPortalUsd, parsePortalPayload, PORTAL_TRADE_COLORS, type PortalTradeTag } from '../../lib/portal/portalPayload'
 import { buildStatementBillRows, type StatementBillRow } from '../../lib/portal/portalStatementJobLinks'
 import { setPortalGlobeState, usePortalGlobeState } from '../../hooks/usePortalOffStates'
@@ -165,7 +167,7 @@ export default function CustomerPortalGlobeButton({
       const [linksRes, slugRes, eventsRes] = await Promise.all([
         supabase
           .from('customer_portal_links')
-          .select('customer_id, audience, token, created_at, revoked_at, created_by')
+          .select('id, customer_id, audience, token, created_at, revoked_at, created_by')
           .eq('customer_id', customerId)
           .order('created_at', { ascending: false }),
         supabase.from('customer_portal_slugs').select('slug, locked_at').eq('customer_id', customerId).maybeSingle(),
@@ -177,7 +179,7 @@ export default function CustomerPortalGlobeButton({
           .limit(25),
       ])
       if (linksRes.error) throw linksRes.error
-      const rows: Array<PortalLinkRow & { token: string | null }> = linksRes.data ?? []
+      const rows: Array<PortalLinkRow & { token: string | null }> = (linksRes.data ?? []) as Array<PortalLinkRow & { token: string | null }>
       const slugEvents: PortalSlugEventRow[] = eventsRes.data ?? []
       setTimeline(buildPortalTimeline(rows, slugEvents))
 
@@ -248,7 +250,7 @@ export default function CustomerPortalGlobeButton({
       setMain({ kind: 'active', token })
       setPortalGlobeState(customerId, 'active')
       setTimeline((prev) => [
-        { kind: 'link', at: new Date().toISOString(), createdBy: null, audience: 'all', outcome: 'active', revokedAt: null },
+        { kind: 'link', linkId: null, at: new Date().toISOString(), createdBy: null, audience: 'all', outcome: 'active', revokedAt: null },
         ...prev,
       ])
     } catch (e) {
@@ -462,7 +464,7 @@ export default function CustomerPortalGlobeButton({
       setMain({ kind: 'active', token })
       setPortalGlobeState(customerId, 'active')
       setTimeline((prev) => [
-        { kind: 'link', at: new Date().toISOString(), createdBy: user?.id ?? null, audience: 'all', outcome: 'active', revokedAt: null },
+        { kind: 'link', linkId: null, at: new Date().toISOString(), createdBy: user?.id ?? null, audience: 'all', outcome: 'active', revokedAt: null },
         ...prev,
       ])
       showToast('Portal link created.', 'success')
@@ -479,6 +481,24 @@ export default function CustomerPortalGlobeButton({
 
   const who = (id: string | null) => (id ? creatorNames[id] : null)
 
+  // Delete a turned-off link (punch list #443, row 11): a dev's take-back of Turn off, on a test customer's link alone.
+  const linkDeleteDrawn = portalLinkDeleteDrawn(role)
+  const deleteLink = async (e: PortalTimelineEntry) => {
+    if (e.kind !== 'link') return
+    const words = portalLinkDeleteConfirm(e, customerName)
+    if (!(await confirmDialog({ title: words.title, message: words.message, confirmLabel: words.confirmLabel, cancelLabel: 'Keep it', danger: true }))) return
+    setBusy(true)
+    try {
+      await deleteTestPortalLink(e, customerName)
+      showToast(PORTAL_LINK_DELETED_WORDS, 'success')
+      await loadState()
+    } catch (err) {
+      showToast(formatErrorMessage(err, 'The link was not deleted'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const timelineLine = (e: PortalTimelineEntry): string => {
     const by = who(e.createdBy)
     const byPart = by ? ` by ${by}` : ''
@@ -494,6 +514,35 @@ export default function CustomerPortalGlobeButton({
     if (e.outcome === 'rotated') return `${made} — rotated ${e.revokedAt ? fmtWhen(e.revokedAt) : ''}`
     return `${made} — turned off ${e.revokedAt ? fmtWhen(e.revokedAt) : ''}`
   }
+
+  // The History list: every link and address event, newest first. Under the gear when the portal is live or never
+  // made; under the off box too, for a dev alone, since a turned-off link lives nowhere else (#443, row 11).
+  const historyList = (
+    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+      {timeline.map((e, i) => {
+        const problem = linkDeleteDrawn && e.kind === 'link' && e.outcome !== 'active' ? portalLinkDeleteProblem(e, customerName) : null
+        return (
+          <li key={i} style={{ fontSize: '0.75rem', color: e.kind === 'link' && e.outcome === 'active' ? 'var(--text-700)' : 'var(--text-muted)', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span>{timelineLine(e)}</span>
+            {problem !== null ? (
+              <button
+                type="button"
+                data-testid="portal-link-delete"
+                aria-label={`${PORTAL_LINK_DELETE_PRESS} ${timelineLine(e)}`}
+                title={problem || 'Delete this turned-off link. Only a developer sees this press.'}
+                aria-disabled={!!problem || busy}
+                onClick={() => { if (!problem && !busy) void deleteLink(e) }}
+                style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', color: problem ? 'var(--text-faint)' : 'var(--text-red-600)', cursor: problem || busy ? 'default' : 'pointer' }}
+              >
+                {PORTAL_LINK_DELETE_PRESS}
+              </button>
+            ) : null}
+            {problem ? <span style={{ color: 'var(--text-faint)' }}>{problem}</span> : null}
+          </li>
+        )
+      })}
+    </ul>
+  )
 
   const secondaryBtn: React.CSSProperties = {
     padding: '0.35rem 0.7rem',
@@ -631,6 +680,12 @@ export default function CustomerPortalGlobeButton({
                 <button type="button" onClick={() => void turnBackOn()} disabled={busy} style={primaryBtn}>
                   Turn portal back on
                 </button>
+                {linkDeleteDrawn && timeline.length > 0 ? (
+                  <div style={{ marginTop: '0.8rem' }} data-testid="portal-off-history">
+                    <span style={rowLabel}>History</span>
+                    <div style={{ marginTop: '0.3rem' }}>{historyList}</div>
+                  </div>
+                ) : null}
               </div>
             ) : main.kind === 'unminted' ? (
               <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 6, padding: '0.75rem 0.9rem', marginBottom: '0.8rem' }}>
@@ -796,17 +851,7 @@ export default function CustomerPortalGlobeButton({
                           <p style={rowHint}>Customer opens of this portal. Your previews and staff opens don't count.</p>
                         </div>,
                       )}
-                    {timeline.length > 0 &&
-                      gearRow(
-                        'History',
-                        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                          {timeline.map((e, i) => (
-                            <li key={i} style={{ fontSize: '0.75rem', color: e.kind === 'link' && e.outcome === 'active' ? 'var(--text-700)' : 'var(--text-muted)' }}>
-                              {timelineLine(e)}
-                            </li>
-                          ))}
-                        </ul>,
-                      )}
+                    {timeline.length > 0 && gearRow('History', historyList)}
                   </div>
                 )}
 

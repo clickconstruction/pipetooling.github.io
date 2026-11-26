@@ -5,6 +5,8 @@
  */
 
 export type PortalLinkRow = {
+  /** The row's id, when the read selects it: the handle a dev's delete of a turned-off link takes (#443, row 11). */
+  id?: string | null
   customer_id?: string
   audience: string
   created_at: string
@@ -66,6 +68,8 @@ export function computePortalMainOffCustomerIds(
 }
 
 export type PortalHistoryEntry = {
+  /** The link row's id, null when the read did not select it. */
+  linkId: string | null
   createdAt: string
   revokedAt: string | null
   createdBy: string | null
@@ -98,6 +102,7 @@ function buildHistoryForOneAudience(rows: PortalLinkRow[]): PortalHistoryEntry[]
       outcome = succeeded ? 'rotated' : 'turned-off'
     }
     return {
+      linkId: row.id ?? null,
       createdAt: row.created_at,
       revokedAt: row.revoked_at,
       createdBy: row.created_by ?? null,
@@ -116,6 +121,8 @@ export type PortalSlugEventRow = {
 export type PortalTimelineEntry =
   | {
       kind: 'link'
+      /** The link row's id, null when the read did not select it or the entry was drawn before a read. */
+      linkId: string | null
       at: string
       createdBy: string | null
       audience: string
@@ -150,6 +157,7 @@ export function buildPortalTimeline(
     for (const h of buildPortalLinkHistory(rows)) {
       entries.push({
         kind: 'link',
+        linkId: h.linkId,
         at: h.createdAt,
         createdBy: h.createdBy,
         audience,

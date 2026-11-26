@@ -26,9 +26,10 @@ const stage = (id: StageReading['id'], name: string, headlineText: string, weeks
   readable: true,
   pile: { headline: headlineText, sub: [], usd: 142_000, guessShare: 0 },
   flow: flowLines,
+  paceUsd: null,
   weeks,
   weeksText,
-  badge: isLink ? 'the weakest link' : '',
+  badge: isLink ? 'the narrowest step' : '',
   tone: isLink ? 'link' : 'plain',
   isLink,
 })
@@ -65,13 +66,13 @@ const base: WeekCallInput = {
 }
 
 describe('buildWeekCall, a usual week', () => {
-  it('names the slowest step with its moves, the ones with a number first', () => {
+  it('names the narrowest step with its moves, the ones with a number first', () => {
     const m = buildWeekCall(base)
     expect(m.link).toBe('bill')
     expect(m.cashLeads).toBe(false)
     expect(m.tiles.map((t) => t.id)).toEqual(['made', 'cash', 'step'])
     expect(m.card.label).toBe('What to do now')
-    expect(m.card.lead).toBe('Bill is the slowest step.')
+    expect(m.card.lead).toBe('Bill is the narrowest step.')
     // The pile and the two paces. The weeks are the step tile's, said once.
     expect(m.card.line).toBe('$142k finished, not yet billed. The field finishes $33k a week. The office bills $19k a week.')
     expect(m.card.tone).toBe('lit')
@@ -137,7 +138,7 @@ describe('buildWeekCall, cash under the floor', () => {
     expect(m.tiles[0]).toMatchObject({ wide: true, label: 'Cash comes first this week', value: 'Under the floor in 2 weeks', sub: 'Cash goes under $10.0k on Nov 24. The bank has $18.4k today.' })
     expect(m.card.label).toBe('What to do now')
     expect(m.card.lead).toBe('Keep cash above the floor.')
-    expect(m.card.line).toBe('Cash goes under $10.0k on Nov 24. Bill is still the slowest step.')
+    expect(m.card.line).toBe('Cash goes under $10.0k on Nov 24. Bill is still the narrowest step.')
     expect(m.card.moves.map((x) => [x.kind, x.title])).toEqual([
       ['cash', 'Chase the 9 late invoices.'],
       ['cash', 'Ask the supply houses for more days.'],

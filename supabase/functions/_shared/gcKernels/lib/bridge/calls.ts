@@ -36,7 +36,7 @@ export const shortUsd = (n: number): string => `$${Math.abs(n) >= 100_000 ? `${M
 
 /** What the step's desk says of the pressed link: the page's own reading, a resource, or not the link today. */
 export function deskStatus(input: { link: CallLink; linkId: StageId | null }): string {
-  if (input.linkId === input.link) return 'nominated by the page: the most weeks to clear what is already waiting'
+  if (input.linkId === input.link) return 'nominated by the page: the narrowest step, the fewest dollars a week'
   if (!isStageLink(input.link)) return 'a resource; it throttles a link or shows its symptom'
   return 'not the link today, by the page’s reading'
 }

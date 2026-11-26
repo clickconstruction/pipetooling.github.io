@@ -378,7 +378,7 @@ describe('the seat’s two verbs', () => {
     expect(SERVER).toContain("name: 'apply_sub_statement'")
     expect(SERVER).toContain('invokeAsDev(session, SUB_STATEMENT_FUNCTION, { person: p.person, period: p.period })')
     expect(SERVER).toContain('invokeAsDev(session, SUB_STATEMENT_FUNCTION, { person: p.person, period: p.period, make: true, expect: plan.fingerprint })')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.135.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.136.0'")
     expect(SERVER).toContain('Writes are one hundred and fifty-six verbs and nothing else:')
     expect(SERVER).toContain('the other ninety-eight name no RPC')
     expect(SERVER).toContain('plan_sub_statement → apply_sub_statement (a person\'s Statement of account as the papers window\'s Download makes it')

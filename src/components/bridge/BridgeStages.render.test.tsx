@@ -16,7 +16,7 @@ describe('BridgeStages', () => {
     })
     const onPick = vi.fn()
     renderWithProviders(<BridgeStages flow={flow} pickedId="bill" onPick={onPick} />)
-    expect(screen.getByTestId('bridge-stage-badge-bill').textContent).toBe('the weakest link')
+    expect(screen.getByTestId('bridge-stage-badge-bill').textContent).toBe('the narrowest step')
     expect(screen.getByTestId('bridge-stage-badge-collect').textContent).toBe('moves with Bill')
     expect(screen.getByTestId('bridge-stage-badge-build').textContent).toBe('not readable yet')
     expect(screen.getByText('10.6 weeks to bill what is already finished')).toBeTruthy()

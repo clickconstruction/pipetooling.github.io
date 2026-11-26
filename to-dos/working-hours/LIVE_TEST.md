@@ -109,7 +109,8 @@ Walk this after v2.8607's PR is merged, its client is live and migration `202611
 ledger. It uses the sheet, since the seat's plan for a take-off is behind the door.
 
 1. Make ZZ Test Hand salaried: `plan_pay_setup` with `is_salary: true`, its current `hourly_wage` and
-   `start_date` today, and no `workday_start`, so no session is made. Read their pay row through the seat: 8 h
+   `start_date` today, and no `workday_start`, so no session is made. The apply writes two pay log lines, the pay
+   row's and one for the start date, and the plan says so first. Read their pay row through the seat: 8 h
    Monday to Friday.
 2. On their sheet, **Pay & schedule**, **Working hours**: press **Set working hours**, then **Set other
    hours**. Pick 6:00 AM to 12:00 PM, give a reason, and press **Keep**. The pay row reads 6 h Monday to Friday.
@@ -165,6 +166,17 @@ the words on it.
 - **2026-11-25, the fault mended as v2.8607, live at 23:45 UTC.** Taking working hours off a salaried person now
   puts the standard week back on pay, with a reason on the pay log. The migration is applied. Step 6 is its
   walk, and nobody has walked it. Step 5's workaround above is no longer needed.
+- **2026-11-26, the walking thread, step 6, 02:26 to 02:33 UTC. Pass on 6.1 to 6.7**, on ZZ Test Hand, through the
+  seat and the sheet, each write on the person's yes. The take-off put 8 h Mon to Fri back on the pay row with one
+  pay log line by `set_working_hours`, the reason on it and the week before and after; a 7:00 AM to 3:00 PM week
+  moved no pay and wrote no line, and its take-off asked no reason; the person was left as found.
+  - **One small fault, briefed to `small-fixes`.** After **Take working hours off** the row read *Not set yet* with
+    **Set working hours** alone and no **Earlier hours** press, though the saves are on record, and step 6.4's
+    words were not seen on the row.
+  - **A count corrected above.** Step 6.1's apply writes two pay log lines, not one: the pay row's and the start
+    date's. The plan said two before the apply.
+  - **Left on prod, by design.** Six more pay log lines for ZZ Test Hand and four more `person_available_hours`
+    rows, none in force.
 - **2026-11-25, the same session, step 2.5 alone.** Clean at 380 px: the Working hours row and its window hold at a
   phone's width, with nothing sliding sideways. The hours were set for the look and taken off after.
   - **Still not walked.** The second half of 4.3, the window as anyone but a dev: the recipe does not reach it

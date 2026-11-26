@@ -7,7 +7,7 @@ import { DIRECTION_KEEPS_MARGIN, STRIP_DOWN_LEGEND, STRIP_DOWN_MARKET_PRESS, fee
 import type { StageFlow, StageFlowInput, StageId, StageReading } from './stageFlow'
 
 // Made-up paces and piles.
-const stage = (id: StageId, name: string, weeks: number | null): StageReading => ({ id, name, object: '', action: '', readable: true, pile: { headline: '', sub: [], usd: null, guessShare: 0 }, flow: [], weeks, weeksText: '', badge: '', tone: 'plain', isLink: false })
+const stage = (id: StageId, name: string, weeks: number | null): StageReading => ({ id, name, object: '', action: '', readable: true, pile: { headline: '', sub: [], usd: null, guessShare: 0 }, flow: [], paceUsd: null, weeks, weeksText: '', badge: '', tone: 'plain', isLink: false })
 const flow = (linkId: StageId | null): StageFlow => ({
   stages: [stage('market', 'Market', null), stage('sales', 'Sales', null), stage('build', 'Build', 4.2), stage('bill', 'Bill', 7.5), stage('collect', 'Collect', 2.6)],
   linkId,
@@ -37,8 +37,8 @@ describe('layoutFlowStripDown', () => {
 })
 
 describe('stripDownLines', () => {
-  it('says each step’s pace as a phrase, and names the slowest step', () => {
-    expect(stripDownLines(section(strip, 'bill'))).toEqual({ title: 'Bill, the slowest step', pace: 'billed $19k a week', weeks: '8 weeks wait' })
+  it('says each step’s pace as a phrase, and names the narrowest step', () => {
+    expect(stripDownLines(section(strip, 'bill'))).toEqual({ title: 'Bill, the narrowest step', pace: 'billed $19k a week', weeks: '8 weeks wait' })
     expect(stripDownLines(section(strip, 'sales'))).toEqual({ title: 'Sales', pace: 'sold $36k a week', weeks: '' })
   })
 
@@ -75,7 +75,7 @@ describe('withMarketWorth', () => {
   it('says the same amount to a screen reader as to the eye', () => {
     const sized = withMarketWorth(strip, 9_000)
     expect(section(sized, 'market').label).toBe('Market. Worth $9k a week.')
-    expect(section(withMarketWorth(buildFlowStrip(flow('market'), paces), 9_000), 'market').label).toBe('Market. Worth $9k a week. The slowest step.')
+    expect(section(withMarketWorth(buildFlowStrip(flow('market'), paces), 9_000), 'market').label).toBe('Market. Worth $9k a week. The narrowest step.')
   })
 
   it('does not move the page’s reading: the lit step and the waiting work stay', () => {
@@ -91,7 +91,7 @@ describe('the standing pipe’s words', () => {
   const market = { perWeekUsd: 9_000, pace: 'worth $9k a week', parts: ['bids $6k at 4% won', 'estimates $3k at 60% won'] }
 
   it('lists what the pipe prints, with Market’s amount and its two parts once that is read', () => {
-    expect(stripDownWords(strip, null)).toEqual([STRIP_DOWN_LEGEND, 'Market', 'bid $160k a week', 'Sales', 'sold $36k a week', 'Build', 'built $33k a week', '4 weeks wait', 'Bill, the slowest step', 'billed $19k a week', '8 weeks wait', 'Collect', 'paid $26k a week', '3 weeks wait'])
+    expect(stripDownWords(strip, null)).toEqual([STRIP_DOWN_LEGEND, 'Market', 'bid $160k a week', 'Sales', 'sold $36k a week', 'Build', 'built $33k a week', '4 weeks wait', 'Bill, the narrowest step', 'billed $19k a week', '8 weeks wait', 'Collect', 'paid $26k a week', '3 weeks wait'])
     const words = stripDownWords(strip, market)
     expect(words.slice(1, 5)).toEqual(['Market', 'worth $9k a week', 'bids $6k at 4% won', 'estimates $3k at 60% won'])
     expect(words[words.length - 1]).toBe(STRIP_DOWN_MARKET_PRESS)
@@ -190,10 +190,10 @@ describe('each row’s direction (punch list #321, PR 1)', () => {
   it('prints each direction under its row, and the press says it to a screen reader', () => {
     const directions = stripDownDirections(week)
     const words = stripDownWords(strip, null, directions)
-    expect(words.slice(1)).toEqual(['Market', 'bid $160k a week', '$10k a week short of the field.', 'Sales', 'sold $36k a week', '$14k a week short of the field.', 'Build', 'built $33k a week', '4 weeks wait', 'Shrinks $14k a week.', 'Bill, the slowest step', 'billed $19k a week', '8 weeks wait', 'Keeps up.', 'Collect', 'paid $26k a week', '3 weeks wait', 'Grows $15k a week.'])
+    expect(words.slice(1)).toEqual(['Market', 'bid $160k a week', '$10k a week short of the field.', 'Sales', 'sold $36k a week', '$14k a week short of the field.', 'Build', 'built $33k a week', '4 weeks wait', 'Shrinks $14k a week.', 'Bill, the narrowest step', 'billed $19k a week', '8 weeks wait', 'Keeps up.', 'Collect', 'paid $26k a week', '3 weeks wait', 'Grows $15k a week.'])
     // Without directions the pipe prints what it did.
     expect(stripDownWords(strip, null)).toEqual(stripDownWords(strip, null, {}))
-    expect(stripDownLabel(section(strip, 'bill'), directions.bill)).toBe('Bill. $19k billed a week. 8 weeks of work wait in front of it. The slowest step. Keeps up. Open its desk.')
+    expect(stripDownLabel(section(strip, 'bill'), directions.bill)).toBe('Bill. $19k billed a week. 8 weeks of work wait in front of it. The narrowest step. Keeps up. Open its desk.')
     expect(stripDownLabel(section(strip, 'sales'), undefined)).toBe('Sales. $36k sold a week. Open its desk.')
   })
 })

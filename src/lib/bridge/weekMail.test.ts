@@ -28,9 +28,10 @@ const stage = (id: StageReading['id'], name: string, pile: string, weeks: number
   readable: true,
   pile: { headline: pile, sub: [], usd: 142_000, guessShare: 0 },
   flow: isLink ? [{ who: 'the field finishes', usd: '$33k' }, { who: 'the office bills', usd: '$19k' }] : [],
+  paceUsd: null,
   weeks,
   weeksText,
-  badge: isLink ? 'the weakest link' : '',
+  badge: isLink ? 'the narrowest step' : '',
   tone: isLink ? 'link' : 'plain',
   isLink,
 })
@@ -83,7 +84,7 @@ const URL = 'https://app.example/bridge'
 
 describe('the Monday email as the first screen', () => {
   it('the subject says the card’s lead, then the cash balance, then what the field made', () => {
-    expect(weekMailSubject(mailOf())).toBe('The Bridge, the week of Nov 8–14: Bill is the slowest step. Cash balance $18.4k. Made last week $31.0k ≈.')
+    expect(weekMailSubject(mailOf())).toBe('The Bridge, the week of Nov 8–14: Bill is the narrowest step. Cash balance $18.4k. Made last week $31.0k ≈.')
     expect(weekMailLine(mailOf())).toBe('the week of Nov 8–14, read Nov 9')
   })
 
@@ -94,11 +95,11 @@ describe('the Monday email as the first screen', () => {
     expect(mail.model.card.moves.length).toBeGreaterThan(3)
     const html = weekMailHtml(mail, URL)
     expect(html).toContain('>What to do now</div>')
-    expect(html).toContain('Bill is the slowest step.')
+    expect(html).toContain('Bill is the narrowest step.')
     expect(html).toContain('Bill the 11 finished jobs.')
     expect(html).toContain(`<a href="${URL}"`)
     expect(html).toContain('>Open the Bridge</a>')
-    expect(weekMailText(mail, URL)).toMatch(/\nWhat to do now\nBill is the slowest step\.\n/)
+    expect(weekMailText(mail, URL)).toMatch(/\nWhat to do now\nBill is the narrowest step\.\n/)
     expect(weekMailText(mail, URL)).toMatch(/  2\. Price the 4 jobs with no price\. Their hours earn nothing until then\.\n/)
     expect(weekMailText(mail, URL)).toContain(`Open the Bridge: ${URL}`)
   })
@@ -131,7 +132,7 @@ describe('the Monday email as the first screen', () => {
     expect(html).toContain('$19k billed')
     expect(html).toContain('8 weeks wait')
     const text = weekMailText(mailOf(), URL)
-    expect(text).toContain('  Bill: $19k billed, 8 weeks wait, the slowest step')
+    expect(text).toContain('  Bill: $19k billed, 8 weeks wait, the narrowest step')
     expect(text).toContain('  Market: $210k asked')
   })
 
@@ -157,18 +158,18 @@ describe('the Monday email as the first screen', () => {
     expect(weekMailText(mailOf(), URL)).not.toContain(WEEK_MAIL_WORDS.marketWorth)
   })
 
-  it('the two balances follow the slowest step, each with its runway, and one line says what runway counts (#334)', () => {
+  it('the two balances follow the narrowest step, each with its runway, and one line says what runway counts (#334)', () => {
     const mail = mailOf()
     const html = weekMailHtml(mail, URL)
     // Payroll $14k a week is $2k a day, plus $300 of overhead: $2.3k a day. $18.4k carries 8 days, $53.4k carries 23.
     expect(mail.money.cash).toMatchObject({ label: 'Cash balance', value: '$18.4k', runway: '8 days of runway', tone: 'green' })
     expect(mail.money.accrual).toMatchObject({ label: 'Accrual balance', value: '$53.4k', runway: '23 days of runway' })
     for (const words of ['Cash balance', '$18.4k', '8 days of runway', 'Accrual balance', '$53.4k', '23 days of runway', 'Adds $60.0k owed to you. Takes off $25.0k you owe, subs included.', 'Runway counts payroll and overhead, $2.3k a day.']) expect(html, words).toContain(words)
-    expect(html.indexOf('Slowest step')).toBeLessThan(html.indexOf('Cash balance'))
+    expect(html.indexOf('Narrowest step')).toBeLessThan(html.indexOf('Cash balance'))
     expect(html.indexOf('Cash balance')).toBeLessThan(html.indexOf('Accrual balance'))
     expect(html.indexOf('Accrual balance')).toBeLessThan(html.indexOf('What to do now'))
     const text = weekMailText(mail, URL)
-    expect(text).toContain('Slowest step: Bill\n  7.5 weeks to bill what is already finished.\nCash balance: $18.4k\n  8 days of runway\n  Stays over the $10.0k floor. Low point $18.4k on Nov 9.\nAccrual balance: $53.4k\n  23 days of runway\n  Adds $60.0k owed to you. Takes off $25.0k you owe, subs included.\nRunway counts payroll and overhead, $2.3k a day.\n')
+    expect(text).toContain('Narrowest step: Bill\n  7.5 weeks to bill what is already finished.\nCash balance: $18.4k\n  8 days of runway\n  Stays over the $10.0k floor. Low point $18.4k on Nov 9.\nAccrual balance: $53.4k\n  23 days of runway\n  Adds $60.0k owed to you. Takes off $25.0k you owe, subs included.\nRunway counts payroll and overhead, $2.3k a day.\n')
   })
 
   it('the accounts left out of cash are said under the cash balance', () => {
@@ -182,7 +183,7 @@ describe('the Monday email as the first screen', () => {
     expect(mail.money.cash.label).toBe('Cash low point, 8 weeks')
     expect(mail.money.cash.runway).toBeUndefined()
     expect(mail.money.accrual.value).toBe('not read')
-    expect(weekMailSubject(mail)).toBe('The Bridge, the week of Nov 8–14: Bill is the slowest step. Cash low point $18.4k. Made last week $31.0k ≈.')
+    expect(weekMailSubject(mail)).toBe('The Bridge, the week of Nov 8–14: Bill is the narrowest step. Cash low point $18.4k. Made last week $31.0k ≈.')
     expect(weekMailText(mail, URL)).toContain('Accrual balance: not read\n  What is owed is not read yet.\n')
   })
 
