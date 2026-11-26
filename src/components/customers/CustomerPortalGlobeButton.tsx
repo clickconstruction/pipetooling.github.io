@@ -25,6 +25,7 @@ import {
   suggestSlugWithTail,
 } from '../../lib/portal/portalSlug'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../../lib/portal/portalShortOrigin'
+import { portalAddressLine, portalAddressLineColor, portalAddressState, portalAddressTextColor } from '../../lib/portal/portalAddressLine'
 import { mintCustomerPortalLink } from '../../lib/portal/mintCustomerPortalLink'
 import { formatPortalDate, formatPortalUsd, parsePortalPayload, PORTAL_TRADE_COLORS, type PortalTradeTag } from '../../lib/portal/portalPayload'
 import { buildStatementBillRows, type StatementBillRow } from '../../lib/portal/portalStatementJobLinks'
@@ -265,6 +266,8 @@ export default function CustomerPortalGlobeButton({
     void loadState()
   }
 
+  // #389, finding 180: a fresh portal's address is a suggestion until Copy link saves it, and the window says so.
+  const addressState = portalAddressState({ saved: slugSaved, locked: slugLocked })
   const tokenUrl = main.kind === 'active' ? `${window.location.origin}/portal?t=${main.token}` : null
   // Office openers (Preview as customer, Full screen, the live iframe) carry `?preview=1` so the
   // load is not counted as the customer looking (journey-map #37). Copy never uses this URL.
@@ -658,7 +661,7 @@ export default function CustomerPortalGlobeButton({
                         border: 'none',
                         outline: 'none',
                         background: 'transparent',
-                        color: 'inherit',
+                        color: portalAddressTextColor(addressState),
                         fontFamily: 'inherit',
                         fontSize: 'inherit',
                         fontWeight: 600,
@@ -680,9 +683,7 @@ export default function CustomerPortalGlobeButton({
                   )}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.3rem' }}>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>
-                    {slugLocked ? '' : 'Editable until first shared'}
-                  </span>
+                  <span style={{ fontSize: '0.72rem', color: portalAddressLineColor(addressState) }}>{portalAddressLine(addressState)}</span>
                   {guess && (
                     <span style={{ fontSize: '0.72rem', color: guess.grade === 'hard' ? 'var(--text-green-600, #16a34a)' : 'var(--text-amber-700)' }}>
                       {slugGuessabilityLabel(guess)}
