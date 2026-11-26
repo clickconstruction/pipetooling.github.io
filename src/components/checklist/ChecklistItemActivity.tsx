@@ -14,7 +14,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { useNoteTagBox } from '../jobs/NoteTagBox'
 import { TaggedNoteBody } from '../jobs/TaggedNoteBody'
 import ConfirmDialog from '../ConfirmDialog'
-import { TASK_COMMENT_DELETED_WORDS, TEST_NOTE_DELETE_PRESS, taskCommentDeleteConfirm, taskCommentDeleteProblem, testNoteDeleteDrawn } from '../../lib/notes/testNoteDelete'
+import { TASK_COMMENT_DELETED_WORDS, TEST_NOTE_DELETE_PRESS, noteAnswerCounts, noteDeleteWhy, taskCommentDeleteConfirm, taskCommentDeleteProblem, testNoteDeleteDrawn } from '../../lib/notes/testNoteDelete'
 import { deleteTestTaskComment } from '../../lib/notes/testNoteDeleteIo'
 
 /** A long-running repeating task can have years of instances — cap the activity fetch. */
@@ -228,6 +228,9 @@ export function ChecklistItemActivity({
     bigAt: true,
   })
   const tagsByNote = useTaskNoteTags(loading ? null : item.id, events.length)
+  // A comment a tag names as its answer stays, and its press says so before it is pressed (finding 273). The answers
+  // are counted from the task's tags read above for the chips: no read of the press's own.
+  const commentAnswers = useMemo(() => noteAnswerCounts(tagsByNote), [tagsByNote])
 
   async function postComment(): Promise<boolean> {
     const body = draft.trim()
@@ -361,6 +364,7 @@ export function ChecklistItemActivity({
                 ? ` (for ${dayLabel(entry.scheduledDate)})`
                 : ''
             if (entry.eventType === 'comment') {
+              const commentDeleteWhyNot = commentDeleteDrawn ? noteDeleteWhy(commentDeleteProblem, commentAnswers.get(entry.id)) : ''
               return (
                 <div key={entry.id} style={{ fontSize: '0.9375rem', color: 'var(--text-700)', lineHeight: 1.45 }}>
                   <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(entry.actorUserId)}</span>{' '}
@@ -373,14 +377,14 @@ export function ChecklistItemActivity({
                         type="button"
                         data-testid="task-comment-delete"
                         aria-label={`${TEST_NOTE_DELETE_PRESS} ${name(entry.actorUserId)}’s comment`}
-                        title={commentDeleteProblem || 'Delete this comment. Only a developer sees this press.'}
-                        aria-disabled={!!commentDeleteProblem || deletingEventId != null}
-                        onClick={() => { if (!commentDeleteProblem && !deletingEventId) setCommentToDelete({ id: entry.id, author: name(entry.actorUserId) }) }}
-                        style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: '0.8125rem', textDecoration: 'underline', color: commentDeleteProblem ? 'var(--text-faint)' : 'var(--text-red-600)', cursor: commentDeleteProblem || deletingEventId ? 'default' : 'pointer' }}
+                        title={commentDeleteWhyNot || 'Delete this comment. Only a developer sees this press.'}
+                        aria-disabled={!!commentDeleteWhyNot || deletingEventId != null}
+                        onClick={() => { if (!commentDeleteWhyNot && !deletingEventId) setCommentToDelete({ id: entry.id, author: name(entry.actorUserId) }) }}
+                        style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: '0.8125rem', textDecoration: 'underline', color: commentDeleteWhyNot ? 'var(--text-faint)' : 'var(--text-red-600)', cursor: commentDeleteWhyNot || deletingEventId ? 'default' : 'pointer' }}
                       >
                         {deletingEventId === entry.id ? 'Deleting…' : TEST_NOTE_DELETE_PRESS}
                       </button>
-                      {commentDeleteProblem ? <span style={{ marginLeft: '0.35rem', color: 'var(--text-faint)', fontSize: '0.8125rem' }} data-testid="task-comment-delete-why">{commentDeleteProblem}</span> : null}
+                      {commentDeleteWhyNot ? <span style={{ marginLeft: '0.35rem', color: 'var(--text-faint)', fontSize: '0.8125rem' }} data-testid="task-comment-delete-why">{commentDeleteWhyNot}</span> : null}
                     </>
                   ) : null}
                 </div>

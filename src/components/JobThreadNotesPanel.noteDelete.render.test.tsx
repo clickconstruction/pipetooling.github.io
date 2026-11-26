@@ -8,10 +8,20 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../test/renderSmokeMocks'
 import { JobThreadNotesPanel, type JobThreadActivityItem } from './JobThreadNotesPanel'
 
-const io = vi.hoisted(() => ({ deleted: [] as Array<[string, string]>, refuse: null as null | Error }))
+const io = vi.hoisted(() => ({ deleted: [] as Array<[string, string]>, refuse: null as null | Error, tags: [] as Array<Record<string, unknown>> }))
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
-  return { supabase: makeSupabaseStub() }
+  const stub = makeSupabaseStub() as Record<string, unknown>
+  const baseFrom = stub.from as (table: string) => Record<string, unknown>
+  // The job's tag rows, which the panel reads for its chips: the answers are counted from them.
+  stub.from = (table: string) => {
+    if (table !== 'jobs_ledger_note_tags') return baseFrom(table)
+    const b: Record<string, unknown> = {}
+    for (const m of ['select', 'eq']) b[m] = () => b
+    b.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data: io.tags, error: null }).then(ok)
+    return b
+  }
+  return { supabase: stub }
 })
 vi.mock('../lib/notes/testNoteDeleteIo', () => ({
   deleteTestJobNote: async (noteId: string, jobId: string) => {
@@ -50,6 +60,7 @@ afterEach(() => {
   cleanup()
   io.deleted = []
   io.refuse = null
+  io.tags = []
 })
 
 describe('JobThreadNotesPanel: deleting a test job’s note (punch list #443, row 13)', () => {
@@ -79,6 +90,25 @@ describe('JobThreadNotesPanel: deleting a test job’s note (punch list #443, ro
     fireEvent.click(await screen.findByRole('button', { name: 'Delete the note' }))
     expect(await screen.findByText('1 tag names this as its answer. It stays.')).toBeTruthy()
     expect(onNoteDeleted).not.toHaveBeenCalled()
+  })
+
+  it('a note a tag names as its answer reads a dead press with the reason, before any confirm, and the ask stays live (finding 273)', async () => {
+    // Dana's note tagged Hector, and Hector's note answered it.
+    io.tags = [{ note_id: 'n1', tagged_user_id: 'u-hector', tagged_name: 'Hector Helper', tagger_user_id: 'u-dana', created_at: '2026-11-24T15:00:00Z', cleared_at: '2026-11-25T15:00:00Z', cleared_how: 'answered', answer_note_id: 'n2' }]
+    draw('dev', { job_name: 'ZZ Test walk job', customer_name: null })
+    const answer = screen.getByRole('button', { name: 'Delete… Hector Helper’s note' })
+    await waitFor(() => expect(answer.getAttribute('aria-disabled')).toBe('true'))
+    const whys = screen.getAllByTestId('job-note-delete-why')
+    expect(whys).toHaveLength(1)
+    expect(whys[0]!.textContent).toBe('1 tag names this as its answer. It stays.')
+    fireEvent.click(answer)
+    expect(screen.queryByRole('button', { name: 'Delete the note' })).toBeNull()
+    expect(io.deleted).toEqual([])
+    // The ask is named by nothing: its press is live, and its tags go with it.
+    const ask = screen.getByRole('button', { name: 'Delete… Dana Office’s note' })
+    expect(ask.getAttribute('aria-disabled')).toBe('false')
+    fireEvent.click(ask)
+    expect(await screen.findByRole('button', { name: 'Delete the note' })).toBeTruthy()
   })
 
   it('on a real job the press is dead with its reason, and a press on it opens no confirm', () => {

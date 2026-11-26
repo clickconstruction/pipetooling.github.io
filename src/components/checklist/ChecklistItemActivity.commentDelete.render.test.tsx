@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 
-const db = vi.hoisted(() => ({ role: 'dev' as string, deleted: [] as string[], refuse: null as null | Error }))
+const db = vi.hoisted(() => ({ role: 'dev' as string, deleted: [] as string[], refuse: null as null | Error, tags: [] as Array<Record<string, unknown>> }))
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -21,7 +21,7 @@ vi.mock('../../lib/supabase', async () => {
     ],
     checklist_item_due_changes: () => [],
     users: () => [{ id: 'u-dana', name: 'Dana Whitlock' }, { id: 'u-luis', name: 'Luis Ortega' }],
-    task_note_tags: () => [],
+    task_note_tags: () => db.tags,
   }
   const rows = (table: string) => {
     const b: Record<string, unknown> = {}
@@ -62,6 +62,7 @@ beforeEach(() => {
   db.role = 'dev'
   db.deleted = []
   db.refuse = null
+  db.tags = []
 })
 afterEach(cleanup)
 
@@ -87,6 +88,18 @@ describe('ChecklistItemActivity: deleting a test task’s comment (punch list #4
     const press = screen.getByTestId('task-comment-delete')
     expect(press.getAttribute('aria-disabled')).toBe('true')
     expect(screen.getByTestId('task-comment-delete-why').textContent).toBe('Only a comment on a test task can be deleted. The task’s title must start with ZZ.')
+    fireEvent.click(press)
+    expect(screen.queryByRole('button', { name: 'Delete the comment' })).toBeNull()
+    expect(db.deleted).toEqual([])
+  })
+
+  it('a comment a tag names as its answer reads a dead press with the reason, before any confirm (finding 273)', async () => {
+    // A comment on another day of the task tagged Dana, and Dana's comment answered it.
+    db.tags = [{ event_id: 'ev-ask', tagged_user_id: 'u-dana', tagged_name: 'Dana Whitlock', tagger_user_id: 'u-luis', created_at: '2026-11-16T15:00:00Z', cleared_at: '2026-11-17T15:00:00Z', cleared_how: 'answered', answer_event_id: 'ev-1' }]
+    await mount()
+    const press = screen.getByTestId('task-comment-delete')
+    await waitFor(() => expect(press.getAttribute('aria-disabled')).toBe('true'))
+    expect(screen.getByTestId('task-comment-delete-why').textContent).toBe('1 tag names this as its answer. It stays.')
     fireEvent.click(press)
     expect(screen.queryByRole('button', { name: 'Delete the comment' })).toBeNull()
     expect(db.deleted).toEqual([])

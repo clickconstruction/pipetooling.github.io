@@ -350,6 +350,8 @@ export type NoteTagRow = {
   createdAt: string
   clearedAt: string | null
   clearedHow: 'answered' | 'done' | null
+  /** The note or comment that answered this tag, when one did. A reader that does not ask for it leaves it out. */
+  answerNoteId?: string | null
 }
 
 /** A job's tag rows by the note they sit on. */
