@@ -47956,6 +47956,7 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_login_ways: { Args: { p_user_id: string }; Returns: Json }
       dev_matter_doc_read: {
         Args: { p_doc_id: string; p_matter_id: string; p_section?: string }
         Returns: Json
@@ -48048,6 +48049,7 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_unlink_google: { Args: { p_user_id: string }; Returns: Json }
       dismiss_mercury_duplicate_pair: {
         Args: { p_id_a: string; p_id_b: string }
         Returns: undefined
