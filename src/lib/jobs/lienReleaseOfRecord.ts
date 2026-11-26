@@ -35,7 +35,8 @@ import { BANK_CHECK_WINDOW_DAYS, checkAnswerWords, checkName, paymentCheckAnswer
 import { isCheckPayment } from './checkClearing'
 import { lastPayment, payWayWords, releaseForAffidavit, releaseOwnInstrument, type LienPayoffAffidavit, type LienPayoffPayment, type LienPayoffRelease } from './lienPayoff'
 import { fundsConfirmedWords, type FundsConfirmed } from './lienPayoffFields'
-import { releaseOnReturnedCheck } from './payoffReturned'
+import type { ReleaseMoneyBackMark } from './lienReleaseFacts'
+import { releaseMarkHolds, releaseMarkWords, releaseOnReturnedCheck } from './payoffReturned'
 
 export const RELEASE_OF_RECORD_WORDS = {
   which: 'Which lien',
@@ -129,14 +130,16 @@ export function releaseMoneyGate(input: { open: number; payments: ReadonlyArray<
 
 /**
  * What a saved release says when the bank sent back the check behind the job's last payment (#435, piece 6), with
- * its values marked. Null when that money stands, and while the bank's deposits are unread.
+ * its values marked. Null when that money stands. While the bank's deposits are unread only the case's mark speaks.
  */
-export function releaseMoneyBackWords(input: { recorded: boolean; payments: ReadonlyArray<LienPayoffPayment>; bank: ReadonlyArray<BankCheck> | null | undefined; todayYmd: string }): string | null {
+export function releaseMoneyBackWords(input: { recorded: boolean; payments: ReadonlyArray<LienPayoffPayment>; bank: ReadonlyArray<BankCheck> | null | undefined; todayYmd: string; mark?: ReleaseMoneyBackMark | null; open?: number }): string | null {
   const paid = lastPayment(input.payments)
-  if (!paid || !input.bank) return null
-  const answer = paymentCheckAnswer(paid, input.bank, input.todayYmd)
-  if (!releaseOnReturnedCheck(answer)) return null
-  const said = checkAnswerWords(answer, checkName(paid.reference_number)).say
+  const answer = paid && input.bank ? paymentCheckAnswer(paid, input.bank, input.todayYmd) : null
+  const byBank = paid && answer && releaseOnReturnedCheck(answer) ? checkAnswerWords(answer, checkName(paid.reference_number)).say : null
+  // The mark Accounts Receivable's case left (`payoffReturned.ts`): it speaks once the payment is off the job, until a payment holds.
+  const byMark = !byBank && input.mark && releaseMarkHolds(input.mark, { open: input.open ?? 0, lastPaidYmd: paid ? (paid.paid_on ?? '').slice(0, 10) : null, check: answer }) ? releaseMarkWords(input.mark) : null
+  const said = byBank ?? byMark
+  if (!said) return null
   return input.recorded ? `${said} The county’s record stands. Ask counsel.` : `Do not record this release. ${said}`
 }
 

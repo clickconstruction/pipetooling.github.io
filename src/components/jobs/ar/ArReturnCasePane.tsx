@@ -194,6 +194,24 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
             </div>
           ))}
           {props.liens.view.printsUnread ? <div style={{ color: 'var(--text-700)' }}>{PAYOFF_RETURNED_WORDS.printsUnread}</div> : null}
+          {/* The returned check's mark: one press tells the Lien desk, so each saved release stays held after the payment is off the job. */}
+          {props.liens.view.mark && props.liens.mark && canApply ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-start' }}>
+              <button type="button" data-testid="ar-return-case-liens-mark" disabled={props.liens.marking} onClick={props.liens.mark} style={{ ...btn(true, true), opacity: props.liens.marking ? 0.5 : 1, cursor: props.liens.marking ? 'not-allowed' : 'pointer' }}>
+                {props.liens.marking ? 'Holding…' : props.liens.view.mark.button}
+              </button>
+              <span style={{ color: 'var(--text-700)' }}>{PAYOFF_RETURNED_WORDS.markLead}</span>
+            </div>
+          ) : null}
+          {props.liens.said ? (
+            <div data-testid="ar-return-case-liens-said" role={props.liens.said.tone === 'bad' ? 'alert' : 'status'} style={{ color: props.liens.said.tone === 'bad' ? 'var(--text-red-700)' : 'var(--text-green-800)', fontWeight: 600 }}>
+              {props.liens.said.text}
+            </div>
+          ) : props.liens.view.marked > 0 && !props.liens.view.mark ? (
+            <div data-testid="ar-return-case-liens-marked" style={{ color: 'var(--text-700)' }}>
+              {PAYOFF_RETURNED_WORDS.marked}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

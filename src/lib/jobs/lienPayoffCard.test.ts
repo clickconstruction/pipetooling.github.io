@@ -206,6 +206,20 @@ describe('the clearing day is the payoff check’s alone (punch list #435, the w
   })
 })
 
+describe('a release held on its mark alone (punch list #435, the returned check’s mark)', () => {
+  const MARK = { ymd: '2026-11-25', check: '1184', caseId: 'dep1', by: 'u1', at: '2026-11-25T15:00:00Z' }
+  const release = (id: string, job: string, affidavit: string, filedAt: string | null) => ({ id, job_id: job, created_at: '2026-11-24T18:00:00Z', filed_at: filedAt, recording_number: null, fields: { releasesFilingId: affidavit, moneyCameBack: MARK } })
+
+  it('stays red once the payments are off the jobs, and asks for a payment that holds', () => {
+    const c = card({ releases: [release('r1', 'j1', 'a1', null), release('r2', 'j2', 'a2', '2026-11-25')] }, '2026-11-26')
+    expect(c.tone).toBe('red')
+    expect(c.stops[3]!.state).toBe('bad')
+    expect(plainSentence(c.line)).toBe('The check came back. Record a payment that holds before a release goes out. 1 release is already recorded. Ask counsel.')
+    expect(plainWordsFailures(plainSentence(c.line))).toEqual([])
+    expect(c.copiesRows).toEqual([])
+  })
+})
+
 describe('the notary and the copies (punch list #435, piece 5)', () => {
   const release = (id: string, job: string, affidavit: string, filedAt: string | null, more: Record<string, unknown> = {}) => ({ id, job_id: job, created_at: '2026-11-24T18:00:00Z', filed_at: filedAt, recording_number: null, fields: { releasesFilingId: affidavit, ...more } })
   const SENT = { by: 'u1', name: 'Alex Rivera', at: '2026-12-05T16:00:00Z' }

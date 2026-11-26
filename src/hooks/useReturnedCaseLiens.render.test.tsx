@@ -4,10 +4,11 @@
  * for a case that is not a check that came back, and a failed read says why.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, renderHook, waitFor } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { arReturnCaseView, type ArReturnCaseRow } from '../lib/jobs/arReturnCase'
 import type { PayoffReturnedInput } from '../lib/jobs/payoffReturned'
 import type { readReturnedCaseLiens } from '../lib/jobs/payoffReturnedIo'
+import type { ReleaseFactsChange } from '../lib/jobs/lienReleaseFacts'
 import { useReturnedCaseLiens } from './useReturnedCaseLiens'
 
 // Every job, payer, instrument and amount here is made up.
@@ -84,5 +85,45 @@ describe('useReturnedCaseLiens', () => {
     await waitFor(() => expect(result.current?.status).toBe('failed'))
     expect(result.current?.why).toBe('permission denied for table job_lien_filings')
     expect(result.current?.view).toBeNull()
+  })
+
+  describe('the mark', () => {
+    const saved: PayoffReturnedInput = { ...liened, targets: [{ affidavit: liened.targets[0]!.affidavit, release: { id: 'r1', created_at: '2026-09-20T16:00:00Z', filed_at: null, fields: { releasesFilingId: 'a1' } } }] }
+    const keepOk = () => vi.fn((rows: ReadonlyArray<{ releaseId: string; fields: unknown }>, _change: ReleaseFactsChange) => Promise.resolve(rows.map((r) => ({ releaseId: r.releaseId, ok: true, why: null as string | null }))))
+
+    it('keeps the case, the day the check came back and who pressed on each saved release, then reads again', async () => {
+      const read = vi.fn((..._args: ReadArgs) => Promise.resolve(saved))
+      const keep = keepOk()
+      const { result } = renderHook(() => useReturnedCaseLiens(view(), true, read, 'u1', keep))
+      await waitFor(() => expect(result.current?.status).toBe('ready'))
+      expect(result.current?.view?.mark?.button).toBe('Hold 1 release on the Lien desk')
+      act(() => result.current?.mark?.())
+      await waitFor(() => expect(keep).toHaveBeenCalledTimes(1))
+      expect(keep.mock.calls[0]![0]).toEqual([{ releaseId: 'r1', fields: { releasesFilingId: 'a1' } }])
+      expect(keep.mock.calls[0]![1].moneyBack).toMatchObject({ ymd: '2026-09-23', check: '1184', caseId: 'tx-1', by: 'u1' })
+      await waitFor(() => expect(result.current?.said).toEqual({ text: 'Held 1 release. The Lien desk is told. Each release stays held until a payment holds.', tone: 'ok' }))
+      await waitFor(() => expect(read).toHaveBeenCalledTimes(2))
+    })
+
+    it('says which release did not take the mark, with the reason, and reads nothing again', async () => {
+      const read = vi.fn((..._args: ReadArgs) => Promise.resolve(saved))
+      const keep = vi.fn((rows: ReadonlyArray<{ releaseId: string; fields: unknown }>, _change: ReleaseFactsChange) => Promise.resolve(rows.map((r) => ({ releaseId: r.releaseId, ok: false, why: 'permission denied for table job_lien_filings' as string | null }))))
+      const { result } = renderHook(() => useReturnedCaseLiens(view(), true, read, 'u1', keep))
+      await waitFor(() => expect(result.current?.status).toBe('ready'))
+      act(() => result.current?.mark?.())
+      await waitFor(() => expect(result.current?.said?.tone).toBe('bad'))
+      expect(result.current?.said?.text).toBe('Nothing held. 1 did not take the mark. permission denied for table job_lien_filings')
+      expect(read).toHaveBeenCalledTimes(1)
+    })
+
+    it('offers no press with nobody signed in, or with no saved release', async () => {
+      const read = vi.fn((..._args: ReadArgs) => Promise.resolve(saved))
+      const nobody = renderHook(() => useReturnedCaseLiens(view(), true, read, null, keepOk()))
+      await waitFor(() => expect(nobody.result.current?.status).toBe('ready'))
+      expect(nobody.result.current?.mark).toBeNull()
+      const none = renderHook(() => useReturnedCaseLiens(view(), true, vi.fn((..._args: ReadArgs) => Promise.resolve(liened)), 'u1', keepOk()))
+      await waitFor(() => expect(none.result.current?.status).toBe('ready'))
+      expect(none.result.current?.mark).toBeNull()
+    })
   })
 })

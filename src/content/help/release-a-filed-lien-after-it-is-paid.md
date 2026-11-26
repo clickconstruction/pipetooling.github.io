@@ -141,7 +141,9 @@ A release the county already recorded reads *Released, money came back*. The app
 
 The **Release of record** tab shows the same words in red over **The county's stamp**. You can still set the day and the number there. A stamp the clerk already gave is a fact to keep.
 
-Accounts Receivable shows it too. The check's case has a box named **Liens on this money**. Read [the liens on a check that came back](/help/match-bank-deposits-to-bills#the-liens-on-a-check-that-came-back).
+The office takes a returned check off its job in Accounts Receivable. The check's case there has a button that marks each saved release. A marked release stays held here after the payment is off the job. The row then reads *The release waits for a payment that holds.* Record the new payment on the bill. The release is let go once that payment clears.
+
+Accounts Receivable shows the liens too. The check's case has a box named **Liens on this money**. Read [the liens on a check that came back](/help/match-bank-deposits-to-bills#the-liens-on-a-check-that-came-back).
 
 ## What the window does not do
 

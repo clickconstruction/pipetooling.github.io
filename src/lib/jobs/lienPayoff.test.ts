@@ -446,3 +446,48 @@ describe('a release on a check that came back (punch list #435, piece 6)', () =>
     }
   })
 })
+
+describe('a release held on the mark Accounts Receivable left (punch list #435, the returned check’s mark)', () => {
+  const MARK = { ymd: '2026-11-27', check: '1184', caseId: 'dep1', by: 'u1', at: '2026-11-28T15:00:00Z' }
+  const marked = (over: Partial<LienPayoffRelease> = {}) => rel({ fields: { moneyCameBack: MARK }, ...over })
+
+  it('still says Do not record once the payment is off the job and the bills owe again', () => {
+    const s = step({ releases: [marked()], open: 7420, payments: [], todayYmd: '2026-11-29' })
+    expect(s.step).toBe('county')
+    expect(s.moneyBack).toBe(true)
+    expect(s.moneyBackMarked).toBe(true)
+    expect(plainSentence(s.say)).toBe('The release was made Nov 24. Do not record it.')
+    expect(plainSentence(s.warn ?? '')).toBe('Check 1184 came back Nov 27. The release waits for a payment that holds.')
+    expect(s.press).toEqual({ label: 'Open the bills ›', door: 'bill' })
+  })
+
+  it('still marks a recorded release, and it is counsel’s', () => {
+    const s = step({ releases: [marked({ filed_at: '2026-11-26' })], open: 7420, payments: [], todayYmd: '2026-11-29' })
+    expect(s.step).toBe('done')
+    expect(plainSentence(s.say)).toBe('Released, money came back. The county recorded it Nov 26.')
+    expect(plainSentence(s.warn ?? '')).toBe('Check 1184 came back Nov 27. The county’s record stands. Ask counsel.')
+    expect(s.moneyBackMarked).toBe(true)
+  })
+
+  it('holds while the new check is at the bank, and lets go the day it clears', () => {
+    const again = [check({ paid_on: '2026-12-01', reference_number: '1201' })]
+    const atBank = step({ releases: [marked()], payments: again, bank: [bank({ id: 'b2', checkNumber: '1201', depositedYmd: '2026-12-01', bankDayYmd: '2026-12-08' })], todayYmd: '2026-12-02' })
+    expect(atBank.moneyBack).toBe(true)
+    const cleared = step({ releases: [marked()], payments: again, bank: [bank({ id: 'b2', checkNumber: '1201', status: 'sent', depositedYmd: '2026-12-01', postedYmd: '2026-12-02', bankDayYmd: '2026-12-08' })], todayYmd: '2026-12-08' })
+    expect(cleared.moneyBack).toBeUndefined()
+    expect(cleared.press).toEqual({ label: 'Record the county’s stamp ›', door: 'release' })
+  })
+
+  it('lets go at once on money that needs no bank, and says the bank’s own words while the payment is still on the job', () => {
+    expect(step({ releases: [marked()], payments: [check({ paid_on: '2026-12-01', payment_type: 'Wire', reference_number: null })], todayYmd: '2026-12-02' }).moneyBack).toBeUndefined()
+    const still = step({ releases: [marked()], payments: [check()], bank: [bank({ status: 'failed', postedYmd: '2026-11-25', failureReason: 'Insufficient funds' })], todayYmd: '2026-11-28' })
+    expect(still.moneyBackMarked).toBeUndefined()
+    expect(plainSentence(still.warn ?? '')).toBe('Check 1184 came back. The bank said insufficient funds. Take the payment off the bills.')
+  })
+
+  it('keeps its sentences to plain words', () => {
+    for (const s of [step({ releases: [marked()], open: 7420, todayYmd: '2026-11-29' }), step({ releases: [marked({ filed_at: '2026-11-26' })], open: 7420, todayYmd: '2026-11-29' })]) {
+      for (const words of [s.say, s.warn ?? '']) expect(plainWordsFailures(plainSentence(words))).toEqual([])
+    }
+  })
+})
