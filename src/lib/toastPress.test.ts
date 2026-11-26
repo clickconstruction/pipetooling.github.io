@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PHONE_PRESS_MIN_HEIGHT } from './phonePress'
-import { TOAST_ACTION_DRAWN_HEIGHT, TOAST_DISMISS_DRAWN, toastActionPress, toastDismissPress } from './toastPress'
+import { TOAST_ACTION_DRAWN_HEIGHT, TOAST_DISMISS_DRAWN, toastActionPress, toastDismissPress, toastLiveRole } from './toastPress'
 
 describe('a toast’s presses on a phone (punch list #426)', () => {
   it('a desk adds nothing to either press', () => {
@@ -30,5 +30,18 @@ describe('a toast’s presses on a phone (punch list #426)', () => {
     const reach = -Number(toastDismissPress(true).marginLeft)
     expect(reach).toBeLessThanOrEqual(16)
     expect(reach).toBeLessThanOrEqual(24)
+  })
+})
+
+describe('the role a toast’s words carry (punch list #445)', () => {
+  it('a failure and a warning are alerts, a done and a note are statuses', () => {
+    expect(toastLiveRole('error', false)).toBe('alert')
+    expect(toastLiveRole('warning', false)).toBe('alert')
+    expect(toastLiveRole('success', false)).toBe('status')
+    expect(toastLiveRole('info', false)).toBe('status')
+  })
+
+  it('the centre toast is a dialog that names its own words, so they carry no second role', () => {
+    for (const type of ['error', 'warning', 'success', 'info'] as const) expect(toastLiveRole(type, true)).toBeUndefined()
   })
 })

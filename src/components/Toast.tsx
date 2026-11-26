@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { footClearanceCss } from '../lib/bottomChrome'
 import { JOB_MODE_PRESS_BAR_VAR } from '../lib/jobMode/pressBar'
-import { toastActionPress, toastDismissPress } from '../lib/toastPress'
+import { toastActionPress, toastDismissPress, toastLiveRole } from '../lib/toastPress'
 
 type ToastType = 'info' | 'warning' | 'error' | 'success'
 
@@ -169,7 +169,7 @@ export function Toast({
 
   const body = (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-      <span id={messageId} style={{ whiteSpace: 'pre-line' }}>
+      <span id={messageId} role={toastLiveRole(type, !anchor && placement === 'center')} style={{ whiteSpace: 'pre-line' }}>
         {message}
       </span>
       {action ? (
