@@ -6405,6 +6405,8 @@ the pay lens needs pay access and keeps people without a login visible.
 The fourth, **Sites** (v2.8657), is a dev's alone: each person's seat on CountTooling and on TakeoffTooling (no seat, active or retired, the role there, a robot's seat, the last sign-in where the site sends it, a chip when the site holds another address), read over `ct-bridge` and `tt-bridge` with the `roster` verb while the lens is open, and it changes nothing.
 A person is matched by `users.counttooling_user_id` where the row holds one and by address otherwise (`siteSeatFor` in [`siteAccounts.ts`](../src/lib/people/siteAccounts.ts)), a line above the list counts each site's accounts that match nobody here, and a site that cannot be read says why without blanking the other.
 Kernel [`usersTabLens.ts`](../src/lib/people/usersTabLens.ts);
+The person desk's **Sites** rows (v2.8667, [`PersonDeskSitesRows.tsx`](../src/components/personDesk/sections/PersonDeskSitesRows.tsx)) are where a dev changes what the lens shows: **Make their seat**, **Retire here** (asked first) or **Bring back** for each site, and a **Role there** row that sets the seat's role on that site, which PipeTooling's own role never decides.
+CountTooling's three roles stand together (**Overseer** sees every bid, **Lead** hands a bid to another estimator, **Admin** manages its users) and TakeoffTooling's is one of three (**User**, **Admin**, **Dev**), with a question before a role that manages other accounts, and each site keeping its last admin or dev (`SITE_ROLE_OPTIONS` and `siteRoleChange` in `siteAccounts.ts`).
 cells `UsersTabLensCells` / `PayConfigCells` / `UsersTabSiteCells`.
 Guides *see everyone's pay setup* and *see who has a seat on CountTooling and TakeoffTooling*.
 

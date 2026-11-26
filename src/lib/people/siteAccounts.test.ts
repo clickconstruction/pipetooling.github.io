@@ -1,21 +1,38 @@
 import { describe, expect, it } from 'vitest'
 import { plainSentence } from '../valuesInPlace'
-import { countUnmatchedSiteAccounts, normalizeSiteEmail, parseSiteRoster, siteFlagTitle, siteSeatFor, siteSeatWords, unmatchedSiteWords, unreadSiteWords, type SiteAccount } from './siteAccounts'
+import {
+  SITE_ROLE_OPTIONS,
+  countUnmatchedSiteAccounts,
+  isFleetAddress,
+  normalizeSiteEmail,
+  parseSiteRoster,
+  siteFlagTitle,
+  siteRoleChange,
+  siteRoleDoneWords,
+  siteRoleIsOn,
+  siteSeatActiveBody,
+  siteSeatFor,
+  siteSeatPress,
+  siteSeatWords,
+  unmatchedSiteWords,
+  unreadSiteWords,
+  type SiteAccount,
+} from './siteAccounts'
 
-const acct = (over: Partial<SiteAccount> & { id: string }): SiteAccount => ({ email: null, active: true, isTwin: false, role: null, lastSignInAt: null, ...over })
+const acct = (over: Partial<SiteAccount> & { id: string }): SiteAccount => ({ email: null, active: true, isTwin: false, roles: [], lastSignInAt: null, ...over })
 
 describe('reading a site roster', () => {
-  it("reads CountTooling's rows: its own id key, the admin flag as a role, no sign-in stamp", () => {
+  it("reads CountTooling's rows: its own id key, the three roles that stand together, no sign-in stamp", () => {
     const got = parseSiteRoster('count', {
       roster: [
-        { ct_user_id: 'ct-1', email: 'zz.test.estimator@example.com', is_digital_twin: false, is_admin: true, active: true },
+        { ct_user_id: 'ct-1', email: 'zz.test.estimator@example.com', is_digital_twin: false, is_admin: true, is_overseer: true, is_lead: true, active: true },
         { ct_user_id: 'ct-2', email: 'twin-estimator-1@twins.counttooling.local', is_digital_twin: true, is_admin: false, active: false },
       ],
       count: 2,
     })
     expect(got).toEqual([
-      { id: 'ct-1', email: 'zz.test.estimator@example.com', active: true, isTwin: false, role: 'admin', lastSignInAt: null },
-      { id: 'ct-2', email: 'twin-estimator-1@twins.counttooling.local', active: false, isTwin: true, role: null, lastSignInAt: null },
+      { id: 'ct-1', email: 'zz.test.estimator@example.com', active: true, isTwin: false, roles: ['overseer', 'lead', 'admin'], lastSignInAt: null },
+      { id: 'ct-2', email: 'twin-estimator-1@twins.counttooling.local', active: false, isTwin: true, roles: [], lastSignInAt: null },
     ])
   })
 
@@ -26,9 +43,9 @@ describe('reading a site roster', () => {
         { tt_user_id: 'tt-2', email: 'zz.test.dev@example.com', role: 'dev', is_digital_twin: false, active: true, last_sign_in_at: null },
       ],
     })
-    expect(got.map((a) => [a.id, a.role, a.lastSignInAt])).toEqual([
-      ['tt-1', null, '2026-11-20T15:00:00Z'],
-      ['tt-2', 'dev', null],
+    expect(got.map((a) => [a.id, a.roles, a.lastSignInAt])).toEqual([
+      ['tt-1', [], '2026-11-20T15:00:00Z'],
+      ['tt-2', ['dev'], null],
     ])
   })
 
@@ -101,5 +118,50 @@ describe('accounts that belong to nobody here', () => {
 
   it('a site that was not read says so with its reason', () => {
     expect(unreadSiteWords('TakeoffTooling', 'Unknown or missing verb')).toBe('TakeoffTooling could not be read. Unknown or missing verb')
+  })
+})
+
+describe("the desk's presses for one seat", () => {
+  const overseer = acct({ id: 'ct-1', roles: ['overseer'] })
+
+  it('a CountTooling press flips the one flag and names no other', () => {
+    expect(siteRoleIsOn('count', overseer, 'overseer')).toBe(true)
+    expect(siteRoleIsOn('count', overseer, 'lead')).toBe(false)
+    expect(siteRoleChange('count', overseer, 'lead')).toEqual({ body: { verb: 'set_flags', ct_user_id: 'ct-1', is_lead: true }, turnsOn: true })
+    expect(siteRoleChange('count', overseer, 'overseer')).toEqual({ body: { verb: 'set_flags', ct_user_id: 'ct-1', is_overseer: false }, turnsOn: false })
+  })
+
+  it('a TakeoffTooling seat holds one role, a plain seat is a user, and pressing the role it holds sends nothing', () => {
+    const plain = acct({ id: 'tt-1' })
+    expect(siteRoleIsOn('takeoff', plain, 'user')).toBe(true)
+    expect(siteRoleChange('takeoff', plain, 'user')).toBeNull()
+    expect(siteRoleChange('takeoff', plain, 'admin')).toEqual({ body: { verb: 'set_role', tt_user_id: 'tt-1', role: 'admin' }, turnsOn: true })
+    expect(siteRoleChange('takeoff', acct({ id: 'tt-2', roles: ['dev'] }), 'user')).toEqual({ body: { verb: 'set_role', tt_user_id: 'tt-2', role: 'user' }, turnsOn: true })
+  })
+
+  it('the roles that manage other accounts ask first, and the rest do not', () => {
+    expect(SITE_ROLE_OPTIONS.count.options.filter((o) => o.confirm).map((o) => o.key)).toEqual(['admin'])
+    expect(SITE_ROLE_OPTIONS.takeoff.options.filter((o) => o.confirm).map((o) => o.key)).toEqual(['admin', 'dev'])
+  })
+
+  it('says what a role change did', () => {
+    const [seer, , admin] = SITE_ROLE_OPTIONS.count.options
+    expect(siteRoleDoneWords('CountTooling', seer!, true, 'ZZ Test Estimator')).toBe('ZZ Test Estimator is now an overseer on CountTooling.')
+    expect(siteRoleDoneWords('CountTooling', admin!, false, 'ZZ Test Estimator')).toBe('ZZ Test Estimator is no longer an admin on CountTooling.')
+    expect(siteRoleDoneWords('TakeoffTooling', SITE_ROLE_OPTIONS.takeoff.options[0]!, true, 'ZZ Test Estimator')).toBe('ZZ Test Estimator is now a user on TakeoffTooling.')
+  })
+
+  it('offers one seat press: make, retire or bring back, each with its own id key', () => {
+    expect(siteSeatPress({ kind: 'none', linkGone: false })).toBe('make')
+    expect(siteSeatPress({ kind: 'seat', account: overseer, matchedBy: 'link', addressDiffers: false })).toBe('retire')
+    expect(siteSeatPress({ kind: 'seat', account: acct({ id: 'ct-9', active: false }), matchedBy: 'email', addressDiffers: false })).toBe('bring back')
+    expect(siteSeatActiveBody('count', 'ct-1', false)).toEqual({ verb: 'deactivate', ct_user_id: 'ct-1' })
+    expect(siteSeatActiveBody('takeoff', 'tt-1', true)).toEqual({ verb: 'reactivate', tt_user_id: 'tt-1' })
+  })
+
+  it("knows a robot's or a sample's address, whose seat is never made from a desk", () => {
+    expect(isFleetAddress('twin-estimator-1@twins.pipetooling.local')).toBe(true)
+    expect(isFleetAddress('zz.test.estimator@example.com')).toBe(false)
+    expect(isFleetAddress(null)).toBe(false)
   })
 })

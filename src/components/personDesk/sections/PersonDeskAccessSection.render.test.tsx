@@ -43,6 +43,10 @@ vi.mock('../../../lib/supabase', () => {
   }
 })
 
+// v2.8667: the Sites rows read two other sites on mount and have a render test of their own
+// (PersonDeskSitesRows.render.test.tsx). Here they are a marker, so this file's presses stay the only calls.
+vi.mock('./PersonDeskSitesRows', () => ({ PersonDeskSitesRows: () => <div data-testid="sites-rows" /> }))
+
 const KAI: PersonDeskUserRow = {
   id: 'u-kai',
   name: 'Kai Moss',
@@ -95,9 +99,9 @@ describe('PersonDeskAccessSection', () => {
     expect(screen.getByText('Plumbing')).toBeTruthy()
     expect(screen.queryByText(/Manage account/)).toBeNull()
     expect(screen.getByRole('button', { name: 'Merge a duplicate…' })).toBeTruthy()
-    // A helper has no Hiring board or CountTooling row.
+    // A helper has no Hiring board. A dev sees the Sites rows for anyone with a login, whatever their role (v2.8667).
     expect(screen.queryByText('Extra access')).toBeNull()
-    expect(screen.queryByText('CountTooling')).toBeNull()
+    expect(screen.getByTestId('sites-rows')).toBeTruthy()
   })
 
   it('renames in place, and the pay rows follow', async () => {
@@ -161,17 +165,19 @@ describe('PersonDeskAccessSection', () => {
     await vi.waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 
-  it('an estimator has Extra access and a CountTooling row', () => {
+  it('an estimator has Extra access and the Sites rows', () => {
     renderSection(WENDI, DEV)
     expect((screen.getByLabelText('Hiring board') as HTMLInputElement).checked).toBe(true)
     expect((screen.getByLabelText('Prospects') as HTMLInputElement).checked).toBe(false)
-    expect(screen.getByRole('button', { name: 'Make a seat' })).toBeTruthy()
+    expect(screen.getByTestId('sites-rows')).toBeTruthy()
     // An estimator has no supervision switch.
     expect(screen.queryByLabelText('Can run a job on their own')).toBeNull()
   })
 
   it('a leader sees the values with a tag, and flips only what the database lets them', () => {
     renderSection(KAI, LEADER)
+    // The Sites rows are a dev's alone: both bridges answer devs only.
+    expect(screen.queryByTestId('sites-rows')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Set password…' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Trades…' })).toBeNull()

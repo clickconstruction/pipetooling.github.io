@@ -2,7 +2,7 @@
 title: see who has a seat on CountTooling and TakeoffTooling
 category: Office
 roles: dev
-keywords: sites, sites lens, seat, counttooling, takeofftooling, account on another site, sister sites, retired seat, by address, address differs, twin, users lens
+keywords: sites, sites lens, seat, counttooling, takeofftooling, account on another site, sister sites, retired seat, by address, address differs, twin, users lens, overseer, lead, admin, role there, make their seat, retire here, bring back
 where: /people
 order: 42
 ---
@@ -25,7 +25,7 @@ Each row has two cells. One is for CountTooling and one is for TakeoffTooling.
 
 A cell can say more after that.
 
-- A role, such as **admin**, is the role they hold on that site.
+- A role, such as **overseer**, **lead** or **admin**, is a role they hold on that site. CountTooling's three roles stand together, so a seat can show more than one.
 - **twin** marks a robot's seat.
 - A time, such as **3d ago**, is their last sign-in there. TakeoffTooling sends it. CountTooling does not yet.
 - **by address** means the match was made by email address. Their row holds no id for that site yet.
@@ -42,6 +42,32 @@ The line says **TakeoffTooling could not be read** and gives the reason. The oth
 
 ## Change a seat
 
-The Sites view reads only. Nothing you press here changes an account.
+The Sites view reads only. Nothing you press here changes an account. You change a seat on the person's desk.
 
-Open the person's desk to give them a CountTooling seat. Archiving a person retires their CountTooling seat too. The guide [archive user accounts](/help/archive-user-accounts) walks through that.
+1. Open the person's desk. Go to **Access and account**.
+2. Find the row named for the site, **CountTooling** or **TakeoffTooling**.
+3. Press {{button:outline|Make their seat}} when they have no seat there.
+4. Press {{button:outline|Retire here}} to stop them signing in to that site. The desk asks first. Their work on that site stays.
+5. Press {{button:outline|Bring back}} to let a retired seat sign in again.
+
+Archiving a person retires their CountTooling seat too. The guide [archive user accounts](/help/archive-user-accounts) walks through that.
+
+## Set their role on a site
+
+Each site has its own roles. A person's role in PipeTooling does not set them. You set each one by hand on the **Role there** row, under the site's row.
+
+On CountTooling the three roles stand together. Press one to turn it on. Press it again to turn it off.
+
+- **Overseer** sees every bid in the company.
+- **Lead** can hand a bid to another estimator.
+- **Admin** manages CountTooling's users. The desk asks before it makes an admin.
+
+On TakeoffTooling a seat holds one role. Press the one you want.
+
+- **User** builds bids.
+- **Admin** also updates supplier prices. The desk asks first.
+- **Dev** also manages TakeoffTooling's users. The desk asks first.
+
+:::example The last one stays
+CountTooling keeps its last admin, and TakeoffTooling keeps its last dev. The desk says so when you try to take that role away. Give the role to someone else first.
+:::

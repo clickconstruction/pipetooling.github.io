@@ -28,8 +28,11 @@ export type SiteAccount = {
   /** False when the site has retired the seat (its auth ban). */
   active: boolean
   isTwin: boolean
-  /** A role worth saying: CountTooling's admin flag, TakeoffTooling's `admin` or `dev`. Null for a plain user. */
-  role: string | null
+  /**
+   * The roles the seat holds, in the site's own words (v2.8667). CountTooling's are three switches that stand
+   * together: `overseer`, `lead`, `admin`. TakeoffTooling's is one of three, and a plain `user` is left out.
+   */
+  roles: string[]
   /** Null when the site's roster does not carry it (CountTooling's does not). */
   lastSignInAt: string | null
 }
@@ -77,12 +80,18 @@ export function parseSiteRoster(site: SiteKey, json: unknown): SiteAccount[] {
     const id = r ? asText(r[idKey]) : null
     if (!r || !id) continue
     const ttRole = asText(r.role)
+    const roles =
+      site === 'count'
+        ? [r.is_overseer === true ? 'overseer' : null, r.is_lead === true ? 'lead' : null, r.is_admin === true ? 'admin' : null].filter((x): x is string => x !== null)
+        : ttRole && ttRole !== 'user'
+          ? [ttRole]
+          : []
     out.push({
       id,
       email: asText(r.email),
       active: r.active !== false,
       isTwin: r.is_digital_twin === true,
-      role: site === 'count' ? (r.is_admin === true ? 'admin' : null) : ttRole && ttRole !== 'user' ? ttRole : null,
+      roles,
       lastSignInAt: asText(r.last_sign_in_at),
     })
   }
@@ -120,7 +129,7 @@ export type SiteSeatWords = { status: 'no seat' | 'active' | 'retired'; flags: s
 export function siteSeatWords(seat: SiteSeat): SiteSeatWords {
   if (seat.kind === 'none') return { status: 'no seat', flags: seat.linkGone ? ['link gone'] : [] }
   const flags: string[] = []
-  if (seat.account.role) flags.push(seat.account.role)
+  flags.push(...seat.account.roles)
   if (seat.account.isTwin) flags.push('twin')
   if (seat.matchedBy === 'email') flags.push('by address')
   if (seat.addressDiffers) flags.push('address differs')
@@ -145,4 +154,69 @@ export function unmatchedSiteWords(siteName: string, unmatched: number): string 
 /** The line for a site that was not read. */
 export function unreadSiteWords(siteName: string, reason: string): string {
   return `${siteName} could not be read. ${reason}`
+}
+
+/* ── The person desk's Sites rows (v2.8667): what a dev may press for one seat ─────────────────────────────── */
+
+export type SiteRoleOption = { key: string; label: string; says: string; confirm: boolean }
+
+/**
+ * The roles a dev sets from the desk, a site at a time. CountTooling's stand together (`any`), TakeoffTooling's
+ * is one of three (`one`). `confirm` marks a role that manages other people's accounts on that site.
+ */
+export const SITE_ROLE_OPTIONS: Record<SiteKey, { pick: 'any' | 'one'; options: readonly SiteRoleOption[] }> = {
+  count: {
+    pick: 'any',
+    options: [
+      { key: 'overseer', label: 'Overseer', says: 'An overseer sees every bid.', confirm: false },
+      { key: 'lead', label: 'Lead', says: 'A lead can hand a bid to another estimator.', confirm: false },
+      { key: 'admin', label: 'Admin', says: "An admin manages CountTooling's users.", confirm: true },
+    ],
+  },
+  takeoff: {
+    pick: 'one',
+    options: [
+      { key: 'user', label: 'User', says: 'A user builds bids.', confirm: false },
+      { key: 'admin', label: 'Admin', says: 'An admin also updates supplier prices.', confirm: true },
+      { key: 'dev', label: 'Dev', says: "A dev also manages TakeoffTooling's users.", confirm: true },
+    ],
+  },
+}
+
+/** Whether the seat holds the role today. A TakeoffTooling seat with no role said is a plain user. */
+export function siteRoleIsOn(site: SiteKey, account: SiteAccount, key: string): boolean {
+  if (site === 'count') return account.roles.includes(key)
+  return (account.roles[0] ?? 'user') === key
+}
+
+/**
+ * What pressing a role sends over the site's bridge, or null when the press changes nothing (the role a
+ * TakeoffTooling seat already holds). A CountTooling press flips the one flag and leaves the other two.
+ */
+export function siteRoleChange(site: SiteKey, account: SiteAccount, key: string): { body: Record<string, unknown>; turnsOn: boolean } | null {
+  const on = siteRoleIsOn(site, account, key)
+  if (site === 'count') return { body: { verb: 'set_flags', ct_user_id: account.id, [`is_${key}`]: !on }, turnsOn: !on }
+  if (on) return null
+  return { body: { verb: 'set_role', tt_user_id: account.id, role: key }, turnsOn: true }
+}
+
+/** The toast after a role change. */
+export function siteRoleDoneWords(siteName: string, option: SiteRoleOption, turnsOn: boolean, who: string): string {
+  return turnsOn ? `${who} is now ${option.label.toLowerCase() === 'user' ? 'a user' : `${/^[aeiou]/i.test(option.label) ? 'an' : 'a'} ${option.label.toLowerCase()}`} on ${siteName}.` : `${who} is no longer ${/^[aeiou]/i.test(option.label) ? 'an' : 'a'} ${option.label.toLowerCase()} on ${siteName}.`
+}
+
+/** The one seat press a row offers: make one, retire it, or bring it back. */
+export function siteSeatPress(seat: SiteSeat): 'make' | 'retire' | 'bring back' {
+  if (seat.kind === 'none') return 'make'
+  return seat.account.active ? 'retire' : 'bring back'
+}
+
+/** What retiring or bringing back a seat sends over the site's bridge. */
+export function siteSeatActiveBody(site: SiteKey, accountId: string, active: boolean): Record<string, unknown> {
+  return { verb: active ? 'reactivate' : 'deactivate', [site === 'count' ? 'ct_user_id' : 'tt_user_id']: accountId }
+}
+
+/** A robot, a sample or the walk tester: their seats are made where the fleet is made, never from a desk. */
+export function isFleetAddress(email: string | null | undefined): boolean {
+  return /\.local$/.test((email ?? '').trim().toLowerCase())
 }
