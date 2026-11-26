@@ -138,7 +138,10 @@ live while the plan box is empty and refuses by a short toast, so a press that d
 since before this card. **Mended in v2.8624, merged 2026-11-26:** the press is dead, in the dead press's pair, while the
 plan box is empty, with *Say what you mean to get done today, then Complete Clock In.* under the box, and comes alive as
 the person types; the clock-out review's press, already dead with an empty box, is drawn as one with *Say what you worked
-on today, then Complete clock out.*; the toast stays for the keyboard path. Not yet seen live. The strip's **Clock Out** timer reading over a minute
+on today, then Complete clock out.*; the toast stays for the keyboard path. The clock-in sheet's half was seen live on
+2026-11-26, by the walker's report: the press dead and grey with its line, orange under white words once a word is
+typed, and dead again when emptied; **Cancel**, nobody clocked in. The clock-out review's half was not seen: no session
+was open. The strip's **Clock Out** timer reading over a minute
 eight seconds after a clock-in is the day's total, which held an earlier closed session of the same company day: as
 built, and right.
 

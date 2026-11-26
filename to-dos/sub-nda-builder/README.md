@@ -842,7 +842,9 @@ Step 7 on prod on 2026-11-25, and the three walks of that day:
 - **The Form Studio's Delete is v2.8620, merged 2026-11-26**, the client alone, nothing owed: a form a job requires or
   once required draws a dead **Delete** reading *N jobs require this form or once required it. Their records keep it, so
   it stays.*, and a refusal the database sends anyway reads *The form stays. A job requires it or once required it, and
-  that record keeps it.* Item 6 of the papers hand-over. Not yet seen live.
+  that record keeps it.* Item 6 of the papers hand-over. Seen live on 2026-11-26, reads only, by the walker's report: of
+  eight forms one is held, its **Delete** grey and dead with the line and the same words in its title, and seven are free,
+  their **Delete** live and not pressed. The refusal the database sends was not staged.
 - **The pay log was read on prod on 2026-11-26**, read only, through the dev seat, by the walking thread: `pay_admin_events`
   holds no line for walk B's wage. That is the trigger of *Settled*, 18, built as v2.8629 by the migration lane
   (`20261126033215_pay_config_log_screen_changes.sql`), merged and pushed on 2026-11-26 on the person's yes.
