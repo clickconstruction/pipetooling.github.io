@@ -34023,6 +34023,10 @@ export type Database = {
           signing_body_format: string
           signing_body_html: string | null
           signing_for: string | null
+          site_address: string | null
+          site_address_key: string | null
+          site_development_id: string | null
+          site_prints_address: boolean
           status: string
           supersedes_person_contract_document_id: string | null
           updated_at: string | null
@@ -34093,6 +34097,10 @@ export type Database = {
           signing_body_format?: string
           signing_body_html?: string | null
           signing_for?: string | null
+          site_address?: string | null
+          site_address_key?: string | null
+          site_development_id?: string | null
+          site_prints_address?: boolean
           status?: string
           supersedes_person_contract_document_id?: string | null
           updated_at?: string | null
@@ -34163,6 +34171,10 @@ export type Database = {
           signing_body_format?: string
           signing_body_html?: string | null
           signing_for?: string | null
+          site_address?: string | null
+          site_address_key?: string | null
+          site_development_id?: string | null
+          site_prints_address?: boolean
           status?: string
           supersedes_person_contract_document_id?: string | null
           updated_at?: string | null
@@ -34251,6 +34263,13 @@ export type Database = {
             columns: ["sheet_project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_site_development_id_fkey"
+            columns: ["site_development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
             referencedColumns: ["id"]
           },
           {
