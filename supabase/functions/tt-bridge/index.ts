@@ -5,7 +5,9 @@ import { callTtManageUser } from '../_shared/ttBridge.ts'
 // The app's ONLY door to TakeoffTooling's manage-user function: verifies the caller
 // is a signed-in PT dev, then forwards an allowlisted verb with the bridge secret
 // (which never reaches the browser). Call sites: twin mint + TT-seat link/retry
-// (DigitalTwinsPanel). twin-mcp reaches TakeoffTooling directly through
+// (DigitalTwinsPanel), and since v2.8655 the read-only `roster` verb (every
+// TakeoffTooling account with its role, twin flag, active or not and last sign-in),
+// which People → Users reads beside CountTooling's. twin-mcp reaches TakeoffTooling directly through
 // _shared/ttBridge.ts (server → server), not through here.
 // Every act is logged to the function log (no audit table — same as ct-bridge).
 
@@ -15,7 +17,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const ALLOWED_VERBS = new Set(['create', 'lookup', 'set_twin_flag'])
+// `roster` reads and writes nothing. TakeoffTooling's manage-user also has deactivate,
+// reactivate and update_email since 2026-11-26; none is forwarded from here yet.
+const ALLOWED_VERBS = new Set(['create', 'lookup', 'set_twin_flag', 'roster'])
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
