@@ -94,7 +94,16 @@ serve(async (req) => {
       rosterRowsUpdated = moved?.length ?? 0
     }
 
-    return json({ success: true, email: check.email, previous, rosterRowsUpdated })
+    // v2.8671 (punch list #447): a Google link is held by Google's own id, so it would go on opening this login
+    // from the old Google account after the address moved. Take it off with the address. Fail-soft: the address
+    // has already moved, and the desk's Ways in row says when a link is still there.
+    let googleUnlinked: number | string = 0
+    if (hasLogin) {
+      const { data: unlinked, error: unlinkError } = await admin.rpc('dev_unlink_google', { p_user_id: user_id })
+      googleUnlinked = unlinkError ? `failed: ${unlinkError.message}` : Number((unlinked as { removed?: number } | null)?.removed ?? 0)
+    }
+
+    return json({ success: true, email: check.email, previous, rosterRowsUpdated, google_unlinked: googleUnlinked })
   } catch (error) {
     console.error('Error in change-user-email function:', error)
     return json({ error: (error as Error).message || 'Internal server error' }, 500)

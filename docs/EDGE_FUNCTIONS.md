@@ -5027,6 +5027,8 @@ const response = await supabase.functions.invoke('set-user-password', {
 
 ### change-user-email
 
+> **v2.8671 (punch list #447)**: after it moves the address it calls `dev_unlink_google`, so a Google link stops opening the login from the old Google account; the call is fail-soft and the answer carries `google_unlinked` (a count, or `failed: …`).
+
 > **v2.6519 (punch list #260)**: for a row with no login (`users.login_attached_at` null) the function changes the app's copy and the roster row alone, since there is no auth address to move; the put-back on a failed row write is skipped the same way.
 
 **Purpose** (v2.4344, *Account on the desk* PR C): change the email someone **signs in with**. It moves the login (`auth.users.email`, confirmed so no confirmation email goes out) and the app's copy (`public.users.email`) together, then the account's own roster row (`people` where `account_user_id` is them) only where it still held the old address. Before it, the Active Accounts window's Edit wrote `public.users.email` alone, so the app showed one address while the person signed in with another. If the app's copy cannot be written, the login is put back. The CountTooling seat is joined by uuid, not email, so it needs nothing.
