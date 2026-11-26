@@ -76,6 +76,6 @@ A person already on the standard week keeps their pay. So does a person paid by 
 
 - Hours hold from a Sunday. Days already worked this week keep the time on them.
 - The newest save holds. Hours you save for this week replace hours saved earlier for next week.
-- {{button:outline|Earlier hours}} shows what the hours were, who set them and why.
+- {{button:outline|Earlier hours}} shows what the hours were, who set them and why. After **Take working hours off** the row reads *Not set yet* and keeps the press.
 - An owner reads the hours and cannot change them. The office reads them on People, **Utilization**.
 - The person reads their own hours on their dashboard, in **My Time**.
