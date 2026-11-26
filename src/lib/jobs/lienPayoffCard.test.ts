@@ -183,6 +183,29 @@ describe('a release on a check that came back (punch list #435, piece 6)', () =>
   })
 })
 
+describe('the clearing day is the payoff check’s alone (punch list #435, the walk of 2026-11-26)', () => {
+  // An earlier part payment by check 0907, long cleared. Both liens still owe.
+  const old = { amount: 500, paid_on: '2026-06-18', payment_type: 'Check', reference_number: '0907' }
+  const stillOwing = { openByJob: { j1: 6920, j2: 5160.5 }, paymentsByJob: { j1: [old] } }
+
+  it('names no clearing day while every lien still waits on the money, whatever an older check did', () => {
+    const c = card(stillOwing)
+    expect(states(c)).toEqual(['now', 'later', 'later', 'later', 'later'])
+    expect(c.clearsYmd).toBeNull()
+    expect(c.cleared).toBe(false)
+    // The same holds for an older check the bank still holds: stop 2 says the money comes first.
+    expect(card({ ...stillOwing, paymentsByJob: { j1: [{ ...old, paid_on: '2026-11-23' }] } }).clearsYmd).toBeNull()
+  })
+
+  it('takes the day from the liens that are paid, and not from one still on the money', () => {
+    const c = card({ openByJob: { j1: 6920, j2: 0 }, paymentsByJob: { j1: [old], j2: [paid(5160.5)] }, bank: [AT_BANK] })
+    expect(c.clearsYmd).toBe('2026-12-02')
+    const cleared = card({ openByJob: { j1: 6920, j2: 0 }, paymentsByJob: { j1: [old], j2: [paid(5160.5)] }, bank: [CLEARED] })
+    expect(cleared.clearsYmd).toBe('2026-11-21')
+    expect(cleared.cleared).toBe(true)
+  })
+})
+
 describe('the notary and the copies (punch list #435, piece 5)', () => {
   const release = (id: string, job: string, affidavit: string, filedAt: string | null, more: Record<string, unknown> = {}) => ({ id, job_id: job, created_at: '2026-11-24T18:00:00Z', filed_at: filedAt, recording_number: null, fields: { releasesFilingId: affidavit, ...more } })
   const SENT = { by: 'u1', name: 'Alex Rivera', at: '2026-12-05T16:00:00Z' }
