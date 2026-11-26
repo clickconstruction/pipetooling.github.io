@@ -20,7 +20,7 @@ function line(over: Partial<LienRunLine>): LienRunLine {
   return { key: `${over.kind ?? 'notice'}:${over.jobId ?? 'j'}`, kind: 'notice', jobId: 'j', label: '1001', title: 'ZZ Sample Shop', stage: 'Approved · to print', stageKey: 'to_print', detail: '', dueYmd: '2026-11-16', amount: 100, atRisk: false, standing: 'right', rowKey: null, press: null, leftOut: null, rightNow: false, ...over } as LienRunLine
 }
 function runOf(right: LienRunLine[]): LienGetItRight {
-  return { day: '2026-11-16', dayWords: 'tomorrow', asked: [], settle: [], right, leftOut: [], counts: { papers: right.length, settle: 0, right: right.length, leftOut: 0, toPrint: 0, toMail: 0, toFile: 0 }, totals: { run: 0, waits: 0, right: 0 }, step: 2, steps: [] as never, rightParts: '' }
+  return { day: '2026-11-16', dayWords: 'tomorrow', asked: [], settle: [], right, leftOut: [], counts: { papers: right.length, settle: 0, right: right.length, leftOut: 0, toPrint: 0, toMail: 0, toFile: 0, affidavitsPrinted: 0, noticesStopped: 0 }, totals: { run: 0, waits: 0, right: 0 }, step: 2, steps: [] as never, rightParts: '' }
 }
 /** One affidavit ready to file on job-1, and one printed notice on j1. */
 const RUN = runOf([line({ kind: 'affidavit', jobId: 'job-1', stageKey: 'ready', stage: 'Ready to file' }), line({ kind: 'notice', jobId: 'j1', stageKey: 'in_mail', stage: 'Approved · to mail' })])

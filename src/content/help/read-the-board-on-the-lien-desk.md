@@ -185,7 +185,7 @@ The owner works liens as one run. First every paper is made right. Then the pape
 
 A line over the list says what the run holds. It reads like *This run, 21 papers due by tomorrow, 6 to settle*. Press {{button:blue|Get it right ›}} on that line. The checklist takes the list's place under the Board. Press {{button:outline|‹ The list}} to go back to the list.
 
-Three steps sit across the top of the checklist. They are **Get it right**, **Print** and **Out the door**. Each says how many papers wait at it. The step the run is on is blue.
+Three steps sit across the top of the checklist. They are **Get it right**, **Print** and **Out the door**. Each says how many papers wait at it. The Print step counts what its press will print. An affidavit that printed already is said apart. So is a notice the run window still holds. The step the run is on is blue.
 
 Under **Get it right** each line is one paper that cannot print as it stands. The line says the job, the paper's bin and the one thing it waits on. Its blue press settles it, like {{button:blue|Find the owner}}. It is the same press the paper's row has on the list. A paper that waits on the leader has no blue press. The papers with the red mark come first.
 

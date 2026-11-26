@@ -16,7 +16,7 @@ summary: >
 next: The migration `20261125210500_lien_print_stands.sql` is applied (2026-11-26, 02:11 UTC), and the types follow in pull request 9902 with the dev seat's deploy after it. The *Changed since printed* card was seen drawn live on 2026-11-26 (sitting 21); its three presses have not been pressed live. Then step 8, mail and file (M). The six calls on the run's defaults are answered, each as built, under *Open questions*. The first real press is the office's, at its own printer. A guarded press, with the print window held shut, has its own yes of 2026-11-25 and is the walker's, on a live press alone. A print of the run on a real printer has not been seen.
 size: L for D as five steps (M · M · M · S · M); B, the first three, step 4, the list by bin, step 5, the checklist, step 6, the one print, and step 7, changed since printed, are built; left: step 8 (M)
 blocker: none
-ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474 · v2.8536 · v2.8589 · v2.8591 · v2.8593 · v2.8595
+ver: v2.4583 · v2.6515 · v2.7247 · v2.7367 · v2.7371 · v2.7372 · v2.7456 · v2.7470 · v2.7477 · v2.7481 · v2.7483 · v2.7489 · v2.7490 · v2.7559 · v2.8474 · v2.8536 · v2.8589 · v2.8591 · v2.8593 · v2.8595 · v2.8631
 ---
 
 # Lien desk To do: one run (#362)
@@ -431,7 +431,9 @@ A look at the live card on 2026-11-25 met a dead press that read *No paper is ri
 that read *5 papers are right, 1 notice to print*. The press counts the notices the packet prints.
 The checklist counts a notice as right from the Board's chip, and the run window can still hold it,
 or its copies can have gone by Docsmit. Mended, v2.8591: the card names each such notice under the
-press with the run window's reason. The strip's *1 notice to print* still counts it. Seen live on
+press with the run window's reason. The strip's *1 notice to print* still counted it until v2.8631, which draws
+the strip's counts with what the press knows: a printed affidavit and a notice the run window holds are said
+apart from what prints. Seen live on
 2026-11-25 (sitting 17, at 1280 px): the card reads *No paper prints now. 1 right notice does not print
 here. It is named below with its reason. 11 more wait on step 1 above.*, names the job and the reason
 (the paper claims one amount, the bills now come to a smaller one, it prints once redrawn), and points at

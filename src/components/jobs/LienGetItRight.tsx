@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { emptyWords } from '../../lib/emptyWords'
-import { LIEN_GET_IT_RIGHT_WORDS as WORDS, lienRunDoor, lienRunHead, lienRunKindWord, type LienGetItRight as Run, type LienRunLine, type LienRunStep } from '../../lib/jobs/lienGetItRight'
+import { LIEN_GET_IT_RIGHT_WORDS as WORDS, lienGetItRightWithFacts, lienRunDoor, lienRunHead, lienRunKindWord, type LienGetItRight as Run, type LienRunLine, type LienRunStep } from '../../lib/jobs/lienGetItRight'
 import { LIEN_LEAVE_OUT_REASONS, LIEN_LEFT_OUT_WORDS as OUT, lienAskedAgainWords, lienLeaveOutCheck, lienLeaveOutReasonWords, lienLeftOutByWords, type LienLeaveOutReason } from '../../lib/jobs/lienLeftOut'
 import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -289,7 +289,10 @@ function StoodFoot({ paper, isMobile, canTakeBack, words, onTakeBack }: { paper:
   )
 }
 
-export default function LienGetItRight({ run, isMobile, scrolls, canLeaveOut, userName, onBack, onAct, onOpenLine, onLeaveOut, onPutBack, prints, print, printed, onReprintNotice }: LienGetItRightProps) {
+export default function LienGetItRight({ run: given, isMobile, scrolls, canLeaveOut, userName, onBack, onAct, onOpenLine, onLeaveOut, onPutBack, prints, print, printed, onReprintNotice }: LienGetItRightProps) {
+  // The strip's counts with what the print and the printed read know (v2.8631): a printed affidavit and a right notice the
+  // run window holds are said apart from what the press prints. The lines and the door do not move.
+  const run = lienGetItRightWithFacts(given, { printedAffidavitJobIds: printed ? new Set([...printed.printedSame, ...printed.stoodAffidavits]) : new Set(), stoppedNotices: print?.stopped ?? [] })
   const [formFor, setFormFor] = useState<string | null>(null)
   const [putting, setPutting] = useState<string | null>(null)
   const [putWhy, setPutWhy] = useState<{ key: string; why: string } | null>(null)

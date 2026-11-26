@@ -522,3 +522,22 @@ describe('step 2: the one print (punch list #362, step 6)', () => {
     expect(all('[data-lien-run-card="print"] button').map((b) => [(b as HTMLButtonElement).disabled, b.style.minHeight])).toEqual([[true, '44px']])
   })
 })
+
+describe('the strip with what the print knows (v2.8631)', () => {
+  it('counts what the press prints: a printed affidavit and a held notice are said apart, and the run moves on', () => {
+    const held = { itemId: 'it1', jobId: 'ready', label: '1001 · ZZ Sample Shop', why: 'It waits on the leader’s signature.', kind: 'held' as const }
+    mount(READY, { leftOut: [left()], print: printState({ notices: 0, affidavits: 0, held: 0, stopped: [held], affidavitsPrinted: 1 }), printed: { changed: [], printedSame: new Set(['filed']), unread: 0, ...QUIET } })
+    expect(q('[data-lien-run="view"]')!.getAttribute('data-step')).toBe('3')
+    expect(stepStates()).toEqual(['done', 'done', 'now'])
+    expect(text('[data-lien-run-step="2"]')).toBe('2 · Print ✓Nothing waits to print · 1 affidavit printed · 1 notice waits in the run window')
+    expect(text('[data-lien-run-step="3"]')).toBe('3 · Out the door1 to file')
+    expect(text('[data-lien-run-card="right"] summary')).toContain('1 affidavit printed · 1 right notice does not print here')
+    // The door over the list and the Leave out list read as built: the facts move the strip alone.
+    expect(all('[data-lien-run-card="left-out"] [data-lien-run-line], [data-lien-run-left-out-line]').length + all('[data-lien-run-line]').length).toBeGreaterThan(0)
+    cleanup()
+    // Before the prints are read, nothing counts as printed: the strip reads as built.
+    mount(READY, { leftOut: [left()], print: printState({ notices: 1, affidavits: 1, held: 0 }), printed: { changed: [], printedSame: new Set(), unread: 0, ...QUIET, reading: true } })
+    expect(stepStates()).toEqual(['done', 'now', 'wait'])
+    expect(text('[data-lien-run-step="2"]')).toBe('2 · Print1 notice to print · 1 affidavit for the notary')
+  })
+})

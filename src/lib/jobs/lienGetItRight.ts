@@ -14,9 +14,11 @@
  *     ready to file.
  *   - **Left out.** A paper a person left out of this run, with who, when and why, and the way back.
  *
- * The three steps on the strip read from the same papers. Steps 2 and 3 are not built as one print and one trip yet
- * (steps 6 and 8 of the card), so the strip says what waits at each and the screen offers the prints that exist. No
- * press is locked by this step: a paper that is ready prints from the Board as it always has.
+ * The three steps on the strip read from the same papers. Step 2 is the run's one print (step 6 of the card) and step
+ * 3 is not built as one trip yet (step 8), so the strip says what waits at each. Its counts are drawn twice: once from
+ * the Board's chips alone, and again with what the print and the printed read know (`lienGetItRightWithFacts`,
+ * v2.8631), so a printed affidavit and a right notice the run window holds are said apart from what the press
+ * prints. No press is locked by this step: a paper that is ready prints from the Board as it always has.
  *
  * Pure: the Board, the To do rows and the left-out rows in, the checklist out. It writes nothing and changes no rule
  * about when a paper may go.
@@ -91,6 +93,10 @@ export type LienGetItRight = {
     toMail: number
     /** Affidavits ready to file. */
     toFile: number
+    /** Right affidavits that printed and say the same today, or that a person said stand as printed: they do not print again. 0 until the print's facts are read (`lienGetItRightWithFacts`). */
+    affidavitsPrinted: number
+    /** Right notices the run's press does not print now: a copy that goes by Docsmit, or a hold the run window settles. 0 until the print's facts are read. */
+    noticesStopped: number
   }
   totals: {
     /** What the run's jobs still owe, each job once. */
@@ -170,6 +176,83 @@ export type LienGetItRightInput = {
   leaderName?: (jobId: string) => string | null | undefined
 }
 
+/** What the print and the printed read know that the Board's chips do not (steps 6 and 7): the facts the strip's counts take. */
+export type LienRunFacts = {
+  /** Right affidavits whose newest print says the same today, or that a person said stand as printed: the run does not print them again. */
+  printedAffidavitJobIds: ReadonlySet<string>
+  /** Right notices the run's press does not print now, each with why: `paperless` (no copy of it is paper), `held` (the run window settles it). */
+  stoppedNotices: ReadonlyArray<{ jobId: string; kind: 'paperless' | 'held' }>
+}
+
+const NO_FACTS: LienRunFacts = { printedAffidavitJobIds: new Set(), stoppedNotices: [] }
+
+type LienRunSorted = Pick<LienGetItRight, 'asked' | 'settle' | 'right' | 'leftOut'> & { /** Every line of the run, the left-out ones too. */ lines: number }
+
+const count = (n: number) => val('count', String(n))
+/** A marked count with its noun, for the strip's lines, which the screen draws through `ValueSentence`. */
+const marked = (n: number, one: string, many: string) => `${count(n)} ${n === 1 ? one : many}`
+
+/**
+ * The counts, the step and the three lines of the strip, from the sorted lines and what the print knows. With no facts
+ * a right affidavit counts as to print until it is filed, and every right notice as to print: the Board's chips alone.
+ */
+function lienRunStrip(s: LienRunSorted, facts: LienRunFacts): Pick<LienGetItRight, 'counts' | 'step' | 'steps' | 'rightParts'> {
+  const { asked, settle, right, leftOut } = s
+  const stoppedBy = new Map(facts.stoppedNotices.map((n) => [n.jobId, n.kind] as const))
+  const toMail = right.filter((l) => l.kind === 'notice' && l.stageKey === 'in_mail').length
+  const affidavits = right.filter((l) => l.kind === 'affidavit')
+  const toFile = affidavits.length
+  const affidavitsPrinted = affidavits.filter((l) => facts.printedAffidavitJobIds.has(l.jobId)).length
+  const affidavitsToPrint = toFile - affidavitsPrinted
+  const noticesRight = right.filter((l) => l.kind === 'notice' && l.stageKey !== 'in_mail')
+  const stopped = noticesRight.filter((l) => stoppedBy.has(l.jobId))
+  const paperless = stopped.filter((l) => stoppedBy.get(l.jobId) === 'paperless').length
+  const heldInWindow = stopped.length - paperless
+  const noticesToPrint = noticesRight.length - stopped.length
+  const toPrint = noticesToPrint + affidavitsToPrint
+  const counts: LienGetItRight['counts'] = { papers: s.lines - leftOut.length, settle: asked.length + settle.length, right: right.length, leftOut: leftOut.length, toPrint, toMail, toFile, affidavitsPrinted, noticesStopped: stopped.length }
+  const step: LienGetItRight['step'] = counts.settle > 0 ? 1 : toPrint > 0 ? 2 : toMail + affidavitsPrinted > 0 ? 3 : null
+
+  const leftOutWords = counts.leftOut > 0 ? ` · ${count(counts.leftOut)} left out of this run` : ''
+  // What the press prints, then what it does not and why: a printed affidavit, a notice the run window holds, a notice with no paper copy.
+  const prints = [noticesToPrint > 0 ? `${marked(noticesToPrint, 'notice', 'notices')} to print` : '', affidavitsToPrint > 0 ? `${marked(affidavitsToPrint, 'affidavit', 'affidavits')} for the notary` : ''].filter(Boolean)
+  const aside = [
+    affidavitsPrinted > 0 ? `${marked(affidavitsPrinted, 'affidavit', 'affidavits')} printed` : '',
+    heldInWindow > 0 ? `${count(heldInWindow)} ${heldInWindow === 1 ? 'notice waits' : 'notices wait'} in the run window` : '',
+    paperless > 0 ? `${count(paperless)} ${paperless === 1 ? 'notice goes' : 'notices go'} without paper` : '',
+  ].filter(Boolean)
+  const steps: LienGetItRight['steps'] = [
+    {
+      n: 1,
+      name: LIEN_GET_IT_RIGHT_WORDS.step1,
+      line: counts.settle > 0 ? `${count(counts.settle)} to settle · ${count(counts.right)} of ${count(counts.papers)} ${counts.papers === 1 ? 'paper is' : 'papers are'} right${leftOutWords}` : `${count(counts.right)} right${leftOutWords}`,
+      state: counts.settle > 0 ? 'now' : 'done',
+    },
+    {
+      n: 2,
+      name: LIEN_GET_IT_RIGHT_WORDS.step2,
+      line: [...(prints.length > 0 ? prints : ['Nothing waits to print']), ...aside].join(' · '),
+      state: step === 2 ? 'now' : step === 3 ? 'done' : 'wait',
+    },
+    {
+      n: 3,
+      name: LIEN_GET_IT_RIGHT_WORDS.step3,
+      line: toMail + toFile > 0 ? [toMail > 0 ? `${count(toMail)} to mail` : '', toFile > 0 ? `${count(toFile)} to file` : ''].filter(Boolean).join(' · ') : 'Nothing waits to mail or file',
+      state: step === 3 ? 'now' : 'wait',
+    },
+  ]
+
+  const rightParts = [
+    affidavitsToPrint > 0 ? `${plural(affidavitsToPrint, 'affidavit', 'affidavits')} ready to file` : '',
+    affidavitsPrinted > 0 ? `${plural(affidavitsPrinted, 'affidavit', 'affidavits')} printed` : '',
+    noticesToPrint > 0 ? `${plural(noticesToPrint, 'notice', 'notices')} to print` : '',
+    stopped.length > 0 ? `${stopped.length} right ${stopped.length === 1 ? 'notice does' : 'notices do'} not print here` : '',
+    toMail > 0 ? `${plural(toMail, 'notice', 'notices')} printed` : '',
+  ].filter(Boolean).join(' · ')
+
+  return { counts, step, steps, rightParts }
+}
+
 /** The checklist, or null when the Board counts no run (nothing dated ahead). */
 export function buildLienGetItRight(input: LienGetItRightInput): LienGetItRight | null {
   const run = input.board ? lienRunPapers(input.board) : null
@@ -211,37 +294,7 @@ export function buildLienGetItRight(input: LienGetItRightInput): LienGetItRight 
   const right = lines.filter((l) => l.standing === 'right').sort((a, b) => b.amount - a.amount || a.label.localeCompare(b.label))
   const leftOut = lines.filter((l) => l.standing === 'left_out').sort((a, b) => (a.leftOut?.leftOutAt ?? '').localeCompare(b.leftOut?.leftOutAt ?? '') || a.label.localeCompare(b.label))
 
-  // No print is recorded for an affidavit, so one that is ready counts as still to print until it is filed.
-  const toMail = right.filter((l) => l.kind === 'notice' && l.stageKey === 'in_mail').length
-  const toFile = right.filter((l) => l.kind === 'affidavit').length
-  const noticesToPrint = right.length - toMail - toFile
-  const toPrint = noticesToPrint + toFile
-  const counts = { papers: lines.length - leftOut.length, settle: asked.length + settle.length, right: right.length, leftOut: leftOut.length, toPrint, toMail, toFile }
-  const step: LienGetItRight['step'] = counts.settle > 0 ? 1 : toPrint > 0 ? 2 : toMail > 0 ? 3 : null
-
-  const leftOutWords = counts.leftOut > 0 ? ` · ${val('count', String(counts.leftOut))} left out of this run` : ''
-  const steps: LienGetItRight['steps'] = [
-    {
-      n: 1,
-      name: LIEN_GET_IT_RIGHT_WORDS.step1,
-      line: counts.settle > 0 ? `${val('count', String(counts.settle))} to settle · ${val('count', String(counts.right))} of ${val('count', String(counts.papers))} ${counts.papers === 1 ? 'paper is' : 'papers are'} right${leftOutWords}` : `${val('count', String(counts.right))} right${leftOutWords}`,
-      state: counts.settle > 0 ? 'now' : 'done',
-    },
-    {
-      n: 2,
-      name: LIEN_GET_IT_RIGHT_WORDS.step2,
-      line: toPrint > 0 ? [noticesToPrint > 0 ? `${val('count', String(noticesToPrint))} ${noticesToPrint === 1 ? 'notice' : 'notices'} to print` : '', toFile > 0 ? `${val('count', String(toFile))} ${toFile === 1 ? 'affidavit' : 'affidavits'} for the notary` : ''].filter(Boolean).join(' · ') : 'Nothing waits to print',
-      state: step === 2 ? 'now' : step === 3 ? 'done' : 'wait',
-    },
-    {
-      n: 3,
-      name: LIEN_GET_IT_RIGHT_WORDS.step3,
-      line: toMail + toFile > 0 ? [toMail > 0 ? `${val('count', String(toMail))} to mail` : '', toFile > 0 ? `${val('count', String(toFile))} to file` : ''].filter(Boolean).join(' · ') : 'Nothing waits to mail or file',
-      state: step === 3 ? 'now' : 'wait',
-    },
-  ]
-
-  const rightParts = [toFile > 0 ? `${plural(toFile, 'affidavit', 'affidavits')} ready to file` : '', noticesToPrint > 0 ? `${plural(noticesToPrint, 'notice', 'notices')} to print` : '', toMail > 0 ? `${plural(toMail, 'notice', 'notices')} printed` : ''].filter(Boolean).join(' · ')
+  const strip = lienRunStrip({ asked, settle, right, leftOut, lines: lines.length }, NO_FACTS)
 
   return {
     day: run.day,
@@ -250,12 +303,20 @@ export function buildLienGetItRight(input: LienGetItRightInput): LienGetItRight 
     settle,
     right,
     leftOut,
-    counts,
     totals: { run: owed(lines.filter((l) => l.standing !== 'left_out')), waits: owed([...asked, ...settle]), right: owed(right) },
-    step,
-    steps,
-    rightParts,
+    ...strip,
   }
+}
+
+/**
+ * The checklist again, with what the print and the printed read know (v2.8631): a right affidavit that printed and
+ * says the same today, or that a person said stands, is not to print, and a right notice the run's press does not
+ * print now is said apart with why. The lines, the door and the totals do not move: only the counts, the step and
+ * the strip's words. With no facts it is the checklist as built.
+ */
+export function lienGetItRightWithFacts(run: LienGetItRight, facts: LienRunFacts): LienGetItRight {
+  if (facts.printedAffidavitJobIds.size === 0 && facts.stoppedNotices.length === 0) return run
+  return { ...run, ...lienRunStrip({ asked: run.asked, settle: run.settle, right: run.right, leftOut: run.leftOut, lines: run.counts.papers + run.counts.leftOut }, facts) }
 }
 
 /**
