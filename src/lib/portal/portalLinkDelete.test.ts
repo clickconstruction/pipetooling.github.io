@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PORTAL_LINK_DELETE_PRESS, PORTAL_LINK_DELETED_WORDS, portalLinkDeleteConfirm, portalLinkDeleteDrawn, portalLinkDeleteProblem, type PortalLinkDeleteCandidate } from './portalLinkDelete'
+import { PORTAL_LINK_DELETE_PRESS, PORTAL_LINK_DELETED_WORDS, portalLinkDeleteConfirm, portalLinkDeleteDrawn, portalLinkDeleteProblem, portalLinkNamedCounts, portalLinkNamedWords, type PortalLinkDeleteCandidate } from './portalLinkDelete'
 import type { PortalTimelineEntry } from './portalLinkState'
 
 const off = (over: Partial<PortalLinkDeleteCandidate> = {}): PortalLinkDeleteCandidate => ({ kind: 'link', linkId: 'l1', at: '2026-11-20T15:00:00Z', createdBy: null, audience: 'all', outcome: 'turned-off', revokedAt: '2026-11-21T15:00:00Z', ...over })
@@ -32,5 +32,20 @@ describe('deleting a turned-off portal link (punch list #443, row 11)', () => {
     expect(portalLinkDeleteConfirm(off({ audience: 'customer' }), 'ZZ Test GC').title).toBe('Delete this turned-off separate view (their own jobs) of ZZ Test GC?')
     expect(PORTAL_LINK_DELETE_PRESS).toBe('Delete…')
     expect(PORTAL_LINK_DELETED_WORDS).toBe('The turned-off link was deleted.')
+  })
+
+  it('a link a GC proposal names stays, in the function’s own sentence (punch list #443, finding 254)', () => {
+    expect(portalLinkNamedWords(1)).toBe('1 GC proposal names this link. It stays.')
+    expect(portalLinkNamedWords(3)).toBe('3 GC proposals name this link. It stays.')
+    expect(portalLinkDeleteProblem(off(), 'ZZ Test Portal Customer', 1)).toBe('1 GC proposal names this link. It stays.')
+    expect(portalLinkDeleteProblem(off(), 'ZZ Test Portal Customer', 0)).toBe('')
+    // The older reasons come first: a real customer's link is refused for that, whatever names it.
+    expect(portalLinkDeleteProblem(off(), 'Davenport Plumbing', 2)).toBe('Only a test customer’s link can be deleted. The customer’s name must start with ZZ.')
+  })
+
+  it('counts the proposals a link is named by, and skips a proposal that names none', () => {
+    const counts = portalLinkNamedCounts([{ portal_link_id: 'l1' }, { portal_link_id: 'l2' }, { portal_link_id: 'l1' }, { portal_link_id: null }])
+    expect([...counts]).toEqual([['l1', 2], ['l2', 1]])
+    expect(portalLinkNamedCounts(null).size).toBe(0)
   })
 })

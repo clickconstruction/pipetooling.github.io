@@ -9,7 +9,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 
-const { rpcMock, linkRowsMock, slugRowMock, authMock } = vi.hoisted(() => ({
+const { rpcMock, linkRowsMock, slugRowMock, authMock, proposalRowsMock } = vi.hoisted(() => ({
+  /** The GC proposals that name a link (#443, finding 254): none unless a case says otherwise. */
+  proposalRowsMock: { rows: [] as Array<{ portal_link_id: string | null }>, asked: [] as string[][] },
   rpcMock: vi.fn(async (..._args: unknown[]): Promise<{ data: unknown; error: null }> => ({ data: { token: 'tok1234567890abcdef', audience: 'all', activeSince: '2026-08-21T00:00:00Z' }, error: null })),
   linkRowsMock: { rows: [] as unknown[] },
   slugRowMock: { row: null as unknown },
@@ -41,6 +43,16 @@ vi.mock('../../lib/supabase', async () => {
           const builder: Record<string, unknown> = {}
           for (const m of ['select', 'eq', 'order', 'limit']) builder[m] = () => builder
           builder.then = (resolve: (v: unknown) => unknown) => resolve({ data: [], error: null })
+          return builder
+        }
+        if (table === 'job_paper_proposals') {
+          const builder: Record<string, unknown> = {}
+          builder.select = () => builder
+          builder.in = (_col: string, ids: string[]) => {
+            proposalRowsMock.asked.push(ids)
+            return builder
+          }
+          builder.then = (resolve: (v: unknown) => unknown) => resolve({ data: proposalRowsMock.rows, error: null })
           return builder
         }
         return baseFrom(table)
@@ -269,6 +281,53 @@ describe('CustomerPortalGlobeButton', () => {
     fireEvent.click(press)
     expect(screen.queryByRole('button', { name: 'Delete the link' })).toBeNull()
     expect(rpcMock).not.toHaveBeenCalled()
+  })
+
+  it('a turned-off link a GC proposal names reads a dead Delete… with the reason, and opens no confirm (punch list #443, finding 254)', async () => {
+    authMock.role = 'dev'
+    linkRowsMock.rows = [
+      { id: 'l-named', customer_id: 'zz1', audience: 'all', token: 'deadtok1', created_at: '2026-08-03T00:00:00Z', revoked_at: '2026-08-04T00:00:00Z', created_by: null },
+      { id: 'l-free', customer_id: 'zz1', audience: 'all', token: 'deadtok2', created_at: '2026-08-01T00:00:00Z', revoked_at: '2026-08-02T00:00:00Z', created_by: null },
+    ]
+    slugRowMock.row = null
+    proposalRowsMock.rows = [{ portal_link_id: 'l-named' }, { portal_link_id: 'l-named' }]
+    proposalRowsMock.asked = []
+    rpcMock.mockClear()
+    try {
+      renderWithProviders(<CustomerPortalGlobeButton customerId="zz1" customerName="ZZ Test Portal Customer" />)
+      await settle()
+      fireEvent.click(screen.getByLabelText("Open ZZ Test Portal Customer's customer portal link"))
+      await waitFor(() => expect(screen.getByText('2 GC proposals name this link. It stays.')).toBeTruthy())
+      // One read, for the turned-off links of this window alone.
+      expect(proposalRowsMock.asked.at(-1)).toEqual(['l-named', 'l-free'])
+      const presses = screen.getAllByTestId('portal-link-delete')
+      expect(presses.map((p) => p.getAttribute('aria-disabled'))).toEqual(['true', 'false'])
+      fireEvent.click(presses[0]!)
+      expect(screen.queryByRole('button', { name: 'Delete the link' })).toBeNull()
+      expect(rpcMock).not.toHaveBeenCalled()
+    } finally {
+      proposalRowsMock.rows = []
+    }
+  })
+
+  it('a refusal the database sends anyway is said as its own sentence, not as a failure (punch list #443, finding 254)', async () => {
+    authMock.role = 'dev'
+    linkRowsMock.rows = [
+      { id: 'l-off', customer_id: 'zz1', audience: 'all', token: 'deadtok', created_at: '2026-08-01T00:00:00Z', revoked_at: '2026-08-02T00:00:00Z', created_by: null },
+    ]
+    slugRowMock.row = null
+    rpcMock.mockClear()
+    // The window read no proposal, and one came to name the link before the press.
+    rpcMock.mockImplementationOnce(async () => ({ data: null, error: { message: '1 GC proposal names this link. It stays.', code: 'P0001' } }) as never)
+    renderWithProviders(<CustomerPortalGlobeButton customerId="zz1" customerName="ZZ Test Portal Customer" />)
+    await settle()
+    fireEvent.click(screen.getByLabelText("Open ZZ Test Portal Customer's customer portal link"))
+    fireEvent.click(await screen.findByTestId('portal-link-delete'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete the link' }))
+    const said = await screen.findByText('1 GC proposal names this link. It stays.')
+    expect(said.textContent).toBe('1 GC proposal names this link. It stays.')
+    expect(screen.queryByText(/Failed to delete the link/)).toBeNull()
+    expect(screen.queryByText('The turned-off link was deleted.')).toBeNull()
   })
 
   it('an assistant reads no Delete… in History (punch list #443, row 11)', async () => {

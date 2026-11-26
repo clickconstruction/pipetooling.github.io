@@ -39,7 +39,7 @@ The {{icon:gear}} button opens one flat list:
 - **Separate views**: need to give a GC's office *only* their GC bills, or only their own jobs? You create a scoped link on demand, one that shows only that part. Each scoped link has its own Copy and Turn off.
 - **Reset**: {{button:outline|Rotate}} makes a new link and kills the old one immediately. The custom address follows automatically. {{button:outline|Turn off}} shuts the whole portal down. A turned-off customer's globe turns **red** everywhere. A live one is blue, and a never-created one is faint grey. The window offers {{button:blue|Turn portal back on}} when you're ready.
 - **Opened**: has the customer actually looked? The line reads ***Opened 3 times · last Sep 3***, or **Not opened yet**. Only customer opens count, not your previews or staff opens. So the number means what it says before a follow-up call.
-- **History** lists every link and address change: what, when, and by whom. A developer can delete a turned-off link there, on a test customer only.
+- **History** lists every link and address change: what, when, and by whom. A developer can delete a turned-off link there, on a test customer only. A link that a GC proposal names stays. The **Delete…** on that link is grey and the line beside it says why.
 
 ## Safety
 
