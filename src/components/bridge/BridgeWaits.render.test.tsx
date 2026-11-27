@@ -18,6 +18,28 @@ const input: StageFlowInput = {
 }
 
 describe('BridgeWaits', () => {
+  it('the ? beside Everything else waits is a thumb’s press on a phone and the circle it was at a desk (finding 316)', () => {
+    const reflexes = buildReflexes({ stageInput: input, fieldHoursPerWeek: 300, fieldPeople: 7 })
+    const draw = (phone: boolean) => renderWithProviders(<BridgeWaits reflexes={reflexes} activeId={null} line={null} levers={otherLevers('bill')} onPress={() => {}} onReset={() => {}} phone={phone} />)
+    const desk = draw(false)
+    let box = screen.getByTestId('bridge-waits-ask').style
+    expect([box.width, box.height, box.minHeight, box.marginTop]).toEqual(['24px', '24px', '', ''])
+    let circle = screen.getByTestId('bridge-waits-ask-circle').style
+    expect([circle.width, circle.height]).toEqual(['24px', '24px'])
+    desk.unmount()
+    draw(true)
+    box = screen.getByTestId('bridge-waits-ask').style
+    // A thumb square, with the growth given back over and under so the row is as tall as it was.
+    expect(box.minHeight).toBe('44px')
+    expect(box.width).toBe('44px')
+    expect([box.marginTop, box.marginBottom, box.marginRight]).toEqual(['-10px', '-10px', '-10px'])
+    // The circle is drawn the same 24 px, and the press still opens the levers under its own name.
+    circle = screen.getByTestId('bridge-waits-ask-circle').style
+    expect([circle.width, circle.height]).toEqual(['24px', '24px'])
+    fireEvent.click(screen.getByRole('button', { name: "The other links' levers" }))
+    expect(screen.getByTestId('bridge-waits-levers')).toBeTruthy()
+  })
+
   it('lists the four presses, shows the active line, and opens the levers', () => {
     const reflexes = buildReflexes({ stageInput: input, fieldHoursPerWeek: 300, fieldPeople: 7 })
     const onPress = vi.fn()

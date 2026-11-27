@@ -1616,7 +1616,7 @@ export default function Bridge() {
             />
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: '0.6rem' }}>
-            {reflexes && <BridgeWaits reflexes={reflexes} activeId={reflexId} line={reflexLineNow} levers={otherLevers(litLink)} onPress={pressReflex} onReset={resetReflex} sizes={fixSizes} />}
+            {reflexes && <BridgeWaits reflexes={reflexes} activeId={reflexId} line={reflexLineNow} levers={otherLevers(litLink)} onPress={pressReflex} onReset={resetReflex} sizes={fixSizes} phone={narrow} />}
           </div>
           {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
           {billError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The Bill pile could not be read ({billError}).</p>}
