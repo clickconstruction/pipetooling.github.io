@@ -3,6 +3,7 @@ import {
   PAINTED_MAP_COPY_KEPT_DAYS,
   PAINTED_MAP_TEST_THROW_AWAY,
   PAINTED_MAP_THROW_AWAY_NO_ANSWER,
+  PAINTED_MAP_THROWN_AWAY_TOAST_MS,
   paintedMapThrowAwayDoor,
   paintedMapThrownAwayFrom,
   paintedMapThrownAwayWords,
@@ -60,6 +61,12 @@ describe('throwing a painted map away, and the copy a test map keeps (punch list
     expect(paintedMapThrownAwayWords({ copied: 7, tasks: 3, places: 0 })).toBe(`${kept} 3 tasks lost the map.`)
     expect(paintedMapThrownAwayWords({ copied: 7, tasks: 0, places: 1 })).toBe(`${kept} 1 place on Materials on site lost the map.`)
     expect(paintedMapThrownAwayWords({ copied: 7, tasks: 2, places: 2 })).toBe(`${kept} 2 tasks and 2 places on Materials on site lost the map.`)
+  })
+
+  it('keeps that sentence up longer than a toast’s own five seconds', () => {
+    // The longest it says is 30 words, and the window that could say them is closed (finding 291, the walk of 2026-11-27).
+    expect(PAINTED_MAP_THROWN_AWAY_TOAST_MS).toBe(10_000)
+    expect(paintedMapThrownAwayWords({ copied: 7, tasks: 2, places: 2 }).split(' ').length).toBeLessThanOrEqual(30)
   })
 
   it('keeps every sentence a first-timer reads to the plain-words rules', () => {
