@@ -14,7 +14,7 @@
  * the tab draws itself. A cut that moves one of these out must leave every case green.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 /** The rows a case hands the tab's own reads, by table, and every write the tab sends, in order. */
 const db = vi.hoisted(() => ({
@@ -1121,6 +1121,87 @@ describe('BidsPricingTab render smoke', () => {
     fireEvent.click(button(/Base price · 0 entries/))
     await settle()
     expect(offerSays()).toBeNull()
+  })
+
+  // The offer to update a price the bid already holds. The bid's own copy has the water closet at $165.00, and the
+  // book's entry is saved at $200.00. The fixture type every save resolves to in this smoke is `ft-1`.
+  const BID_COPY = [{ id: 'be-wc', version_id: PRICING_ID, fixture_type_id: 'ft-1', rough_in_price: 90, top_out_price: 50, trim_set_price: 25, total_price: 165, sequence_order: 0, fixture_types: { name: 'Water closet' } }] as unknown as Props['priceBookEntries']
+  /** The same fixture in the bid's other price, at the bid copy's own $165.00: a price nobody re-priced on purpose. */
+  const SIBLING = { id: 'se-wc', version_id: 'price-alt', fixture_type_id: 'ft-1', rough_in_price: 90, top_out_price: 50, trim_set_price: 25, total_price: 165, sequence_order: 0, fixture_types: { name: 'Water closet' } }
+  const offerBox = () => bookDrawer().querySelector('[role="status"]')
+  const offerText = () => (offerBox()?.textContent ?? '').replace(/\s+/g, ' ').trim() || null
+  async function openBookOver(over: Partial<Props>, rows: Array<Record<string, unknown>> = BOOK_ENTRIES as unknown as Array<Record<string, unknown>>) {
+    db.tables = { price_book_entries: rows }
+    const view = renderWithProviders(<BidsPricingTab {...pricedProps({ templatePriceBookVersions: BOOKS, defaultPriceBookTemplateId: 'tpl-1', ...over })} />)
+    await settle()
+    fireEvent.click(button(/Base price · \d+ entr/))
+    await settle()
+    db.writes = []
+    return view
+  }
+  async function saveFirstBookEdit(total: string) {
+    fireEvent.click(within(bookDrawer()).getAllByTitle('Edit')[0]!)
+    fireEvent.change(stageBoxes()[0]!, { target: { value: total } })
+    fireEvent.click(screen.getByText('Save'))
+    await settle()
+    db.writes = []
+  }
+
+  it('a price the bid’s copy already holds is offered the book’s new one, and Use it on this bid updates the copy', async () => {
+    const loadPriceBookEntries = vi.fn(async () => {})
+    await openBookOver({ priceBookEntries: BID_COPY, loadPriceBookEntries })
+    expect(offerBox()).toBeNull()
+    await saveFirstBookEdit('200')
+    expect(offerText()).toBe('This bid still prices Water closet at $165.00 — it holds its own copy of the book, taken when it was first priced.Use $200.00 on this bidLeave this bid alone')
+    loadPriceBookEntries.mockClear()
+    fireEvent.click(within(offerBox() as HTMLElement).getByText(moneyText('Use $200.00 on this bid')))
+    await settle()
+    // The copy's own entry takes the book's four prices. $200.00 was $100 + $50 + $25, so Rough In took the rest.
+    expect(db.writes).toEqual([{ table: 'price_book_entries', op: 'update', payload: { rough_in_price: 125, top_out_price: 50, trim_set_price: 25, total_price: 200 } }])
+    expect(loadPriceBookEntries).toHaveBeenCalledWith(PRICING_ID)
+    expect(offerBox()).toBeNull()
+    expect(await screen.findByText(moneyText('This bid now prices Water closet at $200.00.'))).toBeTruthy()
+  })
+
+  it('the update carries to the bid’s other price when it holds the same old price, and says how many', async () => {
+    // The read of the other prices' entries hands back every row of the table in this smoke: the book's own entry
+    // at $175.00, which is not the copy's $165.00 and is left alone, and the other price's at $165.00, which follows.
+    await openBookOver({ priceBookEntries: BID_COPY, priceBookVersions: TWO_PRICES }, [...(BOOK_ENTRIES as unknown as Array<Record<string, unknown>>), SIBLING])
+    await saveFirstBookEdit('200')
+    expect(offerText()).toBe('This bid still prices Water closet at $165.00 — it holds its own copy of the book, taken when it was first priced. 1 more price option on this bid holds the same $165.00 and will update with it.Use $200.00 on this bidLeave this bid alone')
+    fireEvent.click(within(offerBox() as HTMLElement).getByText(moneyText('Use $200.00 on this bid')))
+    await settle()
+    expect(db.writes).toEqual([{ table: 'price_book_entries', op: 'update', payload: { rough_in_price: 125, top_out_price: 50, trim_set_price: 25, total_price: 200 } }])
+    expect(await screen.findByText(moneyText('This bid now prices Water closet at $200.00 — across 2 price options.'))).toBeTruthy()
+  })
+
+  it('a copy that already agrees with the book is offered nothing, and neither is an entry saved from a row’s assign search', async () => {
+    const agrees = [{ ...(BID_COPY as unknown as Array<Record<string, unknown>>)[0], rough_in_price: 125, total_price: 200 }] as unknown as Props['priceBookEntries']
+    await openBookOver({ priceBookEntries: agrees })
+    await saveFirstBookEdit('200')
+    expect(offerBox()).toBeNull()
+    cleanup()
+    // Saved from the assign search, the entry lands in the bid's own copy, so there is nothing to carry.
+    await openBookOver({})
+    fireEvent.click(screen.getAllByTitle("Assign a price-book entry — the book's price fills the row")[0]!)
+    await settle()
+    fireEvent.change(screen.getByPlaceholderText('Search the book…'), { target: { value: 'ZZ urinal' } })
+    await settle()
+    fireEvent.click(screen.getByText(/Add "ZZ urinal" to the book/))
+    await settle()
+    fireEvent.change(stageBoxes()[0]!, { target: { value: '90' } })
+    fireEvent.click(screen.getByText('Save'))
+    await settle()
+    expect(offerBox()).toBeNull()
+  })
+
+  it('an offer goes away when the open price changes', async () => {
+    const view = await openBookOver({ priceBookEntries: BID_COPY, priceBookVersions: TWO_PRICES })
+    await saveFirstBookEdit('200')
+    expect(offerBox()).not.toBeNull()
+    view.rerender(<BidsPricingTab {...pricedProps({ templatePriceBookVersions: BOOKS, defaultPriceBookTemplateId: 'tpl-1', priceBookEntries: BID_COPY, priceBookVersions: TWO_PRICES, selectedPricingVersionId: 'price-alt', bidCountRowCustomPrices: [], pricingRowsForGrid: gridRows({ scenarioId: 'price-alt', customPrices: [] }) })} />)
+    await settle()
+    expect(offerBox()).toBeNull()
   })
 
   it('a sent bid refuses ＋ Percent row with the lock\'s words', async () => {
