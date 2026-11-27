@@ -85,13 +85,17 @@ Making a person salaried shows on payroll screens until it is undone, so ask fir
    pay carries no date. Apply the first plan.
 3. As the dev, ZZ Test Hand's **Workday schedule…** window says working hours drive the clock, and its fields can
    be changed. As anyone else the same window shows the usual day with its fields off, the line *A dev or the
-   controller sets the usual day.*, and a press that reads **Save this date**. To see that without a real
-   account, use the lens frame: in the pane, run `window.name = 'pipetooling-lens:' + JSON.stringify({ as:
-   'master_technician', mood: 'full', theme: 'light' })` and reload. The app then boots as an invented owner
-   over invented rows, and nothing reaches the database (`src/lib/lens/seal.ts`).
+   controller sets the usual day.*, and a press that reads **Save this date**. That second half needs View as,
+   after 4.1 and 4.2, while ZZ Test Hand is salaried: open View as for a sample account that sees **Pay &
+   schedule** and is neither a dev nor the controller, open ZZ Test Hand's sheet and the window, read it, and
+   come back. View as writes one log row that nothing takes back, so it is one of step 4's writes and goes on
+   the user's word with them. The lens frame cannot show this window: its invented world holds no salaried
+   person, so **Workday schedule…** is not drawn there (tried 2026-11-27, under Runs).
 4. The clock. Today ZZ Test Hand's session runs the template's 8 hours from 6:00 AM, because hours saved during a
    day reach the clock from the next day. On the next weekday, read `clock_sessions` for ZZ Test Hand: a
    `salary_schedule` row from 6:00 AM to 12:00 PM. Skip this step if the person cannot stay salaried overnight.
+   The person's word of 2026-11-27 is that nobody sits salaried over a weekend, so step 4 is not started on a
+   Friday for this.
 5. Undo: `plan_pay_setup` with `is_salary: false` and its reason. That clears the workday template, the day
    overrides and the unapproved automatic sessions of that day and the day before. Each plan's `clock.words`
    says which sessions it makes; clear any it made on another day.
@@ -183,3 +187,12 @@ the words on it.
     through the lens, since the invented roster has nobody on a set week. 4.4, which needs the person left
     salaried overnight.
   - **Left on prod, by design.** Two more `person_available_hours` rows, for the set and the take-off.
+- **2026-11-27, the walking thread, step 4.3 through the lens frame, 16:44 UTC. It cannot work.** The frame's
+  invented world holds one person, a sub with no pay setup, so **Workday schedule…** is not there. Nothing was
+  written and no step of 4 was started. Step 4.3 above is amended: its second half is read through View as,
+  with step 4's writes (finding 344 of the fixing thread's ledger).
+  - **The person's word the same day:** the walk of step 4 is not made on 2026-11-27. It is carried to Monday
+    2026-11-30, as one sitting with the set, the look and the undo, *so nobody sits salaried over a weekend*.
+  - **What one sitting leaves.** Step 4.4's row lands the day after the save, so a sitting that sets and undoes
+    on one day does not read it. The walking thread's plan leaves 4.4 out of that sitting. Nobody has said
+    whether 4.4 is then dropped or walked another way.

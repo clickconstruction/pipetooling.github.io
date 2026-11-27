@@ -2,17 +2,18 @@
 name: "Lien desk: a started paper stays on the desk, whatever its day"
 number: 354
 group: close
-status: written 2026-11-14 from a Lien desk session · the owner chose this shape, then parked it for its own session · built 2026-11-14 as v2.7261, one PR (#8116), on main
+status: written 2026-11-14 from a Lien desk session · the owner chose this shape, then parked it for its own session · built 2026-11-14 as v2.7261, one PR (#8116), on main · 2026-11-27: the card's own walk on a ZZ test job was picked, then planned by the walking thread and read against the code: three writes, and the last is a hand delete of a drafted paper's row, which no press makes · the person's word the same day: *Not in run 8* · not walked
 summary: >
   The Lien desk lists what is due within 30 days, and builds every list from the readers' rows
   alone. A paper someone already drafted, sent for approval, approved or held drops off every list
   while its day is further out. Three affidavits drafted on 2026-11-14 for a Dec 15 day showed in
   their jobs' Lien windows and nowhere on the desk. The fix keeps any started paper on the desk
   without widening the window for every job.
-next: Retire the card once the office has seen a started paper on the desk. Asked 2026-11-27: a read of the live desk cannot prove it, since every started paper on the desk that day was inside the 30-day window. Answered 2026-11-27 by Taunya, *the picks stand*, to the pick *the card's own walk on a ZZ test job*: two writes, both taken back, by the walking thread. The card is retired on its clean walk.
+next: An open question, not a walk. The person's word of 2026-11-27 on the card's own walk is *Not in run 8*. Planned that day by the walking thread and read against the code, the walk is not the two writes this card named but three on a ZZ test job: set the last day of work by hand, start one affidavit draft, and take the draft off. The first is taken back by the day's own back press. The third is the take-back of the second, and no press makes it: nothing in the app deletes or voids a drafted affidavit, so it is a hand delete of the row as a dev. What is to be answered before any walk: may a session make that delete, does the person make it, or does the ZZ draft stay on a job the office does not see. A read of the live desk cannot stand in for the walk, since every started paper on the desk on 2026-11-27 was inside the 30-day window. The card stays open until the question is answered.
 size: S
 ver: v2.7247 · v2.7261
-blocker: none
+blocker: The person's word on the walk's last step. Not in run 8, by her word of 2026-11-27.
+ask: owner · decide · The walk ends in a hand delete of a drafted paper's row, which no press makes. May a session make it, do you make it, or does the ZZ draft stay?
 ---
 
 # Lien desk: a started paper stays on the desk, whatever its day (#354)
@@ -95,3 +96,20 @@ Built 2026-11-14 as v2.7261: the kernel `src/lib/jobs/lienDeskStarted.ts` with i
 reader calls in `useLienDeskData` asking 180 days ahead and keeping a row inside the lead or on a job
 with a started paper of that kind, and the guide's two sentences. The owner picked this shape over
 widening the window, then asked for it on a card instead of in the session that found it.
+
+### The walk, planned and not made (2026-11-27)
+
+**How it came here.** Asked 2026-11-27, a read of the live desk could not prove the change: every started paper on the desk that day was inside the 30-day window. The pick was *the card's own walk on a ZZ test job*, read then as two writes, both taken back, and the answer was *the picks stand*. The walking thread then planned the walk and traced it in the code on main the same day. It is not what that row said, so it was put back to the person. Her word: *Not in run 8*. Nothing was started and nothing was written.
+
+**What the plan found.** These are the walking thread's readings of the code, not read again for this card.
+
+- **The day.** The affidavit's day is the 15th of the last work month plus 3 months, or plus 4 on a non-residential property, moved off a weekend. From 2026-11-27 the only such day 35 to 50 days out is 2027-01-15, so the last day of work goes in October 2026.
+- **Setting the day** is one press in the job's Lien window, with a date and a reason. It writes four columns on the job, no Activity line, and tells nobody. The day's own back press takes it back whole.
+- **Starting the draft is not as *How to verify* says above.** The Lien window does not draft an affidavit: it sends the reader to the desk. On the desk a dev's one footer press drafts the paper and approves it in one go, so it lands in *Ready to file* and would not show this card's rule. The least-writing start is the dev seat's affidavit draft, planned as a dry run first: one drafted row, no approval, no signature, nobody told.
+- **No press deletes or voids a drafted affidavit.** The pull-back presses only return a paper to drafted. So the draft's take-back is a hand delete of its row as a dev, and the dev seat has no verb for it.
+- **The job must already be ready** for a draft: billed with money open, an owner of record with a mailing address, a county and a legal description, the homestead question answered no, and under a GC the GC's address and a notice on record. Whether a ZZ test job has all of that was not read.
+- **ZZ test jobs are hidden on the Lien desk** for every role but a dev, and for a dev unless that device's switch is on. So a ZZ draft left on the desk is seen by nobody in the office.
+
+**The steps as planned,** each write on its own yes: read and pick the job with the seat's dry run; set the day; read the desk, where the job is on no list; start the draft through the seat; read the desk on its named views, pressing no row; delete the drafted row; take the day back; read back.
+
+**The open question.** The delete has no press. May a session make it, does the person make it, or does the ZZ draft stay. The plan's own pick was yes to all three writes or to none. Until it is answered this card is not walked and not retired.
