@@ -6,7 +6,7 @@ import { formatCurrency } from '../../lib/format'
 import { AmountSmallCents, SignedAmountSmallCents } from '../AmountSmallCents'
 import { formatRevenueMultiple } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
-import { computeBidCostBreakdown, directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
+import { directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
 import { PricingProfitBar } from './PricingProfitBar'
 import { usePricingProfitBar } from '../../hooks/usePricingProfitBar'
 // What the price is made of (punch list #128): the split under a row, the three breakdown cards, the kind chip, tags, the Markup and Tax tools.
@@ -81,7 +81,7 @@ import { resolvePricingEntry } from '../../lib/bids/resolvePricingEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useRobotFixtures } from '../../hooks/useRobotFixtures'
 import { moneyWords, numberOf } from '../../lib/bids/robotFixtures'
-import { decoratePricingRows } from '../../lib/bids/decoratePricingRows'
+import { derivePricingWorkbench as derivePricingWorkbenchKernel } from '../../lib/bids/derivePricingWorkbench'
 import { BidsPriceBookDrawer } from './BidsPriceBookDrawer'
 import { PricingVersionFormModal } from './PricingVersionFormModal'
 import { DeletePricingVersionModal } from './DeletePricingVersionModal'
@@ -2154,63 +2154,31 @@ export function BidsPricingTab({
     setError,
   })
 
+  // What the Workbench derives from the bid's reads is a kernel (`lib/bids/derivePricingWorkbench.ts`, punch list #46
+  // row 1), moved as it stood. The one piece that is not arithmetic stays here: a row's ⓘ opens its breakdown window.
   function derivePricingWorkbench() {
-    if (!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate) return null
-                const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
-                const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
-                // One total (v2.3292): the same kernel the Pricing print/CSV, the Labor page and the approval PDF read.
-                const { totalMaterials, rate, totalLaborHours, laborCost, distance, ratePerMile, hrsPerTrip, numTrips, drivingCost, estimatorCost, travelCost, equipmentRentalCost, permitCost, subcontractorCost, wasteCost, otherCost, teamLaborCost, totalCost } = computeBidCostBreakdown({
-                  materialTotalRoughIn: pricingMaterialTotalRoughIn,
-                  materialTotalTopOut: pricingMaterialTotalTopOut,
-                  materialTotalTrimSet: pricingMaterialTotalTrimSet,
-                  laborRate: pricingLaborRate,
-                  laborRows: pricingLaborRows,
-                  distanceFromOffice: selectedBidForPricing?.distance_from_office ?? null,
-                  costEstimate: pricingCostEstimate,
-                  countRowsLength: pricingCountRows.length,
-                  directCostRows: pricingDirectCostRows,
-                  teamLaborCost: selectedBidForPricing?.id ? (teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0) : 0,
-                })
-                const assignmentsForVersion = bidPricingAssignments.filter(
-                  (a) => a.price_book_version_id === selectedPricingVersionId,
-                )
-                const pricingCalcResult = pricingRowsForGrid
-                if (!pricingCalcResult) return null
-
-                const totalRevenue = pricingCalcResult.totalRevenue
-                // Fixtures with a Sale Price but no Takeoffs Unit-price cost: their margin reads "—"
-                // (no cost basis), and the bid-level Total margin treats them as full profit — so it
-                // is overstated until those costs are entered in Takeoffs (`uncostedRevenueRows`).
-                const { rows, uncostedRevenueRows, uncostedRevenue } = decoratePricingRows({
-                  rows: pricingCalcResult.rows,
-                  laborRows: pricingLaborRows,
-                  customPrices: bidCountRowCustomPrices,
-                  assignmentsForVersion,
-                  materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
-                  taxPercent,
-                  versionId: selectedPricingVersionId,
-                  canToggleOmitSubmission: selectedPricingVersionId != null,
-                })
-                const openRowBreakdown = (r: (typeof rows)[number]) =>
-                  setPricingBreakdownRow({
-                    countRowId: r.countRow.id,
-                    fixture: r.countRow.fixture ?? '',
-                    count: r.count,
-                    unitPrice: r.unitPrice,
-                    isFixedPrice: r.isFixedPrice,
-                    revenue: r.revenue,
-                    materialsBeforeTax: r.materialsBeforeTax,
-                    taxAmount: r.taxAmount,
-                    taxPercent,
-                    laborCost: r.laborCost,
-                    cost: r.cost,
-                    margin: r.margin,
-                    materialsFromTakeoff: r.materialsFromTakeoff,
-                  })
-    // The bid's cost carries the tax on its material (punch list #128 PR 1), as every row's cost already did —
-    // until now the overhead line absorbed it (the map's tax fallback duality).
-    const taxCost = totalMaterials * (taxPercent / 100)
-    return { totalMaterials, rate, totalLaborHours, taxPercent, taxCost, laborCost, distance, ratePerMile, hrsPerTrip, numTrips, drivingCost, estimatorCost, travelCost, equipmentRentalCost, permitCost, subcontractorCost, wasteCost, otherCost, teamLaborCost, totalCost: totalCost + taxCost, assignmentsForVersion, totalRevenue, rows, uncostedRevenueRows, uncostedRevenue, openRowBreakdown }
+    const derived = derivePricingWorkbenchKernel({
+      selectedPricingVersionId,
+      pricingCountRows,
+      pricingCostEstimate,
+      costEstimatePOModalTaxPercent,
+      teamLaborDataForBids,
+      pricingMaterialTotalRoughIn,
+      pricingMaterialTotalTopOut,
+      pricingMaterialTotalTrimSet,
+      pricingLaborRate,
+      pricingLaborRows,
+      selectedBidForPricing,
+      pricingDirectCostRows,
+      bidPricingAssignments,
+      pricingRowsForGrid,
+      bidCountRowCustomPrices,
+      pricingFixtureMaterialsFromTakeoff,
+    })
+    if (!derived) return null
+    const { breakdownRowOf, ...numbers } = derived
+    const openRowBreakdown = (r: (typeof numbers.rows)[number]) => setPricingBreakdownRow(breakdownRowOf(r))
+    return { ...numbers, openRowBreakdown }
   }
 
   // v2.5043: what the priced-margin stamp reads when a price write settles: the strip's numbers over

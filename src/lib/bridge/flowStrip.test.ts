@@ -35,12 +35,15 @@ describe('buildFlowStrip', () => {
     expect(plainWordsFailures(market.label)).toEqual([])
   })
 
-  it('sizes a section the way pipe is sized: four times the flow is twice as wide', () => {
+  it('sizes a section straight to its dollars: a quarter of the flow is a quarter as wide (v2.8725)', () => {
     const strip = buildFlowStrip(flow('bill'), { market: 40_000, sales: 10_000, build: 40_000, bill: 40_000, collect: 40_000 })
     const [market, sales] = strip.sections
     expect(market?.thick).toBe(1)
-    // A quarter of the flow is half the width, over the floor every section keeps.
-    expect(sales?.thick).toBeCloseTo(STRIP_MIN_THICK + (1 - STRIP_MIN_THICK) * 0.5, 6)
+    // A quarter of the flow is a quarter of the width.
+    expect(sales?.thick).toBeCloseTo(0.25, 6)
+    // A step that moves next to nothing is still a line of pipe, at the floor.
+    expect(buildFlowStrip(flow('bill'), { market: 100_000, sales: 1_000, build: 50_000, bill: 50_000, collect: 50_000 }).sections[1]?.thick).toBe(STRIP_MIN_THICK)
+    expect(STRIP_MIN_THICK).toBe(0.08)
     // The widest step is 1, and none is thinner than the floor.
     for (const s of buildFlowStrip(flow('bill'), paces).sections) {
       expect(s.thick).toBeGreaterThanOrEqual(STRIP_MIN_THICK)

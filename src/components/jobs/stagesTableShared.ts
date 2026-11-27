@@ -83,6 +83,8 @@ export type StagesTableShared = {
   onOpenJobContract?: StagesRowRenderContext['onOpenJobContract']
   /** The legal matter each job sits in, for the row's ⚖ chip beside the contract chip (v2.3313; reaching the rows since step 21). */
   legalMatterByJobId?: StagesRowRenderContext['legalMatterByJobId']
+  /** The jobs marked as waiting, with a reason (v2.8723): the row's wait chip. */
+  buildWaitByJobId?: StagesRowRenderContext['buildWaitByJobId']
   onOpenCustomerDoor?: StagesRowRenderContext['onOpenCustomerDoor']
   boardDotByJobId?: StagesRowRenderContext['boardDotByJobId']
   customerLinesByJobId?: StagesRowRenderContext['customerLinesByJobId']

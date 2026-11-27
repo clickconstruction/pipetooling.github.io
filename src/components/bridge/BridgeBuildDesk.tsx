@@ -6,17 +6,25 @@
  * rest behind Show all. A row's press opens the job's detail under it: the
  * why-line, the crew chip and the doors. The percent window
  * (`FieldPctUpdateModal`) opens from that detail, the one write here, and the
- * page patches the Build reads so the desk recomputes. What moved, the whole
- * ledger of every open job and How this is counted wait behind the presses
- * at the foot. Pure on its props: `src/lib/bridge/build/buildDesk.ts` does
+ * page patches the Build reads so the desk recomputes. Since v2.8723 a quiet
+ * job's detail also offers **Name why it waits**, which opens the small window
+ * (`BuildWaitWindow`), and a waiting job offers **Lift the wait**; both go
+ * through `buildWaitsIo` and tell the page to read the waits again. What
+ * moved, the jobs that wait, the whole ledger of every open job and How this
+ * is counted wait behind the presses at the foot. Pure on its props: `src/lib/bridge/build/buildDesk.ts` does
  * the arithmetic and `buildSteps.ts` shapes the three lists and their words.
  */
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import FieldPctUpdateModal from '../dashboard/FieldPctUpdateModal'
+import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { STAGE_META } from '../../lib/bridge/stageFlow'
 import { type BuildDesk, type BuildDeskRow, type BuildDeskTone } from '../../lib/bridge/build/buildDesk'
 import { buildBuildSteps } from '../../lib/bridge/build/buildSteps'
+import { BUILD_WAIT_WORDS, buildWaitLiftedWords, buildWaitMarkedWords, type BuildWaitReason } from '../../lib/bridge/build/buildWaits'
+import { buildWaitsIo, type BuildWaitsIo } from '../../lib/bridge/build/buildWaitsIo'
+import { BuildWaitWindow } from './BuildWaitWindow'
 import { BridgeStepWindow, type StepFoldSpec, type StepGroup } from './BridgeStepWindow'
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -40,7 +48,14 @@ export type BridgeBuildDeskProps = {
   onClose: () => void
   /** The page's savePct: patches the Build reads in place so the desk recomputes. */
   onSavePct: (jobId: string, pct: number) => void
+  /** A wait was marked or lifted: the page reads the waits again, so the desk recomputes. */
+  onWaitsChanged?: () => void
+  /** The waits' two writes, stood in for by a render smoke; the real ones when absent. */
+  waitsIo?: Pick<BuildWaitsIo, 'mark' | 'lift'>
 }
+
+/** The two presses a job's wait adds to its detail, and whether one is on its way. */
+type WaitPresses = { onName: () => void; onLift: () => void; busy: boolean }
 
 function Chip({ tone, words }: { tone: BuildDeskTone; words: string }) {
   return <span style={{ display: 'inline-block', fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap', background: CHIP_BG[tone], color: TONE_COLOR[tone] }}>{words}</span>
@@ -65,7 +80,7 @@ function Cells({ row }: { row: BuildDeskRow }) {
 }
 
 /** What a job opens to: its why-line, its crew chip and its doors. `cells` adds the ledger's cells, for a row whose head does not print them. `pctFirst` puts the percent window ahead of the doors, under a row whose press is Set the percent. */
-function Detail({ row, id, cells, pctFirst, onSetPct }: { row: BuildDeskRow; id: string; cells: boolean; pctFirst: boolean; onSetPct: () => void }) {
+function Detail({ row, id, cells, pctFirst, onSetPct, wait }: { row: BuildDeskRow; id: string; cells: boolean; pctFirst: boolean; onSetPct: () => void; wait: WaitPresses }) {
   const setPct = row.canSetPct ? (
     <button type="button" onClick={onSetPct} style={{ ...door, border: '1px solid var(--border-strong)', fontWeight: 700 }} data-testid="bridge-build-set-pct">
       Open the percent window ›
@@ -93,13 +108,23 @@ function Detail({ row, id, cells, pctFirst, onSetPct }: { row: BuildDeskRow; id:
           </Link>
         ))}
         {!pctFirst && setPct}
+        {row.canNameWait && (
+          <button type="button" onClick={wait.onName} disabled={wait.busy} style={door} data-testid="bridge-build-name-wait">
+            {BUILD_WAIT_WORDS.name} ›
+          </button>
+        )}
+        {row.wait && (
+          <button type="button" onClick={wait.onLift} disabled={wait.busy} style={{ ...door, border: '1px solid var(--border-strong)', fontWeight: 700 }} data-testid="bridge-build-lift-wait">
+            {wait.busy ? BUILD_WAIT_WORDS.lifting : `${BUILD_WAIT_WORDS.lift} ›`}
+          </button>
+        )}
       </div>
     </div>
   )
 }
 
 /** One job as the ledger prints it: the head with its cells, opening to the detail. */
-function Row({ row, open, onToggle, onSetPct }: { row: BuildDeskRow; open: boolean; onToggle: () => void; onSetPct: () => void }) {
+function Row({ row, open, onToggle, onSetPct, wait }: { row: BuildDeskRow; open: boolean; onToggle: () => void; onSetPct: () => void; wait: WaitPresses }) {
   const edge = TONE_COLOR[row.chip.tone]
   return (
     <div style={{ ...card, padding: 0, borderLeft: `4px solid ${edge}`, minWidth: 0 }} data-testid="bridge-build-row">
@@ -115,7 +140,7 @@ function Row({ row, open, onToggle, onSetPct }: { row: BuildDeskRow; open: boole
       </button>
       {open && (
         <div style={{ padding: '8px 12px 12px', borderTop: '1px solid var(--border)' }}>
-          <Detail row={row} id={`bridge-build-row-${row.id}`} cells={false} pctFirst={false} onSetPct={onSetPct} />
+          <Detail row={row} id={`bridge-build-row-${row.id}`} cells={false} pctFirst={false} onSetPct={onSetPct} wait={wait} />
         </div>
       )}
     </div>
@@ -123,12 +148,50 @@ function Row({ row, open, onToggle, onSetPct }: { row: BuildDeskRow; open: boole
 }
 
 export function BridgeBuildDesk(props: BridgeBuildDeskProps) {
-  const { desk, readsPending, readError, isLink, readStamp, onClose, onSavePct } = props
+  const { desk, readsPending, readError, isLink, readStamp, onClose, onSavePct, onWaitsChanged, waitsIo = buildWaitsIo } = props
+  const { showToast } = useToastContext()
   // One detail is open at a time: `step:<job>` under a row of the three lists, `fold:<job>` on a row of the ledger.
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [editing, setEditing] = useState<BuildDeskRow['modalJob'] | null>(null)
+  // The row whose wait is being named in the small window, and whether a mark or a lift is on its way.
+  const [naming, setNaming] = useState<BuildDeskRow | null>(null)
+  const [waitBusy, setWaitBusy] = useState(false)
   const steps = useMemo(() => buildBuildSteps(desk), [desk])
   const toggle = (key: string) => setOpenKey((v) => (v === key ? null : key))
+
+  const markWaiting = (row: BuildDeskRow, reason: BuildWaitReason, note: string) => {
+    if (waitBusy) return
+    setWaitBusy(true)
+    void (async () => {
+      try {
+        await waitsIo.mark(row.id, reason, note)
+        showToast(buildWaitMarkedWords(row.label, { reason, note }), 'success')
+        setNaming(null)
+        onWaitsChanged?.()
+      } catch (e) {
+        // The window stays open with what was picked, and the reason is said.
+        showToast(formatErrorMessage(e, 'The job was not marked waiting.'), 'error')
+      } finally {
+        setWaitBusy(false)
+      }
+    })()
+  }
+  const liftWait = (row: BuildDeskRow) => {
+    if (waitBusy) return
+    setWaitBusy(true)
+    void (async () => {
+      try {
+        await waitsIo.lift(row.id)
+        showToast(buildWaitLiftedWords(row.label), 'success')
+        onWaitsChanged?.()
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'The wait was not lifted.'), 'error')
+      } finally {
+        setWaitBusy(false)
+      }
+    })()
+  }
+  const waitOf = (row: BuildDeskRow): WaitPresses => ({ onName: () => setNaming(row), onLift: () => liftWait(row), busy: waitBusy })
 
   // The first thing to do is drawn blue: the first row of the first list that has one.
   const firstId = steps.groups.find((g) => g.rows.length > 0)?.rows[0]?.id ?? null
@@ -149,14 +212,14 @@ export function BridgeBuildDesk(props: BridgeBuildDeskProps) {
             press: s.href ? { label: s.press, to: s.href, primary, testId } : { label: s.press, onClick: () => toggle(key), primary, testId },
             under: openKey === key ? (
               <div style={{ ...card, padding: '0.6rem 0.75rem' }}>
-                <Detail row={s.row} id={`bridge-build-step-${s.id}`} cells pctFirst={g.key === 'percent'} onSetPct={() => setEditing(s.row.modalJob)} />
+                <Detail row={s.row} id={`bridge-build-step-${s.id}`} cells pctFirst={g.key === 'percent'} onSetPct={() => setEditing(s.row.modalJob)} wait={waitOf(s.row)} />
               </div>
             ) : undefined,
           }
         }),
       }))
 
-  const ledger = (rows: BuildDeskRow[]) => rows.map((r) => <Row key={r.id} row={r} open={openKey === `fold:${r.id}`} onToggle={() => toggle(`fold:${r.id}`)} onSetPct={() => setEditing(r.modalJob)} />)
+  const ledger = (rows: BuildDeskRow[]) => rows.map((r) => <Row key={r.id} row={r} open={openKey === `fold:${r.id}`} onToggle={() => toggle(`fold:${r.id}`)} onSetPct={() => setEditing(r.modalJob)} wait={waitOf(r)} />)
 
   const folds: StepFoldSpec[] = [
     {
@@ -169,6 +232,20 @@ export function BridgeBuildDesk(props: BridgeBuildDeskProps) {
         </div>
       ),
     },
+    ...(steps.waits
+      ? [
+          {
+            key: 'waits',
+            label: steps.waits.label,
+            content: (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="bridge-build-waits">
+                <div style={det}>{steps.waits.words}</div>
+                {ledger(steps.waits.rows)}
+              </div>
+            ),
+          },
+        ]
+      : []),
     {
       key: 'every',
       label: steps.everyLabel,
@@ -243,9 +320,10 @@ export function BridgeBuildDesk(props: BridgeBuildDeskProps) {
         </div>
       }
       onClose={onClose}
-      escCloses={!editing}
+      escCloses={!editing && !naming}
     >
       {editing && <FieldPctUpdateModal job={editing} onClose={() => setEditing(null)} onSaved={(pct) => onSavePct(editing.id, pct)} />}
+      {naming && <BuildWaitWindow label={naming.label} leftUsd={naming.leftUsd} busy={waitBusy} onMark={(reason, note) => markWaiting(naming, reason, note)} onClose={() => (waitBusy ? undefined : setNaming(null))} />}
     </BridgeStepWindow>
   )
 }

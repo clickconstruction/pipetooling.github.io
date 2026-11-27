@@ -2,9 +2,10 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { footClearanceCss } from '../lib/bottomChrome'
 import { JOB_MODE_PRESS_BAR_VAR } from '../lib/jobMode/pressBar'
+import { TOAST_FILLS, TOAST_WORDS, type ToastKind } from '../lib/toastFills'
 import { toastActionPress, toastDismissPress, toastLiveRole } from '../lib/toastPress'
 
-type ToastType = 'info' | 'warning' | 'error' | 'success'
+type ToastType = ToastKind
 
 export type ToastAnchor = { clientX: number; clientY: number }
 
@@ -150,19 +151,13 @@ export function Toast({
     return () => clearTimeout(timer)
   }, [duration, onClose])
 
-  const colors = {
-    info: { bg: '#3b82f6', border: '#2563eb' },
-    warning: { bg: '#f59e0b', border: '#d97706' },
-    error: { bg: '#ef4444', border: '#dc2626' },
-    success: { bg: '#10b981', border: '#059669' },
-  }
-
+  // The fill and its edge by kind, each deep enough under the white words (`toastFills.ts`, finding 321).
   const cardStyleBase = {
-    background: colors[type].bg,
-    color: 'white',
+    background: TOAST_FILLS[type].bg,
+    color: TOAST_WORDS,
     padding: '1rem 1.5rem',
     borderRadius: '8px',
-    border: `2px solid ${colors[type].border}`,
+    border: `2px solid ${TOAST_FILLS[type].border}`,
     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
     maxWidth: `${MAX_WIDTH_PX}px`,
   } as const

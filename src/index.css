@@ -4954,6 +4954,10 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 /* …and every press under 40 px inside the open paper gets a thumb's square (punch list #352, the leftovers): the pad `watchSmallPresses` marks, drawn unseen over the press, so nothing moves. */
 [data-lien-pane-phone] [data-press-pad] { position: relative; }
 [data-lien-pane-phone] [data-press-pad]::after { content: ''; position: absolute; top: calc(-1 * var(--press-pad-y, 0px)); bottom: calc(-1 * var(--press-pad-y, 0px)); left: calc(-1 * var(--press-pad-x, 0px)); right: calc(-1 * var(--press-pad-x, 0px)); }
+/* A site's materials screen on a phone (finding 324): the same pad, for a screen that is a page and not a window. Its view chips, **Same part** and **Different**, the price presses and the print link stood 26 to 36 px.
+   The pad is measured from the press's edge and drawn from inside its border. Every press on this screen has a 1 px border, so each side reaches 1 px further here: a tap is 44 px, where the pad alone gave 42. */
+[data-site-materials-phone] [data-press-pad] { position: relative; }
+[data-site-materials-phone] [data-press-pad]::after { content: ''; position: absolute; top: calc(-1px - var(--press-pad-y, 0px)); bottom: calc(-1px - var(--press-pad-y, 0px)); left: calc(-1px - var(--press-pad-x, 0px)); right: calc(-1px - var(--press-pad-x, 0px)); }
 /* The last day's press under the LAST WORK stop (v2.7684): a thumb tall inside a phone's open paper, on its own line, so the row above keeps its height. */
 [data-lien-pane-phone] [data-lien-timeline-last-work-door] { min-height: 44px; display: inline-flex; align-items: center; padding: 0 10px 0 0 !important; font-size: 0.8125rem !important; }
 /* Steps | Windows inside a phone's open paper (v2.7392): the switch clips its overflow for its round corners, and a pad with it, so its two presses are grown to a thumb's height instead of padded. */

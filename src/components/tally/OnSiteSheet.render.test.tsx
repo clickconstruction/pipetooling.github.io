@@ -76,4 +76,51 @@ describe('the On site sheet and the keyboard (punch list #398)', () => {
     render(<Sheet title="More for G12" onClose={() => {}}><p>Edit G12</p></Sheet>)
     expect(scrim().getAttribute('data-on-site-sheet')).toBe('page')
   })
+
+  it('in the short room a small phone’s number pad leaves, the sheet takes the whole room and drops its handle (finding 310)', () => {
+    setPhone(true)
+    setShows({ height: 320, offsetTop: 0 })
+    render(
+      <Sheet title="Add a part to ZZ4" onClose={() => {}} footer={<button type="button">Add 1 to ZZ4</button>}>
+        <p>How many?</p>
+      </Sheet>,
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Add a part to ZZ4' }) as HTMLElement
+    expect(dialog.style.maxHeight).toBe('100%')
+    expect(document.querySelector('[data-on-site-sheet-handle]')).toBeNull()
+    const [, body, foot] = Array.from(dialog.children) as HTMLElement[]
+    expect([body!.style.padding, body!.style.gap]).toEqual(['0.4rem 1rem 0.75rem', '0.5rem'])
+    expect(foot!.style.padding).toContain('0.4rem 1rem')
+  })
+
+  it('with the keys away the sheet is as it was: 90% of the room, its handle and its padding', () => {
+    setPhone(true)
+    setShows({ height: 553, offsetTop: 0 })
+    render(
+      <Sheet title="Add a part to ZZ4" onClose={() => {}} footer={<button type="button">Add 1 to ZZ4</button>}>
+        <p>How many?</p>
+      </Sheet>,
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Add a part to ZZ4' }) as HTMLElement
+    expect(dialog.style.maxHeight).toBe('90%')
+    expect(document.querySelector('[data-on-site-sheet-handle]')).toBeTruthy()
+    const [, body] = Array.from(dialog.children) as HTMLElement[]
+    expect([body!.style.padding, body!.style.gap]).toEqual(['0.6rem 1rem 1rem', '0.75rem'])
+  })
+
+  it('where the sheet follows the room its surface runs on under its foot, and a press there closes nothing', () => {
+    setPhone(true)
+    setShows({ height: 320, offsetTop: 0 })
+    const onClose = vi.fn()
+    const phone = render(<Sheet title="Add a part to ZZ4" onClose={onClose}><p>How many?</p></Sheet>)
+    const tail = document.querySelector('[data-on-site-sheet-tail]') as HTMLElement
+    expect(tail.parentElement).toBe(scrim())
+    expect([tail.style.top, tail.style.background, tail.getAttribute('aria-hidden')]).toEqual(['100%', 'var(--surface)', 'true'])
+    fireEvent.click(tail)
+    expect(onClose).not.toHaveBeenCalled()
+    phone.unmount()
+    setPhone(false)
+    render(<Sheet title="More for G12" onClose={() => {}}><p>Edit G12</p></Sheet>)
+    expect(document.querySelector('[data-on-site-sheet-tail]')).toBeNull()
+  })
 })

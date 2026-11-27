@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
-import { bankCheckAnswer, bankCheckForPayment, bankCheckFromRow, bankCheckTyped, checkAnswerWords, checkName, checkNumberKey, paymentCheckAnswer, type BankCheck, type CheckClearedPayment } from './checkCleared'
+import { EARLY_ON_CHECK_ROLES, bankCheckAnswer, bankCheckForPayment, bankCheckFromRow, bankCheckTyped, canActBeforeCheckClears, checkAnswerWords, checkName, checkNumberKey, paymentCheckAnswer, type BankCheck, type CheckClearedPayment } from './checkCleared'
 
 // Every check, number, day and amount here is made up.
 const TODAY = '2026-11-24'
@@ -150,5 +150,14 @@ describe('the words', () => {
     ]
     for (const [c, today] of rows) expect(plainWordsFailures(plainSentence(checkAnswerWords(bankCheckAnswer(c, today), checkName(c.checkNumber), c.amount).say))).toEqual([])
     expect(plainWordsFailures(plainSentence(checkAnswerWords(paymentCheckAnswer(paid(), [], TODAY), checkName('1184')).say))).toEqual([])
+  })
+})
+
+describe('who may act before the bank clears a check (punch list #437, call 4)', () => {
+  it('is a leader, a controller or a dev, and nobody else', () => {
+    expect([...EARLY_ON_CHECK_ROLES].sort()).toEqual(['controller', 'dev', 'master_technician'])
+    for (const role of ['dev', 'master_technician', 'controller']) expect(canActBeforeCheckClears(role), role).toBe(true)
+    // The assistant is not one of the three, though the controller is.
+    for (const role of ['assistant', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helper', '', null, undefined]) expect(canActBeforeCheckClears(role), String(role)).toBe(false)
   })
 })

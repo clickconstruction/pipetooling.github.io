@@ -14,6 +14,7 @@ import { gcTradePortalSample, gcTradePortalSampleFlow } from '../../supabase/fun
 vi.mock('../lib/publicFunctionStaffHeaders', () => ({ staffAwarePublicHeaders: async () => ({ apikey: 'anon', Authorization: 'Bearer anon' }) }))
 
 import GcTradePortal from './GcTradePortal'
+import { PORTAL_UNNAMED_GRID, portalFitCss } from '../lib/gc/tradePortalFit'
 
 const TODAY = '2026-10-08'
 const urls: string[] = []
@@ -55,6 +56,25 @@ describe('GcTradePortal', () => {
     expect(screen.queryByRole('region', { name: /^Asked to quote/ })).toBeNull()
     expect(block('Who gets our emails').getByText(/Marcus Lee/)).toBeTruthy()
     expect(block('Before').getByText(/Sample Clinic Finish Out · Electrical · you passed/)).toBeTruthy()
+  })
+
+  it('no card runs past the shell: every grid that names no column is held to the room it is given (finding 334)', async () => {
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: /^Sample Retail Shell/ }))
+    // The job's page draws its quote form in place: the picker under *Your quote file* is on it.
+    await screen.findByText(/Your quote file/)
+    const shell = document.querySelector('[data-trade-portal]') as HTMLElement
+    // The shell carries the rule, and the rule reaches nothing outside it.
+    const sheet = Array.from(shell.querySelectorAll('style')).map((el) => el.textContent ?? '').join(' ')
+    expect(sheet).toContain(portalFitCss('[data-trade-portal]'))
+    // The rule reads a grid by the style React draws. So every grid on the job's page, with the quote form open, must
+    // be one the rule reaches or one that names its own columns: none is left as wide as its widest child wants.
+    const grids = Array.from(shell.querySelectorAll<HTMLElement>('*')).filter((el) => el.style.display === 'grid')
+    expect(grids.length).toBeGreaterThan(10)
+    const unheld = grids.filter((el) => !el.matches(PORTAL_UNNAMED_GRID) && el.style.gridTemplateColumns === '')
+    expect(unheld.map((el) => el.outerHTML.slice(0, 80))).toEqual([])
+    // The quote form's file picker is the child that could not shrink on an iPhone. It is on this page, inside the shell.
+    expect(shell.querySelector('input[type="file"]')).toBeTruthy()
   })
 
   it('keeps the home as it was when the answer has no flow', async () => {

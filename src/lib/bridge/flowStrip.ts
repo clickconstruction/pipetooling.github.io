@@ -5,9 +5,11 @@ import { STAGE_ORDER, stageUsd, type StageFlow, type StageId } from './stageFlow
  * Bridge's first screen, in place of reading five cards. Where we stand should be seen.
  *
  * Two things are drawn, because the page reads two things:
- * - **How wide the pipe is** at a step is the dollars it moves in a week (`todayPace`). It is
- *   drawn the way pipe is sized: the flow goes with the bore's area, so a step that moves four
- *   times the dollars is twice as wide. A step that does not read is drawn at the thinnest.
+ * - **How wide the pipe is** at a step is the dollars it moves in a week (`todayPace`), straight:
+ *   a step that moves half the dollars of the widest is half as wide (`stripThick`). Until
+ *   v2.8725 it followed the square root with a floor of 0.3, as a pipe's bore does, and the five
+ *   steps looked alike. Taunya, 2026-11-27, on punch list #318's call 6: *Size to dollars*. A step
+ *   that does not read is drawn at the thinnest.
  * - **The block on top** of Build, Bill and Collect is the work waiting in front of that step,
  *   in weeks at its own pace. The lit section is the page's reading (`StageFlow.linkId`): since
  *   punch list #321 the narrowest step, the one that moves the fewest dollars a week, so it is
@@ -31,8 +33,13 @@ export const STRIP_MARKET_WORTH_VERB = 'worth'
 /** The line over the drawing: the unit, and at a desk what the block is. */
 export const STRIP_LEGEND = { short: 'Dollars a week.', long: 'Dollars a week. A block is work waiting in front of a step.' } as const
 
-/** The thinnest a section is drawn, as a share of the widest. */
-export const STRIP_MIN_THICK = 0.3
+/** The thinnest a section is drawn, as a share of the widest: enough to stay a line of pipe on a phone. */
+export const STRIP_MIN_THICK = 0.08
+
+/** A section's width as a share of the widest: its dollars a week over the most any step moves, never under the thinnest. */
+export function stripThick(paceUsd: number | null, maxPaceUsd: number): number {
+  return paceUsd != null && maxPaceUsd > 0 ? Math.max(STRIP_MIN_THICK, Math.min(1, paceUsd / maxPaceUsd)) : STRIP_MIN_THICK
+}
 /** A pile taller than this many weeks is drawn at full height. */
 export const STRIP_PILE_WEEKS_CAP = 12
 
@@ -86,7 +93,7 @@ export function buildFlowStrip(flow: StageFlow, paces: Partial<Record<StageId, n
       name,
       paceUsd: p,
       paceText,
-      thick: p != null && maxPace > 0 ? STRIP_MIN_THICK + (1 - STRIP_MIN_THICK) * Math.sqrt(p / maxPace) : STRIP_MIN_THICK,
+      thick: stripThick(p, maxPace),
       weeks: w,
       weeksText,
       pile: w != null && maxWeeks > 0 ? Math.min(w, STRIP_PILE_WEEKS_CAP) / maxWeeks : 0,

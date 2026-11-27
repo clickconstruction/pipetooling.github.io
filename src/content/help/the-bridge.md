@@ -38,7 +38,7 @@ Cash balance $21.0k, 14 days of runway. Accrual balance $60.7k, 40 days of runwa
 
 On a phone, the first two numbers share a row and the balances sit under them.
 
-Under the numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. Under the bar, a line says whether that work grows or shrinks each week, and by how much. Market and Sales hold no pile. Each of their lines says how far short of the field the step runs, or how far ahead. The narrowest step is red. The red does not move with the lines. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the numbers. In a week cash comes first, a phone shows it under the card.
+Under the numbers, a pipe draws the five steps running down the page. A section is wide when the step moves many dollars a week. A step that moves half the dollars is drawn half as wide. The words beside each section say what the dollars are: sold, built, billed or paid. A bar under a step's words is work waiting in front of that step. Under the bar, a line says whether that work grows or shrinks each week, and by how much. Market and Sales hold no pile. Each of their lines says how far short of the field the step runs, or how far ahead. The narrowest step is red. The red does not move with the lines. Press a row to open that step's desk. At a desk the pipe sits beside the card. On a phone it sits under the numbers. In a week cash comes first, a phone shows it under the card.
 
 Market's row reads what the asks are worth a week, not every dollar that came in. [What Market is worth](#what-market-is-worth) gives the rule. Press **How Market's figure is counted** under the pipe to read the working. The Market card behind **The flow** reads the same amount.
 
@@ -185,13 +185,36 @@ Three short lists follow, each named by what to do. Each row is one job with one
 
 - **Hours went in, the percent did not move** lists jobs with hours and the same percent. Press **Set the percent** on a row. The row opens to why the job is listed, its crew and its doors. Press **Open the percent window ›** to set the percent as the crews do. Saving files a status report, and the window reads again.
 - **Hours on a job with no price** lists hours that earn nothing until the job has a price. Press **Set a price** to open the job.
-- **Sold, and nobody on it** lists the jobs nobody clocked on in 14 days. Press **Schedule it** to open the row. **Open the Schedule ›** and **Open the job ›** sit under the row.
+- **Sold, and nobody on it** lists the jobs nobody clocked on in 14 days. Press **Schedule it** to open the row. **Open the Schedule ›**, **Open the job ›** and **Name why it waits ›** sit under the row.
 
 A list shows its first rows. Press **Show all** under a list for the rest.
 
-Three presses at the foot open the rest. **What moved** lists the jobs whose percent rose. **Every open job** holds the whole list, worst first, under three tiles. Press a row there to read why, with its doors. **How this is counted** gives the rules. **Open the Schedule ›** and **Open Stages ›** sit at the bottom.
+Presses at the foot open the rest. **What moved** lists the jobs whose percent rose. **Waiting, with a reason** lists the jobs you marked as waiting, and shows only when one waits. **Every open job** holds the whole list, worst first, under its tiles. Press a row there to read why, with its doors. **How this is counted** gives the rules. **Open the Schedule ›** and **Open Stages ›** sit at the bottom.
 
 Esc closes the window.
+
+### A job that waits, with a reason
+
+Some quiet jobs are not the crew's to fix. The GC is not ready, or an inspection is owed. Mark the job as waiting, and the window stops counting it against the crew.
+
+1. Open the job's row under **Sold, and nobody on it**.
+2. Press **Name why it waits ›**.
+3. Pick one of six reasons. *Something else* needs a line of your own words.
+4. Press {{button:blue|Mark it waiting}}.
+
+The job leaves the quiet list and its money. The job's dollars show in a tile of their own, *Waits, with a reason*, so nothing hides. The Build card still counts the job, because the work is still sold and not finished.
+
+The job's status does not change. The job stays Working.
+
+:::example What the job shows while it waits
+Waits · the GC is not ready for us · since Oct 26
+:::
+
+That line is a chip on the job's card on Jobs → Stages. The job's Activity also gets a line with your name and the day.
+
+To end the wait, press **Waiting, with a reason** at the foot and open the job's row. Press **Lift the wait ›**. The job counts on the window again, and its Activity gets a second line.
+
+The office can end the wait without the Bridge. The job's Edit tab has a **Waits** row with {{button:outline|Lift the wait}}. Read [the Edit tab reads as rows](/help/job-window-tabs#the-edit-tab-reads-as-rows).
 
 ## Bill, broken down
 
@@ -199,8 +222,8 @@ Press Bill's row on the pipe, or **Break it down** on the Bill card. A window op
 
 **Do this week** lists up to four things, each with one press.
 
-- The first row counts the jobs the office marked ready to bill. Press **Open Billing**.
-- The next rows name the two largest jobs with finished work and no bill. **Bill it** opens Billing for a job never billed. **Open the bill** opens Billing for a job billed in part.
+- The first row counts the jobs the office marked ready to bill. Press **Open Ready to bill**.
+- The next rows name the two largest jobs with finished work and no bill. **Bill it** opens the job's window for a job never billed. **Open the bill** opens the job's window for a job billed in part.
 - The last row counts the jobs with hours and no price. Press **Set prices** to list those jobs under the row. Each job has **Price the job ›**, which opens the job window.
 
 **Did the customer get these?** counts the bills marked billed by hand with no send on record. Press the row's button to list those bills under the row. Press a bill for the read that proves it and its door.
@@ -214,7 +237,7 @@ Four presses at the foot open the rest.
 - **What waiting costs** says what one more week of sitting costs. **Billable today** lists the ready jobs there. **The rule, lately** opens the table of every bill and its lag.
 - **How this is counted** gives the rules.
 
-**Open Billing ›** sits at the bottom. Nothing records here. Press {{button:outline|×}} or the Escape key to close the window.
+**Open Ready to bill ›** sits at the bottom. Nothing records here. Press {{button:outline|×}} or the Escape key to close the window.
 
 ## Collect, broken down
 
@@ -236,7 +259,7 @@ Three presses under the lists open the rest.
 - **What is in the pile** holds two tiles and the bar by where each bill stands. Everyone else is one line there, above what slows Collect before any call.
 - **How this is counted** gives the rules for a customer's pace, and for late and doubtful.
 
-One line at the foot says what the sheet asks for. **Copy the call sheet** puts the rows on the clipboard. **Open Billing** opens Billing. Esc closes the window.
+One line at the foot says what the sheet asks for. **Copy the call sheet** puts the rows on the clipboard. **Open Billed** opens the Pipeline's Billed stage. Esc closes the window.
 
 ## The dial
 

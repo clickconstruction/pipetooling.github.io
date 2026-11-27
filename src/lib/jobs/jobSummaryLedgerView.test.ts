@@ -506,6 +506,21 @@ describe('discount line items (v2.3256)', () => {
   })
 })
 
+describe('the Burn column at the burden (punch list #448)', () => {
+  it('prices labor at wages times the factor in the burn, and leaves the Labor column the wages paid', () => {
+    const raw = enrichJobSummaryRows({ rows, reportPctByJobId: reportPct, ledger, method: 'day' })
+    const at = enrichJobSummaryRows({ rows, reportPctByJobId: reportPct, ledger, method: 'day', laborBurden: 1.2 })
+    const pick = (list: typeof raw, id: string) => list.find((r) => r.row.job.id === id)!
+    // J904: $6,912 of wages, a $1,250 sub sheet, $4,880 of parts.
+    expect(pick(raw, 'j904').burn!.spentUsd).toBeCloseTo(6_912 + 1_250 + 4_880, 6)
+    expect(pick(at, 'j904').burn!.spentUsd).toBeCloseTo(6_912 * 1.2 + 1_250 + 4_880, 6)
+    expect(pick(at, 'j904').laborUsd).toBe(6_912)
+    expect(pick(at, 'j904').grossUsd).toBe(pick(raw, 'j904').grossUsd)
+    // A factor of 1 is the old column, row for row.
+    expect(enrichJobSummaryRows({ rows, reportPctByJobId: reportPct, ledger, method: 'day', laborBurden: 1 }).map((r) => r.burn)).toEqual(raw.map((r) => r.burn))
+  })
+})
+
 describe('the budget footing on the rows (v2.3300)', () => {
   it('a job with a job_budgets row burns against it and wears its glyph; the rest are ≈ assumed', () => {
     const budgets = new Map([['j990', { usd: 4_000, source: 'bid' as const }]])

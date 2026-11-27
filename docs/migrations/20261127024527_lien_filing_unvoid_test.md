@@ -137,3 +137,5 @@ Each write below is a write on prod and waits on its own yes. Use a ZZ Test job 
 6. Void the record again. On the desk, change the paper, a month or a line of its words. Press **Put back…** and confirm: the line reads *The paper this record sent has moved on since the void. The record stays voided.* and the record stays voided.
 7. A record voided before the push, on a job that held a notice paper by then: **Put back…** reads *This record was voided before the app kept what a void does to its desk paper. It stays voided.*
 8. Leave the ZZ Test job as it was found, and tell `fixing` what was made and what stays.
+
+**Applied** to prod by 2026-11-27: the dev seat's `check_migration_ledger` read 1,514 versions applied against 1,514 files on `origin/main`, this version among them (read in the docs pass after #9995); types regenerated in #10009.

@@ -111,3 +111,5 @@ Each write below is a write on prod and waits on its own yes. Use a made-up map 
 5. Settings → Data & recovery → Recently deleted lists a *Painted map* bundle under the map's name, with its lines, places and links counted.
 6. **On its own yes**, restore it. The map opens again with its line, its place and the place's photo. The link's old address opens the map.
 7. Throw the ZZ map away for good at the end of the walk, by the same press, and say in the report that its copy stays in Recently deleted for 90 days and that its photos are in the bucket. Tell `fixing` both.
+
+**Applied** to prod by 2026-11-27: the dev seat's `check_migration_ledger` read 1,514 versions applied against 1,514 files on `origin/main`, this version among them (read in the docs pass after #9995); types regenerated in #10009.

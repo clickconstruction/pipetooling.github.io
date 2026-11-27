@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest'
 import {
   addBusinessDays,
   buildMoneyInWeek,
+  checkNumberWords,
   dayColumnLabel,
   dayWord,
   isCustomerDeposit,
   penAppliesTo,
   penContextLine,
   penQuickDays,
+  pendingDepositDay,
+  pendingDepositWords,
   weekMondayContaining,
   type MoneyInDeposit,
   type MoneyInPayment,
@@ -451,5 +454,60 @@ describe('the pen', () => {
     expect(penAppliesTo({ kind: 'pace', jobId: null })).toBe(false)
     expect(penAppliesTo({ kind: 'bank', jobId: 'j1' })).toBe(false)
     expect(penAppliesTo({ kind: 'sent-claim', jobId: 'j1' })).toBe(false)
+  })
+})
+
+describe('a pending deposit and the bank’s own day (punch list #437, piece 2)', () => {
+  // Monday Oct 26. A check deposited Friday: the app guesses it posts Tuesday.
+  const word = (ymd: string) => dayWord(ymd, TODAY)
+  const chip = (bankDayYmd: string | null, over: Partial<MoneyInDeposit> = {}, todayYmd = TODAY) =>
+    buildMoneyInWeek(input({ deposits: [deposit({ mercuryTransactionId: 'p1', bankDayYmd, checkNumber: '03310', ...over })], todayYmd }))
+      .days.flatMap((d) => d.rows)
+      .find((r) => r.kind === 'bank')
+
+  it('the bank names no day: the chip sits on the guess and says so, as before', () => {
+    expect(pendingDepositDay('2026-10-23', null, TODAY)).toEqual({ dayYmd: '2026-10-27', bankDayYmd: null, by: 'guess' })
+    expect(chip(null)).toMatchObject({ dayYmd: '2026-10-27', sub: 'check #3310 · deposited Fri · posts ~Tue' })
+  })
+
+  it('the bank’s day is no later than the guess: it takes the guess’s place, on the chip and in its words', () => {
+    expect(pendingDepositDay('2026-10-23', '2026-10-26', TODAY)).toEqual({ dayYmd: '2026-10-26', bankDayYmd: '2026-10-26', by: 'bank' })
+    expect(chip('2026-10-26')).toMatchObject({ dayYmd: '2026-10-26', sub: 'check #3310 · deposited Fri · the bank says it clears today' })
+    expect(chip('2026-10-27')).toMatchObject({ dayYmd: '2026-10-27', sub: 'check #3310 · deposited Fri · the bank says it clears Tue' })
+  })
+
+  it('the bank’s day is after the posting: the chip stays in sight on the guess, and its line adds the bank’s day', () => {
+    expect(pendingDepositDay('2026-10-23', '2026-10-30', TODAY)).toEqual({ dayYmd: '2026-10-27', bankDayYmd: '2026-10-30', by: 'guess' })
+    expect(chip('2026-10-30')).toMatchObject({ dayYmd: '2026-10-27', sub: 'check #3310 · deposited Fri · posts ~Tue · the bank says it clears Fri' })
+    // A day past this week is said by its date, and the chip is still on this week's line.
+    expect(chip('2026-11-03')).toMatchObject({ dayYmd: '2026-10-27', sub: 'check #3310 · deposited Fri · posts ~Tue · the bank says it clears Nov 3' })
+  })
+
+  it('the bank’s day has passed and the deposit still has not posted: the chip sits on today and says so', () => {
+    expect(pendingDepositDay('2026-10-19', '2026-10-23', TODAY)).toEqual({ dayYmd: TODAY, bankDayYmd: '2026-10-23', by: 'late' })
+    expect(chip('2026-10-23', { dayYmd: '2026-10-19' })).toMatchObject({ dayYmd: TODAY, sub: 'check #3310 · deposited Mon · the bank named Fri and has not posted it' })
+  })
+
+  it('a day the bank wrote that is no day, or one before the deposit, is not taken', () => {
+    expect(pendingDepositDay('2026-10-23', 'soon', TODAY).by).toBe('guess')
+    expect(pendingDepositDay('2026-10-23', '2026-10-01', TODAY)).toEqual({ dayYmd: '2026-10-27', bankDayYmd: null, by: 'guess' })
+  })
+
+  it('names the check by the number the bank read when no payment was typed for it, and by the typed one when one was', () => {
+    expect(chip(null)?.reference).toBe('3310')
+    expect(chip(null, { checkNumber: null })).toMatchObject({ reference: null, sub: 'check deposit · deposited Fri · posts ~Tue' })
+    const typed = buildMoneyInWeek(input({ unlinked: [unlinked({ paymentId: 'u1', usd: 4980, referenceNumber: '3310A' })], deposits: [deposit({ mercuryTransactionId: 'p1', checkNumber: '03310' })] }))
+    expect(typed.days.flatMap((d) => d.rows).find((r) => r.kind === 'bank')?.reference).toBe('3310A')
+    expect(checkNumberWords(' 01184 ')).toBe('1184')
+    expect(checkNumberWords('0')).toBe('0')
+    expect(checkNumberWords('')).toBeNull()
+    expect(checkNumberWords(null)).toBeNull()
+  })
+
+  it('writes each ending of the line', () => {
+    expect(pendingDepositWords({ dayYmd: '2026-10-27', bankDayYmd: null, by: 'guess' }, '2026-10-27', word)).toBe('posts ~Tue')
+    expect(pendingDepositWords({ dayYmd: '2026-10-27', bankDayYmd: '2026-10-27', by: 'bank' }, '2026-10-27', word)).toBe('the bank says it clears Tue')
+    expect(pendingDepositWords({ dayYmd: '2026-10-27', bankDayYmd: '2026-10-30', by: 'guess' }, '2026-10-27', word)).toBe('posts ~Tue · the bank says it clears Fri')
+    expect(pendingDepositWords({ dayYmd: TODAY, bankDayYmd: '2026-10-23', by: 'late' }, TODAY, word)).toBe('the bank named Fri and has not posted it')
   })
 })

@@ -138,6 +138,8 @@ One thing was built on the bar before the answer came: v2.7572 changes where the
 person on Short, and nothing else about the bar. Nobody is on Short, so nobody's bar changed. If *untouched*
 was meant to cover that too, v2.7572 is the one to take back.
 
+**Answered 2026-11-27** by the person at the keyboard, *Picks stand* to the pick *Keep it*, relayed by the managing session. The row as read: *the bar's Dashboard tab on Short: keep it opening the short page.* v2.7572 stays, and no call on this card is open.
+
 ## How to verify
 
 - `npx vitest run src/lib/dashboard/shortDashboard.test.ts src/components/dashboard/DashboardShortView.render.test.tsx src/components/personDesk/sections/PersonDeskDashboardViewSection.render.test.tsx`.

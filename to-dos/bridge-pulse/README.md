@@ -12,7 +12,7 @@ summary: >
   runway in days. The train also carries what the last Bridge train left out: the list of what the Bridge
   leaves out, the Build, Bill and Collect windows on the shared frame, the Market window's breakouts, a
   supply house card that leads with its bills, and the hours on a job with no percent.
-next: A read of Monday 2026-11-16's email, the first the app has ever sent. Then the owner's first presses, each of which records.
+next: A read of Monday 2026-11-16's email, the first the app has ever sent. Then the owner's first presses, each of which records. Checked 2026-11-27: the send of Monday 2026-11-16 has passed, and no read of a weekly email is on the record. Read in the walking thread's sitting 35 of 2026-11-27, reads only, through the dev seat and the page at 1280 px: the email has gone out twice, on Monday 2026-11-16 and Monday 2026-11-23, and neither is opened in the box searched. The mail of 2026-11-23 has the page's shape, with Market as one amount, and its left-out line is the page's, word for word. No verdict on equal amounts: the page is live and the mail was four days old. The like-for-like read is the function's dry run beside the page in the same minute, which is a call and was not made. Two findings beside it, with the fixing thread: one of the email's three addresses has no mailbox, and the mail's in-kind sentence has no twin on the page's first screen.
 size: L as a train of twelve (M · M · S · M · M · S · M · L · M · S · S · S)
 blocker: None. The code is all on `main` and nothing is owed on the live database or the functions.
 opinion: build — the owner walked every part on live data and said to build it all. PR 7 is the one that changes what the page is.

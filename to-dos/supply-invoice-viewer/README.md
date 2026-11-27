@@ -12,7 +12,7 @@ summary: >
   a share icon left of the invoice number that copies an app link, a search box on the list, and
   bills joining the search the app already has: the lines read from each bill, the file index, the
   search by meaning and the header search.
-next: The owner looks at a job's Invoices from Supply Houses, opens a bill, copies its link and tries Search every bill on the live app, then says whether the card closes. The seven calls built on a default are listed under Where it stands.
+next: The owner looks at a job's Invoices from Supply Houses, opens a bill, copies its link and tries Search every bill on the live app, then says whether the card closes. The seven calls built on a default are listed under Where it stands. Checked 2026-11-27: the last of the ten PRs, #9569, merged on 2026-11-24, so all ten are on main. Looked at in the walking thread's sitting 35 of 2026-11-27, reads only, at 1280 px in light, which this card had left to walk: clean on the viewer, **Next ›**, the arrow keys, the bill's own page and Search every bill. One finding beside it, with the fixing thread: the viewer's copy-link press answered with no words in the pane, twice. Not made: the link opened signed out, and a bill with no PDF. The seven default calls are still the owner's.
 size: L as a train of ten, built; left: a look (XS)
 blocker: A look by the owner. Nothing in the code.
 opinion: your call — it is built and walked on real bills; the look and the seven default calls are yours

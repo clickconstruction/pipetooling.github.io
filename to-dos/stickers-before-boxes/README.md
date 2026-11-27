@@ -24,7 +24,7 @@ opinion: build PRs 1 to 3, then walk the site — the loop is whole there with t
 
 # Stickers before boxes (#329)
 
-This card sits beside **Materials on site** (#209, `to-dos/materials-on-site/README.md`), which built
+This card sits beside **Materials on site** (#209, closed 2026-11-27; its card lives in git history at the deleting commit), which built
 the cages, boxes, counts, labels and photos. Nothing in #209's ledger changes here. This card adds one
 thing in front of it: a sticker that exists before its box does.
 

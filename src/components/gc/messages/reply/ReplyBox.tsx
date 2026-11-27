@@ -68,6 +68,7 @@ import { formatErrorMessage } from '../../../../utils/errorHandling'
 import { Btn } from '../../gcUi'
 import { JobPickerWindow } from '../JobPickerWindow'
 import { useOpenThread } from '../openThread'
+import { showReplyFoot } from '../replyFoot'
 import { boxGreyWords, replyBoxFolded } from '../../../../lib/messages/replyFold'
 import { useMessagesReread } from '../useMessagesReread'
 import { AttachPicker } from './AttachPicker'
@@ -311,6 +312,14 @@ export function ReplyBox({
   // window's foot, and only while a press would fold it: a job's box, the Answer all desk's and a box holding files,
   // a held text or words it opened with are left alone.
   const rootRef = useRef<HTMLDivElement>(null)
+  // Finding 319: the box woke, and its strip and its row of presses now stand under the field. On a phone the thread's
+  // column brings that foot up, so the send press is not left under the keys.
+  const wasFolded = useRef(folded)
+  useEffect(() => {
+    const opened = wasFolded.current && !folded
+    wasFolded.current = folded
+    if (opened) showReplyFoot(rootRef.current)
+  }, [folded])
   const foldOnPressOut = useCallback(() => {
     setPressedOut(true)
     setWoke(false)

@@ -37,3 +37,5 @@ Applied twice on a throwaway Postgres 15 with stub tables, after `20261113150000
 ## Undo
 
 Drop and make `receipt_requests_to_chase()` again as `20261113150000` wrote it, then drop the three columns once nothing reads them. The word `again` can stay in the check.
+
+**Applied** to prod by 2026-11-27: the dev seat's `check_migration_ledger` read 1,514 versions applied against 1,514 files on `origin/main`, this version among them (read in the docs pass after #9995); types regenerated in #10057.

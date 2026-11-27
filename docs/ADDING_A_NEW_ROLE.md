@@ -5,7 +5,7 @@ file: ADDING_A_NEW_ROLE.md
 type: How-to checklist
 purpose: Step-by-step guide for adding a new user role without missing touchpoints
 audience: Developers, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-11-27
 ---
 
 > **Purpose**: Step-by-step guide for adding a new user role (e.g., Primary) to PipeTooling. Use this to avoid policy/permission mistakes and ensure all touchpoints are updated.
@@ -87,7 +87,7 @@ Add the role to the `handle_new_user` accepted `invited_role` list (new migratio
 
 Role checks occur in many pages. Search for `role === 'primary'`, `role === 'estimator'`, etc. to find patterns. Key files:
 
-- **Jobs.tsx** — Tab visibility (Reports, Stages, Billing, etc.)
+- **Jobs.tsx** — Tab visibility (Reports, Stages, Subs, etc.)
 - **Bids.tsx** — Tab visibility and feature gating
 - **Materials.tsx** — Service type filtering
 - **People.tsx** — Visibility of people/pay sections

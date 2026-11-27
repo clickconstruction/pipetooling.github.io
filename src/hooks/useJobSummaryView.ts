@@ -154,6 +154,8 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
   initialView?: string | null
   /** Each job's budget footing (v2.3300) — `useJobBudgetFootings`; omitted = every row on the assumption. */
   budgetByJobId?: ReadonlyMap<string, JobBudgetFooting>
+  /** The burden factor the Burn column prices labor at (punch list #448); omitted = 1, the wages as they are. */
+  laborBurden?: number
 }): JobSummaryViewBundle<R> {
   const { enabled, userId, role, rows, reportPctByJobId, search, userNameById, initialView } = args
   const [prefs, setPrefsState] = useState<JobSummaryViewPrefs>(() => {
@@ -229,8 +231,8 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
     [overheadSettings, overheadApp.appDefault, overheadApp.loaded, overheadApp.saving, overheadIsOverride, explore, saveAppDefault, allocation],
   )
   const enriched = useMemo(
-    () => enrichJobSummaryRows({ rows, reportPctByJobId, ledger: ledgerForWindow, method, targetMarginPct: prefs.targetTrueMarginPct, settings: overheadSettings, budgetByJobId: args.budgetByJobId }),
-    [rows, reportPctByJobId, ledgerForWindow, method, prefs.targetTrueMarginPct, overheadSettings, args.budgetByJobId],
+    () => enrichJobSummaryRows({ rows, reportPctByJobId, ledger: ledgerForWindow, method, targetMarginPct: prefs.targetTrueMarginPct, settings: overheadSettings, laborBurden: args.laborBurden, budgetByJobId: args.budgetByJobId }),
+    [rows, reportPctByJobId, ledgerForWindow, method, prefs.targetTrueMarginPct, overheadSettings, args.budgetByJobId, args.laborBurden],
   )
   const visible = useMemo(
     () => filterAndSortJobSummaryRows({ rows: enriched, prefs, search, startYmd, endYmd }),
@@ -265,12 +267,12 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
 
   const compare = useMemo<JobSummaryCompareBundle | null>(() => {
     if (!compareWindow) return null
-    const enrichedPrior = enrichJobSummaryRows({ rows, reportPctByJobId, ledger: cmp.ledger, method, targetMarginPct: prefs.targetTrueMarginPct, settings: overheadSettings, budgetByJobId: args.budgetByJobId })
+    const enrichedPrior = enrichJobSummaryRows({ rows, reportPctByJobId, ledger: cmp.ledger, method, targetMarginPct: prefs.targetTrueMarginPct, settings: overheadSettings, laborBurden: args.laborBurden, budgetByJobId: args.budgetByJobId })
     const visiblePrior = filterAndSortJobSummaryRows({ rows: enrichedPrior, prefs, search, startYmd: compareWindow.startYmd, endYmd: compareWindow.endYmd })
     const priorTotals = summarizeJobSummaryRows(visiblePrior)
     const trueMarginPctByGroupKey = new Map(groupJobSummaryRows(visiblePrior, prefs.cutBy, cutCtx).map((g) => [g.key, g.totals.trueMarginPct]))
     return { ...compareWindow, rows: visiblePrior, ledger: cmp.ledger, totals: priorTotals, comparison: compareJobSummaryTotals(totals, priorTotals), trueMarginPctByGroupKey, ledgerLoading: cmp.loading, ledgerError: cmp.error }
-  }, [compareWindow, rows, reportPctByJobId, cmp.ledger, cmp.loading, cmp.error, method, prefs, search, totals, cutCtx, overheadSettings])
+  }, [compareWindow, rows, reportPctByJobId, cmp.ledger, cmp.loading, cmp.error, method, prefs, search, totals, cutCtx, overheadSettings, args.laborBurden])
 
   return { prefs, setPrefs, toggleSort, startYmd, endYmd, ledger: ledgerForWindow, ledgerLoading, ledgerError, reloadLedger, rows: visible, allRows: enriched, totals, hiddenByStatus, hygiene, compare, groups, concentration, overhead }
 }

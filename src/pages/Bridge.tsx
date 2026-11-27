@@ -123,6 +123,7 @@ import { loadBillDeskReads, type BillDeskReads } from '../lib/bridge/bill/loadBi
 import { BridgeBuildDesk } from '../components/bridge/BridgeBuildDesk'
 import { buildBuildDesk, type BuildDeskReads } from '../lib/bridge/build/buildDesk'
 import { loadBuildDeskReads } from '../lib/bridge/build/loadBuildDesk'
+import { buildWaitsIo } from '../lib/bridge/build/buildWaitsIo'
 import { BridgeMarketDesk } from '../components/bridge/BridgeMarketDesk'
 import { buildMarketDesk, marketHeader } from '../lib/bridge/market/marketDesk'
 import { loadMarketDeskReads, type MarketDeskReads } from '../lib/bridge/market/loadMarketDesk'
@@ -614,6 +615,13 @@ export default function Bridge() {
       cancelled = true
     }
   }, [buildOpen, buildInputs, data, buildReads, buildReadKey])
+  // A wait was marked or lifted on the desk (v2.8723): the waits alone are read again and patched into the reads, so the Schedule's chips stay drawn.
+  const reloadBuildWaits = useCallback(() => {
+    void (async () => {
+      const waits = await buildWaitsIo.loadOpen()
+      setBuildReads((r) => (r ? { ...r, reads: { blocks: r.reads.blocks, names: r.reads.names, lifetimeHours: r.reads.lifetimeHours, ...(waits ? { waits } : {}) } } : r))
+    })()
+  }, [])
 
   // The Market desk (punch list #192, v2.5931): the intake over the relationship book, read on the first open.
   const [marketOpen, setMarketOpen] = useState(false)
@@ -1616,7 +1624,7 @@ export default function Bridge() {
             />
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: '0.6rem' }}>
-            {reflexes && <BridgeWaits reflexes={reflexes} activeId={reflexId} line={reflexLineNow} levers={otherLevers(litLink)} onPress={pressReflex} onReset={resetReflex} sizes={fixSizes} />}
+            {reflexes && <BridgeWaits reflexes={reflexes} activeId={reflexId} line={reflexLineNow} levers={otherLevers(litLink)} onPress={pressReflex} onReset={resetReflex} sizes={fixSizes} phone={narrow} />}
           </div>
           {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
           {billError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The Bill pile could not be read ({billError}).</p>}
@@ -1995,6 +2003,7 @@ export default function Bridge() {
               readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
               onClose={() => setBuildOpen(false)}
               onSavePct={savePct}
+              onWaitsChanged={reloadBuildWaits}
             />
           )}
           {marketOpen && data && marketHeaderNow && (

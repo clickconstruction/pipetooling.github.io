@@ -14,6 +14,7 @@ vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => viewport.phone }))
 
 import { ToastProvider, useToastContext } from '../contexts/ToastContext'
 import type { ToastAnchor, ToastPlacement } from './Toast'
+import { TOAST_FILLS, TOAST_WORDS } from '../lib/toastFills'
 
 function Shower({ message, anchor, placement, action, type = 'success' }: { message: string; anchor?: ToastAnchor; placement?: ToastPlacement; action?: () => void; type?: 'info' | 'warning' | 'error' | 'success' }) {
   const { showToast, showActionToast } = useToastContext()
@@ -162,5 +163,17 @@ describe('Toast — where it sits', () => {
     expect(screen.getByRole('alertdialog').getAttribute('aria-describedby')).toBe(screen.getByText('Hold on.').id)
     expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.queryByRole('status')).toBeNull()
+  })
+})
+
+describe('Toast — its fill under the white words (finding 321)', () => {
+  const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
+  it.each(['success', 'info', 'warning', 'error'] as const)('a %s toast fills with the kernel’s deep shade and keeps white words', (type) => {
+    draw({ message: 'Copied for text', type })
+    let card: HTMLElement | null = screen.getByText('Copied for text')
+    while (card && card.style.color !== TOAST_WORDS) card = card.parentElement
+    expect(card).toBeTruthy()
+    expect(card!.style.background).toBe(rgb(TOAST_FILLS[type].bg))
+    expect(card!.style.border).toBe(`2px solid ${rgb(TOAST_FILLS[type].border)}`)
   })
 })

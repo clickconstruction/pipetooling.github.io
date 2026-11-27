@@ -187,6 +187,8 @@ The email window reads *This paper names no site.* Leave it that way for a paper
 
 The email window then reads *For the site at* with the address. **Change the site…** picks another. **Take the site off** goes back to no site.
 
+On a phone the keyboard leaves little room. The title and the **×** stay on the screen. The choice **It is not for a site** steps aside while you type. Clear the box to bring it back.
+
 :::example One supply house, two sites
 Tallgrass Supply Co. signed the paper for 118 Old Quarry Trl. You send the same paper for 40 Stone Rd. That is a new copy, and the first one stays as it is.
 :::

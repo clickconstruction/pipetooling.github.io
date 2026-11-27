@@ -35,7 +35,7 @@ import {
   type MapCanvasPin,
 } from '../../lib/map/mapCanvasTypes'
 import type { PinsMapCanvasProps } from './PinsMapCanvas'
-import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
+import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster, CLUSTER_NOUN_UNNAMED, clusterTitle } from '../../lib/map/clusterPins'
 import { pinLabelInkHex } from '../../lib/map/pinLabelInk'
 import { GOOGLE_MAP_STYLES } from '../../lib/map/googleMapLook'
 import { googleMapTypeIsImagery, type GoogleMapTypeId } from '../../lib/map/googleMapType'
@@ -175,7 +175,7 @@ function ClusterMarker({ cluster, noun }: { cluster: PinCluster<MapCanvasPin>; n
   return (
     <Marker
       position={{ lat: cluster.lat, lng: cluster.lng }}
-      title={`${cluster.count} ${noun} here — click to zoom in`}
+      title={clusterTitle(cluster.count, noun)}
       icon={{
         path: google.maps.SymbolPath.CIRCLE,
         scale: r,
@@ -216,7 +216,7 @@ function useMapZoom(enabled: boolean): number {
   return zoom
 }
 
-function Pins({ pins, selectedId, onSelect, renderPopup, isMobile, cluster = false, clusterRingPriority, pulseId, clusterNoun = 'bids' }: Pick<PinsMapGoogleCanvasProps, 'pins' | 'selectedId' | 'onSelect' | 'renderPopup' | 'isMobile' | 'cluster' | 'clusterRingPriority' | 'pulseId' | 'clusterNoun'>) {
+function Pins({ pins, selectedId, onSelect, renderPopup, isMobile, cluster = false, clusterRingPriority, pulseId, clusterNoun = CLUSTER_NOUN_UNNAMED }: Pick<PinsMapGoogleCanvasProps, 'pins' | 'selectedId' | 'onSelect' | 'renderPopup' | 'isMobile' | 'cluster' | 'clusterRingPriority' | 'pulseId' | 'clusterNoun'>) {
   const [markers, setMarkers] = useState<Record<string, google.maps.Marker | null>>({})
   const onReady = useCallback((id: string, m: google.maps.Marker | null) => {
     setMarkers((prev) => (prev[id] === m ? prev : { ...prev, [id]: m }))

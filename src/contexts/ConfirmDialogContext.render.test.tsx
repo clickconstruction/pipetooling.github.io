@@ -155,3 +155,76 @@ describe('ConfirmDialogProvider · the presses', () => {
     expect(typed).toBeNull()
   })
 })
+
+describe('ConfirmDialogProvider · where the focus opens (finding 339)', () => {
+  /** Asks with the options a case hands it. */
+  function Ask({ danger, cancelIsSafe }: { danger?: boolean; cancelIsSafe?: boolean }) {
+    const confirmDialog = useConfirmDialog()
+    return (
+      <button type="button" onClick={() => void confirmDialog({ title: 'Remove this row?', message: 'It leaves the list.', confirmLabel: 'Remove the row', danger, cancelIsSafe }).then((v) => (answer = v))}>
+        Ask
+      </button>
+    )
+  }
+  const open = (props: { danger?: boolean; cancelIsSafe?: boolean }) => {
+    render(
+      <ConfirmDialogProvider>
+        <Ask {...props} />
+      </ConfirmDialogProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+    return { cancel: screen.getByRole('button', { name: 'Cancel' }), act: screen.getByRole('button', { name: 'Remove the row' }) }
+  }
+  /** Enter presses whichever press holds the focus. jsdom does not make that click by itself. */
+  const enter = async () => {
+    fireEvent.click(document.activeElement as HTMLElement)
+    await act(async () => {})
+  }
+
+  it('a red confirm opens on Cancel, so Enter keeps the row', async () => {
+    const w = open({ danger: true })
+    expect(document.activeElement).toBe(w.cancel)
+    // Red moves the focus and paints nothing: Cancel is not the blue press that `cancelIsSafe` makes it.
+    expect(w.cancel.style.background).toBe('var(--bg-muted)')
+    expect(w.act.style.background).toBe('rgb(220, 38, 38)')
+    await enter()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(answer).toBe(false)
+  })
+
+  it('a plain confirm opens on the press that acts, as before, so Enter does it', async () => {
+    const w = open({})
+    expect(document.activeElement).toBe(w.act)
+    await enter()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(answer).toBe(true)
+  })
+
+  it('a confirm that asks for Cancel still gets it, blue, red or not', () => {
+    const plain = open({ cancelIsSafe: true })
+    expect(document.activeElement).toBe(plain.cancel)
+    expect(plain.cancel.style.background).toBe('rgb(37, 99, 235)')
+    cleanup()
+    const red = open({ cancelIsSafe: true, danger: true })
+    expect(document.activeElement).toBe(red.cancel)
+    expect(red.cancel.style.background).toBe('rgb(37, 99, 235)')
+  })
+
+  it.each([
+    ['a red confirm', { danger: true }],
+    ['a plain confirm', {}],
+  ])('Escape cancels %s, as everywhere', async (_name, props) => {
+    open(props)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await act(async () => {})
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(answer).toBe(false)
+  })
+
+  it('a red confirm still acts on its own press', async () => {
+    const w = open({ danger: true })
+    fireEvent.click(w.act)
+    await act(async () => {})
+    expect(answer).toBe(true)
+  })
+})

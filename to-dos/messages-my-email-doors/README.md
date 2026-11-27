@@ -120,7 +120,7 @@ has seen fire.
 - The Inbox keeps its press: a customer's mail never lands on a guess alone (#230's call 3).
 - The Legal desk's pull, the 60-day follow, the imitation guard and the switch stand as built.
 - #207's sender and shape (calls 5 and 6) are a different question: what the app sends, not what it reads.
-- #259 (the HTML part of inbound mail) is untouched.
+- #259 (the HTML part of inbound mail; closed 2026-11-27, its card lives in git history at the deleting commit) is untouched.
 
 ## Where it plugs in
 

@@ -7,7 +7,7 @@
  * figure is known. Nothing here is fetched or written: both views read the sheets the ledger already holds.
  */
 import type { LedgerBySubTotals, LedgerSubRow, StatementEntry, SubStatement } from '../../lib/subWorkOrders/subPaymentsLedger'
-import { ledgerDayWords, ledgerHowPaidWords, ledgerSpanWords, overPaidWords, STATEMENT_WHAT, weOweWords } from '../../lib/subWorkOrders/subPaymentsLedger'
+import { ledgerDayWords, ledgerHowPaidWords, ledgerSpanWords, overPaidWords, STATEMENT_WHAT, WE_OWE_NOTHING, weOweWords } from '../../lib/subWorkOrders/subPaymentsLedger'
 import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { jobLink, pill, td, th } from './subLedgerStyles'
@@ -15,7 +15,7 @@ import { MoneyText } from '../Money'
 
 /** What we owe, as a cell: an amount, `settled`, or `over by …` in green. */
 function Owed({ value }: { value: number }) {
-  if (value === 0) return <span style={pill('green')}>settled</span>
+  if (value === 0) return <span style={pill('green')}>{WE_OWE_NOTHING}</span>
   if (value < 0) return <span style={{ color: 'var(--text-green-700)' }}><MoneyText text={weOweWords(value)} /></span>
   return (
     <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>
@@ -42,7 +42,7 @@ export function SubLedgerPeople({ rows, totals, periodLabel, narrow, withYear, o
               <AmountSmallCents value={r.paid} />
             </span>
             <span style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: 0 }}>
-              {[paymentsWords(r), ledgerSpanWords(r.firstYmd, r.lastYmd, withYear), r.backcharges ? `back-charged $${r.backcharged.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '', r.weOwe === null ? 'paid through payroll' : r.weOwe === 0 ? (r.over ? '' : 'settled') : `we owe ${weOweWords(r.weOwe)}`, overPaidWords(r.over), creditNoteWords(r.credit)].filter(Boolean).join(' · ')}
+              {[paymentsWords(r), ledgerSpanWords(r.firstYmd, r.lastYmd, withYear), r.backcharges ? `back-charged $${r.backcharged.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '', r.weOwe === null ? 'paid through payroll' : r.weOwe === 0 ? (r.over ? '' : WE_OWE_NOTHING) : `we owe ${weOweWords(r.weOwe)}`, overPaidWords(r.over), creditNoteWords(r.credit)].filter(Boolean).join(' · ')}
             </span>
           </button>
         ))}
