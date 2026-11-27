@@ -33,3 +33,5 @@ The client calls no new name: it deletes through the untyped client, as the othe
 ## Test
 
 `npm run test:pg:job-note-tags` and `npm run test:pg:task-note-tags` each apply this migration a second time after their own, which must change nothing, and play `supabase/tests/job_note_tags/30_dev_delete.sql` and `supabase/tests/task_note_tags/30_dev_delete.sql`: an assistant's delete reaches no row; a dev's delete of a real job's note, of a note a tag names as its answer, of a real task's comment, of the app's own completed line and of a comment a tag names as its answer each reach no row; the dev deletes a plain note and a tagged question on the test job and a plain comment and a tagged question on the test task, each with its tag; Deleted records keeps both notes; anon is refused. No Postgres runs on the Mac that built this, so the SQL beds job on the PR is the proof of the SQL.
+
+**Applied** to prod by 2026-11-26: the dev seat's `check_migration_ledger` read 1,504 versions applied against 1,504 files on `origin/main`, this version among them (read in the docs pass after #9830); types regenerated in #9928.

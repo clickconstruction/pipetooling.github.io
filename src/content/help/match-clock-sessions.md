@@ -37,7 +37,7 @@ Use **Search jobs & bids…** on the session. It opens the same search box you k
 
 ## When it was never a job
 
-A test punch, a personal errand, or a clock-in that should not have happened belongs on no job. Do not match those. Tap {{button:red|Reject}} on the card instead. It asks once: *"Reject Bryan · Sat 9/5 · 9h 30m? Rejected time never reaches payroll."* Then the session is rejected, just as from the approvals queue. The card drops out. The hours never reach payroll. The session leaves the match list for good, not just this visit. Sessions still clocked in have no Reject. Wait for the clock-out. Rejected by mistake? People → Hours → **Rejected sessions** has Restore.
+A test punch, a personal errand, or a clock-in that should not have happened belongs on no job. Do not match those. Tap {{button:red|Reject}} on the card instead. It asks once: *"Reject Bryan · Sat 9/5 · 9h 30m? Rejected time never reaches payroll."* Then the session is rejected, just as from the approvals queue. The card drops out. The hours never reach payroll. The session leaves the match list for good, not just this visit. Sessions still clocked in have no Reject. Wait for the clock-out. Rejected by mistake? People → Hours → **Rejected Sessions** has **Return to pending**.
 
 :::example Bryan's test punch
 Sat 9/5 · 2:30 PM – 11:59 PM · 9h 30m · *"Test"*

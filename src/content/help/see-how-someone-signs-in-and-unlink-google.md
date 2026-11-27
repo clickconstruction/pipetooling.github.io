@@ -10,7 +10,7 @@ A person can sign in with a password, with an emailed link, or with Google. The 
 
 ## Read the row
 
-1. Open the person's desk. Go to **Access and account**.
+1. Open the person's desk. Go to **Access & account**.
 2. Find the **Ways in** row.
 
 - **Password** reads {{chip:green|set}} or {{chip:yellow|not set}}. A person with no password signs in with an emailed link or with Google.

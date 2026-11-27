@@ -9,7 +9,7 @@ Remember an address the map cannot place, step 1 of 3 (punch list #408; [`to-dos
   - `error_code` is why it could not be placed, in the functions' own codes. Never blank. `detail` is what each service said, at most 2,000 characters.
   - `checked_at` is the day it was checked. The trigger `address_geocode_misses_stamp` sets it from the server's clock on every insert and update, whatever the caller sent.
   - Any signed-in user reads, inserts and updates a row, as `address_geocodes` has allowed since v2.3131. The functions write through the caller's own JWT.
-  - Nobody deletes a row by hand. The role holds no DELETE and there is no delete policy.
+  - Nobody deletes a row by hand: the role holds no DELETE and there is no delete policy, until [`20261126024719`](./20261126024719_geocode_miss_delete_dev.md) lets a dev.
 - **`address_geocodes_clears_miss`**: a trigger on `address_geocodes`, after every insert and update. It deletes the miss kept for the same key.
   - So a hit removes the miss whoever saved the point: the two geocode functions, the parcel lookup, the nightly placing, the dev seat's task place.
   - The function is a definer, because no caller holds a delete on the misses. It fires only after the caller's own write to `address_geocodes` has passed that table's policies and fences.

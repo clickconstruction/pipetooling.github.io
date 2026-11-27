@@ -693,7 +693,7 @@ last_updated: 2026-11-26
 > `LienPayoffs` takes that element as `stripHome` and draws the strip into it through a portal, so the one mounted component keeps its window and its read across views.
 > With `stripHome` null no list is up (an open paper, a job's own screen, a picked stage) and no strip is drawn.
 > With `stripHome` left out, as on a computer, the strip stands in the grid's first row.
-> It writes nothing.
+> It wrote nothing until v2.8632, whose card keeps the asked day and the bank's confirmation, and v2.8648, which keeps the day the copies went.
 > **v2.8508 (the release knows its lien, piece 2):** [`lienReleaseOfRecord.ts`](../src/lib/jobs/lienReleaseOfRecord.ts) (12 tests) gives `LienFilingTabs`'s `release_record` tab `releaseTargets` and `pickReleaseTarget` (each filed affidavit with its own release, the picker *Which lien*), `releaseMoneyGate` (the hold and its reason), `releasePaymentDay`, `releaseSaveFields` and `releaseStampPatch`.
 > The stamp is two `ChangeableValue`s, and each Keep is one update of the release row through `keepReleaseStamp`.
 > A saved release prints from its own saved fields, and a lien with a release draws no save press.
@@ -712,6 +712,7 @@ last_updated: 2026-11-26
 > `lienPlaceCheck` gives a place the bank's deposit for exactly what its liens' open bills come to (`LienPayoffPlace.bank`), and `payoffCheckBank` makes the check pane's press dead for a check the bank has not cleared.
 > No migration and no new write.
 > **v2.8632 (the payoff card, #435 piece 4):** `PayoffsWindow` hands each open place's `PlaceCard` a `PayoffCardBlock`, drawn over the liens' rows: five stops, the line for today, and a `ValueLines` of the asked day (`ChangeableValue`), the due day and the clearing day (`WorkedOutValue`).
+> Since v2.8650 the clearing day is read from the liens past the money step alone, so a place whose liens all still owe has none and draws no *Check clears* line.
 > Its rule is [`lienPayoffCard.ts`](../src/lib/jobs/lienPayoffCard.ts) (13 tests): `lienPayoffCard` reads a place's rows, `releaseDue` adds the ten days of § 53.152(a), and `canConfirmFunds` names the three roles of **The bank confirmed the funds ›**.
 > The two facts live on each lien's affidavit row, `fields.releaseAskedYmd` and `fields.fundsConfirmed` ([`lienPayoffFields.ts`](../src/lib/jobs/lienPayoffFields.ts), 7 tests), written by [`lienPayoffCardIo.ts`](../src/lib/jobs/lienPayoffCardIo.ts), one update a lien, the run going on past a row that fails.
 > `lienPayoffStep` takes `funds` and moves a confirmed lien from `bank` to `release`, every step carries `paid`, `check` and `recordedYmd` for the card, and `releaseMoneyGate` passes on the same confirmation once the bank has answered.
@@ -720,7 +721,7 @@ last_updated: 2026-11-26
 > **v2.8639 (a check that comes back knows its releases, #435 piece 6):** [`payoffReturned.ts`](../src/lib/jobs/payoffReturned.ts) (23 tests) reads every filed lien on a returned check's jobs into one of three cases, none printed, printed and recorded, for Accounts Receivable's case pane (`ArReturnCasePane`, through the hook `useReturnedCaseLiens` and the reads in [`payoffReturnedIo.ts`](../src/lib/jobs/payoffReturnedIo.ts)).
 > `paymentsOnReturnedCheck` finds the payments one check was typed as in Payoffs by the deposit's own check number, since none is linked to the deposit, and *printed* is read from the copy a print files (`sent_documents`, kind `lien_release_of_record`).
 > On the desk, `lienPayoffStep` sets `moneyBack` on a saved or recorded release whose last payment the bank sent back (`releaseOnReturnedCheck`): the county's press gives way to **Open the bills ›**, a recorded one reads *Released, money came back* and keeps its place in the open list, and `releaseMoneyBackWords` gives the Release of record tab the same line over the county's stamp.
-> Nothing in it writes, and the desk's flag lasts only while the payment is on the job: the case in Accounts Receivable is what remembers.
+> Piece 6 wrote nothing, and until v2.8662's mark the desk's flag lasted only while the payment was on the job.
 > **v2.8648 (the releases ride the run, #435 piece 5):** [`LienRunReleases.tsx`](../src/components/jobs/LienRunReleases.tsx) (11 render tests) is made by `LienDeskPage`, passed through `LienDesk` as `runReleases` and drawn by `LienGetItRight` as `releases`, under *Out the door*.
 > Its rule is [`lienReleaseRun.ts`](../src/lib/jobs/lienReleaseRun.ts) (14 tests): `buildLienReleaseRun` reads the Payoffs facts into four lists, `print`, `notary`, `county` and `copies`, with a held reason on a release whose bills owe again or whose check came back, and a print press worded by `batchWords`.
 > The three facts live on the release row's `fields`, `printedForNotary`, `notarizedYmd` and `copiesSent` ([`lienReleaseFacts.ts`](../src/lib/jobs/lienReleaseFacts.ts), 6 tests, with `releaseRunStage`), written by [`lienReleaseRunIo.ts`](../src/lib/jobs/lienReleaseRunIo.ts) (5 tests), which also builds the one print from each release's saved paper.
@@ -1381,7 +1382,7 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
 - **The run's one print** (v2.8536, punch list #362 step 6): [`useLienRunPrint.ts`](../src/components/jobs/useLienRunPrint.ts) takes the checklist, the desk's monthly notices as a thunk and the affidavit hook's `readyAffidavitsRun` and `runAffidavitCount`, and answers the card's state and its press.
   It builds no document on a render: the count comes from `lienRunReadyNotices` and the affidavit papers, and the press builds the packet and the batch, merges them with `lienRunStackHtml`, prints, files each paper's own copy and stamps the notices.
   Since v2.8591 the card names a right notice the packet does not print: `lienRunNoticesStopped` answers each with the run window's own reason, a hold, a signature or copies that went with no paper, and `lienRunPrintPress` takes their count.
-  The checklist counts a notice as right from the Board's chip alone, so its strip can still read *1 notice to print* over a press that prints none.
+  Since v2.8631 `lienGetItRightWithFacts` passes over the built checklist with what the print and the printed read know (`LienRunFacts`), so the strip's Print step counts what the press prints and says a printed affidavit, a held notice and a paperless one apart.
   `lienRunStack.ts` puts two print documents in one job by moving each `body` rule onto a wrapper and naming the affidavits' page, and refuses a document whose shape it does not know.
   The notices' bills are read while the checklist is open, by job, on a list that keeps its identity: the desk rebuilds the notices on every render.
 - **What a paper said at print** (v2.8589, punch list #362 step 7, the part with no call): [`lienPrintSworn.ts`](../src/lib/jobs/lienPrintSworn.ts) is the fingerprint and its compare.
@@ -1397,6 +1398,10 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
   *It stands* is a row of `lien_print_stands` (migration `20261125210500`), written by `set_lien_print_stands` through [`lienPrintStandsIo.ts`](../src/lib/jobs/lienPrintStandsIo.ts) and kept under `lienPrintChangeKey`, the key of the difference it answers for.
   `lienRunPrinted` puts a changed paper with a standing row under the same key in `stood`, and one whose difference has moved again back in `changed`.
   An affidavit that stands is left out of the run's print through `stoodAffidavitJobIds`.
+- **Out the door** (v2.8634, punch list #362 step 8): [`lienRunOut.ts`](../src/lib/jobs/lienRunOut.ts) builds the checklist's third card once a paper of the run has printed, `buildLienRunOut` over the checklist with its facts, the printed affidavits and each one's county.
+  It answers the printed notices still to mail with the run window's own press, the printed affidavits still to file a county clerk at a time, and the tally, and it counts nothing mailed or filed, since such a paper leaves the run.
+  The desk hands `LienGetItRight` three props for it, `onRecordMailing`, `onRecordFiling` and `countyFor`, the first two for the lien office alone.
+  Since v2.8658 `onRecordMailing` takes the card's own lines, and `openRunOnMail` opens the run window on those jobs' notices alone, picked from the ready and printed piles by `lienRunMailEntriesFor` in `lienNextUp.ts`.
 - **Why the router stays:** it turns a row's target into 23 of the desk's setters across every view.
 - **Next:** `actOnNextUp` as a kernel that names the target and a thin switch that calls the setters.
 

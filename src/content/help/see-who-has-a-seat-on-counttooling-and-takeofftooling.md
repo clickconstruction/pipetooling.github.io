@@ -44,13 +44,13 @@ The line says **TakeoffTooling could not be read** and gives the reason. The oth
 
 The Sites view reads only. Nothing you press here changes an account. You change a seat on the person's desk.
 
-1. Open the person's desk. Go to **Access and account**.
+1. Open the person's desk. Go to **Access & account**.
 2. Find the row named for the site, **CountTooling** or **TakeoffTooling**.
 3. Press {{button:outline|Make their seat}} when they have no seat there.
 4. Press {{button:outline|Retire here}} to stop them signing in to that site. The desk asks first. The person's work on that site stays.
 5. Press {{button:outline|Bring back}} to let a retired seat sign in again.
 
-Archiving a person retires their CountTooling seat too. The guide [archive user accounts](/help/archive-user-accounts) walks through that.
+Archiving a person retires their CountTooling seat too. The guide [archive user accounts](/help/archive-user-accounts) walks through that. A TakeoffTooling seat stays active until you press **Retire here** on its row.
 
 ## Set their role on a site
 

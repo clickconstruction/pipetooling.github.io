@@ -36,6 +36,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { globSync } from 'glob'
+import { parsedFileCache } from '../lib/parsedFileCache.mjs'
 
 const require = createRequire(path.join(process.cwd(), 'package.json'))
 const ts = require('typescript')
@@ -61,16 +62,18 @@ const files = (ARGS.length ? ARGS.flatMap((a) => globSync(a.endsWith('.ts') || a
 const report = []
 const leftAlone = []
 
-/** One parsed file: its source, every const and function by name, and where each imported name comes from. */
-const loaded = new Map()
-const load = (f) => {
-  if (loaded.has(f)) return loaded.get(f)
+/**
+ * One parsed file: its source, every const and function by name, and where each imported name comes
+ * from. A bounded number are held (scripts/lib/parsedFileCache.mjs): holding every one was 2 GB of heap.
+ */
+const loaded = parsedFileCache()
+const load = (f) => loaded.read(f, () => parseFile(f))
+const parseFile = (f) => {
   let text
   try {
     text = readFileSync(f, 'utf8')
   } catch {
-    loaded.set(f, null)
-    return null
+    return { value: null, chars: 0 }
   }
   const sf = ts.createSourceFile(f, text, ts.ScriptTarget.Latest, true, f.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const named = new Map()
@@ -86,9 +89,7 @@ const load = (f) => {
     ts.forEachChild(n, collect)
   }
   collect(sf)
-  const ctx = { f, text, sf, named, imports }
-  loaded.set(f, ctx)
-  return ctx
+  return { value: { f, text, sf, named, imports }, chars: text.length }
 }
 const importedFile = (ctx, from) => {
   const base = path.join(path.dirname(ctx.f), from)
@@ -180,6 +181,8 @@ const keysOf = (obj, ctx, order = new Map(), seen = new Set([obj])) => {
 const edits = new Map()
 for (const f of files) {
   if (/\.test\.tsx?$/.test(f) || f.startsWith('src/test/')) continue
+  // Only here, between two files: a style is compared with the ones it spreads, node by node.
+  loaded.letGo()
   const ctx = load(f)
   if (!ctx) continue
   const visit = (n) => {
@@ -198,7 +201,8 @@ for (const f of files) {
           if (!edits.has(at.f)) edits.set(at.f, new Map())
           const start = font.prop.getStart(at.sf)
           // The shorthand may sit in a style this one spreads: that style is the one rewritten.
-          if (!edits.get(at.f).has(start)) edits.get(at.f).set(start, { prop: font.prop, drop: ownFamily, line: line(at, font.prop), reset, via: font.owner === n ? null : `${ctx.f === at.f ? '' : `${ctx.f}:`}${line(ctx, n)}` })
+          // The edit keeps the property's place, not its node, so the file can be let go.
+          if (!edits.get(at.f).has(start)) edits.get(at.f).set(start, { start, end: font.prop.getEnd(), nameStart: font.prop.name.getStart(at.sf), nameEnd: font.prop.name.getEnd(), drop: ownFamily, line: line(at, font.prop), reset, via: font.owner === n ? null : `${ctx.f === at.f ? '' : `${ctx.f}:`}${line(ctx, n)}` })
         } else if (font.owner === n && before.some(([, e]) => e.unknown)) {
           leftAlone.push(`${f}:${line(ctx, font.prop)}: the shorthand follows a spread it cannot read (${before.filter(([, e]) => e.unknown).map(([, e]) => e.unknown).join(', ')}), which may hold a size or a weight`)
         }
@@ -211,13 +215,11 @@ for (const f of files) {
 
 let rewrites = 0
 for (const [f, byStart] of [...edits.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-  const ctx = load(f)
-  let out = ctx.text
-  for (const e of [...byStart.values()].sort((a, b) => b.prop.getStart(ctx.sf) - a.prop.getStart(ctx.sf))) {
+  let out = readFileSync(f, 'utf8')
+  for (const e of [...byStart.values()].sort((a, b) => b.start - a.start)) {
     if (e.drop) {
       // Take the property with its comma and the space after it; a last property takes the comma before it.
-      let start = e.prop.getStart(ctx.sf)
-      let end = e.prop.getEnd()
+      let { start, end } = e
       const after = /^\s*,[ \t]*/.exec(out.slice(end))
       if (after) end += after[0].length
       else {
@@ -226,7 +228,7 @@ for (const [f, byStart] of [...edits.entries()].sort((a, b) => a[0].localeCompar
       }
       out = out.slice(0, start) + out.slice(end)
     } else {
-      out = out.slice(0, e.prop.name.getStart(ctx.sf)) + 'fontFamily' + out.slice(e.prop.name.getEnd())
+      out = out.slice(0, e.nameStart) + 'fontFamily' + out.slice(e.nameEnd)
     }
   }
   rewrites += byStart.size

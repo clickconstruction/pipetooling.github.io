@@ -262,7 +262,7 @@ A card under the desk lists the four fixes people reach for first. Hire another 
 
 Behind **The flow**, the desk of the pressed stage sits under the three resources. It says what the stage is, why it matters, how the Bridge reads it, and what it reads today. Press {{button:outline|Every move for Bill}} to read every move the stage has. Each row says whether the list at the top holds it. Press {{button:outline|Go to what to do now ↑}} to go back up to the card.
 
-The red sits on the step the page reads as slowest today. No step is held for the week.
+The red sits on the step the page reads as narrowest today. No step is held for the week.
 
 ## Money owed and Crew hours, opened
 
