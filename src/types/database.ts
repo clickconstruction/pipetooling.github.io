@@ -47841,6 +47841,10 @@ export type Database = {
         Args: { p_invoice_id: string }
         Returns: Json
       }
+      delete_test_job_required_paper: {
+        Args: { p_paper_id: string }
+        Returns: Json
+      }
       delete_test_lien_notice_record: {
         Args: { p_filing_id: string }
         Returns: Json
@@ -51585,6 +51589,10 @@ export type Database = {
           started_on: string
           user_id: string
         }[]
+      }
+      list_test_job_removed_papers: {
+        Args: { p_job_id: string }
+        Returns: Json
       }
       list_typed_hours_waiting: {
         Args: never
