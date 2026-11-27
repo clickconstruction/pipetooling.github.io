@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'fix',
   highlights: [
     'On a small iPhone, every card on a job’s page in a trade partner’s portal ran off the right side. The cut part could not be reached.',
-    'The cause was the file picker under Your quote file, which the phone draws wider than its card.',
+    'The cause was the file picker, which an iPhone draws wider than the card it sits in.',
     'Every card now keeps to the page’s width, and the file picker keeps to its card.',
   ],
 }
