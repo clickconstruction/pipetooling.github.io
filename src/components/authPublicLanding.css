@@ -535,9 +535,18 @@
     font-size: 1rem;
   }
 
+  /* On a phone the three trade tiles keep to one row and share its width (finding 285). At 375 px they
+     were 12 px too wide for the row, so the third wrapped alone under the other two and pushed the card
+     119 px down the screen. The gap is smaller and the side padding gives way first. */
+  .auth-public-landing .auth-service-icons {
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+  }
+
   .auth-public-landing .auth-service-icon {
-    min-width: 100px;
-    padding: 1rem;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 1rem 0.5rem;
   }
 
   .auth-public-landing .auth-service-icon i {
