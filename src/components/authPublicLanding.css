@@ -205,12 +205,11 @@
   gap: 0;
 }
 
+/* Every field keeps its gap, Password too (v2.8674): 18px under Email and 18px under Password. The gap under
+   Password used to come off through `:last-of-type`, which counts every div in the form, so the card had one
+   spacing with the "or" rule or the magic-link offer under the press and another without. */
 .auth-public-landing .auth-public-landing__signin-field {
   margin-bottom: 1.125rem;
-}
-
-.auth-public-landing .auth-public-landing__signin-field:last-of-type {
-  margin-bottom: 0;
 }
 
 .auth-public-landing .auth-public-landing__signin-input {
@@ -300,6 +299,11 @@
     opacity 0.15s ease;
 }
 
+/* In the form, what stands above the press gives the whole gap: the Password field, or a refusal's own margin. */
+.auth-public-landing .auth-public-landing__signin-form .auth-public-landing__signin-submit {
+  margin-top: 0;
+}
+
 .auth-public-landing .auth-public-landing__signin-submit:hover:not(:disabled) {
   background: #1d4ed8;
 }
@@ -313,6 +317,71 @@
   background: #9ca3af;
   cursor: not-allowed;
   opacity: 0.95;
+}
+
+/* Continue with Google (v2.8674): an "or" rule under the password press, then Google's own button
+   dress, white with the G, as wide and as tall as the Sign in press above it. */
+.auth-public-landing .auth-public-landing__signin-or {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  font-size: 0.8125rem;
+  line-height: 1;
+  color: #6b7280;
+}
+
+.auth-public-landing .auth-public-landing__signin-or::before,
+.auth-public-landing .auth-public-landing__signin-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.auth-public-landing .auth-public-landing__signin-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  width: 100%;
+  /* Sign in has no border, so this press gives its 1px border back out of the padding to stand as tall. */
+  padding: calc(0.6875rem - 1px) 1rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #1f2937;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.auth-public-landing .auth-public-landing__signin-google:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.auth-public-landing .auth-public-landing__signin-google:focus-visible {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.auth-public-landing .auth-public-landing__signin-google:disabled {
+  color: #6b7280;
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.auth-public-landing .auth-public-landing__signin-google-mark {
+  flex-shrink: 0;
+  display: block;
 }
 
 .auth-public-landing .auth-public-landing__signin-footnote {

@@ -33,6 +33,18 @@ import { googleIsOn, googleRedirectTo, googleRefusalWords, withoutGoogleRefusal 
 const SIGNIN_INPUT_CLASS = 'auth-public-landing__signin-input'
 const SIGNIN_PASSWORD_INPUT_CLASS = `${SIGNIN_INPUT_CLASS} auth-public-landing__signin-input--password`
 
+/** Google's "G", drawn inline so the press needs no image request. Its four colours are Google's own. */
+function GoogleMark() {
+  return (
+    <svg className="auth-public-landing__signin-google-mark" viewBox="0 0 18 18" width="18" height="18" aria-hidden focusable="false">
+      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z" />
+      <path fill="#FBBC05" d="M3.97 10.72a5.41 5.41 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z" />
+      <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
+    </svg>
+  )
+}
+
 export default function SignIn() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -262,14 +274,6 @@ export default function SignIn() {
               <span>{sessionMessage}</span>
             </div>
           )}
-          {googleOn ? (
-            <div className="auth-public-landing__signin-magic-offer">
-              <button type="button" className="auth-public-landing__signin-magic-button" onClick={handleGoogle} disabled={googleLeaving}>
-                {googleLeaving ? 'Opening Google…' : 'Continue with Google'}
-              </button>
-              <p className="auth-public-landing__signin-magic-offer-text">Or sign in with your email and password.</p>
-            </div>
-          ) : null}
           {googleError ? <p className="auth-public-landing__signin-error" role="alert">{googleError}</p> : null}
           <form className="auth-public-landing__signin-form" onSubmit={handleSubmit}>
             <div className="auth-public-landing__signin-field">
@@ -325,6 +329,19 @@ export default function SignIn() {
                   {magicSending ? 'Sending…' : 'Email me a sign-in link'}
                 </button>
               </div>
+            ) : null}
+            {/* Continue with Google sits under the password press, past an "or" rule (v2.8674): the form most
+                people use stays first, and Google reads as the second way in, in Google's own button dress. */}
+            {googleOn ? (
+              <>
+                <div className="auth-public-landing__signin-or" role="separator" aria-label="or">
+                  <span aria-hidden>or</span>
+                </div>
+                <button type="button" className="auth-public-landing__signin-google" onClick={handleGoogle} disabled={googleLeaving}>
+                  <GoogleMark />
+                  <span>{googleLeaving ? 'Opening Google…' : 'Continue with Google'}</span>
+                </button>
+              </>
             ) : null}
             {/* Deliberately no "Forgot password?" link (owner decision, 2026-08-26 / v2.2330):
                 account recovery goes through the office. /reset-password exists and works for
