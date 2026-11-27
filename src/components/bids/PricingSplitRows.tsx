@@ -10,7 +10,7 @@
  */
 import type { CSSProperties, ReactElement } from 'react'
 import { formatCurrency } from '../../lib/format'
-import { parseSplitDollars, type RowSplit } from '../../lib/bids/rowPriceSplit'
+import { SPLIT_NO_PRICE_WORDS, parseSplitDollars, type RowSplit } from '../../lib/bids/rowPriceSplit'
 import type { PricingRowMarks } from '../../hooks/usePricingRowMarks'
 import { MoneyText } from '../Money'
 
@@ -64,7 +64,8 @@ export function PricingSplitRows({ r, s, taxPct, materialMarkup, wbMarkupDraft, 
       <tr key={`${r.countRow.id}-unpriced`} id={`wb-split-${r.countRow.id}`}>
         <td style={childTd({ borderBottom: '1px solid var(--border)' })} />
         <td colSpan={9} style={childTd({ borderBottom: '1px solid var(--border)', paddingLeft: '2.1rem', color: 'var(--text-faint)' })}>
-          <span style={{ marginRight: '0.4rem' }}>└</span>No price on this row yet, so nothing to split.
+          <span style={{ marginRight: '0.4rem' }}>└</span>
+          {SPLIT_NO_PRICE_WORDS}
         </td>
       </tr>
     )

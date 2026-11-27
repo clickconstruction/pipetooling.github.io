@@ -97,6 +97,9 @@ export function sumRowSplits(splits: ReadonlyArray<Pick<RowSplit, 'material' | '
   return out
 }
 
+/** Under a row with no price, in place of its split's lines. It is a note on the row, not an empty list. */
+export const SPLIT_NO_PRICE_WORDS = 'No price on this row yet, so nothing to split.'
+
 /** "$1,234.56" → 1234.56; blank or garbage → null (the default). */
 export function parseSplitDollars(raw: string): number | null {
   const s = (raw ?? '').replace(/[$,\s]/g, '')
