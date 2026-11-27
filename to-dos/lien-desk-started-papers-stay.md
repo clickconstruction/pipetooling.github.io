@@ -1,7 +1,7 @@
 ---
 name: "Lien desk: a started paper stays on the desk, whatever its day"
 number: 354
-group: ready
+group: close
 status: written 2026-11-14 from a Lien desk session · the owner chose this shape, then parked it for its own session · built 2026-11-14 as v2.7261, one PR (#8116), on main
 summary: >
   The Lien desk lists what is due within 30 days, and builds every list from the readers' rows

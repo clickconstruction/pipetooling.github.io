@@ -1,7 +1,7 @@
 ---
 name: People → Utilization and the drawn week
 number: 284
-group: ready
+group: close
 status: landed — #7311, #7331, #7332 and #7333 all on main 2026-11-08 · walked on the dev server from the stacked branches and again from main · left: the owner's look, then delete this folder
 summary: >
   A People view that reads the hours each person said they can work against the hours the clock
