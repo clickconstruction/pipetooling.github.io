@@ -6,6 +6,9 @@ import {
   type BookPaperRow,
   type JobPapersRoster,
   JOB_PAPERS_LOCK_STAGE,
+  NOT_ASKED_LABEL,
+  SITE_PAPER_WORDS,
+  cellFor,
   cellWords,
   copyLinksLabel,
   isSubPortalPath,
@@ -86,6 +89,45 @@ describe('who owes what', () => {
     const one = { ...roster, people: roster.people.slice(0, 2) }
     expect(rosterSummary(one).words).toBe('1 of 2 have signed. 1 still owes a paper.')
     expect(rosterSummary({ ...roster, people: roster.people.slice(0, 1) }).words).toBe('All 1 have signed.')
+  })
+})
+
+describe('a site’s paper (punch list #439, piece 4)', () => {
+  const siteRoster = parseJobPapersRoster({
+    job_number: 'J2391',
+    papers: [
+      { id: 'own', paper_name: 'Site rules and photo policy', is_form: false, book_document_id: 'book-site', site_secrecy_id: null },
+      { id: 'sec', paper_name: 'ZZ Test site secrecy paper', is_form: false, book_document_id: 'book-sec', site_secrecy_id: 'site-1' },
+    ],
+    people: [
+      { key: 'p1', person_id: 'p1', user_id: 'u1', name: 'Renee Alvarez', role: 'assistant', ways: ['office'], has_login: true, linked: true, papers: [
+        { required_paper_id: 'own', document_id: 'd1', status: 'signed', signed_at: '2026-11-14', asked: true },
+        { required_paper_id: 'sec', document_id: 'd2', status: 'signed', signed_at: '2026-11-27', asked: true },
+      ] },
+      { key: 'p4', person_id: 'p4', user_id: 'u4', name: 'Tall Pine Excavating', role: 'subcontractor', ways: ['sub'], has_login: true, linked: true, papers: [
+        { required_paper_id: 'own', document_id: 'd4', status: 'signed', signed_at: '2026-11-15', asked: true },
+        { required_paper_id: 'sec', document_id: null, status: 'none', signed_at: null, asked: false },
+      ] },
+    ],
+  })
+  it('the roster says which paper is the site’s and who is not asked it', () => {
+    expect(siteRoster.papers.map((p) => p.siteSecrecyId)).toEqual([null, 'site-1'])
+    expect(cellFor(siteRoster.people[1]!, 'sec').asked).toBe(false)
+    expect(cellFor(siteRoster.people[0]!, 'sec').asked).toBe(true)
+  })
+  it('a sub who is not asked owes nothing, so the job counts them as signed', () => {
+    expect(owedPapers(siteRoster.people[1]!, siteRoster.papers)).toEqual([])
+    expect(rosterSummary(siteRoster).words).toBe('All 2 have signed.')
+    expect(cellWords(cellFor(siteRoster.people[1]!, 'sec'))).toEqual({ signed: false, label: NOT_ASKED_LABEL, day: '' })
+  })
+  it('a roster from before the site’s rule asks everyone, as it always did', () => {
+    expect(roster.papers.every((p) => p.siteSecrecyId == null)).toBe(true)
+    expect(roster.people[1]!.papers.every((c) => c.asked === true)).toBe(true)
+    // No copy yet, and no word on asking: owed.
+    expect(cellFor(roster.people[2]!, 'nda').asked).not.toBe(false)
+  })
+  it('the words in place of Take off are plain', () => {
+    expect(plainWordsFailures(SITE_PAPER_WORDS)).toEqual([])
   })
 })
 
