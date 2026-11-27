@@ -15,7 +15,7 @@ summary: >
   hold it. Two spellings of the same words are one row by themselves. Two names that are nearly
   the same ask a person once, Same part or Different, and a name never folds by closeness alone.
   The first PR needs no migration.
-next: Grace's look at the site's screen (Materials → On site → the site's name). Then the office answers the Same part? asks on the real site, and the folder is deleted.
+next: Grace's look at the site's screen (Materials → On site → the site's name). Then the office answers the Same part? asks on the real site, and the folder is deleted. Looked at in the walking thread's sitting 35 of 2026-11-27, reads only, at 1280 and 375 px in light: clean. The top strip runs from Last recorded to Worth, the list reads By part and By place, five rows show **Same part?** with both presses, and the screen's totals equal the paper's counts line. Nothing scrolls sideways at 375 px. No ask was answered. Two findings beside it, 324 and 325, with the `small-fixes` thread: presses under 44 px tall on a phone, and the location report's address staying after **Close**. What is left is the office's first **Same part?** answers on the real site: 5 wait.
 size: L, shipped as a train of five (M · S · M · M · S); left: Grace's look and the first answers (XS)
 blocker: none. Grace's look.
 opinion: your call — the whole train is live; look at the site's screen and answer its Same part? asks

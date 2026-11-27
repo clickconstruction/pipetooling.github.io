@@ -281,7 +281,7 @@ by line after that day's walk of five of them.
   session is known to stand. Since v2.8647 both confirm windows name the person, the day and the hours, where they said
   *this clock session*. Both were read on those four presses, and the delete's says a dev can bring the session back from
   Recently deleted for 90 days.
-- From the walks of #446, #234 and #429 on 2026-11-26, on rows this list does not hold: one pay row at one dollar
+- From the walks of #446 (closed 2026-11-27; its card lives in git history at the deleting commit), #234 and #429 on 2026-11-26, on rows this list does not hold: one pay row at one dollar
   an hour on a second ZZ Test person, which no screen deletes; seven pay log lines, one on that person and six on
   another ZZ Test person, which the table keeps; four set working-hours rows on that second person, none in force;
   one rejected clock session on the first and one closed clock session of the sample superintendent, rejected on
