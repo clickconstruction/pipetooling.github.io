@@ -37163,6 +37163,9 @@ export type Database = {
       }
       receipt_requests: {
         Row: {
+          again_at: string | null
+          again_by: string | null
+          again_count: number
           answered_at: string | null
           cell: string | null
           closed_at: string | null
@@ -37185,6 +37188,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          again_at?: string | null
+          again_by?: string | null
+          again_count?: number
           answered_at?: string | null
           cell?: string | null
           closed_at?: string | null
@@ -37207,6 +37213,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          again_at?: string | null
+          again_by?: string | null
+          again_count?: number
           answered_at?: string | null
           cell?: string | null
           closed_at?: string | null
@@ -37229,6 +37238,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "receipt_requests_again_by_fkey"
+            columns: ["again_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "receipt_requests_holder_user_id_fkey"
             columns: ["holder_user_id"]
@@ -52931,6 +52947,9 @@ export type Database = {
       receipt_request_ensure: {
         Args: { p_made_by?: string; p_transaction_id: string }
         Returns: {
+          again_at: string | null
+          again_by: string | null
+          again_count: number
           answered_at: string | null
           cell: string | null
           closed_at: string | null
@@ -52966,6 +52985,8 @@ export type Database = {
       receipt_requests_to_chase: {
         Args: never
         Returns: {
+          again_at: string
+          again_count: number
           amount: number
           closes_at: string
           holder_name: string
