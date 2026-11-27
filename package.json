@@ -33,6 +33,7 @@
     "check:pronouns": "vite-node scripts/check-pronoun-openers.ts",
     "check:empty-words": "vite-node scripts/check-empty-words.ts",
     "check:nested-windows": "node scripts/check-nested-windows.mjs",
+    "check:layers": "node scripts/check-layers.mjs",
     "check:backdrop-click": "node scripts/codemods/backdrop-click-sweep.mjs --check",
     "check:window-z": "node scripts/codemods/window-z-above-dock.mjs --check",
     "check:dialog-role": "node scripts/codemods/dialog-role-sweep.mjs --check",
