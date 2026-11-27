@@ -164,6 +164,7 @@
     "test:pg:paper-party": "bash scripts/pgtest-paper-party.sh",
     "test:pg:paper-site": "bash scripts/pgtest-paper-site.sh",
     "test:pg:site-secrecy": "bash scripts/pgtest-site-secrecy.sh",
+    "test:pg:site-secrecy-mend": "bash scripts/pgtest-site-secrecy-mend.sh",
     "test:pg:photo-saves": "bash scripts/pgtest-photo-saves.sh",
     "test:pg:portal-opens-since": "bash scripts/pgtest-portal-opens-since.sh",
     "test:pg:sent-copy-stamps": "bash scripts/pgtest-sent-copy-stamps.sh",
