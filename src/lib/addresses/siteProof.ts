@@ -6,8 +6,8 @@
  * It reads the rows **Papers for this site** already reads (`sitePapers.ts`): nothing new is asked of the database
  * for the companies. The count of our own people is the site's secrecy (piece 4), read when the packet opens.
  *
- * Part 5a is the list, looked at and printed. The signed copies themselves, **Download** and **Send to the client**
- * are part 5b, and the client's own page is part 5c.
+ * Part 5a is the list, looked at and printed. **Download** (part 5b, `siteProofPdf.ts`) is the list and the signed
+ * copies as one PDF. **Send to the client** and the client's own page are later parts.
  *
  * Pure: no React, no supabase.
  */
@@ -127,8 +127,8 @@ export const SITE_PROOF_WORDS = {
   ownPeople: 'Our own people',
   nobodySigned: 'No company has signed yet.',
   columns: { company: 'Company', signer: 'Signed by', askedOf: 'Sent to', paper: 'Paper', signedDay: 'Signed', sentDay: 'Sent' },
-  /** The packet's foot: this part prints the list alone. */
-  listAlone: 'This is the list. The signed copies are not attached.',
+  /** Under the packet on the screen, never on paper: where the signed copies come from. */
+  downloadAdds: 'This is the list. Download adds the signed copies.',
 } as const
 
 /** The packet's foot: *As of Nov 27.* The day is the company's own. */

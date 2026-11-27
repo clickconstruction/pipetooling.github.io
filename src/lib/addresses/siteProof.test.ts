@@ -126,13 +126,13 @@ describe('our own people', () => {
 })
 
 describe('the words', () => {
-  it('the foot says the day and that the copies are not attached', () => {
+  it('the foot says the day, and the screen says where the copies come from', () => {
     expect(asOfWords('2026-11-27')).toBe('As of Nov 27.')
     expect(asOfWords('')).toBe('')
-    expect(SITE_PROOF_WORDS.listAlone).toBe('This is the list. The signed copies are not attached.')
+    expect(SITE_PROOF_WORDS.downloadAdds).toBe('This is the list. Download adds the signed copies.')
   })
   it('every sentence a first-timer reads passes the plain-words rules', () => {
-    const said = [SITE_PROOF_WORDS.lead, SITE_PROOF_WORDS.listAlone, SITE_PROOF_WORDS.nobodySigned, ownPeopleWords({ kind: 'unread' })!, ownPeopleWords({ kind: 'counted', signed: 2, asked: 3 })!]
+    const said = [SITE_PROOF_WORDS.lead, SITE_PROOF_WORDS.downloadAdds, SITE_PROOF_WORDS.nobodySigned, ownPeopleWords({ kind: 'unread' })!, ownPeopleWords({ kind: 'counted', signed: 2, asked: 3 })!]
     for (const words of said) expect(plainWordsFailures(words), words).toEqual([])
   })
 })

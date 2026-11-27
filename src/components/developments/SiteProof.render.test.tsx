@@ -4,10 +4,12 @@
  * packet as it prints and **Print**, with a fake for the site's secrecy. Every name here is made up.
  */
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { PDFDocument } from 'pdf-lib'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SiteProof as Proof } from '../../lib/addresses/siteProof'
 import type { SiteSecrecyRow } from '../../lib/addresses/siteSecrecy'
 import type { SiteSecrecyIo } from '../../lib/addresses/siteSecrecyIo'
+import type { ProofCopyFetch } from '../../lib/addresses/siteProofPdf'
 import { SiteProof } from './SiteProof'
 
 const SITE = { developmentId: 'dev-1' }
@@ -31,7 +33,15 @@ function fakeIo(over: Partial<SiteSecrecyIo> = {}): SiteSecrecyIo {
     ...over,
   }
 }
-const draw = (io: SiteSecrecyIo, proof: Proof = PROOF) => render(<SiteProof proof={proof} clientName="Sample Owner LLC" siteName="Old Quarry Ranch" site={SITE} todayYmd="2026-11-27" io={io} />)
+// jsdom's Blob has no arrayBuffer, which a browser's has: the fake copy carries its own bytes.
+const onePage = async (): Promise<Blob> => {
+  const doc = await PDFDocument.create()
+  doc.addPage([612, 792])
+  const bytes = await doc.save()
+  return { type: 'application/pdf', arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) } as unknown as Blob
+}
+const draw = (io: SiteSecrecyIo, proof: Proof = PROOF, fetchCopy: ProofCopyFetch = onePage, save: (blob: Blob, fileName: string) => void = () => undefined) =>
+  render(<SiteProof proof={proof} clientName="Sample Owner LLC" siteName="Old Quarry Ranch" site={SITE} todayYmd="2026-11-27" io={io} fetchCopy={fetchCopy} save={save} />)
 
 afterEach(() => {
   cleanup()
@@ -64,7 +74,7 @@ describe('SiteProof', () => {
       'Example Pipe & ValveSent to Lee ExampleVendor NDASent Nov 20',
     ])
     expect((await within(sheet).findByTestId('site-proof-own-people')).textContent).toBe('18 of 21 have signed. A job at this site stays shut to a person until they sign. Workers are counted, not named.')
-    expect(within(sheet).getByTestId('site-proof-foot').textContent).toBe('As of Nov 27. This is the list. The signed copies are not attached.')
+    expect(within(sheet).getByTestId('site-proof-foot').textContent).toBe('As of Nov 27. This is the list. Download adds the signed copies.')
     expect(io.readLive).toHaveBeenCalledWith(SITE)
     // The packet is paper: light, whatever the page's theme.
     expect(packet.parentElement?.getAttribute('data-theme')).toBe('light')
@@ -83,6 +93,55 @@ describe('SiteProof', () => {
     await screen.findByRole('dialog', { name: 'The packet, as it prints' })
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('Download names its count, is dead until our own people are read, and hands the browser one PDF named for the site', async () => {
+    const saved: Array<{ type: string; size: number; name: string }> = []
+    const asked: string[] = []
+    const fetchCopy: ProofCopyFetch = async (id) => {
+      asked.push(id)
+      return onePage()
+    }
+    let release: (v: null) => void = () => undefined
+    const io = fakeIo({ readLive: vi.fn(() => new Promise<null>((r) => (release = r))) })
+    draw(io, PROOF, fetchCopy, (blob, name) => void saved.push({ type: blob.type, size: blob.size > 500 ? 1 : 0, name }))
+    fireEvent.click(screen.getByRole('button', { name: 'Make the packet' }))
+    const packet = await screen.findByRole('dialog', { name: 'The packet, as it prints' })
+    const press = within(packet).getByRole('button', { name: 'Download with 2 signed copies' }) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    release(null)
+    await waitFor(() => expect(press.disabled).toBe(false))
+    fireEvent.click(press)
+    expect((await screen.findByTestId('site-proof-download-outcome')).textContent).toBe('Downloaded, with 2 signed copies attached.')
+    expect(asked).toEqual(['a', 'b'])
+    // The pages are the kernel's to count (siteProofPdf.test.ts): here, one PDF with something in it, named for the site.
+    await waitFor(() => expect(saved).toEqual([{ type: 'application/pdf', size: 1, name: 'The proof - Old Quarry Ranch.pdf' }]))
+  })
+
+  it('a copy that cannot be had is named with its reason, and the rest are still downloaded', async () => {
+    const save = vi.fn()
+    const fetchCopy: ProofCopyFetch = async (id) => {
+      if (id === 'b') throw new Error('This paper is a form. Open its PDF from the form’s own press.')
+      return onePage()
+    }
+    draw(fakeIo({ readLive: vi.fn(async () => null) }), PROOF, fetchCopy, save)
+    fireEvent.click(screen.getByRole('button', { name: 'Make the packet' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Download with 2 signed copies' }))
+    const outcome = await screen.findByTestId('site-proof-download-outcome')
+    expect(outcome.textContent).toBe('Downloaded, with 1 of 2 signed copies attached. Not attached: Placeholder Fence Co.: This paper is a form. Open its PDF from the form’s own press.')
+    expect(outcome.getAttribute('role')).toBe('status')
+    expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('with nobody signed, Download is the list alone and asks for no copy', async () => {
+    const fetchCopy = vi.fn<ProofCopyFetch>(onePage)
+    const save = vi.fn()
+    draw(fakeIo({ readLive: vi.fn(async () => null) }), { signed: [], asked: PROOF.asked }, fetchCopy, save)
+    fireEvent.click(screen.getByRole('button', { name: 'Make the packet' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Download the list' }))
+    expect((await screen.findByTestId('site-proof-download-outcome')).textContent).toBe('Downloaded the list.')
+    expect(fetchCopy).not.toHaveBeenCalled()
+    expect(save).toHaveBeenCalledTimes(1)
   })
 
   it('a site whose secrecy is off, or a database with none yet, says nothing of our own people', async () => {
