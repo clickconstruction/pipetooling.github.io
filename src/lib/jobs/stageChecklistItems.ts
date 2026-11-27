@@ -24,7 +24,7 @@
  *
  * Pure; the io is `stageChecklistIo.ts`.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { batchOutcomeWords, countedLabel } from '../batchWords'
 import { jobDocumentFolderLinks } from './jobDocumentsTab'
 import { QUESTION_MAX_CHARS, addedByWords, answerStampWords, isJobItem, questionWaitsOn, signatureStands, skipOn, stampWords, type JobStageChecklist, type QuestionAsks, type StageChecklistAnswer, type StageChecklistQuestion, type StageChecklistSkip, type StageChecklistState } from './stageChecklist'

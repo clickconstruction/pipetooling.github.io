@@ -10,7 +10,7 @@
  * the least of cluster 1's shapes this reads. The send record is `gc_owner_contract_sends`'s columns with the change
  * order in place of the price by line.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import type { ContactKind } from '../contacts/kernel'
 import { calendarYmdInAppTzFromIso, formatDenverTimeOnly } from '../../utils/dateUtils'
 import { GC_MONEY_TEAM, GC_OFFICE_TEAM } from '../gc/access'

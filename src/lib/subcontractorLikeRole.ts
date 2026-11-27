@@ -1,4 +1,4 @@
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 
 /** Roles that share subcontractors routing, RLS, and Clock/Dispatch service-type semantics. */
 export type SubcontractorLikeRole = 'subcontractor' | 'helpers'

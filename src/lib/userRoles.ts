@@ -1,6 +1,6 @@
 /** Canonical ordered list of assignable user roles, shared across Settings tabs
  * (People role dropdowns, Catalogs access pickers). */
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 
 export const ROLES: UserRole[] = [
   'dev',

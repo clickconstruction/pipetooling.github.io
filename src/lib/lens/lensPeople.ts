@@ -3,7 +3,7 @@
  * session and every row that names them are the same each time. Kept apart from the world's rows,
  * because the seal needs a person before the world loads. Pure.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { HUMAN_ROLE_LABELS } from '../roleLabels'
 
 export const LENS_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers'] as const satisfies readonly UserRole[]

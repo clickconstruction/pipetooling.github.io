@@ -1,4 +1,4 @@
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 
 /**
  * The one human label for a user role — the words GLOSSARY.md / ACCESS_CONTROL.md

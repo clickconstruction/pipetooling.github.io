@@ -13,7 +13,7 @@
  * `teamEmails.test.ts` is the guard: every `team`/`internal` catalog row is here, and every row
  * here is in the catalog, so the next team email cannot ship invisible.
  */
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import { emailStreamCardId, type EmailStreamKey } from './emailLogStreamLink'
 import { lienStatusMonthDay } from '../../supabase/functions/_shared/lienDeskStatus'
 import { ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'

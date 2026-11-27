@@ -7,7 +7,7 @@
  * counts is named in `GC_OTHER_SOURCES` with its own readers. So a door PR that widens a table widens the ring with no
  * edit here.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { GC_BUILDING_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_SCHEDULE_TEAM } from './access'
 import { GC_TABLE_DOORS, type GcDoor } from './doors'
 import type { GcStage } from './types'

@@ -7,7 +7,7 @@
  * Settings → Phone and texts' Reminders the app offers card (`messages/remindersCard.ts`) draws the same control over
  * the same switch, through the same io.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { lineWhen } from '../messages/thread'
 import type { QuickReply } from '../quickReplies/kernel'
 import { FLOW_KINDS, type FlowKind } from './facts'

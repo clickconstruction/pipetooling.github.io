@@ -27,7 +27,7 @@
  * The pin bar's switch, Tell the dev's switch and Dark Mode are not page modes and stay independent.
  */
 
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import { canLeaveJobFieldReport } from './canLeaveJobFieldReport'
 import { isAssistantLike } from './subcontractorLikeRole'
 

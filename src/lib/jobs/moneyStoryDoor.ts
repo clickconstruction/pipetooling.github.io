@@ -1,4 +1,4 @@
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 
 /**
  * "money story →" door (journey map Tier 5 X2 / J6-9).

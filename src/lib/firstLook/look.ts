@@ -5,7 +5,7 @@
  */
 export * from '../../../supabase/functions/_shared/firstLook'
 
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { APP_ORIGIN } from '../appOrigin'
 import { isOwnerOrDev } from '../gc/access'
 

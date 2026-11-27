@@ -10,7 +10,7 @@
  *
  * Pure data + pure functions; the tab does the I/O.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { isAssistantLike } from '../subcontractorLikeRole'
 import { isControllerOrDev, isEstimatorOrDev, isOfficeRole, isOwnerOrDev } from '../doorRoles'
 import type { Journey, JourneyId } from '../customerJourneys'

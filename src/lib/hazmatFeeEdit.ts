@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import type { HazmatTestimonial } from './hazmatFee'
 import type { JobHazmatIncidentRow } from './hazmatIncidents'
 

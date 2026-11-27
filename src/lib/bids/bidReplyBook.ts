@@ -1,4 +1,4 @@
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 /**
  * Bid Board → Reply book: the wording the estimators share (v2.4025 the table, the window after).
  *

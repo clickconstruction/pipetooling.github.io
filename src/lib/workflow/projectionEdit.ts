@@ -3,7 +3,7 @@
  * projections, what the window opens with, what it refuses, the fields a save
  * writes, and what a refused write says.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { isControllerOrDev, isOwnerOrDev } from '../doorRoles'
 
 /**

@@ -5,7 +5,7 @@
  * panel asks. A tab a role does not hold reads as Profile, so a link passed on never shows an
  * empty page. Pure: no React, no Supabase.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { canResearchPermits, nameKey } from '../research/permitResearch'
 
 export type CustomerDetailTab = 'profile' | 'estimates' | 'jobs' | 'invoices' | 'permits'

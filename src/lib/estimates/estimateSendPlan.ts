@@ -9,7 +9,7 @@
  *   every other send — a change order, a $0 total, a role outside the office — gets one confirm that
  *   names the recipient, and says so when the total is $0.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { GC_OFFICE_TEAM } from '../gc/access'
 
 /** A plausible address: something, an at sign, something, a dot, something, no spaces. */

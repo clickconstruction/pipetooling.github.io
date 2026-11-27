@@ -1,4 +1,4 @@
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 
 /**
  * GC mode, door 1 (v2.4832) and door 2: who opens the GC projects page, its windows (New project, a

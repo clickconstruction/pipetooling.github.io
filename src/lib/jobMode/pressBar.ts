@@ -13,7 +13,7 @@
  * the rest of the card's labels live in `JOB_MODE_PRESS_WORDS` below and the card reads them
  * from here.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { CLOCK_IN_ACCENT_TEXT, CLOCK_IN_ACCENT_UNDER_WORDS } from '../clock/clockColors'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../deadPress'
 import type { JobModeState } from '../jobModePickCurrentNext'

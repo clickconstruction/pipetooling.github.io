@@ -1,4 +1,4 @@
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 
 /**
  * Who can open the Punch list (`/punch-list`): the to-do board, rendered in the app from

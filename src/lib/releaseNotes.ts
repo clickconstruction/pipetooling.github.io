@@ -6,7 +6,7 @@
  * as the PR's docs/RECENT_FEATURES.md entry.
  */
 
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 
 export type ReleaseNoteKind = 'feature' | 'fix' | 'infra'
 

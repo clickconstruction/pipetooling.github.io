@@ -16,22 +16,15 @@ import { setNavClickViewer } from '../lib/navClickViewer'
 import { AUTH_GATE_RECHECK_MS, ROLE_READ_RETRY_MS, appHealthHoldsGate, shouldRetryRoleRead } from '../lib/appHealth'
 import { useKeptReadsClearedOnAccountChange } from './useKeptReadsCleared'
 import { useOutboxClearedOnAccountChange } from './useOutboxCleared'
+import type { UserRole } from '../types/userRole'
 
 // Session refresh: refresh when less than this time remains (tuned for 10h JWT expiry)
 const REFRESH_WINDOW_MS = 30 * 60 * 1000 // 30 minutes
 // Expiry warning: show when less than this time remains
 const WARNING_THRESHOLD_MS = 15 * 60 * 1000 // 15 minutes
 
-export type UserRole =
-  | 'dev'
-  | 'master_technician'
-  | 'assistant'
-  | 'subcontractor'
-  | 'helpers'
-  | 'estimator'
-  | 'primary'
-  | 'superintendent'
-  | 'controller'
+/** The roles live in `src/types/userRole.ts`, where the lowest layer can read them; exported again here for everything above. */
+export type { UserRole }
 
 interface UseAuthReturn {
   user: User | null

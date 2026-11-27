@@ -1,4 +1,4 @@
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import type { SubmittalNudge } from './submittals/submittalNeedsYou'
 import type { InKindCreditsDue } from './inKind/inKindCreditsDue'
 import { needsYouInKindWords } from './inKind/inKindWords'

@@ -5,7 +5,7 @@
  * press per row. The four read Investigate (Keep until v2.6879), Pass, Pursue and Has a plumber on every
  * screen (the stored values are unchanged). Pure: no React, no Supabase.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { isOfficeRole } from '../doorRoles'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { PERMIT_CITY_NAMES } from '../../../supabase/functions/_shared/permitCities'

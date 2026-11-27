@@ -1,4 +1,4 @@
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 
 /**
  * Who opens Banking (v2.3305): controller and above — dev, master_technician,

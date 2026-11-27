@@ -4,7 +4,7 @@
  * chips, and a plain note when the role hides tabs. Pure helpers; the component reads and writes
  * localStorage through a Storage-like object so this stays testable.
  */
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 import { getZonedSettingsGroups, type SettingsGroupDef } from './settingsGroups'
 
 export const SETTINGS_RECENT_TABS_KEY = 'settings_recent_tabs_v1'

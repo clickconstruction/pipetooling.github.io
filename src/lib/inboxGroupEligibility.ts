@@ -1,4 +1,4 @@
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 
 /**
  * Inbox group eligibility — the one reading of "is the signed-in user in the

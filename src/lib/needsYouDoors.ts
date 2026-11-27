@@ -14,7 +14,7 @@ import { RECEIPT_CHASE_TEAM_HREF } from './needsYou/fillInReceipts'
 import { stagesDoneHref } from './needsYou/stagesDone'
 import { paperProposalsHref } from './needsYou/paperProposals'
 import { startOwedHref } from './needsYou/startAnswersOwed'
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 
 /**
  * Where a Needs You line's button goes (v2.5771, punch list #146): one table for both hosts.

@@ -14,7 +14,7 @@
  *
  * Pure: the screens and the edge function write the rows, this decides what happens and what the words say.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { canApproveClause, canEditClause } from '../gc/access'
 import { CLAUSE_APPROVAL_AGE, describeAge, type AgeDescription } from '../ageState'
 import { andList, clauseLabel, scopeWords, tradeKey, type Clause, type ClauseScope, type ContractPaper } from './assemble'

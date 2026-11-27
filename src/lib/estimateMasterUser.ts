@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { resolveCompanyOwnerUserId } from './companyOwner'
-import type { UserRole } from '../hooks/useAuth'
+import type { UserRole } from '../types/userRole'
 
 /**
  * The account an estimate (or change order) is stamped with: the company owner

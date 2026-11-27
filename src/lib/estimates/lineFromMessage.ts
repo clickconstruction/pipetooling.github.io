@@ -16,7 +16,7 @@
  * `messages.estimate_id` (the plan's `estimates.source_message_id`, moved to the message since many messages feed one
  * draft). The job's open estimate is a draft a message on the same Pipeline job points at.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import type { Contact } from '../contacts/kernel'
 import { computeEstimateLineExtendedCents, type EstimateLineItemNormalized } from '../estimateLineItemNormalize'
 import { GC_MONEY_TEAM, GC_OFFICE_TEAM } from '../gc/access'

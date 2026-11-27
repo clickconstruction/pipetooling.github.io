@@ -20,7 +20,7 @@
  *
  * Nothing here draws. `DashboardPinnedQuickRow` draws the door and the card, and both are the ones it had.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { needsYouDoorWords } from '../dashboard/phoneFolds'
 import type { NeedsYouItem } from '../dashboardNeedsYou'
 import { groupNeedsYouItems, needsYouHeaderWords } from '../needsYouActor'

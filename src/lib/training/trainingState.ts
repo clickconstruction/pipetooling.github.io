@@ -16,7 +16,7 @@
  * A pass counts only when it is on or after `retakeFrom` (the *Everyone takes it again…* stamp).
  * Days are YYYY-MM-DD in the app's calendar; the caller passes `todayYmdInAppTz()`.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 
 export type TrainingColour = 'red' | 'amber' | 'green'
 

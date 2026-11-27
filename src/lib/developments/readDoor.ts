@@ -8,7 +8,7 @@
  * price and a job's figure are not drawn, and a job's number opens nothing (the Job window reads
  * `jobs_ledger` too). Pure: the page asks for the door once and hands it down.
  */
-import type { UserRole } from '../../hooks/useAuth'
+import type { UserRole } from '../../types/userRole'
 import { isStaffFullJobLedgerDetailRole } from '../jobDetailModalRole'
 import type { CountKey } from './countCards'
 import type { MemberBid, MemberJob } from './overview'
