@@ -3551,6 +3551,7 @@ Ignore/Un-ignore buttons move task types between sections.
 The bar under the Dashboard's Financials cards (punch list #191) that answers "what is coming in this week, and what has not come in from last week".
 **Landed** is money in the bank or in Stripe this week: a Stripe payment on its paid day, a payment matched at Accounts Receivable on the day its deposit posted, a posted deposit not applied yet, a non-check payment typed in by hand.
 **At the bank** is a deposit Mercury still holds as pending, placed two bank days out.
+Since v2.8737 (punch list #437, piece 2) a pending check's chip also carries the bank's own day and the number the bank read off the check (`bankCheckFacts` in `jobs/checkCleared.ts`, over `raw.estimatedDeliveryDate` and `raw.checkNumber`): the bank's day takes the guess's place when it is no later than the guess, and when it is later the chip stays on the guessed posting day and its line adds *the bank says it clears Dec 2* (`pendingDepositDay`, `pendingDepositWords`).
 **In the drawer** is a check typed in but not yet seen at the bank, for `AR_UNBANKED_CHECK_DAYS` (10);
 after that it is Accounts Receivable's *never deposited* case.
 **Last week still out** is what last week expected (a promise, a claim's mail day, a payer's pace) with the bill still open, plus last week's returned checks.

@@ -52,18 +52,34 @@ export const BANK_CHECK_COLUMNS = 'id, amount, status, posted_at, created_at, ch
 
 export type BankCheckRow = { id: string; amount: number | string | null; status: string | null; posted_at: string | null; created_at: string | null; check_number: string | null; bank_day: string | null; failure_reason: string | null }
 
+const rowYmd = (iso: string | null | undefined): string | null => (iso ? calendarYmdInAppTzFromIso(String(iso)) || null : null)
+
+/** The two columns that carry what the bank says of a check, for a read that already has the rest of the row. */
+export const BANK_CHECK_FACT_COLUMNS = 'check_number:raw->>checkNumber, bank_day:raw->>estimatedDeliveryDate'
+
+/**
+ * What the bank itself says of a check, read off its row (punch list #437, piece 2): the day it posted the deposit,
+ * the day it names for the check to clear, the number it read off the check, and its words when the deposit
+ * failed. A row that carries none of them answers all four empty. Each instant is read as its day in the
+ * company's calendar, never its UTC date. `bankCheckFromRow` and Money in's pending deposits both read these.
+ */
+export function bankCheckFacts(row: Partial<Pick<BankCheckRow, 'posted_at' | 'check_number' | 'bank_day' | 'failure_reason'>>): Pick<BankCheck, 'postedYmd' | 'bankDayYmd' | 'checkNumber' | 'failureReason'> {
+  return {
+    postedYmd: rowYmd(row.posted_at),
+    bankDayYmd: rowYmd(row.bank_day),
+    checkNumber: (row.check_number ?? '').trim(),
+    failureReason: (row.failure_reason ?? '').trim() || null,
+  }
+}
+
 /** The bank's row as a `BankCheck`: each instant read as its day in the company's calendar, never its UTC date. */
 export function bankCheckFromRow(row: BankCheckRow): BankCheck {
-  const ymd = (iso: string | null): string | null => (iso ? calendarYmdInAppTzFromIso(String(iso)) || null : null)
   return {
     id: row.id,
     amount: Math.round((Number(row.amount) || 0) * 100) / 100,
     status: row.status,
-    depositedYmd: ymd(row.created_at) ?? '',
-    postedYmd: ymd(row.posted_at),
-    bankDayYmd: ymd(row.bank_day),
-    checkNumber: (row.check_number ?? '').trim(),
-    failureReason: (row.failure_reason ?? '').trim() || null,
+    depositedYmd: rowYmd(row.created_at) ?? '',
+    ...bankCheckFacts(row),
   }
 }
 

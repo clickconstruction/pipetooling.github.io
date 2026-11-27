@@ -14,6 +14,7 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { BANKING_SORTING_CONFIG_VERSION, type BankingSortingConfigV1 } from './bankingSortingConfig'
 import { moneyInDepositsReadFrom, type MoneyInDepositFilter, type MoneyInPendingDepositRow, type MoneyInPostedDepositRow, type MoneyInUnlinkedRow } from './moneyInDeposits'
 import type { ArReturnCaseRow } from './jobs/arReturnCase'
+import { BANK_CHECK_FACT_COLUMNS } from './jobs/checkCleared'
 
 export async function rpcRows<T>(db: SupabaseClient<Database>, fn: string, args?: Record<string, unknown>): Promise<T[]> {
   const { data, error } = await db.rpc(fn as never, (args ?? {}) as never)
@@ -26,12 +27,26 @@ export function moneyInDepositFilterOf(cfg: BankingSortingConfigV1 | null): Mone
   return cfg ? { kinds: cfg.kinds, excludeCounterpartyContains: cfg.excludeCounterpartyContains, excludeNoteContains: cfg.excludeNoteContains } : null
 }
 
-/** Deposits still pending at the bank, newest first. */
+const PENDING_DEPOSIT_COLUMNS = 'id, amount, kind, created_at, counterparty_name, note'
+
+/**
+ * Deposits still pending at the bank, newest first, each with what the bank says of a check: the number it read
+ * and the day it names (punch list #437, piece 2, the columns `checkClearedIo.ts` reads off the same rows). A read
+ * refused with those two is asked once more without them, so a seat that may not read them still gets its
+ * deposits and Money in draws its own guess, as before.
+ */
 export async function readPendingDepositRows(db: SupabaseClient<Database>): Promise<MoneyInPendingDepositRow[]> {
-  const rows = await withSupabaseRetry(
-    async () => db.from('mercury_transactions').select('id, amount, kind, created_at, counterparty_name, note').eq('status', 'pending').gt('amount', 0).order('created_at', { ascending: false }).limit(200),
-    'money in pending deposits',
-  )
+  const ask = (columns: string) =>
+    withSupabaseRetry(
+      async () => db.from('mercury_transactions').select(columns).eq('status', 'pending').gt('amount', 0).order('created_at', { ascending: false }).limit(200),
+      'money in pending deposits',
+    )
+  let rows: unknown
+  try {
+    rows = await ask(`${PENDING_DEPOSIT_COLUMNS}, ${BANK_CHECK_FACT_COLUMNS}`)
+  } catch {
+    rows = await ask(PENDING_DEPOSIT_COLUMNS)
+  }
   return (rows ?? []) as MoneyInPendingDepositRow[]
 }
 

@@ -11,6 +11,7 @@
  * carries (`depositOnNoBill`). A deposit a typed-in payment carries is that payment reaching the bank: its money
  * is already on a job.
  */
+import { bankCheckFacts } from './jobs/checkCleared'
 import { isCheckPayment } from './jobs/checkClearing'
 import { AR_UNBANKED_CHECK_DAYS } from '../../supabase/functions/_shared/bankReturnedDeposits'
 import { isInKindPaymentType } from '../../supabase/functions/_shared/inKindPayment'
@@ -43,6 +44,10 @@ export type MoneyInDeposit = {
   state: 'pending' | 'posted'
   /** Pending: the day it was made. Posted: the day it posted. */
   dayYmd: string | null
+  /** A pending check: the day the bank names for it to clear, when the bank names one (punch list #437, piece 2). */
+  bankDayYmd?: string | null
+  /** A pending check: the number the bank read off it, as the bank holds it. */
+  checkNumber?: string | null
 }
 
 /** Mercury kinds that are never a customer paying us. */
@@ -87,7 +92,7 @@ export function isCustomerDeposit(tx: { usd: number; kind: string | null; counte
 // ---------- The rows as they are read ----------
 
 /** A pending deposit, a row of `mercury_transactions`. */
-export type MoneyInPendingDepositRow = { id: string; amount: number | string | null; kind: string | null; created_at: string | null; counterparty_name: string | null; note: string | null }
+export type MoneyInPendingDepositRow = { id: string; amount: number | string | null; kind: string | null; created_at: string | null; counterparty_name: string | null; note: string | null; /** The number the bank read off a check (`raw.checkNumber`). */ check_number?: string | null; /** The day the bank names for a check to clear (`raw.estimatedDeliveryDate`). */ bank_day?: string | null }
 /** A posted deposit as Accounts Receivable's own list answers it (`list_mercury_transactions_for_bank_payments`). */
 export type MoneyInPostedDepositRow = {
   mercury_transaction_id: string
@@ -113,7 +118,10 @@ export function moneyInDepositsFromRows(pending: ReadonlyArray<MoneyInPendingDep
   return [
     ...pending
       .filter((t) => isCustomerDeposit({ usd: num(t.amount), kind: t.kind, counterpartyName: t.counterparty_name, note: t.note }, filter))
-      .map((t): MoneyInDeposit => ({ mercuryTransactionId: t.id, usd: num(t.amount), kind: t.kind, counterpartyName: t.counterparty_name, state: 'pending', dayYmd: ymdOf(t.created_at) })),
+      .map((t): MoneyInDeposit => {
+        const bank = bankCheckFacts(t)
+        return { mercuryTransactionId: t.id, usd: num(t.amount), kind: t.kind, counterpartyName: t.counterparty_name, state: 'pending', dayYmd: ymdOf(t.created_at), bankDayYmd: bank.bankDayYmd, checkNumber: bank.checkNumber || null }
+      }),
     ...posted
       .filter((t) => !t.returned && num(t.remaining_available) > 0.005 && isCustomerDeposit({ usd: num(t.amount), kind: t.kind, counterpartyName: t.counterparty_name, note: t.note }, filter))
       .map((t): MoneyInDeposit => ({ mercuryTransactionId: t.mercury_transaction_id, usd: num(t.remaining_available), kind: t.kind, counterpartyName: t.counterparty_name, state: 'posted', dayYmd: ymdOf(t.posted_at) })),
