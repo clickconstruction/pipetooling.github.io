@@ -81,7 +81,7 @@ The columns run *Job · Revenue · Labor · Subs · Parts · Gross · Margin · 
 
 Two columns for owners, controllers and master techs, added after **True %**:
 
-- **Burn**: percent of the budget spent beside percent complete, {{chip:red|68% spent · 62% done}}. The budget is the contract with your **Target** chip's share taken off. When Target is off, 35% is used. It is red and bold when spend leads progress by more than five points. It is green when progress leads. It reads `early` under three field days or 10% complete. It reads `done` on finished jobs.
+- **Burn**: percent of the budget spent beside percent complete, {{chip:red|68% spent · 62% done}}. The budget is the contract with your **Target** chip's share taken off. When Target is off, 35% is used. It is red and bold when spend leads progress by more than five points. It is green when progress leads. It reads `early` under three field days or 10% complete. It reads `done` on finished jobs. Its labor counts at wages times the burden factor, as on a job's Costs tab. The **Labor** column still shows the wages paid.
 - **Proj. true margin**: the true margin the job is heading for at 100%. The header says *at 100%* under the name. It starts from the contract. It takes off spent ÷ percent done. It takes off overhead so far. It takes off overhead per field day × the field days still to come. It is red when negative or under the Target. On a finished job it simply equals True profit. You sort by it and the jobs in trouble rise to the top. The totals row sums it over the in-progress jobs and counts how many are hot.
 
 The same arithmetic runs on each job window's **Costs** tab. See *read the cost and value timeline on a job*. There the daily bars and the forecast explain the number.

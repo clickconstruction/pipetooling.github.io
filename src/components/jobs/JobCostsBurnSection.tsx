@@ -5,6 +5,7 @@ import type { JobBurnOverheadState } from '../../hooks/useJobBurnOverhead'
 import { buildJobBurn, resolveJobBurnBudget, type JobBurnModel } from '../../lib/jobs/jobBurn'
 import { budgetForBurn, JOB_BUDGET_SOURCE_WORDS, type ResolvedJobBudget } from '../../lib/jobs/jobBudget'
 import { readTargetMarginPct } from '../../lib/jobs/jobBurnForVerdict'
+import { chargeEventsAtBurden } from '../../lib/jobs/burnAtBurden'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
@@ -88,7 +89,7 @@ export function firstEventYmdOf(inputsState: JobChargesTimelineInputsState): str
   return first
 }
 
-export function JobCostsBurnSection({ inputsState, overheadState, jobBudget, mode = 'all' }: { inputsState: JobChargesTimelineInputsState; /** The host runs `useJobBurnOverhead` once for Burn and the Cost Timeline (v2.3271). */ overheadState: JobBurnOverheadState; /** The job's resolved budget (v2.3299): ◆ bid / ✎ typed feed Burn's budget; ≈ assumed keeps price × (1 − target). */ jobBudget?: ResolvedJobBudget | null; /** v2.3361: 'chart' = the cumulative chart alone (earned off the price); 'detail' = the daily chart + pace rows, for the folded detail; 'all' = the pre-v2.3361 section. */ mode?: 'all' | 'chart' | 'detail' }) {
+export function JobCostsBurnSection({ inputsState, overheadState, jobBudget, laborBurden, mode = 'all' }: { inputsState: JobChargesTimelineInputsState; /** The company's burden factor (punch list #448): the chart's cost line and the daily bars price team labor at it. */ laborBurden: number; /** The host runs `useJobBurnOverhead` once for Burn and the Cost Timeline (v2.3271). */ overheadState: JobBurnOverheadState; /** The job's resolved budget (v2.3299): ◆ bid / ✎ typed feed Burn's budget; ≈ assumed keeps price × (1 − target). */ jobBudget?: ResolvedJobBudget | null; /** v2.3361: 'chart' = the cumulative chart alone (earned off the price); 'detail' = the daily chart + pace rows, for the folded detail; 'all' = the pre-v2.3361 section. */ mode?: 'all' | 'chart' | 'detail' }) {
   const inputs = inputsState.kind === 'ready' ? inputsState.inputs : null
   const { loading: overheadLoading, overhead } = overheadState
 
@@ -96,7 +97,7 @@ export function JobCostsBurnSection({ inputsState, overheadState, jobBudget, mod
     if (!inputs) return null
     const budget = resolveJobBurnBudget({ priceUsd: inputs.revenue, bidEstimateUsd: jobBudget ? budgetForBurn(jobBudget) : null, targetMarginPct: readTargetMarginPct() })
     return buildJobBurn({
-      chargeEvents: inputs.chargeEvents,
+      chargeEvents: chargeEventsAtBurden(inputs.chargeEvents, laborBurden),
       valueEvents: inputs.valueEvents,
       fallbackPercent: inputs.fallbackPercent,
       priceUsd: inputs.revenue,
@@ -106,7 +107,7 @@ export function JobCostsBurnSection({ inputsState, overheadState, jobBudget, mod
       // The honest tab (v2.3361) steps earned value off the price; the legacy section keeps the budget basis.
       earnedBasis: mode === 'all' ? 'budget' : 'price',
     })
-  }, [inputs, overhead, jobBudget, mode])
+  }, [inputs, overhead, jobBudget, mode, laborBurden])
 
   const header = (sub: string) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>

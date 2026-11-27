@@ -19,13 +19,19 @@ import type { JobBurnModel } from './jobBurn'
 import { componentBurn, jobBudgetAwardOf, jobBudgetBookDetailOf, type JobBudgetAward, type JobBudgetAwardColumns, type JobBudgetBookDetail, type JobBudgetRowLike, type ResolvedJobBudget, type SpendByComponent } from './jobBudget'
 import { jobPlannedOf, jobPlannedWords, type JobPlanned, type JobPlannedColumns } from './plannedFinish'
 import { pricedMarginPartialWords, pricedMarginPctWords, pricedVsDirectWords, type BidPricedMargin } from '../bids/pricedMargin'
+import { burnLaborBasisWords, burnLaborOf, type BurnLabor } from './burnAtBurden'
+import { plainSentence } from '../valuesInPlace'
 
 export type VerdictMoney = { usd: number; pct: number | null }
+
+export type { BurnLabor }
 
 export type VerdictSection = {
   key: 'labor' | 'materials' | 'subs' | 'other'
   label: string
   sub: string
+  /** `sub` with its values marked by `val`, where a screen can draw them apart (the Labor row at the burden, #448). */
+  subMarked?: string
   spentUsd: number
   hours: number | null
   /** spent ÷ % done; the spent amount when done or unknown. */
@@ -56,7 +62,11 @@ export type CostsVerdict = {
   eacUsd: number | null
   overheadToDateUsd: number
   overheadProjectedUsd: number | null
-  spent: { usd: number; pctOfPrice: number | null; teamHours: number; materialsUsd: number }
+  /**
+   * `labor` is what the spend's labor stands on when it is priced at the burden (punch list #448): the wages
+   * paid, the factor and the two multiplied. Null at a factor of 1 or with no wages, where there is nothing to say.
+   */
+  spent: { usd: number; pctOfPrice: number | null; teamHours: number; materialsUsd: number; labor: BurnLabor | null }
   earned: { usd: number; aheadUsd: number } | null
   /** True margin so far: earned − spent − overhead to date; null without earned. */
   trueMarginSoFar: VerdictMoney | null
@@ -97,6 +107,8 @@ export type CostsBaseline = {
   people: number | null
   hoursPerThousand: number | null
   avgWageUsd: number | null
+  /** What the burn prices an hour of labor at: the average wage times the burden (punch list #448). The same as `avgWageUsd` at a factor of 1. */
+  laborRateUsd: number | null
   materialsUsd: number
   materialsPctOfPrice: number | null
   bidHours: number | null
@@ -129,6 +141,11 @@ export function buildCostsVerdict(args: {
   priced?: BidPricedMargin | null
   /** The raw `job_budgets` row (punch list #234 PR 1a): the award snapshot and a book row's reading come off it. */
   budgetRow?: (JobBudgetRowLike & JobBudgetAwardColumns & JobPlannedColumns) | null
+  /**
+   * The burden factor the burn was built at (punch list #448). `spend` stays the wages paid; the Labor row and
+   * the hourly rate beside it are priced at this, as `burn` already is. Left out, it is 1: the wages as they are.
+   */
+  laborBurden?: number
 }): CostsVerdict {
   const { burn: m, priceUsd, spend, resolved: r } = args
   const c = r.components
@@ -143,8 +160,11 @@ export function buildCostsVerdict(args: {
     const b = componentBurn({ usedUsd: spentUsd, budgetUsd, pctDone: m.percentDone })
     return { key, label, sub, spentUsd, hours, atCompletionUsd: b.atCompletionUsd, budgetUsd: b.budgetUsd, budgetHours, budgetWords: words(b.budgetUsd != null || (budgetHours != null && budgetHours > 0), noun), pctOfBudget: b.pct, aheadPts: b.aheadPts }
   }
+  const labor = burnLaborOf(spend.teamUsd, args.laborBurden ?? 1)
+  const laborShown = labor.burden > 1 && labor.wagesUsd > 0 ? labor : null
+  const laborBasis = laborShown ? burnLaborBasisWords(laborShown) : null
   const sections: VerdictSection[] = [
-    section('labor', 'Labor', 'team hours × wages', spend.teamUsd, args.teamHours, c && c.laborUsd > 0 ? c.laborUsd : null, c && c.laborHours > 0 ? c.laborHours : null, 'hours'),
+    { ...section('labor', 'Labor', laborBasis ? plainSentence(laborBasis) : 'team hours × wages', labor.usd, args.teamHours, c && c.laborUsd > 0 ? c.laborUsd : null, c && c.laborHours > 0 ? c.laborHours : null, 'hours'), ...(laborBasis ? { subMarked: laborBasis } : {}) },
     section('materials', 'Materials', 'supply house · cards · tally', spend.partsUsd, null, c && c.materialsUsd > 0 ? c.materialsUsd : null, null, 'materials'),
     section('subs', 'Subs', 'sub labor sheets', spend.subUsd, null, c && c.subsUsd > 0 ? c.subsUsd : null, null, 'subs'),
     section('other', 'Other', 'permits · equipment · driving', 0, null, c && c.otherUsd > 0 ? c.otherUsd : null, null, 'other'),
@@ -176,7 +196,7 @@ export function buildCostsVerdict(args: {
     eacUsd: m.eacUsd,
     overheadToDateUsd: overheadToDate,
     overheadProjectedUsd: m.overhead?.projectedRemainingUsd ?? null,
-    spent: { usd: m.spentUsd, pctOfPrice: pctOf(m.spentUsd, priceUsd), teamHours: args.teamHours, materialsUsd: spend.partsUsd },
+    spent: { usd: m.spentUsd, pctOfPrice: pctOf(m.spentUsd, priceUsd), teamHours: args.teamHours, materialsUsd: spend.partsUsd, labor: laborShown },
     earned,
     trueMarginSoFar: soFar != null ? { usd: soFar, pct: pctOf(soFar, priceUsd) } : null,
     priced: args.priced ? { pctWords: pricedMarginPctWords(args.priced), vsWords: pricedVsDirectWords(m.marginPct, args.priced), partialWords: pricedMarginPartialWords(args.priced) } : null,
@@ -201,6 +221,7 @@ export function buildCostsVerdict(args: {
       people: args.teamPeople,
       hoursPerThousand: priceUsd != null && priceUsd > 0 && args.teamHours > 0 ? args.teamHours / (priceUsd / 1000) : null,
       avgWageUsd: args.teamHours > 0 ? spend.teamUsd / args.teamHours : null,
+      laborRateUsd: args.teamHours > 0 ? labor.usd / args.teamHours : null,
       materialsUsd: spend.partsUsd,
       materialsPctOfPrice: pctOf(spend.partsUsd, priceUsd),
       bidHours,

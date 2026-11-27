@@ -22,14 +22,18 @@ describe('the labor burden factor, in words (Taunya, 2026-11-27)', () => {
     expect(laborBurdenSentences(1.2).join(' ')).not.toMatch(/taxes|insurance/i)
   })
 
-  it('names the six places it reaches and the five it does not, and says nothing here changes it', () => {
-    expect(LABOR_BURDEN_WORDS.reaches).toHaveLength(6)
+  it('names the seven places it reaches and the five it does not, and says nothing here changes it', () => {
+    expect(LABOR_BURDEN_WORDS.reaches).toHaveLength(7)
     expect(LABOR_BURDEN_WORDS.not).toHaveLength(5)
     expect(LABOR_BURDEN_WORDS.reaches.join(' ')).toMatch(/crew rate/)
     expect(LABOR_BURDEN_WORDS.reaches.join(' ')).toMatch(/labor budget/)
     expect(LABOR_BURDEN_WORDS.reaches.join(' ')).toMatch(/scoreboard/)
     expect(LABOR_BURDEN_WORDS.reaches.join(' ')).toMatch(/field score/)
     expect(LABOR_BURDEN_WORDS.reaches.join(' ')).toMatch(/estimator/)
+    // Punch list #448: a job's burn is priced at the factor, and the money table under it is not.
+    expect(LABOR_BURDEN_WORDS.reaches.join(' ')).toMatch(/A job’s burn/)
+    expect(LABOR_BURDEN_WORDS.not.join(' ')).toMatch(/Where the money went/)
+    expect(LABOR_BURDEN_WORDS.not.join(' ')).not.toMatch(/burn/)
     expect(LABOR_BURDEN_WORDS.not.join(' ')).toMatch(/Pay stubs/)
     expect(LABOR_BURDEN_WORDS.not.join(' ')).toMatch(/overhead pool/)
     expect(LABOR_BURDEN_WORDS.change).toBe('No press here changes it. A developer changes the number in the database.')

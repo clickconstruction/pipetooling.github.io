@@ -2083,6 +2083,7 @@ The gate is the Scoreboard's: a dev, the owner, anyone with payroll access (`can
   Gross profit is what the window's hours earned of their jobs' contracts, less those hours' wages at the burden factor (`labor_burden_factor_v1`), the materials and the subs dated in the window.
   The burden factor stands for depreciation on the tools and the truck a person uses (Taunya, 2026-11-27, who kept it at 1.20).
   A dev reads what it is, where it reaches and where it does not on Settings → Data & recovery → **Labor burden factor (dev)**, which is read only (`laborBurdenWords.ts`).
+  Since v2.8731 a job's burn prices its team labor at the factor too (`burnAtBurden.ts`, punch list #448), on the Costs tab's verdict and chart, Job Summary's Burn column, the Pipeline's burn card and Bid vs actual, while Where the money went, the Labor column, Crew P&L and pay stubs keep the wages paid.
   Every paid field hour on a job counts.
   The drill-down is one row per job, a job with hours and no bill flagged with a door to bill it, and above the jobs the score cut by who runs them (the Scoreboard's own mapping).
 - **Estimating & sales** (`estimatorScore.ts`), one number the estimator and the account manager share: a bid counts its priced gross profit (the *Priced margin*'s revenue less its cost, frozen at send) at award, when that profit over the award's labor hours clears the hurdle;
