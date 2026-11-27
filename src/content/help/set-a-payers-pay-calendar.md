@@ -40,12 +40,11 @@ Once a calendar is set, the line reads like *In by month end, paid the 10th*. Pr
 ## Fill it in
 
 :::steps
-1. Under **How they pay**, keep **On a set day of the month**.
-2. Pick the cutoff under **Bills must be in by**.
-3. Pick the pay day under **They pay on the**. Then pick the month the pay day falls in.
-4. Tick **They pay when the owner pays them** if the contract says so.
-5. Type the clause number and a few of its words under **Where the contract says it**.
-6. Press {{button:blue|Save pay calendar}}.
+1. Pick the cutoff under **Bills must be in by**.
+2. Pick the pay day under **They pay on the**. Then pick the month the pay day falls in.
+3. Tick **They pay when the owner pays them** if the contract says so.
+4. Type the clause number and a few of its words under **Where the contract says it**.
+5. Press {{button:blue|Save pay calendar}}.
 :::
 
 The blue box says the calendar back in dates. Read the box before you save.
@@ -75,8 +74,12 @@ The record uses their newest 12 payments. Change a choice and the box works the 
 
 Some contracts name no day of the month. Such a contract says a bill is paid a number of days after it is accepted, like 45.
 
+The window does not ask for these terms today. None of our contracts pays that way, so the choice is put away. When a contract needs these terms, ask for the choice to be turned back on.
+
+A payer or a job already on these terms still shows them. Its window then opens with **How they pay** as the first choice.
+
 :::steps
-1. Under **How they pay**, pick **A number of days after the bill**.
+1. Under **How they pay**, keep **A number of days after the bill**.
 2. Type the number under **Days after the bill is accepted**.
 3. Tick **They pay when the owner pays them** if the contract says so.
 4. Type the clause number and a few of its words.
@@ -94,7 +97,7 @@ The line then reads like *Paid 45 days after the bill*. Everything else works as
 
 The days count from the day the customer accepts the bill. See [When they accepted a bill later](#when-they-accepted-a-bill-later).
 
-Use it for a job whose contract names the number. One job can have these terms on its own. See [One job on a different calendar](#one-job-on-a-different-calendar).
+One job can be on these terms alone. See [One job on a different calendar](#one-job-on-a-different-calendar).
 
 ## When to leave it unset
 

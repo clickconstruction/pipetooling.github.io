@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
- * **The proof** under Papers for this site (punch list #439, piece 5, part 5a): the count, **Make the packet**, the
- * packet as it prints and **Print**, with a fake for the site's secrecy. Every name here is made up.
+ * **The proof** under Papers for this site (punch list #439, piece 5, parts 5a and 5b): the count, **Make the packet**,
+ * the packet as it prints, **Print** and **Download**, with a fake for the site's secrecy, the print window, the signed
+ * copies and the kept copy. Every name here is made up.
  */
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { PDFDocument } from 'pdf-lib'
@@ -40,8 +41,15 @@ const onePage = async (): Promise<Blob> => {
   const bytes = await doc.save()
   return { type: 'application/pdf', arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) } as unknown as Blob
 }
-const draw = (io: SiteSecrecyIo, proof: Proof = PROOF, fetchCopy: ProofCopyFetch = onePage, save: (blob: Blob, fileName: string) => void = () => undefined) =>
-  render(<SiteProof proof={proof} clientName="Sample Owner LLC" siteName="Old Quarry Ranch" site={SITE} todayYmd="2026-11-27" io={io} fetchCopy={fetchCopy} save={save} />)
+type Fakes = {
+  fetchCopy?: ProofCopyFetch
+  save?: (blob: Blob, fileName: string) => void
+  print?: (html: string, filing: Record<string, unknown>) => boolean
+  file?: (filing: Record<string, unknown>, body: unknown) => Promise<boolean>
+}
+// Nothing here opens a print window, saves a file or files a copy unless a test hands its own spy.
+const draw = (io: SiteSecrecyIo, proof: Proof = PROOF, { fetchCopy = onePage, save = () => undefined, print = () => true, file = async () => true }: Fakes = {}) =>
+  render(<SiteProof proof={proof} clientName="Sample Owner LLC" siteName="Old Quarry Ranch" site={SITE} todayYmd="2026-11-27" io={io} fetchCopy={fetchCopy} save={save} print={print as never} file={file as never} />)
 
 afterEach(() => {
   cleanup()
@@ -80,13 +88,20 @@ describe('SiteProof', () => {
     expect(packet.parentElement?.getAttribute('data-theme')).toBe('light')
   })
 
-  it('Print prints, and Close and Escape close the packet', async () => {
-    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined)
-    draw(fakeIo())
+  it('Print prints the packet as a page of its own and files its copy, and Close and Escape close the packet', async () => {
+    const print = vi.fn((_html: string, _filing: Record<string, unknown>) => true)
+    draw(fakeIo(), PROOF, { print })
     fireEvent.click(screen.getByRole('button', { name: 'Make the packet' }))
     const packet = await screen.findByRole('dialog', { name: 'The packet, as it prints' })
+    await within(packet).findByTestId('site-proof-own-people')
     fireEvent.click(within(packet).getByRole('button', { name: 'Print' }))
     expect(print).toHaveBeenCalledTimes(1)
+    const [html, filing] = print.mock.calls[0]!
+    expect(html).toContain('<h1>The proof for Sample Owner LLC</h1>')
+    expect(html).toContain('<b>Placeholder Fence Co.</b>')
+    expect(html).toContain('18 of 21 have signed.')
+    expect(filing).toEqual({ kind: 'site_proof_packet', title: 'The proof for Sample Owner LLC, Old Quarry Ranch', recipientName: 'Sample Owner LLC', source: { table: 'developments', id: 'dev-1' } })
+    expect((await within(packet).findByTestId('site-proof-print-outcome')).textContent).toBe('Sent to print. A copy is kept under Documents, Sent copies.')
     fireEvent.click(within(packet).getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     fireEvent.click(screen.getByRole('button', { name: 'Make the packet' }))
@@ -95,8 +110,9 @@ describe('SiteProof', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
-  it('Download names its count, is dead until our own people are read, and hands the browser one PDF named for the site', async () => {
+  it('Download names its count, is dead until our own people are read, hands the browser one PDF named for the site and keeps a copy', async () => {
     const saved: Array<{ type: string; size: number; name: string }> = []
+    const file = vi.fn(async (_filing: Record<string, unknown>, _body: unknown) => true)
     const asked: string[] = []
     const fetchCopy: ProofCopyFetch = async (id) => {
       asked.push(id)
@@ -104,7 +120,7 @@ describe('SiteProof', () => {
     }
     let release: (v: null) => void = () => undefined
     const io = fakeIo({ readLive: vi.fn(() => new Promise<null>((r) => (release = r))) })
-    draw(io, PROOF, fetchCopy, (blob, name) => void saved.push({ type: blob.type, size: blob.size > 500 ? 1 : 0, name }))
+    draw(io, PROOF, { fetchCopy, save: (blob, name) => void saved.push({ type: blob.type, size: blob.size > 500 ? 1 : 0, name }), file })
     fireEvent.click(screen.getByRole('button', { name: 'Make the packet' }))
     const packet = await screen.findByRole('dialog', { name: 'The packet, as it prints' })
     const press = within(packet).getByRole('button', { name: 'Download with 2 signed copies' }) as HTMLButtonElement
@@ -112,36 +128,53 @@ describe('SiteProof', () => {
     release(null)
     await waitFor(() => expect(press.disabled).toBe(false))
     fireEvent.click(press)
-    expect((await screen.findByTestId('site-proof-download-outcome')).textContent).toBe('Downloaded, with 2 signed copies attached.')
+    // A download is a send: the file itself is filed, and the line says so once it is kept.
+    await waitFor(() => expect(screen.getByTestId('site-proof-download-outcome').textContent).toBe('Downloaded, with 2 signed copies attached. A copy is kept under Documents, Sent copies.'))
     expect(asked).toEqual(['a', 'b'])
     // The pages are the kernel's to count (siteProofPdf.test.ts): here, one PDF with something in it, named for the site.
     await waitFor(() => expect(saved).toEqual([{ type: 'application/pdf', size: 1, name: 'The proof - Old Quarry Ranch.pdf' }]))
+    expect(file).toHaveBeenCalledTimes(1)
+    const [filing, body] = file.mock.calls[0]!
+    expect(filing).toEqual({ kind: 'site_proof_packet', title: 'The proof for Sample Owner LLC, Old Quarry Ranch', recipientName: 'Sample Owner LLC', source: { table: 'developments', id: 'dev-1' }, how: 'download' })
+    expect(body).toMatchObject({ fileName: 'The proof - Old Quarry Ranch.pdf', contentType: 'application/pdf' })
   })
 
-  it('a copy that cannot be had is named with its reason, and the rest are still downloaded', async () => {
+  it('a copy that cannot be had is named with its reason, the rest are still downloaded, and a file that was not kept is not said to be', async () => {
     const save = vi.fn()
+    const file = vi.fn(async () => false)
     const fetchCopy: ProofCopyFetch = async (id) => {
       if (id === 'b') throw new Error('This paper is a form. Open its PDF from the form’s own press.')
       return onePage()
     }
-    draw(fakeIo({ readLive: vi.fn(async () => null) }), PROOF, fetchCopy, save)
+    draw(fakeIo({ readLive: vi.fn(async () => null) }), PROOF, { fetchCopy, save, file })
     fireEvent.click(screen.getByRole('button', { name: 'Make the packet' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Download with 2 signed copies' }))
     const outcome = await screen.findByTestId('site-proof-download-outcome')
     expect(outcome.textContent).toBe('Downloaded, with 1 of 2 signed copies attached. Not attached: Placeholder Fence Co.: This paper is a form. Open its PDF from the form’s own press.')
     expect(outcome.getAttribute('role')).toBe('status')
     expect(save).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(file).toHaveBeenCalledTimes(1))
+    expect(outcome.textContent).not.toContain('A copy is kept')
   })
 
   it('with nobody signed, Download is the list alone and asks for no copy', async () => {
     const fetchCopy = vi.fn<ProofCopyFetch>(onePage)
     const save = vi.fn()
-    draw(fakeIo({ readLive: vi.fn(async () => null) }), { signed: [], asked: PROOF.asked }, fetchCopy, save)
+    draw(fakeIo({ readLive: vi.fn(async () => null) }), { signed: [], asked: PROOF.asked }, { fetchCopy, save })
     fireEvent.click(screen.getByRole('button', { name: 'Make the packet' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Download the list' }))
-    expect((await screen.findByTestId('site-proof-download-outcome')).textContent).toBe('Downloaded the list.')
+    await waitFor(() => expect(screen.getByTestId('site-proof-download-outcome').textContent).toBe('Downloaded the list. A copy is kept under Documents, Sent copies.'))
     expect(fetchCopy).not.toHaveBeenCalled()
     expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it('a blocked print window is said, with what to do', async () => {
+    draw(fakeIo({ readLive: vi.fn(async () => null) }), PROOF, { print: () => false })
+    fireEvent.click(screen.getByRole('button', { name: 'Make the packet' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Print' }))
+    const said = await screen.findByTestId('site-proof-print-outcome')
+    expect(said.textContent).toBe('The print window was blocked. Allow pop-ups for this site, then press Print again.')
+    expect(said.getAttribute('role')).toBe('alert')
   })
 
   it('a site whose secrecy is off, or a database with none yet, says nothing of our own people', async () => {

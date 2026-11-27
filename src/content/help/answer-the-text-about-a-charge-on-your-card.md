@@ -34,7 +34,7 @@ Each charge gets its own text and its own link. Open each text and take one phot
 
 A charge with no receipt gets one reminder. The reminder comes in the evening. Its link opens the same charge.
 
-You get no more texts about that charge after the reminder. The office may ask you for the receipt.
+The app sends no more texts about that charge after the reminder. The office may text you again by hand, or ask you for the receipt.
 
 ## When you already took the photo
 

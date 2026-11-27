@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vitest'
 import type { PartyPaperRow } from '../contracts/partyPapers'
 import { plainWordsFailures } from '../plainWords'
 import { plainSentence } from '../valuesInPlace'
-import { SITE_PROOF_WORDS, asOfWords, ownPeopleWords, proofCompanies, proofCountSentence, proofDraws, proofHeading, siteProof } from './siteProof'
+import { sentKindGroup } from '../sent/sentCopies'
+import { SITE_PROOF_SENT_KIND, SITE_PROOF_WORDS, asOfWords, ownPeopleWords, proofCompanies, proofCountSentence, proofDraws, proofHeading, proofPacketHtml, proofSentTitle, siteProof } from './siteProof'
 import type { SiteScope } from './sitePapers'
 
 const KEY = '118 old quarry trail sampleton tx'
@@ -125,14 +126,38 @@ describe('our own people', () => {
   })
 })
 
+describe('the page that prints, and its kept copy', () => {
+  const proof = siteProof([paper('a'), paper('w', { status: 'sent', signed_at: null, party_name: 'Example Pipe & Valve', party_contact_id: 'k9', sent_at: '2026-11-20T18:00:00Z' })], SCOPE)
+  it('is a page of its own with the client, the site, each line, our own people and the foot', () => {
+    const html = proofPacketHtml({ proof, clientName: 'Sample Owner LLC', siteName: 'Old Quarry Ranch', ownWords: '18 of 21 have signed.', todayYmd: '2026-11-27' })
+    expect(html.startsWith('<!doctype html>')).toBe(true)
+    for (const words of ['<h1>The proof for Sample Owner LLC</h1>', 'Old Quarry Ranch', '1 company signed. 1 asked, not yet signed.', '<b>Tallgrass Supply Co.</b>', 'Signed by Lena Park, Branch manager', 'Signed Nov 12', 'Example Pipe &amp; Valve', 'Sent Nov 20', '18 of 21 have signed.', 'As of Nov 27. This is the list. The signed copies are not attached.']) expect(html, words).toContain(words)
+  })
+  it('escapes what a person typed, and says nothing of our own people when they are not asked', () => {
+    const typed = siteProof([paper('x', { party_name: '<script>alert(1)</script> & Sons', signer_name: 'A "Quoted" Name' })], SCOPE)
+    const html = proofPacketHtml({ proof: typed, clientName: '<b>Owner</b>', siteName: null, ownWords: null, todayYmd: '2026-11-27' })
+    expect(html).not.toContain('<script>')
+    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt; &amp; Sons')
+    expect(html).toContain('The proof for &lt;b&gt;Owner&lt;/b&gt;')
+    expect(html).not.toContain('Our own people')
+  })
+  it('the copy is filed with the contracts, named for the client and the site', () => {
+    expect(sentKindGroup(SITE_PROOF_SENT_KIND)).toBe('contracts')
+    expect(proofSentTitle('Sample Owner LLC', 'Old Quarry Ranch')).toBe('The proof for Sample Owner LLC, Old Quarry Ranch')
+    expect(proofSentTitle(null, ' ')).toBe('The proof for this site’s client')
+  })
+})
+
 describe('the words', () => {
-  it('the foot says the day, and the screen says where the copies come from', () => {
+  it('the foot says the day: the page that prints is the list alone, and the screen says where the copies come from', () => {
     expect(asOfWords('2026-11-27')).toBe('As of Nov 27.')
     expect(asOfWords('')).toBe('')
+    expect(SITE_PROOF_WORDS.listAlone).toBe('This is the list. The signed copies are not attached.')
     expect(SITE_PROOF_WORDS.downloadAdds).toBe('This is the list. Download adds the signed copies.')
+    expect(SITE_PROOF_WORDS.downloadKept).toBe('A copy is kept under Documents, Sent copies.')
   })
   it('every sentence a first-timer reads passes the plain-words rules', () => {
-    const said = [SITE_PROOF_WORDS.lead, SITE_PROOF_WORDS.downloadAdds, SITE_PROOF_WORDS.nobodySigned, ownPeopleWords({ kind: 'unread' })!, ownPeopleWords({ kind: 'counted', signed: 2, asked: 3 })!]
+    const said = [SITE_PROOF_WORDS.lead, SITE_PROOF_WORDS.listAlone, SITE_PROOF_WORDS.downloadAdds, SITE_PROOF_WORDS.printBlocked, SITE_PROOF_WORDS.printKept, SITE_PROOF_WORDS.downloadKept, SITE_PROOF_WORDS.nobodySigned, ownPeopleWords({ kind: 'unread' })!, ownPeopleWords({ kind: 'counted', signed: 2, asked: 3 })!]
     for (const words of said) expect(plainWordsFailures(words), words).toEqual([])
   })
 })

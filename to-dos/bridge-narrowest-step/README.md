@@ -11,7 +11,7 @@ summary: >
   sells. The steps that hold the company back are the one that moves the fewest dollars a week, and the one whose
   pile grows. The drawing puts today's reading beside one that lights the narrowest step and says on each row
   whether its pile grows or shrinks. It is a question for the owner, since it changes the page's rule.
-next: the send on Monday 2026-11-30 at 6 AM Central is the first read of the email itself; a look at the **?** at 375 px once v2.8683 is live, which should read 44 by 44; then the owner's own read of the red and the direction lines on his numbers.
+next: the send on Monday 2026-11-30 at 6 AM Central is the first read of the email itself; the **?** beside the rule read 44 by 44 at 375 px on the live site on 2026-11-27 (the walking thread's sitting 34, v2.8691), and behind **The flow** the three steps that hold a pile agree with the pipe's row; then the owner's own read of the red and the direction lines on his numbers.
 size: M as three parts (S · M · S), all built
 blocker: Nothing to build and nothing to deploy.
 opinion: the row directions shipped first and the red moved after, as planned; the redeploy is done, so once the walkers have looked, retire the card on the owner's word

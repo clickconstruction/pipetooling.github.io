@@ -69,6 +69,8 @@ export const KEPT_ADDRESS_SOURCES: ReadonlyArray<KeptAddressSource> = [
   { table: 'mail_pieces', column: 'address1', one: '1 piece of mail', many: '{n} pieces of mail' },
   // The site a paper names, as written when it was sent (punch list #439). Its made key is left out below.
   { table: 'person_contract_documents', column: 'site_address', one: '1 paper’s site', many: '{n} papers’ sites' },
+  // The site secrecy was turned on for, as written then (punch list #439, piece 4). Its made key is left out below.
+  { table: 'site_secrecy', column: 'address', one: '1 site’s secrecy', many: '{n} sites’ secrecy' },
   // The office's own address lives in a setting's text, and the clocked-in map keys the cache with it.
   { table: 'app_settings', column: 'value_text', one: '1 setting', many: '{n} settings' },
 ]
@@ -87,6 +89,7 @@ export const KEPT_ADDRESS_NOT_SOURCES: ReadonlyArray<string> = [
   'mail_pieces.address2',
   'permits.address_key',
   'person_contract_documents.site_address_key',
+  'site_secrecy.address_key',
 ]
 
 /** The fewest characters a street line needs before it can be told apart from any other. */

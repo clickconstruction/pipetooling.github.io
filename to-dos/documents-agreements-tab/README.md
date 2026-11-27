@@ -347,7 +347,7 @@ He took all seven picks as the mock-up draws them.
 6. **Drafts and voided.** Drafts out, and voided, declined and cancelled behind their own chip. Not
    taken: a Drafts chip.
 7. **Signed contracts in Google Drive.** A card of its own after this one. Not taken: folding it into
-   this train. That card is #377, `to-dos/signed-contracts-in-drive/README.md`.
+   this train. That card was #377, closed 2026-11-27; it lives in git history at the deleting commit.
 
 ## How to verify, once built
 

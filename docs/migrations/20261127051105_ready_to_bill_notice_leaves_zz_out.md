@@ -70,6 +70,15 @@ Read-only, through the dev seat or `psql`:
 
 With a write, on its own yes: move a ZZ test job from Working to Ready to bill and back. Read `paid_job_email_queue` for the job's id: no row of kind `ready_to_bill` was added. The job's `job_status_events` rows are written as before.
 
+## Applied
+
+Pushed to prod on 2026-11-27 at 07:06 UTC with `bash scripts/db-push.sh`, a plain run that listed and applied this file alone.
+
+- **Read right before it,** in a session the database answered as read-only: both functions are owned by `postgres` and both are SECURITY DEFINER, so the read above answers one row. The function's owner may execute `job_is_zz_test`.
+- **Read back after it:** the function holds the line above its insert, its comment ends with the sentence, its trigger is enabled, and the drift check read 1,511 versions applied against 1,511 files.
+- **Not done:** no job was moved to try it on prod. The bed and the read-back are the proof until a walk moves a ZZ test job.
+- **A read of prod is held read-only by statement.** `SET default_transaction_read_only = on` as the session's first statement, then `SHOW transaction_read_only` to prove it. The session pooler drops the setting when it is passed in `PGOPTIONS`: the first read for this push came back `off` that way, and it had run SELECTs alone.
+
 ## Roll back
 
 Re-apply the function and its comment from `20260819230000` (lines 29 to 40 and 50 to 51) in a new migration. Nothing else was changed, so nothing else is put back.

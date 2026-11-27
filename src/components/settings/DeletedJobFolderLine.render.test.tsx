@@ -54,7 +54,7 @@ describe('DeletedJobFolderLine', () => {
 
   it('says the folder was left, and offers the press and a link to look first', () => {
     draw()
-    expect(screen.getByText('This test job kept a Drive folder. Deleting the job did not remove it.')).toBeTruthy()
+    expect(screen.getByText('This test job had a Drive folder. Press Open it in Drive to see whether it is still there.')).toBeTruthy()
     expect(screen.getByRole('button', { name: PRESS })).toBeTruthy()
     const open = screen.getByRole('link', { name: 'Open it in Drive ↗' }) as HTMLAnchorElement
     expect(open.getAttribute('href')).toBe(LINK)

@@ -9,11 +9,14 @@
  * into tsc (scripts/lib/tscMemoryHook.cjs), which writes one marked line to stderr as tsc exits; the runner
  * takes that line out of the stream and prints these words in its place.
  *
- * Two numbers, because neither is right alone. The heap in use after a forced collection is what the
- * program needs at its end, and it is the number the card's tables hold; but the collection costs seconds,
- * so only CI forces it, and a warm run that found nothing changed has let its program go before it exits
- * (28 MB on a runner, 2026-11-27). The peak resident size is exact everywhere, covers the whole run and
- * sits a little over the heap. The warning reads the larger.
+ * Two numbers, because neither is right alone. The peak resident size is exact everywhere and covers the
+ * whole run, but it moves a few hundred MB from run to run with the collector's timing. The heap in use
+ * after a forced collection is what the program needs, the steadier number and the one the card's tables
+ * hold; but only CI forces the collection, and it is the program's only while tsc still holds its program
+ * as it exits. The build's `tsc -b` does (7,995 MB on a deploy, 2026-11-27). `tsc -p` with a build-info
+ * file has mostly let it go, cold or warm: three cold parts that had held 7 to 9 GB read about 30 MB. So
+ * the line names the heap only when it is a quarter of the peak or more (v2.8707), and the warning reads
+ * the larger of the two.
  */
 
 /** The start of the hook's line on stderr. scripts/lib/tscMemoryHook.cjs writes the same words. */
@@ -24,6 +27,8 @@ export const HOOK_FILE = 'tscMemoryHook.cjs'
 export const NEAR_CAP_SHARE = 0.8
 /** `1` forces the collection on any machine, `0` never forces it. Unset, CI forces it and a dev machine does not. */
 export const COLLECT_ENV = 'TYPECHECK_COLLECT'
+/** Under this share of the peak, the heap in use at the end is not the program's: tsc had let its program go. */
+export const HEAP_REAL_SHARE = 0.25
 /** Where the numbers and the plan live. */
 export const CARD = 'punch list #434, to-dos/type-check-in-parts.md'
 
@@ -100,6 +105,11 @@ export function readMemoryReport(raw) {
   }
 }
 
+/** True when the heap in use is the program's: a collection ran, and tsc still held its program as it exited. */
+export function heapIsReal(report) {
+  return report.collected && report.heapUsedMb >= report.residentPeakMb * HEAP_REAL_SHARE
+}
+
 /** The MB the warning reads: the larger of the heap in use at the end and the peak resident size. */
 export function heldMb(report) {
   return Math.max(report.heapUsedMb, report.residentPeakMb)
@@ -127,13 +137,14 @@ const named = (label) => (label ? `${label}'s tsc` : 'tsc')
 
 /**
  * The last line of every tsc that answered. `who` is `typecheck` or `build`, `label` the part's name.
- * A warm run holds about a third of a cold one, and the time says which this was.
+ * A warm run holds about a third of a cold one, and the time says which this was. The heap is named only
+ * when it is the program's (`heapIsReal`); otherwise the line is the peak alone, against the cap.
  */
 export function memoryWords({ who, label, report, capMb, wallMs }) {
-  const heap = report.collected
-    ? `ended holding ${mb(report.heapUsedMb)} of its ${mb(capMb)} heap (${share(report.heapUsedMb, capMb)}) after a collection of ${(report.collectMs / 1000).toFixed(1)} s`
-    : `ended with ${mb(report.heapUsedMb)} of its ${mb(capMb)} heap in use (${share(report.heapUsedMb, capMb)}), not collected first`
-  return `${who}: ${named(label)} took ${wallWords(wallMs)}, ${heap}, and held ${mb(report.residentPeakMb)} resident at most.`
+  const start = `${who}: ${named(label)} took ${wallWords(wallMs)}`
+  if (!heapIsReal(report)) return `${start} and held ${mb(report.residentPeakMb)} resident at most, ${share(report.residentPeakMb, capMb)} of its ${mb(capMb)} heap.`
+  const heap = `ended holding ${mb(report.heapUsedMb)} of its ${mb(capMb)} heap (${share(report.heapUsedMb, capMb)}) after a collection of ${(report.collectMs / 1000).toFixed(1)} s`
+  return `${start}, ${heap}, and held ${mb(report.residentPeakMb)} resident at most.`
 }
 
 /** The line a run near its cap gets after its memory line, or null. It is a warning: the check's answer stands. */

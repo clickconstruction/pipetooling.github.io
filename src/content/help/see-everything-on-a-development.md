@@ -284,7 +284,7 @@ The client may ask who signed a paper for the site. Under the list sits **The pr
 
 1. Press **Make the packet**. The packet opens as it prints.
 2. Read the packet. **Signed** lists each company, who signed and the day.
-3. Press {{button:blue|Print}} to print the packet or save it as a PDF.
+3. Press {{button:blue|Print}}. The packet opens in a print window of its own.
 4. Press **Close** when you are done.
 
 **Asked, not yet signed** lists each company that has the paper and has not signed.
@@ -303,7 +303,7 @@ The packet on the screen is the list. **Download** makes one PDF: the list first
 2. Press the download button. The button names its count, such as {{button:outline|Download with 3 signed copies}}.
 3. Wait for the line under the buttons. The line reads *Downloaded, with 3 signed copies attached.*
 
-The PDF is saved by your browser. The file is named for the site.
+The PDF is saved by your browser. The file is named for the site. A copy of the PDF is kept under Documents → Sent copies.
 
 :::example A copy that is not attached
 A signed form keeps its own PDF, so a form's copy is left out. The line under the buttons names the company and the reason. The list in the PDF says the same beside that company.
@@ -311,7 +311,7 @@ A signed form keeps its own PDF, so a form's copy is left out. The line under th
 
 With no company signed yet, the button reads **Download the list**.
 
-The office and an estimator can make the packet. Making the packet sends nothing and saves nothing.
+The office and an estimator can make the packet. Looking at the packet saves nothing. **Print** keeps a copy of the packet under Documents → Sent copies. **Download** keeps a copy of its PDF there too.
 
 ## What an estimator sees
 

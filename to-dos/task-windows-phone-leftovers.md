@@ -13,7 +13,7 @@ summary: >
   ride along, waiting on her word. No database change in any of it.
 next: The look at 375 points waits on leave to use the small simulator. A small phone in a hand has not seen the sheets, and should say whether **Send text…** sits under Safari's bar at 125% text. Grace's two notes wait on her word.
 size: M as five small PRs (S · S · XS · S · S), built; left: a look at the two mends in Messages (XS) and a walk on a small phone
-blocker: a person at a phone for the walk, and Grace's word for her two notes.
+blocker: a person at a phone for the walk, and Grace's word for her two notes. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203 · v2.8267 · v2.8300 · v2.8563 · v2.8585
 opinion: close it after the walk — every row that could be built is built, and the two sheets left unwalked take the same two numbers the walked ones do
 mockup: not required — each row is a fix to a screen that exists, found on a walk

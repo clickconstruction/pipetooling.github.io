@@ -58,11 +58,11 @@ A test person deleted before this was built has no copy of their account. Their 
 
 A job keeps a folder in Google Drive. Deleting the job leaves that folder behind.
 
-A deleted test job's entry says so. A test job is one whose name or customer starts with **ZZ**. Its entry reads *This test job kept a Drive folder.* Press **Open it in Drive ↗** to look at the folder first.
+A deleted test job's entry names its folder. A test job is one whose name or customer starts with **ZZ**. Its entry reads *This test job had a Drive folder.* Press **Open it in Drive ↗** to see whether the folder is still there.
 
 Press **Send its Drive folder to the trash…**. A window asks first. Press **Send to Drive’s trash**. The job's own folder goes to Drive's trash. A manager of the Shared Drive can restore it for 30 days.
 
-The entry then says what happened. The folder stays when a bid, another job or a customer still keeps it. It also stays when a person added a file to it by hand. The entry gives the reason. The customer's folder always stays.
+The entry then says what happened. A folder that is already in Drive's trash stays there, and the entry says so. The folder stays when a bid, another job or a customer still keeps it. It also stays when a person added a file to it by hand. The entry gives the reason. The customer's folder always stays.
 
 When a developer deletes a ZZ test job, the app sends the folder by itself. The press is for a job deleted earlier, or deleted by the office.
 

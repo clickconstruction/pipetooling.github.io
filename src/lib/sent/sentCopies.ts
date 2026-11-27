@@ -264,7 +264,7 @@ export type SentKindGroup = 'bills' | 'lien' | 'contracts' | 'bids' | 'statement
 const SENT_GROUP_PREFIXES: Record<Exclude<SentKindGroup, 'other'>, ReadonlyArray<string>> = {
   bills: ['bill'],
   lien: ['lien_', 'demand_letter', 'owner_records', 'legal_', 'hazmat_notice'],
-  contracts: ['job_contract', 'person_contract', 'estimate', 'work_order', 'sub_labor_sheet', 'insurance_sheet', 'secrecy_builder'],
+  contracts: ['job_contract', 'person_contract', 'estimate', 'work_order', 'sub_labor_sheet', 'insurance_sheet', 'secrecy_builder', 'site_proof'],
   bids: ['bid_', 'rfq', 'submittal_', 'procurement_', 'purchase_order', 'supply_house'],
   statements: ['gc_statement', 'gc_checks', 'test_report', 'field_report', 'statement_of_charges', 'sub_work_statement', 'sub_payment_record', 'sub_statement_of_account'],
 }
