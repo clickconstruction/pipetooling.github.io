@@ -4,16 +4,19 @@ import {
   type ProofLine,
   type ProofOwnPeople,
   type SiteProof as Proof,
+  SITE_PROOF_SENT_KIND,
   SITE_PROOF_WORDS as W,
   asOfWords,
   ownPeopleWords,
   proofCountSentence,
   proofDraws,
   proofHeading,
+  proofPacketHtml,
+  proofSentTitle,
 } from '../../lib/addresses/siteProof'
 import type { SecrecySite } from '../../lib/addresses/siteSecrecy'
 import { type SiteSecrecyIo, supabaseSiteSecrecyIo } from '../../lib/addresses/siteSecrecyIo'
-import { printRootCss } from '../../lib/printRoot'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { plainSentence } from '../../lib/valuesInPlace'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 
@@ -21,16 +24,16 @@ import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
  * **The proof** for a site's client (punch list #439, piece 5, part 5a), under **Papers for this site** on a
  * development's page. It counts the companies that signed and the ones asked, and **Make the packet** opens the
  * packet as it prints: the client, the site, each company that signed with who signed and the day, each company
- * asked and not yet signed, and our own people as a count. **Print** prints the packet alone.
+ * asked and not yet signed, and our own people as a count. **Print** prints the packet as a page of its own and keeps a
+ * copy under Documents, Sent copies: the packet goes to the client, and a print that goes to someone is a send.
  *
  * The companies come from the rows the section above already read. Our own people's count is the site's secrecy,
  * read when the packet opens: a help, so a count that cannot be read is said and never guessed, and a site whose
  * secrecy is off says nothing of them.
  *
- * It reads and writes nothing. The signed copies, **Download** and **Send to the client** are part 5b.
+ * Looking at the packet writes nothing. The signed copies, **Download** and **Send to the client** are part 5b.
  */
 
-const ROOT = 'site-proof-print'
 const heading: CSSProperties = { margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-strong)' }
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }
 // A word that is a press takes a finger: 44 px tall.
@@ -54,6 +57,8 @@ export interface SiteProofProps {
   todayYmd: string
   /** The reads of the site's secrecy. A smoke hands a fake. */
   io?: SiteSecrecyIo
+  /** Prints a page and files its copy. False when the print window was blocked. A smoke hands a spy. */
+  print?: typeof printAndFile
 }
 
 /** The count of our own people for the packet: secrecy off says nothing, a count that fails is said. */
@@ -86,9 +91,11 @@ function Lines({ lines, signerLabel, dayLabel }: { lines: ReadonlyArray<ProofLin
   )
 }
 
-export function SiteProof({ proof, clientName, siteName, site, todayYmd, io = supabaseSiteSecrecyIo }: SiteProofProps) {
+export function SiteProof({ proof, clientName, siteName, site, todayYmd, io = supabaseSiteSecrecyIo, print = printAndFile }: SiteProofProps) {
   const [open, setOpen] = useState(false)
   const [own, setOwn] = useState<ProofOwnPeople | null>(null)
+  /** What the last press of Print did: a copy kept, or the window blocked. */
+  const [printed, setPrinted] = useState<'kept' | 'blocked' | null>(null)
   const siteKey = 'developmentId' in site ? `d:${site.developmentId}` : `a:${site.address}`
 
   // The count of our own people, once the packet is open.
@@ -96,6 +103,7 @@ export function SiteProof({ proof, clientName, siteName, site, todayYmd, io = su
     if (!open) return
     let mine = true
     setOwn(null)
+    setPrinted(null)
     void readOwnPeople(io, site).then((o) => mine && setOwn(o))
     return () => {
       mine = false
@@ -118,6 +126,17 @@ export function SiteProof({ proof, clientName, siteName, site, todayYmd, io = su
   const title = proofHeading(clientName)
   const ownWords = own ? ownPeopleWords(own) : null
   const site_ = (siteName ?? '').trim()
+  // The page that prints is the page on the screen, as a document of its own, and its copy is kept.
+  const printPacket = () => {
+    const html = proofPacketHtml({ proof, clientName, siteName, ownWords, todayYmd })
+    const went = print(html, {
+      kind: SITE_PROOF_SENT_KIND,
+      title: proofSentTitle(clientName, siteName),
+      recipientName: (clientName ?? '').trim() || null,
+      source: 'developmentId' in site ? { table: 'developments', id: site.developmentId } : null,
+    })
+    setPrinted(went ? 'kept' : 'blocked')
+  }
 
   return (
     <div data-testid="site-proof" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', marginTop: '0.2rem' }}>
@@ -131,21 +150,25 @@ export function SiteProof({ proof, clientName, siteName, site, todayYmd, io = su
       </button>
       {open
         ? createPortal(
-            <div className={ROOT} data-theme="light" style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(15, 23, 42, 0.55)', display: 'flex', justifyContent: 'center', overflow: 'auto', padding: '16px 12px 40px' }}>
-              <style>{`${printRootCss(ROOT)} @media print { .site-proof-chrome { display: none !important; } .site-proof-sheet { box-shadow: none !important; width: auto !important; max-width: none !important; border-radius: 0 !important; padding: 0 !important; } }`}</style>
+            <div data-theme="light" style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(15, 23, 42, 0.55)', display: 'flex', justifyContent: 'center', overflow: 'auto', padding: 'calc(16px + var(--app-top-chrome, 0px)) 12px 40px' }}>
               <div role="dialog" aria-modal="true" aria-label={W.windowLabel} style={{ display: 'grid', gap: 10, alignContent: 'start', width: 816, maxWidth: '100%' }}>
-                <div className="site-proof-chrome" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, padding: '8px 12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, padding: '8px 12px' }}>
                   <b>{W.windowLabel}</b>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button type="button" onClick={() => setOpen(false)} style={plainPress}>
                       {W.close}
                     </button>
-                    <button type="button" onClick={() => window.print()} style={bluePress}>
+                    <button type="button" onClick={printPacket} style={bluePress}>
                       {W.print}
                     </button>
                   </div>
+                  {printed ? (
+                    <p role={printed === 'blocked' ? 'alert' : 'status'} data-testid="site-proof-print-outcome" style={{ ...muted, flexBasis: '100%', color: printed === 'blocked' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                      {printed === 'blocked' ? W.printBlocked : W.printKept}
+                    </p>
+                  ) : null}
                 </div>
-                <div className="site-proof-sheet" data-testid="site-proof-sheet" style={{ background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box', width: '100%', borderRadius: 8, boxShadow: '0 12px 30px rgba(15, 23, 42, 0.25)', padding: 'clamp(16px, 5vw, 48px)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div data-testid="site-proof-sheet" style={{ background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box', width: '100%', borderRadius: 8, boxShadow: '0 12px 30px rgba(15, 23, 42, 0.25)', padding: 'clamp(16px, 5vw, 48px)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <h2 style={sheetHead}>{title}</h2>
                   {site_ ? <p style={muted}>{site_}</p> : null}
                   <p style={muted} data-testid="site-proof-sheet-count">

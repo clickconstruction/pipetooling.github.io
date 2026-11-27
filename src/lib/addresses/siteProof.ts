@@ -6,15 +6,17 @@
  * It reads the rows **Papers for this site** already reads (`sitePapers.ts`): nothing new is asked of the database
  * for the companies. The count of our own people is the site's secrecy (piece 4), read when the packet opens.
  *
- * Part 5a is the list, looked at and printed. The signed copies themselves, **Download** and **Send to the client**
- * are part 5b, and the client's own page is part 5c.
+ * Part 5a is the list, looked at and printed. A print goes to the client, so it keeps a copy under Documents, Sent
+ * copies, as every print that goes to someone does (`lib/sent`). The signed copies themselves, **Download** and
+ * **Send to the client** are part 5b, and the client's own page is part 5c.
  *
  * Pure: no React, no supabase.
  */
 import { pluralNoun } from '../batchWords'
+import { escapeHtml } from '../bidDocuments/escapeHtml'
 import { replacedPaperIds, type PartyPaperRow } from '../contracts/partyPapers'
 import { shortDay } from '../jobs/jobPapers'
-import { val } from '../valuesInPlace'
+import { plainSentence, val } from '../valuesInPlace'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { rowIsInSiteScope, type SiteScope } from './sitePapers'
 
@@ -129,6 +131,10 @@ export const SITE_PROOF_WORDS = {
   columns: { company: 'Company', signer: 'Signed by', askedOf: 'Sent to', paper: 'Paper', signedDay: 'Signed', sentDay: 'Sent' },
   /** The packet's foot: this part prints the list alone. */
   listAlone: 'This is the list. The signed copies are not attached.',
+  /** When the browser will not open the print window. */
+  printBlocked: 'The print window was blocked. Allow pop-ups for this site, then press Print again.',
+  /** Under the presses, once a print went: where its copy is. */
+  printKept: 'Sent to print. A copy is kept under Documents, Sent copies.',
 } as const
 
 /** The packet's foot: *As of Nov 27.* The day is the company's own. */
@@ -137,5 +143,61 @@ export function asOfWords(todayYmd: string): string {
   return day ? `As of ${day}.` : ''
 }
 
-/** Who may look at the packet and print it: whoever reads the site's papers. Sending it is part 5b's. */
+/** What the packet is drawn from: the page on the screen and the page that prints are one model. */
+export type ProofPacketPage = {
+  proof: SiteProof
+  clientName?: string | null
+  siteName?: string | null
+  /** The words about our own people, or null when they are not asked. */
+  ownWords: string | null
+  todayYmd: string
+}
+
+const htmlRows = (lines: ReadonlyArray<ProofLine>, signerLabel: string, dayLabel: string): string =>
+  lines
+    .map(
+      (l) =>
+        `<div class="row"><div><b>${escapeHtml(l.company)}</b>${l.signer ? `<span>${escapeHtml(`${signerLabel} ${l.signer}`)}</span>` : ''}<span>${escapeHtml(l.paper)}</span></div><div class="day">${escapeHtml(l.day ? `${dayLabel} ${l.day}` : '')}</div></div>`,
+    )
+    .join('')
+
+/**
+ * The packet as a page of its own, for the print window and for the copy kept under Sent copies. Light, Letter, and
+ * every word escaped: a company's name is typed by a person.
+ */
+export function proofPacketHtml(page: ProofPacketPage): string {
+  const W = SITE_PROOF_WORDS
+  const title = proofHeading(page.clientName)
+  const site = (page.siteName ?? '').trim()
+  const { signed, asked } = page.proof
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
+@page{size:letter;margin:0.75in}
+body{font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#111827;margin:0;background:#fff}
+h1{font-size:19px;margin:0 0 4px}h2{font-size:11px;letter-spacing:.05em;text-transform:uppercase;margin:18px 0 0}
+p{margin:0 0 4px}.muted{color:#4b5563}
+.row{display:flex;justify-content:space-between;gap:16px;padding:7px 0;border-top:1px solid #d1d5db;break-inside:avoid}
+.row span{display:block;color:#4b5563}.row b{font-size:14px}.day{white-space:nowrap}
+.foot{border-top:1px solid #d1d5db;margin-top:18px;padding-top:8px;color:#4b5563}
+</style></head><body>
+<h1>${escapeHtml(title)}</h1>
+${site ? `<p class="muted">${escapeHtml(site)}</p>` : ''}
+<p class="muted">${escapeHtml(plainSentence(proofCountSentence(page.proof)))}</p>
+<h2>${escapeHtml(W.signed)}</h2>
+${signed.length > 0 ? htmlRows(signed, W.columns.signer, W.columns.signedDay) : `<p class="muted">${escapeHtml(W.nobodySigned)}</p>`}
+${asked.length > 0 ? `<h2>${escapeHtml(W.asked)}</h2>${htmlRows(asked, W.columns.askedOf, W.columns.sentDay)}` : ''}
+${page.ownWords ? `<h2>${escapeHtml(W.ownPeople)}</h2><p>${escapeHtml(page.ownWords)}</p>` : ''}
+<p class="foot">${escapeHtml(`${asOfWords(page.todayYmd)} ${W.listAlone}`.trim())}</p>
+</body></html>`
+}
+
+/** The kind a kept copy of the packet is filed under, in Documents, Sent copies. */
+export const SITE_PROOF_SENT_KIND = 'site_proof_packet'
+
+/** What a kept copy says about itself: the packet, the site, and the client it is for. */
+export function proofSentTitle(clientName: string | null | undefined, siteName: string | null | undefined): string {
+  const site = (siteName ?? '').trim()
+  return site ? `${proofHeading(clientName)}, ${site}` : proofHeading(clientName)
+}
+
+/** Who may look at the packet and print it: whoever reads the site's papers. Emailing it is a later part's. */
 export { canReadPartyPapers as canMakeProof } from '../contracts/partyPapers'

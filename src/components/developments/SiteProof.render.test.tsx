@@ -31,7 +31,9 @@ function fakeIo(over: Partial<SiteSecrecyIo> = {}): SiteSecrecyIo {
     ...over,
   }
 }
-const draw = (io: SiteSecrecyIo, proof: Proof = PROOF) => render(<SiteProof proof={proof} clientName="Sample Owner LLC" siteName="Old Quarry Ranch" site={SITE} todayYmd="2026-11-27" io={io} />)
+const noPrint = () => true
+const draw = (io: SiteSecrecyIo, proof: Proof = PROOF, print: (html: string, filing: Record<string, unknown>) => boolean = noPrint) =>
+  render(<SiteProof proof={proof} clientName="Sample Owner LLC" siteName="Old Quarry Ranch" site={SITE} todayYmd="2026-11-27" io={io} print={print as never} />)
 
 afterEach(() => {
   cleanup()
@@ -70,19 +72,35 @@ describe('SiteProof', () => {
     expect(packet.parentElement?.getAttribute('data-theme')).toBe('light')
   })
 
-  it('Print prints, and Close and Escape close the packet', async () => {
-    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined)
-    draw(fakeIo())
+  it('Print prints the packet as a page of its own and files its copy, and Close and Escape close the packet', async () => {
+    const print = vi.fn((_html: string, _filing: Record<string, unknown>) => true)
+    draw(fakeIo(), PROOF, print)
     fireEvent.click(screen.getByRole('button', { name: 'Make the packet' }))
     const packet = await screen.findByRole('dialog', { name: 'The packet, as it prints' })
+    await within(packet).findByTestId('site-proof-own-people')
     fireEvent.click(within(packet).getByRole('button', { name: 'Print' }))
     expect(print).toHaveBeenCalledTimes(1)
+    const [html, filing] = print.mock.calls[0]!
+    expect(html).toContain('<h1>The proof for Sample Owner LLC</h1>')
+    expect(html).toContain('<b>Placeholder Fence Co.</b>')
+    expect(html).toContain('18 of 21 have signed.')
+    expect(filing).toEqual({ kind: 'site_proof_packet', title: 'The proof for Sample Owner LLC, Old Quarry Ranch', recipientName: 'Sample Owner LLC', source: { table: 'developments', id: 'dev-1' } })
+    expect((await within(packet).findByTestId('site-proof-print-outcome')).textContent).toBe('Sent to print. A copy is kept under Documents, Sent copies.')
     fireEvent.click(within(packet).getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     fireEvent.click(screen.getByRole('button', { name: 'Make the packet' }))
     await screen.findByRole('dialog', { name: 'The packet, as it prints' })
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('a blocked print window is said, with what to do', async () => {
+    draw(fakeIo({ readLive: vi.fn(async () => null) }), PROOF, () => false)
+    fireEvent.click(screen.getByRole('button', { name: 'Make the packet' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Print' }))
+    const said = await screen.findByTestId('site-proof-print-outcome')
+    expect(said.textContent).toBe('The print window was blocked. Allow pop-ups for this site, then press Print again.')
+    expect(said.getAttribute('role')).toBe('alert')
   })
 
   it('a site whose secrecy is off, or a database with none yet, says nothing of our own people', async () => {

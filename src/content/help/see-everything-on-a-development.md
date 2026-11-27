@@ -284,7 +284,7 @@ The client may ask who signed a paper for the site. Under the list sits **The pr
 
 1. Press **Make the packet**. The packet opens as it prints.
 2. Read the packet. **Signed** lists each company, who signed and the day.
-3. Press {{button:blue|Print}} to print the packet or save it as a PDF.
+3. Press {{button:blue|Print}}. The packet opens in a print window of its own.
 4. Press **Close** when you are done.
 
 **Asked, not yet signed** lists each company that has the paper and has not signed.
@@ -297,7 +297,7 @@ The packet reads *18 of 21 have signed*. Workers are counted, not named.
 
 The packet is the list. The signed copies are not attached yet. Open a signed copy from Documents → Agreements.
 
-The office and an estimator can make the packet. Making the packet sends nothing and saves nothing.
+The office and an estimator can make the packet. Looking at the packet saves nothing. **Print** keeps a copy of the packet under Documents → Sent copies.
 
 ## What an estimator sees
 

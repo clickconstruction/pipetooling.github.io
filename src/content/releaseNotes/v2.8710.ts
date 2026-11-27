@@ -9,7 +9,7 @@ const note: ReleaseNote = {
     'Under Papers for this site, The proof counts the companies that signed a paper for the site and the ones still asked.',
     'Make the packet opens the list as it prints: each company, who signed and the day, then each company asked and not yet signed.',
     'While secrecy is on for the site the packet counts our own people who signed. Workers are counted, not named.',
-    'Print prints the packet alone, or saves it as a PDF. The signed copies are not attached yet.',
+    'Print prints the packet as a page of its own and keeps a copy under Documents, Sent copies. The signed copies are not attached yet.',
   ],
 }
 
