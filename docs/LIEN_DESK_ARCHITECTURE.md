@@ -709,7 +709,8 @@ last_updated: 2026-11-27
 > The read is [`checkClearedIo.ts`](../src/lib/jobs/checkClearedIo.ts): sixty days of `checkDeposit` rows, read by `lienPayoffIo.ts` into `LienPayoffFacts.bank` and by the hook `useBankChecks` on the Release of record tab.
 > `lienPayoffStep` gains the step `bank`, with no press, and `releaseMoneyGate` holds on it with `why: 'check'`, also while the bank is being asked and when its read failed.
 > A reason typed there is saved as `fields.releasedBeforeClearedReason`.
-> Since v2.8735 (punch list #437, call 4) `releaseMoneyGate` takes `mayReleaseEarly` and answers `anyway`: on `why: 'check'` a reason lifts the hold only for a leader, a controller or a dev (`canActBeforeCheckClears`, the one list `canConfirmFunds` reads too), and the tab draws *who can* in the press's place for anyone else.
+> Since v2.8735 (punch list #437, call 4) `releaseMoneyGate` takes `mayReleaseAnyway` (`mayReleaseEarly` until v2.8740) and answers `anyway`: on `why: 'check'` a reason lifts the hold only for a leader, a controller or a dev (`canActBeforeCheckClears`, the one list `canConfirmFunds` reads too), and the tab draws *who can* in the press's place for anyone else.
+> Since v2.8740 the same flag holds `why: 'open'` too: a reason lifts the hold of money still open only for those three (`canReleaseAnyway`), and the tab draws `anywayOpenWho` for anyone else.
 > `lienPlaceCheck` gives a place the bank's deposit for exactly what its liens' open bills come to (`LienPayoffPlace.bank`), and `payoffCheckBank` makes the check pane's press dead for a check the bank has not cleared.
 > No migration and no new write.
 > **v2.8632 (the payoff card, #435 piece 4):** `PayoffsWindow` hands each open place's `PlaceCard` a `PayoffCardBlock`, drawn over the liens' rows: five stops, the line for today, and a `ValueLines` of the asked day (`ChangeableValue`), the due day and the clearing day (`WorkedOutValue`).
