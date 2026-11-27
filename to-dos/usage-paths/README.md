@@ -1,8 +1,8 @@
 ---
 name: "Usage paths: what people do most, how far each press is, and what to move to the front"
 number: 190
-group: ready
-status: PR 1 LIVE 2026-10-27 (v2.5904, #6244). The Pipeline row, the job window and every Call button count their presses, checked on clicktooling.com at desktop, tablet and phone width against the mock-up's frame 5. PR 2 and PR 3 wait on three weeks of those rows. The walk was taken off on 2026-11-25 on the user's word, and was never taken. Decision 5 answered 2026-11-25 (UTC) in the managing session: retire the Jobs page's Billing tab, not built.
+group: gated
+status: PR 1 LIVE 2026-10-27 (v2.5904, #6244). The Pipeline row, the job window and every Call button count their presses, checked on clicktooling.com at desktop, tablet and phone width against the mock-up's frame 5. PR 2 and PR 3 wait on three weeks of those rows. The walk was taken off on 2026-11-25 on the user's word, and was never taken. Decision 5 answered 2026-11-25 (UTC) in the managing session: retire the Jobs page's Billing tab, built in v2.8698. The rows were read on 2026-11-27: the desk row already has the next move and the office presses it there, and the rows cannot see the Team row.
 summary: >
   The owner asked to look at what people are primarily doing, find the actions with many
   clicks and much navigating, and decide which buttons to move up toward the front. This
@@ -17,11 +17,11 @@ summary: >
   at all: calls, texts and the Pipeline row's own buttons leave no row, so the count
   cannot see them. The plan is three small PRs, the recorder first. The walk the owner
   was advised to take, which this to-do narrowed, was taken off on 2026-11-25.
-next: Retire the Jobs page's Billing tab (S), on the answer to decision 5. The three weeks are up, so also read three weeks of the new rows in Settings → Usage (the Pipeline row's and the job window's buttons, and the Call surfaces), then the owner decides PR 2 (the row's next move on a desk) and PR 3 (the crew chip's +).
-size: S as three PRs, XS S S, and the Billing tab's retirement (S).
-blocker: Nothing for the Billing tab's retirement. PR 2 waits on a read of the rows and then the owner's go.
-ver: v2.5904
-opinion: PR 1 is live; build PR 2 once the rows show the window's stage move pressed most days, and move nothing else on the counts alone, since they cannot see the slow parts and the walk that would have was taken off
+next: Taunya decides PR 2 and PR 3 on the read of 2026-11-27 (the section *The read of the rows*). The read's pick is to close both unbuilt: PR 2's button is already on the desk row, and nothing in the rows asks for PR 3.
+size: S as three PRs, XS S S, and the Billing tab's retirement (S, built).
+blocker: PR 2 and PR 3 wait on Taunya's call on the read of 2026-11-27.
+ver: v2.8698
+opinion: PR 1 is live and the Billing tab is retired; close PR 2, since the desk row already carries the next move and the rows show it pressed there, and move nothing else on the counts alone, since they cannot see the slow parts and the walk that would have was taken off
 mockup: to-dos/usage-paths/mockup.html
 ---
 
@@ -472,9 +472,39 @@ opens a job from the Dashboard's Today list (116) more than from My Schedule (88
    guide *audit job bills on the Billing tab* describes.
    **Answered 2026-11-25 (UTC) in the managing session:** *Retire it.*
    It is quoted from that session's record of the user's answers.
-   Not built. The piece is the tab on the Jobs page, its guide with a row for the guide's old address, and the docs that name the tab.
-   The build first lists what only that tab shows, so the retirement says what goes with it.
-   Its size, S, is this note's estimate and not the card's.
+   Built in v2.8698: the tab on the Jobs page, its guide with a row for the guide's old address, every door that pointed at it, and the docs that name the tab.
+   An old `?tab=billing` link lands on the Pipeline and says so once.
+   Two things only that tab showed go with it: the search by a line item's words over every open job, and the **Needs labor** flag on a numbered job with no Team hours and no Sub Labor book.
+   Read again over 90 days on 2026-11-27, one office person had opened the tab once, for under a minute.
+   The PR was opened held, so Taunya could say *Retire it* again with that list in front of her.
+
+## The read of the rows, 2026-11-27
+
+Thirty-one days of PR 1's rows, 2026-10-27 to 2026-11-26, about 22 working days. Read through the dev seat, read only: Settings → Usage's own count (`usage_nav_clicks`) and the ledger's rows for the three controls. Counts by role and button. No person is named. The dev seat's rows hold the agents' walks and are left out.
+
+**The Pipeline row, the office.** 371 presses. No button was pressed by more than two people.
+
+| Button | Presses | Share |
+|---|---|---|
+| Open the Edit tab | 190 | 51% |
+| View Bill | 69 | 19% |
+| Bill Customer | 30 | 8% |
+| Open Test report | 22 | 6% |
+| Ready to Bill | 19, on 12 days | 5% |
+| Add a note, and Post | 17 | 5% |
+| Send back | 4 | 1% |
+| Move to Working | 1 | under 1% |
+| Ten more, 1 to 4 each | 19 | 5% |
+
+**The job window.** The office pressed its bar 12 times against 265 opens of the window: Bill 6, Ready to bill 3 on one day, Note 2, Job 1. The field pressed it 112 times: a superintendent's Arrived, Leaving, Leave report and Close 92, helpers' Close 15, subs 5.
+
+**Call.** 14 presses in 31 days. Ten are the dev seat's walks. Three are an estimator's on a call task, on the first day. One is an assistant's, on Waiting on them. The Pipeline row's Call was pressed by nobody in the office.
+
+**What it says for PR 2.** The premise was wrong. The desk row already draws the next move: the table's blue button reads **Move to Working** on a Waiting row and **Ready to Bill** on a Working row (`JobsStagesTable.tsx`, there since v2.4117 at the latest, a month before this card). The office moves a job from the row, 19 times on 12 days, and from the window 3 times on one day. There is nothing left for PR 2 to move. The pick is to close it.
+
+**What it says for PR 3.** Nothing, either way. The Edit tab's Team row is not inside a marked container, so no row records it. What the rows do show is the door: *Open the Edit tab* is half of every press on the row. The pick is to close PR 3 unbuilt. If a count is wanted first, the smaller piece is to mark the Edit tab's rows so the next read says what is pressed behind that door.
+
+**Call, for the record.** The count PR 1 added to find the calls found almost none. The office does not dial from the app.
 
 ## Where it plugs in
 
@@ -511,7 +541,8 @@ in part 2 was read from the controls, not written.
 |---|---|---|
 | Proposal and mock-up | #6196 | merged 2026-10-26; the owner said go on PR 1 the same day |
 | PR 1 · the recorder | v2.5904 · #6244 | live 2026-10-27, served from 10:15 AM Chicago. Walked on clicktooling.com as the dev, every dial blocked, nothing typed or saved: 15 presses wrote 15 rows, one each, none naming a person. At 1280 wide, a row's Call, Assign work, the bubble, the door's Call, Open job and Share wrote the three rows frame 5 draws: `call_pressed · #surface=pipeline-row`, `pipeline-row · #Assign work` and `job-window · #Share job`, all from `/jobs`. At 768 the table and the window's header count. At 375 the window's phone bar counts Status ▾ and Note; the phone's Pipeline list is not marked yet. On Messages the call task, Waiting on them, the thread and the reply box count, and on a phone the ways sheet writes nothing until a way dials. Settings → Usage names Pipeline row, job window and Call. The supply-house rep's Call and the customer-waiting Calls had nothing to press that day; the button they share was proven by a render test. The 25 test rows from the walks are under the dev role |
-| PR 2 · the row's next move | | not started |
-| PR 3 · the crew chip's + | | not started, gated on PR 1's rows |
+| PR 2 · the row's next move | | not started; the read of 2026-11-27 finds the button already on the desk row, so the pick is to close it |
+| PR 3 · the crew chip's + | | not started; the rows cannot see the Team row, and the pick is to close it |
 | The walk | | taken off on 2026-11-25 on the user's word; it was never taken |
-| The Billing tab's retirement | | not started; decision 5 answered *Retire it* on 2026-11-25 |
+| The Billing tab's retirement | v2.8698 | built; decision 5 answered *Retire it* on 2026-11-25, and the PR was held for Taunya to say it again |
+| The read of the rows | | read 2026-11-27 through the dev seat, counts by role only; see *The read of the rows* |

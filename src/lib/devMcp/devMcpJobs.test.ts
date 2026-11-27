@@ -593,7 +593,7 @@ describe('the line item the price rides on (v2.8555, punch list #293)', () => {
     expect(pricePatch).toBeGreaterThan(lineWrite)
     expect(update).toContain('The line item was not written, so nothing was changed')
     expect(update).toContain('jobUpdateAppliedWords(job, landed, status, line)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.136.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.137.0'")
   })
 })
 

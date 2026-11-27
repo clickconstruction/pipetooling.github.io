@@ -61,7 +61,7 @@ async function drawJobs(opts: { phone: boolean; switchOn: boolean; barNamesPage:
 
 const words = (strip: HTMLElement) => Array.from(strip.querySelectorAll('button')).map((b) => b.textContent)
 const titleDrawn = () => screen.getByRole('heading', { level: 1, name: 'Jobs' }).style.width !== '1px'
-const WHOLE_ROW = ['Crew P&L', 'Reports', 'Pipeline', 'Billing', 'Team', 'Subs', 'Parts', 'Materials', 'Job Summary', 'Inspections']
+const WHOLE_ROW = ['Crew P&L', 'Reports', 'Pipeline', 'Team', 'Subs', 'Parts', 'Materials', 'Job Summary', 'Inspections']
 
 afterEach(() => {
   cleanup()
@@ -70,7 +70,7 @@ afterEach(() => {
 })
 
 describe('Jobs: the row of tabs under the new phone layout', () => {
-  it('a phone with the switch on: the row is one scrolling line with a dev’s ten tabs, and the bar has the title', async () => {
+  it('a phone with the switch on: the row is one scrolling line with a dev’s nine tabs, and the bar has the title', async () => {
     const { strip } = await drawJobs({ phone: true, switchOn: true, barNamesPage: true })
     expect(strip.hasAttribute('data-phone-tab-row')).toBe(true)
     expect(strip.querySelector('.tab-strip-scroll')).not.toBeNull()
@@ -106,5 +106,14 @@ describe('Jobs: the row of tabs under the new phone layout', () => {
     const lit = Array.from(strip.querySelectorAll('button')).filter((b) => b.style.fontWeight === '700')
     expect(lit.map((b) => b.textContent)).toEqual(['Inspections'])
     expect(lit[0]!.dataset.tabkey).toBe('inspections')
+  })
+
+  it('an old Billing link lands on the Pipeline and says so once (punch list #190, decision 5)', async () => {
+    const { strip } = await drawJobs({ phone: false, switchOn: false, barNamesPage: false, route: '/jobs?tab=billing' })
+    await settle()
+    const lit = Array.from(strip.querySelectorAll('button')).filter((b) => b.style.fontWeight === '700')
+    expect(lit.map((b) => b.textContent)).toEqual(['Pipeline'])
+    expect(words(strip)).not.toContain('Billing')
+    expect(screen.getAllByText('The Billing tab is gone. Bills are made here on the Pipeline.')).toHaveLength(1)
   })
 })

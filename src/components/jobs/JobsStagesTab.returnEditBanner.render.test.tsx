@@ -197,7 +197,7 @@ describe('JobsStagesTab — Back to Edit Job (map step 16)', () => {
 
   it('only the Pipeline’s own addresses pick the note up: another tab’s address leaves it where it is', async () => {
     setReturnEditJobFromStages('back-job')
-    renderWithProviders(tab(), { route: '/jobs?tab=billing' })
+    renderWithProviders(tab(), { route: '/jobs?tab=parts' })
     await pass(50)
     expect(banner()).toBeNull()
     expect(note()).not.toBeNull()

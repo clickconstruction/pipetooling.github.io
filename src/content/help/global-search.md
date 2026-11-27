@@ -59,7 +59,7 @@ Searching a customer name shows every job at once — the one marked {{chip:blue
 
 Type the name of a page, a tab or a Settings card. The box lists it under your jobs. Press {{chip:gray|Enter}} to go there.
 
-- **Pages** holds the app's pages, tabs and windows. Type *billing* and the Billing tab is a row. Type *legal desk* and the Collections desk is a row.
+- **Pages** holds the app's pages, tabs and windows. Type *billing* and the Pipeline is a row. Type *legal desk* and the Collections desk is a row.
 - **Settings** holds the Settings tabs and their cards. Type *office hours* and the card is a row. The box opens Settings scrolled to that card.
 - **Guides** holds the how-do-I guides. Type your task in your own words, like *bill a customer*. A leading *how do I* is fine. Press **Go there** beside a guide to open the page it is about.
 - **Punch list** holds the to-dos, for the owner and the developers. Type {{chip:gray|#}} and a word or a number.

@@ -31,7 +31,7 @@ const pile = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-ps
 const cut = buildCollectPayers(pile)
 const md = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 
-const desk = { pile, cut, pace: { paidPerWeekUsd: 29_200, billedPerWeekUsd: 56_800 }, weeks: 6.8, segments: { commercial: 12, residential: 2, company: 7 }, dayLabel: md, chipsByJob: null, arDoor: { to: '/jobs?tab=billing', label: 'Open Billing' } }
+const desk = { pile, cut, pace: { paidPerWeekUsd: 29_200, billedPerWeekUsd: 56_800 }, weeks: 6.8, segments: { commercial: 12, residential: 2, company: 7 }, dayLabel: md, chipsByJob: null, arDoor: { to: '/jobs?tab=stages&stagesSection=billed', label: 'Open Billed' } }
 
 describe('BridgeCollectDesk (v2.5853, on the step frame since punch list #334)', () => {
   it('opens on what is late and who holds it, two payers, and keeps the rest behind Show all and the folds', () => {
@@ -125,7 +125,7 @@ describe('BridgeCollectDesk (v2.5853, on the step frame since punch list #334)',
     // The owner and the day are still typed on a row, for the copied call sheet.
     fireEvent.change(screen.getByLabelText('Owner and day for Pinestone Construction'), { target: { value: 'Dana · Mon' } })
     expect((screen.getByLabelText('Owner and day for Pinestone Construction') as HTMLInputElement).value).toBe('Dana · Mon')
-    expect((screen.getByRole('link', { name: 'Open Billing' }) as HTMLAnchorElement).getAttribute('href')).toBe('/jobs?tab=billing')
+    expect((screen.getByRole('link', { name: 'Open Billed' }) as HTMLAnchorElement).getAttribute('href')).toBe('/jobs?tab=stages&stagesSection=billed')
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
   })

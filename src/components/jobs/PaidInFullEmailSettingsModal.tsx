@@ -108,7 +108,7 @@ const VARIANT_COPY: Record<
     ariaLabel: 'Ready to Bill notification settings',
     heading: 'Ready to Bill notifications',
     description:
-      'When a job moves to Ready to Bill, the people below are notified so billing can start right away — jobs sent back from Billed count too. Devs and leaders receive the detailed version with dollar amounts; everyone else receives a summary.',
+      'When a job moves to Ready to Bill, the people below are notified so billing can start right away — jobs sent back from Billed count too. A test job, one whose name or customer name starts with ZZ, notifies nobody. Devs and leaders receive the detailed version with dollar amounts; everyone else receives a summary.',
   },
 }
 

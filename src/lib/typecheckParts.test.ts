@@ -138,7 +138,7 @@ describe('typecheckParts: the wiring', () => {
   it('the wrapper runs every part through the one runner and keeps going past a part that fails', () => {
     const wrapper = read('scripts', 'typecheck-queued.mjs')
     expect(wrapper).toContain('for (const [index, part] of PARTS.entries())')
-    expect(wrapper).toContain("runTscUnderHeap('typecheck', ['-p', part.config, ...process.argv.slice(2)])")
+    expect(wrapper).toContain("runTscUnderHeap('typecheck', ['-p', part.config, ...process.argv.slice(2)], { label: part.name })")
     expect(wrapper).toContain('if (stoppedByHand(code)) break')
     expect(wrapper).toContain('return worstExit(results.map((r) => r.code))')
     // The whole program's config is for editors: the check never runs it.
@@ -146,7 +146,7 @@ describe('typecheckParts: the wiring', () => {
   })
 
   it('the build checks the app part alone', () => {
-    expect(read('scripts', 'tsc-build.mjs')).toContain("runTsc('build', ['-b', BUILD_PART.config, ...process.argv.slice(2)])")
+    expect(read('scripts', 'tsc-build.mjs')).toContain("runTsc('build', ['-b', BUILD_PART.config, ...process.argv.slice(2)], { label: BUILD_PART.name })")
   })
 
   it("both workflows' cache key carries every part's config, so a changed include list starts a fresh cache", () => {
