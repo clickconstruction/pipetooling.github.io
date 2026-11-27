@@ -16,7 +16,7 @@ next: >
   One look, then delete this card. The one in the office who asked for the name sentence sees the one line that stands for it.
 size: M as a train of three (S · M · S), all built, with the fix the walk found (XS); left: an Android phone and Taunya's look (XS)
 blocker: >
-  Call 4 was taken at the pick on the owner's word, and the name sentence was asked for in the office, so the one who asked should see the one line that stands for it.
+  Call 4 was taken at the pick on the owner's word, and the name sentence was asked for in the office, so the one who asked should see the one line that stands for it. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.7788 · 7790 · 7863 · 7877 · 7894
 opinion: built as carded, step 3 included and walked on an iPhone simulator — an Android phone is the one thing nobody has seen
 ---

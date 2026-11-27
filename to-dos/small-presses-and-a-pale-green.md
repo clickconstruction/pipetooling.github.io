@@ -13,7 +13,7 @@ summary: >
 next: A walk of the four on a real phone. A toast over a card, Retry with no signal, the doors of an inbox row, and a green press in light and in dark. Then the owner's word to close the card.
 size: M as four small parts (S · S · S · S), each alone
 ver: v2.8359 · 8361 · 8362 · 8364
-blocker: none. All four are on `main`. The walk on a phone is what is left.
+blocker: none. All four are on `main`. The walk on a phone is what is left. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 opinion: your call — all four are built and each is held by a test; the walk on a phone is the one thing a test cannot give
 ---
 

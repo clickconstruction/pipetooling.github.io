@@ -14,7 +14,7 @@ summary: >
   The owner picked the one list.
 next: A simulator walks the mend for the list's small window once it is live; #428 has the walk's steps. The owner opens the desk on his phone, now that all eight PRs are on main, and says what still reads wrong. Then this card is retired.
 size: L as a train of eight, all built, and one small PR for three leftovers, built; left: a look
-blocker: None.
+blocker: None. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ---
 
 # The Lien desk on a phone
