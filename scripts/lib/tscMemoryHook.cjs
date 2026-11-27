@@ -9,8 +9,9 @@
  * CommonJS and `--require`, not a module and `--import`: on Node 20.0 `--import` sends tsc's own entry file,
  * which has no extension, through the module loader, and tsc never starts. It runs inside `process.exit`,
  * so tsc's program is still reachable: with `--expose-gc` (the runner passes it on CI) one collection is
- * forced first and the heap in use is what the program needs, not what it had not yet thrown away. Plain
- * `tsc -p` and the build's `tsc -b` both still hold their program here (measured on the config program).
+ * forced first and the heap in use is what the program needs, not what it had not yet thrown away. That
+ * holds for a run that checked something, `tsc -p` or the build's `tsc -b`. A warm run that found nothing
+ * changed has let its program go by now and reads about 28 MB, so the peak resident size is its number.
  *
  * A heap death never reaches here: V8 aborts, the runner prints NO VERDICT and no memory line.
  * Nothing in here may change tsc's exit, so every failure is swallowed.

@@ -126,6 +126,8 @@ memory in `to-dos/owner-decisions-pending.md`. As built:
   deploy about ten days before the heap would, with a check that still passes. A fifth of a
   runner's cap is about three weeks at 130 MB a day.
 - The deploy's `tsc -b` is cold on every merge, so its line is the app program's cold number, daily.
+- A warm run that finds nothing changed lets its program go before it exits. Its heap reads about
+  28 MB and its peak, about 3.5 GB, is its number. The warning reads the larger of the two.
 
 **PR 3 (L): the app program itself.** It is 8.1 GB today and grows with the app, so PR 1 buys it
 about three weeks at today's pace, not a year. Two ways, measure before choosing:

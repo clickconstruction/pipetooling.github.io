@@ -11,8 +11,9 @@
  *
  * Two numbers, because neither is right alone. The heap in use after a forced collection is what the
  * program needs at its end, and it is the number the card's tables hold; but the collection costs seconds,
- * so only CI forces it, and it is the end and not the most the run ever held. The peak resident size is
- * exact everywhere, covers the whole run and sits a little over the heap. The warning reads the larger.
+ * so only CI forces it, and a warm run that found nothing changed has let its program go before it exits
+ * (28 MB on a runner, 2026-11-27). The peak resident size is exact everywhere, covers the whole run and
+ * sits a little over the heap. The warning reads the larger.
  */
 
 /** The start of the hook's line on stderr. scripts/lib/tscMemoryHook.cjs writes the same words. */
