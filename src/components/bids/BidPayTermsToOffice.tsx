@@ -6,7 +6,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { createDispatchRequest, notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { PAY_CALENDAR_DEFAULT, payCalendarMonthDay, payCalendarShort, type PayCalendar } from '../../lib/jobs/payCalendar'
+import { PAY_CALENDAR_DEFAULT, payCalendarMonthDay, payCalendarShort, paysDaysAfter, type PayCalendar } from '../../lib/jobs/payCalendar'
+import { PAY_CALENDAR_DAYS_AFTER_OFFERED, payTermsKindsWords } from '../../lib/jobs/payTermsInDaysOffer'
 import { DRAFT_PAY_TERMS_SCOPE_DEFAULT, draftPayTermsLine, draftPayTermsScopeWords, payTermsRequestTitle, type DraftPayTerms, type DraftPayTermsScope } from '../../lib/jobs/draftPayTerms'
 import { PAY_TERMS_FROM_BID_ACTION, loadMySentPayTerms } from '../../lib/jobs/draftPayTermsIo'
 import { bidHandoffLabel } from '../../lib/bids/wonDispatchHandoff'
@@ -112,7 +113,7 @@ export function BidPayTermsToOffice({ bidId }: { bidId: string }) {
           }
         >
           <div style={{ padding: '0.25rem 0 0.5rem' }}>
-            <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>For a GC whose contract says when they pay: a set day of the month, or a number of days after the bill. The office checks them and sets the pay calendar.</p>
+            <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>For a GC whose contract says when they pay: {payTermsKindsWords(PAY_CALENDAR_DAYS_AFTER_OFFERED || paysDaysAfter(form))}. The office checks them and sets the pay calendar.</p>
             <DraftPayTermsEditor gcName="the GC" scope={scope} form={form} onScope={setScope} onForm={setForm} />
           </div>
         </ResponsiveModalShell>

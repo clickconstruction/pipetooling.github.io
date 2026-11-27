@@ -1,4 +1,6 @@
 import type { CSSProperties } from 'react'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { paperPressFloor } from '../../lib/documents/agreementsPhonePress'
 import { PAPER_SITE_WORDS, paperSiteSentence, type PaperSite, type SitePrintBox } from '../../lib/addresses/paperSite'
 import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
 
@@ -14,6 +16,9 @@ import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
  * Once that row is written (`kept`), the site and the box are the row's: the presses go, the box stands as it was
  * sent, and a line says so. A send that failed after the write is pressed again on the same row, so a change made
  * here in between would show one thing and send another.
+ *
+ * On a phone the three presses of the line stand a fingertip tall (finding 294: each stood 32 px at 375 px). A desk
+ * keeps them as they were.
  */
 
 const siteLink: CSSProperties = { padding: '0.35rem 0', minHeight: 32, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 600, color: 'var(--text-link)' }
@@ -39,6 +44,7 @@ export function PaperSiteLine({
   onPrint: (on: boolean) => void
 }) {
   const dead = box != null && (box.dead || kept)
+  const pressFloor = paperPressFloor(useNarrowViewport640())
   return (
     <>
       <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.25rem', display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.15rem 0.6rem' }} data-testid="contract-send-site">
@@ -47,11 +53,11 @@ export function PaperSiteLine({
           <span>{PAPER_SITE_WORDS.kept}</span>
         ) : (
           <>
-            <button type="button" style={siteLink} onClick={onPick}>
+            <button type="button" style={{ ...siteLink, ...pressFloor }} onClick={onPick}>
               {site ? PAPER_SITE_WORDS.change : PAPER_SITE_WORDS.name}
             </button>
             {site ? (
-              <button type="button" style={siteLink} onClick={onTakeOff}>
+              <button type="button" style={{ ...siteLink, ...pressFloor }} onClick={onTakeOff}>
                 {PAPER_SITE_WORDS.off}
               </button>
             ) : null}

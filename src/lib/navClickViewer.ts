@@ -5,7 +5,7 @@
  * auth while it renders: a render smoke that mocks the auth hook never meets it, and a press
  * records the viewer of that moment. Signed out, the viewer is empty and nothing is written.
  */
-import { CALL_PRESSED_CONTROL, callPressedTarget, recordNavClick, recordNavClickFromEvent } from './navClickTelemetry'
+import { CALL_PRESSED_CONTROL, JOB_EDIT_ROW_CONTROL, callPressedTarget, jobEditRowTarget, recordNavClick, recordNavClickFromEvent } from './navClickTelemetry'
 
 type Viewer = { userId: string | null; role: string | null }
 
@@ -37,6 +37,15 @@ export function recordViewerNavClick(e: { target: EventTarget | null }): void {
 export function recordCallPressed(site: string): void {
   try {
     recordNavClick(viewer.userId, viewer.role, CALL_PRESSED_CONTROL, callPressedTarget(site))
+  } catch {
+    /* measurement is best-effort by design */
+  }
+}
+
+/** One `job-edit-row{#<row>}` row when a person opens a row's editor on the job form's Edit tab (v2.8704, punch list #190). */
+export function recordJobEditRowOpened(label: string): void {
+  try {
+    recordNavClick(viewer.userId, viewer.role, JOB_EDIT_ROW_CONTROL, jobEditRowTarget(label))
   } catch {
     /* measurement is best-effort by design */
   }

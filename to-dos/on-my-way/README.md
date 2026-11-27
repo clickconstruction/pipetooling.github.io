@@ -12,7 +12,7 @@ summary: >
   session, travel_started_at and arrived_at, give the office an honest drive time per visit for
   the first time. The office owns both lines in the quick replies editor, where a new Big button
   picker says which line each press sends.
-next: The owner's live walk on his phone with a test job whose customer is his own number (On my way, the text, I'm here), then the follow-ons below as asked; delete the folder after the walk.
+next: The owner's live walk on his phone with a test job whose customer is his own number (On my way, the text, I'm here), then the follow-ons below as asked; delete the folder after the walk. Asked again on 2026-11-27, with the rule that a look only a real phone can give is skipped: Taunya's word was to keep this card open, since no walk of any kind is on its record.
 size: M (one migration with two small functions, one kernel, two sheets, the card's wiring, the editor's picker, two guides)
 blocker: none
 opinion: build it as drawn; the sheet is the message sheet the owner already loves, pointed at the day's main press.

@@ -66,6 +66,8 @@ const CONTROL_LABELS: Record<string, string> = {
   dock: 'section dock',
   'pipeline-row': 'Pipeline row',
   'job-window': 'job window',
+  // A row of the job form's Edit tab whose editor was opened (v2.8704): the target is the row's name.
+  'job-edit-row': 'Edit tab row',
   call_pressed: 'Call',
 }
 

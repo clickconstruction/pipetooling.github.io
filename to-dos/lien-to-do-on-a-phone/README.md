@@ -13,7 +13,7 @@ summary: >
   No day set said once.
 next: A simulator walks the phone mend once it is live, at 402 by 874 points: count the stages a column on one screen with **The flow** pressed, press a stage and read its first rows under the pinned line, scroll and watch Payoffs leave with the list, open the desk from `?payoffs=1`, and look at 1280 px that nothing moved. Then Todd opens the Lien desk on his phone, tries the flow and the way back, and says what reads wrong. Then this card is retired.
 size: M, built: the rows and the tiles (S) and the flow (M, one PR in place of the three planned); the phone mend (S), built in two PRs; left: a walk of the mend in a simulator (XS) and a look on a phone (XS)
-blocker: none
+blocker: none. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.8341, v2.8346, v2.8575
 opinion: close — built and live; what is left is seeing the flow under a thumb
 ---
