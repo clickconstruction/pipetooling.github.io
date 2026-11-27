@@ -9,7 +9,7 @@ summary: >
   while its day is further out. Three affidavits drafted on 2026-11-14 for a Dec 15 day showed in
   their jobs' Lien windows and nowhere on the desk. The fix keeps any started paper on the desk
   without widening the window for every job.
-next: Retire the card once the office has seen a started paper on the desk.
+next: Retire the card once the office has seen a started paper on the desk. Asked 2026-11-27: a read of the live desk cannot prove it, since every started paper on the desk that day was inside the 30-day window. Answered 2026-11-27 by Taunya, *the picks stand*, to the pick *the card's own walk on a ZZ test job*: two writes, both taken back, by the walking thread. The card is retired on its clean walk.
 size: S
 ver: v2.7247 · v2.7261
 blocker: none
