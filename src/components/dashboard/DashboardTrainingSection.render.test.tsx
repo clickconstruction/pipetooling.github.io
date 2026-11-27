@@ -142,3 +142,36 @@ describe('DashboardTrainingSection', () => {
     expect(document.querySelector('[data-training-offered]')).toBeNull()
   })
 })
+
+describe('Dashboard → Training: each press names its course (finding 345)', () => {
+  it('two courses to start give two presses with two names, though both read Start', async () => {
+    io.offered = true
+    open('helpers')
+    await screen.findByText('Intro to plumbing')
+    const osha = screen.getByRole('button', { name: 'Start OSHA 30 refresher' })
+    const plumbing = screen.getByRole('button', { name: 'Start Intro to plumbing' })
+    expect(osha).not.toBe(plumbing)
+    // The words on the screen are as they were: the act alone, on each.
+    expect([osha.textContent, plumbing.textContent]).toEqual(['Start', 'Start'])
+    expect(screen.getAllByText('Start')).toHaveLength(2)
+    // No press on the card is left with its act alone for a name.
+    for (const press of Array.from(document.querySelectorAll('.trainingPress'))) expect(press.getAttribute('aria-label')).not.toBe(press.textContent)
+  })
+
+  it('the name follows the press as the record moves: Continue, then Read it again', async () => {
+    io.lessons = ['01-a']
+    open('helpers')
+    expect(await screen.findByRole('button', { name: 'Continue OSHA 30 refresher' })).toBeTruthy()
+    cleanup()
+    io.passes = [{ slug: 'osha-30-refresher', passedOn: daysAgo(10), contentVersion: 'a' }]
+    open('helpers')
+    expect(await screen.findByRole('button', { name: 'Read it again OSHA 30 refresher' })).toBeTruthy()
+  })
+
+  it('a course on offer under Available is named too', async () => {
+    io.offered = true
+    open('assistant')
+    expect(await screen.findByRole('button', { name: 'Start Intro to plumbing' })).toBeTruthy()
+  })
+})
+
