@@ -432,3 +432,14 @@ export function roadmapTaskSentence(input: RoadmapTaskSentenceInput): NewTaskSen
   if (carries) parts.push(carries)
   return { text: parts.join(' '), dead: false }
 }
+
+/**
+ * The role the New task window goes by (finding 347, a phone walk of 2026-11-27). Its own read of the role wins
+ * once it has answered. Until then, and after a read that fails, the role the app already holds for the signed-in
+ * person stands in, so the window never waits on a read to draw and a failed read never takes an open window away.
+ * Null only when neither is known.
+ */
+export function newTaskWindowRole<R extends string>(read: R | null, held: R | string | null | undefined): R | string | null {
+  return read ?? held ?? null
+}
+

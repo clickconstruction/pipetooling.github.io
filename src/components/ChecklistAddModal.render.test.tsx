@@ -68,7 +68,7 @@ db.users = ONE_PERSON
 
 vi.mock('../lib/supabase', () => {
   // Table-aware stub: the generic renderSmokeMocks stub resolves single() to
-  // null, but the modal renders null until the role query returns one.
+  // null, and the modal's own read of the role answers one here, as on the live site.
   function makeBuilder(table: string, listResult: unknown[], singleResult: unknown) {
     const listPromise = () => Promise.resolve({ data: listResult, error: null })
     const builder: Record<string, unknown> = {}
@@ -135,8 +135,10 @@ async function renderOpenModal(keepsOpen?: boolean) {
     </ChecklistAddModalProvider>,
   )
   // Wait for the users fetch to settle: the form-reset effect re-fires when the
-  // list lands, so typing before that would be wiped.
-  await screen.findByText('Robert')
+  // list lands, so typing before that would be wiped. The name is drawn twice once it has, on the person's face and
+  // in the full list kept under it. The window no longer waits on the role's read to draw (finding 347), so there
+  // is no moment with the name drawn once to wait for.
+  await screen.findAllByText('Robert')
   // And for the window to settle on its first person: Send names them from then on.
   await screen.findByRole('button', { name: 'Send to Robert' })
   return screen.getByPlaceholderText('What needs to be done?') as HTMLTextAreaElement
@@ -359,7 +361,7 @@ async function renderOpenModalWithJob() {
       <ChecklistAddModal />
     </ChecklistAddModalProvider>,
   )
-  await screen.findByText('Robert')
+  await screen.findAllByText('Robert')
   await screen.findByRole('button', { name: 'Send to Robert' })
   return screen.getByPlaceholderText('What needs doing on this job?') as HTMLTextAreaElement
 }
@@ -834,7 +836,7 @@ describe('ChecklistAddModal, a card written for one thing (punch list #334)', ()
         <ChecklistAddModal />
       </ChecklistAddModalProvider>,
     )
-    await screen.findByText('Robert')
+    await screen.findAllByText('Robert')
     expect(screen.getByDisplayValue(THING_PRESET.title)).toBeTruthy()
     // The lines arrive trimmed, one a line, and the fold is open so the sender reads them.
     const lines = screen.getByDisplayValue(/201 · Maple Lofts: pay date written down\s+202 · Oak Court: pay date written down/) as HTMLTextAreaElement
@@ -945,7 +947,7 @@ describe('ChecklistAddModal, opened on a place that brings its way in (punch lis
         <ChecklistAddModal />
       </ChecklistAddModalProvider>,
     )
-    await screen.findByText('Robert')
+    await screen.findAllByText('Robert')
     expect((screen.getByDisplayValue('Find A7 at Laydown yard') as HTMLTextAreaElement).value).toBe('Find A7 at Laydown yard')
     expect(document.querySelectorAll('[data-task-place-way-mark]').length).toBe(1)
     await screen.findByRole('button', { name: 'Send to Robert' }, { timeout: 4000 })
@@ -967,7 +969,7 @@ describe('ChecklistAddModal, a follow-up from a finished task (punch list #369)'
         <ChecklistAddModal />
       </ChecklistAddModalProvider>,
     )
-    await screen.findByText('Robert')
+    await screen.findAllByText('Robert')
     const title = screen.getByDisplayValue(/^After Check the truck fluids:/) as HTMLTextAreaElement
     expect(title.value).toBe('After Check the truck fluids: ')
     fireEvent.change(title, { target: { value: 'After Check the truck fluids: top up the coolant' } })
