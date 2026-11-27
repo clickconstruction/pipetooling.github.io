@@ -46036,6 +46036,7 @@ export type Database = {
           site_address: string | null
           site_address_key: string | null
           site_development_id: string | null
+          site_prints_address: boolean | null
           source_id: string | null
           state: string | null
           with_name: string | null
