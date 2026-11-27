@@ -8,7 +8,8 @@ import { supabase } from '../supabase'
 import { fetchAllRows } from '../supabasePaging'
 import { jobNumberLabel } from '../jobs/jobSummaryCycle'
 import type { Database, Json } from '../../types/database'
-import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
+import { checkSupabaseError, DatabaseError, type SupabaseResultError } from '../../utils/errorHandling'
+import { BenchRemoveRefused } from './benchRemove'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { extractContactInfo } from '../bids/bidContactInfo'
 import { draftForRpc, type NewProjectDraft } from './newProjectDraft'
@@ -943,7 +944,13 @@ export async function vetGcCompany(companyId: string, status: 'approved' | 'decl
  * name goes through `as never` until the types regen after the push, as `contact_for_prospect` did.
  */
 export async function removeGcBenchCompany(companyId: string): Promise<void> {
-  taken(await supabase.rpc('gc_remove_bench_company' as never, { p_company_id: companyId } as never), 'remove the company from the bench')
+  try {
+    taken(await supabase.rpc('gc_remove_bench_company' as never, { p_company_id: companyId } as never), 'remove the company from the bench')
+  } catch (e) {
+    // The function's own refusal is passed on in its own words (finding 338): the row says the reason alone.
+    if (e instanceof DatabaseError && e.code === 'P0001' && e.serverMessage) throw new BenchRemoveRefused(e.serverMessage)
+    throw e
+  }
 }
 
 /** Where a company's crews drive from and how far they go. Empty miles: no limit. */
