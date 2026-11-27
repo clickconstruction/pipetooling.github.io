@@ -19,6 +19,10 @@
  * It does not reach a job's burn, the Job Summary, Crew P&L, the pay stubs, the overhead pool or the job day ledger:
  * none of their kernels reads the factor or the company rate.
  *
+ * The comment over the key in `appSettingsKeys.ts` still reads *taxes, insurance, the truck*. That file is copied to
+ * the edge functions (`supabase/functions/_shared/gcKernels`), so one changed word there would leave every function
+ * that bundles it reading as behind. The meaning is kept here, in a file no edge function copies.
+ *
  * The block changes nothing. The number is the database's, and changing it is a developer's write. Pure.
  */
 
