@@ -6,6 +6,10 @@
  *
  * `PhoneSheet` marks itself here for as long as it is drawn as a sheet. Pure module state with a subscribe, the
  * shape of `modalStack.ts`; `useSyncExternalStore` is the React glue.
+ *
+ * A task window (`TaskWindowShell`) marks itself too on a phone (finding 348, 2026-11-27). It is not a sheet: it
+ * docks to the top and keeps its sentence and Send at its foot, and the pill stood over them. There the top is not
+ * free, so the pill stands over the window's title row while it waits. The task and its Send stay clear.
  */
 
 let open = 0

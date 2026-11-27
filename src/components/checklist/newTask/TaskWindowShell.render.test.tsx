@@ -8,6 +8,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { TaskWindowShell } from './TaskWindowShell'
+import { isPhoneSheetOpen, resetPhoneSheetOpenForTests, updatePillPlace, UPDATE_PILL_TOP } from '../../../lib/phoneSheetOpen'
 
 type Listener = () => void
 
@@ -143,3 +144,43 @@ describe('TaskWindowShell at a desk', () => {
     expect(card.style.maxWidth).toBe('480px')
   })
 })
+
+describe('the task window and the app’s new version pill (finding 348)', () => {
+  const shell = (phone: boolean) => (
+    <TaskWindowShell titleId="t" title="New task" headActions={<button type="button">Close</button>} bar={<button type="button">Tell me</button>} phone={phone} zIndex={10}>
+      <input aria-label="What needs doing" />
+    </TaskWindowShell>
+  )
+  afterEach(() => resetPhoneSheetOpenForTests())
+
+  it('on a phone the window marks the store while it is drawn, so the pill leaves its send bar, and unmarks it when it closes', () => {
+    expect(isPhoneSheetOpen()).toBe(false)
+    const w = render(shell(true))
+    expect(screen.getByRole('button', { name: 'Tell me' })).toBeTruthy()
+    expect(isPhoneSheetOpen()).toBe(true)
+    // The pill is pinned at the top while the store reads open.
+    expect(updatePillPlace(isPhoneSheetOpen())).toEqual({ top: UPDATE_PILL_TOP })
+    w.unmount()
+    expect(isPhoneSheetOpen()).toBe(false)
+  })
+
+  it('at a desk the window marks nothing, and the pill stays at the foot', () => {
+    const w = render(shell(false))
+    expect(isPhoneSheetOpen()).toBe(false)
+    w.unmount()
+    expect(isPhoneSheetOpen()).toBe(false)
+  })
+
+  it('a window that turns from a desk to a phone marks the store then, and two windows count as open until both close', () => {
+    const one = render(shell(false))
+    expect(isPhoneSheetOpen()).toBe(false)
+    one.rerender(shell(true))
+    expect(isPhoneSheetOpen()).toBe(true)
+    const two = render(shell(true))
+    one.unmount()
+    expect(isPhoneSheetOpen()).toBe(true)
+    two.unmount()
+    expect(isPhoneSheetOpen()).toBe(false)
+  })
+})
+

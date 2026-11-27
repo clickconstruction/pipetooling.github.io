@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { useVisualViewportBox } from '../../../hooks/useVisualViewportBox'
+import { markPhoneSheetOpen } from '../../../lib/phoneSheetOpen'
 import { scrollTopToReveal, taskWindowPhoneFrame } from '../../../lib/tasks/taskWindowFrame'
 
 type Props = {
@@ -37,6 +38,10 @@ export function TaskWindowShell({ titleId, title, subtitle, headActions, childre
   const shows = useVisualViewportBox()
   const frame = taskWindowPhoneFrame(shows)
   const formRef = useRef<HTMLDivElement>(null)
+  // On a phone the window keeps its sentence and Send at its foot, which is where the app's *A new version is ready*
+  // pill is pinned (finding 348: the pill stood over **Tell me** and the send press, twice). The window is not a
+  // `PhoneSheet`, so it marks the same store itself, and the pill goes to the top for as long as the window is drawn.
+  useEffect(() => (phone ? markPhoneSheetOpen() : undefined), [phone])
   const showsHeight = shows?.height ?? null
   const showsTop = frame.top
   // The card has just changed size or place, so the field that has the keyboard may sit under the bar. Bring it back.
