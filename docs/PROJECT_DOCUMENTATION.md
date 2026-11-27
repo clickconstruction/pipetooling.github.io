@@ -11,7 +11,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Deep technical reference — schema, RLS, auth, DB functions, client patterns, gotchas; feature surfaces route to specialist docs
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 key_sections:
   - name: "Database Schema"
   - name: "Authentication & Authorization"
@@ -779,8 +779,8 @@ WHERE proname IN (
 - **RLS**: the taker, the office and the holder of the card that paid read a ticket; the taker and the office write it; `counter_tickets_guard` holds the taker's limits ([ACCESS_CONTROL.md](./ACCESS_CONTROL.md) → *`counter_tickets`*).
 
 #### `public.receipt_requests` · `public.receipt_links`
-- **Purpose**: A receipt asked for on a card charge, and the link that takes its photo with no sign-in (punch list #299 PR 1, v2.7101, `docs/migrations/20261113061500_receipt_requests.md`). A request is one row a charge: whose card, when its link was opened and answered, the ticket it became (`counter_tickets`, `source = link`), when it closes, and what the text did (PR 2, v2.7142, `docs/migrations/20261113140000_receipt_texts.md`): the cell texted and when, the reminder, why no text could go, and the tries of a text that was turned away; and the office's Got it (`office_done_at`, `office_done_by`, v2.7148, `docs/migrations/20261113150000_receipt_requests_office.md`). A link is one row a code, the code kept only as its SHA-256, naming the one to ten requests it opens for fourteen days.
-- **Written by**: the `receipt-link` function and the `receipt-request` sweep, each as the service role ([EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) → *receipt-link*, *receipt-request*); `receipt_request_ensure` makes a charge's request on the first ask. The office's one write is **Got it**, through `receipt_requests_set_done`.
+- **Purpose**: A receipt asked for on a card charge, and the link that takes its photo with no sign-in (punch list #299 PR 1, v2.7101, `docs/migrations/20261113061500_receipt_requests.md`). A request is one row a charge: whose card, when its link was opened and answered, the ticket it became (`counter_tickets`, `source = link`), when it closes, and what the text did (PR 2, v2.7142, `docs/migrations/20261113140000_receipt_texts.md`): the cell texted and when, the reminder, why no text could go, and the tries of a text that was turned away; and the office's Got it (`office_done_at`, `office_done_by`, v2.7148, `docs/migrations/20261113150000_receipt_requests_office.md`); and the office's Text again (`again_at`, `again_by`, `again_count`, v2.8697, `docs/migrations/20261127064100_receipt_text_again.md`). A link is one row a code, the code kept only as its SHA-256, naming the one to ten requests it opens for fourteen days.
+- **Written by**: the `receipt-link` function and the `receipt-request` sweep, each as the service role ([EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) → *receipt-link*, *receipt-request*); `receipt_request_ensure` makes a charge's request on the first ask. The office's one write of its own is **Got it**, through `receipt_requests_set_done`; its **Text again** is written by the `receipt-request` function.
 - **RLS**: the office and the holder read a request; the office reads a link; nobody writes from the app ([ACCESS_CONTROL.md](./ACCESS_CONTROL.md) → *`receipt_requests`*).
 
 #### `public.in_kind_arrangements` · `public.in_kind_lines` · `public.in_kind_line_payments`

@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 202 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -6494,7 +6494,7 @@ The page that asks is live since **v2.7414**: it opens every link with `way.open
 
 ### receipt-request
 
-**Purpose** (punch list #299, PR 2, **v2.7142**): the sweep that texts a card's holder a receipt link when a charge posts. It is the only thing that sends these texts. It does nothing until the switch is on: `app_settings` `receipt_texts_v1`, Settings → Phone and texts → **Text a receipt link when a card charge posts**, off as it ships. `verify_jwt = false`: the cron carries `X-Cron-Secret`, and a call without it is refused (**401**).
+**Purpose** (punch list #299, PR 2, **v2.7142**): the sweep that texts a card's holder a receipt link when a charge posts. It is the only thing that sends these texts: the sweep's two, and since v2.8697 the office's **Text again**. It does nothing until the switch is on: `app_settings` `receipt_texts_v1`, Settings → Phone and texts → **Text a receipt link when a card charge posts**, off as it ships. `verify_jwt = false`: the cron carries `X-Cron-Secret`, and a call without it is refused (**401**) unless it is a Text again, whose JWT the function checks itself.
 
 **The cron** (`docs/migrations/20261113140000_receipt_texts.md`): `receipt-request`, every five minutes, and only when `receipt_texts_due()` says there is something to do, so a switched-off or idle app makes no call. The bank's webhook is not touched.
 
@@ -6511,9 +6511,17 @@ The page that asks is live since **v2.7414**: it opens every link with `way.open
 
 **`POST { dry: true }`** → `{ ok, state: "dry", posted, asked, withTicket, wouldAsk }`: counts over the last 48 hours as if the switch were on. It writes nothing and sends nothing, whatever the switch says.
 
-**Secrets**: `CRON_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and the texts' own (`QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE`, `QUO_PHONE_NUMBER_ID`, the Quo key as `loadQuoApiKey` reads it).
+**`POST { again: <request id> }`** (v2.8697, the office's JWT and no secret) → `{ ok: true, state: "sent", segments, againCount }`, or `{ ok: false, why, words }` with **200** when no text went, `words` being the sentence the office reads. **Text again** on the office's Needs you row: one more text, on a new link, to a holder who was texted and reminded and sent no receipt (`runReceiptAgain` in `_shared/receiptSweep.ts`). In order:
+1. The caller is read by their own JWT and must be the office (`is_office_staff`), else **403**. An archived caller (`refuseArchivedCaller`) and a training account are refused with **403** too. An id that is not a uuid is **400**.
+2. Both switches hold it as they hold the sweep (`why: "off"`, `"texts_off"`), and a trial holds a holder it does not name (`"not_in_trial"`).
+3. The rule is `receiptAgainHold` (`_shared/receiptText.ts`): the request was texted and reminded, twelve hours have passed since the reminder and since the last Text again (`RECEIPT_AGAIN_REST_HOURS`), it is not answered, closed, past its day or held by a reason, and the office has pressed fewer than `RECEIPT_AGAIN_MAX` times, which is two.
+4. A charge the bank took back sends nothing. A charge that has its ticket marks the request answered, as the sweep does. A holder who has left, no cell and a STOP send nothing, and the STOP is written as the request's reason.
+5. The press is claimed before the text goes: `again_at`, `again_by` and `again_count` are set by an update that matches the count it read, so two presses at once send one text (`why: "taken"`). The link is new, `made_for = 'again'` with `made_by` the person who pressed, and closes when the request does. The words are `receiptAgainBody`: *The office still needs the receipt for $228.58 at Ridgeway Supply. Snap it here: <link>*.
+6. A text that could not go gives the claim back and drops its link, and the answer carries the sender's own words. A STOP or a bad number found at the send becomes the request's reason. The sweep reads none of the three columns.
 
-**Implementation**: [`supabase/functions/receipt-request/index.ts`](../supabase/functions/receipt-request/index.ts) builds the doors; the sweep itself is [`_shared/receiptSweep.ts`](../supabase/functions/_shared/receiptSweep.ts), with no network import, run by `src/lib/tickets/receiptSweep.test.ts` over a stood-in database and sender; the rules and every word are [`_shared/receiptText.ts`](../supabase/functions/_shared/receiptText.ts), re-exported by [`src/lib/tickets/receiptText.ts`](../src/lib/tickets/receiptText.ts) and tested from `receiptText.test.ts`. It reads the Quo kernels through the copy, so it is in `IMPORTERS`. **Deploy**: `supabase functions deploy receipt-request`, on either side of the migration's push; nothing is sent until the owner's press on the switch.
+**Secrets**: `CRON_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (Text again reads its caller), and the texts' own (`QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE`, `QUO_PHONE_NUMBER_ID`, the Quo key as `loadQuoApiKey` reads it).
+
+**Implementation**: [`supabase/functions/receipt-request/index.ts`](../supabase/functions/receipt-request/index.ts) builds the doors; the sweep itself is [`_shared/receiptSweep.ts`](../supabase/functions/_shared/receiptSweep.ts), with no network import, run by `src/lib/tickets/receiptSweep.test.ts` over a stood-in database and sender; the rules and every word are [`_shared/receiptText.ts`](../supabase/functions/_shared/receiptText.ts), re-exported by [`src/lib/tickets/receiptText.ts`](../src/lib/tickets/receiptText.ts) and tested from `receiptText.test.ts`. It reads the Quo kernels through the copy, so it is in `IMPORTERS`. **Deploy**: `supabase functions deploy receipt-request`, on either side of the migration's push; nothing is sent until the owner's press on the switch. For v2.8697 the deploy goes before the push of `20261127064100_receipt_text_again.sql`: the client shows Text again only once the list hands back the count, and the deployed sweep reads none of the new columns.
 
 ### sync-mercury-transactions
 

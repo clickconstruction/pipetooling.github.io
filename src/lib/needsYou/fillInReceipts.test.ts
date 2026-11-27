@@ -1,11 +1,14 @@
 /**
  * The receipt kind's rows (punch list #299, the step after PR 2): each reason a charge waits on a receipt the text
- * cannot get, in the sentence the office reads, with what the app knows and the door that mends it. Every name and
- * number is made up.
+ * cannot get, in the sentence the office reads, with what the app knows and the door that mends it. Then Text again
+ * (v2.8697): when the press shows, what it and its window say, and what the row says after it. Every name and number
+ * is made up.
  */
 import { describe, expect, it } from 'vitest'
 import {
   RECEIPT_CHASE_TEAM_HREF,
+  receiptAgainPress,
+  receiptAgainTrailWords,
   receiptChaseCounts,
   receiptChaseDetail,
   receiptChaseTitle,
@@ -106,5 +109,65 @@ describe('the list', () => {
 
   it('the trail names the charge', () => {
     expect(receiptTrailWords({ chargeWords: '$228.58 at Ridgeway Supply' })).toBe('Got it: $228.58 at Ridgeway Supply.')
+  })
+})
+
+describe('Text again', () => {
+  // Texted Tue 6:14 PM, reminded Wed 6:00 PM.
+  const twice = (over: Partial<ReceiptChaseSource> = {}) => source('r6', 'no_answer', { texted_at: '2026-11-04T00:14:00.000Z', reminded_at: '2026-11-05T00:00:00.000Z', again_at: null, again_count: 0, ...over })
+
+  it('shows on a charge texted twice with no receipt, and its label and its window name the act', () => {
+    const [row] = receiptFillInRows([twice()])
+    expect(row!.again).toEqual({
+      label: 'Text Jordan again',
+      confirm: {
+        title: 'Text Jordan again?',
+        message: "A third text goes to Jordan's phone about $228.58 at Ridgeway Supply, with a new link. It is a real text.",
+        confirmLabel: 'Text Jordan again',
+      },
+      sentWords: 'A third text went to Jordan about $228.58 at Ridgeway Supply.',
+    })
+    expect(row!.title).toBe('Jordan was texted twice about $228.58 at Ridgeway Supply and sent no receipt.')
+  })
+
+  it('shows on no other kind of row', () => {
+    for (const why of ['no_cell', 'no_person', 'archived', 'opted_out', 'failed']) {
+      const [row] = receiptFillInRows([source('r1', why, { again_count: 0 })])
+      expect(row!.again, why).toBeNull()
+    }
+  })
+
+  it('shows nothing until the database hands back the count: the function would have nowhere to write', () => {
+    expect(receiptFillInRows([twice({ again_count: undefined })])[0]!.again).toBeNull()
+    expect(receiptFillInRows([twice({ again_count: null })])[0]!.again).toBeNull()
+    expect(receiptAgainPress({ why: 'no_answer', again_count: Number.NaN }, 'Jordan', '$1.00')).toBeNull()
+    expect(receiptAgainPress({ why: 'no_answer', again_count: -1 }, 'Jordan', '$1.00')).toBeNull()
+  })
+
+  it('after one press the row says three times and when, and the window says this text is the last', () => {
+    // Thu Nov 5, 9:02 AM on the company's clock.
+    const [row] = receiptFillInRows([twice({ again_at: '2026-11-05T15:02:00.000Z', again_count: 1 })])
+    expect(row!.title).toBe('Jordan was texted three times about $228.58 at Ridgeway Supply and sent no receipt.')
+    expect(row!.knows).toEqual(['The charge posted Tue 5:00 PM.', 'Texted Tue 6:14 PM, reminded Wed 6:00 PM.', 'The office texted again Thu 9:02 AM.', 'The link is open until Nov 17.'])
+    expect(row!.again?.confirm.message).toBe("A fourth text goes to Jordan's phone about $228.58 at Ridgeway Supply, with a new link. It is a real text. It is the last one the office can send for this charge.")
+    expect(row!.again?.sentWords).toBe('A fourth text went to Jordan about $228.58 at Ridgeway Supply.')
+  })
+
+  it('at two presses the press is gone and the row says what is left', () => {
+    const [row] = receiptFillInRows([twice({ again_at: '2026-11-06T03:00:00.000Z', again_count: 2 })])
+    expect(row!.again).toBeNull()
+    expect(row!.title).toBe('Jordan was texted four times about $228.58 at Ridgeway Supply and sent no receipt.')
+    expect(row!.knows).toContain('The office texted again twice, last Thu 9:00 PM.')
+    expect(row!.knows).toContain('That is the most for one charge. Ask for the receipt another way, or send the link yourself.')
+  })
+
+  it('a holder with no name on the request is the holder', () => {
+    const [row] = receiptFillInRows([twice({ holder_name: '' })])
+    expect(row!.again).toMatchObject({ label: 'Text the holder again', confirm: { title: 'Text the holder again?', confirmLabel: 'Text the holder again' } })
+    expect(row!.again?.confirm.message).toContain("goes to the holder's phone")
+  })
+
+  it('the trail names the charge and offers no Undo: a text cannot be taken back', () => {
+    expect(receiptAgainTrailWords({ chargeWords: '$228.58 at Ridgeway Supply' })).toBe('Texted again: $228.58 at Ridgeway Supply.')
   })
 })

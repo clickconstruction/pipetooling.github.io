@@ -3,11 +3,12 @@
  * The Fill them in deck's receipt kind (punch list #299, the step after PR 2): the newest charge first with what the
  * app knows, Got it saves and moves on with no Save, Undo takes the mark back and brings the row back, Copy the receipt
  * link makes the link and stays on the row, a refused press stays on the row with its reason, and each row's door goes
- * where its press lives. Made-up rows.
+ * where its press lives. Text again (v2.8697) is on the charge texted twice alone, asks before it sends, and a text
+ * that went takes the row off the list with no Undo. Made-up rows.
  */
 import { useState } from 'react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { installDomShims, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { receiptFillInRows, type ReceiptChaseSource } from '../../lib/needsYou/fillInReceipts'
 import type { ReceiptFillInIo } from '../../lib/needsYou/fillInReceiptsIo'
@@ -41,12 +42,13 @@ const source = (id: string, why: string, over: Partial<ReceiptChaseSource> = {})
 const sources = (): ReceiptChaseSource[] => [
   source('r-cell', 'no_cell', { posted_at: '2026-11-04T23:00:00.000Z' }),
   source('r-card', 'no_person', { holder_user_id: null, holder_name: '', store: 'Cedar Bend Hardware', amount: 84.21, posted_at: '2026-11-03T23:00:00.000Z' }),
-  source('r-twice', 'no_answer', { holder_name: 'Sam Okoro', store: 'Corner Fuel', amount: 41.17, posted_at: '2026-11-02T23:00:00.000Z', texted_at: '2026-11-03T00:14:00.000Z', reminded_at: '2026-11-04T00:00:00.000Z' }),
+  source('r-twice', 'no_answer', { holder_name: 'Sam Okoro', store: 'Corner Fuel', amount: 41.17, posted_at: '2026-11-02T23:00:00.000Z', texted_at: '2026-11-03T00:14:00.000Z', reminded_at: '2026-11-04T00:00:00.000Z', again_at: null, again_count: 0 }),
 ]
 
-function harness(saveError?: Error) {
+function harness(saveError?: Error, againError?: Error) {
   const saves: string[] = []
   const undos: string[] = []
+  const agains: string[] = []
   const io: ReceiptFillInIo = {
     fetchSources: async () => sources(),
     save: async (requestId) => {
@@ -55,6 +57,10 @@ function harness(saveError?: Error) {
     },
     undo: async (requestId) => {
       undos.push(requestId)
+    },
+    textAgain: async (requestId) => {
+      if (againError) throw againError
+      agains.push(requestId)
     },
   }
   const copyLink = vi.fn(async (_chargeId: string) => ({ url: 'https://clicktooling.com/r/k7m2p9xq4d', closesOn: '2026-11-18' as string | null, copied: true }))
@@ -86,7 +92,7 @@ function harness(saveError?: Error) {
       />
     )
   }
-  return { render: () => renderWithProviders(<Host />), saves, undos, copyLink }
+  return { render: () => renderWithProviders(<Host />), saves, undos, agains, copyLink }
 }
 
 const trail = () => document.querySelector('[data-fill-in-trail]')?.textContent ?? ''
@@ -183,5 +189,66 @@ describe('NeedsYouFillInDeck · receipts', () => {
     expect(screen.getByText('Texted Mon 6:14 PM, reminded Tue 6:00 PM.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Open the Team queue ›' }))
     expect(navigate).toHaveBeenCalledWith('/tally?tab=transactions')
+  })
+
+  /** Past the two rows ahead of it, to the charge texted twice. */
+  async function toTwice() {
+    fireEvent.click(press('Skip'))
+    await settle()
+    fireEvent.click(press('Skip'))
+    await settle()
+    expect(cardTitle()).toBe('Sam was texted twice about $41.17 at Corner Fuel and sent no receipt.')
+  }
+
+  it('Text again is on the charge texted twice alone', async () => {
+    harness().render()
+    await settle()
+    expect(screen.queryByRole('button', { name: /^Text .* again$/ })).toBeNull()
+    await toTwice()
+    expect(press('Text Sam again').disabled).toBe(false)
+  })
+
+  it('Text again asks first, and Cancel sends nothing', async () => {
+    const h = harness()
+    h.render()
+    await settle()
+    await toTwice()
+    fireEvent.click(press('Text Sam again'))
+    const window_ = await screen.findByRole('alertdialog')
+    expect(window_.textContent).toContain('Text Sam again?')
+    expect(window_.textContent).toContain("A third text goes to Sam's phone about $41.17 at Corner Fuel, with a new link. It is a real text.")
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await settle()
+    expect(h.agains).toEqual([])
+    expect(cardTitle()).toBe('Sam was texted twice about $41.17 at Corner Fuel and sent no receipt.')
+  })
+
+  it('the window’s own press sends the one text, and the row leaves with no Undo', async () => {
+    const h = harness()
+    h.render()
+    await settle()
+    await toTwice()
+    fireEvent.click(press('Text Sam again'))
+    const window_ = await screen.findByRole('alertdialog')
+    fireEvent.click(within(window_).getByRole('button', { name: 'Text Sam again' }))
+    expect(await screen.findByText(moneyText('A third text went to Sam about $41.17 at Corner Fuel.'))).toBeTruthy()
+    expect(h.agains).toEqual(['r-twice'])
+    expect(h.saves).toEqual([])
+    await waitFor(() => expect(trail()).toContain('Texted again: $41.17 at Corner Fuel.'))
+    expect(cardTitle()).not.toContain('Sam was texted')
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
+  })
+
+  it('a text that did not go keeps the row and says why', async () => {
+    const h = harness(undefined, new Error('Sam replied STOP, so no text went. Ask for the receipt another way.'))
+    h.render()
+    await settle()
+    await toTwice()
+    fireEvent.click(press('Text Sam again'))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Text Sam again' }))
+    expect(await screen.findByText(/Sam replied STOP, so no text went/)).toBeTruthy()
+    expect(cardTitle()).toBe('Sam was texted twice about $41.17 at Corner Fuel and sent no receipt.')
+    expect(trail()).not.toContain('Texted again')
+    await waitFor(() => expect(press('Text Sam again').disabled).toBe(false))
   })
 })

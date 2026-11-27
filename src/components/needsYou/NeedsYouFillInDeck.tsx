@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { NEEDS_YOU_ACTION_BG, NEEDS_YOU_ACTION_FG, NEEDS_YOU_RAIL, NEEDS_YOU_WALK_TINT } from '../../lib/dashboard/needsYouPalette'
 import {
@@ -53,7 +54,7 @@ import { JobKindPresses } from './JobKindPresses'
 import { baselineRowRpcArgs, baselineTrailWords, type BaselineFillInRow } from '../../lib/needsYou/fillInBaselines'
 import { baselineFillInIo } from '../../lib/needsYou/fillInBaselinesIo'
 import { BaselinePresses } from './BaselinePresses'
-import { receiptTrailWords, type ReceiptFillInRow } from '../../lib/needsYou/fillInReceipts'
+import { receiptAgainTrailWords, receiptTrailWords, type ReceiptFillInRow } from '../../lib/needsYou/fillInReceipts'
 import { receiptFillInIo } from '../../lib/needsYou/fillInReceiptsIo'
 import { receiptCopiedWords } from '../../lib/tickets/receiptLink'
 import { copyReceiptLinkFor } from '../../lib/tickets/receiptLinkIo'
@@ -187,6 +188,9 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
   const [busy, setBusy] = useState(false)
   /** The receipt kind's Copy the receipt link is making its link. */
   const [receiptCopying, setReceiptCopying] = useState(false)
+  /** The receipt kind's Text again is sending its text. */
+  const [receiptTexting, setReceiptTexting] = useState(false)
+  const confirm = useConfirmDialog()
   const [lostBid, setLostBid] = useState<LostBidDecision>(EMPTY_LOST_BID_DECISION)
   const [vehicle, setVehicle] = useState<VehicleDecision>(() => emptyVehicleDecision(todayYmdInAppTz()))
   const [jobAccount, setJobAccount] = useState<JobAccountDecision>(EMPTY_JOB_ACCOUNT_DECISION)
@@ -531,6 +535,36 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     })()
   }
 
+  /**
+   * Text again (v2.8697): one more text to a holder who was texted and reminded and sent no receipt. The window asks
+   * first, since the press sends a real text. Once it has gone the row leaves the list with no Undo, and the office's
+   * list brings it back in twelve hours if no receipt came. A text that did not go keeps the row and says why.
+   */
+  const pressReceiptTextAgain = (row: ReceiptFillInRow) => {
+    const again = row.again
+    if (busy || receiptCopying || receiptTexting || !userId || !again) return
+    void (async () => {
+      if (!(await confirm({ ...again.confirm, cancelIsSafe: true }))) return
+      // Busy holds Skip and the other presses while the one text is on its way.
+      setBusy(true)
+      setReceiptTexting(true)
+      try {
+        await (io.receipts ?? receiptFillInIo).textAgain(row.requestId)
+        recordNavClick(userId, role, 'needs-you', '#fill-receipt-text-again')
+        showToast(again.sentWords, 'success')
+        setHandled((t) => pushHandled(t, { row, how: 'saved', words: receiptAgainTrailWords(row), undo: null }))
+        setSavedKeys((k) => [...k, row.key])
+        setRevisitKey(null)
+        onRowSaved(row)
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'No text went.'), 'error')
+      } finally {
+        setReceiptTexting(false)
+        setBusy(false)
+      }
+    })()
+  }
+
   const undo = (h: Handled) => {
     if (busy || !h.undo) return
     setBusy(true)
@@ -629,7 +663,15 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
             ) : current.kind === 'baseline' ? (
               <BaselinePresses row={current} disabled={busy} onPress={(source) => pressBaseline(current, source)} />
             ) : current.kind === 'receipt' ? (
-              <ReceiptChasePresses disabled={busy} copying={receiptCopying} onGotIt={() => pressReceiptGotIt(current)} onCopyLink={() => copyReceiptLink(current)} />
+              <ReceiptChasePresses
+                disabled={busy}
+                copying={receiptCopying}
+                onGotIt={() => pressReceiptGotIt(current)}
+                onCopyLink={() => copyReceiptLink(current)}
+                againLabel={current.again?.label ?? null}
+                texting={receiptTexting}
+                onTextAgain={() => pressReceiptTextAgain(current)}
+              />
             ) : (
               <button
                 type="button"

@@ -42,6 +42,8 @@ Each person gets one text for each charge that posts. Two charges minutes apart 
 
 A charge with no receipt gets one reminder. The reminder goes in the evening, at least twelve hours after the first text.
 
+The app sends nothing more after the reminder. The office can then send one more text by hand, twice at most for one charge. See [Text the holder again](/help/sort-the-teams-card-purchases#text-the-holder-again).
+
 A charge that already has its ticket gets no text. Money back to the card gets no text.
 
 [Answer the text about a charge on your card](/help/answer-the-text-about-a-charge-on-your-card) is the guide for the person who gets the text.
