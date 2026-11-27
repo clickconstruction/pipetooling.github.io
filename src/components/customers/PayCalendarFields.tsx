@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { payCalendarFieldStyle, payCalendarLabelStyle } from './payCalendarFieldStyles'
-import { PAY_CALENDAR_CLAUSE_MAX, PAY_CALENDAR_CUTOFF_MAX, PAY_CALENDAR_DAYS_AFTER_DEFAULT, PAY_CALENDAR_DAYS_AFTER_MAX, PAY_CALENDAR_WORDS_MAX, ordinalDay, paysDaysAfter, type PayCalendar } from '../../lib/jobs/payCalendar'
+import { PAY_CALENDAR_CLAUSE_MAX, PAY_CALENDAR_CUTOFF_MAX, PAY_CALENDAR_DAYS_AFTER_DEFAULT, PAY_CALENDAR_DAYS_AFTER_MAX, PAY_CALENDAR_WORDS_MAX, ordinalDay, paysDaysAfter, showsHowTheyPay, type PayCalendar } from '../../lib/jobs/payCalendar'
 
 /**
  * The Pay calendar's own fields (punch list #323): the day bills must be in by, the day they pay
@@ -10,6 +10,10 @@ import { PAY_CALENDAR_CLAUSE_MAX, PAY_CALENDAR_CUTOFF_MAX, PAY_CALENDAR_DAYS_AFT
  *
  * The first choice is how they pay (punch list #341, PR 5): on a set day of the month, or a number
  * of days after the bill is accepted. The second shape asks for the days alone.
+ *
+ * That choice is hidden since v2.8714 (call 4: no contract here pays a number of days after the
+ * bill). It is drawn only for terms that are already in days, a stored row or a draft's, and stays
+ * while the fields are open so a switch to a set day can be switched back (`showsHowTheyPay`).
  */
 
 const CUTOFF_DAYS = Array.from({ length: PAY_CALENDAR_CUTOFF_MAX }, (_, i) => i + 1)
@@ -22,6 +26,10 @@ export default function PayCalendarFields({ form, onChange, disabled = false, cl
   const days = paysDaysAfter(form)
   /** What is typed in the days box while it is not a number the terms can hold: an emptied box stays empty until a digit or a blur, and the form keeps its last days. Null shows the form's own. */
   const [daysTyped, setDaysTyped] = useState<string | null>(null)
+  /** The terms were in days at some point while these fields were open: the choice then stays on the page. */
+  const [hadDays, setHadDays] = useState(days)
+  if (days && !hadDays) setHadDays(true)
+  const showsHow = showsHowTheyPay({ days, hadDays })
   const howPress = (on: boolean, words: string, pick: () => void) => (
     <button
       type="button"
@@ -36,11 +44,15 @@ export default function PayCalendarFields({ form, onChange, disabled = false, cl
   )
   return (
     <>
-      <div style={labelStyle}>How they pay</div>
-      <div role="radiogroup" aria-label="How they pay" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {howPress(!days, 'On a set day of the month', () => onChange({ daysAfter: null }))}
-        {howPress(days, 'A number of days after the bill', () => onChange({ daysAfter: form.daysAfter ?? PAY_CALENDAR_DAYS_AFTER_DEFAULT }))}
-      </div>
+      {showsHow ? (
+        <>
+          <div style={labelStyle}>How they pay</div>
+          <div role="radiogroup" aria-label="How they pay" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {howPress(!days, 'On a set day of the month', () => onChange({ daysAfter: null }))}
+            {howPress(days, 'A number of days after the bill', () => onChange({ daysAfter: form.daysAfter ?? PAY_CALENDAR_DAYS_AFTER_DEFAULT }))}
+          </div>
+        </>
+      ) : null}
 
       {days ? (
         <label style={labelStyle}>

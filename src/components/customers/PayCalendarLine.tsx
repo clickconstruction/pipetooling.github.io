@@ -4,7 +4,7 @@ import { useOptionalAuth } from '../../hooks/useAuth'
 import { usePayCalendarModal } from '../../contexts/PayCalendarModalContext'
 import { isStagesOfficeRole } from '../../lib/jobs/stagesRoleGates'
 import { loadPayerPayCalendars, onPayCalendarChanged } from '../../lib/jobs/payCalendarIo'
-import { calendarSourceFor, indexPayCalendars, jobPayCalendarWords, payCalendarShort, payCalendarWords, type PayCalendarRow } from '../../lib/jobs/payCalendar'
+import { calendarSourceFor, indexPayCalendars, jobPayCalendarWords, payCalendarShort, payCalendarWords, payTermsKindsWords, type PayCalendarRow } from '../../lib/jobs/payCalendar'
 import type { PayCalendarJob } from '../../lib/jobs/payCalendarJob'
 import { draftPayTermsFromWords, draftPayTermsOffered } from '../../lib/jobs/draftPayTerms'
 import type { DraftPayTermsOffer } from '../../lib/jobs/draftPayTermsIo'
@@ -108,7 +108,7 @@ export default function PayCalendarLine({
   const calendar = rows.find((r) => r.jobId == null)?.calendar ?? null
   if (!calendar && !canSet) return null
   return (
-    <button type="button" className="payCalendarPress" data-testid="pay-calendar-line" title={calendar ? payCalendarWords(calendar) : 'For a payer whose contract says when they pay: a set day of the month, or a number of days after the bill'} onClick={open} style={style}>
+    <button type="button" className="payCalendarPress" data-testid="pay-calendar-line" title={calendar ? payCalendarWords(calendar) : `For a payer whose contract says when they pay: ${payTermsKindsWords()}`} onClick={open} style={style}>
       {calendar ? payCalendarShort(calendar) : 'Set a pay calendar…'}
     </button>
   )

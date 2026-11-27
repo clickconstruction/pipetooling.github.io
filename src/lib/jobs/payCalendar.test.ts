@@ -5,6 +5,9 @@ import {
   BILL_OWN_DUE_PRESS,
   JOB_RECORD_MIN_PAYMENTS,
   PAY_CALENDAR_DAYS_AFTER_MAX,
+  PAY_CALENDAR_DAYS_AFTER_OFFERED,
+  payTermsKindsWords,
+  showsHowTheyPay,
   asPayCalendarRead,
   billCalendarRead,
   billOwnDuePreview,
@@ -583,6 +586,29 @@ describe("one bill's own due day (punch list #341, PR 4)", () => {
     expect(billOwnDuePreview('2027-02-15', { dueYmd: '2026-12-30', own: true })).toEqual({ otherwise: 'By this job’s own pay calendar it is due Dec 30.', own: 'On its own day it is due Feb 15.', picked: true })
     expect(billOwnDuePreview('', { dueYmd: '2026-12-10', own: false })).toEqual({ otherwise: 'By the pay calendar it is due Dec 10.', own: 'Pick the day to see what it makes the bill.', picked: false })
     expect(billOwnDuePreview('2027-02-15', null).otherwise).toBe('With no pay calendar it reads the usual guess.')
+  })
+})
+
+describe('terms in days are hidden until a contract needs them (punch list #341, call 4)', () => {
+  it('the window does not offer them: no contract here pays a number of days after the bill', () => {
+    expect(PAY_CALENDAR_DAYS_AFTER_OFFERED).toBe(false)
+  })
+
+  it('the choice of how they pay is drawn only for terms that are in days, or were while the fields were open', () => {
+    expect(showsHowTheyPay({ days: false, hadDays: false })).toBe(false)
+    expect(showsHowTheyPay({ days: true, hadDays: false })).toBe(true)
+    // Switched to a set day: the choice stays, so the way back is one press.
+    expect(showsHowTheyPay({ days: false, hadDays: true })).toBe(true)
+    // The day a contract needs it, the switch brings the choice back for everyone.
+    expect(showsHowTheyPay({ days: false, hadDays: false, offered: true })).toBe(true)
+  })
+
+  it('a line that introduces the calendar names the second kind only where it can be picked', () => {
+    expect(payTermsKindsWords()).toBe('a set day of the month')
+    expect(payTermsKindsWords(true)).toBe('a set day of the month, or a number of days after the bill')
+    // A job with no calendar anywhere, read by someone who may set one: the press's hover words.
+    const none = calendarSourceFor(indexPayCalendars([]), { payerId: 'p9', jobId: 'j9' })
+    expect(jobPayCalendarWords(none, 'Larkfield Construction', true)?.title).toBe('For a job whose contract says when its payer pays: a set day of the month')
   })
 })
 
