@@ -29,6 +29,17 @@ describe('describeDeletedBundleKind (J9-F6: no raw table names in the type filte
     expect(describeDeletedBundleKind('some_unknown_table')).toBe('Some unknown table')
     expect(describeDeletedBundleKind('')).toBe('Other')
   })
+  it('names a thrown-away test map’s bundle and each table in it (punch list #443, row 15)', () => {
+    // list_deleted_records has no word for a painted map, so the kind is the head row's table name.
+    expect(describeDeletedBundleKind('painted_maps')).toBe('Painted map')
+    expect(['painted_maps', 'painted_map_lines', 'painted_map_places', 'painted_map_links', 'painted_map_link_visits'].map(humanizeArchiveTable)).toEqual([
+      'painted map',
+      'map lines',
+      'map places',
+      'map links',
+      'map link opens',
+    ])
+  })
 })
 
 describe('humanizeArchiveTable', () => {

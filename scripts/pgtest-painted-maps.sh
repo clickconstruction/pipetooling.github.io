@@ -37,6 +37,12 @@
 # card's later steps: a photo's point whole or not there, a place's count of opens raised by a reader and by nobody
 # else, its line and its other photos, and a job's list of places read from a job at the same customer address and
 # from no other; it ends with "photo_spot_ground PASSED".
+# A tenth, 97_thrown_away_copy.sql (v2.8678, punch list #443 row 15, migration *_test_painted_map_keeps_a_copy), holds
+# the copy a test map keeps: a dev throws a ZZ-named map away through throw_away_test_painted_map, the archive holds
+# the map and its lines, places, links and link opens under the map's id, restore_deleted_records puts each row back
+# as it stood, and what carried the map does not get it back; everyone but a dev, a dev in training, a map that is
+# not there and a map not named ZZ are refused in words, and a plain delete keeps no copy; it ends with
+# "painted_map_thrown_away_copy PASSED".
 # PGTEST_KEEP=1 leaves the container up. Needs docker;
 # the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
@@ -45,7 +51,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55619}"
 NAME="pgtest-painted-maps"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_painted_maps.sql supabase/migrations/*_painted_map_links.sql supabase/migrations/*_task_painted_maps.sql supabase/migrations/*_painted_map_link_visits.sql supabase/migrations/*_painted_map_photos_after_the_map.sql supabase/migrations/*_painted_place_kind.sql supabase/migrations/*_painted_map_job_list.sql supabase/migrations/*_painted_place_words_room.sql supabase/migrations/*_photo_spot_ground.sql)"
+WRITES="$(ls supabase/migrations/*_painted_maps.sql supabase/migrations/*_painted_map_links.sql supabase/migrations/*_task_painted_maps.sql supabase/migrations/*_painted_map_link_visits.sql supabase/migrations/*_painted_map_photos_after_the_map.sql supabase/migrations/*_painted_place_kind.sql supabase/migrations/*_painted_map_job_list.sql supabase/migrations/*_painted_place_words_room.sql supabase/migrations/*_photo_spot_ground.sql supabase/migrations/*_test_painted_map_keeps_a_copy.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -92,5 +98,8 @@ if ! grep -q "painted_place_words_room PASSED" <<<"$out"; then echo "$out" | tai
 grep -o "ok: .*" <<<"$out"
 out="$(psql_as postgres -f - < supabase/tests/painted_maps/95_spot_ground.sql 2>&1 || true)"
 if ! grep -q "photo_spot_ground PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/painted_maps/97_thrown_away_copy.sql 2>&1 || true)"
+if ! grep -q "painted_map_thrown_away_copy PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "painted-maps bed ok"

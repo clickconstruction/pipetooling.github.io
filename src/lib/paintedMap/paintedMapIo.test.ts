@@ -1,6 +1,7 @@
 /**
  * Throwing a painted map away takes its places' pictures (punch list #345): the files under the map's id go after
- * the row, only when the row went, and a bucket that refuses or fails never reaches the answer.
+ * the row, only when the row went, and a bucket that refuses or fails never reaches the answer. The door that keeps
+ * a copy of a test map (punch list #443, row 15) is one call to its function, with no delete and no sweep beside it.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -15,13 +16,21 @@ const db = vi.hoisted(() => ({
   listError: null as null | { message: string },
   listThrows: false,
   removeThrows: false,
-  /** Every call, in order: `delete <id>`, `list <folder> <offset>`, `remove <n>`. */
+  /** What the function that keeps a copy answers. */
+  rpc: { data: null as unknown, error: null as unknown },
+  rpcThrows: null as unknown,
+  /** Every call, in order: `delete <id>`, `list <folder> <offset>`, `remove <n>`, `rpc <name> <args>`. */
   calls: [] as string[],
   removed: [] as string[],
 }))
 
 vi.mock('../supabase', () => ({
   supabase: {
+    rpc: (name: string, args: unknown) => {
+      db.calls.push(`rpc ${name} ${JSON.stringify(args)}`)
+      if (db.rpcThrows) return Promise.reject(db.rpcThrows)
+      return Promise.resolve(db.rpc)
+    },
     from: () => ({
       delete: () => ({
         eq: (_column: string, id: string) => ({
@@ -52,7 +61,7 @@ vi.mock('../supabase', () => ({
   },
 }))
 
-import { deletePaintedMap, removePaintedMapPhotoFiles } from './paintedMapIo'
+import { deletePaintedMap, removePaintedMapPhotoFiles, throwAwayTestPaintedMap } from './paintedMapIo'
 
 /** The sweep is not waited on by the delete: let it run out. */
 const settle = () => new Promise((r) => setTimeout(r, 0))
@@ -64,8 +73,72 @@ beforeEach(() => {
   db.listError = null
   db.listThrows = false
   db.removeThrows = false
+  db.rpc = { data: null, error: null }
+  db.rpcThrows = null
   db.calls = []
   db.removed = []
+})
+
+describe('throwAwayTestPaintedMap (punch list #443, row 15)', () => {
+  const CALL = `rpc throw_away_test_painted_map {"p_map_id":"${MAP}"}`
+  const ANSWER = { ok: true, map_id: MAP, name: 'ZZ Test way in', copied: { painted_maps: 1, painted_map_lines: 2, painted_map_places: 2, painted_map_links: 1, painted_map_link_visits: 1 }, total: 7, carriers: { checklist_items: 1, checklist_tech_tree_group_tasks: 0, job_places: 2 } }
+
+  it('calls the function once with the map’s id, and touches no row and no file itself', async () => {
+    db.rpc = { data: ANSWER, error: null }
+    db.files = ['aaa.jpg', 'bbb.jpg']
+    expect(await throwAwayTestPaintedMap(MAP)).toEqual({ ok: true, value: { copied: 7, tasks: 1, places: 2 } })
+    await settle()
+    // No delete of the row from here, and no sweep of the bucket: the photos stay for the put-back.
+    expect(db.calls).toEqual([CALL])
+    expect(db.removed).toEqual([])
+  })
+
+  it('passes each refusal the function raises on as its own sentence, with nothing in front', async () => {
+    for (const words of [
+      'Sign in first.',
+      'Only a developer can throw a map away and keep a copy.',
+      'The map is not there any more. Read the list again.',
+      'Only a test map keeps a copy. This map’s name does not start with ZZ.',
+    ]) {
+      db.calls = []
+      db.rpc = { data: null, error: { code: 'P0001', message: words, details: null, hint: null } }
+      db.files = ['aaa.jpg']
+      expect(await throwAwayTestPaintedMap(MAP)).toEqual({ ok: false, error: words })
+      await settle()
+      expect(db.calls).toEqual([CALL])
+    }
+  })
+
+  it('shows PostgREST’s own answer while the database does not hold the function yet, and falls back to no delete', async () => {
+    const missing = 'Could not find the function public.throw_away_test_painted_map(p_map_id) in the schema cache'
+    db.rpc = { data: null, error: { code: 'PGRST202', message: missing, details: null, hint: null } }
+    db.files = ['aaa.jpg']
+    expect(await throwAwayTestPaintedMap(MAP)).toEqual({ ok: false, error: missing })
+    await settle()
+    expect(db.calls).toEqual([CALL])
+    expect(db.removed).toEqual([])
+  })
+
+  it('says the map was not thrown away when the refusal carries no words', async () => {
+    db.rpc = { data: null, error: {} }
+    expect(await throwAwayTestPaintedMap(MAP)).toEqual({ ok: false, error: 'The map was not thrown away.' })
+  })
+
+  it('takes an answer it cannot read for no answer, never for a yes', async () => {
+    for (const data of [null, { ok: false }, 'ok', []]) {
+      db.rpc = { data, error: null }
+      expect(await throwAwayTestPaintedMap(MAP)).toEqual({ ok: false, error: 'The database gave no answer. Open the map again to see if it is still there.' })
+    }
+  })
+
+  it('sends the call once when the signal drops, and says so', async () => {
+    db.rpcThrows = new TypeError('Failed to fetch')
+    const res = await throwAwayTestPaintedMap(MAP)
+    await settle()
+    expect(res.ok).toBe(false)
+    expect(res.ok ? '' : res.error).not.toBe('')
+    expect(db.calls).toEqual([CALL])
+  })
 })
 
 describe('deletePaintedMap', () => {

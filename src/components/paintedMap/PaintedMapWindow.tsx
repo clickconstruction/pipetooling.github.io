@@ -8,6 +8,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import ConfirmDialog from '../ConfirmDialog'
+import { useOptionalToastContext } from '../../contexts/ToastContext'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { useAuth } from '../../hooks/useAuth'
 import { usePaintedWalk, writeKeptWalk } from '../../hooks/usePaintedWalk'
@@ -75,9 +76,11 @@ import {
   putPaintedMapOnJob,
   savePaintedMapWords,
   savePaintedPlace,
+  throwAwayTestPaintedMap,
   uploadPaintedPlacePhoto,
   type PaintedMapWhole,
 } from '../../lib/paintedMap/paintedMapIo'
+import { PAINTED_MAP_TEST_THROW_AWAY, paintedMapThrowAwayDoor, paintedMapThrownAwayWords } from '../../lib/paintedMap/paintedMapThrowAway'
 import type { PaintedPoint, SnapTarget } from '../../lib/paintedMap/paintedLine'
 import { clockWords, isRoughFix, strokeMarginMeters } from '../../lib/paintedMap/paintedTrack'
 import { roughCircleWords } from '../../lib/paintedMap/preciseLocation'
@@ -185,6 +188,9 @@ function cornerWords(points: ReadonlyArray<PaintedPoint>, index: number): string
 
 export function PaintedMapWindow({ ask, kept = null, address = null, center: givenCenter = null, openOn = null, spot = null, pickPlace = null, onClose }: Props) {
   const { user, role } = useAuth()
+  // The window is gone when a map is thrown away, so what a thrown-away test map kept is said on a toast. A page
+  // with no toast host says nothing.
+  const toast = useOptionalToastContext()
   const phone = useIsMobile()
   const isTopmost = useModalStackEntry()
   const starting = 'start' in ask ? ask.start : null
@@ -286,6 +292,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const places = useMemo(() => numberedPlaces(whole?.places ?? []), [whole])
   // A job's own list of places (#393): this map is it, or this map is on a job that has one.
   const isList = map?.jobList === true
+  // A dev's test map keeps a copy when it is thrown away (punch list #443, row 15). Everyone else takes today's delete.
+  const throwAwayKeepsCopy = paintedMapThrowAwayDoor(role, map) === 'copy'
   const mapJobId = map?.jobId ?? null
   // Every place kept on the map's job, lettered. Read beside the map, and again whenever a painted map changes.
   const [jobPlaces, setJobPlaces] = useState<JobPlace[]>([])
@@ -888,6 +896,20 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
       return
     }
     if (!map) return
+    if (throwAwayKeepsCopy) {
+      // The function copies the map and deletes it. Its photos are left, and a refusal leaves the map as it is:
+      // today's delete is never tried in its place, since it would sweep the photos the confirm said stay.
+      const gone = await throwAwayTestPaintedMap(map.id)
+      setBusy(false)
+      if (!gone.ok) {
+        setError(gone.error)
+        return
+      }
+      toast?.showToast(paintedMapThrownAwayWords(gone.value), 'success')
+      paintedMapsChanged()
+      onClose()
+      return
+    }
     const res = await deletePaintedMap(map.id)
     setBusy(false)
     if (!res.ok || !res.value) {
@@ -1475,9 +1497,9 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     {confirm ? (
       <ConfirmDialog
         zIndex={PAINTED_MAP_SHEET_Z + 60}
-        title={confirm.kind === 'map' && isList ? JOB_LIST_WORDS.throwAway.title : CONFIRM_WORDS[confirm.kind].title}
-        body={confirm.kind === 'walk' ? walkThrowAwayWords(saved) : confirm.kind === 'map' && isList ? JOB_LIST_WORDS.throwAway.body : CONFIRM_WORDS[confirm.kind].body}
-        confirmLabel={confirm.kind === 'map' && isList ? JOB_LIST_WORDS.throwAway.confirm : CONFIRM_WORDS[confirm.kind].confirm}
+        title={confirm.kind === 'map' && isList ? JOB_LIST_WORDS.throwAway.title : confirm.kind === 'map' && throwAwayKeepsCopy ? PAINTED_MAP_TEST_THROW_AWAY.title : CONFIRM_WORDS[confirm.kind].title}
+        body={confirm.kind === 'walk' ? walkThrowAwayWords(saved) : confirm.kind === 'map' && isList ? JOB_LIST_WORDS.throwAway.body : confirm.kind === 'map' && throwAwayKeepsCopy ? PAINTED_MAP_TEST_THROW_AWAY.body : CONFIRM_WORDS[confirm.kind].body}
+        confirmLabel={confirm.kind === 'map' && isList ? JOB_LIST_WORDS.throwAway.confirm : confirm.kind === 'map' && throwAwayKeepsCopy ? PAINTED_MAP_TEST_THROW_AWAY.confirm : CONFIRM_WORDS[confirm.kind].confirm}
         cancelLabel={CONFIRM_WORDS[confirm.kind].cancel}
         {...(confirm.kind === 'leaveWalk' && CONFIRM_WORDS.leaveWalk.keep ? { keep: { label: CONFIRM_WORDS.leaveWalk.keep, onPress: closeAndKeepWalk } } : {})}
         onConfirm={() => void confirmed()}

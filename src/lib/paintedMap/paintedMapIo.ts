@@ -4,7 +4,7 @@
  * with the reason in words (`formatErrorMessage`), so a refusal names itself on the screen.
  */
 import { supabase } from '../supabase'
-import { formatErrorMessage } from '../../utils/errorHandling'
+import { UNEXPECTED_ERROR_MESSAGE, formatErrorMessage } from '../../utils/errorHandling'
 import {
   PAINTED_MAP_LINE_SELECT,
   PAINTED_MAP_NAME_MAX,
@@ -34,6 +34,7 @@ import { paintedPlaceKindFrom, type PaintedPlaceKind } from './paintedPlaceKind'
 import { cleanPlaceWords } from './paintedPlaceWords'
 import type { PaintedMapSearchRow } from './paintedMapSearch'
 import { PAINTED_MAP_PHOTOS_BUCKET, isPaintedPlacePhotoPath, paintedPlacePhotoPath } from './paintedPlacePhoto'
+import { PAINTED_MAP_THROW_AWAY_NO_ANSWER, paintedMapThrownAwayFrom, type PaintedMapThrownAway } from './paintedMapThrowAway'
 
 const MAPS = 'painted_maps' as never
 const LINES = 'painted_map_lines' as never
@@ -242,6 +243,36 @@ export async function deletePaintedMap(mapId: string): Promise<Landed<boolean>> 
     return { ok: true, value: gone }
   } catch (e) {
     return fail(e, 'The map was not removed.')
+  }
+}
+
+/** What the screen says when a throw-away that keeps a copy failed with no words of its own. */
+const NOT_THROWN_AWAY = 'The map was not thrown away.'
+
+/**
+ * Throws a test map away and keeps a copy (punch list #443, row 15): `throw_away_test_painted_map`, called once.
+ * The function holds every rule itself, a developer and a map whose name starts with ZZ, copies the map and
+ * everything on it into the deleted-records archive and deletes it in one transaction. The map's pictures are left
+ * in the bucket, so a place put back from Recently deleted still finds its photo. Which press takes this door is
+ * `paintedMapThrowAwayDoor`.
+ *
+ * A refusal is passed on in its own words, with no sentence of ours in front: the function raises whole sentences,
+ * and a name the database does not hold yet is PostgREST's own answer. There is no fall back to `deletePaintedMap`,
+ * which would sweep the pictures the confirm said stay. The function is not in the generated types until the types
+ * PR after the push, so it is called by name.
+ */
+export async function throwAwayTestPaintedMap(mapId: string): Promise<Landed<PaintedMapThrownAway>> {
+  const ownWords = (e: unknown): Landed<PaintedMapThrownAway> => {
+    const said = formatErrorMessage(e)
+    return { ok: false, error: said === UNEXPECTED_ERROR_MESSAGE ? NOT_THROWN_AWAY : said }
+  }
+  try {
+    const res = (await supabase.rpc('throw_away_test_painted_map' as never, { p_map_id: mapId } as never)) as unknown as { data: unknown; error: unknown }
+    if (res.error) return ownWords(res.error)
+    const gone = paintedMapThrownAwayFrom(res.data)
+    return gone ? { ok: true, value: gone } : { ok: false, error: PAINTED_MAP_THROW_AWAY_NO_ANSWER }
+  } catch (e) {
+    return ownWords(e)
   }
 }
 
