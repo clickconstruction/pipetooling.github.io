@@ -2,6 +2,8 @@
  * What a paper prints of its site (punch list #439, piece 3, part 3e): the one rule the signer's function, the
  * signing and the signed PDF all read. Every address here is made up.
  */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { SITE_PRINT_ADDRESS_MAX, SITE_PRINT_LABEL, answersSitePrint, printedSiteAddress, sitePrintLine, siteShownAtSigning, withSitePrintLine } from '../../../supabase/functions/_shared/paperSitePrint'
 
@@ -61,6 +63,39 @@ describe('answersSitePrint', () => {
   it('is false for an older function’s answer, and for anything that is no answer', () => {
     expect(answersSitePrint({ id: 'p1', document_name: 'Vendor NDA' })).toBe(false)
     for (const body of [null, undefined, 'site_address', 7, ['site_address']]) expect(answersSitePrint(body)).toBe(false)
+  })
+})
+
+describe('the three functions read the rule, and nothing else of a site', () => {
+  const source = (path: string) => readFileSync(resolve(process.cwd(), 'supabase/functions', path), 'utf8')
+
+  it('the signer’s function hands on the printed address alone, on a real paper and on the sample', () => {
+    const fn = source('get-contract-for-signer/index.ts')
+    expect(fn).toContain('site_address: printedSiteAddress(r),')
+    expect(fn).toContain('{ ...sr.body, site_address: null }')
+    // The row's other two site columns are never read here, so they can never be handed on.
+    expect(fn).not.toContain('site_address_key')
+    expect(fn).not.toContain('site_development_id')
+    expect(fn.match(/site_prints_address/g)).toHaveLength(2)
+  })
+
+  it('the signing checks the page showed the address before the clause freeze, and before anything is stored', () => {
+    const fn = source('accept-contract/index.ts')
+    const check = fn.indexOf('if (!siteShownAtSigning(doc, body.siteAddress))')
+    expect(check).toBeGreaterThan(-1)
+    expect(fn.slice(check, check + 220)).toContain("code: 'paper_changed'")
+    expect(check).toBeLessThan(fn.indexOf('clauseFreeze(paper'))
+    expect(check).toBeLessThan(fn.indexOf('admin.storage.from(SIGNATURE_BUCKET).upload'))
+    expect(fn).not.toContain('site_address_key')
+    expect(fn).not.toContain('site_development_id')
+  })
+
+  it('the signed PDF draws the line from the two columns its row is read with', () => {
+    const fn = source('_shared/personPaperSignedCopy.ts')
+    expect(fn).toContain('signed_copy_sent_at, site_address, site_prints_address')
+    expect(fn).toContain('paragraphs: withSitePrintLine(paperParagraphs(row), row),')
+    expect(fn).not.toContain('site_address_key')
+    expect(fn).not.toContain('site_development_id')
   })
 })
 
