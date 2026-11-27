@@ -11,7 +11,7 @@ summary: >
   reached. Three sheets are still pinned to the page the way the task window was. The rest are
   words that read wrongly and rows that run past one phone screen. Two notes of Grace's from #331
   ride along, waiting on her word. No database change in any of it.
-next: The look at 375 points waits on leave to use the small simulator. A small phone in a hand has not seen the sheets, and should say whether **Send text…** sits under Safari's bar at 125% text. Grace's two notes wait on her word.
+next: The look at 375 points waits on leave to use the small simulator. A small phone in a hand has not seen the sheets, and should say whether **Send text…** sits under Safari's bar at 125% text. Grace's two notes wait on her word. Read 2026-11-27 in the iOS Simulator at 375 by 667 points and 100% text on v2.8691 (the simulator thread's sitting 2), on a ZZ Test thread with nothing typed or sent. One finding, and it is this card's open question for Taunya: with the keyboard up, **Send email…** is cut to a sliver and **Send text…** is off the screen until one scroll inside the thread, which does reach it. Mend it, or accept it and close. Not read: 125% text, and the Dispatch job picker.
 size: M as five small PRs (S · S · XS · S · S), built; left: a look at the two mends in Messages (XS) and a walk on a small phone
 blocker: a person at a phone for the walk, and Grace's word for her two notes. The look on a real phone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.7155 · v2.7185 · v2.7188 · v2.7189 · v2.7190 · v2.7203 · v2.8267 · v2.8300 · v2.8563 · v2.8585
