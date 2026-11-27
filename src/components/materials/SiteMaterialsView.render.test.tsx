@@ -552,3 +552,54 @@ describe('SiteMaterialsView', () => {
     expect(screen.queryByTestId('site-people')).toBeNull()
   })
 })
+
+describe('SiteMaterialsView on a phone: its small presses take a thumb (finding 324)', () => {
+  // jsdom measures nothing, so every press says the 32 px the view chips stand, and the back press its 36.
+  const realRect = HTMLElement.prototype.getBoundingClientRect
+  const narrow = (on: boolean) => {
+    window.matchMedia = ((query: string) => ({ matches: on && query === '(max-width: 640px)', media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      const height = this.getAttribute('aria-label')?.startsWith('Back to') ? 36 : 32
+      return { width: 120, height, top: 0, left: 0, right: 120, bottom: height, x: 0, y: 0, toJSON: () => ({}) } as DOMRect
+    }
+  }
+  afterEach(() => {
+    HTMLElement.prototype.getBoundingClientRect = realRect
+    delete (window as unknown as { matchMedia?: unknown }).matchMedia
+  })
+  /** The pad walks 50 ms after the last change under the screen. */
+  const walked = () => new Promise<void>((resolve) => setTimeout(resolve, 120))
+
+  it('marks each press under 40 px with its pad, and the screen with the mark the stylesheet reads', async () => {
+    narrow(true)
+    setup()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'By part' }).hasAttribute('data-press-pad')).toBe(true))
+    await walked()
+    expect(screen.getByTestId('site-materials-view').getAttribute('data-site-materials-phone')).toBe('')
+    const byPart = screen.getByRole('button', { name: 'By part' })
+    expect(byPart.style.getPropertyValue('--press-pad-y')).toBe('6px')
+    expect(screen.getByRole('button', { name: 'By place' }).hasAttribute('data-press-pad')).toBe(true)
+    const back = screen.getByRole('button', { name: 'Back to Materials desk' })
+    expect(back.style.getPropertyValue('--press-pad-y')).toBe('4px')
+    expect(screen.getByRole('link', { name: 'Print the material location report' }).hasAttribute('data-press-pad')).toBe(true)
+  })
+
+  it('at a desk marks nothing', async () => {
+    narrow(false)
+    setup()
+    await walked()
+    expect(screen.getByTestId('site-materials-view').hasAttribute('data-site-materials-phone')).toBe(false)
+    expect(document.querySelector('[data-press-pad]')).toBeNull()
+  })
+
+  it('the stylesheet draws the pad under the screen’s mark, 1 px past each side for the press’s border', async () => {
+    const { readFileSync } = await import('node:fs')
+    const css = readFileSync('src/index.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(css).toMatch(/\[data-site-materials-phone\] \[data-press-pad\] \{ position: relative; \}/)
+    const rule = /\[data-site-materials-phone\] \[data-press-pad\]::after \{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(rule).toContain("content: ''")
+    expect(rule).toContain('position: absolute')
+    for (const side of ['top', 'bottom']) expect(rule).toContain(`${side}: calc(-1px - var(--press-pad-y, 0px))`)
+    for (const side of ['left', 'right']) expect(rule).toContain(`${side}: calc(-1px - var(--press-pad-x, 0px))`)
+  })
+})
