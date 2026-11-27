@@ -44,7 +44,7 @@ describe('LaborBurdenSettingsBlock', () => {
     expect((await screen.findByTestId('labor-burden-figure')).textContent).toContain('×1.25')
     expect(screen.getByTestId('labor-burden-stands-for').textContent).toBe('It stands for depreciation on the tools and the truck a person uses.')
     expect(screen.getByText('A wage of $30.00 an hour counts as $37.50 an hour.')).toBeTruthy()
-    expect(screen.getByTestId('labor-burden-reaches').querySelectorAll('li')).toHaveLength(6)
+    expect(screen.getByTestId('labor-burden-reaches').querySelectorAll('li')).toHaveLength(7)
     expect(screen.getByTestId('labor-burden-not').querySelectorAll('li')).toHaveLength(5)
     expect(screen.getByText('No press here changes it. A developer changes the number in the database.')).toBeTruthy()
   })

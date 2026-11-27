@@ -151,3 +151,42 @@ describe('v2.5043 · the margin the bid was priced at, beside the direct margin 
     expect(buildCostsVerdict({ ...base, priced: null }).priced).toBeNull()
   })
 })
+
+describe('the labor at the burden (punch list #448)', () => {
+  // 100 hours at a wage of 30: $3,000 of wages, priced at 1.20 in the burn. The burn handed in was built at the same factor.
+  const spendAt30 = { teamUsd: 3_000, subUsd: 0, partsUsd: 4_000, totalUsd: 7_000 }
+  const burnAt = { ...burn, spentUsd: 7_600, percentDone: 50, eacUsd: 15_200, marginUsd: 4_800, marginPct: 24 }
+  const args = { ...base, burn: burnAt, priceUsd: 20_000, spend: spendAt30, teamHours: 100 }
+  const v = buildCostsVerdict({ ...args, laborBurden: 1.2 })
+
+  it('the Labor row is the wages times the factor, and says what it stands on', () => {
+    const labor = v.sections.find((s) => s.key === 'labor')!
+    expect(labor.spentUsd).toBeCloseTo(3_600, 6)
+    expect(labor.atCompletionUsd).toBeCloseTo(7_200, 6)
+    expect(labor.sub).toBe('$3,000 wages × 1.20')
+    expect(labor.subMarked).toBe('⟪wages|$3,000⟫ wages × ⟪burden|1.20⟫')
+    expect(v.sections.find((s) => s.key === 'materials')!.spentUsd).toBe(4_000)
+  })
+  it('the tile carries the wages, the factor and the two multiplied', () => {
+    expect(v.spent.labor!.wagesUsd).toBe(3_000)
+    expect(v.spent.labor!.burden).toBe(1.2)
+    expect(v.spent.labor!.usd).toBeCloseTo(3_600, 6)
+    expect(v.spent.usd).toBe(7_600)
+  })
+  it('the average wage stays the wages paid, and the hourly rate beside the Labor row is at the burden', () => {
+    expect(v.baseline.avgWageUsd).toBeCloseTo(30, 6)
+    expect(v.baseline.laborRateUsd).toBeCloseTo(36, 6)
+  })
+  it('a factor of 1, or none handed in, gives the old row and no line', () => {
+    for (const old of [buildCostsVerdict(args), buildCostsVerdict({ ...args, laborBurden: 1 })]) {
+      const labor = old.sections.find((s) => s.key === 'labor')!
+      expect(labor).toMatchObject({ spentUsd: 3_000, sub: 'team hours × wages' })
+      expect(labor.subMarked).toBeUndefined()
+      expect(old.spent.labor).toBeNull()
+      expect(old.baseline.laborRateUsd).toBeCloseTo(30, 6)
+    }
+  })
+  it('no wages, no line', () => {
+    expect(buildCostsVerdict({ ...args, spend: { teamUsd: 0, subUsd: 0, partsUsd: 4_000, totalUsd: 4_000 }, teamHours: 0, laborBurden: 1.2 }).spent.labor).toBeNull()
+  })
+})

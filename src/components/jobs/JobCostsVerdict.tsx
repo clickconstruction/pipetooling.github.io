@@ -1,6 +1,8 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { moneyWords } from '../../lib/moneyParts'
 import { Money, MoneyText } from '../Money'
+import { ValueSentence } from '../valuesInPlace/ValuesInPlace'
+import { burnLaborLineWords } from '../../lib/jobs/burnAtBurden'
 import { baselineFrozenWords, baselineHeadWords, baselineKeptWords, baselineReadWords, baselineScoreWords, pctDoneWords, timeLeftWords, type CostsVerdict } from '../../lib/jobs/jobCostsVerdict'
 import { bidBaselineUsable, bidNotUsableWords, bidRateNeeded, bookBaselineUsable, bookBaselineWhy } from '../../lib/jobs/awardBaseline'
 import type { BaselineReading } from '../../lib/bids/bidBaselineRates'
@@ -112,6 +114,12 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
           <div style={lab}>Spent so far</div>
           <div style={big}>{usd0(v.spent.usd)}</div>
           <div style={sub}>{v.spent.pctOfPrice != null ? `${Math.round(v.spent.pctOfPrice)}% of the price · ` : ''}{h0(v.spent.teamHours)} team · {usd0(v.spent.materialsUsd)} materials</div>
+          {/* Punch list #448: the spend's labor is priced at the burden, and this line is what it stands on. */}
+          {v.spent.labor ? (
+            <div style={{ ...sub, marginTop: 5, paddingTop: 5, borderTop: '1px dashed var(--border)', fontVariantNumeric: 'tabular-nums' }} data-testid="verdict-labor-at-burden">
+              <ValueSentence text={burnLaborLineWords(v.spent.labor)} />
+            </div>
+          ) : null}
         </div>
         <div style={tile}>
           <div style={lab}>Earned so far</div>
@@ -137,12 +145,12 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
               <tbody>
                 {v.sections.map((s) => (
                   <tr key={s.key} data-testid={`verdict-row-${s.key}`}>
-                    <td style={{ ...td, whiteSpace: 'nowrap' }}><b>{s.label}</b> <span style={{ ...muted, fontSize: '0.7rem' }}>{s.hours != null ? `${h0(s.hours)} · ` : ''}{s.sub}</span></td>
+                    <td style={{ ...td, whiteSpace: 'nowrap' }}><b>{s.label}</b> <span style={{ ...muted, fontSize: '0.7rem' }}>{s.hours != null ? `${h0(s.hours)} · ` : ''}{s.subMarked ? <ValueSentence text={s.subMarked} /> : s.sub}</span></td>
                     <td style={tdNum}>{usd0(s.spentUsd)}</td>
                     <td style={tdNum}>{s.atCompletionUsd != null ? usd0(s.atCompletionUsd) : '—'}</td>
                     <td style={{ ...tdNum, ...(s.budgetUsd == null && s.budgetHours == null ? muted : {}) }}>{s.budgetHours != null ? `${h0(s.budgetHours)}${s.budgetUsd != null ? ` · ${usd0(s.budgetUsd)}` : ''}` : s.budgetUsd != null ? usd0(s.budgetUsd) : s.budgetWords}</td>
                     <td style={{ ...td, ...muted, minWidth: 160 }}>
-                      {s.key === 'labor' && b.avgWageUsd != null ? <MoneyText text={`${moneyWords(b.avgWageUsd)}/h${b.hoursPerThousand != null ? ` · ${b.hoursPerThousand.toFixed(1)} h per $1k so far` : ''}`} /> : ''}
+                      {s.key === 'labor' && b.laborRateUsd != null ? <MoneyText text={`${moneyWords(b.laborRateUsd)}/h${b.hoursPerThousand != null ? ` · ${b.hoursPerThousand.toFixed(1)} h per $1k so far` : ''}`} /> : ''}
                       {s.key === 'materials' && b.materialsPctOfPrice != null ? `${Math.round(b.materialsPctOfPrice)}% of the price` : ''}
                       {s.pctOfBudget != null ? ` · ${Math.round(s.pctOfBudget)}% of the bid figure${s.aheadPts != null ? (s.aheadPts > 5 ? ' · ahead of the work' : s.aheadPts < -5 ? ' · behind the work' : ' · with the work') : ''}` : ''}
                     </td>
