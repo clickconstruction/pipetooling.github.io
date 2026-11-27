@@ -14,7 +14,7 @@ import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
 import { accountsThatLeft, linkedAccountIds, withAccountArchived } from '../lib/people/leftAccounts'
 import { legalDeskRedirect } from '../lib/legal/legalDeskRoute'
 import { lienDeskRedirect } from '../lib/lien/lienDeskRoute'
-import { jobsPageTabs } from '../lib/jobs/jobsPageTabs'
+import { BILLING_TAB_RETIRED_WORDS, jobsPageTabs, retiredJobsTab } from '../lib/jobs/jobsPageTabs'
 import { jobWindowTabFromParam } from '../lib/jobs/jobHistoryTab'
 import { phoneTabRows } from '../lib/phoneLayout/phoneTabRows'
 import { JobsPageTabStrip } from '../components/jobs/JobsPageTabStrip'
@@ -51,7 +51,6 @@ import JobsInspectionsTab from '../components/jobs/JobsInspectionsTab'
 import JobsReportsTab from '../components/jobs/JobsReportsTab'
 import JobsPartsTab from '../components/jobs/JobsPartsTab'
 import JobsMaterialsTab from '../components/jobs/JobsMaterialsTab'
-import JobsBillingTab from '../components/jobs/JobsBillingTab'
 import JobsStagesTab, { type JobsStagesTabHandle } from '../components/jobs/JobsStagesTab'
 import { shouldLoadJobsListForTab } from '../lib/jobsListLoadGate'
 import { parseStagesMoneyWeekParam, STAGES_MONEY_WEEK_PARAM } from '../lib/weeklyMoneyReportLink'
@@ -109,7 +108,7 @@ const NO_JOBS_FOR_CARD_CHARGES: JobWithDetails[] = []
 
 export type UserRow = { id: string; name: string; email: string | null; role: string; notes: string | null; phone?: string | null }
 
-type JobsTab = 'reports' | 'stages' | 'billing' | 'subs' | 'combined-labor' | 'teams-summary' | 'parts' | 'materials' | 'job-summary' | 'inspections' | 'billed'
+type JobsTab = 'reports' | 'stages' | 'subs' | 'combined-labor' | 'teams-summary' | 'parts' | 'materials' | 'job-summary' | 'inspections' | 'billed'
 
 /** Align with Layout mobile breakpoint; shortens primary create button to "New". */
 const JOBS_SHORT_NEW_JOB_BUTTON_MQ = '(max-width: 640px)'
@@ -117,7 +116,7 @@ const JOBS_SHORT_NEW_JOB_BUTTON_MQ = '(max-width: 640px)'
 // Roster (for Labor / Sub Sheet Ledger)
 /** v2.3618: `account_user_id` and `end_date` ride along so the sheet form can leave benched subs out (`lib/people/subBench.ts`). */
 export type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null; account_user_id?: string | null; end_date?: string | null; /** v2.8467: the linked account is archived, so the sheet form leaves the row out (`lib/people/leftAccounts.ts`). */ account_archived?: boolean }
-const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'subs', 'combined-labor', 'teams-summary', 'parts', 'materials', 'job-summary', 'inspections', 'billed']
+const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'subs', 'combined-labor', 'teams-summary', 'parts', 'materials', 'job-summary', 'inspections', 'billed']
 /** v2.2927: Work Orders and Sub Labor folded into Subs — old links keep landing. */
 const SUBS_TAB_ALIASES: Record<string, SubsView> = { work_orders: 'work', sub_sheet_ledger: 'pay', labor: 'pay' }
 
@@ -155,7 +154,7 @@ export default function Jobs() {
   const { profileName: materialsProfileName } = useAuth()
   const shortNewJobButtonLabel = useMatchMedia(JOBS_SHORT_NEW_JOB_BUTTON_MQ)
   // Punch list #30, PR 1: on a phone the app header scrolls away, so the page's own tab strip
-  // sticks to the top — Reports | Pipeline | Billing stay one tap away 2,600 px into the list.
+  // sticks to the top — Reports | Pipeline | Subs stay one tap away 2,600 px into the list.
   const stickyTabStrip = useMatchMedia('(max-width: 640px)')
   // The new phone layout (`lib/phoneLayout/phoneTabRows.ts`): the tabs are one scrolling line and the top bar names the page.
   const newPhoneLayout = useNewPhoneLayout()
@@ -183,6 +182,8 @@ export default function Jobs() {
   const jobDetailModal = useJobDetailModal()
   const [activeTab, setActiveTab] = useState<JobsTab>('stages')
   const activeTabRef = useRef<JobsTab>('stages')
+  /** The words for an old Billing link are said once a visit to the page, not on every pass of the tab effect. */
+  const billingRetiredSaidRef = useRef(false)
   // Burn card on the Pipeline money story (v2.3191): wage roles only, armed 2.5 s
   // after the board shows so the Job Summary cost loads (team labor, sub sheets,
   // parts, the report-% batch) never race the board's own fetches. Once armed it
@@ -262,7 +263,7 @@ export default function Jobs() {
   /**
    * Scoped first paint for the Pipeline (v2.1824, plan PR 3): fetch only the
    * sections the device left open (fresh devices: Ready to Bill). Every other
-   * jobs-cache tab (Billing, Parts, Sub-sheet) still full-loads via loadJobs —
+   * jobs-cache tab (Parts, Sub-sheet) still full-loads via loadJobs —
    * and once any full load has run, the scoped path is a no-op refresh of the
    * same scopes. Mutation refreshes stay full until plan PR 5.
    */
@@ -315,7 +316,7 @@ export default function Jobs() {
       }
     }, LOAD_JOBS_AFTER_MUTATION_MS)
   }
-  /** Loaded for Stages/Billing implied-customer hints and refreshed when job form saves. */
+  /** Loaded for the Pipeline's implied-customer hints and refreshed when job form saves. */
   const [customers, setCustomers] = useState<CustomerRow[]>([])
 
   // Sub Sheet Ledger state (the payment/backcharge/edit-payment modal states moved to SubLaborPaymentModals in v2.824)
@@ -783,7 +784,7 @@ export default function Jobs() {
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return
-    const needCustomers = Boolean(jobFormModal?.isOpen) || activeTab === 'stages' || activeTab === 'billing'
+    const needCustomers = Boolean(jobFormModal?.isOpen) || activeTab === 'stages'
     if (!needCustomers) return
     ;(async () => {
       const { data } = await supabase
@@ -874,16 +875,6 @@ export default function Jobs() {
       }, { replace: true })
       return
     }
-    // Redirect old ledger URLs to billing
-    if (tab === 'ledger') {
-      setActiveTab('billing')
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'billing')
-        return next
-      }, { replace: true })
-      return
-    }
     // Role gates that say something (v2.2882, C25): a link to a tab that isn't
     // for this role toasts once and lands on a tab that is — never a silent
     // rewrite. `roleGateBounce` owns the landing + sentence (lib/roleGate.ts).
@@ -925,7 +916,7 @@ export default function Jobs() {
       }
       return
     }
-    // Only primaries default to Reports; primaries only see Reports tab (Billing hidden)
+    // Only primaries default to Reports; primaries only see Reports tab
     if (isPrimary) {
       const primaryTabs = ['reports']
       if (tab && primaryTabs.includes(tab)) {
@@ -935,6 +926,23 @@ export default function Jobs() {
       } else {
         landOn('reports')
       }
+      return
+    }
+    // A tab the row no longer has (Billing, retired in v2.8698, and its older name `ledger`): the link lands on
+    // the tab that answers it now, keeping every other parameter, and Billing's says so once. It sits under the
+    // role gates above, so a superintendent or a primary is walked to a tab they have and never told of the Pipeline.
+    const answeredBy = retiredJobsTab(tab)
+    if (answeredBy) {
+      if (tab === 'billing' && !billingRetiredSaidRef.current) {
+        billingRetiredSaidRef.current = true
+        showToast(BILLING_TAB_RETIRED_WORDS, 'info')
+      }
+      setActiveTab(answeredBy as JobsTab)
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', answeredBy)
+        return next
+      }, { replace: true })
       return
     }
     if (tab === 'billed') {
@@ -955,7 +963,7 @@ export default function Jobs() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, myRole, authRole, roleGateBounce])
+  }, [searchParams, myRole, authRole, roleGateBounce, showToast])
 
   useEffect(() => {
     const newJob = searchParams.get('newJob') === 'true'
@@ -973,10 +981,10 @@ export default function Jobs() {
         next.delete('newJob')
         return next
       }, { replace: true })
-    } else if (newJob && (tab === 'billing' || tab === 'stages' || !tab)) {
+    } else if (newJob && (tab === 'stages' || !tab)) {
       if (jobsListLoading || jobsListRefreshing) return
       const projectParam = searchParams.get('project')
-      setActiveTab(tab === 'billing' ? 'billing' : 'stages')
+      setActiveTab('stages')
       jobFormModal?.openNewJob({
         projectId: projectParam,
         onSaved: () => {
@@ -1374,14 +1382,14 @@ export default function Jobs() {
 
 
   useEffect(() => {
-    if ((activeTab === 'billing' || activeTab === 'subs' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary' || pipelineBurnArmed) && authUser?.id) {
+    if ((activeTab === 'subs' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary' || pipelineBurnArmed) && authUser?.id) {
       const t = setTimeout(() => loadLaborJobs(), 80)
       return () => clearTimeout(t)
     }
   }, [activeTab, authUser?.id, pipelineBurnArmed])
 
   useEffect(() => {
-    if ((activeTab === 'combined-labor' || activeTab === 'billing' || activeTab === 'teams-summary' || activeTab === 'job-summary' || pipelineBurnArmed) && authUser?.id) {
+    if ((activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary' || pipelineBurnArmed) && authUser?.id) {
       const t = setTimeout(() => loadTeamLaborData(), 80)
       return () => clearTimeout(t)
     }
@@ -1493,14 +1501,6 @@ export default function Jobs() {
 
 
 
-
-  // Jobs with a sub-labor sheet, by the sheet's job link (v2.3838 — was the job_number text).
-  const subLaborJobIds = useMemo(() => new Set(subLaborSheetsByJobId(laborJobs).keys()), [laborJobs])
-
-  const teamLaborJobIds = useMemo(
-    () => new Set(teamLaborData.map((r) => r.jobId)),
-    [teamLaborData]
-  )
 
 
   // Crew P&L math lives in src/lib/crewPnlSummary.ts; the tab component owns its own state.
@@ -1988,24 +1988,6 @@ export default function Jobs() {
               Crew Jobs / Bids matrix + Team Job Labor table (CrewJobsBlock, retired everywhere in v2.2986). */}
           <JobsTeamTab focusJobId={teamLaborJobParam} focusWeek={teamWeekParam} focusExceptions={teamExceptionsParam} onFocusConsumed={onFocusTeamLaborConsumed} />
         </div>
-      )}
-
-      {activeTab === 'billing' && (
-        <JobsBillingTab
-          jobs={jobs}
-          jobsListLoading={jobsListLoading}
-          jobsListRefreshing={jobsListRefreshing}
-          jobsListError={jobsListError}
-          error={error}
-          authUserId={authUser?.id}
-          authRole={authRole}
-          shortNewJobButtonLabel={shortNewJobButtonLabel}
-          subLaborJobIds={subLaborJobIds}
-          teamLaborJobIds={teamLaborJobIds}
-          teamLaborLoading={teamLaborLoading}
-          openNew={openNew}
-          openEdit={openEdit}
-        />
       )}
 
       {activeTab === 'teams-summary' && (

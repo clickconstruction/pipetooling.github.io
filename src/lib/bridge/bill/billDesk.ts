@@ -333,7 +333,10 @@ export type BillDesk = {
   footnote: string[]
 }
 
-const BILLING = '/jobs?tab=billing'
+/** The Pipeline's Ready to bill stage, where the jobs the office called done wait for their bill. */
+const READY_TO_BILL = '/jobs?tab=stages&stagesSection=readyToBill'
+/** A job's own window, where its bill is made. A job in nobody's queue is on no stage's list, so its door is the job. */
+const jobWindow = (jobId: string): string => `/jobs?tab=stages&edit=${jobId}`
 
 function satWords(fromYmd: string | null, todayYmd: string): { satText: string; satDays: number | null } {
   if (!fromYmd) return { satText: 'no clock', satDays: null }
@@ -389,7 +392,7 @@ export function billLeaks(input: BillDeskInput): BillLeak[] {
         head: 'Finished, never billed.',
         detail: `${name} reads 100%${since ? ` since ${dayLabel(since)}` : ''}. No bill was ever made.`,
         proof: `The job's % is 100 and its contract is ${stageUsd(revenue)}, but its bills cover $0. It is in nobody's queue, not ready to bill and not on a billed list. Only crossing the two reads finds it.`,
-        door: { label: 'Bill it', to: BILLING },
+        door: { label: 'Bill it', to: jobWindow(j.id) },
       })
       continue
     }
@@ -408,7 +411,7 @@ export function billLeaks(input: BillDeskInput): BillLeak[] {
         head: 'A remainder aging behind a part-bill.',
         detail: `${first} The rest has no bill and no date.`,
         proof: `The finished share is ${stageUsd(finished)} and the ${side} cover ${stageUsd(covered)}. A part-billed job drops off the Stages board once its first bill goes out. So its tail hides.`,
-        door: { label: 'Bill the rest', to: BILLING },
+        door: { label: 'Bill the rest', to: jobWindow(j.id) },
       })
     }
   }
@@ -440,7 +443,7 @@ export function billHandMarked(input: Pick<BillDeskInput, 'bills' | 'todayYmd' |
       head: 'Marked billed by hand, nothing on record went out.',
       detail: `${labelInWords(b.jobLabel)} was marked billed ${dayLabel(b.billedYmd)} with no send on file.`,
       proof: "The bill's billed day comes from the hand mark. No email, text or paper send sits in the bill's record. If the customer never got it, the pay clock runs on nothing.",
-      door: { label: 'Open the bill', to: BILLING },
+      door: { label: 'Open the bill', to: jobWindow(b.jobId) },
     })
   }
   return out.sort((a, b) => b.usd - a.usd || a.jobId.localeCompare(b.jobId) || (a.billId ?? '').localeCompare(b.billId ?? ''))
@@ -455,7 +458,7 @@ export function billFastLane(input: BillDeskInput): BillFastRow[] {
     const days = j.readyYmd ? Math.max(0, daysBetween(j.readyYmd, input.todayYmd)) : null
     const satText = days == null ? 'no ready day on record' : days === 0 ? 'ready today' : `sat ${days} ${plural(days, 'day', 'days')}`
     const coverText = covered > 0 ? `${coverSide(j)} cover ${stageUsd(covered)} of ${stageUsd(revenue)}` : 'nothing billed yet'
-    out.push({ jobId: j.id, label: j.label, usd: j.item.usd, satDays: days, satText, coverText, late: days != null && days > BILL_SAME_DAY_TOLERANCE_DAYS, door: { label: 'Bill it', to: BILLING } })
+    out.push({ jobId: j.id, label: j.label, usd: j.item.usd, satDays: days, satText, coverText, late: days != null && days > BILL_SAME_DAY_TOLERANCE_DAYS, door: { label: 'Bill it', to: READY_TO_BILL } })
   }
   return out.sort((a, b) => b.usd - a.usd || a.label.localeCompare(b.label))
 }

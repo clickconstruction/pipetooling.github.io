@@ -66,7 +66,7 @@ describe('BridgeBillDesk on the step frame (punch list #334, PR 1)', () => {
     expect(todo[0]!.textContent).toContain('$19k left. Part-billed 4 weeks ago.')
     const first = todo[0]!.querySelector('a') as HTMLAnchorElement
     expect(first.textContent).toBe('Open the bill')
-    expect(first.getAttribute('href')).toBe('/jobs?tab=billing')
+    expect(first.getAttribute('href')).toBe('/jobs?tab=stages&edit=j2101')
     expect(first.style.background).toBe('rgb(37, 99, 235)')
     expect(todo[1]!.textContent).toContain('Bill the rest of 2122 Cedar Bend')
     expect(todo[1]!.textContent).toContain('$13k left. Part-billed last week.')
@@ -109,7 +109,7 @@ describe('BridgeBillDesk on the step frame (punch list #334, PR 1)', () => {
     expect(screen.queryAllByTestId('bridge-bill-hand')).toHaveLength(0)
 
     expect(screen.getByTestId('bridge-bill-rule').textContent).toBe('4 of 6 bills went out the day the job finished.')
-    expect(screen.getByTestId('bridge-bill-open-billing').getAttribute('href')).toBe('/jobs?tab=billing')
+    expect(screen.getByTestId('bridge-bill-open-ready').getAttribute('href')).toBe('/jobs?tab=stages&stagesSection=readyToBill')
     // Nothing the window used to print whole is open yet.
     expect(screen.queryAllByTestId('bridge-bill-row')).toHaveLength(0)
     expect(screen.queryByTestId('bridge-bill-pipe')).toBeNull()
@@ -125,9 +125,10 @@ describe('BridgeBillDesk on the step frame (punch list #334, PR 1)', () => {
     expect(todo).toHaveLength(4)
     expect(todo[0]!.textContent).toContain('Bill 3 jobs marked ready to bill')
     expect(todo[0]!.textContent).toContain('$18.6k. The office already called them done.')
-    const openBilling = todo[0]!.querySelector('a') as HTMLAnchorElement
-    expect(openBilling.textContent).toBe('Open Billing')
-    expect(openBilling.style.background).toBe('rgb(37, 99, 235)')
+    const openReady = todo[0]!.querySelector('a') as HTMLAnchorElement
+    expect(openReady.textContent).toBe('Open Ready to bill')
+    expect(openReady.getAttribute('href')).toBe('/jobs?tab=stages&stagesSection=readyToBill')
+    expect(openReady.style.background).toBe('rgb(37, 99, 235)')
     expect(todo[1]!.textContent).toContain('Bill the rest of 2101 Ridgeway tower')
 
     expect(Array.from(screen.getByTestId('bridge-step-folds').querySelectorAll('button')).map((b) => b.textContent)).toEqual(['Every leak (5) ›', 'The pipe, this window ›', 'What waiting costs ›', 'How this is counted ›'])
@@ -152,7 +153,7 @@ describe('BridgeBillDesk on the step frame (punch list #334, PR 1)', () => {
     expect(rows[1]!.textContent).toContain('the bills cover $7k')
     const restDoor = rows[1]!.querySelector('a') as HTMLAnchorElement
     expect(restDoor.textContent).toBe('Bill the rest ›')
-    expect(restDoor.getAttribute('href')).toBe('/jobs?tab=billing')
+    expect(restDoor.getAttribute('href')).toBe('/jobs?tab=stages&edit=j2122')
 
     // The pipe: one fold is open at a time.
     fireEvent.click(screen.getByTestId('bridge-step-fold-pipe'))
@@ -172,7 +173,7 @@ describe('BridgeBillDesk on the step frame (punch list #334, PR 1)', () => {
     expect(fast[2]!.textContent).toContain('payments cover $6.1k of $9.7k')
     const billIt = fast[0]!.querySelector('a') as HTMLAnchorElement
     expect(billIt.textContent).toBe('Bill it ›')
-    expect(billIt.getAttribute('href')).toBe('/jobs?tab=billing')
+    expect(billIt.getAttribute('href')).toBe('/jobs?tab=stages&stagesSection=readyToBill')
     const score = screen.getByTestId('bridge-bill-scorecard')
     expect(score.textContent).toContain('4 of 6')
     expect(screen.queryByTestId('bridge-bill-table')).toBeNull()

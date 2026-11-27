@@ -3113,8 +3113,7 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
 - Dashboard, Materials, Jobs (Reports tab only), Bids (Bid Board, RFI, Change Order, Lien Release — `PRIMARY_BIDS_TABS` in [`bidsTabAccess.ts`](../src/lib/bids/bidsTabAccess.ts);
   a link to any other tab says so and lands on the board, and the board's Last contact date is read, not clicked;
   create/edit/delete — **their own bids only**), Estimates (**their own only**), Documents (**their jobs only**), Calendar, Checklist, Settings
-- **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Billing since the Reports-only gate;
-  Sub Sheet Ledger, Crew P&L)
+- **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Sub Sheet Ledger, Crew P&L)
 
 **Service Type Filtering**:
 - Devs can restrict a primary to specific service types in Materials via `primary_service_type_ids` on the user record (like `estimator_service_type_ids`)
@@ -3141,8 +3140,10 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
   a line over the list says so, `reportsScopeLine`);
   SELECT, INSERT, UPDATE on those reports (delete restricted to the owner and devs, behind the typed word DELETE since v2.6765).
   New-report job picker (`search_jobs_for_reports`, SECURITY DEFINER) still offers every job, and a report they write on any job stays theirs to read.
-- Billing, Sub Sheet Ledger, Crew P&L hidden (`Jobs.tsx` primary gate;
+- Sub Sheet Ledger, Crew P&L hidden (`Jobs.tsx` primary gate;
   `?tab=` deep links rewrite to `reports`)
+- The Jobs page has no Billing tab since v2.8698 (punch list #190, decision 5), for any role.
+  An old `?tab=billing` link passes the role gates first, so an office role lands on the Pipeline with one line saying so, and a primary or a superintendent lands on Reports (`retiredJobsTab` in `lib/jobs/jobsPageTabs.ts`).
 - Direct `jobs_ledger` reads (Edit Job, Documents → Jobs) return only Account-Man jobs (v2.2177)
 
 **Dashboard**:
@@ -3190,7 +3191,7 @@ before that, the 3-arg `can_access_project_row` the `projects` policy calls stil
 **Access**:
 - Dashboard, Projects, Workflow, Jobs, Bids, Materials, Calendar, Checklist, Settings, Tally
 - **Blocked**: Customers (direct), People, Templates, Prospects
-- **Jobs tabs**: Reports, Sub Sheet Ledger (hide Team Labor, Crew P&L, Stages, Billing)
+- **Jobs tabs**: Reports, Sub Sheet Ledger (hide Team Labor, Crew P&L, Stages)
 - **Bids tabs**: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release (hide Pricing, Cover Letter, Submission — and the doors into it: the board's Last contact date is read, not clicked, and By builder draws no View submissions glass)
 - **Customers**: Create from Bids modal only (like estimator)
 - **Assign people**: Yes (Workflow) — superintendent can assign subcontractors to stages
@@ -3249,7 +3250,7 @@ before that, the 3-arg `can_access_project_row` the `projects` policy calls stil
 - Cannot see projections or Ledger Total
 
 **Jobs**:
-- Reports, Sub Sheet Ledger tabs only (no Stages or Billing)
+- Reports, Sub Sheet Ledger tabs only (no Stages)
 - Team and Crew P&L tabs hidden
 
 **Bids**:

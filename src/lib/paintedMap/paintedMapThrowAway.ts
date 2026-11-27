@@ -66,5 +66,12 @@ export function paintedMapThrownAwayWords(gone: PaintedMapThrownAway): string {
   return lost.length > 0 ? `${kept} ${lost.join(' and ')} lost the map.` : kept
 }
 
+/**
+ * How long that sentence stays, in milliseconds. A toast's own life is five seconds, and a walk of 2026-11-27 found
+ * these words gone before they were read. The window that could say them is closed by then, so the toast is the one
+ * place that says where the copy is.
+ */
+export const PAINTED_MAP_THROWN_AWAY_TOAST_MS = 10_000
+
 /** What the screen says when the function answered nothing it can read. The map may or may not be gone, so it says to look. */
 export const PAINTED_MAP_THROW_AWAY_NO_ANSWER = 'The database gave no answer. Open the map again to see if it is still there.'

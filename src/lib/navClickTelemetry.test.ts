@@ -22,8 +22,8 @@ describe('resolveNavClick', () => {
   })
 
   it('keeps the search string so tab targets stay distinct', () => {
-    const root = domFrom('<div data-navtrack="quick-button"><a href="/jobs?tab=billing&newJob=true" id="hit">Job</a></div>')
-    expect(resolveNavClick(root.querySelector('#hit'))?.target).toBe('/jobs?tab=billing&newJob=true')
+    const root = domFrom('<div data-navtrack="quick-button"><a href="/jobs?tab=stages&newJob=true" id="hit">Job</a></div>')
+    expect(resolveNavClick(root.querySelector('#hit'))?.target).toBe('/jobs?tab=stages&newJob=true')
   })
 
   it('strips an absolute origin down to the app path', () => {

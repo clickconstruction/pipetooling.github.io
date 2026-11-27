@@ -311,7 +311,7 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
     const doors: BuildDeskDoor[] = [{ label: 'Open the job', href: `/jobs?tab=stages&edit=${d.id}` }]
     if (d.group === 'stalled') doors.unshift({ label: 'Open the Schedule', href: '/schedule-dispatch' })
     if (d.noPrice) doors.unshift({ label: 'Price the job', href: `/jobs?tab=stages&edit=${d.id}` })
-    if (d.group === 'finished') doors.unshift({ label: 'Bill it', href: '/jobs?tab=billing' })
+    if (d.group === 'finished') doors.unshift({ label: 'Bill it', href: `/jobs?tab=stages&edit=${d.id}` })
     const job = input.openJobs.find((j) => j.id === d.id)!
     return {
       ...rest,

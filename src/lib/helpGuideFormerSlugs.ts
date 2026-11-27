@@ -22,6 +22,8 @@ export const HELP_GUIDE_FORMER_SLUGS: ReadonlyArray<readonly [former: string, cu
   ['read-the-reminders-ladder-on-the-lien-desk', 'read-the-board-on-the-lien-desk'],
   // The HR Report card became Write someone up (v2.8174, punch list #410): one press under the Dashboard's row of squares.
   ['send-an-hr-report-about-someone', 'write-someone-up'],
+  // The Jobs page's Billing tab left (v2.8698, punch list #190): its guide went with it, and the billing guide says where each thing lives.
+  ['audit-job-bills-on-the-billing-tab', 'ready-to-bill-pipeline'],
 ]
 
 const CURRENT_BY_FORMER = new Map<string, string>(HELP_GUIDE_FORMER_SLUGS)

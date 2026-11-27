@@ -162,14 +162,15 @@ describe('typecheckHeap: the wiring', () => {
     for (const [name, script] of Object.entries(pkg.scripts)) {
       expect(script, `package.json's ${name} runs tsc -b or tsc -p tsconfig.json by its own heap`).not.toMatch(/max-old-space-size=\d+ node_modules\/typescript\/bin\/tsc (-b|-p tsconfig\.json)/)
     }
-    expect(read('scripts', 'tsc-build.mjs')).toContain("runTsc('build', ['-b', BUILD_PART.config, ...process.argv.slice(2)])")
-    expect(read('scripts', 'typecheck-queued.mjs')).toContain("runTscUnderHeap('typecheck', ['-p', part.config, ...process.argv.slice(2)])")
+    expect(read('scripts', 'tsc-build.mjs')).toContain("runTsc('build', ['-b', BUILD_PART.config, ...process.argv.slice(2)], { label: BUILD_PART.name })")
+    expect(read('scripts', 'typecheck-queued.mjs')).toContain("runTscUnderHeap('typecheck', ['-p', part.config, ...process.argv.slice(2)], { label: part.name })")
   })
 
   it('the runner sizes the heap from the machine, watches stderr and prints the death line last', () => {
     const runner = read('scripts', 'lib', 'runTsc.mjs')
     expect(runner).toContain('heapCapMb(totalMemBytes, process.env)')
-    expect(runner).toContain('`--max-old-space-size=${capMb}`, TSC_BIN, ...tscArgs')
+    expect(runner).toContain('const nodeArgs = [`--max-old-space-size=${capMb}`, ...hookNodeArgs(')
+    expect(runner).toContain('[...nodeArgs, TSC_BIN, ...tscArgs]')
     expect(runner).toContain("stdio: ['inherit', 'inherit', 'pipe']")
     expect(runner).toContain("child.on('close'")
     expect(runner).toContain('deathWords({ who, code, signal, heapDeath, capMb })')
