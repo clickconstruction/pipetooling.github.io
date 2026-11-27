@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, projectToWorldPx } from './clusterPins'
+import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, projectToWorldPx, CLUSTER_NOUN_UNNAMED, clusterTitle } from './clusterPins'
 
 const AUSTIN = { lat: 30.2672, lng: -97.7431 }
 function pin(id: string, dLat: number, dLng: number, color = '#eab308', ringColor: string | null = null) {
@@ -66,5 +66,19 @@ describe('clusterPins', () => {
     expect(clusterRadiusPx(500)).toBe(22)
     expect(clusterLabel(12)).toBe('12')
     expect(clusterLabel(150)).toBe('99+')
+  })
+})
+
+describe('a group’s own name (finding 327)', () => {
+  it('names what the map says it holds', () => {
+    expect(clusterTitle(12, 'permits')).toBe('12 permits here — click to zoom in')
+    expect(clusterTitle(3, 'jobs')).toBe('3 jobs here — click to zoom in')
+    expect(clusterTitle(5, 'bids')).toBe('5 bids here — click to zoom in')
+  })
+
+  it('a map that does not say gets pins, never bids', () => {
+    expect(CLUSTER_NOUN_UNNAMED).toBe('pins')
+    expect(clusterTitle(4)).toBe('4 pins here — click to zoom in')
+    expect(clusterTitle(4, '  ')).toBe('4 pins here — click to zoom in')
   })
 })

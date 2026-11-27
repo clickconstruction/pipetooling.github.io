@@ -51,7 +51,7 @@ vi.mock('../map/PinsMapGoogleCanvas', () => ({
 // The Leaflet canvas is lazy + heavy; stand in with a list of pin buttons that drive the same callbacks.
 vi.mock('../map/PinsMapCanvas', () => ({
   default: (p: PinsMapCanvasProps) => (
-    <div data-testid="canvas" data-anchor={p.anchor ? `${p.anchor.label}:${(p.anchor.ringMiles ?? []).join('/')}` : ''} data-pulse={p.pulseId ?? ''} data-scroll-gate={String(p.scrollZoomAfterClick ?? false)}>
+    <div data-testid="canvas" data-cluster-noun={p.clusterNoun ?? ''} data-anchor={p.anchor ? `${p.anchor.label}:${(p.anchor.ringMiles ?? []).join('/')}` : ''} data-pulse={p.pulseId ?? ''} data-scroll-gate={String(p.scrollZoomAfterClick ?? false)}>
       {p.pins.map((pin) => (
         <button key={pin.id} type="button" onClick={() => p.onSelect(pin.id)} data-color={pin.color} data-ring={pin.ringColor ?? ''}>
           pin {pin.title}
@@ -136,6 +136,8 @@ describe('BidBoardMapCard', () => {
     // an unsent bid past its due date wears the red ring
     expect(pinButton.getAttribute('data-ring')).toBe('#dc2626')
     expect(screen.getByTestId('canvas').getAttribute('data-anchor')).toBe('Office:25/50')
+    // A group of its pins is named for what it holds (finding 327): the canvases no longer say *bids* for every map.
+    expect(screen.getByTestId('canvas').getAttribute('data-cluster-noun')).toBe('bids')
     expect(screen.getByTitle(/Hide Unsent pins/).textContent).toContain('1')
     // the cold address went to the geocoder once, and its miss lands in the footer line
     await waitFor(() => expect(invokeMock).toHaveBeenCalledTimes(1))
