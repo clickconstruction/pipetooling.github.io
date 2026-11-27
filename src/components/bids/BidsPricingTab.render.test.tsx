@@ -445,6 +445,12 @@ describe('BidsPricingTab render smoke', () => {
     expect((screen.getByLabelText('The material markup, percent, on Water closet') as HTMLInputElement).title).toBe("The bid's markup. Type one for this row alone.")
     const taxed = screen.getAllByTitle('Taxed — press to make this row tax-free')
     expect(taxed.map((b) => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([['8.25% on material', 'true'], ['8.25% on material', 'true']])
+    // A part's margin wears the grid's own colours: 33% is amber, labor's 79% is green.
+    const marginColour = (tr: Element) => ([...tr.querySelectorAll('td')][8] as HTMLElement).style.color
+    const wc = [...grid().querySelectorAll('tbody tr')].slice(1, 4)
+    expect(wc.map(marginColour)).toEqual(['var(--text-amber-700)', 'var(--text-amber-700)', 'var(--text-green-600)'])
+    // The material box is the grid's quiet cell at the price column's width, dashed while the rule prices it.
+    expect([material.style.width, material.style.textAlign, material.style.borderBottomStyle]).toEqual(['6rem', 'right', 'dashed'])
   })
 
   it('the Sales tax line’s press makes a row tax-free, writes it on the row, and labor takes what is left', async () => {
@@ -483,6 +489,8 @@ describe('BidsPricingTab render smoke', () => {
       ' ¦ └Laborwhat is left ¦ 6 ¦ $100.00 ¦  ¦ $529.38 ¦ $3,176.25 ¦ $2,576.25 ¦ 81% ¦ ',
     ])
     expect(box().title).toBe('Typed for this row — clear it to go back to the rule')
+    // A typed price is underlined solid, in the cell's own width.
+    expect([box().style.width, box().style.borderBottomStyle]).toEqual(['6rem', 'solid'])
     // A typed material has no markup box: the rule is not what prices it.
     expect(screen.queryByLabelText('The material markup, percent, on Water closet')).toBeNull()
     db.writes = []
@@ -500,6 +508,9 @@ describe('BidsPricingTab render smoke', () => {
     fireEvent.click(screen.getByLabelText('Open the split of Water closet: material, tax, labor'))
     const box = () => screen.getByLabelText('The material markup, percent, on Water closet') as HTMLInputElement
     fireEvent.focus(box())
+    // The box shows what is being typed, as typed, and not the number it works out to.
+    fireEvent.change(box(), { target: { value: '040' } })
+    expect(box().value).toBe('040')
     fireEvent.change(box(), { target: { value: '40' } })
     expect(box().value).toBe('40')
     const at40 = [
