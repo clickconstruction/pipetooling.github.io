@@ -2234,6 +2234,7 @@ kernels in `src/lib/bridge/<stage>/`, `Bridge<Stage>Desk.tsx`): each card ends i
 since v2.5938 a row whose % sits below an older report reads both, `pctAbove`).
 Since v2.8723 (punch list #192, write A) a quiet job can be marked as waiting, with a reason: **Name why it waits ›** on a stalled row opens a small window with six reasons, and the job moves to a fifth group and a tile of its own, *Waits, with a reason*, out of Stalled and its money (`build/buildWaits.ts`, `BuildWaitWindow.tsx`, the table `job_build_waits` through `set_job_build_wait`).
 **Lift the wait ›** puts the job back, each change writes a line on the job's Activity, and the job wears a *Waits · … · since …* chip on its Stages card (`BuildWaitChip`, `useOpenBuildWaits`).
+Since v2.8726 the job window's Edit tab draws a **Waits** fact row under the status rail on a waiting job, *Since Oct 26 · the GC is not ready for us · Dana*, with **Lift the wait** for the office, so a wait ends without the Bridge (`JobBuildWaitFactRow`, `useJobBuildWait`).
 Bill's (`bill/billDesk.ts`, v2.5930) is *Where billing leaks*: the three leaks the reads prove — finished and never billed, a remainder behind a part-bill, hours on a job with no price — biggest first, each with how long it has sat and its door;
 since v2.5938 the bills marked billed by hand with no send on file sit apart under the leaks and off the headline (`billHandMarked`;
 a GC's pay application is recorded that way);

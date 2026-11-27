@@ -214,6 +214,8 @@ That line is a chip on the job's card on Jobs → Stages. The job's Activity als
 
 To end the wait, press **Waiting, with a reason** at the foot and open the job's row. Press **Lift the wait ›**. The job counts on the window again, and its Activity gets a second line.
 
+The office can end the wait without the Bridge. The job's Edit tab has a **Waits** row with {{button:outline|Lift the wait}}. Read [the Edit tab reads as rows](/help/job-window-tabs#the-edit-tab-reads-as-rows).
+
 ## Bill, broken down
 
 Press Bill's row on the pipe, or **Break it down** on the Bill card. A window opens on the finished work that has no bill. The headline says how many dollars that is. One line under the headline says what the office bills a week. The same line says how many weeks of work the pile is.

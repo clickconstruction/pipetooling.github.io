@@ -6,6 +6,7 @@
  * Every sentence here is held to the plain-words rule by `buildWaits.test.ts`. Pure: no React, no Supabase.
  */
 import { stageUsd } from '../stageFlow'
+import { plainSentence, val } from '../../valuesInPlace'
 
 export type BuildWaitReason = 'gc_not_ready' | 'materials' | 'inspection' | 'customer_hold' | 'weather' | 'other'
 
@@ -71,10 +72,26 @@ export function buildWaitChipWords(wait: BuildWait): string {
   return `Waits · ${buildWaitReasonWords(wait)} · since ${monthDay(wait.sinceYmd)}`
 }
 
-/** The job window's fact row: *Since Oct 26 · the GC is not ready for us · Dana*. A label. */
-export function buildWaitFactWords(wait: BuildWait): string {
+/**
+ * The job window's fact row (v2.8726): *Since Oct 26 · the GC is not ready for us · Dana*, with the day, the reason
+ * and the name each marked as a value, so the row draws them apart from the words (`ValueSentence`). A label.
+ */
+export function buildWaitFactSentence(wait: BuildWait): string {
   const who = firstName(wait.markedByName)
-  return `Since ${monthDay(wait.sinceYmd)} · ${buildWaitReasonWords(wait)}${who ? ` · ${who}` : ''}`
+  return `Since ${val('since', monthDay(wait.sinceYmd))} · ${val('reason', buildWaitReasonWords(wait))}${who ? ` · ${val('who', who)}` : ''}`
+}
+
+/** The fact row as plain words, for a place that cannot draw a value apart. A label. */
+export function buildWaitFactWords(wait: BuildWait): string {
+  return plainSentence(buildWaitFactSentence(wait))
+}
+
+/**
+ * The line a person typed beside a picked reason, for the fact row's second line; '' when they typed none. Another
+ * reason is the person's own words already, so it has no second line.
+ */
+export function buildWaitFactNote(wait: Pick<BuildWait, 'reason' | 'note'>): string {
+  return wait.reason === 'other' ? '' : wait.note.trim()
 }
 
 /**
@@ -124,6 +141,8 @@ export const BUILD_WAIT_WORDS = {
   lifting: 'Lifting…',
   /** The job window's fact row. */
   factLabel: 'Waits',
+  /** Said under the fact row when the lift did not go through and the database gave no reason of its own. */
+  liftFailed: 'The wait was not lifted. Try again in a minute.',
 } as const
 
 /** The toast once a job is marked waiting. */
