@@ -361,8 +361,9 @@ export function JobWindowDocumentsTab({
 
       <JobDocumentsContract job={job} onOverlayOpenChange={onOverlayOpenChange} />
 
-      {/* Papers before this job opens (step 2 of seven): the papers everyone signs before the job opens to them. The office's to set. */}
-      {isOfficeRole(role) ? <JobDocumentsRequiredPapers job={job} onOverlayOpenChange={onOverlayOpenChange} /> : null}
+      {/* Papers before this job opens (step 2 of seven): the papers everyone signs before the job opens to them. The office's to set.
+          The role and the job's names are for the dev's fold of taken-off papers on a ZZ test job (punch list #443, row 10). */}
+      {isOfficeRole(role) ? <JobDocumentsRequiredPapers job={job} role={role} onOverlayOpenChange={onOverlayOpenChange} /> : null}
 
       {/* Papers for this site (punch list #439): what outside companies were sent for the place this job is at. Drawn only when there is one. */}
       <JobDocumentsSitePapers job={job} />

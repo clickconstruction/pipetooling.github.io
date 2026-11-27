@@ -27,6 +27,7 @@ import {
   rosterSummary,
   signingLinksText,
 } from '../../lib/jobs/jobPapers'
+import type { JobPaperRemovedDeleteIo } from '../../lib/jobs/jobPaperRemovedDeleteIo'
 import { supabaseJobPapersIo, type JobPapersIo } from '../../lib/jobs/jobPapersIo'
 import { supabaseJobPaperProposalsIo, type JobPaperProposal, type JobPaperProposalsIo } from '../../lib/jobs/jobPaperProposalsIo'
 import { supabaseJobPaperSettingsIo, type JobPaperSettingsIo, type JobSettingsPaper } from '../../lib/jobs/jobPaperSettingsIo'
@@ -37,6 +38,7 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { documentsHeading, documentsQuietButton, documentsTd, documentsTh } from './jobDocumentsStyles'
 import { JobPaperProposalCard } from './JobPaperProposalCard'
 import { JobPaperSettingsWindow, type JobPaperSettingsTarget } from './JobPaperSettingsWindow'
+import { JobPapersTakenOff } from './JobPapersTakenOff'
 
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }
 const paperRow: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.2rem 0.6rem', minHeight: 44, border: '1px solid var(--border)', borderRadius: 7, background: 'var(--surface)' }
@@ -69,15 +71,25 @@ function OwnTick({ paperName, checked, disabled, onChange }: { paperName: string
  *
  * A form can be the GC's own (#389 step 7): a tick beside the form's line in the picker picks it marked, the unsaved
  * row keeps the tick, and a required form's row saves it in place. The mark changes what the GC's page says and no form.
+ *
+ * Under the papers a dev on a ZZ test job reads **Taken-off papers**, a folded line with **Delete…** (punch list #443,
+ * row 10, `JobPapersTakenOff`). It needs the viewer's role and the job's names, so a caller that hands neither draws none.
  */
 export function JobDocumentsRequiredPapers({
   job,
+  role,
   io = supabaseJobPapersIo,
   settingsIo = supabaseJobPaperSettingsIo,
   proposalsIo = supabaseJobPaperProposalsIo,
+  removedIo,
   onOverlayOpenChange,
 }: {
-  job: { id: string }
+  /** The job's names say whether it is a ZZ test job. A caller that knows only the id hands only the id. */
+  job: { id: string; job_name?: string | null; customer_name?: string | null }
+  /** The viewer's role, for the dev's fold of taken-off papers. Left out, the fold is not drawn. */
+  role?: string | null
+  /** The read and the delete of a test job's taken-off papers. */
+  removedIo?: JobPaperRemovedDeleteIo
   io?: JobPapersIo
   /** The reads and writes of a paper built from settings (#389 step 4). */
   settingsIo?: JobPaperSettingsIo
@@ -105,6 +117,8 @@ export function JobDocumentsRequiredPapers({
   // What the job's GC proposed and the office has not answered (step 6). At most one a paper.
   const [proposals, setProposals] = useState<JobPaperProposal[]>([])
   const [settingsTarget, setSettingsTarget] = useState<JobPaperSettingsTarget | null>(null)
+  // Counts the reads of the job's papers that landed. The dev's fold of taken-off papers reads again on each.
+  const [reads, setReads] = useState(0)
   const live = useRef(true)
   useEffect(() => {
     live.current = true
@@ -120,6 +134,7 @@ export function JobDocumentsRequiredPapers({
       if (!live.current) return
       setRoster(next)
       setFailure(null)
+      setReads((n) => n + 1)
       // Only a job with papers can hold one built from settings, so a job with none takes no second read.
       const built = next.papers.length > 0 ? await settingsIo.readSettingsPapers(job.id) : []
       if (live.current) setSettingsPapers(built)
@@ -468,6 +483,9 @@ export function JobDocumentsRequiredPapers({
               ) : null}
             </div>
           )}
+
+          {/* A dev on a ZZ test job alone: the papers taken off this job, each with Delete… (punch list #443, row 10). */}
+          <JobPapersTakenOff role={role} job={job} io={removedIo} readAgain={reads} onOverlayOpenChange={onOverlayOpenChange} />
 
           {error ? (
             <p style={{ ...muted, color: 'var(--text-red-700)' }} role="alert">
