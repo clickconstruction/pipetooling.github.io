@@ -65,6 +65,9 @@ import { LIEN_LAST_WORK_COLUMNS, lienLastWorkFactsOf, type LienLastWorkFacts } f
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
 import DemandRecordSendSheet from './DemandRecordSendSheet'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useModalStackEntry } from '../../hooks/useModalStackEntry'
+import { useUnsavedWords } from '../../hooks/useUnsavedWords'
+import { lienWindowEscapeAction } from '../../lib/jobs/lienWindowEscape'
 import { lienWindowHeadFoldWords, lienWindowHeadFolded, lienWindowHeadStartsFolded, lienWindowScrollIsPaper } from '../../lib/jobs/lienPhoneWindows'
 import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
@@ -1172,6 +1175,34 @@ export default function LienInstrumentsModal({
     [showToast, loadHistory, onRecorded],
   )
 
+  // Escape closes the window as the app's other windows close (finding 284, `lienWindowEscape.ts`). It stays where it
+  // is over words typed in one of its fields and not saved: the form's own Cancel and the × stand. A window over this
+  // one takes the key first: one on the app's window stack, one that marks the key handled, and any dialog drawn after
+  // this one on the page.
+  const windowShown = open && !!job && !!fields
+  const isTopmostWindow = useModalStackEntry(windowShown)
+  const overlayRef = useRef<HTMLDivElement | null>(null)
+  const unsavedWords = useUnsavedWords()
+  const writeInFlight = recordBusy || pdfBusy || emailBusy
+  // A save landed and the window read again: what its fields hold now is what is saved. A read that brings back the
+  // same records is no save, so the records are compared by what they are and not by the list's identity.
+  const savedRecords = `${filings.map((f) => `${f.id}:${f.voided_at ?? ''}`).join(',')}|${historyRows.map((r) => r.id).join(',')}`
+  useEffect(() => {
+    unsavedWords.forget()
+  }, [savedRecords, unsavedWords])
+  useEffect(() => {
+    if (!windowShown) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      const me = overlayRef.current
+      const covered = !!me && Array.from(document.querySelectorAll('[role="dialog"], [role="alertdialog"]')).some((d) => d !== me && (me.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0)
+      const action = lienWindowEscapeAction({ handled: e.defaultPrevented, topmost: isTopmostWindow() && !covered, busy: writeInFlight, unsavedWords: unsavedWords.hold() })
+      if (action === 'close') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [windowShown, isTopmostWindow, writeInFlight, unsavedWords, onClose])
+
   if (!open || !job || !fields) return null
 
   const liveHistory = liveDemandLetters(historyRows)
@@ -1235,6 +1266,7 @@ export default function LienInstrumentsModal({
 
   return (
     <div
+      ref={overlayRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="lien-instruments-title"
@@ -1269,6 +1301,7 @@ export default function LienInstrumentsModal({
         }}
         onClick={(e) => e.stopPropagation()}
         onScrollCapture={isMobile ? onPaperScroll : undefined}
+        {...unsavedWords.watch}
         data-lien-window-card
       >
         {recordSheetOpen ? (

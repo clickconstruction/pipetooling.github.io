@@ -883,6 +883,12 @@ last_updated: 2026-11-26
 > the preview and the Docsmit review stand it aside explicitly;
 > a signature pane counts only while on screen (its envelope still held with a leader and a viewer);
 > the backdrop click takes the same hold and the same signature wait.
+
+> **v2.8690 (Esc closes a job's Lien window):** `lib/jobs/lienWindowEscape.ts` — `lienWindowEscapeAction({ handled, topmost, busy, unsavedWords })` → `ignore` · `stay` · `close`, with `isWordField` and `fieldsHoldUnsavedWords`.
+> `LienInstrumentsModal` joins the modal stack (`useModalStackEntry`) while it is drawn and listens for keydown on window, topmost only, `defaultPrevented` skipped, and never while a dialog is drawn after it on the page.
+> It keeps no list of its forms: `hooks/useUnsavedWords.ts` watches the card, keeps what a typed field held when it was first touched, and holds the window while one still on the page reads otherwise.
+> A save that changes the job's filings or its demand letters drops what was kept.
+> The backdrop, the × and Cancel close it as before, with no hold.
 > Known: a desk popover left open under the run takes the first Esc.
 
 > **v2.7198 (the clock's own late notice, punch list #335 row 4):** `buildLienPayRunway` in `lienPayRunway.ts` has a state `late_notice`: every § 53.056 window on a sub job closed with none sent and the affidavit's day still ahead (v2.4708).
