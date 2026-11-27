@@ -11,11 +11,13 @@ import {
   TURNED_OFF_TOAST,
   canReadSecrecy,
   canTurnSecrecy,
+  jobSecrecyDoor,
   liveSecrecy,
   onCountSentences,
   onSinceSentence,
   parseSecrecyPreview,
   previewValues,
+  secrecyLead,
   secrecyNotThereYet,
   secrecyPapers,
   turnOffConfirm,
@@ -44,6 +46,25 @@ describe('who presses and who reads', () => {
     expect(canReadSecrecy('estimator')).toBe(true)
     expect(canReadSecrecy('assistant')).toBe(true)
     expect(['primary', 'superintendent', 'subcontractor', 'helpers', null].map(canReadSecrecy)).toEqual([false, false, false, false, false])
+  })
+})
+
+describe('a job’s door (4c)', () => {
+  it('a job in a development reads the development’s secrecy and presses nothing', () => {
+    expect(jobSecrecyDoor({ development_id: 'dev-1', job_address: '12 Sample St' })).toEqual({ site: { developmentId: 'dev-1' }, mode: 'reads' })
+  })
+  it('a lone job’s site is its address, and its tab is the door', () => {
+    expect(jobSecrecyDoor({ development_id: null, job_address: '  12 Sample St ' })).toEqual({ site: { address: '12 Sample St' }, mode: 'door' })
+  })
+  it('a job with no development and no address has no site', () => {
+    expect(jobSecrecyDoor({ development_id: null, job_address: '   ' })).toBeNull()
+    expect(jobSecrecyDoor({})).toBeNull()
+  })
+  it('the lead says which jobs: here on a development, at this address on a lone job', () => {
+    expect(secrecyLead({ developmentId: 'dev-1' })).toBe(SITE_SECRECY_WORDS.lead)
+    expect(secrecyLead({ address: '12 Sample St' })).toMatch(/every job at this address/)
+    expect(plainWordsFailures(SITE_SECRECY_WORDS.leadAddress)).toEqual([])
+    expect(plainWordsFailures(SITE_SECRECY_WORDS.onDevelopment)).toEqual([])
   })
 })
 

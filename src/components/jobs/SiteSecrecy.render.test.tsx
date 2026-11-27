@@ -148,6 +148,42 @@ describe('SiteSecrecy', () => {
     expect(within(on).queryByRole('button')).toBeNull()
   })
 
+  it('on a lone job the site is its address, the lead says so, and the neighbour is told when it turns on', async () => {
+    const lone = { address: '12 Sample St' }
+    const readLive = vi.fn<SiteSecrecyIo['readLive']>(async () => null)
+    const io = fakeIo({ readLive })
+    const onChanged = vi.fn()
+    renderWithProviders(<SiteSecrecy site={lone} role="assistant" boxed={false} onChanged={onChanged} io={io} testId="job-site-secrecy" />)
+    const block = await screen.findByTestId('job-site-secrecy')
+    expect(within(block).getByText(/every job at this address/)).toBeTruthy()
+    fireEvent.click(within(block).getByRole('button', { name: 'Turn on secrecy for this site' }))
+    fireEvent.click((await screen.findAllByRole('radio'))[1]!)
+    readLive.mockResolvedValue({ ...ON, development_id: null, address_key: '12 sample street', address: '12 Sample St' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn it on and ask 12 people to sign' }))
+    await waitFor(() => expect(io.turnOn).toHaveBeenCalledWith(lone, 'book-sec'))
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
+    expect(io.preview).toHaveBeenCalledWith(lone)
+  })
+
+  it('a job in a development reads the on state with no press, and draws nothing while it is off', async () => {
+    const { unmount, container } = renderWithProviders(<SiteSecrecy site={SITE} mode="reads" role="assistant" io={fakeIo()} testId="job-site-secrecy" />)
+    await waitFor(() => expect(container.querySelector('[data-testid="job-site-secrecy"]')).toBeNull())
+    unmount()
+    const io = fakeIo({ readLive: vi.fn(async () => ON) })
+    renderWithProviders(<SiteSecrecy site={SITE} mode="reads" role="assistant" io={io} testId="job-site-secrecy" />)
+    const block = await screen.findByTestId('job-site-secrecy')
+    expect(within(block).getByText('ZZ Test site secrecy paper')).toBeTruthy()
+    expect(within(block).getByText('This job’s development has secrecy on. Turn it off on the development’s page.')).toBeTruthy()
+    expect(within(block).queryByRole('button')).toBeNull()
+  })
+
+  it('a block that only reads says nothing of a read that failed', async () => {
+    const io = fakeIo({ readLive: vi.fn(async () => Promise.reject(new Error('offline'))) })
+    const { container } = renderWithProviders(<SiteSecrecy site={SITE} mode="reads" role="assistant" io={io} testId="job-site-secrecy" />)
+    await waitFor(() => expect(io.readLive).toHaveBeenCalled())
+    expect(container.querySelector('[data-testid="job-site-secrecy"]')).toBeNull()
+  })
+
   it('anyone else sees nothing, and nothing is read for them', async () => {
     for (const role of ['primary', 'superintendent', 'subcontractor', 'helpers', null]) {
       const io = fakeIo()

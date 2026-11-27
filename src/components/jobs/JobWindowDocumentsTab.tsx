@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { formatAiaDate } from '../../lib/aiaG702G703Template'
@@ -21,6 +21,8 @@ import { JobDocumentsBills } from './JobDocumentsBills'
 import { JobDocumentsContract } from './JobDocumentsContract'
 import { JobDocumentsRequiredPapers } from './JobDocumentsRequiredPapers'
 import { JobDocumentsSitePapers } from './JobDocumentsSitePapers'
+import { SiteSecrecy } from './SiteSecrecy'
+import { jobSecrecyDoor } from '../../lib/addresses/siteSecrecy'
 import { JobDocumentsLienPaper } from './JobDocumentsLienPaper'
 import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
@@ -90,6 +92,10 @@ export function JobWindowDocumentsTab({
 }) {
   const { role, profileName } = useAuth()
   const { showToast } = useToastContext()
+  // Where this job's secrecy comes from: its development, read here with no press, or its own address, with the presses.
+  const secrecyDoor = useMemo(() => jobSecrecyDoor({ development_id: job.development_id, job_address: job.job_address }), [job.development_id, job.job_address])
+  // Raised when the site's secrecy is turned on or off, so the job's papers above read again.
+  const [papersKey, setPapersKey] = useState(0)
   const [apps, setApps] = useState<SavedPayApplication[] | null>(null)
   // Everything sent from the job, read once: the pay application workbooks go under their applications, the rest to Sent from this job.
   const [sent, setSent] = useState<SentCopy[] | null>(null)
@@ -363,7 +369,11 @@ export function JobWindowDocumentsTab({
 
       {/* Papers before this job opens (step 2 of seven): the papers everyone signs before the job opens to them. The office's to set.
           The role and the job's names are for the dev's fold of taken-off papers on a ZZ test job (punch list #443, row 10). */}
-      {isOfficeRole(role) ? <JobDocumentsRequiredPapers job={job} role={role} onOverlayOpenChange={onOverlayOpenChange} /> : null}
+      {isOfficeRole(role) ? <JobDocumentsRequiredPapers job={job} role={role} onOverlayOpenChange={onOverlayOpenChange} reloadKey={papersKey} /> : null}
+
+      {/* Secrecy on this site (punch list #439, piece 4): a lone job's site is its address, and this tab is its door. A job in a
+          development reads the development's secrecy here and presses nothing. The papers above read again when it changes. */}
+      {secrecyDoor ? <SiteSecrecy site={secrecyDoor.site} mode={secrecyDoor.mode} role={role} boxed={false} onChanged={() => setPapersKey((n) => n + 1)} testId="job-site-secrecy" /> : null}
 
       {/* Papers for this site (punch list #439): what outside companies were sent for the place this job is at. Drawn only when there is one. */}
       <JobDocumentsSitePapers job={job} />

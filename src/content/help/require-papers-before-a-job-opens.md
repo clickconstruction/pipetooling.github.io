@@ -187,6 +187,14 @@ On a job, the site's paper has no **Take off**. Open the development's page and 
 
 An estimator can read the block. Only the office can turn secrecy on or off.
 
+### A job that is in no development
+
+A job in no development has the same block on its own Documents tab. Find **Secrecy on this site** under **Papers before this job opens**. The site is the job's address.
+
+Turn it on the same way. Every job at that address takes the paper. So does a job at another spelling of the address, once the two are answered **Same place**.
+
+A job in a development shows the block only while its development has secrecy on. The block has no press there. Open the development's page to turn it off.
+
 ## Change a paper's words
 
 The job keeps the words the paper had on the day you required it. Editing the Contract Book later does not change them. To use new words, take the paper off and add it again. Everyone then signs the new words.

@@ -14,6 +14,7 @@ import {
   onCountSentences,
   onSinceSentence,
   previewValues,
+  secrecyLead,
   secrecyPapers,
   turnOffConfirm,
   turnOnButton,
@@ -39,6 +40,7 @@ import { ValueLine, ValueLines, ValueSentence, WorkedOutValue } from '../valuesI
  */
 
 const box: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.5rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.75rem 0.9rem' }
+const plain: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.5rem' }
 const heading: CSSProperties = { margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-strong)' }
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }
 const panel: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.65rem' }
@@ -55,17 +57,26 @@ type Read = { kind: 'reading' } | { kind: 'not-there' } | { kind: 'read'; row: S
 export interface SiteSecrecyProps {
   site: SecrecySite
   role: string | null | undefined
+  /**
+   * `door`, the default, offers the presses. `reads` draws the on state alone with no press, and nothing while the
+   * site is off: a job in a development, whose door is the development's page.
+   */
+  mode?: 'door' | 'reads'
+  /** False on a job's Documents tab, whose sections carry no box of their own. */
+  boxed?: boolean
+  /** Told after secrecy was turned on or off, so a neighbour that lists the job's papers reads again. */
+  onChanged?: () => void
   /** The reads and presses. A smoke hands a fake. */
   io?: SiteSecrecyIo
   testId?: string
 }
 
-export function SiteSecrecy({ site, role, io = supabaseSiteSecrecyIo, testId = 'site-secrecy' }: SiteSecrecyProps) {
+export function SiteSecrecy({ site, role, mode = 'door', boxed = true, onChanged, io = supabaseSiteSecrecyIo, testId = 'site-secrecy' }: SiteSecrecyProps) {
   const headingId = useId()
   const confirmDialog = useConfirmDialog()
   const { showToast } = useToastContext()
   const canRead = canReadSecrecy(role)
-  const canTurn = canTurnSecrecy(role)
+  const canTurn = canTurnSecrecy(role) && mode === 'door'
   // The site as one string, so the reads run again only when it changes.
   const siteKey = 'developmentId' in site ? `d:${site.developmentId}` : `a:${site.address}`
   const siteOf = useRef(site)
@@ -152,13 +163,14 @@ export function SiteSecrecy({ site, role, io = supabaseSiteSecrecyIo, testId = '
       showToast(turnedOnToast(made.jobs), 'success')
       close()
       jobPapersChanged()
+      onChanged?.()
       setAttempt((n) => n + 1)
     } catch (e) {
       if (live.current) setError(formatErrorMessage(e, 'Secrecy could not be turned on.'))
     } finally {
       if (live.current) setBusy(null)
     }
-  }, [picked, busy, io, showToast, close])
+  }, [picked, busy, io, showToast, close, onChanged])
 
   const turnOff = useCallback(async () => {
     if (!row || busy) return
@@ -171,22 +183,25 @@ export function SiteSecrecy({ site, role, io = supabaseSiteSecrecyIo, testId = '
       if (!live.current) return
       showToast(TURNED_OFF_TOAST, 'success')
       jobPapersChanged()
+      onChanged?.()
       setAttempt((n) => n + 1)
     } catch (e) {
       if (live.current) setError(formatErrorMessage(e, 'Secrecy could not be turned off.'))
     } finally {
       if (live.current) setBusy(null)
     }
-  }, [row, busy, counts, confirmDialog, io, showToast])
+  }, [row, busy, counts, confirmDialog, io, showToast, onChanged])
 
   if (!canRead || read.kind === 'not-there' || read.kind === 'reading') return null
+  // A block that only reads says nothing while the site is off, and nothing of a read that failed: the door is elsewhere.
+  if (mode === 'reads' && !row) return null
 
   const button = turnOnButton(preview, picked != null, busy === 'on')
   const reach = preview ? previewValues(preview) : null
   const onCounts = counts ? onCountSentences(counts) : null
 
   return (
-    <section aria-labelledby={headingId} data-testid={testId} data-secrecy={row ? 'on' : read.kind === 'failed' ? 'unread' : 'off'} style={box}>
+    <section aria-labelledby={headingId} data-testid={testId} data-secrecy={row ? 'on' : read.kind === 'failed' ? 'unread' : 'off'} style={boxed ? box : plain}>
       <h3 id={headingId} style={heading}>
         {W.heading}
       </h3>
@@ -220,7 +235,7 @@ export function SiteSecrecy({ site, role, io = supabaseSiteSecrecyIo, testId = '
               {busy === 'off' ? W.turningOff : W.turnOff}
             </button>
           ) : (
-            <p style={muted}>{W.estimator}</p>
+            <p style={muted}>{mode === 'reads' ? W.onDevelopment : W.estimator}</p>
           )}
         </>
       ) : (
@@ -230,7 +245,7 @@ export function SiteSecrecy({ site, role, io = supabaseSiteSecrecyIo, testId = '
               <WorkedOutValue>{W.off}</WorkedOutValue>
             </ValueLine>
           </ValueLines>
-          <p style={muted}>{W.lead}</p>
+          <p style={muted}>{secrecyLead(site)}</p>
           {!canTurn ? (
             <p style={muted}>{W.estimator}</p>
           ) : !open ? (

@@ -96,8 +96,12 @@ export const SITE_SECRECY_WORDS = {
   heading: 'Secrecy on this site',
   off: 'Off',
   on: 'On',
-  /** Under the off state: what turning it on does, in two short sentences. */
+  /** Under the off state on a development's page: what turning it on does, in two short sentences. */
   lead: 'Turn it on and every job here stays shut to our own people until they sign one paper. Each person signs once for the whole site.',
+  /** The same on a lone job's Documents tab, where the site is the job's address. */
+  leadAddress: 'Turn it on and every job at this address stays shut to our own people until they sign one paper. Each person signs once for the whole site.',
+  /** On a job in a development: the block reads, and the presses are on the development's page. */
+  onDevelopment: 'This job’s development has secrecy on. Turn it off on the development’s page.',
   turnOn: 'Turn on secrecy for this site',
   turnOff: 'Turn it off…',
   panelTitle: 'Turn on secrecy for this site',
@@ -117,6 +121,22 @@ export const SITE_SECRECY_WORDS = {
   /** The label of each value line. */
   labels: { state: 'Secrecy', paper: 'Paper', jobs: 'Jobs', shut: 'Jobs that shut', people: 'People asked', signed: 'Signed' },
 } as const
+
+/** The off state's lead: a development's jobs, or the jobs at one address. */
+export function secrecyLead(site: SecrecySite): string {
+  return 'developmentId' in site ? SITE_SECRECY_WORDS.lead : SITE_SECRECY_WORDS.leadAddress
+}
+
+/**
+ * Where a job's Documents tab gets its block from (4c). A job in a development reads the development's secrecy and
+ * presses nothing: that door is the development's page. A lone job's site is its address, and its tab is the door.
+ * A job with neither has no site.
+ */
+export function jobSecrecyDoor(job: { development_id?: string | null; job_address?: string | null }): { site: SecrecySite; mode: 'door' | 'reads' } | null {
+  if (job.development_id) return { site: { developmentId: job.development_id }, mode: 'reads' }
+  const address = (job.job_address ?? '').trim()
+  return address ? { site: { address }, mode: 'door' } : null
+}
 
 /** The last press of the Turn on panel: it names the act and how many people it asks. Dead until a paper is picked. */
 export function turnOnButton(preview: SecrecyPreview | null, pickedPaper: boolean, busy: boolean): { label: string; dead: boolean } {
