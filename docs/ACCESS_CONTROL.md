@@ -746,6 +746,7 @@ The press, the check, the settings read and a `sweep` from a person take a staff
 `set` and the Where files go tab the four without the estimator (`canSetWhereFilesGo`);
 never a training account or a digital twin (403).
 The cron's `sweep` comes with `X-Cron-Secret`.
+Since v2.8681 (punch list #443, row 18) the `trash` body is a dev's alone: it moves a deleted ZZ test job's own folder to Drive's trash, reads the job from Deleted records and never from the caller, and refuses every other role with 403 `dev_only`.
 **The company folder** (v2.6309, `drive_company_folder_id`) and **the Fleet folder** (`drive_fleet_root_folder_id`, v2.6556;
 `set.fleet`, and `make: 'fleet'`, which has the app make *PipeTooling Fleet* itself, v2.6564, both behind `SETTINGS_ROLES`): set on Where files go by the same four through `set`;
 its files list to every office role through `drive-link`'s `list_company` (a training account too, a read), and **Upload a file** on Documents → Company puts into it for dev · master · assistant · controller only (`COMPANY_PUT_ROLES`, `canUploadCompanyFiles`), the owner's word of 2026-11-01;
