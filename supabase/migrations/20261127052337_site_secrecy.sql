@@ -19,6 +19,7 @@ SET lock_timeout = '3s';
 --   4. site_secrecy_keys, site_secrecy_sync, site_paper_covers_user: internal.
 --   5. site_secrecy_preview, site_secrecy_turn_on, site_secrecy_turn_off: the office's three presses.
 --   6. Two triggers: a job made at or moved to or from a site, and a Same place answer kept or undone.
+--      Made right after the table, ahead of the column, for the order of the locks.
 --   7. Nine functions of the gate restated, each from its newest definition, each with the site's rule added.
 --
 -- The person's calls (2026-11-27, relayed): one signature a person for the whole site; the office picks our own
@@ -130,6 +131,82 @@ CREATE POLICY site_secrecy_read ON public.site_secrecy FOR SELECT TO authenticat
 REVOKE ALL ON public.site_secrecy FROM anon;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.site_secrecy FROM authenticated;
 GRANT SELECT ON public.site_secrecy TO authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+-- 6) The two triggers. They are made here, ahead of sections 3 to 5, for the order of the locks. CREATE TRIGGER on
+-- jobs_ledger waits for the job writes in flight, three seconds at most. Section 3 then takes the one lock a read of
+-- a job feels: jobs_shut_to_me looks at job_required_papers for every signed-in read of a fenced table. Made in this
+-- order, the wait is over before that lock is asked for, and a job save in flight cannot deadlock with this file.
+-- A trigger function is plpgsql, so it may name site_secrecy_sync before section 4 makes it. Nothing fires before the
+-- file commits.
+
+-- A job made at, moved to or moved away from a site. It reads nothing while no site is on, and it never refuses a
+-- job's save: a sync that fails is logged, and the next turn-on or answer brings the site in line.
+CREATE OR REPLACE FUNCTION public.site_secrecy_on_job_change()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+SET row_security = off
+AS $$
+DECLARE
+  v_site uuid;
+BEGIN
+  IF TG_OP = 'UPDATE' AND NEW.job_address IS NOT DISTINCT FROM OLD.job_address AND NEW.development_id IS NOT DISTINCT FROM OLD.development_id THEN
+    RETURN NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.site_secrecy s WHERE s.turned_off_at IS NULL) THEN
+    RETURN NULL;
+  END IF;
+  BEGIN
+    FOR v_site IN SELECT s.id FROM public.site_secrecy s WHERE s.turned_off_at IS NULL LOOP
+      PERFORM public.site_secrecy_sync(v_site, NEW.id);
+    END LOOP;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'site_secrecy: job % was not brought in line: %', NEW.id, SQLERRM;
+  END;
+  RETURN NULL;
+END;
+$$;
+
+COMMENT ON FUNCTION public.site_secrecy_on_job_change() IS
+  'Punch list #439, piece 4: after a job is made, or its address or development changes, each site that is on is brought in line for that one job. It reads one small table and stops while no site is on. It never refuses the job''s save.';
+REVOKE ALL ON FUNCTION public.site_secrecy_on_job_change() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS site_secrecy_job_sync ON public.jobs_ledger;
+CREATE TRIGGER site_secrecy_job_sync
+  AFTER INSERT OR UPDATE OF job_address, development_id ON public.jobs_ledger
+  FOR EACH ROW EXECUTE FUNCTION public.site_secrecy_on_job_change();
+
+-- A Same place answer kept, changed or undone: the keys of a site may have changed, so each address site that is on
+-- is brought in line with every job.
+CREATE OR REPLACE FUNCTION public.site_secrecy_on_answer_change()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+SET row_security = off
+AS $$
+DECLARE
+  v_site uuid;
+BEGIN
+  BEGIN
+    FOR v_site IN SELECT s.id FROM public.site_secrecy s WHERE s.turned_off_at IS NULL AND s.address_key IS NOT NULL LOOP
+      PERFORM public.site_secrecy_sync(v_site, NULL);
+    END LOOP;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'site_secrecy: the sites were not brought in line after an answer: %', SQLERRM;
+  END;
+  RETURN NULL;
+END;
+$$;
+
+COMMENT ON FUNCTION public.site_secrecy_on_answer_change() IS
+  'Punch list #439, piece 4: after a Same place answer is kept, changed or undone, each address site that is on is brought in line with every job. It never refuses the answer.';
+REVOKE ALL ON FUNCTION public.site_secrecy_on_answer_change() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS site_secrecy_answer_sync ON public.address_place_answers;
+CREATE TRIGGER site_secrecy_answer_sync
+  AFTER INSERT OR UPDATE OR DELETE ON public.address_place_answers
+  FOR EACH STATEMENT EXECUTE FUNCTION public.site_secrecy_on_answer_change();
 
 -- ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 -- 3) The site a job's required paper was written for. Null on every row there is, and on every row a job requires
@@ -483,77 +560,6 @@ COMMENT ON FUNCTION public.site_secrecy_turn_off(uuid) IS
   'Punch list #439, piece 4: the office turns secrecy off for a site. The site''s rows come off its jobs, which open at once, and every signed copy stays on its person''s file. Office only, never a twin.';
 REVOKE EXECUTE ON FUNCTION public.site_secrecy_turn_off(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.site_secrecy_turn_off(uuid) TO authenticated, service_role;
-
--- ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
--- 6) The two triggers.
-
--- A job made at, moved to or moved away from a site. It reads nothing while no site is on, and it never refuses a
--- job's save: a sync that fails is logged, and the next turn-on or answer brings the site in line.
-CREATE OR REPLACE FUNCTION public.site_secrecy_on_job_change()
-RETURNS trigger
-LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public
-SET row_security = off
-AS $$
-DECLARE
-  v_site uuid;
-BEGIN
-  IF TG_OP = 'UPDATE' AND NEW.job_address IS NOT DISTINCT FROM OLD.job_address AND NEW.development_id IS NOT DISTINCT FROM OLD.development_id THEN
-    RETURN NULL;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.site_secrecy s WHERE s.turned_off_at IS NULL) THEN
-    RETURN NULL;
-  END IF;
-  BEGIN
-    FOR v_site IN SELECT s.id FROM public.site_secrecy s WHERE s.turned_off_at IS NULL LOOP
-      PERFORM public.site_secrecy_sync(v_site, NEW.id);
-    END LOOP;
-  EXCEPTION WHEN OTHERS THEN
-    RAISE WARNING 'site_secrecy: job % was not brought in line: %', NEW.id, SQLERRM;
-  END;
-  RETURN NULL;
-END;
-$$;
-
-COMMENT ON FUNCTION public.site_secrecy_on_job_change() IS
-  'Punch list #439, piece 4: after a job is made, or its address or development changes, each site that is on is brought in line for that one job. It reads one small table and stops while no site is on. It never refuses the job''s save.';
-REVOKE ALL ON FUNCTION public.site_secrecy_on_job_change() FROM PUBLIC, anon, authenticated;
-
-DROP TRIGGER IF EXISTS site_secrecy_job_sync ON public.jobs_ledger;
-CREATE TRIGGER site_secrecy_job_sync
-  AFTER INSERT OR UPDATE OF job_address, development_id ON public.jobs_ledger
-  FOR EACH ROW EXECUTE FUNCTION public.site_secrecy_on_job_change();
-
--- A Same place answer kept, changed or undone: the keys of a site may have changed, so each address site that is on
--- is brought in line with every job.
-CREATE OR REPLACE FUNCTION public.site_secrecy_on_answer_change()
-RETURNS trigger
-LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public
-SET row_security = off
-AS $$
-DECLARE
-  v_site uuid;
-BEGIN
-  BEGIN
-    FOR v_site IN SELECT s.id FROM public.site_secrecy s WHERE s.turned_off_at IS NULL AND s.address_key IS NOT NULL LOOP
-      PERFORM public.site_secrecy_sync(v_site, NULL);
-    END LOOP;
-  EXCEPTION WHEN OTHERS THEN
-    RAISE WARNING 'site_secrecy: the sites were not brought in line after an answer: %', SQLERRM;
-  END;
-  RETURN NULL;
-END;
-$$;
-
-COMMENT ON FUNCTION public.site_secrecy_on_answer_change() IS
-  'Punch list #439, piece 4: after a Same place answer is kept, changed or undone, each address site that is on is brought in line with every job. It never refuses the answer.';
-REVOKE ALL ON FUNCTION public.site_secrecy_on_answer_change() FROM PUBLIC, anon, authenticated;
-
-DROP TRIGGER IF EXISTS site_secrecy_answer_sync ON public.address_place_answers;
-CREATE TRIGGER site_secrecy_answer_sync
-  AFTER INSERT OR UPDATE OR DELETE ON public.address_place_answers
-  FOR EACH STATEMENT EXECUTE FUNCTION public.site_secrecy_on_answer_change();
 
 -- ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 -- 7) The gate's functions, each restated from its newest definition with the site's rule added. A row whose
