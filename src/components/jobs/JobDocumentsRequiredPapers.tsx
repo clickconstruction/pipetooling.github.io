@@ -11,6 +11,7 @@ import {
   type PickablePaper,
   GC_OWN_FORM,
   NO_PAPERS_WORDS,
+  SITE_PAPER_WORDS,
   canBeGcOwn,
   cellFor,
   cellWords,
@@ -361,9 +362,16 @@ export function JobDocumentsRequiredPapers({
                         Settings
                       </button>
                     ) : null}
-                    <button type="button" style={{ ...linkPress, color: 'var(--text-muted)', fontWeight: 500 }} disabled={busy != null} onClick={() => void remove(p)} aria-label={`Take ${p.paperName} off`}>
-                      {busy === `remove:${p.id}` ? 'Taking off…' : 'Take off'}
-                    </button>
+                    {p.siteSecrecyId ? (
+                      // A site's paper is on every job of the site: it comes off with the site, so this row has no press.
+                      <span style={muted} data-job-paper-site="">
+                        {SITE_PAPER_WORDS}
+                      </span>
+                    ) : (
+                      <button type="button" style={{ ...linkPress, color: 'var(--text-muted)', fontWeight: 500 }} disabled={busy != null} onClick={() => void remove(p)} aria-label={`Take ${p.paperName} off`}>
+                        {busy === `remove:${p.id}` ? 'Taking off…' : 'Take off'}
+                      </button>
+                    )}
                   </span>
                 </div>
                 {set && proposal ? (
@@ -549,10 +557,13 @@ export function JobDocumentsRequiredPapers({
                           <small style={{ color: 'var(--text-muted)' }}>{personRoleLabel(person)}</small>
                         </td>
                         {papers.map((p) => {
-                          const words = cellWords(cellFor(person, p.id))
+                          const cell = cellFor(person, p.id)
+                          const words = cellWords(cell)
+                          // Signed is green and owed is amber. A person who is not asked owes nothing, so their chip is plain.
+                          const tone = words.signed ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' } : cell.asked === false ? { background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' } : { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
                           return (
                             <td key={p.id} style={documentsTd} data-label={p.paperName}>
-                              <span style={{ ...stateChip, ...(words.signed ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' } : { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }) }}>{words.label}</span>
+                              <span style={{ ...stateChip, ...tone }}>{words.label}</span>
                               {words.day ? <span style={{ ...muted, marginLeft: '0.35rem', fontVariantNumeric: 'tabular-nums' }}>{words.day}</span> : null}
                             </td>
                           )

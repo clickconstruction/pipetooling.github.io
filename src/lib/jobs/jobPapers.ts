@@ -15,6 +15,11 @@ export interface JobRequiredPaper {
   paperName: string
   isForm: boolean
   bookDocumentId: string | null
+  /**
+   * The site whose secrecy put this paper on the job (punch list #439, piece 4), or null for a paper the job
+   * requires by itself. A site's paper is signed once for every job of the site, and comes off with the site.
+   */
+  siteSecrecyId?: string | null
 }
 
 export interface JobPaperCell {
@@ -23,6 +28,11 @@ export interface JobPaperCell {
   status: JobPaperStatus
   /** The day it was signed, `YYYY-MM-DD`. */
   signedAt: string | null
+  /**
+   * False when this person is not asked this paper: a sub on a site's paper, since a sub is an outside company
+   * (punch list #439, piece 4). Such a cell is never owed. Absent from an older roster, where everyone is asked.
+   */
+  asked?: boolean
 }
 
 export type JobPaperWay = 'office' | 'crew' | 'sub'
@@ -92,7 +102,7 @@ export function parseJobPapersRoster(raw: unknown): JobPapersRoster {
     papers: list(r.papers)
       .map((p) => record(p))
       .filter((p) => text(p.id))
-      .map((p) => ({ id: text(p.id), paperName: text(p.paper_name), isForm: p.is_form === true, bookDocumentId: textOrNull(p.book_document_id) })),
+      .map((p) => ({ id: text(p.id), paperName: text(p.paper_name), isForm: p.is_form === true, bookDocumentId: textOrNull(p.book_document_id), siteSecrecyId: textOrNull(p.site_secrecy_id) })),
     people: list(r.people)
       .map((p) => record(p))
       .filter((p) => text(p.key))
@@ -108,7 +118,8 @@ export function parseJobPapersRoster(raw: unknown): JobPapersRoster {
         papers: list(p.papers)
           .map((c) => record(c))
           .filter((c) => text(c.required_paper_id))
-          .map((c) => ({ requiredPaperId: text(c.required_paper_id), documentId: textOrNull(c.document_id), status: statusOf(c.status), signedAt: textOrNull(c.signed_at) })),
+          // Only `false` itself says a person is not asked: an older roster has no such word, and everyone on it is asked.
+          .map((c) => ({ requiredPaperId: text(c.required_paper_id), documentId: textOrNull(c.document_id), status: statusOf(c.status), signedAt: textOrNull(c.signed_at), asked: c.asked !== false })),
       })),
   }
 }
@@ -131,9 +142,12 @@ export function cellFor(person: JobPaperPerson, requiredPaperId: string): JobPap
   return person.papers.find((c) => c.requiredPaperId === requiredPaperId) ?? { requiredPaperId, documentId: null, status: 'none', signedAt: null }
 }
 
-/** The required papers this person has not signed, in the job's order. */
+/** The required papers this person has not signed, in the job's order. A paper they are not asked is never owed. */
 export function owedPapers(person: JobPaperPerson, papers: readonly JobRequiredPaper[]): JobRequiredPaper[] {
-  return papers.filter((p) => cellFor(person, p.id).status !== 'signed')
+  return papers.filter((p) => {
+    const cell = cellFor(person, p.id)
+    return cell.status !== 'signed' && cell.asked !== false
+  })
 }
 
 /** `2026-11-14` → `Nov 14`. A day is a day: no clock and no zone come into it. */
@@ -144,9 +158,16 @@ export function shortDay(ymd: string | null): string {
   return month ? `${month} ${Number(m[3])}` : ''
 }
 
-/** What a roster cell says: the day it was signed, or that it is not signed yet. */
+/** A cell of someone who is not asked the paper: a sub on a site's paper. */
+export const NOT_ASKED_LABEL = 'not asked'
+
+/** What a site's paper says in place of **Take off**: it comes off with the site, never one job at a time. */
+export const SITE_PAPER_WORDS = 'The site’s paper. It comes off when secrecy is turned off for the site.'
+
+/** What a roster cell says: the day it was signed, that it is not signed yet, or that the person is not asked. */
 export function cellWords(cell: JobPaperCell): { signed: boolean; label: string; day: string } {
   if (cell.status === 'signed') return { signed: true, label: 'signed ✓', day: shortDay(cell.signedAt) }
+  if (cell.asked === false) return { signed: false, label: NOT_ASKED_LABEL, day: '' }
   return { signed: false, label: 'not yet', day: '' }
 }
 
