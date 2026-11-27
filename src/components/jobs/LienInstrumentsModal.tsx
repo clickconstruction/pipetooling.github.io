@@ -67,7 +67,7 @@ import DemandRecordSendSheet from './DemandRecordSendSheet'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { useUnsavedWords } from '../../hooks/useUnsavedWords'
-import { lienWindowEscapeAction } from '../../lib/jobs/lienWindowEscape'
+import { LIEN_WINDOW_HELD_WORDS, lienWindowBackdropAction, lienWindowEscapeAction } from '../../lib/jobs/lienWindowEscape'
 import { lienWindowHeadFoldWords, lienWindowHeadFolded, lienWindowHeadStartsFolded, lienWindowScrollIsPaper } from '../../lib/jobs/lienPhoneWindows'
 import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
@@ -1187,8 +1187,11 @@ export default function LienInstrumentsModal({
   // A save landed and the window read again: what its fields hold now is what is saved. A read that brings back the
   // same records is no save, so the records are compared by what they are and not by the list's identity.
   const savedRecords = `${filings.map((f) => `${f.id}:${f.voided_at ?? ''}`).join(',')}|${historyRows.map((r) => r.id).join(',')}`
+  // Whether the last Escape or backdrop press left the window open over typed words: the line that says why is drawn.
+  const [heldOverWords, setHeldOverWords] = useState(false)
   useEffect(() => {
     unsavedWords.forget()
+    setHeldOverWords(false)
   }, [savedRecords, unsavedWords])
   useEffect(() => {
     if (!windowShown) return
@@ -1198,10 +1201,21 @@ export default function LienInstrumentsModal({
       const covered = !!me && Array.from(document.querySelectorAll('[role="dialog"], [role="alertdialog"]')).some((d) => d !== me && (me.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0)
       const action = lienWindowEscapeAction({ handled: e.defaultPrevented, topmost: isTopmostWindow() && !covered, busy: writeInFlight, unsavedWords: unsavedWords.hold() })
       if (action === 'close') onClose()
+      else if (action === 'stay') setHeldOverWords(true)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [windowShown, isTopmostWindow, writeInFlight, unsavedWords, onClose])
+  // A press on the backdrop holds by the same rule as the key, and a hold says why in one line under the title.
+  const onBackdropPress = () => {
+    if (lienWindowBackdropAction({ unsavedWords: unsavedWords.hold() }) === 'close') onClose()
+    else setHeldOverWords(true)
+  }
+  // The line goes with the next press or typed word in the card, with a save, and with the window.
+  const dropHeldLine = () => setHeldOverWords(false)
+  useEffect(() => {
+    if (!windowShown) setHeldOverWords(false)
+  }, [windowShown])
 
   if (!open || !job || !fields) return null
 
@@ -1282,7 +1296,7 @@ export default function LienInstrumentsModal({
         // A phone's window is the whole screen (punch list #352, PR 7): the 1rem all round was 58 px of height and 32 of width.
         padding: isMobile ? 'env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px)' : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
-      onClick={onClose}
+      onClick={onBackdropPress}
     >
       {/* Punch list #355 H (v2.7282): a field under 16 px makes an iPhone zoom the page on focus. */}
       <style>{`@media (max-width: 640px) { [data-lien-window] input, [data-lien-window] select, [data-lien-window] textarea { font-size: 16px !important; } }`}</style>
@@ -1300,6 +1314,8 @@ export default function LienInstrumentsModal({
           boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
         }}
         onClick={(e) => e.stopPropagation()}
+        onClickCapture={heldOverWords ? dropHeldLine : undefined}
+        onInputCapture={heldOverWords ? dropHeldLine : undefined}
         onScrollCapture={isMobile ? onPaperScroll : undefined}
         {...unsavedWords.watch}
         data-lien-window-card
@@ -1358,6 +1374,11 @@ export default function LienInstrumentsModal({
             {(job.job_name ?? '').trim() || 'Job'} · {jobNumber} · <MoneyText text={demandMoney(fields.outstanding)} /> open
             {propertyKind ? ` · ${propertyKind === 'residential' ? 'residential' : 'commercial'}` : ''}
           </p>
+          {heldOverWords ? (
+            <p role="status" data-lien-window-held style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>
+              {LIEN_WINDOW_HELD_WORDS}
+            </p>
+          ) : null}
           {timeline ? (
             isMobile ? (
               <>

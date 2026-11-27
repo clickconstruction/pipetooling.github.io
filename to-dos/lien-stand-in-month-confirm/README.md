@@ -1,7 +1,7 @@
 ---
 name: "Lien desk: confirm the stand-in month"
 number: 358
-group: ready
+group: close
 status: written 2026-11-14 from a Lien desk session · the owner approved the mock-up and said build it in a new session · built 2026-11-14 as v2.7280, one PR (#8143), on main · the migration is in prod's ledger and dev-mcp is redeployed (server 0.89.0 names the five columns, read 2026-11-15)
 summary: >
   A job with no clock hours and no last day of work set by hand takes its lien month from its bill,

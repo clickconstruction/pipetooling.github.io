@@ -1,7 +1,7 @@
 ---
 name: "Today's sends and The office's round: two Dashboard cards that say what is wanted"
 number: 424
-group: close
+group: gated
 status: asked 2026-11-23 on the owner's phone · read and drawn twice the same day · the owner picked A for both cards · the office's round built as v2.8331 and the Today's sends row as v2.8336, both live and looked at the same day · v2.8365 keeps a name whole on a phone · left, on his word: the window, the name and the Customers row
 summary: >
   The Dashboard's Needs you list has a row called Today's sends. Its title is a place, its press

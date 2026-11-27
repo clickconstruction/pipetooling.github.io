@@ -19,6 +19,10 @@ import type { PortalThreadLine } from '../../lib/gc/tradePortalThread'
 import { GcTradePortalPaperwork, GcTradePortalPapersPage } from './GcTradePortalPapers'
 import { PortalBlock, PortalNote, PortalRow } from './GcTradePortalUi'
 import { GcTradePortalWhere } from './GcTradePortalWhere'
+import { phoneThumbPressesCss } from '../../lib/phonePress'
+
+/** The mark on the portal's shell, and the rule that grows the presses inside it on a phone. */
+const TRADE_PORTAL_THUMB_CSS = phoneThumbPressesCss('[data-trade-portal]')
 
 /**
  * GC mode, the trade partner portal (P1b-ii-b, to-dos/gc-mode/PORTAL_REAL_BUILD.md): what one company sees at its
@@ -125,9 +129,12 @@ export function GcTradePortalView({
       <div
         ref={top}
         data-theme="light"
+        data-trade-portal=""
         lang={lang}
         style={{ background: PAPER, color: INK, fontFamily: PORTAL_FONT, border: `1px solid ${INK}`, borderRadius: 10, overflow: 'hidden', width: '100%', maxWidth: 520, marginInline: 'auto' }}
       >
+        {/* On a phone every press of the portal stands a fingertip tall (finding 290). At a desk nothing changes. */}
+        <style>{TRADE_PORTAL_THUMB_CSS}</style>
         <header style={{ background: INK, color: PAPER, padding: '0.7rem 0.9rem' }}>
           <div style={{ fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.8 }}>
             {GC_COMPANY.name} · {pt(lang, 'letterhead')}

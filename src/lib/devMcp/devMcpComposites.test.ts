@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_ROWS_MAX, findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, getOnSite, jobNumberOf, onSiteBoxCode, readAllRows, readOnSiteMovements, type Reader, type Row, type RowsQuery } from '../../../supabase/functions/_shared/devMcpComposites'
 import { boxCode } from '../materials/labels'
-import { containerLines, type Movement } from '../materials/onSite'
+import { ADD_COUNT_NOTE, boxCountDue, containerLines, lastCountedAt, linesOf, type Movement } from '../materials/onSite'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { catalogReader, noErrors } from './catalogReader'
 import { jobCardChargesCountedFromLines, mercuryLinesFromRows } from '../../../supabase/functions/_shared/jobMaterialsCostLines'
@@ -371,6 +371,55 @@ describe('read_on_site (v2.6367, punch list #209)', () => {
     expect(out.recent[0].at).toBe('2026-10-03T00:02:29Z')
     expect(whole.reads.job_containers).toBe(1)
     expect(whole.reads.job_places).toBe(1)
+  })
+  it('a box is due a count only when it holds a line to count, as every screen rules it (v2.8687, the rule of v2.8612)', async () => {
+    // Until v2.8687 the seat asked `countIsDue` alone, so an empty box past 14 days read due here and nowhere else.
+    const now = new Date('2026-11-26T17:00:00Z')
+    const DAYS_20 = '2026-11-06T17:00:00Z'
+    const DAYS_14 = '2026-11-12T17:00:00Z'
+    const YESTERDAY = '2026-11-25T17:00:00Z'
+    const idOf = (label: string) => `${label.toLowerCase().repeat(4)}-0000-4000-8000-0000000000${label.toLowerCase()}`
+    const box = (label: string, over: Record<string, unknown> = {}): Row => ({ id: idOf(label), job_id: JOB, label, kind: 'box', where_note: '', place_id: null, lat: null, lng: null, retired_at: null, created_at: '2026-10-01T00:00:00Z', ...over })
+    const stock = (label: string, n: number) => mv(`${label}-in`, { reason: 'delivered', quantity: n, at: '2026-10-02T12:00:00Z', to_container_id: idOf(label) })
+    const count = (label: string, n: number, at: string, over: Record<string, unknown> = {}) => mv(`${label}-count`, { reason: 'counted', quantity: n, at, from_container_id: idOf(label), by_name: 'Jordan', ...over })
+    // One box a case: the label, its ledger, and whether the app calls it due.
+    const cases: Array<{ label: string; ledger: Row[]; due: boolean; why: string }> = [
+      { label: 'E1', ledger: [], due: false, why: 'empty and never counted' },
+      { label: 'E2', ledger: [stock('E2', 4), count('E2', 4, DAYS_20), mv('E2-out', { reason: 'used', quantity: 4, at: '2026-11-07T12:00:00Z', from_container_id: idOf('E2') })], due: false, why: 'empty, its last count 20 days old' },
+      { label: 'Z1', ledger: [stock('Z1', 3), mv('Z1-out', { reason: 'used', quantity: 3, at: '2026-10-03T12:00:00Z', from_container_id: idOf('Z1') })], due: false, why: 'its one line is used down to none, never counted' },
+      { label: 'L1', ledger: [stock('L1', 6), count('L1', 6, DAYS_20)], due: true, why: 'holds a line, its last count 20 days old' },
+      { label: 'L2', ledger: [stock('L2', 6), count('L2', 6, YESTERDAY)], due: false, why: 'holds a line, counted yesterday' },
+      { label: 'L3', ledger: [stock('L3', 6)], due: true, why: 'holds a line, never counted' },
+      { label: 'L4', ledger: [stock('L4', 6), count('L4', 6, DAYS_14)], due: true, why: 'holds a line, counted 14 days ago to the hour' },
+      { label: 'C1', ledger: [stock('C1', 2), count('C1', 2, DAYS_20), mv('C1-gone', { reason: 'cannot_find', quantity: 2, at: '2026-11-07T12:00:00Z', from_container_id: idOf('C1') })], due: true, why: 'none left, a Can\'t find since its last count 20 days ago' },
+      {
+        label: 'A1',
+        ledger: [stock('A1', 5), count('A1', 5, DAYS_20), mv('A1-add', { reason: 'delivered', quantity: 1, at: YESTERDAY, to_container_id: idOf('A1'), part_id: null, part_name: 'ZZ test tee', manufacturer: null, note: 'added on site' }), mv('A1-add-count', { reason: 'counted', quantity: 1, at: YESTERDAY, from_container_id: idOf('A1'), part_id: null, part_name: 'ZZ test tee', manufacturer: null, note: ADD_COUNT_NOTE })],
+        due: true,
+        why: 'counted by hand 20 days ago; a part added yesterday counts its own line only',
+      },
+    ]
+    const UNSORTED_ROW = rows.job_containers[0] as Row
+    const retired = box('R1', { retired_at: '2026-11-01T00:00:00Z' })
+    const ledger = [...cases.flatMap((c) => c.ledger), stock('R1', 9), mv('u-in', { reason: 'delivered', quantity: 7, at: '2026-10-02T12:00:00Z', to_container_id: UNSORTED })]
+    const out = (await getOnSite(catalogReader({ rows: { ...rows, job_containers: [UNSORTED_ROW, ...cases.map((c) => box(c.label)), retired], job_material_movements: ledger } }), JOB, now)) as Loose
+    expect(noErrors(out)).toEqual([])
+    const seat = Object.fromEntries(out.boxes.map((b: Loose) => [b.container, b.count_due]))
+    for (const c of cases) expect(seat[c.label], `${c.label}: ${c.why}`).toBe(c.due)
+    // Unsorted is the app's own row and never due, whatever it holds; a retired box is not a live box at all.
+    expect(seat.Unsorted).toBe(false)
+    expect(out.boxes.find((b: Loose) => b.kind === 'unsorted').lines).toHaveLength(1)
+    expect(seat.R1).toBeUndefined()
+    expect(out.summary.due_a_count).toEqual(['A1', 'C1', 'L1', 'L3', 'L4'])
+    expect(out.summary.count_due_after_days).toBe(14)
+    // The hand count is the box's last count, never the added part's own.
+    expect(out.boxes.find((b: Loose) => b.container === 'A1').last_count).toEqual({ at: DAYS_20, by: 'Jordan' })
+    // The same ledger through the screens' own kernel (src, never the functions' copy) gives the same answer box by box.
+    const kernelRows = ledger.map((r): Movement => ({ id: String(r.id), jobId: JOB, partId: (r.part_id as string | null) ?? null, partName: String(r.part_name), manufacturer: (r.manufacturer as string | null) ?? null, quantity: Number(r.quantity), reason: r.reason as Movement['reason'], fromContainerId: (r.from_container_id as string | null) ?? null, toContainerId: (r.to_container_id as string | null) ?? null, note: String(r.note ?? ''), byUserId: null, byName: String(r.by_name), at: String(r.at), source: null, itemId: null }))
+    const kernelLines = containerLines(kernelRows)
+    for (const b of out.boxes as Loose[]) {
+      expect(b.count_due, `${b.container} against the kernel`).toBe(boxCountDue({ kind: b.kind, last: lastCountedAt(kernelRows, b.id), lines: linesOf(kernelLines, b.id) }, now))
+    }
   })
 })
 

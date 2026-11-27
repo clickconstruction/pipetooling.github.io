@@ -5,7 +5,8 @@
  * The rule, the managing session's pick of 2026-11-27, the person's to flip: Escape closes the window as the app's other
  * windows close, except while a field inside it holds words a person typed and has not saved. Then Escape does nothing
  * to the window, and the form's own Cancel and the window's × stand. A window over this one takes the key first, as it
- * does today: a confirm, a paper's preview, the serve window, a value changed in place.
+ * does today: a confirm, a paper's preview, the serve window, a value changed in place. Taunya kept the rule on
+ * 2026-11-27, and added two: a hold says why in one line, and the backdrop holds as the key does.
  *
  * Pure. `LienInstrumentsModal.tsx` feeds it the key's state, and `useUnsavedWords.ts` the typed fields.
  */
@@ -28,6 +29,21 @@ export function lienWindowEscapeAction(s: LienWindowEscapeState): LienWindowEsca
   if (s.handled || !s.topmost || s.busy) return 'ignore'
   return s.unsavedWords ? 'stay' : 'close'
 }
+
+/**
+ * A press on the dark backdrop around the window (Taunya, 2026-11-27, *Picks stand*: hold it by the same rule as
+ * Escape). It closed the window over typed words, and a slip of the pointer beside the card is easier than the key.
+ * Now it stays over typed words and closes otherwise. The × and Cancel still close with no question.
+ */
+export function lienWindowBackdropAction(s: Pick<LienWindowEscapeState, 'unsavedWords'>): Exclude<LienWindowEscapeAction, 'ignore'> {
+  return s.unsavedWords ? 'stay' : 'close'
+}
+
+/**
+ * What the window says, in one quiet line under its title, when Escape or the backdrop left it open over typed words
+ * (Taunya, 2026-11-27, *Picks stand*: say why). The hold said nothing, so the key read as broken.
+ */
+export const LIEN_WINDOW_HELD_WORDS = 'This window stayed open because you typed something that is not saved. Save it or cancel it, or press × to close without it.'
 
 /** The kinds of `<input>` a person types words, a number or a day into. A tick, a file and a press are not words. */
 const WORD_INPUT_TYPES = new Set(['', 'text', 'search', 'email', 'tel', 'url', 'number', 'password', 'date', 'time', 'datetime-local', 'month', 'week'])

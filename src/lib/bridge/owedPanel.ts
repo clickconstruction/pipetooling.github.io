@@ -40,7 +40,7 @@ export type OwedPanelInput = {
 }
 
 export const OWED_DOORS = {
-  billing: { to: '/jobs?tab=billing', label: 'Open Billing' },
+  billing: { to: '/jobs?tab=stages&stagesSection=billed', label: 'Open Billed' },
   collections: { to: '/jobs?tab=collections', label: 'Open Collections' },
   inKind: { to: '/in-kind', label: 'Open In kind' },
   jobs: { to: '/jobs?tab=stages', label: 'Price the jobs' },

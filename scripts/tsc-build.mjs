@@ -9,7 +9,7 @@
 import { runTsc } from './lib/runTsc.mjs'
 import { BUILD_PART } from './lib/typecheckParts.mjs'
 
-runTsc('build', ['-b', BUILD_PART.config, ...process.argv.slice(2)]).then(
+runTsc('build', ['-b', BUILD_PART.config, ...process.argv.slice(2)], { label: BUILD_PART.name }).then(
   (code) => process.exit(code),
   (e) => {
     console.error(e && e.stack ? e.stack : String(e))

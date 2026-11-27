@@ -49,7 +49,7 @@ const cashWeek: WeekCallModel = {
     ...propose.card,
     lead: 'Keep cash above the floor.',
     line: 'Cash is under the $10.0k floor. Bill is still the narrowest step.',
-    moves: [move({ key: 'chase', kind: 'cash', title: 'Chase the 9 late invoices.', why: '$41.0k is late. The forecast leans on it.', door: { to: '/jobs?tab=billing', label: 'Open Billing' }, then: 41_000 }), move({ key: 'bill', title: 'Bill the 11 finished jobs.', why: '$142k is finished and not billed.', door: { to: '/jobs?tab=stages', label: 'Open Stages' }, then: 142_000 })],
+    moves: [move({ key: 'chase', kind: 'cash', title: 'Chase the 9 late invoices.', why: '$41.0k is late. The forecast leans on it.', door: { to: '/jobs?tab=stages&stagesSection=billed', label: 'Open Billed' }, then: 41_000 }), move({ key: 'bill', title: 'Bill the 11 finished jobs.', why: '$142k is finished and not billed.', door: { to: '/jobs?tab=stages', label: 'Open Stages' }, then: 142_000 })],
   },
 }
 

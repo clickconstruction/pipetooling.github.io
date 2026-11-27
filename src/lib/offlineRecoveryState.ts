@@ -75,6 +75,12 @@ export type OfflineRecoveryInput = {
    * (v2.6198, where the write sentence under a press kept on the phone read as the press failing).
    */
   offlineMessage?: string
+  /**
+   * The automatic try for this return of the signal was made, and `AUTO_TRY_WAIT_MS` later the failure still stands
+   * (finding 308, a walk of 2026-11-27: the line read *trying again…* for 17 seconds with nothing being tried). The
+   * line then stops saying it is trying and hands the press back. A new return of the signal is a new try.
+   */
+  autoTrySpent?: boolean
 }
 
 export type OfflineRecoveryState = {
@@ -94,6 +100,10 @@ export const OFFLINE_AUTO_RETRY_CAP = 3
 
 export const BACK_ONLINE_MESSAGE = 'Back online — tap Retry to try again.'
 export const BACK_ONLINE_AUTO_MESSAGE = 'Back online — trying again…'
+/** After the automatic try did not land: the line no longer says it is trying. */
+export const BACK_ONLINE_TRIED_MESSAGE = 'Back online, but this did not load. Tap Retry to try again.'
+/** How long the line says *trying again…* after an automatic try, before it hands the press back. */
+export const AUTO_TRY_WAIT_MS = 8000
 export const STILL_OFFLINE_SUFFIX = ' Still no connection.'
 
 export function offlineRecoveryState(input: OfflineRecoveryInput): OfflineRecoveryState {
@@ -120,10 +130,11 @@ export function offlineRecoveryState(input: OfflineRecoveryInput): OfflineRecove
       autoRetry: false,
     }
   }
-  const autoRetry = idempotent && attempts < OFFLINE_AUTO_RETRY_CAP
+  const spent = input.autoTrySpent === true
+  const autoRetry = idempotent && attempts < OFFLINE_AUTO_RETRY_CAP && !spent
   return {
     phase: 'back-online',
-    message: autoRetry ? BACK_ONLINE_AUTO_MESSAGE : attempts > 0 ? `${BACK_ONLINE_MESSAGE}${STILL_OFFLINE_SUFFIX}` : BACK_ONLINE_MESSAGE,
+    message: autoRetry ? BACK_ONLINE_AUTO_MESSAGE : spent ? BACK_ONLINE_TRIED_MESSAGE : attempts > 0 ? `${BACK_ONLINE_MESSAGE}${STILL_OFFLINE_SUFFIX}` : BACK_ONLINE_MESSAGE,
     showRetry: true,
     retryLabel: 'Retry',
     autoRetry,

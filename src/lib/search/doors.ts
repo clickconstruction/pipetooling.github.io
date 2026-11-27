@@ -232,10 +232,9 @@ function bidsTabDoors(): Door[] {
 function jobsTabDoors(): Door[] {
   const superOrPrimaryReports: Gate = (v) => office(v) || v.role === 'superintendent' || v.role === 'primary'
   return [
-    p({ label: 'Pipeline', where: 'Jobs · Stages', words: ['jobs', 'pipeline', 'stages', 'waiting', 'working', 'ready to bill', 'rtb', 'billed', 'collections', 'job board', 'stage'], to: '/jobs?tab=stages', gate: office }),
+    p({ label: 'Pipeline', where: 'Jobs · Stages', words: ['jobs', 'pipeline', 'stages', 'waiting', 'working', 'ready to bill', 'rtb', 'billed', 'collections', 'job board', 'stage', 'billing', 'bill a customer', 'bill customer', 'invoice', 'invoices', 'bills', 'finished job'], to: '/jobs?tab=stages', gate: office }),
     p({ label: 'Materials desk', where: 'Jobs · Materials', words: ['materials on site', 'on site', 'cages', 'boxes', 'containers', 'stencil', 'missing material', 'walked away', 'due a count', 'materials desk', 'manifest', 'deliveries on site'], to: '/jobs?tab=materials', gate: office }),
     p({ label: 'Reports', where: 'Jobs · Reports', words: ['field reports', 'job reports', 'tech reports', 'status report', 'file a report'], to: '/jobs?tab=reports', gate: superOrPrimaryReports }),
-    p({ label: 'Billing', where: 'Jobs · Billing', words: ['bill a customer', 'bill customer', 'invoice', 'invoices', 'bills', 'finished job'], to: '/jobs?tab=billing', gate: office }),
     p({ label: 'Subs', where: 'Jobs · Subs', words: ['sub sheet', 'sub ledger', 'sub labor', 'subcontractors', 'subs'], to: '/jobs?tab=subs', gate: officeOrSuper }),
     p({ label: 'Subs · Pay', where: 'Jobs · Subs, the Pay view', words: ['pay subs', 'sub pay', 'pay a sub'], to: '/jobs?tab=subs&view=pay', gate: officeOrSuper }),
     p({ label: 'Team', where: 'Jobs · Team', words: ['team labor', 'labor rollups', 'combined labor', 'crew labor'], to: '/jobs?tab=combined-labor', gate: role('dev', 'master_technician', 'controller') }),
@@ -491,7 +490,7 @@ export function allDoors(sources: DoorSources = {}): Door[] {
 
 /**
  * The doors this viewer may open, in the index's order. A guide's **Go there** stays only when it leads somewhere the
- * viewer may go (`thereOpenFor`), so a guide written for everyone never offers an estimator the Billing tab.
+ * viewer may go (`thereOpenFor`), so a guide written for everyone never offers an estimator the Pipeline.
  */
 export function doorsFor(viewer: DoorViewer, sources: DoorSources = {}): Door[] {
   const all = allDoors(sources)

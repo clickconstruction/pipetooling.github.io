@@ -5,7 +5,7 @@ group: close
 status: design spike 2026-11-15, four passes on live data · PR 1 (v2.7325) the Scores tab with the field score, the estimator score, the hurdle and the ramp · PR 2 (v2.7347) a priced bid says when it cannot be scored on the workbench, its share window, Mark sent and the Bid Board, and 16 old awards got a day · PR 3 (v2.7361) the owner sets the target on the Bid Board's Pricing rules · PR 4 (v2.7365) the scores are read by the edge function `team-scores`, Taunya's pick · PR 5 (v2.7369) the estimator's own row on the Bid Board and a closeout's chip on the bid · the residual (v2.7370) a sent bid is judged by the labor count kept with its margin · the train is built, every PR merged, pushed, deployed and walked live 2026-11-15 · the viewport walk's fixes in v2.7397
 next: >
   The owner reads the Scores tab and an estimator reads their row, and the four calls under Calls the
-  owner makes are answered. Nothing is left to build on this card.
+  owner makes are answered. Nothing is left to build on this card. The Scores tab was read on the live site on 2026-11-27 at 1280 px (the walking thread's sitting 34, v2.8691) and is clean; the four calls are with Taunya.
 size: M as a train of five (M · S · S · M · S); all five shipped
 blocker: none; the estimators' number stays a ramp until a priced bid with labor hours is awarded
 summary: >

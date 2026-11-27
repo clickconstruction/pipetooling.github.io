@@ -8,6 +8,12 @@
 
 import { hereNote, travelNote } from '../jobMode/onMyWay'
 
+/**
+ * Over the clock-in sheet's job and bid search: which job or bid the day's time goes to. It read *change* from the
+ * day the sheet was written, and a walk of 2026-11-27 asked whether *charge* was meant (finding 296).
+ */
+export const CLOCK_IN_JOB_OR_BID_QUESTION = 'What job or bid should we charge for your time?'
+
 /** Under the clock-in sheet's box while it is empty. */
 export const CLOCK_IN_PLAN_EMPTY_LINE = 'Say what you mean to get done today, then Complete Clock In.'
 

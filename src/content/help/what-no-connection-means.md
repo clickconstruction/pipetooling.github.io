@@ -24,6 +24,7 @@ Clock In, Clock Out, a job note and a field report work another way. With no sig
 1. Check the signal. On a phone, step outside or turn Wi-Fi off and on.
 2. Press {{button:outline|Retry}} beside the line.
 3. A screen that only shows you things tries again on its own when the signal comes back. The line then reads *Back online*.
+4. If that try does not load the screen, the line says so after a few seconds. Press {{button:outline|Retry}} then.
 
 ## When it keeps happening
 

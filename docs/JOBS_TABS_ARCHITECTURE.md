@@ -87,7 +87,7 @@ Tabs in tab-bar order (Crew P&L first), then the vestigial member. "Page state" 
 | `teams-summary` | Crew P&L | `<JobsCrewPnlTab/>` 2072–2082 (639 lines, 7 props) | extracted | 0 | med (`jobs` + `laborJobs` + `teamLaborData` + drive values — parent loaders) | — | `crewPnlSummary.test.ts`; no render test | Done |
 | `reports` | Reports | `<ErrorBoundary><JobsReportsTab/>` 1883–1900 (515 lines, 12 props) | extracted (self-loading) | 0 | low | — | no render test | Done |
 | `stages` | Pipeline | **always-mounted** `<JobsStagesTab ref active/>` 1907–1976 (5,099 lines, **60 props** + 10-method handle) | **extracted (v2.831)**; internal train v2.3530–v2.3549 → [its map](./JOBS_STAGES_TAB_ARCHITECTURE.md) | 2 (`pendingNewJobFocusId`, `pipelineBurnArmed`) | high (60 props; 9 router effects drive the handle; the burn card reads the Job Summary join) | med | `JobsStagesTab.render.test.tsx`; e2e `stages-board.spec.ts` | Page-side: burn seam + deep-link kernel (steps 12–13) |
-| `billing` | Billing | `<JobsBillingTab/>` 2054–2070 (344 lines, 13 props) | extracted (v2.821) | 0 | low-med (`subLaborJobIds` / `teamLaborJobIds` / `teamLaborLoading` injected) | — | render test + `billingTab.test.ts` | Done |
+| `billing` | Billing | retired in v2.8698 (punch list #190, decision 5): `JobsBillingTab` and its render test are gone, `?tab=billing` and `?tab=ledger` land on `stages` (`retiredJobsTab`, `lib/jobs/jobsPageTabs.ts`) | — | 0 | — | — | `jobsPageTabs.test.ts`, the page smoke's old-link case | Retired |
 | `combined-labor` | Team | `<JobsTeamTab/>` 2045–2052 (170 lines) | extracted (v2.2974, self-loading) | 0 | low (`teamLaborJob` / `teamWeek` / `teamExceptions` params) | — | render test + `teamBoard.test.ts` | Done |
 | `subs` | Subs | `<JobsSubsTab/>` 1978–2043 (75-line Work/Pay shell) → Work `JobsSubsWorkView` (1,312) / Pay `JobsSubLaborTab` (875) + 3 always-mounted modals (2169–2217) | **extracted** (v2.2927 fold) | 5 | med (3 imperative handles; roster shared with Pipeline `users`; 6 deep-link inputs) | low | render tests (shell, Work, form modal, payments); none for Pay list / move-remove | Optional Pay-glue wrapper (step 16) |
 | `parts` | Parts | `<JobsPartsTab/>` 2084–2112 (627 lines, 25 props) + mercury trio in the tail 2218–2262 | **partial** | 5 + 6 effects | med (mercury hook shared with Job Summary) | med | no render tests; mercury fetch kernels tested | Move the two parts-only modals + UI state in (step 14) |
@@ -208,12 +208,11 @@ All strip themselves with `setSearchParams(…, { replace: true })`. `?tab=` (ro
 
 **Extracted (v2.831).** Page-side leftovers: the burn cluster (a join over Job Summary data, not tab UI) and nine near-identical handle deep-link effects — both candidates in the [order](#recommended-extraction-order-value--risk).
 
-### `billing` — Billing
+### `billing` — Billing (retired, v2.8698)
 
-- **Render:** 2054–2070 → [`JobsBillingTab`](../src/components/jobs/JobsBillingTab.tsx) (344 lines; owns search + sort, localStorage `jobs_billing_sort_asc_${uid}`; kernels [`lib/jobs/billingTab.ts`](../src/lib/jobs/billingTab.ts), tested).
-- **Inputs (13):** cache `jobs` + loading/refreshing/error, page `error`, `authUserId`/`authRole`, `shortNewJobButtonLabel`, `subLaborJobIds` (1464–1465) + `teamLaborJobIds` (1469–1472) + `teamLaborLoading` — the labor and team-labor loaders fire on this tab solely for the tab's `billingJobNeedsAttention` filter — `openNew`/`openEdit`.
-- **Coupling:** `subLaborJobIds` is keyed on the sheet's `job_ledger_id` link (v2.3838, quirk #19). The Billing → Sub Labor "Add Labor" fill was retired in v2.1623.
-- **Status:** **Done.** Render test + kernel tests.
+- **Gone:** the tab, `JobsBillingTab`, its render test and every kernel of `lib/jobs/billingTab.ts` but `billingJobMatchesSearch`, which the Dashboard's Assigned Jobs box still reads. The page no longer builds `subLaborJobIds` / `teamLaborJobIds`, and the labor and team-labor loaders no longer fire for this tab.
+- **Old links:** `?tab=billing` and `?tab=ledger` land on `stages`, under the role gates, keeping every other parameter; Billing's says so once in a toast (`retiredJobsTab`, `BILLING_TAB_RETIRED_WORDS`).
+- **Went with it:** the search by a line item's words over every open job, the **Needs labor** flag and filter (`billingJobNeedsAttention`), the HCP sort key `jobs_billing_sort_asc_${uid}` and the footer's totals.
 
 ### `combined-labor` — Team
 
@@ -346,7 +345,7 @@ Per the playbook: modals opened from 2+ tabs (or living in app contexts) stay pa
 - `users` / `people` roster; the shared labor / team-labor / drive loaders.
 - `error` (global — quirk #7), both debounce timers + cleanup.
 - The four always-mounted handle refs (`stagesTabRef`, `subLaborFormRef`, `subLaborPaymentModalsRef`, `subLaborPaymentMoveRemoveRef`).
-- localStorage keys live in children: `jobs-stages-ham-mode`, `jobs-stages-follow-moves`, `jobs-stages-search-include-schedule-time` (JobsStagesTab / `lib/jobsStagesScheduleSessionSearch`), `jobs_billing_sort_asc_${uid}` (JobsBillingTab), the Pipeline section-open prefs (read page-side via `readStagesSectionOpenPrefs`), JS min-HCP (in `useJobSummaryData`).
+- localStorage keys live in children: `jobs-stages-ham-mode`, `jobs-stages-follow-moves`, `jobs-stages-search-include-schedule-time` (JobsStagesTab / `lib/jobsStagesScheduleSessionSearch`), `jobs_billing_sort_asc_${uid}` (JobsBillingTab until it left in v2.8698; the key is no longer read), the Pipeline section-open prefs (read page-side via `readStagesSectionOpenPrefs`), JS min-HCP (in `useJobSummaryData`).
 
 ---
 

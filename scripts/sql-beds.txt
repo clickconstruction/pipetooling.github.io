@@ -175,6 +175,7 @@ imitated-session
 write-down-first-amount
 working-hours
 stripe-paid-day
+ready-to-bill-notice-zz
 voided-test-bills
 license-roll-notes
 people-hours-recorded
@@ -189,3 +190,4 @@ pay-log-screen
 portal-link-delete
 paper-site
 lien-notice-record-delete
+site-secrecy

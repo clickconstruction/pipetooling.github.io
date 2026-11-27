@@ -174,7 +174,7 @@ describe('buildBuildDesk (v2.5929)', () => {
     expect(r.chip).toEqual({ tone: 'green', words: 'finished' })
     expect(r.why).toBe('Finished. Done work is Bill’s row now.')
     expect(r.doors.map((d) => [d.label, d.href])).toEqual([
-      ['Bill it', '/jobs?tab=billing'],
+      ['Bill it', '/jobs?tab=stages&edit=1081'],
       ['Open the job', '/jobs?tab=stages&edit=1081'],
     ])
   })

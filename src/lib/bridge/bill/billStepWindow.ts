@@ -93,7 +93,7 @@ export function billStepWords(facts: BillDeskFacts, desk: BillDesk | null): Bill
   const ready = desk.fast.length
   const readyDoor = desk.fast[0]?.door.to
   if (ready > 0 && readyDoor) {
-    doRows.push({ key: 'ready', kind: 'ready', title: `Bill ${ready} ${plural(ready, 'job', 'jobs')} marked ready to bill`, sub: `${stageUsd(desk.fastUsd)}. The office already called ${plural(ready, 'it', 'them')} done.`, press: 'Open Billing', to: readyDoor })
+    doRows.push({ key: 'ready', kind: 'ready', title: `Bill ${ready} ${plural(ready, 'job', 'jobs')} marked ready to bill`, sub: `${stageUsd(desk.fastUsd)}. The office already called ${plural(ready, 'it', 'them')} done.`, press: 'Open Ready to bill', to: readyDoor })
   }
   // The leaks arrive biggest dollars first; a job with no price carries none and speaks in the row after these.
   for (const l of desk.leaks.filter((x) => x.kind === 'remainder' || x.kind === 'never-billed').slice(0, BILL_STEP_TOP_JOBS)) doRows.push(jobRow(l))

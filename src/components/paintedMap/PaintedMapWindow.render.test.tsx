@@ -23,10 +23,10 @@ vi.mock('../../hooks/useAddressGeocodeCoords', () => ({
 }))
 vi.mock('../../hooks/useModalStackEntry', () => ({ useModalStackEntry: () => () => true }))
 /** The toast host, stood in for: it keeps what the window said after it closed. */
-const toasts = vi.hoisted(() => [] as Array<{ message: string; type?: string }>)
+const toasts = vi.hoisted(() => [] as Array<{ message: string; type?: string; durationMs?: number }>)
 vi.mock('../../contexts/ToastContext', async (real) => ({
   ...(await real<typeof import('../../contexts/ToastContext')>()),
-  useOptionalToastContext: () => ({ showToast: (message: string, type?: string) => { toasts.push({ message, type }) }, showActionToast: () => {} }),
+  useOptionalToastContext: () => ({ showToast: (message: string, type?: string, durationMs?: number) => { toasts.push(durationMs == null ? { message, type } : { message, type, durationMs }) }, showActionToast: () => {} }),
 }))
 const opened = vi.hoisted(() => [] as string[])
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.push(url) }))
@@ -531,7 +531,8 @@ describe('throwing a map away (punch list #443, row 15)', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
     // Today's delete sweeps the photos, so it is never sent beside the function.
     expect(names()).not.toContain('deletePaintedMap')
-    expect(toasts).toEqual([{ message: 'The test map was thrown away. A developer can put it back from Recently deleted for 90 days. 1 task and 2 places on Materials on site lost the map.', type: 'success' }])
+    // The window is closed by now, so the toast stays ten seconds: twice a toast's own life (finding 291).
+    expect(toasts).toEqual([{ message: 'The test map was thrown away. A developer can put it back from Recently deleted for 90 days. 1 task and 2 places on Materials on site lost the map.', type: 'success', durationMs: 10_000 }])
   })
 
   it('shows the function’s refusal as its own sentence, keeps the window open and never falls back to today’s delete', async () => {

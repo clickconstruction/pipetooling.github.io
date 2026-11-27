@@ -2,7 +2,7 @@
 name: "People → Hours: someone still on the clock has a green box that opens My Time"
 number: 446
 group: close
-status: asked 2026-11-25 with a screenshot of the table's head · read in the code, drawn and checked against the ask the same day · built 2026-11-25 as v2.8602, one client-only PR · walked on the live site on 2026-11-26 on a ZZ Test person with a one-dollar pay row made for it, steps 1 to 8, and it holds · one thing beside the card met on that walk, the clock-in sheet's live press with an empty plan, is mended in v2.8624, merged 2026-11-26 and not yet seen live · the two choices the person might have wanted the other way were put on the question sheet of 2026-11-26, and both stay as built
+status: asked 2026-11-25 with a screenshot of the table's head · read in the code, drawn and checked against the ask the same day · built 2026-11-25 as v2.8602, one client-only PR · walked on the live site on 2026-11-26 on a ZZ Test person with a one-dollar pay row made for it, steps 1 to 8, and it holds · one thing beside the card met on that walk, the clock-in sheet's live press with an empty plan, is mended in v2.8624, merged 2026-11-26 and seen live on 2026-11-27 at desk width, by a walk that wrote nothing: with the plan box empty **Complete Clock In** is dead and the line under the box says what brings it alive; not read at 375 px · the two choices the person might have wanted the other way were put on the question sheet of 2026-11-26, and both stay as built
 mockup: to-dos/hours-on-the-clock-box/mockup.html
 summary: >
   On People → Hours a person who was still clocked in showed an empty box that took typing,

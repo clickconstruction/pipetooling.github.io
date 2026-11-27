@@ -11,7 +11,7 @@
  * Summary row said "Please wait until jobs finish loading" forever, because on
  * that tab the load never started.
  *
- * - stages / billing / parts: the original three.
+ * - stages / parts: two of the original three. Billing, the third, left the page in v2.8698.
  * - subs (v2.2927, was sub_sheet_ledger + work_orders): the pay run's New Sub Labor
  *   picker, the Work board's labels and its assembler all read the cache.
  * - job-summary (Tier-2 #17): its own ledger loader (`useJobSummaryData`) paints
@@ -19,7 +19,6 @@
  */
 export const JOBS_TABS_THAT_LOAD_THE_JOBS_LIST: ReadonlySet<string> = new Set([
   'stages',
-  'billing',
   'parts',
   'materials',
   'subs',

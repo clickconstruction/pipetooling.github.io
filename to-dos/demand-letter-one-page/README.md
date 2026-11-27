@@ -8,9 +8,9 @@ summary: >
   demand and the signature land on page 2. The suggestion puts the whole letter on page 1, signed, with the pay code in
   the amount box, and moves the statement of account, the notice history and the enclosures to page 2. All of it on one
   sheet was measured and does not fit.
-next: The owner presses Open the PDF on the sample, in Settings → What customers see → Lien letters → Final demand letter, if he wants the PDF's own look: the walk could not open it. Then he says whether counsel's eye on the changed phrase is still owed, and the folder goes.
+next: The owner presses Open the PDF on the sample, in Settings → What customers see → Lien letters → Final demand letter, if he wants the PDF's own look: the walk could not open it. Then he says whether counsel's eye on the changed phrase is still owed, and the folder goes. Answered 2026-11-27 by Taunya, *Second nine stand*, to the pick *Yes, send it to counsel*: counsel reads the one changed phrase, and the card stays open until that read.
 size: XS
-blocker: v2.8549 on the live site, then the owner's word on counsel's eye.
+blocker: the owner's word on counsel's eye. v2.8549 was seen live on 2026-11-25.
 ver: v2.7086 · v2.8549
 opinion: build — it is built; the look is hers
 ---

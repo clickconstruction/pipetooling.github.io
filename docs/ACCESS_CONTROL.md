@@ -2157,6 +2157,9 @@ The signer never sees office boxes;
 The restrictive policy `job_papers_fence` (`TO authenticated`, every command) sits on `jobs_ledger`, `jobs_ledger_thread_notes`, `jobs_tally_parts`, `job_stage_windows`, `file_index`, `messages`, `painted_maps` and `step_commitments`.
 `helper_on_job`, `subcontractor_can_read_jobs_ledger_row`, `can_report_stage_progress`, `on_site_can_touch_job`, `superintendent_report_job_anchor_allowed` and `superintendent_can_touch_job_thread` answer false for a job shut to the caller.
 `job_schedule_blocks` and `jobs_ledger_team_members` stay readable, so a locked person's list can show the job's number and a lock.
+Since v2.8692 (punch list #439, piece 4, `20261127052337_site_secrecy.sql`) a required paper may be one a site wrote (`job_required_papers.site_secrecy_id`), and for such a row one signature a person covers every job of the site, and a subcontractor's login is neither asked nor shut out (`site_paper_covers_user`).
+`site_secrecy` is read by the office and the estimator (`is_office_or_estimator`) and written by nobody but `site_secrecy_turn_on` and `site_secrecy_turn_off`, which the four office roles call and a digital twin does not.
+`site_secrecy_preview` is the office's too.
 **The lists and the service key** (v2.7665, `20261118020000_job_papers_lists.sql`): `search_jobs_ledger`, `list_assigned_jobs_for_dashboard`, `list_superintendent_jobs_for_dashboard` and `list_jobs_for_tally` answer a job shut to the caller with its number alone, and `list_reports_with_job_info` leaves its reports out.
 A locked job is found by its number and never by its name, its address or its development.
 `job_shut_to_user(job, user)` and `jobs_shut_to_user(user)` ask the lock about a named person and run for the service role alone.
@@ -3112,8 +3115,7 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
 - Dashboard, Materials, Jobs (Reports tab only), Bids (Bid Board, RFI, Change Order, Lien Release — `PRIMARY_BIDS_TABS` in [`bidsTabAccess.ts`](../src/lib/bids/bidsTabAccess.ts);
   a link to any other tab says so and lands on the board, and the board's Last contact date is read, not clicked;
   create/edit/delete — **their own bids only**), Estimates (**their own only**), Documents (**their jobs only**), Calendar, Checklist, Settings
-- **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Billing since the Reports-only gate;
-  Sub Sheet Ledger, Crew P&L)
+- **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Sub Sheet Ledger, Crew P&L)
 
 **Service Type Filtering**:
 - Devs can restrict a primary to specific service types in Materials via `primary_service_type_ids` on the user record (like `estimator_service_type_ids`)
@@ -3140,8 +3142,10 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
   a line over the list says so, `reportsScopeLine`);
   SELECT, INSERT, UPDATE on those reports (delete restricted to the owner and devs, behind the typed word DELETE since v2.6765).
   New-report job picker (`search_jobs_for_reports`, SECURITY DEFINER) still offers every job, and a report they write on any job stays theirs to read.
-- Billing, Sub Sheet Ledger, Crew P&L hidden (`Jobs.tsx` primary gate;
+- Sub Sheet Ledger, Crew P&L hidden (`Jobs.tsx` primary gate;
   `?tab=` deep links rewrite to `reports`)
+- The Jobs page has no Billing tab since v2.8698 (punch list #190, decision 5), for any role.
+  An old `?tab=billing` link passes the role gates first, so an office role lands on the Pipeline with one line saying so, and a primary or a superintendent lands on Reports (`retiredJobsTab` in `lib/jobs/jobsPageTabs.ts`).
 - Direct `jobs_ledger` reads (Edit Job, Documents → Jobs) return only Account-Man jobs (v2.2177)
 
 **Dashboard**:
@@ -3189,7 +3193,7 @@ before that, the 3-arg `can_access_project_row` the `projects` policy calls stil
 **Access**:
 - Dashboard, Projects, Workflow, Jobs, Bids, Materials, Calendar, Checklist, Settings, Tally
 - **Blocked**: Customers (direct), People, Templates, Prospects
-- **Jobs tabs**: Reports, Sub Sheet Ledger (hide Team Labor, Crew P&L, Stages, Billing)
+- **Jobs tabs**: Reports, Sub Sheet Ledger (hide Team Labor, Crew P&L, Stages)
 - **Bids tabs**: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release (hide Pricing, Cover Letter, Submission — and the doors into it: the board's Last contact date is read, not clicked, and By builder draws no View submissions glass)
 - **Customers**: Create from Bids modal only (like estimator)
 - **Assign people**: Yes (Workflow) — superintendent can assign subcontractors to stages
@@ -3248,7 +3252,7 @@ before that, the 3-arg `can_access_project_row` the `projects` policy calls stil
 - Cannot see projections or Ledger Total
 
 **Jobs**:
-- Reports, Sub Sheet Ledger tabs only (no Stages or Billing)
+- Reports, Sub Sheet Ledger tabs only (no Stages)
 - Team and Crew P&L tabs hidden
 
 **Bids**:
