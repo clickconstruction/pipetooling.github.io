@@ -155,7 +155,7 @@ Refs (6): `bookOfferTokenRef` 406 and `freezingPricingRef` 409 (P4 / freeze chai
 
 ### Region P2 — The Workbench card (selected bid)
 
-- **Render location:** `selectedBidForPricing &&` 2249–3906 (**1,658 lines**). Per the fact sheet the block reads 32 state values, writes 21 and calls 30 handlers; everything numeric inside it flows from `derivePricingWorkbench()` (2136–2193 — `computeBidCostBreakdown` + `decoratePricingRows` over `pricingRowsForGrid`; also called by `runWorkbenchSolve`, `applyWorkbenchPreview`, `commitWorkbenchTypedPrice` and the `<PricingQuoteModals` call at 4080) and the derive preamble at 2428–2639 (`eff` rows at 2471, `effMargin` and `costed` at 2485, `conc = profitConcentration(…)` 2520, `mColor` 2524, the Revenue/Profit/Margin cell editors, `visibleEff`). The five direct-cost mirrors reach the kernel through the one memo, `pricingDirectCostRows` (2084–2087).
+- **Render location:** `selectedBidForPricing &&` 2249–3906 (**1,658 lines**). Per the fact sheet the block reads 32 state values, writes 21 and calls 30 handlers; everything numeric inside it flows from `derivePricingWorkbench()` (since v2.8744 the kernel [`lib/bids/derivePricingWorkbench.ts`](../src/lib/bids/derivePricingWorkbench.ts), 10 tests, moved as it stood from 2136–2193; the tab keeps a thin closure of the same name that hands it the tab's reads and adds `openRowBreakdown` — `computeBidCostBreakdown` + `decoratePricingRows` over `pricingRowsForGrid`; also called by `runWorkbenchSolve`, `applyWorkbenchPreview`, `commitWorkbenchTypedPrice` and the `<PricingQuoteModals` call at 4080) and the derive preamble at 2428–2639 (`eff` rows at 2471, `effMargin` and `costed` at 2485, `conc = profitConcentration(…)` 2520, `mColor` 2524, the Revenue/Profit/Margin cell editors, `visibleEff`). The five direct-cost mirrors reach the kernel through the one memo, `pricingDirectCostRows` (2084–2087).
 - **The twelve blocks (re-measured at v2.7759; the nine-block table of v2.3562 is superseded):**
 
 | Block | Span | Lines | Owns state (cluster) | Handlers (lines) | Data |
@@ -311,7 +311,7 @@ The Old grid, *Apply matching Labor Hours*, the add-missing-fixture modal, `hand
 
 **In each tab component (when sub-extracting regions):**
 - The props contract — sub-components receive slices, never re-fetch engine data, never own `selectedPricingVersionId` / `selectedLaborBookVersionId` (setter callbacks only).
-- `BidsPricingTab`: P0 (`guardPricingWrite`, the freeze chain, `writeUnitPriceOverrideRow`), `derivePricingWorkbench` (five callers), the `pricingRowsForGrid` consumption point, the service-type reset effect (814–830, clears P5), the assign dropdown's outside-click effect (845–856; the profit bar's half left in v2.3990), `applyPendingBookOffer`. The two one-shot URL doors moved together into the P6 hook, unchanged (v2.3945).
+- `BidsPricingTab`: P0 (`guardPricingWrite`, the freeze chain, `writeUnitPriceOverrideRow`), the thin `derivePricingWorkbench` closure over its kernel (v2.8744; seven callers, counted then), the `pricingRowsForGrid` consumption point, the service-type reset effect (814–830, clears P5), the assign dropdown's outside-click effect (845–856; the profit bar's half left in v2.3990), `applyPendingBookOffer`. The two one-shot URL doors moved together into the P6 hook, unchanged (v2.3945).
 - `BidsLaborTab`: the L2 autosave effect and the `cellSaves` trio (every region it persists patches the same injected state and marks cells through the same functions), the 318–321 book-pin effect.
 
 ---
