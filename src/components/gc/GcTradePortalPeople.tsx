@@ -12,7 +12,8 @@ import { PortalBlock } from './GcTradePortalUi'
  * GC mode, the trade partner portal (P2b-ii): who at the company gets which of our emails, from the design spike's
  * `GcPortalPeople.tsx`. The main contact gets every kind until the company names others. A tick that would leave a
  * kind with no one cannot be taken off, and the server holds the same rule (`gc_trade_set_gets`). With no press
- * (the portal read only), it lists who gets what.
+ * (the portal read only), it lists who gets what. **Remove** asks first, in the row, and its second press names the
+ * person: the app's confirm window draws outside the portal's light wrapper, so it is not used here.
  */
 
 const GROUP_WORDS: Record<PortalMailGroup, { name: PortalKey; help: PortalKey }> = {
@@ -53,6 +54,8 @@ function PeopleEditor({ partner }: { partner: Partner }) {
   const { t } = usePortalLang()
   const { busy, problem, run } = usePress()
   const [adding, setAdding] = useState(false)
+  // The person whose Remove was pressed: the row asks first, in place, and the second press names the act.
+  const [asking, setAsking] = useState<string | null>(null)
   const people = partner.people ?? []
   const main = contactGets(partner)
 
@@ -69,6 +72,11 @@ function PeopleEditor({ partner }: { partner: Partner }) {
     void run('set_gets', { personId, gets: next })
   }
 
+  const remove = async (personId: string) => {
+    await run('remove_person', { personId })
+    setAsking(null)
+  }
+
   const rows = [
     { id: null as string | null, name: partner.contact || partner.company, detail: t('pplMain'), gets: main, removable: false },
     ...people.map((p) => ({ id: p.id as string | null, name: p.name, detail: [p.role, p.email].filter(Boolean).join(' · '), gets: p.gets, removable: true })),
@@ -83,12 +91,25 @@ function PeopleEditor({ partner }: { partner: Partner }) {
             <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
               <strong>{row.name}</strong>
               <span style={{ fontSize: '0.8rem', color: MUTED }}>{row.detail}</span>
-              {row.removable && row.id && (
-                <Btn kind="quiet" disabled={busy} onClick={() => void run('remove_person', { personId: row.id })}>
+              {row.removable && row.id && asking !== row.id && (
+                <Btn kind="quiet" disabled={busy} onClick={() => setAsking(row.id)}>
                   {t('remove')}
                 </Btn>
               )}
             </div>
+            {row.removable && row.id && asking === row.id && (
+              <div data-portal-person-ask={row.id} role="group" aria-label={t('pplRemoveYes', { name: row.name })} style={{ display: 'grid', gap: '0.35rem' }}>
+                <div style={{ fontSize: '0.85rem' }}>{t('pplRemoveAsk', { name: row.name })}</div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <Btn kind="primary" wrap disabled={busy} onClick={() => void remove(row.id as string)}>
+                    {t('pplRemoveYes', { name: row.name })}
+                  </Btn>
+                  <Btn kind="quiet" wrap disabled={busy} onClick={() => setAsking(null)}>
+                    {t('pplRemoveKeep', { name: row.name })}
+                  </Btn>
+                </div>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: '0.3rem 0.8rem', flexWrap: 'wrap', fontSize: '0.85rem' }}>
               {PORTAL_MAIL_GROUPS.map((g) => {
                 const on = row.gets.includes(g)
