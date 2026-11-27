@@ -387,7 +387,7 @@ Stripe and emailed invoices need a customer email. The app now flags the gap ear
 
 ## Where the Billing tab went
 
-The Jobs page had a **Billing** tab. It listed every open job with its line items. That tab is gone. An old link to it opens the Pipeline.
+The Jobs page had a **Billing** tab. The tab listed every open job with its line items. The tab is gone. An old link to the tab opens the Pipeline.
 
 Most of what it showed has a home:
 
