@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { GcTradePartners, type TradePartnerWrites } from './GcTradePartners'
+import { BenchRemoveRefused } from '../../lib/gc/benchRemove'
 import { boardStateFromRows } from '../../lib/gc/boardRows'
 import { clinicBoardRows } from '../../lib/gc/boardTestRows'
 import { installDomShims, renderWithProviders as render } from '../../test/renderSmokeMocks'
@@ -157,7 +158,8 @@ describe('GcTradePartners', () => {
     const press = within(row).getByRole('button', { name: 'Remove from the bench…' })
     fireEvent.click(press)
     const ask = await screen.findByRole('alertdialog', { name: 'Remove Alamo Concrete from the bench?' })
-    expect(within(ask).getByText('Alamo Concrete has no quote, no ask, no work order and no contact logged. Their row leaves Trade partners.')).toBeTruthy()
+    // The confirm says what this screen checked and what it cannot see (finding 338): it no longer promises the row leaves.
+    expect(within(ask).getByText('Alamo Concrete has no quote, no ask, no work order and no contact logged. Their row leaves Trade partners unless we emailed them, they sent a file or they have a Messages thread. If one of those holds them, the row stays and says why.')).toBeTruthy()
     fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
     expect(w.removeCompany).not.toHaveBeenCalled()
@@ -168,9 +170,27 @@ describe('GcTradePartners', () => {
     await waitFor(() => expect(w.removeCompany).toHaveBeenCalledWith('alamo'))
   })
 
-  it('v2.6749 · a sub from Prospects is told its card goes back on the lane, and a refusal shows its words on the row', async () => {
+  it('finding 338 · the function’s refusal stays on the row in its own words alone, and takes the press with it', async () => {
     const w = writes()
-    // A Supabase refusal is a plain object, never an Error: the row must still read its reason.
+    vi.mocked(w.removeCompany).mockRejectedValueOnce(new BenchRemoveRefused('Alamo Concrete stays on the bench, since we emailed them.'))
+    render(<GcTradePartners state={boardStateFromRows(withAlamo())} writes={w} onOpenProject={() => undefined} />)
+    const row = document.querySelector('[data-gc-partner="alamo"]') as HTMLElement
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove from the bench…' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Remove Alamo Concrete from the bench?' })
+    fireEvent.click(within(ask).getByRole('button', { name: 'Remove from the bench' }))
+    // The reason alone: no *Failed to remove the company from the bench:* in front of a sentence that already says it stays.
+    const reason = await within(row).findByRole('alert')
+    expect(reason.textContent).toBe('Alamo Concrete stays on the bench, since we emailed them.')
+    expect(reason.getAttribute('data-gc-row-problem')).toBe('refused')
+    // The same refusal is not offered twice in one sitting.
+    expect(within(row).queryByRole('button', { name: 'Remove from the bench…' })).toBeNull()
+    expect(document.querySelector('[data-gc-remove="alamo"]')).toBeNull()
+    expect(w.removeCompany).toHaveBeenCalledTimes(1)
+  })
+
+  it('v2.6749 · a sub from Prospects is told its card goes back on the lane, and a failure that is no refusal keeps the press', async () => {
+    const w = writes()
+    // A Supabase failure thrown bare is a plain object, never an Error: the row must still read its reason.
     vi.mocked(w.removeCompany).mockRejectedValueOnce({ message: 'Alamo Concrete stays on the bench, since they were asked to quote.', code: 'P0001' })
     const origins = { alamo: { prospectId: 'pr9', who: 'Marisol', when: '2026-11-08T15:05:00Z', calls: 1, answered: 1 } }
     render(<GcTradePartners state={boardStateFromRows(withAlamo())} writes={w} onOpenProject={() => undefined} origins={origins} />)
@@ -182,5 +202,7 @@ describe('GcTradePartners', () => {
     // The caller's sentence leads the server's reason (formatErrorMessage's shape for a coded refusal).
     await within(row).findByText('The remove did not go through: Alamo Concrete stays on the bench, since they were asked to quote.')
     expect(w.removeCompany).toHaveBeenCalledWith('alamo')
+    // Only the function's own refusal, passed on by `removeGcBenchCompany` as a `BenchRemoveRefused`, takes the press.
+    expect(within(row).getByRole('button', { name: 'Remove from the bench…' })).toBeTruthy()
   })
 })
