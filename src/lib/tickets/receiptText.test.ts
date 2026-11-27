@@ -5,10 +5,15 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+  RECEIPT_AGAIN_MAX,
+  RECEIPT_AGAIN_REST_HOURS,
   RECEIPT_TEXTS_OFF,
   RECEIPT_TEXTS_WORDS,
   foldReceiptCharges,
   parseReceiptTextsSetting,
+  receiptAgainBody,
+  receiptAgainHold,
+  receiptAgainRefusalWords,
   receiptChargeAsks,
   receiptCompanyHour,
   receiptHolderInTrial,
@@ -21,6 +26,7 @@ import {
   receiptTextBody,
   receiptTextsOnWords,
   receiptTextsValue,
+  type ReceiptAgainRefusal,
   type ReceiptRequestState,
 } from './receiptText'
 
@@ -248,5 +254,62 @@ describe('the Settings card’s words', () => {
   it('each confirm names its act', () => {
     expect(RECEIPT_TEXTS_WORDS.confirm.confirmLabel).toBe('Turn it on')
     expect(RECEIPT_TEXTS_WORDS.confirmTrial.confirmLabel).toBe('Turn it on for me')
+  })
+})
+
+describe('Text again', () => {
+  // Thu Nov 5, 9:00 AM on the company's clock: the reminder went Wednesday at six.
+  const AT = Date.parse('2026-11-05T15:00:00.000Z')
+  const twice = { no_text_why: null, texted_at: '2026-11-04T00:14:00.000Z', reminded_at: '2026-11-05T00:00:00.000Z', answered_at: null, closed_at: null, closes_at: '2026-11-18T00:14:00.000Z', again_at: null, again_count: 0 }
+
+  it('may go twelve hours after the reminder, on a charge with no receipt and an open link', () => {
+    expect(receiptAgainHold(twice, AT)).toBeNull()
+    // A database that hands back no count yet reads as never pressed.
+    expect(receiptAgainHold({ ...twice, again_at: undefined, again_count: undefined }, AT)).toBeNull()
+  })
+
+  it('is held, with the first reason that holds', () => {
+    expect(receiptAgainHold({ ...twice, answered_at: '2026-11-05T14:00:00.000Z' }, AT)).toBe('answered')
+    expect(receiptAgainHold({ ...twice, closed_at: '2026-11-05T14:00:00.000Z' }, AT)).toBe('closed')
+    expect(receiptAgainHold({ ...twice, closes_at: '2026-11-05T14:00:00.000Z' }, AT)).toBe('closed')
+    expect(receiptAgainHold({ ...twice, no_text_why: 'opted_out' }, AT)).toBe('held')
+    expect(receiptAgainHold({ ...twice, reminded_at: null }, AT)).toBe('not_twice')
+    expect(receiptAgainHold({ ...twice, texted_at: null }, AT)).toBe('not_twice')
+    // Eleven hours and fifty-nine minutes after the reminder.
+    expect(receiptAgainHold(twice, Date.parse('2026-11-05T11:59:00.000Z'))).toBe('not_twice')
+    expect(receiptAgainHold(twice, Date.parse('2026-11-05T12:00:00.000Z'))).toBeNull()
+  })
+
+  it('rests twelve hours after each press, and stops at two presses a charge', () => {
+    expect(RECEIPT_AGAIN_MAX).toBe(2)
+    expect(RECEIPT_AGAIN_REST_HOURS).toBe(12)
+    const once = { ...twice, again_at: '2026-11-05T15:00:00.000Z', again_count: 1 }
+    expect(receiptAgainHold(once, Date.parse('2026-11-05T20:00:00.000Z'))).toBe('resting')
+    expect(receiptAgainHold(once, Date.parse('2026-11-06T03:00:00.000Z'))).toBeNull()
+    expect(receiptAgainHold({ ...once, again_count: 2 }, Date.parse('2026-11-07T15:00:00.000Z'))).toBe('cap')
+  })
+
+  it('the text says who is asking, in plain characters, with the link last', () => {
+    const body = receiptAgainBody({ charge: { amount: -228.58, store: 'Ridgeway Supply', posted_at: '2026-11-03T23:00:00.000Z' }, url: 'https://my.clickplumbing.com/r/k7m2p9xq4d' })
+    expect(body).toBe('The office still needs the receipt for $228.58 at Ridgeway Supply. Snap it here: https://my.clickplumbing.com/r/k7m2p9xq4d')
+    expect(body).not.toBe(receiptReminderBody({ charges: [{ amount: -228.58, store: 'Ridgeway Supply', posted_at: null }], url: 'https://my.clickplumbing.com/r/k7m2p9xq4d' }))
+    // One character outside the plain alphabet makes the carrier send the whole text wide.
+    expect(/^[\x20-\x7e]+$/.test(body)).toBe(true)
+    expect(receiptAgainBody({ charge: { amount: 12, store: null, posted_at: null }, url: 'u' })).toBe('The office still needs the receipt for $12.00. Snap it here: u')
+  })
+
+  it('every refusal is a sentence that says no text went, or what to do', () => {
+    const whys: ReceiptAgainRefusal[] = ['answered', 'closed', 'held', 'not_twice', 'cap', 'resting', 'off', 'texts_off', 'not_in_trial', 'gone', 'dead', 'has_ticket', 'no_holder', 'no_cell', 'opted_out', 'taken', 'not_office', 'training']
+    for (const why of whys) {
+      for (const who of ['Jordan', '']) {
+        const words = receiptAgainRefusalWords(why, who)
+        expect(words, why).toMatch(/^[A-Z].*\.$/)
+        expect(words, why).not.toMatch(/undefined|  /)
+      }
+    }
+    expect(receiptAgainRefusalWords('cap', 'Jordan')).toBe('The office has texted Jordan again twice about this charge. Ask for the receipt another way.')
+    expect(receiptAgainRefusalWords('resting', 'Jordan')).toBe('Jordan was texted again less than twelve hours ago. No text went.')
+    expect(receiptAgainRefusalWords('no_cell', '')).toBe('The holder has no cell on file now, so no text went. Add the cell on People.')
+    expect(receiptAgainRefusalWords('off', 'Jordan')).toBe('Receipt texts are off in Settings, so no text went.')
   })
 })

@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -1610,6 +1610,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   everyone else gets no rows.
   `receipt_requests_set_done(ids, done)` is the office's **Got it** and its Undo, the one write a signed-in person makes to a request;
   a training account, an archived one and every other role are refused (`42501`).
+  **Text again** (v2.8697, `docs/migrations/20261127064100_receipt_text_again.md`) is the office's too: the `receipt-request` function reads the caller's JWT, asks `is_office_staff`, refuses an archived caller and a training account with 403, and writes `again_at`, `again_by` and `again_count` as the service role.
+  No policy lets a signed-in person write those columns.
   The receipt chip on Banking and Job Summary (v2.7152) is no new permission: it reads `counter_tickets` and `receipt_requests` as the viewer, so the office sees every charge's state, a holder sees their own, and anyone else sees no chip.
 - **`users.card_name` · `photo_path` · `photo_crop`, and the bucket `person-photos`** (punch list #313 PR 1, `docs/migrations/20261111200000_person_card_facts.md`, v2.6941): the name on a person's business card, and their headshot with where it sits in its ring.
   **Written** by the person on their own row and by the office on anyone's (dev, master_technician, assistant, controller), through the two policies that already carry a name, a phone and a note;

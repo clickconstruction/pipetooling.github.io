@@ -2,7 +2,8 @@
 /**
  * The receipt kind's io (punch list #299, the step after PR 2) over a stood-in client: the read is the one function,
  * Got it and its Undo are the other with the flag each way, a refusal keeps its words, and a press tells the Needs you
- * line to count again.
+ * line to count again. Text again (v2.8697) asks the `receipt-request` function for the one request and keeps the
+ * function's own words when no text went.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -21,6 +22,12 @@ function client(answers: Answer[]) {
     return answers.shift() ?? { data: null, error: null }
   })
   return { db: { rpc } as unknown as SupabaseClient, calls }
+}
+
+/** A client whose one function answers as told. */
+function functionClient(answer: { data: unknown; error: unknown }) {
+  const invoke = vi.fn(async (_name: string, _options?: unknown) => answer)
+  return { db: { functions: { invoke } } as unknown as SupabaseClient, invoke }
 }
 
 const heard = vi.fn()
@@ -62,5 +69,27 @@ describe('the receipt kind’s io', () => {
     const c = client([{ data: null, error: { message: 'Only the office marks a receipt request done.', code: '42501' } }])
     await expect(receiptFillInIoOver(c.db).save('r1')).rejects.toThrow(/Only the office marks a receipt request done/)
     expect(heard).not.toHaveBeenCalled()
+  })
+})
+
+describe('Text again', () => {
+  it('asks the function for the one request, and tells the line to count again once the text has gone', async () => {
+    window.addEventListener(RECEIPT_CHASE_CHANGED_EVENT, heard)
+    const c = functionClient({ data: { ok: true, state: 'sent', segments: 1, againCount: 1 }, error: null })
+    await receiptFillInIoOver(c.db).textAgain('r6')
+    expect(c.invoke.mock.calls).toEqual([['receipt-request', { body: { again: 'r6' } }]])
+    expect(heard).toHaveBeenCalledTimes(1)
+  })
+
+  it('a text that did not go throws the function’s own words and tells nobody', async () => {
+    window.addEventListener(RECEIPT_CHASE_CHANGED_EVENT, heard)
+    const c = functionClient({ data: { ok: false, why: 'opted_out', words: 'Jordan replied STOP, so no text went. Ask for the receipt another way.' }, error: null })
+    await expect(receiptFillInIoOver(c.db).textAgain('r6')).rejects.toThrow('Jordan replied STOP, so no text went. Ask for the receipt another way.')
+    expect(heard).not.toHaveBeenCalled()
+  })
+
+  it('an answer that does not read, or a function that could not be reached, says no text went', async () => {
+    await expect(receiptFillInIoOver(functionClient({ data: null, error: null }).db).textAgain('r6')).rejects.toThrow(/^No text went\./)
+    await expect(receiptFillInIoOver(functionClient({ data: null, error: new Error('Failed to send a request to the Edge Function') }).db).textAgain('r6')).rejects.toThrow(/^No text went\./)
   })
 })

@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-26
+last_updated: 2026-11-27
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -3119,7 +3119,10 @@ a charge still without a receipt gets one reminder in the evening, one a charge.
 On the Team queue the charge wears a chip, *Texted 6:14 PM* or *No text*, with the reason under it: the card tied to no one, no cell on file, a person who has left, a STOP, or a text that did not go (`receiptLineWords`).
 The charges the text cannot finish are a **Needs you** line, *N card charges wait on a receipt the text cannot get* (`receipts-to-chase`, v2.7148), and rows of Quickfill's Fill them in deck (`lib/needsYou/fillInReceipts.ts`): each says why and names its door, **Copy the receipt link** sends the link by hand, and **Got it** takes the row off the office's list while the link stays open.
 The same state shows as a chip beside a recent card charge on Banking's ledger and User Sort and in the **Receipt** column of Job Summary's card-charge drill-down (`lib/tickets/receiptState.ts`, `components/tickets/ReceiptStateChip.tsx`, v2.7152).
+A row for a charge texted and reminded with no receipt also has **Text again** (v2.8697, `receiptAgainPress`): the press reads *Text Jordan again*, a window asks first, and the office's own text goes on a new link.
+The office may text again twice for one charge, twelve hours apart (`RECEIPT_AGAIN_MAX`, `RECEIPT_AGAIN_REST_HOURS`), and the row rests off the list for twelve hours after each press.
 **Function**: `receipt-request`, called by the cron of the same name.
+The office's Text again calls the same function, signed in.
 **Guides**: *turn on receipt texts for card charges* (the owner), *answer the text about a charge on your card* (the holder), *sort the team's card purchases from the office* (the office).
 
 ### Team purchases and the Team queue (Job Parts Tally)

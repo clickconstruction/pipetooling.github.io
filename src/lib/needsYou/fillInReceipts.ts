@@ -1,7 +1,7 @@
 import { PEOPLE_USERS_PATH } from '../people/peopleEmptyWords'
 import { debitCardsHref } from '../banking/debitCards'
 import type { NeedsYouSeverity } from '../dashboardNeedsYou'
-import { RECEIPT_COMPANY_TZ } from '../tickets/receiptText'
+import { RECEIPT_AGAIN_MAX, RECEIPT_COMPANY_TZ } from '../tickets/receiptText'
 import { fillInRowKey, type FillInRowBase } from './fillIn'
 
 /**
@@ -11,7 +11,9 @@ import { fillInRowKey, type FillInRowBase } from './fillIn'
  * who has left, the holder replied STOP, the text was turned away three times, or the holder was texted and reminded
  * and sent nothing. Each row says what happened and names the next press. The answer is one press, **Got it**, which
  * takes the row off the office's list and changes nothing else; **Copy the receipt link** is on the row for sending
- * the link by hand. Pure; `fillInReceiptsIo.ts` reads and writes.
+ * the link by hand. A charge texted and reminded with no receipt also offers **Text again** (v2.8697): one more text
+ * by a person's press, at most `RECEIPT_AGAIN_MAX` a charge (`receiptAgainPress`). Pure; `fillInReceiptsIo.ts` reads
+ * and writes.
  */
 export type ReceiptChaseWhy = 'no_cell' | 'no_person' | 'archived' | 'opted_out' | 'failed' | 'no_answer'
 
@@ -30,6 +32,18 @@ export type ReceiptChaseSource = {
   texted_at: string | null
   reminded_at: string | null
   closes_at: string | null
+  /** When the office last pressed Text again. Absent until the migration of v2.8697 is on the database. */
+  again_at?: string | null
+  /** How many times the office has pressed Text again. Absent until the migration of v2.8697 is on the database. */
+  again_count?: number | null
+}
+
+/** The row's Text again: what the press and its confirm window say, and what is said once the text has gone. */
+export type ReceiptAgainPress = {
+  label: string
+  confirm: { title: string; message: string; confirmLabel: string }
+  /** The toast once the text has gone. */
+  sentWords: string
 }
 
 export type ReceiptFillInRow = FillInRowBase & {
@@ -40,6 +54,8 @@ export type ReceiptFillInRow = FillInRowBase & {
   /** *$228.58 at Ridgeway Supply* */
   chargeWords: string
   postedAtMs: number
+  /** Text again, on a charge texted and reminded with no receipt; null on every other row and at the cap. */
+  again: ReceiptAgainPress | null
 }
 
 function money(raw: number | string | null | undefined): string {
@@ -76,8 +92,49 @@ export function receiptChaseWhyOf(raw: string): ReceiptChaseWhy | null {
   return (WHYS as readonly string[]).includes(raw) ? (raw as ReceiptChaseWhy) : null
 }
 
-/** The row's sentence: what happened, in the words of the mock-up's frame T7. */
-export function receiptChaseTitle(why: ReceiptChaseWhy, who: string, charge: string): string {
+const TIMES = ['', 'once', 'twice', 'three times', 'four times', 'five times']
+const NTH = ['', 'first', 'second', 'third', 'fourth', 'fifth']
+
+/** *twice*, *three times*; a number past the list reads as *7 times*. */
+function timesWords(n: number): string {
+  return TIMES[n] ?? `${n} times`
+}
+
+/** How many times the office has pressed Text again, or null when the database does not say yet. */
+function againCountOf(s: Pick<ReceiptChaseSource, 'again_count'>): number | null {
+  const n = s.again_count
+  return typeof n === 'number' && Number.isInteger(n) && n >= 0 ? n : null
+}
+
+/**
+ * The row's Text again, or null. It shows on a charge texted and reminded with no receipt, while the office has
+ * pressed fewer than `RECEIPT_AGAIN_MAX` times. The office's list holds the row back for twelve hours after the
+ * reminder and after each press, so a row that is on the list has rested. A database that does not hand back the
+ * count yet shows no press: the function behind it would have nowhere to write.
+ *
+ *   Text Jordan again · A third text goes to Jordan's phone about $228.58 at Ridgeway Supply, with a new link.
+ */
+export function receiptAgainPress(s: Pick<ReceiptChaseSource, 'why' | 'again_count'>, who: string, charge: string): ReceiptAgainPress | null {
+  const count = againCountOf(s)
+  if (s.why !== 'no_answer' || count === null || count >= RECEIPT_AGAIN_MAX) return null
+  const name = who || 'the holder'
+  const nth = NTH[count + 3] ?? `${count + 3}th`
+  const article = /^[aeiou]/.test(nth) || /^8/.test(nth) ? 'An' : 'A'
+  const label = `Text ${name} again`
+  const last = count + 1 >= RECEIPT_AGAIN_MAX ? ' It is the last one the office can send for this charge.' : ''
+  return {
+    label,
+    confirm: {
+      title: `${label}?`,
+      message: `${article} ${nth} text goes to ${who ? `${who}'s` : "the holder's"} phone about ${charge}, with a new link. It is a real text.${last}`,
+      confirmLabel: label,
+    },
+    sentWords: `${article} ${nth} text went to ${name} about ${charge}.`,
+  }
+}
+
+/** The row's sentence: what happened, in the words of the mock-up's frame T7. `texts` is how many texts have gone. */
+export function receiptChaseTitle(why: ReceiptChaseWhy, who: string, charge: string, texts = 2): string {
   const name = who || 'The holder'
   switch (why) {
     case 'no_cell':
@@ -91,12 +148,12 @@ export function receiptChaseTitle(why: ReceiptChaseWhy, who: string, charge: str
     case 'failed':
       return `The text to ${who || 'the holder'} about ${charge} did not go.`
     case 'no_answer':
-      return `${name} was texted twice about ${charge} and sent no receipt.`
+      return `${name} was texted ${timesWords(Math.max(2, texts))} about ${charge} and sent no receipt.`
   }
 }
 
 /** What the app knows about the row, and what mends it. */
-export function receiptChaseKnows(why: ReceiptChaseWhy, s: Pick<ReceiptChaseSource, 'texted_at' | 'reminded_at' | 'closes_at' | 'posted_at'>): string[] {
+export function receiptChaseKnows(why: ReceiptChaseWhy, s: Pick<ReceiptChaseSource, 'texted_at' | 'reminded_at' | 'closes_at' | 'posted_at' | 'again_at' | 'again_count'>): string[] {
   const out: string[] = []
   const posted = dayClock(s.posted_at)
   if (posted) out.push(`The charge posted ${posted}.`)
@@ -120,6 +177,10 @@ export function receiptChaseKnows(why: ReceiptChaseWhy, s: Pick<ReceiptChaseSour
       const texted = dayClock(s.texted_at)
       const reminded = dayClock(s.reminded_at)
       if (texted && reminded) out.push(`Texted ${texted}, reminded ${reminded}.`)
+      const count = againCountOf(s) ?? 0
+      const again = dayClock(s.again_at ?? null)
+      if (count > 0) out.push(`The office texted again ${again ? (count === 1 ? again : `${timesWords(count)}, last ${again}`) : timesWords(count)}.`)
+      if (count >= RECEIPT_AGAIN_MAX) out.push('That is the most for one charge. Ask for the receipt another way, or send the link yourself.')
       const closes = shortDay(s.closes_at)
       if (closes) out.push(`The link is open until ${closes}.`)
       break
@@ -161,7 +222,7 @@ export function receiptFillInRows(sources: readonly ReceiptChaseSource[]): Recei
       key: fillInRowKey('receipt', s.request_id),
       kind: 'receipt',
       severity: severityOf(why),
-      title: receiptChaseTitle(why, who, chargeWords),
+      title: receiptChaseTitle(why, who, chargeWords, 2 + (againCountOf(s) ?? 0)),
       knows: receiptChaseKnows(why, s),
       ...receiptChaseDoor(why, who),
       requestId: s.request_id,
@@ -169,6 +230,7 @@ export function receiptFillInRows(sources: readonly ReceiptChaseSource[]): Recei
       why,
       chargeWords,
       postedAtMs: Number.isFinite(posted) ? posted : 0,
+      again: receiptAgainPress(s, who, chargeWords),
     })
   }
   return rows.sort(compareReceiptRows)
@@ -204,6 +266,11 @@ export function receiptChaseDetail(c: ReceiptChaseCounts): string {
   return parts.length > 0 ? `${parts.join(', ')}. Each row names its next press.` : 'Each row names its next press.'
 }
 
+/** The trail's line for a row the office texted again. A text cannot be taken back, so the line has no Undo. */
+export function receiptAgainTrailWords(row: Pick<ReceiptFillInRow, 'chargeWords'>): string {
+  return `Texted again: ${row.chargeWords}.`
+}
+
 /** The saved line on the deck's trail. */
 export function receiptTrailWords(row: Pick<ReceiptFillInRow, 'chargeWords'>): string {
   return `Got it: ${row.chargeWords}.`
@@ -213,6 +280,7 @@ export const RECEIPT_CHASE_WORDS = {
   gotIt: 'Got it',
   copyLink: 'Copy the receipt link',
   copying: 'Copying…',
+  texting: 'Texting…',
   gotItHint: 'Got it takes the row off this list. The link stays open, and a receipt that comes later still lands on the charge.',
 } as const
 
