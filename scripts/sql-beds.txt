@@ -17,6 +17,7 @@ portal-customer-lines
 gc-change-orders-from-messages
 gc-award
 gc-take-ask-back
+gc-bench-hold
 take-back-company-paper
 pay-applications
 gc-back-charges
