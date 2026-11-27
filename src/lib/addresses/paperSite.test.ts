@@ -4,6 +4,7 @@ import {
   PAPER_SITE_WORDS,
   SITE_ADDRESS_MAX,
   SITE_KEY_MAX,
+  SITE_PRINTED_WORDS,
   SITE_PRINT_BOX_LABEL,
   SITE_PRINT_HINTS,
   sitePrintBox,
@@ -173,6 +174,17 @@ describe('the words', () => {
     expect(plainSentence(paperSiteNote({ site_address: `  ${QUARRY} ` }))).toBe(`for the site at ${QUARRY}`)
     expect(paperSiteNote({ site_address: null })).toBe('')
     expect(paperSiteNote({})).toBe('')
+  })
+
+  it('says a paper prints its address only when its box was ticked', () => {
+    expect(plainSentence(paperSiteNote({ site_address: QUARRY, site_prints_address: true }))).toBe(`for the site at ${QUARRY}, printed on the paper`)
+    // The address stays the one value of the line: the words after it are words.
+    expect(paperSiteNote({ site_address: QUARRY, site_prints_address: true })).toBe(`for the site at ${val('address', QUARRY)}, ${SITE_PRINTED_WORDS}`)
+    for (const off of [false, null, undefined]) expect(plainSentence(paperSiteNote({ site_address: QUARRY, site_prints_address: off }))).toBe(`for the site at ${QUARRY}`)
+    // A row read without the column, as from a view that does not answer it yet, says nothing about a print.
+    expect(plainSentence(paperSiteNote({ site_address: QUARRY }))).toBe(`for the site at ${QUARRY}`)
+    // No address, no line, whatever the box says.
+    expect(paperSiteNote({ site_address: null, site_prints_address: true })).toBe('')
   })
 
   it('names a site, says its line and its row', () => {

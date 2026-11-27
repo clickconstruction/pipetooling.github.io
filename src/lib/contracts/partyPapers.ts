@@ -100,6 +100,8 @@ export type PartyPaperRow = {
   site_address?: string | null
   site_address_key?: string | null
   site_development_id?: string | null
+  /** True when the paper prints that address, so its signer reads it before signing (part 3e). */
+  site_prints_address?: boolean | null
   /** The party's name as the paper keeps it, when the read asks for it. */
   party_name?: string | null
 }

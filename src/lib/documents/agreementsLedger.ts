@@ -81,10 +81,29 @@ export interface AgreementRow {
   site_development_id?: string | null
   site_address_key?: string | null
   site_address?: string | null
+  /**
+   * True when the paper prints its site's address, so its signer reads it before signing (part 3e). Absent from a view
+   * older than `20261127050501_agreements_on_file_site_print.sql`, and null on a line that is no such paper.
+   */
+  site_prints_address?: boolean | null
 }
 
-export const AGREEMENTS_SELECT =
+/** The columns the list read before the view answered whether a paper prints its address: what an older view is asked. */
+export const AGREEMENTS_SELECT_BEFORE_PRINT =
   'id, kind, source_id, state, paper_name, with_name, job_id, job_hcp_number, job_click_number, job_name, job_address, more_jobs, person_id, person_kind, at, at_day, facts, site_development_id, site_address_key, site_address'
+
+export const AGREEMENTS_SELECT = `${AGREEMENTS_SELECT_BEFORE_PRINT}, site_prints_address`
+
+/**
+ * True when a read was refused because the view has no `site_prints_address` yet: the database is behind
+ * `20261127050501_agreements_on_file_site_print.sql`. The list then reads its lines without the column and says
+ * nothing about a print. Any other refusal is a real one.
+ */
+export function agreementsViewLacksPrint(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const e = error as { code?: unknown; message?: unknown }
+  return e.code === '42703' && typeof e.message === 'string' && e.message.includes('site_prints_address')
+}
 
 /** Rows read per step; Show more reads the next step. */
 export const AGREEMENTS_PAGE = 100
@@ -266,8 +285,11 @@ export function agreementsSiteSentence(address: string): string {
   return `Papers for the site at ${val('address', address.trim())}.`
 }
 
-/** A line's own site, when its paper names one: `for the site at 118 Old Quarry Trl, Sampleton, TX`. '' when it names none. */
-export function agreementSiteWords(row: Pick<AgreementRow, 'site_address'>): string {
+/**
+ * A line's own site, when its paper names one: `for the site at 118 Old Quarry Trl, Sampleton, TX`, and
+ * `, printed on the paper` after it when the signer reads the address. '' when it names none.
+ */
+export function agreementSiteWords(row: Pick<AgreementRow, 'site_address' | 'site_prints_address'>): string {
   return paperSiteNote(row)
 }
 

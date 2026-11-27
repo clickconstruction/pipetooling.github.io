@@ -110,6 +110,18 @@ describe('Documents → Agreements · the site', () => {
     expect(screen.queryByTestId('documents-agreements-site')).toBeNull()
   })
 
+  it('says a line’s paper prints its address when the view says so, and nothing of it otherwise (part 3e)', async () => {
+    io.rows = [
+      row({ site_address_key: KEY_QUARRY, site_address: QUARRY, site_prints_address: true }),
+      row({ id: 'supply_house_agreement:d2', source_id: 'd2', paper_name: 'Vendor terms', with_name: 'Example Pipe & Valve', site_address_key: KEY_QUARRY, site_address: QUARRY, site_prints_address: false }),
+      // A line from a view that does not answer the column yet.
+      row({ id: 'supply_house_agreement:d3', source_id: 'd3', paper_name: 'Vendor rules', with_name: 'Sample Well Drilling', site_address_key: KEY_QUARRY, site_address: QUARRY }),
+    ]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await screen.findAllByTestId('documents-agreements-row')
+    expect(screen.getAllByTestId('agreement-site').map((s) => s.textContent)).toEqual([`for the site at ${QUARRY}, printed on the paper`, `for the site at ${QUARRY}`, `for the site at ${QUARRY}`])
+  })
+
   it('Find by site… asks the list for the picked address, says so over the list, and Clear the site puts it back', async () => {
     renderWithProviders(<DocumentsAgreementsTab />)
     await screen.findAllByTestId('documents-agreements-row')

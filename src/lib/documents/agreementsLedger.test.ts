@@ -8,6 +8,8 @@ import {
   AGREEMENTS_EMPTY_PAGE,
   AGREEMENTS_PAGE,
   AGREEMENTS_SELECT,
+  AGREEMENTS_SELECT_BEFORE_PRINT,
+  agreementsViewLacksPrint,
   AGREEMENT_GROUP_COLORS,
   AGREEMENT_GROUP_KINDS,
   AGREEMENTS_READER_DOORS,
@@ -280,6 +282,27 @@ describe('the site (punch list #439)', () => {
     expect(plainSentence(agreementSiteWords({ site_address: '118 Old Quarry Trl, Sampleton, TX' }))).toBe('for the site at 118 Old Quarry Trl, Sampleton, TX')
     expect(agreementSiteWords({ site_address: null })).toBe('')
     expect(agreementSiteWords({})).toBe('')
+  })
+
+  it('says a line’s paper prints its address, only when the view says so', () => {
+    expect(plainSentence(agreementSiteWords({ site_address: '118 Old Quarry Trl, Sampleton, TX', site_prints_address: true }))).toBe('for the site at 118 Old Quarry Trl, Sampleton, TX, printed on the paper')
+    expect(plainSentence(agreementSiteWords({ site_address: '118 Old Quarry Trl, Sampleton, TX', site_prints_address: false }))).toBe('for the site at 118 Old Quarry Trl, Sampleton, TX')
+    expect(plainSentence(agreementSiteWords({ site_address: '118 Old Quarry Trl, Sampleton, TX', site_prints_address: null }))).toBe('for the site at 118 Old Quarry Trl, Sampleton, TX')
+  })
+
+  it('asks the view for the print, and has the older columns for a view that does not answer it', () => {
+    expect(AGREEMENTS_SELECT).toBe(`${AGREEMENTS_SELECT_BEFORE_PRINT}, site_prints_address`)
+    expect(AGREEMENTS_SELECT_BEFORE_PRINT.split(', ')).not.toContain('site_prints_address')
+  })
+
+  it('knows a refusal for the missing print column from every other refusal', () => {
+    expect(agreementsViewLacksPrint({ code: '42703', message: 'column agreements_on_file.site_prints_address does not exist' })).toBe(true)
+    // Another missing column, the view itself missing, a refusal by a policy, and things that are no error.
+    expect(agreementsViewLacksPrint({ code: '42703', message: 'column agreements_on_file.site_address does not exist' })).toBe(false)
+    expect(agreementsViewLacksPrint({ code: '42P01', message: 'relation "agreements_on_file" does not exist' })).toBe(false)
+    expect(agreementsViewLacksPrint({ code: '42501', message: 'permission denied for view agreements_on_file' })).toBe(false)
+    expect(agreementsViewLacksPrint({ message: 'site_prints_address' })).toBe(false)
+    for (const none of [null, undefined, 'site_prints_address', 42703]) expect(agreementsViewLacksPrint(none)).toBe(false)
   })
 
   it('passes the plain-words rules', () => {
