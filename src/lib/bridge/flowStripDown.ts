@@ -1,4 +1,4 @@
-import { STRIP_MIN_THICK, STRIP_PACE_VERB, type FlowStrip, type StripSection } from './flowStrip'
+import { STRIP_PACE_VERB, stripThick, type FlowStrip, type StripSection } from './flowStrip'
 import { marketWorthPerWeek, stageUsd, type PileStageInput, type StageFlowInput, type StageId } from './stageFlow'
 
 /**
@@ -173,8 +173,8 @@ export function stripDownLines(
 
 /**
  * The pipe with Market drawn at what it is worth, the asks read through their won rates, in place of the raw
- * dollars asked. Every section is sized again against the new widest, by the strip's own rule (the bore's area:
- * four times the dollars is twice the width, never thinner than `STRIP_MIN_THICK`). Market's words for a screen
+ * dollars asked. Every section is sized again against the new widest, by the strip's own rule (`stripThick`: straight to
+ * the dollars since v2.8725, never thinner than `STRIP_MIN_THICK`). Market's words for a screen
  * reader say the same amount the eye reads. The lit section and the bars are the page's reading and do not move.
  */
 export function withMarketWorth(strip: FlowStrip, marketPerWeekUsd: number | null): FlowStrip {
@@ -183,7 +183,7 @@ export function withMarketWorth(strip: FlowStrip, marketPerWeekUsd: number | nul
   const max = Math.max(0, ...strip.sections.map((s) => paceOf(s) ?? 0))
   const sections = strip.sections.map((s): StripSection => {
     const p = paceOf(s)
-    const thick = p != null && max > 0 ? STRIP_MIN_THICK + (1 - STRIP_MIN_THICK) * Math.sqrt(p / max) : STRIP_MIN_THICK
+    const thick = stripThick(p, max)
     if (s.id !== 'market') return { ...s, thick }
     const usd = stageUsd(marketPerWeekUsd)
     return { ...s, paceUsd: p, paceText: `${usd} worth`, thick, label: [`${s.name}.`, `Worth ${usd} a week.`, s.lit ? 'The narrowest step.' : ''].filter(Boolean).join(' ') }
