@@ -193,7 +193,7 @@ A job in no development has the same block on its own Documents tab. Find **Secr
 
 Turn it on the same way. Every job at that address takes the paper. So does a job at another spelling of the address, once the two are answered **Same place**.
 
-A job in a development shows the block only while its development has secrecy on. It has no press there. Open the development's page to turn it off.
+A job in a development shows the block only while its development has secrecy on. The block has no press there. Open the development's page to turn it off.
 
 ## Change a paper's words
 
