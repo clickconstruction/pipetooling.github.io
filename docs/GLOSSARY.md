@@ -394,6 +394,7 @@ An answer on the call list, **Pursue** or **Not for us**, is kept in `builder_ca
 Since v2.8112 the name is offered again after that day only once it has a job open now that it applied for after the answer (`backWithNewJob`).
 Since v2.8121 **Ask for** on a call-list row shows what a one-time lookup found about the name (`builder_lookups`): the kind of company, an office phone, and a person and title, each with its page and day.
 A looked-up fact reads **looked up, not checked** and is drawn grey until a person presses **Checked**, and a press of **Wrong** takes it off the row (`builder_lookup_checks`, the newest press per fact).
+Since v2.8732 the builder's sheet draws the same **Ask for** block for its one name, read as the sheet opens (`loadBuilderLookupOf`) and folded and pressed as the call list's is.
 A looked-up kind tags a name and, once checked, moves it in the list's order (`lookupOrder`), and it never takes a name off the list or sets the builder's kind.
 Since v2.5559 (punch list #110) the deck finds three **kinds** of company, one `prospects.kind`: **Customers** (a GC or an owner who could send us plans for our trades;
 every row before then), **Jobs to GC** (an owner, developer, architect or owner's rep with a job we could build as the GC;
