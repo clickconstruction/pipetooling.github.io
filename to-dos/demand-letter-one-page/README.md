@@ -10,7 +10,7 @@ summary: >
   sheet was measured and does not fit.
 next: The owner presses Open the PDF on the sample, in Settings → What customers see → Lien letters → Final demand letter, if he wants the PDF's own look: the walk could not open it. Then he says whether counsel's eye on the changed phrase is still owed, and the folder goes.
 size: XS
-blocker: v2.8549 on the live site, then the owner's word on counsel's eye.
+blocker: the owner's word on counsel's eye. v2.8549 was seen live on 2026-11-25.
 ver: v2.7086 · v2.8549
 opinion: build — it is built; the look is hers
 ---

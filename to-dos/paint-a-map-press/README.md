@@ -17,7 +17,7 @@ next: >
   The simulator looks at the start sheet once v2.8578 is live: it ends above Safari's bar and scrolls to both presses. The simulator looks at Dispatch Mode's home once v2.8587 is live: its first row reads Tally, Clock In, Job Report and Paint a map, with nothing off the side. Walk it on a real iPhone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band. The owner answers call 11, the two short pages. Then delete this card.
 size: L as a train of five (S · M · S · L · S), all built, with the changed jobs and Coming up after it (S with one index); left: a look at the start sheet's mend (XS), a look at the top row on Dispatch Mode's home, built as v2.8587 (XS), the walk on a real iPhone (XS) and call 11
 blocker: >
-  A real iPhone in a hand, and the owner's answer to call 11.
+  The owner's answer to call 11. The walk on a real iPhone was taken off on Taunya's words of 2026-11-27 (*looks that only a real phone can give, we can skip them*).
 ver: v2.7859 · 7866 · 7868 · 7869 · 7915 · 7920 · 7933
 opinion: built as carded, with two changes said on the card — the phone walk is left, and the picker should never open on an empty list
 ---
