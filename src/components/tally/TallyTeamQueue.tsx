@@ -51,7 +51,7 @@ import { loadJobsForTicketPick, loadTicketJobFacts } from '../../lib/tickets/tic
 import { ticketScreensIo } from '../../lib/tickets/ticketScreensIo'
 import { receiptCopiedWords } from '../../lib/tickets/receiptLink'
 import { copyReceiptLinkFor } from '../../lib/tickets/receiptLinkIo'
-import { receiptLineWords } from '../../lib/tickets/receiptText'
+import { receiptLineWithAgain } from '../../lib/tickets/receiptAgainLine'
 import { listReceiptRequestsByCharge, type ReceiptRequestRow } from '../../lib/tickets/receiptTextsIo'
 import { useTicketCapture } from '../../hooks/useTicketCapture'
 import { useNavigate } from 'react-router-dom'
@@ -233,9 +233,10 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
   )
 
   const receiptLineByCharge = useMemo(() => {
-    const out = new Map<string, NonNullable<ReturnType<typeof receiptLineWords>>>()
+    const out = new Map<string, NonNullable<ReturnType<typeof receiptLineWithAgain>>>()
     for (const [chargeId, r] of receiptRequests) {
-      const line = receiptLineWords(r, loadedAt)
+      // The line says a third text went when the office pressed Text again (v2.8728).
+      const line = receiptLineWithAgain(r, loadedAt)
       if (line) out.set(chargeId, line)
     }
     return out

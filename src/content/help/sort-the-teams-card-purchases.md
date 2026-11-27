@@ -95,7 +95,7 @@ The link opens for 14 days. The page shows that charge and nothing else. A charg
 
 The app can text the card's holder by itself when a charge posts. The owner turns those texts on in Settings. [Turn on receipt texts for card charges](/help/turn-on-receipt-texts-for-card-charges) shows how.
 
-A charge that was texted wears a blue chip, like {{chip:blue|Texted 6:14 PM}}. The line under the charge says *No receipt yet.* After the reminder, the line also says when the reminder went.
+A charge that was texted wears a blue chip, like {{chip:blue|Texted 6:14 PM}}. The line under the charge says *No receipt yet.* After the reminder, the line also says when the reminder went. When the office texts the holder again, the line says that too, with the time.
 
 A charge that could not be texted wears a yellow chip, {{chip:yellow|No text}}. The line under the charge gives the reason and what to do.
 
@@ -136,6 +136,12 @@ A holder who was texted twice and sent no receipt can get one more text from you
 3. Press {{button:blue|Text Jordan again}} in the window. One real text goes to their phone, with a new link.
 
 The row then leaves the list. The row has no **Undo**, because a text cannot be taken back.
+
+The charge's line on the Team queue then says the office texted again, with the time. Anyone in the office can read that a third text went.
+
+:::example The charge's line after your text
+Reminded Tue 6:14 PM. The office texted again Wed 9:02 AM. No receipt yet.
+:::
 
 The row comes back twelve hours later when no receipt has come. You can text again once more. After two of your texts the press is gone, and the row says to ask another way.
 

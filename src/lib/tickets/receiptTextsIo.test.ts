@@ -83,12 +83,27 @@ describe('the requests under the Team queue’s charges', () => {
     expect((c.calls[1]!.steps[1]![1][1] as string[]).length).toBe(10)
   })
 
+  it('asks for the office’s Text again with each request, and once more without it when that read is refused', async () => {
+    const c = client([{ data: [{ ...row('c1'), again_at: '2026-11-05T15:02:00.000Z', again_count: 1 }], error: null }])
+    const out = await listReceiptRequestsByCharge(['c1'], c.db)
+    expect(out.get('c1')).toMatchObject({ again_at: '2026-11-05T15:02:00.000Z', again_count: 1 })
+    expect(c.calls[0]!.steps[0]).toEqual(['select', ['mercury_transaction_id, holder_name, no_text_why, texted_at, reminded_at, answered_at, closed_at, text_tries, again_at, again_count']])
+    // A database that cannot hand the two columns back still draws every line it drew before.
+    const old = client([{ data: null, error: { message: 'column receipt_requests.again_at does not exist' } }, { data: [row('c1')], error: null }, { data: [row('c200')], error: null }])
+    const kept = await listReceiptRequestsByCharge(Array.from({ length: 160 }, (_, i) => (i === 0 ? 'c1' : `c${i + 100}`)), old.db)
+    expect([...kept.keys()]).toEqual(['c1', 'c200'])
+    // Three reads: the refused one, the same slice without the columns, and the second slice without them from the start.
+    expect(old.calls.map((call) => (call.steps[0]![1][0] as string).includes('again_count'))).toEqual([true, false, false])
+  })
+
   it('asks nothing for no charges, and a read that fails leaves the queue with no lines', async () => {
     const none = client([])
     expect((await listReceiptRequestsByCharge([], none.db)).size).toBe(0)
     expect(none.calls).toHaveLength(0)
     // A database one step behind the app has no text_tries column yet: the read is refused, and nothing is thrown.
-    const behind = client([{ data: null, error: { message: 'column receipt_requests.text_tries does not exist' } }])
+    const refused = { data: null, error: { message: 'column receipt_requests.text_tries does not exist' } }
+    const behind = client([refused, refused])
     expect((await listReceiptRequestsByCharge(['c1'], behind.db)).size).toBe(0)
+    expect(behind.calls).toHaveLength(2)
   })
 })
