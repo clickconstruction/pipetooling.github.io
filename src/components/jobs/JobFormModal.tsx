@@ -221,7 +221,8 @@ import { JobFormCreateCustomerModal } from './JobFormCreateCustomerModal'
 import { extractContactFromCustomer, getCustomerDisplay } from '../../lib/jobs/jobFormCustomerDisplay'
 import { formatJobFormBidLinkTitle } from '../../lib/jobs/jobFormBidLinkTitle'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
-import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
+import { afterDeleteJobFolder, makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
+import { JOB_FOLDER_TRASH_CONFIRM_LINE, jobFolderTrashOffered } from '../../lib/jobs/deletedJobFolderOffer'
 
 /** v2.4294: the Bill tab's By bill / By date choice, per browser. */
 export const BILLS_VIEW_STORAGE_KEY = 'pipetooling.jobBill.view'
@@ -2453,6 +2454,8 @@ export default function JobFormModal({
 
   async function deleteJob(id: string): Promise<boolean> {
     setDeletingId(id)
+    // Punch list #443, row 18: read before the delete, since the form lets go of the job once it is gone.
+    const folderJob = editing?.id === id ? { job_name: editing.job_name, customer_name: editing.customer_name, google_drive_link: editing.google_drive_link } : null
     const { error: err } = await supabase.from('jobs_ledger').delete().eq('id', id)
     if (err) {
       console.error('JobFormModal deleteJob failed', err)
@@ -2460,6 +2463,10 @@ export default function JobFormModal({
       setDeletingId(null)
       return false
     }
+    // A dev's delete of a ZZ test job sends its own Drive folder to Drive's trash. The delete never waits on it.
+    void afterDeleteJobFolder(id, folderJob, authRole).then((said) => {
+      if (said) showToast(said.words, said.tone)
+    })
     onSavedRef.current?.()
     closeFormWithoutSaving()
     setDeletingId(null)
@@ -3372,6 +3379,7 @@ export default function JobFormModal({
         migrateJobLedgerCostsToBidAndDelete={migrateJobLedgerCostsToBidAndDelete}
         nestedOverlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
         migrateOverlayZIndex={JOB_FORM_MIGRATE_OVERLAY_Z_INDEX}
+        driveFolderTrashLine={jobFolderTrashOffered(authRole, editing) ? JOB_FOLDER_TRASH_CONFIRM_LINE : null}
       />
       {jobBidLinkChoiceOpen && (
         <JobBidLinkChoiceModal

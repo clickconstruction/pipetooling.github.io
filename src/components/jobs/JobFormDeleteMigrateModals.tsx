@@ -31,6 +31,8 @@ type JobFormDeleteMigrateModalsProps = {
   migrateJobLedgerCostsToBidAndDelete: (fromId: string, toBidId: string) => Promise<boolean>
   nestedOverlayZIndex: number
   migrateOverlayZIndex: number
+  /** One more line in the Delete window when the plain delete also sends the job's Drive folder to the trash (punch list #443, row 18); null for every other delete. */
+  driveFolderTrashLine?: string | null
 }
 
 /**
@@ -63,6 +65,7 @@ export function JobFormDeleteMigrateModals({
   migrateJobLedgerCostsToBidAndDelete,
   nestedOverlayZIndex,
   migrateOverlayZIndex,
+  driveFolderTrashLine,
 }: JobFormDeleteMigrateModalsProps) {
   const {
     migrateJobModalOpen,
@@ -170,6 +173,11 @@ export function JobFormDeleteMigrateModals({
                 reports. A dev can put it back for 90 days from <strong>Settings → Data &amp; recovery → Recently
                 deleted</strong>.
               </p>
+              {driveFolderTrashLine && !reassignRequired && !costSnapshotStillLoading ? (
+                <p style={{ margin: '0.5rem 0 0', color: 'var(--text-muted)' }} data-testid="job-delete-drive-folder-line">
+                  {driveFolderTrashLine}
+                </p>
+              ) : null}
               {hasMigrateableCosts && !costSnapshotStillLoading ? (
                 <div
                   style={{

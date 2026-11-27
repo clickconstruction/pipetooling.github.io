@@ -1,8 +1,22 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { findOrCreateFolder, googleAccessToken } from '../_shared/driveUpload.ts'
-import { checkFolderWrite, DRIVE_SETTINGS_KEYS, driveFolderMeta, NO_ROOT_WORDS, readDriveSettings, type DriveFolderFacts } from '../_shared/driveSettings.ts'
+import { DRIVE, driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken } from '../_shared/driveUpload.ts'
+import { checkFolderWrite, DRIVE_SETTINGS_KEYS, driveFolderMeta, FOLDER_MIME, NO_ROOT_WORDS, readDriveSettings, type DriveFolderFacts } from '../_shared/driveSettings.ts'
 import { FolderTree, JOB_FOLDER_COLUMNS, folderUrl, type FolderHold, type JobFolderRow, type PlaceAct } from '../_shared/jobFolders.ts'
+import {
+  deletedJobFacts,
+  lookInsideFolder,
+  trashCallerRefusal,
+  trashedWords,
+  trashFolderVerdict,
+  trashHoldersRefusal,
+  trashInsideRefusal,
+  trashJobRefusal,
+  trashLinkNothing,
+  trashNoteWords,
+  type TrashFolderSeen,
+  type TrashLister,
+} from '../_shared/deletedJobFolderTrash.ts'
 import {
   BID_FOLDER_PIECES,
   DRIVE_BID_FOLDER_PATTERN_KEY,
@@ -24,6 +38,7 @@ import {
   type TidyCounts,
 } from '../_shared/whereFilesGo.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 /**
  * job-drive-folders — Materials on site (punch list #209), the owner's ask of 2026-10-29: a tool of ours makes a
@@ -32,7 +47,7 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  * go (punch list #211) the office sets the root and the name's pattern on Documents → Where files go, and the same
  * function carries that tab's three verbs. Since v2.6284 (the owner's rule of 2026-11-01) the tree is root › <customer> ›
  * <job pattern> › the five, one implementation in `_shared/jobFolders.ts` (`FolderTree.placeJob`) under the press, the
- * sweep below and the photo sweep's first photo on a job with no folder. Five bodies:
+ * sweep below and the photo sweep's first photo on a job with no folder. Six bodies:
  *
  *   POST { job_id }                                                      — the press
  *     Places the job's folder in the tree: finds or makes the customer's folder under the jobs root (the setting
@@ -70,12 +85,19 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  *     there, so neither points where an upload would fail. Written with the service role: the office roles write here
  *     without a key-scoped policy on app_settings. A change applies to folders made from then on; nothing is moved.
  *
+ *   POST { trash: { job_id } }                                           — a deleted test job's folder (#443, row 18)
+ *     A dev alone, after the job is deleted. The job is read from Deleted records' copy, never from the caller: it must
+ *     be gone, kept there, and named ZZ. Its own folder then goes to Drive's trash, never a delete, when it sits under
+ *     a folder of the jobs root in the Shared Drive, no live bid, job or customer still names it, and nothing in it was
+ *     added by a person. The customer's folder stays. The rule and its words are `_shared/deletedJobFolderTrash.ts`. Answers
+ *     `{ success, act: 'trashed' | 'none' | 'already' | 'gone', words, folder, inside }`; a refusal is `{ error, why }`.
+ *
  * Refusals in words, each with a `why` the page reads: a Drive link on the job that is not a folder
  * (`not_a_folder`), a folder the service account cannot open or write in (`folder_unshared`, with the account's
  * email to share it with), a root the app cannot write in (`root_unwritable`).
  *
  * Auth: a staff JWT, office roles (dev, master_technician, assistant, controller, estimator) for the press, the
- * check and the read; the four office roles without the estimator for `set`; never a training account or a digital
+ * check and the read; the four office roles without the estimator for `set`; a dev alone for `trash`; never a training account or a digital
  * twin, as gc-drive-access checks (the service role writes here, so the read-only blocks and the twin fence never
  * see it); verify_jwt = false and validated here. Google auth is the service account (GOOGLE_SERVICE_ACCOUNT_JSON);
  * setup in docs/DRIVE_INTAKE_SETUP.md.
@@ -98,6 +120,61 @@ const TASKS_FOLDER_NAME = 'PipeTooling Tasks'
 const OFFICE_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator']
 /** Who sets where files go: the office, not the estimators. */
 const SETTINGS_ROLES = ['dev', 'master_technician', 'assistant', 'controller']
+
+/** The header a Drive call carries. */
+const bearer = (token: string) => ({ Authorization: `Bearer ${token}` })
+
+/** One file or folder as the trash body reads it: what it is, where it sits, whether it is in the trash and whether this account may put it there. */
+async function driveTrashMeta(token: string, id: string): Promise<{ status: number; body: { name?: string; mimeType?: string; parents?: string[]; driveId?: string; trashed?: boolean; capabilities?: { canTrash?: boolean } } }> {
+  const res = await fetch(`${DRIVE}/files/${encodeURIComponent(id)}?fields=id,name,mimeType,parents,driveId,trashed,capabilities/canTrash&supportsAllDrives=true`, { headers: bearer(token) })
+  return { status: res.status, body: await res.json().catch(() => ({})) }
+}
+
+/** The job's folder as Drive shows it, with the folder its parent sits in: the rule reads where it is in the tree. */
+async function seeFolderForTrash(token: string, id: string): Promise<TrashFolderSeen> {
+  const { status, body } = await driveTrashMeta(token, id)
+  if (status === 403 || status === 404) return { kind: 'gone' }
+  if (status < 200 || status >= 300) throw new Error(`Drive answered ${status} when the app looked at the job’s folder.`)
+  if (body.mimeType !== FOLDER_MIME) return { kind: 'not_a_folder' }
+  const parentId = body.parents?.[0] ?? null
+  let grandparentId: string | null = null
+  if (parentId) {
+    const parent = await driveTrashMeta(token, parentId)
+    if (parent.status >= 200 && parent.status < 300) grandparentId = parent.body.parents?.[0] ?? null
+  }
+  return { kind: 'folder', id, name: body.name ?? '', parentId, grandparentId, inDrive: Boolean(body.driveId), trashed: body.trashed === true, canTrash: body.capabilities?.canTrash === true }
+}
+
+/** One page of what a folder holds, for `lookInsideFolder`: every thing not in the trash, with who changed it last. */
+const listFolderPage = (token: string): TrashLister => async (parentId, pageToken) => {
+  const q = encodeURIComponent(`'${parentId}' in parents and trashed = false`)
+  const page = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''
+  const res = await fetch(`${DRIVE}/files?q=${q}&fields=nextPageToken,files(id,mimeType,lastModifyingUser(me,emailAddress))&pageSize=200&supportsAllDrives=true&includeItemsFromAllDrives=true${page}`, { headers: bearer(token) })
+  if (!res.ok) throw new Error(`Drive answered ${res.status} when the app read what the job’s folder holds.`)
+  const body = (await res.json().catch(() => ({}))) as { nextPageToken?: string; files?: { id?: string; mimeType?: string; lastModifyingUser?: { me?: boolean; emailAddress?: string } }[] }
+  return {
+    items: (body.files ?? []).map((f) => ({
+      id: String(f.id ?? ''),
+      isFolder: f.mimeType === FOLDER_MIME,
+      byMe: typeof f.lastModifyingUser?.me === 'boolean' ? f.lastModifyingUser.me : null,
+      byEmail: f.lastModifyingUser?.emailAddress ?? null,
+    })),
+    next: body.nextPageToken ?? '',
+  }
+}
+
+/** The one write of the trash body: the folder into Drive's trash. Never a delete. Null when it went, Drive's reason when it did not. */
+async function trashDriveFolder(token: string, id: string, note: string): Promise<string | null> {
+  // The same write `drive-link` makes for a file taken off a job (v2.7699): `trashed`, and a note on why.
+  const res = await fetch(`${DRIVE}/files/${encodeURIComponent(id)}?supportsAllDrives=true&fields=id,trashed`, {
+    method: 'PATCH',
+    headers: { ...bearer(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ trashed: true, description: note }),
+  })
+  if (res.ok) return null
+  const b = (await res.json().catch(() => ({}))) as { error?: { message?: string } }
+  return `Drive answered ${res.status} when the app moved the folder to the trash: ${b.error?.message ?? 'unknown'}`
+}
 
 /** The tab's answer: the settings, the root's live check and the pieces the trays offer. */
 async function settingsAnswer(token: string, appEmail: string, settings: DriveSettings) {
@@ -149,6 +226,8 @@ serve(async (req) => {
       /** The app makes a folder itself: `fleet` finds or makes PipeTooling Fleet beside the Jobs folder and writes the setting (v2.6564); `tasks` the same for PipeTooling Tasks (punch list #273). */
       make?: 'fleet' | 'tasks'
       sweep?: { limit?: unknown; all?: unknown; offset?: unknown }
+      /** A deleted ZZ test job's own folder into Drive's trash, a dev alone (punch list #443, row 18). */
+      trash?: { job_id?: unknown }
     }
 
     // --- the caller: the cron's secret for the sweep, else a staff session with an office role, never a training account or a twin ---
@@ -156,6 +235,7 @@ serve(async (req) => {
     const headerSecret = req.headers.get('X-Cron-Secret') ?? req.headers.get('x-cron-secret')
     const byCron = Boolean(body.sweep) && Boolean(cronSecret) && headerSecret === cronSecret
     let who: { role: string | null; read_only: boolean | null; is_digital_twin: boolean | null } | null = null
+    let callerId: string | null = null
     if (!byCron) {
       const auth = req.headers.get('Authorization') ?? ''
       const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
@@ -163,6 +243,7 @@ serve(async (req) => {
       const archivedRefusal = await refuseArchivedCaller(admin, u?.user?.id, corsHeaders)
       if (archivedRefusal) return archivedRefusal
       if (!u?.user) return json({ error: 'Sign in first.' }, 401)
+      callerId = u.user.id
       const { data: row } = await admin.from('users').select('role, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
       who = (row as typeof who) ?? null
       if (!who || !OFFICE_ROLES.includes(String(who.role))) return json({ error: 'Office only.' }, 403)
@@ -288,6 +369,54 @@ serve(async (req) => {
       const after = await readDriveSettings(admin, Deno.env.get('DRIVE_JOBS_FOLDER_ID'))
       const answer = await settingsAnswer(token, appEmail, after)
       return json({ ...answer, saved: rows.map((r) => r.key), root_folder: rootFacts ?? answer.root?.folder ?? null })
+    }
+
+    // --- the take-back (punch list #443, row 18): a deleted ZZ test job's own folder into Drive's trash, a dev alone ---
+    if (body.trash) {
+      const callerNo = trashCallerRefusal(who?.role)
+      if (callerNo) return json({ error: callerNo.words, why: callerNo.why }, callerNo.status)
+      const jobId = String(body.trash.job_id ?? '').trim()
+      if (!/^[0-9a-f-]{36}$/i.test(jobId)) return json({ error: 'trash.job_id is required' }, 400)
+      const trashRoot = settings.rootFolderId
+      if (!trashRoot) return json({ error: NO_ROOT_WORDS, why: 'no_root' }, 503)
+      // The job is read from the server's own copies, never from the caller: the live row, and Deleted records' newest copy.
+      const [live, kept] = await Promise.all([
+        admin.from('jobs_ledger').select('id').eq('id', jobId).maybeSingle(),
+        admin.from('deleted_records_archive').select('row_data').eq('table_name', 'jobs_ledger').eq('record_id', jobId).order('deleted_at', { ascending: false }).limit(1),
+      ])
+      if (live.error || kept.error) return json({ error: `The job did not read: ${(live.error ?? kept.error)?.message ?? 'unknown'}` }, 500)
+      const deleted = deletedJobFacts(((kept.data ?? []) as { row_data?: unknown }[])[0]?.row_data)
+      const jobNo = trashJobRefusal(Boolean(live.data), deleted)
+      if (jobNo || !deleted) return json({ error: jobNo?.words ?? 'The job did not read.', why: jobNo?.why }, jobNo?.status ?? 500)
+      const folderId = driveFolderIdFromUrl(deleted.google_drive_link)
+      const noLink = trashLinkNothing(deleted.google_drive_link, folderId)
+      if (noLink || !folderId) return json({ success: true, act: noLink?.act ?? 'none', words: noLink?.words ?? '' })
+      const seen = await seeFolderForTrash(token, folderId)
+      const folderOut = { id: folderId, url: folderUrl(folderId), name: seen.kind === 'folder' ? seen.name : '' }
+      const folderNo = trashFolderVerdict(seen, trashRoot, appEmail)
+      if (folderNo) {
+        if ('act' in folderNo) return json({ success: true, act: folderNo.act, words: folderNo.words, folder: folderOut })
+        return json({ error: folderNo.words, why: folderNo.why, app_email: appEmail, folder: folderOut }, folderNo.status)
+      }
+      // Nothing live may still keep the folder: a job made from a bid takes the bid's own folder.
+      const like = `%${folderId}%`
+      const [jobs, bids, customers] = await Promise.all([
+        admin.from('jobs_ledger').select('id', { count: 'exact', head: true }).ilike('google_drive_link', like),
+        admin.from('bids').select('id', { count: 'exact', head: true }).ilike('drive_link', like),
+        admin.from('customers').select('id', { count: 'exact', head: true }).ilike('google_drive_link', like),
+      ])
+      const counts = [jobs, bids, customers].map((r) => (r.error || typeof r.count !== 'number' ? null : r.count))
+      if (counts.some((n) => n === null)) return json({ error: 'The records did not read, so nobody knows what still keeps this folder. It stays.', why: 'holders_unread', folder: folderOut }, 500)
+      const holdersNo = trashHoldersRefusal({ jobs: counts[0] ?? 0, bids: counts[1] ?? 0, customers: counts[2] ?? 0 })
+      if (holdersNo) return json({ error: holdersNo.words, why: holdersNo.why, folder: folderOut }, holdersNo.status)
+      // Nothing a person put there by hand goes with it.
+      const inside = await lookInsideFolder(listFolderPage(token), folderId, appEmail)
+      const insideNo = trashInsideRefusal(inside)
+      if (insideNo) return json({ error: insideNo.words, why: insideNo.why, folder: folderOut, inside }, insideNo.status)
+      const driveNo = await trashDriveFolder(token, folderId, trashNoteWords(jobId, todayYmdInAppTz()))
+      if (driveNo) return json({ error: `${driveNo}. It stays.`, why: 'drive_refused', app_email: appEmail, folder: folderOut }, 409)
+      console.log(`job-drive-folders trash: job ${jobId}, folder ${folderId}, ${inside.folders} folders and ${inside.files} files inside, by ${callerId ?? 'unknown'}`)
+      return json({ success: true, act: 'trashed', words: trashedWords(inside), folder: folderOut, inside: { folders: inside.folders, files: inside.files } })
     }
 
     // --- the tree: the root's name for the path words, once ---
