@@ -3,6 +3,7 @@ import { plainWordsFailures } from '../../plainWords'
 import type { BuildJob, PctPoint } from '../buildPace'
 import type { VectorSession } from '../vectors'
 import { BUILD_DESK_CREW_DAYS, BUILD_DESK_DAYS, buildBuildDesk, countsForBuildDesk, type BuildDesk, type BuildDeskInput, type BuildDeskReads } from './buildDesk'
+import type { BuildWait } from './buildWaits'
 
 const TODAY = '2026-10-26'
 const job = (id: string, name: string, revenueUsd: number | null, pctComplete: number | null, createdYmd = '2026-07-01'): BuildJob => ({ id, label: `J${id} · ${name}`, hcpNumber: `J${id}`, jobName: name, revenueUsd, pctComplete, status: 'working', createdYmd })
@@ -57,6 +58,8 @@ const reads: BuildDeskReads = {
 const input: BuildDeskInput = { openJobs, points, sessions, todayYmd: TODAY, reads, paces: { byPercentUsd: 32_700, byHoursUsd: 52_900 }, outPerWeekUsd: 52_900, weeks: 7.3 }
 const desk = buildBuildDesk(input)
 const row = (d: BuildDesk, id: string) => d.rows.find((r) => r.id === id)!
+/** Dana marked 878 waiting on the fixture's own day. */
+const gcWait: BuildWait = { jobId: '878', reason: 'gc_not_ready', note: '', sinceYmd: '2026-10-26', markedByName: 'Dana Office' }
 
 /** Every sentence a first-timer reads on the desk. The chips and the row heads are labels, not sentences. */
 const sentences = (d: BuildDesk): string[] => [d.headline, d.verdict, d.subLine, ...d.tiles.map((t) => t.words), ...d.rows.map((r) => r.why), d.noPctLine, d.footnote].filter(Boolean)
@@ -91,7 +94,7 @@ describe('buildBuildDesk (v2.5929)', () => {
   })
 
   it('sums the hours, the movement and the idle money into the totals, the headline, the verdict and the tiles', () => {
-    expect(desk.totals).toEqual({ hours: 161, movedUsd: 23_600, movedJobs: 2, ateHours: 65, ateJobs: 3, stalledUsd: 77_920, stalledJobs: 2, finishedJobs: 1, noPctJobs: 0 })
+    expect(desk.totals).toEqual({ hours: 161, movedUsd: 23_600, movedJobs: 2, ateHours: 65, ateJobs: 3, stalledUsd: 77_920, stalledJobs: 2, finishedJobs: 1, noPctJobs: 0, waitsUsd: 0, waitsJobs: 0 })
     expect(desk.headline).toBe('161h went in. $23.6k of work came out.')
     expect(desk.verdict).toBe('3 jobs ate 65 hours and moved nothing. 2 jobs hold $77.9k and saw nobody. That is the week.')
     expect(desk.tiles.map((t) => [t.head, t.value, t.tone])).toEqual([
@@ -254,6 +257,75 @@ describe('buildBuildDesk (v2.5929)', () => {
     expect(c.movedUsd).toBe(10_000)
   })
 
+  describe('a job that waits, with a reason (v2.8713, punch list #192 write A)', () => {
+    const waiting = buildBuildDesk({ ...input, reads: { ...reads, waits: [gcWait] } })
+
+    it('offers Name why it waits on a stalled row, once the waits could be read', () => {
+      const none = buildBuildDesk({ ...input, reads: { ...reads, waits: [] } })
+      expect(row(none, '878')).toMatchObject({ group: 'stalled', canNameWait: true, wait: null })
+      expect(row(none, '912').canNameWait).toBe(true)
+      // Only a stalled row: a job that ate hours, moved or finished has nothing to name.
+      for (const id of ['977', '1017', '1007', '1081']) expect(row(none, id).canNameWait, id).toBe(false)
+      expect(none.tiles.map((t) => t.head)).toEqual(['Moved', 'Ate hours, moved nothing', 'Stalled'])
+    })
+
+    it('offers no press while the waits are unread: before the reads land, and when the table could not be read', () => {
+      expect(buildBuildDesk({ ...input, reads: null }).rows.some((r) => r.canNameWait)).toBe(false)
+      // The fixture's reads carry no waits at all, as a read the database refused leaves them.
+      expect(desk.rows.some((r) => r.canNameWait)).toBe(false)
+      expect(desk.totals.waitsJobs).toBe(0)
+    })
+
+    it('takes the waiting job out of Stalled, its money and the biggest money idle chip', () => {
+      const r = row(waiting, '878')
+      expect(r).toMatchObject({ group: 'waits', canNameWait: false, biggestIdle: false, wait: gcWait })
+      expect(r.chip).toEqual({ tone: 'grey', words: 'waits · the GC is not ready for us · since Oct 26' })
+      expect(r.why).toBe('Waits since Oct 26: the GC is not ready for us. Dana marked it. This window does not count the $47.1k against the crew while it waits. The Build card still counts it as sold work.')
+      // The red Nobody scheduled chip is for a job nobody named.
+      expect(r.crew).toBeNull()
+      expect(r.doors.map((d) => d.label)).toEqual(['Open the job'])
+      expect(waiting.totals).toMatchObject({ stalledJobs: 1, waitsUsd: 47_120, waitsJobs: 1 })
+      expect(waiting.totals.stalledUsd).toBeCloseTo(30_800, 5)
+      expect(row(waiting, '912')).toMatchObject({ group: 'stalled', biggestIdle: true })
+      expect(row(waiting, '912').chip.words).toBe('stalled · biggest money idle')
+    })
+
+    it('sits at the end of the ledger, says so in the verdict, and its money gets a tile of its own', () => {
+      expect(waiting.rows[waiting.rows.length - 1]!.id).toBe('878')
+      expect(waiting.verdict).toBe('3 jobs ate 65 hours and moved nothing. 1 job holds $30.8k and saw nobody. 1 job waits with a reason. That is the week.')
+      expect(waiting.tiles).toHaveLength(4)
+      expect(waiting.tiles[2]).toMatchObject({ head: 'Stalled', value: '$30.8k, nobody on it', words: '1 job with no field hours in 14 days.' })
+      expect(waiting.tiles[3]).toEqual({ head: 'Waits, with a reason', value: '$47.1k on 1 job', words: 'Out of the crew’s count. Still sold work.', tone: 'grey' })
+      // The hours and the movement are untouched: the wait changes who the desk blames, not what was built.
+      expect(waiting.headline).toBe(desk.headline)
+      expect(waiting.totals.hours).toBe(desk.totals.hours)
+    })
+
+    it('a waiting job with crew on the Schedule keeps its crew chip', () => {
+      const d = buildBuildDesk({ ...input, reads: { ...reads, blocks: [...reads.blocks, block('878', '2026-10-28', 'u1')], waits: [gcWait] } })
+      expect(row(d, '878').crew?.words).toBe('Jorge · 1 crew-day · Wed')
+    })
+
+    it('a job with hours reads by its hours, and says it is still marked waiting', () => {
+      const d = buildBuildDesk({ ...input, reads: { ...reads, waits: [{ jobId: '1017', reason: 'weather', note: '', sinceYmd: '2026-10-24', markedByName: 'Dana Office' }] } })
+      const r = row(d, '1017')
+      expect(r.group).toBe('ate')
+      expect(r.wait?.reason).toBe('weather')
+      expect(r.canNameWait).toBe(false)
+      expect(r.why.endsWith('It is still marked waiting: weather, since Oct 24. Lift the wait if it is over.')).toBe(true)
+      expect(d.totals.waitsJobs).toBe(0)
+      expect(d.tiles).toHaveLength(3)
+    })
+
+    it('two waiting jobs: the bigger money first, and the verdict counts both', () => {
+      const d = buildBuildDesk({ ...input, reads: { ...reads, waits: [gcWait, { jobId: '912', reason: 'materials', note: '', sinceYmd: '2026-10-25', markedByName: '' }] } })
+      expect(d.rows.slice(-2).map((r) => r.id)).toEqual(['878', '912'])
+      expect(d.verdict).toBe('3 jobs ate 65 hours and moved nothing. 2 jobs wait with a reason. That is the week.')
+      expect(d.tiles[3]!.value).toBe('$77.9k on 2 jobs')
+      expect(d.totals).toMatchObject({ stalledJobs: 0, stalledUsd: 0 })
+    })
+  })
+
   it('holds every sentence to the plain-words rule', () => {
     const variants = [
       desk,
@@ -261,6 +333,7 @@ describe('buildBuildDesk (v2.5929)', () => {
       buildBuildDesk({ ...input, sessions: [], reads: { ...reads, blocks: [block('878', '2026-10-28', 'u1')] } }),
       buildBuildDesk({ ...input, openJobs: [job('n', 'No pct', 60_000, null), job('m', 'No pct two', 10_000, null)], points: [], sessions: [sess('n', '2026-10-20', 16)], paces: null, outPerWeekUsd: null, weeks: 101 }),
       buildBuildDesk({ ...input, openJobs: [job('s', 'Set here', 50_000, 20)], points: [pt('s', '2026-10-26', 20)], sessions: [] }),
+      buildBuildDesk({ ...input, reads: { ...reads, waits: [gcWait, { jobId: '977', reason: 'other', note: 'The permit is with the city.', sinceYmd: '2026-10-20', markedByName: '' }, { jobId: '1017', reason: 'weather', note: '', sinceYmd: '2026-10-24', markedByName: 'Dana Office' }] } }),
     ]
     for (const d of variants) for (const s of sentences(d)) expect(plainWordsFailures(s), s).toEqual([])
   })

@@ -38,6 +38,8 @@ export type BuildSteps = {
   nothingWaiting: string
   /** The jobs whose percent rose in the window: the dollars the headline names. */
   moved: { label: string; words: string; rows: BuildDeskRow[] }
+  /** The quiet jobs a person marked as waiting, with a reason (v2.8713): null when none waits. */
+  waits: { label: string; words: string; rows: BuildDeskRow[] } | null
   /** The press that opens the whole ledger, every open job. */
   everyLabel: string
   /** *How this is counted*, one plain sentence each. */
@@ -86,6 +88,7 @@ export function buildBuildSteps(desk: BuildDesk): BuildSteps {
   const price = desk.rows.filter((r) => r.group === 'ate' && r.noPrice)
   const crew = desk.rows.filter((r) => r.group === 'stalled')
   const moved = desk.rows.filter((r) => r.movedUsd > 0 && (r.group === 'moved' || r.group === 'finished'))
+  const waiting = desk.rows.filter((r) => r.group === 'waits')
 
   const gap = percent.length + price.length > 0
   const allHours = Math.round(totals.hours)
@@ -115,7 +118,11 @@ export function buildBuildSteps(desk: BuildDesk): BuildSteps {
     `The crew on a job comes from the Schedule for the next ${BUILD_DESK_CREW_DAYS} days.`,
     'The hours a job still expects are its expected hours less the hours already clocked.',
     'The percent window files a status report on the job, as a crew’s does.',
+    'A quiet job marked as waiting stays out of the quiet list until someone lifts the wait.',
   ]
 
-  return { headline, line, groups, nothingWaiting, moved: { label: `What moved (${moved.length})`, words: movedWords, rows: moved }, everyLabel: `Every open job (${desk.rows.length})`, counted }
+  const waitsMoney = totals.waitsUsd > 0 ? `, ${stageUsd(totals.waitsUsd)} of sold work` : ''
+  const waits = waiting.length > 0 ? { label: `Waiting, with a reason (${waiting.length})`, words: `${jobs(waiting.length)} ${plural(waiting.length, 'waits', 'wait')}${waitsMoney}. Each stays out of the quiet list until someone lifts the wait.`, rows: waiting } : null
+
+  return { headline, line, groups, nothingWaiting, moved: { label: `What moved (${moved.length})`, words: movedWords, rows: moved }, waits, everyLabel: `Every open job (${desk.rows.length})`, counted }
 }
