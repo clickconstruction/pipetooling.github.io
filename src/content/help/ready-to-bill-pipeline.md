@@ -305,7 +305,7 @@ Its recipient list is separate. It sits behind the {{icon:gear}} **Paid notifica
 
 ## Ready to Bill notifications
 
-The third stream watches the **front** of the billing pipeline. It fires the moment any job moves to {{chip:yellow|Ready to Bill}}. That can be a crew finishing up, or the office moving it by hand. It can be a job coming **back** from Billed after an invoice is deleted or reverted. The people on its list are notified so billing can start right away.
+The third stream watches the **front** of the billing pipeline. It fires the moment any job moves to {{chip:yellow|Ready to Bill}}. That can be a crew finishing up, or the office moving it by hand. It can be a job coming **back** from Billed after an invoice is deleted or reverted. The people on its list are notified so billing can start right away. A test job is the one exception. Its job or its customer has a name that starts with ZZ. A test job notifies nobody, so no one is told about a job that is not real. To see the notification for a test job, you use **Preview & test** in the same window.
 
 This stream is the first that can reach people **two ways, set per person**. The list sits behind the {{icon:gear}} **Ready to Bill notifications** button on the Ready to Bill section header. The same rules apply. The owner, a dev and the controller open it. The controller or a dev edits it. Every person in the list has their own **📧 email** and **🔔 push** checkboxes. They sit at the right end of their row:
 
