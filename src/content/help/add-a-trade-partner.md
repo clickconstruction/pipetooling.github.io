@@ -75,6 +75,8 @@ Press Escape to leave the address as it was.
 
 A company with no quote, no ask, no work order and no contact logged can leave the bench. Its row shows {{button:outline|Remove from the bench…}} under the address. Press it. A window asks to be sure. Press {{button:red|Remove from the bench}}. The row leaves Trade partners.
 
+Three things can still hold a company, and this screen cannot see them. They are an email we sent it, a file it sent us and a Messages thread. The window says so before you press. If one of them holds the company, the row stays and says why in red. The press then leaves that row until you load the page again.
+
 A company with any history stays. Its row shows no Remove press. Use {{button:outline|Will not do it}} or {{button:outline|Cannot do it}} on its ask instead.
 
 An ask the company never heard about can come back first. The company can leave after that. An ask the company heard about closes as *we took it back*, and the company stays. See [Take an ask back](/help/follow-up-on-a-quote-from-a-trade-partner#take-an-ask-back).

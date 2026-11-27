@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
-import { confirmPressSize } from '../lib/confirmDialogPress'
+import { confirmOpensOn, confirmPressSize } from '../lib/confirmDialogPress'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 /**
@@ -13,6 +13,9 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
  *
  * `confirmLabel` is required: the button names the act in the message's own
  * words ("Delete the draft", "Turn the reader off"), never a bare "OK".
+ *
+ * A plain confirm opens with the focus on the press that acts, so Enter does it. A red one
+ * (`danger`) opens on Cancel (`confirmOpensOn`), so Enter keeps what would be lost.
  *
  * Promise-based: resolves true on confirm, false on cancel / Escape /
  * backdrop click. Renders above modal z-indexes so it works from inside
@@ -40,7 +43,7 @@ export type ConfirmDialogOptions = {
   confirmLabel: string
   /** Cancel button label (default "Cancel"). */
   cancelLabel?: string
-  /** Red confirm button for destructive actions. */
+  /** Red confirm button for destructive actions. The window opens with the focus on Cancel, so Enter does not act. */
   danger?: boolean
   /** The cancel button is the safe answer: it is the blue one and takes the focus, so Enter stays put. */
   cancelIsSafe?: boolean
@@ -138,7 +141,8 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!pending) return
     if (pending.kind === 'prompt') inputRef.current?.focus()
-    else if (pending.options.cancelIsSafe) cancelButtonRef.current?.focus()
+    // A red confirm opens on Cancel (finding 339), as one that asks for it does: Enter then keeps what would be lost.
+    else if (confirmOpensOn(pending.options) === 'cancel') cancelButtonRef.current?.focus()
     else confirmButtonRef.current?.focus()
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {

@@ -8,8 +8,10 @@
  * says here is **Same part?** (PR 3): two names that are nearly the same are asked about once, and
  * the answer (`on_site_part_ties`) only changes which lines a row adds up, never a count.
  */
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { watchSmallPresses } from '../jobs/jobWindowPressPad'
 import { EmptyState } from '../EmptyState'
 import SitePeopleView from './SitePeopleView'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
@@ -293,8 +295,19 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
     }
   }
 
+  // On a phone every press under 40 px here gets an unseen pad to a thumb's 44 px square, as the job window's do
+  // (finding 324: 27 of this screen's presses stood 26 to 36 px at 375 px, and no pad reached it). Nothing moves:
+  // `watchSmallPresses` marks each small press and one rule in `index.css` draws the pad over the mark.
+  const phone = useNarrowViewport640()
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const root = rootRef.current
+    if (!phone || !root) return
+    return watchSmallPresses(root)
+  }, [phone])
+
   return (
-    <div style={{ display: 'grid', gap: '0.9rem' }} data-testid="site-materials-view">
+    <div ref={rootRef} style={{ display: 'grid', gap: '0.9rem' }} data-testid="site-materials-view" data-site-materials-phone={phone ? '' : undefined}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
         <button type="button" aria-label={`Back to ${backLabel}`} title={backLabel} style={{ ...btn, width: 36, height: 36, minHeight: 36, padding: 0, justifyContent: 'center', flex: '0 0 auto', lineHeight: 1 }} onClick={onBack}>
           ‹

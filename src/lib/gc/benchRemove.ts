@@ -7,6 +7,11 @@
  * row never takes a company that was asked a minute ago. It also sees what this screen cannot: an email we
  * sent the company (`gc_trade_messages`, a dev's to read) holds it too, refused as *since we emailed them*
  * (v2.8491; it read *they wrote to us from their portal*, which that table never holds). Pure; the write is `removeGcBenchCompany` in gcIo.
+ *
+ * So the press can be refused (finding 338, a walk of 2026-11-27, on a ZZ Test company). The confirm no longer promises
+ * that the row leaves: it names the three things this screen cannot see. A refusal is a `BenchRemoveRefused`, whose
+ * message is the function's own sentence and nothing else. The row keeps that reason and draws no press again until
+ * the page is read anew, so the same refusal is not offered twice in one sitting.
  */
 import type { Partner } from './types'
 
@@ -32,12 +37,30 @@ export const BENCH_REMOVE_PRESS = 'Remove from the bench…'
 export const BENCH_REMOVE_CONFIRM = 'Remove from the bench'
 export const BENCH_REMOVE_PRESS_TITLE = 'No quote, no ask, no work order and no contact logged. Press to take them off the bench.'
 
+/**
+ * What the confirm says will happen. The row leaves unless one of the three things only the server sees holds the
+ * company, and then the row says which.
+ */
+export const BENCH_REMOVE_UNLESS = 'Their row leaves Trade partners unless we emailed them, they sent a file or they have a Messages thread. If one of those holds them, the row stays and says why.'
+
+/**
+ * The server turned the remove down on purpose (`gc_remove_bench_company` raises `P0001` in plain words). Its message
+ * is the reason alone, so the row says it as it stands and not as *Failed to remove the company from the bench: …*,
+ * which read twice over: the function's sentence already says the company stays.
+ */
+export class BenchRemoveRefused extends Error {
+  constructor(reason: string) {
+    super(reason)
+    this.name = 'BenchRemoveRefused'
+  }
+}
+
 /** The confirm window's words. `fromProspects`: the company came from Prospects → Subs, so its card goes back on the lane. */
 export function benchRemoveConfirmWords(company: string, fromProspects: boolean): { title: string; message: string; confirmLabel: string } {
   const back = fromProspects ? ' Their card goes back on Prospects → Subs to call again.' : ''
   return {
     title: `Remove ${company} from the bench?`,
-    message: `${company} has no quote, no ask, no work order and no contact logged. Their row leaves Trade partners.${back}`,
+    message: `${company} has no quote, no ask, no work order and no contact logged. ${BENCH_REMOVE_UNLESS}${back}`,
     confirmLabel: BENCH_REMOVE_CONFIRM,
   }
 }

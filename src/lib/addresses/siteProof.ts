@@ -7,8 +7,9 @@
  * for the companies. The count of our own people is the site's secrecy (piece 4), read when the packet opens.
  *
  * Part 5a is the list, looked at and printed. A print goes to the client, so it keeps a copy under Documents, Sent
- * copies, as every print that goes to someone does (`lib/sent`). The signed copies themselves, **Download** and
- * **Send to the client** are part 5b, and the client's own page is part 5c.
+ * copies, as every print that goes to someone does (`lib/sent`). **Download** (part 5b, `siteProofPdf.ts`) is the list
+ * and the signed copies as one PDF, and its file is kept the same way. **Send to the client** and the client's own
+ * page are later parts.
  *
  * Pure: no React, no supabase.
  */
@@ -129,12 +130,16 @@ export const SITE_PROOF_WORDS = {
   ownPeople: 'Our own people',
   nobodySigned: 'No company has signed yet.',
   columns: { company: 'Company', signer: 'Signed by', askedOf: 'Sent to', paper: 'Paper', signedDay: 'Signed', sentDay: 'Sent' },
-  /** The packet's foot: this part prints the list alone. */
+  /** The foot of the page that prints: a print is the list alone. */
   listAlone: 'This is the list. The signed copies are not attached.',
+  /** Under the packet on the screen, never on paper: where the signed copies come from. */
+  downloadAdds: 'This is the list. Download adds the signed copies.',
   /** When the browser will not open the print window. */
   printBlocked: 'The print window was blocked. Allow pop-ups for this site, then press Print again.',
   /** Under the presses, once a print went: where its copy is. */
   printKept: 'Sent to print. A copy is kept under Documents, Sent copies.',
+  /** After the download's own line, once its file is kept. */
+  downloadKept: 'A copy is kept under Documents, Sent copies.',
 } as const
 
 /** The packet's foot: *As of Nov 27.* The day is the company's own. */
