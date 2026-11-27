@@ -14,7 +14,7 @@ summary: >
   no notice. But the row does not say so, and the affidavit pane let a draft through without
   naming the month still owed. The workflow from recording a mailing to drafting the affidavit
   needs a cleanup so the office sees what is owed and why.
-next: Retire the card once the office has worked a row with the doors.
+next: Retire the card once the office has worked a row with the doors. Looked at in the walking thread's sitting 35 of 2026-11-27, reads only, two named views of the Lien desk and nothing else: no verdict. The desk held no paper ready to print for notarization and no row that names a month still owed, so neither part could be read. This card's own walk is on a ZZ test job and takes two writes.
 size: M as two PRs (S · M)
 blocker: none
 ver: v2.6918 · v2.7209 · v2.7247 · v2.7268 · v2.7269
