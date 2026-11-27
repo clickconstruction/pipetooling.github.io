@@ -14,7 +14,7 @@ Documents → Agreements reads the site a paper names (punch list #439, piece 3:
 
 The other lines are a contract, a work order, our contract with an owner and a statement of work. None of them names a site.
 
-`site_prints_address` is not answered. The list filters and labels by site and prints nothing.
+`site_prints_address` was not answered here. `20261127050501_agreements_on_file_site_print.sql` (v2.8686) adds it as the view's last column, once a paper could print its address.
 
 ## What it leaves as it was
 
