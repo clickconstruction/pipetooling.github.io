@@ -147,7 +147,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // The note each server version carries (what it added and why, in the words of the day) lives in
 // docs/dev-mcp/SERVER_NOTES.md, oldest first, and a new version adds its note there. They were comments here until
 // they weighed 44 KB of this function's upload, which the deploy refuses past 5 MB (npm run check:edge-bundles).
-const SERVER_VERSION = '0.136.0'
+const SERVER_VERSION = '0.137.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 /** v2.7987 (punch list #315, upgrade 3a): what a person-file plan takes for the approvals list, and what its description says of it. */
@@ -1136,7 +1136,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'read_on_site',
-    description: "Materials on site (v2.6367, punch list #209): what is in a job's stencilled cages and boxes as the phone's On site tab and the office's Jobs → Materials read it — every live box with its stencil, kind, place, QR code and lines (part, on hand, last touched, the last count's difference), Unsorted (what a delivery landed that nobody put away), the retired boxes with the screens' Bring back verdict, the boxes due a count (14 days), the last 30 days' shortfalls and Can't find presses, and the newest 15 ledger rows. The numbers come from the screens' own kernel over the whole ledger (a count resets a line; on hand is the sum). `job` is an id, or text that matches exactly one job. Read it before any plan_ verb here: a box is named by its stencil as listed.",
+    description: "Materials on site (v2.6367, punch list #209): what is in a job's stencilled cages and boxes as the phone's On site tab and the office's Jobs → Materials read it — every live box with its stencil, kind, place, QR code and lines (part, on hand, last touched, the last count's difference), Unsorted (what a delivery landed that nobody put away), the retired boxes with the screens' Bring back verdict, the boxes due a count (a box that holds a line to count and has no count by hand in 14 days; an empty box is never due), the last 30 days' shortfalls and Can't find presses, and the newest 15 ledger rows. The numbers come from the screens' own kernel over the whole ledger (a count resets a line; on hand is the sum). `job` is an id, or text that matches exactly one job. Read it before any plan_ verb here: a box is named by its stencil as listed.",
     inputSchema: { type: 'object', properties: { job: { type: 'string', description: "Job id, or a number like 'J1032'" } }, required: ['job'] },
   },
   {
