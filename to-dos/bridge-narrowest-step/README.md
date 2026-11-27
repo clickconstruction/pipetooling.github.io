@@ -3,7 +3,7 @@ name: "The Bridge lights the narrowest step"
 number: 321
 group: close
 status: drawn 2026-11-12 after a review of the Bridge once Market read on the won rates (#318) · 2026-11-25 (UTC): the meaning answered in the managing session, the scaling function is the narrowest step, the one that moves the fewest dollars a week · the rule itself answered later the same day: the Bridge lights the narrowest step · all three PRs built 2026-11-26: PR 1 v2.8622 merged, each row's direction on the pipe; PR 2 v2.8628 and PR 3 v2.8630 merged the same day, each changing kernels copied to `bridge-weekly-sheet`, and that function redeployed once from `main` at 06:38 UTC (version 54), on the relayed yes · nothing left to build, nothing owed on prod
-ver: v2.8622 · 8628 · 8630 · 8646
+ver: v2.8622 · 8628 · 8630 · 8646 · 8664 · 8683
 mockup: to-dos/bridge-narrowest-step/mockup.html
 summary: >
   The Bridge lights the step with the most weeks of work waiting. With all five steps on one scale, that rule can
@@ -11,7 +11,7 @@ summary: >
   sells. The steps that hold the company back are the one that moves the fewest dollars a week, and the one whose
   pile grows. The drawing puts today's reading beside one that lights the narrowest step and says on each row
   whether its pile grows or shrinks. It is a question for the owner, since it changes the page's rule.
-next: the send on Monday 2026-11-30 at 6 AM Central is the first read of the email itself; the fix for the rule's **?**, which takes two presses to open, is briefed to the small fixes; a look in light, which the walks could not make; then the owner's own read of the red and the direction lines on his numbers.
+next: the send on Monday 2026-11-30 at 6 AM Central is the first read of the email itself; a look at the **?** at 375 px once v2.8683 is live, which should read 44 by 44; then the owner's own read of the red and the direction lines on his numbers.
 size: M as three parts (S · M · S), all built
 blocker: Nothing to build and nothing to deploy.
 opinion: the row directions shipped first and the red moved after, as planned; the redeploy is done, so once the walkers have looked, retire the card on the owner's word
@@ -134,6 +134,8 @@ The saying *A business is only as good as its weakest link* stays in the long re
 v2.8646 changes `stageFlow.ts` and `weekCall.ts`, both copied to `bridge-weekly-sheet`, so it owed one redeploy after its merge.
 That redeploy ran from `main` on 2026-11-26 at 11:05 UTC, on the person's yes, version 54 to 55, and `check:edge-drift` then read every function current, so nothing is owed on prod.
 The walkers read v2.8646 on the live site the same day, 11:05 to 11:12 UTC, reads only: a pass. Points 2 and 5 say *the narrowest step*, the tile's second line says the two paces apart with what is paid the larger, and at 375 px both lines sit inside the tile.
-That look met one more thing: the **?** beside the rule line takes two presses to open, since it opens on focus and the same press's click shuts it. It is a component, owes no redeploy, and is briefed to the small fixes.
-Not read by the walk: light, since the dev account's own theme is dark and changing it is a write; and the email, by the person's word.
-Left for people: a look in light; the owner's own read of the red and the direction lines on his numbers.
+That look met one more thing: the **?** beside the rule line takes two presses to open, since it opens on focus and the same press's click shuts it. It is a component and owes no redeploy. It is mended in v2.8664 (#9971, merged 2026-11-26): one press opens the reading, and the next press, Escape or a press off the line shuts it.
+Not read by that walk: light, and the email, by the person's word. The theme is kept on the device alone, so a light look writes nothing on prod.
+The walkers read v2.8664 and the light theme on the live site on 2026-11-27, 03:22 to 03:24 UTC, reads only: a pass on both. One press opened the reading and the next shut it, at a desk and at 375 px, and Escape and a press off the line each shut it. In light the tile's lines and the long reading read clearly, and at 375 px in dark no word was cut.
+That look measured the **?** at 24 by 24 px at 375 px wide, where a thumb's size is 44. Since v2.8683 the press around it is 44 by 44 on a narrow screen, the circle is drawn as it was, and the line is no taller. Not yet seen live.
+Left for people: the owner's own read of the red and the direction lines on his numbers.
